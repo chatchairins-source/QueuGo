@@ -54,7 +54,7 @@ internal class CustomerCheckoutRecovery<P, R>(private val journal: CheckoutJourn
         try {
             val pending = withContext(Dispatchers.IO) { journal.read() } ?: return null
             val receipt = recover(pending) ?: return null
-            runCatching { journal.complete(pending) }
+            runCatching { withContext(Dispatchers.IO) { journal.complete(pending) } }
             return receipt
         } finally { sending.set(false) }
     }
