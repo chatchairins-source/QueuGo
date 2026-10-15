@@ -13,17 +13,19 @@ function validBrand(v){
   if(!x)return false;
   return !/^(?:-|n\/?a|na|none|no\s*brand|unbranded|ไม่มีแบรนด์|ไม่มียี่ห้อ|ไม่ระบุ)$/i.test(x);
 }
-function allowedShelfStable(doc){
+function shelfStableExclusion(doc){
   const cats=(doc.categories||[]).map(x=>String(x).toLowerCase());
-  if(!cats.some(x=>x===ROOT||x.startsWith(ROOT+'/')))return false;
+  if(!cats.some(x=>x===ROOT||x.startsWith(ROOT+'/')))return 'outside-root';
   const joined=cats.join('|');
-  // User scope: dry branded grocery only. Never market/fresh/frozen/chilled food.
-  if(/(?:^|\/)(?:eggs?|frozen|tofu|fresh(?:-|\/|$)|chilled|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(?:\/|$)/i.test(joined))return false;
-  if(doc.isWeightedFresh===true)return false;
+  const categoryMatch=joined.match(/(?:^|\/)(eggs?|frozen|tofu|fresh(?:-|\/|$)|chilled|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(?:\/|$)/i);
+  if(categoryMatch)return 'category:'+String(categoryMatch[1]).toLowerCase();
+  if(doc.isWeightedFresh===true)return 'weighted-fresh';
   const attrs=doc.productAttributes?.categoricalAttributes||[];
-  if(attrs.some(x=>/^storage_type::(?:chilled|frozen|refrigerated)$/i.test(String(x))))return false;
-  return true;
+  const storage=attrs.map(String).find(x=>/^storage_type::(?:chilled|frozen|refrigerated)$/i.test(x));
+  if(storage)return 'storage:'+storage.toLowerCase();
+  return null;
 }
+function allowedShelfStable(doc){return shelfStableExclusion(doc)===null;}
 function compact(doc,retrievedAt,sourceRank){
   const image=(doc.images||[]).find(x=>typeof x==='string'&&/^https:\/\/images\.mango-prod\.siammakro\.cloud\//.test(x))||null;
   return {
@@ -128,15 +130,24 @@ async function main(){
   await Promise.all(Array.from({length:Math.min(CONCURRENCY,Math.max(1,pages-1))},worker));
 
   const excluded={missingBrand:0,notShelfStable:0,missingTitle:0},eligible=[];
+  const excludedReasons={},excludedDeepest={};
   for(const entry of docs.values()){
     const d=entry.doc;
     if(!validBrand(d.brand)){excluded.missingBrand++;continue}
-    if(!allowedShelfStable(d)){excluded.notShelfStable++;continue}
+    const reason=shelfStableExclusion(d);
+    if(reason){
+      excluded.notShelfStable++;
+      excludedReasons[reason]=(excludedReasons[reason]||0)+1;
+      const deep=String(d.deepestCategory||'(none)');
+      excludedDeepest[deep]=(excludedDeepest[deep]||0)+1;
+      continue;
+    }
     if(!String(d.title||d.searchTitle||'').trim()){excluded.missingTitle++;continue}
     eligible.push(compact(d,retrievedAt,entry.rank));
   }
   eligible.sort((a,b)=>a.source_rank-b.source_rank||a.source_product_id.localeCompare(b.source_product_id));
-  console.log('FILTER_SUMMARY',JSON.stringify({source:docs.size,eligible:eligible.length,excluded}));
+  const topExcludedDeepest=Object.entries(excludedDeepest).sort((a,b)=>b[1]-a[1]).slice(0,30);
+  console.log('FILTER_SUMMARY',JSON.stringify({source:docs.size,eligible:eligible.length,excluded,excludedReasons,topExcludedDeepest}));
   if(eligible.length<TARGET_COUNT)throw Error('Eligible branded shelf-stable dry-grocery below target: '+eligible.length);
 
   const items=eligible.slice(0,TARGET_COUNT);
