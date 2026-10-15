@@ -92,6 +92,8 @@ data class RiderChatModeration(
     val blockedMe: Boolean
 )
 
+private const val RIDER_CHAT_HISTORY_MAX_ROWS = 1_000
+
 data class RiderChatMessage(
     val id: String,
     val senderId: String,
@@ -199,13 +201,13 @@ class RiderChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             http.get(
                 "order_chat_messages?select=id,sender_id,message,created_at" +
                     "&order_id=eq." + http.enc(orderId) +
-                    // Match the web reader: retain the server history cap, not a client first-100 cutoff.
-                    "&order=created_at.asc",
+                    // Keep the newest bounded window if project-level Data API max rows changes.
+                    "&order=created_at.desc&limit=" + RIDER_CHAT_HISTORY_MAX_ROWS,
                 auth.session.accessToken
             )
         )
         return buildList {
-            for (i in 0 until rows.length()) {
+            for (i in rows.length() - 1 downTo 0) {
                 val r = rows.optJSONObject(i) ?: continue
                 add(
                     RiderChatMessage(
