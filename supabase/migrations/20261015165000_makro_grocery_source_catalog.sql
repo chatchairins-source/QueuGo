@@ -351,10 +351,10 @@ begin
        or title_value=''
        or source_category_value not in ('dry-grocery','health-beauty/personal-care')
        or not (deepest=source_category_value or deepest like source_category_value||'/%')
-       or source_url_value<>case source_category_value
+       or source_url_value<>(case source_category_value
             when 'dry-grocery' then 'https://www.makro.pro/th/c/dry-grocery'
             when 'health-beauty/personal-care' then 'https://www.makro.pro/th/c/health-beauty/personal-care'
-          end
+          end)
        or deepest ~ '(^|/)(eggs?|frozen|tofu|fresh([^/]*|$)|chilled|fresh-market|market-fresh|electronics?|electrical|appliances?|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(/|$)'
        or retrieved is null
        or rank_value<0
