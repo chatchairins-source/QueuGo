@@ -198,6 +198,22 @@ ok(
   'Three-role process-death evidence must fail closed on package crash and record cold relaunch'
 );
 
+const customerCheckoutRecovery=read('customer/src/main/java/com/queuego/customer/CustomerCheckoutRecovery.kt');
+const customerMarketScreen=read('customer/src/main/java/com/queuego/customer/QueueGoMarketScreen.kt');
+ok(
+  customerCheckoutRecovery.includes('withContext(Dispatchers.IO) { journal.read() }') &&
+  customerCheckoutRecovery.includes('withContext(Dispatchers.IO) { journal.write(created) }') &&
+  customerCheckoutRecovery.includes('withContext(Dispatchers.IO) { journal.complete(pending) }'),
+  'Customer Food/Market/Laundry durable checkout journal reads and fsync commits must stay off Main'
+);
+ok(
+  customerMarketScreen.includes('withContext(Dispatchers.IO) { cartStore.load() }') &&
+  customerMarketScreen.includes('guestStore?.revisionForMerge()') &&
+  customerMarketScreen.includes('withContext(Dispatchers.IO) {') &&
+  customerMarketScreen.includes('commitMarketGuestMerge('),
+  'Customer Market guest/account durable cart merge must stay on IO instead of Main'
+);
+
 const customerPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
 ok(customerPicker.includes('mapReady')&&customerPicker.includes('delay(150)'),'Customer location permission must remain delayed until Longdo renderer is ready');
 
