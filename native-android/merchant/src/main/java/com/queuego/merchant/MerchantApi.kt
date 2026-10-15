@@ -144,6 +144,40 @@ data class MerchantProductDraft(
     val variantsJson: String
 )
 
+data class MerchantGroceryCatalogItem(
+    val id: String,
+    val brand: String,
+    val name: String,
+    val variant: String,
+    val sizeValue: Double,
+    val sizeUnit: String,
+    val packSize: Int,
+    val category: String,
+    val image: String?,
+    val productUpdatedAt: String?,
+    val enabled: Boolean,
+    val sellingPrice: Double?,
+    val stockQty: Int,
+    val stockTracking: Boolean,
+    val posAvailable: Boolean,
+    val deliveryAvailable: Boolean,
+    val deliveryPrice: Double?
+)
+
+data class MerchantGroceryCatalogPage(
+    val items: List<MerchantGroceryCatalogItem>,
+    val hasMore: Boolean
+)
+
+data class MerchantGroceryCatalogDraft(
+    val requestId: String,
+    val sellingPrice: Double?,
+    val stockQty: Int,
+    val stockTracking: Boolean,
+    val posAvailable: Boolean,
+    val deliveryAvailable: Boolean
+)
+
 data class MerchantMarketProduct(
     val productId: String,
     val name: String,
@@ -783,6 +817,121 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             }
             else -> raw.toString().toDoubleOrNull() ?: 0.0
         }
+    }
+
+    suspend fun groceryCatalogCategories(auth: NativeAuth): List<String> {
+        val rows = http.array(
+            http.rpc("qg_grocery_categories", auth.session.accessToken)
+        )
+        return buildList {
+            for (i in 0 until rows.length()) {
+                rows.optJSONObject(i)
+                    ?.optString("category")
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(::add)
+            }
+        }
+    }
+
+    suspend fun groceryCatalogPage(
+        auth: NativeAuth,
+        shopId: String,
+        query: String = "",
+        category: String = "",
+        mode: String = "all",
+        offset: Int = 0
+    ): MerchantGroceryCatalogPage {
+        require(offset >= 0) { "หน้ารายการสินค้าไม่ถูกต้อง" }
+        require(query.length <= 100) { "คำค้นหายาวเกินไป" }
+        require(mode in setOf("all", "on", "off", "unpriced")) { "ตัวกรองสินค้าไม่ถูกต้อง" }
+        val raw = http.rpc(
+            "qg_grocery_merchant_page",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_shop_id", shopId)
+                .put("p_query", query.trim())
+                .put("p_category", category.trim())
+                .put("p_mode", mode)
+                .put("p_offset", offset)
+        )
+        val rows = http.array(raw)
+        val limit = minOf(rows.length(), 50)
+        val items = buildList {
+            for (i in 0 until limit) {
+                val r = rows.optJSONObject(i) ?: continue
+                val id = r.optString("id").trim()
+                val name = r.optString("product_name_th").trim()
+                if (id.isBlank() || name.isBlank()) continue
+                add(
+                    MerchantGroceryCatalogItem(
+                        id = id,
+                        brand = r.optString("brand").trim(),
+                        name = name,
+                        variant = r.optString("variant").trim(),
+                        sizeValue = r.optDouble("size_value", 0.0),
+                        sizeUnit = r.optString("size_unit").trim(),
+                        packSize = r.optInt("pack_size", 1).coerceAtLeast(1),
+                        category = r.optString("category").trim(),
+                        image = if (r.optString("image_status") == "approved") r.optNullable("image") else null,
+                        productUpdatedAt = r.optNullable("product_updated_at"),
+                        enabled = r.optBoolean("enabled", false),
+                        sellingPrice = r.optDoubleOrNull("selling_price"),
+                        stockQty = r.optInt("stock_qty", 0).coerceAtLeast(0),
+                        stockTracking = r.optBoolean("stock_tracking", false),
+                        posAvailable = r.optBoolean("pos_available", true),
+                        deliveryAvailable = r.optBoolean("delivery_available", true),
+                        deliveryPrice = r.optDoubleOrNull("delivery_price")
+                    )
+                )
+            }
+        }
+        return MerchantGroceryCatalogPage(items, rows.length() > 50)
+    }
+
+    suspend fun saveGroceryCatalogItem(
+        auth: NativeAuth,
+        shopId: String,
+        item: MerchantGroceryCatalogItem,
+        draft: MerchantGroceryCatalogDraft
+    ) {
+        require(draft.requestId.matches(Regex("^[0-9a-fA-F-]{36}$"))) {
+            "รหัสคำขอบันทึกสินค้าไม่ถูกต้อง"
+        }
+        require(draft.stockQty >= 0) { "จำนวนสินค้าในสต็อกไม่ถูกต้อง" }
+        val price = draft.sellingPrice
+        if (price != null) {
+            require(price.isFinite() && price > 0.0 && price <= 999999.0) {
+                "ราคาขายหน้าร้านไม่ถูกต้อง"
+            }
+        }
+        val enabled = draft.posAvailable || draft.deliveryAvailable
+        require(!enabled || price != null) { "กรุณากรอกราคาขายหน้าร้าน" }
+
+        val row = JSONObject()
+            .put("master_product_id", item.id)
+            .put("enabled", enabled)
+            .put("selling_price", price ?: JSONObject.NULL)
+            .put("stock_qty", draft.stockQty)
+            .put("stock_tracking", draft.stockTracking)
+            .put("pos_available", draft.posAvailable)
+            .put("delivery_available", draft.deliveryAvailable)
+            .put("expected_updated_at", item.productUpdatedAt ?: JSONObject.NULL)
+
+        val raw = http.rpc(
+            "qg_grocery_store_save",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_shop_id", shopId)
+                .put("p_rows", JSONArray().put(row))
+                .put("p_request_id", draft.requestId)
+        )
+        val saved = when (raw) {
+            is JSONObject -> raw.optInt("saved", 0)
+            is JSONArray -> raw.optJSONObject(0)?.optInt("saved", 0) ?: 0
+            else -> 0
+        }
+        if (saved != 1) error("ฐานข้อมูลยังไม่ยืนยันการบันทึกสินค้า")
     }
 
     suspend fun setProductAvailable(auth: NativeAuth, productId: String, available: Boolean) {
