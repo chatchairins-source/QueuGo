@@ -283,6 +283,14 @@ ok(
   'Rider registration previews must keep Base64/Bitmap peak memory serialized and recycle owned Bitmaps'
 );
 
+const accountDeletion=read('shared/src/main/java/com/queuego/shared/QueueGoAccountDeletion.kt');
+ok(
+  accountDeletion.includes('ACCOUNT_DELETE_RESPONSE_MAX_BYTES = 256 * 1024') &&
+  accountDeletion.includes('readAccountDeleteResponseBounded') &&
+  !accountDeletion.includes('BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()'),
+  'Shared account deletion responses must be byte bounded before JSON parsing'
+);
+
 const exit=read('shared/src/main/java/com/queuego/shared/NativeExitDiagnostics.kt');
 ok(exit.includes('SupervisorJob() + Dispatchers.IO')&&exit.includes('scope.launch'),'Android exit-reason diagnostics must not block Activity launch');
 ok(exit.includes('REASON_LOW_MEMORY')&&exit.includes('REASON_ANR')&&exit.includes('REASON_CRASH_NATIVE'),'Exit diagnostics must distinguish LMK/ANR/native crash');
