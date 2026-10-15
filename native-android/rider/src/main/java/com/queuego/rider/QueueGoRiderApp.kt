@@ -863,7 +863,7 @@ private fun RiderHome(
     LaunchedEffect(snapshot?.activeJob?.id, auth.session.accessToken) {
         homeDetails = null
         activeLoadSummary = null
-        snapshot?.activeJob?.let { job ->
+        snapshot?.activeJob?.takeUnless { it.isPassenger }?.let { job ->
             try {
                 homeDetails = api.verificationDetails(auth, job.id)
             } catch (e: CancellationException) {
@@ -885,7 +885,7 @@ private fun RiderHome(
     LaunchedEffect(snapshot?.offeredJob?.id, auth.session.accessToken) {
         offerShopDisplay = null
         offerLoadSummary = null
-        snapshot?.offeredJob?.let { job ->
+        snapshot?.offeredJob?.takeUnless { it.isPassenger }?.let { job ->
             try {
                 offerShopDisplay = api.offerShopDisplay(auth, job.id)
             } catch (e: CancellationException) {
@@ -994,7 +994,7 @@ private fun RiderHome(
         }
     }
 
-    val badgePreferences = remember(context) { context.getSharedPreferences("rider_chat_seen", Context.MODE_PRIVATE) }
+    val badgeSeenStore = remember(context.applicationContext) { RiderMessageSeenStore(context.applicationContext) }
     val badgeTracker = remember(auth.user.id, auth.session.sessionId) { RiderMessageBadgeTracker(auth.user.id) }
     val badgeApi = remember { RiderMessageBadgeApi() }
     var unreadMessages by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
@@ -1018,9 +1018,14 @@ private fun RiderHome(
                     currentCoroutineContext().ensureActive()
                     if (active == badgeActive) {
                         val now = System.currentTimeMillis()
-                        if (badgeInbox) badgePreferences.edit().putLong(auth.user.id, now).apply()
+                        val seenAt = if (badgeInbox) {
+                            badgeSeenStore.markSeen(auth.user.id, now)
+                            now
+                        } else {
+                            badgeSeenStore.seenAt(auth.user.id)
+                        }
                         val (count, notice) = badgeTracker.update(active, badgeChat, badgeInbox, rooms,
-                            messages, badgePreferences.getLong(auth.user.id, 0L), now)
+                            messages, seenAt, now)
                         unreadMessages = count
                         if (notice != null) {
                             messageNotice = notice
@@ -1058,7 +1063,7 @@ private fun RiderHome(
     }
     LaunchedEffect(chatJob?.id, activeTab, messageSection, auth.user.id) {
         if (activeTab == "chat" && messageSection == "chat") {
-            badgePreferences.edit().putLong(auth.user.id, System.currentTimeMillis()).apply()
+            badgeSeenStore.markSeen(auth.user.id, System.currentTimeMillis())
         }
         if (chatJob != null) unreadMessages = 0
     }
@@ -3076,7 +3081,37 @@ private fun RiderHome(
                             )
                             Spacer(Modifier.height(10.dp))
                         }
-                        ActiveJobCard(
+                        if (activeJob.isPassenger) {
+                            RiderPassengerCard(
+                                job = activeJob, busy = actionBusy, networkAvailable = networkAvailable,
+                                onNavigate = { openNavigation(context, activeJob) },
+                                onChat = { chatJob = activeJob },
+                                onAction = { action ->
+                                    if (!actionBusy && requireServerNetwork()) {
+                                        actionBusy = true
+                                        scope.launch {
+                                            try {
+                                                val status = api.passengerAction(auth, activeJob, action)
+                                                val now = java.time.Instant.now().toString()
+                                                val committedJob = activeJob.copy(status = status,
+                                                    arrivedShopAt = if (action == "arrive_pickup") now else activeJob.arrivedShopAt,
+                                                    arrivedCustomerAt = if (action == "arrive_dropoff") now else activeJob.arrivedCustomerAt)
+                                                val committed = current.copy(activeJob = committedJob.takeUnless { status == "completed" }, offeredJob = null)
+                                                snapshot = committed
+                                                persistCommittedSnapshot(committed)
+                                                actionMessage = if (status == "completed") "จบเที่ยวแล้ว" else "อัปเดตเที่ยวแล้ว"
+                                                if (action == "start" && status == "in_progress") openNavigation(context, committedJob)
+                                                runCatching { api.riderSnapshot(auth) }
+                                                    .onFailure { if (it is CancellationException) throw it }
+                                                    .onSuccess { snapshot = it; persistCommittedSnapshot(it) }
+                                            } catch (e: CancellationException) { throw e }
+                                            catch (e: Exception) { actionMessage = e.message ?: "ยังยืนยันผลไม่ได้ กรุณาลองอีกครั้ง" }
+                                            finally { actionBusy = false }
+                                        }
+                                    }
+                                }
+                            )
+                        } else ActiveJobCard(
                             job = if (
                                 activeJob.marketOrderId != null &&
                                 activeJob.status != "in_progress" &&
@@ -3507,7 +3542,7 @@ private fun OfferCard(
         Column(Modifier.padding(if (LocalConfiguration.current.screenHeightDp <= 760) 10.dp else 12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
-                    Text("งานใหม่ใกล้คุณ", color = QgRed, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                    Text(if (job.isPassenger) "เที่ยวโดยสาร" else "งานใหม่ใกล้คุณ", color = QgRed, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
                     Text(job.numberLabel, fontWeight = FontWeight.Black, fontSize = 24.sp)
                 }
                 Box(
@@ -3528,17 +3563,17 @@ private fun OfferCard(
                 logoUrl = shop?.shopLogo,
                 fallback = (shop?.shopName ?: job.pickupAddress ?: "Q").take(1),
                 icon = null,
-                label = "รับที่ร้าน",
+                label = if (job.isPassenger) "รับผู้โดยสาร" else "รับที่ร้าน",
                 value = shop?.shopName ?: job.pickupAddress ?: "ร้านค้า",
-                trailing = "รับสินค้า"
+                trailing = if (job.isPassenger) "จุดรับ" else "รับสินค้า"
             )
             RiderOfferPlaceRow(
                 logoUrl = null,
                 fallback = null,
                 icon = "location",
-                label = "ส่งให้ลูกค้า",
+                label = if (job.isPassenger) "ไปยังจุดหมาย" else "ส่งให้ลูกค้า",
                 value = job.deliveryAddress ?: "จุดส่งสินค้า",
-                trailing = "ส่งสินค้า"
+                trailing = if (job.isPassenger) "จุดส่ง" else "ส่งสินค้า"
             )
 
             Row(
@@ -3546,7 +3581,7 @@ private fun OfferCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 RiderOfferMetric("ระยะทาง", (pickupKm?.let { "%.1f".format(it) } ?: "—") + " กม.", Modifier.weight(1f))
-                RiderOfferMetric("เวลาประมาณ", (deliveryKm?.let { kotlin.math.ceil(it / 25.0 * 60.0).toInt().coerceAtLeast(1).toString() } ?: "—") + " นาที", Modifier.weight(1f))
+                RiderOfferMetric("เวลาประมาณ", ((if (job.isPassenger) job.rideDurationMinutes?.let { kotlin.math.ceil(it).toInt().toString() } else deliveryKm?.let { kotlin.math.ceil(it / 25.0 * 60.0).toInt().coerceAtLeast(1).toString() }) ?: "—") + " นาที", Modifier.weight(1f))
                 RiderOfferMetric("รายได้", riderMoneyBaht(job.deliveryFee), Modifier.weight(1f), highlight = true)
             }
 

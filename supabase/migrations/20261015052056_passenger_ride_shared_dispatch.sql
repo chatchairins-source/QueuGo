@@ -496,7 +496,7 @@ begin
   loop
     rr:=null; v_next:=null; v_accept:=false;
 
-    select r.id,active.last_order,coalesce(pref.auto_accept and not pref.stop_after_work and pref.ready_until>now() and j.market_order_id is null and public.queuego_rule_numeric('dispatch.continuous_enabled',0,now())=1,false) into rr,v_next,v_accept
+    select r.id,active.last_order,coalesce(pref.auto_accept and not pref.stop_after_work and pref.ready_until>now() and j.market_order_id is null and (j.fulfillment_vertical='ride' or public.queuego_rule_numeric('dispatch.continuous_enabled',0,now())=1),false) into rr,v_next,v_accept
     from public.rider_profiles r
     join public.users u on u.id=r.user_id
     left join qg_private.rider_destination_preferences dp
@@ -642,6 +642,10 @@ begin
           insert into public.qg_rider_offer_history(order_id,rider_id,offered_at,resolved_at,outcome,attempt)
             values(j.id,rr,now(),now(),'accepted',a);
           delete from public.qg_rider_order_offers where order_id=j.id and rider_id=rr;
+          if j.fulfillment_vertical='ride' then
+            insert into public.notifications(user_id,title,message,type,reference_id)
+            select user_id,'รับเที่ยวโดยสารอัตโนมัติแล้ว',j.order_number||' · ตรวจจุดรับผู้โดยสารได้ทันที','order',j.id from public.rider_profiles where id=rr;
+          end if;
           continue;
         end if;
 

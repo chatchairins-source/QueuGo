@@ -103,8 +103,13 @@ data class RiderJob(
     val customerCash: Double? = null,
     val customerSubtotal: Double? = null,
     val customerDeliveryFee: Double? = null,
-    val customerServiceFee: Double? = null
+    val customerServiceFee: Double? = null,
+    val fulfillmentVertical: String = "food",
+    val rideDurationMinutes: Double? = null,
+    val rideDistanceKm: Double? = null
 ) {
+    val isPassenger: Boolean get() = fulfillmentVertical == "ride"
+
     val numberLabel: String
         get() = nativeOrderNumber(orderNumber)
 

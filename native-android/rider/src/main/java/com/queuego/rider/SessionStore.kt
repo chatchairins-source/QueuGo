@@ -286,6 +286,9 @@ class SessionStore(private val context: Context) {
         .put("customerSubtotal", job.customerSubtotal)
         .put("customerDeliveryFee", job.customerDeliveryFee)
         .put("customerServiceFee", job.customerServiceFee)
+        .put("fulfillmentVertical", job.fulfillmentVertical)
+        .put("rideDurationMinutes", job.rideDurationMinutes)
+        .put("rideDistanceKm", job.rideDistanceKm)
 
     private fun riderJobFromJson(o: JSONObject): RiderJob = RiderJob(
         id = o.getString("id"),
@@ -306,7 +309,10 @@ class SessionStore(private val context: Context) {
         customerCash = o.optNullableDouble("customerCash"),
         customerSubtotal = o.optNullableDouble("customerSubtotal"),
         customerDeliveryFee = o.optNullableDouble("customerDeliveryFee"),
-        customerServiceFee = o.optNullableDouble("customerServiceFee")
+        customerServiceFee = o.optNullableDouble("customerServiceFee"),
+        fulfillmentVertical = o.optNullableString("fulfillmentVertical") ?: "food",
+        rideDurationMinutes = o.optNullableDouble("rideDurationMinutes"),
+        rideDistanceKm = o.optNullableDouble("rideDistanceKm")
     )
 
     private fun laundryJobToJson(job: RiderLaundryJob): JSONObject = JSONObject()

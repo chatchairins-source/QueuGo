@@ -5,24 +5,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  const q=(s,p=[])=>db.query(s,p),eq=(a,b)=>{assert.deepEqual(a,b);checks++};
  const reject=async(s,p,re)=>{await assert.rejects(q(s,p),re);checks++};
  const as=n=>q("select set_config('test.uid',$1,false)",[id(n)]);
- await db.exec(require('./fixtures/rider-dispatch-schema.cjs')());
- await db.exec(fs.readFileSync('supabase/migrations/20261014234500_rider_continuous_dispatch_phase1.sql','utf8'));
- await db.exec(`
- create function qg_private.assert_live_session() returns void language plpgsql as $$begin if auth.uid() is null then raise exception 'live session required'; end if; end$$;
- alter table orders add column completed_at timestamptz,add column rider_arrived_customer_at timestamptz,add column gp_rate numeric default 0,add column created_by uuid,add column rider_search_started_at timestamptz,add column picked_up_at timestamptz,add column delivering_at timestamptz,add column cancelled_reason text;
- alter table deliveries add column pickup_address text,add column delivery_address text,add column pickup_latitude float8,add column pickup_longitude float8,add column delivery_latitude float8,add column delivery_longitude float8;
- create table queuego_cash_order_locks(order_id uuid primary key);
- create table qg_rider_action_receipts(request_id uuid primary key,user_id uuid,kind text,payload jsonb,result jsonb);
- create table qg_private.rider_document_expiries(id uuid primary key default gen_random_uuid(),rider_id uuid references rider_profiles,vehicle_id uuid,document_key text,expires_on date,recorded_by uuid,
- constraint rider_document_expiries_key_check check(document_key in ('national_id','driver_license','vehicle_prb')),
- constraint rider_document_expiries_subject_check check((document_key in ('national_id','driver_license') and vehicle_id is null) or (document_key='vehicle_prb' and vehicle_id is not null)));
- create unique index rider_doc_key on qg_private.rider_document_expiries(rider_id,document_key) where vehicle_id is null;
- create function queuego_service_area_route_status(float8,float8,float8,float8,text) returns jsonb language sql as $$select '{"available":true}'::jsonb$$;
- create sequence test_order_number;
- create function qg_next_order_number() returns text language sql as $$select 'QT-'||nextval('test_order_number')$$;
- insert into users values('${id(70)}','${id(170)}','admin','active','Admin');
- `);
- await db.exec(fs.readFileSync('supabase/migrations/20261015052056_passenger_ride_shared_dispatch.sql','utf8'));
+ await db.exec(require('./fixtures/passenger-ride-schema.cjs')());
  // Private helpers and admin review are never anonymously callable.
  eq((await q("select has_function_privilege('anon','queuego_admin_review_public_license(uuid,date,text)','execute') v")).rows[0].v,false);
  eq((await q("select has_function_privilege('authenticated','qg_private.ride_order_action(uuid,text)','execute') v")).rows[0].v,false);
@@ -46,6 +29,8 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await seed(80);await q('select qg_dispatch_rider_offers()');eq((await q('select count(*)::int n from qg_rider_order_offers')).rows[0].n,0);
  await q('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(11),'checked public licence']);
  await q('select qg_dispatch_rider_offers()');eq((await q('select rider_id from qg_rider_order_offers where order_id=$1',[id(80)])).rows[0].rider_id,id(11));
+ await as(101);await q('set role authenticated');eq((await q('select id from orders where id=$1',[id(80)])).rows.length,1);await q('reset role');
+ await as(102);await q('set role authenticated');eq((await q('select id from orders where id=$1',[id(80)])).rows.length,0);await q('reset role');await as(170);
  // Revoke after offering: accepting the old offer must still fail.
  await q('select queuego_admin_review_public_license($1,null,$2)',[id(11),'revoked public licence']);
  await reject('select qg_private.claim_rider_order($1,$2)',[id(11),id(80)],/public driving license/);eq(await status(80),'searching_rider');
@@ -77,7 +62,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  eq((await q('select count(*)::int n from qg_rider_order_offers where order_id=$1',[id(82)])).rows[0].n,0);
  // Pricing and durable request creation execute the actual staged RPCs.
  await q("update orders set status='cancelled' where id=$1",[id(82)]);
- for(const [k,v] of Object.entries({'ride.base_fare':20,'ride.included_km':0,'ride.per_km':10,'ride.minimum_fare':20,'ride.platform_fee_percent':0})) await q('insert into queuego_platform_rules values($1,$2::jsonb,now())',[k,JSON.stringify(v)]);
+ for(const [k,v] of Object.entries({'ride.base_fare':20,'ride.included_km':0,'ride.per_km':10,'ride.minimum_fare':20,'ride.platform_fee_percent':0})) await q('insert into queuego_platform_rules(rule_key,value,created_at) values($1,$2::jsonb,now())',[k,JSON.stringify(v)]);
  eq((await q("select has_function_privilege('authenticated','queuego_cache_ride_quote(uuid,text,text,double precision,double precision,double precision,double precision,numeric,numeric)','execute') v")).rows[0].v,false);
  const quote=async()=> (await q('select queuego_cache_ride_quote($1,$2,$3,15,103,15.01,103,3,8) r',[id(160),'pickup address','destination address'])).rows[0].r;
  const quoted=await quote();eq(quoted.fare,50);await as(160);
@@ -91,5 +76,11 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await reject('select queuego_request_ride($1,$2)',[id(92),another.quote_id],/expired/);
  await db.exec("create or replace function queuego_feature_enabled(k text,t timestamptz) returns boolean language sql as $$select false$$;");
  await reject('select queuego_cache_ride_quote($1,$2,$3,15,103,15.01,103,3,8)',[id(160),'pickup address','destination address'],/not configured or enabled/);
+ await as(101);await reject('select queuego_admin_configure_ride(false,$1::jsonb)',[JSON.stringify({base_fare:20,included_km:0,per_km:10,minimum_fare:20,platform_fee_percent:0})],/active admin/);
+ await as(170);await reject('select queuego_admin_configure_ride(true,$1::jsonb)',[JSON.stringify({base_fare:20,included_km:0,per_km:10,minimum_fare:20,platform_fee_percent:5})],/credit integration/);
+ await q('select queuego_admin_configure_ride(false,$1::jsonb)',[JSON.stringify({base_fare:20,included_km:0,per_km:10,minimum_fare:20,platform_fee_percent:0})]);
+ eq((await q("select value from queuego_platform_rules where rule_key='feature.ride' order by effective_from desc limit 1")).rows[0].value,false);
+ await as(101);const ledger=(await q('select qg_rider_cash_ledger(current_date,current_date) l')).rows[0].l;
+ eq(ledger.find(o=>o.order_id===id(80)).cash_collected_customer,50);eq(ledger.find(o=>o.order_id===id(80)).cash_paid_merchant,0);
  await db.close();console.log('Passenger Ride: '+checks+' checks PASS');
 })().catch(e=>{console.error(e.message,e.detail||'');process.exitCode=1});

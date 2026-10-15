@@ -377,9 +377,22 @@ ok(
   'Rider post-commit local proof cleanup must remain non-fatal after authoritative server success'
 );
 
+const riderRoot=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
+const riderMessageBadge=read('rider/src/main/java/com/queuego/rider/RiderMessageBadge.kt');
+ok(
+  riderMessageBadge.includes('class RiderMessageSeenStore') &&
+  riderMessageBadge.includes('withContext(Dispatchers.IO)') &&
+  riderMessageBadge.includes('prefs().getLong(userId, 0L)') &&
+  riderMessageBadge.includes('prefs().edit().putLong(userId, at).apply()') &&
+  riderRoot.includes('badgeSeenStore.markSeen(auth.user.id, now)') &&
+  riderRoot.includes('badgeSeenStore.seenAt(auth.user.id)') &&
+  !riderRoot.includes('badgePreferences.getLong') &&
+  !riderRoot.includes('badgePreferences.edit().putLong'),
+  'Rider message seen SharedPreferences reads/writes must stay off Main polling and inbox callbacks'
+);
+
 const riderAcceptance=read('rider/src/main/java/com/queuego/rider/RiderAcceptanceMode.kt');
 const riderStopAfterWork=read('rider/src/main/java/com/queuego/rider/RiderStopAfterWork.kt');
-const riderRoot=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
 ok(
   riderAcceptance.includes('suspend fun autoAcceptEnabled') &&
   riderAcceptance.includes('withContext(Dispatchers.IO)') &&
@@ -550,6 +563,19 @@ ok(
 
 const customerPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
 ok(customerPicker.includes('mapReady')&&customerPicker.includes('delay(150)'),'Customer location permission must remain delayed until Longdo renderer is ready');
+
+const riderNavigationIntegration=read('rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
+ok(
+  riderNavigationIntegration.includes('withContext(Dispatchers.IO) {') &&
+  riderNavigationIntegration.includes('sessionStore.loadMapCamera(stateKey)') &&
+  riderNavigationIntegration.includes('sessionStore.loadMapViewMode(stateKey)') &&
+  riderNavigationIntegration.includes('pendingCameraPersistence = doubleArrayOf(') &&
+  riderNavigationIntegration.includes('pendingViewModePersistence = NavigationViewMode.FREE_PAN.name') &&
+  riderNavigationIntegration.includes('delay(250L)') &&
+  !riderNavigationIntegration.includes('val initialCamera = remember(stateKey) {\n        sessionStore.loadMapCamera(stateKey)') &&
+  !riderNavigationIntegration.includes('sessionStore.saveMapCamera(\n                stateKey,'),
+  'Rider navigation-map camera/view-mode Keystore restore and high-frequency persistence must stay off Main'
+);
 
 const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
 ok(
