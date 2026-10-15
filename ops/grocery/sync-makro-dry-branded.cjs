@@ -3,21 +3,31 @@
 
 const fs=require('fs'),path=require('path'),crypto=require('crypto');
 const endpoint='https://search.maknet.siammakro.cloud/search/api/v1/indexes/products/search';
-const outPath=process.argv[2]||'catalog/makro-dry-branded-20261015.json';
+const outPath=process.argv[2]||'artifacts/makro-catalog/makro-grocery-branded.json';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const RETRIES=4,CONCURRENCY=4,TARGET_COUNT=10000,ROOT='dry-grocery';
+const RETRIES=4,CONCURRENCY=4,TARGET_COUNT=10000;
 const STORE_CODES=JSON.parse(fs.readFileSync('catalog/makro-store-codes-20261015.json','utf8')).store_codes;
+const SOURCES=[
+  {root:'dry-grocery',url:'https://www.makro.pro/th/c/dry-grocery',priority:0},
+  {root:'health-beauty/personal-care',url:'https://www.makro.pro/th/c/health-beauty/personal-care',priority:1}
+];
 
+function scalar(v,max=200){
+  if(v===null||v===undefined)return null;
+  if(typeof v!=='string'&&typeof v!=='number'&&typeof v!=='boolean')return null;
+  const s=String(v).trim();
+  return s?s.slice(0,max):null;
+}
 function validBrand(v){
   const x=String(v||'').trim();
   if(!x)return false;
   return !/^(?:-|n\/?a|na|none|no\s*brand|unbranded|ไม่มีแบรนด์|ไม่มียี่ห้อ|ไม่ระบุ)$/i.test(x);
 }
-function shelfStableExclusion(doc){
+function exclusionReason(doc,root){
   const cats=(doc.categories||[]).map(x=>String(x).toLowerCase());
-  if(!cats.some(x=>x===ROOT||x.startsWith(ROOT+'/')))return 'outside-root';
+  if(!cats.some(x=>x===root||x.startsWith(root+'/')))return 'outside-root';
   const joined=cats.join('|');
-  const categoryMatch=joined.match(/(?:^|\/)(eggs?|frozen|tofu|fresh(?:-|\/|$)|chilled|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(?:\/|$)/i);
+  const categoryMatch=joined.match(/(?:^|\/)(eggs?|frozen|tofu|fresh(?:-|\/|$)|chilled|fresh-market|market-fresh|electronics?|electrical|appliances?|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(?:\/|$)/i);
   if(categoryMatch)return 'category:'+String(categoryMatch[1]).toLowerCase();
   if(doc.isWeightedFresh===true)return 'weighted-fresh';
   const attrs=doc.productAttributes?.categoricalAttributes||[];
@@ -25,33 +35,33 @@ function shelfStableExclusion(doc){
   if(storage)return 'storage:'+storage.toLowerCase();
   return null;
 }
-function allowedShelfStable(doc){return shelfStableExclusion(doc)===null;}
-function compact(doc,retrievedAt,sourceRank){
+function compact(doc,retrievedAt,source,sourceRank){
   const image=(doc.images||[]).find(x=>typeof x==='string'&&/^https:\/\/images\.mango-prod\.siammakro\.cloud\//.test(x))||null;
+  const factor=Number(doc.unitFactor);
   return {
     source_product_id:String(doc.productId||doc.id||''),
     source_rank:sourceRank,
-    sku:doc.sku||null,
-    barcode:doc.itemBarCode||doc.itemBarCodes?.[0]||null,
-    brand:String(doc.brand||'').trim(),
-    title_th:String(doc.title||doc.searchTitle||'').trim(),
-    title_en:doc.titleEn||null,
-    deepest_category:doc.deepestCategory||ROOT,
+    source_category:source.root,
+    source_url:source.url,
+    sku:scalar(doc.sku,100),
+    barcode:scalar(doc.itemBarCode||doc.itemBarCodes?.[0],64),
+    brand:String(doc.brand||'').trim().slice(0,250),
+    title_th:String(doc.title||doc.searchTitle||'').trim().slice(0,500),
+    title_en:scalar(doc.titleEn,500),
+    deepest_category:scalar(doc.deepestCategory,250)||source.root,
     image_url:image,
-    unit_size:doc.unitSize||null,
-    unit_type:doc.unitType||null,
-    unit_factor:doc.unitFactor??null,
-    source_category:ROOT,
-    source_url:'https://www.makro.pro/th/c/dry-grocery',
+    unit_size:scalar(doc.unitSize,100),
+    unit_type:scalar(doc.unitType,100),
+    unit_factor:Number.isFinite(factor)?factor:null,
     retrieved_at:retrievedAt
   };
 }
-function body(page,size){
+function body(root,page,size){
   return {
     q:'*',
     size,
     filters:{
-      category:[ROOT],
+      category:[root],
       storeCodes:STORE_CODES,
       isSalesCustomer:false,
       countryCode:'TH',
@@ -67,7 +77,7 @@ function body(page,size){
     source:'web'
   };
 }
-async function fetchPage(page,size){
+async function fetchPage(root,page,size){
   for(let attempt=1;attempt<=RETRIES;attempt++){
     try{
       const r=await fetch(endpoint,{
@@ -79,7 +89,7 @@ async function fetchPage(page,size){
           'x-device-platform':'ios',
           'referer':'https://www.makro.pro/'
         },
-        body:JSON.stringify(body(page,size)),
+        body:JSON.stringify(body(root,page,size)),
         signal:AbortSignal.timeout(30000)
       });
       if(!r.ok)throw Error('HTTP '+r.status+' '+(await r.text()).slice(0,300));
@@ -92,17 +102,15 @@ async function fetchPage(page,size){
     }
   }
 }
-async function main(){
-  const retrievedAt=new Date().toISOString();
+async function fetchSource(source){
   let size=20,first=null;
   for(const candidate of [200,120,100,50,20]){
-    const j=await fetchPage(1,candidate);
+    const j=await fetchPage(source.root,1,candidate);
     if(j.hits.length>0){size=j.hits.length===candidate?candidate:j.hits.length;first=j;break}
   }
-  if(!first)throw Error('Cannot fetch first Makro dry-grocery page');
+  if(!first)throw Error('Cannot fetch Makro category '+source.root);
   const expected=Number(first.found)||0,pages=Math.ceil(expected/size);
-  if(expected<10000)throw Error('Makro dry-grocery source below 10k: '+expected);
-  console.log(JSON.stringify({endpoint,root:ROOT,expected,size,pages}));
+  console.log(JSON.stringify({endpoint,root:source.root,expected,size,pages}));
 
   const docs=new Map();
   const add=j=>{
@@ -121,64 +129,65 @@ async function main(){
     while(true){
       const page=next++;
       if(page>pages)return;
-      const j=await fetchPage(page,size);
+      const j=await fetchPage(source.root,page,size);
       add(j);done++;
-      if(done%10===0||done===pages)console.log(JSON.stringify({progress:done,pages,unique:docs.size,pageFound:j.found}));
+      if(done%10===0||done===pages)console.log(JSON.stringify({root:source.root,progress:done,pages,unique:docs.size,pageFound:j.found}));
       await sleep(70);
     }
   }
   await Promise.all(Array.from({length:Math.min(CONCURRENCY,Math.max(1,pages-1))},worker));
-
-  const excluded={missingBrand:0,notShelfStable:0,missingTitle:0},eligible=[];
-  const excludedReasons={},excludedDeepest={};
-  for(const entry of docs.values()){
-    const d=entry.doc;
-    if(!validBrand(d.brand)){excluded.missingBrand++;continue}
-    const reason=shelfStableExclusion(d);
-    if(reason){
-      excluded.notShelfStable++;
-      excludedReasons[reason]=(excludedReasons[reason]||0)+1;
-      const deep=String(d.deepestCategory||'(none)');
-      excludedDeepest[deep]=(excludedDeepest[deep]||0)+1;
-      continue;
+  return {expected,docs};
+}
+async function main(){
+  const retrievedAt=new Date().toISOString();
+  const globallySeen=new Set(),eligible=[],summaries=[];
+  for(const source of SOURCES){
+    const {expected,docs}=await fetchSource(source);
+    const excluded={duplicate:0,missingBrand:0,restricted:0,missingTitle:0};
+    const reasons={};
+    for(const entry of docs.values()){
+      const d=entry.doc,id=String(d?.productId||d?.id||'');
+      if(globallySeen.has(id)){excluded.duplicate++;continue}
+      globallySeen.add(id);
+      if(!validBrand(d.brand)){excluded.missingBrand++;continue}
+      const reason=exclusionReason(d,source.root);
+      if(reason){excluded.restricted++;reasons[reason]=(reasons[reason]||0)+1;continue}
+      if(!String(d.title||d.searchTitle||'').trim()){excluded.missingTitle++;continue}
+      eligible.push({...compact(d,retrievedAt,source,entry.rank),source_priority:source.priority});
     }
-    if(!String(d.title||d.searchTitle||'').trim()){excluded.missingTitle++;continue}
-    eligible.push(compact(d,retrievedAt,entry.rank));
+    summaries.push({root:source.root,source_found:expected,unique:docs.size,excluded,reasons});
   }
-  eligible.sort((a,b)=>a.source_rank-b.source_rank||a.source_product_id.localeCompare(b.source_product_id));
-  const topExcludedDeepest=Object.entries(excludedDeepest).sort((a,b)=>b[1]-a[1]).slice(0,30);
-  console.log('FILTER_SUMMARY',JSON.stringify({source:docs.size,eligible:eligible.length,excluded,excludedReasons,topExcludedDeepest}));
-  if(eligible.length<TARGET_COUNT)throw Error('Eligible branded shelf-stable dry-grocery below target: '+eligible.length);
 
-  const items=eligible.slice(0,TARGET_COUNT);
+  eligible.sort((a,b)=>a.source_priority-b.source_priority||a.source_rank-b.source_rank||a.source_product_id.localeCompare(b.source_product_id));
+  console.log('FILTER_SUMMARY',JSON.stringify({eligible:eligible.length,sources:summaries}));
+  if(eligible.length<TARGET_COUNT)throw Error('Eligible branded non-fresh grocery source below target: '+eligible.length);
+
+  const items=eligible.slice(0,TARGET_COUNT).map(({source_priority,...x})=>x);
   const payload={
-    schema_version:3,
-    source:'Makro PRO public dry-grocery search API',
-    source_url:'https://www.makro.pro/th/c/dry-grocery',
+    schema_version:4,
+    source:'Makro PRO public search API',
     retrieved_at:retrievedAt,
-    source_found:expected,
-    unique_source_products:docs.size,
+    source_found:summaries.reduce((n,x)=>n+x.source_found,0),
     eligible_count:eligible.length,
     target_count:TARGET_COUNT,
     count:items.length,
     filters:{
-      root:'dry-grocery',
+      roots:SOURCES.map(x=>x.root),
       require_brand:true,
       exclude_fresh:true,
       exclude_market_fresh:true,
       exclude_electronics:true,
-      exclude_beverages_root:true,
-      excluded_category_tokens:['eggs','frozen','tofu','fresh','chilled','alcohol','beer','wine','liquor','spirit','tobacco','cigarette'],
+      excluded_category_tokens:['eggs','frozen','tofu','fresh','chilled','fresh-market','market-fresh','electronics','electrical','appliance','alcohol','beer','wine','liquor','spirit','tobacco','cigarette'],
       excluded_storage_types:['chilled','frozen','refrigerated']
     },
-    excluded,
+    sources:summaries,
     items
   };
   fs.mkdirSync(path.dirname(outPath),{recursive:true});
-  // Compact JSON keeps the 10k source catalog small; Merchant still gets one preview image per item.
   fs.writeFileSync(outPath,JSON.stringify(payload)+'\n');
   const bytes=fs.statSync(outPath).size;
   const digest=crypto.createHash('sha256').update(fs.readFileSync(outPath)).digest('hex');
-  console.log(JSON.stringify({written:outPath,count:items.length,eligible_count:eligible.length,excluded,bytes,sha256:digest}));
+  if(bytes>15*1024*1024)throw Error('Makro snapshot unexpectedly large: '+bytes);
+  console.log(JSON.stringify({written:outPath,count:items.length,eligible_count:eligible.length,bytes,sha256:digest}));
 }
 main().catch(e=>{console.error(e.stack||e);process.exit(1)});
