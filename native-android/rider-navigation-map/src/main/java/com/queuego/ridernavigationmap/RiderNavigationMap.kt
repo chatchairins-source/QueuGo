@@ -45,6 +45,7 @@ private const val CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L
 private const val DEFAULT_LONGITUDE = 100.5018
 private const val DEFAULT_LATITUDE = 13.7563
 private const val SNAPSHOT_CAPTURE_THROTTLE_MS = 1_200L
+private const val RIDER_NAV_SNAPSHOT_MAX_SIDE_PX = 1280
 private const val SNAPSHOT_CAPTURE_DELAY_MS = 180L
 private const val SNAPSHOT_BRIDGE_SETTLE_MS = 500L
 private const val SNAPSHOT_BRIDGE_RETRY_MS = 250L
@@ -253,8 +254,15 @@ private class RiderNavigationMapHolder {
         val now = SystemClock.elapsedRealtime()
         if (!force && (snapshotVisible || now - lastSnapshotCaptureAtMs < SNAPSHOT_CAPTURE_THROTTLE_MS)) return
 
-        val width = activeView.width.coerceAtLeast(1)
-        val height = activeView.height.coerceAtLeast(1)
+        val sourceWidth = activeView.width.coerceAtLeast(1)
+        val sourceHeight = activeView.height.coerceAtLeast(1)
+        val sourceMaxSide = maxOf(sourceWidth, sourceHeight)
+        val snapshotScale = minOf(
+            1f,
+            RIDER_NAV_SNAPSHOT_MAX_SIDE_PX.toFloat() / sourceMaxSide.toFloat()
+        )
+        val width = maxOf(1, (sourceWidth * snapshotScale).toInt())
+        val height = maxOf(1, (sourceHeight * snapshotScale).toInt())
         val target = runCatching {
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         }.getOrNull() ?: return
