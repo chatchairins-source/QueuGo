@@ -40,6 +40,7 @@ ok(rider.includes('saveActiveTab(auth.user.id, activeTab)')&&rider.includes('Dis
 const merchantImage=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
 const merchantProducts=read('merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt');
 const merchantCatalog=read('merchant/src/main/java/com/queuego/merchant/MerchantCatalogScreen.kt');
+const merchantMedia=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
 ok(merchantImage.includes('inJustDecodeBounds = true')&&merchantImage.includes('inSampleSize = sample'),'Merchant gallery/camera uploads must sample before allocating Bitmap memory');
 ok(merchantImage.indexOf('inJustDecodeBounds = true')<merchantImage.indexOf('val decoded = BitmapFactory.decodeByteArray'),'Merchant image bounds must be read before full decode');
 ok(
@@ -52,6 +53,19 @@ ok(
   merchantCatalog.includes('val productRows = remember(rows) { rows.chunked(2) }') &&
   merchantCatalog.includes('items = productRows'),
   'Merchant catalog grid must lazy-render product rows instead of decoding every product image at once'
+);
+ok(
+  merchantMedia.includes('import androidx.compose.foundation.lazy.LazyColumn') &&
+  merchantMedia.includes('import androidx.compose.foundation.lazy.items') &&
+  merchantMedia.includes('items = rows.chunked(3)'),
+  'Merchant media gallery must import and compile the lazy list DSL it uses'
+);
+ok(
+  merchantMedia.includes('MERCHANT_MEDIA_RESPONSE_MAX_BYTES = 2 * 1024 * 1024') &&
+  merchantMedia.includes('readMerchantMediaResponseBounded') &&
+  merchantMedia.includes('contentLengthLong') &&
+  !merchantMedia.includes('bufferedReader()?.use { it.readText() }'),
+  'Merchant storage media listing must be byte bounded before JSON parsing'
 );
 
 const chatImage=read('shared/src/main/java/com/queuego/shared/NativeChatImage.kt');
