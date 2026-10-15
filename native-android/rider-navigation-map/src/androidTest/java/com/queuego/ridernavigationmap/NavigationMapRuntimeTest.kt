@@ -324,6 +324,44 @@ class NavigationMapRuntimeTest {
     }
 
     @Test
+    fun followCameraUsesNativePerspectiveAndOverviewFlattens() {
+        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
+            lateinit var activity: NavigationMapRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue(
+                "Navigation map did not become ready for perspective test",
+                activity.mapReady.await(30, TimeUnit.SECONDS)
+            )
+
+            var before = activity.latestDiagnostics.renderPassCount
+            scenario.onActivity {
+                assertTrue(
+                    "FOLLOW camera did not apply native Longdo tilt: " + it.mapTiltDegrees(),
+                    it.mapTiltDegrees() >= 24f
+                )
+                before = it.latestDiagnostics.renderPassCount
+                it.showOverviewForTiltFixture()
+            }
+            awaitAppliedRender(activity, before)
+            scenario.onActivity {
+                assertTrue(
+                    "Overview must return to a flat north-up camera: " + it.mapTiltDegrees(),
+                    kotlin.math.abs(it.mapTiltDegrees()) <= 0.5f
+                )
+                before = it.latestDiagnostics.renderPassCount
+                it.restoreFollowForTiltFixture()
+            }
+            awaitAppliedRender(activity, before)
+            scenario.onActivity {
+                assertTrue(
+                    "FOLLOW did not restore navigation perspective after Overview: " + it.mapTiltDegrees(),
+                    it.mapTiltDegrees() >= 24f
+                )
+            }
+        }
+    }
+
+    @Test
     fun demandHeatmapReconcilesPinsWithoutRecreatingMapObjects() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
             lateinit var activity: NavigationMapRuntimeActivity
