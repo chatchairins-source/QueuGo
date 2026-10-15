@@ -1,5 +1,8 @@
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CHARGE=/^chrg_[A-Za-z0-9]+$/;
+function isLiveOmiseSecret(value){
+ return typeof value==='string' && /^skey_(?:live_)?[A-Za-z0-9]+$/.test(value) && !value.startsWith('skey_test_');
+}
 async function boundedText(response,limit=131072){
  const reader=response.body?.getReader();if(!reader)throw Error('empty response');let size=0;const chunks=[];
  try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>limit)throw Error('payload too large');chunks.push(value)}}finally{await reader.cancel().catch(()=>{})}
@@ -34,7 +37,7 @@ export function createCreditHandler(env,fetcher=fetch,webhook=false){
   const base=env.get('SUPABASE_URL'),service=env.get('SUPABASE_SERVICE_ROLE_KEY'),secret=env.get('OMISE_SECRET_KEY'),webhookSecret=env.get('OMISE_WEBHOOK_SECRET');
   // New topups require the rollout switch. Already-paid signed webhooks remain settleable during an intake pause.
   // A LIVE key is always mandatory; webhooks additionally require the Omise signing secret.
-  if((!webhook&&env.get('QUEUEGO_CREDIT_LIVE_ENABLED')!=='true')||!base||!service||!/^skey_live_[A-Za-z0-9]+$/.test(secret||'')||(webhook&&!webhookSecret))return reply({error:'ระบบเครดิตยังไม่เปิดใช้งาน'},503);
+  if((!webhook&&env.get('QUEUEGO_CREDIT_LIVE_ENABLED')!=='true')||!base||!service||!isLiveOmiseSecret(secret)||(webhook&&!webhookSecret))return reply({error:'ระบบเครดิตยังไม่เปิดใช้งาน'},503);
   const serviceHeaders={apikey:service,authorization:'Bearer '+service,'content-type':'application/json'};
   const providerHeaders={authorization:'Basic '+btoa(secret+':')};
   const rpc=async(name,body,authorization='Bearer '+service)=>{

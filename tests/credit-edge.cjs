@@ -36,7 +36,9 @@ const assert=require('node:assert/strict'),crypto=require('node:crypto');
  charge={...charge,status:'pending',paid:false};applied=[];eq((await hook(hookReq({key:'charge.complete',data:{id:charge.id,status:'successful',paid:true}}))).status,200);eq(applied[0].p_status,'pending');eq(applied[0].p_paid,false);
  for(const patch of [{livemode:false},{currency:'usd'},{amount:1.5},{source:{type:'card'}},{metadata:{}},{ref_id:'wrong-ref'},{status:'unknown'}]){const saved=charge;charge={...charge,...patch};applied=[];eq((await hook(hookReq({key:'charge.complete',data:{id:charge.id}}))).status,503);eq(applied.length,0);charge=saved}
  calls=[];eq((await handler(req({},'isolated-service'))).status,401);eq(calls.length,0);
- for(const envPatch of [{QUEUEGO_CREDIT_LIVE_ENABLED:'false'},{OMISE_SECRET_KEY:'skey_test_isolated'},{OMISE_SECRET_KEY:''}]){calls=[];eq((await createCreditHandler({get:k=>({...values,...envPatch})[k]},good)(req())).status,503);eq(calls.length,0)}
+ for(const envPatch of [{QUEUEGO_CREDIT_LIVE_ENABLED:'false'},{OMISE_SECRET_KEY:'skey_test_isolated'},{OMISE_SECRET_KEY:'skey_live_'},{OMISE_SECRET_KEY:'pkey_live_isolated'},{OMISE_SECRET_KEY:''}]){calls=[];eq((await createCreditHandler({get:k=>({...values,...envPatch})[k]},good)(req())).status,503);eq(calls.length,0)}
+ const legacyLive=createCreditHandler({get:k=>({...values,OMISE_SECRET_KEY:'skey_isolated'})[k]},good);
+ calls=[];applied=[];topup.charge_id=charge.id;eq((await legacyLive(req())).status,200);eq(applied.length,1);
  eq((await handler(req({id,kind:'merchant',amount_minor:1999}))).status,400);
  const badAuth=createCreditHandler(env,async()=>new Response('',{status:401}));eq((await badAuth(req())).status,401);
  topup.charge_id=null;charge={...charge,ref_id:id,status:'pending',paid:false};
