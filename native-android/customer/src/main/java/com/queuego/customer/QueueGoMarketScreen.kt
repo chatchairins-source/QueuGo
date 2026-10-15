@@ -299,7 +299,7 @@ fun MarketNativeScreen(
                         .clickable(enabled = count > 0) { selectedShop = s.id; selectedCategory = "all" }
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        QgRemoteImage(s.logo ?: s.cover, Modifier.size(64.dp), s.name)
+                        QgRemoteImage(s.logo ?: s.cover, Modifier.size(64.dp), s.name, maxDecodeSide = 256)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(s.name, fontWeight = FontWeight.ExtraBold)
@@ -329,7 +329,7 @@ fun MarketNativeScreen(
             } else products.forEach { p ->
                 if (p.availablePacks <= 0) return@forEach
                 Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    QgRemoteImage(p.image, Modifier.size(62.dp), p.name)
+                    QgRemoteImage(p.image, Modifier.size(62.dp), p.name, maxDecodeSide = 256)
                     Spacer(Modifier.width(9.dp))
                     Column(Modifier.weight(1f)) {
                         Text(p.name, fontWeight = FontWeight.Bold)
@@ -376,7 +376,7 @@ fun MarketNativeScreen(
                             modifier = Modifier.padding(top = 12.dp))
                         shopLines.forEach { line ->
                             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                QgRemoteImage(line.product.image, Modifier.size(62.dp), line.product.name)
+                                QgRemoteImage(line.product.image, Modifier.size(62.dp), line.product.name, maxDecodeSide = 256)
                                 Spacer(Modifier.width(9.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(line.product.name, fontWeight = FontWeight.Bold)
