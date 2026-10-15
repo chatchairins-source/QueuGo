@@ -39,6 +39,43 @@ class RiderNavigationIntegrationTest {
         assertFalse(delivering.last().completed)
     }
 
+    @Test fun dynamicBundleMapUsesAuthoritativeInterleavedRanks() {
+        fun bundled(id: String, sequence: Int, pickupRank: Int, dropRank: Int) = RiderBundleOrder(
+            bundleId = "bundle-1",
+            job = job(id = id),
+            bundleSequence = sequence,
+            dropRank = sequence,
+            shopId = "shop-$id",
+            shopName = "ร้าน $id",
+            originalDeliveryFee = 25.0,
+            customerSavings = 5.0,
+            riderExtraFee = 3.0,
+            detourKm = 0.2,
+            addedMinutes = 2,
+            routeSequence = null,
+            pickupStopRank = pickupRank,
+            dropoffStopRank = dropRank
+        )
+
+        val orders = listOf(
+            bundled("a", 1, pickupRank = 1, dropRank = 2),
+            bundled("b", 2, pickupRank = 3, dropRank = 4)
+        )
+        val stops = riderNavigationStops(orders.first().job, emptyList(), orders)
+
+        assertEquals(listOf(1, 2, 3, 4), stops.map { it.sequence })
+        assertEquals(
+            listOf(
+                NavigationStopKind.PICKUP,
+                NavigationStopKind.DROPOFF,
+                NavigationStopKind.PICKUP,
+                NavigationStopKind.DROPOFF
+            ),
+            stops.map { it.kind }
+        )
+        assertEquals(listOf("pickup:a", "drop:a", "pickup:b", "drop:b"), stops.map { it.id })
+    }
+
     @Test fun marketStopsPreservePickupOrderBeforeCustomer() {
         val pickups = listOf(
             MarketPickup("p1", "PICKED_UP", "ร้าน A", null, 10.0, 14.98, 103.08),
