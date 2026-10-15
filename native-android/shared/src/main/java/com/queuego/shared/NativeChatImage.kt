@@ -30,6 +30,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 private const val CHAT_IMAGE_LIMIT = 5 * 1024 * 1024
+private const val CHAT_IMAGE_MAX_SIDE = 1280
 
 private fun InputStream.readChatImage(limit: Int = CHAT_IMAGE_LIMIT): ByteArray {
     val result = ByteArrayOutputStream()
@@ -48,7 +49,7 @@ private fun decodeChatImage(bytes: ByteArray): Bitmap {
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
     require(bounds.outWidth > 0 && bounds.outHeight > 0) { "เปิดรูปไม่สำเร็จ" }
     var sample = 1
-    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2000) sample *= 2
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > CHAT_IMAGE_MAX_SIDE) sample *= 2
     val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size,
         BitmapFactory.Options().apply { inSampleSize = sample }) ?: error("เปิดรูปไม่สำเร็จ")
     val orientation = runCatching { ExifInterface(bytes.inputStream())
