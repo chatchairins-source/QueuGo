@@ -221,7 +221,7 @@ revoke all on function qg_private.requeue_passenger_ride(uuid,uuid,text,uuid) fr
 -- Proactively release a pre-pickup Passenger Ride when account/profile eligibility is removed.
 -- In-progress rides are intentionally untouched so the passenger is never stranded.
 create or replace function qg_private.requeue_passenger_on_rider_profile_status()
-returns trigger language plpgsql security definer set search_path=public,pg_temp as $
+returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
 declare v_order uuid;v_actor uuid;
 begin
  if old.status='active' and new.status is distinct from 'active' then
@@ -238,7 +238,7 @@ begin
   end loop;
  end if;
  return new;
-end $;
+end $$;
 revoke all on function qg_private.requeue_passenger_on_rider_profile_status() from public,anon,authenticated;
 drop trigger if exists qg_ride_profile_status_requeue on public.rider_profiles;
 create trigger qg_ride_profile_status_requeue
@@ -246,7 +246,7 @@ after update of status on public.rider_profiles
 for each row execute function qg_private.requeue_passenger_on_rider_profile_status();
 
 create or replace function qg_private.requeue_passenger_on_rider_user_status()
-returns trigger language plpgsql security definer set search_path=public,pg_temp as $
+returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
 declare v_rider uuid;v_order uuid;v_actor uuid;
 begin
  if old.role='rider' and old.status='active' and new.status is distinct from 'active' then
@@ -266,7 +266,7 @@ begin
   end if;
  end if;
  return new;
-end $;
+end $$;
 revoke all on function qg_private.requeue_passenger_on_rider_user_status() from public,anon,authenticated;
 drop trigger if exists qg_ride_user_status_requeue on public.users;
 create trigger qg_ride_user_status_requeue
