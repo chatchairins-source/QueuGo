@@ -36,6 +36,12 @@ ok(
 ok(rider.includes('if (mergedSnapshot != currentSnapshot)'),'Rider must not encrypt/write an unchanged home snapshot on every 3-second poll');
 ok(rider.includes('withContext(kotlinx.coroutines.Dispatchers.IO)')&&rider.includes('saveHomeSnapshot(auth.user.id, mergedSnapshot)'),'Rider snapshot persistence must execute off Main');
 ok(rider.includes('saveActiveTab(auth.user.id, activeTab)')&&rider.includes('Dispatchers.IO'),'Rider encrypted UI-state persistence must execute off Main');
+ok(
+  rider.includes('.putBoolean(navigationKey, true)') &&
+  rider.includes('.apply()') &&
+  !rider.includes('.putBoolean(navigationKey, true)\n            .commit()'),
+  'Rider Google Maps launch state must never perform synchronous SharedPreferences commit on Main'
+);
 
 const merchantImage=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
 const merchantProducts=read('merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt');
