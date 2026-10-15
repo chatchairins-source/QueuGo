@@ -40,10 +40,30 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URLEncoder
 import java.net.URL
 import java.nio.charset.StandardCharsets
+
+private const val MERCHANT_MEDIA_RESPONSE_MAX_BYTES = 2 * 1024 * 1024
+
+private fun InputStream.readMerchantMediaResponseBounded(
+    limit: Int = MERCHANT_MEDIA_RESPONSE_MAX_BYTES
+): String {
+    val output = ByteArrayOutputStream(minOf(limit, 64 * 1024))
+    val buffer = ByteArray(8 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) {
+            "รายการคลังรูปมีขนาดใหญ่เกินไป กรุณาลองใหม่"
+        }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(StandardCharsets.UTF_8.name())
+}
 
 data class MerchantMediaItem(
     val name: String,
@@ -75,8 +95,12 @@ internal suspend fun loadMerchantMedia(auth: NativeAuth): List<MerchantMediaItem
                 it.write(body.toString().toByteArray(StandardCharsets.UTF_8))
             }
             val code = connection.responseCode
+            val declaredLength = connection.contentLengthLong
+            require(declaredLength <= 0L || declaredLength <= MERCHANT_MEDIA_RESPONSE_MAX_BYTES) {
+                "รายการคลังรูปมีขนาดใหญ่เกินไป กรุณาลองใหม่"
+            }
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val raw = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val raw = stream?.use { it.readMerchantMediaResponseBounded() }.orEmpty()
             if (code !in 200..299) {
                 val message = runCatching {
                     JSONObject(raw).optString("message")
