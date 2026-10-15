@@ -2059,7 +2059,9 @@ class QueueGoApi {
                         routeSequence = row.optString("route_sequence").takeIf { it.isNotBlank() && it != "null" },
                         pickupStopRank = pickupRank,
                         dropoffStopRank = dropoffRank,
-                        customerName = riderNullableText(plan?.optString("customer_name"))
+                        customerName = riderNullableText(plan?.optString("customer_name")),
+                        readyEstimateAt = riderNullableText(plan?.optString("ready_estimate_at")),
+                        readyWaitMinutes = plan?.takeIf { it.has("ready_wait_minutes") }?.optInt("ready_wait_minutes")
                     )
                 )
             }
