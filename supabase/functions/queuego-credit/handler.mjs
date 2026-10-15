@@ -52,7 +52,7 @@ export function createCreditHandler(env,fetcher=fetch,webhook=false){
    return charge;
   };
   try{
-   const raw=await boundedText(req,4096),input=JSON.parse(raw);
+   const raw=await boundedText(req,webhook?131072:4096),input=JSON.parse(raw);
    if(webhook){
     // Verify Omise HMAC over the exact raw body first, then independently retrieve the charge.
     if(!await verifyWebhookSignature(req,raw,webhookSecret))return reply({error:'invalid webhook signature'},401);

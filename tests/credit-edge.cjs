@@ -25,6 +25,9 @@ const assert=require('node:assert/strict'),crypto=require('node:crypto');
  calls=[];applied=[];eq((await hook(hookReq(hookEvent,{key:Buffer.from('wrong-secret')}))).status,401);eq(calls.length,0);
  eq((await hook(hookReq(hookEvent,{timestamp:Math.floor(Date.now()/1000)-301}))).status,401);eq(calls.length,0);
  const noWebhookSecret=createCreditHandler({get:k=>({...values,OMISE_WEBHOOK_SECRET:''})[k]},good,true);eq((await noWebhookSecret(hookReq(hookEvent))).status,503);eq(calls.length,0);
+ // Real provider charge envelopes can exceed the small client request limit.
+ calls=[];applied=[];eq((await hook(hookReq({...hookEvent,provider_context:'x'.repeat(9000)}))).status,200);eq(applied.length,1);
+ calls=[];applied=[];eq((await hook(hookReq({...hookEvent,provider_context:'x'.repeat(131073)}))).status,503);eq(calls.length,0);
  // During Omise secret rotation, accept either signature from the comma-separated header.
  calls=[];applied=[];eq((await hook(hookReq(hookEvent,{prefix:'0'.repeat(64)+','}))).status,200);eq(applied.length,1);
  // Signed payload still cannot override the independently retrieved provider status.
