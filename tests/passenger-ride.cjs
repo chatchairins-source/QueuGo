@@ -6,17 +6,35 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  const reject=async(s,p,re)=>{await assert.rejects(q(s,p),re);checks++};
  const as=n=>q("select set_config('test.uid',$1,false)",[id(n)]);
  await db.exec(require('./fixtures/passenger-ride-schema.cjs')());
+ let evidenceSeq=0;
+ const submitPublicEvidence=async(rider=11,actor=101)=>{
+  const path=id(actor)+'/public-license-'+(++evidenceSeq)+'.jpg';
+  await q("insert into storage.objects(bucket_id,name) values('qg-evidence',$1) on conflict(name) do nothing",[path]);
+  await as(actor);
+  const submitted=(await q('select qg_rider_submit_public_license($1) s',[path])).rows[0].s;
+  eq(submitted.status,'pending');
+  return path;
+ };
+ const approvePublic=async(rider=11,actor=101)=>{
+  const path=await submitPublicEvidence(rider,actor);
+  await as(170);
+  await q('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(rider),'checked public licence']);
+  return path;
+ };
  // Private helpers and admin review are never anonymously callable.
  eq((await q("select has_function_privilege('anon','queuego_admin_review_public_license(uuid,date,text)','execute') v")).rows[0].v,false);
  eq((await q("select has_function_privilege('authenticated','qg_private.ride_order_action(uuid,text)','execute') v")).rows[0].v,false);
  await as(101);await reject('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(11),'review'],/active admin/);
  await as(170);await reject('select queuego_admin_review_public_license($1,current_date-1,$2)',[id(11),'review'],/expiry/);
  await reject('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(11),''],/note/);
+ await reject('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(11),'review evidence'],/evidence/);
  const valid=async n=>(await q('select qg_private.ride_public_license_valid($1,now()) v',[id(n)])).rows[0].v;
  eq(await valid(11),false);
  // Ordinary driver licence alone never permits passenger work.
  await q("insert into qg_private.rider_document_expiries(rider_id,document_key,expires_on,recorded_by) values($1,'driver_license',current_date+30,$2)",[id(11),id(70)]);eq(await valid(11),false);
- await q('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(11),'checked public licence']);eq(await valid(11),true);
+ const firstEvidence=await approvePublic();eq(await valid(11),true);
+ const adminLicenses=(await q('select queuego_admin_public_licenses() l')).rows[0].l;
+ eq(adminLicenses.find(x=>x.rider_id===id(11)).evidence_path,firstEvidence);
  eq((await q("select qg_private.ride_public_license_valid($1,'2030-01-01T00:00:00Z') v",[id(11)])).rows[0].v,false);
  await q("update users set status='suspended' where id=$1",[id(1)]);eq(await valid(11),false);await q("update users set status='active' where id=$1",[id(1)]);
  await q('select queuego_admin_review_public_license($1,null,$2)',[id(11),'revoked public licence']);eq(await valid(11),false);
@@ -27,14 +45,14 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  };
  const status=async n=>(await q('select status from orders where id=$1',[id(n)])).rows[0].status;
  await seed(80);await q('select qg_dispatch_rider_offers()');eq((await q('select count(*)::int n from qg_rider_order_offers')).rows[0].n,0);
- await q('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(11),'checked public licence']);
+ await approvePublic();
  await q('select qg_dispatch_rider_offers()');eq((await q('select rider_id from qg_rider_order_offers where order_id=$1',[id(80)])).rows[0].rider_id,id(11));
  await as(101);await q('set role authenticated');eq((await q('select id from orders where id=$1',[id(80)])).rows.length,1);await q('reset role');
  await as(102);await q('set role authenticated');eq((await q('select id from orders where id=$1',[id(80)])).rows.length,0);await q('reset role');await as(170);
  // Revoke after offering: accepting the old offer must still fail.
  await q('select queuego_admin_review_public_license($1,null,$2)',[id(11),'revoked public licence']);
  await reject('select qg_private.claim_rider_order($1,$2)',[id(11),id(80)],/public driving license/);eq(await status(80),'searching_rider');
- await q('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(11),'checked public licence']);
+ await approvePublic();
  await q('select qg_private.claim_rider_order($1,$2)',[id(11),id(80)]);eq(await status(80),'rider_assigned');
  await reject('update orders set ride_distance_km=null where id=$1',[id(80)],/immutable/);
  await reject("insert into laundry_rider_jobs values($1,'assigned')",[id(11)],/conflicts/);
@@ -46,7 +64,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await action('arrive_pickup',180);
  await as(170);await q('select queuego_admin_review_public_license($1,null,$2)',[id(11),'revoked before start']);await as(101);
  await reject("select qg_private.ride_order_action($1,'start')",[id(80)],/public driving license/);
- await as(170);await q('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(11),'checked public licence']);await as(101);
+ await as(170);await approvePublic();await as(101);
  await action('start',181);eq(await status(80),'in_progress');
  await action('arrive_dropoff',182);
  await as(170);await q('select queuego_admin_review_public_license($1,null,$2)',[id(11),'revoked after onboard']);await as(101);
@@ -57,7 +75,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await as(102);eq((await q('select queuego_ride_state($1) s',[id(80)])).rows[0].s.rides.length,0);
  // Credit integration is fail closed; never manufacture balance or assume a QR was paid.
  eq((await q('select qg_private.ride_credit_authorized($1,$2,5) v',[id(11),id(80)])).rows[0].v,false);
- await as(170);await q('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(11),'checked public licence']);
+ await as(170);await approvePublic();
  await seed(82,5);await q('delete from qg_rider_order_offers');await q('select qg_dispatch_rider_offers()');
  eq((await q('select count(*)::int n from qg_rider_order_offers where order_id=$1',[id(82)])).rows[0].n,0);
  // Pricing and durable request creation execute the actual staged RPCs.
