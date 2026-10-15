@@ -1,3 +1,6 @@
+## 2026-10-15 Merchant catalog larger photos and compact prices
+- Owner additionally requests smaller price-entry boxes and larger product images. Merchant-only card grid uses112x144 mobile/140x160 desktop packshots, three compact price/promotion/stock columns and44px input/button targets; 16px numeric input text prevents Safari focus zoom. Admin/Customer styling stays unchanged. Merchant CSS/JS cache versions bumped together.
+
 ## 2026-10-15 Merchant catalog photo-first ordering
 - Owner requests products with photos at the front/first pages and products without photos at the end. Implement globally in qg_grocery_merchant_page before LIMIT/OFFSET, including search/category/status filters, with deterministic name/id ordering within each group.
 - Only approved nonblank images count as photos. Existing authorization, filters, 51-row sentinel and image approvals remain unchanged. Mixed-photo pagination regression runs in disposable PGlite only; never add synthetic photos to Production to demonstrate sorting.
