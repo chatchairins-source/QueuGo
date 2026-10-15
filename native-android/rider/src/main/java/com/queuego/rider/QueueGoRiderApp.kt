@@ -616,7 +616,13 @@ private fun RiderHome(
     val snapshotMutex = remember { Mutex() }
 
     var snapshot by remember(auth.user.id) {
-        mutableStateOf<RiderSnapshot?>(pushStore.loadHomeSnapshot(auth.user.id))
+        mutableStateOf<RiderSnapshot?>(null)
+    }
+    LaunchedEffect(auth.user.id) {
+        val cachedSnapshot = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            pushStore.loadHomeSnapshot(auth.user.id)
+        }
+        if (snapshot == null && cachedSnapshot != null) snapshot = cachedSnapshot
     }
     var autoAcceptEnabled by rememberSaveable(auth.user.id) {
         mutableStateOf(acceptanceModeStore.autoAcceptEnabled(auth.user.id))
@@ -884,9 +890,18 @@ private fun RiderHome(
     val pendingProofStore = remember(context, auth.user.id) { RiderPendingProofStore(context) }
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
     var handledPushEventId by remember(auth.user.id) { mutableStateOf<Long?>(null) }
-    var activeTab by rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }
+    var activeTab by rememberSaveable(auth.user.id) { mutableStateOf("home") }
+    var activeTabHydrated by remember(auth.user.id) { mutableStateOf(false) }
     var messageSection by rememberSaveable(auth.user.id) { mutableStateOf("chat") }
-    LaunchedEffect(auth.user.id, activeTab) {
+    LaunchedEffect(auth.user.id) {
+        val savedTab = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            pushStore.loadActiveTab(auth.user.id)
+        }
+        if (!activeTabHydrated) activeTab = savedTab
+        activeTabHydrated = true
+    }
+    LaunchedEffect(auth.user.id, activeTab, activeTabHydrated) {
+        if (!activeTabHydrated) return@LaunchedEffect
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             pushStore.saveActiveTab(auth.user.id, activeTab)
         }
