@@ -15,7 +15,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   await Promise.all([a,b].map(c=>c.query(payment,[id(700)])));
   eq((await admin.query('select cash_minor::int n from qg_private.credit_accounts')).rows[0].n,10000);
   await admin.query("insert into orders(id,order_number,status) values($1,'QT-race-a','pending'),($2,'QT-race-b','pending')",[id(701),id(702)]);
-  const reserve=(c,n)=>c.query("select qg_private.credit_hold($1,'rider',$2,7000)",[id(1),id(n)]);
+  const reserve=(c,n)=>c.query("select qg_private.credit_hold($1,'rider',$2,7000)",[id(1),typeof n==='number'?id(n):n]);
   const result=await Promise.allSettled([reserve(a,701),reserve(b,702)]);eq(result.filter(x=>x.status==='fulfilled').length,1);eq(result.filter(x=>x.status==='rejected'&&/insufficient/.test(x.reason.message)).length,1);
   const order=(await admin.query("select order_id from qg_private.credit_holds where state='held'")).rows[0].order_id;
   // Two simultaneous completion retries cannot debit twice.
