@@ -425,6 +425,189 @@ end $$;
 revoke all on function public.queuego_route_bundle_quote_orders(uuid,uuid,timestamptz) from public,anon,authenticated;
 grant execute on function public.queuego_route_bundle_quote_orders(uuid,uuid,timestamptz) to service_role;
 
+-- Re-plan only the unpicked two-order bundle suffix when Merchant readiness changes.
+-- Uses the SAME cached road matrix and generalized simulator; no second optimizer.
+create or replace function qg_private.refresh_two_order_bundle_plan(
+  p_bundle_id uuid,
+  p_at timestamptz default now()
+) returns boolean
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $
+declare
+  rb public.route_bundles%rowtype;
+  a public.orders%rowtype;
+  b public.orders%rowtype;
+  edges jsonb;
+  simulation jsonb;
+  primary_wait numeric:=0;
+  candidate_wait numeric:=0;
+  max_delay numeric;
+  new_plan jsonb;
+  k record;
+begin
+  select * into rb
+  from public.route_bundles
+  where id=p_bundle_id and status='ACTIVE'
+  for update;
+  if not found then return false; end if;
+
+  select * into a
+  from public.orders
+  where id=rb.primary_order_id
+    and route_bundle_id=rb.id
+    and status<>'cancelled';
+  if not found then return false; end if;
+
+  select * into b
+  from public.orders
+  where route_bundle_id=rb.id
+    and id<>a.id
+    and status<>'cancelled'
+  order by route_bundle_sequence,created_at,id
+  limit 1;
+  if not found then return false; end if;
+
+  if (select count(*) from public.orders where route_bundle_id=rb.id and status<>'cancelled')<>2 then
+    return false;
+  end if;
+  if exists(
+    select 1 from public.orders
+    where route_bundle_id=rb.id
+      and status in ('picked_up','in_progress','completed')
+  ) then
+    return false;
+  end if;
+
+  select rm.edges into edges
+  from qg_private.route_bundle_road_matrices rm
+  where rm.primary_order_id=a.id
+    and rm.candidate_order_id=b.id
+    and rm.primary_updated_at=a.updated_at
+    and rm.candidate_updated_at=b.updated_at
+    and rm.expires_at>p_at;
+  if not found then return false; end if;
+
+  primary_wait:=coalesce(qg_private.order_ready_wait_minutes(a.id,p_at),0);
+  candidate_wait:=coalesce(qg_private.order_ready_wait_minutes(b.id,p_at),0);
+
+  if primary_wait>0 then
+    for k in select key,value from jsonb_each(edges) where key like 'AP|%' loop
+      edges:=jsonb_set(
+        edges,
+        array[k.key,'minutes'],
+        to_jsonb((k.value->>'minutes')::numeric+primary_wait),
+        false
+      );
+    end loop;
+  end if;
+
+  max_delay:=public.queuego_rule_numeric('route_bundle.max_delay_minutes',10,p_at);
+  if exists(
+    select 1
+    from public.orders o
+    join public.shop_profiles s on s.id=o.shop_id
+    where o.id in (a.id,b.id)
+      and lower(coalesce(s.public_category,'')) in ('food','cafe')
+  ) then
+    max_delay:=least(max_delay,5);
+  end if;
+
+  simulation:=qg_private.route_bundle_simulate(
+    jsonb_build_array(
+      jsonb_build_object(
+        'key','BP','order_id',b.id,'kind','pickup','service_minutes',2,
+        'ready_minutes',candidate_wait
+      ),
+      jsonb_build_object(
+        'key','AD','order_id',a.id,'kind','dropoff','picked_up',true,
+        'max_ride_minutes',(edges->'AP|AD'->>'minutes')::numeric+max_delay
+      ),
+      jsonb_build_object(
+        'key','BD','order_id',b.id,'kind','dropoff','service_minutes',2,
+        'max_ride_minutes',(edges->'BP|BD'->>'minutes')::numeric+max_delay
+      )
+    ),
+    edges,
+    'AP',
+    null,
+    false
+  );
+  if not coalesce((simulation->>'eligible')::boolean,false) then return false; end if;
+
+  select jsonb_build_array(
+           jsonb_build_object('order_id',a.id,'kind','pickup')
+         ) ||
+         coalesce(
+           jsonb_agg(
+             jsonb_build_object(
+               'order_id',case when x.key in ('AD') then a.id else b.id end,
+               'kind',case when x.key='BP' then 'pickup' else 'dropoff' end
+             )
+             order by x.ordinality
+           ),
+           '[]'::jsonb
+         )
+    into new_plan
+  from jsonb_array_elements_text(simulation->'stop_keys') with ordinality x(key,ordinality);
+
+  if new_plan is distinct from rb.stop_plan then
+    update public.route_bundles
+       set stop_plan=new_plan,
+           route_revision=route_revision+1,
+           updated_at=now()
+     where id=rb.id;
+    return true;
+  end if;
+  return false;
+end $;
+revoke all on function qg_private.refresh_two_order_bundle_plan(uuid,timestamptz) from public,anon,authenticated;
+
+create or replace function qg_private.on_order_readiness_replan()
+returns trigger
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $
+begin
+  if new.route_bundle_id is not null
+     and new.merchant_ready_estimate_at is distinct from old.merchant_ready_estimate_at then
+    perform qg_private.refresh_two_order_bundle_plan(new.route_bundle_id,now());
+  end if;
+  return new;
+end $;
+revoke all on function qg_private.on_order_readiness_replan() from public,anon,authenticated;
+
+drop trigger if exists orders_bundle_readiness_replan on public.orders;
+create trigger orders_bundle_readiness_replan
+after update of merchant_ready_estimate_at on public.orders
+for each row execute function qg_private.on_order_readiness_replan();
+
+create or replace function qg_private.on_route_matrix_replan()
+returns trigger
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $
+declare
+  v_bundle uuid;
+begin
+  select route_bundle_id into v_bundle
+  from public.orders
+  where id=new.primary_order_id;
+  if v_bundle is not null then
+    perform qg_private.refresh_two_order_bundle_plan(v_bundle,now());
+  end if;
+  return new;
+end $;
+revoke all on function qg_private.on_route_matrix_replan() from public,anon,authenticated;
+
+drop trigger if exists route_matrix_bundle_readiness_replan on qg_private.route_bundle_road_matrices;
+create trigger route_matrix_bundle_readiness_replan
+after insert or update of edges,expires_at on qg_private.route_bundle_road_matrices
+for each row execute function qg_private.on_route_matrix_replan();
+
 -- Cancellation may remove cancelled stops, but must preserve the completed/current live prefix.
 create or replace function qg_private.validate_bundle_stop_plan()
 returns trigger
