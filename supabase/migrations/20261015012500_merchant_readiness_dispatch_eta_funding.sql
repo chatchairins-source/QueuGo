@@ -763,6 +763,9 @@ create table if not exists qg_private.rider_cancellation_funding (
   order_id uuid not null references public.orders(id) on delete restrict,
   rider_id uuid not null references public.rider_profiles(id) on delete restrict,
   amount numeric not null check(amount>=0),
+  replacement_target_amount numeric not null default 0 check(replacement_target_amount>=0),
+  protected_route_payout numeric not null default 0 check(protected_route_payout>=0),
+  replacement_order_id uuid references public.orders(id) on delete set null,
   status text not null default 'reserved' check(status in ('reserved','settled','void')),
   reason text not null default 'bundle_counterparty_cancelled',
   created_at timestamptz not null default now(),
@@ -788,6 +791,8 @@ declare
   v_plan jsonb;
   v_payout numeric;
   v_gap numeric;
+  v_promised_route_payout numeric:=0;
+  v_replacement_target numeric:=0;
   v_rider_user uuid;
 begin
   if new.status<>'cancelled' or old.status='cancelled' or old.route_bundle_id is null then
@@ -803,6 +808,19 @@ begin
   where id=old.route_bundle_id
   for update;
   if not found then return new; end if;
+
+  -- Snapshot route income before dissolving the cancelled member.
+  -- This is a refill target, not a bonus and not a claim that cash was paid.
+  select coalesce(sum(coalesce(
+           o.rider_delivery_payout,
+           o.bundle_original_delivery_fee,
+           o.delivery_fee,
+           0
+         )),0)
+    into v_promised_route_payout
+  from public.orders o
+  where o.route_bundle_id=v_bundle.id
+    and (o.status<>'cancelled' or o.id=new.id);
 
   select count(*) into v_remaining
   from public.orders
@@ -835,6 +853,7 @@ begin
       coalesce(v_order.delivery_fee,0)
     );
     v_gap:=greatest(round(v_payout-coalesce(v_order.delivery_fee,0),2),0);
+    v_replacement_target:=greatest(round(v_promised_route_payout-v_payout,2),0);
 
     update public.orders
     set rider_delivery_payout=v_payout,
@@ -845,14 +864,19 @@ begin
         updated_at=now()
     where id=v_order.id;
 
-    if v_gap>0 and v_order.rider_id is not null then
+    if (v_gap>0 or v_replacement_target>0) and v_order.rider_id is not null then
       insert into qg_private.rider_cancellation_funding(
-        bundle_id,order_id,rider_id,amount,status,reason
+        bundle_id,order_id,rider_id,amount,replacement_target_amount,
+        protected_route_payout,status,reason
       ) values(
-        v_bundle.id,v_order.id,v_order.rider_id,v_gap,'reserved','bundle_counterparty_cancelled'
+        v_bundle.id,v_order.id,v_order.rider_id,v_gap,v_replacement_target,
+        v_promised_route_payout,'reserved','bundle_counterparty_cancelled'
       )
       on conflict(bundle_id,order_id) do update
       set amount=excluded.amount,
+          replacement_target_amount=excluded.replacement_target_amount,
+          protected_route_payout=excluded.protected_route_payout,
+          replacement_order_id=null,
           status=case
             when qg_private.rider_cancellation_funding.status='settled' then 'settled'
             else 'reserved'
@@ -899,6 +923,45 @@ after update of status on public.orders
 for each row
 when (new.status='cancelled' and old.status is distinct from new.status and old.route_bundle_id is not null)
 execute function qg_private.reflow_bundle_after_cancel();
+
+-- Bind a replacement QT from the SAME continuous dispatcher to the reserve.
+create or replace function qg_private.link_cancellation_replacement()
+returns trigger
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $$
+begin
+  if new.rider_id is null or new.next_after_order_id is null then return new; end if;
+
+  update qg_private.rider_cancellation_funding f
+  set replacement_order_id=new.id,
+      updated_at=now()
+  where f.order_id=new.next_after_order_id
+    and f.rider_id=new.rider_id
+    and f.status='reserved'
+    and f.replacement_target_amount>0
+    and f.replacement_order_id is null;
+
+  return new;
+end $$;
+
+revoke all on function qg_private.link_cancellation_replacement()
+from public,anon,authenticated;
+
+drop trigger if exists z_orders_link_cancellation_replacement on public.orders;
+create trigger z_orders_link_cancellation_replacement
+after update of rider_id,next_after_order_id on public.orders
+for each row
+when (
+  new.rider_id is not null
+  and new.next_after_order_id is not null
+  and (
+    old.rider_id is distinct from new.rider_id
+    or old.next_after_order_id is distinct from new.next_after_order_id
+  )
+)
+execute function qg_private.link_cancellation_replacement();
 
 -- Existing Rider cash ledger remains the single read model. Add the private
 -- funding obligation alongside each QT without changing product cash.
@@ -950,6 +1013,9 @@ begin
         'payment_status',p.status,
         'proof_verified_at',d.verified_at,
         'platform_cancellation_funding',coalesce(cf.amount,0),
+        'platform_cancellation_replacement_target',coalesce(cf.replacement_target_amount,0),
+        'platform_protected_route_payout',coalesce(cf.protected_route_payout,0),
+        'platform_replacement_order_id',cf.replacement_order_id,
         'platform_cancellation_funding_status',cf.status,
         'created_at',o.created_at
       )
