@@ -79,7 +79,7 @@ fun MarketNativeScreen(
     val actorId = auth?.user?.id ?: "guest"
     val cartStore = remember(actorId) { MarketCartStore(context, actorId) }
     val checkout = remember(actorId) { CustomerCheckoutRecovery<PendingMarketCheckout, org.json.JSONObject>(cartStore.journal()) }
-    var checkoutPending by remember(actorId) { mutableStateOf(cartStore.hasPendingCheckout()) }
+    var checkoutPending by remember(actorId) { mutableStateOf(false) }
     var pricing by remember { mutableStateOf<MarketPricing?>(null) }
     var marketMenuOpen by remember { mutableStateOf(false) }
     var markets by remember { mutableStateOf<List<MarketInfo>>(emptyList()) }
@@ -108,6 +108,7 @@ fun MarketNativeScreen(
         loading = true
         loadFailed = false
         pricing = null
+        checkoutPending = withContext(Dispatchers.IO) { cartStore.hasPendingCheckout() }
         runCatching {
             val m = if (auth == null) api.loadMarketsPublic() else api.loadMarkets(auth)
             markets = m
@@ -193,7 +194,9 @@ fun MarketNativeScreen(
     LaunchedEffect(cartPage) { if (cartPage) reload++ }
 
     LaunchedEffect(cart, restoredCart, checkoutPending) {
-        if (restoredCart && !checkoutPending) cartStore.save(cart)
+        if (restoredCart && !checkoutPending) {
+            withContext(Dispatchers.IO) { cartStore.save(cart) }
+        }
     }
 
     val market = markets.find { it.id == selectedMarket }
@@ -494,7 +497,9 @@ fun MarketNativeScreen(
                             } catch (e: Exception) {
                                 message = e.message ?: "ยืนยันตลาดสดไม่สำเร็จ"
                             } finally {
-                                checkoutPending = cartStore.hasPendingCheckout()
+                                checkoutPending = withContext(Dispatchers.IO) {
+                                    cartStore.hasPendingCheckout()
+                                }
                                 busy = false
                             }
                         }
