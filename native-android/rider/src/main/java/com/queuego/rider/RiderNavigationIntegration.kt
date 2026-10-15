@@ -261,7 +261,8 @@ internal fun QueueGoRiderNavigationMap(
             val camera = sessionStore.loadMapCamera(stateKey)?.let { saved ->
                 NavigationMapCamera(
                     point = NavigationMapPoint(saved[1], saved[0]),
-                    zoom = saved[2].toInt().coerceIn(4, 20)
+                    zoom = saved[2].toInt().coerceIn(4, 20),
+                    tiltDegrees = saved.getOrNull(4)?.toFloat()?.takeIf { it.isFinite() }
                 )
             }
             val mode = when (sessionStore.loadMapViewMode(stateKey)) {
@@ -552,7 +553,8 @@ internal fun QueueGoRiderNavigationMap(
                 camera.point.longitude,
                 camera.point.latitude,
                 camera.zoom.toDouble(),
-                1.0
+                1.0,
+                (camera.tiltDegrees ?: 0f).toDouble()
             )
         },
         onDiagnostics = RiderRuntimeDiagnosticsStore::publishMap
