@@ -88,6 +88,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -147,11 +148,11 @@ private fun MerchantNativeEntryGate(pushTarget: NativePushLaunchTarget?) {
 
     LaunchedEffect(Unit) {
         while (true) {
-            val saved = store.load()
+            val saved = withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }
             if (saved?.session?.accessToken != current?.session?.accessToken ||
                 saved?.user?.role != current?.user?.role
             ) current = saved
-            delay(350)
+            delay(1_000)
         }
     }
 
