@@ -32,6 +32,38 @@ ok(
   'Shared fallback role shell must keep secure-session crypto off Main, lifecycle-gate polling and fail closed on revoke'
 );
 
+const customerGuest=read('customer/src/main/java/com/queuego/customer/CustomerGuestShell.kt');
+const customerAuthScreen=read('customer/src/main/java/com/queuego/customer/CustomerAuthenticationScreen.kt');
+const customerCartStore=read('customer/src/main/java/com/queuego/customer/CustomerCartStore.kt');
+const marketCartStore=read('customer/src/main/java/com/queuego/customer/MarketCartStore.kt');
+ok(
+  customerGuest.includes('val restored = withContext(Dispatchers.IO)') &&
+  customerGuest.includes('cartStore.load() to locationStore.load()') &&
+  customerGuest.includes('if (localStateLoaded) withContext(Dispatchers.IO) { cartStore.save(cart) }') &&
+  !customerGuest.includes('mutableStateOf(cartStore.load())') &&
+  !customerGuest.includes('remember { locationStore.load() }'),
+  'Customer guest cart/location restore and cart persistence must stay off Main without empty-state overwrite'
+);
+ok(
+  customerAuthScreen.includes('guestCartCount = withContext(Dispatchers.IO)') &&
+  !customerAuthScreen.includes('CustomerCartStore(context, "guest").load().sumOf { it.quantity }\n    }'),
+  'Customer auth guest-cart badge must not parse local cart JSON during composition'
+);
+ok(
+  customerCartStore.includes('CUSTOMER_CART_MAX_JSON_CHARS = 1024 * 1024') &&
+  customerCartStore.includes('CUSTOMER_PENDING_CHECKOUT_MAX_JSON_CHARS = 2 * 1024 * 1024') &&
+  customerCartStore.includes('boundedPref("cart", CUSTOMER_CART_MAX_JSON_CHARS)') &&
+  customerCartStore.includes('boundedPref("pending_checkout", CUSTOMER_PENDING_CHECKOUT_MAX_JSON_CHARS)'),
+  'Customer Food cart and pending checkout local JSON must be bounded before parse/recovery'
+);
+ok(
+  marketCartStore.includes('MARKET_CART_MAX_JSON_CHARS = 512 * 1024') &&
+  marketCartStore.includes('MARKET_PENDING_CHECKOUT_MAX_JSON_CHARS = 2 * 1024 * 1024') &&
+  marketCartStore.includes('val rows = JSONArray(cartRaw())') &&
+  marketCartStore.includes('override fun read(): PendingMarketCheckout? = pendingRaw()?.let'),
+  'Customer Market cart and pending checkout local JSON must be bounded before parse/recovery'
+);
+
 const customerApp=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
 ok(
   customerApp.includes('authRequested = withContext(Dispatchers.IO) { store.load() != null }') &&
