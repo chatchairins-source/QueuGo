@@ -35,11 +35,11 @@ const css=file=>[...fs.readFileSync(path.join(root,file),'utf8').matchAll(/<styl
   if(role==='merchant'){
    await page.locator('#qgg-open-add').click();await page.waitForFunction(()=>document.getElementById('qgg-mode').value==='unpriced');checks++;
    assert.equal(await page.locator('#qgg-open-add').isHidden(),true);checks++;
-   await page.locator('[data-add]').first().click();await page.waitForFunction(()=>document.querySelector('[data-field="enabled"]').checked);checks++;
-   await page.locator('[data-field="selling_price"]').first().fill('8');await page.locator('[data-field="enabled"]').first().check();await page.locator('#qgg-save').click();
+   await page.locator('[data-add]').first().click();await page.waitForFunction(()=>document.querySelector('[data-field="pos_available"]')?.checked&&document.querySelector('[data-field="delivery_available"]')?.checked);checks++;
+   await page.locator('[data-field="selling_price"]').first().fill('8');await page.locator('[data-field="pos_available"]').first().check();await page.locator('[data-field="delivery_available"]').first().check();await page.locator('#qgg-save').click();
    await page.waitForFunction(()=>qaCalls.some(c=>c.name.endsWith('store_save')));
    await page.waitForFunction(()=>document.getElementById('qgg-status').textContent.startsWith('บันทึกแล้ว'));checks++;
-   assert.equal(await page.evaluate(()=>qaCalls.find(c=>c.name.endsWith('store_save')).body.p_rows[0].selling_price),8);checks++;
+   const savedRow=await page.evaluate(()=>qaCalls.find(c=>c.name.endsWith('store_save')).body.p_rows[0]);assert.equal(savedRow.selling_price,8);assert.equal(savedRow.pos_available,true);assert.equal(savedRow.delivery_available,true);assert.equal('promo_price' in savedRow,false);checks+=4;
    assert.equal(await page.locator('.qgg-image-pending').count(),50);checks++;
   }else if(role==='admin'){
    await page.locator('[data-edit]').first().click();assert.equal(await page.locator('form input[name="brand"]').inputValue(),facts[0].brand);checks++;
