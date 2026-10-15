@@ -34,14 +34,29 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
    throw Error('test requires a fresh empty database');
 
   await admin.query(require('./fixtures/passenger-ride-schema.cjs')());
+  // Real-PostgreSQL integration seam: simulate the existing Rider-credit authorization
+  // changing after assignment without importing a second wallet implementation.
+  await admin.query(`
+   create table qg_private.test_ride_credit_authorizations(
+    rider_id uuid not null,order_id uuid not null,allowed boolean not null,
+    primary key(rider_id,order_id)
+   );
+   create or replace function qg_private.rider_credit_order_authorized(p_rider uuid,p_order uuid,p_fee numeric)
+   returns boolean language sql stable as $credit$
+    select p_fee=0 or coalesce((
+     select allowed from qg_private.test_ride_credit_authorizations
+     where rider_id=p_rider and order_id=p_order
+    ),false)
+   $credit$;
+  `);
 
-  const seedRide=async n=>{
+  const seedRide=async(n,fee=0)=>{
    await admin.query(
     `insert into orders(id,order_number,customer_id,order_type,fulfillment_vertical,status,subtotal,delivery_fee,total_amount,
        ride_distance_km,ride_duration_minutes,ride_platform_fee,rider_delivery_payout,pickup_address,pickup_latitude,pickup_longitude,
        delivery_address,delivery_latitude,delivery_longitude)
-     values($1,$2,$3,'service','ride','searching_rider',0,50,50,3,8,0,50,'pickup',15,103,'dropoff',15.01,103)`,
-    [id(n),'QT-'+n,id(60)]
+     values($1,$2,$3,'service','ride','searching_rider',0,50,50,3,8,$4,50-$4,'pickup',15,103,'dropoff',15.01,103)`,
+    [id(n),'QT-'+n,id(60),fee]
    );
    await admin.query("insert into deliveries(order_id,status,delivery_fee) values($1,'pending',50)",[id(n)]);
    await admin.query("insert into payments(order_id,amount,status,payment_method) values($1,50,'pending','cash')",[id(n)]);
@@ -55,6 +70,12 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
    await admin.query("insert into deliveries(order_id,status,delivery_fee) values($1,'pending',25)",[id(n)]);
   };
   const order=async n=>(await admin.query('select * from orders where id=$1',[id(n)])).rows[0];
+  const setRideCredit=async(n,allowed)=>admin.query(
+   `insert into qg_private.test_ride_credit_authorizations(rider_id,order_id,allowed)
+    values($1,$2,$3)
+    on conflict(rider_id,order_id) do update set allowed=excluded.allowed`,
+   [id(11),id(n),allowed]
+  );
   let evidenceSequence=0;
   const approve=async(rider=11)=>{
    const actor=rider===11?101:102;
@@ -131,8 +152,41 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   await other.query("select qg_private.ride_order_action($1,'arrive_dropoff')",[id(81)]);
   await other.query("select qg_private.ride_order_action($1,'complete')",[id(81)]);
 
-  // Restore Rider A eligibility after the previous revocation scenario before starting an unrelated overlap race.
+  // Restore Rider A eligibility after the previous revocation scenario.
   await approve();
+
+  // Licence expiry after claim + arrive_pickup but before passenger pickup must requeue,
+  // reset assignment state, and never leave the customer stuck in rider_assigned.
+  await seedRide(84);
+  await admin.query('delete from qg_rider_order_offers');
+  await admin.query('select qg_dispatch_rider_offers()');
+  eq((await admin.query('select rider_id from qg_rider_order_offers where order_id=$1',[id(84)])).rows[0].rider_id,id(11));
+  await riderA.query('select rider_claim_order($1)',[id(84)]);
+  await riderA.query("select qg_private.ride_order_action($1,'arrive_pickup')",[id(84)]);
+  await admin.query("update qg_private.rider_document_expiries set expires_on=current_date-1 where rider_id=$1 and document_key='public_driver_license'",[id(11)]);
+  const expiredStart=(await riderA.query("select qg_private.ride_order_action($1,'start') r",[id(84)])).rows[0].r;
+  eq(expiredStart.status,'searching_rider');eq(expiredStart.requeued,true);
+  eq((await order(84)).rider_id,null);eq((await order(84)).rider_arrived_shop_at,null);
+  eq((await admin.query('select rider_id from deliveries where order_id=$1',[id(84)])).rows[0].rider_id,null);
+  eq((await admin.query("select count(*)::int n from audit_logs where action='ride_compliance_requeue' and entity_id=$1",[id(84)])).rows[0].n,1);
+  await admin.query("update orders set status='cancelled' where id=$1",[id(84)]);
+  await approve();
+
+  // Losing the existing Rider-credit authorization after claim + arrive_pickup follows the
+  // same pre-pickup compliance requeue path. This tests the integration contract, not a fake wallet.
+  await seedRide(85,5);await setRideCredit(85,true);
+  await admin.query('delete from qg_rider_order_offers');
+  await admin.query('select qg_dispatch_rider_offers()');
+  eq((await admin.query('select rider_id from qg_rider_order_offers where order_id=$1',[id(85)])).rows[0].rider_id,id(11));
+  await riderA.query('select rider_claim_order($1)',[id(85)]);
+  await riderA.query("select qg_private.ride_order_action($1,'arrive_pickup')",[id(85)]);
+  await setRideCredit(85,false);
+  const creditLostStart=(await riderA.query("select qg_private.ride_order_action($1,'start') r",[id(85)])).rows[0].r;
+  eq(creditLostStart.status,'searching_rider');eq(creditLostStart.requeued,true);
+  eq((await order(85)).rider_id,null);eq((await order(85)).rider_arrived_shop_at,null);
+  eq((await admin.query('select rider_id from deliveries where order_id=$1',[id(85)])).rows[0].rider_id,null);
+  eq((await admin.query("select count(*)::int n from audit_logs where action='ride_compliance_requeue' and entity_id=$1",[id(85)])).rows[0].n,1);
+  await admin.query("update orders set status='cancelled' where id=$1",[id(85)]);
 
   // A Ride claim and Food assignment cannot both commit for the same Rider even when they overlap before either transaction finishes.
   await seedRide(82);await seedFood(182);
@@ -162,7 +216,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 
   console.log(JSON.stringify({
    checks,failures:0,postgresVersion:version,
-   scope:'real PostgreSQL independent connections: duplicate Ride dispatch/claim, licence revoke claim/start races, Ride-vs-Food serialization, rollback recovery. No Production data.'
+   scope:'real PostgreSQL independent connections: duplicate Ride dispatch/claim, licence revoke claim/start races, pre-start licence-expiry and credit-loss requeue, Ride-vs-Food serialization, rollback recovery. No Production data.'
   }));
  }finally{
   await Promise.allSettled(clients.map(c=>c.end()));
