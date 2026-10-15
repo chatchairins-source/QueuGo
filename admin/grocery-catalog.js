@@ -15,11 +15,11 @@ async function starter(s){
  if(!s.starter){
   s.busy=true;button.disabled=true;try{const ids=[];let offset=0;
    for(;;){msg(s,'กำลังตรวจ Starter Catalog… '+offset);const rows=await rpc('qg_grocery_admin_page',{p_query:'',p_offset:offset},s);if(!active(s))return;
-    for(const row of rows.slice(0,50)){const trusted=Array.isArray(row.sources)&&row.sources.some(x=>x&&['manufacturer','distributor'].includes(x.source_type));if(trusted&&!row.active)ids.push(row.id);}
+    for(const row of rows.slice(0,50)){const sourced=Array.isArray(row.sources)&&row.sources.some(x=>x&&/^https:\/\//.test(String(x.source_url||'')));if(sourced&&!row.active)ids.push(row.id);}
     if(rows.length<=50)break;offset+=50;if(offset>10000)throw Error('รายการมากเกินขอบเขตที่รองรับ');
    }
    s.starter=ids;button.textContent=ids.length?'ยืนยันเปิด Starter '+ids.length+' รายการ':'Starter Catalog เปิดครบแล้ว';button.disabled=!ids.length;
-   msg(s,ids.length?'พบ '+ids.length+' รายการที่มีหลักฐานจากผู้ผลิต/ผู้จัดจำหน่าย · กดปุ่มเดิมอีกครั้งเพื่อยืนยัน':'ไม่มี Starter ที่รอเปิด');
+   msg(s,ids.length?'พบ '+ids.length+' รายการ Master Catalog ที่มีแหล่งข้อมูล · กดปุ่มเดิมอีกครั้งเพื่อยืนยัน':'ไม่มี Starter ที่รอเปิด');
   }catch(e){s.starter=null;msg(s,'ตรวจ Starter Catalog ไม่สำเร็จ: '+e.message)}finally{s.busy=false;if(active(s)&&!s.starter)button.disabled=false;}return;
  }
  const ids=s.starter.slice();s.busy=true;button.disabled=true;try{const token=await qtGetAccessToken();if(!token||!active(s))throw Error('กรุณาเข้าสู่ระบบใหม่');let savedCount=0;
