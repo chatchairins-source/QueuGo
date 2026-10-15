@@ -30,7 +30,7 @@ ok(chatImage.includes('CHAT_IMAGE_MAX_SIDE = 1280'),'Shared chat bitmaps must st
 ok(chatImage.includes('DisposableEffect(bitmap)')&&chatImage.includes('owned.recycle()'),'Shared chat bitmaps must release owned memory after leaving composition');
 
 const design=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
-ok(design.includes('QG_REMOTE_IMAGE_MAX_SIDE = 1600'),'Shared remote image decode ceiling must remain bounded');
+ok(design.includes('QG_REMOTE_IMAGE_MAX_SIDE = 1280'),'Shared remote image decode ceiling must remain bounded');
 ok(design.includes('QG_REMOTE_IMAGE_MAX_BYTES')&&design.includes('inJustDecodeBounds = true')&&!design.includes('inputStream.use { it.readBytes() }'),'Remote images must be byte bounded and sampled before decode');
 
 const store=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
