@@ -68,7 +68,8 @@ ok(grocery.includes("const sessionShopOwner=()=>"),'Grocery catalog renderer mus
 ok(grocery.includes("shop_profiles?select=id,public_category&user_id=eq."),'session fallback must resolve the current shop directly and verify its public category');
 ok(merchant.includes('grocery-catalog.js?v=20261015-makro-full1'),'Merchant HTML must cache-bust the current Grocery catalog JavaScript');
 ok(merchant.includes('grocery.css?v=20261015-makro-full1'),'Merchant HTML must cache-bust the current Grocery sales-channel layout CSS');
-ok(merchant.includes("case'shop-grocery-catalog':return qgRenderGroceryCatalog({addMode:true,pageTitle:'เพิ่มสินค้าจากแคตตาล็อก'})"),'dedicated Grocery catalog fallback route must keep the catalog page name');
+ok(merchant.includes("case'shop-grocery-catalog':return qgRenderGroceryCatalog({addMode:false,pageTitle:'จัดการสินค้าของชำ'})"),'dedicated Grocery catalog route must stay in manage mode');
+ok(merchant.includes("history.pushState(null,'','#shop-products/add')")&&merchant.includes("qgRenderGroceryCatalog({addMode:true,pageTitle:'เพิ่มสินค้าจากแคตตาล็อก'"),'Grocery catalog add action must use the explicit add route');
 ok(merchant.includes("if(u?.category==='grocery'&&p?.grocery_master_id)return qgRenderGroceryCatalog"),'only existing master-linked Grocery rows may redirect to the master catalog');
 ok(!merchant.includes("if(u?.category==='grocery'&&(id==='new'||p?.grocery_master_id))"),'new Grocery products must never be hijacked by master catalog');
 ok(merchant.includes("const pagedGrocery=ownShop?.category==='grocery'&&['shop-grocery-catalog'].includes"),'normal Grocery product/manual-editor pages must load the shop product snapshot');
