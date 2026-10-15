@@ -100,6 +100,14 @@ ok(
   'Merchant login/register/POS session writes and logout clear must stay off Main, and IO refresh callbacks must not mutate Compose state'
 );
 
+ok(
+  merchantMain.includes('val lifecycle = LocalLifecycleOwner.current.lifecycle') &&
+  merchantMain.includes('LaunchedEffect(initialAuth.session.authUserId, lifecycle)') &&
+  merchantMain.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)') &&
+  merchantMain.includes('delay(25_000)'),
+  'Merchant POS staff session validation must pause while the app is backgrounded'
+);
+
 const rider=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
 ok(
   rider.includes('val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)') &&
