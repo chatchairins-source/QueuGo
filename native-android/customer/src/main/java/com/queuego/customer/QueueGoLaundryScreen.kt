@@ -50,6 +50,8 @@ import com.queuego.shared.QgRed
 import com.queuego.shared.QgSectionTitle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun LaundryNativeScreen(
@@ -66,7 +68,7 @@ fun LaundryNativeScreen(
     val context = LocalContext.current
     val journal = remember(auth.user.id) { LaundryCheckoutJournal(context, auth.user.id) }
     val checkout = remember(auth.user.id) { CustomerCheckoutRecovery<PendingLaundryCheckout, org.json.JSONObject>(journal) }
-    var checkoutPending by remember(auth.user.id) { mutableStateOf(journal.hasPending()) }
+    var checkoutPending by remember(auth.user.id) { mutableStateOf(false) }
     var catalog by remember { mutableStateOf<LaundryCatalog?>(null) }
     var selectedHub by remember { mutableStateOf<LaundryHub?>(null) }
     var services by remember { mutableStateOf<List<LaundryService>>(emptyList()) }
@@ -85,6 +87,7 @@ fun LaundryNativeScreen(
     LaunchedEffect(auth.user.id, catalogReload) {
         loading = true
         catalogFailed = false
+        checkoutPending = withContext(Dispatchers.IO) { journal.hasPending() }
         runCatching { api.catalog(auth) }
             .onSuccess { catalog = it }
             .onFailure { if (it is CancellationException) throw it; catalogFailed = true; message = it.message ?: "โหลดบริการฝากซักไม่สำเร็จ" }
@@ -147,7 +150,7 @@ fun LaundryNativeScreen(
             } catch (e: Exception) {
                 message = laundryCheckoutMessage(e.message)
             } finally {
-                checkoutPending = journal.hasPending()
+                checkoutPending = withContext(Dispatchers.IO) { journal.hasPending() }
                 busy = false
             }
         }
