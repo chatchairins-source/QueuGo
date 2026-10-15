@@ -461,6 +461,36 @@ private fun MerchantShell(
         }
     }
 
+    fun adjustReadyEstimate(order: MerchantOrder, deltaMinutes: Int) {
+        if (busy) return
+        val nowInstant = Instant.now()
+        val current = runCatching { Instant.parse(order.readyEstimateAt ?: "") }.getOrNull()
+            ?: runCatching { Instant.parse(order.preparingAt ?: "").plusSeconds(20 * 60L) }.getOrNull()
+            ?: nowInstant.plusSeconds(20 * 60L)
+        val requested = current.plusSeconds(deltaMinutes * 60L)
+        val maximum = nowInstant.plusSeconds(2 * 60 * 60L)
+        val target = when {
+            requested.isBefore(nowInstant) -> nowInstant
+            requested.isAfter(maximum) -> maximum
+            else -> requested
+        }
+        busy = true
+        message = null
+        scope.launch {
+            runCatching {
+                api.setReadyEstimate(auth, order.id, target.toString(), order.readyRevision)
+                api.loadOrders(auth)
+            }.onSuccess { fresh ->
+                orders = fresh
+                selectedOrder = fresh.find { it.id == order.id } ?: selectedOrder
+                message = "อัปเดตเวลาที่คาดว่าจะพร้อมแล้ว"
+            }.onFailure {
+                message = it.message ?: "อัปเดตเวลาพร้อมไม่สำเร็จ"
+            }
+            busy = false
+        }
+    }
+
     Box(Modifier.fillMaxSize()) {
         Scaffold(
         containerColor = QgBg,
@@ -567,6 +597,7 @@ private fun MerchantShell(
                         screen = "orders"
                     },
                     onAction = { action, reason -> selectedOrder?.let { runAction(it, action, reason) } },
+                    onAdjustReady = { delta -> selectedOrder?.let { adjustReadyEstimate(it, delta) } },
                     onSaveItems = { draft ->
                         val current = selectedOrder
                         if (current != null && !busy) {
@@ -1305,6 +1336,7 @@ private fun MerchantOrderDetail(
     busy: Boolean,
     onBack: () -> Unit,
     onAction: (String, String?) -> Unit,
+    onAdjustReady: (Int) -> Unit,
     onSaveItems: (List<MerchantOrderEditItem>) -> Unit
 ) {
     val context = LocalContext.current
@@ -1445,6 +1477,8 @@ private fun MerchantOrderDetail(
                     modifier = Modifier.fillMaxWidth().height(54.dp)
                 ) { Text("เริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold) }
                 Spacer(Modifier.height(8.dp))
+                MerchantReadyEstimateControls(order, busy, onAdjustReady)
+                Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { editOpen = true },
                     enabled = !busy && items.isNotEmpty(),
@@ -1458,7 +1492,7 @@ private fun MerchantOrderDetail(
                 ) { Text("ยกเลิกออเดอร์") }
             }
             "preparing" -> {
-                val left = preparationLeft(order.preparingAt, now)
+                val left = readinessLeft(order.readyEstimateAt, order.preparingAt, now)
                 Button(
                     onClick = { onAction("ready", null) },
                     enabled = !busy,
@@ -1470,8 +1504,10 @@ private fun MerchantOrderDetail(
                         fontWeight = FontWeight.Black
                     )
                 }
+                Spacer(Modifier.height(8.dp))
+                MerchantReadyEstimateControls(order, busy, onAdjustReady)
                 Spacer(Modifier.height(6.dp))
-                Text("ตัวนับเวลาอยู่บนปุ่มตาม Flow ร้านค้า", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                Text("เวลานี้ส่งต่อให้ Dispatch, Rider Stack และ ETA ลูกค้า", color = QgMuted, style = MaterialTheme.typography.bodySmall)
             }
             "ready" -> QgCard(Modifier.fillMaxWidth()) {
                 Text("พร้อมส่งแล้ว · รอ Rider มารับสินค้า", fontWeight = FontWeight.ExtraBold)
@@ -2194,10 +2230,53 @@ private fun merchantStatus(status: String, riderArrivedCustomerAt: String? = nul
     }
 }
 
-private fun preparationLeft(preparingAt: String?, now: Long): Int {
-    val start = runCatching { Instant.parse(preparingAt ?: "").toEpochMilli() }.getOrNull() ?: now
-    val target = start + 20 * 60 * 1000L
+@Composable
+private fun MerchantReadyEstimateControls(
+    order: MerchantOrder,
+    busy: Boolean,
+    onAdjustReady: (Int) -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            "ร้านคาดว่าพร้อม " + merchantReadyTime(order.readyEstimateAt, order.preparingAt),
+            color = QgMuted,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedButton(
+                onClick = { onAdjustReady(-5) },
+                enabled = !busy,
+                modifier = Modifier.weight(1f)
+            ) { Text("-5 นาที") }
+            OutlinedButton(
+                onClick = { onAdjustReady(5) },
+                enabled = !busy,
+                modifier = Modifier.weight(1f)
+            ) { Text("+5 นาที") }
+            OutlinedButton(
+                onClick = { onAdjustReady(10) },
+                enabled = !busy,
+                modifier = Modifier.weight(1f)
+            ) { Text("+10 นาที") }
+        }
+    }
+}
+
+private fun readinessLeft(readyEstimateAt: String?, preparingAt: String?, now: Long): Int {
+    val target = runCatching { Instant.parse(readyEstimateAt ?: "").toEpochMilli() }.getOrNull()
+        ?: (runCatching { Instant.parse(preparingAt ?: "").toEpochMilli() }.getOrNull() ?: now) + 20 * 60 * 1000L
     return (((target - now).coerceAtLeast(0L) + 999L) / 1000L).toInt()
+}
+
+private fun merchantReadyTime(readyEstimateAt: String?, preparingAt: String?): String {
+    val instant = runCatching { Instant.parse(readyEstimateAt ?: "") }.getOrNull()
+        ?: runCatching { Instant.parse(preparingAt ?: "").plusSeconds(20 * 60L) }.getOrNull()
+        ?: return "อีกประมาณ 20 นาที"
+    return java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+        .withZone(ZoneId.of("Asia/Bangkok"))
+        .format(instant) + " น."
 }
 
 private fun formatSeconds(seconds: Int): String {
