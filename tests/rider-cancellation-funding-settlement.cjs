@@ -64,6 +64,16 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
    q("update qg_private.rider_cancellation_funding set amount=6 where id=$1",[id(800)]),
    /immutable/
  );checks++;
+ for(const sql of [
+   "update qg_private.rider_cancellation_funding set replacement_target_amount=8 where id=$1",
+   "update qg_private.rider_cancellation_funding set protected_route_payout=33 where id=$1",
+   "update qg_private.rider_cancellation_funding set replacement_order_id=$2 where id=$1",
+   "update qg_private.rider_cancellation_funding set reason='changed' where id=$1",
+   "update qg_private.rider_cancellation_funding set settlement_note='changed' where id=$1"
+ ]){
+   const params=sql.includes('$2')?[id(800),id(901)]:[id(800)];
+   await assert.rejects(q(sql,params),/immutable/);checks++;
+ }
 
  const funding=(await q("select * from qg_private.rider_cancellation_funding where id=$1",[id(800)])).rows[0];
  eq(funding.status,'settled');eq(funding.settled_by,id(70));eq(funding.settlement_reference,'BANK-001');
