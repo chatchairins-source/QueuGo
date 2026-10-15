@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -38,7 +39,10 @@ import com.queuego.ridernavigationmap.NavigationViewportInsets
 import com.queuego.ridernavigationmap.RiderNavigationMap
 import com.queuego.ridernavigationmap.RiderNavigationMapState
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 // Shadow mode computes the candidate renderer fix while preserving the certified display.
 // The display gate stays off until CI + real-device route gates pass.
@@ -100,35 +104,61 @@ internal fun riderNavigationStops(
         val usable = bundleOrders.filter {
             it.job.status.lowercase() !in setOf("cancelled", "no_rider_available")
         }
-        val pickups = usable.sortedWith(
-            compareBy<RiderBundleOrder> { it.bundleSequence }.thenBy { it.job.id }
-        )
-        val drops = usable.sortedWith(
-            compareBy<RiderBundleOrder> { it.dropRank }.thenBy { it.job.id }
-        )
-        pickups.forEachIndexed { index, order ->
-            val completed = order.job.isDelivering || order.job.status.lowercase() == "completed"
-            add(
-                id = "pickup:" + order.job.id,
-                sequence = index + 1,
-                kind = NavigationStopKind.PICKUP,
-                lat = order.job.pickupLat,
-                lon = order.job.pickupLng,
-                completed = completed,
-                label = order.shopName
+        val dynamicPlan = usable.any { it.pickupStopRank != null || it.dropoffStopRank != null }
+        if (dynamicPlan) {
+            val rankedStops = RiderRouteBundleState(activeOrders = usable).routeStops()
+            if (rankedStops.isEmpty() && usable.any {
+                    it.job.status.lowercase() !in setOf("completed", "cancelled")
+                }
+            ) {
+                // Never fall back to a legacy order when the authoritative plan is
+                // partial/stale. An empty route is safer than navigating to the wrong stop.
+                return emptyList()
+            }
+            rankedStops.forEach { stop ->
+                val order = stop.order
+                add(
+                    id = (if (stop.pickup) "pickup:" else "drop:") + order.job.id,
+                    sequence = stop.rank,
+                    kind = if (stop.pickup) NavigationStopKind.PICKUP else NavigationStopKind.DROPOFF,
+                    lat = if (stop.pickup) order.job.pickupLat else order.job.deliveryLat,
+                    lon = if (stop.pickup) order.job.pickupLng else order.job.deliveryLng,
+                    completed = if (stop.pickup) order.job.isDelivering
+                        else order.job.status.lowercase() == "completed",
+                    label = if (stop.pickup) order.shopName else "ลูกค้า " + order.job.numberLabel
+                )
+            }
+        } else {
+            val pickups = usable.sortedWith(
+                compareBy<RiderBundleOrder> { it.bundleSequence }.thenBy { it.job.id }
             )
-        }
-        val offset = pickups.size
-        drops.forEachIndexed { index, order ->
-            add(
-                id = "drop:" + order.job.id,
-                sequence = offset + index + 1,
-                kind = NavigationStopKind.DROPOFF,
-                lat = order.job.deliveryLat,
-                lon = order.job.deliveryLng,
-                completed = order.job.status.lowercase() == "completed",
-                label = "ลูกค้า " + order.job.numberLabel
+            val drops = usable.sortedWith(
+                compareBy<RiderBundleOrder> { it.dropRank }.thenBy { it.job.id }
             )
+            pickups.forEachIndexed { index, order ->
+                val completed = order.job.isDelivering || order.job.status.lowercase() == "completed"
+                add(
+                    id = "pickup:" + order.job.id,
+                    sequence = index + 1,
+                    kind = NavigationStopKind.PICKUP,
+                    lat = order.job.pickupLat,
+                    lon = order.job.pickupLng,
+                    completed = completed,
+                    label = order.shopName
+                )
+            }
+            val offset = pickups.size
+            drops.forEachIndexed { index, order ->
+                add(
+                    id = "drop:" + order.job.id,
+                    sequence = offset + index + 1,
+                    kind = NavigationStopKind.DROPOFF,
+                    lat = order.job.deliveryLat,
+                    lon = order.job.deliveryLng,
+                    completed = order.job.status.lowercase() == "completed",
+                    label = "ลูกค้า " + order.job.numberLabel
+                )
+            }
         }
     } else if (job.marketOrderId != null) {
         marketPickups.forEachIndexed { index, pickup ->
@@ -219,21 +249,53 @@ internal fun QueueGoRiderNavigationMap(
     val context = LocalContext.current
     val guidanceCallback by rememberUpdatedState(onGuidance)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val sessionStore = remember(context) { SessionStore(context) }
-    val initialCamera = remember(stateKey) {
-        sessionStore.loadMapCamera(stateKey)?.let { saved ->
-            NavigationMapCamera(
-                point = NavigationMapPoint(saved[1], saved[0]),
-                zoom = saved[2].toInt().coerceIn(4, 20)
-            )
+    val sessionStore = remember(context.applicationContext) { SessionStore(context.applicationContext) }
+    var initialCamera by remember(stateKey) { mutableStateOf<NavigationMapCamera?>(null) }
+    var initialViewMode by remember(stateKey) { mutableStateOf(NavigationViewMode.FOLLOW) }
+    var persistenceHydrated by remember(stateKey) { mutableStateOf(false) }
+    var pendingCameraPersistence by remember(stateKey) { mutableStateOf<DoubleArray?>(null) }
+    var pendingViewModePersistence by remember(stateKey) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(stateKey) {
+        val restored = withContext(Dispatchers.IO) {
+            val camera = sessionStore.loadMapCamera(stateKey)?.let { saved ->
+                NavigationMapCamera(
+                    point = NavigationMapPoint(saved[1], saved[0]),
+                    zoom = saved[2].toInt().coerceIn(4, 20),
+                    tiltDegrees = saved.getOrNull(4)?.toFloat()?.takeIf { it.isFinite() }
+                )
+            }
+            val mode = when (sessionStore.loadMapViewMode(stateKey)) {
+                "FREE_PAN" -> NavigationViewMode.FREE_PAN
+                else -> NavigationViewMode.FOLLOW
+            }
+            camera to mode
+        }
+        initialCamera = restored.first
+        initialViewMode = restored.second
+        persistenceHydrated = true
+    }
+
+    LaunchedEffect(stateKey, pendingViewModePersistence, persistenceHydrated) {
+        val mode = pendingViewModePersistence ?: return@LaunchedEffect
+        if (!persistenceHydrated) return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            sessionStore.saveMapViewMode(stateKey, mode)
         }
     }
 
-    val initialViewMode = remember(stateKey) {
-        when (sessionStore.loadMapViewMode(stateKey)) {
-            "FREE_PAN" -> NavigationViewMode.FREE_PAN
-            else -> NavigationViewMode.FOLLOW
+    LaunchedEffect(stateKey, pendingCameraPersistence, persistenceHydrated) {
+        val camera = pendingCameraPersistence ?: return@LaunchedEffect
+        if (!persistenceHydrated) return@LaunchedEffect
+        delay(250L)
+        withContext(Dispatchers.IO) {
+            sessionStore.saveMapCamera(stateKey, camera)
         }
+    }
+
+    if (!persistenceHydrated) {
+        Box(modifier) {}
+        return
     }
     val viewModeController = remember(stateKey, initialViewMode) {
         NavigationViewModeController(initialViewMode)
@@ -290,7 +352,7 @@ internal fun QueueGoRiderNavigationMap(
         val next = viewModeController.onActiveStopChanged()
         viewModeState = next
         if (next.mode != NavigationViewMode.OVERVIEW) {
-            sessionStore.saveMapViewMode(stateKey, next.mode.name)
+            pendingViewModePersistence = next.mode.name
         }
     }
 
@@ -451,7 +513,7 @@ internal fun QueueGoRiderNavigationMap(
     LaunchedEffect(recenterSignal) {
         if (recenterSignal > 0) {
             viewModeState = viewModeController.onRecenter()
-            sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FOLLOW.name)
+            pendingViewModePersistence = NavigationViewMode.FOLLOW.name
             riderFix?.let { fix ->
                 stateChannel.trySend(
                     baseState.copy(
@@ -484,17 +546,15 @@ internal fun QueueGoRiderNavigationMap(
         onMapReady = onMapReady,
         onUserGesture = {
             viewModeState = viewModeController.onUserGesture()
-            sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FREE_PAN.name)
+            pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
         },
         onCameraChanged = { camera ->
-            sessionStore.saveMapCamera(
-                stateKey,
-                doubleArrayOf(
-                    camera.point.longitude,
-                    camera.point.latitude,
-                    camera.zoom.toDouble(),
-                    1.0
-                )
+            pendingCameraPersistence = doubleArrayOf(
+                camera.point.longitude,
+                camera.point.latitude,
+                camera.zoom.toDouble(),
+                1.0,
+                (camera.tiltDegrees ?: 0f).toDouble()
             )
         },
         onDiagnostics = RiderRuntimeDiagnosticsStore::publishMap

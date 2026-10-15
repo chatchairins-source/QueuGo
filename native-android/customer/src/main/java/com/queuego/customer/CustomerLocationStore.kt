@@ -6,14 +6,25 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
+private const val CUSTOMER_LOCATION_MAX_JSON_CHARS = 64 * 1024
+
 /** The same device-local delivery selection as Production qg_customer_delivery_location. */
 internal class CustomerLocationStore(context: Context) {
     private val prefs = context.getSharedPreferences("queuego_customer_delivery_location", Context.MODE_PRIVATE)
 
-    fun load(): CustomerLocation? = decodeCustomerDeliveryLocation(prefs.getString("location", null))
+    fun load(): CustomerLocation? {
+        val raw = prefs.getString("location", null) ?: return null
+        if (raw.length > CUSTOMER_LOCATION_MAX_JSON_CHARS) {
+            prefs.edit().remove("location").apply()
+            return null
+        }
+        return decodeCustomerDeliveryLocation(raw)
+    }
 
     suspend fun save(location: CustomerLocation) = withContext(Dispatchers.IO) {
-        check(prefs.edit().putString("location", encodeCustomerDeliveryLocation(location)).commit()) {
+        val raw = encodeCustomerDeliveryLocation(location)
+        require(raw.length <= CUSTOMER_LOCATION_MAX_JSON_CHARS) { "ที่อยู่ในเครื่องมีขนาดใหญ่เกินกำหนด" }
+        check(prefs.edit().putString("location", raw).commit()) {
             "บันทึกที่อยู่ในเครื่องไม่สำเร็จ"
         }
     }

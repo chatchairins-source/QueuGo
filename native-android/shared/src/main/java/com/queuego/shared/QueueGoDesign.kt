@@ -1,5 +1,6 @@
 package com.queuego.shared
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.Canvas
@@ -22,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,8 +43,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -395,6 +402,41 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
     }
 }
 
+private const val QG_REMOTE_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+private const val QG_REMOTE_IMAGE_MAX_BASE64_CHARS = ((QG_REMOTE_IMAGE_MAX_BYTES + 2) / 3) * 4
+private const val QG_REMOTE_IMAGE_MAX_SIDE = 1280
+private val qgRemoteImageDecodeGate = Semaphore(3)
+
+private fun InputStream.readQueueGoImageLimited(limit: Int = QG_REMOTE_IMAGE_MAX_BYTES): ByteArray {
+    val output = ByteArrayOutputStream(minOf(limit, 256 * 1024))
+    val buffer = ByteArray(16 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) { "รูปมีขนาดใหญ่เกินกำหนด" }
+        output.write(buffer, 0, count)
+    }
+    return output.toByteArray()
+}
+
+private fun decodeQueueGoRemoteImage(bytes: ByteArray, maxSide: Int = QG_REMOTE_IMAGE_MAX_SIDE): Bitmap? {
+    if (bytes.isEmpty() || bytes.size > QG_REMOTE_IMAGE_MAX_BYTES) return null
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    val boundedMaxSide = maxSide.coerceIn(128, QG_REMOTE_IMAGE_MAX_SIDE)
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > boundedMaxSide) {
+        sample *= 2
+    }
+    return BitmapFactory.decodeByteArray(
+        bytes,
+        0,
+        bytes.size,
+        BitmapFactory.Options().apply { inSampleSize = sample }
+    )
+}
+
 @Composable
 fun QgRemoteImage(
     source: String?,
@@ -402,26 +444,63 @@ fun QgRemoteImage(
     fallback: String = "Q",
     contentScale: ContentScale = ContentScale.Crop,
     cornerRadius: androidx.compose.ui.unit.Dp = 14.dp,
-    showFallback: Boolean = true
+    showFallback: Boolean = true,
+    maxDecodeSide: Int = QG_REMOTE_IMAGE_MAX_SIDE
 ) {
-    var image by remember(source) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
-    LaunchedEffect(source) {
-        image = if (source.isNullOrBlank()) null else withContext(Dispatchers.IO) {
-            runCatching {
-                val bytes = if (source.startsWith("data:image/")) {
-                    Base64.decode(source.substringAfter(","), Base64.DEFAULT)
-                } else {
-                    val c = URL(source).openConnection() as HttpURLConnection
-                    c.connectTimeout = 10000
-                    c.readTimeout = 10000
-                    try { c.inputStream.use { it.readBytes() } } finally { c.disconnect() }
+    var image by remember(source, maxDecodeSide) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(source, maxDecodeSide) {
+        image = if (source.isNullOrBlank()) {
+            null
+        } else {
+            try {
+                withContext(Dispatchers.IO) {
+                    qgRemoteImageDecodeGate.withPermit {
+                        val bytes = if (source.startsWith("data:image/")) {
+                            val comma = source.indexOf(',')
+                            require(comma in 1..128) { "รูปมีรูปแบบไม่ถูกต้อง" }
+                            val encodedLength = source.length - comma - 1
+                            require(encodedLength in 1..QG_REMOTE_IMAGE_MAX_BASE64_CHARS) {
+                                "รูปมีขนาดใหญ่เกินกำหนด"
+                            }
+                            Base64.decode(source.substring(comma + 1), Base64.DEFAULT).also {
+                                require(it.size <= QG_REMOTE_IMAGE_MAX_BYTES) { "รูปมีขนาดใหญ่เกินกำหนด" }
+                            }
+                        } else {
+                            require(source.startsWith("https://")) { "ลิงก์รูปไม่ถูกต้อง" }
+                            val connection = URL(source).openConnection() as HttpURLConnection
+                            connection.connectTimeout = 10_000
+                            connection.readTimeout = 10_000
+                            try {
+                                val declared = connection.contentLengthLong
+                                require(declared <= 0L || declared <= QG_REMOTE_IMAGE_MAX_BYTES) {
+                                    "รูปมีขนาดใหญ่เกินกำหนด"
+                                }
+                                connection.inputStream.use { it.readQueueGoImageLimited() }
+                            } finally {
+                                connection.disconnect()
+                            }
+                        }
+                        decodeQueueGoRemoteImage(bytes, maxDecodeSide)
+                    }
                 }
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-            }.getOrNull()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                null
+            }
         }
     }
-    if (image != null) {
-        Image(image!!, null, modifier.clip(RoundedCornerShape(cornerRadius)), contentScale = contentScale)
+
+    DisposableEffect(image) {
+        val owned = image
+        onDispose {
+            if (owned != null && !owned.isRecycled) owned.recycle()
+        }
+    }
+
+    val bitmap = image
+    if (bitmap != null && !bitmap.isRecycled) {
+        Image(bitmap.asImageBitmap(), null, modifier.clip(RoundedCornerShape(cornerRadius)), contentScale = contentScale)
     } else if (showFallback) {
         Box(
             modifier
@@ -432,6 +511,7 @@ fun QgRemoteImage(
         ) {
             Text(fallback.take(1).uppercase(), color = Color(0xFFC3C6CB), fontWeight = FontWeight.Black)
         }
+    } else {
+        Box(modifier.clip(RoundedCornerShape(cornerRadius)))
     }
-    else { Box(modifier.clip(RoundedCornerShape(cornerRadius))) }
 }

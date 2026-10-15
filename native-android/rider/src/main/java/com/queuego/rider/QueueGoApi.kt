@@ -9,14 +9,47 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URLEncoder
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 import java.security.MessageDigest
+
+private const val RIDER_API_RESPONSE_MAX_BYTES = 12 * 1024 * 1024
+
+private fun InputStream.readRiderApiResponseBounded(
+    limit: Int = RIDER_API_RESPONSE_MAX_BYTES
+): String {
+    val output = ByteArrayOutputStream(minOf(limit, 256 * 1024))
+    val buffer = ByteArray(16 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) {
+            "ข้อมูลตอบกลับมีขนาดใหญ่เกินไป กรุณาลองใหม่"
+        }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(StandardCharsets.UTF_8.name())
+}
+
+private fun InputStream.readRiderBytesBounded(
+    limit: Int,
+    tooLargeMessage: String
+): ByteArray {
+    val output = ByteArrayOutputStream(minOf(limit, 256 * 1024))
+    val buffer = ByteArray(16 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) { tooLargeMessage }
+        output.write(buffer, 0, count)
+    }
+    return output.toByteArray()
+}
 
 internal fun riderNullableText(value: String?): String? =
     value?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
@@ -501,8 +534,8 @@ class QueueGoApi {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
         private const val PUBLISHABLE_KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
         private const val TIMEOUT = 15000
-        private const val RIDER_JOB_FIELDS = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
-            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,subtotal,total_amount,market_order_id," +
+        private const val RIDER_JOB_FIELDS = "id,order_number,status,fulfillment_vertical,ride_distance_km,ride_duration_minutes,pickup_address,pickup_latitude,pickup_longitude," +
+            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,route_bundle_id,subtotal,total_amount,market_order_id," +
             "rider_arrived_shop_at,rider_arrived_customer_at"
     }
 
@@ -745,6 +778,14 @@ class QueueGoApi {
         Unit
     }
 
+    suspend fun syncDispatchPreference(
+        auth: QueueGoAuth, autoAccept: Boolean, stopAfterWork: Boolean, ready: Boolean
+    ): Boolean = withContext(Dispatchers.IO) {
+        val raw = rpc("qg_rider_dispatch_preference", auth.session.accessToken, JSONObject()
+            .put("p_auto_accept", autoAccept).put("p_stop_after_work", stopAfterWork).put("p_ready", ready))
+        (raw as? JSONObject)?.optBoolean("acknowledged", false) == true
+    }
+
     suspend fun setOnline(
         auth: QueueGoAuth,
         online: Boolean,
@@ -896,7 +937,10 @@ class QueueGoApi {
                 income = o.optDouble("income", 0.0),
                 onlineHours = o.optDouble("online_hours", 0.0),
                 incomePerHour = if (o.has("income_per_hour") && !o.isNull("income_per_hour"))
-                    o.optDouble("income_per_hour").takeIf { !it.isNaN() } else null
+                    o.optDouble("income_per_hour").takeIf { !it.isNaN() } else null,
+                cashRealizedIncome = o.optDouble("cash_realized_income", o.optDouble("income", 0.0)),
+                pendingPlatformFunding = o.optDouble("pending_platform_funding", 0.0),
+                settledPlatformFunding = o.optDouble("settled_platform_funding", 0.0)
             )
         }
 
@@ -989,8 +1033,8 @@ class QueueGoApi {
             connection.setRequestProperty("Accept", "application/json")
             try {
                 if (connection.responseCode !in 200..299) return@withContext null
-                connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-                    riderFormatLongdoAddress(reader.readText())
+                connection.inputStream.use { input ->
+                    riderFormatLongdoAddress(input.readRiderApiResponseBounded(512 * 1024))
                 }
             } catch (_: Exception) {
                 null
@@ -998,6 +1042,28 @@ class QueueGoApi {
                 connection.disconnect()
             }
         }
+
+    suspend fun passengerLicenseStatus(auth: QueueGoAuth): RiderPassengerLicenseStatus =
+        withContext(Dispatchers.IO) {
+            riderPassengerLicenseStatusFromRpc(
+                rpc("qg_rider_public_license_status", auth.session.accessToken, JSONObject())
+            )
+        }
+
+    suspend fun submitPassengerLicense(
+        context: Context,
+        auth: QueueGoAuth,
+        photoUri: Uri
+    ): RiderPassengerLicenseStatus = withContext(Dispatchers.IO) {
+        val path = uploadEvidence(context, auth, photoUri)
+        riderPassengerLicenseStatusFromRpc(
+            rpc(
+                "qg_rider_submit_public_license",
+                auth.session.accessToken,
+                JSONObject().put("p_evidence_path", path)
+            )
+        )
+    }
 
     suspend fun reverificationStatus(auth: QueueGoAuth): RiderReverificationStatus =
         withContext(Dispatchers.IO) {
@@ -1161,7 +1227,7 @@ class QueueGoApi {
             val profileId = profiles.getJSONObject(0).getString("id")
             val rows = requestArray(
                 "GET",
-                "/rest/v1/orders?select=id,order_number,pickup_address,delivery_address,delivery_fee,completed_at,updated_at" +
+                "/rest/v1/orders?select=id,order_number,pickup_address,delivery_address,delivery_fee,rider_delivery_payout,completed_at,updated_at" +
                     "&rider_id=eq." + enc(profileId) +
                     "&status=eq.completed&order=updated_at.desc&limit=" + limit.coerceIn(1, 200),
                 auth.session.accessToken
@@ -1178,7 +1244,7 @@ class QueueGoApi {
                             number = number,
                             pickupAddress = r.optString("pickup_address").takeIf { it.isNotBlank() },
                             deliveryAddress = r.optString("delivery_address").takeIf { it.isNotBlank() },
-                            deliveryFee = r.optDouble("delivery_fee", 0.0),
+                            deliveryFee = r.doubleOrNull("rider_delivery_payout") ?: r.doubleOrZero("delivery_fee"),
                             completedAt = r.optString("completed_at")
                                 .takeIf { it.isNotBlank() && it != "null" }
                                 ?: r.optString("updated_at").takeIf { it.isNotBlank() && it != "null" }
@@ -1187,6 +1253,23 @@ class QueueGoApi {
                 }
             }
         }
+
+    suspend fun publishCustomerEta(
+        auth: QueueGoAuth,
+        orderId: String,
+        etaSeconds: Int
+    ) = withContext(Dispatchers.IO) {
+        require(runCatching { UUID.fromString(orderId) }.isSuccess) { "ออเดอร์ไม่ถูกต้อง" }
+        require(etaSeconds in 0..14_400) { "ETA ไม่ถูกต้อง" }
+        rpc(
+            "qg_rider_publish_customer_eta",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_order_id", orderId)
+                .put("p_eta_seconds", etaSeconds)
+        )
+        Unit
+    }
 
     suspend fun activeDeliveryReturn(auth: QueueGoAuth): RiderDeliveryReturn? = withContext(Dispatchers.IO) {
         val raw = rpc("qg_rider_active_delivery_return_v2", auth.session.accessToken, JSONObject())
@@ -1326,7 +1409,14 @@ class QueueGoApi {
                         cashPaidMerchant = row.doubleOrZero("cash_paid_merchant"),
                         cashCollectedCustomer = row.doubleOrZero("cash_collected_customer"),
                         cashRefundedMerchant = row.doubleOrZero("cash_refunded_merchant"),
-                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() }
+                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() },
+                        platformCancellationFunding = row.doubleOrZero("platform_cancellation_funding"),
+                        platformCancellationFundingCash = row.doubleOrZero("platform_cancellation_funding_cash"),
+                        platformCancellationFundingStatus = riderNullableText(row.optString("platform_cancellation_funding_status")),
+                        platformCancellationFundingSettledAt = riderNullableText(row.optString("platform_cancellation_funding_settled_at")),
+                        platformCancellationFundingReference = riderNullableText(row.optString("platform_cancellation_funding_reference")),
+                        platformReplacementTarget = row.doubleOrZero("platform_cancellation_replacement_target"),
+                        platformReplacementOrderId = riderNullableUuid(row.optString("platform_replacement_order_id"))
                     )
                 )
             }
@@ -1340,10 +1430,10 @@ class QueueGoApi {
     ): String = withContext(Dispatchers.IO) {
         val mime = riderProfilePhotoMimeType(context.contentResolver.getType(photoUri))
             ?: error("รองรับเฉพาะรูป JPG, PNG หรือ WebP")
-        val bytes = context.contentResolver.openInputStream(photoUri)?.use { it.readBytes() }
-            ?: error("อ่านรูปโปรไฟล์ไม่ได้")
+        val bytes = context.contentResolver.openInputStream(photoUri)?.use {
+            it.readRiderBytesBounded(5 * 1024 * 1024, "รูปโปรไฟล์ต้องมีขนาดไม่เกิน 5 MB")
+        } ?: error("อ่านรูปโปรไฟล์ไม่ได้")
         if (bytes.isEmpty()) error("รูปโปรไฟล์ว่าง")
-        if (bytes.size > 5 * 1024 * 1024) error("รูปโปรไฟล์ต้องมีขนาดไม่เกิน 5 MB")
 
         val path = auth.session.authUserId + "/profile"
         val connection = URL(BASE_URL + "/storage/v1/object/rider-profile/" + path)
@@ -1362,7 +1452,7 @@ class QueueGoApi {
             val code = connection.responseCode
             if (code !in 200..299) {
                 val text = connection.errorStream?.use {
-                    BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
+                    it.readRiderApiResponseBounded()
                 }.orEmpty()
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ"
@@ -1426,12 +1516,16 @@ class QueueGoApi {
         val activeRows = requestArray(
             "GET",
             "/rest/v1/orders?select=" + fields +
-                "&order_type=eq.shopping&rider_id=eq." + enc(profileId) +
+                "&or=(order_type.eq.shopping,and(order_type.eq.service,fulfillment_vertical.eq.ride))&rider_id=eq." + enc(profileId) +
                 "&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)" +
-                "&order=created_at.desc&limit=1",
+                "&order=next_after_order_id.asc.nullsfirst,created_at.asc&limit=5",
             auth.session.accessToken
         )
-        var active = if (activeRows.length() > 0) parseJob(activeRows.getJSONObject(0)) else null
+        // NEXT is displayed separately and cannot steal the current navigation/cash stage.
+        val currentRows = (0 until activeRows.length()).map { activeRows.getJSONObject(it) }
+        val nextRow = currentRows.firstOrNull { !it.isNull("next_after_order_id") && it.has("next_after_order_id") }
+        val nextJob = nextRow?.let(::parseJob)
+        var active = currentRows.firstOrNull { it.isNull("next_after_order_id") || !it.has("next_after_order_id") }?.let(::parseJob)
         var marketPickups = emptyList<MarketPickup>()
         if (active?.marketOrderId != null) {
             marketPickups = marketPickupRoute(auth, active.marketOrderId)
@@ -1457,9 +1551,12 @@ class QueueGoApi {
         }
 
         var bundle = RiderRouteBundleState()
-        if (online && active != null && active.marketOrderId == null) {
+        if (online && active != null && !active.isPassenger && active.marketOrderId == null) {
             bundle = runCatching { readRouteBundleState(auth, profileId) }
-                .getOrDefault(RiderRouteBundleState())
+                .getOrElse { failure ->
+                    if (currentRows.any { !it.isNull("route_bundle_id") && it.has("route_bundle_id") }) throw failure
+                    RiderRouteBundleState()
+                }
             bundle.currentOrder()?.let { active = it.job }
         }
 
@@ -1505,7 +1602,8 @@ class QueueGoApi {
             laundry = laundry,
             bundle = bundle,
             profile = profileInfo,
-            deliveryReturn = deliveryReturn
+            deliveryReturn = deliveryReturn,
+            nextJob = nextJob
         )
     }
 
@@ -1514,10 +1612,10 @@ class QueueGoApi {
         withContext(Dispatchers.IO) {
             if (!referenceId.matches(Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")))
                 return@withContext null
-            val fields = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
+            val fields = "id,order_number,status,fulfillment_vertical,ride_distance_km,ride_duration_minutes,pickup_address,pickup_latitude,pickup_longitude," +
                 "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,subtotal,total_amount,market_order_id," +
                 "rider_arrived_shop_at,rider_arrived_customer_at"
-            val base = "/rest/v1/orders?select=" + fields + "&order_type=eq.shopping&rider_id=eq." + enc(profileId)
+            val base = "/rest/v1/orders?select=" + fields + "&or=(order_type.eq.shopping,and(order_type.eq.service,fulfillment_vertical.eq.ride))&rider_id=eq." + enc(profileId)
             val direct = requestAny("GET", base + "&id=eq." + enc(referenceId) + "&limit=1", auth.session.accessToken, null) as? JSONArray
                 ?: error("รูปแบบข้อมูลการแจ้งเตือนไม่ถูกต้อง")
             if (direct.length() > 0) return@withContext parseJob(direct.getJSONObject(0))
@@ -1876,6 +1974,25 @@ class QueueGoApi {
         }
     }
 
+    suspend fun passengerAction(auth: QueueGoAuth, job: RiderJob, action: String): String = withContext(Dispatchers.IO) {
+        require(job.isPassenger) { "ต้องเป็นเที่ยวโดยสาร" }
+        val expected = when (action) {
+            "arrive_pickup" -> "rider_assigned"
+            "start", "arrive_dropoff" -> "in_progress"
+            "complete" -> "completed"
+            else -> error("ขั้นตอนเที่ยวไม่ถูกต้อง")
+        }
+        val result = actionOnce(auth, "ride", JSONObject().put("p_order_id", job.id).put("p_action", action)) as? JSONObject
+            ?: error("ยังยืนยันผลไม่ได้ กรุณาตรวจสถานะอีกครั้ง")
+        val status = result.optString("status")
+        if (result.optBoolean("requeued", false)) {
+            check(status == "searching_rider") { "สถานะเที่ยวเปลี่ยน กรุณาตรวจสอบอีกครั้ง" }
+            return@withContext status
+        }
+        check(status == expected || status == "completed") { "สถานะเที่ยวเปลี่ยน กรุณาตรวจสอบอีกครั้ง" }
+        status
+    }
+
     private fun actionOnce(auth: QueueGoAuth, kind: String, payload: JSONObject): Any {
         val seed = auth.user.id + "|" + kind + "|" + payload.toString()
         val requestId = UUID.nameUUIDFromBytes(seed.toByteArray(StandardCharsets.UTF_8)).toString()
@@ -1922,10 +2039,10 @@ class QueueGoApi {
     }
 
     private fun uploadEvidence(context: Context, auth: QueueGoAuth, uri: Uri): String {
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: error("อ่านรูปหลักฐานไม่ได้")
+        val bytes = context.contentResolver.openInputStream(uri)?.use {
+            it.readRiderBytesBounded(5 * 1024 * 1024, "รูปหลักฐานต้องมีขนาดไม่เกิน 5 MB")
+        } ?: error("อ่านรูปหลักฐานไม่ได้")
         if (bytes.isEmpty()) error("รูปหลักฐานว่าง")
-        if (bytes.size > 5 * 1024 * 1024) error("รูปหลักฐานต้องมีขนาดไม่เกิน 5 MB")
 
         // Same single photo has one immutable storage identity across retries/process death.
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
@@ -1957,7 +2074,7 @@ class QueueGoApi {
             val code = connection.responseCode
             if (code !in 200..299) {
                 val text = connection.errorStream?.use {
-                    BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
+                    it.readRiderApiResponseBounded()
                 }.orEmpty()
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: "อัปโหลดหลักฐานไม่สำเร็จ"
@@ -2020,6 +2137,13 @@ class QueueGoApi {
                 val row = activeMeta.optJSONObject(i) ?: continue
                 val orderId = row.optString("order_id")
                 val job = jobsById[orderId] ?: continue
+                val plan = row.optString("route_sequence").takeIf { it.startsWith("{") }?.let(::JSONObject)
+                    ?.takeIf { it.optString("kind") == "queuego_stop_plan_v1" }
+                val pickupRank = plan?.optInt("pickup_rank")
+                val dropoffRank = plan?.optInt("dropoff_rank")
+                if (plan != null && (pickupRank == null || dropoffRank == null || pickupRank !in 1..10 || dropoffRank !in 1..10 || pickupRank >= dropoffRank)) {
+                    error("ลำดับจุดรับส่งกำลังอัปเดต")
+                }
                 add(
                     RiderBundleOrder(
                         bundleId = row.optString("bundle_id"),
@@ -2033,11 +2157,22 @@ class QueueGoApi {
                         riderExtraFee = row.doubleOrZero("rider_extra_fee"),
                         detourKm = row.doubleOrZero("detour_km"),
                         addedMinutes = row.optInt("added_minutes", 0),
-                        routeSequence = row.optString("route_sequence").takeIf { it.isNotBlank() && it != "null" }
+                        routeSequence = row.optString("route_sequence").takeIf { it.isNotBlank() && it != "null" },
+                        pickupStopRank = pickupRank,
+                        dropoffStopRank = dropoffRank,
+                        customerName = riderNullableText(plan?.optString("customer_name")),
+                        readyEstimateAt = riderNullableText(plan?.optString("ready_estimate_at")),
+                        readyWaitMinutes = plan?.takeIf { it.has("ready_wait_minutes") }?.optInt("ready_wait_minutes")
                     )
                 )
             }
         }.sortedBy { it.bundleSequence }
+        if (activeOrders.any { it.pickupStopRank != null }) {
+            val ranks = activeOrders.flatMap { listOfNotNull(it.pickupStopRank, it.dropoffStopRank) }
+            if (ranks.size != activeOrders.size * 2 || ranks.distinct().size != ranks.size) {
+                error("ลำดับจุดรับส่งกำลังอัปเดต")
+            }
+        }
 
         val candidates = buildList {
             for (i in 0 until candidatesRaw.length()) {
@@ -2154,14 +2289,17 @@ class QueueGoApi {
         deliveryAddress = riderNullableText(o.optString("delivery_address")),
         deliveryLat = o.doubleOrNull("delivery_latitude"),
         deliveryLng = o.doubleOrNull("delivery_longitude"),
-        deliveryFee = o.doubleOrNull("delivery_fee"),
+        deliveryFee = o.doubleOrNull("rider_delivery_payout") ?: o.doubleOrNull("delivery_fee"),
         marketOrderId = riderNullableUuid(o.optString("market_order_id")),
         arrivedShopAt = riderNullableText(o.optString("rider_arrived_shop_at")),
         arrivedCustomerAt = riderNullableText(o.optString("rider_arrived_customer_at")),
         shopCash = o.doubleOrNull("subtotal"),
         customerCash = o.doubleOrNull("total_amount"),
         customerSubtotal = o.doubleOrNull("subtotal"),
-        customerDeliveryFee = o.doubleOrNull("delivery_fee")
+        customerDeliveryFee = o.doubleOrNull("delivery_fee"),
+        fulfillmentVertical = riderNullableText(o.optString("fulfillment_vertical")) ?: "food",
+        rideDurationMinutes = o.doubleOrNull("ride_duration_minutes"),
+        rideDistanceKm = o.doubleOrNull("ride_distance_km")
     )
 
     private fun JSONObject.doubleOrNull(name: String): Double? =
@@ -2242,10 +2380,12 @@ class QueueGoApi {
                 responseElapsedRealtimeMs = SystemClock.elapsedRealtime(),
                 deviceWallEpochMs = System.currentTimeMillis()
             )
+            val declaredLength = connection.contentLengthLong
+            require(declaredLength <= 0L || declaredLength <= RIDER_API_RESPONSE_MAX_BYTES) {
+                "ข้อมูลตอบกลับมีขนาดใหญ่เกินไป กรุณาลองใหม่"
+            }
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val text = stream?.use {
-                BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
-            }.orEmpty()
+            val text = stream?.use { it.readRiderApiResponseBounded() }.orEmpty()
 
             if (code !in 200..299) {
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()

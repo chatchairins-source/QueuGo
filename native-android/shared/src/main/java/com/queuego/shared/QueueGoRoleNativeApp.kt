@@ -29,8 +29,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun QueueGoRoleNativeApp(expectedRole: String, appTitle: String, roleLabel: String) {
@@ -39,34 +45,48 @@ fun QueueGoRoleNativeApp(expectedRole: String, appTitle: String, roleLabel: Stri
     val store = remember { SecureRoleSessionStore(context, expectedRole) }
     val scope = rememberCoroutineScope()
     val logoutScope = remember(context) { nativeLogoutScope(context, scope) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     var auth by remember { mutableStateOf<NativeAuth?>(null) }
     var restoring by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(expectedRole) {
-        val cached = store.load()
+        val cached = withContext(Dispatchers.IO) { store.load() }
         if (cached != null) {
-            runCatching { api.validate(cached, expectedRole) }
-                .onSuccess { store.save(it); auth = it }
-                .onFailure { store.clear(); error = it.message }
+            try {
+                val validated = api.validate(cached, expectedRole)
+                withContext(Dispatchers.IO) { store.save(validated) }
+                auth = validated
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                withContext(Dispatchers.IO) { store.clear() }
+                error = failure.message
+            }
         }
         restoring = false
     }
 
-    LaunchedEffect(auth?.session?.sessionId) {
-        val current = auth ?: return@LaunchedEffect
-        while (true) {
-            delay(25_000)
-            val ok = runCatching {
-                api.validate(current, expectedRole)
-                api.touch(current.session)
-            }.isSuccess
-            if (!ok) {
-                store.clear()
-                auth = null
-                error = "Session นี้ถูกยกเลิกหรือเปิดจากอุปกรณ์อื่น"
-                break
+    LaunchedEffect(auth?.session?.sessionId, lifecycle) {
+        if (auth == null) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(25_000)
+                val current = auth ?: return@repeatOnLifecycle
+                try {
+                    val validated = api.validate(current, expectedRole)
+                    api.touch(validated.session)
+                    withContext(Dispatchers.IO) { store.save(validated) }
+                    auth = validated
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    withContext(Dispatchers.IO) { store.clear() }
+                    auth = null
+                    error = "Session นี้ถูกยกเลิกหรือเปิดจากอุปกรณ์อื่น"
+                    return@repeatOnLifecycle
+                }
             }
         }
     }
@@ -85,20 +105,29 @@ fun QueueGoRoleNativeApp(expectedRole: String, appTitle: String, roleLabel: Stri
                     busy = true
                     error = null
                     scope.launch {
-                        runCatching { api.signIn(id, pass, expectedRole, store.deviceId()) }
-                            .onSuccess { store.save(it); auth = it }
-                            .onFailure { error = it.message ?: "เข้าสู่ระบบไม่สำเร็จ" }
-                        busy = false
+                        try {
+                            val signedIn = api.signIn(id, pass, expectedRole, store.deviceId())
+                            withContext(Dispatchers.IO) { store.save(signedIn) }
+                            auth = signedIn
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (failure: Exception) {
+                            error = failure.message ?: "เข้าสู่ระบบไม่สำเร็จ"
+                        } finally {
+                            busy = false
+                        }
                     }
                 }
 
                 else -> Home(
                     Modifier.padding(insets), appTitle, roleLabel, auth!!
                 ) {
-                    val current = auth!!
-                    logoutScope.launch { api.revoke(current.session) }
-                    store.clear()
-                    auth = null
+                    val current = auth ?: return@Home
+                    logoutScope.launch {
+                        withContext(Dispatchers.IO) { store.clear() }
+                        auth = null
+                        runCatching { api.revoke(current.session) }
+                    }
                 }
             }
         }

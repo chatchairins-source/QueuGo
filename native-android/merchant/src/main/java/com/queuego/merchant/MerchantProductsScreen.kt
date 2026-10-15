@@ -1,5 +1,8 @@
 package com.queuego.merchant
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -8,6 +11,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -59,70 +63,73 @@ internal fun MerchantProductsScreen(
         }
     }
 
-    Column(
+    LazyColumn(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp)
     ) {
-        Spacer(Modifier.height(8.dp))
-        Text("สินค้าและเมนู", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-        Text(
-            "เปิด–ปิดขาย แก้ไขราคา และจัดการสต็อก",
-            color = QgMuted,
-            fontSize = 10.sp,
-            modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
-        )
+        item(key = "products-header") {
+            Spacer(Modifier.height(8.dp))
+            Text("สินค้าและเมนู", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+            Text(
+                "เปิด–ปิดขาย แก้ไขราคา และจัดการสต็อก",
+                color = QgMuted,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
+            )
 
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.White)
-                .border(1.dp, QgLine, RoundedCornerShape(14.dp))
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            QgIcon("search", Modifier.size(19.dp), Color(0xFF555B63))
-            Spacer(Modifier.width(8.dp))
-            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                if (query.isBlank()) Text("ค้นหาสินค้า...", color = Color(0xFF9A9EA5), fontSize = 12.sp)
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    singleLine = true,
-                    cursorBrush = SolidColor(QgRed),
-                    textStyle = TextStyle(fontSize = 12.sp, color = Color(0xFF202329)),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        Spacer(Modifier.height(9.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            MerchantProductFilter("ทั้งหมด", "all", mode) { mode = it }
-            MerchantProductFilter("เปิดขาย", "on", mode) { mode = it }
-            MerchantProductFilter("ปิดขาย", "off", mode) { mode = it }
-        }
-
-        Spacer(Modifier.height(10.dp))
-        if (rows.isEmpty()) {
-            Column(
+            Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(Color.White, RoundedCornerShape(16.dp))
-                    .border(1.dp, QgLine, RoundedCornerShape(16.dp))
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.White)
+                    .border(1.dp, QgLine, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    if (products.isEmpty()) "ยังไม่มีสินค้า" else "ไม่พบสินค้าที่ค้นหา",
-                    fontWeight = FontWeight.ExtraBold
-                )
+                QgIcon("search", Modifier.size(19.dp), Color(0xFF555B63))
+                Spacer(Modifier.width(8.dp))
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (query.isBlank()) Text("ค้นหาสินค้า...", color = Color(0xFF9A9EA5), fontSize = 12.sp)
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        cursorBrush = SolidColor(QgRed),
+                        textStyle = TextStyle(fontSize = 12.sp, color = Color(0xFF202329)),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(9.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                MerchantProductFilter("ทั้งหมด", "all", mode) { mode = it }
+                MerchantProductFilter("เปิดขาย", "on", mode) { mode = it }
+                MerchantProductFilter("ปิดขาย", "off", mode) { mode = it }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+
+        if (rows.isEmpty()) {
+            item(key = "products-empty") {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color.White, RoundedCornerShape(16.dp))
+                        .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        if (products.isEmpty()) "ยังไม่มีสินค้า" else "ไม่พบสินค้าที่ค้นหา",
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
             }
         } else {
-            rows.forEach { product ->
+            items(rows, key = { it.id }) { product ->
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -137,7 +144,8 @@ internal fun MerchantProductsScreen(
                         source = product.image,
                         modifier = Modifier.size(66.dp),
                         fallback = product.name,
-                        cornerRadius = 12.dp
+                        cornerRadius = 12.dp,
+                        maxDecodeSide = 256
                     )
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
@@ -174,17 +182,19 @@ internal fun MerchantProductsScreen(
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-        Button(
-            onClick = onAdd,
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth().height(48.dp)
-        ) {
-            QgIcon("plus", Modifier.size(18.dp), Color.White)
-            Spacer(Modifier.width(7.dp))
-            Text("เพิ่มสินค้า", fontWeight = FontWeight.ExtraBold)
+        item(key = "products-add") {
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = onAdd,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                QgIcon("plus", Modifier.size(18.dp), Color.White)
+                Spacer(Modifier.width(7.dp))
+                Text("เพิ่มสินค้า", fontWeight = FontWeight.ExtraBold)
+            }
+            Spacer(Modifier.height(28.dp))
         }
-        Spacer(Modifier.height(28.dp))
     }
 }
 
@@ -685,22 +695,48 @@ private fun MerchantToppingRow(
     }
 }
 
+private const val MERCHANT_PRODUCT_PREVIEW_MAX_SIDE = 512
+
+internal fun decodeMerchantProductPreview(context: Context, uri: Uri): Bitmap? {
+    val resolver = context.contentResolver
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    resolver.openInputStream(uri)?.use { input ->
+        BitmapFactory.decodeStream(input, null, bounds)
+    } ?: return null
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > MERCHANT_PRODUCT_PREVIEW_MAX_SIDE) {
+        sample *= 2
+    }
+    return resolver.openInputStream(uri)?.use { input ->
+        BitmapFactory.decodeStream(
+            input,
+            null,
+            BitmapFactory.Options().apply { inSampleSize = sample }
+        )
+    }
+}
+
 @Composable
 private fun MerchantProductLocalImage(uri: Uri, modifier: Modifier) {
     val context = LocalContext.current
-    var image by remember(uri) { mutableStateOf<ImageBitmap?>(null) }
+    var image by remember(uri) { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(uri) {
         image = withContext(Dispatchers.IO) {
-            runCatching {
-                context.contentResolver.openInputStream(uri)?.use {
-                    android.graphics.BitmapFactory.decodeStream(it)?.asImageBitmap()
-                }
-            }.getOrNull()
+            runCatching { decodeMerchantProductPreview(context, uri) }.getOrNull()
         }
     }
-    if (image != null) {
+    DisposableEffect(image) {
+        val owned = image
+        onDispose {
+            if (owned != null && !owned.isRecycled) owned.recycle()
+        }
+    }
+    val shown = image
+    if (shown != null && !shown.isRecycled) {
         Image(
-            bitmap = image!!,
+            bitmap = shown.asImageBitmap(),
             contentDescription = null,
             modifier = modifier.clip(RoundedCornerShape(13.dp)),
             contentScale = ContentScale.Crop

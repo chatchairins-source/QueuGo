@@ -10,7 +10,7 @@ class NativePrintQueue {
     suspend fun submit(
         key: String?,
         force: Boolean = false,
-        wasPrinted: (String) -> Boolean,
+        wasPrinted: suspend (String) -> Boolean,
         markPrinted: suspend (String) -> Unit,
         send: suspend () -> Unit
     ): Boolean = mutex.withLock {

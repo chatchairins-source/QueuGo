@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.queuego.shared.NativeExitDiagnostics
 
 data class NativePushLaunchTarget(
     val referenceId: String,
@@ -20,6 +21,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NativeExitDiagnostics.recordPreviousProcessExit(this, "rider")
         pushEventId = savedInstanceState?.getLong("rider_push_event_id") ?: 0L
         savedInstanceState?.getString("rider_push_reference")?.let { reference ->
             pushTarget = NativePushLaunchTarget(reference, savedInstanceState.getString("rider_push_type").orEmpty(), pushEventId)

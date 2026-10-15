@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgRed
 import org.json.JSONArray
 
+private const val RIDER_QUICK_MESSAGES_MAX_JSON_CHARS = 8 * 1024
+
 internal val riderDefaultQuickMessages = listOf(
     "กำลังเดินทางไปครับ", "ถึงหน้าร้านแล้วครับ", "ได้รับสินค้าแล้ว กำลังไปส่งครับ",
     "ใกล้ถึงแล้วครับ อีกประมาณ 5 นาที", "ถึงจุดส่งแล้วครับ"
@@ -42,6 +44,10 @@ internal class RiderQuickMessageStore(context: Context, userId: String) {
     private val key = "messages:$userId"
     fun load(): List<String> {
         val raw = prefs.getString(key, null) ?: return riderDefaultQuickMessages
+        if (raw.length > RIDER_QUICK_MESSAGES_MAX_JSON_CHARS) {
+            prefs.edit().remove(key).apply()
+            return riderDefaultQuickMessages
+        }
         return runCatching {
             val array = JSONArray(raw)
             (0 until minOf(5, array.length())).map { array.getString(it).take(100) }

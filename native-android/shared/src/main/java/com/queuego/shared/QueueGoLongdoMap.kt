@@ -82,6 +82,15 @@ private class TrackingMapHolder {
         }
     }
 
+    fun releaseGraphics() {
+        pins.clear()
+        renderedPoints = null
+        bitmaps.values.forEach { bitmap ->
+            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
+        }
+        bitmaps.clear()
+    }
+
     fun draw(points: List<QgMapPoint>) {
         val activeMap = map ?: return
         if (disposed) return
@@ -202,6 +211,7 @@ fun QgLongdoTrackingMap(
             holder.disposed = true
             runCatching { holder.map?.clearPin() }
             runCatching { holder.pause() }
+            holder.releaseGraphics()
             holder.map = null
             holder.view = null
         }

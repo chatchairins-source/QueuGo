@@ -7,6 +7,9 @@ for(const p of [
   'settings.gradle.kts',
   'build.gradle.kts',
   'shared/build.gradle.kts',
+  'shared/src/main/java/com/queuego/shared/NativeExitDiagnostics.kt',
+  'shared/src/main/java/com/queuego/shared/QueueGoDesign.kt',
+  'shared/src/main/java/com/queuego/shared/NativeChatImage.kt',
   'shared/src/main/java/com/queuego/shared/QueueGoAccountDeletion.kt',
   'customer/build.gradle.kts',
   'customer/src/main/AndroidManifest.xml',
@@ -91,6 +94,45 @@ const all=[];
 })(root);
 const source=all.join('\n');
 
+const sharedDesign=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
+const sharedChatImage=read('shared/src/main/java/com/queuego/shared/NativeChatImage.kt');
+const exitDiagnostics=read('shared/src/main/java/com/queuego/shared/NativeExitDiagnostics.kt');
+const customerMainForExit=read('customer/src/main/java/com/queuego/customer/MainActivity.kt');
+const merchantMainForExit=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
+const riderMainForExit=read('rider/src/main/java/com/queuego/rider/MainActivity.kt');
+const merchantImageUploadForMemory=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
+ok(
+  sharedDesign.includes('QG_REMOTE_IMAGE_MAX_BYTES') &&
+  sharedDesign.includes('readQueueGoImageLimited') &&
+  sharedDesign.includes('inJustDecodeBounds = true') &&
+  sharedDesign.includes('inSampleSize = sample') &&
+  sharedDesign.includes('DisposableEffect(image)') &&
+  !sharedDesign.includes('inputStream.use { it.readBytes() }'),
+  'Shared remote images must be bounded, sampled before decode and recycled instead of risking all-role OOM'
+);
+ok(
+  sharedChatImage.includes('DisposableEffect(bitmap)') &&
+  sharedChatImage.includes('owned.recycle()'),
+  'Shared chat images must release Bitmap memory when messages leave composition'
+);
+ok(
+  merchantImageUploadForMemory.includes('inJustDecodeBounds = true') &&
+  merchantImageUploadForMemory.includes('inSampleSize = sample') &&
+  merchantImageUploadForMemory.indexOf('inJustDecodeBounds = true') <
+    merchantImageUploadForMemory.indexOf('val decoded = BitmapFactory.decodeByteArray'),
+  'Merchant uploads must sample camera/gallery images before allocating the full Bitmap'
+);
+ok(
+  exitDiagnostics.includes('getHistoricalProcessExitReasons') &&
+  exitDiagnostics.includes('REASON_LOW_MEMORY') &&
+  exitDiagnostics.includes('REASON_ANR') &&
+  !exitDiagnostics.includes('traceInputStream') &&
+  customerMainForExit.includes('NativeExitDiagnostics.recordPreviousProcessExit(this, "customer")') &&
+  merchantMainForExit.includes('NativeExitDiagnostics.recordPreviousProcessExit(this, "merchant")') &&
+  riderMainForExit.includes('NativeExitDiagnostics.recordPreviousProcessExit(this, "rider")'),
+  'All three native apps must record coarse Android exit reasons without collecting exit traces'
+);
+
 ok(!/android\.webkit\.WebView|<WebView\b|loadUrl\(/.test(source),'native apps must not use WebView UI');
 ok(source.includes('expectedRole = "customer"')&&source.includes('expectedRole = "shop"'),'Customer/Merchant must validate real QueueGo roles');
 const customerMain=read('customer/src/main/java/com/queuego/customer/MainActivity.kt');
@@ -121,7 +163,7 @@ ok(source.includes('notifications?select=id,title,message,type,reference_id,is_r
 ok(source.includes('qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at')&&source.includes('qg_create_ticket'),'Customer native support must use production ticket RPC');
 ok(source.includes('qg_customer_order_context')&&source.includes('CustomerTrackingRider'),'Customer native tracking must use production order context');
 const customerTrackingScreen=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
-ok(source.includes('"order" -> CustomerOrderTrackingScreen')&&customerTrackingScreen.includes('"สถานะล่าสุด"')&&customerTrackingScreen.includes('"ส่งไปที่"')&&customerTrackingScreen.includes('CustomerTrackingProgress(stage)')&&customerTrackingScreen.includes('"Rider ของคุณ"')&&customerTrackingScreen.includes('"รายการสินค้า"')&&customerTrackingScreen.includes('"ยอดรวม"'),'Customer native tracking must preserve Production order-detail hierarchy');
+ok((source.includes('"order" -> CustomerOrderTrackingScreen')||(source.includes('selectedOrder?.fulfillmentVertical == "ride"')&&source.includes('else CustomerOrderTrackingScreen(')))&&customerTrackingScreen.includes('"สถานะล่าสุด"')&&customerTrackingScreen.includes('"ส่งไปที่"')&&customerTrackingScreen.includes('CustomerTrackingProgress(stage)')&&customerTrackingScreen.includes('"Rider ของคุณ"')&&customerTrackingScreen.includes('"รายการสินค้า"')&&customerTrackingScreen.includes('"ยอดรวม"'),'Customer native tracking must preserve Production order-detail hierarchy');
 ok(customerTrackingScreen.includes('size(46.dp)')&&customerTrackingScreen.includes('RoundedCornerShape(20.dp)')&&customerTrackingScreen.includes('fontSize = 22.sp')&&customerTrackingScreen.includes('"แจ้งปัญหา"'),'Customer native tracking must preserve Production rider, hero, total and support proportions');
 const customerTrackingMap=read('customer/src/main/java/com/queuego/customer/CustomerTrackingMap.kt');
 ok(customerTrackingMap.includes('RoundedCornerShape(18.dp)')&&customerTrackingMap.includes('.padding(10.dp)')&&customerTrackingMap.includes('Color(0xFF20B46D)')&&customerTrackingMap.includes('fontSize = 9.sp'),'Customer native tracking map card must preserve Production radius, padding and live-location indicator');
@@ -166,7 +208,63 @@ ok(source.includes('ServiceCategoryScreen')&&source.includes('"category" -> Serv
 
 ok(source.includes('CustomerCategoryButton')&&source.includes('.size(54.dp)')&&source.includes('Modifier.size(92.dp)')&&source.includes('top = 13.dp, bottom = 10.dp')&&source.includes('fontSize = 18.sp'),'Customer native Home must preserve approved web location, category, heading and shop-card proportions');
 ok(source.includes('CustomerTopAction(')&&source.includes('R.drawable.qg_nav_bag')&&source.includes('R.drawable.qg_top_bell')&&source.includes('R.drawable.qg_top_user'),'Customer top actions must remain exact icon-first web vectors');
+const merchantMainSource=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
+ok(
+  merchantMainSource.includes('withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }') &&
+  merchantMainSource.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)') &&
+  merchantMainSource.includes('delay(5_000)') &&
+  merchantMainSource.includes('sessionLoaded') &&
+  !merchantMainSource.includes('delay(350)') &&
+  !merchantMainSource.includes('delay(1_000)') &&
+  !merchantMainSource.includes('val saved = store.load()\n            if (saved?.session'),
+  'Merchant secure-session polling must stay lifecycle-gated, off Main and outside the former hot polling loop'
+);
+const customerShopForMemory=read('customer/src/main/java/com/queuego/customer/CustomerShopScreen.kt');
+const customerSearchForMemory=read('customer/src/main/java/com/queuego/customer/CustomerSearchScreen.kt');
+const customerAppForMemory=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
+const merchantMediaForMemory=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
+ok(
+  sharedDesign.includes('QG_REMOTE_IMAGE_MAX_SIDE = 1280'),
+  'Shared remote images must keep the low-memory 1280px decode ceiling'
+);
+ok(
+  customerShopForMemory.includes('LazyColumn(Modifier.fillMaxSize())') &&
+  customerShopForMemory.includes('items(products, key = { it.id })') &&
+  !customerShopForMemory.includes('products.forEach { product ->'),
+  'Customer shop product images must lazy-render instead of allocating the entire catalog at once'
+);
+ok(
+  customerSearchForMemory.includes('LazyColumn(') &&
+  customerSearchForMemory.includes('items(rows, key = { "search-shop:" + it.id })') &&
+  !customerSearchForMemory.includes('rows.forEach { shop ->'),
+  'Customer search image results must lazy-render'
+);
+ok(
+  customerAppForMemory.includes('items(nearbyShops, key = { "home-shop:" + it.id })') &&
+  !customerAppForMemory.includes('else -> nearbyShops.forEach { shop ->'),
+  'Customer Home nearby-shop images must lazy-render'
+);
+ok(
+  merchantMediaForMemory.includes('LazyColumn(') &&
+  merchantMediaForMemory.includes('items = rows.chunked(3)') &&
+  !merchantMediaForMemory.includes('rows.chunked(3).forEach'),
+  'Merchant media gallery must lazy-render rows instead of decoding the full image library at once'
+);
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
+const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
+ok(
+  merchantAppSource.includes('runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90) }') &&
+  /val started = runCatching \{[\s\S]*?tone\.startTone\(ToneGenerator\.TONE_PROP_BEEP2, 650\)[\s\S]*?\}\.getOrDefault\(false\)/.test(merchantAppSource) &&
+  merchantAppSource.includes('if (!started) {') &&
+  merchantAppSource.includes('runCatching { tone.release() }'),
+  'Merchant notification audio must fail closed if the Android audio service cannot create or play a tone'
+);
+ok(
+  sharedMapForStability.includes('fun releaseGraphics()') &&
+  sharedMapForStability.includes('bitmap.recycle()') &&
+  sharedMapForStability.includes('holder.releaseGraphics()'),
+  'Shared Longdo tracking maps must release owned marker Bitmaps when the map leaves composition'
+);
 ok(merchantAppSource.includes('LaunchedEffect(screen, auth.session.accessToken, lifecycle)')&&
    merchantAppSource.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')&&
    merchantAppSource.includes('.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }'),
@@ -221,7 +319,8 @@ ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
    riderApp.includes('riderApplyPickupCommit(')&&
    riderApp.includes('pickupCommittedStatus ?: "picked_up"')&&
    riderApp.includes('pickup.copy(status = "PICKED_UP")')&&
-   riderApp.includes('bundled.copy(job = bundled.job.copy(status = "completed"))')&&
+   riderApp.includes('riderAfterDeliveryCommit(previous, job.id)')&&
+   read('rider/src/main/java/com/queuego/rider/RiderContinuousDispatch.kt').includes('bundled.copy(job = bundled.job.copy(status = "completed"))')&&
    riderApp.includes('persistCommittedSnapshot(localAfterSuccess)')&&
    riderApp.includes('?: localAfterSuccess?.activeJob'),
    'Rider proof success must advance local workflow immediately, including bundle-aware pickup handoff, so verification cannot repeat when refresh is slow or fails');
@@ -265,16 +364,22 @@ ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
    !riderApp.includes('RiderMiniJobSheet(')&&
    riderApp.includes('recenterSignal'),
    'Rider native must keep a fixed non-draggable active job card over the map with recenter control');
-ok(riderApp.includes('val cachedAtComposition = remember { store.load() }')&&
-   riderApp.includes('mutableStateOf<QueueGoAuth?>(cachedAtComposition)')&&
-   riderApp.includes('pushStore.loadHomeSnapshot(auth.user.id)')&&
+ok(riderApp.includes('var auth by remember { mutableStateOf<QueueGoAuth?>(null) }')&&
+   riderApp.includes('var restoring by remember { mutableStateOf(true) }')&&
+   riderApp.includes('val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&
+   riderApp.includes('if (auth == null) auth = cached')&&
+   riderApp.includes('restoring -> LoadingScreen')&&
+   riderApp.includes('auth == null -> LoginScreen')&&
+   riderApp.includes('val cachedSnapshot = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&
+   riderApp.includes('if (snapshot == null && cachedSnapshot != null) snapshot = cachedSnapshot')&&
    riderApp.includes('riderResolveMissingActiveSnapshot(')&&
    riderApp.includes('lookup?.getOrNull()')&&
    riderApp.includes('lookup?.isSuccess == true')&&
    riderApp.includes('pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot)')&&
-   riderApp.includes('rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }')&&
+   riderApp.includes('val savedTab = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&
+   riderApp.includes('if (!activeTabHydrated) return@LaunchedEffect')&&
    riderApp.includes('pushStore.saveActiveTab(auth.user.id, activeTab)'),
-   'Rider must restore encrypted session, monotonic active work snapshot and the persisted tab without a cold reload after activity recreation');
+   'Rider must restore encrypted session, monotonic active work snapshot and persisted tab off Main without flashing login after activity recreation');
 ok(riderSessionStore.includes('saveHomeSnapshot(')&&riderSessionStore.includes('loadHomeSnapshot(')&&riderSessionStore.includes('home_snapshot'),'Rider session store must persist encrypted home work state for background/process recovery');
 ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.includes('android:alwaysRetainTaskState="true"'),'Rider launcher must reuse its existing task instead of creating a fresh work activity after app switching');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
@@ -351,7 +456,7 @@ ok(source.includes('rpc/market_save_product')===false && source.includes('"marke
 ok(source.includes('market_products?select=product_id,unit,pack_size,item_weight_kg,stock_quantity,min_stock,cost_price')&&source.includes('market_stock_movements?select=type,quantity,note,created_at'),'Merchant native market stock must load authoritative market inventory and movements');
 ok(merchantMarketStock.includes('สินค้าและสต๊อกตลาด')&&merchantMarketStock.includes('รับเข้า / ปรับยอด')&&merchantMarketStock.includes('สต๊อกเริ่มต้น')&&merchantMarketStock.includes('แจ้งเตือนใกล้หมด'),'Merchant native market stock must preserve Production stock workflow');
 ok(source.includes('"market-stock" ->')&&source.includes('MerchantMenuTile("ตลาดและสต๊อก"'),'Merchant native market shops must expose dedicated Market stock route');
-const sharedDesign=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
+
 ok(sharedDesign.includes('"tag" ->')&&sharedDesign.includes('"chart" ->')&&sharedDesign.includes('"clock" ->')&&sharedDesign.includes('"support" ->'),'shared native icon set must preserve Merchant web vectors');
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_manage'),'Merchant native Laundry must use production laundry state/actions');
 ok(source.includes('พร้อมส่ง · เหลือ'),'Merchant preparation countdown must remain on ready button');
@@ -406,7 +511,7 @@ const specialTracking=fs.readFileSync(path.join(root,'customer/src/main/java/com
 ok(specialTracking.includes('api.trip(auth, trip.id)')&&specialTracking.includes('api.order(auth, order.id)')&&specialTracking.includes('repeatOnLifecycle(Lifecycle.State.STARTED)')&&specialTracking.includes('catch (cancelled: CancellationException) { throw cancelled }'),'Market/Laundry detail must read authoritative owner/id snapshots and suspend polling in background');
 ok(specialTracking.includes('d.actualQuantity')&&specialTracking.includes('d.pickupFee')&&specialTracking.includes('d.returnFee')&&specialTracking.includes('งานนี้ถูกยกเลิก'),'Laundry details must preserve snapshot pricing/quantity/fees and explicit cancellation');
 ok(marketApi.includes('qg_customer_cancel_market_order')&&specialTracking.includes('ยกเลิก Market Trip')&&specialTracking.includes('current.multiShopFee')&&specialTracking.includes('onTrackChild(child.id)'),'Market Trip must preserve current Web cancellation/tracking actions and server fee snapshots');
-ok(source.includes('if (!authRequested) {\n        QueueGoTheme {\n        GuestCustomerShell('),'Customer guest screens must use the existing Production-red QueueGoTheme');
+ok(source.includes('if (authRequested == false) {\n        QueueGoTheme {\n        GuestCustomerShell('),'Customer guest screens must use the existing Production-red QueueGoTheme');
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
 ok(/queuego_(?:set_laundry_rider_mode|laundry_rider_|claim_laundry_job)/.test(riderApi)&&riderApi.includes('queuego_laundry_rider_state'),'Rider Native must load and mutate Production Laundry jobs through authoritative RPCs');
 ok(riderApp.includes('RiderLaundryActiveCard(')&&riderApp.includes('RiderLaundryPoolCard(')&&!riderApp.includes('riderLaundryNavigationTarget')&&!riderMap.includes('RiderLaundryJob'),'Rider Native must render Production Laundry work while navigation hands off to Google Maps without a duplicate in-app route engine');

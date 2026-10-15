@@ -42,7 +42,9 @@ import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgRed
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Production web allows anonymous Home/category/search/shop/cart/market/map/promotion browsing.
@@ -58,7 +60,6 @@ internal fun GuestCustomerShell(
     val context = LocalContext.current
     val cartStore = remember { CustomerCartStore(context, "guest") }
     val locationStore = remember { CustomerLocationStore(context) }
-    val savedLocation = remember { locationStore.load() }
     val shopCatalog = remember { CustomerShopCatalog(scope) }
     val catalogState by shopCatalog.state.collectAsState()
 
@@ -72,16 +73,28 @@ internal fun GuestCustomerShell(
     var banners by remember { mutableStateOf<List<HomeBanner>>(emptyList()) }
     var serviceBanners by remember { mutableStateOf<Map<String, ServiceBanner>>(emptyMap()) }
     var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
-    var cart by remember { mutableStateOf(cartStore.load()) }
-    var location by remember { mutableStateOf(savedLocation) }
-    var address by remember { mutableStateOf(savedLocation?.address.orEmpty()) }
+    var cart by remember { mutableStateOf<List<CartLine>>(emptyList()) }
+    var location by remember { mutableStateOf<CustomerLocation?>(null) }
+    var address by remember { mutableStateOf("") }
+    var localStateLoaded by remember { mutableStateOf(false) }
     var locationBusy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
 
     DisposableEffect(shopCatalog) { onDispose { shopCatalog.close() } }
     LaunchedEffect(screen) { if (screen != "shop") shopCatalog.close() }
-    LaunchedEffect(cart) { cartStore.save(cart) }
+    LaunchedEffect(cartStore, locationStore) {
+        val restored = withContext(Dispatchers.IO) {
+            cartStore.load() to locationStore.load()
+        }
+        cart = restored.first
+        location = restored.second
+        address = restored.second?.address.orEmpty()
+        localStateLoaded = true
+    }
+    LaunchedEffect(cart, localStateLoaded) {
+        if (localStateLoaded) withContext(Dispatchers.IO) { cartStore.save(cart) }
+    }
 
     fun refresh() {
         scope.launch {
@@ -244,6 +257,7 @@ internal fun GuestCustomerShell(
                     onSearch = { screen = "search" },
                     onCategory = { selected ->
                         when (selected) {
+                            "ride" -> onLogin("ride")
                             "market" -> screen = "market"
                             "laundry" -> onLogin("home")
                             "shopping" -> {

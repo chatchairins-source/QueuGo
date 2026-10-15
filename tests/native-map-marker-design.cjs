@@ -13,11 +13,13 @@ assert(map.includes('RiderStopVisual.PICKUP') && map.includes('RiderStopVisual.D
 assert(map.includes('canvas.drawText(number.toString()') && !map.includes('stop_more'));
 assert(map.includes('compareBy<RiderBundleOrder> { it.bundleSequence }'));
 assert(map.includes('compareBy<RiderBundleOrder> { it.dropRank }'));
-assert(map.includes('pickupOrder.size + index + 1, RiderStopVisual.DROPOFF'));
+assert(map.includes('bundled.dropoffStopRank ?: (pickupOrder.size + index + 1), RiderStopVisual.DROPOFF'));
 assert(map.includes('!bundled.job.shopArrived && !bundled.job.isDelivering'));
 assert(map.includes('if (!pickup.done) addStopPin'));
 assert(map.includes('stopPins.keys.filter { it !in desiredStops }'));
-assert(map.includes('ldmap.removePin(pin)') && !map.includes('clearPin()'));
+const markerUpdates=map.slice(0,map.indexOf('    fun dispose()'));
+assert(markerUpdates.includes('ldmap.removePin(pin)') && !markerUpdates.includes('clearPin()'));
+assert(map.includes('val pinsReleased = runCatching { map?.clearPin() }.isSuccess'));
 assert(map.includes('if (stopKey in stopPins) return'));
 assert(map.includes('existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_STEPS)'));
 assert(overlay.includes('R.drawable.qg_rider_brand_q') && overlay.includes('setCompoundDrawables'));

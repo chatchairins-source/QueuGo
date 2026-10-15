@@ -69,9 +69,13 @@ fun RiderProfileScreen(
     var showSafety by remember { mutableStateOf(false) }
     var showLearning by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
-    val voiceAssistantEnabled by remember(context, auth.user.id) {
-        RiderVoiceAssistantSettings.enabled(context, auth.user.id)
-    }.collectAsState()
+    val voiceAssistantState = remember(auth.user.id) {
+        RiderVoiceAssistantSettings.state(auth.user.id)
+    }
+    val voiceAssistantEnabled by voiceAssistantState.collectAsState()
+    LaunchedEffect(auth.user.id) {
+        RiderVoiceAssistantSettings.hydrate(context, auth.user.id)
+    }
     val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null && !busy) {
             busy = true
@@ -116,6 +120,7 @@ fun RiderProfileScreen(
     Box(modifier.fillMaxSize().background(Color(0xFFF8F7F8))) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp).padding(top = 15.dp, bottom = 78.dp)) {
+            RiderPassengerLicenseCard(auth, api)
             Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Spacer(Modifier.width(44.dp))
@@ -424,15 +429,19 @@ fun RiderProfileScreen(
                         Switch(
                             checked = voiceAssistantEnabled,
                             onCheckedChange = { enabled ->
-                                RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
-                                message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
+                                scope.launch {
+                                    RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
+                                    message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
+                                }
                             }
                         )
                     }
                 ) {
                     val enabled = !voiceAssistantEnabled
-                    RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
-                    message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
+                    scope.launch {
+                        RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
+                        message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
+                    }
                 }
                 RiderSettingDivider()
                 // Existing Android-only permission control; never an extra Home card.

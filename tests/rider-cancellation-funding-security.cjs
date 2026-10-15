@@ -1,0 +1,13 @@
+const fs=require('fs'),assert=require('assert');
+const name=fs.readdirSync('supabase/migrations').find(n=>n.endsWith('_rider_cancellation_funding_settlement.sql'));
+assert(name,'missing Rider funding settlement migration');
+const sql=fs.readFileSync('supabase/migrations/'+name,'utf8');
+let checks=0;
+const ok=(v,m)=>{assert.ok(v,m);checks++;};
+ok(sql.includes('public.qg_admin_rider_cancellation_funding_queue'),'admin funding queue must exist');
+ok(sql.includes('public.qg_admin_settle_rider_cancellation_funding'),'admin funding settlement RPC must exist');
+ok(sql.includes("if not public.is_active_admin() then raise exception 'admin required'"),'funding admin RPCs must require active admin');
+ok(sql.includes('from public,anon;'),'admin funding RPCs must revoke public and anon');
+ok(sql.includes('settled Rider funding is immutable'),'settled funding proof must be immutable');
+ok(sql.includes("current_setting('queuego.funding_settle',true)"),'direct settlement writes must require RPC context');
+console.log(JSON.stringify({checks,failures:0,scope:'Rider funding settlement Admin/auth surface'}));

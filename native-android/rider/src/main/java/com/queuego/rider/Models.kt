@@ -103,8 +103,13 @@ data class RiderJob(
     val customerCash: Double? = null,
     val customerSubtotal: Double? = null,
     val customerDeliveryFee: Double? = null,
-    val customerServiceFee: Double? = null
+    val customerServiceFee: Double? = null,
+    val fulfillmentVertical: String = "food",
+    val rideDurationMinutes: Double? = null,
+    val rideDistanceKm: Double? = null
 ) {
+    val isPassenger: Boolean get() = fulfillmentVertical == "ride"
+
     val numberLabel: String
         get() = nativeOrderNumber(orderNumber)
 
@@ -213,7 +218,12 @@ data class RiderBundleOrder(
     val riderExtraFee: Double,
     val detourKm: Double,
     val addedMinutes: Int,
-    val routeSequence: String?
+    val routeSequence: String?,
+    val pickupStopRank: Int? = null,
+    val dropoffStopRank: Int? = null,
+    val customerName: String? = null,
+    val readyEstimateAt: String? = null,
+    val readyWaitMinutes: Int? = null
 )
 
 data class RiderBundleCandidate(
@@ -239,11 +249,29 @@ data class RiderBundleCandidate(
         get() = nativeOrderNumber(orderNumber)
 }
 
+data class RiderBundleStop(val order: RiderBundleOrder, val pickup: Boolean, val rank: Int)
+
 data class RiderRouteBundleState(
     val activeOrders: List<RiderBundleOrder> = emptyList(),
     val candidates: List<RiderBundleCandidate> = emptyList()
 ) {
+    fun routeStops(): List<RiderBundleStop> {
+        val live = activeOrders.filter { it.job.status !in setOf("cancelled", "completed") }
+        val dynamic = live.any { it.pickupStopRank != null || it.dropoffStopRank != null }
+        if (dynamic && live.any { it.pickupStopRank == null || it.dropoffStopRank == null }) return emptyList()
+        val count = activeOrders.size
+        return live.flatMap { order ->
+            buildList {
+                if (!order.job.isDelivering) add(RiderBundleStop(order, true, order.pickupStopRank ?: order.bundleSequence))
+                add(RiderBundleStop(order, false, order.dropoffStopRank ?: (count + order.dropRank)))
+            }
+        }.sortedBy { it.rank }
+    }
+
     fun currentOrder(): RiderBundleOrder? {
+        if (activeOrders.any { it.pickupStopRank != null || it.dropoffStopRank != null }) {
+            return routeStops().firstOrNull()?.order
+        }
         val live = activeOrders.filter { it.job.status !in setOf("cancelled", "completed") }
         if (live.isEmpty()) return null
 
@@ -280,7 +308,14 @@ data class RiderCashLedgerEntry(
     val cashPaidMerchant: Double,
     val cashCollectedCustomer: Double,
     val createdAt: String?,
-    val cashRefundedMerchant: Double = 0.0
+    val cashRefundedMerchant: Double = 0.0,
+    val platformCancellationFunding: Double = 0.0,
+    val platformCancellationFundingCash: Double = 0.0,
+    val platformCancellationFundingStatus: String? = null,
+    val platformCancellationFundingSettledAt: String? = null,
+    val platformCancellationFundingReference: String? = null,
+    val platformReplacementTarget: Double = 0.0,
+    val platformReplacementOrderId: String? = null
 ) {
     val numberLabel: String
         get() = nativeOrderNumber(orderNumber)
@@ -337,7 +372,8 @@ data class RiderSnapshot(
     val laundry: RiderLaundryState = RiderLaundryState(),
     val bundle: RiderRouteBundleState = RiderRouteBundleState(),
     val profile: RiderProfileInfo? = null,
-    val deliveryReturn: RiderDeliveryReturn? = null
+    val deliveryReturn: RiderDeliveryReturn? = null,
+    val nextJob: RiderJob? = null
 )
 
 
@@ -346,7 +382,10 @@ data class RiderPeriodSummary(
     val jobs: Int,
     val income: Double,
     val onlineHours: Double,
-    val incomePerHour: Double?
+    val incomePerHour: Double?,
+    val cashRealizedIncome: Double = income,
+    val pendingPlatformFunding: Double = 0.0,
+    val settledPlatformFunding: Double = 0.0
 )
 
 data class RiderOfferPerformance(

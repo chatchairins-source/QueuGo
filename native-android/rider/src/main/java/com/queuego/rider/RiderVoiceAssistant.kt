@@ -3,29 +3,39 @@ package com.queuego.rider
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 
 internal object RiderVoiceAssistantSettings {
     private const val PREFS = "queuego-rider-voice-assistant"
     private val flows = linkedMapOf<String, MutableStateFlow<Boolean>>()
 
     @Synchronized
-    fun enabled(context: Context, userId: String): StateFlow<Boolean> =
-        flows.getOrPut(userId) {
-            MutableStateFlow(
-                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                    .getBoolean("enabled:$userId", false)
-            )
-        }
+    fun state(userId: String): StateFlow<Boolean> =
+        flows.getOrPut(userId) { MutableStateFlow(false) }
 
-    @Synchronized
-    fun setEnabled(context: Context, userId: String, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean("enabled:$userId", enabled)
-            .apply()
-        flows.getOrPut(userId) { MutableStateFlow(enabled) }.value = enabled
+    suspend fun hydrate(context: Context, userId: String) {
+        val enabled = withContext(Dispatchers.IO) {
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean("enabled:$userId", false)
+        }
+        synchronized(this) {
+            flows.getOrPut(userId) { MutableStateFlow(enabled) }.value = enabled
+        }
+    }
+
+    suspend fun setEnabled(context: Context, userId: String, enabled: Boolean) {
+        withContext(Dispatchers.IO) {
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("enabled:$userId", enabled)
+                .apply()
+        }
+        synchronized(this) {
+            flows.getOrPut(userId) { MutableStateFlow(enabled) }.value = enabled
+        }
     }
 }
 
@@ -35,23 +45,33 @@ internal class RiderVoiceAssistantSpeaker(context: Context) : TextToSpeech.OnIni
     private var pending: Pair<String, String>? = null
 
     init {
-        engine = TextToSpeech(context.applicationContext, this)
+        engine = runCatching { TextToSpeech(context.applicationContext, this) }.getOrNull()
     }
 
     override fun onInit(status: Int) {
         val current = engine ?: return
         if (status != TextToSpeech.SUCCESS) {
             pending = null
+            runCatching { current.shutdown() }
+            engine = null
             return
         }
-        val thaiResult = current.setLanguage(Locale("th", "TH"))
-        if (
-            thaiResult == TextToSpeech.LANG_MISSING_DATA ||
-            thaiResult == TextToSpeech.LANG_NOT_SUPPORTED
-        ) {
-            current.language = Locale.getDefault()
+        val configured = runCatching {
+            val thaiResult = current.setLanguage(Locale("th", "TH"))
+            if (
+                thaiResult == TextToSpeech.LANG_MISSING_DATA ||
+                thaiResult == TextToSpeech.LANG_NOT_SUPPORTED
+            ) {
+                current.language = Locale.getDefault()
+            }
+            current.setSpeechRate(1.0f)
+        }.isSuccess
+        if (!configured) {
+            pending = null
+            runCatching { current.shutdown() }
+            engine = null
+            return
         }
-        current.setSpeechRate(1.0f)
         ready = true
         pending?.let { (text, id) ->
             pending = null
@@ -66,7 +86,7 @@ internal class RiderVoiceAssistantSpeaker(context: Context) : TextToSpeech.OnIni
             pending = clean to utteranceId
             return
         }
-        engine?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+        runCatching { engine?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, utteranceId) }
     }
 
     fun stop() {

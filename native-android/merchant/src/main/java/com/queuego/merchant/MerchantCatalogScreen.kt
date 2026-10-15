@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -53,13 +55,14 @@ internal fun MerchantCatalogScreen(
                     (product.name + " " + product.category).lowercase().contains(cleanQuery))
         }.sortedBy { it.name }
     }
+    val productRows = remember(rows) { rows.chunked(2) }
 
-    Column(
+    LazyColumn(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp)
     ) {
+        item(key = "catalog-header") {
         Row(
             Modifier.padding(top = 7.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -154,8 +157,10 @@ internal fun MerchantCatalogScreen(
             fontWeight = FontWeight.ExtraBold
         )
         Spacer(Modifier.height(8.dp))
+        }
 
         if (rows.isEmpty()) {
+            item(key = "catalog-empty") {
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -175,8 +180,12 @@ internal fun MerchantCatalogScreen(
                     fontSize = 11.sp
                 )
             }
+            }
         } else {
-            rows.chunked(2).forEach { pair ->
+            items(
+                items = productRows,
+                key = { pair -> pair.joinToString("|") { it.id } }
+            ) { pair ->
                 Row(
                     Modifier.fillMaxWidth().padding(bottom = 9.dp),
                     horizontalArrangement = Arrangement.spacedBy(9.dp)
@@ -194,7 +203,8 @@ internal fun MerchantCatalogScreen(
                                 product.image,
                                 Modifier.fillMaxWidth().aspectRatio(1.35f),
                                 product.name,
-                                cornerRadius = 11.dp
+                                cornerRadius = 11.dp,
+                                maxDecodeSide = 384
                             )
                             Spacer(Modifier.height(7.dp))
                             Text(
@@ -223,6 +233,7 @@ internal fun MerchantCatalogScreen(
             }
         }
 
+        item(key = "catalog-add") {
         Spacer(Modifier.height(8.dp))
         Button(
             onClick = { onAddProduct(category.takeIf { it.isNotBlank() }) },
@@ -235,5 +246,6 @@ internal fun MerchantCatalogScreen(
             )
         }
         Spacer(Modifier.height(28.dp))
+        }
     }
 }

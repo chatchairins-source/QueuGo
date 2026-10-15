@@ -1,5 +1,7 @@
 package com.queuego.shared
 
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,13 +26,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private fun Context.queueGoLifecycleOwner(): LifecycleOwner? = when (this) {
+    is LifecycleOwner -> this
+    is ContextWrapper -> if (baseContext !== this) baseContext.queueGoLifecycleOwner() else null
+    else -> null
+}
 
 data class NativeAuthEntry(
     val busy: Boolean,
@@ -55,6 +68,7 @@ fun QueueGoAuthHost(
     val store = remember { SecureRoleSessionStore(context, expectedRole) }
     val scope = rememberCoroutineScope()
     val logoutScope = remember(context) { nativeLogoutScope(context, scope) }
+    val lifecycle = remember(context) { context.queueGoLifecycleOwner()?.lifecycle }
     var auth by remember { mutableStateOf<NativeAuth?>(null) }
     var restoring by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
@@ -73,7 +87,7 @@ fun QueueGoAuthHost(
         scope.launch {
             try {
                 val signedIn = api.signIn(identifier, password, expectedRole, store.deviceId())
-                store.save(signedIn)
+                withContext(Dispatchers.IO) { store.save(signedIn) }
                 auth = signedIn
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
@@ -105,7 +119,7 @@ fun QueueGoAuthHost(
                     }
                 }
                 customerAccountCreated = true
-                store.save(signedIn)
+                withContext(Dispatchers.IO) { store.save(signedIn) }
                 auth = signedIn
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
@@ -137,7 +151,7 @@ fun QueueGoAuthHost(
                     throw failure
                 }
                 merchantAccountCreated = true
-                store.save(signedIn)
+                withContext(Dispatchers.IO) { store.save(signedIn) }
                 auth = signedIn
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
@@ -152,10 +166,14 @@ fun QueueGoAuthHost(
     LaunchedEffect(expectedRole, restoreAttempt) {
         restoring = true
         try {
-            val cached = store.load()
+            val cached = withContext(Dispatchers.IO) { store.load() }
             if (cached != null) {
-                val validated = api.validate(cached, expectedRole) { store.save(it) }
-                store.save(validated)
+                val validated = api.validate(cached, expectedRole) { refreshed ->
+                    // validate() executes on Dispatchers.IO. Persist token rotation there,
+                    // but never mutate Compose state from that background callback.
+                    store.save(refreshed)
+                }
+                withContext(Dispatchers.IO) { store.save(validated) }
                 auth = validated
             }
             recoveryRequired = false
@@ -172,30 +190,34 @@ fun QueueGoAuthHost(
         }
     }
 
-    LaunchedEffect(auth?.session?.sessionId) {
+    LaunchedEffect(auth?.session?.sessionId, lifecycle) {
         if (auth == null) return@LaunchedEffect
-        while (true) {
-            delay(25_000)
-            val current = auth ?: break
-            try {
-                val validated = api.validate(current, expectedRole) { refreshed ->
-                    store.save(refreshed)
-                    auth = refreshed
+        val activeLifecycle = lifecycle ?: return@LaunchedEffect
+        activeLifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(25_000)
+                val current = auth ?: break
+                try {
+                    val validated = api.validate(current, expectedRole) { refreshed ->
+                        // This callback runs inside NativeAuthApi's IO context.
+                        store.save(refreshed)
+                    }
+                    // Android Keystore/AES persistence can block on some OEM devices.
+                    // Keep it off Main and update Compose state only after returning.
+                    withContext(Dispatchers.IO) { store.save(validated) }
+                    auth = validated
+                    api.touch(validated.session)
+                } catch (failure: Exception) {
+                    if (failure is CancellationException) throw failure
+                    if (shouldClearNativeSession(failure)) {
+                        store.clear()
+                        auth = null
+                        error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
+                        return@repeatOnLifecycle
+                    }
+                    // A failed network read does not revoke a previously validated session.
+                    // Try again on the next foreground tick; FCM remains the background path.
                 }
-                // Persist rotated refresh tokens before the independent heartbeat can fail.
-                store.save(validated)
-                auth = validated
-                api.touch(validated.session)
-            } catch (failure: Exception) {
-                if (failure is CancellationException) throw failure
-                if (shouldClearNativeSession(failure)) {
-                    store.clear()
-                    auth = null
-                    error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
-                    break
-                }
-                // A failed network read does not revoke a previously validated session.
-                // Try again on the next tick; protected writes remain server-authorized.
             }
         }
     }

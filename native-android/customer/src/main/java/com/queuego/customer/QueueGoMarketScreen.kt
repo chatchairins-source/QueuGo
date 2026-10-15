@@ -53,6 +53,8 @@ import com.queuego.shared.QgSectionTitle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.queuego.shared.QueueGoHttpException
 
 @Composable
@@ -77,7 +79,7 @@ fun MarketNativeScreen(
     val actorId = auth?.user?.id ?: "guest"
     val cartStore = remember(actorId) { MarketCartStore(context, actorId) }
     val checkout = remember(actorId) { CustomerCheckoutRecovery<PendingMarketCheckout, org.json.JSONObject>(cartStore.journal()) }
-    var checkoutPending by remember(actorId) { mutableStateOf(cartStore.hasPendingCheckout()) }
+    var checkoutPending by remember(actorId) { mutableStateOf(false) }
     var pricing by remember { mutableStateOf<MarketPricing?>(null) }
     var marketMenuOpen by remember { mutableStateOf(false) }
     var markets by remember { mutableStateOf<List<MarketInfo>>(emptyList()) }
@@ -106,6 +108,7 @@ fun MarketNativeScreen(
         loading = true
         loadFailed = false
         pricing = null
+        checkoutPending = withContext(Dispatchers.IO) { cartStore.hasPendingCheckout() }
         runCatching {
             val m = if (auth == null) api.loadMarketsPublic() else api.loadMarkets(auth)
             markets = m
@@ -124,18 +127,28 @@ fun MarketNativeScreen(
                         if (restored.map { it.product.marketId }.toSet().size <= 1) restored else emptyList()
                     }
 
-                val accountCart = restore(cartStore.load())
+                val accountCart = restore(withContext(Dispatchers.IO) { cartStore.load() })
                 val guestStore = if (auth == null) null else MarketCartStore(context, "guest")
-                val guestRevision = if (checkoutPending) null else guestStore?.revisionForMerge()
-                val alreadyMerged = guestRevision != null && cartStore.hasMergedGuest(guestRevision)
-                val guestCart = if (checkoutPending || alreadyMerged) emptyList() else guestStore?.let { restore(it.load()) }.orEmpty()
+                val guestRevision = if (checkoutPending) null else withContext(Dispatchers.IO) {
+                    guestStore?.revisionForMerge()
+                }
+                val alreadyMerged = guestRevision != null && withContext(Dispatchers.IO) {
+                    cartStore.hasMergedGuest(guestRevision)
+                }
+                val guestCart = if (checkoutPending || alreadyMerged) emptyList() else guestStore?.let { store ->
+                    restore(withContext(Dispatchers.IO) { store.load() })
+                }.orEmpty()
                 if (!checkoutPending && alreadyMerged) {
-                    commitMarketGuestMerge(true, { }, { guestStore?.clearMergedGuest() })
+                    withContext(Dispatchers.IO) {
+                        commitMarketGuestMerge(true, { }, { guestStore?.clearMergedGuest() })
+                    }
                 }
                 cart = when {
                     guestCart.isEmpty() -> accountCart
                     accountCart.isEmpty() -> {
-                        commitMarketGuestMerge(false, { cartStore.persistGuestMerge(guestCart, requireNotNull(guestRevision)) }, { guestStore?.clearMergedGuest() })
+                        withContext(Dispatchers.IO) {
+                            commitMarketGuestMerge(false, { cartStore.persistGuestMerge(guestCart, requireNotNull(guestRevision)) }, { guestStore?.clearMergedGuest() })
+                        }
                         guestCart
                     }
                     accountCart.first().product.marketId == guestCart.first().product.marketId -> {
@@ -151,7 +164,9 @@ fun MarketNativeScreen(
                                         .coerceAtLeast(1)
                                 )
                             }
-                        commitMarketGuestMerge(false, { cartStore.persistGuestMerge(merged, requireNotNull(guestRevision)) }, { guestStore?.clearMergedGuest() })
+                        withContext(Dispatchers.IO) {
+                            commitMarketGuestMerge(false, { cartStore.persistGuestMerge(merged, requireNotNull(guestRevision)) }, { guestStore?.clearMergedGuest() })
+                        }
                         merged
                     }
                     else -> {
@@ -179,7 +194,9 @@ fun MarketNativeScreen(
     LaunchedEffect(cartPage) { if (cartPage) reload++ }
 
     LaunchedEffect(cart, restoredCart, checkoutPending) {
-        if (restoredCart && !checkoutPending) cartStore.save(cart)
+        if (restoredCart && !checkoutPending) {
+            withContext(Dispatchers.IO) { cartStore.save(cart) }
+        }
     }
 
     val market = markets.find { it.id == selectedMarket }
@@ -299,7 +316,7 @@ fun MarketNativeScreen(
                         .clickable(enabled = count > 0) { selectedShop = s.id; selectedCategory = "all" }
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        QgRemoteImage(s.logo ?: s.cover, Modifier.size(64.dp), s.name)
+                        QgRemoteImage(s.logo ?: s.cover, Modifier.size(64.dp), s.name, maxDecodeSide = 256)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(s.name, fontWeight = FontWeight.ExtraBold)
@@ -329,7 +346,7 @@ fun MarketNativeScreen(
             } else products.forEach { p ->
                 if (p.availablePacks <= 0) return@forEach
                 Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    QgRemoteImage(p.image, Modifier.size(62.dp), p.name)
+                    QgRemoteImage(p.image, Modifier.size(62.dp), p.name, maxDecodeSide = 256)
                     Spacer(Modifier.width(9.dp))
                     Column(Modifier.weight(1f)) {
                         Text(p.name, fontWeight = FontWeight.Bold)
@@ -376,7 +393,7 @@ fun MarketNativeScreen(
                             modifier = Modifier.padding(top = 12.dp))
                         shopLines.forEach { line ->
                             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                QgRemoteImage(line.product.image, Modifier.size(62.dp), line.product.name)
+                                QgRemoteImage(line.product.image, Modifier.size(62.dp), line.product.name, maxDecodeSide = 256)
                                 Spacer(Modifier.width(9.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(line.product.name, fontWeight = FontWeight.Bold)
@@ -480,7 +497,9 @@ fun MarketNativeScreen(
                             } catch (e: Exception) {
                                 message = e.message ?: "ยืนยันตลาดสดไม่สำเร็จ"
                             } finally {
-                                checkoutPending = cartStore.hasPendingCheckout()
+                                checkoutPending = withContext(Dispatchers.IO) {
+                                    cartStore.hasPendingCheckout()
+                                }
                                 busy = false
                             }
                         }

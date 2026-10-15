@@ -111,20 +111,47 @@ def capture_customer_market(directory: Path, dimensions: str):
     path = directory / "market-home-navigation.xml"
     nodes = read_ui(path)
     target = None
+    category_labels = {"อาหาร", "เครื่องดื่ม", "ร้านขายของชำ", "ฝากซัก", "ตลาดสด", "ช้อปปิ้ง"}
+
+    # Ride adds a real Home action above the category row, so on shorter viewports
+    # the row can legitimately start below the visible LazyColumn window. Reveal
+    # the row first by swiping inside the actual vertically-scrollable semantics
+    # bounds; only then perform the category row's horizontal swipes.
+    for _ in range(5):
+        target = next((n for n in nodes if n.get("text") == "ตลาดสด"), None)
+        anchor = next((n for n in nodes if n.get("text") in category_labels), None)
+        if target is not None or anchor is not None:
+            break
+        scrollables = []
+        for node in nodes:
+            if node.get("scrollable") != "true":
+                continue
+            bounds = [int(x) for x in re.findall(r"\d+", node.get("bounds", ""))]
+            if len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]:
+                scrollables.append((bounds, node))
+        assert scrollables, "Customer Home vertical scroll container missing"
+        bounds, _ = max(scrollables, key=lambda item: (item[0][3] - item[0][1]) * (item[0][2] - item[0][0]))
+        x = (bounds[0] + bounds[2]) // 2
+        start_y = bounds[3] - max(24, (bounds[3] - bounds[1]) // 10)
+        end_y = bounds[1] + max(24, (bounds[3] - bounds[1]) // 3)
+        assert bounds[0] <= x <= bounds[2] and bounds[1] < end_y < start_y < bounds[3]
+        run(adb + ["shell", "input", "swipe", str(x), str(start_y), str(x), str(end_y), "350"])
+        nodes = read_ui(path)
+
     for _ in range(6):
         target = next((n for n in nodes if n.get("text") == "ตลาดสด"), None)
         if target is not None:
             break
         # The current Home category row scrolls horizontally. Derive its y from
         # a rendered category label instead of using guessed screen coordinates.
-        anchor = next((n for n in nodes if n.get("text") in ("อาหาร", "เครื่องดื่ม", "ของใช้", "ฝากซัก")), None)
-        assert anchor is not None, "Customer category row missing"
+        anchor = next((n for n in nodes if n.get("text") in category_labels), None)
+        assert anchor is not None, "Customer category row missing after bounded vertical reveal"
         bounds = [int(x) for x in re.findall(r"\d+", anchor.get("bounds", ""))]
         assert len(bounds) == 4 and 0 <= bounds[1] < bounds[3] <= height
         y = (bounds[1] + bounds[3]) // 2
         run(adb + ["shell", "input", "swipe", str(width - 40), str(y), "40", str(y), "350"])
         nodes = read_ui(path)
-    assert target is not None, "Market category did not become visible after bounded swipes"
+    assert target is not None, "Market category did not become visible after bounded vertical/horizontal swipes"
     bounds = [int(x) for x in re.findall(r"\d+", target.get("bounds", ""))]
     assert len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]
     run(adb + ["shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2)])
@@ -403,6 +430,129 @@ def capture_role_viewports(roles=("customer", "merchant", "rider")):
             evidence.append(item)
     (output / "matrix-metadata.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n")
     print("Actual " + ",".join(roles) + " phone/small-phone/large-screen fresh-session launch matrix PASS; authenticated E2E/visual parity remain unverified")
+
+
+
+def verify_three_role_system_kill_recovery():
+    """Exercise Android-style background process death and cold recreation for all three apps."""
+    evidence = []
+    run(adb + ["shell", "wm", "size", "1080x2280"])
+    run(adb + ["shell", "wm", "density", "440"])
+    for role in ("customer", "merchant", "rider"):
+        pkg = "com.queuego." + role
+        component_name = pkg + "/.MainActivity"
+        directory = output / "system-kill-recovery" / role
+        directory.mkdir(parents=True, exist_ok=True)
+
+        # Emulator-only clean state. No Production account/order/data mutation.
+        run(adb + ["shell", "pm", "clear", pkg])
+        run(adb + ["logcat", "-b", "all", "-c"])
+        started = run(
+            adb + ["shell", "am", "start", "-W", "-n", component_name],
+            capture_output=True,
+            text=True,
+        )
+        (directory / "initial-start.txt").write_text(started.stdout + started.stderr)
+        assert "Status: ok" in started.stdout, f"{role} initial launch failed before process-kill test"
+        time.sleep(2)
+        before_pids = package_pids(pkg)
+
+        trim_running = subprocess.run(
+            adb + ["shell", "am", "send-trim-memory", pkg, "RUNNING_CRITICAL"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        (directory / "trim-running-critical.txt").write_text(trim_running.stdout + trim_running.stderr)
+
+        # A low-memory kill only applies to background/cached apps. HOME first, then
+        # request COMPLETE trim and kill the process without force-stop semantics.
+        run(adb + ["shell", "input", "keyevent", "3"])
+        time.sleep(1)
+        trim_complete = subprocess.run(
+            adb + ["shell", "am", "send-trim-memory", pkg, "COMPLETE"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        (directory / "trim-complete.txt").write_text(trim_complete.stdout + trim_complete.stderr)
+        run(adb + ["shell", "am", "kill", pkg])
+        time.sleep(1)
+
+        dead = subprocess.run(
+            adb + ["shell", "pidof", pkg],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        (directory / "after-kill-pid.txt").write_text(dead.stdout + dead.stderr)
+        assert not dead.stdout.strip(), f"{role} process did not die after background am kill"
+
+        relaunched = run(
+            adb + ["shell", "am", "start", "-W", "-n", component_name],
+            capture_output=True,
+            text=True,
+        )
+        (directory / "relaunch.txt").write_text(relaunched.stdout + relaunched.stderr)
+        assert "Status: ok" in relaunched.stdout, f"{role} did not relaunch after system-style process death"
+        time.sleep(2)
+
+        after_pids = package_pids(pkg)
+        activities = run(
+            adb + ["shell", "dumpsys", "activity", "activities"],
+            capture_output=True,
+            text=True,
+        ).stdout
+        assert any(
+            "mResumedActivity" in line and component_name in line
+            for line in activities.splitlines()
+        ), f"{role} Activity was not resumed after process recreation"
+
+        assert_no_package_crash(pkg, directory / "crash-buffer.txt")
+        nodes = read_ui(directory / "relaunch-ui.xml")
+        assert any(n.get("package") == pkg for n in nodes), f"{role} UI missing after process recreation"
+        combined = "\n".join(
+            (n.get("text", "") + " " + n.get("content-desc", "")).strip()
+            for n in nodes
+        )
+        if role == "customer":
+            assert "ตะกร้า" in combined and "เข้าสู่ระบบ" in combined, "Customer guest Home did not recover after system kill"
+        elif role == "merchant":
+            assert "เข้าสู่ระบบร้านค้า" in combined, "Merchant login did not recover after system kill"
+        else:
+            assert "เข้าสู่ระบบ" in combined and "สมัครเป็นไรเดอร์" in combined, "Rider login did not recover after system kill"
+
+        runtime = android_runtime_for_pids(after_pids)
+        (directory / "android-runtime.txt").write_text(runtime)
+        assert "FATAL EXCEPTION" not in runtime, f"{role} crashed after process recreation"
+
+        with (directory / "relaunch.png").open("wb") as png:
+            run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+
+        evidence.append({
+            "role": role,
+            "package": pkg,
+            "before_pids": before_pids,
+            "after_pids": after_pids,
+            "running_critical_trim_exit": trim_running.returncode,
+            "complete_trim_exit": trim_complete.returncode,
+            "background_am_kill": "PASS",
+            "cold_relaunch": "PASS",
+            "fatal_exception": False,
+            "physical_device": False,
+            "production_account_or_order_writes": False,
+        })
+
+    (output / "three-role-system-kill-recovery.json").write_text(
+        json.dumps({
+            "source_head": os.environ["GITHUB_SHA"],
+            "workflow_run": os.environ["GITHUB_RUN_ID"],
+            "cases": evidence,
+            "physical_device": False,
+            "production_account_or_order_writes": False,
+        }, ensure_ascii=False, indent=2) + "\n"
+    )
+    print("Customer/Merchant/Rider background system-kill and cold recreation PASS")
 
 
 def valid_real_map_evidence(filename, payload):
@@ -847,6 +997,7 @@ with (output / "emulator.log").open("w") as log:
             (output / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
             print("Actual Rider unauthenticated launch PASS; Home visual / E2E / physical FCM remain unverified")
             capture_role_viewports()
+            verify_three_role_system_kill_recovery()
             verify_real_home_map_runtime()
             verify_proof_process_recovery()
             verify_voice_foreground_runtime()

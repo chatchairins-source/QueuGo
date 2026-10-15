@@ -79,8 +79,11 @@ fun CustomerAuthenticationScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val busy = entry.busy || locating
     val red = Color(0xFFF04455)
-    val guestCartCount = remember(context) {
-        CustomerCartStore(context, "guest").load().sumOf { it.quantity }
+    var guestCartCount by remember(context) { mutableIntStateOf(0) }
+    LaunchedEffect(context) {
+        guestCartCount = withContext(Dispatchers.IO) {
+            CustomerCartStore(context, "guest").load().sumOf { it.quantity }
+        }
     }
 
     fun submitLogin() {

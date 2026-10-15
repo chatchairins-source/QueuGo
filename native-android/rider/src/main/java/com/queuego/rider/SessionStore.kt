@@ -14,9 +14,23 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+private const val RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS = 16 * 1024 * 1024
+private const val RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES = 24L * 1024L * 1024L
+private const val RIDER_SESSION_MAX_JSON_BYTES = 48 * 1024
+private const val RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS = 64 * 1024
+private const val RIDER_HOME_SNAPSHOT_MAX_JSON_CHARS = 1024 * 1024
+private const val RIDER_HOME_SNAPSHOT_MAX_ENCRYPTED_CHARS = 2 * 1024 * 1024
+
 class SessionStore(private val context: Context) {
     private val prefs = context.getSharedPreferences("queuego_rider_native", Context.MODE_PRIVATE)
     private val alias = "queuego_rider_native_session"
+
+    private fun boundedEncryptedPref(key: String, maxChars: Int): String? {
+        val raw = prefs.getString(key, null) ?: return null
+        if (raw.length <= maxChars) return raw
+        prefs.edit().remove(key).apply()
+        return null
+    }
 
     fun deviceId(): String =
         Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
@@ -43,11 +57,18 @@ class SessionStore(private val context: Context) {
             .put("role", auth.user.role)
             .put("status", auth.user.status)
             .toString()
-        prefs.edit().putString("session", encrypt(json)).apply()
+        require(json.toByteArray(Charsets.UTF_8).size <= RIDER_SESSION_MAX_JSON_BYTES) {
+            "Session มีขนาดใหญ่เกินกำหนด"
+        }
+        val encrypted = encrypt(json)
+        require(encrypted.length <= RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS) {
+            "Session ที่เข้ารหัสมีขนาดใหญ่เกินกำหนด"
+        }
+        prefs.edit().putString("session", encrypted).apply()
     }
 
     fun load(): QueueGoAuth? = runCatching {
-        val raw = prefs.getString("session", null) ?: return null
+        val raw = boundedEncryptedPref("session", RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS) ?: return null
         val o = JSONObject(decrypt(raw))
         QueueGoAuth(
             QueueGoSession(
@@ -83,7 +104,7 @@ class SessionStore(private val context: Context) {
 
     @Synchronized
     fun loadActiveTab(userId: String): String = runCatching {
-        val raw = prefs.getString("ui_state", null) ?: return "home"
+        val raw = boundedEncryptedPref("ui_state", RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS) ?: return "home"
         val root = JSONObject(decrypt(raw))
         if (root.optString("userId") != userId) return "home"
         when (val saved = root.optString("activeTab")) {
@@ -102,19 +123,21 @@ class SessionStore(private val context: Context) {
             .put("lat", camera[1])
             .put("zoom", camera[2])
             .put("centered", camera[3])
+            .put("tilt", camera.getOrElse(4) { 0.0 }.coerceIn(0.0, 50.0))
         prefs.edit().putString("map_camera", encrypt(root.toString())).apply()
     }
 
     @Synchronized
     fun loadMapCamera(userId: String): DoubleArray? = runCatching {
-        val raw = prefs.getString("map_camera", null) ?: return null
+        val raw = boundedEncryptedPref("map_camera", RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS) ?: return null
         val root = JSONObject(decrypt(raw))
         if (root.optString("userId") != userId) return null
         doubleArrayOf(
             root.getDouble("lon"),
             root.getDouble("lat"),
             root.getDouble("zoom"),
-            root.optDouble("centered", 0.0)
+            root.optDouble("centered", 0.0),
+            root.optDouble("tilt", 0.0).coerceIn(0.0, 50.0)
         ).takeIf { values -> values.all { it.isFinite() } }
     }.getOrNull()
 
@@ -129,7 +152,7 @@ class SessionStore(private val context: Context) {
 
     @Synchronized
     fun loadMapViewMode(userId: String): String = runCatching {
-        val raw = prefs.getString("map_view_mode", null) ?: return "FOLLOW"
+        val raw = boundedEncryptedPref("map_view_mode", RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS) ?: return "FOLLOW"
         val root = JSONObject(decrypt(raw))
         if (root.optString("userId") != userId) return "FOLLOW"
         when (root.optString("mode")) {
@@ -145,6 +168,7 @@ class SessionStore(private val context: Context) {
             .put("online", snapshot.online)
             .put("riderProfileId", snapshot.riderProfileId)
         snapshot.activeJob?.let { root.put("activeJob", riderJobToJson(it)) }
+        snapshot.nextJob?.let { root.put("nextJob", riderJobToJson(it)) }
         snapshot.laundry.activeJob?.let { root.put("laundryActiveJob", laundryJobToJson(it)) }
         root.put(
             "marketPickups",
@@ -158,13 +182,17 @@ class SessionStore(private val context: Context) {
                 snapshot.bundle.activeOrders.forEach { put(bundleOrderToJson(it)) }
             }
         )
-        val editor = prefs.edit().putString("home_snapshot", encrypt(root.toString()))
+        val plaintext = root.toString()
+        if (plaintext.length > RIDER_HOME_SNAPSHOT_MAX_JSON_CHARS) return false
+        val encrypted = encrypt(plaintext)
+        if (encrypted.length > RIDER_HOME_SNAPSHOT_MAX_ENCRYPTED_CHARS) return false
+        val editor = prefs.edit().putString("home_snapshot", encrypted)
         return if (durable) editor.commit() else { editor.apply(); true }
     }
 
     @Synchronized
     fun loadHomeSnapshot(userId: String): RiderSnapshot? = runCatching {
-        val raw = prefs.getString("home_snapshot", null) ?: return null
+        val raw = boundedEncryptedPref("home_snapshot", RIDER_HOME_SNAPSHOT_MAX_ENCRYPTED_CHARS) ?: return null
         val root = JSONObject(decrypt(raw))
         if (root.optString("userId") != userId) return null
         val activeJob = root.optJSONObject("activeJob")?.let(::riderJobFromJson)
@@ -177,6 +205,7 @@ class SessionStore(private val context: Context) {
             online = root.optBoolean("online", false),
             activeJob = activeJob,
             offeredJob = null,
+            nextJob = root.optJSONObject("nextJob")?.let { riderJobFromJson(it) },
             marketPickups = marketPickups,
             riderProfileId = root.optString("riderProfileId")
                 .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
@@ -217,6 +246,9 @@ class SessionStore(private val context: Context) {
         .put("detourKm", order.detourKm)
         .put("addedMinutes", order.addedMinutes)
         .put("routeSequence", order.routeSequence)
+        .put("pickupStopRank", order.pickupStopRank)
+        .put("dropoffStopRank", order.dropoffStopRank)
+        .put("customerName", order.customerName)
 
     private fun bundleOrderFromJson(o: JSONObject): RiderBundleOrder = RiderBundleOrder(
         bundleId = o.getString("bundleId"),
@@ -230,7 +262,10 @@ class SessionStore(private val context: Context) {
         riderExtraFee = o.optDouble("riderExtraFee", 0.0),
         detourKm = o.optDouble("detourKm", 0.0),
         addedMinutes = o.optInt("addedMinutes", 0),
-        routeSequence = o.optNullableString("routeSequence")
+        routeSequence = o.optNullableString("routeSequence"),
+        pickupStopRank = o.optInt("pickupStopRank").takeIf { it in 1..10 },
+        dropoffStopRank = o.optInt("dropoffStopRank").takeIf { it in 1..10 },
+        customerName = o.optNullableString("customerName")
     )
 
     private fun riderJobToJson(job: RiderJob): JSONObject = JSONObject()
@@ -253,6 +288,9 @@ class SessionStore(private val context: Context) {
         .put("customerSubtotal", job.customerSubtotal)
         .put("customerDeliveryFee", job.customerDeliveryFee)
         .put("customerServiceFee", job.customerServiceFee)
+        .put("fulfillmentVertical", job.fulfillmentVertical)
+        .put("rideDurationMinutes", job.rideDurationMinutes)
+        .put("rideDistanceKm", job.rideDistanceKm)
 
     private fun riderJobFromJson(o: JSONObject): RiderJob = RiderJob(
         id = o.getString("id"),
@@ -273,7 +311,10 @@ class SessionStore(private val context: Context) {
         customerCash = o.optNullableDouble("customerCash"),
         customerSubtotal = o.optNullableDouble("customerSubtotal"),
         customerDeliveryFee = o.optNullableDouble("customerDeliveryFee"),
-        customerServiceFee = o.optNullableDouble("customerServiceFee")
+        customerServiceFee = o.optNullableDouble("customerServiceFee"),
+        fulfillmentVertical = o.optNullableString("fulfillmentVertical") ?: "food",
+        rideDurationMinutes = o.optNullableDouble("rideDurationMinutes"),
+        rideDistanceKm = o.optNullableDouble("rideDistanceKm")
     )
 
     private fun laundryJobToJson(job: RiderLaundryJob): JSONObject = JSONObject()
@@ -358,7 +399,14 @@ class SessionStore(private val context: Context) {
 
     @Synchronized
     fun saveRegistrationDraft(value: JSONObject) {
-        val encrypted = encrypt(value.toString())
+        val plaintext = value.toString()
+        require(plaintext.length <= RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS) {
+            "เอกสารรวมมีขนาดใหญ่เกินไป กรุณาใช้รูปหรือ PDF ที่เล็กลง"
+        }
+        val encrypted = encrypt(plaintext)
+        require(encrypted.length.toLong() <= RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES) {
+            "เอกสารรวมมีขนาดใหญ่เกินไป กรุณาใช้รูปหรือ PDF ที่เล็กลง"
+        }
         val target = java.io.File(context.noBackupFilesDir, "rider-registration.enc")
         val temporary = java.io.File(context.noBackupFilesDir, "rider-registration.tmp")
         java.io.FileOutputStream(temporary).use { stream ->
@@ -371,8 +419,18 @@ class SessionStore(private val context: Context) {
     fun loadRegistrationDraft(): JSONObject? {
         val target = java.io.File(context.noBackupFilesDir, "rider-registration.enc")
         if (!target.exists()) return null
-        require(target.length() <= 100 * 1024 * 1024) { "ใบสมัครในเครื่องไม่ถูกต้อง" }
-        return JSONObject(decrypt(target.readText()))
+        require(target.length() <= RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES) {
+            "ใบสมัครในเครื่องมีขนาดใหญ่เกินไป กรุณาเลือกเอกสารใหม่"
+        }
+        val encrypted = target.readText()
+        require(encrypted.length.toLong() <= RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES) {
+            "ใบสมัครในเครื่องมีขนาดใหญ่เกินไป กรุณาเลือกเอกสารใหม่"
+        }
+        val plaintext = decrypt(encrypted)
+        require(plaintext.length <= RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS) {
+            "ใบสมัครในเครื่องมีขนาดใหญ่เกินไป กรุณาเลือกเอกสารใหม่"
+        }
+        return JSONObject(plaintext)
     }
 
     private fun secretKey(): SecretKey {

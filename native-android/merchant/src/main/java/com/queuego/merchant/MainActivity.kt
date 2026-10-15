@@ -53,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.queuego.shared.NativeExitDiagnostics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -61,6 +62,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -87,6 +91,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -102,6 +107,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NativeExitDiagnostics.recordPreviousProcessExit(this, "merchant")
         acceptPushIntent(intent)
         setContent { MerchantNativeEntryGate(pushTarget) }
     }
@@ -141,16 +147,30 @@ private fun MerchantNativeEntryGate(pushTarget: NativePushLaunchTarget?) {
     val api = remember { NativeAuthApi() }
     val scope = rememberCoroutineScope()
     val logoutScope = remember(context) { nativeLogoutScope(context, scope) }
-    var current by remember { mutableStateOf(store.load()) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var current by remember { mutableStateOf<NativeAuth?>(null) }
+    var sessionLoaded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            val saved = store.load()
-            if (saved?.session?.accessToken != current?.session?.accessToken ||
-                saved?.user?.role != current?.user?.role
-            ) current = saved
-            delay(350)
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                val saved = withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }
+                if (saved?.session?.accessToken != current?.session?.accessToken ||
+                    saved?.user?.role != current?.user?.role
+                ) current = saved
+                sessionLoaded = true
+                delay(5_000)
+            }
         }
+    }
+
+    if (!sessionLoaded) {
+        QueueGoTheme {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        return
     }
 
     when {
@@ -159,9 +179,12 @@ private fun MerchantNativeEntryGate(pushTarget: NativePushLaunchTarget?) {
                 initialAuth = current!!,
                 store = store,
                 onLogout = {
-                    current?.session?.let { session -> logoutScope.launch { api.revoke(session) } }
-                    store.clear()
-                    current = null
+                    val session = current?.session
+                    logoutScope.launch {
+                        withContext(kotlinx.coroutines.Dispatchers.IO) { store.clear() }
+                        current = null
+                        session?.let { api.revoke(it) }
+                    }
                 }
             )
         }
@@ -169,7 +192,11 @@ private fun MerchantNativeEntryGate(pushTarget: NativePushLaunchTarget?) {
         else -> QueueGoTheme {
             MerchantNativeAuthentication(
                 store = store,
-                onAuthenticated = { current = store.load() }
+                onAuthenticated = {
+                    scope.launch {
+                        current = withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }
+                    }
+                }
             )
         }
     }
@@ -182,29 +209,32 @@ private fun PosStaffNativeHost(
     onLogout: () -> Unit
 ) {
     val api = remember { NativeAuthApi() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     var auth by remember { mutableStateOf(initialAuth) }
     var recoveryError by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(initialAuth.session.authUserId) {
-        while (true) {
-            try {
-                val validated = api.validatePosStaff(auth) { refreshed ->
-                    store.save(refreshed)
-                    auth = refreshed
+    LaunchedEffect(initialAuth.session.authUserId, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    val validated = api.validatePosStaff(auth) { refreshed ->
+                        // validatePosStaff invokes this callback from its IO context.
+                        // Persist rotated credentials there, but never mutate Compose state here.
+                        store.save(refreshed)
+                    }
+                    withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
+                    auth = validated
+                    recoveryError = null
+                } catch (failure: Exception) {
+                    if (failure is CancellationException) throw failure
+                    if (failure is NativeSessionInvalidException) {
+                        onLogout()
+                        return@repeatOnLifecycle
+                    }
+                    recoveryError = failure.message
                 }
-                store.save(validated)
-                auth = validated
-                recoveryError = null
-            } catch (failure: Exception) {
-                if (failure is CancellationException) throw failure
-                if (failure is NativeSessionInvalidException) {
-                    store.clear()
-                    onLogout()
-                    return@LaunchedEffect
-                }
-                recoveryError = failure.message
+                delay(25_000)
             }
-            delay(25_000)
         }
     }
 
@@ -307,7 +337,7 @@ private fun MerchantNativeAuthentication(
         scope.launch {
             try {
                 val auth = api.signInMerchantOrStaff(loginId.trim(), loginPassword, store.deviceId())
-                store.save(auth)
+                withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(auth) }
                 onAuthenticated()
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
@@ -331,7 +361,7 @@ private fun MerchantNativeAuthentication(
                     staffPassword,
                     staffSecret.trim()
                 )
-                store.save(auth)
+                withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(auth) }
                 onAuthenticated()
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
@@ -404,7 +434,7 @@ private fun MerchantNativeAuthentication(
         scope.launch {
             try {
                 val auth = api.registerMerchant(form, store.deviceId(), skipSignup)
-                store.save(auth)
+                withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(auth) }
                 onAuthenticated()
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure

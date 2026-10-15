@@ -1,6 +1,8 @@
 package com.queuego.rider
 
 import android.content.Context
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal class RiderStopAfterWorkStore(context: Context) {
     private val prefs = context.applicationContext
@@ -8,10 +10,11 @@ internal class RiderStopAfterWorkStore(context: Context) {
 
     private fun key(userId: String) = "pending:" + userId
 
-    fun pending(userId: String): Boolean =
+    suspend fun pending(userId: String): Boolean = withContext(Dispatchers.IO) {
         prefs.getBoolean(key(userId), false)
+    }
 
-    fun setPending(userId: String, pending: Boolean) {
+    suspend fun setPending(userId: String, pending: Boolean) = withContext(Dispatchers.IO) {
         prefs.edit().putBoolean(key(userId), pending).apply()
     }
 }

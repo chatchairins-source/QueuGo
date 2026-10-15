@@ -5,12 +5,14 @@ import android.content.SharedPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.net.URI
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import javax.net.ssl.HttpsURLConnection
+
+private const val MERCHANT_PRINTER_URL_MAX_CHARS = 500
+private const val MERCHANT_PRINTER_DEDUPE_MAX_KEYS = 300
+private const val MERCHANT_PRINTER_HISTORY_MAX_CHARS = 128 * 1024
 
 data class MerchantPrinterSettings(
     val widthMm: Int = 80,
@@ -20,6 +22,7 @@ data class MerchantPrinterSettings(
 ) {
     fun validated(): MerchantPrinterSettings {
         require(widthMm in setOf(58, 80)) { "รองรับกระดาษ 58 หรือ 80 มม. เท่านั้น" }
+        require(bridgeUrl.length <= MERCHANT_PRINTER_URL_MAX_CHARS) { "URL ของ Print Bridge ยาวเกินกำหนด" }
         if (bridgeUrl.isNotBlank()) validateMerchantPrintBridgeUrl(bridgeUrl)
         return copy(bridgeUrl = bridgeUrl.trim().trimEnd('/'))
     }
@@ -29,12 +32,19 @@ class MerchantPrinterStore(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("queuego-merchant-printer-v1", Context.MODE_PRIVATE)
 
-    fun load(): MerchantPrinterSettings = MerchantPrinterSettings(
-        widthMm = prefs.getInt("width_mm", 80).takeIf { it in setOf(58, 80) } ?: 80,
-        bridgeUrl = prefs.getString("bridge_url", "").orEmpty(),
-        autoKitchen = prefs.getBoolean("auto_kitchen", false),
-        autoReceipt = prefs.getBoolean("auto_receipt", false)
-    )
+    fun load(): MerchantPrinterSettings {
+        val storedUrl = prefs.getString("bridge_url", "").orEmpty()
+        val safeUrl = storedUrl.takeIf { it.length <= MERCHANT_PRINTER_URL_MAX_CHARS }.orEmpty()
+        if (storedUrl.length > MERCHANT_PRINTER_URL_MAX_CHARS) {
+            prefs.edit().remove("bridge_url").apply()
+        }
+        return MerchantPrinterSettings(
+            widthMm = prefs.getInt("width_mm", 80).takeIf { it in setOf(58, 80) } ?: 80,
+            bridgeUrl = safeUrl,
+            autoKitchen = prefs.getBoolean("auto_kitchen", false),
+            autoReceipt = prefs.getBoolean("auto_receipt", false)
+        )
+    }
 
     fun save(settings: MerchantPrinterSettings) {
         val safe = settings.validated()
@@ -46,13 +56,25 @@ class MerchantPrinterStore(context: Context) {
             .apply()
     }
 
-    fun wasPrinted(key: String): Boolean =
-        prefs.getStringSet("printed_keys", emptySet()).orEmpty().contains(key)
+    fun wasPrinted(key: String): Boolean {
+        val keys = prefs.getStringSet("printed_keys", emptySet()).orEmpty()
+        check(keys.size <= MERCHANT_PRINTER_DEDUPE_MAX_KEYS) {
+            "สถานะป้องกันการพิมพ์ซ้ำผิดปกติ กรุณาตรวจเครื่องพิมพ์ก่อนพิมพ์"
+        }
+        return key in keys
+    }
 
     suspend fun markPrinted(key: String) = withContext(Dispatchers.IO) {
-        val old = prefs.getStringSet("printed_keys", emptySet()).orEmpty()
-            .associateWith { 0L }.toMutableMap()
-        runCatching { JSONObject(prefs.getString("printed_history", "{}").orEmpty()) }.getOrNull()?.let { stored ->
+        val printedKeys = prefs.getStringSet("printed_keys", emptySet()).orEmpty()
+        check(printedKeys.size <= MERCHANT_PRINTER_DEDUPE_MAX_KEYS) {
+            "สถานะป้องกันการพิมพ์ซ้ำผิดปกติ กรุณาตรวจเครื่องพิมพ์ก่อนพิมพ์"
+        }
+        val old = printedKeys.associateWith { 0L }.toMutableMap()
+        val historyRaw = prefs.getString("printed_history", "{}").orEmpty()
+        check(historyRaw.length <= MERCHANT_PRINTER_HISTORY_MAX_CHARS) {
+            "ประวัติการพิมพ์ในเครื่องผิดปกติ กรุณาตรวจเครื่องพิมพ์ก่อนพิมพ์ซ้ำ"
+        }
+        runCatching { JSONObject(historyRaw) }.getOrNull()?.let { stored ->
             stored.keys().forEach { savedKey -> old[savedKey] = stored.optLong(savedKey, 0L) }
         }
         val next = merchantPrintHistory(old, key, System.currentTimeMillis())
@@ -75,6 +97,7 @@ class MerchantPrintBridge {
         require(safe.bridgeUrl.isNotBlank()) { "กรุณาตั้งค่า HTTPS Print Bridge ก่อนพิมพ์" }
         require(type in setOf("kitchen", "receipt", "test")) { "ประเภทงานพิมพ์ไม่ถูกต้อง" }
         require(text.isNotBlank()) { "ไม่มีข้อมูลสำหรับพิมพ์" }
+        require(text.length <= 256 * 1024) { "ข้อมูลงานพิมพ์มีขนาดใหญ่เกินกำหนด" }
 
         val endpoint = URL(safe.bridgeUrl)
         val connection = endpoint.openConnection() as HttpsURLConnection
@@ -98,9 +121,7 @@ class MerchantPrintBridge {
 
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.use {
-                BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
-            }.orEmpty()
+            val response = readMerchantStorageResponseBounded(stream)
             if (status !in 200..299) {
                 val reason = runCatching {
                     JSONObject(response).optString("message").ifBlank {

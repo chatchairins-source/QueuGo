@@ -44,6 +44,22 @@ class NavigationMapRuntimeTest {
         )
     }
 
+    private fun awaitMapTilt(
+        scenario: ActivityScenario<NavigationMapRuntimeActivity>,
+        predicate: (Float) -> Boolean,
+        failureMessage: String,
+        timeoutMs: Long = 5_000L
+    ): Float {
+        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        var observed = Float.NaN
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            scenario.onActivity { observed = it.mapTiltDegrees() }
+            if (predicate(observed)) return observed
+            Thread.sleep(25)
+        }
+        throw AssertionError("$failureMessage; last tilt=$observed")
+    }
+
     private fun awaitSnapshotCaptured(
         activity: NavigationMapRuntimeActivity,
         timeoutMs: Long = 6_000L
@@ -320,6 +336,47 @@ class NavigationMapRuntimeTest {
                 )
                 assertTrue(activity.latestDiagnostics.stopMutationCount > initialDiagnostics.stopMutationCount)
             }
+        }
+    }
+
+    @Test
+    fun followCameraUsesNativePerspectiveAndOverviewFlattens() {
+        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
+            lateinit var activity: NavigationMapRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue(
+                "Navigation map did not become ready for perspective test",
+                activity.mapReady.await(30, TimeUnit.SECONDS)
+            )
+
+            awaitMapTilt(
+                scenario = scenario,
+                predicate = { it >= 24f },
+                failureMessage = "FOLLOW camera did not apply native Longdo tilt"
+            )
+
+            var before = activity.latestDiagnostics.renderPassCount
+            scenario.onActivity {
+                before = it.latestDiagnostics.renderPassCount
+                it.showOverviewForTiltFixture()
+            }
+            awaitAppliedRender(activity, before)
+            awaitMapTilt(
+                scenario = scenario,
+                predicate = { kotlin.math.abs(it) <= 0.5f },
+                failureMessage = "Overview must return to a flat north-up camera"
+            )
+
+            scenario.onActivity {
+                before = it.latestDiagnostics.renderPassCount
+                it.restoreFollowForTiltFixture()
+            }
+            awaitAppliedRender(activity, before)
+            awaitMapTilt(
+                scenario = scenario,
+                predicate = { it >= 24f },
+                failureMessage = "FOLLOW did not restore navigation perspective after Overview"
+            )
         }
     }
 

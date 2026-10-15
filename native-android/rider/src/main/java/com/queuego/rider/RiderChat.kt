@@ -72,10 +72,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -89,6 +91,8 @@ data class RiderChatModeration(
     val blockedByMe: Boolean,
     val blockedMe: Boolean
 )
+
+private const val RIDER_CHAT_HISTORY_MAX_ROWS = 1_000
 
 data class RiderChatMessage(
     val id: String,
@@ -197,13 +201,13 @@ class RiderChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             http.get(
                 "order_chat_messages?select=id,sender_id,message,created_at" +
                     "&order_id=eq." + http.enc(orderId) +
-                    // Match the web reader: retain the server history cap, not a client first-100 cutoff.
-                    "&order=created_at.asc",
+                    // Keep the newest bounded window if project-level Data API max rows changes.
+                    "&order=created_at.desc&limit=" + RIDER_CHAT_HISTORY_MAX_ROWS,
                 auth.session.accessToken
             )
         )
         return buildList {
-            for (i in 0 until rows.length()) {
+            for (i in rows.length() - 1 downTo 0) {
                 val r = rows.optJSONObject(i) ?: continue
                 add(
                     RiderChatMessage(
@@ -335,7 +339,12 @@ private fun RiderChatRoom(
     val context = LocalContext.current
     val outbox = remember { RiderChatOutbox() }
     val quickStore = remember(auth.user.id) { RiderQuickMessageStore(context, auth.user.id) }
-    var quickMessages by remember(auth.user.id) { mutableStateOf(quickStore.load()) }
+    var quickMessages by remember(auth.user.id) { mutableStateOf<List<String>>(emptyList()) }
+    var quickMessagesReady by remember(auth.user.id) { mutableStateOf(false) }
+    LaunchedEffect(quickStore) {
+        quickMessages = withContext(Dispatchers.IO) { quickStore.load() }
+        quickMessagesReady = true
+    }
     var editQuickMessages by remember { mutableStateOf(false) }
     var showSafety by remember { mutableStateOf(false) }
     var confirmBlock by remember { mutableStateOf(false) }
@@ -343,6 +352,19 @@ private fun RiderChatRoom(
     var reportReason by remember { mutableStateOf("harassment") }
     var reasonMenu by remember { mutableStateOf(false) }
     BackHandler { if (!busy) back() }
+
+    fun openCommunityGuidelines() {
+        runCatching {
+            context.startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/community-guidelines.html")
+                )
+            )
+        }.onFailure {
+            message = "เปิดกติกาชุมชนไม่สำเร็จ"
+        }
+    }
 
     LaunchedEffect(auth.session.accessToken, window?.status, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -478,8 +500,7 @@ private fun RiderChatRoom(
                         "ใช้แชทเพื่อประสานงานออเดอร์ ห้ามคุกคาม สแปม หลอกลวง หรือส่งเนื้อหาไม่เหมาะสม",
                         color = QgMuted
                     )
-                    TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW,
-                        Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/community-guidelines.html"))) }) {
+                    TextButton(onClick = { openCommunityGuidelines() }) {
                         Text("อ่านกติกาชุมชน QueueGo")
                     }
                     Spacer(Modifier.height(10.dp))
@@ -598,8 +619,7 @@ private fun RiderChatRoom(
                         text = { Column {
                             TextButton(onClick = { showSafety = false; showReport = true; reportEvidence = null; reportError = null; reportDetails = ""; reportReason = "harassment" }) { Text("รายงานคู่สนทนา") }
                             TextButton(onClick = { showSafety = false; confirmBlock = true }, enabled = !busy) { Text("บล็อกลูกค้า") }
-                            TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW,
-                                Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/community-guidelines.html"))) }) { Text("อ่านกติกาชุมชน QueueGo") }
+                            TextButton(onClick = { openCommunityGuidelines() }) { Text("อ่านกติกาชุมชน QueueGo") }
                         } }, confirmButton = { TextButton(onClick = { showSafety = false }) { Text("ปิด") } })
                 }
                 if (confirmBlock) {
@@ -665,11 +685,16 @@ private fun RiderChatRoom(
                         }, enabled = !busy) { Text("ส่งรายงาน") } })
                 }
 
-                RiderQuickMessageShelf(quickMessages, enabled = !busy && !closed,
-                    onPick = { input = it }, onEdit = { editQuickMessages = true })
-                if (editQuickMessages) {
+                if (quickMessagesReady) {
+                    RiderQuickMessageShelf(quickMessages, enabled = !busy && !closed,
+                        onPick = { input = it }, onEdit = { editQuickMessages = true })
+                }
+                if (editQuickMessages && quickMessagesReady) {
                     RiderQuickMessageEditor(quickMessages,
-                        onSave = { quickMessages = it; quickStore.save(it) },
+                        onSave = { next ->
+                            quickMessages = next
+                            scope.launch { withContext(Dispatchers.IO) { quickStore.save(next) } }
+                        },
                         onClose = { editQuickMessages = false })
                 }
                 Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFEEE6E8)))

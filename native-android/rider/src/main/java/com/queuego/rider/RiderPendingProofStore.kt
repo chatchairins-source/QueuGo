@@ -8,6 +8,7 @@ internal const val RIDER_PROOF_SLOT_DELIVERY = "delivery"
 internal const val RIDER_PROOF_SLOT_RETURN = "return"
 internal const val RIDER_PROOF_DRAFT_MAX_AGE_MS = 24L * 60L * 60L * 1000L
 internal const val RIDER_PROOF_CAPTURE_MAX_AGE_MS = 30L * 60L * 1000L
+private const val RIDER_PENDING_PROOF_MAX_JSON_CHARS = 32 * 1024
 
 internal data class RiderProofDraft(
     val workId: String,
@@ -55,16 +56,25 @@ internal class RiderPendingProofStore(context: Context) {
     private fun reservationKey(userId: String, slot: String) = "capture:$slot:$userId"
     private fun confirmedKey(userId: String, slot: String) = "confirmed:$slot:$userId"
 
+    private fun boundedState(key: String): String? {
+        val raw = prefs.getString(key, null) ?: return null
+        if (raw.length <= RIDER_PENDING_PROOF_MAX_JSON_CHARS) return raw
+        prefs.edit().remove(key).apply()
+        return null
+    }
+
     fun saveVerification(userId: String, value: RiderVerificationResume) {
         val raw = JSONObject().put("work_id", value.workId).put("mode", value.mode)
             .put("pickup_id", value.pickupId ?: JSONObject.NULL).put("collection", value.collection)
-        check(prefs.edit().putString("workflow:$userId", raw.toString()).commit()) {
+            .toString()
+        require(raw.length <= RIDER_PENDING_PROOF_MAX_JSON_CHARS) { "ข้อมูลขั้นตอนงานมีขนาดใหญ่เกินกำหนด" }
+        check(prefs.edit().putString("workflow:$userId", raw).commit()) {
             "บันทึกขั้นตอนงานไม่สำเร็จ กรุณาลองใหม่"
         }
     }
 
     fun loadVerification(userId: String): RiderVerificationResume? = runCatching {
-        val row = JSONObject(prefs.getString("workflow:$userId", null) ?: return null)
+        val row = JSONObject(boundedState("workflow:$userId") ?: return null)
         RiderVerificationResume(row.getString("work_id"), row.getString("mode"),
             row.optString("pickup_id").takeIf { it.isNotBlank() && it != "null" }, row.optBoolean("collection"))
     }.getOrNull()
@@ -73,14 +83,17 @@ internal class RiderPendingProofStore(context: Context) {
         prefs.edit().remove("workflow:$userId").commit()
     }
 
-    private fun encode(value: RiderProofDraft): String =
-        JSONObject()
+    private fun encode(value: RiderProofDraft): String {
+        val raw = JSONObject()
             .put("work_id", value.workId)
             .put("mode", value.mode)
             .put("market_pickup_id", value.marketPickupId ?: JSONObject.NULL)
             .put("uri", value.uri)
             .put("created_at_ms", value.createdAtMs)
             .toString()
+        require(raw.length <= RIDER_PENDING_PROOF_MAX_JSON_CHARS) { "ข้อมูลรูปหลักฐานมีขนาดใหญ่เกินกำหนด" }
+        return raw
+    }
 
     private fun decode(raw: String?): RiderProofDraft? {
         if (raw.isNullOrBlank()) return null
@@ -121,7 +134,7 @@ internal class RiderPendingProofStore(context: Context) {
         nowMs: Long = System.currentTimeMillis()
     ) {
         val key = reservationKey(userId, slot)
-        val previousReservation = decode(prefs.getString(key, null))
+        val previousReservation = decode(boundedState(key))
 
         val draft = RiderProofDraft(
             workId = workId,
@@ -138,7 +151,7 @@ internal class RiderPendingProofStore(context: Context) {
 
     fun cancelCapture(userId: String, slot: String) {
         val key = reservationKey(userId, slot)
-        val previousReservation = decode(prefs.getString(key, null))
+        val previousReservation = decode(boundedState(key))
         if (!prefs.edit().remove(key).commit()) return
         discardUri(previousReservation?.uri)
     }
@@ -149,7 +162,7 @@ internal class RiderPendingProofStore(context: Context) {
         nowMs: Long = System.currentTimeMillis()
     ): RiderProofDraft? {
         val captureKey = reservationKey(userId, slot)
-        val capture = decode(prefs.getString(captureKey, null)) ?: return null
+        val capture = decode(boundedState(captureKey)) ?: return null
 
         if (!riderProofDraftFresh(capture.createdAtMs, nowMs, RIDER_PROOF_CAPTURE_MAX_AGE_MS)) {
             cancelCapture(userId, slot)
@@ -161,7 +174,7 @@ internal class RiderPendingProofStore(context: Context) {
         }
 
         val confirmedSlot = confirmedKey(userId, slot)
-        val previousConfirmed = decode(prefs.getString(confirmedSlot, null))
+        val previousConfirmed = decode(boundedState(confirmedSlot))
         val confirmed = capture.copy(createdAtMs = nowMs)
 
         val saved = prefs.edit()
@@ -185,7 +198,7 @@ internal class RiderPendingProofStore(context: Context) {
         nowMs: Long = System.currentTimeMillis()
     ): RiderProofDraft? {
         val key = confirmedKey(userId, slot)
-        val draft = decode(prefs.getString(key, null)) ?: return null
+        val draft = decode(boundedState(key)) ?: return null
 
         if (!riderProofDraftFresh(draft.createdAtMs, nowMs, RIDER_PROOF_DRAFT_MAX_AGE_MS)) {
             if (!prefs.edit().remove(key).commit()) return null
@@ -208,7 +221,7 @@ internal class RiderPendingProofStore(context: Context) {
         marketPickupId: String?
     ) {
         val key = confirmedKey(userId, slot)
-        val draft = decode(prefs.getString(key, null)) ?: return
+        val draft = decode(boundedState(key)) ?: return
         if (!riderProofDraftMatches(draft, workId, mode, marketPickupId)) return
 
         if (!prefs.edit().remove(key).commit()) return

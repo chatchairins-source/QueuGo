@@ -24,12 +24,17 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
 private const val CHAT_IMAGE_LIMIT = 5 * 1024 * 1024
+private const val CHAT_IMAGE_MAX_BASE64_CHARS = ((CHAT_IMAGE_LIMIT + 2) / 3) * 4
+private const val CHAT_IMAGE_MAX_SIDE = 1280
+private val chatImageDecodeGate = Semaphore(2)
 
 private fun InputStream.readChatImage(limit: Int = CHAT_IMAGE_LIMIT): ByteArray {
     val result = ByteArrayOutputStream()
@@ -48,7 +53,7 @@ private fun decodeChatImage(bytes: ByteArray): Bitmap {
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
     require(bounds.outWidth > 0 && bounds.outHeight > 0) { "เปิดรูปไม่สำเร็จ" }
     var sample = 1
-    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2000) sample *= 2
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > CHAT_IMAGE_MAX_SIDE) sample *= 2
     val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size,
         BitmapFactory.Options().apply { inSampleSize = sample }) ?: error("เปิดรูปไม่สำเร็จ")
     val orientation = runCatching { ExifInterface(bytes.inputStream())
@@ -95,21 +100,39 @@ fun NativeChatImage(source: String) {
     LaunchedEffect(source) {
         try {
             bitmap = withContext(Dispatchers.IO) {
-                val bytes = if (source.startsWith("data:image/")) {
-                    require(source.length <= 7 * 1024 * 1024 && source.substringBefore(',').endsWith(";base64"))
-                    Base64.decode(source.substringAfter(','), Base64.DEFAULT).also { require(it.size <= CHAT_IMAGE_LIMIT) }
-                } else {
-                    require(source.startsWith("https://")) { "ลิงก์รูปภาพไม่ถูกต้อง" }
-                    val connection = URL(source).openConnection() as HttpURLConnection
-                    connection.connectTimeout = 10000
-                    connection.readTimeout = 10000
-                    try { connection.inputStream.use { it.readChatImage() } } finally { connection.disconnect() }
+                chatImageDecodeGate.withPermit {
+                    val bytes = if (source.startsWith("data:image/")) {
+                        val comma = source.indexOf(',')
+                        require(comma in 1..128 && source.substring(0, comma).endsWith(";base64")) {
+                            "รูปในแชตมีรูปแบบไม่ถูกต้อง"
+                        }
+                        val encodedLength = source.length - comma - 1
+                        require(encodedLength in 1..CHAT_IMAGE_MAX_BASE64_CHARS) {
+                            "รูปต้องไม่เกิน " + (CHAT_IMAGE_LIMIT / (1024 * 1024)) + " MB"
+                        }
+                        Base64.decode(source.substring(comma + 1), Base64.DEFAULT).also {
+                            require(it.size <= CHAT_IMAGE_LIMIT)
+                        }
+                    } else {
+                        require(source.startsWith("https://")) { "ลิงก์รูปภาพไม่ถูกต้อง" }
+                        val connection = URL(source).openConnection() as HttpURLConnection
+                        connection.connectTimeout = 10000
+                        connection.readTimeout = 10000
+                        try { connection.inputStream.use { it.readChatImage() } } finally { connection.disconnect() }
+                    }
+                    decodeChatImage(bytes)
                 }
-                decodeChatImage(bytes)
             }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { failed = true }
     }
+    DisposableEffect(bitmap) {
+        val owned = bitmap
+        onDispose {
+            if (owned != null && !owned.isRecycled) owned.recycle()
+        }
+    }
+
     Box(Modifier.fillMaxWidth().heightIn(min = 48.dp, max = 320.dp), contentAlignment = Alignment.Center) {
         val image = bitmap
         if (image != null) Image(image.asImageBitmap(), "รูปที่ส่งในแชต",

@@ -8,9 +8,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
+
+private fun InputStream.readCustomerLongdoResponseBounded(limit: Int = 512 * 1024): String {
+    val output = ByteArrayOutputStream(minOf(limit, 64 * 1024))
+    val buffer = ByteArray(8 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) { "ข้อมูลพิกัดมีขนาดใหญ่เกินไป" }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(Charsets.UTF_8.name())
+}
 
 data class CustomerShop(
     val id: String,
@@ -58,7 +72,8 @@ data class CustomerOrder(
     val deliveryLongitude: Double? = null,
     val note: String? = null,
     val riderArrivedCustomerAt: String? = null,
-    val bundleCustomerSavings: Double = 0.0
+    val bundleCustomerSavings: Double = 0.0,
+    val fulfillmentVertical: String = "food"
 )
 
 data class CustomerTrackingShop(
@@ -80,6 +95,14 @@ data class CustomerTrackingRider(
 data class CustomerOrderContext(
     val shop: CustomerTrackingShop?,
     val rider: CustomerTrackingRider?
+)
+
+data class CustomerOrderEta(
+    val etaAt: String?,
+    val merchantReadyAt: String?,
+    val source: String,
+    val sharedRoute: Boolean,
+    val roadEtaVerified: Boolean
 )
 
 data class CustomerOrderItem(
@@ -197,12 +220,13 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     r.optDoubleOrNull("delivery_longitude"),
                     r.optNullable("note"),
                     r.optNullable("rider_arrived_customer_at"),
-                    r.optDouble("bundle_customer_savings", 0.0)
+                    r.optDouble("bundle_customer_savings", 0.0),
+                    r.optNullable("fulfillment_vertical") ?: "food"
                 )
 
     suspend fun loadOrders(auth: NativeAuth): List<CustomerOrder> {
         val rows = http.array(http.get(
-            "orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
+            "orders?select=id,order_number,fulfillment_vertical,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
                 "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=100",
             auth.session.accessToken
         ))
@@ -210,14 +234,14 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     }
 
     suspend fun loadOrderById(auth: NativeAuth, orderId: String): CustomerOrder? {
-        val rows = http.array(http.get("orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
+        val rows = http.array(http.get("orders?select=id,order_number,fulfillment_vertical,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
             "&id=eq." + http.enc(orderId) + "&customer_id=eq." + http.enc(auth.user.id) + "&limit=1", auth.session.accessToken))
         return rows.optJSONObject(0)?.let(::parseCustomerOrder)
     }
 
     suspend fun loadActiveOrder(auth: NativeAuth): CustomerOrder? {
         val rows = http.array(http.get(
-            "orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
+            "orders?select=id,order_number,fulfillment_vertical,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
                 "&customer_id=eq." + http.enc(auth.user.id) +
                 "&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned,picked_up,in_progress)" +
                 "&order=created_at.desc&limit=1",
@@ -243,7 +267,8 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             r.optDoubleOrNull("delivery_longitude"),
             r.optNullable("note"),
             r.optNullable("rider_arrived_customer_at"),
-            r.optDouble("bundle_customer_savings", 0.0)
+            r.optDouble("bundle_customer_savings", 0.0),
+                    r.optNullable("fulfillment_vertical") ?: "food"
         )
     }
 
@@ -252,6 +277,28 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             "qg_customer_cancel_order",
             auth.session.accessToken,
             JSONObject().put("p_order_id", orderId)
+        )
+    }
+
+    suspend fun loadOrderEta(auth: NativeAuth, orderId: String): CustomerOrderEta? {
+        val raw = runCatching {
+            http.rpc(
+                "qg_customer_order_eta",
+                auth.session.accessToken,
+                JSONObject().put("p_order_id", orderId)
+            )
+        }.getOrNull() ?: return null
+        val row = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0) ?: return null
+            else -> return null
+        }
+        return CustomerOrderEta(
+            etaAt = row.optNullable("eta_at"),
+            merchantReadyAt = row.optNullable("merchant_ready_estimate_at"),
+            source = row.optString("source").ifBlank { "unknown" },
+            sharedRoute = row.optBoolean("shared_route", false),
+            roadEtaVerified = row.optBoolean("road_eta_verified", false)
         )
     }
 
@@ -345,8 +392,8 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         connection.setRequestProperty("Accept", "application/json")
         try {
             if (connection.responseCode !in 200..299) return@withContext null
-            connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-                formatLongdoAddress(reader.readText())
+            connection.inputStream.use { input ->
+                formatLongdoAddress(input.readCustomerLongdoResponseBounded())
             }
         } catch (_: Exception) {
             null
@@ -472,7 +519,7 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     }
 
     suspend fun findPlacedOrder(auth: NativeAuth, requestId: String): CustomerOrder? {
-        val rows = http.array(http.get("orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at&customer_id=eq." + http.enc(auth.user.id) + "&id=eq." + http.enc(requestId) + "&limit=1", auth.session.accessToken))
+        val rows = http.array(http.get("orders?select=id,order_number,fulfillment_vertical,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at&customer_id=eq." + http.enc(auth.user.id) + "&id=eq." + http.enc(requestId) + "&limit=1", auth.session.accessToken))
         val row = rows.optJSONObject(0) ?: return null
         if (row.optString("id") != requestId || row.optString("order_number").isBlank()) return null
         return CustomerOrder(requestId, orderNumber(row.getString("order_number"), requestId), row.optNullable("shop_id"), row.optString("status"), row.optDouble("subtotal"), row.optDouble("delivery_fee"), row.optDouble("total_amount"), row.optNullable("delivery_address"), row.optNullable("created_at"))

@@ -8,6 +8,7 @@ data class NavigationCameraDecision(
     val center: NavigationMapPoint,
     val zoom: Int,
     val bearingDegrees: Float?,
+    val tiltDegrees: Float,
     val routeMatch: NavigationRouteMatch?,
     val remainingRouteMeters: Double?
 )
@@ -53,6 +54,11 @@ internal fun navigationCameraDecision(
         remainingRouteMeters = remaining,
         accuracyMeters = fix.accuracyMeters
     )
+    val tilt = navigationTilt(
+        speedMetersPerSecond = speed,
+        remainingRouteMeters = remaining,
+        accuracyMeters = fix.accuracyMeters
+    )
 
     val lookAheadMeters = navigationLookAheadMeters(speed, remaining)
     val center = if (activeRoute != null && match != null && match.offRouteMeters <= ROUTE_BEARING_MAX_OFF_ROUTE_METERS) {
@@ -68,6 +74,7 @@ internal fun navigationCameraDecision(
         center = center,
         zoom = zoom,
         bearingDegrees = smoothedBearing,
+        tiltDegrees = tilt,
         routeMatch = match,
         remainingRouteMeters = remaining
     )
@@ -94,6 +101,51 @@ internal fun navigationZoom(
         target = (target - 1).coerceAtLeast(14)
     }
     return target.coerceIn(14, 20)
+}
+
+internal fun navigationTilt(
+    speedMetersPerSecond: Float?,
+    remainingRouteMeters: Double?,
+    accuracyMeters: Float?
+): Float {
+    val target = when {
+        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 80f -> 24f
+        remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 28f
+        remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 34f
+        speedMetersPerSecond == null -> 38f
+        speedMetersPerSecond >= 18f -> 50f
+        speedMetersPerSecond >= 11f -> 48f
+        speedMetersPerSecond >= 5f -> 44f
+        speedMetersPerSecond >= 2f -> 40f
+        else -> 34f
+    }
+    return target.coerceIn(0f, 50f)
+}
+
+internal fun smoothNavigationTilt(
+    previous: Float,
+    target: Float,
+    maxStepDegrees: Float = 4f
+): Float {
+    val safePrevious = previous.takeIf { it.isFinite() } ?: 0f
+    val safeTarget = target.takeIf { it.isFinite() }?.coerceIn(0f, 50f) ?: safePrevious
+    val delta = safeTarget - safePrevious
+    val maxStep = maxStepDegrees.coerceIn(0.5f, 12f)
+    return when {
+        abs(delta) <= maxStep -> safeTarget
+        delta > 0f -> safePrevious + maxStep
+        else -> safePrevious - maxStep
+    }.coerceIn(0f, 50f)
+}
+
+internal fun navigationTiltChangedEnough(
+    previous: Float?,
+    next: Float,
+    minimumDeltaDegrees: Float = 0.75f
+): Boolean {
+    if (!next.isFinite()) return false
+    if (previous == null || !previous.isFinite()) return true
+    return abs(next - previous) >= minimumDeltaDegrees.coerceAtLeast(0.25f)
 }
 
 internal fun navigationLookAheadMeters(

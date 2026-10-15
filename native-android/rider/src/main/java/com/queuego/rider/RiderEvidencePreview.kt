@@ -174,6 +174,13 @@ internal fun RiderEvidencePreview(
         }
     }
 
+    DisposableEffect(decoded?.bitmap) {
+        val owned = decoded?.bitmap
+        onDispose {
+            if (owned != null && !owned.isRecycled) owned.recycle()
+        }
+    }
+
     val qualityCallback by rememberUpdatedState(onQuality)
     LaunchedEffect(decoded, failed) {
         val result = decoded?.quality ?: if (failed) {

@@ -309,11 +309,21 @@ private fun MerchantShell(
     }
 
     fun playMerchantNotificationSound() {
-        val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
-        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
-        scope.launch {
-            delay(750)
+        val tone = runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90) }
+            .getOrNull() ?: return
+        val started = runCatching {
+            tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
+        }.getOrDefault(false)
+        if (!started) {
             runCatching { tone.release() }
+            return
+        }
+        scope.launch {
+            try {
+                delay(750)
+            } finally {
+                runCatching { tone.release() }
+            }
         }
     }
 
@@ -461,6 +471,36 @@ private fun MerchantShell(
         }
     }
 
+    fun adjustReadyEstimate(order: MerchantOrder, deltaMinutes: Int) {
+        if (busy) return
+        val nowInstant = Instant.now()
+        val current = runCatching { Instant.parse(order.readyEstimateAt ?: "") }.getOrNull()
+            ?: runCatching { Instant.parse(order.preparingAt ?: "").plusSeconds(20 * 60L) }.getOrNull()
+            ?: nowInstant.plusSeconds(20 * 60L)
+        val requested = current.plusSeconds(deltaMinutes * 60L)
+        val maximum = nowInstant.plusSeconds(2 * 60 * 60L)
+        val target = when {
+            requested.isBefore(nowInstant) -> nowInstant
+            requested.isAfter(maximum) -> maximum
+            else -> requested
+        }
+        busy = true
+        message = null
+        scope.launch {
+            runCatching {
+                api.setReadyEstimate(auth, order.id, target.toString(), order.readyRevision)
+                api.loadOrders(auth)
+            }.onSuccess { fresh ->
+                orders = fresh
+                selectedOrder = fresh.find { it.id == order.id } ?: selectedOrder
+                message = "อัปเดตเวลาที่คาดว่าจะพร้อมแล้ว"
+            }.onFailure {
+                message = it.message ?: "อัปเดตเวลาพร้อมไม่สำเร็จ"
+            }
+            busy = false
+        }
+    }
+
     Box(Modifier.fillMaxSize()) {
         Scaffold(
         containerColor = QgBg,
@@ -567,6 +607,7 @@ private fun MerchantShell(
                         screen = "orders"
                     },
                     onAction = { action, reason -> selectedOrder?.let { runAction(it, action, reason) } },
+                    onAdjustReady = { delta -> selectedOrder?.let { adjustReadyEstimate(it, delta) } },
                     onSaveItems = { draft ->
                         val current = selectedOrder
                         if (current != null && !busy) {
@@ -1017,7 +1058,7 @@ private fun DashboardScreen(
             QgCard(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(52.dp)) {
-                        QgRemoteImage(shop.logo ?: shop.cover, Modifier.fillMaxSize(), shop.name)
+                        QgRemoteImage(shop.logo ?: shop.cover, Modifier.fillMaxSize(), shop.name, maxDecodeSide = 256)
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
@@ -1047,7 +1088,8 @@ private fun DashboardScreen(
                 QgRemoteImage(
                     shop.cover,
                     Modifier.fillMaxWidth().height(128.dp),
-                    shop.name
+                    shop.name,
+                    maxDecodeSide = 512
                 )
             }
         }
@@ -1305,6 +1347,7 @@ private fun MerchantOrderDetail(
     busy: Boolean,
     onBack: () -> Unit,
     onAction: (String, String?) -> Unit,
+    onAdjustReady: (Int) -> Unit,
     onSaveItems: (List<MerchantOrderEditItem>) -> Unit
 ) {
     val context = LocalContext.current
@@ -1334,7 +1377,7 @@ private fun MerchantOrderDetail(
                 if (items.isEmpty()) Text("กำลังโหลดรายการ...", color = QgMuted)
                 else items.forEach {
                     Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                        QgRemoteImage(it.image, Modifier.size(48.dp), it.name)
+                        QgRemoteImage(it.image, Modifier.size(48.dp), it.name, maxDecodeSide = 192)
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(it.name, fontWeight = FontWeight.Bold)
@@ -1365,7 +1408,8 @@ private fun MerchantOrderDetail(
                     QgRemoteImage(
                         assignedRider.photo,
                         Modifier.size(58.dp),
-                        assignedRider.name
+                        assignedRider.name,
+                        maxDecodeSide = 256
                     )
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
@@ -1435,8 +1479,18 @@ private fun MerchantOrderDetail(
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("ยกเลิกออเดอร์") }
             }
-            "searching_rider" -> QgCard(Modifier.fillMaxWidth()) {
-                Text("กำลังหา Rider · รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold)
+            "searching_rider" -> {
+                QgCard(Modifier.fillMaxWidth()) {
+                    Text("กำลังหา Rider · รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "ปรับเวลาคาดว่าพร้อมได้ตอนนี้เพื่อให้ระบบเลือกงานต่อ/งานพ่วงที่ไม่ทำให้ Rider รอ",
+                        color = QgMuted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                MerchantReadyEstimateControls(order, busy, onAdjustReady)
             }
             "rider_assigned", "assigned" -> {
                 Button(
@@ -1444,6 +1498,8 @@ private fun MerchantOrderDetail(
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth().height(54.dp)
                 ) { Text("เริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold) }
+                Spacer(Modifier.height(8.dp))
+                MerchantReadyEstimateControls(order, busy, onAdjustReady)
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { editOpen = true },
@@ -1458,7 +1514,7 @@ private fun MerchantOrderDetail(
                 ) { Text("ยกเลิกออเดอร์") }
             }
             "preparing" -> {
-                val left = preparationLeft(order.preparingAt, now)
+                val left = readinessLeft(order.readyEstimateAt, order.preparingAt, now)
                 Button(
                     onClick = { onAction("ready", null) },
                     enabled = !busy,
@@ -1470,8 +1526,10 @@ private fun MerchantOrderDetail(
                         fontWeight = FontWeight.Black
                     )
                 }
+                Spacer(Modifier.height(8.dp))
+                MerchantReadyEstimateControls(order, busy, onAdjustReady)
                 Spacer(Modifier.height(6.dp))
-                Text("ตัวนับเวลาอยู่บนปุ่มตาม Flow ร้านค้า", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                Text("เวลานี้ส่งต่อให้ Dispatch, Rider Stack และ ETA ลูกค้า", color = QgMuted, style = MaterialTheme.typography.bodySmall)
             }
             "ready" -> QgCard(Modifier.fillMaxWidth()) {
                 Text("พร้อมส่งแล้ว · รอ Rider มารับสินค้า", fontWeight = FontWeight.ExtraBold)
@@ -1596,7 +1654,7 @@ private fun MerchantOrderItemEditor(
                     QgCard(Modifier.fillMaxWidth().padding(bottom = 7.dp)) {
                         Column {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                QgRemoteImage(row.image, Modifier.size(44.dp), row.name)
+                                QgRemoteImage(row.image, Modifier.size(44.dp), row.name, maxDecodeSide = 192)
                                 Spacer(Modifier.width(8.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(row.name, fontWeight = FontWeight.Bold)
@@ -1900,7 +1958,8 @@ private fun MerchantProfileScreen(
                 source = shop?.logo ?: shop?.cover,
                 modifier = Modifier.size(56.dp),
                 fallback = shop?.name ?: auth.user.name,
-                cornerRadius = 17.dp
+                cornerRadius = 17.dp,
+                maxDecodeSide = 256
             )
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
@@ -2194,10 +2253,53 @@ private fun merchantStatus(status: String, riderArrivedCustomerAt: String? = nul
     }
 }
 
-private fun preparationLeft(preparingAt: String?, now: Long): Int {
-    val start = runCatching { Instant.parse(preparingAt ?: "").toEpochMilli() }.getOrNull() ?: now
-    val target = start + 20 * 60 * 1000L
+@Composable
+private fun MerchantReadyEstimateControls(
+    order: MerchantOrder,
+    busy: Boolean,
+    onAdjustReady: (Int) -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            "ร้านคาดว่าพร้อม " + merchantReadyTime(order.readyEstimateAt, order.preparingAt),
+            color = QgMuted,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedButton(
+                onClick = { onAdjustReady(-5) },
+                enabled = !busy,
+                modifier = Modifier.weight(1f)
+            ) { Text("-5 นาที") }
+            OutlinedButton(
+                onClick = { onAdjustReady(5) },
+                enabled = !busy,
+                modifier = Modifier.weight(1f)
+            ) { Text("+5 นาที") }
+            OutlinedButton(
+                onClick = { onAdjustReady(10) },
+                enabled = !busy,
+                modifier = Modifier.weight(1f)
+            ) { Text("+10 นาที") }
+        }
+    }
+}
+
+private fun readinessLeft(readyEstimateAt: String?, preparingAt: String?, now: Long): Int {
+    val target = runCatching { Instant.parse(readyEstimateAt ?: "").toEpochMilli() }.getOrNull()
+        ?: (runCatching { Instant.parse(preparingAt ?: "").toEpochMilli() }.getOrNull() ?: now) + 20 * 60 * 1000L
     return (((target - now).coerceAtLeast(0L) + 999L) / 1000L).toInt()
+}
+
+private fun merchantReadyTime(readyEstimateAt: String?, preparingAt: String?): String {
+    val instant = runCatching { Instant.parse(readyEstimateAt ?: "") }.getOrNull()
+        ?: runCatching { Instant.parse(preparingAt ?: "").plusSeconds(20 * 60L) }.getOrNull()
+        ?: return "อีกประมาณ 20 นาที"
+    return java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+        .withZone(ZoneId.of("Asia/Bangkok"))
+        .format(instant) + " น."
 }
 
 private fun formatSeconds(seconds: Int): String {

@@ -24,6 +24,8 @@ import okhttp3.WebSocketListener
 import org.json.JSONArray
 import org.json.JSONObject
 
+private const val NATIVE_VOICE_REALTIME_MAX_CHARS = 512 * 1024
+
 enum class NativeVoiceRealtimeState { CONNECTING, CONNECTED, CLOSED, FAILED }
 
 data class NativeVoiceSignal(val event: String, val payload: JSONObject)
@@ -94,6 +96,10 @@ class NativeVoiceRealtimeConnection internal constructor(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                if (text.length > NATIVE_VOICE_REALTIME_MAX_CHARS) {
+                    fail(IOException("Voice Realtime message too large"))
+                    return
+                }
                 try {
                     val message = JSONObject(text)
                     val incomingTopic = message.optString("topic")
@@ -144,26 +150,30 @@ class NativeVoiceRealtimeConnection internal constructor(
         require(event in ALLOWED_EVENTS) { "Voice signal event ไม่ถูกต้อง" }
         if (_state.value != NativeVoiceRealtimeState.CONNECTED) return false
         val ref = refs.getAndIncrement().toString()
-        return socket.send(envelope(
+        val message = envelope(
             realtimeTopic,
             "broadcast",
             JSONObject().put("type", "broadcast").put("event", event).put("payload", payload),
             ref,
             "1"
-        ))
+        )
+        if (message.length > NATIVE_VOICE_REALTIME_MAX_CHARS) return false
+        return socket.send(message)
     }
 
     fun updateAccessToken(accessToken: String): Boolean {
         require(accessToken.isNotBlank())
         if (_state.value != NativeVoiceRealtimeState.CONNECTED) return false
         val ref = refs.getAndIncrement().toString()
-        return socket.send(envelope(
+        val message = envelope(
             realtimeTopic,
             "access_token",
             JSONObject().put("access_token", accessToken),
             ref,
             "1"
-        ))
+        )
+        if (message.length > NATIVE_VOICE_REALTIME_MAX_CHARS) return false
+        return socket.send(message)
     }
 
     private fun fail(cause: Throwable) {

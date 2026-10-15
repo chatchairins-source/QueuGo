@@ -79,6 +79,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -144,28 +145,25 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
     val store = remember { SessionStore(context) }
     val learningStore = remember(context) { RiderLearningOnboardingStore(context) }
     val scope = rememberCoroutineScope()
-    val cachedAtComposition = remember { store.load() }
 
-    // Hydrate the encrypted local session immediately. Validation still runs against
-    // Production, but returning from background/activity recreation must not flash a
-    // cold-start loading screen or discard the Rider's current working context.
-    var auth by remember { mutableStateOf<QueueGoAuth?>(cachedAtComposition) }
-    var restoring by remember { mutableStateOf(cachedAtComposition == null) }
+    // Rider session restore touches SharedPreferences + Android Keystore + AES/GCM.
+    // Keep all of that off Main so a slow keystore/provider cannot turn cold start
+    // into an ANR. The existing silent loading surface prevents a login flash.
+    var auth by remember { mutableStateOf<QueueGoAuth?>(null) }
+    var restoring by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var restorationError by remember { mutableStateOf(false) }
     var restorationAttempt by remember { mutableStateOf(0) }
-    var registrationOpen by remember {
-        mutableStateOf(
-            cachedAtComposition?.let {
-                store.pendingRegistrationUserId() == it.session.authUserId
-            } ?: false
-        )
-    }
+    var registrationOpen by remember { mutableStateOf(false) }
     var learningOnboardingDismissed by remember(auth?.user?.id) { mutableStateOf(false) }
 
     LaunchedEffect(restorationAttempt) {
-        val cached = auth ?: store.load()
+        restoring = auth == null
+        restorationError = false
+        val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            store.load()
+        }
         if (cached == null) {
             restoring = false
             return@LaunchedEffect
@@ -173,51 +171,58 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
 
         // Never blank an already-restored UI while the server session check runs.
         if (auth == null) auth = cached
+        registrationOpen = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            store.pendingRegistrationUserId() == cached.session.authUserId
+        }
         restoring = false
-        restorationError = false
 
-        runCatching { api.validate(cached).also { store.save(it) } }
-            .onSuccess {
-                auth = it
-                registrationOpen = store.pendingRegistrationUserId() == it.session.authUserId
+        val validation = runCatching {
+            val validated = api.validate(cached)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
+            validated
+        }
+        validation.onSuccess { validated ->
+            auth = validated
+        }.onFailure {
+            if (it is CancellationException) throw it
+            if (shouldClearRiderSession(it)) {
+                store.clear()
+                auth = null
+                error = it.message
+            } else if (auth == null) {
+                restorationError = true
             }
-            .onFailure {
-                if (it is CancellationException) throw it
-                if (shouldClearRiderSession(it)) {
-                    store.clear()
-                    auth = null
-                    error = it.message
-                } else if (auth == null) {
-                    restorationError = true
-                }
-                // With a cached authenticated view, transient network failure is
-                // non-blocking; the periodic validator will retry in the background.
-            }
+            // With a cached authenticated view, transient network failure is
+            // non-blocking; the periodic validator will retry in the background.
+        }
     }
 
-    LaunchedEffect(auth?.session?.sessionId) {
+    val appLifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(auth?.session?.sessionId, appLifecycle) {
         if (auth == null) return@LaunchedEffect
-        while (true) {
-            delay(25_000)
-            val current = auth ?: break
-            val result = runCatching {
-                val validated = api.validate(current)
-                api.touch(validated.session)
-                store.save(validated)
-                validated
-            }
-            result.onSuccess { validated ->
-                auth = validated
-            }.onFailure {
-                if (it is CancellationException) throw it
-                if (shouldClearRiderSession(it)) {
-                    RiderReturnService.stop(context)
-                    store.clear()
-                    auth = null
-                    error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
+        appLifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(25_000)
+                val current = auth ?: break
+                val result = runCatching {
+                    val validated = api.validate(current)
+                    api.touch(validated.session)
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
+                    validated
                 }
+                result.onSuccess { validated ->
+                    auth = validated
+                }.onFailure {
+                    if (it is CancellationException) throw it
+                    if (shouldClearRiderSession(it)) {
+                        RiderReturnService.stop(context)
+                        store.clear()
+                        auth = null
+                        error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
+                    }
+                }
+                if (auth == null) return@repeatOnLifecycle
             }
-            if (auth == null) break
         }
     }
 
@@ -243,7 +248,7 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { auth = checkpoint }
                                     }
                                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.finishRegistration() }
-                                    store.save(result)
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(result) }
                                     auth = result
                                     registrationOpen = false
                                 } catch (e: Exception) {
@@ -265,13 +270,17 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                         scope.launch {
                             try {
                                 val signed = api.signIn(id, password, store.deviceId())
-                                store.save(signed)
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(signed) }
                                 auth = signed
                                 if (signed.user.status == "pending") {
                                     val draft = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.loadRegistrationDraft() }
                                     if (draft?.optJSONObject("form")?.optString("phone")?.replace(Regex("[-\\s]"), "") == signed.user.phone &&
-                                        (store.pendingRegistrationUserId() == signed.session.authUserId || api.registrationProfileMissing(signed))) {
-                                        store.saveRegistrationCheckpoint(signed)
+                                        (kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            store.pendingRegistrationUserId() == signed.session.authUserId
+                                        } || api.registrationProfileMissing(signed))) {
+                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            store.saveRegistrationCheckpoint(signed)
+                                        }
                                         registrationOpen = true
                                     }
                                 }
@@ -576,9 +585,13 @@ private fun RiderHome(
     ) { auth.asNativeVoiceAuth() }
     val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
     val voiceState by voiceController.state.collectAsState()
-    val voiceAssistantEnabled by remember(context, auth.user.id) {
-        RiderVoiceAssistantSettings.enabled(context, auth.user.id)
-    }.collectAsState()
+    val voiceAssistantState = remember(auth.user.id) {
+        RiderVoiceAssistantSettings.state(auth.user.id)
+    }
+    val voiceAssistantEnabled by voiceAssistantState.collectAsState()
+    LaunchedEffect(auth.user.id) {
+        RiderVoiceAssistantSettings.hydrate(context, auth.user.id)
+    }
     val voiceAssistantSpeaker = remember(auth.user.id) {
         RiderVoiceAssistantSpeaker(context.applicationContext)
     }
@@ -605,18 +618,38 @@ private fun RiderHome(
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val snapshotMutex = remember { Mutex() }
+    val dispatchPreferenceWriteMutex = remember(auth.user.id) { Mutex() }
 
     var snapshot by remember(auth.user.id) {
-        mutableStateOf<RiderSnapshot?>(pushStore.loadHomeSnapshot(auth.user.id))
+        mutableStateOf<RiderSnapshot?>(null)
     }
-    var autoAcceptEnabled by rememberSaveable(auth.user.id) {
-        mutableStateOf(acceptanceModeStore.autoAcceptEnabled(auth.user.id))
+    LaunchedEffect(auth.user.id) {
+        val cachedSnapshot = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            pushStore.loadHomeSnapshot(auth.user.id)
+        }
+        if (snapshot == null && cachedSnapshot != null) snapshot = cachedSnapshot
     }
+    var dispatchPreferencesHydrated by remember(auth.user.id) { mutableStateOf(false) }
+    var autoAcceptEnabled by rememberSaveable(auth.user.id) { mutableStateOf(false) }
     var autoAcceptAttemptKey by rememberSaveable(auth.user.id) {
         mutableStateOf<String?>(null)
     }
-    var stopAfterWorkPending by rememberSaveable(auth.user.id) {
-        mutableStateOf(stopAfterWorkStore.pending(auth.user.id))
+    var stopAfterWorkPending by rememberSaveable(auth.user.id) { mutableStateOf(false) }
+
+    LaunchedEffect(auth.user.id, acceptanceModeStore, stopAfterWorkStore) {
+        try {
+            val restoredAutoAccept = acceptanceModeStore.autoAcceptEnabled(auth.user.id)
+            val restoredStopAfterWork = stopAfterWorkStore.pending(auth.user.id)
+            autoAcceptEnabled = restoredAutoAccept
+            stopAfterWorkPending = restoredStopAfterWork
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            autoAcceptEnabled = false
+            stopAfterWorkPending = false
+        } finally {
+            dispatchPreferencesHydrated = true
+        }
     }
 
     LaunchedEffect(
@@ -688,8 +721,19 @@ private fun RiderHome(
     }
 
     fun setStopAfterWorkPending(pending: Boolean) {
+        if (!dispatchPreferencesHydrated) return
         stopAfterWorkPending = pending
-        stopAfterWorkStore.setPending(auth.user.id, pending)
+        scope.launch {
+            try {
+                dispatchPreferenceWriteMutex.withLock {
+                    stopAfterWorkStore.setPending(auth.user.id, pending)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                actionMessage = "บันทึกโหมดหยุดรับงานหลังจบงานไม่สำเร็จ"
+            }
+        }
     }
 
     fun requireServerNetwork(): Boolean {
@@ -819,7 +863,7 @@ private fun RiderHome(
     LaunchedEffect(snapshot?.activeJob?.id, auth.session.accessToken) {
         homeDetails = null
         activeLoadSummary = null
-        snapshot?.activeJob?.let { job ->
+        snapshot?.activeJob?.takeUnless { it.isPassenger }?.let { job ->
             try {
                 homeDetails = api.verificationDetails(auth, job.id)
             } catch (e: CancellationException) {
@@ -841,7 +885,7 @@ private fun RiderHome(
     LaunchedEffect(snapshot?.offeredJob?.id, auth.session.accessToken) {
         offerShopDisplay = null
         offerLoadSummary = null
-        snapshot?.offeredJob?.let { job ->
+        snapshot?.offeredJob?.takeUnless { it.isPassenger }?.let { job ->
             try {
                 offerShopDisplay = api.offerShopDisplay(auth, job.id)
             } catch (e: CancellationException) {
@@ -868,17 +912,34 @@ private fun RiderHome(
     var verifyDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
     var verifyItems by remember { mutableStateOf<List<RiderItem>>(emptyList()) }
     var verifyMarketPickup by remember { mutableStateOf<MarketPickup?>(null) }
+    var verifyCollection by remember { mutableStateOf(false) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var returnPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var returnPendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     val pendingProofStore = remember(context, auth.user.id) { RiderPendingProofStore(context) }
+    val pendingProofStoreMutex = remember(auth.user.id) { Mutex() }
+    suspend fun <T> pendingProofIo(block: () -> T): T =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            pendingProofStoreMutex.withLock { block() }
+        }
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
     var handledPushEventId by remember(auth.user.id) { mutableStateOf<Long?>(null) }
-    var activeTab by rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }
+    var activeTab by rememberSaveable(auth.user.id) { mutableStateOf("home") }
+    var activeTabHydrated by remember(auth.user.id) { mutableStateOf(false) }
     var messageSection by rememberSaveable(auth.user.id) { mutableStateOf("chat") }
-    LaunchedEffect(auth.user.id, activeTab) {
-        pushStore.saveActiveTab(auth.user.id, activeTab)
+    LaunchedEffect(auth.user.id) {
+        val savedTab = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            pushStore.loadActiveTab(auth.user.id)
+        }
+        if (!activeTabHydrated) activeTab = savedTab
+        activeTabHydrated = true
+    }
+    LaunchedEffect(auth.user.id, activeTab, activeTabHydrated) {
+        if (!activeTabHydrated) return@LaunchedEffect
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            pushStore.saveActiveTab(auth.user.id, activeTab)
+        }
     }
     var pendingVoiceOrderId by remember { mutableStateOf<String?>(null) }
     var pendingVoiceTarget by remember { mutableStateOf("customer") }
@@ -933,7 +994,7 @@ private fun RiderHome(
         }
     }
 
-    val badgePreferences = remember(context) { context.getSharedPreferences("rider_chat_seen", Context.MODE_PRIVATE) }
+    val badgeSeenStore = remember(context.applicationContext) { RiderMessageSeenStore(context.applicationContext) }
     val badgeTracker = remember(auth.user.id, auth.session.sessionId) { RiderMessageBadgeTracker(auth.user.id) }
     val badgeApi = remember { RiderMessageBadgeApi() }
     var unreadMessages by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
@@ -957,9 +1018,14 @@ private fun RiderHome(
                     currentCoroutineContext().ensureActive()
                     if (active == badgeActive) {
                         val now = System.currentTimeMillis()
-                        if (badgeInbox) badgePreferences.edit().putLong(auth.user.id, now).apply()
+                        val seenAt = if (badgeInbox) {
+                            badgeSeenStore.markSeen(auth.user.id, now)
+                            now
+                        } else {
+                            badgeSeenStore.seenAt(auth.user.id)
+                        }
                         val (count, notice) = badgeTracker.update(active, badgeChat, badgeInbox, rooms,
-                            messages, badgePreferences.getLong(auth.user.id, 0L), now)
+                            messages, seenAt, now)
                         unreadMessages = count
                         if (notice != null) {
                             messageNotice = notice
@@ -997,7 +1063,7 @@ private fun RiderHome(
     }
     LaunchedEffect(chatJob?.id, activeTab, messageSection, auth.user.id) {
         if (activeTab == "chat" && messageSection == "chat") {
-            badgePreferences.edit().putLong(auth.user.id, System.currentTimeMillis()).apply()
+            badgeSeenStore.markSeen(auth.user.id, System.currentTimeMillis())
         }
         if (chatJob != null) unreadMessages = 0
     }
@@ -1050,42 +1116,62 @@ private fun RiderHome(
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) {
-            val promoted = pendingProofStore.promoteCapture(
-                auth.user.id,
-                RIDER_PROOF_SLOT_DELIVERY
-            )
-            photoUri = promoted?.uri?.let(Uri::parse)
-            pendingCameraUri = null
-            actionMessage = if (promoted != null) {
-                "ถ่ายรูปหลักฐานแล้ว · ระบบเก็บรูปไว้จนกว่าจะส่งสำเร็จ"
-            } else {
-                "บันทึกรูปหลักฐานไม่สำเร็จ กรุณาถ่ายใหม่"
+        scope.launch {
+            try {
+                if (success) {
+                    val promoted = pendingProofIo {
+                        pendingProofStore.promoteCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
+                    }
+                    photoUri = promoted?.uri?.let(Uri::parse)
+                    actionMessage = if (promoted != null) {
+                        "ถ่ายรูปหลักฐานแล้ว · ระบบเก็บรูปไว้จนกว่าจะส่งสำเร็จ"
+                    } else {
+                        "บันทึกรูปหลักฐานไม่สำเร็จ กรุณาถ่ายใหม่"
+                    }
+                } else {
+                    pendingProofIo {
+                        pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
+                    }
+                }
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                photoUri = null
+                actionMessage = "บันทึกรูปหลักฐานไม่สำเร็จ กรุณาถ่ายใหม่"
+            } finally {
+                pendingCameraUri = null
             }
-        } else {
-            pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
-            pendingCameraUri = null
         }
     }
 
     val returnCameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) {
-            val promoted = pendingProofStore.promoteCapture(
-                auth.user.id,
-                RIDER_PROOF_SLOT_RETURN
-            )
-            returnPhotoUri = promoted?.uri?.let(Uri::parse)
-            returnPendingCameraUri = null
-            actionMessage = if (promoted != null) {
-                "ถ่ายรูปหลักฐานการคืนสินค้าแล้ว · ระบบเก็บรูปไว้จนกว่าจะส่งสำเร็จ"
-            } else {
-                "บันทึกรูปหลักฐานการคืนสินค้าไม่สำเร็จ กรุณาถ่ายใหม่"
+        scope.launch {
+            try {
+                if (success) {
+                    val promoted = pendingProofIo {
+                        pendingProofStore.promoteCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
+                    }
+                    returnPhotoUri = promoted?.uri?.let(Uri::parse)
+                    actionMessage = if (promoted != null) {
+                        "ถ่ายรูปหลักฐานการคืนสินค้าแล้ว · ระบบเก็บรูปไว้จนกว่าจะส่งสำเร็จ"
+                    } else {
+                        "บันทึกรูปหลักฐานการคืนสินค้าไม่สำเร็จ กรุณาถ่ายใหม่"
+                    }
+                } else {
+                    pendingProofIo {
+                        pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
+                    }
+                }
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                returnPhotoUri = null
+                actionMessage = "บันทึกรูปหลักฐานการคืนสินค้าไม่สำเร็จ กรุณาถ่ายใหม่"
+            } finally {
+                returnPendingCameraUri = null
             }
-        } else {
-            pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
-            returnPendingCameraUri = null
         }
     }
 
@@ -1093,13 +1179,15 @@ private fun RiderHome(
         val returnCase = snapshot?.deliveryReturn
         returnPendingCameraUri = null
         returnPhotoUri = returnCase?.let { current ->
-            pendingProofStore.loadConfirmedMatching(
-                userId = auth.user.id,
-                slot = RIDER_PROOF_SLOT_RETURN,
-                workId = current.caseId,
-                mode = "deliveryReturn",
-                marketPickupId = null
-            )?.uri?.let(Uri::parse)
+            pendingProofIo {
+                pendingProofStore.loadConfirmedMatching(
+                    userId = auth.user.id,
+                    slot = RIDER_PROOF_SLOT_RETURN,
+                    workId = current.caseId,
+                    mode = "deliveryReturn",
+                    marketPickupId = null
+                )
+            }?.uri?.let(Uri::parse)
         }
     }
 
@@ -1146,22 +1234,37 @@ private fun RiderHome(
             actionMessage = "ไม่พบขั้นตอนการถ่ายรูป"
             return
         }
-        runCatching {
-            val uri = createEvidenceUri(context)
-            pendingProofStore.reserveCapture(
-                userId = auth.user.id,
-                slot = RIDER_PROOF_SLOT_DELIVERY,
-                workId = job.id,
-                mode = mode,
-                marketPickupId = verifyMarketPickup?.pickupId,
-                uri = uri
-            )
-            pendingCameraUri = uri
-            cameraLauncher.launch(uri)
-        }.onFailure {
-            pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
-            pendingCameraUri = null
-            actionMessage = "เปิดกล้องไม่สำเร็จ กรุณาลองอีกครั้ง"
+        scope.launch {
+            try {
+                val uri = pendingProofIo {
+                    createEvidenceUri(context).also { created ->
+                        pendingProofStore.reserveCapture(
+                            userId = auth.user.id,
+                            slot = RIDER_PROOF_SLOT_DELIVERY,
+                            workId = job.id,
+                            mode = mode,
+                            marketPickupId = verifyMarketPickup?.pickupId,
+                            uri = created
+                        )
+                    }
+                }
+                pendingCameraUri = uri
+                cameraLauncher.launch(uri)
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                try {
+                    pendingProofIo {
+                        pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Best-effort cleanup; stale reservation is age-bounded and reconciled later.
+                }
+                pendingCameraUri = null
+                actionMessage = "เปิดกล้องไม่สำเร็จ กรุณาลองอีกครั้ง"
+            }
         }
     }
 
@@ -1170,22 +1273,37 @@ private fun RiderHome(
             actionMessage = "ไม่พบงานคืนสินค้าที่กำลังดำเนินการ"
             return
         }
-        runCatching {
-            val uri = createEvidenceUri(context)
-            pendingProofStore.reserveCapture(
-                userId = auth.user.id,
-                slot = RIDER_PROOF_SLOT_RETURN,
-                workId = returnCase.caseId,
-                mode = "deliveryReturn",
-                marketPickupId = null,
-                uri = uri
-            )
-            returnPendingCameraUri = uri
-            returnCameraLauncher.launch(uri)
-        }.onFailure {
-            pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
-            returnPendingCameraUri = null
-            actionMessage = "เปิดกล้องคืนสินค้าไม่สำเร็จ กรุณาลองอีกครั้ง"
+        scope.launch {
+            try {
+                val uri = pendingProofIo {
+                    createEvidenceUri(context).also { created ->
+                        pendingProofStore.reserveCapture(
+                            userId = auth.user.id,
+                            slot = RIDER_PROOF_SLOT_RETURN,
+                            workId = returnCase.caseId,
+                            mode = "deliveryReturn",
+                            marketPickupId = null,
+                            uri = created
+                        )
+                    }
+                }
+                returnPendingCameraUri = uri
+                returnCameraLauncher.launch(uri)
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                try {
+                    pendingProofIo {
+                        pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Best-effort cleanup; stale reservation is age-bounded and reconciled later.
+                }
+                returnPendingCameraUri = null
+                actionMessage = "เปิดกล้องคืนสินค้าไม่สำเร็จ กรุณาลองอีกครั้ง"
+            }
         }
     }
 
@@ -1193,70 +1311,99 @@ private fun RiderHome(
         actionBusy = true
         actionMessage = null
         scope.launch {
-            runCatching {
-                coroutineScope {
+            try {
+                val loaded = coroutineScope {
                     val items = async { api.orderItems(auth, job.id) }
                     val details = async { api.verificationDetails(auth, job.id) }
                     items.await() to details.await()
                 }
-            }
-                .onSuccess {
-                    pendingProofStore.saveVerification(auth.user.id, RiderVerificationResume(job.id, mode, null, false))
-                    verifyMode = mode
-                    verifyJob = job
-                    verifyItems = it.first
-                    verifyDetails = it.second
-                    val recoveredProof = pendingProofStore.loadConfirmedMatching(
+                val recoveredProof = pendingProofIo {
+                    pendingProofStore.saveVerification(
+                        auth.user.id,
+                        RiderVerificationResume(job.id, mode, null, false)
+                    )
+                    pendingProofStore.loadConfirmedMatching(
                         userId = auth.user.id,
                         slot = RIDER_PROOF_SLOT_DELIVERY,
                         workId = job.id,
                         mode = mode,
                         marketPickupId = null
                     )
-                    photoUri = recoveredProof?.uri?.let(Uri::parse)
-                    pendingCameraUri = null
-                    if (recoveredProof != null) {
-                        actionMessage = "กู้คืนรูปหลักฐานที่ยังไม่ได้ส่งแล้ว"
-                    }
                 }
-                .onFailure {
-                    if (it is CancellationException) throw it
-                    actionMessage = it.message ?: "โหลดรายการไม่สำเร็จ"
+                verifyMode = mode
+                verifyJob = job
+                verifyItems = loaded.first
+                verifyDetails = loaded.second
+                verifyCollection = false
+                photoUri = recoveredProof?.uri?.let(Uri::parse)
+                pendingCameraUri = null
+                if (recoveredProof != null) {
+                    actionMessage = "กู้คืนรูปหลักฐานที่ยังไม่ได้ส่งแล้ว"
                 }
-            actionBusy = false
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (failure: Exception) {
+                actionMessage = failure.message ?: "โหลดรายการไม่สำเร็จ"
+            } finally {
+                actionBusy = false
+            }
         }
     }
 
     fun openMarketPickupVerification(job: RiderJob, pickup: MarketPickup) {
-        pendingProofStore.saveVerification(auth.user.id, RiderVerificationResume(job.id, "marketPickup", pickup.pickupId, false))
-        verifyMode = "marketPickup"
-        verifyJob = job
-        verifyMarketPickup = pickup
-        verifyItems = emptyList()
-        verifyDetails = null
-        val recoveredProof = pendingProofStore.loadConfirmedMatching(
-            userId = auth.user.id,
-            slot = RIDER_PROOF_SLOT_DELIVERY,
-            workId = job.id,
-            mode = "marketPickup",
-            marketPickupId = pickup.pickupId
-        )
-        photoUri = recoveredProof?.uri?.let(Uri::parse)
-        pendingCameraUri = null
-        actionMessage = if (recoveredProof != null) {
-            "กู้คืนรูปหลักฐานที่ยังไม่ได้ส่งแล้ว"
-        } else {
-            null
+        scope.launch {
+            try {
+                val recoveredProof = pendingProofIo {
+                    pendingProofStore.saveVerification(
+                        auth.user.id,
+                        RiderVerificationResume(job.id, "marketPickup", pickup.pickupId, false)
+                    )
+                    pendingProofStore.loadConfirmedMatching(
+                        userId = auth.user.id,
+                        slot = RIDER_PROOF_SLOT_DELIVERY,
+                        workId = job.id,
+                        mode = "marketPickup",
+                        marketPickupId = pickup.pickupId
+                    )
+                }
+                verifyMode = "marketPickup"
+                verifyJob = job
+                verifyMarketPickup = pickup
+                verifyItems = emptyList()
+                verifyDetails = null
+                verifyCollection = false
+                photoUri = recoveredProof?.uri?.let(Uri::parse)
+                pendingCameraUri = null
+                actionMessage = if (recoveredProof != null) {
+                    "กู้คืนรูปหลักฐานที่ยังไม่ได้ส่งแล้ว"
+                } else {
+                    null
+                }
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (failure: Exception) {
+                actionMessage = failure.message ?: "เปิดขั้นตอนตรวจสอบไม่สำเร็จ"
+            }
         }
     }
 
     fun closeVerification() {
-        pendingProofStore.clearVerification(auth.user.id)
+        val closingUserId = auth.user.id
+        scope.launch {
+            try {
+                pendingProofIo { pendingProofStore.clearVerification(closingUserId) }
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                // Stale workflow state is validated against the authoritative Order on restore.
+            }
+        }
         verifyMode = null
         verifyJob = null
         verifyItems = emptyList()
         verifyDetails = null
         verifyMarketPickup = null
+        verifyCollection = false
         photoUri = null
         pendingCameraUri = null
     }
@@ -1394,7 +1541,11 @@ private fun RiderHome(
                     riderMergeLiveSnapshot(current, resolvedSnapshot)
                 } ?: resolvedSnapshot
                 snapshot = mergedSnapshot
-                pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot)
+                if (mergedSnapshot != currentSnapshot) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        runCatching { pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot) }
+                    }
+                }
                 reconcileRiderOfferNotifications(context, auth.user.id, mergedSnapshot.offeredJob?.id)
                 consecutiveSnapshotFailures = 0
                 loadError = null
@@ -1538,7 +1689,9 @@ private fun RiderHome(
     LaunchedEffect(auth.user.id, snapshot?.activeJob?.id, snapshot?.activeJob?.status,
         snapshot?.activeJob?.customerArrived, snapshot?.marketPickups?.map { it.pickupId to it.done }, actionBusy) {
         if (actionBusy) return@LaunchedEffect
-        val saved = pendingProofStore.loadVerification(auth.user.id) ?: return@LaunchedEffect
+        val saved = pendingProofIo {
+            pendingProofStore.loadVerification(auth.user.id)
+        } ?: return@LaunchedEffect
         val current = snapshot ?: return@LaunchedEffect
         val job = riderSnapshotJobForCommit(current, saved.workId) ?: run {
             if (verifyMode != null) closeVerification()
@@ -1546,7 +1699,7 @@ private fun RiderHome(
         }
         val pickup = current.marketPickups.firstOrNull { it.pickupId == saved.pickupId && !it.done }
         if (!riderVerificationResumeAllowed(saved.mode, job.status, job.customerArrived, pickup != null)) {
-            pendingProofStore.clearVerification(auth.user.id)
+            pendingProofIo { pendingProofStore.clearVerification(auth.user.id) }
             if (verifyMode != null) closeVerification()
             return@LaunchedEffect
         }
@@ -1558,8 +1711,16 @@ private fun RiderHome(
         verifyMode = saved.mode
         verifyJob = job
         verifyMarketPickup = pickup
-        photoUri = pendingProofStore.loadConfirmedMatching(auth.user.id, RIDER_PROOF_SLOT_DELIVERY,
-            job.id, saved.mode, saved.pickupId)?.uri?.let(Uri::parse)
+        verifyCollection = saved.collection
+        photoUri = pendingProofIo {
+            pendingProofStore.loadConfirmedMatching(
+                auth.user.id,
+                RIDER_PROOF_SLOT_DELIVERY,
+                job.id,
+                saved.mode,
+                saved.pickupId
+            )
+        }?.uri?.let(Uri::parse)
         if (pickup == null) {
             try {
                 verifyItems = api.orderItems(auth, job.id)
@@ -1604,12 +1765,28 @@ private fun RiderHome(
             photoUri = photoUri,
             busy = actionBusy,
             message = actionMessage,
-            resumeCollection = pendingProofStore.loadVerification(auth.user.id)?.collection == true,
+            resumeCollection = verifyCollection,
             onCollectionChanged = { collection ->
+                verifyCollection = collection
                 val job = verifyJob
                 val mode = verifyMode
-                if (job != null && mode != null) pendingProofStore.saveVerification(auth.user.id,
-                    RiderVerificationResume(job.id, mode, verifyMarketPickup?.pickupId, collection))
+                val pickupId = verifyMarketPickup?.pickupId
+                if (job != null && mode != null) {
+                    scope.launch {
+                        try {
+                            pendingProofIo {
+                                pendingProofStore.saveVerification(
+                                    auth.user.id,
+                                    RiderVerificationResume(job.id, mode, pickupId, collection)
+                                )
+                            }
+                        } catch (failure: CancellationException) {
+                            throw failure
+                        } catch (_: Exception) {
+                            actionMessage = "บันทึกขั้นตอนงานในเครื่องไม่สำเร็จ · งานยังไม่ถูกส่ง"
+                        }
+                    }
+                }
             },
             onBack = { closeVerification() },
             onCamera = { openCamera() },
@@ -1708,18 +1885,7 @@ private fun RiderHome(
                                 )
                             }
                             else -> before?.let { previous ->
-                                val bundleAfter = previous.bundle.copy(
-                                    activeOrders = previous.bundle.activeOrders.map { bundled ->
-                                        if (bundled.job.id == job.id) {
-                                            bundled.copy(job = bundled.job.copy(status = "completed"))
-                                        } else bundled
-                                    }
-                                )
-                                previous.copy(
-                                    activeJob = bundleAfter.currentOrder()?.job,
-                                    marketPickups = emptyList(),
-                                    bundle = bundleAfter
-                                )
+                                riderAfterDeliveryCommit(previous, job.id)
                             }
                         }
                         if (localAfterSuccess != null) {
@@ -1731,13 +1897,23 @@ private fun RiderHome(
                             RiderReturnService.stop(context)
                             deliverySuccessJob = job
                         }
-                        pendingProofStore.clearConfirmedMatching(
-                            userId = auth.user.id,
-                            slot = RIDER_PROOF_SLOT_DELIVERY,
-                            workId = job.id,
-                            mode = completedMode.orEmpty(),
-                            marketPickupId = completedMarketPickupId
-                        )
+                        scope.launch {
+                            try {
+                                pendingProofIo {
+                                    pendingProofStore.clearConfirmedMatching(
+                                        userId = auth.user.id,
+                                        slot = RIDER_PROOF_SLOT_DELIVERY,
+                                        workId = job.id,
+                                        mode = completedMode.orEmpty(),
+                                        marketPickupId = completedMarketPickupId
+                                    )
+                                }
+                            } catch (failure: CancellationException) {
+                                throw failure
+                            } catch (_: Exception) {
+                                // Server mutation already committed; stale local proof is reconciled later.
+                            }
+                        }
                         closeVerification()
 
                         val updated = runCatching { api.riderSnapshot(auth) }
@@ -1760,6 +1936,13 @@ private fun RiderHome(
                             persistCommittedSnapshot(committedRead)
                         }
 
+                        if (completedMode == "delivery") {
+                            val promoted = committedRead?.activeJob ?: localAfterSuccess?.activeJob
+                            if (promoted != null && promoted.id != job.id) {
+                                deliverySuccessJob = null
+                                openNavigation(context, promoted)
+                            }
+                        }
                         if (completedMode == "pickup" && pickupCommittedStatus == "in_progress") {
                             val nextStop = committedRead?.activeJob
                                 ?: localAfterSuccess?.activeJob
@@ -1919,6 +2102,7 @@ private fun RiderHome(
     }
 
     LaunchedEffect(
+        dispatchPreferencesHydrated,
         stopAfterWorkPending,
         networkAvailable,
         snapshot?.online,
@@ -1928,6 +2112,7 @@ private fun RiderHome(
         snapshot?.offeredJob?.id,
         lifecycle
     ) {
+        if (!dispatchPreferencesHydrated) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (stopAfterWorkPending) {
                 val current = snapshot
@@ -2037,7 +2222,30 @@ private fun RiderHome(
         }
     }
 
+    // Navigation and visible UI renew the same lease with the same on-device preference.
+    SideEffect {
+        RiderNavigationDispatchReadiness.bind(RiderNavigationDispatchReadiness.Binding(
+            auth.user.id, auth.session.sessionId, snapshot?.riderProfileId, snapshot?.activeJob?.id,
+            networkAvailable && snapshot?.online == true && !actionBusy &&
+                snapshot?.deliveryReturn == null && snapshot?.laundry?.activeJob == null))
+    }
+    DisposableEffect(auth.user.id, auth.session.sessionId) {
+        onDispose { RiderNavigationDispatchReadiness.clear(auth.user.id) }
+    }
+    LaunchedEffect(autoAcceptEnabled, stopAfterWorkPending, networkAvailable, snapshot?.online,
+        snapshot?.deliveryReturn?.caseId, snapshot?.laundry?.activeJob?.jobId,
+        actionBusy, lifecycle, auth.session.accessToken) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                runCatching { RiderNavigationDispatchReadiness.syncForeground(context, api, auth) }
+                    .onFailure { if (it is CancellationException) throw it }
+                delay(20_000L)
+            }
+        }
+    }
+
     LaunchedEffect(
+        dispatchPreferencesHydrated,
         autoAcceptEnabled,
         stopAfterWorkPending,
         networkAvailable,
@@ -2049,6 +2257,7 @@ private fun RiderHome(
         actionBusy,
         lifecycle
     ) {
+        if (!dispatchPreferencesHydrated) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             val current = snapshot ?: return@repeatOnLifecycle
             val offer = current.offeredJob ?: return@repeatOnLifecycle
@@ -2122,6 +2331,35 @@ private fun RiderHome(
         dismissedRestSessionStart
     )
     val navigationHud = if (activeNavigationWork) riderNavigationHudInfo(navigationGuidance) else null
+
+    val customerEtaJob by rememberUpdatedState(snapshot?.activeJob)
+    val customerEtaMapJobId by rememberUpdatedState(mapJob?.id)
+    val customerEtaGuidance by rememberUpdatedState(navigationGuidance)
+    LaunchedEffect(auth.user.id, auth.session.sessionId) {
+        while (true) {
+            val job = customerEtaJob
+            val guidance = customerEtaGuidance
+            val eta = guidance.etaSeconds
+            if (
+                job != null &&
+                job.id == customerEtaMapJobId &&
+                job.marketOrderId == null &&
+                job.status.lowercase() in setOf("picked_up", "in_progress") &&
+                !guidance.weakGps &&
+                !guidance.offRoute &&
+                eta != null &&
+                eta.isFinite() &&
+                eta in 0.0..14_400.0
+            ) {
+                // Best-effort telemetry only. The backend verifies that this QT is
+                // the authoritative customer dropoff before accepting the snapshot.
+                runCatching {
+                    api.publishCustomerEta(auth, job.id, eta.toInt().coerceIn(0, 14_400))
+                }
+            }
+            delay(15_000L)
+        }
+    }
 
     LaunchedEffect(
         activeNavigationWork,
@@ -2585,10 +2823,20 @@ private fun RiderHome(
                         )
                         RiderAcceptanceModeControl(
                             autoAcceptEnabled = autoAcceptEnabled,
-                            enabled = !actionBusy,
+                            enabled = dispatchPreferencesHydrated && !actionBusy,
                             onAutoAcceptChanged = { enabled ->
                                 autoAcceptEnabled = enabled
-                                acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
+                                scope.launch {
+                                    try {
+                                        dispatchPreferenceWriteMutex.withLock {
+                                            acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
+                                        }
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Exception) {
+                                        actionMessage = "บันทึกโหมดรับงานไม่สำเร็จ"
+                                    }
+                                }
                                 actionMessage = if (enabled) {
                                     "เปิดรับงานอัตโนมัติแล้ว"
                                 } else {
@@ -2696,13 +2944,23 @@ private fun RiderHome(
                                             runCatching {
                                                 api.completeDeliveryReturn(context, auth, returnCase.caseId, proof)
                                             }.onSuccess { result ->
-                                                pendingProofStore.clearConfirmedMatching(
-                                                    userId = auth.user.id,
-                                                    slot = RIDER_PROOF_SLOT_RETURN,
-                                                    workId = returnCase.caseId,
-                                                    mode = "deliveryReturn",
-                                                    marketPickupId = null
-                                                )
+                                                scope.launch {
+                                                    try {
+                                                        pendingProofIo {
+                                                            pendingProofStore.clearConfirmedMatching(
+                                                                userId = auth.user.id,
+                                                                slot = RIDER_PROOF_SLOT_RETURN,
+                                                                workId = returnCase.caseId,
+                                                                mode = "deliveryReturn",
+                                                                marketPickupId = null
+                                                            )
+                                                        }
+                                                    } catch (failure: CancellationException) {
+                                                        throw failure
+                                                    } catch (_: Exception) {
+                                                        // Server return already committed; local proof cleanup is recoverable.
+                                                    }
+                                                }
                                                 returnPhotoUri = null
                                                 returnPendingCameraUri = null
                                                 val updated = runCatching { api.riderSnapshot(auth) }
@@ -2823,7 +3081,47 @@ private fun RiderHome(
                             )
                             Spacer(Modifier.height(10.dp))
                         }
-                        ActiveJobCard(
+                        if (activeJob.isPassenger) {
+                            RiderPassengerCard(
+                                job = activeJob, busy = actionBusy, networkAvailable = networkAvailable,
+                                onNavigate = { openNavigation(context, activeJob) },
+                                onChat = { chatJob = activeJob },
+                                onAction = { action ->
+                                    if (!actionBusy && requireServerNetwork()) {
+                                        actionBusy = true
+                                        scope.launch {
+                                            try {
+                                                val status = api.passengerAction(auth, activeJob, action)
+                                                if (status == "searching_rider") {
+                                                    val released = current.copy(activeJob = null, offeredJob = null)
+                                                    snapshot = released
+                                                    persistCommittedSnapshot(released)
+                                                    actionMessage = "สิทธิ์หรือเครดิตรับเที่ยวไม่พร้อม · ระบบส่งเที่ยวกลับไปหาคนขับใหม่แล้ว"
+                                                    runCatching { api.riderSnapshot(auth) }
+                                                        .onFailure { if (it is CancellationException) throw it }
+                                                        .onSuccess { snapshot = it; persistCommittedSnapshot(it) }
+                                                } else {
+                                                    val now = java.time.Instant.now().toString()
+                                                    val committedJob = activeJob.copy(status = status,
+                                                        arrivedShopAt = if (action == "arrive_pickup") now else activeJob.arrivedShopAt,
+                                                        arrivedCustomerAt = if (action == "arrive_dropoff") now else activeJob.arrivedCustomerAt)
+                                                    val committed = current.copy(activeJob = committedJob.takeUnless { status == "completed" }, offeredJob = null)
+                                                    snapshot = committed
+                                                    persistCommittedSnapshot(committed)
+                                                    actionMessage = if (status == "completed") "จบเที่ยวแล้ว" else "อัปเดตเที่ยวแล้ว"
+                                                    if (action == "start" && status == "in_progress") openNavigation(context, committedJob)
+                                                    runCatching { api.riderSnapshot(auth) }
+                                                        .onFailure { if (it is CancellationException) throw it }
+                                                        .onSuccess { snapshot = it; persistCommittedSnapshot(it) }
+                                                }
+                                            } catch (e: CancellationException) { throw e }
+                                            catch (e: Exception) { actionMessage = e.message ?: "ยังยืนยันผลไม่ได้ กรุณาลองอีกครั้ง" }
+                                            finally { actionBusy = false }
+                                        }
+                                    }
+                                }
+                            )
+                        } else ActiveJobCard(
                             job = if (
                                 activeJob.marketOrderId != null &&
                                 activeJob.status != "in_progress" &&
@@ -2904,6 +3202,15 @@ private fun RiderHome(
                                 pickupIssueStopId = current.marketPickups.firstOrNull { !it.done }?.pickupId
                             }
                         )
+                        snapshot?.nextJob?.let { queued ->
+                            Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("งานถัดไป · " + queued.numberLabel, fontWeight = FontWeight.Bold)
+                                    Text("ส่งงานปัจจุบันเสร็จแล้ว ไปรับที่ " + (queued.pickupAddress ?: "ร้านค้า"))
+                                    Text("รายรับค่าส่ง " + riderMoneyBaht(queued.deliveryFee ?: 0.0))
+                                }
+                            }
+                        }
                         RiderRouteBundlePanel(
                             state = current.bundle,
                             busy = actionBusy,
@@ -3245,7 +3552,7 @@ private fun OfferCard(
         Column(Modifier.padding(if (LocalConfiguration.current.screenHeightDp <= 760) 10.dp else 12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
-                    Text("งานใหม่ใกล้คุณ", color = QgRed, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                    Text(if (job.isPassenger) "เที่ยวโดยสาร" else "งานใหม่ใกล้คุณ", color = QgRed, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
                     Text(job.numberLabel, fontWeight = FontWeight.Black, fontSize = 24.sp)
                 }
                 Box(
@@ -3266,17 +3573,17 @@ private fun OfferCard(
                 logoUrl = shop?.shopLogo,
                 fallback = (shop?.shopName ?: job.pickupAddress ?: "Q").take(1),
                 icon = null,
-                label = "รับที่ร้าน",
+                label = if (job.isPassenger) "รับผู้โดยสาร" else "รับที่ร้าน",
                 value = shop?.shopName ?: job.pickupAddress ?: "ร้านค้า",
-                trailing = "รับสินค้า"
+                trailing = if (job.isPassenger) "จุดรับ" else "รับสินค้า"
             )
             RiderOfferPlaceRow(
                 logoUrl = null,
                 fallback = null,
                 icon = "location",
-                label = "ส่งให้ลูกค้า",
+                label = if (job.isPassenger) "ไปยังจุดหมาย" else "ส่งให้ลูกค้า",
                 value = job.deliveryAddress ?: "จุดส่งสินค้า",
-                trailing = "ส่งสินค้า"
+                trailing = if (job.isPassenger) "จุดส่ง" else "ส่งสินค้า"
             )
 
             Row(
@@ -3284,7 +3591,7 @@ private fun OfferCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 RiderOfferMetric("ระยะทาง", (pickupKm?.let { "%.1f".format(it) } ?: "—") + " กม.", Modifier.weight(1f))
-                RiderOfferMetric("เวลาประมาณ", (deliveryKm?.let { kotlin.math.ceil(it / 25.0 * 60.0).toInt().coerceAtLeast(1).toString() } ?: "—") + " นาที", Modifier.weight(1f))
+                RiderOfferMetric("เวลาประมาณ", ((if (job.isPassenger) job.rideDurationMinutes?.let { kotlin.math.ceil(it).toInt().toString() } else deliveryKm?.let { kotlin.math.ceil(it / 25.0 * 60.0).toInt().coerceAtLeast(1).toString() }) ?: "—") + " นาที", Modifier.weight(1f))
                 RiderOfferMetric("รายได้", riderMoneyBaht(job.deliveryFee), Modifier.weight(1f), highlight = true)
             }
 
@@ -4402,7 +4709,7 @@ private fun openNavigation(context: Context, job: RiderJob) {
     if (opened) {
         context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
             .putBoolean(navigationKey, true)
-            .commit()
+            .apply()
     } else {
         RiderReturnService.stop(context)
     }

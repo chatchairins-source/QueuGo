@@ -12,6 +12,9 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+private const val SECURE_ROLE_SESSION_MAX_PLAINTEXT_BYTES = 48 * 1024
+private const val SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS = 64 * 1024
+
 class SecureRoleSessionStore(private val context: Context, private val roleKey: String) {
     private val prefs = context.getSharedPreferences("queuego_native_" + roleKey, Context.MODE_PRIVATE)
     private val alias = "queuego_native_session_" + roleKey
@@ -32,29 +35,45 @@ class SecureRoleSessionStore(private val context: Context, private val roleKey: 
             .put("role", auth.user.role)
             .put("status", auth.user.status)
             .toString()
-        prefs.edit().putString("session", encrypt(json)).apply()
+        require(json.toByteArray(Charsets.UTF_8).size <= SECURE_ROLE_SESSION_MAX_PLAINTEXT_BYTES) {
+            "Session มีขนาดใหญ่เกินกำหนด"
+        }
+        val encrypted = encrypt(json)
+        require(encrypted.length <= SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS) {
+            "Session ที่เข้ารหัสมีขนาดใหญ่เกินกำหนด"
+        }
+        prefs.edit().putString("session", encrypted).apply()
     }
 
-    fun load(): NativeAuth? = runCatching {
+    fun load(): NativeAuth? {
         val raw = prefs.getString("session", null) ?: return null
-        val o = JSONObject(decrypt(raw))
-        NativeAuth(
-            NativeSession(
-                o.getString("authUserId"),
-                o.getString("accessToken"),
-                o.optString("refreshToken").takeIf { it.isNotBlank() && it != "null" },
-                o.optLong("expiresAtMs"),
-                o.getString("sessionId")
-            ),
-            NativeUser(
-                o.getString("userId"),
-                o.getString("authUserId"),
-                o.optString("name").ifBlank { "QueueGo" },
-                o.getString("role"),
-                o.optString("status")
+        if (raw.length > SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS) {
+            prefs.edit().remove("session").apply()
+            return null
+        }
+        return runCatching {
+            val o = JSONObject(decrypt(raw))
+            NativeAuth(
+                NativeSession(
+                    o.getString("authUserId"),
+                    o.getString("accessToken"),
+                    o.optString("refreshToken").takeIf { it.isNotBlank() && it != "null" },
+                    o.optLong("expiresAtMs"),
+                    o.getString("sessionId")
+                ),
+                NativeUser(
+                    o.getString("userId"),
+                    o.getString("authUserId"),
+                    o.optString("name").ifBlank { "QueueGo" },
+                    o.getString("role"),
+                    o.optString("status")
+                )
             )
-        )
-    }.getOrNull()
+        }.getOrElse {
+            prefs.edit().remove("session").apply()
+            null
+        }
+    }
 
     fun clear() { prefs.edit().remove("session").apply() }
 

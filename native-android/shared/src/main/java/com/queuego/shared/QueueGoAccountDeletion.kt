@@ -24,26 +24,37 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 
-class QueueGoAccountDeletionApi {
-    companion object {
-        private const val URL_PATH = "https://pkypiqhlrmzocysgeqew.supabase.co/functions/v1/account-delete"
-        private const val KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
-    }
+private const val ACCOUNT_DELETE_RESPONSE_MAX_BYTES = 256 * 1024
 
+private fun InputStream.readAccountDeleteResponseBounded(): String {
+    val output = ByteArrayOutputStream(16 * 1024)
+    val buffer = ByteArray(8 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= ACCOUNT_DELETE_RESPONSE_MAX_BYTES) {
+            "ผลลัพธ์การลบบัญชีมีขนาดใหญ่เกินกำหนด"
+        }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(StandardCharsets.UTF_8.name())
+}
+
+class QueueGoAccountDeletionApi {
     suspend fun delete(accessToken: String) = withContext(Dispatchers.IO) {
-        val c = URL(URL_PATH).openConnection() as HttpURLConnection
+        val c = URL(QueueGoNativeApi.BASE_URL + "/functions/v1/account-delete").openConnection() as HttpURLConnection
         try {
             c.requestMethod = "POST"
             c.connectTimeout = 15_000
             c.readTimeout = 15_000
             c.doOutput = true
-            c.setRequestProperty("apikey", KEY)
+            c.setRequestProperty("apikey", QueueGoNativeApi.PUBLISHABLE_KEY)
             c.setRequestProperty("Authorization", "Bearer " + accessToken)
             c.setRequestProperty("Content-Type", "application/json")
             c.outputStream.use {
@@ -55,9 +66,7 @@ class QueueGoAccountDeletionApi {
             }
             val code = c.responseCode
             val stream = if (code in 200..299) c.inputStream else c.errorStream
-            val text = stream?.use {
-                BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
-            }.orEmpty()
+            val text = stream?.use { it.readAccountDeleteResponseBounded() }.orEmpty()
             val payload = runCatching { JSONObject(text) }.getOrDefault(JSONObject())
             if (code !in 200..299 || !payload.optBoolean("ok", false)) {
                 val message = when (payload.optString("error")) {

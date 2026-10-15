@@ -25,7 +25,7 @@ internal suspend fun signMerchantGpSlip(auth: NativeAuth, objectPath: String): S
         connection.outputStream.use { it.write(JSONObject().put("expiresIn", 300).toString().toByteArray(Charsets.UTF_8)) }
         val code = connection.responseCode
         val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val raw = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        val raw = readMerchantStorageResponseBounded(stream)
         val data = JSONObject(raw.ifBlank { "{}" })
         check(code in 200..299) { data.optString("message").ifBlank { "เปิดสลิปไม่สำเร็จ (HTTP $code)" } }
         val signed = data.optString("signedURL")

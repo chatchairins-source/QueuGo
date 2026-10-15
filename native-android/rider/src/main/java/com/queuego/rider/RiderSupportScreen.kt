@@ -35,9 +35,26 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
+
+private const val RIDER_SUPPORT_EVIDENCE_MAX_BYTES = 5 * 1024 * 1024
+private const val RIDER_SUPPORT_SIGNED_RESPONSE_MAX_BYTES = 256 * 1024
+
+private fun InputStream.readRiderSupportBounded(limit: Int, tooLargeMessage: String): ByteArray {
+    val output = ByteArrayOutputStream(minOf(limit, 128 * 1024))
+    val buffer = ByteArray(8 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) { tooLargeMessage }
+        output.write(buffer, 0, count)
+    }
+    return output.toByteArray()
+}
 
 data class RiderSupportTicket(
     val id: String,
@@ -88,8 +105,12 @@ private class RiderSupportApi(private val http: QueueGoNativeApi = QueueGoNative
         require(type in setOf("image/jpeg", "image/png", "image/webp")) {
             "หลักฐานต้องเป็น JPG, PNG หรือ WebP"
         }
-        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: error("อ่านรูปหลักฐานไม่สำเร็จ")
-        require(bytes.size <= 5 * 1024 * 1024) { "รูปหลักฐานต้องไม่เกิน 5 MB" }
+        val bytes = resolver.openInputStream(uri)?.use {
+            it.readRiderSupportBounded(
+                RIDER_SUPPORT_EVIDENCE_MAX_BYTES,
+                "รูปหลักฐานต้องไม่เกิน 5 MB"
+            )
+        } ?: error("อ่านรูปหลักฐานไม่สำเร็จ")
         val ext = when (type) {
             "image/png" -> "png"
             "image/webp" -> "webp"
@@ -136,7 +157,15 @@ private class RiderSupportApi(private val http: QueueGoNativeApi = QueueGoNative
                 it.write(JSONObject().put("expiresIn", 300).toString().toByteArray(Charsets.UTF_8))
             }
             if (connection.responseCode !in 200..299) error("เปิดหลักฐานไม่สำเร็จ")
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val body = connection.inputStream.use {
+                String(
+                    it.readRiderSupportBounded(
+                        RIDER_SUPPORT_SIGNED_RESPONSE_MAX_BYTES,
+                        "ผลลัพธ์เปิดหลักฐานมีขนาดใหญ่เกินกำหนด"
+                    ),
+                    Charsets.UTF_8
+                )
+            }
             val signed = JSONObject(body).optString("signedURL")
                 .ifBlank { JSONObject(body).optString("signedUrl") }
             require(signed.isNotBlank()) { "เปิดหลักฐานไม่สำเร็จ" }

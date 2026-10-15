@@ -10,6 +10,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -38,10 +40,30 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URLEncoder
 import java.net.URL
 import java.nio.charset.StandardCharsets
+
+private const val MERCHANT_MEDIA_RESPONSE_MAX_BYTES = 2 * 1024 * 1024
+
+private fun InputStream.readMerchantMediaResponseBounded(
+    limit: Int = MERCHANT_MEDIA_RESPONSE_MAX_BYTES
+): String {
+    val output = ByteArrayOutputStream(minOf(limit, 64 * 1024))
+    val buffer = ByteArray(8 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) {
+            "รายการคลังรูปมีขนาดใหญ่เกินไป กรุณาลองใหม่"
+        }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(StandardCharsets.UTF_8.name())
+}
 
 data class MerchantMediaItem(
     val name: String,
@@ -73,8 +95,12 @@ internal suspend fun loadMerchantMedia(auth: NativeAuth): List<MerchantMediaItem
                 it.write(body.toString().toByteArray(StandardCharsets.UTF_8))
             }
             val code = connection.responseCode
+            val declaredLength = connection.contentLengthLong
+            require(declaredLength <= 0L || declaredLength <= MERCHANT_MEDIA_RESPONSE_MAX_BYTES) {
+                "รายการคลังรูปมีขนาดใหญ่เกินไป กรุณาลองใหม่"
+            }
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val raw = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val raw = stream?.use { it.readMerchantMediaResponseBounded() }.orEmpty()
             if (code !in 200..299) {
                 val message = runCatching {
                     JSONObject(raw).optString("message")
@@ -145,76 +171,85 @@ internal fun MerchantMediaScreen(
         }
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 12.dp)
     ) {
-        Row(
-            Modifier.padding(top = 7.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedButton(
-                onClick = onBack,
-                modifier = Modifier.height(38.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)
-            ) { Text("กลับ") }
-            Spacer(Modifier.width(10.dp))
-            Box(
-                Modifier
-                    .size(50.dp)
-                    .background(Color(0xFFFFEDF0), RoundedCornerShape(15.dp)),
-                contentAlignment = Alignment.Center
+        item(key = "media-header") {
+            Row(
+                Modifier.padding(top = 7.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                QgIcon("gallery", Modifier.size(24.dp), QgRed)
+                OutlinedButton(
+                    onClick = onBack,
+                    modifier = Modifier.height(38.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) { Text("กลับ") }
+                Spacer(Modifier.width(10.dp))
+                Box(
+                    Modifier
+                        .size(50.dp)
+                        .background(Color(0xFFFFEDF0), RoundedCornerShape(15.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    QgIcon("gallery", Modifier.size(24.dp), QgRed)
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text("คลังรูปภาพร้าน", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("รูปหน้าร้าน โลโก้ และรูปสินค้า", color = QgMuted, fontSize = 10.sp)
+                }
             }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text("คลังรูปภาพร้าน", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                Text("รูปหน้าร้าน โลโก้ และรูปสินค้า", color = QgMuted, fontSize = 10.sp)
+        }
+
+        item(key = "media-upload") {
+            Button(
+                onClick = { picker.launch("image/*") },
+                enabled = !uploading,
+                modifier = Modifier.fillMaxWidth().height(46.dp)
+            ) {
+                QgIcon("gallery", Modifier.size(19.dp), Color.White)
+                Spacer(Modifier.width(7.dp))
+                if (uploading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                else Text("เพิ่มรูปจากเครื่อง", fontWeight = FontWeight.ExtraBold)
             }
+
+            if (!message.isNullOrBlank()) {
+                Text(
+                    message!!,
+                    color = if (message!!.contains("แล้ว")) Color(0xFF0A9660) else QgRed,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
         }
 
-        Button(
-            onClick = { picker.launch("image/*") },
-            enabled = !uploading,
-            modifier = Modifier.fillMaxWidth().height(46.dp)
-        ) {
-            QgIcon("gallery", Modifier.size(19.dp), Color.White)
-            Spacer(Modifier.width(7.dp))
-            if (uploading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            else Text("เพิ่มรูปจากเครื่อง", fontWeight = FontWeight.ExtraBold)
-        }
-
-        if (!message.isNullOrBlank()) {
-            Text(
-                message!!,
-                color = if (message!!.contains("แล้ว")) Color(0xFF0A9660) else QgRed,
-                fontSize = 10.sp,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
         when {
-            loading -> Box(
-                Modifier.fillMaxWidth().height(160.dp),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
-
-            rows.isEmpty() -> Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Color.White, RoundedCornerShape(16.dp))
-                    .border(1.dp, QgLine, RoundedCornerShape(16.dp))
-                    .padding(vertical = 34.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("ยังไม่มีรูปในคลัง", color = QgMuted)
+            loading -> item(key = "media-loading") {
+                Box(
+                    Modifier.fillMaxWidth().height(160.dp),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator() }
             }
 
-            else -> rows.chunked(3).forEach { row ->
+            rows.isEmpty() -> item(key = "media-empty") {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color.White, RoundedCornerShape(16.dp))
+                        .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+                        .padding(vertical = 34.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("ยังไม่มีรูปในคลัง", color = QgMuted)
+                }
+            }
+
+            else -> items(
+                items = rows.chunked(3),
+                key = { row -> row.joinToString("|") { it.name } }
+            ) { row ->
                 Row(
                     Modifier.fillMaxWidth().padding(bottom = 9.dp),
                     horizontalArrangement = Arrangement.spacedBy(9.dp)
@@ -252,6 +287,8 @@ internal fun MerchantMediaScreen(
                 }
             }
         }
-        Spacer(Modifier.height(28.dp))
+        item(key = "media-bottom-space") {
+            Spacer(Modifier.height(28.dp))
+        }
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +27,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -92,8 +95,10 @@ import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
 import com.queuego.shared.SecureRoleSessionStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 private val categories = listOf(
@@ -113,11 +118,23 @@ private val homeDedicatedMarketCategories =
 fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
     val context = LocalContext.current
     val store = remember { SecureRoleSessionStore(context, "customer") }
-    var authRequested by rememberSaveable { mutableStateOf(store.load() != null) }
+    var authRequested by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var destinationAfterLogin by rememberSaveable { mutableStateOf("home") }
     var guestStartDestination by rememberSaveable { mutableStateOf("home") }
 
-    if (!authRequested) {
+    LaunchedEffect(store) {
+        if (authRequested == null) {
+            authRequested = withContext(Dispatchers.IO) { store.load() != null }
+        }
+    }
+
+    if (authRequested == null) {
+        QueueGoTheme {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+    } else if (authRequested == false) {
         QueueGoTheme {
         GuestCustomerShell(
             initialScreen = guestStartDestination,
@@ -215,33 +232,7 @@ private fun CustomerShell(
     }
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
     val locationStore = remember { CustomerLocationStore(context) }
-    val savedDeviceLocation = remember { locationStore.load() }
     val guestCartStore = remember { CustomerCartStore(context, "guest") }
-    val initialCartMerge = remember(auth.user.id) {
-        val saved = cartStore.load()
-        val guest = guestCartStore.load()
-        when {
-            guest.isEmpty() -> saved to false
-            saved.isEmpty() -> {
-                cartStore.save(guest)
-                guestCartStore.save(emptyList())
-                guest to false
-            }
-            saved.firstOrNull()?.product?.shopId == guest.firstOrNull()?.product?.shopId -> {
-                val merged = (saved + guest)
-                    .groupBy { it.product.id }
-                    .values
-                    .map { rows ->
-                        val freshest = rows.last().product
-                        CartLine(freshest, rows.sumOf { it.quantity }.coerceAtMost(99))
-                    }
-                cartStore.save(merged)
-                guestCartStore.save(emptyList())
-                merged to false
-            }
-            else -> saved to true
-        }
-    }
 
     var screen by remember(auth.user.id) { mutableStateOf(initialScreen) }
     var shopReturnScreen by remember { mutableStateOf("home") }
@@ -258,6 +249,7 @@ private fun CustomerShell(
     var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
     var selectedOrder by remember { mutableStateOf<CustomerOrder?>(null) }
     var trackingContext by remember { mutableStateOf<CustomerOrderContext?>(null) }
+    var orderEta by remember { mutableStateOf<CustomerOrderEta?>(null) }
     var selectedMarketTrip by remember { mutableStateOf<MarketTripSummary?>(null) }
     var selectedLaundryOrder by remember { mutableStateOf<LaundryOrderSummary?>(null) }
     var supportInitialOrderId by remember { mutableStateOf<String?>(null) }
@@ -266,19 +258,14 @@ private fun CustomerShell(
     DisposableEffect(shopCatalog) { onDispose { shopCatalog.close() } }
     LaunchedEffect(screen) { if (screen != "shop") shopCatalog.close() }
     var orderItems by remember { mutableStateOf<List<CustomerOrderItem>>(emptyList()) }
-    var cart by remember(auth.user.id) { mutableStateOf(initialCartMerge.first) }
-    var location by remember { mutableStateOf(savedDeviceLocation) }
-    var address by remember { mutableStateOf(savedDeviceLocation?.address.orEmpty()) }
+    var cart by remember(auth.user.id) { mutableStateOf<List<CartLine>>(emptyList()) }
+    var localStateLoaded by remember(auth.user.id) { mutableStateOf(false) }
+    var location by remember(auth.user.id) { mutableStateOf<CustomerLocation?>(null) }
+    var address by remember(auth.user.id) { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
-    var message by remember {
-        mutableStateOf<String?>(
-            if (initialCartMerge.second)
-                "ตะกร้าก่อนเข้าสู่ระบบเป็นคนละร้านกับตะกร้าบัญชีเดิม จึงเก็บไว้แยกกัน"
-            else null
-        )
-    }
+    var message by remember { mutableStateOf<String?>(null) }
     var pendingVoiceCall by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
     val voicePermission = rememberLauncherForActivityResult(
@@ -320,8 +307,48 @@ private fun CustomerShell(
     }
     val checkoutJournal = remember(cartStore) { cartStore.journal() }
     val checkoutRecovery = remember(checkoutJournal) { CustomerCheckoutRecovery<PendingCustomerCheckout, CustomerOrder>(checkoutJournal) }
-    var pendingCheckoutRecord by remember { mutableStateOf(runCatching { checkoutJournal.read() }.getOrNull()) }
-    var checkoutPending by remember { mutableStateOf(pendingCheckoutRecord != null) }
+    var pendingCheckoutRecord by remember(auth.user.id) { mutableStateOf<PendingCustomerCheckout?>(null) }
+    var checkoutPending by remember(auth.user.id) { mutableStateOf(false) }
+
+    LaunchedEffect(auth.user.id, cartStore, guestCartStore, checkoutJournal) {
+        val restored = withContext(Dispatchers.IO) {
+            val saved = cartStore.load()
+            val guest = guestCartStore.load()
+            val merged = when {
+                guest.isEmpty() -> saved to false
+                saved.isEmpty() -> {
+                    cartStore.save(guest)
+                    guestCartStore.save(emptyList())
+                    guest to false
+                }
+                saved.firstOrNull()?.product?.shopId == guest.firstOrNull()?.product?.shopId -> {
+                    val rows = (saved + guest)
+                        .groupBy { it.product.id }
+                        .values
+                        .map { grouped ->
+                            val freshest = grouped.last().product
+                            CartLine(freshest, grouped.sumOf { it.quantity }.coerceAtMost(99))
+                        }
+                    cartStore.save(rows)
+                    guestCartStore.save(emptyList())
+                    rows to false
+                }
+                else -> saved to true
+            }
+            val savedLocation = locationStore.load()
+            val pending = runCatching { checkoutJournal.read() }.getOrNull()
+            Triple(merged, savedLocation, pending)
+        }
+        cart = restored.first.first
+        location = restored.second
+        address = restored.second?.address.orEmpty()
+        pendingCheckoutRecord = restored.third
+        checkoutPending = restored.third != null
+        if (restored.first.second && message == null) {
+            message = "ตะกร้าก่อนเข้าสู่ระบบเป็นคนละร้านกับตะกร้าบัญชีเดิม จึงเก็บไว้แยกกัน"
+        }
+        localStateLoaded = true
+    }
 
     var lastCheckoutReceipt by remember { mutableStateOf<String?>(null) }
 
@@ -331,7 +358,11 @@ private fun CustomerShell(
         // cart immediately even if durable journal cleanup failed. The pending
         // journal remains available for exact-request reconciliation next launch.
         cart = emptyList()
-        runCatching { cartStore.save(emptyList()) }
+        // Server success must win even if local durable cart cleanup fails.
+        // Persist off Main so encrypted/local storage cannot block the UI thread.
+        scope.launch(Dispatchers.IO) {
+            runCatching { cartStore.save(emptyList()) }
+        }
         note = ""
         selectedOrder = order
         orderItems = emptyList()
@@ -349,7 +380,9 @@ private fun CustomerShell(
                     }
                 } catch (e: CancellationException) { throw e }
                 catch (_: Exception) { /* Preserve pending for reconnect or explicit retry. */ }
-                pendingCheckoutRecord = runCatching { checkoutJournal.read() }.getOrNull()
+                pendingCheckoutRecord = withContext(Dispatchers.IO) {
+                    runCatching { checkoutJournal.read() }.getOrNull()
+                }
                 checkoutPending = pendingCheckoutRecord != null
                 delay(8_000)
             }
@@ -492,6 +525,11 @@ private fun CustomerShell(
                 .onSuccess { fresh ->
                     if (fresh != null && screen == "order" && selectedOrder?.id == detailId) selectedOrder = fresh
                 }
+            runCatching { api.loadOrderEta(auth, detailId) }
+                .onFailure { if (it is CancellationException) throw it }
+                .onSuccess { fresh ->
+                    if (screen == "order" && selectedOrder?.id == detailId) orderEta = fresh
+                }
         }
         val detail = selectedOrder?.takeIf { screen == "order" }
         if (detail != null && contextRefreshGate.shouldFetch(detail)) {
@@ -506,6 +544,7 @@ private fun CustomerShell(
         }
     }
 
+    LaunchedEffect(selectedOrder?.id) { orderEta = null }
     LaunchedEffect(auth.user.id) { refresh() }
     LaunchedEffect(pushTarget?.eventId, auth.user.id) {
         val target = pushTarget ?: return@LaunchedEffect
@@ -588,7 +627,13 @@ private fun CustomerShell(
             }
         }
     }
-    LaunchedEffect(cart) { cartStore.save(cart) }
+    LaunchedEffect(cart, localStateLoaded) {
+        if (localStateLoaded) {
+            try { withContext(Dispatchers.IO) { cartStore.save(cart) } }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { /* Keep visible state and the durable checkout journal for recovery. */ }
+        }
+    }
     LaunchedEffect(auth.session.accessToken, screen, selectedOrder?.id, lifecycle) {
         if (screen == "orders" || screen == "order") {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -684,6 +729,7 @@ private fun CustomerShell(
                     onSearch = { screen = "search" },
                     onCategory = {
                         when (it) {
+                            "ride" -> screen = "ride"
                             "market" -> screen = "market"
                             "laundry" -> screen = "laundry"
                             "shopping" -> {
@@ -702,6 +748,13 @@ private fun CustomerShell(
                     },
                     onBannerLink = ::openHomeBannerLink
                 )
+                "ride" -> CustomerRideScreen(auth = auth, initialPickup = location, cartStore = cartStore, onContact = { id -> scope.launch {
+                        try {
+                            selectedOrder = api.loadOrderById(auth,id) ?: error("อ่านเที่ยวไม่ได้ กรุณาลองใหม่")
+                            screen = "chat"
+                        } catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { message = e.message }
+                    } }, onBack = { screen = "home" })
                 "location" -> CustomerLocationPickerScreen(
                     location = location,
                     address = address,
@@ -973,9 +1026,9 @@ private fun CustomerShell(
                             val submittedLocation = location?.copy(address = address.trim())
                             val submittedShop = shops.find { it.id == submittedCart.firstOrNull()?.product?.shopId }
                             val submittedNote = note
-                            cartStore.save(submittedCart)
                             scope.launch {
                                 try {
+                                    withContext(Dispatchers.IO) { cartStore.save(submittedCart) }
                                     if (!checkoutPending) {
                                         val active = api.loadActiveOrder(auth)
                                         if (active != null) {
@@ -988,20 +1041,22 @@ private fun CustomerShell(
                                     }
                                     val order = checkoutRecovery.submit(
                                         create = {
-                                            require(submittedShop != null && submittedLocation != null && submittedLocation.address.isNotBlank()) {
-                                                "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง"
+                                            withContext(Dispatchers.IO) {
+                                                require(submittedShop != null && submittedLocation != null && submittedLocation.address.isNotBlank()) {
+                                                    "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง"
+                                                }
+                                                cartStore.pending(
+                                                    api.checkoutBody(
+                                                        auth,
+                                                        UUID.randomUUID().toString(),
+                                                        submittedShop,
+                                                        submittedCart,
+                                                        submittedLocation,
+                                                        submittedNote
+                                                    ),
+                                                    submittedCart
+                                                )
                                             }
-                                            cartStore.pending(
-                                                api.checkoutBody(
-                                                    auth,
-                                                    UUID.randomUUID().toString(),
-                                                    submittedShop,
-                                                    submittedCart,
-                                                    submittedLocation,
-                                                    submittedNote
-                                                ),
-                                                submittedCart
-                                            )
                                         },
                                         send = { pending ->
                                             val body = pending.body
@@ -1026,7 +1081,9 @@ private fun CustomerShell(
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (e: Exception) {
-                                    pendingCheckoutRecord = runCatching { checkoutJournal.read() }.getOrNull()
+                                    pendingCheckoutRecord = withContext(Dispatchers.IO) {
+                                        runCatching { checkoutJournal.read() }.getOrNull()
+                                    }
                                     checkoutPending = pendingCheckoutRecord != null
                                     message = when {
                                         checkoutPending ->
@@ -1086,11 +1143,21 @@ private fun CustomerShell(
                 "laundry-order" -> selectedLaundryOrder?.let {
                     LaundryOrderDetailScreen(auth = auth, order = it, onBack = { screen = "orders" })
                 }
-                "order" -> CustomerOrderTrackingScreen(
+                "order" -> if (selectedOrder?.fulfillmentVertical == "ride") {
+                    CustomerRideScreen(auth = auth, initialPickup = location, cartStore = cartStore,
+                        initialOrderId = selectedOrder?.id, onContact = { id -> scope.launch {
+                        try {
+                            selectedOrder = api.loadOrderById(auth,id) ?: error("อ่านเที่ยวไม่ได้ กรุณาลองใหม่")
+                            screen = "chat"
+                        } catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { message = e.message }
+                    } }, onBack = { screen = "orders" })
+                } else CustomerOrderTrackingScreen(
                     auth = auth,
                     order = selectedOrder,
                     items = orderItems,
                     context = trackingContext,
+                    eta = orderEta,
                     shopCategory = selectedOrder?.shopId?.let { id -> shops.find { it.id == id }?.category },
                     busy = busy,
                     onCallShop = {
@@ -1325,146 +1392,139 @@ internal fun CustomerHome(
     }
 
     val homeHorizontalPadding = if (LocalConfiguration.current.screenWidthDp <= 420) 12.dp else 14.dp
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = homeHorizontalPadding)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = homeHorizontalPadding)
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onLocation)
-                .padding(start = 2.dp, end = 2.dp, top = 13.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
+        item(key = "home-location") {
+            Row(
                 Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(11.dp))
-                    .background(androidx.compose.ui.graphics.Color(0xFFFFF0F1)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .clickable(onClick = onLocation)
+                    .padding(start = 2.dp, end = 2.dp, top = 13.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(androidx.compose.ui.graphics.Color(0xFFFFF0F1)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.qg_home_pin),
+                        contentDescription = null,
+                        modifier = Modifier.size(19.dp),
+                        tint = QgRed
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("ส่งไปที่", color = QgMuted, fontSize = 11.sp, lineHeight = 14.sp)
+                    Text(
+                        deliveryAddress.ifBlank { location?.address.orEmpty() }.ifBlank { "เลือกที่อยู่จัดส่ง" },
+                        color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        lineHeight = 17.sp,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+        item(key = "home-ride") {
+            OutlinedButton(onClick = { onCategory("ride") },modifier = Modifier.fillMaxWidth()) { Text("รับส่งผู้โดยสาร") }
+        }
+        item(key = "home-search") {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = RoundedCornerShape(15.dp),
+                        clip = false,
+                        ambientColor = androidx.compose.ui.graphics.Color(0x0914181E),
+                        spotColor = androidx.compose.ui.graphics.Color(0x0914181E)
+                    )
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(androidx.compose.ui.graphics.Color.White)
+                    .border(1.dp, QgLine, RoundedCornerShape(15.dp))
+                    .clickable(onClick = onSearch)
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.qg_home_pin),
+                    painter = painterResource(R.drawable.qg_nav_search),
                     contentDescription = null,
-                    modifier = Modifier.size(19.dp),
-                    tint = QgRed
+                    modifier = Modifier.size(20.dp),
+                    tint = androidx.compose.ui.graphics.Color(0xFF3F434A)
                 )
+                Spacer(Modifier.width(10.dp))
+                Text("ค้นหาร้านค้าจากทุกหมวด", color = androidx.compose.ui.graphics.Color(0xFF9A9EA5), fontSize = 14.sp)
             }
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
+            Spacer(Modifier.height(13.dp))
+        }
+        item(key = "home-banner") {
+            CustomerHomeBanner(
+                banners = banners,
+                selected = bannerIndex,
+                onSelect = { bannerIndex = it },
+                onOpen = { banner -> banner.link?.let(onBannerLink) }
+            )
+            Spacer(Modifier.height(20.dp))
+        }
+        item(key = "home-categories") {
+            Row(
+                Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(13.dp)
+            ) {
+                categories.filter { it.first != "all" }.forEach { (key, label) ->
+                    CustomerCategoryButton(key = key, label = label, onClick = { onCategory(key) })
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+        }
+        item(key = "home-nearby-heading") {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    "ส่งไปที่",
-                    color = QgMuted,
-                    fontSize = 11.sp,
-                    lineHeight = 14.sp
-                )
-                Text(
-                    deliveryAddress.ifBlank { location?.address.orEmpty() }.ifBlank { "เลือกที่อยู่จัดส่ง" },
+                    "ร้านใกล้คุณ",
                     color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "ดูทั้งหมด",
+                    color = QgRed,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
-                    lineHeight = 17.sp,
-                    maxLines = 1
+                    modifier = Modifier.clickable(onClick = onSearch)
                 )
             }
-        }
-
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .shadow(
-                    elevation = 4.dp,
-                    shape = RoundedCornerShape(15.dp),
-                    clip = false,
-                    ambientColor = androidx.compose.ui.graphics.Color(0x0914181E),
-                    spotColor = androidx.compose.ui.graphics.Color(0x0914181E)
-                )
-                .clip(RoundedCornerShape(15.dp))
-                .background(androidx.compose.ui.graphics.Color.White)
-                .border(1.dp, QgLine, RoundedCornerShape(15.dp))
-                .clickable(onClick = onSearch)
-                .padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.qg_nav_search),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = androidx.compose.ui.graphics.Color(0xFF3F434A)
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                "ค้นหาร้านค้าจากทุกหมวด",
-                color = androidx.compose.ui.graphics.Color(0xFF9A9EA5),
-                fontSize = 14.sp
-            )
-        }
-
-        Spacer(Modifier.height(13.dp))
-        CustomerHomeBanner(
-            banners = banners,
-            selected = bannerIndex,
-            onSelect = { bannerIndex = it },
-            onOpen = { banner -> banner.link?.let(onBannerLink) }
-        )
-
-        Spacer(Modifier.height(20.dp))
-        Row(
-            Modifier
-                .horizontalScroll(rememberScrollState())
-                .padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(13.dp)
-        ) {
-            categories.filter { it.first != "all" }.forEach { (key, label) ->
-                CustomerCategoryButton(
-                    key = key,
-                    label = label,
-                    onClick = { onCategory(key) }
-                )
+            Spacer(Modifier.height(11.dp))
+            if (loading) {
+                CircularProgressIndicator()
+            } else if (nearbyShops.isEmpty()) {
+                Text("ยังไม่มีร้านค้า", color = QgMuted, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
             }
         }
-
-        Spacer(Modifier.height(20.dp))
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "ร้านใกล้คุณ",
-                color = androidx.compose.ui.graphics.Color(0xFF17191D),
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                lineHeight = 22.sp
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                "ดูทั้งหมด",
-                color = QgRed,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                modifier = Modifier.clickable(onClick = onSearch)
-            )
-        }
-        Spacer(Modifier.height(11.dp))
-
-        when {
-            loading -> CircularProgressIndicator()
-            nearbyShops.isEmpty() -> Text(
-                "ยังไม่มีร้านค้า",
-                color = QgMuted,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
-            )
-            else -> nearbyShops.forEach { shop ->
+        if (!loading) {
+            items(nearbyShops, key = { "home-shop:" + it.id }) { shop ->
                 CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
             }
         }
-        Spacer(Modifier.height(28.dp))
+        item(key = "home-bottom-space") {
+            Spacer(Modifier.height(28.dp))
+        }
     }
 }
-
 @Composable
 private fun CustomerCategoryButton(
     key: String,

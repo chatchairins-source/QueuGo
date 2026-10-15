@@ -851,6 +851,11 @@ async function enrichRouteBundleRiderState(activeOrder,token){
         S.bundleOrders=(Array.isArray(rows)?rows:[]).map(o=>{
           const m=meta.get(String(o.id))||{};
           o._bundleDropRank=Number(m.drop_rank)||Number(o.route_bundle_sequence)||99;
+          let plan=null;try{plan=JSON.parse(m.route_sequence||'null')}catch{}
+          if(plan?.kind==='queuego_stop_plan_v1'){
+            o._bundlePlanVersion=1;o._bundlePickupStopRank=Number(plan.pickup_rank);o._bundleDropoffStopRank=Number(plan.dropoff_rank);
+            o._bundleCustomerName=typeof plan.customer_name==='string'?plan.customer_name:null;
+          }
           o._bundleShopName=m.shop_name||'ร้านค้า';
           o._bundleDetourKm=Number(m.detour_km)||0;
           o._bundleAddedMinutes=Number(m.added_minutes)||0;
@@ -870,7 +875,16 @@ async function enrichRouteBundleRiderState(activeOrder,token){
   }
   return activeOrder;
 }
+function qgBundlePlannedStops(rows=S.bundleOrders||[]){
+  if(!rows.some(o=>o._bundlePlanVersion===1))return null;
+  const live=rows.filter(o=>o&&o.status!=='cancelled'&&o.status!=='completed');
+  if(live.some(o=>!Number.isInteger(o._bundlePickupStopRank)||!Number.isInteger(o._bundleDropoffStopRank)||o._bundlePickupStopRank<1||o._bundleDropoffStopRank>10||o._bundlePickupStopRank>=o._bundleDropoffStopRank))return [];
+  const stops=live.flatMap(o=>['picked_up','in_progress'].includes(statusFromRow(o))?[{order:o,pickup:false,rank:o._bundleDropoffStopRank}]:[{order:o,pickup:true,rank:o._bundlePickupStopRank},{order:o,pickup:false,rank:o._bundleDropoffStopRank}]);
+  if(new Set(stops.map(s=>s.rank)).size!==stops.length)return [];
+  return stops.sort((a,b)=>a.rank-b.rank);
+}
 function qgBundleNextOrder(){
+  const planned=qgBundlePlannedStops();if(planned!==null)return planned[0]?.order||null;
   const rows=(S.bundleOrders||[]).filter(o=>o&&o.status!=='cancelled'&&o.status!=='completed');
   if(!rows.length)return null;
   const inProgress=rows.find(o=>statusFromRow(o)==='in_progress');
@@ -1243,7 +1257,7 @@ function riderEarning(o){
   // rider income is the parent delivery fee + multi-shop rider bonus.
   if(Number.isFinite(Number(o?._marketRiderEarning)))return Number(o._marketRiderEarning);
   if(Number.isFinite(Number(o?._poolDeliveryFee)))return Number(o._poolDeliveryFee);
-  return (Number(o?.delivery_fee ?? o?.rider_fee ?? 0)||0)+(Number(o?.rider_multi_shop_bonus||0)||0);
+  return (Number(o?.rider_delivery_payout ?? o?.delivery_fee ?? o?.rider_fee ?? 0)||0)+(Number(o?.rider_multi_shop_bonus||0)||0);
 }
 
 
@@ -1376,23 +1390,28 @@ function qgRouteBundleHTML(){
   let out='';
   if(orders.length>1){
     const live=orders.filter(o=>o.status!=='cancelled'&&o.status!=='completed');
+    const planned=qgBundlePlannedStops(orders),nextPlanned=planned?.[0];
     const allPicked=live.length>0&&live.every(o=>['picked_up','in_progress'].includes(o.status));
     const nextPicked=live.filter(o=>statusFromRow(o)==='picked_up').sort((a,b)=>(Number(a._bundleDropRank)||99)-(Number(b._bundleDropRank)||99))[0];
-    const totalIncome=orders.filter(o=>o.status!=='cancelled').reduce((a,o)=>a+Number(o.delivery_fee||0),0);
+    const totalIncome=orders.filter(o=>o.status!=='cancelled').reduce((a,o)=>a+riderEarning(o),0);
     const totalSavings=orders.reduce((a,o)=>a+Number(o.bundle_customer_savings||0),0);
     out+='<section class="qg-bundle-card"><div class="qg-bundle-head"><div><b>งานพ่วง '+orders.length+' ออเดอร์</b><small>รายได้รวม ฿'+totalIncome.toLocaleString('th-TH')+(totalSavings>0?' · ลูกค้าประหยัดรวม ฿'+totalSavings.toLocaleString('th-TH'):'')+'</small></div><span>เส้นทางเดียวกัน</span></div>';
+    if(planned){
+      out+='<div class="qg-bundle-order"><div><b>จุดถัดไป: '+esc(nextPlanned?(nextPlanned.pickup?(nextPlanned.order._bundleShopName||'ร้านค้า'):(nextPlanned.order._bundleCustomerName||'ลูกค้า')):'กำลังอัปเดตเส้นทาง')+'</b>'+
+        planned.map(stop=>'<small>'+stop.rank+'. '+(stop.pickup?'รับ ':'ส่ง ')+esc(stop.pickup?(stop.order._bundleShopName||'ร้านค้า'):(stop.order._bundleCustomerName||'ลูกค้า'))+' · '+esc(qgShortOrder(stop.order))+'</small>').join('')+'</div></div>';
+    }
     out+=orders.map(o=>{
       const st=statusFromRow(o),rank=Number(o._bundleDropRank)||Number(o.route_bundle_sequence)||1,shop=o._shop?.shop_name||o._bundleShopName||'ร้านค้า';
       let action='';
-      if(st==='ready')action='<button data-bundle-advance="'+esc(o.id)+'">รับสินค้าแล้ว</button>';
+      if(st==='ready'&&(!planned||nextPlanned?.pickup&&String(nextPlanned.order.id)===String(o.id)))action='<button data-bundle-advance="'+esc(o.id)+'">รับสินค้าแล้ว</button>';
       else if(st==='picked_up'){
-        if(allPicked&&nextPicked&&String(nextPicked.id)===String(o.id))action='<button data-bundle-advance="'+esc(o.id)+'">เริ่มส่งลูกค้าลำดับ '+rank+'</button>';
+        if(planned?nextPlanned&&!nextPlanned.pickup&&String(nextPlanned.order.id)===String(o.id):allPicked&&nextPicked&&String(nextPicked.id)===String(o.id))action='<button data-bundle-advance="'+esc(o.id)+'">เริ่มส่งลูกค้าลำดับ '+rank+'</button>';
         else action='<small>รับของแล้ว · '+(allPicked?'รอส่งตามลำดับ':'รอรับของอีกออเดอร์ให้ครบ')+'</small>';
-      }else if(st==='in_progress')action='<button data-bundle-finish="'+esc(o.id)+'">ถึงแล้ว</button>';
+      }else if(st==='in_progress'&&(!planned||nextPlanned&&!nextPlanned.pickup&&String(nextPlanned.order.id)===String(o.id)))action='<button data-bundle-finish="'+esc(o.id)+'">ถึงแล้ว</button>';
       else if(st==='completed')action='<small class="qg-bundle-done">✓ ส่งสำเร็จ</small>';
       else if(st==='cancelled')action='<small>ยกเลิก</small>';
       else action='<small>'+esc(STEP_LABEL[st]||'รอร้านเตรียมสินค้า')+'</small>';
-      return '<article class="qg-bundle-order"><div><b>'+esc(qgShortOrder(o))+' · '+esc(shop)+'</b><small>รับร้าน '+Number(o.route_bundle_sequence||1)+' · ส่งลูกค้าลำดับ '+rank+' · ค่าส่ง ฿'+Number(o.delivery_fee||0).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · ลูกค้าประหยัด ฿'+Number(o.bundle_customer_savings).toLocaleString('th-TH'):'')+'</small></div>'+action+'</article>';
+      return '<article class="qg-bundle-order"><div><b>'+esc(qgShortOrder(o))+' · '+esc(shop)+'</b><small>รับร้าน '+Number(o.route_bundle_sequence||1)+' · ส่งลูกค้าลำดับ '+rank+' · ค่าส่ง ฿'+riderEarning(o).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · ลูกค้าประหยัด ฿'+Number(o.bundle_customer_savings).toLocaleString('th-TH'):'')+'</small></div>'+action+'</article>';
     }).join('')+'</section>';
   }
   if(offers.length){
@@ -2372,7 +2391,7 @@ window.qgRenderEarnings=function(){
      const to=new Date(),from=new Date(to.getTime()-(days-1)*86400000),token=await getAccessToken();
      const rows=await sbTable('rpc/qg_rider_cash_ledger',{method:'POST',token,body:{p_from:day(from),p_to:day(to)}});
      if(!box.isConnected)return;
-     const list=Array.isArray(rows)?rows:[],sum=k=>list.reduce((a,o)=>a+Number(o[k]||0),0),paid=sum('cash_paid_merchant'),collected=sum('cash_collected_customer'),fees=list.reduce((a,o)=>a+Number(o.delivery_fee||0),0);
+     const list=Array.isArray(rows)?rows:[],sum=k=>list.reduce((a,o)=>a+Number(o[k]||0),0),paid=sum('cash_paid_merchant'),collected=sum('cash_collected_customer'),fees=list.reduce((a,o)=>a+riderEarning(o),0);
      box.className='qg-ledger';
      box.innerHTML=`<section class="qg-cash-card"><div class="qg-section-title"><b>บัญชีเงินสด</b><span>${days===1?'วันนี้':days+' วัน'}</span></div><div class="qg-cash-grid"><div><span>จ่ายร้าน</span><b>${baht(paid)}</b></div><div><span>เก็บลูกค้า</span><b>${baht(collected)}</b></div><div><span>ค่าส่งที่ได้รับ</span><b>${baht(fees)}</b></div><div><span>สุทธิรับ-จ่าย</span><b class="qg-red">${baht(collected-paid)}</b></div></div></section><section class="qg-recent"><div class="qg-section-title"><b>รายการงานล่าสุด</b><span>${list.length} งาน</span></div>${list.length?list.slice(0,30).map(o=>`<article><div><b>${esc(qgShortOrder({order_number:o.order_number,id:o.order_id}))}</b><small>${esc(String(o.status||''))}</small></div><div><span>${o.status==='completed'?'สำเร็จ':'กำลังดำเนินการ'}</span><b>${baht(o.delivery_fee||0)}</b></div></article>`).join(''):'<div class="qg-empty">ยังไม่มีรายการ</div>'}</section>`;
    }catch(e){box.className='qg-error-state';box.textContent='โหลดบัญชีเงินสดไม่สำเร็จ: '+e.message}

@@ -43,10 +43,12 @@ ok(!customerApi.includes('status=in.(arrived')&&!customerApi.includes(',arrived'
 // Merchant
 ok(merchantApi.includes('val riderArrivedCustomerAt: String? = null'),
   'Merchant order model must carry customer arrival timestamp');
-ok(merchantApi.includes('orders?select=id,rider_arrived_customer_at&id=in.('),
-  'Merchant must enrich arrival from the existing authenticated orders RLS path');
-ok(merchantApi.includes('order.copy(riderArrivedCustomerAt = arrivals[order.id])'),
-  'Merchant loaded orders must receive the arrival timestamp');
+ok(merchantApi.includes('orders?select=id,rider_arrived_customer_at,merchant_ready_estimate_at,merchant_ready_revision&id=in.('),
+  'Merchant must enrich arrival and readiness from the existing authenticated orders RLS path');
+ok(merchantApi.includes('riderArrivedCustomerAt = arrivals[order.id]') &&
+   merchantApi.includes('readyEstimateAt = readyAt[order.id]') &&
+   merchantApi.includes('readyRevision = readyRevision[order.id]'),
+  'Merchant loaded orders must receive arrival plus authoritative readiness');
 for(const state of matrix.roles.merchant.required_visible_states.filter(s=>s!=='arrived')){
   ok(merchantUi.includes('"'+state+'"'), 'Merchant Native UI missing visible state: '+state);
 }
@@ -65,8 +67,10 @@ ok(merchantUi.includes('"pending" -> {')&&merchantUi.includes('onAction("accepte
   'Merchant pending state must expose accept plus guarded rejection');
 ok(merchantUi.includes('"accepted" -> {')&&merchantUi.includes('ร้านรับออเดอร์แล้ว · รอระบบจัดหา Rider')&&merchantUi.includes('Text("ยกเลิกออเดอร์")'),
   'Merchant accepted compatibility state must wait and retain guarded cancellation');
-ok(merchantUi.includes('"searching_rider" -> QgCard')&&merchantUi.includes('รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์'),
-  'Merchant searching_rider must remain a wait-only state');
+ok(merchantUi.includes('"searching_rider" -> {')&&
+   merchantUi.includes('รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์')&&
+   merchantUi.includes('MerchantReadyEstimateControls(order, busy, onAdjustReady)'),
+  'Merchant searching_rider must remain non-preparing while publishing readiness for dispatch');
 ok(merchantUi.includes('"rider_assigned", "assigned" -> {')&&merchantUi.includes('onAction("preparing", null)')&&merchantUi.includes('Text("ยกเลิกออเดอร์")'),
   'Merchant rider-assigned state must expose prepare plus guarded cancellation');
 ok(merchantUi.includes('"preparing" -> {')&&merchantUi.includes('onAction("ready", null)'),
