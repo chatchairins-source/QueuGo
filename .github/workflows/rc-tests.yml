@@ -31,6 +31,10 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm test
+      - name: Install WebKit for complete Merchant mobile boot checks
+        run: npx playwright-core install --with-deps webkit
+      - name: Run complete Merchant document in mobile WebKit
+        run: npm run test:merchant:browser
       - name: Render Grocery components at mobile and tablet widths
         shell: bash
         run: |
