@@ -440,6 +440,14 @@ ok(
   'Rider chat quick-message SharedPreferences/JSON load and save must stay off Main'
 );
 
+ok(
+  riderChat.includes('RIDER_CHAT_HISTORY_MAX_ROWS = 1_000') &&
+  riderChat.includes('&order=created_at.desc&limit=" + RIDER_CHAT_HISTORY_MAX_ROWS') &&
+  riderChat.includes('for (i in rows.length() - 1 downTo 0)') &&
+  !riderChat.includes('// Match the web reader: retain the server history cap, not a client first-100 cutoff.'),
+  'Rider chat history must keep a client-side row ceiling while rendering the newest bounded window chronologically'
+);
+
 const riderVoiceAssistant=read('rider/src/main/java/com/queuego/rider/RiderVoiceAssistant.kt');
 ok(
   riderVoiceAssistant.includes('engine = runCatching { TextToSpeech(context.applicationContext, this) }.getOrNull()') &&
