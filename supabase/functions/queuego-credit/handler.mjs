@@ -1,9 +1,29 @@
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CHARGE=/^chrg_[A-Za-z0-9]+$/;
-async function boundedJson(response,limit=131072){
+async function boundedText(response,limit=131072){
  const reader=response.body?.getReader();if(!reader)throw Error('empty response');let size=0;const chunks=[];
  try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>limit)throw Error('payload too large');chunks.push(value)}}finally{await reader.cancel().catch(()=>{})}
- const bytes=new Uint8Array(size);let offset=0;for(const c of chunks){bytes.set(c,offset);offset+=c.length}return JSON.parse(new TextDecoder().decode(bytes));
+ const bytes=new Uint8Array(size);let offset=0;for(const c of chunks){bytes.set(c,offset);offset+=c.length}return new TextDecoder().decode(bytes);
+}
+async function boundedJson(response,limit=131072){return JSON.parse(await boundedText(response,limit))}
+function base64Bytes(value){
+ if(typeof value!=='string'||value.length<8||value.length>512)throw Error('invalid webhook secret');
+ const raw=atob(value),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return bytes;
+}
+function hexBytes(value){
+ if(!/^[0-9a-f]{64}$/i.test(value||''))return null;
+ const bytes=new Uint8Array(32);for(let i=0;i<32;i++)bytes[i]=parseInt(value.slice(i*2,i*2+2),16);return bytes;
+}
+async function verifyWebhookSignature(req,raw,secret){
+ try{
+  const timestampText=req.headers.get('omise-signature-timestamp')||'',timestamp=Number(timestampText);
+  const signatures=(req.headers.get('omise-signature')||'').split(',').map(x=>x.trim()).filter(Boolean);
+  if(!Number.isSafeInteger(timestamp)||Math.abs(Math.floor(Date.now()/1000)-timestamp)>300||!signatures.length)return false;
+  const key=await crypto.subtle.importKey('raw',base64Bytes(secret),{name:'HMAC',hash:'SHA-256'},false,['verify']);
+  const payload=new TextEncoder().encode(timestampText+'.'+raw);
+  for(const signature of signatures){const bytes=hexBytes(signature);if(bytes&&await crypto.subtle.verify('HMAC',key,bytes,payload))return true}
+  return false;
+ }catch{return false}
 }
 export function createCreditHandler(env,fetcher=fetch,webhook=false){
  return async req=>{
@@ -11,9 +31,9 @@ export function createCreditHandler(env,fetcher=fetch,webhook=false){
   const reply=(body,status=200)=>Response.json(body,{status,headers:cors});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
   if(req.method!=='POST')return reply({error:'POST required'},405);
-  const base=env.get('SUPABASE_URL'),service=env.get('SUPABASE_SERVICE_ROLE_KEY'),secret=env.get('OMISE_SECRET_KEY');
-  // Explicit rollout switch and LIVE key are both mandatory. Never turn test charges into credit.
-  if(env.get('QUEUEGO_CREDIT_LIVE_ENABLED')!=='true'||!base||!service||!/^skey_live_[A-Za-z0-9]+$/.test(secret||''))return reply({error:'ระบบเครดิตยังไม่เปิดใช้งาน'},503);
+  const base=env.get('SUPABASE_URL'),service=env.get('SUPABASE_SERVICE_ROLE_KEY'),secret=env.get('OMISE_SECRET_KEY'),webhookSecret=env.get('OMISE_WEBHOOK_SECRET');
+  // Explicit rollout switch and LIVE key are mandatory. Webhooks additionally require the Omise signing secret.
+  if(env.get('QUEUEGO_CREDIT_LIVE_ENABLED')!=='true'||!base||!service||!/^skey_live_[A-Za-z0-9]+$/.test(secret||'')||(webhook&&!webhookSecret))return reply({error:'ระบบเครดิตยังไม่เปิดใช้งาน'},503);
   const serviceHeaders={apikey:service,authorization:'Bearer '+service,'content-type':'application/json'};
   const providerHeaders={authorization:'Basic '+btoa(secret+':')};
   const rpc=async(name,body,authorization='Bearer '+service)=>{
@@ -32,9 +52,10 @@ export function createCreditHandler(env,fetcher=fetch,webhook=false){
    return charge;
   };
   try{
-   const input=await boundedJson(req,4096);
+   const raw=await boundedText(req,4096),input=JSON.parse(raw);
    if(webhook){
-    // Body is a notification only. Read the charge independently with the server secret.
+    // Verify Omise HMAC over the exact raw body first, then independently retrieve the charge.
+    if(!await verifyWebhookSignature(req,raw,webhookSecret))return reply({error:'invalid webhook signature'},401);
     if(typeof input.key!=='string'||!input.key.startsWith('charge.')||!CHARGE.test(input.data?.id||''))return reply({received:true});
     await apply(await retrieve(input.data.id));return reply({received:true});
    }
