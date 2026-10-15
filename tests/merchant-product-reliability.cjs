@@ -24,6 +24,12 @@ ok(merchant.includes("qtLoadOwnMerchantIdentity(token,s.authUserId)"),'returning
 ok(merchant.includes("if(page!=='login'&&!u&&qgmHasRestorableShopSession())"),'valid Merchant session must restore identity before showing login');
 ok(merchant.includes("กำลังตรวจสอบบัญชีร้าน"),'Merchant route must expose session-restore state instead of silently showing login');
 
+ok(merchant.includes('const QGM_ROUTE_RESTORE_TIMEOUT_MS=10000;'),'Merchant route restore must have a hard upper bound');
+ok(merchant.includes('qgmBoundSessionRestore(qgmRequireShopUser())'),'Merchant route must bound session restore instead of waiting forever');
+ok(merchant.includes('await qtRestoreOwnUser();u=shopUser();return u||null'),'Merchant protected actions must prefer the lightweight own-identity restore and safe cache path');
+ok(!merchant.includes("await qtHydrateDatabase({light:false});return shopUser()"),'Merchant protected-route identity recovery must not fall through to an unbounded full database hydrate');
+ok(merchant.includes('await qgmBoundSessionRestore(qtRestoreOwnUser({refresh:true}))'),'Grocery category recovery must refresh only the Merchant identity under the same timeout');
+
 ok(merchant.includes("function qtApplyShopProfileIdentity"),'Merchant identity merge must be shared across login/restore/hydrate');
 
 ok(merchant.includes("const posControl=$('#qgm-pos-available'),deliveryControl=$('#qgm-delivery-available');"),'product save must tolerate missing POS/Delivery controls from stale DOM');
