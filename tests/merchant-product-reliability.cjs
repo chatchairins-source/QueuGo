@@ -19,6 +19,9 @@ ok(merchant.includes("p?.archived_at)continue"),'archived historical products mu
 ok(merchant.includes('function qtSanitizeCachedProducts'),'Merchant fast cache must sanitize product ownership and duplicate ids');
 ok(merchant.includes('productsAt:now'),'Merchant product cache must have a short freshness timestamp');
 ok(merchant.includes('productCacheFresh'),'stale cached product lists must not be trusted on boot');
+ok(merchant.includes("cached.user.shopProfileId&&Date.now()-cached.at<7*86400000"),'returning Merchant cache must not be trusted without a resolved shop profile');
+ok(merchant.includes("qtLoadOwnMerchantIdentity(token,s.authUserId)"),'returning Merchant session must restore users and shop profile as one identity');
+
 ok(merchant.includes("const posControl=$('#qgm-pos-available'),deliveryControl=$('#qgm-delivery-available');"),'product save must tolerate missing POS/Delivery controls from stale DOM');
 ok(merchant.includes("const posAvailable=posControl?posControl.checked:(existingProduct?existingProduct.posAvailable!==false:true);"),'missing POS control must preserve saved value or safe default');
 ok(merchant.includes("const deliveryRequested=deliveryControl?deliveryControl.checked:(existingProduct?existingProduct.deliveryAvailable!==false:true);"),'missing Delivery control must preserve saved value or safe default');
@@ -55,3 +58,7 @@ ok(sql.includes("return 'deleted'"),'unused products must hard-delete');
 ok(sql.includes('revoke all on function public.queuego_delete_or_archive_product(uuid) from public,anon'),'delete RPC must not be callable anonymously');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Merchant product single-submit idempotency, authoritative cache refresh, and safe delete/archive'}));
+
+const pos=fs.readFileSync(path.join(root,'merchant/pos-table-v2.js'),'utf8');
+ok(pos.includes("qtLoadOwnMerchantIdentity(auth.access_token,auth.user.id)"),'Merchant login must load full shop identity before session is considered ready');
+ok(pos.includes("if(!u.shopProfileId)throw Error('ข้อมูลร้านค้ายังไม่พร้อม กรุณาลองเข้าสู่ระบบใหม่')"),'Merchant login must refuse a half-hydrated shop identity');
