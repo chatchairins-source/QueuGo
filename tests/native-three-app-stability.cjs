@@ -158,6 +158,30 @@ ok(
   'Customer and Rider Longdo reverse-geocode payloads must be bounded before parsing'
 );
 
+const riderAppForProofIo=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
+ok(
+  riderAppForProofIo.includes('val pendingProofStoreMutex = remember(auth.user.id) { Mutex() }') &&
+  riderAppForProofIo.includes('pendingProofStoreMutex.withLock { block() }') &&
+  riderAppForProofIo.includes('Dispatchers.IO'),
+  'Rider proof reservation, verification and URI durability I/O must stay serialized off Main'
+);
+ok(
+  riderAppForProofIo.includes('scope.launch {') &&
+  riderAppForProofIo.includes('pendingProofStore.promoteCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)') &&
+  riderAppForProofIo.includes('pendingProofIo {'),
+  'Rider camera result proof promotion must run through the serialized IO path'
+);
+ok(
+  riderAppForProofIo.includes('resumeCollection = verifyCollection') &&
+  !riderAppForProofIo.includes('resumeCollection = pendingProofStore.loadVerification'),
+  'Rider verification composition must never synchronously read durable proof state'
+);
+ok(
+  riderAppForProofIo.includes('Server mutation already committed; stale local proof is reconciled later.') &&
+  riderAppForProofIo.includes('Server return already committed; local proof cleanup is recoverable.'),
+  'Rider post-commit local proof cleanup must remain non-fatal after authoritative server success'
+);
+
 const riderEvidencePreview=read('rider/src/main/java/com/queuego/rider/RiderEvidencePreview.kt');
 const riderRegistrationImage=read('rider/src/main/java/com/queuego/rider/RiderRegistrationImage.kt');
 ok(
