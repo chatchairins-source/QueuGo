@@ -4,14 +4,32 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URLEncoder
 import java.net.URL
 import java.nio.charset.StandardCharsets
 
 class QueueGoHttpException(val statusCode: Int, message: String) : Exception(message)
+
+private const val QUEUEGO_NATIVE_RESPONSE_MAX_BYTES = 12 * 1024 * 1024
+
+private fun InputStream.readQueueGoResponseBounded(
+    limit: Int = QUEUEGO_NATIVE_RESPONSE_MAX_BYTES
+): String {
+    val output = ByteArrayOutputStream(minOf(limit, 256 * 1024))
+    val buffer = ByteArray(16 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) {
+            "ข้อมูลตอบกลับมีขนาดใหญ่เกินไป กรุณาลองใหม่"
+        }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(StandardCharsets.UTF_8.name())
+}
 
 class QueueGoNativeApi {
     companion object {
@@ -81,10 +99,12 @@ class QueueGoNativeApi {
                 }
             }
             val code = connection.responseCode
+            val declaredLength = connection.contentLengthLong
+            require(declaredLength <= 0L || declaredLength <= QUEUEGO_NATIVE_RESPONSE_MAX_BYTES) {
+                "ข้อมูลตอบกลับมีขนาดใหญ่เกินไป กรุณาลองใหม่"
+            }
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val text = stream?.use {
-                BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
-            }.orEmpty()
+            val text = stream?.use { it.readQueueGoResponseBounded() }.orEmpty()
             if (code !in 200..299) {
                 val message = runCatching {
                     val o = JSONObject(text)
