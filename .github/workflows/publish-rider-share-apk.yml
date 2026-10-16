@@ -3,7 +3,7 @@ name: Publish Rider Share APK
 on:
   push:
     branches:
-      - work-native-rider-authenticated-20261012
+      - work-native-credit-live-enablement-20261016
     paths:
       - .github/workflows/publish-rider-share-apk.yml
 
@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      SOURCE_RUN_ID: "38339539445"
-      RELEASE_TAG: "rider-test-20261013-google-maps"
-      RELEASE_TARGET: "55d75b1bb2b109914bc57120c4bd8563f78f23f8"
-      ASSET_NAME: "QueueGo-Rider-Test-GoogleMaps.apk"
+      SOURCE_RUN_ID: "38859123459"
+      RELEASE_TAG: "rider-test-20261016-online-fix-latest"
+      RELEASE_TARGET: "9df7e8c1751f31dbaf0710f5d0b947f9be749dbe"
+      ASSET_NAME: "QueueGo-Rider-Test-20261016-Online-Fix.apk"
     steps:
       - name: Download exact passed Native Pilot artifacts
         run: |
@@ -33,7 +33,7 @@ jobs:
       - name: Select Rider APK only
         run: |
           set -euo pipefail
-          APK="$(find dist -type f -name '*rider*.apk' | head -n 1)"
+          APK="$(find dist -type f -iname '*rider*.apk' | head -n 1)"
           test -n "$APK"
           cp "$APK" "$ASSET_NAME"
           sha256sum "$ASSET_NAME"
@@ -49,7 +49,7 @@ jobs:
             gh release create "$RELEASE_TAG" "$ASSET_NAME" \
               --repo "${{ github.repository }}" \
               --target "$RELEASE_TARGET" \
-              --title "QueueGo Rider Test - Google Maps handoff" \
-              --notes "Test APK from Native Pilot run 38339539445 at 55d75b1. Google Maps-only navigation with QueueGo floating return control. Test build; not a production Google Play release." \
+              --title "QueueGo Rider Test — Online Fix 2026-10-16" \
+              --notes "Direct Rider APK for owner real-device testing. Source Native Pilot run 38859123459 at 9df7e8c, including Rider Production-schema online compatibility. Test prerelease; not a certified Play Store release." \
               --prerelease
           fi
