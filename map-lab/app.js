@@ -10,7 +10,8 @@ const OVERPASS_ENDPOINTS=[
 ];
 const OSRM_ENDPOINT="https://router.project-osrm.org/route/v1/driving/";
 const NOMINATIM_ENDPOINT="https://nominatim.openstreetmap.org/search";
-const DRR_SERVICE="https://gis.drr.go.th/arcgis/rest/services/DRR_Feature/FeatureServer";\nconst NGIS_HIGHWAY_SERVICE="https://ngis.go.th/arcgis/rest/services/Hosted/%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%AB%E0%B8%A5%E0%B8%A7%E0%B8%87%E0%B9%81%E0%B8%9C%E0%B9%88%E0%B8%99%E0%B8%94%E0%B8%B4%E0%B8%99/FeatureServer/0";
+const DRR_SERVICE="https://gis.drr.go.th/arcgis/rest/services/DRR_Feature/FeatureServer";
+const NGIS_HIGHWAY_SERVICE="https://ngis.go.th/arcgis/rest/services/Hosted/%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%AB%E0%B8%A5%E0%B8%A7%E0%B8%87%E0%B9%81%E0%B8%9C%E0%B9%88%E0%B8%99%E0%B8%94%E0%B8%B4%E0%B8%99/FeatureServer/0";
 
 const state={
   map:null,
@@ -459,7 +460,8 @@ function bind(){
   el("toggleSignals").onchange=function(e){setVisibility("signals",e.target.checked);setVisibility("signals-halo",e.target.checked)};
   el("toggleSafety").onchange=function(e){setVisibility("safety",e.target.checked)};
   el("togglePois").onchange=function(e){setVisibility("pois",e.target.checked);if(e.target.checked)loadPois()};
-  el("toggleNgis").onchange=function(e){setVisibility("ngis",e.target.checked);if(e.target.checked)loadNgis()};\n  el("toggleDrr").onchange=function(e){setVisibility("drr",e.target.checked);if(e.target.checked)loadDrr()};
+  el("toggleNgis").onchange=function(e){setVisibility("ngis",e.target.checked);if(e.target.checked)loadNgis()};
+  el("toggleDrr").onchange=function(e){setVisibility("drr",e.target.checked);if(e.target.checked)loadDrr()};
   el("refreshData").onclick=function(){abortActive();state.signals=emptyCollection();state.safety=emptyCollection();updateSource("signals",state.signals);updateSource("safety",state.safety);loadCoreData();if(el("togglePois").checked){state.pois=emptyCollection();loadPois()}if(el("toggleNgis").checked){state.ngis=emptyCollection();updateSource("ngis",state.ngis);loadNgis()}if(el("toggleDrr").checked){state.drr=emptyCollection();updateSource("drr",state.drr);loadDrr()}};
   el("exportGeojson").onclick=exportGeojson;
   el("closeFeature").onclick=function(){el("featureDialog").close?el("featureDialog").close():el("featureDialog").removeAttribute("open")};
