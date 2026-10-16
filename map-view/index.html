@@ -294,7 +294,8 @@
       mode:null,pinMode:false,selected:null,address:null,nearbyVillages:[],nearbyRoads:[],dopaVillages:[],
       routeStart:null,routeEnd:null,routes:[],trafficSignals:[],routeRestrictions:[],selectedRoute:0,routeStartMarker:null,routeEndMarker:null,
       navigationActive:false,watchId:null,offRouteHits:0,lastRerouteAt:0,lastPosition:null,speedHistory:null,
-      toolMode:null,inspectPoint:null,measurePoints:[],waypoints:[],waypointMarkers:[],nearbyFeatures:[],nearbyCategory:null
+      toolMode:null,inspectPoint:null,measurePoints:[],waypoints:[],waypointMarkers:[],nearbyFeatures:[],nearbyCategory:null,
+      currentLocation:null,currentLocationMarker:null
     };
     const SIGNAL_EXPECTED_DELAY_SECONDS=20;
     const RESTRICTION_PENALTY_SECONDS=90;
@@ -316,15 +317,16 @@
     function setPinMode(on,mode="address"){
       state.pinMode=on;
       state.mode=on?mode:null;
-      $("centerPin").hidden=!on;
+      $("centerPin").hidden=!(on&&mode!=="current-location");
       $("confirmBar").hidden=!on;
       $("pinButton").classList.toggle("active",on&&mode==="address");
       $("routePlanButton").classList.toggle("active",on&&mode==="route-destination");
       if(on){
         $("addressSheet").hidden=true;
         $("routeSheet").hidden=true;
-        $("confirmTitle").textContent=mode==="route-destination"?"เลือกปลายทาง":"ปักที่อยู่ตรงกลางแผนที่";
-        $("confirmSubtitle").textContent=mode==="route-destination"?"เลื่อนแผนที่ให้หมุดตรงจุดหมาย แล้วกดยืนยัน":"เลื่อนแผนที่ให้หมุดตรงกับบ้าน แล้วกดยืนยัน";
+        $("confirmTitle").textContent=mode==="route-destination"?"เลือกปลายทาง":mode==="current-location"?"ยืนยันตำแหน่งปัจจุบัน":"ปักที่อยู่ตรงกลางแผนที่";
+        $("confirmSubtitle").textContent=mode==="route-destination"?"เลื่อนแผนที่ให้หมุดตรงจุดหมาย แล้วกดยืนยัน":mode==="current-location"?"ตรวจพิกัดจาก GPS แล้ว กดยืนยันเพื่อใช้ตำแหน่งนี้":"เลื่อนแผนที่ให้หมุดตรงกับบ้าน แล้วกดยืนยัน";
+        $("confirmPin").textContent=mode==="current-location"?"ใช้ตำแหน่งนี้":"ยืนยัน";
       }
     }
     function centerPoint(){
@@ -692,13 +694,33 @@
       $("routeSheet").hidden=true;$("routePlanButton").classList.remove("active");
     }
 
+    function currentLocationElement(){
+      const d=document.createElement("div");
+      d.style.cssText="width:22px;height:22px;border-radius:50%;background:#1689ff;border:4px solid #fff;box-shadow:0 0 0 7px rgba(22,137,255,.16),0 4px 12px rgba(0,0,0,.25)";
+      return d;
+    }
     function locate(){
       if(!navigator.geolocation){toast("อุปกรณ์นี้ไม่รองรับตำแหน่ง");return}
-      toast("กำลังหาตำแหน่ง");
+      toast("กำลังค้นหาตำแหน่งปัจจุบัน");
       navigator.geolocation.getCurrentPosition(pos=>{
-        map.flyTo({center:[pos.coords.longitude,pos.coords.latitude],zoom:17,duration:500});
-        setPinMode(true);toast("เลื่อนหมุดให้ตรงบ้านแล้วกดยืนยัน");
-      },()=>toast("อ่านตำแหน่งไม่ได้ กรุณาตรวจสิทธิ์"),{enableHighAccuracy:true,timeout:10000,maximumAge:5000});
+        const lat=Number(pos.coords.latitude),lon=Number(pos.coords.longitude),accuracy=Number(pos.coords.accuracy);
+        state.currentLocation={lat,lon,accuracy:Number.isFinite(accuracy)?accuracy:null,at:Date.now()};
+        if(state.currentLocationMarker)state.currentLocationMarker.remove();
+        state.currentLocationMarker=new maplibregl.Marker({element:currentLocationElement()}).setLngLat([lon,lat]).addTo(map);
+        map.flyTo({center:[lon,lat],zoom:17,duration:500});
+        setPinMode(true,"current-location");
+        $("confirmSubtitle").textContent=(Number.isFinite(accuracy)?"ความแม่นยำประมาณ ±"+Math.round(accuracy)+" เมตร · ":"")+"กดยืนยันเพื่อใช้พิกัดนี้";
+        toast("พบตำแหน่งปัจจุบันแล้ว");
+      },()=>toast("อ่านตำแหน่งไม่ได้ กรุณาตรวจสิทธิ์ตำแหน่ง"),{enableHighAccuracy:true,timeout:10000,maximumAge:5000});
+    }
+    async function confirmCurrentLocation(){
+      const p=state.currentLocation;if(!p){toast("ยังไม่มีตำแหน่งปัจจุบัน");return}
+      setPinMode(false);$("confirmPin").textContent="ยืนยัน";
+      let address=null;try{address=await engineReverse(p.lat,p.lon)}catch(_){}
+      const payload={lat:p.lat,lon:p.lon,accuracy:p.accuracy,address:address&&address.address||null,display_name:address&&address.display_name||"",confirmed_at:new Date().toISOString(),source:"device_gps"};
+      window.QueueGoCurrentLocation=payload;
+      window.dispatchEvent(new CustomEvent("queuego:current-location-confirmed",{detail:payload}));
+      toast("ยืนยันตำแหน่งปัจจุบันแล้ว");
     }
     function closeTransientSheets(except){
       ["toolSheet","routeSheet","addressSheet"].forEach(id=>{if(id!==except)$(id).hidden=true});
@@ -980,7 +1002,7 @@
     $("routePlanButton").onclick=startRoutePlanning;
     $("pinButton").onclick=()=>{setPinMode(true,"address");toast("เลื่อนแผนที่ให้หมุดตรงกับบ้าน")};
     $("locateButton").onclick=locate;
-    $("confirmPin").onclick=()=>state.mode==="route-destination"?confirmRouteDestination():openAddressEditor();
+    $("confirmPin").onclick=()=>state.mode==="route-destination"?confirmRouteDestination():state.mode==="current-location"?confirmCurrentLocation():openAddressEditor();
     $("closeRouteSheet").onclick=()=>{$("routeSheet").hidden=true};
     $("startNavigation").onclick=startNavigation;
     $("stopNavigation").onclick=()=>stopNavigation("หยุดนำทางแล้ว");
@@ -1000,6 +1022,9 @@
     window.QueueGoMapView={
       get map(){return map},
       get selectedAddress(){return window.QueueGoSelectedAddress||null},
+      get currentLocation(){return window.QueueGoCurrentLocation||state.currentLocation||null},
+      locate,
+      confirmCurrentLocation,
       get state(){return state},
       ready:false
     };
