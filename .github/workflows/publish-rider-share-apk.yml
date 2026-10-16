@@ -9,38 +9,89 @@ on:
 
 permissions:
   contents: write
-  actions: read
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ github.token }}
-      SOURCE_RUN_ID: "38862619268"
+      SOURCE_SHA: "cc3e37e46e2b2387e24b1348e13990175ff1f8b0"
       RELEASE_TAG: "android-test-all-20261016-online-fix1"
-      ASSET_NAME: "QueueGo-Rider-Test-Latest-cc3e37.apk"
+      ASSET_NAME: "QueueGo-Rider-Test-COMPAT2-cc3e37.apk"
     steps:
-      - name: Download exact passed Native Pilot artifacts
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Checkout exact product source
+        shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist
-          gh run download "$SOURCE_RUN_ID" \
-            --repo "${{ github.repository }}" \
-            --name queuego-native-pilot-apks \
-            --dir dist
+          git checkout --detach "$SOURCE_SHA"
 
-      - name: Select Rider APK only
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Download verified Longdo Android SDK
+        shell: bash
         run: |
           set -euo pipefail
-          APK="$(find dist -type f -iname '*rider*.apk' | head -n 1)"
-          test -n "$APK"
-          cp "$APK" "$ASSET_NAME"
-          sha256sum "$ASSET_NAME"
+          mkdir -p native-android/rider/libs
+          curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar"             -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
+          echo "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | sha256sum -c -
 
-      - name: Upload Rider APK to existing shareable release
+      - name: Apply test-only compatibility packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("native-android/rider/build.gradle.kts")
+          s=p.read_text()
+          needle='    buildFeatures { compose = true }\n'
+          block='''    packaging {\n        jniLibs {\n            useLegacyPackaging = true\n        }\n    }\n\n'''
+          if block not in s:
+              if needle not in s:
+                  raise SystemExit("buildFeatures anchor not found")
+              s=s.replace(needle, block+needle, 1)
+              p.write_text(s)
+          PY
+
+      - name: Clean build Rider compatibility APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf native-android/.gradle native-android/rider/build
+          gradle -p native-android :rider:clean :rider:assembleDebug --no-build-cache --stacktrace
+          cp native-android/rider/build/outputs/apk/debug/rider-debug.apk "$ASSET_NAME"
+
+      - name: Verify APK integrity and install metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          BT="$ANDROID_HOME/build-tools/36.0.0"
+          "$BT/apksigner" verify --verbose --print-certs "$ASSET_NAME"
+          "$BT/zipalign" -c -P 16 -v 4 "$ASSET_NAME"
+          "$BT/aapt" dump badging "$ASSET_NAME" | tee rider-badging.txt
+          grep -q "package: name='com.queuego.rider'" rider-badging.txt
+          grep -q "sdkVersion:'26'" rider-badging.txt
+          sha256sum "$ASSET_NAME" | tee rider-sha256.txt
+          unzip -t "$ASSET_NAME"
+
+      - name: Publish replacement compatibility APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null
-          gh release upload "$RELEASE_TAG" "$ASSET_NAME" \
-            --repo "${{ github.repository }}" \
-            --clobber
+          gh release upload "$RELEASE_TAG" "$ASSET_NAME"             --repo "${{ github.repository }}"             --clobber
