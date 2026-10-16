@@ -175,7 +175,7 @@ button{-webkit-tap-highlight-color:transparent}
 
   <div class="toast-host" aria-live="polite" aria-atomic="true"><div id="toast" class="toast"></div></div>
 
-  <section id="sheet" class="sheet" data-state="collapsed" aria-label="ชั้นข้อมูลและเครื่องมือเส้นทาง">
+  <section id="sheet" class="sheet" data-state="closed" aria-label="ชั้นข้อมูลและเครื่องมือเส้นทาง">
     <div id="sheetHandle" class="sheet-peek">
       <div class="sheet-peek-left">
         <div class="drag-handle" aria-hidden="true"></div>
@@ -643,7 +643,7 @@ window.QueueGoMapLab={
 };
 
 bind();
-setSheet("collapsed");
+setSheet("closed");
 refreshRouteUi();
 initMap();
 })();
