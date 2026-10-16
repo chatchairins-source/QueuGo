@@ -1,7 +1,7 @@
 name: Customer P0 Android runtime matrix
 on:
   push:
-    branches: [work-native-credit-live-enablement-20261016]
+    branches: [work-native-credit-live-enablement-20261016, work-native-customer-longdo-location-runtime-fix-20261016]
     paths:
       - 'native-android/customer/**'
       - 'native-android/shared/**'
