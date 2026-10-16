@@ -19,10 +19,44 @@ import java.io.File
 import org.junit.Rule
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 
 /** Isolated Android UI harness: real picker/Longdo GL, no account, backend writes or orders. */
 class CustomerLocationP0RuntimeTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun appCameraMovesDoNotBecomeUserDeliverySelections() {
+        val ready = AtomicBoolean(false)
+        val selections = AtomicInteger(0)
+        val target = mutableStateOf<com.queuego.shared.QgMapPoint?>(null)
+        val token = mutableStateOf(0)
+        compose.setContent {
+            com.queuego.shared.QgLongdoLocationPickerMap(
+                initialPoint = null, recenterPoint = target.value, recenterToken = token.value,
+                modifier = Modifier.fillMaxSize().testTag("camera-owner-map"),
+                onCenterChanged = { selections.incrementAndGet() }, onReady = { ready.set(it) })
+        }
+        compose.waitUntil(30_000) { ready.get() }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertEquals("Fallback camera became a delivery selection", 0, selections.get())
+            target.value = com.queuego.shared.QgMapPoint(14.995, 103.103, 0)
+            token.value = 1
+        }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertEquals("App GPS recenter echoed as a user pan", 0, selections.get())
+        }
+        compose.onNodeWithTag("camera-owner-map").performTouchInput { swipeLeft(durationMillis = 300) }
+        compose.waitUntil(10_000) { selections.get() > 0 }
+    }
 
     @Test fun thirtyOpenGpsSaveCloseCyclesAndEarlyBackground() {
         val visible = mutableStateOf(false)

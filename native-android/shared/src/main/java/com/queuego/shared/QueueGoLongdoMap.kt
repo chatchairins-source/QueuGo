@@ -270,7 +270,9 @@ private class LocationPickerMapHolder {
         if (disposed || point?.valid != true || lastRecenterToken == token) return
         lastRecenterToken = token
         activeMap.setZoom(16)
-        activeMap.setLocation(MapLocation(point.longitude, point.latitude), true)
+        // SDK0.1.8's two-argument overload reports app camera moves as user
+        // actions. Keep them out of the picker's user-pan callback.
+        activeMap.setLocation(MapLocation(point.longitude, point.latitude), true, false)
     }
 }
 
@@ -346,9 +348,17 @@ fun QgLongdoLocationPickerMap(
                                             val start = currentInitial.value?.takeIf { it.valid }
                                                 ?: QgMapPoint(15.0, 101.0, 0)
                                             map.setZoom(if (currentInitial.value?.valid == true) 16 else 6)
-                                            map.setLocation(MapLocation(start.longitude, start.latitude))
+                                            map.setLocation(MapLocation(start.longitude, start.latitude), false, false)
                                             currentInitial.value?.takeIf { it.valid }?.let(currentCenterChanged.value)
-                                            holder.recenter(currentRecenter.value, currentRecenterToken.value)
+                                            val requested = currentRecenter.value?.takeIf { it.valid }
+                                            if (requested != null && (requested.latitude != start.latitude ||
+                                                    requested.longitude != start.longitude)) {
+                                                holder.recenter(requested, currentRecenterToken.value)
+                                            } else {
+                                                // Consume the initial token even without a selected point:
+                                                // the first real pan must not trigger an unsolicited zoom/recenter.
+                                                holder.lastRecenterToken = currentRecenterToken.value
+                                            }
                                         }.onSuccess {
                                             Log.i("QueueGoLongdoMap", "native_map_ready")
                                             currentReady.value(true)
