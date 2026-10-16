@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -66,7 +68,14 @@ internal fun GuestCustomerShell(
     val shopCatalog = remember { CustomerShopCatalog(scope) }
     val rawCatalogState by shopCatalog.state.collectAsState()
 
-    var screen by remember(initialScreen) {
+    // The picker already saves its unsaved pin/address. Restore its route too,
+    // otherwise Android restores the draft under a screen that never remounts.
+    // Other routes retain their existing cold-start behavior (e.g. shop needs its row).
+    val pickerRouteSaver = remember {
+        Saver<String, String>(save = { it.takeIf { route -> route == "location" } },
+            restore = { it.takeIf { route -> route == "location" } })
+    }
+    var screen by rememberSaveable(initialScreen, stateSaver = pickerRouteSaver) {
         mutableStateOf(initialScreen.takeIf { it in setOf("home", "search", "cart", "market", "market-cart", "shopping") } ?: "home")
     }
     var returnScreen by remember { mutableStateOf("home") }
