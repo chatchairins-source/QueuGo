@@ -32,6 +32,17 @@ import androidx.compose.ui.test.swipeLeft
 class CustomerLocationP0RuntimeTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    @Test fun longdoGoogleLocationRuntimeClassesArePackaged() {
+        listOf(
+            "com.google.android.gms.location.LocationServices",
+            "com.google.android.gms.location.LocationRequest",
+            "com.google.android.gms.location.LocationListener",
+            "com.google.android.gms.location.FusedLocationProviderApi"
+        ).forEach { className ->
+            assertNotNull("Missing runtime class required by Longdo: $className", Class.forName(className))
+        }
+    }
+
     @Test fun appCameraMovesDoNotBecomeUserDeliverySelections() {
         val ready = AtomicBoolean(false)
         val selections = AtomicInteger(0)
