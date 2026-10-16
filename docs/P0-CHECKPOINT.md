@@ -8,6 +8,11 @@ Current exact checkpoint SHA: obtain with `git rev-parse HEAD` (a commit cannot 
 - Proved latest native successor descends from online compatibility fix e2f64360.
 - Read AGENTS.md and PROJECT-MEMORY.md; current owner mission takes precedence over prior deployment objective.
 
+## Resume checkpoint after 604e5d8c verification
+- Exact604e5d8c: Customer runtime38856784243 SUCCESS API26/30/33/35; Native Pilot38856784397 SUCCESS including actual guest permission/GPS/pan/background/back. APK artifact12027567705 contains three same-source APKs; full hashes/signatures recorded in PR366. No overall authenticated/physical acceptance claimed.
+- Owner explicitly authorizes existing-account QA without entering passwords or creating accounts. SQL connection is not an Auth session: Vault has no matching Auth/service-role/QA secret names; inherited CI38837872201 reports credential_not_available_to_ci. No passwords changed, sessions taken over, or Auth bypass added. Authentication remains technically blocked, not waiting for owner permission.
+- Current subtask adds30 real guest Home→map pan→reverse geocode→Save→Home cycles, with6 background/resume cases and3 verified system-kill/cold-restores of the selected local address. No injected location/address, new account, or Production write. Python compile/diff checks PASS; actual runtime results PENDING on this commit. Resume this test before opening new work.
+
 ## Latest completed source checkpoints
 - b77a2894: reject cross-shop payloads and project rendered catalog by selected shop; 30 rapid-visit JVM test added.
 - d1bd7152: committed real Longdo picker UI harness and API26/30/33/35 runner matrix (run38853538310). JVM tests/builds passed in matrix. Runtime evidence still pending/failing infrastructure.
