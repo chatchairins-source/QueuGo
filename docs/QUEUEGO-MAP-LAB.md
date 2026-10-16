@@ -30,10 +30,12 @@ The prototype covers Buriram Province using the working bounding box:
    - failure is isolated; DRR downtime or CORS must not break the base map or route audit
    - imported features retain source and source_layer provenance
 
-3. Ministry of Transport / official road-network layers
-   - registered as a next ingestion source
-   - do not silently mix any layer whose licence/endpoint has not been verified
-   - the Ministry public catalogue documents national highway, rural-road and expressway WMS layers; exact service endpoints should be pinned in the ingestion pipeline after validation
+3. Ministry of Transport / NGIS national-highway layer
+   - the web prototype now queries the published NGIS ArcGIS Feature Service for ทางหลวงแผ่นดิน inside the Buriram envelope
+   - the layer is a verification/enrichment overlay only; it is not silently merged into the OSM routing geometry
+   - imported features retain source and source_layer provenance
+   - endpoint/CORS failure is isolated and must not break the base map or route audit
+   - redistribution/licence terms still require review before any NGIS geometry is baked into QueueGo offline packages
 
 4. QueueGo observations
    - reserved for rider road reports, GPS traces, missed turns, closure reports and verified local corrections
@@ -69,7 +71,7 @@ Observed rider waiting time may improve ETA statistics, but it must never be pre
 - QueueGo-branded MapLibre surface
 - Buriram province working extent
 - live OSM safety inventory with redundant Overpass endpoints
-- optional DRR road layer with source discovery and timeout isolation
+- NGIS national-highway overlay with ArcGIS JSON conversion and timeout isolation\n- DRR road layer with source discovery and timeout isolation
 - optional school/hospital layer
 - click start + destination and request a prototype route
 - audit loaded traffic signals and caution points within 45 metres of the route
