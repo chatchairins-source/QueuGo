@@ -1,53 +1,29 @@
 const fs=require("fs"),path=require("path"),assert=require("assert");
 const html=fs.readFileSync(path.resolve(__dirname,"../map-lab/index.html"),"utf8");
-const js=fs.readFileSync(path.resolve(__dirname,"../map-lab/app.js"),"utf8");
-const doc=fs.readFileSync(path.resolve(__dirname,"../docs/QUEUEGO-MAP-LAB.md"),"utf8");
 let checks=0;
-new Function(js); checks++;
 function ok(v,msg){assert.ok(v,msg);checks++}
-function has(s,x,msg){ok(s.includes(x),msg||("missing "+x))}
-has(html,"QueueGo Map Lab");
-has(html,"OpenStreetMap");
-has(html,"ODbL");
-has(js,"const BURIRAM_BOUNDS=[[102.442357,14.132135],[103.499967,15.789217]]");
-has(js,'"highway"="traffic_signals"');
-has(js,'"railway"="level_crossing"');
-has(js,'"highway"="speed_camera"');
-has(js,"signal_timing:\"unknown\"");
-has(js,"คำนวณเส้นทางไม่สำเร็จ");
-ok(!js.includes("maps.googleapis.com"),"Map Lab must not ingest Google Maps");
-ok(!js.includes("google.navigation"),"Map Lab must not depend on Google navigation");
-has(js,"OpenStreetMap");
-has(js,"กรมทางหลวงชนบท");
-has(html,"ทางหลวงแผ่นดิน (NGIS)");
-has(js,"NGIS_HIGHWAY_SERVICE");
-has(js,"ngis.go.th/arcgis/rest/services");
-has(js,"state.ngis");
-has(js,'map.addSource("ngis"');
-has(js,'if(el("toggleNgis")?.checked)loadNgis();');
-has(js,"source_layer");
-has(js,"routeSignals");
-has(js,"routeHazards");
-has(js,"distancePointToLine");
-has(js,"exportGeojson");
-has(doc,"must NOT show");
-has(doc,"provenance");
-has(doc,"PMTiles");
-has(doc,"Valhalla or GraphHopper");
-has(js,"DRR_BRIDGE_SERVICE");
-has(js,"loadDrrBridges");
-has(js,"restrictionQuery");
-has(js,"loadRoadRestrictions");
-has(js,"motorcycle_no");
-has(html,"ทางเดียว / ห้ามเข้า / ข้อจำกัดเลี้ยว");
-has(html,'id="routeRules"');
-has(html,"สะพานกรมทางหลวงชนบท");
-has(html,"pmtiles@4.3.0");
-has(js,"OVERTURE_RELEASE");
-has(js,"2026-09-23.1");
-has(js,"OVERTURE_TRANSPORT_PM");
-has(js,'map.addSource("overture-transport"');
-has(js,'"source-layer":"segment"');
-has(js,'"subtype"],"road"');
-ok(!html.includes("toggleOverture"),"Overture research source must not add another front-page layer toggle");
-console.log(JSON.stringify({checks,failures:0,scope:"QueueGo Buriram Map Lab source/data/safety contract"}));
+function has(v,msg){ok(html.includes(v),msg||("missing "+v))}
+function not(v,msg){ok(!html.includes(v),msg||("unexpected "+v))}
+
+const scripts=[...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
+ok(scripts.length===1,"Map Lab must keep one inline application script");
+new Function(scripts[0]);checks++;
+
+has('id="map"',"map element required");
+has("height:100dvh","map must fill dynamic viewport height");
+has('container:"map"',"MapLibre must target the full-screen map");
+has('tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"]',"OSM base map required");
+has("BURIRAM_CENTER=[103.1029,14.9930]","Buriram start view required");
+has("map.touchZoomRotate.disableRotation()","touch zoom must remain enabled");
+
+not("search-pill","no search overlay on startup");
+not("bottom sheet","no bottom-sheet copy");
+not('id="sheet"',"no bottom sheet element");
+not("qgm-panel","no technical panel");
+not("qgm-route","no route card");
+not("<button","no floating buttons");
+not("<dialog","no modal/dialog");
+not("position:absolute;z-index:","no custom overlay UI");
+not("maps.googleapis.com","must not ingest Google Maps");
+
+console.log(JSON.stringify({checks,failures:0,scope:"bare full-screen QueueGo Map Lab contract"}));

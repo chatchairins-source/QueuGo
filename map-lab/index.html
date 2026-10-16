@@ -2,105 +2,67 @@
 <html lang="th">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#e6002d">
-  <title>QueueGo Map Lab — Buriram</title>
-  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes">
+  <meta name="theme-color" content="#e9e7e3">
+  <title>QueueGo Map — Buriram</title>
+  <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="./style.css?v=1">
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#e9e7e3}
+    #map{position:fixed;inset:0;width:100vw;height:100dvh;background:#e9e7e3}
+    .maplibregl-map,.maplibregl-canvas-container,.maplibregl-canvas{width:100%;height:100%;touch-action:none}
+    .maplibregl-ctrl-attrib{font:9px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  </style>
 </head>
 <body>
-  <main class="qgm-shell">
-    <header class="qgm-topbar">
-      <a class="qgm-brand" href="../" aria-label="QueueGo">
-        <span class="qgm-q">Q</span>
-        <span>Queue<span class="qgm-red">Go</span></span>
-      </a>
-      <div class="qgm-title">
-        <strong>Map Lab · บุรีรัมย์</strong>
-        <span>ต้นแบบฐานข้อมูลถนนและความปลอดภัย</span>
-      </div>
-      <button id="fitProvince" class="qgm-icon-btn" type="button" title="ดูทั้งจังหวัด">◎</button>
-    </header>
-
-    <aside class="qgm-panel" aria-label="เครื่องมือแผนที่">
-      <form id="searchForm" class="qgm-search">
-        <input id="searchInput" type="search" autocomplete="off" placeholder="ค้นหาสถานที่ในบุรีรัมย์">
-        <button type="submit">ค้นหา</button>
-      </form>
-      <div id="searchResults" class="qgm-search-results" hidden></div>
-
-      <section class="qgm-section">
-        <div class="qgm-section-head">
-          <strong>ชั้นข้อมูล</strong>
-          <span id="sourceSummary">กำลังเตรียมข้อมูล</span>
-        </div>
-        <label class="qgm-toggle"><input id="toggleSignals" type="checkbox" checked><span>ไฟจราจร</span><b id="countSignals">0</b></label>
-        <label class="qgm-toggle"><input id="toggleSafety" type="checkbox" checked><span>จุดควรระวัง</span><b id="countSafety">0</b></label>
-        <label class="qgm-toggle"><input id="toggleRestrictions" type="checkbox"><span>ทางเดียว / ห้ามเข้า / ข้อจำกัดเลี้ยว</span><b id="countRestrictions">–</b></label>
-        <label class="qgm-toggle"><input id="toggleNgis" type="checkbox" checked><span>ทางหลวงแผ่นดิน (NGIS)</span><b id="countNgis">–</b></label>
-        <label class="qgm-toggle"><input id="toggleDrr" type="checkbox" checked><span>ถนนกรมทางหลวงชนบท</span><b id="countDrr">–</b></label>
-        <label class="qgm-toggle"><input id="toggleBridges" type="checkbox" checked><span>สะพานกรมทางหลวงชนบท</span><b id="countBridges">–</b></label>
-        <label class="qgm-toggle"><input id="togglePois" type="checkbox"><span>โรงเรียน / โรงพยาบาล</span><b id="countPois">–</b></label>
-      </section>
-
-      <section class="qgm-section">
-        <div class="qgm-section-head">
-          <strong>แหล่งข้อมูล</strong>
-          <button id="refreshData" type="button" class="qgm-link-btn">โหลดใหม่</button>
-        </div>
-        <div id="sourceLedger" class="qgm-ledger"></div>
-      </section>
-
-      <section class="qgm-section qgm-desktop-only">
-        <strong>หลักการ</strong>
-        <p>หน้านี้ไม่เดาเวลาไฟแดง และไม่ใช้ข้อมูล Google Maps มาสร้างฐานข้อมูล QueueGo</p>
-        <button id="exportGeojson" type="button" class="qgm-secondary">ส่งออก GeoJSON ที่โหลดแล้ว</button>
-      </section>
-    </aside>
-
-    <section id="map" class="qgm-map" aria-label="แผนที่ QueueGo Map Lab"></section>
-
-    <div class="qgm-map-actions">
-      <button id="locateMe" type="button" title="ตำแหน่งของฉัน">⌖</button>
-      <button id="clearRoute" type="button" title="ล้างเส้นทาง">×</button>
-    </div>
-
-    <section class="qgm-route-sheet">
-      <div class="qgm-handle"></div>
-      <div class="qgm-route-head">
-        <div>
-          <small>ทดลองเส้นทาง</small>
-          <strong id="routeInstruction">แตะแผนที่เพื่อเลือกจุดเริ่มต้น</strong>
-        </div>
-        <button id="swapRoute" class="qgm-icon-btn" type="button" title="สลับต้นทางปลายทาง">⇅</button>
-      </div>
-      <div class="qgm-route-points">
-        <button id="startPoint" type="button"><span class="qgm-dot start"></span><span><small>ต้นทาง</small><b>ยังไม่ได้เลือก</b></span></button>
-        <button id="endPoint" type="button"><span class="qgm-dot end"></span><span><small>ปลายทาง</small><b>ยังไม่ได้เลือก</b></span></button>
-      </div>
-      <div id="routeStats" class="qgm-route-stats" hidden>
-        <div><small>ระยะทาง</small><b id="routeDistance">–</b></div>
-        <div><small>เวลาอ้างอิง</small><b id="routeDuration">–</b></div>
-        <div><small>ไฟจราจรใกล้เส้น</small><b id="routeSignals">–</b></div>
-        <div><small>จุดควรระวัง</small><b id="routeHazards">–</b></div>
-        <div><small>ข้อจำกัดถนนใกล้เส้น</small><b id="routeRules">ยังไม่โหลด</b></div>
-      </div>
-      <p id="routeNotice" class="qgm-notice">เส้นทางใน Map Lab ใช้บริการ routing สาธารณะเพื่อทดสอบแนวคิดเท่านั้น ก่อนใช้งานจริง QueueGo จะย้ายไป routing graph ที่ควบคุมเอง</p>
-    </section>
-
-    <dialog id="featureDialog" class="qgm-dialog">
-      <button id="closeFeature" class="qgm-dialog-close" type="button">×</button>
-      <div id="featureDetail"></div>
-    </dialog>
-
-    <footer class="qgm-attribution">
-      Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · Overture Maps Foundation · ODbL · QueueGo Map Lab
-    </footer>
-  </main>
+  <div id="map" aria-label="แผนที่ QueueGo บุรีรัมย์"></div>
 
   <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
-  <script src="https://unpkg.com/pmtiles@4.3.0/dist/pmtiles.js"></script>
-  <script src="./app.js?v=3"></script>
+  <script>
+    (function(){
+      "use strict";
+
+      const BURIRAM_CENTER=[103.1029,14.9930];
+
+      const map=new maplibregl.Map({
+        container:"map",
+        style:{
+          version:8,
+          sources:{
+            osm:{
+              type:"raster",
+              tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tileSize:256,
+              attribution:"© OpenStreetMap contributors"
+            }
+          },
+          layers:[
+            {id:"background",type:"background",paint:{"background-color":"#e9e7e3"}},
+            {id:"osm",type:"raster",source:"osm"}
+          ]
+        },
+        center:BURIRAM_CENTER,
+        zoom:12.2,
+        minZoom:6,
+        maxZoom:19,
+        dragRotate:false,
+        pitchWithRotate:false,
+        attributionControl:false
+      });
+
+      map.touchZoomRotate.disableRotation();
+      map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
+
+      window.QueueGoMapLab={
+        get map(){return map},
+        ready:false
+      };
+
+      map.on("load",function(){
+        window.QueueGoMapLab.ready=true;
+      });
+    })();
+  </script>
 </body>
 </html>
