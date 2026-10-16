@@ -257,7 +257,8 @@ function setVisibility(layer,visible){
   if(state.map&&state.map.getLayer(layer))state.map.setLayoutProperty(layer,"visibility",visible?"visible":"none");
 }
 function handleMapClick(e){
-  if(e.features&&e.features.length)return;
+  const hit=state.map&&e.point?state.map.queryRenderedFeatures(e.point,{layers:["signals","safety","pois"]}):[];
+  if((e.features&&e.features.length)||(hit&&hit.length))return;
   if(!validCoord(e.lngLat.lng,e.lngLat.lat))return;
   if(state.picking==="start"||!state.start){
     state.start={lon:e.lngLat.lng,lat:e.lngLat.lat};
