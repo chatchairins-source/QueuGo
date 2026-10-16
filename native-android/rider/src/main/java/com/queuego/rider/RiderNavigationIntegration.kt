@@ -47,7 +47,7 @@ import kotlinx.coroutines.withContext
 // Shadow mode computes the candidate renderer fix while preserving the certified display.
 // The display gate stays off until CI + real-device route gates pass.
 private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = true
-private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false
+private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true
 
 private fun riderLongdoNavigationKey(context: Context): String? = runCatching {
     context.packageManager
