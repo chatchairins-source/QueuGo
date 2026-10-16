@@ -1941,14 +1941,10 @@ private fun RiderHome(
                             val promoted = committedRead?.activeJob ?: localAfterSuccess?.activeJob
                             if (promoted != null && promoted.id != job.id) {
                                 deliverySuccessJob = null
-                                openNavigation(context, promoted)
                             }
                         }
                         if (completedMode == "pickup" && pickupCommittedStatus == "in_progress") {
-                            val nextStop = committedRead?.activeJob
-                                ?: localAfterSuccess?.activeJob
-                                ?: job.copy(status = "in_progress")
-                            openNavigation(context, nextStop)
+                            actionMessage = "รับสินค้าแล้ว · นำทางต่อด้วยแผนที่ QueueGo"
                         }
                     }.onFailure {
                         playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
@@ -2183,9 +2179,9 @@ private fun RiderHome(
                 .onSuccess {
                     playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.JOB_ACCEPTED)
                     actionMessage = if (automatic) {
-                        "รับงานอัตโนมัติแล้ว · กำลังเปิดนำทางไปร้าน"
+                        "รับงานอัตโนมัติแล้ว · นำทางด้วยแผนที่ QueueGo"
                     } else {
-                        "รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน"
+                        "รับงานสำเร็จ · นำทางด้วยแผนที่ QueueGo"
                     }
 
                     val acceptedFallback = liveOffer.copy(
@@ -2209,7 +2205,6 @@ private fun RiderHome(
                         snapshot = updated
                         persistCommittedSnapshot(updated)
                     }
-                    openNavigation(context, updated?.activeJob ?: acceptedFallback)
                 }
                 .onFailure {
                     playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
@@ -2898,9 +2893,6 @@ private fun RiderHome(
                                     .onFailure { if (it is CancellationException) throw it }
                                     .onSuccess { updated ->
                                         snapshot = updated
-                                        updated.laundry.activeJob?.let {
-                                            openNavigation(context, it.asMapJob())
-                                        }
                                     }
                             }
                             .onFailure { actionMessage = it.message ?: "รับงานฝากซักไม่สำเร็จ" }
@@ -3079,7 +3071,6 @@ private fun RiderHome(
                                                     snapshot = committedRead
                                                     persistCommittedSnapshot(committedRead)
                                                 }
-                                                openNavigation(context, committedRead?.activeJob ?: committedJob)
                                             }
                                             .onFailure {
                                                 actionMessage = it.message ?: "เริ่มจัดส่งไม่สำเร็จ"
@@ -3119,7 +3110,9 @@ private fun RiderHome(
                                                     snapshot = committed
                                                     persistCommittedSnapshot(committed)
                                                     actionMessage = if (status == "completed") "จบเที่ยวแล้ว" else "อัปเดตเที่ยวแล้ว"
-                                                    if (action == "start" && status == "in_progress") openNavigation(context, committedJob)
+                                                    if (action == "start" && status == "in_progress") {
+                                                        actionMessage = "เริ่มเที่ยวแล้ว · นำทางด้วยแผนที่ QueueGo"
+                                                    }
                                                     runCatching { api.riderSnapshot(auth) }
                                                         .onFailure { if (it is CancellationException) throw it }
                                                         .onSuccess { snapshot = it; persistCommittedSnapshot(it) }
@@ -3715,30 +3708,7 @@ private fun ActiveJobCard(
     onDeliveryIssue: () -> Unit,
     onPickupIssue: () -> Unit
 ) {
-    val context = LocalContext.current
     val pickup = job.status in setOf("rider_assigned", "assigned", "preparing", "ready")
-    val navigationPrefs = remember(context) { context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE) }
-    val navigationKey = riderNavigationKey(job)
-    val navigationLifecycle = LocalLifecycleOwner.current.lifecycle
-    var navigationStarted by remember(navigationKey) {
-        mutableStateOf(navigationPrefs.getBoolean(navigationKey, false))
-    }
-    DisposableEffect(navigationPrefs, navigationKey, navigationLifecycle) {
-        fun readNavigationStage() { navigationStarted = navigationPrefs.getBoolean(navigationKey, false) }
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == navigationKey) readNavigationStage()
-        }
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) readNavigationStage()
-        }
-        navigationPrefs.registerOnSharedPreferenceChangeListener(listener)
-        navigationLifecycle.addObserver(observer)
-        readNavigationStage()
-        onDispose {
-            navigationPrefs.unregisterOnSharedPreferenceChangeListener(listener)
-            navigationLifecycle.removeObserver(observer)
-        }
-    }
     val title = when {
         job.status == "ready" -> "ร้านเตรียมสินค้าแล้ว"
         job.status == "preparing" -> "ร้านกำลังเตรียมสินค้า"
@@ -3756,21 +3726,18 @@ private fun ActiveJobCard(
         else -> "รออัปเดต"
     }
     val primaryRequiresNetwork = when {
-        pickup && navigationStarted && job.marketOrderId == null -> true
+        pickup && !job.shopArrived -> true
         job.status == "picked_up" -> true
-        job.status == "in_progress" && navigationStarted && !job.customerArrived -> true
+        job.status == "in_progress" && !job.customerArrived -> true
         else -> false
     }
     val primaryLabel = when {
-        job.marketOrderId != null && pickup && navigationStarted -> "ถึงร้านแล้ว"
-        job.marketOrderId != null && pickup -> "นำทางไปร้านถัดไป"
         pickup && job.shopArrived -> if (job.status == "ready") "ตรวจสอบรายการ" else "ถึงร้านแล้ว ✓"
-        pickup && navigationStarted -> "ถึงร้านแล้ว"
-        pickup -> "นำทางไปร้าน"
+        pickup -> "ถึงร้านแล้ว"
         job.status == "picked_up" -> "เริ่มจัดส่ง"
         job.status == "in_progress" && job.customerArrived -> "ส่งมอบสินค้า"
-        job.status == "in_progress" && navigationStarted -> "ถึงลูกค้าแล้ว"
-        else -> "นำทางไปลูกค้า"
+        job.status == "in_progress" -> "ถึงลูกค้าแล้ว"
+        else -> "อัปเดตงาน"
     }
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFEFDFD)),
@@ -3795,6 +3762,16 @@ private fun ActiveJobCard(
             Column(Modifier.fillMaxWidth().padding(top = 7.dp).background(Color(0xFFFFF6F8), RoundedCornerShape(14.dp)).padding(horizontal = 9.dp, vertical = 8.dp)) {
                 Text(if (pickup) "จุดรับสินค้า" else "ที่อยู่จัดส่ง", fontSize = 8.sp, color = QgMuted)
                 Text((if (pickup) job.pickupAddress else job.deliveryAddress) ?: "พิกัดยังไม่พร้อม", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            OutlinedButton(
+                onClick = onNavigate,
+                enabled = !busy && job.navigationTarget != null,
+                modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_SECONDARY_ACTION_MIN_HEIGHT_DP.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                QgIcon("route", Modifier.size(19.dp), QgRed)
+                Spacer(Modifier.width(7.dp))
+                Text("นำทางด้วย Google Maps", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Bold)
             }
             if (pickup && details != null) {
                 RiderPickupGuideBlock(
@@ -3835,18 +3812,14 @@ private fun ActiveJobCard(
             Button(
                 onClick = {
                     when {
-                        job.marketOrderId != null && pickup && navigationStarted -> onPickupVerify()
-                        job.marketOrderId != null && pickup -> { onNavigate(); navigationStarted = context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).getBoolean(navigationKey, false) }
                         pickup && job.shopArrived && job.status == "ready" -> onPickupVerify()
-                        pickup && navigationStarted -> onArriveShop()
+                        pickup && !job.shopArrived -> onArriveShop()
                         job.status == "picked_up" -> onStartDelivery()
                         job.status == "in_progress" && job.customerArrived -> onDeliveryVerify()
-                        job.status == "in_progress" && navigationStarted -> onArriveCustomer()
-                        else -> { onNavigate(); navigationStarted = context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).getBoolean(navigationKey, false) }
+                        job.status == "in_progress" -> onArriveCustomer()
                     }
                 },
                 enabled = !busy &&
-                    job.navigationTarget != null &&
                     !(pickup && job.shopArrived && job.status != "ready" && job.marketOrderId == null) &&
                     (!primaryRequiresNetwork || networkAvailable),
                 modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp), shape = RoundedCornerShape(18.dp),
