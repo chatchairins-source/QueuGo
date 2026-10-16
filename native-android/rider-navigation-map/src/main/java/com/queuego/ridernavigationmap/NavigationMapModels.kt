@@ -79,7 +79,8 @@ data class NavigationMapDiagnostics(
     val mapReplacementCount: Int = 0,
     val snapshotVisible: Boolean = false,
     val routeGeometryUpdateCount: Int = 0,
-    val demandMutationCount: Int = 0
+    val demandMutationCount: Int = 0,
+    val riderPuckPresent: Boolean = false
 )
 
 internal fun RiderNavigationMapState.renderableDemandZones(): List<NavigationDemandZone> =

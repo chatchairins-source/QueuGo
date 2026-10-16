@@ -28,9 +28,10 @@ assert(api.includes('select=subtotal,delivery_fee,multi_shop_service_fee,rider_b
 assert(app.includes('riderPickupCommittedStatus(mutationResult)')&&
   app.includes('riderPickupReadCanReplace(pickupCommittedStatus, job.id, candidate)')&&
   app.includes('riderApplyPickupCommit(')&&
-  app.includes('val nextStop = committedRead?.activeJob')&&
-  app.includes('?: localAfterSuccess?.activeJob'),
-  'Pickup photo success must preserve the committed order through stale reads and hand Google Maps the authoritative next stop');
+  app.includes('snapshot = committedRead')&&
+  app.includes('snapshot = localAfterSuccess')&&
+  !app.includes('openNavigation(context, nextStop)'),
+  'Pickup photo success must preserve the committed order through stale reads and remain in QueueGo navigation');
 
 assert(app.includes('RiderSlideComplete(')&&app.includes('label = "เก็บเงินจากลูกค้าเรียบร้อยแล้ว"'),
   'Delivery verification must use slide-to-complete');

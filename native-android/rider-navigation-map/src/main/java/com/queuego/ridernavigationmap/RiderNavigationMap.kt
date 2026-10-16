@@ -447,11 +447,12 @@ private class RiderNavigationMapHolder {
                 ?: NavigationMapPoint(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
             nextMap.setLocation(MapLocation(start.longitude, start.latitude))
             nextMap.setZoom(camera?.zoom?.coerceIn(4, 20) ?: 15)
-            val bearing = camera?.bearingDegrees ?: lastCameraBearing
+            val navigationActive = lastState.remainingStops().isNotEmpty()
+            val bearing = if (navigationActive) camera?.bearingDegrees ?: lastCameraBearing else 0f
             bearing?.takeIf { it.isFinite() }?.let {
                 nextMap.rotate(((it % 360f) + 360f) % 360f, false)
             }
-            val tilt = camera?.tiltDegrees ?: lastCameraTilt
+            val tilt = if (navigationActive) camera?.tiltDegrees ?: lastCameraTilt else 0f
             tilt?.takeIf { it.isFinite() }?.coerceIn(0f, 50f)?.let {
                 nextMap.setTilt(it)
                 lastCameraTilt = it
@@ -602,6 +603,18 @@ private class RiderNavigationMapHolder {
         val activeMap = map ?: return
         if (disposed) return
         renderPassCount += 1
+
+        // End/cancel and idle restoration must flatten even before a fresh fix arrives,
+        // including a renderer replacement or an old persisted navigation camera.
+        if (state.remainingStops().isEmpty() && (lastCameraTilt != 0f || lastCameraBearing != 0f)) {
+            runCatching {
+                activeMap.setTilt(0f)
+                activeMap.rotate(0f, false)
+            }.onSuccess {
+                lastCameraTilt = 0f
+                lastCameraBearing = 0f
+            }
+        }
 
         // An internal renderer swap can arrive while the location producer restarts.
         // Recreate the puck from the retained fix in this same render pass.
@@ -1162,7 +1175,8 @@ private class RiderNavigationMapHolder {
                 snapshotBridgeCount = snapshotBridgeCount,
                 snapshotBridgeFailureCount = snapshotBridgeFailureCount,
                 mapReplacementCount = mapReplacementCount,
-                snapshotVisible = snapshotVisible
+                snapshotVisible = snapshotVisible,
+                riderPuckPresent = riderPin != null
             )
         )
     }

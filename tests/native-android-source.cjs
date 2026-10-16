@@ -292,9 +292,9 @@ ok(riderApp.includes('ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)')&&ri
 ok(riderApi.includes('if (!online)')&&riderApi.includes('qg_get_my_rider_offer')&&riderApi.includes('qg_rider_decline_offer'),'Rider going offline must release any live offer immediately');
 ok(riderApp.includes('api.setOnline(current, false, null, null)')&&riderApp.includes('api.revoke(current.session)'),'Rider logout must take the Rider offline before session revocation');
 ok(
-  riderApp.includes('รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน')&&
+  riderApp.includes('รับงานสำเร็จ · นำทางด้วยแผนที่ QueueGo')&&
   riderApp.includes('activeJob = acceptedFallback')&&
-  riderApp.includes('openNavigation(context, updated?.activeJob ?: acceptedFallback)')&&
+  !riderApp.includes('openNavigation(context, updated?.activeJob ?: acceptedFallback)')&&
   (
     riderApp.includes('val acceptedFallback = current.offeredJob.copy(')||
     (
@@ -303,17 +303,17 @@ ok(
       riderApp.includes('val acceptedFallback = liveOffer.copy(')
     )
   ),
-  'Rider native must promote an accepted offer locally and auto-open navigation even if optional post-claim refresh fails'
+  'Rider native must promote an accepted offer locally and retain QueueGo navigation even if optional post-claim refresh fails'
 );
 ok(riderApi.includes('riderNullableUuid')&&riderApi.includes('marketOrderId = riderNullableUuid(o.optString("market_order_id"))')&&riderApi.includes('val id = riderNullableUuid(rows.optJSONObject(i)?.optString("order_id"))'),'Rider native must reject JSON null/null-like UUID values before Market or offer RPC routing');
 ok(riderApi.includes('arrivedShopAt = riderNullableText(o.optString("rider_arrived_shop_at"))')&&
    riderApi.includes('arrivedCustomerAt = riderNullableText(o.optString("rider_arrived_customer_at"))'),
    'Rider arrival timestamps must reject JSON null literals so the UI never shows false arrived checkmarks');
 ok(riderApp.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"')&&
-   riderApp.includes('val nextStop = committedRead?.activeJob')&&
-   riderApp.includes('?: localAfterSuccess?.activeJob')&&
-   riderApp.includes('openNavigation(context, nextStop)'),
-  'Rider native must open Google Maps only after pickup is authoritatively in progress and follow the authoritative next stop, including another bundled shop');
+   riderApp.includes('snapshot = committedRead')&&
+   riderApp.includes('snapshot = localAfterSuccess')&&
+   !riderApp.includes('openNavigation(context, nextStop)'),
+  'Rider native must preserve the authoritative next bundle stop after pickup and stay in QueueGo');
 ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
    riderApp.includes('riderApplyPickupCommit(')&&
    riderApp.includes('pickupCommittedStatus ?: "picked_up"')&&
@@ -427,6 +427,7 @@ ok(source.includes('promotions?select=id,category,status,max_budget,period_days,
 ok(merchantPromotion.includes('ทั้งหมด')&&merchantPromotion.includes('กำลังใช้งาน')&&merchantPromotion.includes('รออนุมัติ')&&merchantPromotion.includes('สร้างโปรโมชั่นใหม่'),'Merchant native promotions must preserve web filters and create flow');
 ok(source.includes('MerchantMenuTile("โปรโมชั่น"')&&source.includes('MerchantMenuTile("รายงาน"'),'Merchant native dashboard must expose promotions and reports');
 ok(source.includes('QgNavItem("home", "หน้าหลัก", "home")')&&source.includes('QgNavItem("orders", "คำสั่งซื้อ", "orders")')&&source.includes('QgNavItem("promotions", "โปรโมชั่น", "tag")')&&source.includes('QgNavItem("profile", "บัญชี", "user")'),'Merchant native bottom navigation must match Production web labels and routes');
+const merchantHome=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
 ok(
   merchantHome.includes('Text(\n                "Queue"')&&
   merchantHome.includes('Text(\n                "Go"')&&

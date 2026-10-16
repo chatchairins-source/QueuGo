@@ -381,6 +381,35 @@ class NavigationMapRuntimeTest {
     }
 
     @Test
+    fun jobEndFlattensNorthUpAndKeepsPuckWithoutNewGpsTick() {
+        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
+            lateinit var activity: NavigationMapRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue(activity.mapReady.await(30, TimeUnit.SECONDS))
+            awaitMapTilt(scenario, { it >= 24f }, "Active navigation must be tilted")
+            val before = activity.latestDiagnostics.renderPassCount
+            var viewIdentity = 0
+            scenario.onActivity {
+                viewIdentity = it.mapViewIdentity()
+                it.finishJobFixture()
+            }
+            val idle = awaitAppliedRender(activity, before)
+            awaitMapTilt(scenario, { kotlin.math.abs(it) <= 0.5f }, "Job end must flatten immediately")
+            assertTrue("Job end lost Rider puck without another GPS tick", idle.riderPuckPresent)
+            // Longdo may animate rotation; observe its real camera rather than policy output.
+            val deadline = android.os.SystemClock.elapsedRealtime() + 5_000L
+            var bearing = Float.NaN
+            while (android.os.SystemClock.elapsedRealtime() < deadline) {
+                scenario.onActivity { bearing = it.mapBearingDegrees() }
+                if (kotlin.math.abs(((bearing + 540f) % 360f) - 180f) <= 0.5f) break
+                Thread.sleep(25)
+            }
+            assertTrue("Idle map must be north-up", kotlin.math.abs(((bearing + 540f) % 360f) - 180f) <= 0.5f)
+            scenario.onActivity { assertEquals(viewIdentity, it.mapViewIdentity()) }
+        }
+    }
+
+    @Test
     fun demandHeatmapReconcilesPinsWithoutRecreatingMapObjects() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
             lateinit var activity: NavigationMapRuntimeActivity
