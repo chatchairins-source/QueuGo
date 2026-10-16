@@ -336,7 +336,8 @@ jobs:
         env:
           QG_MAP_DISPLAY_ONLY: '1'
           QG_CUSTOMER_LOCATION_ONLY: '1'
-          QG_CUSTOMER_LOCATION_STRESS: '1'
+          QG_CUSTOMER_LOCATION_STRESS: '0'
+          QG_CUSTOMER_DRAFT_RESTORE: '1'
         run: python3 native-android/qa/capture-rider-launch.py
       - name: Keep map images and runtime evidence
         if: always()

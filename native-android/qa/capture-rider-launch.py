@@ -255,6 +255,67 @@ def capture_customer_location():
         print("QUEUEGO_CUSTOMER_LOCATION_PASS " + permission_state)
     if os.environ.get("QG_CUSTOMER_LOCATION_STRESS") == "1":
         stress_customer_location()
+    if os.environ.get("QG_CUSTOMER_DRAFT_RESTORE") == "1":
+        probe_customer_draft_restore()
+
+
+def probe_customer_draft_restore():
+    """Kill the real Guest process before Save; navigation and draft must restore."""
+    pkg = "com.queuego.customer"
+    directory = output / "customer-location" / "unsaved-draft-restore"
+    directory.mkdir(parents=True, exist_ok=True)
+    result = {"source_head": os.environ["GITHUB_SHA"], "workflow_run": os.environ["GITHUB_RUN_ID"],
+              "authenticated": False, "production_writes": False, "result": "FAIL"}
+
+    def tap(node):
+        b = [int(x) for x in re.findall(r"\d+", node.get("bounds", ""))]
+        assert len(b) == 4 and b[2] > b[0] and b[3] > b[1]
+        run(adb + ["shell", "input", "tap", str((b[0]+b[2])//2), str((b[1]+b[3])//2)])
+
+    def selected_point(ns):
+        text = next(n.get("text") for n in ns if n.get("text", "").startswith("Lat: "))
+        values = [float(x) for x in re.findall(r"-?\d+\.\d+", text)]
+        assert len(values) == 2, "Real selected map point missing"
+        return values
+
+    try:
+        nodes = wait_ui(directory / "home.xml", lambda ns: any(n.get("text") == "ส่งไปที่" for n in ns))
+        tap(next(n for n in nodes if n.get("text") == "ส่งไปที่"))
+        nodes = wait_ui(directory / "picker.xml", lambda ns: any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in ns))
+        # Reuse the real pan geometry from the public permission flow.
+        description = next(n for n in nodes if n.get("text", "").startswith("ปักหมุดตำแหน่งรับสินค้า"))
+        gps = next(n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน")
+        db = [int(x) for x in re.findall(r"\d+", description.get("bounds", ""))]
+        gb = [int(x) for x in re.findall(r"\d+", gps.get("bounds", ""))]
+        width = int(run(adb + ["shell", "wm", "size"], capture_output=True, text=True).stdout.strip().split()[-1].split("x")[0])
+        y = (db[3] + gb[1]) // 2
+        run(adb + ["shell", "input", "swipe", str(width//2), str(y), str(width//2+120), str(y), "400"])
+        nodes = wait_ui(directory / "draft.xml", lambda ns: any(n.get("class") == "android.widget.EditText" and n.get("text", "").strip() for n in ns), timeout_seconds=40)
+        point = selected_point(nodes)
+        address = next(n.get("text") for n in nodes if n.get("class") == "android.widget.EditText")
+        old_pids = package_pids(pkg)
+        run(adb + ["shell", "input", "keyevent", "3"])
+        time.sleep(1)
+        run(adb + ["shell", "am", "kill", pkg])
+        deadline = time.monotonic() + 10
+        while subprocess.run(adb + ["shell", "pidof", pkg], capture_output=True).returncode == 0:
+            assert time.monotonic() < deadline, "Customer process did not end"
+            time.sleep(0.4)
+        run(adb + ["shell", "am", "start", "-n", pkg + "/.MainActivity"])
+        nodes = wait_ui(directory / "restored.xml", lambda ns: any(n.get("text") in ("ส่งไปที่", "ใช้ตำแหน่ง GPS ปัจจุบัน") for n in ns))
+        assert package_pids(pkg) != old_pids, "New process was not created"
+        result["restored_screen"] = "picker" if any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in nodes) else "home"
+        assert result["restored_screen"] == "picker", "Process recreation discarded the unsaved address screen"
+        restored = selected_point(nodes)
+        assert all(abs(a-b) < 0.000002 for a,b in zip(point, restored)), "Process recreation changed draft coordinates"
+        assert any(n.get("class") == "android.widget.EditText" and n.get("text") == address for n in nodes), "Process recreation lost draft address"
+        assert_no_package_crash(pkg, directory / "crash.txt")
+        result["result"] = "PASS"
+    finally:
+        (directory / "results.json").write_text(json.dumps(result, indent=2))
+        (directory / "all-logcat.txt").write_text(run(adb + ["logcat", "-d"], capture_output=True, text=True).stdout)
+        with (directory / "restored.png").open("wb") as png:
+            run(adb + ["exec-out", "screencap", "-p"], stdout=png)
 
 
 def stress_customer_location():
