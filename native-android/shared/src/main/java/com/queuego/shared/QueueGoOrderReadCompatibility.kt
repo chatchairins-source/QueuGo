@@ -34,7 +34,8 @@ class QueueGoOrderReadCompatibility {
                     .matchEntire(failure.message.orEmpty())?.groupValues?.get(1)
                 // A missing filter cannot be dropped: its ownership/semantics must remain intact.
                 val selected = attempted.substringAfter("select=", "").substringBefore('&').split(',')
-                if (column !in optional || column !in selected || !absent.add(column!!)) throw failure
+                if (column !in optional || column !in selected) throw failure
+                absent.add(column!!)
             }
         }
         error("ยังโหลดข้อมูลงานไม่ได้ กรุณาลองใหม่")

@@ -66,4 +66,23 @@ class QueueGoOrderReadCompatibilityTest {
         }
         assertEquals("orders?select=id,rider_arrived_customer_at&id=in.(owned)", result)
     }
+    @Test fun anotherReadDiscoveringTheSameColumnDoesNotBreakRecovery() {
+        val reader = QueueGoOrderReadCompatibility()
+        val path = "orders?select=id,ride_distance_km&rider_id=eq.owner"
+        var outerCalls = 0
+        val result = reader.read(path, status) { attempted ->
+            if (outerCalls++ == 0) {
+                var innerCalls = 0
+                reader.read(path, status) {
+                    if (innerCalls++ == 0) throw Http(400, "column orders.ride_distance_km does not exist")
+                    it
+                }
+                throw Http(400, "column orders.ride_distance_km does not exist")
+            }
+            attempted
+        }
+        assertEquals("orders?select=id&rider_id=eq.owner", result)
+        assertEquals(2, outerCalls)
+    }
+
 }
