@@ -50,5 +50,15 @@ const assert=require('node:assert/strict'),crypto=require('node:crypto');
  calls=[];eq((await ambiguous(req())).status,503);
  const oversized=createCreditHandler(env,async(u,o)=>u.endsWith('/auth/v1/user')?new Response('x'.repeat(131073)):good(u,o));eq((await oversized(req())).status,503);
  const badProvider=createCreditHandler(env,async(u,o)=>u.includes('api.omise.co')?new Response('',{status:500}):good(u,o));const fail=await badProvider(req());eq((await fail.text()).includes(values.OMISE_SECRET_KEY),false);
+ // Readiness is service-only and cannot create a charge, even with intake paused.
+ calls=[];
+ const readyReq=token=>new Request('https://isolated.invalid/credit/readiness',{headers:{authorization:'Bearer '+token}});
+ eq((await handler(readyReq('rider-token'))).status,401);eq(calls.length,0);
+ const ready=await handler(readyReq(values.SUPABASE_SERVICE_ROLE_KEY));eq(ready.status,200);
+ eq(await ready.json(),{environment_ready:true,live_key_configured:true,webhook_signing_configured:true,live_intake_enabled:true});eq(calls.length,0);
+ const missingSigning=createCreditHandler({get:k=>({...values,OMISE_WEBHOOK_SECRET:''})[k]},good);
+ eq((await missingSigning(req())).status,503);eq(calls.length,0);
+ const pausedReadiness=createCreditHandler({get:k=>({...values,QUEUEGO_CREDIT_LIVE_ENABLED:'false'})[k]},good);
+ eq((await pausedReadiness(readyReq(values.SUPABASE_SERVICE_ROLE_KEY))).status,200);eq(calls.length,0);
  console.log('Credit Edge: '+checks+' checks PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});

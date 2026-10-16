@@ -33,11 +33,18 @@ export function createCreditHandler(env,fetcher=fetch,webhook=false){
   const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,content-type,x-client-info','Access-Control-Allow-Methods':'POST,OPTIONS','Cache-Control':'no-store'};
   const reply=(body,status=200)=>Response.json(body,{status,headers:cors});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
-  if(req.method!=='POST')return reply({error:'POST required'},405);
   const base=env.get('SUPABASE_URL'),service=env.get('SUPABASE_SERVICE_ROLE_KEY'),secret=env.get('OMISE_SECRET_KEY'),webhookSecret=env.get('OMISE_WEBHOOK_SECRET');
+  let signingReady=false;
+  try{signingReady=base64Bytes(webhookSecret).length>=16}catch{}
+  // Server-to-server operational check: never returns secrets or creates charges.
+  if(!webhook&&req.method==='GET'&&new URL(req.url).pathname.endsWith('/readiness')){
+   if(!service||req.headers.get('authorization')!=='Bearer '+service)return reply({error:'unauthorized'},401);
+   return reply({environment_ready:!!base&&!!service,live_key_configured:isLiveOmiseSecret(secret),webhook_signing_configured:signingReady,live_intake_enabled:env.get('QUEUEGO_CREDIT_LIVE_ENABLED')==='true'});
+  }
+  if(req.method!=='POST')return reply({error:'POST required'},405);
   // New topups require the rollout switch. Already-paid signed webhooks remain settleable during an intake pause.
-  // A LIVE key is always mandatory; webhooks additionally require the Omise signing secret.
-  if((!webhook&&env.get('QUEUEGO_CREDIT_LIVE_ENABLED')!=='true')||!base||!service||!isLiveOmiseSecret(secret)||(webhook&&!webhookSecret))return reply({error:'ระบบเครดิตยังไม่เปิดใช้งาน'},503);
+  // New intake and settlement both require LIVE credentials and a usable signing secret.
+  if((!webhook&&env.get('QUEUEGO_CREDIT_LIVE_ENABLED')!=='true')||!base||!service||!isLiveOmiseSecret(secret)||!signingReady)return reply({error:'ระบบเครดิตยังไม่เปิดใช้งาน'},503);
   const serviceHeaders={apikey:service,authorization:'Bearer '+service,'content-type':'application/json'};
   const providerHeaders={authorization:'Basic '+btoa(secret+':')};
   const rpc=async(name,body,authorization='Bearer '+service)=>{
