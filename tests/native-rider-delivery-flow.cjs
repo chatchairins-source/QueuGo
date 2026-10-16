@@ -1,13 +1,12 @@
 const assert=require('assert');
 const fs=require('fs');
 const app=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
-assert(app.includes('val navigationKey = riderNavigationKey(job)'));
-assert(app.includes('SharedPreferences.OnSharedPreferenceChangeListener'));
-assert(app.includes('registerOnSharedPreferenceChangeListener(listener)'));
-assert(app.includes('unregisterOnSharedPreferenceChangeListener(listener)'));
-assert(app.includes('event == Lifecycle.Event.ON_RESUME) readNavigationStage()'));
-assert(app.includes('pickup && navigationStarted -> "ถึงร้านแล้ว"'));
-assert(app.includes('job.status == "in_progress" && navigationStarted -> "ถึงลูกค้าแล้ว"'));
+assert(app.includes('Text("นำทางด้วย Google Maps"'),
+  'Active Rider job card must expose Google Maps as a separate optional action');
+assert(!app.includes('navigationStarted'),
+  'External Google Maps must not own or advance the Rider workflow state');
+assert(app.includes('pickup -> "ถึงร้านแล้ว"'));
+assert(app.includes('job.status == "in_progress" -> "ถึงลูกค้าแล้ว"'));
 const proof=app.slice(app.indexOf('private fun VerificationScreen('),app.indexOf('/** Final cash review'));
 assert(!proof.includes('RiderSlideComplete('),'Photo/proof stage must use buttons, never a slider');
 assert(proof.includes('onClick = { showCollection = true }'));
@@ -19,4 +18,4 @@ assert(final.includes('onComplete = onComplete') && !final.includes('api.'));
 assert(final.includes('BackHandler { if (!busy) onBack() }'));
 require('./native-rider-google-maps-return.cjs');
 require('./native-rider-route-bundle-parity.cjs');
-console.log('Rider Maps return stage / photo button / final cash slider: PASS');
+console.log('Rider in-app workflow / optional Google Maps / photo button / final cash slider: PASS');
