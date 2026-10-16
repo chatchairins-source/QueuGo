@@ -1,0 +1,27 @@
+name: Build Rider Buriram offline data
+on:
+  push:
+    branches: [work-native-rider-offline-pilot-20261016]
+    paths: ['.github/workflows/build-rider-offline-data.yml', 'native-android/qa/build-buriram-shortbread-pmtiles.sh']
+permissions:
+  contents: write
+jobs:
+  buriram-pmtiles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Build actual OSM archive using existing pinned builder
+        env:
+          QG_PLANETILER_MEMORY: 5g
+        run: native-android/qa/build-buriram-shortbread-pmtiles.sh
+      - name: Publish actual local map data
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd .queuego-map-data
+          sha256sum buriram-shortbread.pmtiles > SHA256SUMS.txt
+          printf 'OpenStreetMap contributors, ODbL 1.0. Source: Geofabrik Thailand OSM PBF. Bounds: 102.369,14.109,103.592,15.819. Planetiler 0.10.2 Shortbread. Data build HEAD: %s\n' "$GITHUB_SHA" > SOURCE.txt
+          gh release create rider-buriram-offline-20261016 buriram-shortbread.pmtiles SHA256SUMS.txt SOURCE.txt --target "$GITHUB_SHA" --prerelease --title 'Rider Buriram offline OSM data' --notes-file SOURCE.txt
