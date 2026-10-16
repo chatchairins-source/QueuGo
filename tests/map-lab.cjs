@@ -1,0 +1,30 @@
+const fs=require("fs"),path=require("path"),assert=require("assert");
+const html=fs.readFileSync(path.resolve(__dirname,"../map-lab/index.html"),"utf8");
+const js=fs.readFileSync(path.resolve(__dirname,"../map-lab/app.js"),"utf8");
+const doc=fs.readFileSync(path.resolve(__dirname,"../docs/QUEUEGO-MAP-LAB.md"),"utf8");
+let checks=0;
+function ok(v,msg){assert.ok(v,msg);checks++}
+function has(s,x,msg){ok(s.includes(x),msg||("missing "+x))}
+has(html,"QueueGo Map Lab");
+has(html,"OpenStreetMap");
+has(html,"ODbL");
+has(js,"const BURIRAM_BOUNDS=[[102.442357,14.132135],[103.499967,15.789217]]");
+has(js,'"highway"="traffic_signals"');
+has(js,'"railway"="level_crossing"');
+has(js,'"highway"="speed_camera"');
+has(js,"signal_timing:\"unknown\"");
+has(js,"โหลดเส้นทางไม่สำเร็จ");
+ok(!js.includes("maps.googleapis.com"),"Map Lab must not ingest Google Maps");
+ok(!js.includes("google.navigation"),"Map Lab must not depend on Google navigation");
+has(js,"OpenStreetMap");
+has(js,"กรมทางหลวงชนบท");
+has(js,"source_layer");
+has(js,"routeSignals");
+has(js,"routeHazards");
+has(js,"distancePointToLine");
+has(js,"exportGeojson");
+has(doc,"must NOT show");
+has(doc,"provenance");
+has(doc,"PMTiles");
+has(doc,"Valhalla or GraphHopper");
+console.log(JSON.stringify({checks,failures:0,scope:"QueueGo Buriram Map Lab source/data/safety contract"}));
