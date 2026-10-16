@@ -33,7 +33,7 @@
 }
 
 /* Grocery category chooser and persistent store add actions. */
-.qgg [hidden],.qgm-product-category-control [hidden]{display:none!important}
+.qgg [hidden],.qgm-product[hidden],.qgm-product-category-control [hidden]{display:none!important}
 .qgg-merchant button.qgm-primary{background:#e5232c;color:#fff;border-color:#e5232c;font-weight:800}
 #qgg-category-button,.qgm-product-category-control>button{width:100%;min-height:44px;border:1px solid #e5232c;border-radius:12px;padding:10px 12px;background:#fff5f6;color:#c51a29;font-size:15px;font-weight:700;text-align:left}
 .qgm-product-category-control{margin:12px 0}.qgm-product-category-control select{width:100%;min-height:44px;font-size:16px;margin-top:8px}
