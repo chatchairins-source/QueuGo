@@ -16,10 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      SOURCE_RUN_ID: "38859123459"
-      RELEASE_TAG: "rider-test-20261016-online-fix-latest"
-      RELEASE_TARGET: "9df7e8c1751f31dbaf0710f5d0b947f9be749dbe"
-      ASSET_NAME: "QueueGo-Rider-Test-20261016-Online-Fix.apk"
+      SOURCE_RUN_ID: "38862619268"
+      RELEASE_TAG: "android-test-all-20261016-online-fix1"
+      ASSET_NAME: "QueueGo-Rider-Test-Latest-cc3e37.apk"
     steps:
       - name: Download exact passed Native Pilot artifacts
         run: |
@@ -38,18 +37,10 @@ jobs:
           cp "$APK" "$ASSET_NAME"
           sha256sum "$ASSET_NAME"
 
-      - name: Publish shareable prerelease asset
+      - name: Upload Rider APK to existing shareable release
         run: |
           set -euo pipefail
-          if gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "$ASSET_NAME" \
-              --repo "${{ github.repository }}" \
-              --clobber
-          else
-            gh release create "$RELEASE_TAG" "$ASSET_NAME" \
-              --repo "${{ github.repository }}" \
-              --target "$RELEASE_TARGET" \
-              --title "QueueGo Rider Test — Online Fix 2026-10-16" \
-              --notes "Direct Rider APK for owner real-device testing. Source Native Pilot run 38859123459 at 9df7e8c, including Rider Production-schema online compatibility. Test prerelease; not a certified Play Store release." \
-              --prerelease
-          fi
+          gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null
+          gh release upload "$RELEASE_TAG" "$ASSET_NAME" \
+            --repo "${{ github.repository }}" \
+            --clobber
