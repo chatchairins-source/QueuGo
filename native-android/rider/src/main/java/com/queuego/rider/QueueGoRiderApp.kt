@@ -1078,7 +1078,7 @@ private fun RiderHome(
         val granted = grants.values.any { it }
         actionMessage = if (granted && pendingMapRecenter) {
             recenterSignal += 1
-            if (lastKnownLocation(context) == null) "ยังไม่ได้ตำแหน่ง GPS" else "อนุญาตตำแหน่งแล้ว"
+            "กำลังหาตำแหน่ง"
         } else if (granted) {
             "อนุญาตตำแหน่งแล้ว กดปุ่มเดิมอีกครั้ง"
         } else {
@@ -2634,7 +2634,10 @@ private fun RiderHome(
                             pendingMapRecenter = true
                             ensureLocationPermission()
                         }
-                        else -> recenterSignal += 1
+                        else -> {
+                            recenterSignal += 1
+                            actionMessage = "กำลังหาตำแหน่ง"
+                        }
                     }
                 },
             shape = androidx.compose.foundation.shape.CircleShape,

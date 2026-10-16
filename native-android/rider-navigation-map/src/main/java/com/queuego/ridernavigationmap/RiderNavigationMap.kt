@@ -603,7 +603,9 @@ private class RiderNavigationMapHolder {
         if (disposed) return
         renderPassCount += 1
 
-        state.rider?.takeIf { it.point.valid }?.let { nextFix ->
+        // An internal renderer swap can arrive while the location producer restarts.
+        // Recreate the puck from the retained fix in this same render pass.
+        (state.rider?.takeIf { it.point.valid } ?: lastRiderFix)?.let { nextFix ->
             if (riderPin == null || shouldMoveRiderMarker(lastRenderedRiderFix, nextFix)) {
                 renderRider(activeMap, nextFix)
             }

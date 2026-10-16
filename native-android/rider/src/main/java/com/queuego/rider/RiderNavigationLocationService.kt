@@ -21,7 +21,9 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.queuego.ridernavigationmap.NavigationMapFix
 import com.queuego.ridernavigationmap.NavigationMapPoint
 import kotlinx.coroutines.*
@@ -107,6 +109,7 @@ class RiderNavigationLocationService : Service() {
     private var callback: LocationCallback? = null
     private var lastAccepted: Location? = null
     private var locationUpdatesStarted = false
+    private var freshLocationRequest: CancellationTokenSource? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -140,6 +143,7 @@ class RiderNavigationLocationService : Service() {
         }
 
         startLocationUpdates()
+        requestFreshLocation()
         if (dispatchHeartbeat == null && locationUpdatesStarted) {
             dispatchHeartbeat = dispatchScope.launch {
                 val api = QueueGoApi()
@@ -166,6 +170,7 @@ class RiderNavigationLocationService : Service() {
 
     override fun onDestroy() {
         dispatchScope.cancel()
+        freshLocationRequest?.cancel()
         stopLocationUpdates()
         RiderNavigationLocationStore.clear()
         super.onDestroy()
@@ -210,6 +215,31 @@ class RiderNavigationLocationService : Service() {
         callback?.let { runCatching { fusedClient.removeLocationUpdates(it) } }
         callback = null
         Log.i("QueueGoNavLocation", "foreground_updates_stopped")
+    }
+
+    // Repeated starts (recenter/resume) must request a new measurement even when the
+    // continuous subscription is already running and the Rider is standing still.
+    private fun requestFreshLocation() {
+        if (!locationUpdatesStarted || !hasLocationPermission()) return
+        freshLocationRequest?.cancel()
+        val requestToken = CancellationTokenSource()
+        freshLocationRequest = requestToken
+        runCatching {
+            fusedClient.getCurrentLocation(
+                CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .setMaxUpdateAgeMillis(0L)
+                    .setDurationMillis(15_000L)
+                    .build(),
+                requestToken.token
+            ).addOnSuccessListener { location ->
+                if (freshLocationRequest === requestToken && location != null) accept(location)
+            }.addOnFailureListener {
+                Log.w("QueueGoNavLocation", "fresh_location_unavailable")
+            }
+        }.onFailure {
+            Log.w("QueueGoNavLocation", "fresh_location_request_failed", it)
+        }
     }
 
     private fun accept(location: Location) {

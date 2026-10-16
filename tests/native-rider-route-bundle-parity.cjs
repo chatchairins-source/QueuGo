@@ -26,10 +26,12 @@ assert(api.includes('bundle.currentOrder()?.let { active = it.job }'),
 assert(app.includes('riderSnapshotJobForCommit(updated, jobId)')&&
   app.includes('riderApplyPickupCommit('),
   'Pickup commit recovery must remain bundle-aware when the authoritative active job advances to the next stop');
-assert(app.includes('val nextStop = committedRead?.activeJob')&&
-  app.includes('?: localAfterSuccess?.activeJob')&&
-  !app.includes('val delivering = committedRead?.activeJob'),
-  'Post-pickup Google Maps handoff must use the authoritative next bundle stop instead of forcing the just-picked customer');
+assert(app.includes('snapshot = committedRead')&&
+  app.includes('snapshot = localAfterSuccess')&&
+  app.includes('job = mapJob')&&
+  app.includes('"รับสินค้าแล้ว · นำทางต่อด้วยแผนที่ QueueGo"')&&
+  !app.includes('openNavigation(context, nextStop)'),
+  'Post-pickup navigation must retain the authoritative bundle snapshot in QueueGo without an automatic Google Maps handoff');
 assert(api.includes('&id=in.(')&&api.includes('parseJob(row)'),
   'Bundle metadata must merge with real order rows so arrival/photo state remains authoritative');
 assert(api.includes('bundle = bundle'),'Rider snapshot must carry route bundle state');
