@@ -62,7 +62,7 @@ button{cursor:pointer}
 .qgm-route-points b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:215px}
 .qgm-dot{width:10px;height:10px;min-width:10px;border-radius:50%}
 .qgm-dot.start{background:#16a34a}.qgm-dot.end{background:var(--qg-red)}
-.qgm-route-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:9px}
+.qgm-route-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:9px}
 .qgm-route-stats div{background:#f7f5f6;border-radius:12px;padding:8px}
 .qgm-route-stats small,.qgm-route-stats b{display:block}
 .qgm-route-stats small{font-size:9px;color:var(--qg-muted)}
