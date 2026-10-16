@@ -18,7 +18,7 @@ class NavigationMotionPolicyTest {
         )
         val millis = riderMarkerAnimationMillis(previous, next)
         assertTrue(millis < 1_000L)
-        assertTrue(millis <= 850L)
+        assertTrue(millis <= 600L)
     }
 
     @Test fun halfSecondGpsCadenceUsesShorterAnimationInsteadOfOverlap() {
@@ -46,7 +46,7 @@ class NavigationMotionPolicyTest {
         assertFalse(shouldAnimateRiderMarker(start, NavigationMapPoint(13.002, 100.0)))
         assertTrue(shouldAnimateRiderMarker(start, NavigationMapPoint(13.00005, 100.0)))
         val fix = NavigationMapFix(point = start)
-        assertEquals(0.72, riderMarkerAnimationSeconds(null, fix), 0.001)
+        assertEquals(0.46, riderMarkerAnimationSeconds(null, fix), 0.001)
     }
 
     @Test fun standstillGpsJitterDoesNotMoveMarker() {
