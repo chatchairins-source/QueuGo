@@ -1,3 +1,10 @@
+## 2026-10-16 MASTER MISSION: finish current P0, checkpoint every completed step
+- Current instructions supersede the live-activation objective below: finish Customer address crash, stale shops/products/location, latest-APK provenance and Rider Online first. Do not deploy Production or start redesign/features during P0.
+- Verified successor: work-native-credit-live-enablement-20261016 at dda4d1c4b912a9bbb2a9e8b4aaeb05f12a391870, descendant of online fix e2f643605124008b311c47ca3c43706bead7d990. Preserve all inherited work. Backup: backup/p0-before-resume-20261016.
+- Latest inherited Native Pilot 38837872255 SUCCESS; artifacts 12020490246 (APKs), 12020645375 (launch evidence), 12019898444 (map runtime). Latest public all-app ZIP still targets e2f64360, not dda4d1c4. Never certify installed APK provenance without inspecting the actual binary.
+- Git commits and docs/P0-CHECKPOINT.md are the resume source. Fetch remote, verify ancestry and diff before each chunk; commit completed, appropriately tested chunks promptly. No reset/revert, no duplicate implementation, no overwriting successors.
+- Release gate remains BLOCKED. No authenticated Rider Online, 30-cycle full address/shop/online stress, process-death or API26/30/33/35 matrix evidence yet. CI/source guards alone do not meet the gate. Do not delegate QA to the owner or publish a new release prematurely.
+
 ## 2026-10-16 Owner explicitly authorizes real service and credit activation
 - Owner repeats that all services, including real topups, must be enabled. This supersedes any earlier instruction to leave rollout indefinitely staged. Continue the Rider online fix and verified three-app download; audit/deploy server prerequisites without fake balances or payment confirmations.
 - Read-only Production audit: no credit tables/RPCs, no Ride quote RPCs, no queuego-credit/webhook Edge functions. Only GP + market-multi-shop flags are true; Laundry + route-bundle are false. Native code staging alone was not a live deployment. Legacy GP/revenue routine patch markers match source.

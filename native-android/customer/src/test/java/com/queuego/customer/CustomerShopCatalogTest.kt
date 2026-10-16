@@ -67,4 +67,46 @@ class CustomerShopCatalogTest {
         assertTrue(catalog.state.value.products.isEmpty())
         scope.cancel()
     }
+    @Test fun wrongShopPayloadFailsClosedWithoutLeakingProducts() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val catalog = CustomerShopCatalog(scope)
+        catalog.open("second") { listOf(product("first")) }
+        assertEquals("second", catalog.state.value.shopId)
+        assertNotNull(catalog.state.value.error)
+        assertTrue(catalog.state.value.products.isEmpty())
+        scope.cancel()
+    }
+
+    @Test fun screenOwnerRejectsPreviousCatalogBeforeEffectsRun() {
+        val state = CustomerShopCatalogState("first", listOf(product("first")))
+        assertEquals(state, state.forShop("first"))
+        assertEquals(CustomerShopCatalogState("second", loading = true), state.forShop("second"))
+        assertEquals(CustomerShopCatalogState(), state.forShop(null))
+    }
+
+    @Test fun thirtyRapidShopVisitsDiscardLateSuccessAndFailure() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val catalog = CustomerShopCatalog(scope)
+        repeat(30) { round ->
+            val late = CompletableDeferred<Unit>()
+            catalog.open("first") {
+                withContext(NonCancellable) {
+                    late.await()
+                    if (round % 2 == 0) error("late old error")
+                    listOf(product("first"))
+                }
+            }
+            catalog.close()
+            catalog.open("second") { listOf(product("second")) }
+            late.complete(Unit)
+            yield()
+            assertEquals("second", catalog.state.value.shopId)
+            assertEquals(listOf(product("second")), catalog.state.value.products)
+            assertNull(catalog.state.value.error)
+            assertFalse(catalog.state.value.loading)
+            catalog.close()
+            assertEquals(CustomerShopCatalogState(), catalog.state.value)
+        }
+        scope.cancel()
+    }
 }

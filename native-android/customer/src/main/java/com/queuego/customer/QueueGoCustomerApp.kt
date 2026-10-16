@@ -254,7 +254,8 @@ private fun CustomerShell(
     var selectedLaundryOrder by remember { mutableStateOf<LaundryOrderSummary?>(null) }
     var supportInitialOrderId by remember { mutableStateOf<String?>(null) }
     val shopCatalog = remember(auth.user.id) { CustomerShopCatalog(scope) }
-    val catalogState by shopCatalog.state.collectAsState()
+    val rawCatalogState by shopCatalog.state.collectAsState()
+    val catalogState = rawCatalogState.forShop(selectedShop?.id)
     DisposableEffect(shopCatalog) { onDispose { shopCatalog.close() } }
     LaunchedEffect(screen) { if (screen != "shop") shopCatalog.close() }
     var orderItems by remember { mutableStateOf<List<CustomerOrderItem>>(emptyList()) }
