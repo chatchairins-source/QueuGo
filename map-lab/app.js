@@ -19,6 +19,7 @@ const state={
   safety:emptyCollection(),
   pois:emptyCollection(),
   drr:emptyCollection(),
+  ngis:emptyCollection(),
   start:null,
   end:null,
   route:null,
@@ -27,6 +28,7 @@ const state={
   sources:{
     osm:{name:"OpenStreetMap / Overpass",state:"loading",note:"ไฟจราจรและจุดควรระวัง · ODbL"},
     drr:{name:"กรมทางหลวงชนบท (DRR)",state:"idle",note:"FeatureServer / Open Data Common"},
+    ngis:{name:"ทางหลวงแผ่นดิน (NGIS)",state:"idle",note:"ArcGIS FeatureServer / กระทรวงคมนาคม"},
     route:{name:"Routing prototype",state:"idle",note:"OSRM public demo · ใช้เพื่อทดสอบเท่านั้น"},
     qg:{name:"QueueGo observations",state:"idle",note:"พร้อมต่อ telemetry / rider reports ในระยะถัดไป"}
   }
@@ -99,6 +101,8 @@ function initMap(){
     addDataLayers();
     map.fitBounds(BURIRAM_BOUNDS,{padding:{top:90,bottom:180,left:370,right:60},duration:0});
     loadCoreData();
+    if(el("toggleNgis")?.checked)loadNgis();
+    if(el("toggleDrr")?.checked)loadDrr();
   });
   map.on("click",handleMapClick);
 }
@@ -112,7 +116,9 @@ function addDataLayers(){
   map.addSource("pois",{type:"geojson",data:state.pois});
   map.addLayer({id:"pois",type:"circle",source:"pois",layout:{visibility:"none"},paint:{"circle-radius":5,"circle-color":["match",["get","kind"],"hospital","#e6002d","school","#2563eb","#64748b"],"circle-stroke-width":1.5,"circle-stroke-color":"#fff"}});
   map.addSource("drr",{type:"geojson",data:state.drr});
-  map.addLayer({id:"drr",type:"line",source:"drr",layout:{visibility:"none"},paint:{"line-color":"#e6002d","line-opacity":0.55,"line-width":["interpolate",["linear"],["zoom"],8,1,14,4]}});
+  map.addLayer({id:"drr",type:"line",source:"drr",layout:{visibility:"none"},paint:{"line-color":"#16a34a","line-opacity":0.62,"line-width":["interpolate",["linear"],["zoom"],8,1,14,4]}});
+  map.addSource("ngis",{type:"geojson",data:state.ngis});
+  map.addLayer({id:"ngis",type:"line",source:"ngis",layout:{visibility:"none"},paint:{"line-color":"#7c3aed","line-opacity":0.64,"line-width":["interpolate",["linear"],["zoom"],8,1.2,14,4.4]}});
   map.addSource("route",{type:"geojson",data:emptyCollection()});
   map.addLayer({id:"route-casing",type:"line",source:"route",paint:{"line-color":"#fff","line-width":["interpolate",["linear"],["zoom"],8,6,16,12],"line-opacity":0.95}});
   map.addLayer({id:"route",type:"line",source:"route",paint:{"line-color":"#e6002d","line-width":["interpolate",["linear"],["zoom"],8,3.5,16,7],"line-opacity":0.96}});
