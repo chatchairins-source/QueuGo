@@ -79,6 +79,41 @@ class NavigationCameraPolicyTest {
         assertTrue(decision.bearingDegrees!! in 88f..91f)
     }
 
+    @Test fun matchedRoadWinsOverOppositeGpsCourseAtDrivingSpeed() {
+        val eastbound = NavigationRouteSegment(
+            id = "eastbound",
+            toStopId = "shop",
+            points = listOf(
+                NavigationMapPoint(15.0000, 103.0000),
+                NavigationMapPoint(15.0000, 103.0100)
+            ),
+            style = NavigationRouteStyle.ACTIVE
+        )
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(15.00001, 103.0040),
+                bearingDegrees = 270f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 10f,
+                bearingAccuracyDegrees = 4f
+            ),
+            stops = listOf(
+                NavigationMapStop(
+                    id = "shop",
+                    sequence = 1,
+                    kind = NavigationStopKind.PICKUP,
+                    point = NavigationMapPoint(15.0000, 103.0100)
+                )
+            ),
+            routes = listOf(eastbound),
+            activeStopId = "shop"
+        )
+
+        val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)
+
+        assertTrue(decision!!.bearingDegrees!! in 85f..95f)
+    }
+
     @Test fun highwaySpeedUsesStrongForwardPerspective() {
         assertEquals(
             50f,
