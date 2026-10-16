@@ -1,106 +1,650 @@
 <!doctype html>
 <html lang="th">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#e6002d">
-  <title>QueueGo Map Lab — Buriram</title>
-  <link rel="preconnect" href="https://tile.openstreetmap.org">
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="./style.css?v=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes">
+<meta name="theme-color" content="#f7f7f5">
+<title>QueueGo Map Lab — Buriram</title>
+<link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css">
+<style>
+:root{
+  --qg-red:#e6002d;
+  --qg-ink:#171519;
+  --qg-muted:#6f6a70;
+  --qg-line:rgba(25,20,24,.10);
+  --qg-glass:rgba(255,255,255,.94);
+  --qg-safe-top:env(safe-area-inset-top,0px);
+  --qg-safe-bottom:env(safe-area-inset-bottom,0px);
+  --sheet-peek:64px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#e9e7e3;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Noto Sans Thai","Segoe UI",sans-serif;color:var(--qg-ink)}
+button,input{font:inherit}
+button{-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+
+#app,#map{position:fixed;inset:0;width:100%;height:100dvh}
+#map{z-index:0;background:#e9e7e3}
+.maplibregl-map,.maplibregl-canvas-container,.maplibregl-canvas{width:100%;height:100%;touch-action:none}
+.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{display:none}
+
+/* UI wrappers never steal map gestures; only the actual controls do. */
+.ui-top,.ui-actions,.toast-host{pointer-events:none;position:fixed;z-index:20}
+.ui-top{left:12px;right:72px;top:calc(10px + var(--qg-safe-top))}
+.ui-actions{right:12px;top:calc(10px + var(--qg-safe-top));display:grid;gap:9px}
+.search-pill,.fab,.search-results{pointer-events:auto}
+
+.search-pill{
+  height:50px;display:flex;align-items:center;gap:9px;padding:6px 7px 6px 8px;
+  border:1px solid rgba(255,255,255,.8);border-radius:18px;background:var(--qg-glass);
+  box-shadow:0 10px 28px rgba(32,24,29,.15);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)
+}
+.brand-dot{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border-radius:50%;background:var(--qg-red);color:#fff;font-size:17px;font-weight:900;letter-spacing:-.5px}
+.search-pill input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--qg-ink);font-size:15px;padding:8px 2px}
+.search-pill input::placeholder{color:#989399}
+.icon-btn{
+  display:grid;place-items:center;width:38px;height:38px;border:0;border-radius:12px;background:transparent;color:#282329
+}
+.icon-btn:active,.fab:active,.sheet-btn:active{transform:scale(.96)}
+.icon{width:21px;height:21px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+.search-results{
+  margin-top:7px;max-height:min(42dvh,340px);overflow:auto;background:#fff;border:1px solid var(--qg-line);
+  border-radius:16px;box-shadow:0 14px 34px rgba(30,22,28,.18)
+}
+.search-result{width:100%;display:block;text-align:left;border:0;border-bottom:1px solid #f0edef;background:#fff;padding:11px 13px;color:var(--qg-ink)}
+.search-result:last-child{border-bottom:0}
+.search-result b,.search-result small{display:block}
+.search-result b{font-size:13px}
+.search-result small{margin-top:2px;font-size:10px;line-height:1.4;color:var(--qg-muted)}
+
+.fab{
+  width:50px;height:50px;border:1px solid rgba(255,255,255,.8);border-radius:16px;background:var(--qg-glass);color:#282329;
+  display:grid;place-items:center;box-shadow:0 10px 28px rgba(32,24,29,.15);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)
+}
+.fab.active{color:var(--qg-red)}
+
+.toast-host{left:50%;top:calc(70px + var(--qg-safe-top));transform:translateX(-50%);width:min(88vw,420px);display:grid;justify-items:center}
+.toast{
+  opacity:0;transform:translateY(-6px);transition:.18s ease;max-width:100%;padding:8px 11px;border-radius:999px;
+  background:rgba(24,21,24,.90);color:#fff;font-size:11px;line-height:1.35;box-shadow:0 8px 20px rgba(0,0,0,.18)
+}
+.toast.show{opacity:1;transform:translateY(0)}
+
+.sheet{
+  position:fixed;z-index:30;left:8px;right:8px;bottom:calc(6px + var(--qg-safe-bottom));
+  height:min(72dvh,650px);max-height:calc(100dvh - 82px - var(--qg-safe-top) - var(--qg-safe-bottom));
+  background:rgba(255,255,255,.975);border:1px solid rgba(255,255,255,.95);border-radius:24px 24px 20px 20px;
+  box-shadow:0 -10px 40px rgba(28,22,26,.14);overflow:hidden;
+  transform:translateY(calc(100% - var(--sheet-peek)));transition:transform .24s cubic-bezier(.2,.8,.2,1);
+  pointer-events:auto;will-change:transform
+}
+.sheet.dragging{transition:none}
+.sheet-peek{
+  height:var(--sheet-peek);display:grid;grid-template-columns:1fr auto;align-items:center;padding:7px 12px 8px 16px;
+  border-bottom:1px solid transparent;touch-action:none;user-select:none
+}
+.sheet[data-state="half"] .sheet-peek,.sheet[data-state="expanded"] .sheet-peek{border-bottom-color:var(--qg-line)}
+.sheet-peek-left{min-width:0}
+.drag-handle{width:38px;height:4px;border-radius:999px;background:#cfcacf;margin:0 0 6px}
+.sheet-title{display:block;font-size:13px;font-weight:800;line-height:1.1}
+.sheet-subtitle{display:block;margin-top:2px;font-size:9px;color:var(--qg-muted)}
+.sheet-close{display:grid;place-items:center;width:38px;height:38px;border:0;border-radius:12px;background:#f3f1f2;color:#3d383d}
+.sheet-scroll{height:calc(100% - var(--sheet-peek));overflow:auto;overscroll-behavior:contain;padding:0 15px calc(18px + var(--qg-safe-bottom))}
+.sheet-section{padding:15px 0;border-bottom:1px solid var(--qg-line)}
+.sheet-section:last-child{border-bottom:0}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:8px}
+.section-head h2{font-size:15px;margin:0}
+.section-head small{font-size:9px;color:var(--qg-muted);text-align:right}
+
+.layer-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;min-height:52px}
+.layer-copy b,.layer-copy small{display:block}
+.layer-copy b{font-size:12px;font-weight:750}
+.layer-copy small{font-size:9px;color:var(--qg-muted);margin-top:2px;line-height:1.35}
+.switch{position:relative;width:42px;height:25px;display:block}
+.switch input{position:absolute;opacity:0;pointer-events:none}
+.switch i{position:absolute;inset:0;border-radius:999px;background:#d8d4d7;transition:.18s}
+.switch i::after{content:"";position:absolute;width:19px;height:19px;left:3px;top:3px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.2);transition:.18s}
+.switch input:checked+i{background:var(--qg-red)}
+.switch input:checked+i::after{transform:translateX(17px)}
+
+.route-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sheet-btn{
+  min-height:48px;border:1px solid var(--qg-line);border-radius:14px;background:#f8f7f7;color:var(--qg-ink);
+  display:flex;align-items:center;gap:9px;text-align:left;padding:9px 11px
+}
+.sheet-btn.primary{grid-column:1/-1;justify-content:center;background:var(--qg-red);border-color:var(--qg-red);color:#fff;font-weight:800}
+.sheet-btn.primary:disabled{opacity:.36}
+.sheet-btn .icon{width:18px;height:18px;flex:0 0 18px}
+.sheet-btn span{min-width:0}
+.sheet-btn small,.sheet-btn b{display:block}
+.sheet-btn small{font-size:9px;color:var(--qg-muted)}
+.sheet-btn.primary small{color:rgba(255,255,255,.75)}
+.sheet-btn b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.route-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
+.route-summary>div{padding:9px;border-radius:12px;background:#f5f3f4}
+.route-summary small,.route-summary b{display:block}
+.route-summary small{font-size:9px;color:var(--qg-muted)}
+.route-summary b{font-size:12px;margin-top:2px}
+.route-note{font-size:9px;line-height:1.45;color:var(--qg-muted);margin:9px 1px 0}
+.attribution{font-size:8px;line-height:1.4;color:#8a858a;padding:10px 0 2px}
+.attribution a{color:inherit}
+
+.map-marker{
+  width:24px;height:24px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.26)
+}
+.map-marker.start{background:#159957}
+.map-marker.end{background:var(--qg-red)}
+
+@media(min-width:760px){
+  .ui-top{left:20px;right:auto;width:430px;top:20px}
+  .ui-actions{right:20px;top:20px}
+  .sheet{left:50%;right:auto;width:min(560px,calc(100vw - 32px));transform:translate(-50%,calc(100% - var(--sheet-peek)))}
+  .sheet.dragging{transition:none}
+  .sheet[data-state="half"],.sheet[data-state="expanded"]{left:50%}
+}
+@media(prefers-reduced-motion:reduce){.sheet,.toast{transition:none}}
+</style>
 </head>
 <body>
-  <main class="qgm-shell">
-    <header class="qgm-topbar">
-      <a class="qgm-brand" href="../" aria-label="QueueGo">
-        <span class="qgm-q">Q</span>
-        <span>Queue<span class="qgm-red">Go</span></span>
-      </a>
-      <div class="qgm-title">
-        <strong>Map Lab · บุรีรัมย์</strong>
-        <span>ต้นแบบฐานข้อมูลถนนและความปลอดภัย</span>
+<div id="app">
+  <div id="map" aria-label="แผนที่ QueueGo บุรีรัมย์"></div>
+
+  <div class="ui-top">
+    <form id="searchForm" class="search-pill" role="search">
+      <span class="brand-dot" aria-hidden="true">Q</span>
+      <input id="searchInput" type="search" autocomplete="off" inputmode="search" placeholder="ค้นหาสถานที่ในบุรีรัมย์" aria-label="ค้นหาสถานที่ในบุรีรัมย์">
+      <button class="icon-btn" type="submit" aria-label="ค้นหา">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path></svg>
+      </button>
+    </form>
+    <div id="searchResults" class="search-results" hidden></div>
+  </div>
+
+  <div class="ui-actions">
+    <button id="layersButton" class="fab" type="button" aria-label="ชั้นข้อมูลและเส้นทาง" title="ชั้นข้อมูลและเส้นทาง">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L3.5 7.5 12 12l8.5-4.5L12 3z"></path><path d="M5 11l7 3.7 7-3.7"></path><path d="M5 14.5l7 3.7 7-3.7"></path></svg>
+    </button>
+    <button id="locateButton" class="fab" type="button" aria-label="ตำแหน่งปัจจุบัน" title="ตำแหน่งปัจจุบัน">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="7.5"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22"></path></svg>
+    </button>
+  </div>
+
+  <div class="toast-host" aria-live="polite" aria-atomic="true"><div id="toast" class="toast"></div></div>
+
+  <section id="sheet" class="sheet" data-state="collapsed" aria-label="ชั้นข้อมูลและเครื่องมือเส้นทาง">
+    <div id="sheetHandle" class="sheet-peek">
+      <div class="sheet-peek-left">
+        <div class="drag-handle" aria-hidden="true"></div>
+        <span class="sheet-title">ชั้นข้อมูลและเส้นทาง</span>
+        <span class="sheet-subtitle">ลากขึ้นเพื่อเปิด</span>
       </div>
-      <button id="fitProvince" class="qgm-icon-btn" type="button" title="ดูทั้งจังหวัด">◎</button>
-    </header>
-
-    <aside class="qgm-panel" aria-label="เครื่องมือแผนที่">
-      <form id="searchForm" class="qgm-search">
-        <input id="searchInput" type="search" autocomplete="off" placeholder="ค้นหาสถานที่ในบุรีรัมย์">
-        <button type="submit">ค้นหา</button>
-      </form>
-      <div id="searchResults" class="qgm-search-results" hidden></div>
-
-      <section class="qgm-section">
-        <div class="qgm-section-head">
-          <strong>ชั้นข้อมูล</strong>
-          <span id="sourceSummary">กำลังเตรียมข้อมูล</span>
-        </div>
-        <label class="qgm-toggle"><input id="toggleSignals" type="checkbox" checked><span>ไฟจราจร</span><b id="countSignals">0</b></label>
-        <label class="qgm-toggle"><input id="toggleSafety" type="checkbox" checked><span>จุดควรระวัง</span><b id="countSafety">0</b></label>
-        <label class="qgm-toggle"><input id="toggleRestrictions" type="checkbox"><span>ทางเดียว / ห้ามเข้า / ข้อจำกัดเลี้ยว</span><b id="countRestrictions">–</b></label>
-        <label class="qgm-toggle"><input id="toggleNgis" type="checkbox" checked><span>ทางหลวงแผ่นดิน (NGIS)</span><b id="countNgis">–</b></label>
-        <label class="qgm-toggle"><input id="toggleDrr" type="checkbox" checked><span>ถนนกรมทางหลวงชนบท</span><b id="countDrr">–</b></label>
-        <label class="qgm-toggle"><input id="toggleBridges" type="checkbox" checked><span>สะพานกรมทางหลวงชนบท</span><b id="countBridges">–</b></label>
-        <label class="qgm-toggle"><input id="togglePois" type="checkbox"><span>โรงเรียน / โรงพยาบาล</span><b id="countPois">–</b></label>
-      </section>
-
-      <section class="qgm-section">
-        <div class="qgm-section-head">
-          <strong>แหล่งข้อมูล</strong>
-          <button id="refreshData" type="button" class="qgm-link-btn">โหลดใหม่</button>
-        </div>
-        <div id="sourceLedger" class="qgm-ledger"></div>
-      </section>
-
-      <section class="qgm-section qgm-desktop-only">
-        <strong>หลักการ</strong>
-        <p>หน้านี้ไม่เดาเวลาไฟแดง และไม่ใช้ข้อมูล Google Maps มาสร้างฐานข้อมูล QueueGo</p>
-        <button id="exportGeojson" type="button" class="qgm-secondary">ส่งออก GeoJSON ที่โหลดแล้ว</button>
-      </section>
-    </aside>
-
-    <section id="map" class="qgm-map" aria-label="แผนที่ QueueGo Map Lab"></section>
-
-    <div class="qgm-map-actions">
-      <button id="locateMe" type="button" title="ตำแหน่งของฉัน">⌖</button>
-      <button id="clearRoute" type="button" title="ล้างเส้นทาง">×</button>
+      <button id="sheetClose" class="sheet-close" type="button" aria-label="ย่อแผง">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9.5l5 5 5-5"></path></svg>
+      </button>
     </div>
 
-    <section class="qgm-route-sheet">
-      <div class="qgm-handle"></div>
-      <div class="qgm-route-head">
-        <div>
-          <small>ทดลองเส้นทาง</small>
-          <strong id="routeInstruction">แตะแผนที่เพื่อเลือกจุดเริ่มต้น</strong>
+    <div class="sheet-scroll">
+      <section class="sheet-section">
+        <div class="section-head"><h2>ชั้นข้อมูล</h2><small>โหลดเมื่อเปิดใช้งานเท่านั้น</small></div>
+
+        <div class="layer-row">
+          <div class="layer-copy"><b>ไฟจราจร</b><small>OpenStreetMap / Overpass</small></div>
+          <label class="switch"><input id="toggleSignals" type="checkbox"><i></i></label>
         </div>
-        <button id="swapRoute" class="qgm-icon-btn" type="button" title="สลับต้นทางปลายทาง">⇅</button>
-      </div>
-      <div class="qgm-route-points">
-        <button id="startPoint" type="button"><span class="qgm-dot start"></span><span><small>ต้นทาง</small><b>ยังไม่ได้เลือก</b></span></button>
-        <button id="endPoint" type="button"><span class="qgm-dot end"></span><span><small>ปลายทาง</small><b>ยังไม่ได้เลือก</b></span></button>
-      </div>
-      <div id="routeStats" class="qgm-route-stats" hidden>
-        <div><small>ระยะทาง</small><b id="routeDistance">–</b></div>
-        <div><small>เวลาอ้างอิง</small><b id="routeDuration">–</b></div>
-        <div><small>ไฟจราจรใกล้เส้น</small><b id="routeSignals">–</b></div>
-        <div><small>จุดควรระวัง</small><b id="routeHazards">–</b></div>
-        <div><small>ข้อจำกัดถนนใกล้เส้น</small><b id="routeRules">ยังไม่โหลด</b></div>
-      </div>
-      <p id="routeNotice" class="qgm-notice">เส้นทางใน Map Lab ใช้บริการ routing สาธารณะเพื่อทดสอบแนวคิดเท่านั้น ก่อนใช้งานจริง QueueGo จะย้ายไป routing graph ที่ควบคุมเอง</p>
-    </section>
+        <div class="layer-row">
+          <div class="layer-copy"><b>จุดควรระวัง</b><small>ป้ายหยุด ให้ทาง ทางตัดรถไฟ จุดชะลอ และกล้องที่มีข้อมูล</small></div>
+          <label class="switch"><input id="toggleSafety" type="checkbox"><i></i></label>
+        </div>
+        <div class="layer-row">
+          <div class="layer-copy"><b>โครงข่ายถนนเปิดระดับโลก</b><small>Overture Transportation — โหลดเมื่อซูมระดับถนน</small></div>
+          <label class="switch"><input id="toggleOverture" type="checkbox"><i></i></label>
+        </div>
+        <div class="layer-row">
+          <div class="layer-copy"><b>ทางหลวงแผ่นดิน</b><small>NGIS / กระทรวงคมนาคม</small></div>
+          <label class="switch"><input id="toggleNgis" type="checkbox"><i></i></label>
+        </div>
+        <div class="layer-row">
+          <div class="layer-copy"><b>ทางหลวงชนบท</b><small>กรมทางหลวงชนบท (DRR)</small></div>
+          <label class="switch"><input id="toggleDrr" type="checkbox"><i></i></label>
+        </div>
+      </section>
 
-    <dialog id="featureDialog" class="qgm-dialog">
-      <button id="closeFeature" class="qgm-dialog-close" type="button">×</button>
-      <div id="featureDetail"></div>
-    </dialog>
+      <section class="sheet-section">
+        <div class="section-head"><h2>เส้นทางทดลอง</h2><small>แตะปุ่มแล้วเลือกจุดบนแผนที่</small></div>
+        <div class="route-grid">
+          <button id="pickStart" class="sheet-btn" type="button">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.4 6-11a6 6 0 10-12 0c0 5.6 6 11 6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg>
+            <span><small>ต้นทาง</small><b id="startLabel">ยังไม่ได้เลือก</b></span>
+          </button>
+          <button id="pickEnd" class="sheet-btn" type="button">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.4 6-11a6 6 0 10-12 0c0 5.6 6 11 6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg>
+            <span><small>ปลายทาง</small><b id="endLabel">ยังไม่ได้เลือก</b></span>
+          </button>
+          <button id="routeButton" class="sheet-btn primary" type="button" disabled>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c0-4 2-6 6-6h2c4 0 6-2 6-6"></path><path d="M16 7h3V4"></path><circle cx="5" cy="19" r="2"></circle></svg>
+            คำนวณเส้นทาง
+          </button>
+        </div>
+        <div id="routeSummary" class="route-summary" hidden>
+          <div><small>ระยะทาง</small><b id="routeDistance">–</b></div>
+          <div><small>เวลาอ้างอิง</small><b id="routeDuration">–</b></div>
+          <div><small>ไฟจราจรใกล้เส้น</small><b id="routeSignalCount">–</b></div>
+        </div>
+        <p class="route-note">เส้นทางนี้ใช้ public routing endpoint เพื่อทดสอบ UI และข้อมูลเท่านั้น ไม่ใช่ QueueGo production routing และจะไม่เดาเวลาไฟแดงถ้าไม่มี feed จาก controller จริง</p>
+        <button id="clearRoute" class="sheet-btn" type="button" style="margin-top:9px;width:100%;justify-content:center">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3M8 7l1 13h6l1-13"></path></svg>
+          ล้างเส้นทาง
+        </button>
+      </section>
 
-    <footer class="qgm-attribution">
-      Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · Overture Maps Foundation · ODbL · QueueGo Map Lab
-    </footer>
-  </main>
+      <div class="attribution">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>. Overture Maps Foundation. ข้อมูลภาครัฐไทยตามเงื่อนไขของแต่ละชุดข้อมูล</div>
+    </div>
+  </section>
+</div>
 
-  <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
-  <script src="https://unpkg.com/pmtiles@4.3.0/dist/pmtiles.js"></script>
-  <script src="./app.js?v=3"></script>
+<script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
+<script>
+(function(){
+"use strict";
+
+const BURIRAM_CENTER=[103.1029,14.9930];
+const BURIRAM_BOUNDS=[[102.442357,14.132135],[103.499967,15.789217]];
+const BBOX="14.132135,102.442357,15.789217,103.499967";
+const OVERPASS_ENDPOINTS=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
+const NOMINATIM="https://nominatim.openstreetmap.org/search";
+const OSRM="https://router.project-osrm.org/route/v1/driving/";
+const NGIS="https://ngis.go.th/arcgis/rest/services/Hosted/%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%AB%E0%B8%A5%E0%B8%A7%E0%B8%87%E0%B9%81%E0%B8%9C%E0%B9%88%E0%B8%99%E0%B8%94%E0%B8%B4%E0%B8%99/FeatureServer/0";
+const DRR="https://gis.drr.go.th/arcgis/rest/services/DRR_Feature/FeatureServer";
+const OVERTURE_RELEASE="2026-09-23.1";
+const OVERTURE_PM="https://overturemaps-extras-us-west-2.s3.us-west-2.amazonaws.com/tiles/"+OVERTURE_RELEASE+"/transportation.pmtiles";
+
+const state={
+  map:null,ready:false,sheet:"collapsed",pick:null,start:null,end:null,startMarker:null,endMarker:null,route:null,
+  loaded:{signals:false,safety:false,overture:false,ngis:false,drr:false},
+  data:{signals:fc(),safety:fc(),ngis:fc(),drr:fc()}
+};
+
+function $(id){return document.getElementById(id)}
+function fc(){return {type:"FeatureCollection",features:[]}}
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function finite(lon,lat){return Number.isFinite(Number(lon))&&Number.isFinite(Number(lat))&&Math.abs(Number(lon))<=180&&Math.abs(Number(lat))<=90}
+function fmt(n,d=0){return Number(n||0).toLocaleString("th-TH",{maximumFractionDigits:d})}
+let toastTimer=0;
+function toast(message){
+  const t=$("toast");t.textContent=message;t.classList.add("show");
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+}
+function fetchTimeout(url,options={},ms=20000){
+  const c=new AbortController(),timer=setTimeout(()=>c.abort(),ms);
+  return fetch(url,{...options,signal:c.signal}).finally(()=>clearTimeout(timer));
+}
+function setGeoJSON(id,data){const s=state.map&&state.map.getSource(id);if(s&&s.setData)s.setData(data)}
+function visibility(id,show){if(state.map&&state.map.getLayer(id))state.map.setLayoutProperty(id,"visibility",show?"visible":"none")}
+
+function baseStyle(){
+  return {
+    version:8,
+    sources:{osm:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},
+    layers:[
+      {id:"bg",type:"background",paint:{"background-color":"#ece9e5"}},
+      {id:"osm",type:"raster",source:"osm",paint:{"raster-saturation":-.18,"raster-contrast":.02,"raster-brightness-max":.98}}
+    ]
+  };
+}
+
+function initMap(){
+  if(!window.maplibregl){toast("โหลดระบบแผนที่ไม่สำเร็จ");return}
+  const map=new maplibregl.Map({
+    container:"map",style:baseStyle(),center:BURIRAM_CENTER,zoom:12.1,minZoom:6.8,maxZoom:19,
+    maxBounds:[[101.9,13.65],[104.05,16.25]],dragRotate:false,pitchWithRotate:false
+  });
+  state.map=map;
+  map.touchZoomRotate.disableRotation();
+  map.on("load",()=>{
+    addLazySources();
+    state.ready=true;
+    window.QueueGoMapLab.ready=true;
+  });
+  map.on("click",onMapClick);
+  map.on("error",e=>{if(/style/i.test(String(e&&e.error&&e.error.message||"")))toast("แผนที่ฐานโหลดไม่ครบ")});
+}
+
+function addLazySources(){
+  const map=state.map;
+  map.addSource("signals",{type:"geojson",data:fc()});
+  map.addLayer({id:"signals-halo",type:"circle",source:"signals",layout:{visibility:"none"},paint:{"circle-radius":8,"circle-color":"#fff","circle-opacity":.92}});
+  map.addLayer({id:"signals",type:"circle",source:"signals",layout:{visibility:"none"},paint:{"circle-radius":5.5,"circle-color":"#e6002d","circle-stroke-color":"#790019","circle-stroke-width":1.2}});
+
+  map.addSource("safety",{type:"geojson",data:fc()});
+  map.addLayer({id:"safety",type:"circle",source:"safety",layout:{visibility:"none"},paint:{
+    "circle-radius":4.8,
+    "circle-color":["match",["get","kind"],"level_crossing","#c27a00","speed_camera","#6741d9","traffic_calming","#147ca6","stop","#b42318","give_way","#c97800","#494249"],
+    "circle-stroke-color":"#fff","circle-stroke-width":1.5
+  }});
+
+  map.addSource("ngis",{type:"geojson",data:fc()});
+  map.addLayer({id:"ngis",type:"line",source:"ngis",layout:{visibility:"none"},paint:{"line-color":"#7559c8","line-width":["interpolate",["linear"],["zoom"],8,1,15,3.4],"line-opacity":.58}});
+
+  map.addSource("drr",{type:"geojson",data:fc()});
+  map.addLayer({id:"drr",type:"line",source:"drr",layout:{visibility:"none"},paint:{"line-color":"#17815b","line-width":["interpolate",["linear"],["zoom"],8,.8,15,3],"line-opacity":.58}});
+
+  map.addSource("route",{type:"geojson",data:fc()});
+  map.addLayer({id:"route-case",type:"line",source:"route",paint:{"line-color":"#fff","line-width":["interpolate",["linear"],["zoom"],9,7,17,13],"line-opacity":.96}});
+  map.addLayer({id:"route-line",type:"line",source:"route",paint:{"line-color":"#e6002d","line-width":["interpolate",["linear"],["zoom"],9,4,17,7.5],"line-opacity":.96}});
+}
+
+function overpassQuery(kind){
+  const q=kind==="signals"
+    ? ['node["highway"="traffic_signals"]('+BBOX+');']
+    : [
+      'node["highway"="stop"]('+BBOX+');',
+      'node["highway"="give_way"]('+BBOX+');',
+      'node["railway"="level_crossing"]('+BBOX+');',
+      'node["traffic_calming"]('+BBOX+');',
+      'node["highway"="speed_camera"]('+BBOX+');'
+    ];
+  return "[out:json][timeout:45];("+q.join("")+");out body;";
+}
+async function callOverpass(query){
+  let last;
+  for(const endpoint of OVERPASS_ENDPOINTS){
+    try{
+      const r=await fetchTimeout(endpoint,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:"data="+encodeURIComponent(query)},50000);
+      if(!r.ok)throw Error("HTTP "+r.status);
+      return await r.json();
+    }catch(e){last=e}
+  }
+  throw last||Error("Overpass unavailable");
+}
+function osmPoint(item){
+  const t=item.tags||{},lon=Number(item.lon),lat=Number(item.lat);
+  if(!finite(lon,lat))return null;
+  let kind=t.highway||t.railway||"traffic_calming";
+  if(t.traffic_calming)kind="traffic_calming";
+  return {type:"Feature",geometry:{type:"Point",coordinates:[lon,lat]},properties:{kind,source:"OpenStreetMap",name:t.name||t["name:th"]||"",signal_timing:"unknown"}};
+}
+async function loadOsmLayer(kind){
+  if(state.loaded[kind])return;
+  toast(kind==="signals"?"กำลังโหลดไฟจราจร":"กำลังโหลดจุดควรระวัง");
+  try{
+    const json=await callOverpass(overpassQuery(kind));
+    state.data[kind]={type:"FeatureCollection",features:(json.elements||[]).map(osmPoint).filter(Boolean)};
+    setGeoJSON(kind,state.data[kind]);state.loaded[kind]=true;
+    toast("โหลดข้อมูลแล้ว "+fmt(state.data[kind].features.length)+" จุด");
+  }catch(e){toast("โหลดข้อมูลชั้นนี้ไม่สำเร็จ");throw e}
+}
+
+function esriGeometry(g){
+  if(!g)return null;
+  if(Array.isArray(g.paths)){
+    const p=g.paths.filter(a=>Array.isArray(a)&&a.length>1);
+    if(!p.length)return null;
+    return p.length===1?{type:"LineString",coordinates:p[0]}:{type:"MultiLineString",coordinates:p};
+  }
+  if(Array.isArray(g.rings)&&g.rings.length)return {type:"Polygon",coordinates:g.rings};
+  if(finite(g.x,g.y))return {type:"Point",coordinates:[Number(g.x),Number(g.y)]};
+  return null;
+}
+async function loadNgis(){
+  if(state.loaded.ngis)return;
+  toast("กำลังโหลดทางหลวงแผ่นดิน");
+  const envelope="102.442357,14.132135,103.499967,15.789217";
+  const p=new URLSearchParams({where:"1=1",geometry:envelope,geometryType:"esriGeometryEnvelope",inSR:"4326",spatialRel:"esriSpatialRelIntersects",outFields:"*",outSR:"4326",returnGeometry:"true",resultRecordCount:"2000",f:"json"});
+  try{
+    const r=await fetchTimeout(NGIS+"/query?"+p,{},26000);if(!r.ok)throw Error("HTTP "+r.status);
+    const j=await r.json();if(j.error)throw Error(j.error.message||"NGIS error");
+    state.data.ngis={type:"FeatureCollection",features:(j.features||[]).map((row,i)=>{
+      const g=esriGeometry(row.geometry);return g?{type:"Feature",geometry:g,properties:{...(row.attributes||{}),source:"NGIS",source_row:i}}:null;
+    }).filter(Boolean)};
+    setGeoJSON("ngis",state.data.ngis);state.loaded.ngis=true;toast("โหลดทางหลวงแล้ว "+fmt(state.data.ngis.features.length)+" รายการ");
+  }catch(e){toast("โหลด NGIS ไม่สำเร็จ");throw e}
+}
+async function loadDrr(){
+  if(state.loaded.drr)return;
+  toast("กำลังโหลดทางหลวงชนบท");
+  try{
+    const metaR=await fetchTimeout(DRR+"?f=pjson",{},18000);if(!metaR.ok)throw Error("HTTP "+metaR.status);
+    const meta=await metaR.json();
+    const layers=(meta.layers||[]).filter(x=>/road|route|สายทาง|ทางหลวง|drr/i.test(String(x.name||""))).slice(0,4);
+    const envelope="102.442357,14.132135,103.499967,15.789217";
+    const features=[];
+    for(const layer of layers){
+      const p=new URLSearchParams({where:"1=1",geometry:envelope,geometryType:"esriGeometryEnvelope",inSR:"4326",spatialRel:"esriSpatialRelIntersects",outFields:"*",outSR:"4326",returnGeometry:"true",f:"geojson"});
+      try{
+        const r=await fetchTimeout(DRR+"/"+layer.id+"/query?"+p,{},24000);if(!r.ok)continue;
+        const j=await r.json();
+        (j.features||[]).forEach(f=>{f.properties={source:"DRR",source_layer:layer.name,...(f.properties||{})};features.push(f)});
+      }catch(_){}
+    }
+    if(!features.length)throw Error("No DRR features");
+    state.data.drr={type:"FeatureCollection",features};setGeoJSON("drr",state.data.drr);state.loaded.drr=true;toast("โหลดทางหลวงชนบทแล้ว "+fmt(features.length)+" รายการ");
+  }catch(e){toast("โหลด DRR ไม่สำเร็จ");throw e}
+}
+
+function loadScript(src){
+  return new Promise((resolve,reject)=>{
+    const existing=document.querySelector('script[data-lazy="'+src+'"]');
+    if(existing){if(existing.dataset.ready==="1")resolve();else existing.addEventListener("load",resolve,{once:true});return}
+    const s=document.createElement("script");s.src=src;s.async=true;s.dataset.lazy=src;
+    s.onload=()=>{s.dataset.ready="1";resolve()};s.onerror=reject;document.head.appendChild(s);
+  });
+}
+async function loadOverture(){
+  if(state.loaded.overture)return;
+  toast("กำลังเตรียมโครงข่ายถนนเปิด");
+  try{
+    await loadScript("https://unpkg.com/pmtiles@4.3.0/dist/pmtiles.js");
+    if(!window.pmtiles||!window.pmtiles.Protocol)throw Error("PMTiles unavailable");
+    if(!state.overtureProtocol){
+      const protocol=new window.pmtiles.Protocol();
+      maplibregl.addProtocol("pmtiles",protocol.tile);
+      state.overtureProtocol=protocol;
+    }
+    if(!state.map.getSource("overture")){
+      state.map.addSource("overture",{type:"vector",url:"pmtiles://"+OVERTURE_PM,attribution:"Overture Maps Foundation"});
+      state.map.addLayer({
+        id:"overture-roads",type:"line",source:"overture","source-layer":"segment",minzoom:12,
+        filter:["==",["get","subtype"],"road"],
+        paint:{
+          "line-color":"#4e474e",
+          "line-width":["interpolate",["linear"],["zoom"],12,.28,15,.9,18,1.8],
+          "line-opacity":["interpolate",["linear"],["zoom"],12,.12,15,.23,18,.34]
+        }
+      });
+    }
+    state.loaded.overture=true;toast("โครงข่ายถนนเปิดพร้อม");
+  }catch(e){toast("โหลด Overture ไม่สำเร็จ");throw e}
+}
+
+function setSheet(mode){
+  const sheet=$("sheet");
+  state.sheet=mode;
+  sheet.dataset.state=mode;
+  const h=sheet.getBoundingClientRect().height,peek=64;
+  let offset=h-peek;
+  if(mode==="half")offset=Math.max(0,h-Math.min(innerHeight*.46,h));
+  if(mode==="expanded")offset=0;
+  if(innerWidth>=760)sheet.style.transform="translate(-50%,"+offset+"px)";
+  else sheet.style.transform="translateY("+offset+"px)";
+  $("layersButton").classList.toggle("active",mode!=="collapsed");
+  $(".noop");
+}
+function syncSheet(){
+  const sheet=$("sheet"),h=sheet.getBoundingClientRect().height,peek=64;
+  let offset=h-peek;
+  if(state.sheet==="half")offset=Math.max(0,h-Math.min(innerHeight*.46,h));
+  if(state.sheet==="expanded")offset=0;
+  if(innerWidth>=760)sheet.style.transform="translate(-50%,"+offset+"px)";
+  else sheet.style.transform="translateY("+offset+"px)";
+}
+function bindSheetDrag(){
+  const handle=$("sheetHandle"),sheet=$("sheet");
+  let startY=0,startOffset=0,current=0,dragging=false;
+  const offsets=()=>{
+    const h=sheet.getBoundingClientRect().height;
+    return {expanded:0,half:Math.max(0,h-Math.min(innerHeight*.46,h)),collapsed:h-64};
+  };
+  handle.addEventListener("pointerdown",e=>{
+    if(e.target.closest("button"))return;
+    const o=offsets();startY=e.clientY;startOffset=o[state.sheet];current=startOffset;dragging=true;
+    sheet.classList.add("dragging");handle.setPointerCapture(e.pointerId);e.preventDefault();
+  });
+  handle.addEventListener("pointermove",e=>{
+    if(!dragging)return;
+    const o=offsets();current=Math.max(0,Math.min(o.collapsed,startOffset+(e.clientY-startY)));
+    if(innerWidth>=760)sheet.style.transform="translate(-50%,"+current+"px)";
+    else sheet.style.transform="translateY("+current+"px)";
+  });
+  const finish=e=>{
+    if(!dragging)return;dragging=false;sheet.classList.remove("dragging");
+    const o=offsets(),targets=[["expanded",o.expanded],["half",o.half],["collapsed",o.collapsed]];
+    targets.sort((a,b)=>Math.abs(a[1]-current)-Math.abs(b[1]-current));
+    setSheet(targets[0][0]);
+    try{handle.releasePointerCapture(e.pointerId)}catch(_){}
+  };
+  handle.addEventListener("pointerup",finish);handle.addEventListener("pointercancel",finish);
+}
+
+function markerElement(kind){const d=document.createElement("div");d.className="map-marker "+kind;return d}
+function labelPoint(p){return p?p.lat.toFixed(5)+", "+p.lon.toFixed(5):"ยังไม่ได้เลือก"}
+function refreshRouteUi(){
+  $("startLabel").textContent=labelPoint(state.start);
+  $("endLabel").textContent=labelPoint(state.end);
+  $("routeButton").disabled=!(state.start&&state.end);
+}
+function pick(role){
+  state.pick=role;
+  setSheet("collapsed");
+  toast(role==="start"?"แตะแผนที่เพื่อเลือกต้นทาง":"แตะแผนที่เพื่อเลือกปลายทาง");
+  state.map.getCanvas().style.cursor="crosshair";
+}
+function onMapClick(e){
+  if(!state.pick)return;
+  const p={lon:e.lngLat.lng,lat:e.lngLat.lat},role=state.pick;
+  if(role==="start"){
+    state.start=p;if(state.startMarker)state.startMarker.remove();
+    state.startMarker=new maplibregl.Marker({element:markerElement("start")}).setLngLat([p.lon,p.lat]).addTo(state.map);
+  }else{
+    state.end=p;if(state.endMarker)state.endMarker.remove();
+    state.endMarker=new maplibregl.Marker({element:markerElement("end")}).setLngLat([p.lon,p.lat]).addTo(state.map);
+  }
+  state.pick=null;state.map.getCanvas().style.cursor="";refreshRouteUi();setSheet("half");
+}
+function clearRoute(){
+  state.start=null;state.end=null;state.route=null;state.pick=null;
+  if(state.startMarker)state.startMarker.remove();if(state.endMarker)state.endMarker.remove();
+  state.startMarker=state.endMarker=null;setGeoJSON("route",fc());$("routeSummary").hidden=true;refreshRouteUi();toast("ล้างเส้นทางแล้ว");
+}
+function haversine(a,b){
+  const R=6371000,r=Math.PI/180,dLat=(b[1]-a[1])*r,dLon=(b[0]-a[0])*r,la1=a[1]*r,la2=b[1]*r;
+  const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+function nearSignalCount(line){
+  if(!line||!line.length)return 0;
+  const stride=Math.max(1,Math.floor(line.length/700));let count=0;
+  for(const f of state.data.signals.features){
+    const p=f.geometry.coordinates;let hit=false;
+    for(let i=0;i<line.length;i+=stride){if(haversine(p,line[i])<=45){hit=true;break}}
+    if(hit)count++;
+  }
+  return count;
+}
+async function calculateRoute(){
+  if(!state.start||!state.end)return;
+  toast("กำลังคำนวณเส้นทาง");
+  try{
+    const a=state.start,b=state.end;
+    const r=await fetchTimeout(OSRM+a.lon+","+a.lat+";"+b.lon+","+b.lat+"?overview=full&geometries=geojson&steps=true",{},18000);
+    if(!r.ok)throw Error("HTTP "+r.status);const j=await r.json(),route=j.routes&&j.routes[0];
+    if(!route||!route.geometry)throw Error("route missing");
+    state.route=route;setGeoJSON("route",{type:"FeatureCollection",features:[{type:"Feature",geometry:route.geometry,properties:{source:"OSRM research"}}]});
+    $("routeDistance").textContent=fmt(route.distance/1000,1)+" กม.";
+    $("routeDuration").textContent=Math.max(1,Math.round(route.duration/60)).toLocaleString("th-TH")+" นาที";
+    $("routeSignalCount").textContent=state.loaded.signals?nearSignalCount(route.geometry.coordinates).toLocaleString("th-TH")+" จุด":"ยังไม่โหลด";
+    $("routeSummary").hidden=false;
+    const bounds=new maplibregl.LngLatBounds();route.geometry.coordinates.forEach(c=>bounds.extend(c));
+    state.map.fitBounds(bounds,{padding:{top:90,bottom:100,left:50,right:50},maxZoom:16,duration:550});
+    toast("เส้นทางพร้อม");
+  }catch(e){toast("คำนวณเส้นทางไม่สำเร็จ")}
+}
+
+async function search(q){
+  const url=NOMINATIM+"?format=jsonv2&limit=6&countrycodes=th&bounded=1&viewbox=102.442357,15.789217,103.499967,14.132135&q="+encodeURIComponent(q);
+  const r=await fetchTimeout(url,{headers:{"Accept-Language":"th,en"}},12000);if(!r.ok)throw Error("search");
+  return await r.json();
+}
+function showResults(rows){
+  const host=$("searchResults");
+  if(!rows.length){host.innerHTML='<button class="search-result" type="button"><b>ไม่พบสถานที่</b><small>ลองค้นหาชื่อถนน อำเภอ หรือสถานที่อื่น</small></button>';host.hidden=false;return}
+  host.innerHTML=rows.map((r,i)=>'<button class="search-result" type="button" data-i="'+i+'"><b>'+esc(r.name||String(r.display_name||"").split(",")[0])+'</b><small>'+esc(r.display_name||"")+'</small></button>').join("");
+  host.hidden=false;
+  host.querySelectorAll("[data-i]").forEach(btn=>btn.onclick=()=>{
+    const r=rows[Number(btn.dataset.i)],lon=Number(r.lon),lat=Number(r.lat);
+    if(finite(lon,lat))state.map.flyTo({center:[lon,lat],zoom:16,duration:550});host.hidden=true;
+  });
+}
+function locate(){
+  if(!navigator.geolocation){toast("อุปกรณ์นี้ไม่รองรับตำแหน่ง");return}
+  toast("กำลังหาตำแหน่ง");
+  navigator.geolocation.getCurrentPosition(pos=>{
+    state.map.flyTo({center:[pos.coords.longitude,pos.coords.latitude],zoom:16,duration:550});toast("พบตำแหน่งแล้ว");
+  },()=>toast("อ่านตำแหน่งไม่ได้ กรุณาตรวจสิทธิ์"),{enableHighAccuracy:true,timeout:10000,maximumAge:8000});
+}
+
+function bindLayerToggle(id,layerIds,loader){
+  $(id).addEventListener("change",async e=>{
+    const on=e.target.checked;
+    if(on){
+      try{await loader()}catch(_){e.target.checked=false;return}
+    }
+    layerIds.forEach(layer=>visibility(layer,on));
+  });
+}
+function bind(){
+  $("layersButton").onclick=()=>setSheet(state.sheet==="collapsed"?"half":"collapsed");
+  $("sheetClose").onclick=()=>setSheet("collapsed");
+  $("locateButton").onclick=locate;
+  $("pickStart").onclick=()=>pick("start");
+  $("pickEnd").onclick=()=>pick("end");
+  $("routeButton").onclick=calculateRoute;
+  $("clearRoute").onclick=clearRoute;
+  $("searchForm").onsubmit=async e=>{
+    e.preventDefault();const q=$("searchInput").value.trim();if(!q)return;
+    toast("กำลังค้นหา");
+    try{showResults(await search(q))}catch(_){toast("ค้นหาสถานที่ไม่สำเร็จ")}
+  };
+  document.addEventListener("pointerdown",e=>{
+    if(!e.target.closest(".ui-top"))$("searchResults").hidden=true;
+  });
+  bindLayerToggle("toggleSignals",["signals-halo","signals"],()=>loadOsmLayer("signals"));
+  bindLayerToggle("toggleSafety",["safety"],()=>loadOsmLayer("safety"));
+  bindLayerToggle("toggleNgis",["ngis"],loadNgis);
+  bindLayerToggle("toggleDrr",["drr"],loadDrr);
+  $("toggleOverture").addEventListener("change",async e=>{
+    if(e.target.checked){try{await loadOverture()}catch(_){e.target.checked=false;return}}
+    visibility("overture-roads",e.target.checked);
+  });
+  bindSheetDrag();
+  addEventListener("resize",syncSheet,{passive:true});
+}
+
+window.QueueGoMapLab={
+  ready:false,
+  get map(){return state.map},
+  get sheetState(){return state.sheet},
+  get pickMode(){return state.pick},
+  get state(){return state}
+};
+
+bind();
+setSheet("collapsed");
+refreshRouteUi();
+initMap();
+})();
+</script>
 </body>
 </html>
