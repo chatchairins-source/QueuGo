@@ -33,7 +33,7 @@ has('id="navStrip"',"active navigation status strip required");
 has("navigator.geolocation.watchPosition","navigation must watch live device location");
 has("offRouteHits>=3","reroute must require repeated off-route evidence");
 has("rerouteFrom","automatic reroute function required");
-has("Date.now()-state.lastRerouteAt<20000","reroute cooldown required");
+has("now-state.lastRerouteAt<20000","reroute cooldown required");
 has("accuracy<=50","reroute must reject poor GPS accuracy");
 has("stopNavigation","navigation stop path required");
 has("ไม่ใช่ feed สด","UI must not claim public live traffic when no authoritative feed is connected");
