@@ -37,6 +37,8 @@ jobs:
         run: npx playwright-core install --with-deps webkit
       - name: Run complete Merchant document in mobile WebKit
         run: npm run test:merchant:browser
+      - name: Verify Map Lab mobile hit targets, pan, zoom and sheet gestures
+        run: node tests/map-lab-browser.cjs
       - name: Render Grocery components at mobile and tablet widths
         shell: bash
         run: |
