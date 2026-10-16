@@ -387,3 +387,10 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Public OSRM/Nominatim/Overpass and browser GIS services are research/prototype dependencies only; production QueueGo Navigation must move to pinned source snapshots, provenance/confidence per segment, validated topology/turn/access restrictions, self-controlled routing graph, map matching and versioned offline packages.
 - OSM remains the routing-capable base candidate. DRR/NGIS/other official Thai datasets are verification/enrichment layers subject to per-dataset licence and redistribution review. Public road-accident/risk datasets are candidate safety enrichment; do not treat historical accident data as a real-time closure.
 - Android navigation remains untouched by Map Lab work. Next phase should validate the web data layers on real routes in Buriram, then build the canonical QueueGo road ingestion/graph pipeline before porting the navigation experience to Rider Native.
+
+
+## 2026-10-16 QueueGo Map Lab — Overture transportation
+- Owner asked to search for dense open/global road datasets that include small roads/alleys and try them in QueueGo.
+- Research identified Overture Maps transportation as the strongest additional global open road network: primarily OSM, enhanced with TomTom and local/regional authoritative sources; current release pinned to 2026-09-23.1 and transportation is ODbL.
+- Candidate `work-web-map-lab-overture-transport-20261016` adds the official Overture transportation PMTiles archive as a subtle street-zoom road overlay without adding another front-page layer control. It is comparison/coverage intelligence, not a claim of complete alley coverage.
+- Production plan remains: frequent Thailand OSM PBF (Geofabrik) + Overture transportation + NGIS/DRR + QueueGo verified field observations, preserving provenance and licence boundaries.
