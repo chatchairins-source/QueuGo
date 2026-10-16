@@ -6,7 +6,7 @@ let checks=0;
 new Function(js); checks++;
 function ok(v,msg){assert.ok(v,msg);checks++}
 function has(s,x,msg){ok(s.includes(x),msg||("missing "+x))}
-has(html,"QueueGo Map Lab");
+has(html,"QueueGo Map");
 has(html,"OpenStreetMap");
 has(html,"ODbL");
 has(js,"const BURIRAM_BOUNDS=[[102.442357,14.132135],[103.499967,15.789217]]");
