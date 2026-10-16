@@ -22,6 +22,8 @@ const owner='00000000-0000-4000-8000-000000000001',shop='00000000-0000-4000-8000
    if(url.includes('/auth/v1/token')){refreshes++;data={access_token:'isolated-refreshed-token',refresh_token:'isolated-refresh',expires_at:Math.floor(Date.now()/1000)+3600}}
    else if(url.includes('/users?'))data=[{id:owner,auth_user_id:owner,role:'shop',status:'active',name:'Isolated QA owner',created_at:new Date().toISOString()}];
    else if(url.includes('/shop_profiles?'))data=[{id:shop,user_id:owner,public_category:'grocery',shop_name:'Isolated QA shop',onboarding_status:'approved'}];
+   else if(url.includes('/products?'))data=Array.from({length:60},(_,i)=>({id:'30000000-0000-4000-8000-'+String(i+1).padStart(12,'0'),shop_id:shop,name:'isolated priced product '+i,price:8,pos_price:8,category:i%2?'เครื่องปรุง':'บะหมี่กึ่งสำเร็จรูป',available:true})).concat([{id:'30000000-0000-4000-8000-000000000099',shop_id:shop,name:'isolated unpriced draft',price:0,pos_price:0,category:'ของแห้ง',available:false}]);
+   else if(url.includes('rpc/qg_grocery_source_categories'))data=[{category:'บะหมี่กึ่งสำเร็จรูป',n:1}];
    else if(url.includes('rpc/qg_grocery_categories'))data=[{category:facts[0].category,n:1}];
    else if(url.includes('rpc/qg_grocery_source_search'))data=[{source:'makro-pro',source_product_id:'isolated-source',brand:facts[0].brand,title_th:facts[0].product_name_th,barcode:facts[0].barcode||null,deepest_category:'dry-grocery/instant-meals/instant-noodles',image_url:null,in_shop:false}];
    else if(url.includes('rpc/qg_grocery_source_add_to_shop'))data={product_id:'isolated-source-product',delivery_price:8.8};
@@ -53,7 +55,13 @@ const owner='00000000-0000-4000-8000-000000000001',shop='00000000-0000-4000-8000
      if(process.env.MERCHANT_LAYOUT_QA_DIR){fs.mkdirSync(process.env.MERCHANT_LAYOUT_QA_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.MERCHANT_LAYOUT_QA_DIR,'merchant-'+width+'.png')});}
      await page.locator('[data-field="selling_price"]').fill('8');await page.locator('[data-field="pos_available"]').check();await page.locator('[data-field="delivery_available"]').check();await page.locator('#qgg-save').click();await page.getByText(/บันทึกแล้ว/).waitFor();assert.equal(saved.selling_price,8);assert.equal(saved.pos_available,true);assert.equal(saved.delivery_available,true);assert.equal('promo_price' in saved,false);checks+=4;
      await page.waitForLoadState('networkidle');await page.reload({waitUntil:'domcontentloaded'});await page.locator('.qgg-row').waitFor();assert.equal(await page.locator('[data-field="selling_price"]').inputValue(),'8');checks++;
-     await page.getByRole('button',{name:'สินค้า',exact:true}).click();await page.locator('#qgm-grocery-catalog-add').waitFor();await page.locator('#qgm-grocery-catalog-add').click();await page.locator('.qgg-row').waitFor();checks++;
+     await page.getByRole('button',{name:'สินค้า',exact:true}).click();await page.locator('#qgm-grocery-catalog-add').waitFor();
+     assert.equal(await page.locator('.qgm-product').count(),60,'unpriced draft is not shown as a store product');checks++;
+     assert.equal(await page.locator('.qgm-grocery-add-choices').evaluate(el=>getComputedStyle(el).position),'fixed');checks++;const dockBefore=await page.locator('.qgm-grocery-add-choices').boundingBox();await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
+     const dockAfter=await page.locator('.qgm-grocery-add-choices').boundingBox();assert(Math.abs(dockBefore.y-dockAfter.y)<1,'both add buttons remain fixed while products scroll');checks++;
+     assert.equal(await page.locator('#qgm-grocery-catalog-add').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(229, 35, 44)');checks++;
+     await page.evaluate(()=>window.scrollTo(0,0));await page.locator('#qgm-product-category-button').click();await page.locator('#qgm-product-category').selectOption('เครื่องปรุง');assert.equal(await page.locator('.qgm-product:visible').count(),30);checks++;
+     await page.locator('#qgm-grocery-catalog-add').click();await page.locator('.qgg-row').waitFor();checks++;
      await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));assert(await page.locator('#app').innerText());checks++;
      await page.waitForLoadState('networkidle');await page.close();const reopened=await context.newPage();await reopened.goto(origin+'/merchant/#shop-grocery-catalog');await reopened.locator('.qgg-row').waitFor();assert.equal(await reopened.locator('#qt-shop-login').count(),0);checks++;
     }

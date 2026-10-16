@@ -35,7 +35,7 @@ const css=file=>[...fs.readFileSync(path.join(root,file),'utf8').matchAll(/<styl
   if(role==='merchant'){
    await page.locator('#qgg-open-add').click();await page.waitForFunction(()=>document.getElementById('qgg-mode').value==='unpriced');checks++;
    assert.equal(await page.locator('#qgg-open-add').isHidden(),true);checks++;
-   await page.waitForFunction(()=>document.querySelectorAll('[data-source-add]').length>0);checks++;
+   await page.waitForFunction(()=>document.querySelectorAll('[data-source-add]').length>0);checks++;assert.equal(await page.locator('[data-source-add]').first().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(229, 35, 44)');checks++;assert.equal(await page.locator('#qgg-category-button').isVisible(),true);checks++;
    await page.locator('[data-field="selling_price"]').first().fill('8');await page.locator('[data-field="pos_available"]').first().check();await page.locator('[data-field="delivery_available"]').first().check();await page.locator('[data-source-add]').first().click();
    await page.waitForFunction(()=>qaCalls.some(c=>c.name.endsWith('source_add_to_shop')));
    await page.waitForFunction(()=>document.getElementById('qgg-status').textContent.startsWith('เพิ่มเข้าร้านแล้ว'));checks++;
