@@ -2,7 +2,7 @@
 
 Branch: work-map-roadgraph-buriram-20261017
 Baseline main: a78bca91f723db3f2117030e91c5d9901413e00a
-Previous published checkpoint: e2d233f06c67751d08ee50c3d469b59cb088f4cf
+Previous published checkpoint: 309b431bab1b921812fa22e65d3c3fec7f5345e6
 Current HEAD: use `git rev-parse HEAD` (a commit cannot embed its own SHA).
 
 Completed: licensed OSM ingestion, reference-complete Buriram envelope, normalized topology, actual three-engine builds/benchmark, core selection, local shared service and real-route smoke checks. Evidence: evidence/map-engine/*.json.
@@ -22,3 +22,5 @@ python queuego-map-engine/server.py --database /tmp/queuego-buriram/roads.sqlite
 Tests completed: successful import/integrity/FK checks; all three graph builds; 30-query HTTP benchmark and native capabilities; real core route alternatives, matrix, geocode, progress and HMM smoke. These do not replace release validation.
 
 Next: connect Map View to shared API, audit real restrictions/one-way and road categories, package/checksum/activation/rollback, full npm and actual API/browser tests. All release gates not yet individually evidenced stay OPEN. Service is loopback only; public deployment is not configured. No Android package contains this core yet. No physical GPS/road certification, live traffic or verified postal-address database.
+
+Web API integration checkpoint: full npm test passed; python tests/map-engine-runtime.py --database /tmp/queuego-buriram/roads.sqlite --config /tmp/queuego-bench/valhalla-th/valhalla.json passed 273 checks. Actual browser, all restriction/category coverage, restoration and offline activation/rollback remain pending.

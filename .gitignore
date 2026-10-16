@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 
 # Reproducible map data/build outputs (publish separately with manifests)
 map-data/

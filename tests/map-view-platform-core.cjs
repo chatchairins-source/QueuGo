@@ -25,10 +25,11 @@ has('data-tool="measure"',"multi-point distance tool required");
 has('data-tool="multistop"',"multi-stop routing tool required");
 has('data-tool="nearby"',"nearby tool required");
 has("สูงสุด 12 จุด","multi-stop visible limit required");
-has("/table/v1/driving/","OSRM table service required");
-has("/trip/v1/driving/","OSRM trip optimization required");
-has("/match/v1/driving/","OSRM match service required");
-has("/nearest/v1/driving/","OSRM nearest service required");
+has('call("matrix"',"shared matrix service required");
+has('call("optimize-stops"',"shared stop optimization required");
+has('call("match"',"shared matching required");
+has('call("nearest"',"shared nearest-road service required");
+ok(!html.includes("router.project-osrm.org"),"public OSRM must not be the routing core");
 has('id="matrixWrap"',"matrix output required");
 has('id="copyInspectCoords"',"coordinate copy control required");
 has('class="qg-wordmark">QueueGo Map',"visible QueueGo Map wordmark required");
@@ -40,7 +41,7 @@ has("queuego:current-location-confirmed","confirmed current-location event requi
 has('source:"device_gps"',"confirmed current location must preserve GPS provenance");
 has("currentLocationElement","current-location marker required");
 has("get currentLocation()","Map View must expose current location");
-has("viewbox=102.4,15.8,103.5,14.1","Buriram-biased search required");
+has('call("geocode"',"search must use the installed regional dataset");
 ok(!html.includes("countrycodes=th"),"search must not be hard-limited to Thailand");
 ok(!html.includes("maps.googleapis.com"),"must not depend on Google map data");
 

@@ -200,7 +200,7 @@ class Engine:
         point=self.point(body);radius=float(body.get('radius',5000))
         if not math.isfinite(radius) or not 1<=radius<=20000:raise ValueError('Radius must be 1..20000 metres')
         category=body.get('category','all')
-        filters={'food':{'restaurant','cafe','fast_food'},'fuel':{'fuel'},'hospital':{'hospital','clinic','pharmacy'},'police':{'police'},'atm':{'atm'},'school':{'school','kindergarten','college','university'}}
+        filters={'food':{'restaurant','cafe','fast_food'},'fuel':{'fuel'},'hospital':{'hospital','clinic','pharmacy'},'police':{'police'},'atm':{'atm'},'school':{'school','kindergarten','college','university'},'toilet':{'toilets'}}
         if category not in filters and category!='all':raise ValueError('Unsupported nearby category')
         pad=radius/100000
         with self.db() as db:rows=db.execute('SELECT p.* FROM places p JOIN place_spatial s ON p.id=s.id WHERE s.min_lon<=? AND s.max_lon>=? AND s.min_lat<=? AND s.max_lat>=? LIMIT 10000',(point['lon']+pad,point['lon']-pad,point['lat']+pad,point['lat']-pad)).fetchall()
@@ -234,14 +234,17 @@ class Engine:
         return {'items':result,'data':self.metadata(),'authoritative_live_closure_feed':False}
     def progress(self,body):
         route=self.cached(body['route_id']);point=self.point(body);context=body.get('context') or {}
-        accurate=float(body.get('accuracy',float('inf')))<=50
+        accuracy=float(body.get('accuracy',float('inf')))
+        accurate=math.isfinite(accuracy) and 0<=accuracy<=50
         if not accurate:return {'accepted':False,'reason':'poor_or_missing_accuracy','context':context,'reroute':False,'arrived':False}
         heading=body.get('heading');speed=body.get('speed')
         heading=float(heading)%360 if isinstance(heading,(float,int)) and math.isfinite(heading) and isinstance(speed,(float,int)) and speed>=2 else None
         current=[point['lon'],point['lat']];line=route['geometry']['coordinates']
         result=projection(current,line,heading)
         now=float(body.get('timestamp',time.time()))
+        if not math.isfinite(now) or now<=0:raise ValueError('Invalid fix timestamp')
         previous=float(context.get('last_timestamp',0))
+        if not math.isfinite(previous):raise ValueError('Invalid previous timestamp')
         if now<=previous:return {'accepted':False,'reason':'stale_fix','context':context,'reroute':False,'arrived':False}
         if context.get('last_raw') and previous and now-previous<=15:
             implied=haversine(context['last_raw'],current)/max(.1,now-previous)
