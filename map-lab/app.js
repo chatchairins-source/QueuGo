@@ -10,13 +10,15 @@ const OVERPASS_ENDPOINTS=[
 ];
 const OSRM_ENDPOINT="https://router.project-osrm.org/route/v1/driving/";
 const NOMINATIM_ENDPOINT="https://nominatim.openstreetmap.org/search";
-const DRR_SERVICE="https://gis.drr.go.th/arcgis/rest/services/DRR_Feature/FeatureServer";\nconst NGIS_HIGHWAY_SERVICE="https://ngis.go.th/arcgis/rest/services/Hosted/%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%AB%E0%B8%A5%E0%B8%A7%E0%B8%87%E0%B9%81%E0%B8%9C%E0%B9%88%E0%B8%99%E0%B8%94%E0%B8%B4%E0%B8%99/FeatureServer/0";
+const DRR_SERVICE="https://gis.drr.go.th/arcgis/rest/services/DRR_Feature/FeatureServer";
+const NGIS_HIGHWAY_SERVICE="https://ngis.go.th/arcgis/rest/services/Hosted/%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%AB%E0%B8%A5%E0%B8%A7%E0%B8%87%E0%B9%81%E0%B8%9C%E0%B9%88%E0%B8%99%E0%B8%94%E0%B8%B4%E0%B8%99/FeatureServer/0";
 
 const state={
   map:null,
   signals:emptyCollection(),
   safety:emptyCollection(),
   pois:emptyCollection(),
+  ngis:emptyCollection(),
   drr:emptyCollection(),
   start:null,
   end:null,
@@ -25,6 +27,7 @@ const state={
   activeControllers:new Set(),
   sources:{
     osm:{name:"OpenStreetMap / Overpass",state:"loading",note:"ไฟจราจรและจุดควรระวัง · ODbL"},
+    ngis:{name:"NGIS / ทางหลวงแผ่นดิน",state:"idle",note:"ArcGIS Feature Service · ชั้นตรวจสอบทางหลวง"},
     drr:{name:"กรมทางหลวงชนบท (DRR)",state:"idle",note:"FeatureServer / Open Data Common"},
     route:{name:"Routing prototype",state:"idle",note:"OSRM public demo · ใช้เพื่อทดสอบเท่านั้น"},
     qg:{name:"QueueGo observations",state:"idle",note:"พร้อมต่อ telemetry / rider reports ในระยะถัดไป"}
@@ -98,6 +101,8 @@ function initMap(){
     addDataLayers();
     map.fitBounds(BURIRAM_BOUNDS,{padding:{top:90,bottom:180,left:370,right:60},duration:0});
     loadCoreData();
+    if(el("toggleNgis")&&el("toggleNgis").checked)loadNgis();
+    if(el("toggleDrr")&&el("toggleDrr").checked)loadDrr();
   });
   map.on("click",handleMapClick);
 }
@@ -110,8 +115,10 @@ function addDataLayers(){
   map.addLayer({id:"safety",type:"circle",source:"safety",paint:{"circle-radius":5,"circle-color":["match",["get","kind"],"level_crossing","#f59e0b","speed_camera","#7c3aed","traffic_calming","#0284c7","#111827"],"circle-stroke-width":1.5,"circle-stroke-color":"#fff"}});
   map.addSource("pois",{type:"geojson",data:state.pois});
   map.addLayer({id:"pois",type:"circle",source:"pois",layout:{visibility:"none"},paint:{"circle-radius":5,"circle-color":["match",["get","kind"],"hospital","#e6002d","school","#2563eb","#64748b"],"circle-stroke-width":1.5,"circle-stroke-color":"#fff"}});
+  map.addSource("ngis",{type:"geojson",data:state.ngis});
+  map.addLayer({id:"ngis",type:"line",source:"ngis",paint:{"line-color":"#334155","line-opacity":0.60,"line-width":["interpolate",["linear"],["zoom"],8,1.2,14,4.5]}});
   map.addSource("drr",{type:"geojson",data:state.drr});
-  map.addLayer({id:"drr",type:"line",source:"drr",layout:{visibility:"none"},paint:{"line-color":"#e6002d","line-opacity":0.55,"line-width":["interpolate",["linear"],["zoom"],8,1,14,4]}});
+  map.addLayer({id:"drr",type:"line",source:"drr",paint:{"line-color":"#e6002d","line-opacity":0.50,"line-width":["interpolate",["linear"],["zoom"],8,1,14,4]}});
   map.addSource("route",{type:"geojson",data:emptyCollection()});
   map.addLayer({id:"route-casing",type:"line",source:"route",paint:{"line-color":"#fff","line-width":["interpolate",["linear"],["zoom"],8,6,16,12],"line-opacity":0.95}});
   map.addLayer({id:"route",type:"line",source:"route",paint:{"line-color":"#e6002d","line-width":["interpolate",["linear"],["zoom"],8,3.5,16,7],"line-opacity":0.96}});
@@ -459,7 +466,8 @@ function bind(){
   el("toggleSignals").onchange=function(e){setVisibility("signals",e.target.checked);setVisibility("signals-halo",e.target.checked)};
   el("toggleSafety").onchange=function(e){setVisibility("safety",e.target.checked)};
   el("togglePois").onchange=function(e){setVisibility("pois",e.target.checked);if(e.target.checked)loadPois()};
-  el("toggleNgis").onchange=function(e){setVisibility("ngis",e.target.checked);if(e.target.checked)loadNgis()};\n  el("toggleDrr").onchange=function(e){setVisibility("drr",e.target.checked);if(e.target.checked)loadDrr()};
+  el("toggleNgis").onchange=function(e){setVisibility("ngis",e.target.checked);if(e.target.checked)loadNgis()};
+  el("toggleDrr").onchange=function(e){setVisibility("drr",e.target.checked);if(e.target.checked)loadDrr()};
   el("refreshData").onclick=function(){abortActive();state.signals=emptyCollection();state.safety=emptyCollection();updateSource("signals",state.signals);updateSource("safety",state.safety);loadCoreData();if(el("togglePois").checked){state.pois=emptyCollection();loadPois()}if(el("toggleNgis").checked){state.ngis=emptyCollection();updateSource("ngis",state.ngis);loadNgis()}if(el("toggleDrr").checked){state.drr=emptyCollection();updateSource("drr",state.drr);loadDrr()}};
   el("exportGeojson").onclick=exportGeojson;
   el("closeFeature").onclick=function(){el("featureDialog").close?el("featureDialog").close():el("featureDialog").removeAttribute("open")};
