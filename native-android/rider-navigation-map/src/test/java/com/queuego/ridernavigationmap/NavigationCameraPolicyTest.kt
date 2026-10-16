@@ -190,13 +190,20 @@ class NavigationCameraPolicyTest {
             navigationCameraMovementThresholdMeters(8f))
     }
 
-    @Test fun stoppedWithoutRouteKeepsPreviousHeading() {
-        val state = RiderNavigationMapState(rider = NavigationMapFix(
-            point = NavigationMapPoint(13.0, 100.0),
-            bearingDegrees = 210f, speedMetersPerSecond = 0.5f
-        ))
-        assertEquals(92f, navigationCameraDecision(state, 92f)!!.bearingDegrees!!, 0.001f)
-        assertEquals(null, navigationCameraDecision(state, null)!!.bearingDegrees)
+    @Test fun idleMapReturnsToNormalNorthUpTopDownView() {
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(13.0, 100.0),
+                bearingDegrees = 210f,
+                speedMetersPerSecond = 0.5f
+            ),
+            followZoom = 17
+        )
+        val decision = navigationCameraDecision(state, previousBearingDegrees = 92f)!!
+        assertEquals(0f, decision.bearingDegrees!!, 0.001f)
+        assertEquals(0f, decision.tiltDegrees, 0.001f)
+        assertEquals(17, decision.zoom)
+        assertEquals(state.rider!!.point, decision.center)
     }
 
     @Test fun northCrossingTakesTwoDegreeTurn() {
