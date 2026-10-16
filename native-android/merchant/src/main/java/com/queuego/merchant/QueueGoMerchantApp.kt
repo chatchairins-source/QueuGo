@@ -1143,13 +1143,23 @@ private fun MerchantTopBar(
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier
-                .size(40.dp)
-                .clickable(onClick = onHome),
-            contentAlignment = Alignment.Center
-        ) {
-            QgIcon("brand_q", Modifier.size(36.dp), QgRed)
+        Row(Modifier.clickable(onClick = onHome)) {
+            Text(
+                "Queue",
+                color = Color(0xFF17191D),
+                fontSize = 18.sp,
+                lineHeight = 22.sp,
+                letterSpacing = (-0.4).sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                "Go",
+                color = QgRed,
+                fontSize = 18.sp,
+                lineHeight = 22.sp,
+                letterSpacing = (-0.4).sp,
+                fontWeight = FontWeight.ExtraBold
+            )
         }
         Spacer(Modifier.weight(1f))
         QgIconButton(
