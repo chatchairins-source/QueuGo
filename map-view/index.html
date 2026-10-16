@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes">
+  <meta name="theme-color" content="#e9e7e3">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>QueueGo Map — Buriram</title>
+  <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css">
+  <style>
+    :root{
+      --red:#e6002d;--ink:#171519;--muted:#716d73;--line:#e9e5e7;--panel:#fff;
+      --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px)
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#e9e7e3;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Noto Sans Thai","Segoe UI",sans-serif;color:var(--ink)}
+    button,input,textarea{font:inherit}
+    #map{position:fixed;inset:0;width:100vw;height:100dvh;background:#e9e7e3}
+    .maplibregl-map,.maplibregl-canvas-container,.maplibregl-canvas{width:100%;height:100%;touch-action:none}
+    .maplibregl-ctrl-attrib{font:9px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+
+    .map-tools{position:fixed;z-index:20;right:12px;bottom:calc(28px + var(--safe-b));display:grid;gap:9px;pointer-events:none}
+    .fab{pointer-events:auto;width:50px;height:50px;border:1px solid rgba(255,255,255,.85);border-radius:16px;background:rgba(255,255,255,.94);display:grid;place-items:center;color:#2d282e;box-shadow:0 10px 28px rgba(31,24,29,.16);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+    .fab.active{color:var(--red)}
+    .icon{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+    .center-pin{position:fixed;z-index:18;left:50%;top:50%;width:34px;height:42px;transform:translate(-50%,-100%);pointer-events:none;filter:drop-shadow(0 5px 6px rgba(0,0,0,.22))}
+    .center-pin svg{width:100%;height:100%;fill:var(--red);stroke:#fff;stroke-width:1.4}
+
+    .confirm-bar{position:fixed;z-index:22;left:12px;right:74px;bottom:calc(18px + var(--safe-b));display:flex;gap:8px;align-items:center;padding:8px;background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.9);border-radius:17px;box-shadow:0 12px 32px rgba(31,24,29,.18);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+    .confirm-copy{min-width:0;flex:1;padding-left:5px}.confirm-copy b,.confirm-copy small{display:block}.confirm-copy b{font-size:13px}.confirm-copy small{font-size:9px;color:var(--muted);margin-top:2px}
+    .confirm-bar button{border:0;border-radius:12px;padding:10px 13px;background:var(--red);color:#fff;font-weight:800}
+
+    .toast{position:fixed;z-index:40;left:50%;top:calc(12px + var(--safe-t));transform:translate(-50%,-8px);opacity:0;pointer-events:none;max-width:88vw;padding:8px 11px;border-radius:999px;background:rgba(24,21,24,.9);color:#fff;font-size:11px;transition:.16s}
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+
+    .sheet{position:fixed;z-index:35;left:8px;right:8px;bottom:calc(6px + var(--safe-b));max-height:78dvh;overflow:auto;background:#fff;border-radius:24px 24px 20px 20px;box-shadow:0 -14px 42px rgba(30,24,29,.2);padding:10px 15px 16px}
+    .sheet-handle{width:40px;height:4px;border-radius:999px;background:#d5d0d4;margin:0 auto 10px}
+    .sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.sheet-head small,.sheet-head strong{display:block}.sheet-head small{font-size:9px;color:var(--red);font-weight:800}.sheet-head strong{font-size:18px;margin-top:2px}.sheet-close{width:38px;height:38px;border:0;border-radius:50%;background:#f2eff1;color:#383238}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}.field{display:grid;gap:5px}.field.full{grid-column:1/-1}.field label{font-size:9px;color:var(--muted);font-weight:700}.field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:13px;background:#faf9f9;padding:10px 11px;color:var(--ink);outline:none}.field input:focus,.field textarea:focus{border-color:#eaa1b0;box-shadow:0 0 0 3px rgba(230,0,45,.08)}.field textarea{min-height:64px;resize:vertical}
+    .coord{font-size:9px;color:var(--muted);margin-top:10px}
+    .chips{display:flex;gap:6px;overflow:auto;padding:1px 0 2px}.chip{white-space:nowrap;border:1px solid var(--line);border-radius:999px;background:#fff;padding:6px 9px;font-size:10px;color:#4d474e}
+    .sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}.sheet-actions button{border:0;border-radius:14px;padding:12px;font-weight:800}.secondary{background:#f2eff1;color:#302b30}.primary{background:var(--red);color:#fff}
+    .source-note{font-size:8px;line-height:1.45;color:#8a858a;margin:10px 1px 0}
+
+    .route-sheet{position:fixed;z-index:34;left:8px;right:8px;bottom:calc(6px + var(--safe-b));max-height:46dvh;overflow:auto;background:rgba(255,255,255,.98);border-radius:22px;box-shadow:0 -12px 38px rgba(30,24,29,.18);padding:10px 12px 12px}
+    .route-sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+    .route-sheet-head small,.route-sheet-head strong{display:block}.route-sheet-head small{font-size:9px;color:var(--red);font-weight:800}.route-sheet-head strong{font-size:16px;margin-top:2px}
+    .route-list{display:grid;gap:7px}.route-option{width:100%;border:1px solid var(--line);border-radius:14px;background:#faf9f9;text-align:left;padding:10px 11px;color:var(--ink)}
+    .route-option.selected{border-color:rgba(230,0,45,.28);background:#fff4f6;box-shadow:0 0 0 2px rgba(230,0,45,.05)}
+    .route-option-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.route-option-top b{font-size:12px}.route-option-top span{font-size:9px;color:var(--red);font-weight:800}
+    .route-option-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:5px;font-size:10px;color:var(--muted)}
+    .route-option-note{margin-top:5px;font-size:9px;color:#625c63;line-height:1.35}
+    .route-sheet-actions{display:flex;gap:8px;margin-top:9px}.route-sheet-actions button{flex:1;border:0;border-radius:13px;padding:10px;font-weight:800}.route-sheet-actions .clear{background:#f2eff1;color:#302b30}.route-sheet-actions .close{background:#191619;color:#fff}
+
+    [hidden]{display:none!important}
+    @media(min-width:760px){.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%)}.confirm-bar{left:50%;right:auto;width:520px;transform:translateX(-50%)}}
+  </style>
+</head>
+<body>
+  <div id="map" aria-label="แผนที่ QueueGo บุรีรัมย์"></div>
+
+  <div class="map-tools">
+    <button id="routePlanButton" class="fab" type="button" aria-label="ค้นหาเส้นทาง" title="ค้นหาเส้นทาง">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c0-4 2-6 6-6h2c4 0 6-2 6-6"></path><path d="M16 7h3V4"></path><circle cx="5" cy="19" r="2"></circle></svg>
+    </button>
+    <button id="pinButton" class="fab" type="button" aria-label="ปักที่อยู่" title="ปักที่อยู่">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.4 6-11a6 6 0 10-12 0c0 5.6 6 11 6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg>
+    </button>
+    <button id="locateButton" class="fab" type="button" aria-label="ใช้ตำแหน่งปัจจุบัน" title="ใช้ตำแหน่งปัจจุบัน">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="7.5"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22"></path></svg>
+    </button>
+  </div>
+
+  <div id="centerPin" class="center-pin" hidden>
+    <svg viewBox="0 0 32 42" aria-hidden="true"><path d="M16 1C8.3 1 2 7.2 2 15c0 10.8 14 25.2 14 25.2S30 25.8 30 15C30 7.2 23.7 1 16 1z"></path><circle cx="16" cy="15" r="5" fill="#fff" stroke="none"></circle></svg>
+  </div>
+
+  <div id="confirmBar" class="confirm-bar" hidden>
+    <div class="confirm-copy"><b id="confirmTitle">ปักที่อยู่ตรงกลางแผนที่</b><small id="confirmSubtitle">เลื่อนแผนที่ให้หมุดตรงกับบ้าน แล้วกดยืนยัน</small></div>
+    <button id="confirmPin" type="button">ยืนยัน</button>
+  </div>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <section id="routeSheet" class="route-sheet" hidden aria-label="เส้นทางแนะนำ">
+    <div class="route-sheet-head">
+      <div><small>QUEUEGO ROUTE</small><strong>เส้นทางแนะนำ</strong></div>
+      <button id="closeRouteSheet" class="sheet-close" type="button" aria-label="ปิดเส้นทาง">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div id="routeList" class="route-list"></div>
+    <div class="route-sheet-actions">
+      <button id="clearRoutePlan" class="clear" type="button">ล้างเส้นทาง</button>
+      <button id="reselectDestination" class="close" type="button">เลือกปลายทางใหม่</button>
+    </div>
+    <p class="source-note">เปรียบเทียบเวลา ระยะทาง และจำนวนไฟจราจรที่พบจากข้อมูลเปิด หากยังไม่มีข้อมูลจราจรสด เวลาที่แสดงเป็นเวลาประมาณการของเส้นทาง ไม่ใช่ ETA แบบ live traffic</p>
+  </section>
+
+  <section id="addressSheet" class="sheet" hidden aria-label="กรอกที่อยู่">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <div><small>QUEUEGO ADDRESS</small><strong>รายละเอียดที่อยู่</strong></div>
+      <button id="closeSheet" class="sheet-close" type="button" aria-label="ปิด">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+
+    <div class="form-grid">
+      <div class="field"><label for="houseNo">บ้านเลขที่</label><input id="houseNo" autocomplete="address-line1"></div>
+      <div class="field"><label for="moo">หมู่ที่</label><input id="moo" inputmode="numeric"></div>
+
+      <div class="field full"><label for="village">หมู่บ้าน</label><input id="village" autocomplete="off" placeholder="ชื่อหมู่บ้าน"></div>
+      <div id="villageChips" class="chips field full" hidden></div>
+
+      <div class="field full"><label for="soi">ซอย / ตรอก / ทางเข้าหมู่บ้าน</label><input id="soi" autocomplete="off" placeholder="เลือกจากถนนใกล้เคียงหรือกรอกเอง"></div>
+      <div id="soiChips" class="chips field full" hidden></div>
+
+      <div class="field full"><label for="road">ถนน</label><input id="road" autocomplete="address-line2"></div>
+      <div class="field"><label for="subdistrict">ตำบล</label><input id="subdistrict"></div>
+      <div class="field"><label for="district">อำเภอ</label><input id="district"></div>
+      <div class="field"><label for="province">จังหวัด</label><input id="province" value="บุรีรัมย์"></div>
+      <div class="field"><label for="postcode">รหัสไปรษณีย์</label><input id="postcode" inputmode="numeric" autocomplete="postal-code"></div>
+      <div class="field full"><label for="note">จุดสังเกต / รายละเอียดเพิ่มเติม</label><textarea id="note" placeholder="เช่น บ้านหลังคาสีแดง ตรงข้ามวัด"></textarea></div>
+    </div>
+
+    <div id="coordText" class="coord"></div>
+
+    <div class="sheet-actions">
+      <button id="repin" class="secondary" type="button">ปักใหม่</button>
+      <button id="saveAddress" class="primary" type="button">ใช้ที่อยู่นี้</button>
+    </div>
+
+    <p class="source-note">ใช้พิกัดที่ผู้ใช้ปัก + OpenStreetMap/Nominatim/Overpass และข้อมูลหมู่บ้านสาธารณะของกรมการปกครองเมื่อบริการพร้อม ข้อมูลที่ไม่พบสามารถกรอกเองได้</p>
+  </section>
+
+  <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
+  <script>
+  (function(){
+    "use strict";
+
+    const BURIRAM_CENTER=[103.1029,14.9930];
+    const NOMINATIM="https://nominatim.openstreetmap.org";
+    const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
+    const DOPA_BURIRAM="https://opendata_tst.dopa.go.th/downloads/15/%E0%B8%88%E0%B8%B1%E0%B8%87%E0%B8%AB%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%9A%E0%B8%B8%E0%B8%A3%E0%B8%B5%E0%B8%A3%E0%B8%B1%E0%B8%A1%E0%B8%A2%E0%B9%8C.json";
+    const OSRM="https://router.project-osrm.org/route/v1/driving/";
+
+    const map=new maplibregl.Map({
+      container:"map",
+      style:{
+        version:8,
+        sources:{osm:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},
+        layers:[
+          {id:"background",type:"background",paint:{"background-color":"#e9e7e3"}},
+          {id:"osm",type:"raster",source:"osm"}
+        ]
+      },
+      center:BURIRAM_CENTER,
+      zoom:12.2,
+      minZoom:6,
+      maxZoom:19,
+      dragRotate:false,
+      pitchWithRotate:false,
+      attributionControl:false
+    });
+
+    map.touchZoomRotate.disableRotation();
+    map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
+
+    const state={
+      mode:null,pinMode:false,selected:null,address:null,nearbyVillages:[],nearbyRoads:[],dopaVillages:[],
+      routeStart:null,routeEnd:null,routes:[],trafficSignals:[],selectedRoute:0,routeStartMarker:null,routeEndMarker:null
+    };
+    let toastTimer=0;
+
+    const $=id=>document.getElementById(id);
+    function toast(msg){
+      const t=$("toast");t.textContent=msg;t.classList.add("show");
+      clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+    }
+    function fetchTimeout(url,options={},ms=16000){
+      const c=new AbortController(),timer=setTimeout(()=>c.abort(),ms);
+      return fetch(url,{...options,signal:c.signal}).finally(()=>clearTimeout(timer));
+    }
+    function uniq(values){
+      return [...new Set(values.map(v=>String(v||"").trim()).filter(Boolean))];
+    }
+    function setPinMode(on,mode="address"){
+      state.pinMode=on;
+      state.mode=on?mode:null;
+      $("centerPin").hidden=!on;
+      $("confirmBar").hidden=!on;
+      $("pinButton").classList.toggle("active",on&&mode==="address");
+      $("routePlanButton").classList.toggle("active",on&&mode==="route-destination");
+      if(on){
+        $("addressSheet").hidden=true;
+        $("routeSheet").hidden=true;
+        $("confirmTitle").textContent=mode==="route-destination"?"เลือกปลายทาง":"ปักที่อยู่ตรงกลางแผนที่";
+        $("confirmSubtitle").textContent=mode==="route-destination"?"เลื่อนแผนที่ให้หมุดตรงจุดหมาย แล้วกดยืนยัน":"เลื่อนแผนที่ให้หมุดตรงกับบ้าน แล้วกดยืนยัน";
+      }
+    }
+    function centerPoint(){
+      const c=map.getCenter();return {lat:Number(c.lat.toFixed(6)),lon:Number(c.lng.toFixed(6))};
+    }
+    function pickThai(obj,keys){
+      for(const k of keys){const v=obj&&obj[k];if(v)return String(v)}
+      return "";
+    }
+    function applyReverse(address){
+      $("houseNo").value=pickThai(address,["house_number"]);
+      $("road").value=pickThai(address,["road","residential","pedestrian","footway","path"]);
+      $("soi").value=pickThai(address,["neighbourhood","quarter"]);
+      $("village").value=pickThai(address,["village","hamlet","suburb"]);
+      $("subdistrict").value=pickThai(address,["subdistrict","municipality","town","city_district"]);
+      $("district").value=pickThai(address,["county","state_district","city"]);
+      $("province").value=pickThai(address,["state"])||"บุรีรัมย์";
+      $("postcode").value=pickThai(address,["postcode"]);
+    }
+    function renderChips(hostId,values,inputId){
+      const host=$(hostId),list=uniq(values).slice(0,12);
+      host.innerHTML="";
+      if(!list.length){host.hidden=true;return}
+      list.forEach(name=>{
+        const b=document.createElement("button");b.type="button";b.className="chip";b.textContent=name;
+        b.onclick=()=>{$(inputId).value=name};
+        host.appendChild(b);
+      });
+      host.hidden=false;
+    }
+    async function reverseGeocode(p){
+      const url=NOMINATIM+"/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=th&lat="+encodeURIComponent(p.lat)+"&lon="+encodeURIComponent(p.lon);
+      const r=await fetchTimeout(url,{headers:{"Accept-Language":"th,en"}},12000);
+      if(!r.ok)throw Error("reverse");
+      const j=await r.json();state.address=j.address||{};applyReverse(state.address);
+    }
+    async function nearbyOpenNames(p){
+      const q='[out:json][timeout:25];('+
+        'nwr(around:5000,'+p.lat+','+p.lon+')["place"~"village|hamlet|neighbourhood"]["name"];'+
+        'way(around:3000,'+p.lat+','+p.lon+')["highway"]["name"];'+
+        ');out center tags;';
+      let data=null,last=null;
+      for(const ep of OVERPASS){
+        try{
+          const r=await fetchTimeout(ep,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:"data="+encodeURIComponent(q)},30000);
+          if(!r.ok)throw Error("overpass "+r.status);data=await r.json();break;
+        }catch(e){last=e}
+      }
+      if(!data)throw last||Error("overpass");
+      const villages=[],roads=[];
+      (data.elements||[]).forEach(x=>{
+        const t=x.tags||{},name=t["name:th"]||t.name||t["official_name:th"]||t.official_name;
+        if(!name)return;
+        if(t.place) villages.push(name);
+        if(t.highway) roads.push(name);
+      });
+      state.nearbyVillages=uniq(villages);state.nearbyRoads=uniq(roads);
+      renderChips("villageChips",state.nearbyVillages.concat(state.dopaVillages),"village");
+      renderChips("soiChips",state.nearbyRoads,"soi");
+    }
+    function collectDopaVillages(node,out){
+      if(Array.isArray(node)){node.forEach(x=>collectDopaVillages(x,out));return}
+      if(!node||typeof node!=="object")return;
+      const province=pickThai(node,["จังหวัด","PROVINCE","province","PROV_NAM_T"]);
+      if(!province||/บุรีรัมย์/.test(province)){
+        const village=pickThai(node,["หมู่บ้าน","VILLAGE","village","VILL_NAM_T","ชื่อหมู่บ้าน"]);
+        if(village)out.push(village);
+      }
+      Object.values(node).forEach(v=>{if(v&&typeof v==="object")collectDopaVillages(v,out)});
+    }
+    async function loadDopaVillages(){
+      if(state.dopaVillages.length)return;
+      try{
+        const r=await fetchTimeout(DOPA_BURIRAM,{cache:"no-store"},10000);
+        if(!r.ok)throw Error("dopa");const j=await r.json(),names=[];
+        collectDopaVillages(j,names);state.dopaVillages=uniq(names);
+        renderChips("villageChips",state.nearbyVillages.concat(state.dopaVillages),"village");
+      }catch(_){}
+    }
+    async function openAddressEditor(){
+      const p=centerPoint();state.selected=p;$("coordText").textContent="พิกัด "+p.lat+", "+p.lon;
+      setPinMode(false);$("addressSheet").hidden=false;
+      toast("กำลังอ่านที่อยู่และถนนใกล้เคียง");
+      await Promise.allSettled([reverseGeocode(p),nearbyOpenNames(p),loadDopaVillages()]);
+      toast("ตรวจและแก้ที่อยู่ได้");
+    }
+    function markerEl(color){
+      const d=document.createElement("div");
+      d.style.width="22px";d.style.height="22px";d.style.borderRadius="50%";d.style.background=color;d.style.border="3px solid #fff";d.style.boxShadow="0 4px 12px rgba(0,0,0,.25)";
+      return d;
+    }
+    function currentPosition(){
+      return new Promise((resolve,reject)=>{
+        if(!navigator.geolocation)return reject(Error("geolocation unavailable"));
+        navigator.geolocation.getCurrentPosition(p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude}),reject,{enableHighAccuracy:true,timeout:9000,maximumAge:5000});
+      });
+    }
+    async function startRoutePlanning(){
+      $("addressSheet").hidden=true;$("routeSheet").hidden=true;
+      toast("กำลังหาตำแหน่งต้นทาง");
+      try{
+        state.routeStart=await currentPosition();
+      }catch(_){
+        const c=map.getCenter();state.routeStart={lat:c.lat,lon:c.lng};
+        toast("ใช้ตำแหน่งกลางแผนที่เป็นต้นทาง");
+      }
+      if(state.routeStartMarker)state.routeStartMarker.remove();
+      state.routeStartMarker=new maplibregl.Marker({element:markerEl("#171519")}).setLngLat([state.routeStart.lon,state.routeStart.lat]).addTo(map);
+      setPinMode(true,"route-destination");
+      toast("เลื่อนแผนที่ไปยังปลายทางแล้วกดยืนยัน");
+    }
+    function routeBounds(routes){
+      let west=180,east=-180,south=90,north=-90;
+      routes.forEach(r=>(r.geometry&&r.geometry.coordinates||[]).forEach(c=>{west=Math.min(west,c[0]);east=Math.max(east,c[0]);south=Math.min(south,c[1]);north=Math.max(north,c[1])}));
+      return {west,east,south,north};
+    }
+    async function loadRouteSignals(routes){
+      const b=routeBounds(routes),pad=.006;
+      if(!Number.isFinite(b.west))return [];
+      const q='[out:json][timeout:25];node["highway"="traffic_signals"]('+(b.south-pad)+','+(b.west-pad)+','+(b.north+pad)+','+(b.east+pad)+');out body;';
+      let data=null,last=null;
+      for(const ep of OVERPASS){
+        try{
+          const r=await fetchTimeout(ep,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:"data="+encodeURIComponent(q)},30000);
+          if(!r.ok)throw Error("overpass "+r.status);data=await r.json();break;
+        }catch(e){last=e}
+      }
+      if(!data){console.warn(last);return []}
+      return (data.elements||[]).filter(x=>Number.isFinite(Number(x.lon))&&Number.isFinite(Number(x.lat))).map(x=>[Number(x.lon),Number(x.lat)]);
+    }
+    function toMeters(c,lat0){
+      return [c[0]*111320*Math.cos(lat0*Math.PI/180),c[1]*110540];
+    }
+    function pointSegmentDistance(p,a,b){
+      const lat0=(p[1]+a[1]+b[1])/3,P=toMeters(p,lat0),A=toMeters(a,lat0),B=toMeters(b,lat0);
+      const dx=B[0]-A[0],dy=B[1]-A[1],den=dx*dx+dy*dy;
+      let t=den?((P[0]-A[0])*dx+(P[1]-A[1])*dy)/den:0;t=Math.max(0,Math.min(1,t));
+      return Math.hypot(P[0]-(A[0]+t*dx),P[1]-(A[1]+t*dy));
+    }
+    function countSignals(route,signals){
+      const line=route.geometry&&route.geometry.coordinates||[];let count=0;
+      for(const p of signals){
+        let near=false;
+        for(let i=1;i<line.length;i++){if(pointSegmentDistance(p,line[i-1],line[i])<=45){near=true;break}}
+        if(near)count++;
+      }
+      return count;
+    }
+    function routeFeatures(){
+      return {type:"FeatureCollection",features:state.routes.map((r,i)=>({type:"Feature",geometry:r.geometry,properties:{route_index:i,selected:i===state.selectedRoute}}))};
+    }
+    function ensureRouteLayers(){
+      if(map.getSource("route-options"))return;
+      map.addSource("route-options",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+      map.addLayer({id:"route-options-alt",type:"line",source:"route-options",filter:["==",["get","selected"],false],paint:{"line-color":"#7f7880","line-width":["interpolate",["linear"],["zoom"],9,3,17,6],"line-opacity":.45}});
+      map.addLayer({id:"route-options-case",type:"line",source:"route-options",filter:["==",["get","selected"],true],paint:{"line-color":"#fff","line-width":["interpolate",["linear"],["zoom"],9,7,17,13],"line-opacity":.96}});
+      map.addLayer({id:"route-options-selected",type:"line",source:"route-options",filter:["==",["get","selected"],true],paint:{"line-color":"#e6002d","line-width":["interpolate",["linear"],["zoom"],9,4,17,8],"line-opacity":.98}});
+    }
+    function selectRoute(index){
+      state.selectedRoute=index;
+      const src=map.getSource("route-options");if(src)src.setData(routeFeatures());
+      renderRouteList();
+    }
+    function routeLabel(i,fastest,fewest,shortest){
+      if(i===fastest)return "เร็วที่สุด";
+      if(i===fewest)return "ไฟแดงน้อยสุด";
+      if(i===shortest)return "ระยะสั้นสุด";
+      return "ทางเลือก";
+    }
+    function renderRouteList(){
+      const host=$("routeList");host.innerHTML="";
+      if(!state.routes.length)return;
+      const fastest=state.routes.reduce((best,r,i,a)=>r.duration<a[best].duration?i:best,0);
+      const fewest=state.routes.reduce((best,r,i,a)=>r.signalCount<a[best].signalCount||(r.signalCount===a[best].signalCount&&r.duration<a[best].duration)?i:best,0);
+      const shortest=state.routes.reduce((best,r,i,a)=>r.distance<a[best].distance?i:best,0);
+      const fastestRoute=state.routes[fastest];
+      state.routes.forEach((r,i)=>{
+        const deltaMin=Math.max(0,Math.round((r.duration-fastestRoute.duration)/60));
+        const fewer=Math.max(0,fastestRoute.signalCount-r.signalCount);
+        const note=i===fastest
+          ?"ถึงเร็วที่สุดจากเวลาของ route engine"
+          :(fewer>0?"ไฟแดงน้อยกว่าเส้นทางเร็วสุด "+fewer+" จุด · ช้ากว่า "+deltaMin+" นาที":"ช้ากว่าเส้นทางเร็วสุด "+deltaMin+" นาที");
+        const b=document.createElement("button");b.type="button";b.className="route-option"+(i===state.selectedRoute?" selected":"");
+        b.innerHTML='<div class="route-option-top"><b>เส้นทาง '+(i+1)+'</b><span>'+routeLabel(i,fastest,fewest,shortest)+'</span></div>'+
+          '<div class="route-option-meta"><span>'+Math.max(1,Math.round(r.duration/60))+' นาที</span><span>'+(r.distance/1000).toLocaleString("th-TH",{maximumFractionDigits:1})+' กม.</span><span>ไฟแดง '+r.signalCount+' จุด</span></div>'+
+          '<div class="route-option-note">'+note+'</div>';
+        b.onclick=()=>selectRoute(i);host.appendChild(b);
+      });
+    }
+    async function calculateRouteOptions(){
+      const a=state.routeStart,b=state.routeEnd;if(!a||!b)return;
+      toast("กำลังหาเส้นทางที่เร็วที่สุด");
+      ensureRouteLayers();
+      try{
+        const url=OSRM+a.lon+","+a.lat+";"+b.lon+","+b.lat+"?alternatives=true&overview=full&geometries=geojson&steps=true";
+        const r=await fetchTimeout(url,{},20000);if(!r.ok)throw Error("routing "+r.status);
+        const j=await r.json();if(!j.routes||!j.routes.length)throw Error("no routes");
+        state.routes=j.routes.slice(0,3);
+        toast("กำลังตรวจตำแหน่งไฟจราจรบนแต่ละทาง");
+        state.trafficSignals=await loadRouteSignals(state.routes);
+        state.routes.forEach(route=>{route.signalCount=countSignals(route,state.trafficSignals)});
+        state.selectedRoute=state.routes.reduce((best,r,i,a)=>r.duration<a[best].duration?i:best,0);
+        map.getSource("route-options").setData(routeFeatures());
+        const bounds=new maplibregl.LngLatBounds();state.routes.forEach(r=>(r.geometry.coordinates||[]).forEach(c=>bounds.extend(c)));
+        map.fitBounds(bounds,{padding:{top:60,bottom:190,left:38,right:38},maxZoom:16,duration:500});
+        renderRouteList();$("routeSheet").hidden=false;toast("เปรียบเทียบเส้นทางพร้อม");
+      }catch(e){console.warn(e);toast("ยังคำนวณเส้นทางไม่ได้")}
+    }
+    async function confirmRouteDestination(){
+      state.routeEnd=centerPoint();setPinMode(false);
+      if(state.routeEndMarker)state.routeEndMarker.remove();
+      state.routeEndMarker=new maplibregl.Marker({element:markerEl("#e6002d")}).setLngLat([state.routeEnd.lon,state.routeEnd.lat]).addTo(map);
+      await calculateRouteOptions();
+    }
+    function clearRoutePlan(){
+      state.routeStart=null;state.routeEnd=null;state.routes=[];state.trafficSignals=[];state.selectedRoute=0;
+      if(state.routeStartMarker)state.routeStartMarker.remove();if(state.routeEndMarker)state.routeEndMarker.remove();
+      state.routeStartMarker=state.routeEndMarker=null;
+      const src=map.getSource("route-options");if(src)src.setData({type:"FeatureCollection",features:[]});
+      $("routeSheet").hidden=true;$("routePlanButton").classList.remove("active");
+    }
+
+    function locate(){
+      if(!navigator.geolocation){toast("อุปกรณ์นี้ไม่รองรับตำแหน่ง");return}
+      toast("กำลังหาตำแหน่ง");
+      navigator.geolocation.getCurrentPosition(pos=>{
+        map.flyTo({center:[pos.coords.longitude,pos.coords.latitude],zoom:17,duration:500});
+        setPinMode(true);toast("เลื่อนหมุดให้ตรงบ้านแล้วกดยืนยัน");
+      },()=>toast("อ่านตำแหน่งไม่ได้ กรุณาตรวจสิทธิ์"),{enableHighAccuracy:true,timeout:10000,maximumAge:5000});
+    }
+    function addressPayload(){
+      return {
+        lat:state.selected&&state.selected.lat,lon:state.selected&&state.selected.lon,
+        house_no:$("houseNo").value.trim(),moo:$("moo").value.trim(),village:$("village").value.trim(),
+        soi:$("soi").value.trim(),road:$("road").value.trim(),subdistrict:$("subdistrict").value.trim(),
+        district:$("district").value.trim(),province:$("province").value.trim(),postcode:$("postcode").value.trim(),
+        note:$("note").value.trim(),source:"user_pin+open_data"
+      };
+    }
+
+    $("routePlanButton").onclick=startRoutePlanning;
+    $("pinButton").onclick=()=>{setPinMode(true,"address");toast("เลื่อนแผนที่ให้หมุดตรงกับบ้าน")};
+    $("locateButton").onclick=locate;
+    $("confirmPin").onclick=()=>state.mode==="route-destination"?confirmRouteDestination():openAddressEditor();
+    $("closeRouteSheet").onclick=()=>{$("routeSheet").hidden=true};
+    $("clearRoutePlan").onclick=clearRoutePlan;
+    $("reselectDestination").onclick=()=>{setPinMode(true,"route-destination");toast("เลือกปลายทางใหม่")};
+    $("closeSheet").onclick=()=>{$("addressSheet").hidden=true};
+    $("repin").onclick=()=>{setPinMode(true);$("addressSheet").hidden=true};
+    $("saveAddress").onclick=()=>{
+      const payload=addressPayload();
+      if(!payload.lat||!payload.lon){toast("ยังไม่มีพิกัด");return}
+      window.QueueGoSelectedAddress=payload;
+      $("addressSheet").hidden=true;
+      toast("เลือกที่อยู่นี้แล้ว");
+      window.dispatchEvent(new CustomEvent("queuego:address-selected",{detail:payload}));
+    };
+
+    window.QueueGoMapView={
+      get map(){return map},
+      get selectedAddress(){return window.QueueGoSelectedAddress||null},
+      get state(){return state},
+      ready:false
+    };
+    map.on("load",()=>{ensureRouteLayers();window.QueueGoMapView.ready=true});
+  })();
+  </script>
+</body>
+</html>
