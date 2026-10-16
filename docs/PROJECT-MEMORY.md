@@ -1,6 +1,6 @@
 ## 2026-10-16 Direct native category selection
 - Owner screenshot/crop identifies the red เลือกหมวดหมู่ · ทุกหมวด intermediate button. Replace it with an always-visible native category dropdown so one tap opens options directly, in catalog and shop product views. Remove the extra reveal/hide handlers and red category-button styling. Preserve the30-category server filter, counts, search placeholder, fixed red add actions, draft exclusion and network behavior. No database change.
-- Continue from main4a0d392e; publish only after existing category behavior and mobile browser checks pass. Android remains paused.
+- Continue from main4a0d392e; PR363 merged as0a0042e0 after exact-headb5467f96 RC38831293929 (full regression, mobile WebKit, rendered components) and probe38831293865 passed. Pages38831582880 deployed successfully; public HTML/JS/CSS confirm visible native category selects and absence of intermediate category buttons, with direct-category1 cache versions. No database changes. Physical-device interaction is not separately certified. Android remains paused.
 
 ## 2026-10-16 Grocery category choices and fixed add buttons
 - Owner additionally requires generic search placeholder: ค้นหาชื่อสินค้า ยี่ห้อ หรือบาร์โค้ด. Do not put Makro in the search field.
