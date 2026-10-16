@@ -60,6 +60,9 @@ internal fun GuestCustomerShell(
     val context = LocalContext.current
     val cartStore = remember { CustomerCartStore(context, "guest") }
     val locationStore = remember { CustomerLocationStore(context) }
+    val contentCache = remember(context.applicationContext) {
+        CustomerContentCache(context.applicationContext)
+    }
     val shopCatalog = remember { CustomerShopCatalog(scope) }
     val rawCatalogState by shopCatalog.state.collectAsState()
 
@@ -97,25 +100,42 @@ internal fun GuestCustomerShell(
         if (localStateLoaded) withContext(Dispatchers.IO) { cartStore.save(cart) }
     }
 
-    fun refresh() {
+    fun refresh(showLoading: Boolean = shops.isEmpty() && banners.isEmpty()) {
         scope.launch {
-            loading = true
+            if (showLoading) loading = true
             try {
-                shops = api.loadShopsPublic()
-                banners = api.loadHomeBannersPublic()
-                serviceBanners = api.loadServiceBannersPublic()
+                val freshShops = api.loadShopsPublic()
+                val freshBanners = api.loadHomeBannersPublic()
+                val freshServiceBanners = api.loadServiceBannersPublic()
+                shops = freshShops
+                banners = freshBanners
+                serviceBanners = freshServiceBanners
+                withContext(Dispatchers.IO) {
+                    contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                }
                 message = null
             } catch (failure: CancellationException) {
                 throw failure
             } catch (failure: Exception) {
-                message = failure.message ?: "โหลดข้อมูลไม่สำเร็จ"
+                if (shops.isEmpty() && banners.isEmpty()) {
+                    message = failure.message ?: "โหลดข้อมูลไม่สำเร็จ"
+                }
             } finally {
                 loading = false
             }
         }
     }
 
-    LaunchedEffect(Unit) { refresh() }
+    LaunchedEffect(contentCache) {
+        val cached = withContext(Dispatchers.IO) { contentCache.readHome() }
+        if (cached != null) {
+            shops = cached.shops
+            banners = cached.banners
+            serviceBanners = cached.serviceBanners
+            loading = false
+        }
+        refresh(showLoading = cached == null)
+    }
 
     val permission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -160,7 +180,16 @@ internal fun GuestCustomerShell(
         returnScreen = from
         selectedShop = shop
         screen = "shop"
-        shopCatalog.open(shop.id) { api.loadProductsPublic(shop.id) }
+        shopCatalog.openCached(
+            shopId = shop.id,
+            loadCached = {
+                withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+            },
+            fetch = { api.loadProductsPublic(shop.id) },
+            persist = { rows ->
+                withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
+            }
+        )
     }
 
     fun openBannerLink(raw: String) {
