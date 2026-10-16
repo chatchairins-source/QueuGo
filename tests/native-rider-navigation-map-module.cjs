@@ -128,11 +128,11 @@ assert(map.includes('MotionEvent.ACTION_MOVE')&&
   'Manual drag or pinch must suspend navigation follow until the Rider explicitly recenters');
 
 assert(
-  integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = true')&&
+  integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false')&&
   integration.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true')&&
   integration.includes('val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)')&&
   integration.includes('return if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED)'),
-  'Confidence matching must remain observable in shadow diagnostics while the stabilized matched display is enabled');
+  'Real-device pilot must visibly use the stabilized matched display without shadow-only gating');
 
 assert(
   signalPipeline.includes('if (rawFix == lastRawFix && nextRouteId == activeRouteId)')&&
