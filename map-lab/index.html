@@ -82,6 +82,7 @@ button{-webkit-tap-highlight-color:transparent}
   pointer-events:auto;will-change:transform
 }
 .sheet.dragging{transition:none}
+.sheet[data-state="closed"]{pointer-events:none}
 .sheet-peek{
   height:var(--sheet-peek);display:grid;grid-template-columns:1fr auto;align-items:center;padding:7px 12px 8px 16px;
   border-bottom:1px solid transparent;touch-action:none;user-select:none
@@ -181,7 +182,7 @@ button{-webkit-tap-highlight-color:transparent}
         <span class="sheet-title">ชั้นข้อมูลและเส้นทาง</span>
         <span class="sheet-subtitle">ลากขึ้นเพื่อเปิด</span>
       </div>
-      <button id="sheetClose" class="sheet-close" type="button" aria-label="ย่อแผง">
+      <button id="sheetClose" class="sheet-close" type="button" aria-label="ปิดแผง">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9.5l5 5 5-5"></path></svg>
       </button>
     </div>
@@ -459,24 +460,25 @@ async function loadOverture(){
   }catch(e){toast("โหลด Overture ไม่สำเร็จ");throw e}
 }
 
+function sheetOffset(mode){
+  const sheet=$("sheet"),h=sheet.getBoundingClientRect().height,peek=64;
+  if(mode==="closed")return h+16;
+  if(mode==="expanded")return 0;
+  if(mode==="half")return Math.max(0,h-Math.min(innerHeight*.46,h));
+  return h-peek;
+}
 function setSheet(mode){
   const sheet=$("sheet");
   state.sheet=mode;
   sheet.dataset.state=mode;
-  const h=sheet.getBoundingClientRect().height,peek=64;
-  let offset=h-peek;
-  if(mode==="half")offset=Math.max(0,h-Math.min(innerHeight*.46,h));
-  if(mode==="expanded")offset=0;
+  sheet.setAttribute("aria-hidden",mode==="closed"?"true":"false");
+  const offset=sheetOffset(mode);
   if(innerWidth>=760)sheet.style.transform="translate(-50%,"+offset+"px)";
   else sheet.style.transform="translateY("+offset+"px)";
-  $("layersButton").classList.toggle("active",mode!=="collapsed");
-  $(".noop");
+  $("layersButton").classList.toggle("active",mode==="half"||mode==="expanded");
 }
 function syncSheet(){
-  const sheet=$("sheet"),h=sheet.getBoundingClientRect().height,peek=64;
-  let offset=h-peek;
-  if(state.sheet==="half")offset=Math.max(0,h-Math.min(innerHeight*.46,h));
-  if(state.sheet==="expanded")offset=0;
+  const sheet=$("sheet"),offset=sheetOffset(state.sheet);
   if(innerWidth>=760)sheet.style.transform="translate(-50%,"+offset+"px)";
   else sheet.style.transform="translateY("+offset+"px)";
 }
@@ -605,8 +607,8 @@ function bindLayerToggle(id,layerIds,loader){
   });
 }
 function bind(){
-  $("layersButton").onclick=()=>setSheet(state.sheet==="collapsed"?"half":"collapsed");
-  $("sheetClose").onclick=()=>setSheet("collapsed");
+  $("layersButton").onclick=()=>setSheet((state.sheet==="closed"||state.sheet==="collapsed")?"half":"collapsed");
+  $("sheetClose").onclick=()=>setSheet("closed");
   $("locateButton").onclick=locate;
   $("pickStart").onclick=()=>pick("start");
   $("pickEnd").onclick=()=>pick("end");
