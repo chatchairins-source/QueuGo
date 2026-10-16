@@ -1,3 +1,10 @@
+## 2026-10-16 Owner approved Web catalog; Android resumed
+- Owner approved deployed Web direct category selector and explicitly requested Android continuation. Successor `work-native-merchant-grocery-approved-web-20261016` preserves paused PR355 a8d5528e67c831108a1170dec62fd11bf485a7a7 and its Native/credit ancestry; backup `backup/native-before-approved-grocery-web-20261016`. Do not merge stale Web/credit work into main.
+- Merchant Android uses existing Production source_categories/source_search/source_add_to_shop RPCs for the approved 10,000 active non-frozen source catalog. Category filters precede paging; retain the 51-row sentinel. No Production data mutation or new backend is required.
+- Direct platform category selector, generic search, large left image with compact price/stock, existing POS/Delivery/GP, fixed red manual/catalog actions above navigation, and no unpriced Grocery store drafts. Reference previews remain separate from approved product images and are never promoted by the manual editor.
+- Reads retry transient failures once; writes never auto-retry. Generation/session/shop guards and foreground lifecycle prevent stale responses. Confirmed saves remain successful if subsequent reload fails; uncertain writes require checking the store.
+- Source regression and Merchant compile/unit checks must pass on the exact candidate. Device acceptance and release certification remain separate; no APK release or navigation overlay requested.
+
 ## 2026-10-15 Native Merchant Grocery catalog parity
 - Continue Native Merchant from PR #333 / `work-native-credit-admin-promo-20261015` HEAD `b3d61be03f2150181dbdb6c253b25c785759a243`; backup `backup-pre-native-merchant-grocery-catalog-20261015`; candidate `work-native-merchant-grocery-catalog-20261015`.
 - Web Grocery sales-channel contract is already released on main/Production: no Grocery promo-price editor, explicit `pos_available` + `delivery_available`, one storefront price, Delivery price derived by the existing GP lock.

@@ -1,0 +1,37 @@
+name: Native Merchant Grocery verification
+on:
+  push:
+    branches: [work-native-merchant-grocery-approved-web-20261016]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: merchant-grocery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  merchant:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: Android SDK and verified map dependency
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+          mkdir -p native-android/rider/libs
+          curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar" -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
+          echo "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | sha256sum -c -
+      - name: Merchant source contracts
+        run: |
+          node tests/native-merchant-grocery-catalog.cjs
+          node tests/native-android-source.cjs
+          node tests/native-backend-migration-sync.cjs
+      - name: Merchant Kotlin and behavioral tests
+        working-directory: native-android
+        run: gradle :merchant:compileDebugKotlin :merchant:testDebugUnitTest --no-daemon

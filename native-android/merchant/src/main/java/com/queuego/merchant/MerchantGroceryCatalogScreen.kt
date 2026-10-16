@@ -17,6 +17,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,6 +29,9 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
 import java.util.UUID
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun MerchantGroceryCatalogScreen(
@@ -46,10 +50,16 @@ internal fun MerchantGroceryCatalogScreen(
     onMode: (String) -> Unit,
     onPage: (Int) -> Unit,
     onSave: (MerchantGroceryCatalogItem, MerchantGroceryCatalogDraft) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    error: String? = null,
+    onRetry: () -> Unit = {}
 ) {
     var searchText by remember(query) { mutableStateOf(query) }
 
+    LaunchedEffect(searchText) {
+        delay(300)
+        if (searchText.trim() != query && !busy) onSearch(searchText.trim())
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
         contentPadding = PaddingValues(bottom = 28.dp)
@@ -78,43 +88,19 @@ internal fun MerchantGroceryCatalogScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = searchText,
+                    enabled = !busy,
                     onValueChange = { searchText = it.take(100) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    label = { Text("ค้นหาชื่อสินค้า / ยี่ห้อ") }
+                    label = { Text("ค้นหาชื่อสินค้า ยี่ห้อ หรือบาร์โค้ด") }
                 )
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = { onSearch(searchText.trim()) },
-                    enabled = !busy && !loading,
-                    modifier = Modifier.height(56.dp)
-                ) { Text("ค้นหา") }
             }
-
             Spacer(Modifier.height(9.dp))
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                GroceryCatalogChip("ทุกหมวด", category.isBlank()) { onCategory("") }
-                categories.forEach { value ->
-                    GroceryCatalogChip(value, category == value) { onCategory(value) }
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                listOf(
-                    "all" to "ทั้งหมด",
-                    "unpriced" to "ยังไม่ใส่ราคา",
-                    "on" to "เปิดขาย",
-                    "off" to "ปิดขาย"
-                ).forEach { (key, label) ->
-                    GroceryCatalogChip(label, mode == key) { onMode(key) }
-                }
+            Text("หมวดหมู่สินค้า", color = QgMuted, fontSize = 12.sp)
+            MerchantCategorySelect(categories, category, !busy && !loading, onCategory)
+            if (error != null) {
+                Text(error, color = QgRed, modifier = Modifier.padding(vertical = 8.dp))
+                OutlinedButton(onClick = onRetry, enabled = !loading && !busy) { Text("ลองโหลดอีกครั้ง") }
             }
 
             if (loading) {
@@ -132,7 +118,7 @@ internal fun MerchantGroceryCatalogScreen(
             }
         }
 
-        if (!loading && items.isEmpty()) {
+        if (!loading && error == null && items.isEmpty()) {
             item(key = "grocery-catalog-empty") {
                 Box(
                     Modifier
@@ -201,19 +187,19 @@ private fun MerchantGroceryCatalogCard(
     busy: Boolean,
     onSave: (MerchantGroceryCatalogItem, MerchantGroceryCatalogDraft) -> Unit
 ) {
-    var sellingPrice by remember(item.id, item.productUpdatedAt) {
+    var sellingPrice by rememberSaveable(item.id, item.productUpdatedAt) {
         mutableStateOf(item.sellingPrice?.let { trimCatalogNumber(it) }.orEmpty())
     }
-    var stockQty by remember(item.id, item.productUpdatedAt) {
+    var stockQty by rememberSaveable(item.id, item.productUpdatedAt) {
         mutableStateOf(item.stockQty.toString())
     }
-    var stockTracking by remember(item.id, item.productUpdatedAt) {
+    var stockTracking by rememberSaveable(item.id, item.productUpdatedAt) {
         mutableStateOf(item.stockTracking)
     }
-    var posAvailable by remember(item.id, item.productUpdatedAt) {
+    var posAvailable by rememberSaveable(item.id, item.productUpdatedAt) {
         mutableStateOf(item.posAvailable)
     }
-    var deliveryAvailable by remember(item.id, item.productUpdatedAt) {
+    var deliveryAvailable by rememberSaveable(item.id, item.productUpdatedAt) {
         mutableStateOf(item.deliveryAvailable)
     }
     val requestId = remember(item.id, item.productUpdatedAt) { UUID.randomUUID().toString() }
@@ -234,7 +220,7 @@ private fun MerchantGroceryCatalogCard(
         Row(verticalAlignment = Alignment.Top) {
             QgRemoteImage(
                 source = item.image,
-                modifier = Modifier.size(width = 112.dp, height = 132.dp),
+                modifier = Modifier.size(width = 112.dp, height = 144.dp),
                 fallback = item.name,
                 cornerRadius = 12.dp,
                 maxDecodeSide = 384
@@ -263,10 +249,7 @@ private fun MerchantGroceryCatalogCard(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 4.dp)
                 )
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(5.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = sellingPrice,
@@ -275,6 +258,7 @@ private fun MerchantGroceryCatalogCard(
                 },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
+                enabled = !busy, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 label = { Text("ราคาหน้าร้าน") }
             )
             OutlinedTextField(
@@ -282,8 +266,12 @@ private fun MerchantGroceryCatalogCard(
                 onValueChange = { stockQty = it.filter(Char::isDigit).take(8) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
+                enabled = !busy, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 label = { Text("สต็อก") }
             )
+        }
+
+            }
         }
 
         Spacer(Modifier.height(5.dp))
@@ -304,19 +292,6 @@ private fun MerchantGroceryCatalogCard(
                 enabled = !busy
             )
             Text("เดลิเวอรี่ลูกค้า", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        }
-
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("นับสต็อก", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-            Switch(
-                checked = stockTracking,
-                onCheckedChange = { stockTracking = it },
-                enabled = !busy
-            )
         }
 
         Box(
@@ -353,7 +328,8 @@ private fun MerchantGroceryCatalogCard(
                     )
                 )
             },
-            enabled = !busy,
+            enabled = !busy && storePrice != null && storePrice.isFinite() && storePrice > 0 && (posAvailable || deliveryAvailable),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = QgRed),
             modifier = Modifier.fillMaxWidth().height(46.dp)
         ) {
             Text(

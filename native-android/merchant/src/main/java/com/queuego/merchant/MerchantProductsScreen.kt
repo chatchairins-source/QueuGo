@@ -54,9 +54,13 @@ internal fun MerchantProductsScreen(
 ) {
     var query by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf("all") }
+    var category by remember { mutableStateOf("") }
+    val pricedProducts = merchantPricedProducts(products, shopCategory == "grocery")
+    val categories = pricedProducts.map { it.category }.filter { it.isNotBlank() }.distinct().sorted()
     val cleanQuery = query.trim().lowercase()
-    val rows = remember(products, cleanQuery, mode) {
-        products.filter { product ->
+    val rows = remember(pricedProducts, cleanQuery, mode, category) {
+        pricedProducts.filter { product ->
+            (category.isBlank() || product.category == category) &&
             (mode == "all" ||
                 (mode == "on" && product.available) ||
                 (mode == "off" && !product.available)) &&
@@ -65,10 +69,12 @@ internal fun MerchantProductsScreen(
         }
     }
 
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(
         Modifier
             .fillMaxSize()
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = 12.dp),
+        contentPadding = PaddingValues(bottom = if (shopCategory == "grocery") 136.dp else 20.dp)
     ) {
         item(key = "products-header") {
             Spacer(Modifier.height(8.dp))
@@ -105,6 +111,7 @@ internal fun MerchantProductsScreen(
                 }
             }
 
+            if (shopCategory == "grocery") MerchantCategorySelect(categories, category, !busy) { category = it }
             Spacer(Modifier.height(9.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 MerchantProductFilter("ทั้งหมด", "all", mode) { mode = it }
@@ -143,7 +150,7 @@ internal fun MerchantProductsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     QgRemoteImage(
-                        source = product.image,
+                        source = product.image ?: product.catalogPreviewImage,
                         modifier = Modifier.size(66.dp),
                         fallback = product.name,
                         cornerRadius = 12.dp,
@@ -184,41 +191,23 @@ internal fun MerchantProductsScreen(
             }
         }
 
-        item(key = "products-add") {
-            Spacer(Modifier.height(8.dp))
-            if (shopCategory == "grocery") {
-                OutlinedButton(
-                    onClick = onAddManual,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) {
-                    QgIcon("plus", Modifier.size(18.dp), QgRed)
-                    Spacer(Modifier.width(7.dp))
-                    Text("เพิ่มสินค้าเอง", fontWeight = FontWeight.ExtraBold)
-                }
-                Spacer(Modifier.height(8.dp))
-                Button(
-                    onClick = onOpenCatalog,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) {
-                    QgIcon("box", Modifier.size(18.dp), Color.White)
-                    Spacer(Modifier.width(7.dp))
-                    Text("เพิ่มสินค้าจากแคตตาล็อก", fontWeight = FontWeight.ExtraBold)
-                }
-            } else {
-                Button(
-                    onClick = onOpenCatalog,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) {
-                    QgIcon("plus", Modifier.size(18.dp), Color.White)
-                    Spacer(Modifier.width(7.dp))
-                    Text("เพิ่มสินค้า", fontWeight = FontWeight.ExtraBold)
-                }
+        if (shopCategory != "grocery") item(key = "products-add") {
+            Button(onClick = onOpenCatalog, enabled = !busy, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                Text("เพิ่มสินค้า", fontWeight = FontWeight.ExtraBold)
             }
-            Spacer(Modifier.height(28.dp))
         }
+    }
+    if (shopCategory == "grocery") {
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.White).padding(12.dp)) {
+            Button(onClick = onAddManual, enabled = !busy,
+                colors = ButtonDefaults.buttonColors(containerColor = QgRed),
+                modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("เพิ่มสินค้าเอง", fontWeight = FontWeight.ExtraBold) }
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = onOpenCatalog, enabled = !busy,
+                colors = ButtonDefaults.buttonColors(containerColor = QgRed),
+                modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("เพิ่มสินค้าจากแคตตาล็อก", fontWeight = FontWeight.ExtraBold) }
+        }
+    }
     }
 }
 

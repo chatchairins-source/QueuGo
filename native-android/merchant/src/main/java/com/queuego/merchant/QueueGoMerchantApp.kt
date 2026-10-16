@@ -133,6 +133,9 @@ private fun MerchantShell(
     var groceryCatalogOffset by remember { mutableIntStateOf(0) }
     var groceryCatalogHasMore by remember { mutableStateOf(false) }
     var groceryCatalogLoading by remember { mutableStateOf(false) }
+    var groceryCatalogError by remember { mutableStateOf<String?>(null) }
+    var groceryCatalogGeneration by remember { mutableIntStateOf(0) }
+    val groceryOwner by rememberUpdatedState(auth.user.id)
     var orderItems by remember { mutableStateOf<List<MerchantOrderItem>>(emptyList()) }
     var gpRate by remember { mutableStateOf(0.0) }
     var loading by remember { mutableStateOf(true) }
@@ -318,34 +321,34 @@ private fun MerchantShell(
 
     suspend fun refreshGroceryCatalog() {
         val activeShop = shop ?: return
-        if (activeShop.category != "grocery") {
-            groceryCatalogItems = emptyList()
-            groceryCatalogHasMore = false
-            return
-        }
+        if (activeShop.category != "grocery") return
+        val generation = ++groceryCatalogGeneration
+        val owner = auth.user.id
+        fun current() = generation == groceryCatalogGeneration && groceryOwner == owner &&
+            shop?.id == activeShop.id && screen == "grocery-catalog"
         groceryCatalogLoading = true
+        groceryCatalogError = null
         try {
             if (groceryCatalogCategories.isEmpty()) {
-                groceryCatalogCategories = runCatching {
-                    api.groceryCatalogCategories(auth)
-                }.getOrDefault(emptyList())
+                val categories = api.groceryCatalogCategories(auth, activeShop.id)
+                if (!current()) return
+                groceryCatalogCategories = categories
             }
-            val page = api.groceryCatalogPage(
-                auth = auth,
-                shopId = activeShop.id,
-                query = groceryCatalogQuery,
-                category = groceryCatalogCategory,
-                mode = groceryCatalogMode,
-                offset = groceryCatalogOffset
-            )
+            val page = api.groceryCatalogPage(auth, activeShop.id, groceryCatalogQuery,
+                groceryCatalogCategory, groceryCatalogMode, groceryCatalogOffset)
+            if (!current()) return
             groceryCatalogItems = page.items
             groceryCatalogHasMore = page.hasMore
         } catch (failure: kotlinx.coroutines.CancellationException) {
             throw failure
         } catch (failure: Exception) {
-            message = failure.message ?: "โหลดแคตตาล็อกสินค้าไม่สำเร็จ"
+            if (current()) {
+                groceryCatalogError = failure.message ?: "โหลดแคตตาล็อกสินค้าไม่สำเร็จ"
+                groceryCatalogItems = emptyList()
+                groceryCatalogHasMore = false
+            }
         } finally {
-            groceryCatalogLoading = false
+            if (generation == groceryCatalogGeneration) groceryCatalogLoading = false
         }
     }
 
@@ -497,7 +500,10 @@ private fun MerchantShell(
         groceryCatalogOffset,
         auth.session.accessToken
     ) {
-        if (screen == "grocery-catalog") refreshGroceryCatalog()
+        if (screen == "grocery-catalog") lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            refreshGroceryCatalog()
+            kotlinx.coroutines.awaitCancellation()
+        }
     }
 
     fun runAction(order: MerchantOrder, action: String, reason: String? = null) {
@@ -745,6 +751,8 @@ private fun MerchantShell(
                             gpRate = gpRate,
                             loading = groceryCatalogLoading,
                             busy = busy,
+                            error = groceryCatalogError,
+                            onRetry = { if (!busy && !groceryCatalogLoading) scope.launch { refreshGroceryCatalog() } },
                             onSearch = {
                                 groceryCatalogQuery = it
                                 groceryCatalogOffset = 0
@@ -762,32 +770,32 @@ private fun MerchantShell(
                                 if (!busy) {
                                     busy = true
                                     scope.launch {
-                                        runCatching {
-                                            api.saveGroceryCatalogItem(
-                                                auth = auth,
-                                                shopId = activeShop.id,
-                                                item = item,
-                                                draft = draft
-                                            )
-                                            val freshProducts = api.loadProducts(auth, activeShop.id)
-                                            val freshPage = api.groceryCatalogPage(
-                                                auth = auth,
-                                                shopId = activeShop.id,
-                                                query = groceryCatalogQuery,
-                                                category = groceryCatalogCategory,
-                                                mode = groceryCatalogMode,
-                                                offset = groceryCatalogOffset
-                                            )
-                                            freshProducts to freshPage
-                                        }.onSuccess { (freshProducts, freshPage) ->
-                                            products = freshProducts
-                                            groceryCatalogItems = freshPage.items
-                                            groceryCatalogHasMore = freshPage.hasMore
-                                            message = "บันทึกสินค้าในแคตตาล็อกแล้ว"
-                                        }.onFailure {
-                                            message = it.message ?: "บันทึกสินค้าไม่สำเร็จ"
+                                        var confirmed = false
+                                        try {
+                                            api.saveGroceryCatalogItem(auth, activeShop.id, item, draft)
+                                            confirmed = true
+                                            if (groceryOwner == auth.user.id && shop?.id == activeShop.id) {
+                                                message = "เพิ่มสินค้าเข้าร้านแล้ว"
+                                            }
+                                        } catch (failure: kotlinx.coroutines.CancellationException) {
+                                            throw failure
+                                        } catch (failure: Exception) {
+                                            message = "ยังยืนยันการบันทึกไม่ได้ กรุณาตรวจรายการในร้านก่อนลองใหม่: " + failure.message
+                                        } finally {
+                                            if (!confirmed) busy = false
                                         }
-                                        busy = false
+                                        if (confirmed) {
+                                            try {
+                                                val freshProducts = api.loadProducts(auth, activeShop.id)
+                                                if (groceryOwner == auth.user.id && shop?.id == activeShop.id) products = freshProducts
+                                                if (screen == "grocery-catalog") refreshGroceryCatalog()
+                                                if (groceryCatalogError != null) message = "บันทึกแล้ว แต่ยังโหลดข้อมูลล่าสุดไม่ได้"
+                                            } catch (failure: kotlinx.coroutines.CancellationException) {
+                                                throw failure
+                                            } catch (_: Exception) {
+                                                message = "บันทึกแล้ว แต่ยังโหลดข้อมูลล่าสุดไม่ได้"
+                                            } finally { busy = false }
+                                        }
                                     }
                                 }
                             },
