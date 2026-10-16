@@ -1,3 +1,8 @@
+## 2026-10-16 Owner requests real-device Merchant APK link
+- Owner explicitly requests a copyable public URL to send via LINE/Facebook and install the Android Merchant build on a real device. Publish the existing exact-source debug APK as a clearly labeled test prerelease; no signed Play release or production mutation is authorized by this request.
+- Source 95ef486d5c7d801c0b76cd82080c2549a4c4c57a: Merchant run38833240994 and full Native pilot38833240623 SUCCESS, including all-role JVM tests, three APKs,16KB and emulator checks. Artifact12018670716 digest f4a0ca6734f1442f7eae67c955c8351eba187308b4b6744ce6c86cefc2af5119.
+- Isolated publication workflow verifies both exact-source runs and archive digest, verifies APK signature, and publishes only Merchant APK with checksum and signature evidence. Physical authenticated catalog acceptance remains pending owner testing. Existing RiderReturnService is retained; no unrelated Rider/iOS changes.
+
 ## 2026-10-16 Owner approved Web catalog; Android resumed
 - Owner approved deployed Web direct category selector and explicitly requested Android continuation. Successor `work-native-merchant-grocery-approved-web-20261016` preserves paused PR355 a8d5528e67c831108a1170dec62fd11bf485a7a7 and its Native/credit ancestry; backup `backup/native-before-approved-grocery-web-20261016`. Do not merge stale Web/credit work into main.
 - Merchant Android uses existing Production source_categories/source_search/source_add_to_shop RPCs for the approved 10,000 active non-frozen source catalog. Category filters precede paging; retain the 51-row sentinel. No Production data mutation or new backend is required.

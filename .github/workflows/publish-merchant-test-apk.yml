@@ -1,0 +1,65 @@
+name: Publish owner-requested Merchant test APK
+on:
+  push:
+    branches: [work-merchant-test-apk-link-20261016]
+    paths: [.github/workflows/publish-merchant-test-apk.yml]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: merchant-test-apk-20261016
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: chatchairins-source/QueuGo
+      SOURCE_SHA: 95ef486d5c7d801c0b76cd82080c2549a4c4c57a
+      PILOT_RUN: '38833240623'
+      MERCHANT_RUN: '38833240994'
+    steps:
+      - name: Require successful exact-source checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          for run_id in "$PILOT_RUN" "$MERCHANT_RUN"; do
+            gh api "repos/$GH_REPO/actions/runs/$run_id" > run.json
+            jq -e --arg source "$SOURCE_SHA" '.head_sha == $source and .status == "completed" and .conclusion == "success"' run.json
+          done
+          gh api "repos/$GH_REPO/actions/artifacts/12018670716" > artifact.json
+          jq -e --arg source "$SOURCE_SHA" '.expired == false and .workflow_run.head_sha == $source and .workflow_run.id == 38833240623 and .name == "queuego-native-pilot-apks" and .digest == "sha256:f4a0ca6734f1442f7eae67c955c8351eba187308b4b6744ce6c86cefc2af5119"' artifact.json
+      - name: Download and verify the tested APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/artifacts/12018670716/zip" > native.zip
+          echo "f4a0ca6734f1442f7eae67c955c8351eba187308b4b6744ce6c86cefc2af5119  native.zip" | sha256sum -c -
+          unzip -q native.zip -d extracted
+          mapfile -t apks < <(find extracted -type f -name merchant-debug.apk)
+          test "${#apks[@]}" -eq 1
+          cp "${apks[0]}" QueueGo-Merchant-Test-20261016.apk
+          signer="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$signer"
+          "$signer" verify --verbose --print-certs QueueGo-Merchant-Test-20261016.apk > apk-signature.txt
+          sha256sum QueueGo-Merchant-Test-20261016.apk > SHA256SUMS.txt
+      - name: Publish a public testing download
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=merchant-test-20261016
+          cat > notes.md <<'NOTES'
+          Android Merchant test APK requested by the owner for installation on a real device.
+
+          Includes direct category selection, fixed product-add actions, source catalog search and hiding unpriced Grocery drafts. Source: 95ef486d5c7d801c0b76cd82080c2549a4c4c57a.
+
+          Full Native pilot checks, all-role unit tests, three APK builds, 16 KB packaging and emulator launch checks passed. Merchant Kotlin and catalog behavioral tests passed separately. Real-device authenticated catalog acceptance remains to be performed by the tester.
+
+          Debug-signed testing build, Android 8.0 or newer. This is not a certified Play Store release. No production order, payment, credit or database configuration was changed for publication.
+          NOTES
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to overwrite its assets.' >&2
+            exit 1
+          fi
+          gh release create "$tag" QueueGo-Merchant-Test-20261016.apk SHA256SUMS.txt apk-signature.txt --target "$SOURCE_SHA" --prerelease --title 'QueueGo Merchant — Android test 2026-10-16' --notes-file notes.md
