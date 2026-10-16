@@ -55,13 +55,16 @@ assert(riderManifest.includes('android.permission.FOREGROUND_SERVICE_LOCATION')&
   locationService.includes('ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION')&&
   locationService.includes('START_NOT_STICKY'),
   'Navigation location must use the Android location foreground-service contract without requesting broad background-location permission');
-assert(integration.includes('Lifecycle.Event.ON_RESUME && navigationActive')&&
+assert(integration.includes('Lifecycle.Event.ON_RESUME')&&
+  !integration.includes('Lifecycle.Event.ON_RESUME && navigationActive')&&
+  integration.includes('The visible Rider map must always own a fresh GPS fix')&&
   integration.includes('RiderNavigationLocationService.start(context)')&&
+  integration.includes('if (!navigationActive) {')&&
   integration.includes('RiderNavigationLocationService.stop(context)')&&
-  integration.includes('do not stop an active navigation service when Compose unmounts')&&
+  integration.includes('RiderNavigationLocationService.start(context)\n            viewModeState = viewModeController.onRecenter()')&&
   !integration.includes('Lifecycle.Event.ON_PAUSE -> locationEngine.stop()')&&
   !integration.includes('RiderNavigationLocationEngine'),
-  'Navigation GPS must start while the Activity is visible, survive pause/tab unmount, and stop only when navigation is no longer active');
+  'Visible Rider map and recenter must own a fresh GPS fix; active navigation must keep foreground GPS through tab/background transitions');
 assert(map.includes('val holder = remember(stateKey, lifecycle)')&&map.includes('AndroidView(')&&map.includes('factory =')&&map.includes('update ='),
   'MapView owner must survive normal Compose recomposition and lifecycle-safe tab remounts while only updating overlays');
 assert(map.includes('Deliberately keep lastRiderFix, map, pins and route layers')&&
