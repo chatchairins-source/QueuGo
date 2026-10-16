@@ -10,7 +10,7 @@ const OVERPASS_ENDPOINTS=[
 ];
 const OSRM_ENDPOINT="https://router.project-osrm.org/route/v1/driving/";
 const NOMINATIM_ENDPOINT="https://nominatim.openstreetmap.org/search";
-const DRR_SERVICE="https://gis.drr.go.th/arcgis/rest/services/DRR_Feature/FeatureServer";
+const DRR_SERVICE="https://gis.drr.go.th/arcgis/rest/services/DRR_Feature/FeatureServer";\nconst NGIS_HIGHWAY_SERVICE="https://ngis.go.th/arcgis/rest/services/Hosted/%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%AB%E0%B8%A5%E0%B8%A7%E0%B8%87%E0%B9%81%E0%B8%9C%E0%B9%88%E0%B8%99%E0%B8%94%E0%B8%B4%E0%B8%99/FeatureServer/0";
 
 const state={
   map:null,
@@ -117,7 +117,7 @@ function addDataLayers(){
   map.addLayer({id:"route",type:"line",source:"route",paint:{"line-color":"#e6002d","line-width":["interpolate",["linear"],["zoom"],8,3.5,16,7],"line-opacity":0.96}});
   map.addSource("route-points",{type:"geojson",data:emptyCollection()});
   map.addLayer({id:"route-points",type:"circle",source:"route-points",paint:{"circle-radius":8,"circle-color":["match",["get","role"],"start","#16a34a","#e6002d"],"circle-stroke-width":3,"circle-stroke-color":"#fff"}});
-  ["signals","safety","pois"].forEach(function(layer){
+  ["signals","safety","pois","ngis","drr"].forEach(function(layer){
     map.on("click",layer,function(e){if(e.features&&e.features[0])showFeature(e.features[0])});
     map.on("mouseenter",layer,function(){map.getCanvas().style.cursor="pointer"});
     map.on("mouseleave",layer,function(){map.getCanvas().style.cursor=""});
@@ -215,6 +215,47 @@ async function loadPois(){
     setSource("osm","error","โหลดสถานที่อ่อนไหวไม่สำเร็จ");
   }
 }
+function esriGeometryToGeoJSON(geometry){
+  if(!geometry)return null;
+  if(Array.isArray(geometry.paths)){
+    return geometry.paths.length===1
+      ? {type:"LineString",coordinates:geometry.paths[0]}
+      : {type:"MultiLineString",coordinates:geometry.paths};
+  }
+  if(Array.isArray(geometry.rings))return {type:"Polygon",coordinates:geometry.rings};
+  if(validCoord(geometry.x,geometry.y))return {type:"Point",coordinates:[Number(geometry.x),Number(geometry.y)]};
+  return null;
+}
+async function loadNgis(){
+  if(state.ngis.features.length)return;
+  setSource("ngis","loading","กำลังโหลดทางหลวงแผ่นดินในขอบเขตบุรีรัมย์");
+  try{
+    const envelope="102.442357,14.132135,103.499967,15.789217";
+    const query=NGIS_HIGHWAY_SERVICE+"/query?where=1%3D1&geometry="+encodeURIComponent(envelope)+"&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&outSR=4326&returnGeometry=true&resultRecordCount=2000&f=json";
+    const res=await fetchTimeout(query,{},25000);
+    if(!res.ok)throw Error("NGIS HTTP "+res.status);
+    const json=await res.json();
+    if(json.error)throw Error(json.error.message||"NGIS ArcGIS error");
+    const features=(json.features||[]).map(function(row,i){
+      const geometry=esriGeometryToGeoJSON(row.geometry);
+      if(!geometry)return null;
+      return {type:"Feature",geometry:geometry,properties:Object.assign({
+        source:"NGIS / กระทรวงคมนาคม",
+        source_layer:"ทางหลวงแผ่นดิน",
+        source_row:i
+      },row.attributes||{})};
+    }).filter(Boolean);
+    if(!features.length)throw Error("NGIS ไม่มีข้อมูลที่อ่านได้ในขณะนี้");
+    state.ngis={type:"FeatureCollection",features:features};
+    updateSource("ngis",state.ngis);
+    el("countNgis").textContent=fmt(features.length);
+    setSource("ngis","ok",fmt(features.length)+" รายการทางหลวงแผ่นดินในบุรีรัมย์");
+  }catch(err){
+    console.warn("NGIS",err);
+    el("countNgis").textContent="!";
+    setSource("ngis","error","ปลายทาง NGIS ไม่ตอบสนองหรือ CORS ไม่พร้อม · แยกความล้มเหลวจากแผนที่หลัก");
+  }
+}
 async function loadDrr(){
   if(state.drr.features.length){return}
   setSource("drr","loading","กำลังตรวจ FeatureServer และชั้นโครงข่ายถนน");
@@ -257,7 +298,7 @@ function setVisibility(layer,visible){
   if(state.map&&state.map.getLayer(layer))state.map.setLayoutProperty(layer,"visibility",visible?"visible":"none");
 }
 function handleMapClick(e){
-  const hit=state.map&&e.point?state.map.queryRenderedFeatures(e.point,{layers:["signals","safety","pois"]}):[];
+  const hit=state.map&&e.point?state.map.queryRenderedFeatures(e.point,{layers:["signals","safety","pois","ngis","drr"]}):[];
   if((e.features&&e.features.length)||(hit&&hit.length))return;
   if(!validCoord(e.lngLat.lng,e.lngLat.lat))return;
   if(state.picking==="start"||!state.start){
@@ -396,7 +437,7 @@ function clearRoute(){
   el("routeStats").hidden=true;setSource("route","idle","OSRM public demo · ใช้เพื่อทดสอบเท่านั้น");syncRoutePoints();
 }
 function exportGeojson(){
-  const all=[].concat(state.signals.features,state.safety.features,state.pois.features,state.drr.features);
+  const all=[].concat(state.signals.features,state.safety.features,state.pois.features,state.ngis.features,state.drr.features);
   const payload={
     type:"FeatureCollection",
     name:"QueueGo Buriram Map Lab export",
@@ -418,8 +459,8 @@ function bind(){
   el("toggleSignals").onchange=function(e){setVisibility("signals",e.target.checked);setVisibility("signals-halo",e.target.checked)};
   el("toggleSafety").onchange=function(e){setVisibility("safety",e.target.checked)};
   el("togglePois").onchange=function(e){setVisibility("pois",e.target.checked);if(e.target.checked)loadPois()};
-  el("toggleDrr").onchange=function(e){setVisibility("drr",e.target.checked);if(e.target.checked)loadDrr()};
-  el("refreshData").onclick=function(){abortActive();state.signals=emptyCollection();state.safety=emptyCollection();updateSource("signals",state.signals);updateSource("safety",state.safety);loadCoreData();if(el("togglePois").checked){state.pois=emptyCollection();loadPois()}if(el("toggleDrr").checked){state.drr=emptyCollection();loadDrr()}};
+  el("toggleNgis").onchange=function(e){setVisibility("ngis",e.target.checked);if(e.target.checked)loadNgis()};\n  el("toggleDrr").onchange=function(e){setVisibility("drr",e.target.checked);if(e.target.checked)loadDrr()};
+  el("refreshData").onclick=function(){abortActive();state.signals=emptyCollection();state.safety=emptyCollection();updateSource("signals",state.signals);updateSource("safety",state.safety);loadCoreData();if(el("togglePois").checked){state.pois=emptyCollection();loadPois()}if(el("toggleNgis").checked){state.ngis=emptyCollection();updateSource("ngis",state.ngis);loadNgis()}if(el("toggleDrr").checked){state.drr=emptyCollection();updateSource("drr",state.drr);loadDrr()}};
   el("exportGeojson").onclick=exportGeojson;
   el("closeFeature").onclick=function(){el("featureDialog").close?el("featureDialog").close():el("featureDialog").removeAttribute("open")};
   el("searchForm").onsubmit=async function(e){
