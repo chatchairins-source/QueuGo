@@ -2711,46 +2711,30 @@ private fun RiderHome(
             }
         }
 
-        val activeSheetJob = snapshot?.activeJob
+        val activeSheetJob = mapJob.takeIf { activeNavigationWork }
         val expandedSheetHeight = (maxHeight - 132.dp).coerceAtLeast(0.dp)
-        val fixedJobCardMaxHeight = if (activeSheetJob != null) {
-            if (activeNavigationWork) {
-                // Keep the route, Rider puck and next turn visible while moving.
-                // Full job details remain scrollable inside the compact dock.
-                (maxHeight * 0.34f).coerceAtLeast(180.dp).coerceAtMost(300.dp)
-            } else {
-                (maxHeight * 0.56f).coerceAtLeast(220.dp)
-            }
-        } else {
-            expandedSheetHeight
-        }
-        val sheetScrollState = rememberScrollState()
+        val dockMaximumHeight = if (activeSheetJob != null) {
+            // Expanded details leave the top map controls reachable; collapsed height
+            // is owned by RiderJobDock and defaults to a small summary above navigation.
+            (maxHeight * 0.62f).coerceAtMost((maxHeight - 200.dp).coerceAtLeast(92.dp))
+        } else expandedSheetHeight
         val dockModifier = Modifier
             .align(Alignment.BottomCenter)
             .padding(bottom = 68.dp)
             .widthIn(max = 676.dp)
             .fillMaxWidth()
-            .heightIn(max = fixedJobCardMaxHeight)
-            .then(
-                if (activeSheetJob != null) {
-                    Modifier
-                        .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-                        .background(Color(0xF8FFFFFF))
-                } else {
-                    Modifier
-                }
-            )
 
-        Column(
-            dockModifier
-                .onGloballyPositioned { coordinates ->
-                    navigationBottomInsetPx = maxOf(
-                        coordinates.size.height,
-                        with(navigationDensity) { 68.dp.roundToPx() }
-                    )
-                }
-                .verticalScroll(sheetScrollState)
-                .padding(horizontal = 8.dp, vertical = if (activeSheetJob != null) 8.dp else 0.dp)
+        RiderJobDock(
+            jobKey = activeSheetJob?.id,
+            title = activeSheetJob?.let { "งาน " + it.numberLabel }.orEmpty(),
+            destination = activeSheetJob?.let {
+                (if (it.isDelivering) it.deliveryAddress else it.pickupAddress)
+                    ?.takeIf { address -> address.isNotBlank() }
+            } ?: "ลากขึ้นเพื่อดูรายละเอียดงาน",
+            maximumHeight = dockMaximumHeight,
+            modifier = dockModifier.onGloballyPositioned { coordinates ->
+                navigationBottomInsetPx = coordinates.size.height + with(navigationDensity) { 68.dp.roundToPx() }
+            }
         ) {
         if (auth.user.status != "active") {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {

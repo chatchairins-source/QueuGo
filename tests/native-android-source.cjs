@@ -354,16 +354,15 @@ ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes(
 ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
 ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
 ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
+const riderJobDock=read('rider/src/main/java/com/queuego/rider/RiderJobDock.kt');
 ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
-   riderApp.includes('val fixedJobCardMaxHeight = if (activeSheetJob != null)')&&
-   riderApp.includes('(maxHeight * 0.56f).coerceAtLeast(220.dp)')&&
-   riderApp.includes('.heightIn(max = fixedJobCardMaxHeight)')&&
-   !riderApp.includes('jobSheetExpanded')&&
-   !riderApp.includes('draggedSheetHeightPx')&&
-   !riderApp.includes('sheetDragModifier')&&
-   !riderApp.includes('RiderMiniJobSheet(')&&
-   riderApp.includes('recenterSignal'),
-   'Rider native must keep a fixed non-draggable active job card over the map with recenter control');
+   riderApp.includes('RiderJobDock(')&&riderApp.includes('jobKey = activeSheetJob?.id')&&
+   riderApp.includes('(maxHeight * 0.62f)')&&
+   riderApp.includes('navigationBottomInsetPx = coordinates.size.height + with(navigationDensity) { 68.dp.roundToPx() }')&&
+   riderJobDock.includes('rememberSaveable(jobKey)')&&riderJobDock.includes('.draggable(')&&
+   riderJobDock.includes('onClick = ::toggle')&&riderJobDock.includes('Modifier.weight(1f).fillMaxWidth().clipToBounds().verticalScroll(scroll)')&&
+   !riderJobDock.includes('AndroidView')&&riderApp.includes('recenterSignal'),
+   'Rider job dock must expand/collapse over retained map, preserve card content and measure camera inset including bottom navigation');
 ok(riderApp.includes('var auth by remember { mutableStateOf<QueueGoAuth?>(null) }')&&
    riderApp.includes('var restoring by remember { mutableStateOf(true) }')&&
    riderApp.includes('val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&
