@@ -321,6 +321,15 @@ internal fun QueueGoRiderNavigationMap(
     val navigationActive = stops.any { !it.completed && it.point.valid }
     val riderFix by RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()
 
+    LaunchedEffect(navigationActive) {
+        if (!navigationActive) {
+            // Leaving a job must also leave navigation perspective. Restore the normal
+            // top-down FOLLOW camera even if the Rider used overview/free-pan during work.
+            viewModeState = viewModeController.onRecenter()
+            pendingViewModePersistence = NavigationViewMode.FOLLOW.name
+        }
+    }
+
     DisposableEffect(lifecycle, navigationActive, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
