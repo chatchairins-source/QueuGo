@@ -63,6 +63,14 @@ ok(riderLogin.includes('Text("Queue"')&&riderLogin.includes('Text("Go"')&&
 
 const riderHome=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const merchantHome=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt','utf8');
+const customerHome=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt','utf8');
+const sharedDesign=fs.readFileSync('native-android/shared/src/main/java/com/queuego/shared/QueueGoDesign.kt','utf8');
+ok(customerHome.includes('"ride" to "บริการเรียกรถ"')&&
+   customerHome.includes('"ride" -> "ride"')&&
+   !customerHome.includes('item(key = "home-ride")'),
+   'Passenger Ride must live in the same Customer Home category icon group, never as a standalone full-width button');
+ok(sharedDesign.includes('"ride" -> {'),
+   'QueueGo shared icon family must include the dedicated Passenger Ride category icon');
 const riderApi=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
 const riderStore=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/SessionStore.kt','utf8');
 ok(riderStore.includes('setOf("home", "earn", "chat", "profile")')&&
