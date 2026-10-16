@@ -1,0 +1,44 @@
+name: Publish three tested APK download links
+on:
+  push:
+    branches: [delivery-tested-apks-20261016]
+    paths: ['.github/workflows/publish-three-tested-apks.yml']
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish-tested-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify gates and publish the existing three-app artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_HEAD: 8bade7360df96fb3bb925dc5b911ced483cbd6ba
+          SOURCE_RUN: '38897785344'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" --jq .head_sha)" = "$SOURCE_HEAD"
+          test "$(gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" --jq .conclusion)" = success
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs?per_page=100" > gates.json
+          python3 - <<'PY'
+          import json
+          jobs = {j["name"]: j["conclusion"] for j in json.load(open("gates.json"))["jobs"]}
+          required = ["native-pilot", "map-display-only", "navigation-map-runtime", "maplibre-osm-runtime", "continuous-dispatch-races", "passenger-ride-races", "credit-races"]
+          assert all(jobs.get(name) == "success" for name in required), jobs
+          PY
+          gh run download "$SOURCE_RUN" --name queuego-native-pilot-apks --dir pilot-apks
+          for app in customer merchant rider; do
+            mapfile -t matches < <(find pilot-apks -type f -name "$app-debug.apk")
+            test "${#matches[@]}" -eq 1
+            role="${app^}"
+            cp "${matches[0]}" "QueueGo-$role-Test-8bade736.apk"
+            unzip -t "QueueGo-$role-Test-8bade736.apk" >/dev/null
+          done
+          echo "303bc6a7b9d9d776d458587eefb46bed00e7b5604325370cf9a2efe6c02b8af3  QueueGo-Rider-Test-8bade736.apk" | sha256sum -c -
+          sha256sum QueueGo-*-Test-8bade736.apk > SHA256SUMS-3-Apps.txt
+          printf 'Source HEAD: %s\nPilot run: %s\nAll seven automated gates passed. Existing exact-run APK artifacts; no rebuild. Physical testing remains pending. Test APKs only.\n' "$SOURCE_HEAD" "$SOURCE_RUN" > SOURCE-3-Apps.txt
+          gh release view rider-road-test-8bade736 >/dev/null
+          gh release upload rider-road-test-8bade736 QueueGo-Customer-Test-8bade736.apk QueueGo-Merchant-Test-8bade736.apk SHA256SUMS-3-Apps.txt SOURCE-3-Apps.txt
