@@ -190,3 +190,21 @@ The web lab can optionally request OSM road rules across Buriram:
 The visible line layer keeps the original OSM tags and source IDs. Turn-restriction relations are counted but are not converted into a fake line geometry.
 
 When a prototype route exists, QueueGo reports how many loaded restricted road segments lie near that route. This is an audit aid only; it is not proof that the current public routing endpoint or future QueueGo graph interpreted every restriction correctly.
+
+
+## Open global road coverage added (2026-10-16)
+
+QueueGo Map Lab now loads the current Overture Maps transportation PMTiles release (`2026-09-23.1`) as a low-opacity road overlay at street zooms. Overture transportation is a global open road network built primarily from OpenStreetMap and enhanced with TomTom and other local/regional authoritative sources. It includes segment/connectivity modeling intended for routing and navigation research and is published under ODbL.
+
+This overlay is intentionally not exposed as another large front-page checkbox. It is supporting road intelligence underneath the map. The normal user UI should remain map-first; diagnostics and source controls belong in settings/back-office tools.
+
+For the production QueueGo road build, use two complementary open inputs rather than assuming one dataset is complete:
+
+- Geofabrik Thailand OSM PBF: frequent Thailand extracts with the full OSM feature/tag graph, suitable for Valhalla/GraphHopper/OSRM ingestion.
+- Overture transportation: monthly global segment + connector network, useful as a second coverage/connectivity source and for comparing enhanced road/access metadata.
+- NGIS/DRR: Thai official verification/enrichment where licensing and field semantics permit.
+- QueueGo rider observations: local verified corrections, closures and navigation failures with provenance.
+
+OpenFreeMap and Protomaps are useful open rendering/distribution stacks, but they are not independent road surveys. Their basemaps are predominantly OSM-derived. QueueGo must keep the distinction between data source, renderer, tile distribution and routing graph.
+
+No source is allowed to be described as "100% every alley." Missing/new/private/restricted roads remain possible and require field validation.
