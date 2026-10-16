@@ -168,3 +168,10 @@ Do not call QueueGo Navigation production-ready until:
 - DRR open-data catalogue exposes road-network web services and describes the data as public/Open Data Common.
 - Thailand Ministry of Transport open-data catalogue publishes road-network map layers as WMS, but the catalogue entry should not be treated as a routing graph by itself.
 - Each non-OSM dataset must be reviewed for licence and redistribution conditions before being baked into QueueGo offline packages.
+
+
+## Additional safety data staged on the web prototype
+
+- DRR bridge network: data.go.th publishes the bridge web service as public geospatial data, JSON/database format, Open Data Common, with no access restriction, and points to FeatureServer layer 1.
+- The Map Lab loads that bridge layer separately from the DRR road network and keeps it separately attributable.
+- Public road-accident datasets also exist (including DRR accident records and national road-risk datasets). They are recorded as candidate enrichment sources, but Map Lab does not ingest them until a stable machine endpoint/field contract is pinned; accident history must not be treated as a real-time road closure.
