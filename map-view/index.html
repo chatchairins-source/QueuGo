@@ -54,7 +54,10 @@
     .route-option-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.route-option-top b{font-size:12px}.route-option-top span{font-size:9px;color:var(--red);font-weight:800}
     .route-option-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:5px;font-size:10px;color:var(--muted)}
     .route-option-note{margin-top:5px;font-size:9px;color:#625c63;line-height:1.35}
-    .route-sheet-actions{display:flex;gap:8px;margin-top:9px}.route-sheet-actions button{flex:1;border:0;border-radius:13px;padding:10px;font-weight:800}.route-sheet-actions .clear{background:#f2eff1;color:#302b30}.route-sheet-actions .close{background:#191619;color:#fff}
+    .route-sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.route-sheet-actions button{border:0;border-radius:13px;padding:10px;font-weight:800}.route-sheet-actions .clear{background:#f2eff1;color:#302b30}.route-sheet-actions .close{background:#191619;color:#fff}.route-sheet-actions .navigate{grid-column:1/-1;background:var(--red);color:#fff}
+    .nav-strip{position:fixed;z-index:33;left:10px;right:10px;top:calc(10px + var(--safe-t));display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 12px;border-radius:16px;background:rgba(23,21,25,.94);color:#fff;box-shadow:0 10px 28px rgba(0,0,0,.22);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+    .nav-strip small,.nav-strip b{display:block}.nav-strip small{font-size:9px;color:#cfc8cf}.nav-strip b{font-size:13px;margin-top:2px}.nav-metrics{display:flex;gap:10px;margin-top:4px;font-size:9px;color:#ddd}.nav-strip button{border:0;border-radius:11px;background:#fff;color:#191619;padding:9px 11px;font-weight:800;font-size:10px}
+    .traffic-note{margin-top:7px;padding:8px 9px;border-radius:11px;background:#f5f3f4;font-size:9px;line-height:1.4;color:#625c63}
 
     [hidden]{display:none!important}
     @media(min-width:760px){.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%)}.confirm-bar{left:50%;right:auto;width:520px;transform:translateX(-50%)}}
@@ -94,12 +97,23 @@
       </button>
     </div>
     <div id="routeList" class="route-list"></div>
+    <div id="routeTrafficNote" class="traffic-note">QueueGo จะใช้ไฟจราจร ข้อจำกัดถนน และประวัติความเร็วที่เครื่องเคยสังเกตเพื่อช่วยจัดอันดับเส้นทาง โดยไม่สร้างข้อมูลจราจรสดปลอม</div>
     <div class="route-sheet-actions">
       <button id="clearRoutePlan" class="clear" type="button">ล้างเส้นทาง</button>
       <button id="reselectDestination" class="close" type="button">เลือกปลายทางใหม่</button>
+      <button id="startNavigation" class="navigate" type="button">เริ่มนำทางและปรับเส้นทางอัตโนมัติ</button>
     </div>
-    <p class="source-note">เปรียบเทียบเวลา ระยะทาง และจำนวนไฟจราจรที่พบจากข้อมูลเปิด หากยังไม่มีข้อมูลจราจรสด เวลาที่แสดงเป็นเวลาประมาณการของเส้นทาง ไม่ใช่ ETA แบบ live traffic</p>
+    <p class="source-note">เวลารวมเป็นค่าประมาณจาก route engine + จำนวนไฟจราจร + ข้อมูลความเร็วที่อุปกรณ์นี้เคยสังเกตเมื่อมีตัวอย่างเพียงพอ ข้อมูลปิดถนน/ข้อจำกัดมาจากข้อมูลเปิดที่พบในเส้นทาง ไม่ใช่ feed สดจากตู้ควบคุมหรือศูนย์จราจร</p>
   </section>
+
+  <div id="navStrip" class="nav-strip" hidden>
+    <div>
+      <small>QUEUEGO MAP · LIVE ROUTE</small>
+      <b id="navInstruction">กำลังติดตามเส้นทาง</b>
+      <div class="nav-metrics"><span id="navEta">ETA —</span><span id="navSpeed">ความเร็ว —</span><span id="navOffset">บนเส้นทาง</span></div>
+    </div>
+    <button id="stopNavigation" type="button">หยุด</button>
+  </div>
 
   <section id="addressSheet" class="sheet" hidden aria-label="กรอกที่อยู่">
     <div class="sheet-handle"></div>
@@ -173,8 +187,12 @@
 
     const state={
       mode:null,pinMode:false,selected:null,address:null,nearbyVillages:[],nearbyRoads:[],dopaVillages:[],
-      routeStart:null,routeEnd:null,routes:[],trafficSignals:[],selectedRoute:0,routeStartMarker:null,routeEndMarker:null
+      routeStart:null,routeEnd:null,routes:[],trafficSignals:[],routeRestrictions:[],selectedRoute:0,routeStartMarker:null,routeEndMarker:null,
+      navigationActive:false,watchId:null,offRouteHits:0,lastRerouteAt:0,lastPosition:null,speedHistory:null
     };
+    const SIGNAL_EXPECTED_DELAY_SECONDS=20;
+    const RESTRICTION_PENALTY_SECONDS=90;
+    const SPEED_HISTORY_KEY="queuego_map_speed_history_v1";
     let toastTimer=0;
 
     const $=id=>document.getElementById(id);
@@ -331,6 +349,80 @@
       if(!data){console.warn(last);return []}
       return (data.elements||[]).filter(x=>Number.isFinite(Number(x.lon))&&Number.isFinite(Number(x.lat))).map(x=>[Number(x.lon),Number(x.lat)]);
     }
+    async function loadRouteRestrictions(routes){
+      const b=routeBounds(routes),pad=.006;
+      if(!Number.isFinite(b.west))return [];
+      const box=(b.south-pad)+","+(b.west-pad)+","+(b.north+pad)+","+(b.east+pad);
+      const q='[out:json][timeout:25];('+
+        'way["highway"="construction"]('+box+');'+
+        'way["access"="no"]('+box+');'+
+        'way["motor_vehicle"="no"]('+box+');'+
+        'way["motorcycle"="no"]('+box+');'+
+        'node["barrier"~"gate|block|bollard"]('+box+');'+
+        ');out center tags;';
+      let data=null,last=null;
+      for(const ep of OVERPASS){
+        try{
+          const r=await fetchTimeout(ep,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:"data="+encodeURIComponent(q)},30000);
+          if(!r.ok)throw Error("overpass "+r.status);data=await r.json();break;
+        }catch(e){last=e}
+      }
+      if(!data){console.warn(last);return []}
+      return (data.elements||[]).map(x=>{
+        const lon=Number(x.lon!=null?x.lon:x.center&&x.center.lon),lat=Number(x.lat!=null?x.lat:x.center&&x.center.lat),t=x.tags||{};
+        if(!Number.isFinite(lon)||!Number.isFinite(lat))return null;
+        return {point:[lon,lat],kind:t.highway==="construction"?"construction":"restriction",tags:t};
+      }).filter(Boolean);
+    }
+    function countRestrictions(route,items){
+      const line=route.geometry&&route.geometry.coordinates||[];let count=0;
+      for(const item of items){
+        let near=false;
+        for(let i=1;i<line.length;i++){if(pointSegmentDistance(item.point,line[i-1],line[i])<=35){near=true;break}}
+        if(near)count++;
+      }
+      return count;
+    }
+    function historyStore(){
+      if(state.speedHistory)return state.speedHistory;
+      try{state.speedHistory=JSON.parse(localStorage.getItem(SPEED_HISTORY_KEY)||"{}")||{}}catch(_){state.speedHistory={}}
+      return state.speedHistory;
+    }
+    function timeBucket(date=new Date()){
+      return (date.getDay()===0||date.getDay()===6?"w":"d")+"-"+Math.floor(date.getHours()/4);
+    }
+    function gridKey(lat,lon,date=new Date()){
+      return Number(lat).toFixed(3)+","+Number(lon).toFixed(3)+","+timeBucket(date);
+    }
+    function recordSpeedSample(position){
+      const c=position.coords||{},speed=Number(c.speed),accuracy=Number(c.accuracy);
+      if(!Number.isFinite(speed)||speed<1.5||speed>45||!Number.isFinite(accuracy)||accuracy>40)return;
+      const key=gridKey(c.latitude,c.longitude),store=historyStore(),row=store[key]||{count:0,avg_mps:0};
+      const count=Math.min(100,row.count+1);
+      row.avg_mps=row.avg_mps+(speed-row.avg_mps)/count;row.count=count;row.updated_at=Date.now();store[key]=row;
+      state.speedHistory=store;
+      try{localStorage.setItem(SPEED_HISTORY_KEY,JSON.stringify(store))}catch(_){}
+    }
+    function routeHistory(route){
+      const line=route.geometry&&route.geometry.coordinates||[],store=historyStore();
+      if(!line.length)return {samples:0,avgMps:null,duration:null};
+      const step=Math.max(1,Math.floor(line.length/80)),seen=new Set(),values=[];let samples=0;
+      for(let i=0;i<line.length;i+=step){
+        const c=line[i],key=gridKey(c[1],c[0]);if(seen.has(key))continue;seen.add(key);
+        const row=store[key];if(row&&row.count>=2&&row.avg_mps>1.5){values.push(row.avg_mps);samples+=row.count}
+      }
+      if(samples<5||!values.length)return {samples,avgMps:null,duration:null};
+      const avg=values.reduce((a,b)=>a+b,0)/values.length;
+      return {samples,avgMps:avg,duration:route.distance/avg};
+    }
+    function enrichRoute(route){
+      route.signalCount=countSignals(route,state.trafficSignals);
+      route.restrictionCount=countRestrictions(route,state.routeRestrictions);
+      const history=routeHistory(route);route.historySamples=history.samples;route.historySpeed=history.avgMps;
+      const base=history.duration!=null?Math.max(route.duration*.65,Math.min(route.duration*2.2,history.duration)):route.duration;
+      route.estimatedDuration=base+(route.signalCount*SIGNAL_EXPECTED_DELAY_SECONDS)+(route.restrictionCount*RESTRICTION_PENALTY_SECONDS);
+      return route;
+    }
     function toMeters(c,lat0){
       return [c[0]*111320*Math.cos(lat0*Math.PI/180),c[1]*110540];
     }
@@ -364,8 +456,8 @@
       const src=map.getSource("route-options");if(src)src.setData(routeFeatures());
       renderRouteList();
     }
-    function routeLabel(i,fastest,fewest,shortest){
-      if(i===fastest)return "เร็วที่สุด";
+    function routeLabel(i,recommended,fewest,shortest){
+      if(i===recommended)return "แนะนำเร็วสุด";
       if(i===fewest)return "ไฟแดงน้อยสุด";
       if(i===shortest)return "ระยะสั้นสุด";
       return "ทางเลือก";
@@ -373,41 +465,49 @@
     function renderRouteList(){
       const host=$("routeList");host.innerHTML="";
       if(!state.routes.length)return;
-      const fastest=state.routes.reduce((best,r,i,a)=>r.duration<a[best].duration?i:best,0);
-      const fewest=state.routes.reduce((best,r,i,a)=>r.signalCount<a[best].signalCount||(r.signalCount===a[best].signalCount&&r.duration<a[best].duration)?i:best,0);
+      const recommended=state.routes.reduce((best,r,i,a)=>r.estimatedDuration<a[best].estimatedDuration?i:best,0);
+      const fewest=state.routes.reduce((best,r,i,a)=>r.signalCount<a[best].signalCount||(r.signalCount===a[best].signalCount&&r.estimatedDuration<a[best].estimatedDuration)?i:best,0);
       const shortest=state.routes.reduce((best,r,i,a)=>r.distance<a[best].distance?i:best,0);
-      const fastestRoute=state.routes[fastest];
+      const bestRoute=state.routes[recommended];
       state.routes.forEach((r,i)=>{
-        const deltaMin=Math.max(0,Math.round((r.duration-fastestRoute.duration)/60));
-        const fewer=Math.max(0,fastestRoute.signalCount-r.signalCount);
-        const note=i===fastest
-          ?"ถึงเร็วที่สุดจากเวลาของ route engine"
-          :(fewer>0?"ไฟแดงน้อยกว่าเส้นทางเร็วสุด "+fewer+" จุด · ช้ากว่า "+deltaMin+" นาที":"ช้ากว่าเส้นทางเร็วสุด "+deltaMin+" นาที");
+        const deltaMin=Math.max(0,Math.round((r.estimatedDuration-bestRoute.estimatedDuration)/60));
+        const fewer=Math.max(0,bestRoute.signalCount-r.signalCount);
+        const history=r.historySamples>=5?(" · ประวัติความเร็ว "+r.historySamples+" ตัวอย่าง"):"";
+        const restriction=r.restrictionCount?(" · ข้อจำกัด/ก่อสร้าง "+r.restrictionCount+" จุด"):"";
+        const note=i===recommended
+          ?"คาดว่าจะถึงเร็วที่สุดจากเวลาเส้นทาง + ไฟจราจร + ข้อมูลที่มี"+history+restriction
+          :(fewer>0?"ไฟแดงน้อยกว่าเส้นทางแนะนำ "+fewer+" จุด · ช้ากว่าประมาณ "+deltaMin+" นาที"+history+restriction:"ช้ากว่าเส้นทางแนะนำประมาณ "+deltaMin+" นาที"+history+restriction);
         const b=document.createElement("button");b.type="button";b.className="route-option"+(i===state.selectedRoute?" selected":"");
-        b.innerHTML='<div class="route-option-top"><b>เส้นทาง '+(i+1)+'</b><span>'+routeLabel(i,fastest,fewest,shortest)+'</span></div>'+
-          '<div class="route-option-meta"><span>'+Math.max(1,Math.round(r.duration/60))+' นาที</span><span>'+(r.distance/1000).toLocaleString("th-TH",{maximumFractionDigits:1})+' กม.</span><span>ไฟแดง '+r.signalCount+' จุด</span></div>'+
+        b.innerHTML='<div class="route-option-top"><b>เส้นทาง '+(i+1)+'</b><span>'+routeLabel(i,recommended,fewest,shortest)+'</span></div>'+
+          '<div class="route-option-meta"><span>ประมาณ '+Math.max(1,Math.round(r.estimatedDuration/60))+' นาที</span><span>'+(r.distance/1000).toLocaleString("th-TH",{maximumFractionDigits:1})+' กม.</span><span>ไฟแดง '+r.signalCount+' จุด</span></div>'+
           '<div class="route-option-note">'+note+'</div>';
         b.onclick=()=>selectRoute(i);host.appendChild(b);
       });
     }
-    async function calculateRouteOptions(){
+    async function calculateRouteOptions(options={}){
       const a=state.routeStart,b=state.routeEnd;if(!a||!b)return;
-      toast("กำลังหาเส้นทางที่เร็วที่สุด");
+      toast(options.reroute?"กำลังปรับเส้นทางใหม่":"กำลังหาเส้นทางที่เร็วที่สุด");
       ensureRouteLayers();
       try{
         const url=OSRM+a.lon+","+a.lat+";"+b.lon+","+b.lat+"?alternatives=true&overview=full&geometries=geojson&steps=true";
         const r=await fetchTimeout(url,{},20000);if(!r.ok)throw Error("routing "+r.status);
         const j=await r.json();if(!j.routes||!j.routes.length)throw Error("no routes");
         state.routes=j.routes.slice(0,3);
-        toast("กำลังตรวจตำแหน่งไฟจราจรบนแต่ละทาง");
-        state.trafficSignals=await loadRouteSignals(state.routes);
-        state.routes.forEach(route=>{route.signalCount=countSignals(route,state.trafficSignals)});
-        state.selectedRoute=state.routes.reduce((best,r,i,a)=>r.duration<a[best].duration?i:best,0);
+        toast("กำลังตรวจไฟจราจรและข้อจำกัดถนน");
+        const intelligence=await Promise.allSettled([loadRouteSignals(state.routes),loadRouteRestrictions(state.routes)]);
+        state.trafficSignals=intelligence[0].status==="fulfilled"?intelligence[0].value:[];
+        state.routeRestrictions=intelligence[1].status==="fulfilled"?intelligence[1].value:[];
+        state.routes.forEach(enrichRoute);
+        state.selectedRoute=state.routes.reduce((best,r,i,a)=>r.estimatedDuration<a[best].estimatedDuration?i:best,0);
         map.getSource("route-options").setData(routeFeatures());
-        const bounds=new maplibregl.LngLatBounds();state.routes.forEach(r=>(r.geometry.coordinates||[]).forEach(c=>bounds.extend(c)));
-        map.fitBounds(bounds,{padding:{top:60,bottom:190,left:38,right:38},maxZoom:16,duration:500});
-        renderRouteList();$("routeSheet").hidden=false;toast("เปรียบเทียบเส้นทางพร้อม");
-      }catch(e){console.warn(e);toast("ยังคำนวณเส้นทางไม่ได้")}
+        if(options.fit!==false){
+          const bounds=new maplibregl.LngLatBounds();state.routes.forEach(r=>(r.geometry.coordinates||[]).forEach(c=>bounds.extend(c)));
+          map.fitBounds(bounds,{padding:{top:60,bottom:190,left:38,right:38},maxZoom:16,duration:500});
+        }
+        renderRouteList();
+        if(!state.navigationActive)$("routeSheet").hidden=false;
+        toast(options.reroute?"ปรับเส้นทางแล้ว":"เปรียบเทียบเส้นทางพร้อม");
+      }catch(e){console.warn(e);toast(options.reroute?"ปรับเส้นทางไม่สำเร็จ":"ยังคำนวณเส้นทางไม่ได้")}
     }
     async function confirmRouteDestination(){
       state.routeEnd=centerPoint();setPinMode(false);
@@ -415,8 +515,71 @@
       state.routeEndMarker=new maplibregl.Marker({element:markerEl("#e6002d")}).setLngLat([state.routeEnd.lon,state.routeEnd.lat]).addTo(map);
       await calculateRouteOptions();
     }
+    function selectedRoute(){
+      return state.routes[state.selectedRoute]||null;
+    }
+    function distanceToRoute(point,route){
+      const line=route&&route.geometry&&route.geometry.coordinates||[];let best=Infinity,bestIndex=0;
+      for(let i=1;i<line.length;i++){
+        const d=pointSegmentDistance(point,line[i-1],line[i]);
+        if(d<best){best=d;bestIndex=i}
+      }
+      return {distance:best,index:bestIndex};
+    }
+    function remainingMetrics(point,route){
+      const line=route&&route.geometry&&route.geometry.coordinates||[];
+      if(line.length<2)return {distance:0,duration:0};
+      const snap=distanceToRoute(point,route);let remain=0,total=0;
+      for(let i=1;i<line.length;i++){
+        const d=Math.hypot((line[i][0]-line[i-1][0])*111320*Math.cos(((line[i][1]+line[i-1][1])/2)*Math.PI/180),(line[i][1]-line[i-1][1])*110540);
+        total+=d;if(i>=snap.index)remain+=d;
+      }
+      const duration=(route.estimatedDuration||route.duration||0)*(total?remain/total:0);
+      return {distance:remain,duration,snapDistance:snap.distance};
+    }
+    async function rerouteFrom(position){
+      const now=Date.now();if(now-state.lastRerouteAt<20000||!state.routeEnd)return;
+      state.lastRerouteAt=now;state.offRouteHits=0;
+      state.routeStart={lat:position.coords.latitude,lon:position.coords.longitude};
+      await calculateRouteOptions({reroute:true,fit:false});
+    }
+    function onNavigationPosition(position){
+      if(!state.navigationActive)return;
+      const c=position.coords||{},lat=Number(c.latitude),lon=Number(c.longitude),accuracy=Number(c.accuracy);
+      if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
+      state.lastPosition={lat,lon,accuracy,speed:Number(c.speed),at:Date.now()};
+      recordSpeedSample(position);
+      const route=selectedRoute();if(!route)return;
+      const point=[lon,lat],m=remainingMetrics(point,route),speed=Number(c.speed);
+      $("navEta").textContent="ETA "+Math.max(1,Math.round(m.duration/60))+" นาที";
+      $("navSpeed").textContent=Number.isFinite(speed)&&speed>=0?"ความเร็ว "+Math.round(speed*3.6)+" กม./ชม.":"ความเร็ว —";
+      $("navOffset").textContent=m.snapDistance>45?"ห่างเส้น "+Math.round(m.snapDistance)+" ม.":"บนเส้นทาง";
+      if(state.routeEnd){
+        const toEnd=Math.hypot((lon-state.routeEnd.lon)*111320*Math.cos(lat*Math.PI/180),(lat-state.routeEnd.lat)*110540);
+        if(toEnd<35&&accuracy<=35){stopNavigation("ถึงปลายทางแล้ว");return}
+      }
+      if(accuracy<=50&&m.snapDistance>Math.max(80,accuracy*2)){
+        state.offRouteHits++;
+        if(state.offRouteHits>=3)rerouteFrom(position);
+      }else state.offRouteHits=0;
+    }
+    function startNavigation(){
+      if(!selectedRoute()||!state.routeEnd){toast("ยังไม่มีเส้นทาง");return}
+      if(!navigator.geolocation){toast("อุปกรณ์นี้ไม่รองรับตำแหน่ง");return}
+      state.navigationActive=true;state.offRouteHits=0;$("routeSheet").hidden=true;$("navStrip").hidden=false;
+      $("routePlanButton").classList.add("active");
+      $("navInstruction").textContent="QueueGo Map กำลังติดตามและปรับเส้นทางอัตโนมัติ";
+      state.watchId=navigator.geolocation.watchPosition(onNavigationPosition,()=>toast("ตำแหน่งขาดหายชั่วคราว"),{enableHighAccuracy:true,maximumAge:2500,timeout:12000});
+      toast("เริ่มนำทางแล้ว");
+    }
+    function stopNavigation(message){
+      if(state.watchId!=null&&navigator.geolocation)navigator.geolocation.clearWatch(state.watchId);
+      state.watchId=null;state.navigationActive=false;state.offRouteHits=0;$("navStrip").hidden=true;
+      if(message)toast(message);
+    }
     function clearRoutePlan(){
-      state.routeStart=null;state.routeEnd=null;state.routes=[];state.trafficSignals=[];state.selectedRoute=0;
+      stopNavigation();
+      state.routeStart=null;state.routeEnd=null;state.routes=[];state.trafficSignals=[];state.routeRestrictions=[];state.selectedRoute=0;
       if(state.routeStartMarker)state.routeStartMarker.remove();if(state.routeEndMarker)state.routeEndMarker.remove();
       state.routeStartMarker=state.routeEndMarker=null;
       const src=map.getSource("route-options");if(src)src.setData({type:"FeatureCollection",features:[]});
@@ -446,6 +609,8 @@
     $("locateButton").onclick=locate;
     $("confirmPin").onclick=()=>state.mode==="route-destination"?confirmRouteDestination():openAddressEditor();
     $("closeRouteSheet").onclick=()=>{$("routeSheet").hidden=true};
+    $("startNavigation").onclick=startNavigation;
+    $("stopNavigation").onclick=()=>stopNavigation("หยุดนำทางแล้ว");
     $("clearRoutePlan").onclick=clearRoutePlan;
     $("reselectDestination").onclick=()=>{setPinMode(true,"route-destination");toast("เลือกปลายทางใหม่")};
     $("closeSheet").onclick=()=>{$("addressSheet").hidden=true};
