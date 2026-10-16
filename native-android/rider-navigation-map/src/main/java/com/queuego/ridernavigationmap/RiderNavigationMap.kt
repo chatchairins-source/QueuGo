@@ -994,9 +994,16 @@ private class RiderNavigationMapHolder {
             decision.bearingDegrees,
             minimumDeltaDegrees = 2.5f
         )
-        val nextTilt = lastCameraTilt?.let {
-            smoothNavigationTilt(it, decision.tiltDegrees)
-        } ?: decision.tiltDegrees
+        val navigationActive = state.remainingStops().isNotEmpty()
+        val nextTilt = if (!navigationActive) {
+            // Idle map is a normal flat map. Do not spend several GPS frames easing
+            // navigation perspective back to zero after a job finishes.
+            0f
+        } else {
+            lastCameraTilt?.let {
+                smoothNavigationTilt(it, decision.tiltDegrees)
+            } ?: decision.tiltDegrees
+        }
         val tiltChanged = navigationTiltChangedEnough(lastCameraTilt, nextTilt)
 
         val now = SystemClock.elapsedRealtime()
