@@ -129,10 +129,10 @@ assert(map.includes('MotionEvent.ACTION_MOVE')&&
 
 assert(
   integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = true')&&
-  integration.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false')&&
+  integration.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true')&&
   integration.includes('val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)')&&
   integration.includes('return if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED)'),
-  'Confidence matching must run in shadow mode while the certified Rider display remains unchanged');
+  'Confidence matching must remain observable in shadow diagnostics while the stabilized matched display is enabled');
 
 assert(
   signalPipeline.includes('if (rawFix == lastRawFix && nextRouteId == activeRouteId)')&&
@@ -309,7 +309,7 @@ assert(map.includes('oldLine.setLocation(segment.points.map')&&
   map.includes('renderedRouteSegments.zip(routeLines)')&&
   map.includes('Topology/style changed or an in-place mutation failed'),
   'Route progress must mutate existing Longdo line geometry in place and rebuild only on topology/style changes');
-assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 850L')&&
+assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 600L')&&
   map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
   map.includes('riderMarkerAnimator?.cancel()')&&
   map.includes('existing.getMovingLocation()')&&
