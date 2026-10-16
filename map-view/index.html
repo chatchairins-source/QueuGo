@@ -62,6 +62,7 @@
     .qg-search{position:fixed;z-index:21;left:12px;right:76px;top:calc(10px + var(--safe-t));pointer-events:none}
     .qg-search-pill{pointer-events:auto;height:48px;display:flex;align-items:center;gap:8px;padding:6px 7px;border:1px solid rgba(255,255,255,.9);border-radius:17px;background:rgba(255,255,255,.95);box-shadow:0 10px 28px rgba(31,24,29,.15);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
     .qg-brand{display:grid;place-items:center;width:34px;height:34px;min-width:34px;border-radius:50%;background:var(--red);color:#fff;font-weight:900;font-size:15px}
+    .qg-wordmark{font-size:11px;font-weight:900;letter-spacing:-.2px;white-space:nowrap;color:#221e22}
     .qg-search-pill input{min-width:0;flex:1;border:0;outline:0;background:transparent;font-size:14px;color:var(--ink);padding:7px 1px}
     .qg-search-pill button{width:38px;height:38px;border:0;border-radius:11px;background:transparent;color:#2e292e;display:grid;place-items:center}
     .qg-search-results{pointer-events:auto;margin-top:7px;max-height:min(44dvh,360px);overflow:auto;border:1px solid var(--line);border-radius:15px;background:#fff;box-shadow:0 14px 36px rgba(31,24,29,.18)}
@@ -92,7 +93,8 @@
 
   <div class="qg-search">
     <form id="placeSearchForm" class="qg-search-pill" role="search">
-      <span class="qg-brand" aria-label="QueueGo Map">Q</span>
+      <span class="qg-brand" aria-hidden="true">Q</span>
+      <span class="qg-wordmark">QueueGo Map</span>
       <input id="placeSearchInput" type="search" autocomplete="off" placeholder="ค้นหาใน QueueGo Map" aria-label="ค้นหาสถานที่">
       <button type="submit" aria-label="ค้นหา">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path></svg>
@@ -148,6 +150,7 @@
       <h3>พิกัด / จุดบนแผนที่</h3>
       <p>แตะแผนที่หนึ่งจุดเพื่ออ่านพิกัด ที่อยู่ และถนนที่ใกล้ที่สุด</p>
       <div id="inspectOutput" class="tool-output">ยังไม่ได้เลือกจุด</div>
+      <div class="tool-row" style="margin-top:8px"><button id="copyInspectCoords" type="button">คัดลอกพิกัด</button></div>
     </div>
 
     <div id="measurePanel" class="tool-panel" hidden>
@@ -726,7 +729,7 @@
       return m>=1000?(m/1000).toLocaleString("th-TH",{maximumFractionDigits:2})+" กม.":Math.round(m).toLocaleString("th-TH")+" ม.";
     }
     async function engineGeocode(query){
-      const url=NOMINATIM+"/search?format=jsonv2&addressdetails=1&limit=8&countrycodes=th&accept-language=th&viewbox=102.4,15.8,103.5,14.1&q="+encodeURIComponent(query);
+      const url=NOMINATIM+"/search?format=jsonv2&addressdetails=1&limit=8&accept-language=th,en&viewbox=102.4,15.8,103.5,14.1&q="+encodeURIComponent(query);
       const r=await fetchTimeout(url,{headers:{"Accept-Language":"th,en"}},12000);if(!r.ok)throw Error("geocode "+r.status);
       return await r.json();
     }
@@ -810,6 +813,12 @@
       if(points.length<2)throw Error("need two points");
       const url=OSRM+routeCoordinateString(points)+"?overview=full&geometries=geojson&steps=true";
       const r=await fetchTimeout(url,{},18000);if(!r.ok)throw Error("route "+r.status);return await r.json();
+    }
+    async function engineMatchTrace(points){
+      if(points.length<2)throw Error("need trace points");
+      const base=OSRM.replace("/route/v1/driving/","/match/v1/driving/");
+      const url=base+routeCoordinateString(points)+"?overview=full&geometries=geojson&steps=true&tidy=true";
+      const r=await fetchTimeout(url,{},18000);if(!r.ok)throw Error("match "+r.status);return await r.json();
     }
     async function engineMatrix(points){
       if(points.length<2)throw Error("need two points");
@@ -933,6 +942,7 @@
       route:engineRoute,
       routeMatrix:engineMatrix,
       optimizeStops:engineOptimizeStops,
+      matchTrace:engineMatchTrace,
       nearby:engineNearby,
       distanceMeters:greatCircleMeters,
       bearingDegrees
@@ -953,6 +963,11 @@
     document.querySelectorAll(".tool-card").forEach(b=>b.onclick=()=>setToolMode(b.dataset.tool));
     $("measureUndo").onclick=()=>{state.measurePoints.pop();updateMeasure()};
     $("measureClear").onclick=clearMeasure;
+    $("copyInspectCoords").onclick=async()=>{
+      if(!state.inspectPoint){toast("ยังไม่ได้เลือกจุด");return}
+      const value=state.inspectPoint.lat.toFixed(6)+", "+state.inspectPoint.lon.toFixed(6);
+      try{await navigator.clipboard.writeText(value);toast("คัดลอกพิกัดแล้ว")}catch(_){toast(value)}
+    };
     $("multiRouteOrder").onclick=computeMultiRoute;
     $("multiRouteOptimize").onclick=optimizeMultiRoute;
     $("multiRouteMatrix").onclick=computeRouteMatrix;
