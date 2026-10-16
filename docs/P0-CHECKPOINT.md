@@ -13,6 +13,15 @@ Current exact checkpoint SHA: obtain with `git rev-parse HEAD` (a commit cannot 
 - d1bd7152: committed real Longdo picker UI harness and API26/30/33/35 runner matrix (run38853538310). JVM tests/builds passed in matrix. Runtime evidence still pending/failing infrastructure.
 - Address draft fixes: GPS/permission belong to picker, not global delivery location; generated address invalidates on pin changes; exact revision rejects A-B-A late geocode; manual address wins; draft has SavedState saver.
 
+## Completed 78bb8507 verification checkpoint
+- Exact source78bb8507671313f477ae242abb5e30fb6e6d190e: matrix38855082527 SUCCESS on API26/30/33/35;120 isolated real-GL picker cycles, draft SavedState restore and Build Info. Continuous log scanning and required app-private screenshot extraction passed.
+- Exact-source Native Pilot38855082561 SUCCESS: full regression, all-role JVM, all3 fresh APKs, Firebase,16KB, SQL race gates, Rider map/voice/location lifecycle and9 role/viewport startup cases. System-kill/cold-relaunch smoke PASS for all3 on API30. These are fresh-session checks, not authenticated state restoration.
+- APK artifact12027375827 archive SHA25639d38d503947e245df345210a683af39018f66e04e476bdf7727de86b8b826d5 verified. Actual manifests parsed, source78bb8507 present in each DEX; official Google apksig9.4.0 verifies all3 signatures on API26–36 with no errors and same signer certificate. Full per-APK hashes/versions and evidence links are recorded in PR366.
+- API30 harness screenshots inspected: round29 has rendered real map tiles; round0 captures initial tile loading. Harness theme is not product-design certification. No Design Pass started.
+- Read-only Production audit: optional order columns still absent; PR365 fallback preserved. Only the default Supabase branch exists, and no physical-device runner/test login is accessible. No Production writes/deployment.
+- Found coverage gap: actual Customer Home→Location→Android allow/deny/GPS/pan/background/back helper exists but its job was skipped on this branch. Enable that EXISTING job here and rerun exact-source gates. A same-SHA QA ref alone did not dispatch Actions; no alternate implementation was created.
+- Release remains BLOCKED pending real authenticated Online30cycles, full shop/location UI switching, physical crash reproduction, authenticated process-death and complete role E2E. Do not replace these with isolated harness PASS.
+
 ## Current exact-source evidence
 - 0ea86732: clean full local npm regression PASS; Customer compile/JVM PASS on all4 API jobs.
 - Matrix38854480449 API30:3 real Android UI tests PASS, including30 picker/early-background cycles, SavedState restoration and exact Build Info; no matching crash/ANR/map lifecycle errors. API33/35 still running when this checkpoint was written.

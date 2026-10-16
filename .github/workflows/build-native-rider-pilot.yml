@@ -304,7 +304,7 @@ jobs:
         run: node tests/credit-races.cjs
 
   map-display-only:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' }}
+    if: ${{ github.ref == 'refs/heads/work-native-credit-live-enablement-20261016' || startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
