@@ -31,3 +31,13 @@ Local follow-up source checkpoint: `db3817cc` (keep puck/recenter live during ro
 4. Owner physical road test remains mandatory: idle GPS/recenter; accept; straight/turn/U-turn; tabs; HOME; screen lock; resume; explicit Google Maps and return. Job state, route, puck and renderer continuity must survive.
 
 No physical PASS claim, no Production writes, no renderer migration. MapLibre remains fallback evidence only.
+
+## Gate evidence on source 86f276f19ab32f3a3dca67f2306ed33cbb9de1a6
+
+Pilot38888952472 passed native-pilot (full npm/source/JVM, three APKs, 16KB packaging, system-kill recreation, eight-stage Rider recovery, GPS foreground service), navigation-map-runtime (7/7 actual Longdo tests), maplibre-osm-runtime and all three race gates. No Production writes.
+
+Map-display-only remains OPEN:
+- Attempt1: actual Customer location screenshot had a partially gray map (gray fraction0.077937); denied-permission case passed. Artifact12040329558 retains original pixels/logs; strict gray threshold remains unchanged.
+- Attempts2/3: before inspecting tiles, UiTestAutomationBridge returned a zero-exit null root; pull failed because XML did not exist (artifacts12042296747,12042118549). The intended30-second wait aborted on its first transient read error.
+- Follow-up4e64d9ca fixes the real QA collector: discard previous remote XML, detect null-root output, retry transient hierarchy failures only within the original wait budget, retain poll errors, and fail on deadline or wrong-screen predicate. New fixtures prove recovery, no stale evidence, bounded timeout and strict failure. Existing map pixel/gray/crash assertions remain unchanged. No application code changed in this follow-up.
+- PASS: real collector fixtures and native-rider-map-runtime-budget. Next: exact new HEAD all seven gates, including the still-unverified Customer tile case. APK publication remains blocked until all seven pass; physical road test still OPEN. Do not report Map complete.
