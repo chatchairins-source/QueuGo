@@ -103,18 +103,20 @@ ok(riderModels.includes('get() = !arrivedShopAt.isNullOrBlank()')&&
    riderModels.includes('get() = !arrivedCustomerAt.isNullOrBlank()'),
   'Rider arrival presentation must derive from persisted arrival timestamps');
 ok(riderUi.includes('job.status == "in_progress" && job.customerArrived -> onDeliveryVerify()')&&
-   riderUi.includes('job.status == "in_progress" && navigationStarted -> onArriveCustomer()')&&
+   riderUi.includes('job.status == "in_progress" -> onArriveCustomer()')&&
    riderUi.includes('job.status == "in_progress" && job.customerArrived -> "ส่งมอบสินค้า"')&&
-   riderUi.includes('job.status == "in_progress" && navigationStarted -> "ถึงลูกค้าแล้ว"'),
+   riderUi.includes('job.status == "in_progress" -> "ถึงลูกค้าแล้ว"'),
   'Rider in-progress handoff must require persisted arrival and pre-arrival action must record arrival');
 ok(riderUi.includes('job.status == "picked_up" -> onStartDelivery()')&&
    riderUi.includes('api.startDelivery(auth, current.activeJob)')&&
    riderUi.includes('val committedJob = current.activeJob.copy(status = "in_progress")')&&
-   riderUi.includes('openNavigation(context, committedRead?.activeJob ?: committedJob)')&&
+   !riderUi.includes('openNavigation(context, committedRead?.activeJob ?: committedJob)')&&
    riderUi.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"'),
-  'Rider picked_up fallback must commit in_progress before customer Maps handoff while normal pickup may auto-advance');
-ok(riderUi.includes('else -> "นำทางไปลูกค้า"')&&riderUi.includes('else -> { onNavigate(); navigationStarted ='),
-  'Rider delivery state must retain navigation before arrival');
+  'Rider picked_up fallback must commit in_progress and remain in QueueGo until Google Maps is explicitly selected');
+ok(riderUi.includes('Text("นำทางด้วย Google Maps"')&&
+   riderUi.includes('pickup -> "ถึงร้านแล้ว"')&&
+   riderUi.includes('job.status == "in_progress" -> "ถึงลูกค้าแล้ว"'),
+  'Rider workflow navigation must remain in QueueGo with Google Maps exposed as a separate optional action');
 ok(riderApi.includes('&status=eq.completed&order=updated_at.desc'),
   'Rider history must retain completed jobs outside the active snapshot');
 ok(!riderApi.includes('status=in.(arrived')&&!riderApi.includes(',arrived'),
