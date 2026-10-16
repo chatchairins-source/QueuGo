@@ -43,8 +43,8 @@ function serve(){
     end:window.QueueGoMapLab.state.end
   }));
   ok(startup.map.width===startup.vw&&Math.abs(startup.map.height-startup.vh)<2,"map must fill the mobile viewport");
-  ok(startup.sheetState==="collapsed","bottom sheet must start collapsed");
-  ok(startup.sheet.top>=startup.vh-78,"collapsed sheet may expose only a small peek");
+  ok(startup.sheetState==="closed","bottom sheet must start fully closed");
+  ok(startup.sheet.top>=startup.vh,"closed sheet must stay completely off the map");
   ok(startup.searchHidden,"search result overlay must be hidden on startup");
   ok(!startup.toastVisible,"toast must not block startup");
   ok(startup.start===null&&startup.end===null,"route selection must be inactive on startup");
@@ -100,7 +100,7 @@ function serve(){
   await page.locator("#sheetClose").click();
   await page.waitForTimeout(160);
   const closed=await page.locator("#sheet").getAttribute("data-state");
-  ok(closed==="collapsed","sheet close control must return to collapsed state");
+  ok(closed==="closed","sheet close control must remove the sheet from the map");
 
   await context.close();await browser.close();await new Promise(r=>server.close(r));
   console.log(JSON.stringify({checks,failures:0,scope:"physical WebKit mobile hit-test, pan, zoom and bottom-sheet gestures"}));
