@@ -286,7 +286,6 @@ internal fun GuestCustomerShell(
                     location = location,
                     address = address,
                     busy = locationBusy,
-                    onGps = ::gps,
                     resolveAddress = { lat, lng -> api.reverseGeocode(lat, lng) },
                     onSave = { picked ->
                         if (!locationBusy) {

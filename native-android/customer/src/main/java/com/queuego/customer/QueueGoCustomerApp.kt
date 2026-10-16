@@ -760,22 +760,6 @@ private fun CustomerShell(
                     location = location,
                     address = address,
                     busy = busy,
-                    onGps = {
-                        if (hasLocation(context)) {
-                            val p = lastKnownLocation(context)
-                            if (p != null) {
-                                location = CustomerLocation(p.first, p.second, address)
-                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
-                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
-                        } else {
-                            permission.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
-                            )
-                        }
-                    },
                     resolveAddress = { latitude, longitude ->
                         api.reverseGeocode(latitude, longitude)
                     },

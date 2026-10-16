@@ -71,7 +71,6 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     var pickup by remember(auth.user.id) { mutableStateOf(initialPickup) }
     var destination by remember(auth.user.id) { mutableStateOf<CustomerLocation?>(null) }
     var picker by remember { mutableStateOf<String?>(null) }
-    var gpsPoint by remember { mutableStateOf<CustomerLocation?>(null) }
     var quote by remember { mutableStateOf<JSONObject?>(null) }
     var rides by remember(auth.user.id) { mutableStateOf(emptyList<PassengerRide>()) }
     var selected by rememberSaveable(auth.user.id) { mutableStateOf<String?>(initialOrderId) }
@@ -87,14 +86,6 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
         current.firstOrNull { !it.terminal }?.let { selected = it.id }
         val config = api.config(auth)
         enabled = config.optBoolean("enabled") && config.optBoolean("configured")
-    }
-    fun gps() {
-        val position = lastKnownLocation(context)
-        if (position != null) gpsPoint = CustomerLocation(position.first, position.second, "")
-        else error = "ยังอ่านตำแหน่ง GPS ไม่ได้"
-    }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-        if (result.values.any { it }) gps() else error = "เลือกจุดบนแผนที่ได้โดยไม่ต้องใช้ GPS"
     }
     LaunchedEffect(auth.user.id,auth.session.accessToken,lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -118,11 +109,10 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     val editing = picker
     if (editing != null && !frozen) {
         val original = if (editing == "pickup") pickup else destination
-        CustomerLocationPickerScreen(location = gpsPoint ?: original, address = original?.address.orEmpty(), busy = false,
-            onGps = { if (hasLocation(context)) gps() else permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION)) },
+        CustomerLocationPickerScreen(location = original, address = original?.address.orEmpty(), busy = false,
             resolveAddress = { lat,lng -> customerApi.reverseGeocode(lat,lng) },
-            onSave = { if (editing == "pickup") pickup = it else destination = it; quote = null; picker = null; gpsPoint = null },
-            onBack = { picker = null; gpsPoint = null })
+            onSave = { if (editing == "pickup") pickup = it else destination = it; quote = null; picker = null },
+            onBack = { picker = null })
         return
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement = Arrangement.spacedBy(12.dp)) {

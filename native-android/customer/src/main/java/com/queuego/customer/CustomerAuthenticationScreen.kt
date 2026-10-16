@@ -286,7 +286,7 @@ private fun CustomerAuthInput(value: String, change: (String) -> Unit, hint: Str
     Spacer(Modifier.height(10.dp))
 }
 
-private suspend fun customerRegistrationLocation(context: Context): Location = withContext(Dispatchers.Main) {
+internal suspend fun customerRegistrationLocation(context: Context): Location = withContext(Dispatchers.Main) {
     try {
         withTimeout(15_000L) {
             suspendCancellableCoroutine { continuation ->

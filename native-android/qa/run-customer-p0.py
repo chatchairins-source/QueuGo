@@ -40,7 +40,9 @@ try:
     for role in ('customer',):
         run(adb + ['install', '-r', root / f'native-android/{role}/build/outputs/apk/debug/{role}-debug.apk'])
     run(adb + ['install', '-r', root / 'native-android/customer/build/outputs/apk/androidTest/debug/customer-debug-androidTest.apk'])
-    run(adb + ['logcat', '-b', 'all', '-c'])
+    # Clear through the device's matching logcat binary, not the new host binary
+    # whose clear protocol fails against API26 logd. Keep failures visible.
+    run(adb + ['shell', 'logcat', '-b', 'main', '-b', 'system', '-b', 'crash', '-c'])
     result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class', 'com.queuego.customer.CustomerLocationP0RuntimeTest', 'com.queuego.customer.test/androidx.test.runner.AndroidJUnitRunner'], capture_output=True, text=True, timeout=600)
     (out / 'instrumentation.txt').write_text(result.stdout + result.stderr)
     assert re.search(r'OK \(\d+ tests?\)', result.stdout), 'Android instrumentation failed; inspect instrumentation.txt/logcat'

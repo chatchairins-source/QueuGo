@@ -8,6 +8,16 @@ Current exact checkpoint SHA: obtain with `git rev-parse HEAD` (a commit cannot 
 - Proved latest native successor descends from online compatibility fix e2f64360.
 - Read AGENTS.md and PROJECT-MEMORY.md; current owner mission takes precedence over prior deployment objective.
 
+## Latest completed source checkpoints
+- b77a2894: reject cross-shop payloads and project rendered catalog by selected shop; 30 rapid-visit JVM test added.
+- d1bd7152: committed real Longdo picker UI harness and API26/30/33/35 runner matrix (run38853538310). JVM tests/builds passed in matrix. Runtime evidence still pending/failing infrastructure.
+- Address draft fixes: GPS/permission belong to picker, not global delivery location; generated address invalidates on pin changes; exact revision rejects A-B-A late geocode; manual address wins; draft has SavedState saver.
+
+## Local validation
+- Native source272, stability106 and Actions pinning80 PASS.
+- Full npm regression reached release-evidence-bundler, which requires a clean checkout; current uncommitted source correctly rejected. Rerun from committed clean HEAD, do not weaken that guard.
+- Baseline API26 runtime blocked before instrumentation by new host logcat clear vs old logd. Runner now invokes device-matched shell logcat for clearing; retest required. This is NOT an app crash finding.
+
 ## In progress
 - Customer address lifecycle/GPS and stale shop/location investigation.
 - Preserve existing catalog generation cancellation; verify rendered screen owner and returned product shop IDs.
