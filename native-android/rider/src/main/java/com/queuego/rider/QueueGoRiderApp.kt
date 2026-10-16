@@ -2051,15 +2051,6 @@ private fun RiderHome(
             }
             return
         }
-        if (enabled && !hasGoogleMaps(context)) {
-            actionMessage = "ต้องติดตั้ง Google Maps ก่อนเปิดรับงาน"
-            openGoogleMapsInstallPage(context)
-            return
-        }
-        if (enabled && !Settings.canDrawOverlays(context)) {
-            configureReturnControl()
-            return
-        }
         if (enabled && !ensureLocationPermission()) return
         actionBusy = true
         scope.launch {
