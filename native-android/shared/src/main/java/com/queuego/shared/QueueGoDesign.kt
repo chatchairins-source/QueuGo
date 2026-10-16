@@ -349,6 +349,16 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 line(.21f,.63f,.21f,.79f); line(.21f,.79f,.31f,.79f)
                 line(.79f,.63f,.79f,.79f); line(.79f,.79f,.69f,.79f)
             }
+            "ride" -> {
+                // Passenger ride: compact car + pickup marker, using the same
+                // normalized stroke language as the other Customer category icons.
+                line(.18f,.67f,.18f,.45f); line(.18f,.45f,.30f,.29f); line(.30f,.29f,.70f,.29f)
+                line(.70f,.29f,.82f,.45f); line(.82f,.45f,.82f,.67f); line(.14f,.52f,.86f,.52f)
+                drawCircle(color, w*.055f, Offset(w*.29f,h*.68f), style=stroke)
+                drawCircle(color, w*.055f, Offset(w*.71f,h*.68f), style=stroke)
+                drawCircle(color, w*.07f, Offset(w*.50f,h*.15f), style=stroke)
+                line(.50f,.22f,.50f,.29f)
+            }
             "motorcycle" -> {
                 drawCircle(color, w*.13f, Offset(w*.25f,h*.67f), style=stroke)
                 drawCircle(color, w*.13f, Offset(w*.75f,h*.67f), style=stroke)
