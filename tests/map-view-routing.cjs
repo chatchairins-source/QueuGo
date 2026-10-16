@@ -18,7 +18,7 @@ has("ช้ากว่า","route time comparison required");
 has("selectedRoute","selected recommendation state required");
 has("route-options-selected","selected route rendering required");
 has("OSRM","OSRM research endpoint required");
-has("เวลาที่แสดงเป็นเวลาประมาณการ","UI must disclose non-live ETA");
+has("เวลารวมเป็นค่าประมาณ","UI must disclose estimated ETA");
 has("SIGNAL_EXPECTED_DELAY_SECONDS","signal delay must be an explicit estimate, not hidden magic");
 has("RESTRICTION_PENALTY_SECONDS","known restriction penalty must be explicit");
 has("loadRouteRestrictions","route intelligence must inspect construction/access restrictions");
