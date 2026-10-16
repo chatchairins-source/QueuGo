@@ -10,7 +10,7 @@ class CustomerLocationDraftTest {
     @Test fun changingPinClearsPreviousGeneratedAddress() {
         val next = CustomerLocationDraft(a, a.address).move(b)
         assertEquals("", next.address)
-        assertEquals(b.latitude, next.point?.latitude)
+        assertEquals(b.latitude, requireNotNull(next.point).latitude, 0.000001)
         assertEquals("Address B", next.resolved(next.revision, "Address B").address)
     }
 

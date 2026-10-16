@@ -56,7 +56,11 @@ class CustomerLocationP0RuntimeTest {
                     compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "แผนที่พร้อมใช้งาน"))
                         .fetchSemanticsNodes().isNotEmpty()
                 }
-                androidx.test.espresso.Espresso.closeSoftKeyboard()
+                compose.activityRule.scenario.onActivity { activity ->
+                    val keyboard = activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+                        as android.view.inputmethod.InputMethodManager
+                    keyboard.hideSoftInputFromWindow(activity.window.decorView.windowToken, 0)
+                }
                 compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "แผนที่พร้อมใช้งาน"))
                     .performScrollTo()
                 val directory = File(compose.activity.getExternalFilesDir(null), "p0-evidence").apply { mkdirs() }
@@ -89,5 +93,15 @@ class CustomerLocationP0RuntimeTest {
         restoration.emulateSavedInstanceStateRestore()
         compose.onNodeWithText("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต")
             .assertTextContains("Restored manual address")
+    }
+
+    @Test fun accountBuildInfoShowsExactCompiledSource() {
+        compose.setContent {
+            com.queuego.shared.QgTestBuildInfo("Customer", BuildConfig.VERSION_NAME,
+                BuildConfig.VERSION_CODE, BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
+        }
+        compose.onNodeWithText("ข้อมูลเวอร์ชันทดสอบ").performClick()
+        compose.onNodeWithText("Git SHA: " + BuildConfig.GIT_SHA, substring = true).assertExists()
+        compose.onNodeWithText("versionCode: " + BuildConfig.VERSION_CODE, substring = true).assertExists()
     }
 }

@@ -2253,6 +2253,9 @@ private fun MerchantProfileScreen(
         }
 
         Spacer(Modifier.height(12.dp))
+        if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
+            "Merchant", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
+            BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
         MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
         QgAccountDeletionSection(
             accessToken = auth.session.accessToken,

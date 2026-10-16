@@ -1742,6 +1742,9 @@ private fun ProfileScreen(
     logout: () -> Unit
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+        if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
+            "Customer", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
+            BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
         QgSectionTitle("บัญชีของฉัน")
         Spacer(Modifier.height(12.dp))
         QgCard(Modifier.fillMaxWidth()) {

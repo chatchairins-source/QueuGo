@@ -13,6 +13,12 @@ Current exact checkpoint SHA: obtain with `git rev-parse HEAD` (a commit cannot 
 - d1bd7152: committed real Longdo picker UI harness and API26/30/33/35 runner matrix (run38853538310). JVM tests/builds passed in matrix. Runtime evidence still pending/failing infrastructure.
 - Address draft fixes: GPS/permission belong to picker, not global delivery location; generated address invalidates on pin changes; exact revision rejects A-B-A late geocode; manual address wins; draft has SavedState saver.
 
+## Latest verification / next checkpoint
+- Full local `TZ=Asia/Bangkok npm test` PASS on clean a60904b3. Default PGlite host timezone Etc/GMT+8 made a pre-existing current_date-vs-Bangkok fixture fail; no product SQL was changed to bypass it.
+- Matrix38854044566: Customer Kotlin/APK and JVM tests PASS, including new catalog/draft behavioral tests. UI-harness compile exposed an unavailable Espresso reference; replace it with Android InputMethodManager and rerun. Do not claim Android runtime PASS for a60904b3.
+- Earlier d1bd7152 API35 isolated real-GL picker harness completed30 cycles without crash/ANR or swallowed map lifecycle errors. That is baseline only, not final patched-source acceptance.
+- New Build Info: Account-only test dialog for all3 roles; one root Gradle SHA/time source. Pending all-role compile/runtime verification. No redesign.
+
 ## Local validation
 - Native source272, stability106 and Actions pinning80 PASS.
 - Full npm regression reached release-evidence-bundler, which requires a clean checkout; current uncommitted source correctly rejected. Rerun from committed clean HEAD, do not weaken that guard.
