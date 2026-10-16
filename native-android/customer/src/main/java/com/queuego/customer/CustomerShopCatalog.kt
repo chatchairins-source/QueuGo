@@ -39,6 +39,48 @@ internal class CustomerShopCatalog(private val scope: CoroutineScope) {
         }
     }
 
+    fun openCached(
+        shopId: String,
+        loadCached: suspend () -> List<CustomerProduct>,
+        fetch: suspend () -> List<CustomerProduct>,
+        persist: suspend (List<CustomerProduct>) -> Unit
+    ) {
+        val ticket = ++generation
+        request?.cancel()
+        mutableState.value = CustomerShopCatalogState(shopId = shopId, loading = true)
+        request = scope.launch {
+            var cached = emptyList<CustomerProduct>()
+            try {
+                cached = loadCached().filter { it.shopId == shopId }
+                if (ticket != generation) return@launch
+                if (cached.isNotEmpty()) {
+                    mutableState.value = CustomerShopCatalogState(
+                        shopId = shopId,
+                        products = cached,
+                        loading = false
+                    )
+                }
+
+                val rows = fetch()
+                require(rows.all { it.shopId == shopId }) { "Catalog response belongs to another shop" }
+                if (ticket == generation) {
+                    mutableState.value = CustomerShopCatalogState(shopId, rows)
+                    runCatching { persist(rows) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                if (ticket == generation) {
+                    mutableState.value = if (cached.isNotEmpty()) {
+                        CustomerShopCatalogState(shopId = shopId, products = cached)
+                    } else {
+                        CustomerShopCatalogState(shopId = shopId, error = "โหลดสินค้าไม่สำเร็จ")
+                    }
+                }
+            }
+        }
+    }
+
     fun close() {
         ++generation
         request?.cancel()
