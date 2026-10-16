@@ -51,7 +51,7 @@ ok(importer.includes('qg_admin_grocery_source_finalize'),'source importer finali
 
 ok(merchant.includes("qg_grocery_source_search"),'Merchant add mode searches source catalog');
 ok(merchant.includes("qg_grocery_source_add_to_shop"),'Merchant adds only selected source product');
-ok(merchant.includes('ค้นหาสินค้า Makro: ชื่อ ยี่ห้อ หรือบาร์โค้ด'),'Merchant exposes 10k name/brand/barcode search');
+ok(merchant.includes('ค้นหาชื่อสินค้า ยี่ห้อ หรือบาร์โค้ด'),'Merchant exposes 10k name/brand/barcode search');
 ok(merchant.includes('image:r.image_url'),'Merchant source search renders Makro preview image');
 
 ok(workflow.includes('sync-makro-dry-branded.cjs'),'CI builds Makro source snapshot');
