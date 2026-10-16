@@ -35,3 +35,7 @@ has(doc,"provenance");
 has(doc,"PMTiles");
 has(doc,"Valhalla or GraphHopper");
 console.log(JSON.stringify({checks,failures:0,scope:"QueueGo Buriram Map Lab source/data/safety contract"}));
+
+has(js,"DRR_BRIDGE_SERVICE");
+has(js,"loadDrrBridges");
+has(html,"สะพานกรมทางหลวงชนบท");
