@@ -23,6 +23,8 @@ has(html,"ทางหลวงแผ่นดิน (NGIS)");
 has(js,"NGIS_HIGHWAY_SERVICE");
 has(js,"ngis.go.th/arcgis/rest/services");
 has(js,"state.ngis");
+has(js,'map.addSource("ngis"');
+has(js,'if(el("toggleNgis")?.checked)loadNgis();');
 has(js,"source_layer");
 has(js,"routeSignals");
 has(js,"routeHazards");
