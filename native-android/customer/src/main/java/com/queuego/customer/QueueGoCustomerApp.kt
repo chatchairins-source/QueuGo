@@ -108,7 +108,8 @@ private val categories = listOf(
     "grocery" to "ร้านขายของชำ",
     "laundry" to "ฝากซัก",
     "market" to "ตลาดสด",
-    "shopping" to "ช้อปปิ้ง"
+    "shopping" to "ช้อปปิ้ง",
+    "ride" to "บริการเรียกรถ"
 )
 
 private val homeDedicatedMarketCategories =
@@ -1453,9 +1454,6 @@ internal fun CustomerHome(
                 }
             }
         }
-        item(key = "home-ride") {
-            OutlinedButton(onClick = { onCategory("ride") },modifier = Modifier.fillMaxWidth()) { Text("รับส่งผู้โดยสาร") }
-        }
         item(key = "home-search") {
             Row(
                 Modifier
@@ -1559,6 +1557,7 @@ private fun CustomerCategoryButton(
         "laundry" -> "grid"
         "market" -> "basket"
         "shopping" -> "shopping"
+        "ride" -> "ride"
         else -> key
     }
     Column(
