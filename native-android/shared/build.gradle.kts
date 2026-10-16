@@ -19,6 +19,9 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.github.webrtc-sdk:android:150.7871.01")
     api(files("../rider/libs/LongdoMapAndroidSDK_v0.1.8.aar"))
+    // Longdo 0.1.8 uses Google Play Services location classes at runtime.
+    // The local AAR has no POM metadata, so Gradle cannot pull this transitively.
+    implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.lifecycle:lifecycle-runtime:2.9.4")
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.ui:ui:1.11.4")
