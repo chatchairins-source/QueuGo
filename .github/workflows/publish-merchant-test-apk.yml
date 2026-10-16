@@ -1,4 +1,4 @@
-name: Publish owner-requested Merchant test APK
+name: Publish owner-requested three-app test bundle
 on:
   push:
     branches: [work-merchant-test-apk-link-20261016]
@@ -7,7 +7,7 @@ permissions:
   contents: write
   actions: read
 concurrency:
-  group: merchant-test-apk-20261016
+  group: three-app-test-apk-20261016
   cancel-in-progress: false
 jobs:
   publish:
@@ -30,36 +30,54 @@ jobs:
           done
           gh api "repos/$GH_REPO/actions/artifacts/12018670716" > artifact.json
           jq -e --arg source "$SOURCE_SHA" '.expired == false and .workflow_run.head_sha == $source and .workflow_run.id == 38833240623 and .name == "queuego-native-pilot-apks" and .digest == "sha256:f4a0ca6734f1442f7eae67c955c8351eba187308b4b6744ce6c86cefc2af5119"' artifact.json
-      - name: Download and verify the tested APK
+      - name: Download, verify and package all three tested APKs
         shell: bash
         run: |
           set -euo pipefail
           gh api "repos/$GH_REPO/actions/artifacts/12018670716/zip" > native.zip
           echo "f4a0ca6734f1442f7eae67c955c8351eba187308b4b6744ce6c86cefc2af5119  native.zip" | sha256sum -c -
           unzip -q native.zip -d extracted
-          mapfile -t apks < <(find extracted -type f -name merchant-debug.apk)
-          test "${#apks[@]}" -eq 1
-          cp "${apks[0]}" QueueGo-Merchant-Test-20261016.apk
+          mkdir bundle
           signer="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$signer"
-          "$signer" verify --verbose --print-certs QueueGo-Merchant-Test-20261016.apk > apk-signature.txt
-          sha256sum QueueGo-Merchant-Test-20261016.apk > SHA256SUMS.txt
-      - name: Publish a public testing download
+          for role in customer merchant rider; do
+            mapfile -t apks < <(find extracted -type f -name "$role-debug.apk")
+            test "${#apks[@]}" -eq 1
+            cp "${apks[0]}" "bundle/QueueGo-$role-Test-20261016.apk"
+            "$signer" verify --verbose --print-certs "bundle/QueueGo-$role-Test-20261016.apk" >> bundle/APK-SIGNATURES.txt
+          done
+          cat > bundle/README.txt <<'README'
+          QueueGo Android test bundle — 16 October 2026
+          Android 8.0 or newer. Extract this ZIP, then install the APKs individually.
+
+          QueueGo-customer-Test-20261016.apk = แอปลูกค้า
+          QueueGo-merchant-Test-20261016.apk = แอปร้านค้า
+          QueueGo-rider-Test-20261016.apk = แอปไรเดอร์
+
+          แตกไฟล์ ZIP ก่อน แล้วเลือกติดตั้งแอปที่ต้องการทีละไฟล์
+          หากระบบถาม ให้อนุญาตติดตั้งจากแอปที่ใช้เปิดไฟล์ APK
+          เป็นเวอร์ชันทดสอบสำหรับเครื่องจริง ไม่ใช่เวอร์ชันรับรองจาก Play Store
+          All three files are the exact APKs from verified source 95ef486d5c7d801c0b76cd82080c2549a4c4c57a.
+          README
+          (cd bundle && sha256sum *.apk > SHA256SUMS.txt)
+          zip -j QueueGo-All-Apps-Test-20261016.zip bundle/*
+          sha256sum QueueGo-All-Apps-Test-20261016.zip > QueueGo-All-Apps-Test-20261016.sha256
+      - name: Publish one public bundle download
         shell: bash
         run: |
           set -euo pipefail
-          tag=merchant-test-20261016
+          tag=android-test-all-20261016
           cat > notes.md <<'NOTES'
-          Android Merchant test APK requested by the owner for installation on a real device.
+          One ZIP download containing Customer, Merchant and Rider Android test APKs, requested by the owner for real-device testing.
 
-          Includes direct category selection, fixed product-add actions, source catalog search and hiding unpriced Grocery drafts. Source: 95ef486d5c7d801c0b76cd82080c2549a4c4c57a.
+          Extract the ZIP, then install each APK separately. Android 8.0 or newer. Includes Thai installation instructions, per-APK checksums and signature verification results.
 
-          Full Native pilot checks, all-role unit tests, three APK builds, 16 KB packaging and emulator launch checks passed. Merchant Kotlin and catalog behavioral tests passed separately. Real-device authenticated catalog acceptance remains to be performed by the tester.
+          Exact existing APKs from source 95ef486d5c7d801c0b76cd82080c2549a4c4c57a, successful Native pilot38833240623 and Merchant verification38833240994. Archive integrity and all three APK signatures are checked again before packaging. No APK rebuild or binary modification.
 
-          Debug-signed testing build, Android 8.0 or newer. This is not a certified Play Store release. No production order, payment, credit or database configuration was changed for publication.
+          Debug-signed testing builds. Not certified Play Store releases. Real-device authenticated acceptance remains pending. No Production data, payment, credit or configuration changes.
           NOTES
           if gh release view "$tag" >/dev/null 2>&1; then
             echo 'Release already exists; refusing to overwrite its assets.' >&2
             exit 1
           fi
-          gh release create "$tag" QueueGo-Merchant-Test-20261016.apk SHA256SUMS.txt apk-signature.txt --target "$SOURCE_SHA" --prerelease --title 'QueueGo Merchant — Android test 2026-10-16' --notes-file notes.md
+          gh release create "$tag" QueueGo-All-Apps-Test-20261016.zip QueueGo-All-Apps-Test-20261016.sha256 --target "$SOURCE_SHA" --prerelease --title 'QueueGo Customer + Merchant + Rider — Android test 2026-10-16' --notes-file notes.md

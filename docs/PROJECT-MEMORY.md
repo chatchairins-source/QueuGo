@@ -1,3 +1,7 @@
+## 2026-10-16 Owner requests one download for all three Android apps
+- Supersedes Merchant-only delivery: owner wants Customer, Merchant and Rider APKs together in one download. Package the three exact already-verified APKs from pilot38833240623/artifact12018670716 as a single public ZIP prerelease, with Thai file mapping/install instructions, APK checksums and signature evidence. No binary rebuild, Production mutation or certified Play release.
+- Preserve existing Merchant-only public link. New bundle release tag android-test-all-20261016; file QueueGo-All-Apps-Test-20261016.zip. Each app must be installed separately after extracting the archive. Existing Native Rider return overlay remains included as implemented in the verified source.
+
 ## 2026-10-16 Owner requests real-device Merchant APK link
 - Owner explicitly requests a copyable public URL to send via LINE/Facebook and install the Android Merchant build on a real device. Publish the existing exact-source debug APK as a clearly labeled test prerelease; no signed Play release or production mutation is authorized by this request.
 - Source 95ef486d5c7d801c0b76cd82080c2549a4c4c57a: Merchant run38833240994 and full Native pilot38833240623 SUCCESS, including all-role JVM tests, three APKs,16KB and emulator checks. Artifact12018670716 digest f4a0ca6734f1442f7eae67c955c8351eba187308b4b6744ce6c86cefc2af5119.
