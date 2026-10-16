@@ -71,7 +71,8 @@ Observed rider waiting time may improve ETA statistics, but it must never be pre
 - QueueGo-branded MapLibre surface
 - Buriram province working extent
 - live OSM safety inventory with redundant Overpass endpoints
-- NGIS national-highway overlay with ArcGIS JSON conversion and timeout isolation\n- DRR road layer with source discovery and timeout isolation
+- NGIS national-highway overlay with ArcGIS JSON conversion and timeout isolation
+- DRR road layer with source discovery and timeout isolation
 - optional school/hospital layer
 - click start + destination and request a prototype route
 - audit loaded traffic signals and caution points within 45 metres of the route
