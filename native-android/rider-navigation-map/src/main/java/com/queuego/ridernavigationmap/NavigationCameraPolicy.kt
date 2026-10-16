@@ -30,14 +30,14 @@ internal fun navigationCameraDecision(
     val speed = fix.speedMetersPerSecond
         ?.takeIf { it.isFinite() && it >= 0f }
 
-    // At driving speed a reliable GPS course is preferred. If Android reports poor
-    // bearing/speed accuracy, fall back to the matched road instead of rotating the map
-    // on a noisy course sample. At walking/standstill speed route direction still wins.
+    // Keep the navigation camera aligned to the matched road whenever the Rider is
+    // confidently on-route. Raw GNSS course can jump left/right between adjacent fixes,
+    // especially on motorcycles and urban roads, so it is only the fallback when there
+    // is no reliable route segment to follow.
     val desiredBearing = when {
-        speed == null || speed < 0.83f -> routeBearing ?: previousBearingDegrees
-        speed != null && speed >= 2.2f -> gpsBearing ?: routeBearing
         routeBearing != null -> routeBearing
-        else -> gpsBearing
+        speed == null || speed < 0.83f -> previousBearingDegrees
+        else -> gpsBearing ?: previousBearingDegrees
     }
     val smoothedBearing = smoothNavigationBearing(
         previous = previousBearingDegrees,
