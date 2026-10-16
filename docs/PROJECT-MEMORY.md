@@ -394,3 +394,9 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Research identified Overture Maps transportation as the strongest additional global open road network: primarily OSM, enhanced with TomTom and local/regional authoritative sources; current release pinned to 2026-09-23.1 and transportation is ODbL.
 - Candidate `work-web-map-lab-overture-transport-20261016` adds the official Overture transportation PMTiles archive as a subtle street-zoom road overlay without adding another front-page layer control. It is comparison/coverage intelligence, not a claim of complete alley coverage.
 - Production plan remains: frequent Thailand OSM PBF (Geofabrik) + Overture transportation + NGIS/DRR + QueueGo verified field observations, preserving provenance and licence boundaries.
+
+
+## 2026-10-16 Map-first UI correction
+- Owner rejected the Map Lab opening state because technical layer/source controls and the route test sheet blocked most of the map.
+- Rule locked in: opening QueueGo Map must show the map first. Layer/source/debug/export controls belong behind the settings button. Route sheet remains hidden until the user actually starts selecting a route.
+- Candidate branch `work-web-map-lab-map-first-ui-20261016` removes the always-visible developer panel, adds a compact floating search bar + map controls, moves diagnostics/layers into a settings dialog, removes the left-side fitBounds reservation, and hides route/clear controls on startup.
