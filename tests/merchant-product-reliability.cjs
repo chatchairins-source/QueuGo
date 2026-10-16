@@ -66,7 +66,7 @@ ok(merchant.includes("page==='shop-grocery-catalog'&&!u&&qgmHasRestorableShopSes
 const grocery=fs.readFileSync(path.join(root,'merchant/grocery-catalog.js'),'utf8');
 ok(grocery.includes("const sessionShopOwner=()=>"),'Grocery catalog renderer must accept the signed-in Merchant session as temporary owner identity');
 ok(grocery.includes("shop_profiles?select=id,public_category&user_id=eq."),'session fallback must resolve the current shop directly and verify its public category');
-ok(merchant.includes('grocery-catalog.js?v=20261015-makro-full1'),'Merchant HTML must cache-bust the current Grocery catalog JavaScript');
+ok(merchant.includes('grocery-catalog.js?v=20261016-connection1'),'Merchant HTML must cache-bust the current Grocery catalog JavaScript');
 ok(merchant.includes('grocery.css?v=20261015-makro-full1'),'Merchant HTML must cache-bust the current Grocery sales-channel layout CSS');
 ok(merchant.includes("case'shop-grocery-catalog':return qgRenderGroceryCatalog({addMode:false,pageTitle:'จัดการสินค้าของชำ'})"),'dedicated Grocery catalog route must stay in manage mode');
 ok(merchant.includes("history.pushState(null,'','#shop-products/add')")&&merchant.includes("qgRenderGroceryCatalog({addMode:true,pageTitle:'เพิ่มสินค้าจากแคตตาล็อก'"),'Grocery catalog add action must use the explicit add route');

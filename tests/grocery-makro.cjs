@@ -51,7 +51,7 @@ ok(importer.includes('qg_admin_grocery_source_finalize'),'source importer finali
 
 ok(merchant.includes("qg_grocery_source_search"),'Merchant add mode searches source catalog');
 ok(merchant.includes("qg_grocery_source_add_to_shop"),'Merchant adds only selected source product');
-ok(merchant.includes('ค้นหา Makro 10,000 รายการ: ชื่อ ยี่ห้อ หรือบาร์โค้ด'),'Merchant exposes 10k name/brand/barcode search');
+ok(merchant.includes('ค้นหาสินค้า Makro: ชื่อ ยี่ห้อ หรือบาร์โค้ด'),'Merchant exposes 10k name/brand/barcode search');
 ok(merchant.includes('image:r.image_url'),'Merchant source search renders Makro preview image');
 
 ok(workflow.includes('sync-makro-dry-branded.cjs'),'CI builds Makro source snapshot');
@@ -59,4 +59,15 @@ ok(workflow.includes('artifacts/makro-catalog/makro-grocery-branded.json'),'CI u
 ok(!workflow.includes('git push origin'),'CI does not commit regenerated 10k data into source tree');
 ok(!workflow.includes('probe-makro-browser.cjs'),'CI no longer depends on flaky browser capture');
 
+const {exclusionReason}=require('../ops/grocery/sync-makro-dry-branded.cjs');
+for(const doc of [
+ {categories:['dry-grocery/flour/flour'],title:'แป้งวาฟเฟิลแช่แข็ง'},
+ {categories:['dry-grocery/dairy-products/cheese'],title:'ชีสแช่เย็น'},
+ {categories:['dry-grocery/dessert/frozen-desserts'],title:'วาฟเฟิล'},
+ {categories:['dry-grocery'],deepestCategory:'dry-grocery/frozen-desserts',title:'วาฟเฟิล'},
+ {categories:['dry-grocery'],title:'FROZEN dough'},
+ {categories:['dry-grocery'],title:'Refrigerated cheese'},
+ {categories:['dry-grocery'],productAttributes:{categoricalAttributes:['storage_type::chilled']}}
+])ok(!!exclusionReason(doc,'dry-grocery'),'cold product rejected even under dry category');
+ok(exclusionReason({categories:['dry-grocery/instant-meals'],title:'มาม่า บะหมี่กึ่งสำเร็จรูป'},'dry-grocery')===null,'normal dry branded product remains eligible');
 console.log(JSON.stringify({checks,failures:0,scope:'exact 10k branded non-fresh Makro grocery source; search then add; no fresh market/electrical; no Production mutation'}));

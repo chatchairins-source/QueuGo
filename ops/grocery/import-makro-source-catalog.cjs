@@ -2,6 +2,7 @@
 'use strict';
 
 const fs=require('fs');
+const {exclusionReason}=require('./sync-makro-dry-branded.cjs');
 const file=process.argv[2]&&!process.argv[2].startsWith('--')?process.argv[2]:'artifacts/makro-catalog/makro-grocery-branded.json';
 const apply=process.argv.includes('--apply');
 const ALLOWED_ROOTS=new Set(['dry-grocery','health-beauty/personal-care']);
@@ -41,6 +42,7 @@ async function main(){
 
   const bad=rows.find(r=>
     !r.source_product_id||!r.brand||!r.title_th||
+    exclusionReason({categories:[r.deepest_category],title:r.title_th,titleEn:r.title_en},r.source_category)||
     !ALLOWED_ROOTS.has(r.source_category)||
     r.source_url!==ROOT_URLS[r.source_category]||
     !(r.deepest_category===r.source_category||String(r.deepest_category).startsWith(r.source_category+'/'))

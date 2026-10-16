@@ -24,10 +24,12 @@ function validBrand(v){
   return !/^(?:-|n\/?a|na|none|no\s*brand|unbranded|ไม่มีแบรนด์|ไม่มียี่ห้อ|ไม่ระบุ)$/i.test(x);
 }
 function exclusionReason(doc,root){
-  const cats=(doc.categories||[]).map(x=>String(x).toLowerCase());
+  const cats=[...(doc.categories||[]),doc.deepestCategory||''].map(x=>String(x).toLowerCase());
   if(!cats.some(x=>x===root||x.startsWith(root+'/')))return 'outside-root';
-  const joined=cats.join('|');
-  const categoryMatch=joined.match(/(?:^|\/)(eggs?|frozen|tofu|fresh(?:-|\/|$)|chilled|fresh-market|market-fresh|electronics?|electrical|appliances?|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(?:\/|$)/i);
+  const title=[doc.title,doc.searchTitle,doc.titleEn].filter(Boolean).join(' ');
+  if(/แช่แข็ง|แช่เย็น|(?:^|[^a-z])(frozen|chilled|refrigerated)(?:$|[^a-z])/i.test(title))return 'cold-title';
+  const joined=cats.join('/');
+  const categoryMatch=joined.match(/(?:^|\/)(eggs?|frozen(?:-[a-z]+)*|tofu|fresh(?:-|\/|$)|chilled(?:-[a-z]+)*|fresh-market|market-fresh|electronics?|electrical|appliances?|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(?:\/|$)/i);
   if(categoryMatch)return 'category:'+String(categoryMatch[1]).toLowerCase();
   if(doc.isWeightedFresh===true)return 'weighted-fresh';
   const attrs=doc.productAttributes?.categoricalAttributes||[];
@@ -190,4 +192,5 @@ async function main(){
   if(bytes>15*1024*1024)throw Error('Makro snapshot unexpectedly large: '+bytes);
   console.log(JSON.stringify({written:outPath,count:items.length,eligible_count:eligible.length,bytes,sha256:digest}));
 }
-main().catch(e=>{console.error(e.stack||e);process.exit(1)});
+module.exports={exclusionReason};
+if(require.main===module)main().catch(e=>{console.error(e.stack||e);process.exit(1)});

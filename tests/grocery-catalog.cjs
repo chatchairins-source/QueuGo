@@ -30,6 +30,8 @@ insert into shop_profiles values('20000000-0000-4000-8000-000000000002','1000000
 await db.exec(fs.readFileSync('supabase/migrations/20261012170449_grocery_master_catalog.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/20261015140312_grocery_photo_first_paging.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/20261015144000_grocery_catalog_sales_channels.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/20261015161347_prioritize_grocery_minimart_core.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/20261015235835_grocery_merchant_page_projection_fix.sql','utf8'));
 const role=async(n,r='authenticated')=>db.exec(`reset role;select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-00000000000${n}',false);set role ${r};`);
 await role(1);const batch=N.batch([real,coke]).items;await db.query('select qg_grocery_import($1::jsonb)',[JSON.stringify(batch)]);await db.query('select qg_grocery_import($1::jsonb)',[JSON.stringify(batch)]);eq((await db.query('select count(*)::int n from grocery_master_products')).rows[0].n,2);
 const masters=(await db.query('select id,normalized_key from grocery_master_products order by brand')).rows;const m=masters.find(x=>x.normalized_key.startsWith('mama')).id,c=masters.find(x=>x.normalized_key.startsWith('coca')).id;
