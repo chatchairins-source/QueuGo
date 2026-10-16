@@ -175,3 +175,18 @@ Do not call QueueGo Navigation production-ready until:
 - DRR bridge network: data.go.th publishes the bridge web service as public geospatial data, JSON/database format, Open Data Common, with no access restriction, and points to FeatureServer layer 1.
 - The Map Lab loads that bridge layer separately from the DRR road network and keeps it separately attributable.
 - Public road-accident datasets also exist (including DRR accident records and national road-risk datasets). They are recorded as candidate enrichment sources, but Map Lab does not ingest them until a stable machine endpoint/field contract is pinned; accident history must not be treated as a real-time road closure.
+
+
+## Road-restriction audit layer
+
+The web lab can optionally request OSM road rules across Buriram:
+
+- one-way ways: oneway=yes and oneway=-1
+- access=no/private
+- motor_vehicle=no/private
+- motorcycle=no/private
+- OSM type=restriction relations, counted separately as turn restrictions
+
+The visible line layer keeps the original OSM tags and source IDs. Turn-restriction relations are counted but are not converted into a fake line geometry.
+
+When a prototype route exists, QueueGo reports how many loaded restricted road segments lie near that route. This is an audit aid only; it is not proof that the current public routing endpoint or future QueueGo graph interpreted every restriction correctly.

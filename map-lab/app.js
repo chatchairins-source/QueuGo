@@ -21,6 +21,8 @@ const state={
   pois:emptyCollection(),
   drr:emptyCollection(),
   bridges:emptyCollection(),
+  restrictions:emptyCollection(),
+  restrictionRelations:0,
   ngis:emptyCollection(),
   start:null,
   end:null,
@@ -29,6 +31,7 @@ const state={
   activeControllers:new Set(),
   sources:{
     osm:{name:"OpenStreetMap / Overpass",state:"loading",note:"ไฟจราจรและจุดควรระวัง · ODbL"},
+    rules:{name:"ข้อจำกัดถนน OSM",state:"idle",note:"one-way / access / turn restrictions · โหลดเมื่อต้องการ"},
     drr:{name:"กรมทางหลวงชนบท (DRR)",state:"idle",note:"FeatureServer / Open Data Common"},
     ngis:{name:"ทางหลวงแผ่นดิน (NGIS)",state:"idle",note:"ArcGIS FeatureServer / กระทรวงคมนาคม"},
     route:{name:"Routing prototype",state:"idle",note:"OSRM public demo · ใช้เพื่อทดสอบเท่านั้น"},
@@ -122,6 +125,12 @@ function addDataLayers(){
   map.addLayer({id:"drr",type:"line",source:"drr",layout:{visibility:"none"},paint:{"line-color":"#16a34a","line-opacity":0.62,"line-width":["interpolate",["linear"],["zoom"],8,1,14,4]}});
   map.addSource("ngis",{type:"geojson",data:state.ngis});
   map.addLayer({id:"ngis",type:"line",source:"ngis",layout:{visibility:"none"},paint:{"line-color":"#7c3aed","line-opacity":0.64,"line-width":["interpolate",["linear"],["zoom"],8,1.2,14,4.4]}});
+  map.addSource("restrictions",{type:"geojson",data:state.restrictions});
+  map.addLayer({id:"restrictions",type:"line",source:"restrictions",layout:{visibility:"none"},paint:{
+    "line-color":["match",["get","rule_kind"],"oneway","#e11d48","motorcycle_no","#7c3aed","motor_vehicle_no","#b45309","access_no","#111827","#f59e0b"],
+    "line-width":["interpolate",["linear"],["zoom"],9,1.8,15,5],
+    "line-opacity":0.82
+  }});
   map.addSource("bridges",{type:"geojson",data:state.bridges});
   map.addLayer({id:"bridges-lines",type:"line",source:"bridges",filter:["==",["geometry-type"],"LineString"],layout:{visibility:"none"},paint:{"line-color":"#0f766e","line-width":["interpolate",["linear"],["zoom"],9,2,15,6],"line-opacity":0.8}});
   map.addLayer({id:"bridges-points",type:"circle",source:"bridges",filter:["==",["geometry-type"],"Point"],layout:{visibility:"none"},paint:{"circle-radius":5,"circle-color":"#0f766e","circle-stroke-width":2,"circle-stroke-color":"#fff"}});
@@ -130,7 +139,7 @@ function addDataLayers(){
   map.addLayer({id:"route",type:"line",source:"route",paint:{"line-color":"#e6002d","line-width":["interpolate",["linear"],["zoom"],8,3.5,16,7],"line-opacity":0.96}});
   map.addSource("route-points",{type:"geojson",data:emptyCollection()});
   map.addLayer({id:"route-points",type:"circle",source:"route-points",paint:{"circle-radius":8,"circle-color":["match",["get","role"],"start","#16a34a","#e6002d"],"circle-stroke-width":3,"circle-stroke-color":"#fff"}});
-  ["signals","safety","pois","ngis","drr","bridges-lines","bridges-points"].forEach(function(layer){
+  ["signals","safety","pois","restrictions","ngis","drr","bridges-lines","bridges-points"].forEach(function(layer){
     map.on("click",layer,function(e){if(e.features&&e.features[0])showFeature(e.features[0])});
     map.on("mouseenter",layer,function(){map.getCanvas().style.cursor="pointer"});
     map.on("mouseleave",layer,function(){map.getCanvas().style.cursor=""});
@@ -151,6 +160,56 @@ function overpassQuery(kind){
     'nwr["amenity"="hospital"]('+BBOX+');',
     'nwr["amenity"="school"]('+BBOX+');'
   ].join("")+");out center tags;";
+}
+function restrictionQuery(){
+  return "[out:json][timeout:60];("+[
+    'way["oneway"~"^(yes|-1)$"]('+BBOX+');',
+    'way["access"~"^(no|private)$"]('+BBOX+');',
+    'way["motor_vehicle"~"^(no|private)$"]('+BBOX+');',
+    'way["motorcycle"~"^(no|private)$"]('+BBOX+');',
+    'relation["type"="restriction"]('+BBOX+');'
+  ].join("")+");out tags geom;";
+}
+function osmRestrictionToFeature(item){
+  if(item.type!=="way"||!Array.isArray(item.geometry)||item.geometry.length<2)return null;
+  const coords=item.geometry.map(function(p){return [Number(p.lon),Number(p.lat)]}).filter(function(c){return validCoord(c[0],c[1])});
+  if(coords.length<2)return null;
+  const tags=item.tags||{};
+  let ruleKind="other";
+  if(tags.motorcycle==="no"||tags.motorcycle==="private")ruleKind="motorcycle_no";
+  else if(tags.motor_vehicle==="no"||tags.motor_vehicle==="private")ruleKind="motor_vehicle_no";
+  else if(tags.access==="no"||tags.access==="private")ruleKind="access_no";
+  else if(tags.oneway==="yes"||tags.oneway==="-1")ruleKind="oneway";
+  return {type:"Feature",geometry:{type:"LineString",coordinates:coords},properties:Object.assign({
+    source:"OpenStreetMap",
+    osm_type:item.type,
+    osm_id:item.id,
+    kind:"road_restriction",
+    rule_kind:ruleKind,
+    signal_timing:"unknown"
+  },tags)};
+}
+async function loadRoadRestrictions(){
+  if(state.restrictions.features.length||state.restrictionRelations){return}
+  setSource("rules","loading","กำลังโหลด one-way / access / turn restrictions ทั่วบุรีรัมย์");
+  try{
+    const json=await callOverpass(restrictionQuery());
+    const features=[],relations=[];
+    (json.elements||[]).forEach(function(item){
+      if(item.type==="relation"&&item.tags&&item.tags.type==="restriction"){relations.push(item);return}
+      const f=osmRestrictionToFeature(item);if(f)features.push(f);
+    });
+    state.restrictions={type:"FeatureCollection",features:features};
+    state.restrictionRelations=relations.length;
+    updateSource("restrictions",state.restrictions);
+    el("countRestrictions").textContent=fmt(features.length)+" / "+fmt(relations.length);
+    setSource("rules","ok",fmt(features.length)+" ช่วงถนน · "+fmt(relations.length)+" turn restrictions");
+    auditRoute();
+  }catch(err){
+    console.warn("OSM road restrictions",err);
+    el("countRestrictions").textContent="!";
+    setSource("rules","error","โหลดข้อจำกัดถนนไม่สำเร็จ · ไม่กระทบชั้นข้อมูลอื่น");
+  }
 }
 async function callOverpass(query){
   let lastError=null;
@@ -340,7 +399,7 @@ function setVisibility(layer,visible){
   if(state.map&&state.map.getLayer(layer))state.map.setLayoutProperty(layer,"visibility",visible?"visible":"none");
 }
 function handleMapClick(e){
-  const hit=state.map&&e.point?state.map.queryRenderedFeatures(e.point,{layers:["signals","safety","pois","ngis","drr","bridges-lines","bridges-points"]}):[];
+  const hit=state.map&&e.point?state.map.queryRenderedFeatures(e.point,{layers:["signals","safety","pois","restrictions","ngis","drr","bridges-lines","bridges-points"]}):[];
   if((e.features&&e.features.length)||(hit&&hit.length))return;
   if(!validCoord(e.lngLat.lng,e.lngLat.lat))return;
   if(state.picking==="start"||!state.start){
@@ -420,6 +479,15 @@ function distancePointToLine(point,line){
   for(let i=1;i<line.length;i++)best=Math.min(best,segmentDistanceMeters(point,line[i-1],line[i]));
   return best;
 }
+function distanceLineToLine(lineA,lineB){
+  let best=Infinity;
+  const stride=Math.max(1,Math.floor((lineA||[]).length/80));
+  for(let i=0;i<(lineA||[]).length;i+=stride){
+    best=Math.min(best,distancePointToLine(lineA[i],lineB));
+    if(best<=12)return best;
+  }
+  return best;
+}
 function auditRoute(){
   if(!state.route)return;
   const line=state.route.geometry.coordinates||[];
@@ -428,8 +496,12 @@ function auditRoute(){
   };
   const sig=near(state.signals,45);
   const haz=near(state.safety,45);
+  const rules=state.restrictions.features.filter(function(f){
+    return f.geometry&&f.geometry.type==="LineString"&&distanceLineToLine(f.geometry.coordinates,line)<=18;
+  });
   el("routeSignals").textContent=fmt(sig.length);
   el("routeHazards").textContent=fmt(haz.length);
+  el("routeRules").textContent=state.restrictions.features.length?fmt(rules.length):"ยังไม่โหลด";
 }
 function showFeature(feature){
   const p=feature.properties||{};
@@ -500,11 +572,12 @@ function bind(){
   el("swapRoute").onclick=function(){const t=state.start;state.start=state.end;state.end=t;syncRoutePoints();if(state.start&&state.end)calculateRoute()};
   el("toggleSignals").onchange=function(e){setVisibility("signals",e.target.checked);setVisibility("signals-halo",e.target.checked)};
   el("toggleSafety").onchange=function(e){setVisibility("safety",e.target.checked)};
+  el("toggleRestrictions").onchange=function(e){setVisibility("restrictions",e.target.checked);if(e.target.checked)loadRoadRestrictions()};
   el("togglePois").onchange=function(e){setVisibility("pois",e.target.checked);if(e.target.checked)loadPois()};
   el("toggleNgis").onchange=function(e){setVisibility("ngis",e.target.checked);if(e.target.checked)loadNgis()};
   el("toggleDrr").onchange=function(e){setVisibility("drr",e.target.checked);if(e.target.checked)loadDrr()};
   el("toggleBridges").onchange=function(e){setVisibility("bridges-lines",e.target.checked);setVisibility("bridges-points",e.target.checked);if(e.target.checked)loadDrrBridges()};
-  el("refreshData").onclick=function(){abortActive();state.signals=emptyCollection();state.safety=emptyCollection();updateSource("signals",state.signals);updateSource("safety",state.safety);loadCoreData();if(el("togglePois").checked){state.pois=emptyCollection();loadPois()}if(el("toggleNgis").checked){state.ngis=emptyCollection();updateSource("ngis",state.ngis);loadNgis()}if(el("toggleDrr").checked){state.drr=emptyCollection();updateSource("drr",state.drr);loadDrr()}if(el("toggleBridges").checked){state.bridges=emptyCollection();updateSource("bridges",state.bridges);loadDrrBridges()}};
+  el("refreshData").onclick=function(){abortActive();state.signals=emptyCollection();state.safety=emptyCollection();updateSource("signals",state.signals);updateSource("safety",state.safety);loadCoreData();if(el("togglePois").checked){state.pois=emptyCollection();loadPois()}if(el("toggleRestrictions").checked){state.restrictions=emptyCollection();state.restrictionRelations=0;updateSource("restrictions",state.restrictions);loadRoadRestrictions()}if(el("toggleNgis").checked){state.ngis=emptyCollection();updateSource("ngis",state.ngis);loadNgis()}if(el("toggleDrr").checked){state.drr=emptyCollection();updateSource("drr",state.drr);loadDrr()}if(el("toggleBridges").checked){state.bridges=emptyCollection();updateSource("bridges",state.bridges);loadDrrBridges()}};
   el("exportGeojson").onclick=exportGeojson;
   el("closeFeature").onclick=function(){el("featureDialog").close?el("featureDialog").close():el("featureDialog").removeAttribute("open")};
   el("searchForm").onsubmit=async function(e){
