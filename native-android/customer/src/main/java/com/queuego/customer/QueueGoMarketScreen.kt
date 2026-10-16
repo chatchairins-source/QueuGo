@@ -76,6 +76,9 @@ fun MarketNativeScreen(
     val api = remember { CustomerMarketApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val contentCache = remember(context.applicationContext) {
+        CustomerContentCache(context.applicationContext)
+    }
     val actorId = auth?.user?.id ?: "guest"
     val cartStore = remember(actorId) { MarketCartStore(context, actorId) }
     val checkout = remember(actorId) { CustomerCheckoutRecovery<PendingMarketCheckout, org.json.JSONObject>(cartStore.journal()) }
@@ -97,6 +100,7 @@ fun MarketNativeScreen(
     var loadFailed by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
+    var cacheHydrated by remember { mutableStateOf(false) }
 
     var hasResumed by remember(actorId) { mutableStateOf(false) }
     LifecycleResumeEffect(actorId) {
@@ -105,15 +109,29 @@ fun MarketNativeScreen(
     }
 
     LaunchedEffect(actorId, location?.latitude, location?.longitude, reload) {
-        loading = true
+        if (!cacheHydrated) {
+            val cached = withContext(Dispatchers.IO) { contentCache.readMarket() }
+            if (cached != null) {
+                markets = cached.markets
+                shops = cached.shops
+                catalog = cached.catalog
+                loading = false
+            }
+            cacheHydrated = true
+        }
+        loading = markets.isEmpty() && shops.isEmpty() && catalog.isEmpty()
         loadFailed = false
-        pricing = null
         checkoutPending = withContext(Dispatchers.IO) { cartStore.hasPendingCheckout() }
         runCatching {
             val m = if (auth == null) api.loadMarketsPublic() else api.loadMarkets(auth)
+            val freshShops = if (auth == null) api.loadShopsPublic() else api.loadShops(auth)
+            val freshCatalog = if (auth == null) api.loadCatalogPublic() else api.loadCatalog(auth)
             markets = m
-            shops = if (auth == null) api.loadShopsPublic() else api.loadShops(auth)
-            catalog = if (auth == null) api.loadCatalogPublic() else api.loadCatalog(auth)
+            shops = freshShops
+            catalog = freshCatalog
+            withContext(Dispatchers.IO) {
+                contentCache.writeMarket(m, freshShops, freshCatalog)
+            }
             if (!restoredCart) {
                 fun restore(saved: List<MarketCartStore.Saved>): List<MarketCartLine> =
                     saved.mapNotNull { line ->
