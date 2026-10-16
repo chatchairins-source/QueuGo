@@ -2725,7 +2725,13 @@ private fun RiderHome(
         val activeSheetJob = snapshot?.activeJob
         val expandedSheetHeight = (maxHeight - 132.dp).coerceAtLeast(0.dp)
         val fixedJobCardMaxHeight = if (activeSheetJob != null) {
-            (maxHeight * 0.56f).coerceAtLeast(220.dp)
+            if (activeNavigationWork) {
+                // Keep the route, Rider puck and next turn visible while moving.
+                // Full job details remain scrollable inside the compact dock.
+                (maxHeight * 0.34f).coerceAtLeast(180.dp).coerceAtMost(300.dp)
+            } else {
+                (maxHeight * 0.56f).coerceAtLeast(220.dp)
+            }
         } else {
             expandedSheetHeight
         }
