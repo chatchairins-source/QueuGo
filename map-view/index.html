@@ -59,6 +59,31 @@
     .nav-strip small,.nav-strip b{display:block}.nav-strip small{font-size:9px;color:#cfc8cf}.nav-strip b{font-size:13px;margin-top:2px}.nav-metrics{display:flex;gap:10px;margin-top:4px;font-size:9px;color:#ddd}.nav-strip button{border:0;border-radius:11px;background:#fff;color:#191619;padding:9px 11px;font-weight:800;font-size:10px}
     .traffic-note{margin-top:7px;padding:8px 9px;border-radius:11px;background:#f5f3f4;font-size:9px;line-height:1.4;color:#625c63}
 
+    .qg-search{position:fixed;z-index:21;left:12px;right:76px;top:calc(10px + var(--safe-t));pointer-events:none}
+    .qg-search-pill{pointer-events:auto;height:48px;display:flex;align-items:center;gap:8px;padding:6px 7px;border:1px solid rgba(255,255,255,.9);border-radius:17px;background:rgba(255,255,255,.95);box-shadow:0 10px 28px rgba(31,24,29,.15);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+    .qg-brand{display:grid;place-items:center;width:34px;height:34px;min-width:34px;border-radius:50%;background:var(--red);color:#fff;font-weight:900;font-size:15px}
+    .qg-wordmark{font-size:11px;font-weight:900;letter-spacing:-.2px;white-space:nowrap;color:#221e22}
+    .qg-search-pill input{min-width:0;flex:1;border:0;outline:0;background:transparent;font-size:14px;color:var(--ink);padding:7px 1px}
+    .qg-search-pill button{width:38px;height:38px;border:0;border-radius:11px;background:transparent;color:#2e292e;display:grid;place-items:center}
+    .qg-search-results{pointer-events:auto;margin-top:7px;max-height:min(44dvh,360px);overflow:auto;border:1px solid var(--line);border-radius:15px;background:#fff;box-shadow:0 14px 36px rgba(31,24,29,.18)}
+    .qg-search-result{display:block;width:100%;border:0;border-bottom:1px solid #f0edef;background:#fff;text-align:left;padding:10px 12px}.qg-search-result:last-child{border-bottom:0}
+    .qg-search-result b,.qg-search-result small{display:block}.qg-search-result b{font-size:12px}.qg-search-result small{font-size:9px;color:var(--muted);margin-top:2px;line-height:1.35}
+
+    .tool-sheet{position:fixed;z-index:34;left:8px;right:8px;bottom:calc(6px + var(--safe-b));max-height:74dvh;overflow:auto;background:rgba(255,255,255,.985);border-radius:24px 24px 20px 20px;box-shadow:0 -14px 42px rgba(30,24,29,.2);padding:10px 12px 14px}
+    .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tool-card{border:1px solid var(--line);border-radius:14px;background:#faf9f9;text-align:left;padding:11px;color:var(--ink)}
+    .tool-card.active{border-color:rgba(230,0,45,.35);background:#fff4f6}.tool-card b,.tool-card small{display:block}.tool-card b{font-size:11px}.tool-card small{font-size:9px;color:var(--muted);margin-top:3px;line-height:1.35}
+    .tool-panel{margin-top:11px;border-top:1px solid var(--line);padding-top:11px}.tool-panel h3{margin:0 0 7px;font-size:13px}.tool-panel p{font-size:9px;line-height:1.4;color:var(--muted);margin:6px 0}
+    .tool-row{display:flex;gap:7px;flex-wrap:wrap}.tool-row button{border:1px solid var(--line);border-radius:11px;background:#f6f4f5;padding:8px 10px;font-size:10px;font-weight:750;color:#373137}
+    .tool-row button.primary{background:var(--red);border-color:var(--red);color:#fff}
+    .tool-output{margin-top:8px;padding:9px;border-radius:12px;background:#f5f3f4;font-size:10px;line-height:1.5;color:#4f494f;white-space:normal}
+    .point-list{display:grid;gap:6px;margin-top:8px}.point-item{display:grid;grid-template-columns:26px 1fr auto;gap:7px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:12px;background:#faf9f9}
+    .point-no{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:#191619;color:#fff;font-size:10px;font-weight:900}.point-item b,.point-item small{display:block}.point-item b{font-size:10px}.point-item small{font-size:8px;color:var(--muted);margin-top:2px}
+    .point-actions{display:flex;gap:3px}.point-actions button{width:28px;height:28px;border:0;border-radius:8px;background:#f0edef;font-size:12px}
+    .matrix-wrap{overflow:auto;margin-top:8px}.matrix{border-collapse:collapse;min-width:100%;font-size:9px}.matrix th,.matrix td{border:1px solid var(--line);padding:6px 7px;text-align:right;white-space:nowrap}.matrix th{background:#f6f4f5;text-align:center}
+    .nearby-chips{display:flex;gap:6px;overflow:auto;padding-bottom:2px}.nearby-chips button{white-space:nowrap;border:1px solid var(--line);border-radius:999px;background:#fff;padding:7px 10px;font-size:9px}.nearby-chips button.active{background:#191619;color:#fff}
+    .result-list{display:grid;gap:6px;margin-top:8px}.result-item{border:1px solid var(--line);border-radius:11px;background:#faf9f9;padding:8px}.result-item b,.result-item small{display:block}.result-item b{font-size:10px}.result-item small{font-size:8px;color:var(--muted);margin-top:2px}
+    .measure-badge{position:fixed;z-index:24;left:12px;bottom:calc(18px + var(--safe-b));padding:8px 10px;border-radius:12px;background:rgba(25,22,25,.92);color:#fff;font-size:10px;box-shadow:0 8px 22px rgba(0,0,0,.2);pointer-events:none}
+
     [hidden]{display:none!important}
     @media(min-width:760px){.sheet{left:50%;right:auto;width:520px;transform:translateX(-50%)}.confirm-bar{left:50%;right:auto;width:520px;transform:translateX(-50%)}}
   </style>
@@ -66,7 +91,22 @@
 <body>
   <div id="map" aria-label="แผนที่ QueueGo บุรีรัมย์"></div>
 
+  <div class="qg-search">
+    <form id="placeSearchForm" class="qg-search-pill" role="search">
+      <span class="qg-brand" aria-hidden="true">Q</span>
+      <span class="qg-wordmark">QueueGo Map</span>
+      <input id="placeSearchInput" type="search" autocomplete="off" placeholder="ค้นหาใน QueueGo Map" aria-label="ค้นหาสถานที่">
+      <button type="submit" aria-label="ค้นหา">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4 4"></path></svg>
+      </button>
+    </form>
+    <div id="placeSearchResults" class="qg-search-results" hidden></div>
+  </div>
+
   <div class="map-tools">
+    <button id="toolboxButton" class="fab" type="button" aria-label="เครื่องมือ QueueGo Map" title="เครื่องมือ QueueGo Map">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 4v6M4 17h16M17 14v6"></path></svg>
+    </button>
     <button id="routePlanButton" class="fab" type="button" aria-label="ค้นหาเส้นทาง" title="ค้นหาเส้นทาง">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c0-4 2-6 6-6h2c4 0 6-2 6-6"></path><path d="M16 7h3V4"></path><circle cx="5" cy="19" r="2"></circle></svg>
     </button>
@@ -88,6 +128,71 @@
   </div>
 
   <div id="toast" class="toast" aria-live="polite"></div>
+
+  <div id="measureBadge" class="measure-badge" hidden>0 ม.</div>
+
+  <section id="toolSheet" class="tool-sheet" hidden aria-label="เครื่องมือ QueueGo Map">
+    <div class="route-sheet-head">
+      <div><small>QUEUEGO MAP ENGINE</small><strong>เครื่องมือแผนที่</strong></div>
+      <button id="closeToolSheet" class="sheet-close" type="button" aria-label="ปิดเครื่องมือ">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+
+    <div class="tool-grid">
+      <button class="tool-card" data-tool="inspect" type="button"><b>พิกัดและถนน</b><small>ละติจูด ลองจิจูด ที่อยู่ และถนนที่ใกล้ที่สุด</small></button>
+      <button class="tool-card" data-tool="measure" type="button"><b>วัดระยะทาง</b><small>เพิ่มหลายจุดและรวมระยะเส้นตรง</small></button>
+      <button class="tool-card" data-tool="multistop" type="button"><b>เส้นทางหลายจุด</b><small>กำหนดจุดแวะ คำนวณตามลำดับหรือจัดลำดับใหม่</small></button>
+      <button class="tool-card" data-tool="nearby" type="button"><b>สถานที่ใกล้เคียง</b><small>ร้านอาหาร ปั๊ม โรงพยาบาล ตำรวจ ATM และอื่น ๆ</small></button>
+    </div>
+
+    <div id="inspectPanel" class="tool-panel" hidden>
+      <h3>พิกัด / จุดบนแผนที่</h3>
+      <p>แตะแผนที่หนึ่งจุดเพื่ออ่านพิกัด ที่อยู่ และถนนที่ใกล้ที่สุด</p>
+      <div id="inspectOutput" class="tool-output">ยังไม่ได้เลือกจุด</div>
+      <div class="tool-row" style="margin-top:8px"><button id="copyInspectCoords" type="button">คัดลอกพิกัด</button></div>
+    </div>
+
+    <div id="measurePanel" class="tool-panel" hidden>
+      <h3>วัดระยะทางหลายจุด</h3>
+      <p>แตะแผนที่เพื่อเพิ่มจุด ระบบรวมระยะเส้นตรงทุกช่วง</p>
+      <div class="tool-row">
+        <button id="measureUndo" type="button">ย้อนจุดล่าสุด</button>
+        <button id="measureClear" type="button">ล้างทั้งหมด</button>
+      </div>
+      <div id="measureOutput" class="tool-output">0 จุด · 0 ม.</div>
+    </div>
+
+    <div id="multiStopPanel" class="tool-panel" hidden>
+      <h3>เส้นทางหลายจุด</h3>
+      <p>แตะแผนที่เพื่อเพิ่มจุด สูงสุด 12 จุด แล้วเลือกคำนวณตามลำดับ จัดลำดับให้เร็วขึ้น หรือสร้างตารางเวลา/ระยะทาง</p>
+      <div id="waypointList" class="point-list"></div>
+      <div class="tool-row" style="margin-top:8px">
+        <button id="multiRouteOrder" class="primary" type="button">คำนวณตามลำดับ</button>
+        <button id="multiRouteOptimize" type="button">จัดลำดับอัตโนมัติ</button>
+        <button id="multiRouteMatrix" type="button">ตารางเวลา/ระยะทาง</button>
+        <button id="multiRouteClear" type="button">ล้างจุด</button>
+      </div>
+      <div id="multiRouteOutput" class="tool-output">ยังไม่มีจุด</div>
+      <div id="matrixWrap" class="matrix-wrap" hidden></div>
+    </div>
+
+    <div id="nearbyPanel" class="tool-panel" hidden>
+      <h3>สถานที่ใกล้เคียง</h3>
+      <div class="nearby-chips">
+        <button data-nearby="food" type="button">อาหาร</button>
+        <button data-nearby="fuel" type="button">ปั๊ม</button>
+        <button data-nearby="hospital" type="button">โรงพยาบาล</button>
+        <button data-nearby="police" type="button">ตำรวจ</button>
+        <button data-nearby="atm" type="button">ATM</button>
+        <button data-nearby="school" type="button">โรงเรียน</button>
+        <button data-nearby="toilet" type="button">ห้องน้ำ</button>
+      </div>
+      <div id="nearbyResults" class="result-list"></div>
+    </div>
+
+    <p class="source-note">QueueGo Map Engine เวอร์ชันเว็บใช้ข้อมูลเปิดและบริการทดลองของ OSM/Nominatim/OSRM เพื่อพิสูจน์ระบบ ก่อนย้าย computation ไปยัง routing/geodata service ของ QueueGo เอง</p>
+  </section>
 
   <section id="routeSheet" class="route-sheet" hidden aria-label="เส้นทางแนะนำ">
     <div class="route-sheet-head">
@@ -188,7 +293,8 @@
     const state={
       mode:null,pinMode:false,selected:null,address:null,nearbyVillages:[],nearbyRoads:[],dopaVillages:[],
       routeStart:null,routeEnd:null,routes:[],trafficSignals:[],routeRestrictions:[],selectedRoute:0,routeStartMarker:null,routeEndMarker:null,
-      navigationActive:false,watchId:null,offRouteHits:0,lastRerouteAt:0,lastPosition:null,speedHistory:null
+      navigationActive:false,watchId:null,offRouteHits:0,lastRerouteAt:0,lastPosition:null,speedHistory:null,
+      toolMode:null,inspectPoint:null,measurePoints:[],waypoints:[],waypointMarkers:[],nearbyFeatures:[],nearbyCategory:null
     };
     const SIGNAL_EXPECTED_DELAY_SECONDS=20;
     const RESTRICTION_PENALTY_SECONDS=90;
@@ -594,6 +700,254 @@
         setPinMode(true);toast("เลื่อนหมุดให้ตรงบ้านแล้วกดยืนยัน");
       },()=>toast("อ่านตำแหน่งไม่ได้ กรุณาตรวจสิทธิ์"),{enableHighAccuracy:true,timeout:10000,maximumAge:5000});
     }
+    function closeTransientSheets(except){
+      ["toolSheet","routeSheet","addressSheet"].forEach(id=>{if(id!==except)$(id).hidden=true});
+    }
+    function setToolMode(mode){
+      state.toolMode=mode;
+      closeTransientSheets("toolSheet");
+      $("toolSheet").hidden=false;
+      document.querySelectorAll(".tool-card").forEach(b=>b.classList.toggle("active",b.dataset.tool===mode));
+      ["inspectPanel","measurePanel","multiStopPanel","nearbyPanel"].forEach(id=>$(id).hidden=true);
+      if(mode==="inspect"){$("inspectPanel").hidden=false;toast("แตะแผนที่เพื่ออ่านพิกัด")}
+      if(mode==="measure"){$("measurePanel").hidden=false;$("measureBadge").hidden=false;toast("แตะแผนที่เพื่อเพิ่มจุดวัดระยะ")}
+      else $("measureBadge").hidden=true;
+      if(mode==="multistop"){$("multiStopPanel").hidden=false;toast("แตะแผนที่เพื่อเพิ่มจุดแวะ")}
+      if(mode==="nearby"){$("nearbyPanel").hidden=false}
+    }
+    function greatCircleMeters(a,b){
+      const R=6371000,rad=Math.PI/180,dLat=(b.lat-a.lat)*rad,dLon=(b.lon-a.lon)*rad,la1=a.lat*rad,la2=b.lat*rad;
+      const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2;
+      return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+    }
+    function bearingDegrees(a,b){
+      const r=Math.PI/180,la1=a.lat*r,la2=b.lat*r,dl=(b.lon-a.lon)*r;
+      const y=Math.sin(dl)*Math.cos(la2),x=Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(dl);
+      return (Math.atan2(y,x)*180/Math.PI+360)%360;
+    }
+    function formatDistance(m){
+      return m>=1000?(m/1000).toLocaleString("th-TH",{maximumFractionDigits:2})+" กม.":Math.round(m).toLocaleString("th-TH")+" ม.";
+    }
+    async function engineGeocode(query){
+      const url=NOMINATIM+"/search?format=jsonv2&addressdetails=1&limit=8&accept-language=th,en&viewbox=102.4,15.8,103.5,14.1&q="+encodeURIComponent(query);
+      const r=await fetchTimeout(url,{headers:{"Accept-Language":"th,en"}},12000);if(!r.ok)throw Error("geocode "+r.status);
+      return await r.json();
+    }
+    async function engineReverse(lat,lon){
+      const url=NOMINATIM+"/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=th&lat="+encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon);
+      const r=await fetchTimeout(url,{headers:{"Accept-Language":"th,en"}},12000);if(!r.ok)throw Error("reverse "+r.status);
+      return await r.json();
+    }
+    async function engineNearestRoad(lat,lon){
+      const r=await fetchTimeout(OSRM.replace("/route/v1/driving/","/nearest/v1/driving/")+lon+","+lat+"?number=1",{},12000);
+      if(!r.ok)throw Error("nearest "+r.status);const j=await r.json();
+      return j.waypoints&&j.waypoints[0]||null;
+    }
+    function ensureToolLayers(){
+      if(!map.getSource("tool-measure")){
+        map.addSource("tool-measure",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+        map.addLayer({id:"tool-measure-line",type:"line",source:"tool-measure",filter:["==",["geometry-type"],"LineString"],paint:{"line-color":"#191619","line-width":3,"line-dasharray":[2,1]}});
+        map.addLayer({id:"tool-measure-points",type:"circle",source:"tool-measure",filter:["==",["geometry-type"],"Point"],paint:{"circle-radius":5,"circle-color":"#e6002d","circle-stroke-width":2,"circle-stroke-color":"#fff"}});
+      }
+      if(!map.getSource("tool-multiroute")){
+        map.addSource("tool-multiroute",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+        map.addLayer({id:"tool-multiroute-case",type:"line",source:"tool-multiroute",paint:{"line-color":"#fff","line-width":["interpolate",["linear"],["zoom"],9,7,17,13]}});
+        map.addLayer({id:"tool-multiroute-line",type:"line",source:"tool-multiroute",paint:{"line-color":"#191619","line-width":["interpolate",["linear"],["zoom"],9,4,17,7]}});
+      }
+      if(!map.getSource("tool-nearby")){
+        map.addSource("tool-nearby",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+        map.addLayer({id:"tool-nearby",type:"circle",source:"tool-nearby",paint:{"circle-radius":6,"circle-color":"#e6002d","circle-stroke-width":2,"circle-stroke-color":"#fff"}});
+      }
+    }
+    async function inspectMapPoint(lat,lon){
+      state.inspectPoint={lat,lon};
+      $("inspectOutput").textContent="กำลังอ่านข้อมูล…";
+      const [rev,nearest]=await Promise.allSettled([engineReverse(lat,lon),engineNearestRoad(lat,lon)]);
+      const address=rev.status==="fulfilled"?(rev.value.display_name||"ไม่พบที่อยู่"):"อ่านที่อยู่ไม่ได้";
+      const road=nearest.status==="fulfilled"&&nearest.value?(nearest.value.name||"ถนนที่ใกล้ที่สุด"):"ไม่พบถนน";
+      const snap=nearest.status==="fulfilled"&&nearest.value&&nearest.value.location?nearest.value.location:null;
+      const offset=nearest.status==="fulfilled"&&nearest.value&&Number.isFinite(nearest.value.distance)?formatDistance(nearest.value.distance):"—";
+      $("inspectOutput").innerHTML="<b>"+lat.toFixed(6)+", "+lon.toFixed(6)+"</b><br>"+esc(address)+"<br>ถนนใกล้ที่สุด: "+esc(road)+" · ห่าง "+offset+(snap?"<br>พิกัดบนถนน: "+Number(snap[1]).toFixed(6)+", "+Number(snap[0]).toFixed(6):"");
+    }
+    function updateMeasure(){
+      ensureToolLayers();
+      const pts=state.measurePoints,features=pts.map((p,i)=>({type:"Feature",geometry:{type:"Point",coordinates:[p.lon,p.lat]},properties:{index:i}}));
+      if(pts.length>1)features.unshift({type:"Feature",geometry:{type:"LineString",coordinates:pts.map(p=>[p.lon,p.lat])},properties:{}});
+      map.getSource("tool-measure").setData({type:"FeatureCollection",features});
+      let total=0;for(let i=1;i<pts.length;i++)total+=greatCircleMeters(pts[i-1],pts[i]);
+      $("measureOutput").textContent=pts.length+" จุด · "+formatDistance(total);
+      $("measureBadge").textContent=formatDistance(total);
+    }
+    function clearMeasure(){state.measurePoints=[];updateMeasure()}
+    function waypointElement(index){
+      const d=document.createElement("div");d.style.cssText="width:26px;height:26px;border-radius:50%;background:#191619;color:#fff;border:2px solid #fff;box-shadow:0 3px 9px #0004;display:grid;place-items:center;font:800 10px -apple-system,BlinkMacSystemFont,sans-serif";d.textContent=String(index+1);return d;
+    }
+    function rebuildWaypointMarkers(){
+      state.waypointMarkers.forEach(m=>m.remove());state.waypointMarkers=[];
+      state.waypoints.forEach((p,i)=>state.waypointMarkers.push(new maplibregl.Marker({element:waypointElement(i)}).setLngLat([p.lon,p.lat]).addTo(map)));
+    }
+    function renderWaypoints(){
+      const host=$("waypointList");host.innerHTML="";
+      state.waypoints.forEach((p,i)=>{
+        const row=document.createElement("div");row.className="point-item";
+        row.innerHTML='<span class="point-no">'+(i+1)+'</span><span><b>จุด '+(i+1)+'</b><small>'+p.lat.toFixed(5)+', '+p.lon.toFixed(5)+'</small></span><span class="point-actions"><button data-up="'+i+'" type="button">↑</button><button data-down="'+i+'" type="button">↓</button><button data-del="'+i+'" type="button">×</button></span>';
+        host.appendChild(row);
+      });
+      host.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>moveWaypoint(Number(b.dataset.up),-1));
+      host.querySelectorAll("[data-down]").forEach(b=>b.onclick=()=>moveWaypoint(Number(b.dataset.down),1));
+      host.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>removeWaypoint(Number(b.dataset.del)));
+      $("multiRouteOutput").textContent=state.waypoints.length?state.waypoints.length+" จุดพร้อมคำนวณ":"ยังไม่มีจุด";
+      rebuildWaypointMarkers();
+    }
+    function moveWaypoint(index,dir){
+      const to=index+dir;if(to<0||to>=state.waypoints.length)return;
+      const tmp=state.waypoints[index];state.waypoints[index]=state.waypoints[to];state.waypoints[to]=tmp;renderWaypoints();
+    }
+    function removeWaypoint(index){state.waypoints.splice(index,1);renderWaypoints()}
+    function clearMultiStops(){
+      state.waypoints=[];renderWaypoints();$("matrixWrap").hidden=true;$("matrixWrap").innerHTML="";
+      const src=map.getSource("tool-multiroute");if(src)src.setData({type:"FeatureCollection",features:[]});
+    }
+    function routeCoordinateString(points){return points.map(p=>p.lon+","+p.lat).join(";")}
+    async function engineRoute(points){
+      if(points.length<2)throw Error("need two points");
+      const url=OSRM+routeCoordinateString(points)+"?overview=full&geometries=geojson&steps=true";
+      const r=await fetchTimeout(url,{},18000);if(!r.ok)throw Error("route "+r.status);return await r.json();
+    }
+    async function engineMatchTrace(points){
+      if(points.length<2)throw Error("need trace points");
+      const base=OSRM.replace("/route/v1/driving/","/match/v1/driving/");
+      const url=base+routeCoordinateString(points)+"?overview=full&geometries=geojson&steps=true&tidy=true";
+      const r=await fetchTimeout(url,{},18000);if(!r.ok)throw Error("match "+r.status);return await r.json();
+    }
+    async function engineMatrix(points){
+      if(points.length<2)throw Error("need two points");
+      const base=OSRM.replace("/route/v1/driving/","/table/v1/driving/");
+      const r=await fetchTimeout(base+routeCoordinateString(points)+"?annotations=duration,distance",{},18000);if(!r.ok)throw Error("matrix "+r.status);return await r.json();
+    }
+    async function engineOptimizeStops(points){
+      if(points.length<3)return {points:[...points],trip:null,order:points.map((_,i)=>i)};
+      const base=OSRM.replace("/route/v1/driving/","/trip/v1/driving/");
+      const url=base+routeCoordinateString(points)+"?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson&steps=true";
+      const r=await fetchTimeout(url,{},22000);if(!r.ok)throw Error("trip "+r.status);const j=await r.json();
+      if(!j.trips||!j.trips[0])throw Error("no trip");
+      const indexed=(j.waypoints||[]).map((w,inputIndex)=>({inputIndex,order:w.waypoint_index})).sort((a,b)=>a.order-b.order);
+      return {points:indexed.map(x=>points[x.inputIndex]),trip:j.trips[0],order:indexed.map(x=>x.inputIndex),raw:j};
+    }
+    function drawMultiRoute(route){
+      ensureToolLayers();
+      map.getSource("tool-multiroute").setData({type:"FeatureCollection",features:route&&route.geometry?[{type:"Feature",geometry:route.geometry,properties:{}}]:[]});
+      if(route&&route.geometry&&route.geometry.coordinates&&route.geometry.coordinates.length){
+        const bounds=new maplibregl.LngLatBounds();route.geometry.coordinates.forEach(c=>bounds.extend(c));
+        map.fitBounds(bounds,{padding:{top:80,bottom:110,left:40,right:40},maxZoom:16,duration:500});
+      }
+    }
+    async function computeMultiRoute(){
+      if(state.waypoints.length<2){toast("เพิ่มอย่างน้อย 2 จุด");return}
+      toast("กำลังคำนวณเส้นทางหลายจุด");
+      try{
+        const j=await engineRoute(state.waypoints),route=j.routes&&j.routes[0];if(!route)throw Error("no route");
+        drawMultiRoute(route);$("multiRouteOutput").textContent="ตามลำดับ · "+formatDistance(route.distance)+" · "+Math.max(1,Math.round(route.duration/60))+" นาที";
+      }catch(e){console.warn(e);toast("คำนวณหลายจุดไม่สำเร็จ")}
+    }
+    async function optimizeMultiRoute(){
+      if(state.waypoints.length<3){toast("เพิ่มอย่างน้อย 3 จุด");return}
+      toast("กำลังจัดลำดับจุดให้เร็วขึ้น");
+      try{
+        const result=await engineOptimizeStops(state.waypoints);state.waypoints=result.points;renderWaypoints();drawMultiRoute(result.trip);
+        $("multiRouteOutput").textContent="จัดลำดับแล้ว · "+formatDistance(result.trip.distance)+" · "+Math.max(1,Math.round(result.trip.duration/60))+" นาที";
+      }catch(e){console.warn(e);toast("จัดลำดับจุดไม่สำเร็จ")}
+    }
+    function renderMatrix(data){
+      const d=data.durations||[],dist=data.distances||[],n=state.waypoints.length;
+      let html='<table class="matrix"><thead><tr><th>จาก/ไป</th>'+state.waypoints.map((_,i)=>'<th>'+(i+1)+'</th>').join("")+'</tr></thead><tbody>';
+      for(let i=0;i<n;i++){
+        html+='<tr><th>'+(i+1)+'</th>';
+        for(let j=0;j<n;j++){
+          const sec=d[i]&&d[i][j],m=dist[i]&&dist[i][j];
+          html+='<td>'+(sec==null?'—':Math.round(sec/60)+'น.')+(m==null?'':'<br>'+formatDistance(m))+'</td>';
+        }
+        html+='</tr>';
+      }
+      html+='</tbody></table>';$("matrixWrap").innerHTML=html;$("matrixWrap").hidden=false;
+    }
+    async function computeRouteMatrix(){
+      if(state.waypoints.length<2){toast("เพิ่มอย่างน้อย 2 จุด");return}
+      toast("กำลังคำนวณตารางเวลาและระยะทาง");
+      try{renderMatrix(await engineMatrix(state.waypoints));toast("ตารางพร้อม")}catch(e){console.warn(e);toast("คำนวณตารางไม่สำเร็จ")}
+    }
+    const NEARBY_FILTERS={
+      food:'["amenity"~"restaurant|cafe|fast_food"]',
+      fuel:'["amenity"="fuel"]',
+      hospital:'["amenity"~"hospital|clinic|pharmacy"]',
+      police:'["amenity"="police"]',
+      atm:'["amenity"="atm"]',
+      school:'["amenity"~"school|kindergarten|college|university"]',
+      toilet:'["amenity"="toilets"]'
+    };
+    async function engineNearby(category,lat,lon,radius=5000){
+      const filter=NEARBY_FILTERS[category];if(!filter)throw Error("unknown category");
+      const q='[out:json][timeout:25];nwr(around:'+Math.min(10000,Math.max(250,radius))+','+lat+','+lon+')'+filter+';out center tags;';
+      let data=null,last=null;
+      for(const ep of OVERPASS){
+        try{
+          const r=await fetchTimeout(ep,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:"data="+encodeURIComponent(q)},30000);
+          if(!r.ok)throw Error("overpass "+r.status);data=await r.json();break;
+        }catch(e){last=e}
+      }
+      if(!data)throw last||Error("overpass");
+      return (data.elements||[]).map(x=>{
+        const lat2=Number(x.lat!=null?x.lat:x.center&&x.center.lat),lon2=Number(x.lon!=null?x.lon:x.center&&x.center.lon),t=x.tags||{};
+        if(!Number.isFinite(lat2)||!Number.isFinite(lon2))return null;
+        return {type:"Feature",geometry:{type:"Point",coordinates:[lon2,lat2]},properties:{name:t["name:th"]||t.name||t.brand||"ไม่ระบุชื่อ",kind:t.amenity||category,category}};
+      }).filter(Boolean).slice(0,60);
+    }
+    function renderNearby(features){
+      state.nearbyFeatures=features;ensureToolLayers();map.getSource("tool-nearby").setData({type:"FeatureCollection",features});
+      const host=$("nearbyResults");host.innerHTML="";
+      features.slice(0,20).forEach((f,i)=>{
+        const b=document.createElement("button");b.type="button";b.className="result-item";b.innerHTML="<b>"+esc(f.properties.name)+"</b><small>"+esc(f.properties.kind)+"</small>";
+        b.onclick=()=>map.flyTo({center:f.geometry.coordinates,zoom:17,duration:450});host.appendChild(b);
+      });
+      if(!features.length)host.innerHTML='<div class="result-item"><b>ไม่พบข้อมูล</b><small>ลองหมวดอื่นหรือเลื่อนแผนที่</small></div>';
+    }
+    async function loadNearby(category){
+      state.nearbyCategory=category;document.querySelectorAll("[data-nearby]").forEach(b=>b.classList.toggle("active",b.dataset.nearby===category));
+      const c=map.getCenter();toast("กำลังค้นหาสถานที่ใกล้เคียง");
+      try{const features=await engineNearby(category,c.lat,c.lng);renderNearby(features);toast("พบ "+features.length+" จุด")}catch(e){console.warn(e);toast("ค้นหาสถานที่ใกล้เคียงไม่สำเร็จ")}
+    }
+    async function searchPlaces(query){
+      const rows=await engineGeocode(query),host=$("placeSearchResults");host.innerHTML="";
+      if(!rows.length){host.innerHTML='<button class="qg-search-result" type="button"><b>ไม่พบสถานที่</b><small>ลองใช้ชื่อถนน ตำบล อำเภอ หรือสถานที่อื่น</small></button>';host.hidden=false;return}
+      rows.forEach((r,i)=>{
+        const b=document.createElement("button");b.type="button";b.className="qg-search-result";b.innerHTML="<b>"+esc(r.name||String(r.display_name||"").split(",")[0])+"</b><small>"+esc(r.display_name||"")+"</small>";
+        b.onclick=()=>{const lon=Number(r.lon),lat=Number(r.lat);if(Number.isFinite(lon)&&Number.isFinite(lat))map.flyTo({center:[lon,lat],zoom:16,duration:500});host.hidden=true};
+        host.appendChild(b);
+      });host.hidden=false;
+    }
+    async function handleToolMapClick(e){
+      const p={lat:e.lngLat.lat,lon:e.lngLat.lng};
+      if(state.toolMode==="inspect"){await inspectMapPoint(p.lat,p.lon);return}
+      if(state.toolMode==="measure"){state.measurePoints.push(p);updateMeasure();return}
+      if(state.toolMode==="multistop"){
+        if(state.waypoints.length>=12){toast("สูงสุด 12 จุดในหน้าเว็บทดลอง");return}
+        state.waypoints.push(p);renderWaypoints();return;
+      }
+    }
+
+    window.QueueGoMapEngine={
+      geocode:engineGeocode,
+      reverseGeocode:(lat,lon)=>engineReverse(lat,lon),
+      nearestRoad:(lat,lon)=>engineNearestRoad(lat,lon),
+      route:engineRoute,
+      routeMatrix:engineMatrix,
+      optimizeStops:engineOptimizeStops,
+      matchTrace:engineMatchTrace,
+      nearby:engineNearby,
+      distanceMeters:greatCircleMeters,
+      bearingDegrees
+    };
+
     function addressPayload(){
       return {
         lat:state.selected&&state.selected.lat,lon:state.selected&&state.selected.lon,
@@ -603,6 +957,25 @@
         note:$("note").value.trim(),source:"user_pin+open_data"
       };
     }
+
+    $("toolboxButton").onclick=()=>{closeTransientSheets("toolSheet");$("toolSheet").hidden=false;$("toolboxButton").classList.add("active")};
+    $("closeToolSheet").onclick=()=>{$("toolSheet").hidden=true;$("toolboxButton").classList.remove("active");state.toolMode=null;$("measureBadge").hidden=true};
+    document.querySelectorAll(".tool-card").forEach(b=>b.onclick=()=>setToolMode(b.dataset.tool));
+    $("measureUndo").onclick=()=>{state.measurePoints.pop();updateMeasure()};
+    $("measureClear").onclick=clearMeasure;
+    $("copyInspectCoords").onclick=async()=>{
+      if(!state.inspectPoint){toast("ยังไม่ได้เลือกจุด");return}
+      const value=state.inspectPoint.lat.toFixed(6)+", "+state.inspectPoint.lon.toFixed(6);
+      try{await navigator.clipboard.writeText(value);toast("คัดลอกพิกัดแล้ว")}catch(_){toast(value)}
+    };
+    $("multiRouteOrder").onclick=computeMultiRoute;
+    $("multiRouteOptimize").onclick=optimizeMultiRoute;
+    $("multiRouteMatrix").onclick=computeRouteMatrix;
+    $("multiRouteClear").onclick=clearMultiStops;
+    document.querySelectorAll("[data-nearby]").forEach(b=>b.onclick=()=>loadNearby(b.dataset.nearby));
+    $("placeSearchForm").onsubmit=async e=>{e.preventDefault();const q=$("placeSearchInput").value.trim();if(!q)return;toast("กำลังค้นหาใน QueueGo Map");try{await searchPlaces(q)}catch(err){console.warn(err);toast("ค้นหาไม่สำเร็จ")}};
+    document.addEventListener("pointerdown",e=>{if(!e.target.closest(".qg-search"))$("placeSearchResults").hidden=true});
+    map.on("click",handleToolMapClick);
 
     $("routePlanButton").onclick=startRoutePlanning;
     $("pinButton").onclick=()=>{setPinMode(true,"address");toast("เลื่อนแผนที่ให้หมุดตรงกับบ้าน")};
@@ -630,7 +1003,7 @@
       get state(){return state},
       ready:false
     };
-    map.on("load",()=>{ensureRouteLayers();window.QueueGoMapView.ready=true});
+    map.on("load",()=>{ensureRouteLayers();ensureToolLayers();window.QueueGoMapView.ready=true});
   })();
   </script>
 </body>
