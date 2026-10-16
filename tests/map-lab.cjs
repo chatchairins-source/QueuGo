@@ -18,7 +18,7 @@ has(js,"คำนวณเส้นทางไม่สำเร็จ");
 ok(!js.includes("maps.googleapis.com"),"Map Lab must not ingest Google Maps");
 ok(!js.includes("google.navigation"),"Map Lab must not depend on Google navigation");
 has(js,"OpenStreetMap");
-has(js,"กรมทางหลวงชนบท");
+has(js,"กรมทางหลวงชนบท");\nhas(html,"ทางหลวงแผ่นดิน (NGIS)");\nhas(js,"NGIS_HIGHWAY_SERVICE");\nhas(js,"ngis.go.th/arcgis/rest/services");\nhas(js,"state.ngis");
 has(js,"source_layer");
 has(js,"routeSignals");
 has(js,"routeHazards");
