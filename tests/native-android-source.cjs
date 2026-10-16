@@ -325,7 +325,8 @@ ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
    'Rider proof success must advance local workflow immediately, including bundle-aware pickup handoff, so verification cannot repeat when refresh is slow or fails');
 ok(riderApp.includes('if (current == null) {')&&
    riderApp.includes('if (loadError != null) {')&&
-   riderApp.includes('if (snapshot == null) loadError = "กำลังเชื่อมต่อข้อมูลงานใหม่"')&&
+   riderApp.includes('if (snapshot == null) loadError = "ยังโหลดสถานะ Rider ไม่สำเร็จ: "') &&
+   riderApp.includes('Text("ลองเชื่อมต่ออีกครั้ง")')&&
    !riderApp.includes('"กำลังเชื่อมต่อ Longdo Map…"'),
    'Rider refresh errors must keep an existing safe snapshot visible and initial loading must stay silent unless there is a real first-load failure');
 const riderMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
