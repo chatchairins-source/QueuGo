@@ -52,6 +52,7 @@ has(js,'"subtype"],"road"');
 ok(!html.includes("toggleOverture"),"Overture research source must not add another front-page layer toggle");
 has(html,'id="settingsDialog"');
 has(html,'id="openSettings"');
+ok(html.indexOf('id="fitProvince"')>html.indexOf('id="settingsDialog"'),"province fit control belongs in settings, not on map startup");
 has(html,'id="routeSheet" class="qgm-route-sheet" hidden');
 ok(!html.includes('class="qgm-panel"'),"technical panel must not be visible on map startup");
 has(js,"syncRouteUi");
