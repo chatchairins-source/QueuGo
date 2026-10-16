@@ -127,7 +127,8 @@ data class MerchantProduct(
     val posAvailable: Boolean = true,
     val deliveryAvailable: Boolean = true,
     val posPrice: Double? = null,
-    val deliveryRestriction: String = "none"
+    val deliveryRestriction: String = "none",
+    val catalogPreviewImage: String? = null
 )
 
 data class MerchantProductDraft(
@@ -161,7 +162,8 @@ data class MerchantGroceryCatalogItem(
     val stockTracking: Boolean,
     val posAvailable: Boolean,
     val deliveryAvailable: Boolean,
-    val deliveryPrice: Double?
+    val deliveryPrice: Double?,
+    val sourceProductId: String? = null
 )
 
 data class MerchantGroceryCatalogPage(
@@ -819,9 +821,22 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
-    suspend fun groceryCatalogCategories(auth: NativeAuth): List<String> {
+    // Only reads may retry. A timed-out write must never be replayed automatically.
+    private suspend fun groceryReadRpc(name: String, auth: NativeAuth, body: JSONObject): Any {
+        try { return http.rpc(name, auth.session.accessToken, body) }
+        catch (failure: Exception) {
+            if (failure is kotlinx.coroutines.CancellationException) throw failure
+            val transient = failure is java.io.IOException ||
+                (failure is com.queuego.shared.QueueGoHttpException && failure.statusCode in setOf(408, 429, 502, 503, 504))
+            if (!transient) throw failure
+            kotlinx.coroutines.delay(400)
+            return http.rpc(name, auth.session.accessToken, body)
+        }
+    }
+
+    suspend fun groceryCatalogCategories(auth: NativeAuth, shopId: String): List<String> {
         val rows = http.array(
-            http.rpc("qg_grocery_categories", auth.session.accessToken)
+            groceryReadRpc("qg_grocery_source_categories", auth, JSONObject().put("p_shop_id", shopId))
         )
         return buildList {
             for (i in 0 until rows.length()) {
@@ -840,11 +855,18 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         query: String = "",
         category: String = "",
         mode: String = "all",
-        offset: Int = 0
+        offset: Int = 0,
+        source: Boolean = true
     ): MerchantGroceryCatalogPage {
         require(offset >= 0) { "หน้ารายการสินค้าไม่ถูกต้อง" }
         require(query.length <= 100) { "คำค้นหายาวเกินไป" }
         require(mode in setOf("all", "on", "off", "unpriced")) { "ตัวกรองสินค้าไม่ถูกต้อง" }
+        if (source) {
+            val rows = http.array(groceryReadRpc("qg_grocery_source_search", auth,
+                JSONObject().put("p_shop_id", shopId).put("p_query", query.trim())
+                    .put("p_category", category.trim()).put("p_offset", offset)))
+            return merchantGrocerySourcePage(rows)
+        }
         val raw = http.rpc(
             "qg_grocery_merchant_page",
             auth.session.accessToken,
@@ -908,6 +930,15 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         val enabled = draft.posAvailable || draft.deliveryAvailable
         require(!enabled || price != null) { "กรุณากรอกราคาขายหน้าร้าน" }
 
+        if (item.sourceProductId != null) {
+            require(price != null && enabled) { "กรอกราคาและเลือกช่องทางขายอย่างน้อยหนึ่งช่องทาง" }
+            val result = http.obj(http.rpc("qg_grocery_source_add_to_shop", auth.session.accessToken,
+                JSONObject().put("p_shop_id", shopId).put("p_source_product_id", item.sourceProductId)
+                    .put("p_store_price", price).put("p_stock", draft.stockQty)
+                    .put("p_pos_available", draft.posAvailable).put("p_delivery_available", draft.deliveryAvailable)))
+            check(result.optString("product_id").isNotBlank()) { "ยังยืนยันการเพิ่มสินค้าไม่ได้ กรุณาตรวจรายการในร้านก่อนลองใหม่" }
+            return
+        }
         val row = JSONObject()
             .put("master_product_id", item.id)
             .put("enabled", enabled)
@@ -1427,7 +1458,8 @@ private fun merchantProductFromRow(r: JSONObject): MerchantProduct? {
         posAvailable = r.optBoolean("pos_available", true),
         deliveryAvailable = r.optBoolean("delivery_available", true),
         posPrice = r.optDoubleOrNull("pos_price") ?: price,
-        deliveryRestriction = restriction
+        deliveryRestriction = restriction,
+        catalogPreviewImage = metadata?.optNullable("catalog_preview_image")
     )
 }
 

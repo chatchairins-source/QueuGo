@@ -13,7 +13,7 @@ ok(app.includes('"catalog", "grocery-catalog" -> "products"'),'Grocery catalog b
 ok(app.includes('screen = "grocery-catalog"')&&app.includes('MerchantGroceryCatalogScreen('),'Merchant app must route Grocery catalog to its Native screen');
 ok(app.includes('api.saveGroceryCatalogItem(')&&app.includes('api.loadProducts(auth, activeShop.id)'),'Catalog save must refresh the real Merchant product list after server confirmation');
 
-for(const rpc of ['qg_grocery_categories','qg_grocery_merchant_page','qg_grocery_store_save']){
+for(const rpc of ['qg_grocery_source_categories','qg_grocery_source_search','qg_grocery_source_add_to_shop','qg_grocery_merchant_page','qg_grocery_store_save']){
   ok(api.includes('"'+rpc+'"'),'Native Grocery catalog must call existing Production RPC '+rpc);
 }
 ok(api.includes('.put("p_request_id", draft.requestId)'),'Grocery catalog save must use a stable request ID for repeat-safe retries');
