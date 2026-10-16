@@ -3182,7 +3182,6 @@ private fun RiderHome(
                                                 snapshot = committedRead
                                                 persistCommittedSnapshot(committedRead)
                                             }
-                                            openNavigation(context, committedRead?.activeJob ?: committedJob)
                                         }
                                         .onFailure {
                                             actionMessage = it.message ?: "เริ่มจัดส่งไม่สำเร็จ"
@@ -4679,7 +4678,6 @@ private fun openNavigation(context: Context, job: RiderJob) {
         return
     }
 
-    val navigationKey = riderNavigationKey(job)
     RiderReturnService.start(context)
     val navigation = Uri.parse(
         "google.navigation:q=" + target.first + "," + target.second + "&mode=d"
@@ -4689,11 +4687,7 @@ private fun openNavigation(context: Context, job: RiderJob) {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     val opened = runCatching { context.startActivity(mapsIntent) }.isSuccess
-    if (opened) {
-        context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
-            .putBoolean(navigationKey, true)
-            .apply()
-    } else {
+    if (!opened) {
         RiderReturnService.stop(context)
     }
 }
