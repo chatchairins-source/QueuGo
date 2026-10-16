@@ -425,6 +425,7 @@ internal fun QueueGoRiderNavigationMap(
         viewMode = viewModeState.mode,
         viewportInsets = viewportInsets.normalized()
     )
+    val latestBaseState by rememberUpdatedState(baseState)
     var renderedState by remember(stateKey, stopTopology) {
         mutableStateOf(
             retainedFrame
@@ -439,6 +440,14 @@ internal fun QueueGoRiderNavigationMap(
     }
 
     LaunchedEffect(baseState) {
+        // A route request can take up to 12 seconds. GPS, recenter and gestures must
+        // keep rendering while that request suspends the authoritative coordinator.
+        val livePresentation = baseState.copy(
+            routes = renderedState.routes.ifEmpty { baseState.routes }
+        )
+        renderedState = if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED) {
+            displayPipeline.applyToDisplayState(livePresentation)
+        } else livePresentation
         stateChannel.trySend(baseState)
     }
     LaunchedEffect(coordinator, stateChannel, displayPipeline, stopTopology, navigationActive) {
@@ -503,7 +512,14 @@ internal fun QueueGoRiderNavigationMap(
                 val result = coordinator.synchronize(next)
                 guidanceCallback(result.guidance)
                 // Filtering/snapping, when the rollout gate is enabled, is renderer-only.
-                val candidate = displayState(result.mapState)
+                // The route response belongs to an earlier fix. Keep its route result,
+                // but never roll the visible puck/camera back to the request's location.
+                val candidate = displayState(result.mapState.copy(
+                    rider = latestBaseState.rider,
+                    followRider = latestBaseState.followRider,
+                    viewMode = latestBaseState.viewMode,
+                    viewportInsets = latestBaseState.viewportInsets
+                ))
                 renderedState = if (
                     result.routeError != null &&
                     renderedState.routes.isNotEmpty()
