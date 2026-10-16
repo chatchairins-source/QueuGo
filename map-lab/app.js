@@ -115,7 +115,7 @@ function initMap(){
   map.addControl(new maplibregl.NavigationControl({showCompass:true,visualizePitch:true}),"bottom-right");
   map.on("load",function(){
     addDataLayers();
-    map.fitBounds(BURIRAM_BOUNDS,{padding:{top:90,bottom:180,left:370,right:60},duration:0});
+    map.fitBounds(BURIRAM_BOUNDS,{padding:{top:78,bottom:28,left:28,right:28},duration:0});
     loadCoreData();
     if(el("toggleNgis")?.checked)loadNgis();
     if(el("toggleDrr")?.checked)loadDrr();
@@ -449,6 +449,12 @@ function handleMapClick(e){
   syncRoutePoints();
   if(state.start&&state.end)calculateRoute();
 }
+function syncRouteUi(){
+  const active=!!(state.start||state.end||state.route);
+  const sheet=el("routeSheet"),clear=el("clearRoute");
+  if(sheet)sheet.hidden=!active;
+  if(clear)clear.hidden=!active;
+}
 function syncRoutePoints(){
   const features=[];
   [["start",state.start],["end",state.end]].forEach(function(row){
@@ -462,6 +468,7 @@ function syncRoutePoints(){
   });
   updateSource("route-points",{type:"FeatureCollection",features:features});
   el("routeInstruction").textContent=state.picking==="start"?"แตะแผนที่เพื่อเลือกจุดเริ่มต้น":"แตะแผนที่เพื่อเลือกปลายทาง";
+  syncRouteUi();
 }
 async function calculateRoute(){
   const a=state.start,b=state.end;
@@ -601,7 +608,21 @@ function exportGeojson(){
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="queuego-buriram-map-lab.geojson";a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},2000);
 }
 function bind(){
-  el("fitProvince").onclick=function(){state.map.fitBounds(BURIRAM_BOUNDS,{padding:{top:90,bottom:210,left:60,right:60}})};
+  const settings=el("settingsDialog");
+  el("openSettings").onclick=function(){
+    if(settings.showModal)settings.showModal();else settings.setAttribute("open","");
+  };
+  el("closeSettings").onclick=function(){
+    if(settings.close)settings.close();else settings.removeAttribute("open");
+  };
+  settings.addEventListener("click",function(e){
+    if(e.target!==settings)return;
+    const r=settings.getBoundingClientRect();
+    if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom){
+      if(settings.close)settings.close();else settings.removeAttribute("open");
+    }
+  });
+  el("fitProvince").onclick=function(){state.map.fitBounds(BURIRAM_BOUNDS,{padding:{top:78,bottom:28,left:28,right:28}})};
   el("locateMe").onclick=locate;
   el("clearRoute").onclick=clearRoute;
   el("startPoint").onclick=function(){state.picking="start";el("routeInstruction").textContent="แตะแผนที่เพื่อเลือกจุดเริ่มต้น"};
@@ -624,6 +645,7 @@ function bind(){
 }
 renderLedger();
 bind();
+syncRouteUi();
 initMap();
 window.QueueGoMapLab={BURIRAM_BOUNDS:BURIRAM_BOUNDS,getState:function(){return state}};
 })();
