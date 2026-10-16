@@ -24,11 +24,11 @@ not("qgm-topbar","old blocking header must be gone");
 has('class="search-pill"',"small floating search pill required");
 has('id="layersButton"',"one floating layer button required");
 has('id="locateButton"',"current-location button required");
-has('id="sheet" class="sheet" data-state="collapsed"',"bottom sheet must start collapsed");
+has('id="sheet" class="sheet" data-state="closed"',"bottom sheet must start fully closed");
 has("transform:translateY(calc(100% - var(--sheet-peek)))","bottom sheet must expose only collapsed peek initially");
 has("bindSheetDrag","bottom sheet must support drag");
 has('id="sheetClose"',"bottom sheet must be closable");
-has('setSheet("collapsed")',"sheet collapse path required");
+has('setSheet("closed")',"sheet must start fully off-map");
 
 has("pointer-events:none","transparent UI wrappers must not steal map touches");
 has(".search-pill,.fab,.search-results{pointer-events:auto}","only top controls opt back into pointer events");
