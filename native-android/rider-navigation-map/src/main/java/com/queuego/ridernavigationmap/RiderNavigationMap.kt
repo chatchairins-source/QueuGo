@@ -135,6 +135,7 @@ private class RiderNavigationMapHolder {
     private var lastPuckRotation: Float? = null
     private var lastPuckOpacity: Float? = null
     private var lastOverviewSignature: String? = null
+    private var idleCameraGeneration = 0
     private val stopPins = linkedMapOf<String, RenderedStop>()
     private val demandPins = linkedMapOf<String, RenderedDemandZone>()
     private val routeLines = mutableListOf<Line>()
@@ -458,6 +459,7 @@ private class RiderNavigationMapHolder {
                 lastCameraTilt = it
             }
             render(lastState)
+            if (lastState.remainingStops().isEmpty()) settleIdleCamera(nextMap)
         }.onFailure {
             Log.e("QueueGoNavMap", "map_replacement_setup_failed", it)
             throw it
@@ -512,6 +514,7 @@ private class RiderNavigationMapHolder {
         // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
         // never reconstruct the map just because Rider/order state changed.
         render(lastState)
+        if (lastState.remainingStops().isEmpty()) map?.let(::settleIdleCamera)
         startRendererIdentityWatch()
         startPuckFreshnessTicker()
         if (!replacementPending) settleContinuityBridge()
@@ -560,6 +563,7 @@ private class RiderNavigationMapHolder {
     }
 
     fun retainAcrossVisibilityLoss() {
+        idleCameraGeneration += 1
         surfaceVisible = false
         puckFreshnessGeneration += 1
         rendererWatchGeneration += 1
@@ -576,6 +580,7 @@ private class RiderNavigationMapHolder {
     }
 
     fun shutdownSdk() {
+        idleCameraGeneration += 1
         surfaceVisible = false
         puckFreshnessGeneration += 1
         captureCamera()
@@ -596,6 +601,7 @@ private class RiderNavigationMapHolder {
 
     fun render(state: RiderNavigationMapState) {
         val restoringFollow = state.followRider && !lastState.followRider
+        val leavingNavigation = lastState.remainingStops().isNotEmpty() && state.remainingStops().isEmpty()
         val enteringOverview =
             state.viewMode == NavigationViewMode.OVERVIEW &&
                 lastState.viewMode != NavigationViewMode.OVERVIEW
@@ -644,12 +650,36 @@ private class RiderNavigationMapHolder {
             else -> lastOverviewSignature = null
         }
         followedFix?.let { renderRiderPresentation(activeMap, it) }
+        if (state.remainingStops().isEmpty() && (leavingNavigation || restoringFollow)) {
+            settleIdleCamera(activeMap)
+        }
         // Publish once per applied state even when overlays are structurally unchanged.
         // This distinguishes a stable frame from a state update that never reached the map.
         // PixelCopy is deliberately not scheduled on every GPS tick: continuity snapshots
         // are captured on visibility loss or real renderer replacement so live navigation
         // never competes with screenshot work for the render thread.
         publishDiagnostics()
+    }
+
+    private fun settleIdleCamera(targetMap: com.longdo.api.Map) {
+        val generation = ++idleCameraGeneration
+        fun check(attempt: Int) {
+            if (disposed || map !== targetMap || generation != idleCameraGeneration ||
+                lastState.remainingStops().isNotEmpty() || !lastState.followRider ||
+                lastState.viewMode != NavigationViewMode.FOLLOW) return
+            // A queued SDK navigation rotation can finish after the immediate idle
+            // reset. Observe the actual camera for a short bounded window instead of
+            // trusting lastCameraBearing=0 while the GL camera is still rotating.
+            runCatching {
+                val bearing = normalizeNavigationBearing(targetMap.getRotate())
+                if (attempt == 0 || minOf(bearing, 360f - bearing) > 0.1f) targetMap.rotate(0f, false)
+                if (attempt == 0 || kotlin.math.abs(targetMap.getTilt()) > 0.1f) targetMap.setTilt(0f)
+                lastCameraBearing = 0f
+                lastCameraTilt = 0f
+            }.onFailure { Log.w("QueueGoNavMap", "idle_camera_settlement_failed", it) }
+            if (attempt < 20) mainHandler.postDelayed({ check(attempt + 1) }, 50L)
+        }
+        check(0)
     }
 
     private fun renderRider(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {

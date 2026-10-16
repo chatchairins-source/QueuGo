@@ -181,7 +181,7 @@ fun QgLongdoTrackingMap(
                                     holder.attachMap(map)
                                     qgEnsureLongdoZoomListener(map)
                                     map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20).apply {
-                                        layerURL = "https://ms2.longdo.com/mmmap/img.php"
+                                        layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
                                     })
                                     holder.draw(currentPoints.value)
                                 }.onSuccess { Log.i("QueueGoLongdoMap", "native_map_ready"); currentReady.value(true) }
@@ -313,7 +313,7 @@ fun QgLongdoLocationPickerMap(
                                 val setup = runCatching {
                                     qgEnsureLongdoZoomListener(map)
                                     map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20).apply {
-                                        layerURL = "https://ms2.longdo.com/mmmap/img.php"
+                                        layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
                                     })
                                     map.setDrawCrossSign(true)
                                     map.setCrossSignColor(floatArrayOf(239f / 255f, 51f / 255f, 64f / 255f, 1f))

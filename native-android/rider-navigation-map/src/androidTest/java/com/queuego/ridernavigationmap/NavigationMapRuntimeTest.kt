@@ -404,7 +404,7 @@ class NavigationMapRuntimeTest {
                 if (kotlin.math.abs(((bearing + 540f) % 360f) - 180f) <= 0.5f) break
                 Thread.sleep(25)
             }
-            assertTrue("Idle map must be north-up", kotlin.math.abs(((bearing + 540f) % 360f) - 180f) <= 0.5f)
+            assertTrue("Idle map must be north-up; actual bearing=$bearing", kotlin.math.abs(((bearing + 540f) % 360f) - 180f) <= 0.5f)
             scenario.onActivity { assertEquals(viewIdentity, it.mapViewIdentity()) }
         }
     }
