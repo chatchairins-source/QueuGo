@@ -1,0 +1,24 @@
+# QueueGo Map engine checkpoint
+
+Branch: work-map-roadgraph-buriram-20261017
+Baseline main: a78bca91f723db3f2117030e91c5d9901413e00a
+Previous published checkpoint: e2d233f06c67751d08ee50c3d469b59cb088f4cf
+Current HEAD: use `git rev-parse HEAD` (a commit cannot embed its own SHA).
+
+Completed: licensed OSM ingestion, reference-complete Buriram envelope, normalized topology, actual three-engine builds/benchmark, core selection, local shared service and real-route smoke checks. Evidence: evidence/map-engine/*.json.
+
+Data: Thailand OSM 2026-10-15T20:21:00Z; source SHA256 02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf; extract SHA256 426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d.
+
+Reproduce (use a dedicated Python venv with ops/maps/requirements.txt):
+
+```
+python ops/maps/extract_region.py --help
+python ops/maps/normalize_osm.py --help
+python ops/maps/build_engine_graph.py valhalla /tmp/queuego-buriram/buriram.osm.pbf /tmp/queuego-bench/valhalla-th --admin-pbf /tmp/queuego-thailand.osm.pbf
+python ops/maps/benchmark_engines.py --help
+python queuego-map-engine/server.py --database /tmp/queuego-buriram/roads.sqlite --config /tmp/queuego-bench/valhalla-th/valhalla.json --vector /tmp/queuego-buriram/buriram-shortbread.pmtiles
+```
+
+Tests completed: successful import/integrity/FK checks; all three graph builds; 30-query HTTP benchmark and native capabilities; real core route alternatives, matrix, geocode, progress and HMM smoke. These do not replace release validation.
+
+Next: connect Map View to shared API, audit real restrictions/one-way and road categories, package/checksum/activation/rollback, full npm and actual API/browser tests. All release gates not yet individually evidenced stay OPEN. Service is loopback only; public deployment is not configured. No Android package contains this core yet. No physical GPS/road certification, live traffic or verified postal-address database.
