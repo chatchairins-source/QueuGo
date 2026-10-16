@@ -144,7 +144,7 @@ function addDataLayers(){
           "line-width":["interpolate",["linear"],["zoom"],12,0.35,14,0.8,16,1.5,18,2.3],
           "line-opacity":["interpolate",["linear"],["zoom"],12,0.12,14,0.20,16,0.30,18,0.38]
         }
-      },"signals-halo");
+      });
       state.overtureTransportReady=true;
     }catch(err){
       state.overtureTransportReady=false;
