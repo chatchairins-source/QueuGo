@@ -323,24 +323,26 @@ internal fun QueueGoRiderNavigationMap(
 
     DisposableEffect(lifecycle, navigationActive, context) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && navigationActive) {
-                // Android 14+ requires a location foreground service to be created while
-                // the app still has a visible Activity unless background location was granted.
+            if (event == Lifecycle.Event.ON_RESUME) {
+                // The visible Rider map must always own a fresh GPS fix, even before a job
+                // is accepted. Otherwise the current-location puck disappears and recenter
+                // has no location to follow.
                 RiderNavigationLocationService.start(context)
             }
         }
         lifecycle.addObserver(observer)
 
-        if (!navigationActive) {
-            RiderNavigationLocationService.stop(context)
-        } else if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             RiderNavigationLocationService.start(context)
         }
 
         onDispose {
-            // Deliberately do not stop an active navigation service when Compose unmounts
-            // because a tab switch, screen-off or another app must not cut the GPS stream.
             lifecycle.removeObserver(observer)
+            if (!navigationActive) {
+                // No active job: stop foreground GPS only after the Rider map leaves the
+                // screen. Active navigation continues through tab/background transitions.
+                RiderNavigationLocationService.stop(context)
+            }
         }
     }
     val activeStopId = stops
@@ -512,6 +514,9 @@ internal fun QueueGoRiderNavigationMap(
 
     LaunchedEffect(recenterSignal) {
         if (recenterSignal > 0) {
+            // A recenter tap is also an explicit request for a fresh device fix. This is
+            // important immediately after granting permission or returning to the map.
+            RiderNavigationLocationService.start(context)
             viewModeState = viewModeController.onRecenter()
             pendingViewModePersistence = NavigationViewMode.FOLLOW.name
             riderFix?.let { fix ->
