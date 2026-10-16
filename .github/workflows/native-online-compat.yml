@@ -1,0 +1,130 @@
+name: Verify and deliver three-app Rider online fix
+on:
+  push:
+    branches: [work-native-rider-online-production-compat-20261016]
+    paths:
+      - 'native-android/**'
+      - 'tests/**'
+      - '.github/workflows/native-online-compat.yml'
+permissions:
+  contents: write
+concurrency:
+  group: rider-online-compat-delivery
+  cancel-in-progress: true
+jobs:
+  verify-build-deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: SDK and verified map dependency
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+          mkdir -p native-android/rider/libs
+          curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar" -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
+          echo "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | sha256sum -c -
+      - name: Prepare native Firebase configs
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:-}" ]; then
+            echo "::error::Firebase config is required for owner physical-device testing"
+            exit 1
+          fi
+          umask 077
+          tmp="$(mktemp)"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$tmp"
+          QG_FIREBASE_CONFIG="$tmp" python3 - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+          p=Path(os.environ['QG_FIREBASE_CONFIG'])
+          data=json.loads(p.read_text())
+          packages={
+              c.get('client_info',{}).get('android_client_info',{}).get('package_name')
+              for c in (data.get('client') or [])
+          }
+          targets={
+              'com.queuego.customer': Path('native-android/customer/google-services.json'),
+              'com.queuego.merchant': Path('native-android/merchant/google-services.json'),
+              'com.queuego.rider': Path('native-android/rider/google-services.json'),
+          }
+          if 'com.queuego.rider' not in packages:
+              raise SystemExit('::error::Firebase config has no com.queuego.rider Android client')
+          for package,target in targets.items():
+              if package in packages:
+                  shutil.copyfile(p,target)
+                  os.chmod(target,0o600)
+                  print(f'Native Firebase config: {package} valid')
+              else:
+                  raise SystemExit(f'::error::Firebase config missing {package}')
+          PY
+          rm -f "$tmp"
+      - name: Full regression and Native contracts
+        run: |
+          npm ci
+          npm test
+          node tests/native-android-source.cjs
+          node tests/native-backend-migration-sync.cjs
+      - name: Three-app unit tests and APK builds
+        run: gradle -p native-android :shared:testDebugUnitTest :rider:testDebugUnitTest :merchant:testDebugUnitTest :customer:testDebugUnitTest :customer:assembleDebug :merchant:assembleDebug :rider:assembleDebug --no-daemon --stacktrace
+      - name: Verify 16KB packaging
+        run: python3 native-android/qa/verify-16kb-page-size.py native-android/customer/build/outputs/apk/debug/customer-debug.apk native-android/merchant/build/outputs/apk/debug/merchant-debug.apk native-android/rider/build/outputs/apk/debug/rider-debug.apk
+      - name: Verify all signatures and create one ZIP
+        run: |
+          set -euo pipefail
+          mkdir bundle
+          for role in customer merchant rider; do
+            cp "native-android/$role/build/outputs/apk/debug/$role-debug.apk" "bundle/QueueGo-$role-Test-20261016-Online-Fix1.apk"
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "bundle/QueueGo-$role-Test-20261016-Online-Fix1.apk" >> bundle/APK-SIGNATURES.txt
+          done
+          cat > bundle/README.txt <<'README'
+          QueueGo Android — Online Fix 1 — 16 October 2026
+          customer = ลูกค้า / merchant = ร้านค้า / rider = ไรเดอร์
+          แตก ZIP ก่อน แล้วติดตั้ง APK ทีละแอป รองรับ Android 8.0 ขึ้นไป
+          แก้ Rider โหลดสถานะไม่สำเร็จและเปิดออนไลน์ไม่ได้ จากช่องข้อมูลที่เซิร์ฟเวอร์ยังไม่มี
+          เมื่อเปิดออนไลน์ ระบบอาจขอให้เปิด GPS การแจ้งเตือน และสิทธิ์ปุ่มลอยตามปกติ
+          หากระบบแจ้งลายเซ็นต่างจากแอปทดสอบเดิม จะติดตั้งทับไม่ได้ ต้องถอนแอปทดสอบเดิมก่อน
+          การถอนแอปทำให้ข้อมูลที่เก็บเฉพาะในเครื่องหายและต้องล็อกอินใหม่ ข้อมูลบัญชีบนเซิร์ฟเวอร์ยังอยู่
+          เวอร์ชันทดสอบเครื่องจริง ไม่ใช่ Play Store release
+          README
+          echo "$GITHUB_SHA" > bundle/SOURCE-COMMIT.txt
+          (cd bundle && sha256sum *.apk > SHA256SUMS.txt)
+          zip -j QueueGo-All-Apps-Test-20261016-Online-Fix1.zip bundle/*
+          sha256sum QueueGo-All-Apps-Test-20261016-Online-Fix1.zip > QueueGo-All-Apps-Test-20261016-Online-Fix1.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-three-app-online-fix1
+          path: |
+            QueueGo-All-Apps-Test-20261016-Online-Fix1.zip
+            QueueGo-All-Apps-Test-20261016-Online-Fix1.sha256
+          if-no-files-found: error
+      - name: Publish owner-requested real-device test download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: chatchairins-source/QueuGo
+        run: |
+          set -euo pipefail
+          tag=android-test-all-20261016-online-fix1
+          cat > notes.md <<'NOTES'
+          Customer + Merchant + Rider test APKs in one ZIP. Fixes initial Rider snapshot/history/notification reads against the existing Production schema, plus Merchant arrival hydration. Only confirmed missing optional read fields are omitted; ownership, status, core money, auth, notification, vehicle and GPS guards remain.
+
+          Full regression, all-role JVM tests (including Production missing-column recovery), all three APK builds, Firebase package checks, 16KB packaging and APK signatures pass in this publication run. Physical authenticated online acceptance remains for owner testing. Debug-signed test builds; not a certified Play release. No Production writes or deployment of staged Ride/credit schema.
+
+          Extract ZIP, then install apps individually. A different CI debug certificate may require uninstalling the earlier test app, which clears device-local state and requires sign-in again.
+          NOTES
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo 'Existing release will not be overwritten' >&2
+            exit 1
+          fi
+          gh release create "$tag" QueueGo-All-Apps-Test-20261016-Online-Fix1.zip QueueGo-All-Apps-Test-20261016-Online-Fix1.sha256 --target "$GITHUB_SHA" --prerelease --title 'QueueGo three-app test — Rider Online Fix 1' --notes-file notes.md

@@ -1580,7 +1580,8 @@ private fun RiderHome(
                 // Keep the cached/live job visible. After two consecutive misses, show a compact
                 // reconnecting notice instead of replacing the job UI with an error screen.
                 consecutiveSnapshotFailures = (consecutiveSnapshotFailures + 1).coerceAtMost(99)
-                if (snapshot == null) loadError = "กำลังเชื่อมต่อข้อมูลงานใหม่"
+                if (snapshot == null) loadError = "ยังโหลดสถานะ Rider ไม่สำเร็จ: " +
+                    (it.message ?: "ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง")
             }
     }
 
@@ -2768,6 +2769,9 @@ private fun RiderHome(
             if (current == null) {
                 if (loadError != null) {
                     Text(loadError!!, color = MaterialTheme.colorScheme.error)
+                    OutlinedButton(onClick = { scope.launch { refreshSnapshot() } }, enabled = !actionBusy) {
+                        Text("ลองเชื่อมต่ออีกครั้ง")
+                    }
                 }
             } else {
                 if (current.activeJob == null && current.offeredJob == null && current.laundry.activeJob == null) {

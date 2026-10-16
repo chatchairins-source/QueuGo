@@ -2350,7 +2350,14 @@ class QueueGoApi {
     private fun requestArray(method: String, path: String, token: String): JSONArray =
         requestAny(method, path, token, null) as? JSONArray ?: JSONArray()
 
-    private fun requestAny(method: String, path: String, token: String?, body: JSONObject?, timeoutMillis: Int = TIMEOUT): Any {
+    private val orderReads = com.queuego.shared.QueueGoOrderReadCompatibility()
+
+    private fun requestAny(method: String, path: String, token: String?, body: JSONObject?, timeoutMillis: Int = TIMEOUT): Any =
+        if (method == "GET") orderReads.read(path, { (it as? RiderHttpException)?.statusCode }) {
+            requestDirect(method, it, token, body, timeoutMillis)
+        } else requestDirect(method, path, token, body, timeoutMillis)
+
+    private fun requestDirect(method: String, path: String, token: String?, body: JSONObject?, timeoutMillis: Int): Any {
         val startedAt = SystemClock.elapsedRealtime()
         var success = false
         val connection = URL(BASE_URL + path).openConnection() as HttpURLConnection

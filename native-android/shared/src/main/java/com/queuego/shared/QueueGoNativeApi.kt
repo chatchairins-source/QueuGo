@@ -32,6 +32,7 @@ private fun InputStream.readQueueGoResponseBounded(
 }
 
 class QueueGoNativeApi {
+    private val orderReads = QueueGoOrderReadCompatibility()
     companion object {
         const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
         const val PUBLISHABLE_KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
@@ -39,7 +40,11 @@ class QueueGoNativeApi {
     }
 
     suspend fun get(path: String, token: String? = null): Any =
-        withContext(Dispatchers.IO) { request("GET", "/rest/v1/" + path, token, null) }
+        withContext(Dispatchers.IO) {
+            orderReads.read(path, { (it as? QueueGoHttpException)?.statusCode }) {
+                request("GET", "/rest/v1/" + it, token, null)
+            }
+        }
 
     suspend fun post(path: String, token: String?, body: Any): Any =
         withContext(Dispatchers.IO) { request("POST", "/rest/v1/" + path, token, body) }
