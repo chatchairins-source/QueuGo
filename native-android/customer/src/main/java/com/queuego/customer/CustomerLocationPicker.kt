@@ -1,5 +1,14 @@
 package com.queuego.customer
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,11 +37,16 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgLine
@@ -40,36 +54,79 @@ import com.queuego.shared.QgLongdoLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
 import kotlinx.coroutines.delay
-import kotlin.math.abs
 
 @Composable
 internal fun CustomerLocationPickerScreen(
     location: CustomerLocation?,
     address: String,
     busy: Boolean,
-    onGps: () -> Unit,
     resolveAddress: suspend (Double, Double) -> String?,
     onSave: (CustomerLocation) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    readGps: (suspend () -> CustomerLocation?)? = null
 ) {
-    var selected by remember {
-        mutableStateOf(location?.takeIf { validCustomerPoint(it.latitude, it.longitude) })
+    val draftSaver = remember {
+        listSaver<CustomerLocationDraft, Any>(
+            save = { listOf(it.point != null, it.point?.latitude ?: 0.0,
+                it.point?.longitude ?: 0.0, it.address, it.manualAddress, it.revision) },
+            restore = { CustomerLocationDraft(
+                if (it[0] as Boolean) CustomerLocation(it[1] as Double, it[2] as Double, it[3] as String) else null,
+                it[3] as String, it[4] as Boolean, it[5] as Long) }
+        )
     }
-    var draftAddress by remember(address) { mutableStateOf(address) }
+    var draft by rememberSaveable(stateSaver = draftSaver) {
+        mutableStateOf(CustomerLocationDraft(
+            location?.takeIf { validCustomerPoint(it.latitude, it.longitude) }, address))
+    }
+    val selected = draft.point
+    val draftAddress = draft.address
     var recenterToken by remember { mutableIntStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
-    var autoGpsRequested by remember { mutableStateOf(false) }
-    var lastAutoAddress by remember { mutableStateOf<String?>(null) }
+    var autoGpsRequested by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(location?.latitude, location?.longitude) {
-        val next = location?.takeIf { validCustomerPoint(it.latitude, it.longitude) } ?: return@LaunchedEffect
-        val current = selected
-        if (current == null ||
-            abs(current.latitude - next.latitude) > 0.000001 ||
-            abs(current.longitude - next.longitude) > 0.000001
-        ) {
-            selected = next.copy(address = draftAddress)
-            recenterToken++
+    val context = LocalContext.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val scope = rememberCoroutineScope()
+    var gpsBusy by remember { mutableStateOf(false) }
+    var permissionPending by remember { mutableStateOf(false) }
+    var gpsMessage by remember { mutableStateOf<String?>(null) }
+
+    fun loadGps() {
+        if (gpsBusy) return
+        gpsBusy = true
+        scope.launch {
+            try {
+                lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+                val point = if (readGps != null) readGps() else {
+                    val cached = lastKnownLocation(context)?.takeIf { validCustomerPoint(it.first, it.second) }
+                    val position = if (cached == null) customerRegistrationLocation(context) else null
+                    cached?.let { CustomerLocation(it.first, it.second, "") }
+                        ?: position?.let { CustomerLocation(it.latitude, it.longitude, "") }
+                }
+                lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+                if (point == null || !validCustomerPoint(point.latitude, point.longitude)) {
+                    gpsMessage = "ยังอ่านตำแหน่ง GPS ไม่ได้ เลือกจุดบนแผนที่ได้"
+                } else {
+                    draft = draft.move(point)
+                    recenterToken++
+                    gpsMessage = null
+                }
+            } catch (failure: CancellationException) { throw failure }
+            catch (_: Exception) { gpsMessage = "อ่านตำแหน่งไม่สำเร็จ กรุณาเปิด GPS หรือเลือกจุดบนแผนที่" }
+            finally { gpsBusy = false }
+        }
+    }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        permissionPending = false
+        if (grants.values.any { it }) loadGps()
+        else gpsMessage = "เลือกจุดบนแผนที่ได้โดยไม่ต้องใช้ GPS"
+    }
+    fun requestGps() {
+        if (gpsBusy || permissionPending) return
+        if (readGps != null || hasLocation(context)) loadGps()
+        else {
+            permissionPending = true
+            permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
     }
 
@@ -81,30 +138,23 @@ internal fun CustomerLocationPickerScreen(
         if (!mapReady || autoGpsRequested) return@LaunchedEffect
         autoGpsRequested = true
         delay(150)
-        onGps()
+        lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+        requestGps()
     }
 
-    LaunchedEffect(selected?.latitude, selected?.longitude) {
+    LaunchedEffect(selected?.latitude, selected?.longitude, draft.revision) {
         val point = selected ?: return@LaunchedEffect
-        if (!(draftAddress.isBlank() || draftAddress == lastAutoAddress)) return@LaunchedEffect
+        if (draft.manualAddress || draft.address.isNotBlank()) return@LaunchedEffect
+        val ticket = draft.revision
         delay(350)
-        val resolved = resolveAddress(point.latitude, point.longitude)?.trim().orEmpty()
-        if (resolved.isBlank()) return@LaunchedEffect
-        val current = selected ?: return@LaunchedEffect
-        if (abs(current.latitude - point.latitude) > 0.000001 ||
-            abs(current.longitude - point.longitude) > 0.000001
-        ) return@LaunchedEffect
-        if (draftAddress.isBlank() || draftAddress == lastAutoAddress) {
-            draftAddress = resolved
-            lastAutoAddress = resolved
-            selected = current.copy(address = resolved)
-        }
+        val resolved = try { resolveAddress(point.latitude, point.longitude) }
+            catch (failure: CancellationException) { throw failure }
+            catch (_: Exception) { null }
+        draft = draft.resolved(ticket, resolved)
     }
 
     val selectedPoint = selected?.let { QgMapPoint(it.latitude, it.longitude, 0) }
-    val externalPoint = location
-        ?.takeIf { validCustomerPoint(it.latitude, it.longitude) }
-        ?.let { QgMapPoint(it.latitude, it.longitude, 0) }
+    val externalPoint = selectedPoint
 
     Column(
         Modifier
@@ -146,6 +196,7 @@ internal fun CustomerLocationPickerScreen(
             Modifier
                 .fillMaxWidth()
                 .height(150.dp)
+                .semantics { stateDescription = if (mapReady) "แผนที่พร้อมใช้งาน" else "กำลังโหลดแผนที่" }
                 .clip(RoundedCornerShape(14.dp))
                 .background(Color(0xFFF0F1F2))
                 .border(1.dp, QgLine, RoundedCornerShape(14.dp))
@@ -156,7 +207,7 @@ internal fun CustomerLocationPickerScreen(
                 recenterToken = recenterToken,
                 modifier = Modifier.fillMaxSize(),
                 onCenterChanged = { point ->
-                    selected = CustomerLocation(point.latitude, point.longitude, draftAddress)
+                    draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
                 },
                 onReady = { mapReady = it }
             )
@@ -169,9 +220,10 @@ internal fun CustomerLocationPickerScreen(
         }
 
         Spacer(Modifier.height(12.dp))
-        OutlinedButton(onClick = onGps) {
-            Text("ใช้ตำแหน่ง GPS ปัจจุบัน")
+        OutlinedButton(onClick = ::requestGps, enabled = !gpsBusy && !busy) {
+            Text(if (gpsBusy) "กำลังอ่านตำแหน่ง GPS…" else "ใช้ตำแหน่ง GPS ปัจจุบัน")
         }
+        gpsMessage?.let { Text(it, color = QgMuted) }
 
         Spacer(Modifier.height(8.dp))
         Text(
@@ -184,8 +236,7 @@ internal fun CustomerLocationPickerScreen(
         OutlinedTextField(
             value = draftAddress,
             onValueChange = {
-                draftAddress = it
-                selected = selected?.copy(address = it)
+                draft = draft.edit(it)
             },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,

@@ -61,7 +61,7 @@ internal fun GuestCustomerShell(
     val cartStore = remember { CustomerCartStore(context, "guest") }
     val locationStore = remember { CustomerLocationStore(context) }
     val shopCatalog = remember { CustomerShopCatalog(scope) }
-    val catalogState by shopCatalog.state.collectAsState()
+    val rawCatalogState by shopCatalog.state.collectAsState()
 
     var screen by remember(initialScreen) {
         mutableStateOf(initialScreen.takeIf { it in setOf("home", "search", "cart", "market", "market-cart", "shopping") } ?: "home")
@@ -73,6 +73,7 @@ internal fun GuestCustomerShell(
     var banners by remember { mutableStateOf<List<HomeBanner>>(emptyList()) }
     var serviceBanners by remember { mutableStateOf<Map<String, ServiceBanner>>(emptyMap()) }
     var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
+    val catalogState = rawCatalogState.forShop(selectedShop?.id)
     var cart by remember { mutableStateOf<List<CartLine>>(emptyList()) }
     var location by remember { mutableStateOf<CustomerLocation?>(null) }
     var address by remember { mutableStateOf("") }
@@ -285,7 +286,6 @@ internal fun GuestCustomerShell(
                     location = location,
                     address = address,
                     busy = locationBusy,
-                    onGps = ::gps,
                     resolveAddress = { lat, lng -> api.reverseGeocode(lat, lng) },
                     onSave = { picked ->
                         if (!locationBusy) {

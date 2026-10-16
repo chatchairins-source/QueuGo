@@ -254,7 +254,8 @@ private fun CustomerShell(
     var selectedLaundryOrder by remember { mutableStateOf<LaundryOrderSummary?>(null) }
     var supportInitialOrderId by remember { mutableStateOf<String?>(null) }
     val shopCatalog = remember(auth.user.id) { CustomerShopCatalog(scope) }
-    val catalogState by shopCatalog.state.collectAsState()
+    val rawCatalogState by shopCatalog.state.collectAsState()
+    val catalogState = rawCatalogState.forShop(selectedShop?.id)
     DisposableEffect(shopCatalog) { onDispose { shopCatalog.close() } }
     LaunchedEffect(screen) { if (screen != "shop") shopCatalog.close() }
     var orderItems by remember { mutableStateOf<List<CustomerOrderItem>>(emptyList()) }
@@ -759,22 +760,6 @@ private fun CustomerShell(
                     location = location,
                     address = address,
                     busy = busy,
-                    onGps = {
-                        if (hasLocation(context)) {
-                            val p = lastKnownLocation(context)
-                            if (p != null) {
-                                location = CustomerLocation(p.first, p.second, address)
-                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
-                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
-                        } else {
-                            permission.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
-                            )
-                        }
-                    },
                     resolveAddress = { latitude, longitude ->
                         api.reverseGeocode(latitude, longitude)
                     },
@@ -1757,6 +1742,9 @@ private fun ProfileScreen(
     logout: () -> Unit
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+        if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
+            "Customer", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
+            BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
         QgSectionTitle("บัญชีของฉัน")
         Spacer(Modifier.height(12.dp))
         QgCard(Modifier.fillMaxWidth()) {

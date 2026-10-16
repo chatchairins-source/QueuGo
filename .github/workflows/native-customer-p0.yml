@@ -1,0 +1,59 @@
+name: Customer P0 Android runtime matrix
+on:
+  push:
+    branches: [work-native-credit-live-enablement-20261016]
+    paths:
+      - 'native-android/customer/**'
+      - 'native-android/shared/**'
+      - 'native-android/qa/run-customer-p0.py'
+      - '.github/workflows/native-customer-p0.yml'
+      - '.github/workflows/build-native-rider-pilot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: customer-p0-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  picker-runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [26, 30, 33, 35]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: SDK and verified Longdo dependency
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' >/dev/null
+          mkdir -p native-android/rider/libs
+          curl -fsSL https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
+          echo '0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar' | sha256sum -c -
+      - name: Customer JVM and real UI harness builds
+        run: gradle -p native-android :customer:testDebugUnitTest :customer:assembleDebug :customer:assembleDebugAndroidTest --no-daemon --stacktrace
+      - name: Android acceleration
+        run: |
+          test -c /dev/kvm
+          sudo chown "$(id -u):$(id -g)" /dev/kvm
+      - name: Thirty actual picker cycles and early GL background
+        env:
+          QG_P0_API: ${{ matrix.api }}
+        run: python3 native-android/qa/run-customer-p0.py
+      - name: Preserve failures and runtime evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: customer-p0-api-${{ matrix.api }}
+          path: |
+            artifacts/customer-p0/
+            native-android/customer/build/reports/tests/
+            native-android/customer/build/outputs/androidTest-results/
+          if-no-files-found: warn

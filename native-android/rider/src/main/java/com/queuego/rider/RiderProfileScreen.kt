@@ -454,6 +454,9 @@ fun RiderProfileScreen(
                 ) { showDiagnostics = true }
             }
             Spacer(Modifier.height(10.dp))
+            if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
+                "Rider", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
+                BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
             RiderProfileSection("ความเป็นส่วนตัวและบัญชี") {
                 RiderSettingRow("นโยบายความเป็นส่วนตัว", "การใช้ข้อมูลและการลบบัญชี", R.drawable.qg_rider_nav_chat) {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(RIDER_PRIVACY_POLICY_URL)).addCategory(Intent.CATEGORY_BROWSABLE)

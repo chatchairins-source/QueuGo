@@ -253,6 +253,161 @@ def capture_customer_location():
         wait_ui(directory / "back-home.xml", lambda ns: any(n.get("text") == "เลือกที่อยู่จัดส่ง" for n in ns) and not any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in ns))
         assert_no_package_crash(pkg, directory / "back-crash.txt")
         print("QUEUEGO_CUSTOMER_LOCATION_PASS " + permission_state)
+    if os.environ.get("QG_CUSTOMER_LOCATION_STRESS") == "1":
+        stress_customer_location()
+    if os.environ.get("QG_CUSTOMER_DRAFT_RESTORE") == "1":
+        probe_customer_draft_restore()
+
+
+def probe_customer_draft_restore():
+    """Kill the real Guest process before Save; navigation and draft must restore."""
+    pkg = "com.queuego.customer"
+    directory = output / "customer-location" / "unsaved-draft-restore"
+    directory.mkdir(parents=True, exist_ok=True)
+    result = {"source_head": os.environ["GITHUB_SHA"], "workflow_run": os.environ["GITHUB_RUN_ID"],
+              "authenticated": False, "production_writes": False, "result": "FAIL"}
+
+    def tap(node):
+        b = [int(x) for x in re.findall(r"\d+", node.get("bounds", ""))]
+        assert len(b) == 4 and b[2] > b[0] and b[3] > b[1]
+        run(adb + ["shell", "input", "tap", str((b[0]+b[2])//2), str((b[1]+b[3])//2)])
+
+    def selected_point(ns):
+        text = next(n.get("text") for n in ns if n.get("text", "").startswith("Lat: "))
+        values = [float(x) for x in re.findall(r"-?\d+\.\d+", text)]
+        assert len(values) == 2, "Real selected map point missing"
+        return values
+
+    try:
+        nodes = wait_ui(directory / "home.xml", lambda ns: any(n.get("text") == "ส่งไปที่" for n in ns))
+        tap(next(n for n in nodes if n.get("text") == "ส่งไปที่"))
+        nodes = wait_ui(directory / "picker.xml", lambda ns: any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in ns))
+        # Reuse the real pan geometry from the public permission flow.
+        description = next(n for n in nodes if n.get("text", "").startswith("ปักหมุดตำแหน่งรับสินค้า"))
+        gps = next(n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน")
+        db = [int(x) for x in re.findall(r"\d+", description.get("bounds", ""))]
+        gb = [int(x) for x in re.findall(r"\d+", gps.get("bounds", ""))]
+        width = int(run(adb + ["shell", "wm", "size"], capture_output=True, text=True).stdout.strip().split()[-1].split("x")[0])
+        y = (db[3] + gb[1]) // 2
+        run(adb + ["shell", "input", "swipe", str(width//2), str(y), str(width//2+120), str(y), "400"])
+        nodes = wait_ui(directory / "draft.xml", lambda ns: any(n.get("class") == "android.widget.EditText" and n.get("text", "").strip() for n in ns), timeout_seconds=40)
+        point = selected_point(nodes)
+        address = next(n.get("text") for n in nodes if n.get("class") == "android.widget.EditText")
+        old_pids = package_pids(pkg)
+        run(adb + ["shell", "input", "keyevent", "3"])
+        time.sleep(1)
+        run(adb + ["shell", "am", "kill", pkg])
+        deadline = time.monotonic() + 10
+        while subprocess.run(adb + ["shell", "pidof", pkg], capture_output=True).returncode == 0:
+            assert time.monotonic() < deadline, "Customer process did not end"
+            time.sleep(0.4)
+        run(adb + ["shell", "am", "start", "-n", pkg + "/.MainActivity"])
+        nodes = wait_ui(directory / "restored.xml", lambda ns: any(n.get("text") in ("ส่งไปที่", "ใช้ตำแหน่ง GPS ปัจจุบัน") for n in ns))
+        assert package_pids(pkg) != old_pids, "New process was not created"
+        result["restored_screen"] = "picker" if any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in nodes) else "home"
+        assert result["restored_screen"] == "picker", "Process recreation discarded the unsaved address screen"
+        restored = selected_point(nodes)
+        assert all(abs(a-b) < 0.000002 for a,b in zip(point, restored)), "Process recreation changed draft coordinates"
+        assert any(n.get("class") == "android.widget.EditText" and n.get("text") == address for n in nodes), "Process recreation lost draft address"
+        assert_no_package_crash(pkg, directory / "crash.txt")
+        result["result"] = "PASS"
+    finally:
+        (directory / "results.json").write_text(json.dumps(result, indent=2))
+        (directory / "all-logcat.txt").write_text(run(adb + ["logcat", "-d"], capture_output=True, text=True).stdout)
+        with (directory / "restored.png").open("wb") as png:
+            run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+
+
+def stress_customer_location():
+    """Real guest Save→Home and durable restoration; only device-local writes."""
+    pkg = "com.queuego.customer"
+    directory = output / "customer-location" / "save-stress"
+    directory.mkdir(parents=True, exist_ok=True)
+    cases = []
+
+    def tap(node):
+        b = [int(x) for x in re.findall(r"\d+", node.get("bounds", ""))]
+        assert len(b) == 4 and b[2] > b[0] and b[3] > b[1], "Missing visible touch target"
+        run(adb + ["shell", "input", "tap", str((b[0]+b[2])//2), str((b[1]+b[3])//2)])
+
+    def saved_location():
+        raw = run(adb + ["exec-out", "run-as", pkg, "cat",
+                        "shared_prefs/queuego_customer_delivery_location.xml"],
+                  capture_output=True, text=True).stdout
+        root = ET.fromstring(raw)
+        return json.loads(next(n.text for n in root if n.get("name") == "location"))
+
+    log_path = directory / "continuous-logcat.txt"
+    with log_path.open("w") as log:
+        capture = subprocess.Popen(adb + ["logcat", "-T", "1", "-b", "main", "-b", "system", "-b", "crash"],
+                                   stdout=log, stderr=subprocess.STDOUT)
+        try:
+            previous = None
+            for index in range(30):
+                case = directory / ("round-%02d" % index)
+                case.mkdir(exist_ok=True)
+                nodes = wait_ui(case / "home.xml", lambda ns: any(n.get("text") == "ส่งไปที่" for n in ns))
+                tap(next(n for n in nodes if n.get("text") == "ส่งไปที่"))
+                nodes = wait_ui(case / "picker.xml", lambda ns: any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in ns))
+                if index % 3 == 0:
+                    tap(next(n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน"))
+                    nodes = wait_ui(case / "gps.xml", lambda ns: any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in ns))
+                description = next(n for n in nodes if n.get("text", "").startswith("ปักหมุดตำแหน่งรับสินค้า"))
+                gps = next(n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน")
+                db = [int(x) for x in re.findall(r"\d+", description.get("bounds", ""))]
+                gb = [int(x) for x in re.findall(r"\d+", gps.get("bounds", ""))]
+                width = int(run(adb + ["shell", "wm", "size"], capture_output=True, text=True).stdout.strip().split()[-1].split("x")[0])
+                y = (db[3] + gb[1]) // 2
+                run(adb + ["shell", "input", "swipe", str(width//2), str(y),
+                           str(width//2 + (90 if index % 2 == 0 else -110)), str(y), "350"])
+                if index % 5 == 0:
+                    run(adb + ["shell", "input", "keyevent", "3"])
+                    run(adb + ["shell", "am", "start", "-n", pkg + "/.MainActivity"])
+                # Let the real reverse geocoder settle; no fixture address/GPS is injected.
+                def save_ready(ns):
+                    return any(n.get("text") == "บันทึกที่อยู่นี้" and n.get("enabled") == "true" for n in ns)
+                nodes = wait_ui(case / "before-save.xml", save_ready, timeout_seconds=40)
+                time.sleep(1)
+                nodes = read_ui(case / "before-save.xml")
+                coordinate = next(n.get("text") for n in nodes if n.get("text", "").startswith("Lat: "))
+                point = [float(v) for v in re.findall(r"-?\d+\.\d+", coordinate)]
+                assert len(point) == 2, "Selected real map point is missing"
+                tap(next(n for n in nodes if n.get("text") == "บันทึกที่อยู่นี้"))
+                nodes = wait_ui(case / "saved-home.xml", lambda ns: any(n.get("text") == "ส่งไปที่" for n in ns))
+                saved = saved_location()
+                assert abs(saved["lat"] - point[0]) < 0.000002 and abs(saved["lng"] - point[1]) < 0.000002, "Saved coordinates differ from selected map point"
+                assert saved["address"].strip(), "Empty saved address"
+                assert any(n.get("text") == saved["address"] for n in nodes), "Home displays a stale delivery address"
+                assert previous is None or (saved["lat"], saved["lng"]) != previous, "Map pan did not change location"
+                previous = saved["lat"], saved["lng"]
+                if index % 10 == 9:
+                    old_pids = package_pids(pkg)
+                    run(adb + ["shell", "input", "keyevent", "3"])
+                    time.sleep(1)
+                    run(adb + ["shell", "am", "kill", pkg])
+                    deadline = time.monotonic() + 10
+                    while subprocess.run(adb + ["shell", "pidof", pkg], capture_output=True).returncode == 0:
+                        assert time.monotonic() < deadline, "System kill did not end Customer process"
+                        time.sleep(0.4)
+                    run(adb + ["shell", "am", "start", "-n", pkg + "/.MainActivity"])
+                    nodes = wait_ui(case / "restored-home.xml", lambda ns: any(n.get("text") == saved["address"] for n in ns))
+                    assert saved_location() == saved, "Process recreation lost selected delivery location"
+                    assert package_pids(pkg) != old_pids, "Process was not recreated"
+                if index in (0, 29):
+                    with (case / "saved-home.png").open("wb") as png:
+                        run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+                assert_no_package_crash(pkg, case / "crash.txt")
+                cases.append({"round": index + 1, "save_home": "PASS", "background": index % 5 == 0,
+                              "process_recreation": index % 10 == 9})
+                print("QUEUEGO_CUSTOMER_SAVE_STRESS_PASS " + str(index + 1), flush=True)
+        finally:
+            capture.terminate()
+            capture.wait(timeout=15)
+            (directory / "results.json").write_text(json.dumps({"source_head": os.environ["GITHUB_SHA"],
+                "workflow_run": os.environ["GITHUB_RUN_ID"], "cases": cases,
+                "authenticated": False, "production_writes": False, "gps_injected": False}, indent=2))
+    failures = re.findall(r"FATAL EXCEPTION|ANR in com\.queuego\.customer|SIGSEGV|SIGABRT|shared_map_\w*failed|Native map (?:setup|operation) failed", log_path.read_text())
+    assert not failures, "Crash/ANR/native-map failure in Customer save stress log: " + str(failures)
 
 
 def capture_role_viewports(roles=("customer", "merchant", "rider")):

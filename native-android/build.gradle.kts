@@ -7,6 +7,13 @@ plugins {
     id("com.google.gms.google-services") version "4.5.0" apply false
 }
 
+// One source identity and timestamp for Customer/Merchant/Rider from this build.
+val nativeSourceSha = providers.environmentVariable("GITHUB_SHA").orNull
+    ?: providers.exec { workingDir(rootDir); commandLine("git", "rev-parse", "HEAD") }
+        .standardOutput.asText.get().trim()
+require(nativeSourceSha.matches(Regex("[0-9a-fA-F]{40}"))) { "An exact Git SHA is required" }
+val nativeBuiltUtc = java.time.Instant.now().toString()
+
 // One signing implementation for all three Native apps. Credentials stay in
 // runner/local environment and are never given a debug-key fallback.
 val releaseKeystore = providers.environmentVariable("QG_ANDROID_KEYSTORE_PATH").orNull
@@ -24,6 +31,11 @@ val verifyNativeReleaseGate = tasks.register<Exec>("verifyNativeReleaseGate") {
 subprojects {
     pluginManager.withPlugin("com.android.application") {
         extensions.configure<ApplicationExtension> {
+            buildFeatures.buildConfig = true
+            defaultConfig {
+                buildConfigField("String", "GIT_SHA", "\"$nativeSourceSha\"")
+                buildConfigField("String", "BUILT_UTC", "\"$nativeBuiltUtc\"")
+            }
             val nativeReleaseSigning = if (signingAvailable) signingConfigs.create("queuegoRelease") {
                 storeFile = file(releaseKeystore!!)
                 storePassword = releaseStorePassword

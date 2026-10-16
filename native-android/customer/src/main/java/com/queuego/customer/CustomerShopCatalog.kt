@@ -29,6 +29,7 @@ internal class CustomerShopCatalog(private val scope: CoroutineScope) {
         request = scope.launch {
             try {
                 val rows = fetch()
+                require(rows.all { it.shopId == shopId }) { "Catalog response belongs to another shop" }
                 if (ticket == generation) mutableState.value = CustomerShopCatalogState(shopId, rows)
             } catch (e: CancellationException) {
                 throw e
@@ -45,3 +46,8 @@ internal class CustomerShopCatalog(private val scope: CoroutineScope) {
         mutableState.value = CustomerShopCatalogState()
     }
 }
+
+/** Reject a catalog from a previous screen even before navigation effects run. */
+internal fun CustomerShopCatalogState.forShop(shopId: String?): CustomerShopCatalogState =
+    takeIf { shopId != null && this.shopId == shopId }
+        ?: CustomerShopCatalogState(shopId = shopId, loading = shopId != null)
