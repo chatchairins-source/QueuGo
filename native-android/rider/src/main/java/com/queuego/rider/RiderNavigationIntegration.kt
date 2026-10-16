@@ -44,9 +44,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-// Shadow mode computes the candidate renderer fix while preserving the certified display.
-// The display gate stays off until CI + real-device route gates pass.
-private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = true
+// Real-device pilot: use the stabilized road-matched renderer in the visible Rider map.
+// Shadow diagnostics are disabled so the Rider sees the exact pipeline being evaluated.
+private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false
 private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true
 
 private fun riderLongdoNavigationKey(context: Context): String? = runCatching {
