@@ -4,31 +4,59 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#e6002d">
-  <title>QueueGo Map Lab — Buriram</title>
+  <title>QueueGo Map — Buriram</title>
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="./style.css?v=1">
+  <link rel="stylesheet" href="./style.css?v=2">
 </head>
 <body>
   <main class="qgm-shell">
-    <header class="qgm-topbar">
-      <a class="qgm-brand" href="../" aria-label="QueueGo">
-        <span class="qgm-q">Q</span>
-        <span>Queue<span class="qgm-red">Go</span></span>
-      </a>
-      <div class="qgm-title">
-        <strong>Map Lab · บุรีรัมย์</strong>
-        <span>ต้นแบบฐานข้อมูลถนนและความปลอดภัย</span>
-      </div>
-      <button id="fitProvince" class="qgm-icon-btn" type="button" title="ดูทั้งจังหวัด">◎</button>
-    </header>
+    <section id="map" class="qgm-map" aria-label="แผนที่ QueueGo"></section>
 
-    <aside class="qgm-panel" aria-label="เครื่องมือแผนที่">
-      <form id="searchForm" class="qgm-search">
-        <input id="searchInput" type="search" autocomplete="off" placeholder="ค้นหาสถานที่ในบุรีรัมย์">
+    <div class="qgm-search-wrap">
+      <form id="searchForm" class="qgm-search-float">
+        <span class="qgm-q" aria-hidden="true">Q</span>
+        <input id="searchInput" type="search" autocomplete="off" placeholder="ค้นหาสถานที่ในบุรีรัมย์" aria-label="ค้นหาสถานที่">
         <button type="submit">ค้นหา</button>
       </form>
       <div id="searchResults" class="qgm-search-results" hidden></div>
+    </div>
+
+    <div class="qgm-map-actions" aria-label="เครื่องมือแผนที่">
+      <button id="locateMe" type="button" title="ตำแหน่งของฉัน" aria-label="ตำแหน่งของฉัน">⌖</button>
+      <button id="fitProvince" type="button" title="ดูทั้งจังหวัด" aria-label="ดูทั้งจังหวัด">◎</button>
+      <button id="openSettings" type="button" title="การตั้งค่าแผนที่" aria-label="การตั้งค่าแผนที่">⚙︎</button>
+      <button id="clearRoute" type="button" title="ล้างเส้นทาง" aria-label="ล้างเส้นทาง" hidden>×</button>
+    </div>
+
+    <section id="routeSheet" class="qgm-route-sheet" hidden>
+      <div class="qgm-handle"></div>
+      <div class="qgm-route-head">
+        <div>
+          <small>เส้นทาง</small>
+          <strong id="routeInstruction">แตะแผนที่เพื่อเลือกจุดเริ่มต้น</strong>
+        </div>
+        <button id="swapRoute" class="qgm-icon-btn" type="button" title="สลับต้นทางปลายทาง">⇅</button>
+      </div>
+      <div class="qgm-route-points">
+        <button id="startPoint" type="button"><span class="qgm-dot start"></span><span><small>ต้นทาง</small><b>ยังไม่ได้เลือก</b></span></button>
+        <button id="endPoint" type="button"><span class="qgm-dot end"></span><span><small>ปลายทาง</small><b>ยังไม่ได้เลือก</b></span></button>
+      </div>
+      <div id="routeStats" class="qgm-route-stats" hidden>
+        <div><small>ระยะทาง</small><b id="routeDistance">–</b></div>
+        <div><small>เวลาอ้างอิง</small><b id="routeDuration">–</b></div>
+        <div><small>ไฟจราจรใกล้เส้น</small><b id="routeSignals">–</b></div>
+        <div><small>จุดควรระวัง</small><b id="routeHazards">–</b></div>
+        <div><small>ข้อจำกัดถนนใกล้เส้น</small><b id="routeRules">ยังไม่โหลด</b></div>
+      </div>
+      <p id="routeNotice" class="qgm-notice">เส้นทางในหน้านี้ยังเป็นระบบทดลอง ก่อนใช้จริง QueueGo จะใช้ routing graph ที่ควบคุมเอง</p>
+    </section>
+
+    <dialog id="settingsDialog" class="qgm-settings-dialog" aria-label="การตั้งค่าแผนที่">
+      <header class="qgm-settings-head">
+        <div><small>QueueGo Map</small><strong>การตั้งค่าแผนที่</strong></div>
+        <button id="closeSettings" type="button" aria-label="ปิด">×</button>
+      </header>
 
       <section class="qgm-section">
         <div class="qgm-section-head">
@@ -46,48 +74,18 @@
 
       <section class="qgm-section">
         <div class="qgm-section-head">
-          <strong>แหล่งข้อมูล</strong>
+          <strong>สถานะข้อมูล</strong>
           <button id="refreshData" type="button" class="qgm-link-btn">โหลดใหม่</button>
         </div>
         <div id="sourceLedger" class="qgm-ledger"></div>
       </section>
 
-      <section class="qgm-section qgm-desktop-only">
-        <strong>หลักการ</strong>
-        <p>หน้านี้ไม่เดาเวลาไฟแดง และไม่ใช้ข้อมูล Google Maps มาสร้างฐานข้อมูล QueueGo</p>
+      <section class="qgm-section">
+        <strong>เครื่องมือหลังบ้าน</strong>
+        <p>ข้อมูลส่วนนี้ใช้ตรวจระบบและแหล่งข้อมูล ไม่แสดงบนหน้าแผนที่หลัก</p>
         <button id="exportGeojson" type="button" class="qgm-secondary">ส่งออก GeoJSON ที่โหลดแล้ว</button>
       </section>
-    </aside>
-
-    <section id="map" class="qgm-map" aria-label="แผนที่ QueueGo Map Lab"></section>
-
-    <div class="qgm-map-actions">
-      <button id="locateMe" type="button" title="ตำแหน่งของฉัน">⌖</button>
-      <button id="clearRoute" type="button" title="ล้างเส้นทาง">×</button>
-    </div>
-
-    <section class="qgm-route-sheet">
-      <div class="qgm-handle"></div>
-      <div class="qgm-route-head">
-        <div>
-          <small>ทดลองเส้นทาง</small>
-          <strong id="routeInstruction">แตะแผนที่เพื่อเลือกจุดเริ่มต้น</strong>
-        </div>
-        <button id="swapRoute" class="qgm-icon-btn" type="button" title="สลับต้นทางปลายทาง">⇅</button>
-      </div>
-      <div class="qgm-route-points">
-        <button id="startPoint" type="button"><span class="qgm-dot start"></span><span><small>ต้นทาง</small><b>ยังไม่ได้เลือก</b></span></button>
-        <button id="endPoint" type="button"><span class="qgm-dot end"></span><span><small>ปลายทาง</small><b>ยังไม่ได้เลือก</b></span></button>
-      </div>
-      <div id="routeStats" class="qgm-route-stats" hidden>
-        <div><small>ระยะทาง</small><b id="routeDistance">–</b></div>
-        <div><small>เวลาอ้างอิง</small><b id="routeDuration">–</b></div>
-        <div><small>ไฟจราจรใกล้เส้น</small><b id="routeSignals">–</b></div>
-        <div><small>จุดควรระวัง</small><b id="routeHazards">–</b></div>
-        <div><small>ข้อจำกัดถนนใกล้เส้น</small><b id="routeRules">ยังไม่โหลด</b></div>
-      </div>
-      <p id="routeNotice" class="qgm-notice">เส้นทางใน Map Lab ใช้บริการ routing สาธารณะเพื่อทดสอบแนวคิดเท่านั้น ก่อนใช้งานจริง QueueGo จะย้ายไป routing graph ที่ควบคุมเอง</p>
-    </section>
+    </dialog>
 
     <dialog id="featureDialog" class="qgm-dialog">
       <button id="closeFeature" class="qgm-dialog-close" type="button">×</button>
@@ -95,12 +93,12 @@
     </dialog>
 
     <footer class="qgm-attribution">
-      Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · Overture Maps Foundation · ODbL · QueueGo Map Lab
+      Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · Overture Maps Foundation · ODbL
     </footer>
   </main>
 
   <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/pmtiles@4.3.0/dist/pmtiles.js"></script>
-  <script src="./app.js?v=3"></script>
+  <script src="./app.js?v=4"></script>
 </body>
 </html>
