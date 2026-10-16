@@ -26,6 +26,8 @@ run([manager / 'avdmanager', 'create', 'avd', '-n', name, '-k', image, '-p', reg
 adb = [sdk / 'platform-tools/adb', '-s', 'emulator-5554']
 log = (out / 'emulator.log').open('w')
 emulator = subprocess.Popen([str(sdk / 'emulator/emulator'), '-avd', name, '-port', '5554', '-no-window', '-no-audio', '-no-boot-anim', '-no-snapshot', '-gpu', 'swiftshader_indirect', '-accel', 'on'], stdout=log, stderr=subprocess.STDOUT)
+log_process = None
+log_stream = (out / 'runtime-logcat.txt').open('w')
 summary = {'source_commit': os.environ['GITHUB_SHA'], 'api': int(api), 'result': 'FAIL', 'authenticated_online_tested': False, 'physical_device_tested': False, 'release_gate': 'BLOCKED'}
 try:
     run(adb + ['wait-for-device'], timeout=180)
@@ -40,22 +42,35 @@ try:
     for role in ('customer',):
         run(adb + ['install', '-r', root / f'native-android/{role}/build/outputs/apk/debug/{role}-debug.apk'])
     run(adb + ['install', '-r', root / 'native-android/customer/build/outputs/apk/androidTest/debug/customer-debug-androidTest.apk'])
-    # Clear through the device's matching logcat binary, not the new host binary
-    # whose clear protocol fails against API26 logd. Keep failures visible.
-    run(adb + ['shell', 'logcat', '-b', 'main', '-b', 'system', '-b', 'crash', '-c'])
+    # Capture continuously without clearing logd: API26's system image rejects clears.
+    # -T1 starts at the current tail; streaming preserves evidence beyond buffer rotation.
+    log_process = subprocess.Popen([str(a) for a in adb + ['logcat', '-b', 'main', '-b', 'system', '-b', 'crash', '-v', 'threadtime', '-T', '1']], stdout=log_stream, stderr=subprocess.STDOUT)
     result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class', 'com.queuego.customer.CustomerLocationP0RuntimeTest', 'com.queuego.customer.test/androidx.test.runner.AndroidJUnitRunner'], capture_output=True, text=True, timeout=600)
     (out / 'instrumentation.txt').write_text(result.stdout + result.stderr)
     assert re.search(r'OK \(\d+ tests?\)', result.stdout), 'Android instrumentation failed; inspect instrumentation.txt/logcat'
-    logs = run(adb + ['logcat', '-b', 'all', '-d'], capture_output=True, text=True).stdout
+    assert log_process.poll() is None, 'Continuous Android log capture exited unexpectedly'
+    log_process.terminate()
+    log_process.wait(timeout=10)
+    log_stream.flush()
+    logs = (out / 'runtime-logcat.txt').read_text(errors='replace')
+    assert logs.strip(), 'Android runtime log capture is empty'
     (out / 'logcat.txt').write_text(logs)
     assert not re.search(r'FATAL EXCEPTION|ANR in com\.queuego\.customer|signal \d+ \(SIG(?:SEGV|ABRT)\)|shared_map_\w*failed|Native map (?:operation|setup) failed', logs), 'Crash/ANR or swallowed map lifecycle failure; inspect logcat'
+    # Debug run-as is scoped to this app and avoids adb shell's scoped-storage denial.
+    for name in ('picker-0.png', 'picker-29.png'):
+        with (out / name).open('wb') as image_out:
+            run(adb + ['exec-out', 'run-as', 'com.queuego.customer', 'cat', 'files/p0-evidence/' + name], stdout=image_out)
+        assert (out / name).stat().st_size > 1024, 'Android screenshot is missing or empty'
     summary['result'] = 'PASS'
 finally:
     try:
         for buffer in ('all', 'crash'):
             result = subprocess.run([str(a) for a in adb + ['logcat', '-b', buffer, '-d']], capture_output=True, text=True, timeout=15)
             (out / (buffer + '-logcat.txt')).write_text(result.stdout + result.stderr)
-        subprocess.run([str(a) for a in adb + ['pull', '/sdcard/Android/data/com.queuego.customer/files/p0-evidence', out]], timeout=15, check=False)
+        if log_process is not None and log_process.poll() is None:
+            log_process.terminate()
+            log_process.wait(timeout=10)
+        log_stream.close()
     finally:
         (out / 'summary.json').write_text(json.dumps(summary, indent=2))
         emulator.terminate()

@@ -63,8 +63,8 @@ class CustomerLocationP0RuntimeTest {
                 }
                 compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "แผนที่พร้อมใช้งาน"))
                     .performScrollTo()
-                val directory = File(compose.activity.getExternalFilesDir(null), "p0-evidence").apply { mkdirs() }
-                InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()?.let { bitmap ->
+                val directory = File(compose.activity.filesDir, "p0-evidence").apply { mkdirs() }
+                requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()) { "Android screenshot was unavailable" }.let { bitmap ->
                     File(directory, "picker-$index.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
                     bitmap.recycle()
                 }
