@@ -18,6 +18,18 @@ internal fun navigationCameraDecision(
     previousBearingDegrees: Float?
 ): NavigationCameraDecision? {
     val fix = state.rider?.takeIf { it.point.valid } ?: return null
+    val navigationActive = state.remainingStops().isNotEmpty()
+    if (!navigationActive) {
+        return NavigationCameraDecision(
+            center = fix.point,
+            zoom = state.followZoom.coerceIn(14, 20),
+            bearingDegrees = 0f,
+            tiltDegrees = 0f,
+            routeMatch = null,
+            remainingRouteMeters = null
+        )
+    }
+
     val activeRoute = state.styledRemainingRoutes()
         .firstOrNull { it.style == NavigationRouteStyle.ACTIVE }
     val match = activeRoute?.let { matchNavigationRoute(it, fix.point) }
