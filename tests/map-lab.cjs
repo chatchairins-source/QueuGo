@@ -3,6 +3,7 @@ const html=fs.readFileSync(path.resolve(__dirname,"../map-lab/index.html"),"utf8
 const js=fs.readFileSync(path.resolve(__dirname,"../map-lab/app.js"),"utf8");
 const doc=fs.readFileSync(path.resolve(__dirname,"../docs/QUEUEGO-MAP-LAB.md"),"utf8");
 let checks=0;
+new Function(js); checks++;
 function ok(v,msg){assert.ok(v,msg);checks++}
 function has(s,x,msg){ok(s.includes(x),msg||("missing "+x))}
 has(html,"QueueGo Map Lab");
@@ -13,7 +14,7 @@ has(js,'"highway"="traffic_signals"');
 has(js,'"railway"="level_crossing"');
 has(js,'"highway"="speed_camera"');
 has(js,"signal_timing:\"unknown\"");
-has(js,"โหลดเส้นทางไม่สำเร็จ");
+has(js,"คำนวณเส้นทางไม่สำเร็จ");
 ok(!js.includes("maps.googleapis.com"),"Map Lab must not ingest Google Maps");
 ok(!js.includes("google.navigation"),"Map Lab must not depend on Google navigation");
 has(js,"OpenStreetMap");
