@@ -13,9 +13,13 @@ const NOMINATIM_ENDPOINT="https://nominatim.openstreetmap.org/search";
 const DRR_SERVICE="https://gis.drr.go.th/arcgis/rest/services/DRR_Feature/FeatureServer";
 const DRR_BRIDGE_SERVICE="https://gis.drr.go.th/arcgis/rest/services/DRR_Feature/FeatureServer/1";
 const NGIS_HIGHWAY_SERVICE="https://ngis.go.th/arcgis/rest/services/Hosted/%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%AB%E0%B8%A5%E0%B8%A7%E0%B8%87%E0%B9%81%E0%B8%9C%E0%B9%88%E0%B8%99%E0%B8%94%E0%B8%B4%E0%B8%99/FeatureServer/0";
+const OVERTURE_RELEASE="2026-09-23.1";
+const OVERTURE_TRANSPORT_PM="https://overturemaps-extras-us-west-2.s3.us-west-2.amazonaws.com/tiles/"+OVERTURE_RELEASE+"/transportation.pmtiles";
 
 const state={
   map:null,
+  overtureProtocol:null,
+  overtureTransportReady:false,
   signals:emptyCollection(),
   safety:emptyCollection(),
   pois:emptyCollection(),
@@ -91,6 +95,13 @@ function initMap(){
     el("map").innerHTML='<div style="padding:100px 20px;text-align:center">MapLibre โหลดไม่สำเร็จ</div>';
     return;
   }
+  if(window.pmtiles&&window.pmtiles.Protocol){
+    try{
+      const protocol=new window.pmtiles.Protocol();
+      maplibregl.addProtocol("pmtiles",protocol.tile);
+      state.overtureProtocol=protocol;
+    }catch(err){console.warn("PMTiles protocol unavailable",err)}
+  }
   const map=new maplibregl.Map({
     container:"map",
     style:baseStyle(),
@@ -114,6 +125,32 @@ function initMap(){
 }
 function addDataLayers(){
   const map=state.map;
+  if(state.overtureProtocol){
+    try{
+      map.addSource("overture-transport",{
+        type:"vector",
+        url:"pmtiles://"+OVERTURE_TRANSPORT_PM,
+        attribution:"© OpenStreetMap contributors · Overture Maps Foundation"
+      });
+      map.addLayer({
+        id:"overture-roads",
+        type:"line",
+        source:"overture-transport",
+        "source-layer":"segment",
+        minzoom:12,
+        filter:["==",["get","subtype"],"road"],
+        paint:{
+          "line-color":["match",["get","class"],"motorway","#8b7e8a","trunk","#8b7e8a","primary","#8b7e8a","secondary","#8b7e8a","tertiary","#756d76","residential","#6c666d","service","#827b83","unclassified","#756f77","#8b858c"],
+          "line-width":["interpolate",["linear"],["zoom"],12,0.35,14,0.8,16,1.5,18,2.3],
+          "line-opacity":["interpolate",["linear"],["zoom"],12,0.12,14,0.20,16,0.30,18,0.38]
+        }
+      });
+      state.overtureTransportReady=true;
+    }catch(err){
+      state.overtureTransportReady=false;
+      console.warn("Overture transportation overlay unavailable",err);
+    }
+  }
   map.addSource("signals",{type:"geojson",data:state.signals});
   map.addLayer({id:"signals-halo",type:"circle",source:"signals",paint:{"circle-radius":9,"circle-color":"#ffffff","circle-opacity":0.94}});
   map.addLayer({id:"signals",type:"circle",source:"signals",paint:{"circle-radius":6,"circle-color":"#e6002d","circle-stroke-width":1.5,"circle-stroke-color":"#6f0016"}});
