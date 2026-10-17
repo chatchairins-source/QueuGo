@@ -177,7 +177,7 @@
       ],
       [
         "map",
-        "native-android/rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt"
+        "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt"
       ],
       [
         "order_chat",
