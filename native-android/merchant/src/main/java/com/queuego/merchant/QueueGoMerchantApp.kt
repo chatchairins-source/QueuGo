@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -91,6 +92,8 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+
+internal const val MERCHANT_PRIVACY_POLICY_URL = "https://chatchairins-source.github.io/QueuGo/docs/privacy.html"
 
 @Composable
 fun QueueGoMerchantApp(pushTarget: NativePushLaunchTarget? = null) {
@@ -1943,6 +1946,8 @@ private fun MerchantProfileScreen(
     onSupport: () -> Unit,
     logout: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
+
     Column(
         Modifier
             .fillMaxSize()
@@ -2111,6 +2116,15 @@ private fun MerchantProfileScreen(
 
         Spacer(Modifier.height(12.dp))
         MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
+        MerchantProfileCard {
+            MerchantProfileActionRow(
+                icon = "gear",
+                title = "นโยบายความเป็นส่วนตัว",
+                subtitle = "ข้อมูลเกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคล",
+                onClick = { runCatching { uriHandler.openUri(MERCHANT_PRIVACY_POLICY_URL) } }
+            )
+        }
+        Spacer(Modifier.height(8.dp))
         QgAccountDeletionSection(
             accessToken = auth.session.accessToken,
             onDeleted = logout
