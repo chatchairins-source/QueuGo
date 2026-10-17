@@ -64,6 +64,15 @@ const navBearing=(a,b)=>{
   const lat1=rad(a.lat),lat2=rad(b.lat),dLng=rad(b.lng-a.lng);
   return navNormalizeBearing(deg(Math.atan2(Math.sin(dLng)*Math.cos(lat2),Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng))));
 };
+const navFreeDriveLookAheadMeters=spd=>spd==null?25:spd>=18?80:spd>=11?65:spd>=5?50:spd>=2?32:15;
+function navProjectForward(point,bearing,distanceMeters){
+  if(!point||!valid(point.lat,point.lng)||!Number.isFinite(Number(bearing))||!Number.isFinite(Number(distanceMeters))||Number(distanceMeters)<=0)return null;
+  const R=6371000,angular=Number(distanceMeters)/R,br=rad(navNormalizeBearing(bearing)),lat1=rad(point.lat),lon1=rad(point.lng);
+  const lat2=Math.asin(Math.sin(lat1)*Math.cos(angular)+Math.cos(lat1)*Math.sin(angular)*Math.cos(br));
+  const lon2=lon1+Math.atan2(Math.sin(br)*Math.sin(angular)*Math.cos(lat1),Math.cos(angular)-Math.sin(lat1)*Math.sin(lat2));
+  const projected={lat:deg(lat2),lng:((deg(lon2)+540)%360)-180};
+  return valid(projected.lat,projected.lng)?projected:null;
+}
 function navRouteParts(route){
   if(!Array.isArray(route)||!route.length)return[];
   const first=route[0];
@@ -146,14 +155,17 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
   const gpsBearing=Number.isFinite(Number(bearing))?navNormalizeBearing(Number(bearing)):null;
   const desiredBearing=routeBearing!=null?routeBearing:(spd==null||spd<.83?previousBearing:(gpsBearing??previousBearing));
   const smoothing=spd==null?.28:spd>=18?.46:spd>=11?.42:spd>=5?.36:spd>=2?.28:.20;
-  const cameraBearing=navSmoothBearing(previousBearing,desiredBearing,smoothing)??0;
+  const smoothedBearing=navSmoothBearing(previousBearing,desiredBearing,smoothing);
+  const cameraBearing=smoothedBearing??0;
   let zoom=remaining!=null&&remaining<=60?19:remaining!=null&&remaining<=180?18:spd==null?baseZoom:spd>=18?15:spd>=11?16:spd>=5?17:spd<=1.5?Math.max(baseZoom,18):baseZoom;
   if(acc!=null&&acc>60)zoom=Math.max(14,zoom-1);
   zoom=Math.max(14,Math.min(20,zoom));
   const pitch=Math.max(0,Math.min(55,acc!=null&&acc>80?24:remaining!=null&&remaining<=60?28:remaining!=null&&remaining<=180?34:spd==null?38:spd>=18?52:spd>=11?49:spd>=5?45:spd>=2?40:34));
   const look=spd==null?55:spd>=18?150:spd>=11?120:spd>=5?85:spd>=2?55:30;
   const lookAhead=remaining==null?look:Math.min(look,Math.max(0,remaining*.55));
-  const center=reliable?(navPointAt(reliable.part,Math.min(reliable.geometryDistanceMeters,reliable.progressMeters+lookAhead))||point):point;
+  const center=reliable
+    ? (navPointAt(reliable.part,Math.min(reliable.geometryDistanceMeters,reliable.progressMeters+lookAhead))||point)
+    : (smoothedBearing!=null?(navProjectForward(point,smoothedBearing,navFreeDriveLookAheadMeters(spd))||point):point);
   return {center,bearing:cameraBearing,pitch,zoom,routeMatch:match,remainingRouteMeters:remaining};
 }
 function navState(map){
