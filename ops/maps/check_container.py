@@ -22,8 +22,9 @@ request=urllib.request.Request(base+'route',data=json.dumps(body).encode(),heade
 route=json.load(urllib.request.urlopen(request))['routes'][0]
 assert route['distance']>1000
 assert set(health['unresolved_turn_relations'])=={2148441,17320674}
+assert set(health['source_member_conflicts'])=={6982243}
 assert set(health['source_direction_conflicts'])=={1538817}
-assert health['quarantined_way_count']==5
+assert health['quarantined_way_count']==7
 print(json.dumps({'distance_m':route['distance'],'dataset_sha256':health['dataset_sha256'],'quarantined_way_count':health['quarantined_way_count']}))
 '''
     result=subprocess.run(['docker','exec','-i',name,'python','-'],input=code,text=True,capture_output=True,check=True)
