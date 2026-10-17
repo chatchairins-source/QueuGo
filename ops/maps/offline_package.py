@@ -33,6 +33,11 @@ def verify(root):
 def build(database,graph,vector,destination,version):
     destination=Path(destination);safe_name(version)
     if destination.exists():raise ValueError('Build destination already exists; use a new version')
+    import sqlite3
+    with sqlite3.connect(database) as db:dataset=json.loads(db.execute("SELECT value FROM metadata WHERE key='dataset'").fetchone()[0])
+    graph_report=json.loads((Path(graph)/'build-report.json').read_text())
+    if graph_report['dataset_sha256']!=dataset['extract_sha256']:raise ValueError('Graph/database snapshot mismatch')
+    if checksum(vector)!='30699573ed2068d3c7e4393ad477dbe8febf68f453f27ae88437f5c652a3ddfc':raise ValueError('Unrecognized vector snapshot; review source manifest before packaging')
     destination.mkdir(parents=True)
     try:
         shutil.copy2(database,destination/'roads.sqlite');shutil.copy2(vector,destination/'vector.pmtiles')

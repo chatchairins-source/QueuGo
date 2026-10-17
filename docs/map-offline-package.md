@@ -31,3 +31,5 @@ node tests/map-engine-browser.cjs
 ```
 
 Browser test requires an actual service on localhost:8766 and Chromium (`QUEUEGO_CHROME` may select the executable). The service and browser need the same network namespace in isolated runners. Production hosting/auth/rate limits/TLS, Android runtime packaging, all restriction/road fixtures, physical GPS and sole-navigation release remain OPEN.
+
+Static/source builds run `npm test` with a pretest asset preparation step into ignored `map-assets/`. Deploy this generated directory together with the web files; source-integrity retains its missing-reference check. `--assets-root` overrides the local server asset location; default is `<web-root>/map-assets`. Python 3 is needed for this preparation step. The map graph/server still requires its own runtime hosting; uploading static files alone does not supply /map-api.

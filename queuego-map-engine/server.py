@@ -100,7 +100,7 @@ def handler(engine,web_root,vector=None,origins=(),assets_root=None):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--database',required=True);parser.add_argument('--config',required=True);parser.add_argument('--web-root',default=str(Path(__file__).resolve().parents[1]));parser.add_argument('--vector');parser.add_argument('--assets-root');parser.add_argument('--host',default='127.0.0.1');parser.add_argument('--port',type=int,default=8765);parser.add_argument('--allowed-origin',action='append',default=[])
     args=parser.parse_args();engine=Engine(args.database,args.config)
-    server=ThreadingHTTPServer((args.host,args.port),handler(engine,args.web_root,args.vector,args.allowed_origin,args.assets_root));server.daemon_threads=True
+    server=ThreadingHTTPServer((args.host,args.port),handler(engine,args.web_root,args.vector,args.allowed_origin,args.assets_root or str(Path(args.web_root)/'map-assets')));server.daemon_threads=True
     print(json.dumps({'listening':f'http://{args.host}:{args.port}','data':engine.metadata()},ensure_ascii=False),flush=True)
     server.serve_forever()
 

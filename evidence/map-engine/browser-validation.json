@@ -17,6 +17,8 @@
   "pitch": 0,
   "bearing": 0,
   "rendered": 4659,
+  "restoration_recomputed": true,
+  "retained_on_visibility": true,
   "external_requests_blocked": [],
   "page_errors": [],
   "tests": "actual Chromium, real graph and vector data; external requests blocked",

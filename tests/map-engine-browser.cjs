@@ -17,7 +17,13 @@ const {chromium}=require('playwright-core'),assert=require('assert'),fs=require(
   return {distance:route.routes[0].distance,engine:route.data.engine,matrix:matrix.durations,nearest:nearest.osm_way_id,places:geocode.length,sameMap:identity===QueueGoMapView.map,pitch:identity.getPitch(),bearing:identity.getBearing(),rendered:identity.queryRenderedFeatures().length};
  });
  assert(result.distance>1000&&result.engine==='QueueGo/Valhalla');assert(result.matrix[0][1]>0);assert(result.nearest&&result.places>0);assert(result.sameMap&&result.pitch===0&&result.bearing===0);assert(result.rendered>0,'actual local PMTiles features must render');assert.deepEqual(errors,[]);
+ await page.evaluate(()=>{const view=QueueGoMapView,identity=view.map;document.dispatchEvent(new Event('visibilitychange'));if(identity!==QueueGoMapView.map)throw Error('visibility recreated map');view.state.routeStart={lat:14.9918756,lon:103.0994795};view.state.routeEnd={lat:15.0088319,lon:103.1300059}});
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.QueueGoMapView&&QueueGoMapView.restored&&QueueGoMapView.state.routes.length>0,null,{timeout:45000});
+ const restored=await page.evaluate(()=>({engine:QueueGoMapView.state.routes[0].data.engine,routeId:QueueGoMapView.state.routes[0].route_id,routeFeatures:QueueGoMapView.map.getSource('route-options')._data.features.length}));
+ assert(restored.engine==='QueueGo/Valhalla'&&restored.routeId&&restored.routeFeatures>0);
+ await page.evaluate(()=>document.fonts.ready);
  await page.screenshot({path:'/tmp/queuego-map-engine-browser.png'});
- const report={...result,external_requests_blocked:external,page_errors:errors,tests:'actual Chromium, real graph and vector data; external requests blocked',physical_device:false};fs.writeFileSync('evidence/map-engine/browser-validation.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
+ const report={...result,restoration_recomputed:true,retained_on_visibility:true,external_requests_blocked:external,page_errors:errors,tests:'actual Chromium, real graph and vector data; external requests blocked',physical_device:false};fs.writeFileSync('evidence/map-engine/browser-validation.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

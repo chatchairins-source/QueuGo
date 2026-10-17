@@ -2,9 +2,9 @@ name: QueueGo Map Engine Buriram
 on:
   push:
     branches: ['work-map-roadgraph-buriram-*']
-    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', '.github/workflows/queuego-map-engine-buriram.yml']
+    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', '.github/workflows/queuego-map-engine-buriram.yml']
   pull_request:
-    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', '.github/workflows/queuego-map-engine-buriram.yml']
+    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', '.github/workflows/queuego-map-engine-buriram.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -42,17 +42,17 @@ jobs:
           python ops/maps/extract_region.py map-data/thailand.osm.pbf map-data/buriram.osm.pbf
           python ops/maps/normalize_osm.py map-data/buriram.osm.pbf map-data/roads.sqlite
           python ops/maps/build_engine_graph.py valhalla map-data/buriram.osm.pbf map-data/valhalla --admin-pbf map-data/thailand.osm.pbf
-          python ops/maps/fetch_web_assets.py map-data/web-assets
       - name: Real graph runtime and restriction evidence
         run: |
           mkdir -p map-data/evidence
           python tests/map-engine-runtime.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/runtime.json
+          python tests/map-real-roads.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/real-roads.json
           python ops/maps/audit_turn_restrictions.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/turns.json
           python -c "import json; r=json.load(open('map-data/evidence/turns.json')); assert not r['summary'].get('failed',0),r['summary']; print('Uncovered/source-invalid restrictions remain an OPEN release gate:',r['summary'])"
       - name: Actual browser with external requests blocked
         run: |
           export QUEUEGO_CHROME="$(node -p "require('playwright-core').chromium.executablePath()")"
-          python ops/maps/run_browser_validation.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --vector map-data/vector.pmtiles --assets-root map-data/web-assets
+          python ops/maps/run_browser_validation.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --vector map-data/vector.pmtiles --assets-root map-assets
       - name: Offline package and rollback
         run: |
           python ops/maps/offline_package.py build --database map-data/roads.sqlite --graph map-data/valhalla --vector map-data/vector.pmtiles --destination map-data/buriram-map-v1 --version buriram-map-v1 > map-data/evidence/package.json

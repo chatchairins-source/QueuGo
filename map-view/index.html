@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0">
   <title>QueueGo Map — Buriram</title>
   <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
-  <link rel="stylesheet" href="/map-assets/maplibre-gl.css">
+  <link rel="stylesheet" href="../map-assets/maplibre-gl.css">
   <style>
     @font-face{font-family:QueueGoThai;src:url(/map-assets/fonts/NotoSansThai.ttf) format("truetype");font-weight:100 900;font-display:swap}
     html,body,input,button,select,textarea{font-family:QueueGoThai,system-ui,sans-serif!important}
@@ -259,8 +259,8 @@
     <p class="source-note">ใช้พิกัดที่ผู้ใช้ปัก + OpenStreetMap/Nominatim/Overpass และข้อมูลหมู่บ้านสาธารณะของกรมการปกครองเมื่อบริการพร้อม ข้อมูลที่ไม่พบสามารถกรอกเองได้</p>
   </section>
 
-  <script src="/map-assets/maplibre-gl.js"></script>
-  <script src="/map-assets/pmtiles.js"></script>
+  <script src="../map-assets/maplibre-gl.js"></script>
+  <script src="../map-assets/pmtiles.js"></script>
   <script src="queuego-map-service.js"></script>
   <script src="queuego-map-style.js"></script>
   <script>
@@ -556,8 +556,31 @@
       map.addLayer({id:"route-options-case",type:"line",source:"route-options",filter:["==",["get","selected"],true],paint:{"line-color":"#fff","line-width":["interpolate",["linear"],["zoom"],9,7,17,13],"line-opacity":.96}});
       map.addLayer({id:"route-options-selected",type:"line",source:"route-options",filter:["==",["get","selected"],true],paint:{"line-color":"#e6002d","line-width":["interpolate",["linear"],["zoom"],9,4,17,8],"line-opacity":.98}});
     }
+    const NAVIGATION_STORAGE_KEY="queuego_map_navigation_v1";
+    function persistNavigation(){
+      try{
+        if(!state.routeStart||!state.routeEnd){localStorage.removeItem(NAVIGATION_STORAGE_KEY);return}
+        localStorage.setItem(NAVIGATION_STORAGE_KEY,JSON.stringify({version:1,start:state.routeStart,end:state.routeEnd,active:state.navigationActive,selectedRoute:state.selectedRoute,savedAt:Date.now()}));
+      }catch(error){console.warn("Navigation restoration storage unavailable")}
+    }
+    async function restoreNavigation(){
+      try{
+        const value=JSON.parse(localStorage.getItem(NAVIGATION_STORAGE_KEY)||"null");
+        if(!value||value.version!==1||Date.now()-value.savedAt>86400000)return;
+        const valid=p=>p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon);
+        if(!valid(value.start)||!valid(value.end))return;
+        state.routeStart=value.start;state.routeEnd=value.end;
+        state.routeStartMarker=new maplibregl.Marker({element:markerEl("#191619")}).setLngLat([value.start.lon,value.start.lat]).addTo(map);
+        state.routeEndMarker=new maplibregl.Marker({element:markerEl("#e6002d")}).setLngLat([value.end.lon,value.end.lat]).addTo(map);
+        // Recompute through the installed graph, never trust stale cached geometry/route IDs.
+        await calculateRouteOptions({fit:false});
+        if(!state.routes.length)return;
+        selectRoute(Math.max(0,Math.min(state.routes.length-1,Number(value.selectedRoute)||0)));
+        if(value.active)startNavigation();
+      }catch(error){toast("กู้เส้นทางไม่ได้ · ลองค้นหาเส้นทางใหม่")}
+    }
     function selectRoute(index){
-      state.selectedRoute=index;
+      state.selectedRoute=index;navigationEpoch++;state.matchTrace=[];state.matchContext={};persistNavigation();
       const src=map.getSource("route-options");if(src)src.setData(routeFeatures());
       renderRouteList();
     }
@@ -606,7 +629,7 @@
           const bounds=new maplibregl.LngLatBounds();state.routes.forEach(r=>(r.geometry.coordinates||[]).forEach(c=>bounds.extend(c)));
           map.fitBounds(bounds,{padding:{top:60,bottom:190,left:38,right:38},maxZoom:16,duration:500});
         }
-        renderRouteList();
+        renderRouteList();persistNavigation();
         if(!state.navigationActive)$("routeSheet").hidden=false;
         toast(options.reroute?"ปรับเส้นทางแล้ว":"เปรียบเทียบเส้นทางพร้อม");
       }catch(e){console.warn(e);toast(options.reroute?"ปรับเส้นทางไม่สำเร็จ":"ยังคำนวณเส้นทางไม่ได้")}
@@ -682,18 +705,18 @@
       $("routePlanButton").classList.add("active");
       $("navInstruction").textContent="QueueGo Map กำลังติดตามและปรับเส้นทางอัตโนมัติ";
       state.watchId=navigator.geolocation.watchPosition(onNavigationPosition,()=>toast("ตำแหน่งขาดหายชั่วคราว"),{enableHighAccuracy:true,maximumAge:2500,timeout:12000});
-      toast("เริ่มนำทางแล้ว");
+      persistNavigation();toast("เริ่มนำทางแล้ว");
     }
     function stopNavigation(message){
       if(state.watchId!=null&&navigator.geolocation)navigator.geolocation.clearWatch(state.watchId);
       navigationEpoch++;state.matchTrace=[];state.matchContext={};state.watchId=null;state.navigationActive=false;state.offRouteHits=0;$("navStrip").hidden=true;
-      if(message)toast(message);
+      persistNavigation();if(message)toast(message);
     }
     function clearRoutePlan(){
       stopNavigation();
       state.routeStart=null;state.routeEnd=null;state.routes=[];state.trafficSignals=[];state.routeRestrictions=[];state.selectedRoute=0;
       if(state.routeStartMarker)state.routeStartMarker.remove();if(state.routeEndMarker)state.routeEndMarker.remove();
-      state.routeStartMarker=state.routeEndMarker=null;
+      state.routeStartMarker=state.routeEndMarker=null;persistNavigation();
       const src=map.getSource("route-options");if(src)src.setData({type:"FeatureCollection",features:[]});
       $("routeSheet").hidden=true;$("routePlanButton").classList.remove("active");
     }
@@ -987,9 +1010,14 @@
       locate,
       confirmCurrentLocation,
       get state(){return state},
-      ready:false
+      ready:false,restored:false
     };
-    map.on("load",()=>{ensureRouteLayers();ensureToolLayers();window.QueueGoMapView.ready=true});
+    map.on("load",async()=>{
+      ensureRouteLayers();ensureToolLayers();window.QueueGoMapView.ready=true;
+      try{await restoreNavigation()}finally{window.QueueGoMapView.restored=true}
+    });
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")map.resize()});
+    window.addEventListener("pagehide",persistNavigation);
   })();
   </script>
 </body>

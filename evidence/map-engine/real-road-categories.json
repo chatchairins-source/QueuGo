@@ -1,0 +1,369 @@
+{
+  "dataset": {
+    "api_version": 1,
+    "engine": "QueueGo/Valhalla",
+    "engine_version": "3.9.1",
+    "dataset_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+    "source_timestamp": "2026-10-15T20:21:00Z",
+    "bounds": [
+      102.369,
+      14.109,
+      103.592,
+      15.819
+    ],
+    "attribution": "© OpenStreetMap contributors",
+    "licence": "ODbL-1.0",
+    "live_traffic": false,
+    "historical_speed_feed": false
+  },
+  "cases": [
+    {
+      "case": "city_street",
+      "status": "passed",
+      "osm_way_id": 95517321,
+      "segment": "osm:way:95517321:d58fe5d81bec46d804c7",
+      "points": [
+        {
+          "lon": 103.0913545,
+          "lat": 14.9916096
+        },
+        {
+          "lon": 103.0903872,
+          "lat": 14.9913709
+        }
+      ],
+      "source_tags": {
+        "highway": "residential",
+        "lit": "yes",
+        "name": "ซอยลำดวน 1",
+        "name:en": "Soi Lam Duan 1",
+        "name:th": "ซอยลำดวน 1",
+        "sidewalk": "both",
+        "source": "GPS",
+        "surface": "asphalt",
+        "website": "http://www.captainslash.com/si-saket-to-buriram-mostly-on-a-backroad/"
+      },
+      "route_distance_m": 107.0,
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "rural_residential",
+      "status": "passed",
+      "osm_way_id": 22277488,
+      "segment": "osm:way:22277488:ff3f6d973c4d3964e245",
+      "points": [
+        {
+          "lon": 102.4941114,
+          "lat": 15.2195279
+        },
+        {
+          "lon": 102.49317,
+          "lat": 15.2193699
+        }
+      ],
+      "source_tags": {
+        "highway": "residential"
+      },
+      "route_distance_m": 104.0,
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "rural_road",
+      "status": "passed",
+      "osm_way_id": 28162199,
+      "segment": "osm:way:28162199:f6caf9408b48d5aaeebf",
+      "points": [
+        {
+          "lon": 103.3546025,
+          "lat": 14.7544555
+        },
+        {
+          "lon": 103.347664,
+          "lat": 14.7560692
+        }
+      ],
+      "source_tags": {
+        "highway": "unclassified",
+        "source": "Maxar-Premium"
+      },
+      "route_distance_m": 788.0,
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "divided_highway",
+      "status": "passed",
+      "osm_way_id": 35745939,
+      "segment": "osm:way:35745939:91f24af44ca7acbd54ff",
+      "points": [
+        {
+          "lon": 102.5725304,
+          "lat": 15.4242898
+        },
+        {
+          "lon": 102.5687878,
+          "lat": 15.4199706
+        }
+      ],
+      "source_tags": {
+        "highway": "trunk",
+        "lanes": "2",
+        "name": "ถนนเจนจบทิศ",
+        "name:en": "Chen Chop Thit Road",
+        "name:th": "ถนนเจนจบทิศ",
+        "oneway": "yes",
+        "ref": "207",
+        "source": "GPS;sign",
+        "surface": "paved"
+      },
+      "route_distance_m": 654.0,
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "service_road",
+      "status": "passed",
+      "osm_way_id": 38214374,
+      "segment": "osm:way:38214374:7eee788b5d15213a0e40",
+      "points": [
+        {
+          "lon": 103.479206,
+          "lat": 14.8920412
+        },
+        {
+          "lon": 103.4802673,
+          "lat": 14.891745
+        }
+      ],
+      "source_tags": {
+        "highway": "service"
+      },
+      "route_distance_m": 119.0,
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "bridge",
+      "status": "passed",
+      "osm_way_id": 95517329,
+      "segment": "osm:way:95517329:db52666d3c851fa19dd4",
+      "points": [
+        {
+          "lon": 103.4706613,
+          "lat": 15.2839629
+        },
+        {
+          "lon": 103.469393,
+          "lat": 15.2838134
+        }
+      ],
+      "source_tags": {
+        "bridge": "yes",
+        "highway": "unclassified",
+        "layer": "1",
+        "source": "GPS",
+        "website": "http://www.captainslash.com/si-saket-to-buriram-mostly-on-a-backroad/"
+      },
+      "route_distance_m": 137.0,
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "ramp",
+      "status": "passed",
+      "osm_way_id": 41712910,
+      "segment": "osm:way:41712910:bae21a490f8f6fcf469e",
+      "points": [
+        {
+          "lon": 103.5059637,
+          "lat": 14.8884803
+        },
+        {
+          "lon": 103.506136,
+          "lat": 14.8886991
+        }
+      ],
+      "source_tags": {
+        "highway": "secondary_link",
+        "oneway": "yes",
+        "ref": "3038",
+        "surface": "paved"
+      },
+      "route_distance_m": 395.0,
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "traffic_signals",
+      "status": "passed",
+      "osm_way_id": 27955874,
+      "segment": "osm:way:27955874:a0b22bc9570a4f335ecc",
+      "points": [
+        {
+          "lon": 102.4946921,
+          "lat": 15.2188608
+        },
+        {
+          "lon": 102.4934876,
+          "lat": 15.2183913
+        }
+      ],
+      "source_tags": {
+        "alt_name:en": "Ananthajinda",
+        "highway": "tertiary",
+        "lanes": "2",
+        "name": "ถนนอนันทจินดา",
+        "name:en": "Ananthachinda Road",
+        "name:th": "ถนนอนันทจินดา",
+        "surface": "asphalt",
+        "unsigned_ref": "นม.ถ46-001"
+      },
+      "route_distance_m": 140.0,
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "railway_crossing",
+      "status": "passed",
+      "osm_way_id": 23747373,
+      "segment": "osm:way:23747373:c19c96be26e7488d0d7c",
+      "points": [
+        {
+          "lon": 103.1130585,
+          "lat": 14.999838
+        },
+        {
+          "lon": 103.1129915,
+          "lat": 15.0007915
+        }
+      ],
+      "source_tags": {
+        "highway": "secondary",
+        "lanes": "2",
+        "name": "ถนนหลักเมือง",
+        "name:en": "Lak Mueang Road",
+        "old_ref": "2074",
+        "source": "GPS;sign",
+        "surface": "asphalt",
+        "unsigned_ref": "บร.ถ3-0006"
+      },
+      "route_distance_m": 106.0,
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "inaccessible_road",
+      "osm_way_id": 152947312,
+      "points": [
+        {
+          "lon": 103.0822319,
+          "lat": 14.9257192
+        },
+        {
+          "lon": 103.0838192,
+          "lat": 14.9249492
+        }
+      ],
+      "status": "passed_excluded",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "service": "driveway",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "inaccessible_road",
+      "osm_way_id": 152947312,
+      "points": [
+        {
+          "lon": 103.0838192,
+          "lat": 14.9249492
+        },
+        {
+          "lon": 103.0861174,
+          "lat": 14.9238276
+        }
+      ],
+      "status": "passed_excluded",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "service": "driveway",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "inaccessible_road",
+      "osm_way_id": 152947316,
+      "points": [
+        {
+          "lon": 103.0830116,
+          "lat": 14.9273013
+        },
+        {
+          "lon": 103.0845925,
+          "lat": 14.9265055
+        }
+      ],
+      "status": "passed_excluded",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "service": "driveway",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "inaccessible_road",
+      "osm_way_id": 152947334,
+      "points": [
+        {
+          "lon": 103.0811426,
+          "lat": 14.9234969
+        },
+        {
+          "lon": 103.0826277,
+          "lat": 14.9228154
+        }
+      ],
+      "status": "passed_excluded",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "service": "driveway",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "inaccessible_road",
+      "osm_way_id": 152947334,
+      "points": [
+        {
+          "lon": 103.0844196,
+          "lat": 14.9219932
+        },
+        {
+          "lon": 103.0843387,
+          "lat": 14.9208657
+        }
+      ],
+      "status": "passed_excluded",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "service": "driveway",
+        "source": "Bing"
+      }
+    }
+  ],
+  "physical_road_test": false,
+  "limitations": [
+    "service road is not certified as frontage without source tags/field verification",
+    "rural residential category does not certify a named village-lane field test",
+    "U-turn and parallel-road GPS recordings still required",
+    "no background/signal-loss physical certification"
+  ]
+}
