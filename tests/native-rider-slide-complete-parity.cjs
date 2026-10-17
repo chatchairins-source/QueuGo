@@ -4,7 +4,6 @@ const fs=require('fs');
 const app=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const models=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/Models.kt','utf8');
 const api=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
-const slide=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderSlideComplete.kt','utf8');
 
 assert(app.includes('RiderCashPanel(')&&app.includes('title = "จ่ายร้าน"'),
   'Rider pickup verification must keep the shop cash amount inline');
@@ -33,24 +32,15 @@ assert(app.includes('riderPickupCommittedStatus(mutationResult)')&&
   !app.includes('openNavigation(context, nextStop)'),
   'Pickup photo success must preserve the committed order through stale reads and remain in QueueGo navigation');
 
-assert(app.includes('RiderSlideComplete(')&&app.includes('label = "เก็บเงินจากลูกค้าเรียบร้อยแล้ว"'),
-  'Delivery verification must use slide-to-complete');
-assert(app.includes('if (photoReady && !pickup && !marketPickupMode)'),
-  'Slide-to-complete must only replace the final delivery action after proof is captured');
-assert(app.includes('onComplete = onComplete') && app.includes('onComplete = onConfirm'),
-  'Slide completion must reuse the existing completeWithPhoto path');
-assert(app.includes('RiderCollectionScreen(') && app.includes('onClick = { showCollection = true }'),
-  'Proof must advance by button to a full-screen final collection review');
+assert(!app.includes('RiderSlideComplete('),
+  'Delivery must never reintroduce slide-to-complete');
+assert(!app.includes('RiderCollectionScreen(')&&!app.includes('showCollection')&&!app.includes('verifyCollection'),
+  'Delivery must remain one proof screen with no second collection stage');
+assert(app.includes('onClick = if (photoReady) onConfirm else onCamera'),
+  'Proof-ready delivery must submit through the existing completeWithPhoto path directly');
+assert(app.includes('else -> "จบงาน"'),
+  'Delivery must expose one simple complete button after proof');
 assert(app.includes('riderCollectionReady(job.customerCash, photoReady, previewReady)'),
-  'Final collection must require a readable proof and an authoritative finite cash amount');
-assert(app.includes('fontSize = if (amount.length > 12) 34.sp else 56.sp'),
-  'Final collection must display the full amount prominently like Production Web');
+  'The one completion action must still require readable proof and authoritative finite cash');
 
-assert(slide.includes('detectHorizontalDragGestures('),'Slide control must require a horizontal gesture');
-assert(slide.includes('if (progress >= 0.92f)'),'Slide control must require near-complete travel');
-assert(slide.includes('onDragCancel = { progress = 0f }')&&slide.includes('progress = 0f'),
-  'Incomplete or cancelled drags must reset');
-assert(slide.includes('completing = true')&&slide.includes('onComplete()'),
-  'Slide must fire completion once at the end of a successful drag');
-
-console.log('Native Rider cash breakdown and slide-to-complete parity contracts: PASS');
+console.log('Native Rider cash breakdown and one-proof one-completion parity contracts: PASS');
