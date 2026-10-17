@@ -426,7 +426,7 @@ const merchantManifest=read('merchant/src/main/AndroidManifest.xml');
 ok(merchantSetup.includes('QgLocationPickerMap(')&&merchantSetup.includes('ใช้ตำแหน่ง GPS ปัจจุบัน')&&merchantSetup.includes('บันทึกข้อมูลร้าน'),'Merchant native shop setup must preserve QueueGo Map picker, GPS and save flow');
 ok(merchantSetup.includes('mobile_accessories')&&merchantSetup.includes('automotive_motorcycle')&&merchantSetup.includes('home_decor'),'Merchant native Shopping setup must preserve web subcategories');
 ok(merchantImageUpload.includes('/storage/v1/object/merchant-media/')&&merchantImageUpload.includes('12 * 1024 * 1024')&&merchantImageUpload.includes('3 * 1024 * 1024'),'Merchant native shop images must use production merchant-media limits');
-ok(merchantManifest.includes('ACCESS_FINE_LOCATION')&&merchantManifest.includes('longdo.map.key'),'Merchant native setup must declare location and Longdo key');
+ok(merchantManifest.includes('ACCESS_FINE_LOCATION')&&merchantManifest.includes('queuego.map.service.base_url')&&merchantManifest.includes('${queuegoMapServiceBaseUrl}'),'Merchant native setup must declare location and QueueGo Map service config');
 ok(source.includes('saveShopSetup(')&&source.includes('shop_profiles?id=eq.')&&source.includes('users?id=eq.'),'Merchant native setup must persist owned shop and user profile');
 const merchantHours=read('merchant/src/main/java/com/queuego/merchant/MerchantHoursScreen.kt');
 ok(source.includes('merchant_save_hours')&&source.includes('shop_business_hours?select=weekday,opens_at,closes_at,is_closed')&&source.includes('shop_special_hours?select=day,is_closed,opens_at,closes_at'),'Merchant native hours must reuse Production hours tables and RPC');
