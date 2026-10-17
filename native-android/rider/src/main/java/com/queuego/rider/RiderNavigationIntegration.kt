@@ -20,7 +20,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.queuego.ridernavigationmap.CachingNavigationRouteProvider
-import com.queuego.ridernavigationmap.LongdoNavigationRouteClient
+import com.queuego.ridernavigationmap.QueueGoNavigationRouteClient
 import com.queuego.ridernavigationmap.NavigationMapCamera
 import com.queuego.ridernavigationmap.NavigationMapFix
 import com.queuego.ridernavigationmap.NavigationGuidanceState
@@ -52,11 +52,11 @@ private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true
 // physical-device camera smoothness can be evaluated before job-gating returns.
 private const val RIDER_CAMERA_SMOOTHNESS_TEST_MODE = true
 
-private fun riderLongdoNavigationKey(context: Context): String? = runCatching {
+private fun riderQueueGoMapServiceBaseUrl(context: Context): String? = runCatching {
     context.packageManager
         .getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
         .metaData
-        ?.getString("longdo.map.key")
+        ?.getString("queuego.map.service.base_url")
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
 }.getOrNull()
@@ -381,11 +381,11 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
 
-    val routeKey = remember(context.packageName) { riderLongdoNavigationKey(context) }
-    val routeProvider = remember(routeKey, stateKey) {
-        routeKey?.let { key ->
+    val routeBaseUrl = remember(context.packageName) { riderQueueGoMapServiceBaseUrl(context) }
+    val routeProvider = remember(routeBaseUrl, stateKey) {
+        routeBaseUrl?.let { baseUrl ->
             CachingNavigationRouteProvider(
-                delegate = LongdoNavigationRouteClient(key)
+                delegate = QueueGoNavigationRouteClient(baseUrl)
             )
         }
     }
