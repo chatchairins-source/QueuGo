@@ -69,7 +69,8 @@ internal fun CustomerLocationPickerScreen(
     subtitle: String = "ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง",
     saveLabel: String = "บันทึกที่อยู่นี้",
     autoUseGps: Boolean = true,
-    mapHeight: Dp = 150.dp
+    mapHeight: Dp = 150.dp,
+    cameraLocation: CustomerLocation? = null
 ) {
     val draftSaver = remember {
         listSaver<CustomerLocationDraft, Any>(
@@ -160,7 +161,14 @@ internal fun CustomerLocationPickerScreen(
     }
 
     val selectedPoint = selected?.let { QgMapPoint(it.latitude, it.longitude, 0) }
+    val cameraPoint = cameraLocation
+        ?.takeIf { validCustomerPoint(it.latitude, it.longitude) }
+        ?.let { QgMapPoint(it.latitude, it.longitude, 0) }
+        ?: selectedPoint
     val externalPoint = selectedPoint
+    var observedCenter by remember(cameraPoint?.latitude, cameraPoint?.longitude) {
+        mutableStateOf(cameraPoint)
+    }
 
     Column(
         Modifier
@@ -208,13 +216,16 @@ internal fun CustomerLocationPickerScreen(
                 .border(1.dp, QgLine, RoundedCornerShape(14.dp))
         ) {
             QgLongdoLocationPickerMap(
-                initialPoint = selectedPoint,
+                initialPoint = cameraPoint,
                 recenterPoint = externalPoint,
                 recenterToken = recenterToken,
                 modifier = Modifier.fillMaxSize(),
+                selectInitialPoint = selectedPoint != null,
                 onCenterChanged = { point ->
+                    observedCenter = point
                     draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
                 },
+                onCenterObserved = { point -> observedCenter = point },
                 onReady = { mapReady = it }
             )
             if (!mapReady) {
@@ -236,6 +247,18 @@ internal fun CustomerLocationPickerScreen(
             Text(if (gpsBusy) "กำลังอ่านตำแหน่ง GPS…" else "ใช้ตำแหน่ง GPS ปัจจุบัน")
         }
         Spacer(Modifier.height(7.dp))
+        OutlinedButton(
+            onClick = {
+                observedCenter?.takeIf { it.valid }?.let { point ->
+                    draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
+                }
+            },
+            enabled = !busy && observedCenter?.valid == true,
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) {
+            Text("เลือกจุดกึ่งกลางแผนที่", fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(7.dp))
         Box(
             Modifier
                 .fillMaxWidth()
@@ -243,7 +266,7 @@ internal fun CustomerLocationPickerScreen(
                 .border(1.dp, QgLine, RoundedCornerShape(12.dp))
                 .padding(horizontal = 12.dp, vertical = 11.dp)
         ) {
-            Text("หรือเลื่อนแผนที่เพื่อเลือกพิกัดเอง", color = QgMuted, fontWeight = FontWeight.Bold)
+            Text("ลากแผนที่ให้กากบาทอยู่ตรงจุดที่ต้องการ แล้วกดเลือกจุดกึ่งกลางแผนที่", color = QgMuted, fontWeight = FontWeight.Bold)
         }
         gpsMessage?.let {
             Spacer(Modifier.height(6.dp))
