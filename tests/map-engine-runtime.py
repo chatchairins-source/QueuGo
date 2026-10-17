@@ -63,7 +63,7 @@ five=points+[{k:r[k] for k in ('lat','lon')} for r in extra]
 check('five stop route',len(engine.route({'points':five})['routes'][0]['legs'])==4,ids+[r['id'] for r in extra])
 check('five by five ETA matrix',len(engine.matrix({'points':five})['durations'])==5)
 optimized=engine.optimize({'points':five});check('five stop optimization fixed endpoints',sorted(optimized['order'])==list(range(5)) and optimized['order'][0]==0 and optimized['order'][-1]==4,optimized['order'])
-check('unverified source restrictions quarantined',set(engine.unresolved_rules)=={2148441,17320674} and set(engine.direction_conflicting_rules)=={1538817} and len(engine.quarantined_ways)==5)
+check('unverified source restrictions quarantined',set(engine.unresolved_rules)=={2148441,17320674} and set(engine.member_conflicting_rules)=={6982243} and set(engine.direction_conflicting_rules)=={1538817} and len(engine.quarantined_ways)==7)
 check('planned alternatives avoid unverified rule members',all(not engine.quarantined_ways.intersection(r['osm_way_ids']) for r in routes))
 with engine.db() as db:blocked=db.execute('SELECT coordinates FROM ways WHERE id=170350136').fetchone()
 blocked_line=json.loads(blocked['coordinates']);blocked_points=[{'lon':q[0],'lat':q[1]} for q in [blocked_line[0],blocked_line[-1]]]
