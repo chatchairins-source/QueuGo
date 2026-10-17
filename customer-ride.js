@@ -134,24 +134,35 @@
   const initialAddress=selectedInitial?.address||'';
   let point=selectedInitial?{lat:initial.lat,lng:initial.lng}:null,revision=0;
   const title=which==='pickup'?'เลือกจุดรับ':'เลือกจุดหมาย';
-  const subtitle=which==='pickup'?'ใช้ตำแหน่งปัจจุบันอัตโนมัติ หรือเลื่อนแผนที่เพื่อเลือกเอง':'เลื่อนแผนที่เพื่อเลือกจุดหมาย หรือใช้ GPS หากต้องการ';
+  const subtitle=which==='pickup'
+    ?'เลื่อนแผนที่เพื่อเลือกตำแหน่งจุดรับของคุณ'
+    :'เลื่อนแผนที่เพื่อเลือกตำแหน่งจุดส่งของคุณ';
+  const addressLabel=which==='pickup'?'ที่อยู่จุดรับ':'ที่อยู่จุดส่ง';
   layout(
-   '<div class="pt"><button class="back" id="ride-back">'+ico('back')+'</button><div><h1>'+title+'</h1><p class="sm" style="margin:3px 0 0">'+subtitle+'</p></div></div>'+
-   '<section class="card" style="padding:14px">'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
-     '<button type="button" id="ride-gps" style="min-height:50px;border:1px solid #b8d0ea;border-radius:13px;background:#f7faff;color:#2e6db4;font-weight:800;padding:9px 10px">ใช้ GPS ปัจจุบัน</button>'+
-     '<button type="button" id="ride-select-center" style="min-height:50px;border:1px solid #d9dce1;border-radius:13px;background:#fff;color:#42474e;font-weight:800;padding:9px 10px">เลือกจุดกึ่งกลางแผนที่</button>'+
+   '<div style="margin:2px 0 18px;padding:0 2px">'+
+    '<h1 style="margin:0;font-size:30px;line-height:1.15;font-weight:900;color:#111827">'+title+'</h1>'+
+    '<p style="margin:7px 0 0;color:#8a9099;font-size:15px;font-weight:600">'+subtitle+'</p>'+
+   '</div>'+
+   '<section class="card" style="padding:14px 14px 16px;border-radius:24px;box-shadow:0 12px 32px rgba(24,32,48,.06);border:1px solid #eceef2;background:#fff">'+
+    '<div style="position:relative">'+
+     '<div id="ride-location-map" class="mapbox" style="height:330px;border-radius:20px;overflow:hidden;background:#eef1f4;box-shadow:inset 0 0 0 1px rgba(17,24,39,.03)"></div>'+
+     '<button type="button" id="ride-select-center" style="position:absolute;right:12px;bottom:12px;min-height:42px;padding:0 14px;border:1px solid #e0e3e8;border-radius:999px;background:rgba(255,255,255,.96);color:#343941;font-weight:800;box-shadow:0 5px 18px rgba(17,24,39,.12)">เลือกตรงกลาง</button>'+
     '</div>'+
-    '<div id="ride-location-map" class="mapbox" style="height:330px;border-radius:16px;overflow:hidden"></div>'+
-    '<p class="sm" style="margin:8px 2px 2px;color:#69707a">ลากแผนที่ให้กากบาทอยู่ตรงจุดที่ต้องการ แล้วกด “เลือกจุดกึ่งกลางแผนที่”</p>'+
-    '<div id="ride-picked-status" class="sm" style="margin:9px 2px 6px;color:#69707a">'+(point?'เลือกพิกัดแล้ว':'กำลังหาตำแหน่ง…')+'</div>'+
-    '<textarea id="ride-address" class="in" maxlength="500" placeholder="ที่อยู่หรือจุดสังเกต">'+esc(initialAddress)+'</textarea>'+
-    '<button id="ride-save-location" class="prim" style="min-height:52px;margin-top:10px">ใช้จุดนี้</button>'+
+    '<button type="button" id="ride-gps" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;margin-top:14px;padding:12px;border:1px solid #e4e7ec;border-radius:17px;background:#fff;color:#ef233c">'+
+     '<span style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff0f2;color:#ef233c;flex:none">'+ico('pin',20)+'</span>'+
+     '<span style="min-width:0;flex:1"><b style="display:block;font-size:16px;line-height:1.25">ใช้ตำแหน่ง GPS ปัจจุบัน</b><span style="display:block;margin-top:2px;color:#9aa0aa;font-size:13px">ค้นหาตำแหน่งของคุณบนแผนที่</span></span>'+
+     '<span aria-hidden="true" style="font-size:28px;line-height:1;color:#6f7680">›</span>'+
+    '</button>'+
+    '<div style="margin:14px 2px 7px;color:#8b929d;font-size:13px;font-weight:800">'+addressLabel+'</div>'+
+    '<textarea id="ride-address" maxlength="500" placeholder="ที่อยู่หรือจุดสังเกต" style="box-sizing:border-box;width:100%;min-height:82px;resize:none;border:1px solid #dfe3e8;border-radius:17px;background:#fff;padding:14px 14px;font:inherit;font-size:16px;line-height:1.5;color:#16181c;outline:none">'+esc(initialAddress)+'</textarea>'+
+    '<div id="ride-picked-status" class="sm" style="margin:7px 2px 0;color:#8a9099">'+(point?'เลือกพิกัดแล้ว':'เลื่อนแผนที่หรือใช้ GPS เพื่อเลือกพิกัด')+'</div>'+
+    '<button id="ride-save-location" class="prim" style="min-height:58px;margin-top:14px;border-radius:18px;font-size:18px;font-weight:900;box-shadow:0 10px 24px rgba(239,35,60,.20)">'+ico('pin',20)+'<span style="margin-left:7px">ใช้จุดนี้</span></button>'+
+    '<button id="ride-back" type="button" style="min-height:52px;margin-top:10px;padding:0 18px;border:0;border-radius:17px;background:#fff4f5;color:#e3263f;font-weight:900;font-size:16px;display:inline-flex;align-items:center;gap:7px">'+ico('back',18)+'<span>กลับ</span></button>'+
     '<p id="ride-location-error" role="status" style="margin:8px 2px 0;color:#e6002d"></p>'+
    '</section>','orders');
   const u=actor();picker=initLocationPicker('ride-location-map',initial?.lat,initial?.lng,async(lat,lng)=>{
    point={lat,lng};const version=++revision,field=$('ride-address'),status=$('ride-picked-status');
-   if(status)status.textContent='เลือกพิกัดแล้ว · '+Number(lat).toFixed(6)+', '+Number(lng).toFixed(6);
+   if(status)status.textContent='เลือกพิกัดแล้ว';
    if(!field)return;
    const previous=field.value.trim();
    if(previous&&initialAddress&&previous===initialAddress)return;
