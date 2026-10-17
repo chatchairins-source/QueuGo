@@ -321,10 +321,11 @@ class NavigationCameraPolicyTest {
         )
     }
 
-    @Test fun nativeFollowCameraUsesGentlerSpeedAwareBearingGain() {
-        assertTrue(navigationBearingSmoothingFactor(20f) < 0.5f)
+    @Test fun nativeFollowCameraTurnsMoreAggressivelyAsSpeedRises() {
+        assertTrue(navigationBearingSmoothingFactor(20f) >= 0.65f)
         assertTrue(navigationBearingSmoothingFactor(20f) > navigationBearingSmoothingFactor(1f))
-        assertTrue(navigationBearingSmoothingFactor(8f) in 0.30f..0.40f)
+        assertTrue(navigationBearingSmoothingFactor(8f) in 0.50f..0.54f)
+        assertTrue(navigationTurnAnticipationFactor(20f) > navigationTurnAnticipationFactor(3f))
     }
 
     @Test fun largerTurnsReceiveLongerRotationAnimation() {
@@ -339,8 +340,25 @@ class NavigationCameraPolicyTest {
             cadenceMillis = 500L
         )
         assertTrue(corner > small)
-        assertTrue(corner <= 1_200L)
-        assertTrue(small >= 520L)
+        assertTrue(corner <= 900L)
+        assertTrue(small >= 420L)
+    }
+
+    @Test fun highSpeedSameTurnFinishesFasterThanLowSpeed() {
+        val fast = navigationRotationDurationMillis(
+            currentBearing = 0f,
+            targetBearing = 90f,
+            cadenceMillis = 500L,
+            speedMetersPerSecond = 20f
+        )
+        val slow = navigationRotationDurationMillis(
+            currentBearing = 0f,
+            targetBearing = 90f,
+            cadenceMillis = 500L,
+            speedMetersPerSecond = 3f
+        )
+        assertTrue(fast < slow)
+        assertTrue(fast <= 460L)
     }
 
     @Test fun rotationDurationUsesShortestTurnAcrossNorth() {
