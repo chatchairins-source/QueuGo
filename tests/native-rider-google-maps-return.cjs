@@ -41,6 +41,18 @@ assert(app.includes('Text("นำทางด้วย QueueGo"')&&
   app.includes('onQueueGoNavigate = {')&&
   app.includes('startQueueGoNavigation()'),
   'Normal active-job card must make QueueGo in-app navigation the primary action');
+assert(!app.includes('private fun openReturnNavigation('),
+  'Return-to-shop flow must not retain a separate external navigation implementation');
+const returnFlow=app.slice(
+  app.indexOf('current.deliveryReturn != null -> {'),
+  app.indexOf('current.activeJob == null && current.laundry.activeJob != null')
+);
+assert(returnFlow.includes('startQueueGoNavigation(')&&
+  returnFlow.includes('นำทางกลับร้านด้วยแผนที่ QueueGo')&&
+  returnFlow.includes('นำทางไปจุดคืนถัดไปด้วยแผนที่ QueueGo')&&
+  !returnFlow.includes('openNavigation(context')&&
+  !returnFlow.includes('google.navigation'),
+  'Return-to-shop and next-return-stop navigation must stay inside QueueGo');
 assert(app.includes('Text("นำทางด้วย Google Maps"'),
   'Normal active-job card must keep Google Maps only as a distinct optional action');
 const acceptFlow=app.slice(app.indexOf('fun acceptTargetedOffer('),app.indexOf('// Navigation and visible UI renew'));
