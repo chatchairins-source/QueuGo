@@ -362,7 +362,7 @@ function marker(map,{lat,lng,color='#e6002d',title='',html='',anchor='center',ro
 }
 function moveMarker(m,lat,lng,rotation=null){
   if(m&&valid(lat,lng))m.setLngLat([Number(lng),Number(lat)]);
-  if(m&&Number.isFinite(Number(rotation)))try{m.setRotation(Number(rotation))}catch(_){}
+  if(m&&rotation!==null&&rotation!==undefined&&Number.isFinite(Number(rotation)))try{m.setRotation(Number(rotation))}catch(_){}
   return m
 }
 function fit(map,points,{padding=48,maxZoom=16,duration=0}={}){
