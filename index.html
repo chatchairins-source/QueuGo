@@ -331,7 +331,7 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 </style>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
+<script src="queuego-map-web.js?v=20261017-1"></script>
 <script src="queuego-order-number.js"></script>
 </head>
 <body>
@@ -822,25 +822,12 @@ function calculateDistanceKm(customerLat,customerLng,shopLat,shopLng){
 }
 
 
-function qgLongdoPin(loc,title){
-  return new longdo.Marker(loc,{title:title||'ตำแหน่งที่เลือก',icon:{html:'<div style="width:20px;height:20px;border-radius:50%;background:#1677ff;border:3px solid #fff;box-shadow:0 4px 14px #0004"></div>',offset:{x:0,y:0}},weight:longdo.OverlayWeight.Top});
-}
 let customerPickerMap=null;
 function qgQueueGoPickerStyle(){
-  return {
+  return window.QueueGoMapWeb?.style || {
     version:8,
-    sources:{
-      queuego_osm:{
-        type:"raster",
-        tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-        tileSize:256,
-        attribution:"© OpenStreetMap contributors"
-      }
-    },
-    layers:[
-      {id:"queuego-bg",type:"background",paint:{"background-color":"#f3f0e8"}},
-      {id:"queuego-osm",type:"raster",source:"queuego_osm"}
-    ]
+    sources:{queuego_osm:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},
+    layers:[{id:"queuego-bg",type:"background",paint:{"background-color":"#f3f0e8"}},{id:"queuego-osm",type:"raster",source:"queuego_osm"}]
   };
 }
 function initLocationPicker(containerId,lat,lng,onChange,options={}){
