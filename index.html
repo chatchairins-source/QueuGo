@@ -329,7 +329,7 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
   .qg-home-original-main .ph{width:82px;height:82px}
 }
 </style>
-<script src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">\n<script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>\n<script src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
 <script src="queuego-order-number.js"></script>
 </head>
 <body>
@@ -824,18 +824,90 @@ function qgLongdoPin(loc,title){
   return new longdo.Marker(loc,{title:title||'ตำแหน่งที่เลือก',icon:{html:'<div style="width:20px;height:20px;border-radius:50%;background:#1677ff;border:3px solid #fff;box-shadow:0 4px 14px #0004"></div>',offset:{x:0,y:0}},weight:longdo.OverlayWeight.Top});
 }
 let customerPickerMap=null;
-function initLocationPicker(containerId,lat,lng,onChange){
-  const host=document.getElementById(containerId),hasInitial=qgIsValidCoordinate(lat,lng,true),viewLat=hasInitial?Number(lat):15,viewLng=hasInitial?Number(lng):101;
-  if(!host||typeof longdo==='undefined'){toast('แผนที่ยังไม่พร้อม กรุณาลองใหม่');return {map:null,destroy(){},locate(){toast('แผนที่ยังไม่พร้อม กรุณาลองใหม่')}}}
-  const map=customerPickerMap||(customerPickerMap=new longdo.Map({placeholder:host,ui:window.longdo.UiComponent.Mobile}));
-  if(map.placeholder().parentNode!==host)host.replaceChildren(map.placeholder());map.pause(false);map.resize();try{map.Ui.LayerSelector.visible(false)}catch(e){}
-  map.location({lat:viewLat,lon:viewLng},true);map.zoom(hasInitial?15:6,true);
+function qgQueueGoPickerStyle(){
+  return {
+    version:8,
+    sources:{
+      queuego_osm:{
+        type:"raster",
+        tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize:256,
+        attribution:"© OpenStreetMap contributors"
+      }
+    },
+    layers:[
+      {id:"queuego-bg",type:"background",paint:{"background-color":"#f3f0e8"}},
+      {id:"queuego-osm",type:"raster",source:"queuego_osm"}
+    ]
+  };
+}
+function initLocationPicker(containerId,lat,lng,onChange,options={}){
+  const host=document.getElementById(containerId),hasInitial=qgIsValidCoordinate(lat,lng,true);
+  const viewLat=hasInitial?Number(lat):15,viewLng=hasInitial?Number(lng):101;
+  const selectInitial=options.selectInitial!==false;
+  if(!host||typeof maplibregl==="undefined"){
+    toast("QueueGo Map ยังไม่พร้อม กรุณาลองใหม่");
+    return {map:null,destroy(){},locate(){toast("QueueGo Map ยังไม่พร้อม กรุณาลองใหม่")},selectCenter(){return false}};
+  }
+  try{customerPickerMap?.remove?.()}catch{}
+  host.replaceChildren();
+  const map=new maplibregl.Map({
+    container:host,
+    style:qgQueueGoPickerStyle(),
+    center:[viewLng,viewLat],
+    zoom:hasInitial?15:6,
+    minZoom:5,
+    maxZoom:19,
+    attributionControl:false,
+    dragRotate:false,
+    pitchWithRotate:false
+  });
+  customerPickerMap=map;
+  map.touchZoomRotate.disableRotation();
+  map.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),"top-left");
+  map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
   let disposed=false,marker=null;
-  const setPoint=(plat,plng,notify=true)=>{if(disposed||!qgIsValidCoordinate(plat,plng,true))return false;if(marker)try{map.Overlays.remove(marker)}catch(e){};marker=qgLongdoPin({lat:Number(plat),lon:Number(plng)});map.Overlays.add(marker);if(notify)onChange(Number(plat),Number(plng));return true};
-  const syncCenter=()=>{if(disposed)return;const p=map.location();if(p&&qgIsValidCoordinate(p.lat,p.lon,true))setPoint(p.lat,p.lon,true)};
-  try{map.Event.bind('drop',syncCenter)}catch(e){}
-  if(hasInitial)setPoint(viewLat,viewLng,true);
-  return {map,destroy(){if(disposed)return;disposed=true;map.Event.unbind('drop',syncCenter);map.Overlays.clear();map.pause(true);map.placeholder().remove()},locate(){if(disposed)return;if(!navigator.geolocation)return toast('เบราว์เซอร์ไม่รองรับ GPS');navigator.geolocation.getCurrentPosition(pos=>{if(disposed)return;const {latitude,longitude}=pos.coords;if(!qgIsValidCoordinate(latitude,longitude,true))return toast('พิกัด GPS ไม่ถูกต้อง กรุณาลองใหม่');map.location({lat:latitude,lon:longitude},true);map.zoom(16,true);setPoint(latitude,longitude,true);toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว')},err=>{if(disposed)return;toast(err?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':err?.code===3?'รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่':'ไม่สามารถรับตำแหน่ง GPS ได้')},{enableHighAccuracy:true,timeout:12000,maximumAge:30000})}};
+  const setPoint=(plat,plng,notify=true)=>{
+    if(disposed||!qgIsValidCoordinate(plat,plng,true))return false;
+    const lng=Number(plng),lat=Number(plat);
+    if(!marker)marker=new maplibregl.Marker({color:"#e6002d",scale:.9}).setLngLat([lng,lat]).addTo(map);
+    else marker.setLngLat([lng,lat]);
+    if(notify)onChange(lat,lng);
+    return true;
+  };
+  const syncCenter=()=>{
+    if(disposed)return false;
+    const p=map.getCenter();
+    return p&&qgIsValidCoordinate(p.lat,p.lng,true)?setPoint(p.lat,p.lng,true):false;
+  };
+  map.on("load",()=>{if(disposed)return;if(hasInitial&&selectInitial)setPoint(viewLat,viewLng,true)});
+  map.on("moveend",syncCenter);
+  return {
+    map,
+    selectCenter:syncCenter,
+    destroy(){
+      if(disposed)return;disposed=true;
+      try{map.off("moveend",syncCenter)}catch{}
+      try{marker?.remove()}catch{}
+      try{map.remove()}catch{}
+      if(customerPickerMap===map)customerPickerMap=null;
+    },
+    locate(){
+      if(disposed)return;
+      if(!navigator.geolocation)return toast("เบราว์เซอร์ไม่รองรับ GPS");
+      navigator.geolocation.getCurrentPosition(pos=>{
+        if(disposed)return;
+        const {latitude,longitude}=pos.coords;
+        if(!qgIsValidCoordinate(latitude,longitude,true))return toast("พิกัด GPS ไม่ถูกต้อง กรุณาลองใหม่");
+        map.easeTo({center:[longitude,latitude],zoom:16,duration:500});
+        setPoint(latitude,longitude,true);
+        toast("ใช้ตำแหน่ง GPS ปัจจุบันแล้ว");
+      },err=>{
+        if(disposed)return;
+        toast(err?.code===1?"กรุณาเปิดการเข้าถึงตำแหน่ง":err?.code===3?"รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่":"ไม่สามารถรับตำแหน่ง GPS ได้");
+      },{enableHighAccuracy:true,timeout:12000,maximumAge:30000});
+    }
+  };
 }
 async function qtReverseGeocodeCustomer(lat,lng){
   try{const r=await fetch(`https://api.longdo.com/map/services/address?lon=${encodeURIComponent(lng)}&lat=${encodeURIComponent(lat)}&key=347649ca13f49db0d8a599ae35f8de2b`,{signal:AbortSignal.timeout(8000)});if(!r.ok)return '';const a=await r.json();return [a.house_number,a.soi,a.road,a.subdistrict,a.district,a.province,a.postcode].filter(Boolean).join(' ')}catch(e){return ''}
@@ -930,6 +1002,7 @@ ${qgHomeBannerMarkup(homeSlides)}
 <button class="cat" onclick="go('grocery')"><i>${ico('bottle',25)}</i><b>ร้านขายของชำ</b></button>
 <button class="cat" onclick="location.href='laundry/'"><i>${ico('grid',25)}</i><b>ฝากซัก</b></button>
 <button class="cat" onclick="go('market')"><i>${ico('basket',25)}</i><b>ตลาดสด</b></button>
+<button class="cat" onclick="go('ride')"><i>${ico('car',25)}</i><b>บริการเรียกรถ</b></button>
 <button class="cat" onclick="go('shopping')"><i>${ico('shopping',25)}</i><b>ช้อปปิ้ง</b></button>
 </div></section>
 
@@ -1322,6 +1395,7 @@ addEventListener('hashchange',()=>route());
 <script>QueueGoPush.configure({role:'customer',getAccessToken:()=>token(true)});</script>
 <script src="customer-features.js?v=20261012-chat6"></script>
 <script src="customer-laundry.js?v=20261006-orderlist5"></script>
+<script src="customer-ride.js?v=20261017-web6"></script>
 <script>route();</script>
 <script src="catalog/customer-grocery.js?v=20261012"></script>
 </body>
