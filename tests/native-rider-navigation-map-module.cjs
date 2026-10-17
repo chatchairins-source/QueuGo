@@ -40,7 +40,9 @@ const riderManifest=fs.readFileSync('native-android/rider/src/main/AndroidManife
 assert(riderBuild.includes('implementation(project(":rider-navigation-map"))')&&
   riderApp.includes('QueueGoRiderNavigationMap('),
   'Runtime-gated navigation map must be integrated into the Rider APK through the QueueGo adapter');
-assert(locationService.includes('NAVIGATION_LOCATION_INTERVAL_MS = 1_000L')&&
+assert(locationService.includes('NAVIGATION_LOCATION_INTERVAL_MS = 500L')&&
+  locationService.includes('NAVIGATION_LOCATION_MIN_INTERVAL_MS = 250L')&&
+  locationService.includes('NAVIGATION_LOCATION_MIN_DISTANCE_METERS = 0.5f')&&
   locationService.includes('LocationRequest.Builder(')&&
   locationService.includes('Priority.PRIORITY_HIGH_ACCURACY')&&
   locationService.includes('MutableStateFlow<NavigationMapFix?>')&&
@@ -48,7 +50,7 @@ assert(locationService.includes('NAVIGATION_LOCATION_INTERVAL_MS = 1_000L')&&
   integration.includes('NavigationRouteCoordinator')&&
   integration.includes('Channel.CONFLATED')&&
   integration.includes('riderNavigationStops'),
-  'Rider navigation must use one foreground-owned 1-second fused GPS stream and feed its latest fix into the sequential coordinator');
+  'Rider navigation must use one foreground-owned high-accuracy 500ms fused GPS stream with a 250ms floor and feed its latest fix into the sequential coordinator');
 assert(riderManifest.includes('android.permission.FOREGROUND_SERVICE_LOCATION')&&
   riderManifest.includes('android:name=".RiderNavigationLocationService"')&&
   riderManifest.includes('android:foregroundServiceType="location"')&&
