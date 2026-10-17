@@ -774,7 +774,7 @@ function disposeRiderMap(){
   (S.jobMarkers||[]).forEach(qgRemoveOverlay);qgRemoveOverlay(S.riderMarker);
   if(S.map)window.QueueGoMapWeb?.destroy(S.map);
   riderMapInstance=null;
-  Object.assign(S,{watchId:null,map:null,riderMarker:null,jobMarkers:[],pos:null,_centeredOnce:false});
+  Object.assign(S,{watchId:null,map:null,riderMarker:null,jobMarkers:[],pos:null,_centeredOnce:false,_lastGpsHomeRenderAt:0});
 }
 function validRiderCoordinate(lat,lon){return lat!==null&&lat!==undefined&&lat!==''&&lon!==null&&lon!==undefined&&lon!==''&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lon))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180}
 function qgFiniteOrNull(value){return value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null)}
@@ -793,6 +793,7 @@ function startGeolocation(){
   const current=()=>epoch===riderLocationEpoch&&riderSessionMatches(session)&&S.user?.id===userId;
   S.watchId = navigator.geolocation.watchPosition(pos=>{
     if(!current()||!validRiderCoordinate(pos.coords.latitude,pos.coords.longitude))return;
+    const hadPosition=!!S.pos;
     S.pos = {
       lat:pos.coords.latitude,
       lng:pos.coords.longitude,
@@ -807,7 +808,11 @@ function startGeolocation(){
       S._centeredOnce=true;
     }
     if(S.online) pushLocation();
-    if(S.activeTab==='home') renderHomeDock();
+    const now=Date.now();
+    if(S.activeTab==='home'&&(!hadPosition||!S._lastGpsHomeRenderAt||now-S._lastGpsHomeRenderAt>=5000)){
+      S._lastGpsHomeRenderAt=now;
+      renderHomeDock();
+    }
   }, ()=>{if(current())toast('ไม่สามารถขอตำแหน่ง GPS ได้')}, {enableHighAccuracy:true, maximumAge:5000, timeout:12000});
 }
 function recenterMap(){
@@ -1202,7 +1207,9 @@ function drawActiveRoute(){
   const timer=setTimeout(()=>controller.abort(),12000);
   const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');
   if(badge)badge.style.display='block';if(txt&&!riderRouteCache)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
-  focusRiderNavigation(map,pos,{lat:Number(lat),lng:Number(lon)});
+  // Offer preview may frame Rider + pickup once. Active navigation stays camera-locked
+  // to the Rider; repeated route refreshes must never yank the viewport into fitBounds.
+  if(isOfferPreview&&!riderRouteCache)focusRiderNavigation(map,pos,{lat:Number(lat),lng:Number(lon)});
   request.task=(async()=>{
     try{
       const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(pos.lng)+'&flat='+encodeURIComponent(pos.lat)+'&tlon='+encodeURIComponent(lon)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
@@ -1436,9 +1443,11 @@ function updateStatusUI(){
 }
 function placeRiderMarker(){
  if(!S.pos||!S.map||!window.QueueGoMapWeb)return;
- if(S.riderMarker)qgRemoveOverlay(S.riderMarker);
- S.riderMarker=qgMarker({lat:S.pos.lat,lon:S.pos.lng},'<div style="width:20px;height:20px;border-radius:50%;background:#1677ff;border:3px solid white;box-shadow:0 3px 10px #0003"></div>','ตำแหน่งไรเดอร์');
-
+ if(S.riderMarker){
+   window.QueueGoMapWeb.moveMarker?.(S.riderMarker,S.pos.lat,S.pos.lng);
+ }else{
+   S.riderMarker=qgMarker({lat:S.pos.lat,lon:S.pos.lng},'<div style="width:20px;height:20px;border-radius:50%;background:#1677ff;border:3px solid white;box-shadow:0 3px 10px #0003"></div>','ตำแหน่งไรเดอร์');
+ }
  if(S.activeOrder)drawActiveRoute();
 }
 
