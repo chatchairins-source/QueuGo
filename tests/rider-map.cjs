@@ -38,6 +38,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('function qgFollowRiderCamera(force=false,duration=420)'),true);
  eq(source.includes('bottomInset:qgRiderCameraBottomInset()'),true);
  eq(source.includes('requestAnimationFrame(()=>qgFollowRiderCamera(true,360))'),true);
+ eq(source.includes('qgFollowRiderCamera(!hadPosition,hadPosition?420:520)'),true);
  eq(source.includes('background:#e6002d'),true);
  eq(source.includes("rotationAlignment:'map'"),true);
 
