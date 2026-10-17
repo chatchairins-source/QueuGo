@@ -252,7 +252,7 @@ ok(
   'Merchant media gallery must lazy-render rows instead of decoding the full image library at once'
 );
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
-const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
+const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(
   merchantAppSource.includes('runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90) }') &&
   /val started = runCatching \{[\s\S]*?tone\.startTone\(ToneGenerator\.TONE_PROP_BEEP2, 650\)[\s\S]*?\}\.getOrDefault\(false\)/.test(merchantAppSource) &&
@@ -261,10 +261,13 @@ ok(
   'Merchant notification audio must fail closed if the Android audio service cannot create or play a tone'
 );
 ok(
-  sharedMapForStability.includes('fun releaseGraphics()') &&
-  sharedMapForStability.includes('bitmap.recycle()') &&
-  sharedMapForStability.includes('holder.releaseGraphics()'),
-  'Shared Longdo tracking maps must release owned marker Bitmaps when the map leaves composition'
+  sharedMapForStability.includes('private class QueueGoTrackingMapHolder') &&
+  sharedMapForStability.includes('view?.onDestroy()') &&
+  sharedMapForStability.includes('map = null') &&
+  sharedMapForStability.includes('view = null') &&
+  sharedMapForStability.includes('holder.destroy()') &&
+  !sharedMapForStability.includes('Bitmap.createBitmap('),
+  'Shared QueueGo MapLibre tracking maps must destroy MapView ownership without legacy marker bitmap caches'
 );
 ok(merchantAppSource.includes('LaunchedEffect(screen, auth.session.accessToken, lifecycle)')&&
    merchantAppSource.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')&&
