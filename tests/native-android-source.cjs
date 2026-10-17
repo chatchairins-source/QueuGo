@@ -398,7 +398,7 @@ ok(riderSessionStore.includes('saveHomeSnapshot(')&&riderSessionStore.includes('
 ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.includes('android:alwaysRetainTaskState="true"'),'Rider launcher must reuse its existing task instead of creating a fresh work activity after app switching');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
 const customerManifest=read('customer/src/main/AndroidManifest.xml');
-ok(customerManifest.includes('longdo.map.key')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer Longdo picker must declare map key and location permission');
+ok(customerManifest.includes('queuego.map.service.base_url')&&customerManifest.includes('${queuegoMapServiceBaseUrl}')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer QueueGo Map picker must declare map service config and location permission');
 ok(source.includes('deviceLocation')&&source.includes('setLocation(MapLocation')&&source.includes('ldmap.removePin')&&source.includes('pushPin'),'native Rider map must use Android GPS and show rider/job pins');
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
