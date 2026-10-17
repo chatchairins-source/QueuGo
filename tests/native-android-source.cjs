@@ -198,7 +198,7 @@ ok(customerAuthScreen.includes('CustomerBottomNavigation(screen = "login", cartC
 ok(customerAuthScreen.includes('.windowInsetsPadding(WindowInsets.statusBars)')&&customerAuthScreen.includes('padding(horizontal = 12.dp, vertical = 6.dp)')&&customerAuthScreen.includes('.widthIn(max = 720.dp)'),'Customer native auth top bar must preserve Production web safe-area, compact spacing and 720px content width');
 ok(customerAuthScreen.includes('.onFocusChanged { focused = it.isFocused }')&&customerAuthScreen.includes('if (focused) QgRed else QgLine')&&customerAuthScreen.includes('cursorBrush = SolidColor(QgRed)'),'Customer native auth inputs must preserve Production web red focus treatment');
 ok(customerAuthScreen.includes('onGuestNavigate: ((String) -> Unit)? = null')&&customerAuthScreen.includes('target != "orders"'),'Customer auth navigation must return public tabs to the real guest shell while keeping Orders protected');
-ok(customerApp.includes('guestStartDestination')&&customerApp.includes('initialScreen = guestStartDestination')&&customerGuestShell.includes('remember(initialScreen)'),'Customer login bottom navigation must reopen the selected real guest destination instead of rendering a decorative auth-only nav');
+ok(customerApp.includes('guestStartDestination')&&customerApp.includes('initialScreen = guestStartDestination')&&customerGuestShell.includes('rememberSaveable(initialScreen, stateSaver = pickerRouteSaver)'),'Customer login bottom navigation must reopen the selected real guest destination instead of rendering a decorative auth-only nav');
 ok(source.includes('GuestCustomerShell(')&&source.includes('loadShopsPublic()')&&source.includes('loadProductsPublic(')&&source.includes('เข้าสู่ระบบเพื่อสั่งซื้อ'),'Customer native must preserve Production guest Home/catalog/cart/Market browsing before authentication');
 ok(source.includes('CustomerCartStore(context, "guest")')&&source.includes('destinationAfterLogin')&&source.includes('onCheckout = { onLogin("checkout") }'),'Customer native guest cart must persist locally and return to checkout after authentication');
 ok(source.includes('CustomerPromotionScreen(')&&source.includes('qg_public_promotions'),'Customer native guest routing must preserve public promotion browsing');
@@ -292,9 +292,9 @@ ok(riderApp.includes('ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)')&&ri
 ok(riderApi.includes('if (!online)')&&riderApi.includes('qg_get_my_rider_offer')&&riderApi.includes('qg_rider_decline_offer'),'Rider going offline must release any live offer immediately');
 ok(riderApp.includes('api.setOnline(current, false, null, null)')&&riderApp.includes('api.revoke(current.session)'),'Rider logout must take the Rider offline before session revocation');
 ok(
-  riderApp.includes('รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน')&&
+  riderApp.includes('รับงานสำเร็จ · นำทางด้วยแผนที่ QueueGo')&&
   riderApp.includes('activeJob = acceptedFallback')&&
-  riderApp.includes('openNavigation(context, updated?.activeJob ?: acceptedFallback)')&&
+  !riderApp.includes('openNavigation(context, updated?.activeJob ?: acceptedFallback)')&&
   (
     riderApp.includes('val acceptedFallback = current.offeredJob.copy(')||
     (
@@ -303,17 +303,17 @@ ok(
       riderApp.includes('val acceptedFallback = liveOffer.copy(')
     )
   ),
-  'Rider native must promote an accepted offer locally and auto-open navigation even if optional post-claim refresh fails'
+  'Rider native must promote an accepted offer locally and retain QueueGo navigation even if optional post-claim refresh fails'
 );
 ok(riderApi.includes('riderNullableUuid')&&riderApi.includes('marketOrderId = riderNullableUuid(o.optString("market_order_id"))')&&riderApi.includes('val id = riderNullableUuid(rows.optJSONObject(i)?.optString("order_id"))'),'Rider native must reject JSON null/null-like UUID values before Market or offer RPC routing');
 ok(riderApi.includes('arrivedShopAt = riderNullableText(o.optString("rider_arrived_shop_at"))')&&
    riderApi.includes('arrivedCustomerAt = riderNullableText(o.optString("rider_arrived_customer_at"))'),
    'Rider arrival timestamps must reject JSON null literals so the UI never shows false arrived checkmarks');
 ok(riderApp.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"')&&
-   riderApp.includes('val nextStop = committedRead?.activeJob')&&
-   riderApp.includes('?: localAfterSuccess?.activeJob')&&
-   riderApp.includes('openNavigation(context, nextStop)'),
-  'Rider native must open Google Maps only after pickup is authoritatively in progress and follow the authoritative next stop, including another bundled shop');
+   riderApp.includes('snapshot = committedRead')&&
+   riderApp.includes('snapshot = localAfterSuccess')&&
+   !riderApp.includes('openNavigation(context, nextStop)'),
+  'Rider native must preserve the authoritative next bundle stop after pickup and stay in QueueGo');
 ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
    riderApp.includes('riderApplyPickupCommit(')&&
    riderApp.includes('pickupCommittedStatus ?: "picked_up"')&&
@@ -354,16 +354,15 @@ ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes(
 ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
 ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
 ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
+const riderJobDock=read('rider/src/main/java/com/queuego/rider/RiderJobDock.kt');
 ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
-   riderApp.includes('val fixedJobCardMaxHeight = if (activeSheetJob != null)')&&
-   riderApp.includes('(maxHeight * 0.56f).coerceAtLeast(220.dp)')&&
-   riderApp.includes('.heightIn(max = fixedJobCardMaxHeight)')&&
-   !riderApp.includes('jobSheetExpanded')&&
-   !riderApp.includes('draggedSheetHeightPx')&&
-   !riderApp.includes('sheetDragModifier')&&
-   !riderApp.includes('RiderMiniJobSheet(')&&
-   riderApp.includes('recenterSignal'),
-   'Rider native must keep a fixed non-draggable active job card over the map with recenter control');
+   riderApp.includes('RiderJobDock(')&&riderApp.includes('jobKey = activeSheetJob?.id')&&
+   riderApp.includes('(maxHeight * 0.62f)')&&
+   riderApp.includes('navigationBottomInsetPx = coordinates.size.height + with(navigationDensity) { 68.dp.roundToPx() }')&&
+   riderJobDock.includes('rememberSaveable(jobKey)')&&riderJobDock.includes('.draggable(')&&
+   riderJobDock.includes('onClick = ::toggle')&&riderJobDock.includes('Modifier.weight(1f).fillMaxWidth().clipToBounds().verticalScroll(scroll)')&&
+   !riderJobDock.includes('AndroidView')&&riderApp.includes('recenterSignal'),
+   'Rider job dock must expand/collapse over retained map, preserve card content and measure camera inset including bottom navigation');
 ok(riderApp.includes('var auth by remember { mutableStateOf<QueueGoAuth?>(null) }')&&
    riderApp.includes('var restoring by remember { mutableStateOf(true) }')&&
    riderApp.includes('val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&
@@ -427,7 +426,14 @@ ok(source.includes('promotions?select=id,category,status,max_budget,period_days,
 ok(merchantPromotion.includes('ทั้งหมด')&&merchantPromotion.includes('กำลังใช้งาน')&&merchantPromotion.includes('รออนุมัติ')&&merchantPromotion.includes('สร้างโปรโมชั่นใหม่'),'Merchant native promotions must preserve web filters and create flow');
 ok(source.includes('MerchantMenuTile("โปรโมชั่น"')&&source.includes('MerchantMenuTile("รายงาน"'),'Merchant native dashboard must expose promotions and reports');
 ok(source.includes('QgNavItem("home", "หน้าหลัก", "home")')&&source.includes('QgNavItem("orders", "คำสั่งซื้อ", "orders")')&&source.includes('QgNavItem("promotions", "โปรโมชั่น", "tag")')&&source.includes('QgNavItem("profile", "บัญชี", "user")'),'Merchant native bottom navigation must match Production web labels and routes');
-ok(source.includes('QgIcon("brand_q"')&&source.includes('badge = unreadCount')&&!source.includes('QueueGoBrand(suffix = "Merchant")'),'Merchant native header must match Production Q-mark plus notification action');
+const merchantHome=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
+ok(
+  merchantHome.includes('Text(\n                "Queue"')&&
+  merchantHome.includes('Text(\n                "Go"')&&
+  merchantHome.includes('badge = unreadCount')&&
+  !merchantHome.includes('QgIcon("brand_q"'),
+  'Merchant native header must match the Customer QueueGo wordmark plus notification action'
+);
 const merchantNotifications=read('merchant/src/main/java/com/queuego/merchant/MerchantNotificationsScreen.kt');
 ok(source.includes('notifications?select=id,title,message,type,reference_id,is_read,created_at')&&source.includes('markNotificationsRead('),'Merchant native notification center must use owned Production notifications table');
 ok(merchantNotifications.includes('ทั้งหมด')&&merchantNotifications.includes('ออเดอร์')&&merchantNotifications.includes('ระบบ')&&merchantNotifications.includes('โปรโมชัน'),'Merchant native notification center must preserve web filter groups');

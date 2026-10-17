@@ -36,12 +36,16 @@ import com.longdo.api.Pin
 import com.longdo.api.type.MapLocation
 import com.queuego.shared.R as SharedR
 
-private const val RIDER_MARKER_DEFAULT_ANIMATION_MS = 720L
-private const val RIDER_MARKER_MIN_ANIMATION_MS = 180L
-private const val RIDER_MARKER_MAX_ANIMATION_MS = 850L
-private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 0.82
+private const val RIDER_MARKER_DEFAULT_ANIMATION_MS = 460L
+private const val RIDER_MARKER_MIN_ANIMATION_MS = 120L
+private const val RIDER_MARKER_MAX_ANIMATION_MS = 600L
+private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 0.55
 private const val RIDER_MARKER_TELEPORT_METERS = 120.0
 private const val CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L
+private const val CAMERA_ROTATION_FALLBACK_MS = 420L
+private const val CAMERA_TRANSFORM_SETTLE_MS = 110L
+private const val CAMERA_MANUAL_ZOOM_HOLD_MS = 12_000L
+private const val CAMERA_BEARING_MIN_DELTA_DEGREES = 0.75f
 private const val DEFAULT_LONGITUDE = 100.5018
 private const val DEFAULT_LATITUDE = 13.7563
 private const val SNAPSHOT_CAPTURE_THROTTLE_MS = 1_200L
@@ -125,6 +129,13 @@ private class RiderNavigationMapHolder {
     private var lastRiderFix: NavigationMapFix? = null
     private var lastRenderedRiderFix: NavigationMapFix? = null
     private var riderMarkerAnimator: ValueAnimator? = null
+    private var cameraBearingAnimator: ValueAnimator? = null
+    private var lastCameraBearingAnimationAtMs: Long = 0L
+    private var navigationTransformGestureActive = false
+    private var navigationTransformGestureGeneration = 0
+    private var navigationInteractionEnabled: Boolean? = null
+    private var manualFollowZoom: Int? = null
+    private var manualFollowZoomUntilMs: Long = 0L
     private var lastCameraFix: NavigationMapPoint? = null
     private var lastCameraCenter: NavigationMapPoint? = null
     private var lastCameraBearing: Float? = null
@@ -135,6 +146,7 @@ private class RiderNavigationMapHolder {
     private var lastPuckRotation: Float? = null
     private var lastPuckOpacity: Float? = null
     private var lastOverviewSignature: String? = null
+    private var idleCameraGeneration = 0
     private val stopPins = linkedMapOf<String, RenderedStop>()
     private val demandPins = linkedMapOf<String, RenderedDemandZone>()
     private val routeLines = mutableListOf<Line>()
@@ -176,6 +188,127 @@ private class RiderNavigationMapHolder {
     fun unbindCallbacks() {
         onCameraChanged = {}
         onDiagnostics = null
+    }
+
+    private fun cancelCameraBearingAnimation() {
+        cameraBearingAnimator?.cancel()
+        cameraBearingAnimator = null
+    }
+
+    private fun clearNavigationGestureOverrides() {
+        navigationTransformGestureGeneration += 1
+        navigationTransformGestureActive = false
+        manualFollowZoom = null
+        manualFollowZoomUntilMs = 0L
+    }
+
+    fun beginNavigationTransformGesture() {
+        if (disposed) return
+        navigationTransformGestureGeneration += 1
+        navigationTransformGestureActive = true
+        cancelCameraBearingAnimation()
+        map?.let { activeMap ->
+            runCatching { normalizeNavigationBearing(activeMap.getRotate()) }
+                .getOrNull()
+                ?.let { lastCameraBearing = it }
+        }
+    }
+
+    fun endNavigationTransformGesture() {
+        if (disposed) return
+        val activeMap = map ?: return
+        val generation = ++navigationTransformGestureGeneration
+        val now = SystemClock.elapsedRealtime()
+        manualFollowZoom = runCatching { activeMap.getZoom() }.getOrNull()
+        manualFollowZoomUntilMs = now + CAMERA_MANUAL_ZOOM_HOLD_MS
+        mainHandler.postDelayed({
+            if (disposed || map !== activeMap || generation != navigationTransformGestureGeneration) return@postDelayed
+            navigationTransformGestureActive = false
+            if (!lastState.followRider || lastState.viewMode != NavigationViewMode.FOLLOW) return@postDelayed
+            if (lastState.rider?.point?.valid != true && lastRiderFix?.point?.valid != true) return@postDelayed
+            lastCameraCenter = null
+            lastCameraTilt = null
+            followRider(
+                activeMap,
+                lastState.copy(rider = lastState.rider?.takeIf { it.point.valid } ?: lastRiderFix)
+            )
+        }, CAMERA_TRANSFORM_SETTLE_MS)
+    }
+
+    fun beginNavigationPanGesture() {
+        clearNavigationGestureOverrides()
+        cancelCameraBearingAnimation()
+    }
+
+    private fun syncNavigationInteractionMode(
+        activeMap: com.longdo.api.Map,
+        state: RiderNavigationMapState
+    ) {
+        val enabled = state.remainingStops().isNotEmpty()
+        if (navigationInteractionEnabled == enabled) return
+        runCatching {
+            activeMap.setCanRotateCamera(enabled)
+            activeMap.setCanTilt(enabled)
+        }.onSuccess {
+            navigationInteractionEnabled = enabled
+            if (!enabled) {
+                cancelCameraBearingAnimation()
+                clearNavigationGestureOverrides()
+            }
+        }.onFailure {
+            Log.w("QueueGoNavMap", "navigation_interaction_mode_failed", it)
+        }
+    }
+
+    private fun animateCameraBearing(
+        activeMap: com.longdo.api.Map,
+        targetBearing: Float,
+        nowMs: Long
+    ) {
+        val currentBearing = runCatching { normalizeNavigationBearing(activeMap.getRotate()) }
+            .getOrNull()
+            ?: lastCameraBearing
+            ?: normalizeNavigationBearing(targetBearing)
+        val target = normalizeNavigationBearing(targetBearing)
+        val delta = navigationShortestBearingDelta(currentBearing, target)
+        if (kotlin.math.abs(delta) < CAMERA_BEARING_MIN_DELTA_DEGREES) {
+            lastCameraBearing = currentBearing
+            return
+        }
+        val cadence = lastCameraBearingAnimationAtMs
+            .takeIf { it > 0L }
+            ?.let { (nowMs - it).coerceAtLeast(1L) }
+        val durationMs = navigationRotationDurationMillis(
+            currentBearing = currentBearing,
+            targetBearing = target,
+            cadenceMillis = cadence,
+            fallbackMillis = CAMERA_ROTATION_FALLBACK_MS
+        )
+        cancelCameraBearingAnimation()
+        val animator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = durationMs
+            interpolator = LinearInterpolator()
+            addUpdateListener { animation ->
+                if (
+                    disposed ||
+                    map !== activeMap ||
+                    navigationTransformGestureActive ||
+                    !lastState.followRider ||
+                    lastState.viewMode != NavigationViewMode.FOLLOW
+                ) {
+                    animation.cancel()
+                    return@addUpdateListener
+                }
+                val eased = navigationCameraEaseInOut(animation.animatedFraction)
+                val rendered = normalizeNavigationBearing(currentBearing + delta * eased)
+                runCatching { activeMap.rotate(rendered, false) }
+                    .onSuccess { lastCameraBearing = rendered }
+                    .onFailure { animation.cancel() }
+            }
+        }
+        cameraBearingAnimator = animator
+        lastCameraBearingAnimationAtMs = nowMs
+        animator.start()
     }
 
     fun attachContainer(root: FrameLayout, overlay: ImageView) {
@@ -393,6 +526,9 @@ private class RiderNavigationMapHolder {
         }
         riderMarkerAnimator?.cancel()
         riderMarkerAnimator = null
+        cancelCameraBearingAnimation()
+        clearNavigationGestureOverrides()
+        navigationInteractionEnabled = null
         map = nextMap
         announcedReplacementMap = null
         riderPin = null
@@ -439,24 +575,27 @@ private class RiderNavigationMapHolder {
                 setDoPreDrawCache(true)
             })
             nextMap.setDrawCrossSign(false)
-            nextMap.setCanRotateCamera(true)
-            nextMap.setCanTilt(true)
+            val navigationActive = lastState.remainingStops().isNotEmpty()
+            nextMap.setCanRotateCamera(navigationActive)
+            nextMap.setCanTilt(navigationActive)
+            navigationInteractionEnabled = navigationActive
             val start = camera?.point?.takeIf { it.valid }
                 ?: lastState.rider?.point?.takeIf { it.valid }
                 ?: lastState.remainingStops().firstOrNull()?.point
                 ?: NavigationMapPoint(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
             nextMap.setLocation(MapLocation(start.longitude, start.latitude))
             nextMap.setZoom(camera?.zoom?.coerceIn(4, 20) ?: 15)
-            val bearing = camera?.bearingDegrees ?: lastCameraBearing
+            val bearing = if (navigationActive) camera?.bearingDegrees ?: lastCameraBearing else 0f
             bearing?.takeIf { it.isFinite() }?.let {
                 nextMap.rotate(((it % 360f) + 360f) % 360f, false)
             }
-            val tilt = camera?.tiltDegrees ?: lastCameraTilt
+            val tilt = if (navigationActive) camera?.tiltDegrees ?: lastCameraTilt else 0f
             tilt?.takeIf { it.isFinite() }?.coerceIn(0f, 50f)?.let {
                 nextMap.setTilt(it)
                 lastCameraTilt = it
             }
             render(lastState)
+            if (lastState.remainingStops().isEmpty()) settleIdleCamera(nextMap)
         }.onFailure {
             Log.e("QueueGoNavMap", "map_replacement_setup_failed", it)
             throw it
@@ -511,6 +650,7 @@ private class RiderNavigationMapHolder {
         // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
         // never reconstruct the map just because Rider/order state changed.
         render(lastState)
+        if (lastState.remainingStops().isEmpty()) map?.let(::settleIdleCamera)
         startRendererIdentityWatch()
         startPuckFreshnessTicker()
         if (!replacementPending) settleContinuityBridge()
@@ -559,7 +699,11 @@ private class RiderNavigationMapHolder {
     }
 
     fun retainAcrossVisibilityLoss() {
+        idleCameraGeneration += 1
         surfaceVisible = false
+        cancelCameraBearingAnimation()
+        navigationTransformGestureActive = false
+        navigationTransformGestureGeneration += 1
         puckFreshnessGeneration += 1
         rendererWatchGeneration += 1
         // Tab switches and ordinary background/foreground cycles keep the SDK renderer alive.
@@ -575,6 +719,7 @@ private class RiderNavigationMapHolder {
     }
 
     fun shutdownSdk() {
+        idleCameraGeneration += 1
         surfaceVisible = false
         puckFreshnessGeneration += 1
         captureCamera()
@@ -595,15 +740,38 @@ private class RiderNavigationMapHolder {
 
     fun render(state: RiderNavigationMapState) {
         val restoringFollow = state.followRider && !lastState.followRider
+        val leavingNavigation = lastState.remainingStops().isNotEmpty() && state.remainingStops().isEmpty()
         val enteringOverview =
             state.viewMode == NavigationViewMode.OVERVIEW &&
                 lastState.viewMode != NavigationViewMode.OVERVIEW
         lastState = state
         val activeMap = map ?: return
+        syncNavigationInteractionMode(activeMap, state)
+        if (!state.followRider || state.viewMode != NavigationViewMode.FOLLOW) {
+            clearNavigationGestureOverrides()
+            cancelCameraBearingAnimation()
+        } else if (restoringFollow) {
+            clearNavigationGestureOverrides()
+            cancelCameraBearingAnimation()
+        }
         if (disposed) return
         renderPassCount += 1
 
-        state.rider?.takeIf { it.point.valid }?.let { nextFix ->
+        // End/cancel and idle restoration must flatten even before a fresh fix arrives,
+        // including a renderer replacement or an old persisted navigation camera.
+        if (state.remainingStops().isEmpty() && (lastCameraTilt != 0f || lastCameraBearing != 0f)) {
+            runCatching {
+                activeMap.setTilt(0f)
+                activeMap.rotate(0f, false)
+            }.onSuccess {
+                lastCameraTilt = 0f
+                lastCameraBearing = 0f
+            }
+        }
+
+        // An internal renderer swap can arrive while the location producer restarts.
+        // Recreate the puck from the retained fix in this same render pass.
+        (state.rider?.takeIf { it.point.valid } ?: lastRiderFix)?.let { nextFix ->
             if (riderPin == null || shouldMoveRiderMarker(lastRenderedRiderFix, nextFix)) {
                 renderRider(activeMap, nextFix)
             }
@@ -623,18 +791,47 @@ private class RiderNavigationMapHolder {
                 if (restoringFollow) {
                     lastCameraCenter = null
                     lastCameraTilt = null
+                    lastCameraBearing = runCatching { normalizeNavigationBearing(activeMap.getRotate()) }
+                        .getOrNull()
+                        ?: lastCameraBearing
                 }
                 followRider(activeMap, state.copy(rider = followedFix))
             }
             else -> lastOverviewSignature = null
         }
         followedFix?.let { renderRiderPresentation(activeMap, it) }
+        if (state.remainingStops().isEmpty() && (leavingNavigation || restoringFollow)) {
+            settleIdleCamera(activeMap)
+        }
         // Publish once per applied state even when overlays are structurally unchanged.
         // This distinguishes a stable frame from a state update that never reached the map.
         // PixelCopy is deliberately not scheduled on every GPS tick: continuity snapshots
         // are captured on visibility loss or real renderer replacement so live navigation
         // never competes with screenshot work for the render thread.
         publishDiagnostics()
+    }
+
+    private fun settleIdleCamera(targetMap: com.longdo.api.Map) {
+        cancelCameraBearingAnimation()
+        clearNavigationGestureOverrides()
+        val generation = ++idleCameraGeneration
+        fun check(attempt: Int) {
+            if (disposed || map !== targetMap || generation != idleCameraGeneration ||
+                lastState.remainingStops().isNotEmpty() || !lastState.followRider ||
+                lastState.viewMode != NavigationViewMode.FOLLOW) return
+            // A queued SDK navigation rotation can finish after the immediate idle
+            // reset. Observe the actual camera for a short bounded window instead of
+            // trusting lastCameraBearing=0 while the GL camera is still rotating.
+            runCatching {
+                val bearing = normalizeNavigationBearing(targetMap.getRotate())
+                if (attempt == 0 || minOf(bearing, 360f - bearing) > 0.1f) targetMap.rotate(0f, false)
+                if (attempt == 0 || kotlin.math.abs(targetMap.getTilt()) > 0.1f) targetMap.setTilt(0f)
+                lastCameraBearing = 0f
+                lastCameraTilt = 0f
+            }.onFailure { Log.w("QueueGoNavMap", "idle_camera_settlement_failed", it) }
+            if (attempt < 20) mainHandler.postDelayed({ check(attempt + 1) }, 50L)
+        }
+        check(0)
     }
 
     private fun renderRider(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {
@@ -745,6 +942,8 @@ private class RiderNavigationMapHolder {
         state: RiderNavigationMapState,
         force: Boolean
     ) {
+        cancelCameraBearingAnimation()
+        clearNavigationGestureOverrides()
         val insets = state.viewportInsets.normalized()
         val signature = listOf(
             navigationViewportInsetsSignature(insets),
@@ -984,34 +1183,50 @@ private class RiderNavigationMapHolder {
 
     private fun followRider(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
         val fix = state.rider ?: return
-        val decision = navigationCameraDecision(state, lastCameraBearing) ?: return
+        if (navigationTransformGestureActive) return
+
+        val renderedBearing = runCatching { normalizeNavigationBearing(activeMap.getRotate()) }
+            .getOrNull()
+            ?: lastCameraBearing
+        val decision = navigationCameraDecision(state, renderedBearing) ?: return
         val speed = fix.speedMetersPerSecond
         val movementThreshold = navigationCameraMovementThresholdMeters(speed)
         val centerMoved = lastCameraCenter == null ||
             navigationHaversineMeters(lastCameraCenter!!, decision.center) >= movementThreshold
         val bearingChanged = navigationBearingChangedEnough(
-            lastCameraBearing,
+            renderedBearing,
             decision.bearingDegrees,
-            minimumDeltaDegrees = 2.5f
+            minimumDeltaDegrees = CAMERA_BEARING_MIN_DELTA_DEGREES
         )
-        val nextTilt = lastCameraTilt?.let {
-            smoothNavigationTilt(it, decision.tiltDegrees)
-        } ?: decision.tiltDegrees
+        val navigationActive = state.remainingStops().isNotEmpty()
+        val nextTilt = if (!navigationActive) {
+            0f
+        } else {
+            lastCameraTilt?.let {
+                smoothNavigationTilt(it, decision.tiltDegrees)
+            } ?: decision.tiltDegrees
+        }
         val tiltChanged = navigationTiltChangedEnough(lastCameraTilt, nextTilt)
 
         val now = SystemClock.elapsedRealtime()
+        if (manualFollowZoomUntilMs > 0L && now >= manualFollowZoomUntilMs) {
+            manualFollowZoom = null
+            manualFollowZoomUntilMs = 0L
+        }
+        val targetZoom = manualFollowZoom
+            ?.takeIf { manualFollowZoomUntilMs > now }
+            ?: decision.zoom
         val currentZoom = runCatching { activeMap.getZoom() }.getOrNull()
-        val requestedZoomChange = currentZoom == null || currentZoom != decision.zoom
+        val requestedZoomChange = currentZoom == null || currentZoom != targetZoom
         val zoomChangeAllowed = requestedZoomChange && (
             lastCameraZoomChangeAtMs == 0L ||
                 now - lastCameraZoomChangeAtMs >= CAMERA_ZOOM_MIN_INTERVAL_MS ||
-                (currentZoom != null && kotlin.math.abs(currentZoom - decision.zoom) >= 2)
+                (currentZoom != null && kotlin.math.abs(currentZoom - targetZoom) >= 2)
             )
 
         if (!centerMoved && !bearingChanged && !tiltChanged && !zoomChangeAllowed) return
 
         runCatching {
-            // Use Longdo's native camera animation instead of jumping the viewport every GPS tick.
             if (centerMoved) {
                 activeMap.setLocation(
                     MapLocation(decision.center.longitude, decision.center.latitude),
@@ -1019,10 +1234,7 @@ private class RiderNavigationMapHolder {
                 )
             }
             if (zoomChangeAllowed) {
-                activeMap.setZoom(decision.zoom, true)
-            }
-            if (bearingChanged) {
-                decision.bearingDegrees?.let { activeMap.rotate(it, true) }
+                activeMap.setZoom(targetZoom, true)
             }
             if (tiltChanged) {
                 activeMap.setTilt(nextTilt)
@@ -1030,11 +1242,14 @@ private class RiderNavigationMapHolder {
         }.onSuccess {
             lastCameraFix = fix.point
             if (centerMoved) lastCameraCenter = decision.center
-            if (bearingChanged && decision.bearingDegrees != null) {
-                lastCameraBearing = decision.bearingDegrees
-            }
             if (tiltChanged) lastCameraTilt = nextTilt
             if (zoomChangeAllowed) lastCameraZoomChangeAtMs = now
+        }
+
+        if (bearingChanged) {
+            decision.bearingDegrees?.let { animateCameraBearing(activeMap, it, now) }
+        } else if (renderedBearing != null) {
+            lastCameraBearing = renderedBearing
         }
     }
 
@@ -1153,7 +1368,8 @@ private class RiderNavigationMapHolder {
                 snapshotBridgeCount = snapshotBridgeCount,
                 snapshotBridgeFailureCount = snapshotBridgeFailureCount,
                 mapReplacementCount = mapReplacementCount,
-                snapshotVisible = snapshotVisible
+                snapshotVisible = snapshotVisible,
+                riderPuckPresent = riderPin != null
             )
         )
     }
@@ -1176,6 +1392,9 @@ private class RiderNavigationMapHolder {
         }
         riderMarkerAnimator?.cancel()
         riderMarkerAnimator = null
+        cancelCameraBearingAnimation()
+        clearNavigationGestureOverrides()
+        lastCameraBearingAnimationAtMs = 0L
         routeLines.clear()
         renderedRouteSegments = emptyList()
         stopPins.clear()
@@ -1204,6 +1423,7 @@ private class RiderNavigationMapHolder {
         lastCameraBearing = null
         lastCameraTilt = null
         lastCameraZoomChangeAtMs = 0L
+        navigationInteractionEnabled = null
         lastPuckRotation = null
         lastPuckOpacity = null
         lastOverviewSignature = null
@@ -1373,31 +1593,45 @@ fun RiderNavigationMap(
             var touchDownX = 0f
             var touchDownY = 0f
             var userGestureReported = false
+            var transformGestureActive = false
             view.setOnTouchListener { _, event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         touchDownX = event.x
                         touchDownY = event.y
                         userGestureReported = false
+                        transformGestureActive = false
                     }
                     MotionEvent.ACTION_POINTER_DOWN -> {
-                        if (!userGestureReported) {
+                        if (event.pointerCount >= 2 && !transformGestureActive) {
+                            transformGestureActive = true
                             userGestureReported = true
-                            currentUserGesture.value()
+                            holder.beginNavigationTransformGesture()
                         }
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        if (!userGestureReported) {
+                        if (event.pointerCount >= 2) {
+                            if (!transformGestureActive) {
+                                transformGestureActive = true
+                                userGestureReported = true
+                                holder.beginNavigationTransformGesture()
+                            }
+                        } else if (!transformGestureActive && !userGestureReported) {
                             val dx = event.x - touchDownX
                             val dy = event.y - touchDownY
                             if (dx * dx + dy * dy >= touchSlop * touchSlop) {
                                 userGestureReported = true
+                                holder.beginNavigationPanGesture()
                                 currentUserGesture.value()
                             }
                         }
                     }
                     MotionEvent.ACTION_UP,
-                    MotionEvent.ACTION_CANCEL -> userGestureReported = false
+                    MotionEvent.ACTION_CANCEL -> {
+                        if (transformGestureActive) holder.endNavigationTransformGesture()
+                        transformGestureActive = false
+                        userGestureReported = false
+                    }
                 }
                 false
             }

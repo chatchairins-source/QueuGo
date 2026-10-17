@@ -108,7 +108,8 @@ private val categories = listOf(
     "grocery" to "ร้านขายของชำ",
     "laundry" to "ฝากซัก",
     "market" to "ตลาดสด",
-    "shopping" to "ช้อปปิ้ง"
+    "shopping" to "ช้อปปิ้ง",
+    "ride" to "บริการเรียกรถ"
 )
 
 private val homeDedicatedMarketCategories =
@@ -232,6 +233,9 @@ private fun CustomerShell(
     }
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
     val locationStore = remember { CustomerLocationStore(context) }
+    val contentCache = remember(context.applicationContext) {
+        CustomerContentCache(context.applicationContext)
+    }
     val guestCartStore = remember { CustomerCartStore(context, "guest") }
 
     var screen by remember(auth.user.id) { mutableStateOf(initialScreen) }
@@ -392,28 +396,43 @@ private fun CustomerShell(
 
     val contextRefreshGate = remember(selectedOrder?.id) { TrackingContextRefreshGate() }
 
-    fun refresh() {
+    fun refresh(showLoading: Boolean = shops.isEmpty() && banners.isEmpty()) {
         scope.launch {
-            loading = true
-            liveMutex.withLock { runCatching {
-                shops = api.loadShops(auth)
-                orders = api.loadOrders(auth)
-                marketTrips = runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
-                laundryOrders = runCatching { laundryApi.orders(auth) }.getOrDefault(emptyList())
-                val saved = api.loadSavedLocation(auth)
-                val selected = preferredCustomerDeliveryLocation(location, saved)
-                if (selected != null && selected != location) {
-                    location = selected
-                    address = selected.address
+            if (showLoading) loading = true
+            liveMutex.withLock {
+                runCatching {
+                    val freshShops = api.loadShops(auth)
+                    val freshOrders = api.loadOrders(auth)
+                    val freshMarketTrips = runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
+                    val freshLaundryOrders = runCatching { laundryApi.orders(auth) }.getOrDefault(emptyList())
+                    val saved = api.loadSavedLocation(auth)
+                    val freshBanners = api.loadHomeBanners(auth)
+                    val freshServiceBanners = api.loadServiceBanners(auth)
+                    val freshNotifications = runCatching { extrasApi.notifications(auth) }.getOrDefault(emptyList())
+
+                    shops = freshShops
+                    orders = freshOrders
+                    marketTrips = freshMarketTrips
+                    laundryOrders = freshLaundryOrders
+                    val selected = preferredCustomerDeliveryLocation(location, saved)
+                    if (selected != null && selected != location) {
+                        location = selected
+                        address = selected.address
+                    }
+                    banners = freshBanners
+                    serviceBanners = freshServiceBanners
+                    notifications = freshNotifications
+                    withContext(Dispatchers.IO) {
+                        contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                    }
+                    message = null
+                }.onFailure {
+                    if (it is CancellationException) throw it
+                    if (shops.isEmpty() && banners.isEmpty()) {
+                        message = it.message ?: "โหลดข้อมูลไม่สำเร็จ"
+                    }
                 }
-                banners = api.loadHomeBanners(auth)
-                serviceBanners = api.loadServiceBanners(auth)
-                notifications = runCatching { extrasApi.notifications(auth) }.getOrDefault(emptyList())
-                message = null
-            }.onFailure {
-                if (it is CancellationException) throw it
-                message = it.message ?: "โหลดข้อมูลไม่สำเร็จ"
-            } }
+            }
             loading = false
         }
     }
@@ -451,7 +470,16 @@ private fun CustomerShell(
         shopReturnScreen = returnTo
         selectedShop = shop
         screen = "shop"
-        shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) }
+        shopCatalog.openCached(
+            shopId = shop.id,
+            loadCached = {
+                withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+            },
+            fetch = { api.loadProducts(auth, shop.id) },
+            persist = { rows ->
+                withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
+            }
+        )
     }
 
     fun openHomeBannerLink(raw: String) {
@@ -546,7 +574,16 @@ private fun CustomerShell(
     }
 
     LaunchedEffect(selectedOrder?.id) { orderEta = null }
-    LaunchedEffect(auth.user.id) { refresh() }
+    LaunchedEffect(auth.user.id, contentCache) {
+        val cached = withContext(Dispatchers.IO) { contentCache.readHome() }
+        if (cached != null) {
+            shops = cached.shops
+            banners = cached.banners
+            serviceBanners = cached.serviceBanners
+            loading = false
+        }
+        refresh(showLoading = cached == null)
+    }
     LaunchedEffect(pushTarget?.eventId, auth.user.id) {
         val target = pushTarget ?: return@LaunchedEffect
         screen = "notifications"
@@ -1417,9 +1454,6 @@ internal fun CustomerHome(
                 }
             }
         }
-        item(key = "home-ride") {
-            OutlinedButton(onClick = { onCategory("ride") },modifier = Modifier.fillMaxWidth()) { Text("รับส่งผู้โดยสาร") }
-        }
         item(key = "home-search") {
             Row(
                 Modifier
@@ -1523,11 +1557,12 @@ private fun CustomerCategoryButton(
         "laundry" -> "grid"
         "market" -> "basket"
         "shopping" -> "shopping"
+        "ride" -> "ride"
         else -> key
     }
     Column(
         Modifier
-            .width(64.dp)
+            .width(72.dp)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -1554,8 +1589,9 @@ private fun CustomerCategoryButton(
             color = androidx.compose.ui.graphics.Color(0xFF3A3D42),
             fontWeight = FontWeight.Bold,
             fontSize = 10.sp,
-            lineHeight = 13.sp,
-            maxLines = 1
+            lineHeight = 12.sp,
+            maxLines = 2,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }

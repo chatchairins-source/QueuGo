@@ -55,13 +55,16 @@ assert(riderManifest.includes('android.permission.FOREGROUND_SERVICE_LOCATION')&
   locationService.includes('ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION')&&
   locationService.includes('START_NOT_STICKY'),
   'Navigation location must use the Android location foreground-service contract without requesting broad background-location permission');
-assert(integration.includes('Lifecycle.Event.ON_RESUME && navigationActive')&&
+assert(integration.includes('Lifecycle.Event.ON_RESUME')&&
+  !integration.includes('Lifecycle.Event.ON_RESUME && navigationActive')&&
+  integration.includes('The visible Rider map must always own a fresh GPS fix')&&
   integration.includes('RiderNavigationLocationService.start(context)')&&
+  integration.includes('if (!navigationActive) {')&&
   integration.includes('RiderNavigationLocationService.stop(context)')&&
-  integration.includes('do not stop an active navigation service when Compose unmounts')&&
+  integration.includes('RiderNavigationLocationService.start(context)\n            viewModeState = viewModeController.onRecenter()')&&
   !integration.includes('Lifecycle.Event.ON_PAUSE -> locationEngine.stop()')&&
   !integration.includes('RiderNavigationLocationEngine'),
-  'Navigation GPS must start while the Activity is visible, survive pause/tab unmount, and stop only when navigation is no longer active');
+  'Visible Rider map and recenter must own a fresh GPS fix; active navigation must keep foreground GPS through tab/background transitions');
 assert(map.includes('val holder = remember(stateKey, lifecycle)')&&map.includes('AndroidView(')&&map.includes('factory =')&&map.includes('update ='),
   'MapView owner must survive normal Compose recomposition and lifecycle-safe tab remounts while only updating overlays');
 assert(map.includes('Deliberately keep lastRiderFix, map, pins and route layers')&&
@@ -118,21 +121,25 @@ assert(map.includes('fun retainAcrossVisibilityLoss()')&&
 assert(map.includes('MotionEvent.ACTION_MOVE')&&
   map.includes('MotionEvent.ACTION_POINTER_DOWN')&&
   map.includes('ViewConfiguration.get(context).scaledTouchSlop')&&
+  map.includes('event.pointerCount >= 2')&&
+  map.includes('holder.beginNavigationTransformGesture()')&&
+  map.includes('holder.endNavigationTransformGesture()')&&
   map.includes('currentUserGesture.value()')&&
   map.includes('holder.view?.setOnTouchListener(null)')&&
   integration.includes('NavigationViewModeController')&&
-  integration.includes('val followRider = viewModeState.mode == NavigationViewMode.FOLLOW')&&
+  integration.includes('riderNavigationAutoFollow')&&
+  integration.includes('navigationActive && viewMode == NavigationViewMode.FOLLOW')&&
   integration.includes('viewModeState = viewModeController.onUserGesture()')&&
   integration.includes('viewModeState = viewModeController.onRecenter()')&&
   integration.includes('followRider = followRider'),
-  'Manual drag or pinch must suspend navigation follow until the Rider explicitly recenters');
+  'One-finger drag must enter FREE_PAN, while two-finger transform gestures stay follow-owned and smoothly re-anchor');
 
 assert(
-  integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = true')&&
-  integration.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false')&&
+  integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false')&&
+  integration.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true')&&
   integration.includes('val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)')&&
   integration.includes('return if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED)'),
-  'Confidence matching must run in shadow mode while the certified Rider display remains unchanged');
+  'Real-device pilot must visibly use the stabilized matched display without shadow-only gating');
 
 assert(
   signalPipeline.includes('if (rawFix == lastRawFix && nextRouteId == activeRouteId)')&&
@@ -289,19 +296,33 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('navigationTilt(')&&
   cameraPolicy.includes('smoothNavigationTilt(')&&
   cameraPolicy.includes('smoothNavigationBearing')&&
+  cameraPolicy.includes('deadbandDegrees: Float = 0.45f')&&
+  cameraPolicy.includes('navigationRotationDurationMillis')&&
+  cameraPolicy.includes('navigationCameraEaseInOut')&&
   cameraPolicy.includes('navigationPointAtDistance')&&
-  map.includes('activeMap.setLocation(')&&
-  map.includes('true\n                )')&&
-  map.includes('activeMap.setZoom(decision.zoom, true)')&&
-  map.includes('minimumDeltaDegrees = 2.5f')&&
+  /activeMap\.setLocation\(\s*MapLocation\(decision\.center\.longitude, decision\.center\.latitude\),\s*true\s*\)/.test(map)&&
+  map.includes('activeMap.setZoom(targetZoom, true)')&&
+  map.includes('minimumDeltaDegrees = CAMERA_BEARING_MIN_DELTA_DEGREES')&&
   map.includes('CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L')&&
-  map.includes('decision.bearingDegrees?.let { activeMap.rotate(it, true) }')&&
-  map.includes('nextMap.setCanTilt(true)')&&
+  map.includes('animateCameraBearing(activeMap, it, now)')&&
+  map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
+  map.includes('activeMap.rotate(rendered, false)')&&
+  map.includes('normalizeNavigationBearing(activeMap.getRotate())')&&
+  map.includes('beginNavigationTransformGesture()')&&
+  map.includes('endNavigationTransformGesture()')&&
+  map.includes('manualFollowZoomUntilMs')&&
+  map.includes('event.pointerCount >= 2')&&
+  map.includes('activeMap.setCanRotateCamera(enabled)')&&
+  map.includes('activeMap.setCanTilt(enabled)')&&
+  map.includes('nextMap.setCanRotateCamera(navigationActive)')&&
+  map.includes('nextMap.setCanTilt(navigationActive)')&&
+  integration.includes('riderNavigationAutoFollow')&&
+  integration.includes('navigationActive && viewMode == NavigationViewMode.FOLLOW')&&
   map.includes('activeMap.setTilt(nextTilt)')&&
   map.includes('activeMap.setTilt(0f)')&&
   runtimeActivity.includes('mapTiltDegrees()')&&
   runtimeTest.includes('followCameraUsesNativePerspectiveAndOverviewFlattens'),
-  'Navigation camera must animate position/zoom, suppress micro-wobble, look ahead and use native Longdo perspective tilt while flattening Overview');
+  'Navigation camera must animate position/zoom, smoothly rotate from the live rendered bearing, keep transform gestures in FOLLOW, suppress micro-wobble, look ahead and use native Longdo perspective tilt while flattening Overview');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');
@@ -309,7 +330,7 @@ assert(map.includes('oldLine.setLocation(segment.points.map')&&
   map.includes('renderedRouteSegments.zip(routeLines)')&&
   map.includes('Topology/style changed or an in-place mutation failed'),
   'Route progress must mutate existing Longdo line geometry in place and rebuild only on topology/style changes');
-assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 850L')&&
+assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 600L')&&
   map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
   map.includes('riderMarkerAnimator?.cancel()')&&
   map.includes('existing.getMovingLocation()')&&

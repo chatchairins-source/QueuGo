@@ -44,10 +44,10 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-// Shadow mode computes the candidate renderer fix while preserving the certified display.
-// The display gate stays off until CI + real-device route gates pass.
-private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = true
-private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false
+// Real-device pilot: use the stabilized road-matched renderer in the visible Rider map.
+// Shadow diagnostics are disabled so the Rider sees the exact pipeline being evaluated.
+private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false
+private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true
 
 private fun riderLongdoNavigationKey(context: Context): String? = runCatching {
     context.packageManager
@@ -61,6 +61,13 @@ private fun riderLongdoNavigationKey(context: Context): String? = runCatching {
 private fun validNavigationPoint(lat: Double?, lon: Double?): NavigationMapPoint? {
     if (lat == null || lon == null) return null
     return NavigationMapPoint(lat, lon).takeIf { it.valid }
+}
+
+internal fun riderNavigationAutoFollow(
+    navigationActive: Boolean,
+    viewMode: NavigationViewMode
+): Boolean {
+    return navigationActive && viewMode == NavigationViewMode.FOLLOW
 }
 
 internal fun riderNavigationStops(
@@ -303,8 +310,6 @@ internal fun QueueGoRiderNavigationMap(
     var viewModeState by remember(stateKey) {
         mutableStateOf(viewModeController.state())
     }
-    val followRider = viewModeState.mode == NavigationViewMode.FOLLOW
-
     val stops = remember(job, marketPickups, bundleOrders) {
         riderNavigationStops(job, marketPickups, bundleOrders)
     }
@@ -319,28 +324,39 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
     val navigationActive = stops.any { !it.completed && it.point.valid }
+    val followRider = riderNavigationAutoFollow(navigationActive, viewModeState.mode)
     val riderFix by RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()
+
+    LaunchedEffect(navigationActive) {
+        // Idle is a normal map: no automatic follow, no navigation tilt/rotation.
+        // A newly active job always starts in FOLLOW. Finishing the job returns the
+        // controller to FOLLOW too, but auto-follow remains disabled until another job starts.
+        viewModeState = viewModeController.onRecenter()
+        pendingViewModePersistence = NavigationViewMode.FOLLOW.name
+    }
 
     DisposableEffect(lifecycle, navigationActive, context) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && navigationActive) {
-                // Android 14+ requires a location foreground service to be created while
-                // the app still has a visible Activity unless background location was granted.
+            if (event == Lifecycle.Event.ON_RESUME) {
+                // The visible Rider map must always own a fresh GPS fix, even before a job
+                // is accepted. Otherwise the current-location puck disappears and recenter
+                // has no location to follow.
                 RiderNavigationLocationService.start(context)
             }
         }
         lifecycle.addObserver(observer)
 
-        if (!navigationActive) {
-            RiderNavigationLocationService.stop(context)
-        } else if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             RiderNavigationLocationService.start(context)
         }
 
         onDispose {
-            // Deliberately do not stop an active navigation service when Compose unmounts
-            // because a tab switch, screen-off or another app must not cut the GPS stream.
             lifecycle.removeObserver(observer)
+            if (!navigationActive) {
+                // No active job: stop foreground GPS only after the Rider map leaves the
+                // screen. Active navigation continues through tab/background transitions.
+                RiderNavigationLocationService.stop(context)
+            }
         }
     }
     val activeStopId = stops
@@ -414,6 +430,7 @@ internal fun QueueGoRiderNavigationMap(
         viewMode = viewModeState.mode,
         viewportInsets = viewportInsets.normalized()
     )
+    val latestBaseState by rememberUpdatedState(baseState)
     var renderedState by remember(stateKey, stopTopology) {
         mutableStateOf(
             retainedFrame
@@ -428,6 +445,14 @@ internal fun QueueGoRiderNavigationMap(
     }
 
     LaunchedEffect(baseState) {
+        // A route request can take up to 12 seconds. GPS, recenter and gestures must
+        // keep rendering while that request suspends the authoritative coordinator.
+        val livePresentation = baseState.copy(
+            routes = renderedState.routes.ifEmpty { baseState.routes }
+        )
+        renderedState = if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED) {
+            displayPipeline.applyToDisplayState(livePresentation)
+        } else livePresentation
         stateChannel.trySend(baseState)
     }
     LaunchedEffect(coordinator, stateChannel, displayPipeline, stopTopology, navigationActive) {
@@ -492,7 +517,14 @@ internal fun QueueGoRiderNavigationMap(
                 val result = coordinator.synchronize(next)
                 guidanceCallback(result.guidance)
                 // Filtering/snapping, when the rollout gate is enabled, is renderer-only.
-                val candidate = displayState(result.mapState)
+                // The route response belongs to an earlier fix. Keep its route result,
+                // but never roll the visible puck/camera back to the request's location.
+                val candidate = displayState(result.mapState.copy(
+                    rider = latestBaseState.rider,
+                    followRider = latestBaseState.followRider,
+                    viewMode = latestBaseState.viewMode,
+                    viewportInsets = latestBaseState.viewportInsets
+                ))
                 renderedState = if (
                     result.routeError != null &&
                     renderedState.routes.isNotEmpty()
@@ -512,16 +544,36 @@ internal fun QueueGoRiderNavigationMap(
 
     LaunchedEffect(recenterSignal) {
         if (recenterSignal > 0) {
+            // A recenter tap is also an explicit request for a fresh device fix.
+            RiderNavigationLocationService.start(context)
             viewModeState = viewModeController.onRecenter()
             pendingViewModePersistence = NavigationViewMode.FOLLOW.name
             riderFix?.let { fix ->
-                stateChannel.trySend(
-                    baseState.copy(
+                if (navigationActive) {
+                    stateChannel.trySend(
+                        baseState.copy(
+                            rider = fix,
+                            followRider = true,
+                            viewMode = NavigationViewMode.FOLLOW
+                        )
+                    )
+                } else {
+                    // Idle map stays manual. Recenter is a one-shot flat camera move, not
+                    // permission to start following every subsequent GPS fix.
+                    val oneShot = baseState.copy(
                         rider = fix,
                         followRider = true,
                         viewMode = NavigationViewMode.FOLLOW
                     )
-                )
+                    renderedState = oneShot
+                    delay(180L)
+                    if (
+                        latestBaseState.stops.none { !it.completed && it.point.valid } &&
+                        !latestBaseState.followRider
+                    ) {
+                        renderedState = oneShot.copy(followRider = false)
+                    }
+                }
             }
         }
     }

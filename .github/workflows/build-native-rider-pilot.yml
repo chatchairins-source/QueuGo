@@ -214,7 +214,7 @@ jobs:
       # Public APK/AAB delivery requires the full three-role Release Gate.
 
   continuous-dispatch-races:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -244,7 +244,7 @@ jobs:
         run: node tests/rider-continuous-dispatch-races.cjs
 
   passenger-ride-races:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -274,7 +274,7 @@ jobs:
         run: node tests/passenger-ride-races.cjs
 
   credit-races:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-credit-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -304,7 +304,7 @@ jobs:
         run: node tests/credit-races.cjs
 
   map-display-only:
-    if: ${{ github.ref == 'refs/heads/work-native-credit-live-enablement-20261016' || startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || github.ref == 'refs/heads/work-native-credit-live-enablement-20261016' || startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -349,7 +349,7 @@ jobs:
           retention-days: 14
 
   navigation-map-runtime:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -389,7 +389,7 @@ jobs:
           retention-days: 14
 
   maplibre-osm-runtime:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') || startsWith(github.ref, 'refs/heads/work-native-rider-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') || startsWith(github.ref, 'refs/heads/work-native-rider-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -423,3 +423,35 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+
+  publish-rider-road-test:
+    if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' && github.event_name == 'push' }}
+    needs: [native-pilot, map-display-only, navigation-map-runtime, maplibre-osm-runtime, continuous-dispatch-races, passenger-ride-races, credit-races]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Publish the exact tested Rider artifact for physical road testing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$GITHUB_RUN_ID" --name queuego-native-pilot-apks --dir pilot-apks
+          mapfile -t rider_apks < <(find pilot-apks -type f -name rider-debug.apk)
+          test "${#rider_apks[@]}" -eq 1
+          asset="QueueGo-Rider-RoadTest-${GITHUB_SHA:0:8}.apk"
+          tag="rider-road-test-${GITHUB_SHA:0:8}"
+          cp "${rider_apks[0]}" "$asset"
+          unzip -t "$asset" >/dev/null
+          sha256sum "$asset" > SHA256SUMS.txt
+          printf 'Source HEAD: %s\nPilot run: %s\nAll seven automated gates passed. Physical road test remains pending. Test APK only.\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > SOURCE.txt
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$asset" SHA256SUMS.txt SOURCE.txt --clobber
+          else
+            gh release create "$tag" "$asset" SHA256SUMS.txt SOURCE.txt --target "$GITHUB_SHA" --prerelease --title "QueueGo Rider road test ${GITHUB_SHA:0:8}" --notes-file SOURCE.txt
+          fi
+          echo "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$asset" >> "$GITHUB_STEP_SUMMARY"

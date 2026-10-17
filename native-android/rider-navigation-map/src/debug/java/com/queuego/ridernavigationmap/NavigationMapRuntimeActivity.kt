@@ -209,6 +209,18 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         return requireNotNull(view.renderer.map).getTilt()
     }
 
+    fun mapBearingDegrees(): Float {
+        val view = requireNotNull(findMapView(window.decorView))
+        return requireNotNull(view.renderer.map).getRotate()
+    }
+
+    fun finishJobFixture() {
+        mapState.value = mapState.value.copy(
+            stops = emptyList(), routes = emptyList(), activeStopId = null,
+            followRider = true, viewMode = NavigationViewMode.FOLLOW
+        )
+    }
+
     fun showOverviewForTiltFixture() {
         mapState.value = mapState.value.copy(
             followRider = false,

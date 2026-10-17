@@ -181,7 +181,7 @@ fun QgLongdoTrackingMap(
                                     holder.attachMap(map)
                                     qgEnsureLongdoZoomListener(map)
                                     map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20).apply {
-                                        layerURL = "https://ms2.longdo.com/mmmap/img.php"
+                                        layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
                                     })
                                     holder.draw(currentPoints.value)
                                 }.onSuccess { Log.i("QueueGoLongdoMap", "native_map_ready"); currentReady.value(true) }
@@ -225,6 +225,26 @@ private class LocationPickerMapHolder {
     var disposed = false
     private var resumed = false
     private var pausePending = false
+    private val frameHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var frameGeneration = 0
+
+    fun settleInitialTiles() {
+        val activeView = view ?: return
+        val activeMap = map ?: return
+        val generation = ++frameGeneration
+        fun draw(attempt: Int) {
+            if (disposed || !resumed || generation != frameGeneration || map !== activeMap ||
+                runCatching { activeView.renderer.map !== activeMap }.getOrDefault(true)) return
+            // SDK0.1.8 tile tasks can finish/reset their texture state after the
+            // animation counter reaches zero. Give those existing tasks bounded
+            // frames to draw/retry; never clear tiles, reload style or move camera.
+            activeView.requestRender()
+            if (attempt < 19) frameHandler.postDelayed({ draw(attempt + 1) }, 250L)
+        }
+        draw(0)
+    }
+
+    fun stopTileSettlement() { frameGeneration++ }
 
     fun resume() {
         val activeView = view ?: return
@@ -233,10 +253,12 @@ private class LocationPickerMapHolder {
             resumed = runCatching { activeView.onResume() }
                 .onFailure { Log.w("QueueGoLongdoMap", "shared_map_on_resume_failed", it) }
                 .isSuccess
+            settleInitialTiles()
         }
     }
 
     fun pause() {
+        stopTileSettlement()
         if (resumed) {
             // SDK0.1.8 can touch renderer state while the GL map is still being created
             // or torn down on physical devices. Treat an exception/unknown renderer as
@@ -303,6 +325,9 @@ fun QgLongdoLocationPickerMap(
         factory = { ctx ->
             (LayoutInflater.from(ctx).inflate(R.layout.view_longdo_shared_map, null, false) as MapGLSurfaceView).also { view ->
                 holder.view = view
+                // Permission dialogs must not discard GL textures and create a new
+                // internal map when the same picker surface resumes.
+                view.preserveEGLContextOnPause = true
                 view.setListener(object : IMapListener {
                     override fun onMapCreated(map: com.longdo.api.Map) {
                         view.post {
@@ -313,7 +338,7 @@ fun QgLongdoLocationPickerMap(
                                 val setup = runCatching {
                                     qgEnsureLongdoZoomListener(map)
                                     map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20).apply {
-                                        layerURL = "https://ms2.longdo.com/mmmap/img.php"
+                                        layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
                                     })
                                     map.setDrawCrossSign(true)
                                     map.setCrossSignColor(floatArrayOf(239f / 255f, 51f / 255f, 64f / 255f, 1f))
@@ -361,6 +386,7 @@ fun QgLongdoLocationPickerMap(
                                             }
                                         }.onSuccess {
                                             Log.i("QueueGoLongdoMap", "native_map_ready")
+                                            holder.settleInitialTiles()
                                             currentReady.value(true)
                                         }.onFailure { failure ->
                                             if (failure is NullPointerException && attempt < 20 && !holder.disposed) {
@@ -401,6 +427,7 @@ fun QgLongdoLocationPickerMap(
         onDispose {
             owner?.lifecycle?.removeObserver(observer)
             holder.disposed = true
+            holder.stopTileSettlement()
             runCatching { holder.pause() }
             holder.map = null
             holder.view = null

@@ -89,20 +89,37 @@ def assert_no_package_crash(pkg: str, evidence_path: Path):
     assert not relevant, f"{pkg} crashed; inspect {evidence_path.name}"
 
 
+class HierarchyNotReady(RuntimeError):
+    pass
+
+
 def read_ui(path: Path):
-    run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-current.xml"], timeout=15)
+    # uiautomator can exit zero with a null root during a cold launch. Never read
+    # the previous screen's XML as evidence of the current screen.
+    run(adb + ["shell", "rm", "-f", "/sdcard/queuego-current.xml"], timeout=15)
+    dumped = run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-current.xml"],
+                 timeout=15, capture_output=True, text=True)
+    if "null root" in (dumped.stdout + dumped.stderr).lower():
+        raise HierarchyNotReady("uiautomator returned a null root")
     run(adb + ["pull", "/sdcard/queuego-current.xml", str(path)], timeout=15)
     return list(ET.parse(path).getroot().iter("node"))
 
 
 def wait_ui(path: Path, predicate, timeout_seconds=30):
     deadline = time.monotonic() + timeout_seconds
+    last_error = None
     while time.monotonic() < deadline:
-        nodes = read_ui(path)
-        if predicate(nodes):
-            return nodes
+        try:
+            nodes = read_ui(path)
+            if predicate(nodes):
+                return nodes
+        except (HierarchyNotReady, subprocess.CalledProcessError, subprocess.TimeoutExpired,
+                ET.ParseError, FileNotFoundError) as error:
+            last_error = error
+            with path.with_suffix(".poll-errors.txt").open("a") as evidence:
+                evidence.write(type(error).__name__ + ": " + str(error) + "\n")
         time.sleep(0.4)
-    raise AssertionError(f"Native UI did not reach expected state: {path.name}")
+    raise AssertionError(f"Native UI did not reach expected state: {path.name}; last error: {last_error}")
 
 
 def capture_customer_market(directory: Path, dimensions: str):

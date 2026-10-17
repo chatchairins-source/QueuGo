@@ -12,30 +12,35 @@ assert(app.includes('setPackage(GOOGLE_MAPS_PACKAGE)')&&app.includes('"google.na
   'Rider navigation must open the installed Google Maps app explicitly');
 assert(!app.includes('https://www.google.com/maps/dir/'),
   'Rider must not fall back to browser-based Google Maps');
-assert(app.includes('"ต้องติดตั้ง Google Maps ก่อนเปิดรับงาน"')&&app.includes('openGoogleMapsInstallPage(context)'),
-  'Rider must require Google Maps before going online');
-assert(app.includes('enabled && !Settings.canDrawOverlays(context)')&&app.includes('configureReturnControl()'),
-  'Rider must require the cross-app return control before going online');
+assert(!app.includes('"ต้องติดตั้ง Google Maps ก่อนเปิดรับงาน"')&&
+  !app.includes('enabled && !Settings.canDrawOverlays(context)'),
+  'Rider must be able to go online and work entirely inside QueueGo without Google Maps or overlay permission');
+assert(app.includes('openGoogleMapsInstallPage(context)')&&app.includes('Settings.canDrawOverlays(context)'),
+  'Optional Google Maps action must still handle missing app/return-control setup when the Rider chooses it');
 assert(app.includes('RiderReturnService.start(context)'),
   'Opening Google Maps must start the QueueGo return overlay service');
-assert(app.includes('if (opened) {')&&app.includes('.putBoolean(navigationKey, true)')&&
-  app.includes('} else {\n        RiderReturnService.stop(context)'),
-  'Rider navigation stage must commit only after Google Maps opens; a failed handoff must stop the return service without advancing UI state');
+assert(!app.includes('.putBoolean(navigationKey, true)')&&
+  app.includes('if (!opened) {\n        RiderReturnService.stop(context)'),
+  'Optional Google Maps handoff must never mutate Rider workflow state; a failed handoff only stops the return service');
 assert(app.includes('pickupCommittedStatus == "picked_up"')&&
   app.includes('api.startDelivery(auth, job.copy(status = "picked_up"))'),
   'Legacy picked_up pickup results must advance to delivery before customer Maps handoff');
 assert(app.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"')&&
-  app.includes('val nextStop = committedRead?.activeJob')&&
-  app.includes('?: localAfterSuccess?.activeJob')&&
-  app.includes('openNavigation(context, nextStop)'),
-  'Post-pickup Google Maps must open only after an in_progress commit and must follow the authoritative next stop, including another bundled shop before customer delivery');
+  app.includes('"รับสินค้าแล้ว · นำทางต่อด้วยแผนที่ QueueGo"')&&
+  !app.includes('openNavigation(context, nextStop)'),
+  'Post-pickup transition must stay in QueueGo; Google Maps opens only from an explicit Rider action');
 assert((app.match(/riderPickupReadCanReplace\("in_progress"/g)||[]).length>=2 &&
   (app.match(/persistCommittedSnapshot\(committedSnapshot\)/g)||[]).length>=2 &&
   app.includes('pushStore.saveHomeSnapshot(auth.user.id, value, durable = true)') &&
   app.includes('kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)'),
-  'Manual and Market start-delivery must commit in_progress locally and reject stale picked_up reads before Maps handoff');
+  'Manual and Market start-delivery must commit in_progress locally and reject stale picked_up reads before optional external navigation');
 assert(!app.includes('RiderNavigationController()')&&!app.includes('RiderNavigationSpeaker(context)')&&!app.includes('if (navigationState.active)'),
-  'Rider Home must not run the retired in-app navigation engine or turn-by-turn panel');
+  'Rider Home must keep the retired legacy navigation engine removed while using the current QueueGo navigation map module');
+assert(app.includes('Text("นำทางด้วย Google Maps"'),
+  'Normal active-job card must show a distinct Google Maps button');
+const acceptFlow=app.slice(app.indexOf('fun acceptTargetedOffer('),app.indexOf('// Navigation and visible UI renew'));
+assert(!acceptFlow.includes('openNavigation(context'),
+  'Accepting a targeted offer must never force-open Google Maps');
 assert(!fs.existsSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigation.kt'),
   'Retired Rider in-app navigation engine source must stay removed');
 assert(service.includes('TYPE_APPLICATION_OVERLAY')&&service.includes('R.drawable.qg_rider_brand_q')&&service.includes('MainActivity::class.java'),
@@ -65,4 +70,4 @@ assert(app.includes('val committedMarker = "local:" + System.currentTimeMillis()
   app.includes('persistCommittedSnapshot(committedSnapshot)'),
   'Rider arrival must commit locally before accepting a server read so return/resume cannot lose arrived state');
 
-console.log('Native Rider Google Maps-only return overlay contracts: PASS');
+console.log('Native Rider optional Google Maps return overlay contracts: PASS');
