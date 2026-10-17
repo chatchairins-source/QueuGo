@@ -15,7 +15,7 @@
     ["background_foreground","สลับพื้นหลัง → กลับเข้าแอป"],
     ["generic","ทดสอบทั่วไป"]
   ];
-  const state={watchId:null,recording:false,session:null,lastMatchAt:0,matching:false};
+  const state={watchId:null,recording:false,session:null,lastMatchAt:0,matching:false,matchContext:{},lastFixAt:null};
 
   function nowIso(){return new Date().toISOString()}
   function finite(value){return typeof value==="number"&&Number.isFinite(value)}
@@ -102,6 +102,8 @@
     if(state.recording)return;
     if(!navigator.geolocation){alert("อุปกรณ์นี้ไม่รองรับ GPS");return}
     const scenario=document.getElementById("qgFieldScenario").value;
+    const mapState=root.QueueGoMapView&&root.QueueGoMapView.state;
+    const activeRoute=mapState&&mapState.routes&&mapState.routes[mapState.selectedRoute];
     state.session={
       schema:"queuego-map-field-evidence/v1",
       session_id:sessionId(),
@@ -109,11 +111,17 @@
       started_at:nowIso(),
       stopped_at:null,
       package:await packageMetadata(),
+      navigation:{
+        active:Boolean(mapState&&mapState.navigationActive),
+        route_id:activeRoute&&activeRoute.route_id||null,
+        route_profile:activeRoute&&activeRoute.profile||null,
+        route_distance_m:activeRoute&&Number(activeRoute.distance)||null
+      },
       fixes:[],
       events:[{type:"recording_started",at:nowIso(),visibility:document.visibilityState}],
       summary:null
     };
-    state.recording=true;state.lastMatchAt=0;
+    state.recording=true;state.lastMatchAt=0;state.matchContext={};state.lastFixAt=null;
     state.watchId=navigator.geolocation.watchPosition(onFix,onError,{enableHighAccuracy:true,maximumAge:1000,timeout:12000});
     render();
   }
@@ -136,6 +144,12 @@
     if(!state.recording||!state.session)return;
     const fix=cleanFix(position);
     if(!finite(fix.lat)||!finite(fix.lon))return;
+    const fixAt=Date.parse(fix.at);
+    if(state.lastFixAt!=null&&Number.isFinite(fixAt)&&fixAt-state.lastFixAt>15000){
+      state.session.events.push({type:"gps_gap",at:fix.at,gap_ms:fixAt-state.lastFixAt});
+      state.matchContext={};
+    }
+    if(Number.isFinite(fixAt))state.lastFixAt=fixAt;
     if(state.session.fixes.length>=MAX_FIXES){stop();return}
     state.session.fixes.push(fix);
     render();
@@ -148,10 +162,23 @@
     }));
     if(!raw.length){state.matching=false;return}
     try{
-      const match=await root.QueueGoMapService.call("match",{points:raw,profile:"motorcycle"},{timeout:5000});
+      const nav=state.session.navigation||{};
+      const request={points:raw,profile:nav.route_profile||"motorcycle"};
+      if(nav.route_id){request.route_id=nav.route_id;request.context=state.matchContext}
+      const match=await root.QueueGoMapService.call("match",request,{timeout:5000});
+      if(match.context)state.matchContext=match.context;
       fix.matching_method=match.matching_method||null;
       fix.snapped_position=Array.isArray(match.snapped_position)?match.snapped_position:null;
       fix.matching_available=match.matching_available!==false;
+      fix.route_id=nav.route_id||null;
+      fix.off_route_distance_m=finite(match.off_route_distance_m)?match.off_route_distance_m:null;
+      fix.remaining_distance_m=finite(match.remaining_distance_m)?match.remaining_distance_m:null;
+      fix.remaining_duration_s=finite(match.remaining_duration_s)?match.remaining_duration_s:null;
+      fix.distance_to_maneuver_m=finite(match.distance_to_maneuver_m)?match.distance_to_maneuver_m:null;
+      fix.reroute=Boolean(match.reroute);
+      fix.arrived=Boolean(match.arrived);
+      const matching=Array.isArray(match.matchings)&&match.matchings[0];
+      fix.matched_way_ids=matching&&Array.isArray(matching.osm_way_ids)?matching.osm_way_ids.slice(0,80):[];
     }catch(_){
       fix.matching_method=null;fix.snapped_position=null;fix.matching_available=false;
     }finally{state.matching=false}
@@ -164,7 +191,12 @@
   async function exportEvidence(){
     if(!state.session||!state.session.fixes.length)return;
     if(state.recording)stop();
-    state.session.summary=currentStats();
+    state.session.summary={...currentStats(),
+      reroute_count:state.session.fixes.filter(f=>f.reroute).length,
+      arrived_count:state.session.fixes.filter(f=>f.arrived).length,
+      matched_fix_count:state.session.fixes.filter(f=>f.matching_available&&Array.isArray(f.snapped_position)).length,
+      gps_gap_count:state.session.events.filter(e=>e.type==="gps_gap").length
+    };
     const json=JSON.stringify(state.session,null,2);
     const file=new File([json],state.session.session_id+".json",{type:"application/json"});
     if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
