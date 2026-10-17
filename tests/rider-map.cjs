@@ -16,8 +16,14 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("'route': '<svg class=\"ico\""),true);
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
- eq(source.includes('queuego-map-web.js?v=20261017-8'),true);
+ eq(source.includes('queuego-map-web.js?v=20261017-9'),true);
  eq(source.includes('maximumAge:0'),true);
+ eq(source.includes('class="qg-speed-pill"'),true);
+ eq(source.includes('<div class="qg-brand-pill">'),false);
+ eq(source.includes('function qgSetHomeDockHTML'),true);
+ eq(source.includes('qg-dock-collapsed'),true);
+ eq(source.includes("aria-label',riderHomeDockCollapsed?'เปิดการ์ดกลับขนาดเดิม':'ย่อการ์ด'"),true);
+ eq(source.includes('speed=meters<1.5?0:Math.min(55,meters/seconds)'),true);
  eq(source.includes('riderGpsCadenceMs'),true);
  eq(source.includes('markerDuration=Math.max(260,Math.min(1250'),true);
  eq(source.includes('background:#e6002d'),true);
@@ -135,7 +141,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  // GPS callbacks are owned by a single live watcher, including watch ID zero.
  const watches=[],cleared=[];let renders=0;
  ctx.navigator.geolocation={watchPosition:(ok,error)=>{watches.push({ok,error});return watches.length-1},clearWatch:id=>cleared.push(id)};
- ctx.toast=()=>{};ctx.placeRiderMarker=()=>renders++;ctx.renderHomeDock=()=>{};ctx.pushLocation=()=>{};S.online=false;
+ ctx.toast=()=>{};ctx.placeRiderMarker=()=>renders++;ctx.updateRiderSpeedUI=()=>{};ctx.renderHomeDock=()=>{};ctx.pushLocation=()=>{};S.online=false;
  vm.runInContext(source.slice(source.indexOf('function startGeolocation()'),source.indexOf('function recenterMap()')),ctx);
  run('startGeolocation();startGeolocation()');
  eq(cleared[0],0);
