@@ -289,11 +289,14 @@ assert(map.includes('nextMap.setDoTileAnimation(false)')&&map.includes('nextMap.
   map.includes('setDoPreDrawCache(true)')&&map.includes('lastKnownCamera'),
   'Longdo replacement maps must prefer cached tiles and disable tile-appearance animation');
 assert(guidance.includes('class NavigationProgressTracker')&&
-  guidance.includes('requiredOffRouteSamples: Int = 2')&&
-  guidance.includes('rerouteCooldownMillis: Long = 8_000L')&&
+  guidance.includes('NavigationHybridMatcher')&&
+  guidance.includes('routeMatcher.match(leg.segment, fix)')&&
+  guidance.includes('requiredOffRouteSamples: Int = 3')&&
+  guidance.includes('rerouteCooldownMillis: Long = 20_000L')&&
+  !guidance.includes('val match = matchNavigationRoute(leg.segment, fix.point)')&&
   guidance.includes('shouldReroute')&&guidance.includes('arrived')&&
   guidance.includes('navigationNextInstruction')&&guidance.includes('navigationTurnPhrase'),
-  'Navigation guidance must expose progress/ETA, reliable off-route reroute, arrival and turn instructions without Rider business-state coupling');
+  'Authoritative navigation guidance must use QueueGo hybrid progress matching plus three-fix/20-second reroute evidence');
 assert(route.includes('class QueueGoNavigationRouteClient')&&
   route.includes(': NavigationRouteProvider')&&
   integration.includes('QueueGoNavigationRouteClient')&&
