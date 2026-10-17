@@ -34,6 +34,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('speed=meters<1.5?0:Math.min(55,meters/seconds)'),true);
  eq(source.includes('riderGpsCadenceMs'),true);
  eq(source.includes('markerDuration=Math.max(260,Math.min(1250'),true);
+ eq(source.includes('function placeRiderMarker(durationOverride=null)'),true);
+ eq(source.includes('placeRiderMarker(followed?.animationDuration)'),true);
  eq(source.includes('function qgRiderCameraBottomInset()'),true);
  eq(source.includes('function qgFollowRiderCamera(force=false,duration=420)'),true);
  eq(source.includes('bottomInset:qgRiderCameraBottomInset()'),true);
