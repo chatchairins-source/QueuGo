@@ -64,6 +64,15 @@ const navBearing=(a,b)=>{
   const lat1=rad(a.lat),lat2=rad(b.lat),dLng=rad(b.lng-a.lng);
   return navNormalizeBearing(deg(Math.atan2(Math.sin(dLng)*Math.cos(lat2),Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng))));
 };
+const navFreeDriveLookAhead=spd=>spd==null?25:spd>=18?80:spd>=11?65:spd>=5?50:spd>=2?32:15;
+const navProjectForward=(point,bearing,distanceMeters)=>{
+  if(!point||!valid(point.lat,point.lng)||!Number.isFinite(Number(bearing))||!Number.isFinite(Number(distanceMeters))||Number(distanceMeters)<=0)return null;
+  const r=6371000,d=Number(distanceMeters)/r,b=rad(navNormalizeBearing(bearing)),lat1=rad(point.lat),lon1=rad(point.lng);
+  const lat2=Math.asin(Math.sin(lat1)*Math.cos(d)+Math.cos(lat1)*Math.sin(d)*Math.cos(b));
+  const lon2=lon1+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(lat1),Math.cos(d)-Math.sin(lat1)*Math.sin(lat2));
+  const projected={lat:deg(lat2),lng:((deg(lon2)+540)%360)-180};
+  return valid(projected.lat,projected.lng)?projected:null;
+};
 function navRouteParts(route){
   if(!Array.isArray(route)||!route.length)return[];
   const first=route[0];
@@ -153,7 +162,9 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
   const pitch=Math.max(0,Math.min(55,acc!=null&&acc>80?24:remaining!=null&&remaining<=60?28:remaining!=null&&remaining<=180?34:spd==null?38:spd>=18?52:spd>=11?49:spd>=5?45:spd>=2?40:34));
   const look=spd==null?55:spd>=18?150:spd>=11?120:spd>=5?85:spd>=2?55:30;
   const lookAhead=remaining==null?look:Math.min(look,Math.max(0,remaining*.55));
-  const center=reliable?(navPointAt(reliable.part,Math.min(reliable.geometryDistanceMeters,reliable.progressMeters+lookAhead))||point):point;
+  const center=reliable
+    ? (navPointAt(reliable.part,Math.min(reliable.geometryDistanceMeters,reliable.progressMeters+lookAhead))||point)
+    : (navProjectForward(point,cameraBearing,navFreeDriveLookAhead(spd))||point);
   return {center,bearing:cameraBearing,pitch,zoom,routeMatch:match,remainingRouteMeters:remaining};
 }
 function navState(map){
