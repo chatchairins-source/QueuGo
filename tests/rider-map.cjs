@@ -10,6 +10,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(riderMarkerFn.includes('qgRemoveOverlay(S.riderMarker)'),false);
  const activeRouteFn=source.slice(source.indexOf('function drawActiveRoute()'),source.indexOf('/* ---------- sheet'));
  eq(activeRouteFn.includes("if(isOfferPreview&&!riderRouteCache)focusRiderNavigation"),true);
+ eq(activeRouteFn.includes('followNavigationCamera?.(map,pos,riderRouteGeometry'),false);
+ eq(source.includes('Route rendering owns geometry only. GPS Follow is the single camera writer.'),true);
  eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}'),true);
  eq(source.includes('syncRiderNavigationCameraMode();'),true);
  eq(source.includes('data-qg-rider-puck="true"'),true);
