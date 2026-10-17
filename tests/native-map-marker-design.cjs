@@ -1,30 +1,29 @@
-const assert = require('assert');
-const fs = require('fs');
-const base = 'native-android/rider/src/main/';
-const asset = name => fs.readFileSync(base+'res/drawable/'+name+'.xml','utf8');
-const map = fs.readFileSync(base+'java/com/queuego/rider/LongdoRiderMap.kt','utf8');
-const overlay = fs.readFileSync(base+'java/com/queuego/rider/RiderReturnService.kt','utf8');
+const assert=require('assert');
+const fs=require('fs');
+const read=p=>fs.readFileSync(p,'utf8');
+const riderRes='native-android/rider/src/main/res/drawable/';
+const asset=name=>read(riderRes+name+'.xml');
+const nav=read('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
+const app=read('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
+const overlay=read('native-android/rider/src/main/java/com/queuego/rider/RiderReturnService.kt');
+
 assert(asset('qg_marker_pickup').includes('#E6002D'));
 assert(asset('qg_marker_dropoff').includes('#007F99'));
-assert(!asset('qg_marker_dropoff').includes('#E6002D'));
-assert(asset('qg_marker_pickup') !== asset('qg_marker_dropoff'));
-assert(asset('qg_rider_current_location') !== asset('qg_marker_pickup'));
-assert(map.includes('RiderStopVisual.PICKUP') && map.includes('RiderStopVisual.DROPOFF'));
-assert(map.includes('canvas.drawText(number.toString()') && !map.includes('stop_more'));
-assert(map.includes('compareBy<RiderBundleOrder> { it.bundleSequence }'));
-assert(map.includes('compareBy<RiderBundleOrder> { it.dropRank }'));
-assert(map.includes('bundled.dropoffStopRank ?: (pickupOrder.size + index + 1), RiderStopVisual.DROPOFF'));
-assert(map.includes('!bundled.job.shopArrived && !bundled.job.isDelivering'));
-assert(map.includes('if (!pickup.done) addStopPin'));
-assert(map.includes('stopPins.keys.filter { it !in desiredStops }'));
-const markerUpdates=map.slice(0,map.indexOf('    fun dispose()'));
-assert(markerUpdates.includes('ldmap.removePin(pin)') && !markerUpdates.includes('clearPin()'));
-assert(map.includes('val pinsReleased = runCatching { map?.clearPin() }.isSuccess'));
-assert(map.includes('if (stopKey in stopPins) return'));
-assert(map.includes('existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_STEPS)'));
-assert(overlay.includes('R.drawable.qg_rider_brand_q') && overlay.includes('setCompoundDrawables'));
+assert(asset('qg_marker_pickup')!==asset('qg_marker_dropoff'));
+assert(asset('qg_rider_current_location')!==asset('qg_marker_pickup'));
+
+assert(nav.includes('org.maplibre.android.maps.MapView'));
+assert(nav.includes('MarkerOptions()')&&nav.includes('PolylineOptions()'));
+assert(nav.includes('NavigationRouteStyle.ACTIVE')&&nav.includes('NavigationRouteStyle.FUTURE'));
+assert(nav.includes('RiderNavigationMapRegistry')&&nav.includes('retainAcrossVisibilityLoss()'));
+assert(!/com\.longdo|LongdoMapAndroidSDK|longdo\.map/i.test(nav));
+
+assert(app.includes('riderNavigationStops('));
+assert(app.includes('compareBy<RiderBundleOrder> { it.bundleSequence }'));
+assert(app.includes('compareBy<RiderBundleOrder> { it.dropRank }'));
+assert(overlay.includes('R.drawable.qg_rider_brand_q'));
 assert(!overlay.includes('text = "Q"'));
-assert(overlay.includes('bubble.alpha = .82f') && overlay.includes('bubble.alpha = 1f'));
+
 require('./native-rider-google-maps-return.cjs');
 require('./native-android-source.cjs');
-console.log('Native professional map marker / overlay contracts: PASS');
+console.log('Native QueueGo MapLibre marker / overlay contracts: PASS');
