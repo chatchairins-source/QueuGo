@@ -817,7 +817,9 @@ function qgRiderRouteNeedsReroute(pos,scope,map){
   });
   const offRoute=Number(decision?.routeMatch?.offRouteMeters);
   if(!Number.isFinite(offRoute))return false;
-  if(offRoute<=RIDER_ROUTE_OFF_ROUTE_METERS){
+  const speed=qgFiniteOrNull(pos?.speed);
+  const directionConflict=decision?.routeBearingRejected===true&&(speed===null||speed>=2);
+  if(offRoute<=RIDER_ROUTE_OFF_ROUTE_METERS&&!directionConflict){
     riderRouteOffRouteHits=0;
     return false;
   }
