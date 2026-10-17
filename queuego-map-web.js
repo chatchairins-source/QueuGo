@@ -66,6 +66,7 @@ const navBearing=(a,b)=>{
   return navNormalizeBearing(deg(Math.atan2(Math.sin(dLng)*Math.cos(lat2),Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng))));
 };
 const navFreeDriveLookAheadMeters=spd=>spd==null?25:spd>=18?80:spd>=11?65:spd>=5?50:spd>=2?32:15;
+const navScreenAnchorRatio=spd=>spd==null?.68:spd>=18?.76:spd>=11?.74:spd>=5?.72:spd>=2?.69:.66;
 function navProjectForward(point,bearing,distanceMeters){
   if(!point||!valid(point.lat,point.lng)||!Number.isFinite(Number(bearing))||!Number.isFinite(Number(distanceMeters))||Number(distanceMeters)<=0)return null;
   const R=6371000,angular=Number(distanceMeters)/R,br=rad(navNormalizeBearing(bearing)),lat1=rad(point.lat),lon1=rad(point.lng);
@@ -201,7 +202,7 @@ function navState(map){
   if(!state){
     state={
       follow:true,navigationActive:true,bearing:null,lastFix:null,lastRoute:[],baseZoom:17,lastDecision:null,lastAppliedAt:0,
-      manualZoom:null,manualZoomUntil:0,reanchorTimer:null,gestureActive:false
+      manualZoom:null,manualZoomUntil:0,reanchorTimer:null,gestureActive:false,lastBottomInset:0
     };
     navigationStates.set(map,state);
   }
@@ -247,12 +248,13 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   try{map.easeTo(camera)}catch(_){return false}
   return false;
 }
-function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false}={}){
+function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false,bottomInset=null}={}){
   if(!map)return null;
   const state=navState(map);
   state.lastFix={...fix};
   state.lastRoute=Array.isArray(route)?route:[];
   state.baseZoom=baseZoom;
+  if(Number.isFinite(Number(bottomInset))&&Number(bottomInset)>=0)state.lastBottomInset=Number(bottomInset);
   if(force){
     state.follow=true;
     state.gestureActive=false;
@@ -273,14 +275,18 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
     state.manualZoom=null;
     state.manualZoomUntil=0;
   }
-  const target={...decision,zoom:targetZoom};
+  const riderCenter=valid(fix?.lat,fix?.lng)
+    ? {lat:Number(fix.lat),lng:Number(fix.lng)}
+    : decision.center;
+  const speed=Number.isFinite(Number(fix?.speed))&&Number(fix.speed)>=0?Number(fix.speed):null;
+  const target={...decision,zoom:targetZoom,cameraCenter:riderCenter};
   state.bearing=target.bearing;
   state.lastDecision=target;
   if(state.gestureActive&&!force)return target;
 
   const previous=state.lastDecisionApplied;
   if(!force&&previous){
-    const centerDelta=navDistanceMeters(previous.center,target.center);
+    const centerDelta=navDistanceMeters(previous.cameraCenter||previous.center,target.cameraCenter);
     const bearingDelta=Math.abs(navShortestDelta(previous.bearing,target.bearing));
     const pitchDelta=Math.abs(Number(previous.pitch)-Number(target.pitch));
     const zoomDelta=Math.abs(Number(previous.zoom)-Number(target.zoom));
@@ -290,9 +296,18 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   const smoothDuration=force
     ? Math.max(320,Math.min(560,Number(duration)||420))
     : navRotationDuration(previousBearing,target.bearing,cadence,duration,fix?.speed);
+  const container=runSafe(()=>map.getContainer?.())||null;
+  const viewportHeight=Math.max(0,Number(container?.clientHeight)||0);
+  const ratio=navScreenAnchorRatio(speed);
+  const inset=Math.max(0,Math.min(viewportHeight*.6,Number(state.lastBottomInset)||0));
+  const desiredY=viewportHeight>0
+    ? Math.max(viewportHeight*.46,Math.min(viewportHeight*ratio,viewportHeight-inset-56))
+    : 0;
+  const offsetY=viewportHeight>0?Math.round(desiredY-viewportHeight/2):0;
   try{
     map.easeTo({
-      center:[target.center.lng,target.center.lat],
+      center:[target.cameraCenter.lng,target.cameraCenter.lat],
+      offset:[0,offsetY],
       bearing:target.bearing,
       pitch:target.pitch,
       zoom:target.zoom,
@@ -322,7 +337,8 @@ function reanchorNavigationAfterGesture(map){
     followNavigationCamera(map,state.lastFix,state.lastRoute,{
       duration:650,
       baseZoom:state.baseZoom,
-      preserveZoom:true
+      preserveZoom:true,
+      bottomInset:state.lastBottomInset
     });
   },110);
   return true;
@@ -515,5 +531,5 @@ async function reverse(lat,lng){
   }catch(_){return''}
 }
 function destroy(map){try{map?.remove?.()}catch(_){}}
-window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,navigationCameraDecision:navCameraDecision,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
+window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,navigationCameraDecision:navCameraDecision,navigationScreenAnchorRatio:navScreenAnchorRatio,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
 })();
