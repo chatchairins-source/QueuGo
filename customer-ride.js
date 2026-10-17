@@ -1,6 +1,6 @@
 /* Passenger flow shares existing auth, Orders, targeted dispatch, location picker and cash. */
 (()=>{
- let owner='',pickup=null,destination=null,quote=null,rows=[],selected=null,busy=false,error='',picker=null,previewMap=null,timer=null,config={};
+ let owner='',pickup=null,destination=null,quote=null,rows=[],selected=null,busy=false,error='',picker=null,previewMap=null,timer=null,config={},supply={nearby_count:0,clusters:[]},supplyAt=0;
  const terminal=o=>!o||['completed','cancelled','no_rider_available'].includes(o.status);
  const key=()=> 'qg_customer_ride_pending_v1:'+S.get()?.userId;
  const actor=()=>S.get()?.userId||'';
@@ -18,13 +18,29 @@
  }
  function stop(){clearTimeout(timer);timer=null;picker?.destroy();picker=null;clearPreview()}
  async function read(id){return (await rpc('queuego_ride_state',{p_order_id:id||null})).rides||[]}
+ async function refreshSupply(force=false){
+  if(!pickup||!qgIsValidCoordinate(pickup.lat,pickup.lng,true)){
+   supply={nearby_count:0,clusters:[]};supplyAt=Date.now();return;
+  }
+  if(!force&&Date.now()-supplyAt<15000)return;
+  try{
+   const next=await rpc('queuego_customer_ride_supply',{p_lat:Number(pickup.lat),p_lng:Number(pickup.lng)});
+   supply={
+    nearby_count:Number(next?.nearby_count||0),
+    clusters:Array.isArray(next?.clusters)?next.clusters:[]
+   };
+   supplyAt=Date.now();
+  }catch{
+   supply={nearby_count:0,clusters:[]};supplyAt=Date.now();
+  }
+ }
  async function refresh(){
   const u=actor(),recent=await read();if(!same(u))return;
   if(selected&&!recent.some(r=>r.id===selected)){const old=await read(selected);if(!same(u))return;rows=[...old,...recent]}else rows=recent;
   const active=rows.find(o=>!terminal(o));if(active)selected=active.id;
   const p=pending();if(p){const committed=rows.find(o=>o.id===p.p_request_id)||(await read(p.p_request_id))[0];if(!same(u))return;if(committed){selected=committed.id;rows=[committed,...rows.filter(o=>o.id!==committed.id)];localStorage.removeItem(key());}}
  }
- function schedule(){clearTimeout(timer);if(document.hidden||!onRide())return;timer=setTimeout(async()=>{if(!busy&&!picker){try{await refresh();if(onRide()&&(pending()||rows.some(o=>!terminal(o))))render()}catch(e){error=e.message;if(onRide())render()}}schedule()},5000)}
+ function schedule(){clearTimeout(timer);if(document.hidden||!onRide())return;timer=setTimeout(async()=>{if(!busy&&!picker){try{await refresh();if(!rows.some(o=>!terminal(o))&&pickup)await refreshSupply();if(onRide()&&(pending()||rows.some(o=>!terminal(o))||pickup))render()}catch(e){error=e.message;if(onRide())render()}}schedule()},5000)}
  function rideLocationButton(kind,label,value,color){
   return '<button type="button" data-action="'+kind+'" class="qg-ride-location" '+(busy||pending()||!config.enabled?'disabled':'')+' style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:13px 12px;border:1px solid #e6e7ea;border-radius:14px;background:#fff;color:#17181a;margin:0 0 9px"><span aria-hidden="true" style="width:12px;height:12px;border-radius:50%;background:'+color+';box-shadow:0 0 0 4px '+color+'1f;flex:none"></span><span style="min-width:0;flex:1"><small style="display:block;color:#777d86;font-weight:700;margin-bottom:3px">'+label+'</small><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(value||'เลือกบนแผนที่')+'</b></span><span aria-hidden="true" style="font-size:22px;color:#9aa0a8">›</span></button>';
  }
@@ -41,6 +57,17 @@
     const marker=new longdo.Marker(loc,{title,icon:{html:'<div style="width:22px;height:22px;border-radius:50%;background:'+color+';border:4px solid white;box-shadow:0 3px 12px #0004"></div>'},weight:longdo.OverlayWeight.Top});
     previewMap.Overlays.add(marker);points.push(loc);
    };
+   for(const cluster of (supply.clusters||[])){
+    if(!qgIsValidCoordinate(cluster.latitude,cluster.longitude,true))continue;
+    const loc={lat:Number(cluster.latitude),lon:Number(cluster.longitude)};
+    const count=Math.max(2,Number(cluster.count||2));
+    const marker=new longdo.Marker(loc,{
+     title:'Rider พร้อมรับงานโดยประมาณ',
+     icon:{html:'<div style="min-width:34px;height:34px;padding:0 7px;border-radius:17px;background:#fff;border:2px solid #e6002d;box-shadow:0 3px 12px #0003;display:flex;align-items:center;justify-content:center;gap:3px;color:#e6002d;font-weight:900;font-size:12px">'+ico('car',16)+'<span>'+count+'</span></div>'},
+     weight:longdo.OverlayWeight.Top
+    });
+    previewMap.Overlays.add(marker);
+   }
    add(pickup,'จุดรับ','#1677ff');add(destination,'จุดหมาย','#e6002d');
    if(points.length===1){previewMap.location(points[0],true);previewMap.zoom(16,true)}
    else if(points.length===2){
@@ -59,7 +86,7 @@
    const lat=pos.coords.latitude,lng=pos.coords.longitude;
    if(!qgIsValidCoordinate(lat,lng,true))throw Error('พิกัด GPS ไม่ถูกต้อง');
    const address=await qtReverseGeocodeCustomer(lat,lng);
-   pickup={lat,lng,address:address||'ตำแหน่งปัจจุบัน'};quote=null;
+   pickup={lat,lng,address:address||'ตำแหน่งปัจจุบัน'};quote=null;supplyAt=0;await refreshSupply(true);
   }catch(e){error=e?.code===1?'กรุณาอนุญาตการเข้าถึงตำแหน่ง':(e?.message||'ไม่สามารถรับตำแหน่งปัจจุบันได้')}
   finally{busy=false;if(onRide())render()}
  }
@@ -76,7 +103,11 @@
   }else{
    html+='<section class="card" style="padding:14px">';
    if(!config.enabled||!config.configured)html+='<p>บริการเรียกรถยังไม่เปิดให้ใช้ในขณะนี้</p>';
-   html+='<div id="ride-route-map" class="mapbox" style="height:245px;border-radius:16px;overflow:hidden;margin-bottom:12px;background:#eef1f4"></div>';
+   html+='<div id="ride-route-map" class="mapbox" style="height:245px;border-radius:16px;overflow:hidden;margin-bottom:8px;background:#eef1f4"></div>';
+   if(pickup){
+    const n=Number(supply.nearby_count||0);
+    html+='<div class="sm" style="display:flex;align-items:center;gap:7px;margin:0 2px 12px;color:#59606a"><span style="width:8px;height:8px;border-radius:50%;background:'+(n>0?'#18a875':'#a0a5ad')+'"></span><b>'+(n>0?'มี Rider พร้อมรับงานใกล้จุดรับ '+n+' คน':'ยังไม่พบ Rider พร้อมรับงานในระยะ 8 กม.')+'</b><span style="margin-left:auto;color:#8a9098">ตำแหน่งบนแผนที่เป็นแบบกลุ่มโดยประมาณ</span></div>';
+   }
    html+=rideLocationButton('pickup','จุดรับ',pickup?.address,'#1677ff');
    html+=rideLocationButton('destination','จุดหมาย',destination?.address,'#e6002d');
    if(!pickup&&!p&&config.enabled)html+='<button type="button" id="ride-use-current" style="width:100%;padding:10px 12px;border:1px solid #cfd9e6;border-radius:12px;background:#f7faff;color:#2e6db4;font-weight:800;margin-bottom:10px">ใช้ตำแหน่งปัจจุบันเป็นจุดรับ</button>';
@@ -133,7 +164,10 @@
   $('ride-save-location').onclick=()=>{
    const address=$('ride-address').value.trim();
    if(!point||address.length<3){$('ride-location-error').textContent='เลือกพิกัดและระบุที่อยู่ให้ครบ';return}
-   const next={...point,address};if(which==='pickup')pickup=next;else destination=next;quote=null;picker?.destroy();picker=null;render();
+   const next={...point,address};
+   if(which==='pickup'){pickup=next;supplyAt=0}else destination=next;
+   quote=null;picker?.destroy();picker=null;
+   if(which==='pickup')refreshSupply(true).finally(()=>{if(onRide())render()});else render();
   };
  }
  async function action(kind){
@@ -165,10 +199,11 @@
  }
  V.ride=async(id,ticket=routeVersion)=>{
   const u=actor();if(!u)return go('login');stop();
-  if(owner!==u){owner=u;pickup=currentPos?{lat:currentPos.lat,lng:currentPos.lng,address:currentPos.address}:null;destination=quote=selected=null;rows=[];error='';}
+  if(owner!==u){owner=u;pickup=currentPos?{lat:currentPos.lat,lng:currentPos.lng,address:currentPos.address}:null;destination=quote=selected=null;rows=[];error='';supply={nearby_count:0,clusters:[]};supplyAt=0;}
   if(id)selected=id;
   try{
    const c=await rpc('queuego_ride_config');if(!same(u)||ticket!==routeVersion)return;config=c||{};
+   if(pickup)await refreshSupply(true);if(!same(u)||ticket!==routeVersion)return;
    await refresh();if(!same(u)||ticket!==routeVersion)return;
   }catch(e){
    if(!same(u)||ticket!==routeVersion)return;
