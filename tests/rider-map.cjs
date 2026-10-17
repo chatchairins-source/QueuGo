@@ -21,6 +21,9 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('queuego-map-web.js?v=20261017-11'),true);
  eq(source.includes('queuego-map-service.js?v=20261017-1'),true);
  eq(source.includes('api.longdo.com/RouteService/geojson/route'),false);
+ eq(source.includes('google.navigation:'),false);
+ eq(source.includes('comgooglemaps://'),false);
+ eq(source.includes('qgLaunchGoogleNavigation'),false);
  eq(source.includes("service.call('route'"),true);
  const inAppNavFn=source.slice(source.indexOf('function qgNavigateInApp('),source.indexOf('/* order status'));
  eq(inAppNavFn.includes('qgLaunchGoogleNavigation('),false);
