@@ -68,7 +68,9 @@ eq(poor.pitch,24,'poor GPS accuracy should reduce perspective');
 
 const easeCalls=[];
 const map={
-  easeTo:opts=>easeCalls.push(opts),
+  bearing:90,
+  easeTo:opts=>{easeCalls.push(opts);if(Number.isFinite(opts.bearing))map.bearing=opts.bearing},
+  getBearing:()=>map.bearing,
   fitBounds:(bounds,opts)=>{map.fit={bounds,opts}}
 };
 const followed=Q.followNavigationCamera(map,{
@@ -78,6 +80,8 @@ ok(!!followed,'follow camera should apply');
 eq(easeCalls.length,1,'follow camera should use one camera transition');
 ok(easeCalls[0].pitch>0,'follow transition must include pitch');
 ok(Number.isFinite(easeCalls[0].bearing),'follow transition must include bearing');
+ok(typeof easeCalls[0].easing==='function','follow rotation must use a smooth easing curve');
+ok(easeCalls[0].duration>=320,'follow rotation should not snap instantly');
 
 Q.setNavigationFollow(map,false);
 eq(Q.followNavigationCamera(map,{lat:15,lng:103.003,speed:8,bearing:90},straight),null,'free pan must suspend automatic follow');
@@ -86,13 +90,14 @@ Q.setNavigationFollow(map,true);
 
 class GestureMap {
   constructor(opts){
-    this.opts=opts;this.handlers={};this.zoom=opts.zoom;this.easeCalls=[];
+    this.opts=opts;this.handlers={};this.zoom=opts.zoom;this.bearing=Number(opts.bearing)||0;this.easeCalls=[];
     this.touchZoomRotate={enableRotation(){},disableRotation(){}};
   }
   on(name,fn){this.handlers[name]=fn}
   addControl(){}
-  easeTo(opts){this.easeCalls.push(opts);if(Number.isFinite(opts.zoom))this.zoom=opts.zoom}
+  easeTo(opts){this.easeCalls.push(opts);if(Number.isFinite(opts.zoom))this.zoom=opts.zoom;if(Number.isFinite(opts.bearing))this.bearing=opts.bearing}
   getZoom(){return this.zoom}
+  getBearing(){return this.bearing}
   isStyleLoaded(){return true}
   getLayer(){return null}
   getSource(){return null}
@@ -114,8 +119,12 @@ gestureMap.handlers.zoomend({originalEvent:{touches:[]}});
 ok(gestureMap.easeCalls.at(-1).zoom>18.3&&gestureMap.easeCalls.at(-1).zoom<18.5,'pinch release must re-anchor Rider while preserving chosen zoom');
 const beforePinchFollow=gestureMap.easeCalls.length;
 gestureMap.handlers.dragstart({originalEvent:{touches:[{},{}]}});
+const duringPinchCalls=gestureMap.easeCalls.length;
 ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0025,speed:8,bearing:90,accuracy:5},straight)!=null,'two-finger pinch must not abandon Rider follow');
-ok(gestureMap.easeCalls.length>=beforePinchFollow,'pinch follow remains active');
+eq(gestureMap.easeCalls.length,duringPinchCalls,'automatic camera writes must pause while fingers are rotating/zooming the map');
+gestureMap.handlers.rotateend({originalEvent:{touches:[]}});
+ok(gestureMap.easeCalls.length>duringPinchCalls,'gesture release must smoothly re-anchor the follow camera');
+ok(gestureMap.easeCalls.at(-1).duration>=320,'gesture release rotation must be animated, not snapped');
 gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
 eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.003,speed:8,bearing:90,accuracy:5},straight),null,'one-finger pan should still enter free pan');
 
