@@ -140,7 +140,7 @@ def connected_outgoing(db,via):
             result.append((row["id"],row,branch))
     return result
 
-def probe_pair(via,from_id,fb,to_id,tb,kind,expect_forbidden):
+def probe_pair(via,from_id,fb,to_id,tb,kind,expect_forbidden,relation_id):
     attempts=[]
     for metres in (12,20,35,60):
         q,inc,out,d=query_for_pair(via,from_id,fb,to_id,tb,metres)
@@ -156,7 +156,19 @@ def probe_pair(via,from_id,fb,to_id,tb,kind,expect_forbidden):
             attempt["direct_hits"]=direct_transition(edges,via,from_id,fb,to_id,tb,kind)
             if attempt["anchored"]:
                 if expect_forbidden:
-                    attempt["proof"]="failed_prohibited_traversal" if attempt["direct_hits"] else "passed_avoidance"
+                    if attempt["direct_hits"]:
+                        attempt["raw_engine_prohibited_traversal"]=True
+                        try:
+                            engine._convert(route["trip"],"motorcycle",remember=False)
+                            attempt["queuego_runtime_blocked"]=False
+                            attempt["proof"]="failed_prohibited_traversal"
+                        except ValueError as error:
+                            message=str(error)
+                            attempt["queuego_runtime_error"]=message
+                            attempt["queuego_runtime_blocked"]=("no_u_turn relation "+str(relation_id)) in message
+                            attempt["proof"]="passed_queuego_runtime_block" if attempt["queuego_runtime_blocked"] else "failed_prohibited_traversal"
+                    else:
+                        attempt["proof"]="passed_avoidance"
                 else:
                     attempt["proof"]="passed_legal_direct" if attempt["direct_hits"] else "legal_target_not_direct"
                 attempts.append(attempt)
@@ -222,11 +234,11 @@ with engine.db() as db:
             if not pairs:
                 item["status"]="profile_inapplicable";item["reason"]="no motorcycle-valid prohibited branch pair from source geometry";results.append(item);continue
             for fw,fb,tw,tb,d in pairs:
-                attempts=probe_pair(via,fw,fb,tw,tb,kind,True)
+                attempts=probe_pair(via,fw,fb,tw,tb,kind,True,rid)
                 proof=next((x.get("proof") for x in attempts if x.get("proof")),None)
                 item["tests"].append({"role":"prohibited","from_way":fw,"from_side":fb["side"],"to_way":tw,"to_side":tb["side"],"expected_delta_deg":round(d,1),"attempts":attempts,"proof":proof})
                 if proof=="failed_prohibited_traversal":failed=True
-                elif proof=="passed_avoidance":proved+=1
+                elif proof in ("passed_avoidance","passed_queuego_runtime_block"):proved+=1
                 else:uncovered=True
         elif kind.startswith("only_"):
             legal_pairs=[]
@@ -238,7 +250,7 @@ with engine.db() as db:
                 item["status"]="profile_inapplicable";item["reason"]="no motorcycle-valid designated branch pair from source geometry";results.append(item);continue
             legal_ok=False
             for fw,fb,tw,tb,d in legal_pairs:
-                attempts=probe_pair(via,fw,fb,tw,tb,kind,False)
+                attempts=probe_pair(via,fw,fb,tw,tb,kind,False,rid)
                 proof=next((x.get("proof") for x in attempts if x.get("proof")),None)
                 item["tests"].append({"role":"designated_legal","from_way":fw,"from_side":fb["side"],"to_way":tw,"to_side":tb["side"],"expected_delta_deg":round(d,1),"attempts":attempts,"proof":proof})
                 if proof=="passed_legal_direct":legal_ok=True;proved+=1
@@ -256,13 +268,15 @@ with engine.db() as db:
                     proof=next((x.get("proof") for x in attempts if x.get("proof")),None)
                     item["tests"].append({"role":"only_rule_forbidden_exit","from_way":fw,"from_side":fb["side"],"to_way":tw,"to_side":tb["side"],"expected_delta_deg":round(d,1),"attempts":attempts,"proof":proof})
                     if proof=="failed_prohibited_traversal":failed=True
-                    elif proof=="passed_avoidance":proved+=1
+                    elif proof in ("passed_avoidance","passed_queuego_runtime_block"):proved+=1
                     else:uncovered=True
         else:
             uncovered=True;item["reason"]="unsupported restriction kind"
 
         item["proved_tests"]=proved
-        item["status"]="failed" if failed else "uncovered" if uncovered else "passed_directional"
+        runtime_blocks=sum(t.get("proof")=="passed_queuego_runtime_block" for t in item["tests"])
+        item["queuego_runtime_block_count"]=runtime_blocks
+        item["status"]="failed" if failed else "uncovered" if uncovered else "passed_runtime_block" if runtime_blocks else "passed_directional"
         results.append(item)
 
 summary={k:sum(r["status"]==k for r in results) for k in sorted({r["status"] for r in results})}
@@ -278,6 +292,7 @@ report={
     "physical_verification":False,
     "limitations":[
         "Directional branch probes prove the installed motorcycle graph behavior, not physical signs.",
+        "A raw Valhalla prohibited maneuver is code-gate-safe only when the shared QueueGo route boundary independently rejects that exact source relation.",
         "Profile-inapplicable means motorcycle access tags block the maneuver; it is not a claim about other vehicle profiles.",
         "Disconnected members and one-way direction conflicts remain source-open and are quarantined by the shared core.",
         "Malformed source relations remain OPEN and are never repaired or guessed."
@@ -285,4 +300,4 @@ report={
 }
 Path(A.output).write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
 print(json.dumps({"summary":summary,"well_formed_motorcycle_gate":report["well_formed_motorcycle_gate"],"all_source_rules_gate":report["all_source_rules_gate"]},ensure_ascii=False))
-if summary.get("failed",0):raise SystemExit("Installed graph traversed a prohibited turn")
+if summary.get("failed",0):raise SystemExit("QueueGo route boundary still permits a prohibited turn")
