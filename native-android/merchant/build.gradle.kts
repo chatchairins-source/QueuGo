@@ -16,6 +16,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = providers.environmentVariable("QG_MERCHANT_VERSION_CODE").orNull?.toInt() ?: 3
         versionName = providers.environmentVariable("QG_NATIVE_VERSION_NAME").orNull ?: "0.3.0-visual-blueprint"
+        manifestPlaceholders["queuegoMapServiceBaseUrl"] =
+            providers.environmentVariable("QG_MAP_SERVICE_BASE_URL").orNull ?: ""
     }
     buildFeatures { compose = true }
     compileOptions {
