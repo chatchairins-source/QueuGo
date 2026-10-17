@@ -23,6 +23,11 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('function qgSetHomeDockHTML'),true);
  eq(source.includes('qg-dock-collapsed'),true);
  eq(source.includes('margin:0 18px 6px auto'),true);
+ eq(source.includes("mapModeLabel=riderRouteOverviewActive?'ไปที่':'ภาพรวม'"),true);
+ eq(source.includes("mapMode.onclick=()=>riderRouteOverviewActive?recenterMap():overviewRoute()"),true);
+ eq(source.includes('function qgOverviewRoutePoints()'),true);
+ eq(source.includes('riderRouteOverviewActive=true;qgSyncCardMapMode()'),true);
+ eq(source.includes('riderRouteOverviewActive=false;qgSyncCardMapMode()'),true);
  eq(source.includes("aria-label',riderHomeDockCollapsed?'เปิดการ์ดกลับขนาดเดิม':'ย่อการ์ด'"),true);
  eq(source.includes('speed=meters<1.5?0:Math.min(55,meters/seconds)'),true);
  eq(source.includes('riderGpsCadenceMs'),true);
