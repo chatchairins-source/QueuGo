@@ -106,4 +106,15 @@ class RiderNavigationIntegrationTest {
         assertFalse(riderNavigationAutoFollow(true, NavigationViewMode.FREE_PAN))
         assertFalse(riderNavigationAutoFollow(true, NavigationViewMode.OVERVIEW))
     }
+
+    @Test fun targetedOfferCountsAsNavigationWorkAndStartsFollowCamera() {
+        val offeredStops = riderNavigationStops(
+            job(status = "searching_rider"),
+            emptyList(),
+            emptyList()
+        )
+        val navigationActive = offeredStops.any { !it.completed && it.point.valid }
+        assertTrue(navigationActive)
+        assertTrue(riderNavigationAutoFollow(navigationActive, NavigationViewMode.FOLLOW))
+    }
 }
