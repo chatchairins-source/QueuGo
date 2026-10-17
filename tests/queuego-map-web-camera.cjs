@@ -155,6 +155,15 @@ context.maplibregl={
 window.maplibregl=context.maplibregl;
 const host={classList:{add(){}},replaceChildren(){}};
 const gestureMap=Q.create(host,{lat:15,lng:103,zoom:17,navigation:true});
+
+// Startup/refresh regression: manipulating the map before the first GPS fix must not
+// silently abandon FOLLOW. The first valid fix should still own the camera.
+gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
+gestureMap.handlers.rotatestart({originalEvent:{touches:[{},{}]}});
+gestureMap.handlers.rotateend({originalEvent:{touches:[]}});
+ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0015,speed:8,bearing:90,accuracy:5},straight)!=null,
+  'pre-fix rotate/pan must retain follow ownership until first GPS fix');
+
 Q.followNavigationCamera(gestureMap,{lat:15,lng:103.002,speed:8,bearing:90,accuracy:5},straight,{force:true});
 gestureMap.zoom=18.4;
 gestureMap.handlers.zoomend({originalEvent:{touches:[]}});
@@ -169,6 +178,12 @@ ok(gestureMap.easeCalls.length>duringPinchCalls,'gesture release must smoothly r
 ok(gestureMap.easeCalls.at(-1).duration>=220,'gesture release rotation must remain animated even when speed-aware turn response is fast');
 gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
 eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.003,speed:8,bearing:90,accuracy:5},straight),null,'one-finger pan should still enter free pan');
+
+Q.setNavigationFollow(gestureMap,false);
+gestureMap.handlers.rotatestart({originalEvent:{touches:[{},{}]}});
+gestureMap.handlers.rotateend({originalEvent:{touches:[]}});
+ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0035,speed:8,bearing:90,accuracy:5},straight)!=null,
+  'explicit rotate transform must recover follow after dragstart ordering');
 
 Q.setNavigationMode(gestureMap,false,{center:{lat:15,lng:103.004},zoom:15,duration:300});
 eq(gestureMap.easeCalls.at(-1).bearing,0,'idle Rider map must return north-up');
