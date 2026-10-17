@@ -285,7 +285,16 @@ class NavigationCameraPolicyTest {
         val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)!!
         assertTrue(decision.bearingDegrees!! in 89f..91f)
         assertTrue(decision.tiltDegrees > 0f)
-        assertEquals(state.rider!!.point, decision.center)
+        assertTrue(decision.center.longitude > state.rider!!.point.longitude)
+        assertTrue(
+            navigationHaversineMeters(state.rider!!.point, decision.center) in 45.0..55.0
+        )
+    }
+
+    @Test fun freeDriveLookAheadGrowsWithSpeedWithoutHugeJumps() {
+        assertTrue(navigationFreeDriveLookAheadMeters(12f) > navigationFreeDriveLookAheadMeters(4f))
+        assertTrue(navigationFreeDriveLookAheadMeters(4f) > navigationFreeDriveLookAheadMeters(0.5f))
+        assertTrue(navigationFreeDriveLookAheadMeters(25f) <= 80.0)
     }
 
     @Test fun northCrossingTakesTwoDegreeTurn() {
