@@ -177,22 +177,24 @@ const customerGuestShell=read('customer/src/main/java/com/queuego/customer/Custo
 const customerApp=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
 const customerLocationPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
 const merchantShopSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
-const sharedLongdoMap=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
+const sharedQueueGoMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(
   customerLocationPicker.includes('LaunchedEffect(mapReady)') &&
   customerLocationPicker.includes('autoGpsRequested') &&
   customerLocationPicker.includes('if (!mapReady || autoGpsRequested) return@LaunchedEffect') &&
   !customerLocationPicker.includes('delay(80)\n        onGps()'),
-  'Customer location picker must wait for native Longdo readiness before automatic GPS permission handoff'
+  'Customer location picker must wait for QueueGo Map readiness before automatic GPS permission handoff'
 );
 ok(
-  merchantShopSetup.includes('QgLongdoLocationPickerMap(') &&
-  sharedLongdoMap.includes('shared_map_on_resume_failed') &&
-  sharedLongdoMap.includes('shared_map_renderer_state_failed') &&
-  sharedLongdoMap.includes('shared_map_on_pause_failed') &&
-  sharedLongdoMap.includes('shared_map_created_pause_failed') &&
-  sharedLongdoMap.includes('runCatching { activeView.onResume() }'),
-  'Customer/Merchant shared Longdo picker lifecycle must fail closed instead of crashing the native process'
+  merchantShopSetup.includes('QgLocationPickerMap(') &&
+  sharedQueueGoMap.includes('MapLibre.getInstance') &&
+  sharedQueueGoMap.includes('fun QgLocationPickerMap(') &&
+  sharedQueueGoMap.includes('Lifecycle.Event.ON_RESUME -> holder.resume()') &&
+  sharedQueueGoMap.includes('Lifecycle.Event.ON_PAUSE -> holder.pause()') &&
+  sharedQueueGoMap.includes('Lifecycle.Event.ON_DESTROY -> holder.destroy()') &&
+  sharedQueueGoMap.includes('view?.onDestroy()') &&
+  sharedQueueGoMap.includes('holder.destroy()'),
+  'Customer/Merchant shared QueueGo MapLibre picker lifecycle must follow lifecycle ownership and destroy the MapView'
 );
 ok(customerAuthScreen.includes('CustomerBottomNavigation(screen = "login", cartCount = guestCartCount)')&&customerAuthScreen.includes('Spacer(Modifier.height(92.dp))'),'Customer native auth must preserve the Production web fixed four-tab navigation and 92dp content clearance');
 ok(customerAuthScreen.includes('.windowInsetsPadding(WindowInsets.statusBars)')&&customerAuthScreen.includes('padding(horizontal = 12.dp, vertical = 6.dp)')&&customerAuthScreen.includes('.widthIn(max = 720.dp)'),'Customer native auth top bar must preserve Production web safe-area, compact spacing and 720px content width');
@@ -250,7 +252,7 @@ ok(
   'Merchant media gallery must lazy-render rows instead of decoding the full image library at once'
 );
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
-const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
+const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(
   merchantAppSource.includes('runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90) }') &&
   /val started = runCatching \{[\s\S]*?tone\.startTone\(ToneGenerator\.TONE_PROP_BEEP2, 650\)[\s\S]*?\}\.getOrDefault\(false\)/.test(merchantAppSource) &&
@@ -259,10 +261,13 @@ ok(
   'Merchant notification audio must fail closed if the Android audio service cannot create or play a tone'
 );
 ok(
-  sharedMapForStability.includes('fun releaseGraphics()') &&
-  sharedMapForStability.includes('bitmap.recycle()') &&
-  sharedMapForStability.includes('holder.releaseGraphics()'),
-  'Shared Longdo tracking maps must release owned marker Bitmaps when the map leaves composition'
+  sharedMapForStability.includes('private class QueueGoTrackingMapHolder') &&
+  sharedMapForStability.includes('view?.onDestroy()') &&
+  sharedMapForStability.includes('map = null') &&
+  sharedMapForStability.includes('view = null') &&
+  sharedMapForStability.includes('holder.destroy()') &&
+  !sharedMapForStability.includes('Bitmap.createBitmap('),
+  'Shared QueueGo MapLibre tracking maps must destroy MapView ownership without legacy marker bitmap caches'
 );
 ok(merchantAppSource.includes('LaunchedEffect(screen, auth.session.accessToken, lifecycle)')&&
    merchantAppSource.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')&&
@@ -329,7 +334,7 @@ ok(riderApp.includes('if (current == null) {')&&
    riderApp.includes('Text("ลองเชื่อมต่ออีกครั้ง")')&&
    !riderApp.includes('"กำลังเชื่อมต่อ Longdo Map…"'),
    'Rider refresh errors must keep an existing safe snapshot visible and initial loading must stay silent unless there is a real first-load failure');
-const riderMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
+const riderMap=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
 const nativeRealtimeSubscriptions=read('shared/src/main/java/com/queuego/shared/NativeRealtimeSubscription.kt');
 const riderDispatchLaundryMigration=fs.readFileSync(path.resolve(root,'..','supabase','migrations','20261009044500_rider_dispatch_excludes_active_laundry.sql'),'utf8');
 ok(riderDispatchLaundryMigration.includes("from public.laundry_rider_jobs lj")&&riderDispatchLaundryMigration.includes("lj.status in('assigned','accepted','arrived','collected')"),'automatic Rider dispatch must not offer normal delivery work during an active Laundry leg');
@@ -353,7 +358,7 @@ ok(riderApi.includes('/functions/v1/queuego-push')&&riderApi.includes('"subscrib
 ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes('UUID.randomUUID().toString()'),'Rider push subscription must use a stable UUID device id');
 ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
 ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
-ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
+ok(source.includes('QueueGoRiderNavigationMap(')&&gradle.includes('implementation(project(\":rider-navigation-map\"))')&&read('rider-navigation-map/build.gradle.kts').includes('org.maplibre.gl:android-sdk-opengl:13.5.3'),'native Rider must include QueueGo MapLibre navigation host');
 const riderJobDock=read('rider/src/main/java/com/queuego/rider/RiderJobDock.kt');
 ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
    riderApp.includes('RiderJobDock(')&&riderApp.includes('val dockKey = when {')&&
@@ -393,8 +398,9 @@ ok(riderSessionStore.includes('saveHomeSnapshot(')&&riderSessionStore.includes('
 ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.includes('android:alwaysRetainTaskState="true"'),'Rider launcher must reuse its existing task instead of creating a fresh work activity after app switching');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
 const customerManifest=read('customer/src/main/AndroidManifest.xml');
-ok(customerManifest.includes('longdo.map.key')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer Longdo picker must declare map key and location permission');
-ok(source.includes('deviceLocation')&&source.includes('setLocation(MapLocation')&&source.includes('ldmap.removePin')&&source.includes('pushPin'),'native Rider map must use Android GPS and show rider/job pins');
+ok(customerManifest.includes('queuego.map.service.base_url')&&customerManifest.includes('${queuegoMapServiceBaseUrl}')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer QueueGo Map picker must declare map service config and location permission');
+const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
+ok(riderNavigationLocationService.includes('LocationServices.getFusedLocationProviderClient')&&riderNavigationLocationService.includes('NavigationMapFix(')&&riderMap.includes('stopMarkers += activeMap.addMarker(')&&riderMap.includes('riderMarker = activeMap.addMarker('),'native Rider QueueGo Map must use Android fused GPS and render rider/job markers');
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
@@ -417,10 +423,10 @@ ok(source.includes('shop_support_messages?select=id,sender_user_id,body,created_
 const merchantSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
 const merchantImageUpload=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
 const merchantManifest=read('merchant/src/main/AndroidManifest.xml');
-ok(merchantSetup.includes('QgLongdoLocationPickerMap(')&&merchantSetup.includes('ใช้ตำแหน่ง GPS ปัจจุบัน')&&merchantSetup.includes('บันทึกข้อมูลร้าน'),'Merchant native shop setup must preserve Longdo picker, GPS and save flow');
+ok(merchantSetup.includes('QgLocationPickerMap(')&&merchantSetup.includes('ใช้ตำแหน่ง GPS ปัจจุบัน')&&merchantSetup.includes('บันทึกข้อมูลร้าน'),'Merchant native shop setup must preserve QueueGo Map picker, GPS and save flow');
 ok(merchantSetup.includes('mobile_accessories')&&merchantSetup.includes('automotive_motorcycle')&&merchantSetup.includes('home_decor'),'Merchant native Shopping setup must preserve web subcategories');
 ok(merchantImageUpload.includes('/storage/v1/object/merchant-media/')&&merchantImageUpload.includes('12 * 1024 * 1024')&&merchantImageUpload.includes('3 * 1024 * 1024'),'Merchant native shop images must use production merchant-media limits');
-ok(merchantManifest.includes('ACCESS_FINE_LOCATION')&&merchantManifest.includes('longdo.map.key'),'Merchant native setup must declare location and Longdo key');
+ok(merchantManifest.includes('ACCESS_FINE_LOCATION')&&merchantManifest.includes('queuego.map.service.base_url')&&merchantManifest.includes('${queuegoMapServiceBaseUrl}'),'Merchant native setup must declare location and QueueGo Map service config');
 ok(source.includes('saveShopSetup(')&&source.includes('shop_profiles?id=eq.')&&source.includes('users?id=eq.'),'Merchant native setup must persist owned shop and user profile');
 const merchantHours=read('merchant/src/main/java/com/queuego/merchant/MerchantHoursScreen.kt');
 ok(source.includes('merchant_save_hours')&&source.includes('shop_business_hours?select=weekday,opens_at,closes_at,is_closed')&&source.includes('shop_special_hours?select=day,is_closed,opens_at,closes_at'),'Merchant native hours must reuse Production hours tables and RPC');
@@ -497,7 +503,7 @@ ok(source.includes('SYSTEM_ALERT_WINDOW')&&source.includes('TYPE_APPLICATION_OVE
 ok(source.includes('FOREGROUND_SERVICE_SPECIAL_USE')&&source.includes('RiderReturnService'),'navigation return overlay must run as explicit foreground special-use service');
 ok(source.includes('ACTION_MANAGE_OVERLAY_PERMISSION'),'overlay permission must be explicitly user-controlled');
 ok(source.includes('RiderReturnService.stop'),'overlay service must have cleanup path');
-ok(riderMap.includes('map_inflate_failed')&&riderMap.includes('map_on_resume_failed')&&riderMap.includes('map_on_pause_failed')&&riderMap.includes('return@AndroidView root'),'Rider Longdo host must fail safe instead of crashing the process when SDK inflate/resume/pause fails');
+ok(riderMap.includes('MapLibre.getInstance')&&riderMap.includes('if (disposed || view !== mapView) return@getMapAsync')&&riderMap.includes('if (disposed) return@setStyle')&&riderMap.includes('if (disposed || resumed) return')&&riderMap.includes('view?.onPause()')&&riderMap.includes('view?.onDestroy()'),'Rider MapLibre host must guard renderer callbacks and lifecycle after disposal');
 const riderReturnService=read('rider/src/main/java/com/queuego/rider/RiderReturnService.kt');
 ok(riderReturnService.includes('foreground_start_rejected')&&riderReturnService.includes('start_foreground_failed')&&riderReturnService.includes('foregroundStarted'),'Rider navigation return service must tolerate Android foreground-service rejection without crashing');
 ok(!/cash-confirm|ยืนยันชำระเงินให้ร้าน|ยืนยันเก็บเงินจากลูกค้า/i.test(source),'native Rider must not reintroduce manual cash confirmation screens');
@@ -533,8 +539,11 @@ ok(riderApp.includes('RiderLaundryActiveCard(')&&riderApp.includes('RiderLaundry
 ok(!nativeRealtimeSubscriptions.includes('laundry_rider_'),'Rider must not subscribe to shop-managed Laundry dispatch');
 ok(riderApi.includes('"queuego_route_bundle_active_orders"')&&riderApi.includes('"queuego_route_bundle_candidates"')&&riderApi.includes('"bundle_claim"'),'Rider Native must use Production Route Bundle reads and idempotent claim');
 ok(riderApp.includes('RiderRouteBundlePanel(')&&riderApp.includes('bundleOrders = snapshot?.bundle?.activeOrders.orEmpty()'),'Rider Native Home must render Route Bundle state and pass every stop to Longdo');
-ok(riderMap.includes('bundleOrders: List<RiderBundleOrder> = emptyList()')&&
-   riderMap.includes('val pickupOrder = numberedOrders.sortedWith')&&
-   riderMap.includes('val dropOrder = numberedOrders.sortedWith')&&
-   riderMap.includes('pickupOrder.size + index + 1'),
-   'Rider Native Longdo must render every live Route Bundle stop with stable pickup-then-drop numbering');
+const riderNavigationIntegration=read('rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
+ok(riderNavigationIntegration.includes('bundleOrders: List<RiderBundleOrder>')&&
+   riderNavigationIntegration.includes('val pickups = usable.sortedWith')&&
+   riderNavigationIntegration.includes('compareBy<RiderBundleOrder> { it.bundleSequence }')&&
+   riderNavigationIntegration.includes('compareBy<RiderBundleOrder> { it.dropRank }')&&
+   riderNavigationIntegration.includes('val offset = pickups.size')&&
+   riderNavigationIntegration.includes('sequence = offset + index + 1'),
+   'Rider Native QueueGo navigation must render every live Route Bundle stop with stable pickup-then-drop numbering');

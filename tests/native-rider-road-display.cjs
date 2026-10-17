@@ -1,6 +1,6 @@
 const assert=require('assert'), fs=require('fs');
 const road=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderRouteDisplay.kt','utf8');
-const map=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt','utf8');
+const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt','utf8');
 assert(road.includes('floatArrayOf(163f / 255f, 0f, 31f / 255f, 1f)') && road.includes('floatArrayOf(230f / 255f, 0f, 45f / 255f, 76f / 255f)'));
 assert(road.includes('RouteService/geojson/route'));
 assert(road.includes('riderRouteDisplayStops') && road.includes('it.bundleSequence') && road.includes('it.dropRank'));
@@ -12,7 +12,7 @@ assert(road.includes('while (cache.size > 32)'));
 assert(road.includes('line.setLocation('));
 assert(!road.includes('setZoom(') && !road.includes('setLocation(MapLocation('));
 assert(!road.includes('google.navigation') && !road.includes('TextToSpeech') && !road.includes('interval'));
-assert(map.includes('roadDisplay.update(') && map.includes('roadDisplay.pause()') && map.includes('roadDisplay.dispose()'));
+assert(map.includes('renderRoutes(activeMap, state, force)') && map.includes('activeMap.removePolyline(line)') && map.includes('routeLines.clear()'));
 const disposeAt=map.indexOf('fun dispose()');
 const clearPinAt=map.indexOf('clearPin()');
 assert(disposeAt>=0 && clearPinAt>disposeAt && clearPinAt===map.lastIndexOf('clearPin()'));

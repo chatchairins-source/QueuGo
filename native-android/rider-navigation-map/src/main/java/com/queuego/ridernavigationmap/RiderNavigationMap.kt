@@ -1,24 +1,10 @@
 package com.queuego.ridernavigationmap
 
 import android.animation.ValueAnimator
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.PointF
-import android.graphics.Typeface
-import android.os.Handler
-import android.os.Looper
-import android.os.SystemClock
-import android.util.Log
-import android.view.LayoutInflater
+import android.content.Context
 import android.view.MotionEvent
-import android.view.PixelCopy
-import android.view.View
 import android.view.ViewConfiguration
-import android.view.animation.LinearInterpolator
-import android.widget.FrameLayout
-import android.widget.ImageView
+import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -28,43 +14,30 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.longdo.api.IMapListener
-import com.longdo.api.Line
-import com.longdo.api.LongdoLayer
-import com.longdo.api.MapGLSurfaceView
-import com.longdo.api.Pin
-import com.longdo.api.type.MapLocation
-import com.queuego.shared.R as SharedR
+import com.queuego.shared.queueGoMapStyle
+import com.queuego.shared.queueGoMapVectorSourceUri
+import org.maplibre.android.MapLibre
+import org.maplibre.android.annotations.Marker
+import org.maplibre.android.annotations.MarkerOptions
+import org.maplibre.android.annotations.Polyline
+import org.maplibre.android.annotations.PolylineOptions
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
+import kotlin.math.hypot
 
 private const val RIDER_MARKER_DEFAULT_ANIMATION_MS = 1_050L
 private const val RIDER_MARKER_MIN_ANIMATION_MS = 420L
 private const val RIDER_MARKER_MAX_ANIMATION_MS = 1_200L
 private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 1.05
 private const val RIDER_MARKER_TELEPORT_METERS = 120.0
-private const val CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L
-private const val CAMERA_ROTATION_FALLBACK_MS = 520L
-private const val CAMERA_TRANSFORM_SETTLE_MS = 110L
-private const val CAMERA_MANUAL_ZOOM_HOLD_MS = 12_000L
 private const val CAMERA_BEARING_MIN_DELTA_DEGREES = 0.75f
-private const val DEFAULT_LONGITUDE = 100.5018
-private const val DEFAULT_LATITUDE = 13.7563
-private const val SNAPSHOT_CAPTURE_THROTTLE_MS = 1_200L
-private const val RIDER_NAV_SNAPSHOT_MAX_SIDE_PX = 1280
-private const val SNAPSHOT_CAPTURE_DELAY_MS = 180L
-private const val SNAPSHOT_BRIDGE_SETTLE_MS = 500L
-private const val SNAPSHOT_BRIDGE_RETRY_MS = 250L
-private const val SNAPSHOT_BRIDGE_MAX_ATTEMPTS = 8
-private const val SNAPSHOT_QUIET_RETRY_MS = 250L
-private const val SNAPSHOT_QUIET_MAX_ATTEMPTS = 12
-private const val RENDERER_WATCH_INTERVAL_MS = 100L
-private const val RENDERER_WATCH_MAX_ATTEMPTS = 50
-
-private val ACTIVE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.96f)
-private val FUTURE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.28f)
-
-private data class RenderedStop(val signature: String, val pin: Pin)
-private data class RenderedDemandZone(val signature: String, val pin: Pin)
-private data class RiderPuckBitmapKey(val rotationDegrees: Int, val opacityPercent: Int)
+private const val CAMERA_ANIMATION_MS = 480
+private const val CAMERA_OVERVIEW_ANIMATION_MS = 380
+private const val DEFAULT_LONGITUDE = 101.0
+private const val DEFAULT_LATITUDE = 15.0
 
 internal fun riderMarkerMoveThresholdMeters(speedMetersPerSecond: Float?): Double = when {
     speedMetersPerSecond == null -> 1.0
@@ -82,11 +55,15 @@ internal fun shouldMoveRiderMarker(
         riderMarkerMoveThresholdMeters(nextFix.speedMetersPerSecond)
 }
 
-internal fun riderMarkerAnimationSeconds(previousFix: NavigationMapFix?, nextFix: NavigationMapFix): Double =
-    riderMarkerAnimationMillis(previousFix, nextFix) / 1000.0
+internal fun riderMarkerAnimationSeconds(
+    previousFix: NavigationMapFix?,
+    nextFix: NavigationMapFix
+): Double = riderMarkerAnimationMillis(previousFix, nextFix) / 1000.0
 
-internal fun shouldAnimateRiderMarker(previous: NavigationMapPoint, next: NavigationMapPoint): Boolean =
-    navigationHaversineMeters(previous, next) < RIDER_MARKER_TELEPORT_METERS
+internal fun shouldAnimateRiderMarker(
+    previous: NavigationMapPoint,
+    next: NavigationMapPoint
+): Boolean = navigationHaversineMeters(previous, next) < RIDER_MARKER_TELEPORT_METERS
 
 internal fun riderMarkerAnimationMillis(
     previousRenderedFix: NavigationMapFix?,
@@ -101,1259 +78,396 @@ internal fun riderMarkerAnimationMillis(
     return (cadenceMillis * RIDER_MARKER_ANIMATION_CADENCE_RATIO)
         .toLong()
         .coerceIn(RIDER_MARKER_MIN_ANIMATION_MS, RIDER_MARKER_MAX_ANIMATION_MS)
-        .coerceAtMost((cadenceMillis * RIDER_MARKER_ANIMATION_CADENCE_RATIO).toLong().coerceAtLeast(0L))
+        .coerceAtMost(
+            (cadenceMillis * RIDER_MARKER_ANIMATION_CADENCE_RATIO)
+                .toLong()
+                .coerceAtLeast(0L)
+        )
 }
 
 private class RiderNavigationMapHolder {
-    private var onCameraChanged: (NavigationMapCamera) -> Unit = {}
-    private var onDiagnostics: ((NavigationMapDiagnostics) -> Unit)? = null
-    var container: FrameLayout? = null
-    var view: MapGLSurfaceView? = null
-    var snapshotOverlay: ImageView? = null
-    var map: com.longdo.api.Map? = null
+    var view: MapView? = null
+    var map: MapLibreMap? = null
     var disposed = false
 
-    private val mainHandler = Handler(Looper.getMainLooper())
+    private var started = false
     private var resumed = false
-    private var snapshotBitmap: Bitmap? = null
-    private var snapshotCaptureInFlight = false
-    private var snapshotRefreshScheduled = false
-    private var lastSnapshotCaptureAtMs = 0L
-    private var bridgeGeneration = 0
-    private var pendingBridgeWithoutSnapshot = false
-    private var rendererWatchGeneration = 0
-    private var announcedReplacementMap: com.longdo.api.Map? = null
-    private var lastKnownCamera: NavigationMapCamera? = null
+    private var sourceUri: String? = null
+    private var styleReady = false
     private var lastState = RiderNavigationMapState()
-    private var riderPin: Pin? = null
-    private var lastRiderFix: NavigationMapFix? = null
+    private var lastRouteSignature: Int? = null
+    private var lastStopSignature: Int? = null
+    private var lastDemandSignature: Int? = null
     private var lastRenderedRiderFix: NavigationMapFix? = null
-    private var riderMarkerAnimator: ValueAnimator? = null
-    private var cameraBearingAnimator: ValueAnimator? = null
-    private var lastCameraBearingAnimationAtMs: Long = 0L
-    private var navigationTransformGestureActive = false
-    private var navigationTransformGestureGeneration = 0
-    private var navigationInteractionEnabled: Boolean? = null
-    private var manualFollowZoom: Int? = null
-    private var manualFollowZoomUntilMs: Long = 0L
-    private var lastCameraFix: NavigationMapPoint? = null
-    private var lastCameraCenter: NavigationMapPoint? = null
-    private var lastCameraBearing: Float? = null
-    private var lastCameraTilt: Float? = null
-    private var lastCameraZoomChangeAtMs: Long = 0L
-    private var surfaceVisible = false
-    private var puckFreshnessGeneration = 0
-    private var lastPuckRotation: Float? = null
-    private var lastPuckOpacity: Float? = null
-    private var lastOverviewSignature: String? = null
-    private var idleCameraGeneration = 0
-    private val stopPins = linkedMapOf<String, RenderedStop>()
-    private val demandPins = linkedMapOf<String, RenderedDemandZone>()
-    private val routeLines = mutableListOf<Line>()
-    private var renderedRouteSegments: List<NavigationRouteSegment> = emptyList()
-    private val markerBitmaps = mutableMapOf<Int, Bitmap>()
-    private val riderPuckBitmaps = mutableMapOf<RiderPuckBitmapKey, Bitmap>()
-    private val stopBitmaps = mutableMapOf<Triple<NavigationStopKind, Int, Boolean>, Bitmap>()
-    private val demandBitmaps = mutableMapOf<Int, Bitmap>()
-    private var stopSource: List<NavigationMapStop>? = null
-    private var demandSource: List<NavigationDemandZone>? = null
-    private var stopActiveId: String? = null
-    private var routeSource: List<NavigationRouteSegment>? = null
-    private var routeActiveId: String? = null
-    private var routeRemainingStopIds: Set<String> = emptySet()
-
-    private var viewCreatedCount = 0
-    private var mapCreatedCount = 0
+    private var riderMarker: Marker? = null
+    private var riderAnimator: ValueAnimator? = null
+    private val routeLines = mutableListOf<Polyline>()
+    private val stopMarkers = mutableListOf<Marker>()
+    private val demandMarkers = mutableListOf<Marker>()
+    private var renderPassCount = 0
     private var routeLayerRebuildCount = 0
     private var routeGeometryUpdateCount = 0
     private var stopMutationCount = 0
     private var demandMutationCount = 0
-    private var renderPassCount = 0
-    private var snapshotCaptureCount = 0
-    private var snapshotBridgeCount = 0
-    private var snapshotBridgeFailureCount = 0
-    private var mapReplacementCount = 0
-    private var snapshotVisible = false
+    private var viewCreatedCount = 0
+    private var mapCreatedCount = 0
+    private var lastCameraPoint: NavigationMapPoint? = null
+    private var lastCameraBearing: Float? = null
+    private var lastCameraTilt: Float? = null
+    private var lastOverviewSignature: Int? = null
+    private var onCameraChanged: (NavigationMapCamera) -> Unit = {}
+    private var onUserGesture: () -> Unit = {}
+    private var onDiagnostics: ((NavigationMapDiagnostics) -> Unit)? = null
+    private var onReady: (Boolean) -> Unit = {}
+    private var touchDownX = 0f
+    private var touchDownY = 0f
+    private var gestureReported = false
+    private var touchSlop = 8f
 
     fun bindCallbacks(
+        ready: (Boolean) -> Unit,
         cameraChanged: (NavigationMapCamera) -> Unit,
+        userGesture: () -> Unit,
         diagnostics: ((NavigationMapDiagnostics) -> Unit)?
     ) {
-        // Binding happens during composition; never emit diagnostics from here or a callback
-        // that writes Compose state could create a recomposition loop.
+        onReady = ready
         onCameraChanged = cameraChanged
+        onUserGesture = userGesture
         onDiagnostics = diagnostics
     }
 
     fun unbindCallbacks() {
+        onReady = {}
         onCameraChanged = {}
+        onUserGesture = {}
         onDiagnostics = null
     }
 
-    private fun cancelCameraBearingAnimation() {
-        cameraBearingAnimator?.cancel()
-        cameraBearingAnimator = null
-    }
-
-    private fun clearNavigationGestureOverrides() {
-        navigationTransformGestureGeneration += 1
-        navigationTransformGestureActive = false
-        manualFollowZoom = null
-        manualFollowZoomUntilMs = 0L
-    }
-
-    fun beginNavigationTransformGesture() {
-        if (disposed) return
-        navigationTransformGestureGeneration += 1
-        navigationTransformGestureActive = true
-        cancelCameraBearingAnimation()
-        map?.let { activeMap ->
-            runCatching { normalizeNavigationBearing(activeMap.getRotate()) }
-                .getOrNull()
-                ?.let { lastCameraBearing = it }
+    fun ensureView(
+        context: Context,
+        source: String,
+        initialCamera: NavigationMapCamera?
+    ): MapView {
+        val existing = view
+        if (
+            existing != null &&
+            existing.context === context &&
+            sourceUri == source &&
+            !disposed
+        ) {
+            return existing
         }
-    }
 
-    fun endNavigationTransformGesture() {
-        if (disposed) return
-        val activeMap = map ?: return
-        val generation = ++navigationTransformGestureGeneration
-        val now = SystemClock.elapsedRealtime()
-        manualFollowZoom = runCatching { activeMap.getZoom() }.getOrNull()
-        manualFollowZoomUntilMs = now + CAMERA_MANUAL_ZOOM_HOLD_MS
-        mainHandler.postDelayed({
-            if (disposed || map !== activeMap || generation != navigationTransformGestureGeneration) return@postDelayed
-            navigationTransformGestureActive = false
-            if (!lastState.followRider || lastState.viewMode != NavigationViewMode.FOLLOW) return@postDelayed
-            if (lastState.rider?.point?.valid != true && lastRiderFix?.point?.valid != true) return@postDelayed
-            lastCameraCenter = null
-            lastCameraTilt = null
-            followRider(
-                activeMap,
-                lastState.copy(rider = lastState.rider?.takeIf { it.point.valid } ?: lastRiderFix)
-            )
-        }, CAMERA_TRANSFORM_SETTLE_MS)
-    }
-
-    fun beginNavigationPanGesture() {
-        clearNavigationGestureOverrides()
-        cancelCameraBearingAnimation()
-    }
-
-    private fun syncNavigationInteractionMode(
-        activeMap: com.longdo.api.Map,
-        state: RiderNavigationMapState
-    ) {
-        val enabled = state.perspectiveCameraEnabled || state.remainingStops().isNotEmpty()
-        if (navigationInteractionEnabled == enabled) return
-        runCatching {
-            activeMap.setCanRotateCamera(enabled)
-            activeMap.setCanTilt(enabled)
-        }.onSuccess {
-            navigationInteractionEnabled = enabled
-            if (!enabled) {
-                cancelCameraBearingAnimation()
-                clearNavigationGestureOverrides()
-            }
-        }.onFailure {
-            Log.w("QueueGoNavMap", "navigation_interaction_mode_failed", it)
-        }
-    }
-
-    private fun animateCameraBearing(
-        activeMap: com.longdo.api.Map,
-        targetBearing: Float,
-        nowMs: Long,
-        speedMetersPerSecond: Float?
-    ) {
-        val currentBearing = runCatching { normalizeNavigationBearing(activeMap.getRotate()) }
-            .getOrNull()
-            ?: lastCameraBearing
-            ?: normalizeNavigationBearing(targetBearing)
-        val target = normalizeNavigationBearing(targetBearing)
-        val delta = navigationShortestBearingDelta(currentBearing, target)
-        if (kotlin.math.abs(delta) < CAMERA_BEARING_MIN_DELTA_DEGREES) {
-            lastCameraBearing = currentBearing
-            return
-        }
-        val cadence = lastCameraBearingAnimationAtMs
-            .takeIf { it > 0L }
-            ?.let { (nowMs - it).coerceAtLeast(1L) }
-        val durationMs = navigationRotationDurationMillis(
-            currentBearing = currentBearing,
-            targetBearing = target,
-            cadenceMillis = cadence,
-            fallbackMillis = CAMERA_ROTATION_FALLBACK_MS,
-            speedMetersPerSecond = speedMetersPerSecond
-        )
-        cancelCameraBearingAnimation()
-        val animator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = durationMs
-            interpolator = LinearInterpolator()
-            addUpdateListener { animation ->
-                if (
-                    disposed ||
-                    map !== activeMap ||
-                    navigationTransformGestureActive ||
-                    !lastState.followRider ||
-                    lastState.viewMode != NavigationViewMode.FOLLOW
-                ) {
-                    animation.cancel()
-                    return@addUpdateListener
-                }
-                val eased = navigationCameraEaseInOut(animation.animatedFraction)
-                val rendered = normalizeNavigationBearing(currentBearing + delta * eased)
-                runCatching { activeMap.rotate(rendered, false) }
-                    .onSuccess { lastCameraBearing = rendered }
-                    .onFailure { animation.cancel() }
-            }
-        }
-        cameraBearingAnimator = animator
-        lastCameraBearingAnimationAtMs = nowMs
-        animator.start()
-    }
-
-    fun attachContainer(root: FrameLayout, overlay: ImageView) {
-        container = root
-        snapshotOverlay = overlay
-        snapshotBitmap?.let { bitmap ->
-            overlay.setImageBitmap(bitmap)
-            overlay.visibility = if (snapshotVisible) View.VISIBLE else View.GONE
-            if (snapshotVisible) overlay.bringToFront()
-        }
-    }
-
-    private fun replaceSnapshot(next: Bitmap) {
-        val previous = snapshotBitmap
-        snapshotBitmap = next
-        snapshotOverlay?.setImageBitmap(next)
-        if (previous != null && previous !== next && !previous.isRecycled) previous.recycle()
-    }
-
-    private fun setSnapshotVisible(visible: Boolean, countBridge: Boolean = false) {
-        val overlay = snapshotOverlay
-        if (visible && snapshotBitmap != null && overlay != null) {
-            overlay.setImageBitmap(snapshotBitmap)
-            overlay.visibility = View.VISIBLE
-            overlay.bringToFront()
-            if (!snapshotVisible && countBridge) snapshotBridgeCount += 1
-            snapshotVisible = true
-        } else if (!visible) {
-            overlay?.visibility = View.GONE
-            snapshotVisible = false
-        }
-        publishDiagnostics()
-    }
-
-    private fun requestSnapshot(
-        force: Boolean,
-        bridgeToken: Int? = null,
-        attempt: Int = 0,
-        quietRetry: Boolean = false
-    ) {
-        val activeView = view ?: return
-        if (disposed) return
-        if (activeView.width <= 0 || activeView.height <= 0) {
-            when {
-                bridgeToken != null && attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS -> {
-                    mainHandler.postDelayed(
-                        { requestSnapshot(true, bridgeToken, attempt + 1, quietRetry) },
-                        SNAPSHOT_BRIDGE_RETRY_MS
-                    )
-                }
-                quietRetry && attempt < SNAPSHOT_QUIET_MAX_ATTEMPTS -> {
-                    mainHandler.postDelayed(
-                        { requestSnapshot(true, null, attempt + 1, true) },
-                        SNAPSHOT_QUIET_RETRY_MS
-                    )
-                }
-            }
-            return
-        }
-        if (snapshotCaptureInFlight) {
-            when {
-                bridgeToken != null && attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS -> {
-                    mainHandler.postDelayed(
-                        { requestSnapshot(true, bridgeToken, attempt + 1, quietRetry) },
-                        SNAPSHOT_BRIDGE_RETRY_MS
-                    )
-                }
-                quietRetry && attempt < SNAPSHOT_QUIET_MAX_ATTEMPTS -> {
-                    mainHandler.postDelayed(
-                        { requestSnapshot(true, null, attempt + 1, true) },
-                        SNAPSHOT_QUIET_RETRY_MS
-                    )
-                }
-            }
-            return
-        }
-        val now = SystemClock.elapsedRealtime()
-        if (!force && (snapshotVisible || now - lastSnapshotCaptureAtMs < SNAPSHOT_CAPTURE_THROTTLE_MS)) return
-
-        val sourceWidth = activeView.width.coerceAtLeast(1)
-        val sourceHeight = activeView.height.coerceAtLeast(1)
-        val sourceMaxSide = maxOf(sourceWidth, sourceHeight)
-        val snapshotScale = minOf(
-            1f,
-            RIDER_NAV_SNAPSHOT_MAX_SIDE_PX.toFloat() / sourceMaxSide.toFloat()
-        )
-        val width = maxOf(1, (sourceWidth * snapshotScale).toInt())
-        val height = maxOf(1, (sourceHeight * snapshotScale).toInt())
-        val target = runCatching {
-            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        }.getOrNull() ?: return
-
-        snapshotCaptureInFlight = true
-        runCatching {
-            PixelCopy.request(activeView, target, { result ->
-                snapshotCaptureInFlight = false
-                if (disposed) {
-                    if (!target.isRecycled) target.recycle()
-                    return@request
-                }
-                if (result == PixelCopy.SUCCESS) {
-                    replaceSnapshot(target)
-                    lastSnapshotCaptureAtMs = SystemClock.elapsedRealtime()
-                    snapshotCaptureCount += 1
-                    if (bridgeToken != null && bridgeToken == bridgeGeneration) {
-                        setSnapshotVisible(false)
-                    } else if (pendingBridgeWithoutSnapshot) {
-                        pendingBridgeWithoutSnapshot = false
-                        setSnapshotVisible(true)
-                        settleContinuityBridge()
-                    } else {
-                        publishDiagnostics()
+        resetSurface()
+        disposed = false
+        sourceUri = source
+        MapLibre.getInstance(context.applicationContext)
+        touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+        return MapView(context).also { mapView ->
+            view = mapView
+            viewCreatedCount += 1
+            mapView.onCreate(null)
+            mapView.setOnTouchListener { _, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        touchDownX = event.x
+                        touchDownY = event.y
+                        gestureReported = false
                     }
-                } else {
-                    if (!target.isRecycled) target.recycle()
-                    when {
-                        bridgeToken != null && bridgeToken == bridgeGeneration -> {
-                            if (attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
-                                mainHandler.postDelayed(
-                                    { requestSnapshot(true, bridgeToken, attempt + 1, quietRetry) },
-                                    SNAPSHOT_BRIDGE_RETRY_MS
-                                )
-                            } else {
-                                snapshotBridgeFailureCount += 1
-                                setSnapshotVisible(false)
-                            }
-                        }
-                        quietRetry && attempt < SNAPSHOT_QUIET_MAX_ATTEMPTS -> {
-                            mainHandler.postDelayed(
-                                { requestSnapshot(true, null, attempt + 1, true) },
-                                SNAPSHOT_QUIET_RETRY_MS
-                            )
+                    MotionEvent.ACTION_MOVE -> {
+                        if (!gestureReported &&
+                            hypot(
+                                (event.x - touchDownX).toDouble(),
+                                (event.y - touchDownY).toDouble()
+                            ) > touchSlop
+                        ) {
+                            gestureReported = true
+                            onUserGesture()
                         }
                     }
+                    MotionEvent.ACTION_UP,
+                    MotionEvent.ACTION_CANCEL -> gestureReported = false
                 }
-            }, mainHandler)
-        }.onFailure {
-            snapshotCaptureInFlight = false
-            if (!target.isRecycled) target.recycle()
-            when {
-                bridgeToken != null && bridgeToken == bridgeGeneration -> {
-                    if (attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
-                        mainHandler.postDelayed(
-                            { requestSnapshot(true, bridgeToken, attempt + 1, quietRetry) },
-                            SNAPSHOT_BRIDGE_RETRY_MS
-                        )
-                    } else {
-                        snapshotBridgeFailureCount += 1
-                        setSnapshotVisible(false)
-                    }
+                false
+            }
+            mapView.getMapAsync { readyMap ->
+                if (disposed || view !== mapView) return@getMapAsync
+                map = readyMap
+                mapCreatedCount += 1
+                initialCamera?.takeIf { it.point.valid }?.let { camera ->
+                    readyMap.cameraPosition = CameraPosition.Builder()
+                        .target(LatLng(camera.point.latitude, camera.point.longitude))
+                        .zoom(camera.zoom.toDouble())
+                        .bearing((camera.bearingDegrees ?: 0f).toDouble())
+                        .tilt((camera.tiltDegrees ?: 0f).toDouble())
+                        .build()
+                } ?: run {
+                    readyMap.cameraPosition = CameraPosition.Builder()
+                        .target(LatLng(DEFAULT_LATITUDE, DEFAULT_LONGITUDE))
+                        .zoom(6.0)
+                        .build()
                 }
-                quietRetry && attempt < SNAPSHOT_QUIET_MAX_ATTEMPTS -> {
-                    mainHandler.postDelayed(
-                        { requestSnapshot(true, null, attempt + 1, true) },
-                        SNAPSHOT_QUIET_RETRY_MS
-                    )
+                readyMap.addOnCameraIdleListener {
+                    if (!disposed) publishCamera()
+                }
+                readyMap.setStyle(queueGoMapStyle(source)) {
+                    if (disposed) return@setStyle
+                    styleReady = true
+                    render(lastState, force = true)
+                    onReady(true)
                 }
             }
         }
     }
 
-    private fun scheduleSnapshotRefresh() {
-        if (disposed || snapshotVisible || snapshotRefreshScheduled) return
-        snapshotRefreshScheduled = true
-        mainHandler.postDelayed({
-            snapshotRefreshScheduled = false
-            requestSnapshot(force = false)
-        }, SNAPSHOT_CAPTURE_DELAY_MS)
-    }
-
-    private fun showContinuityBridge() {
-        if (!snapshotVisible) {
-            // Count the bridge request at renderer-swap detection time. Visibility can follow
-            // a few frames later if PixelCopy is still finishing the last good SurfaceView frame.
-            snapshotBridgeCount += 1
-        }
-        if (snapshotBitmap == null) {
-            pendingBridgeWithoutSnapshot = true
-            requestSnapshot(force = true)
-            publishDiagnostics()
-            return
-        }
-        pendingBridgeWithoutSnapshot = false
-        setSnapshotVisible(true)
-    }
-
-    private fun settleContinuityBridge() {
-        if (!snapshotVisible) {
-            scheduleSnapshotRefresh()
-            return
-        }
-        val token = ++bridgeGeneration
-        mainHandler.postDelayed(
-            { requestSnapshot(force = true, bridgeToken = token) },
-            SNAPSHOT_BRIDGE_SETTLE_MS
-        )
-    }
-
-    fun markViewCreated() {
-        viewCreatedCount += 1
-        publishDiagnostics()
-    }
-
-    private fun announceRendererReplacement(nextMap: com.longdo.api.Map) {
-        if (map == null || map === nextMap || announcedReplacementMap === nextMap) return
-        announcedReplacementMap = nextMap
-        mapReplacementCount += 1
-        showContinuityBridge()
-    }
-
-    fun attachMap(nextMap: com.longdo.api.Map): Boolean {
-        if (map === nextMap) return false
-        if (map != null && announcedReplacementMap !== nextMap) {
-            announceRendererReplacement(nextMap)
-        }
-        riderMarkerAnimator?.cancel()
-        riderMarkerAnimator = null
-        cancelCameraBearingAnimation()
-        clearNavigationGestureOverrides()
-        navigationInteractionEnabled = null
-        map = nextMap
-        announcedReplacementMap = null
-        riderPin = null
-        stopPins.clear()
-        demandPins.clear()
-        routeLines.clear()
-        renderedRouteSegments = emptyList()
-        stopSource = null
-        stopActiveId = null
-        demandSource = null
-        routeSource = null
-        routeActiveId = null
-        routeRemainingStopIds = emptySet()
-        lastCameraFix = null
-        lastCameraCenter = null
-        lastCameraZoomChangeAtMs = 0L
-        lastRenderedRiderFix = null
-        lastPuckRotation = null
-        lastPuckOpacity = null
-        lastOverviewSignature = null
-        // Preserve heading continuity across an internal Longdo renderer swap.
-        mapCreatedCount += 1
-        publishDiagnostics()
-        return true
-    }
-
-    fun configureMap(
-        context: android.content.Context,
-        nextMap: com.longdo.api.Map,
-        initialCamera: NavigationMapCamera? = null
-    ): Boolean {
-        val replacingExistingMap = map != null && map !== nextMap
-        if (replacingExistingMap) announceRendererReplacement(nextMap)
-        val newSdkMap = attachMap(nextMap)
-        if (!newSdkMap) return false
-
-        val continuityCamera = if (replacingExistingMap) lastKnownCamera else null
-        val camera = continuityCamera ?: initialCamera
-        runCatching {
-            nextMap.setDoTileAnimation(false)
-            nextMap.setDoPreShowCache(true)
-            nextMap.setBase(LongdoLayer(context, "normal", 0, 1, 20).apply {
-                layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
-                setDoPreDrawCache(true)
-            })
-            nextMap.setDrawCrossSign(false)
-            val navigationActive = lastState.perspectiveCameraEnabled || lastState.remainingStops().isNotEmpty()
-            nextMap.setCanRotateCamera(navigationActive)
-            nextMap.setCanTilt(navigationActive)
-            navigationInteractionEnabled = navigationActive
-            val start = camera?.point?.takeIf { it.valid }
-                ?: lastState.rider?.point?.takeIf { it.valid }
-                ?: lastState.remainingStops().firstOrNull()?.point
-                ?: NavigationMapPoint(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
-            nextMap.setLocation(MapLocation(start.longitude, start.latitude))
-            nextMap.setZoom(camera?.zoom?.coerceIn(4, 20) ?: 15)
-            val bearing = if (navigationActive) camera?.bearingDegrees ?: lastCameraBearing else 0f
-            bearing?.takeIf { it.isFinite() }?.let {
-                nextMap.rotate(((it % 360f) + 360f) % 360f, false)
-            }
-            val tilt = if (navigationActive) camera?.tiltDegrees ?: lastCameraTilt else 0f
-            tilt?.takeIf { it.isFinite() }?.coerceIn(0f, 50f)?.let {
-                nextMap.setTilt(it)
-                lastCameraTilt = it
-            }
-            render(lastState)
-            if (lastState.remainingStops().isEmpty() && !lastState.perspectiveCameraEnabled) settleIdleCamera(nextMap)
-        }.onFailure {
-            Log.e("QueueGoNavMap", "map_replacement_setup_failed", it)
-            throw it
-        }
-
-        if (replacingExistingMap) settleContinuityBridge()
-        return true
-    }
-
-    private fun adoptSilentRendererReplacement(activeView: MapGLSurfaceView): Boolean {
-        val rendererMap = runCatching { activeView.renderer?.map }.getOrNull()
-        val activeMap = map
-        if (rendererMap == null || activeMap == null || rendererMap === activeMap) return false
-        configureMap(activeView.context, rendererMap)
-        return true
-    }
-
-    private fun watchRendererIdentity(generation: Int, attempt: Int = 0) {
-        if (disposed || !resumed || generation != rendererWatchGeneration) return
-        val activeView = view ?: return
-        val replaced = runCatching { adoptSilentRendererReplacement(activeView) }
-            .onFailure { Log.e("QueueGoNavMap", "renderer_identity_watch_failed", it) }
-            .getOrDefault(false)
-        if (replaced) return
-        if (attempt < RENDERER_WATCH_MAX_ATTEMPTS) {
-            mainHandler.postDelayed(
-                { watchRendererIdentity(generation, attempt + 1) },
-                RENDERER_WATCH_INTERVAL_MS
-            )
-        }
-    }
-
-    private fun startRendererIdentityWatch() {
-        val generation = ++rendererWatchGeneration
-        watchRendererIdentity(generation)
+    fun start() {
+        if (disposed || started) return
+        view?.onStart()
+        started = true
     }
 
     fun resume() {
-        val activeView = view ?: return
-        if (disposed) return
-        surfaceVisible = true
-        // Longdo can replace renderer.map after ON_RESUME returns and may never emit
-        // onMapCreated for that replacement. Check immediately and then keep a short bounded
-        // watcher alive so the replacement is adopted through configureMap() as soon as it exists.
-        val replacementPending = runCatching { adoptSilentRendererReplacement(activeView) }
-            .onFailure { Log.e("QueueGoNavMap", "renderer_resume_adoption_failed", it) }
-            .getOrDefault(false)
-        // Longdo's Activity lifecycle does not require MapGLSurfaceView.onResume().
-        // Calling it after ordinary background/foreground transitions can replace renderer.map
-        // and visibly reassemble the map even though the retained View itself never changed.
+        if (disposed || resumed) return
+        if (!started) start()
+        view?.onResume()
         resumed = true
-        // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
-        // never reconstruct the map just because Rider/order state changed.
-        render(lastState)
-        if (lastState.remainingStops().isEmpty() && !lastState.perspectiveCameraEnabled) map?.let(::settleIdleCamera)
-        startRendererIdentityWatch()
-        startPuckFreshnessTicker()
-        if (!replacementPending) settleContinuityBridge()
     }
 
-    private fun startPuckFreshnessTicker() {
-        val generation = ++puckFreshnessGeneration
-        fun tick() {
-            if (disposed || !surfaceVisible || generation != puckFreshnessGeneration) return
-            val activeMap = map
-            val fix = lastRiderFix
-            if (activeMap != null && fix != null) {
-                renderRiderPresentation(activeMap, fix)
-            }
-            mainHandler.postDelayed({ tick() }, 1_000L)
-        }
-        tick()
-    }
-
-    private fun captureCamera() {
-        map?.let { activeMap ->
-            runCatching {
-                val location = activeMap.getLocation()
-                val actualBearing = runCatching { activeMap.getRotate() }
-                    .getOrNull()
-                    ?.takeIf { it.isFinite() }
-                    ?.let(::normalizeNavigationBearing)
-                    ?: lastCameraBearing
-                if (actualBearing != null) lastCameraBearing = actualBearing
-                val actualTilt = runCatching { activeMap.getTilt() }
-                    .getOrNull()
-                    ?.takeIf { it.isFinite() }
-                    ?.coerceIn(0f, 50f)
-                    ?: lastCameraTilt
-                if (actualTilt != null) lastCameraTilt = actualTilt
-                val camera = NavigationMapCamera(
-                    point = NavigationMapPoint(location.lat, location.lon),
-                    zoom = activeMap.getZoom(),
-                    bearingDegrees = actualBearing,
-                    tiltDegrees = actualTilt
-                )
-                lastKnownCamera = camera
-                onCameraChanged(camera)
-            }
-        }
-    }
-
-    fun retainAcrossVisibilityLoss() {
-        idleCameraGeneration += 1
-        surfaceVisible = false
-        cancelCameraBearingAnimation()
-        navigationTransformGestureActive = false
-        navigationTransformGestureGeneration += 1
-        puckFreshnessGeneration += 1
-        rendererWatchGeneration += 1
-        // Tab switches and ordinary background/foreground cycles keep the SDK renderer alive.
-        // Capture a frozen frame quietly for emergency continuity, but do not cover a healthy
-        // retained renderer. The bridge is shown only when attachMap() detects a real map
-        // replacement from Android/Longdo.
-        captureCamera()
-        // PixelCopy can transiently return SOURCE_NO_DATA while Android moves the
-        // Activity from RESUMED to STARTED. Retry only this quiet continuity capture;
-        // never show an overlay or count a bridge failure unless a renderer replacement
-        // actually occurs.
-        requestSnapshot(force = true, quietRetry = true)
-    }
-
-    fun shutdownSdk() {
-        idleCameraGeneration += 1
-        surfaceVisible = false
-        puckFreshnessGeneration += 1
-        captureCamera()
-        if (!resumed) return
-        val activeView = view ?: run {
-            resumed = false
-            return
-        }
-        val rendererReady = runCatching { activeView.renderer?.map != null }
-            .onFailure { Log.w("QueueGoNavMap", "map_renderer_state_failed", it) }
-            .getOrDefault(false)
-        if (rendererReady) {
-            runCatching { activeView.onPause() }
-                .onFailure { Log.w("QueueGoNavMap", "map_on_pause_failed", it) }
-        }
+    fun pause() {
+        if (disposed || !resumed) return
+        view?.onPause()
         resumed = false
     }
 
-    fun render(state: RiderNavigationMapState) {
-        val restoringFollow = state.followRider && !lastState.followRider
-        val leavingNavigation = lastState.remainingStops().isNotEmpty() && state.remainingStops().isEmpty()
-        val enteringOverview =
-            state.viewMode == NavigationViewMode.OVERVIEW &&
-                lastState.viewMode != NavigationViewMode.OVERVIEW
+    fun stop() {
+        if (disposed || !started) return
+        if (resumed) pause()
+        view?.onStop()
+        started = false
+    }
+
+    fun retainAcrossVisibilityLoss() {
+        stop()
+    }
+
+    fun render(state: RiderNavigationMapState, force: Boolean = false) {
         lastState = state
         val activeMap = map ?: return
-        syncNavigationInteractionMode(activeMap, state)
-        if (!state.followRider || state.viewMode != NavigationViewMode.FOLLOW) {
-            clearNavigationGestureOverrides()
-            cancelCameraBearingAnimation()
-        } else if (restoringFollow) {
-            clearNavigationGestureOverrides()
-            cancelCameraBearingAnimation()
-        }
-        if (disposed) return
+        if (!styleReady) return
         renderPassCount += 1
-
-        // End/cancel and idle restoration must flatten even before a fresh fix arrives,
-        // including a renderer replacement or an old persisted navigation camera.
-        if (state.remainingStops().isEmpty() && !state.perspectiveCameraEnabled && (lastCameraTilt != 0f || lastCameraBearing != 0f)) {
-            runCatching {
-                activeMap.setTilt(0f)
-                activeMap.rotate(0f, false)
-            }.onSuccess {
-                lastCameraTilt = 0f
-                lastCameraBearing = 0f
-            }
-        }
-
-        // An internal renderer swap can arrive while the location producer restarts.
-        // Recreate the puck from the retained fix in this same render pass.
-        (state.rider?.takeIf { it.point.valid } ?: lastRiderFix)?.let { nextFix ->
-            if (riderPin == null || shouldMoveRiderMarker(lastRenderedRiderFix, nextFix)) {
-                renderRider(activeMap, nextFix)
-            }
-            lastRiderFix = nextFix
-        }
-        renderDemandZones(activeMap, state)
-        renderStops(activeMap, state)
-        renderRoutes(activeMap, state)
-
-        val followedFix = state.rider?.takeIf { it.point.valid } ?: lastRiderFix
-        when {
-            state.viewMode == NavigationViewMode.OVERVIEW -> {
-                fitOverview(activeMap, state, force = enteringOverview)
-            }
-            state.followRider && followedFix != null -> {
-                lastOverviewSignature = null
-                if (restoringFollow) {
-                    lastCameraCenter = null
-                    lastCameraTilt = null
-                    lastCameraBearing = runCatching { normalizeNavigationBearing(activeMap.getRotate()) }
-                        .getOrNull()
-                        ?: lastCameraBearing
-                }
-                followRider(activeMap, state.copy(rider = followedFix))
-            }
-            else -> lastOverviewSignature = null
-        }
-        followedFix?.let { renderRiderPresentation(activeMap, it) }
-        if (state.remainingStops().isEmpty() && !state.perspectiveCameraEnabled && (leavingNavigation || restoringFollow)) {
-            settleIdleCamera(activeMap)
-        }
-        // Publish once per applied state even when overlays are structurally unchanged.
-        // This distinguishes a stable frame from a state update that never reached the map.
-        // PixelCopy is deliberately not scheduled on every GPS tick: continuity snapshots
-        // are captured on visibility loss or real renderer replacement so live navigation
-        // never competes with screenshot work for the render thread.
+        renderRoutes(activeMap, state, force)
+        renderStops(activeMap, state, force)
+        renderDemand(activeMap, state, force)
+        renderRider(activeMap, state.rider)
+        renderCamera(activeMap, state, force)
         publishDiagnostics()
     }
 
-    private fun settleIdleCamera(targetMap: com.longdo.api.Map) {
-        cancelCameraBearingAnimation()
-        clearNavigationGestureOverrides()
-        val generation = ++idleCameraGeneration
-        fun check(attempt: Int) {
-            if (disposed || map !== targetMap || generation != idleCameraGeneration ||
-                lastState.perspectiveCameraEnabled || lastState.remainingStops().isNotEmpty() || !lastState.followRider ||
-                lastState.viewMode != NavigationViewMode.FOLLOW) return
-            // A queued SDK navigation rotation can finish after the immediate idle
-            // reset. Observe the actual camera for a short bounded window instead of
-            // trusting lastCameraBearing=0 while the GL camera is still rotating.
-            runCatching {
-                val bearing = normalizeNavigationBearing(targetMap.getRotate())
-                if (attempt == 0 || minOf(bearing, 360f - bearing) > 0.1f) targetMap.rotate(0f, false)
-                if (attempt == 0 || kotlin.math.abs(targetMap.getTilt()) > 0.1f) targetMap.setTilt(0f)
-                lastCameraBearing = 0f
-                lastCameraTilt = 0f
-            }.onFailure { Log.w("QueueGoNavMap", "idle_camera_settlement_failed", it) }
-            if (attempt < 20) mainHandler.postDelayed({ check(attempt + 1) }, 50L)
-        }
-        check(0)
-    }
-
-    private fun renderRider(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {
-        val target = MapLocation(fix.point.longitude, fix.point.latitude)
-        val existing = riderPin
-        if (existing == null) {
-            val pin = Pin(target, markerBitmap(SharedR.drawable.qg_map_rider))
-            runCatching { activeMap.pushPin(pin) }
-                .onSuccess {
-                    riderPin = pin
-                    lastRenderedRiderFix = fix
-                }
-            return
-        }
-
-        riderMarkerAnimator?.cancel()
-        riderMarkerAnimator = null
-
-        val previousTarget = lastRenderedRiderFix
-        if (previousTarget != null && !shouldAnimateRiderMarker(previousTarget.point, fix.point)) {
-            // Never animate a stale/teleport correction across the whole screen.
-            runCatching { existing.setLocation(target) }
-                .onSuccess { lastRenderedRiderFix = fix }
-            return
-        }
-
-        // Longdo v0.1.8 exposes a different third-argument signature than the public docs.
-        // Use Android's animator with the no-animation Pin.setLocation() overload instead.
-        // Starting from getMovingLocation() prevents a jump when a new GPS fix arrives before
-        // the previous interpolation has finished.
-        val moving = runCatching { existing.getMovingLocation() }.getOrNull()
-        val start = moving?.let { NavigationMapPoint(it.lat, it.lon) }
-            ?.takeIf { it.valid }
-            ?: previousTarget?.point
-            ?: fix.point
-        val distance = navigationHaversineMeters(start, fix.point)
-        if (distance < riderMarkerMoveThresholdMeters(fix.speedMetersPerSecond)) {
-            lastRenderedRiderFix = fix
-            return
-        }
-
-        val durationMs = riderMarkerAnimationMillis(lastRiderFix ?: previousTarget, fix)
-        val animator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = durationMs
-            interpolator = LinearInterpolator()
-            addUpdateListener { animation ->
-                val fraction = animation.animatedFraction.toDouble()
-                val latitude = start.latitude + (fix.point.latitude - start.latitude) * fraction
-                val longitude = start.longitude + (fix.point.longitude - start.longitude) * fraction
-                runCatching {
-                    existing.setLocation(MapLocation(longitude, latitude))
-                }.onFailure {
-                    lastRenderedRiderFix = null
-                    animation.cancel()
-                }
-            }
-        }
-        riderMarkerAnimator = animator
-        lastRenderedRiderFix = fix
-        animator.start()
-    }
-
-    private fun renderRiderPresentation(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {
-        val pin = riderPin ?: return
-
-        val cameraBearing = runCatching { activeMap.getRotate() }
-            .getOrNull()
-            ?.takeIf { it.isFinite() }
-            ?.let(::normalizeNavigationBearing)
-            ?: lastCameraBearing
-        val orientation = navigationPuckOrientationDecision(fix, cameraBearing)
-        val nextRotation = orientation.rotationDegrees ?: lastPuckRotation ?: 0f
-
-        val freshness = navigationPuckFreshness(
-            fix = fix,
-            nowElapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
-        )
-        val nextOpacity = when (freshness.freshness) {
-            NavigationPuckFreshness.STALE -> 0.55f
-            NavigationPuckFreshness.LOST -> 0.35f
-            else -> 1f
-        }
-
-        val rotationChanged = lastPuckRotation == null ||
-            navigationBearingChangedEnough(
-                lastPuckRotation,
-                nextRotation,
-                minimumDeltaDegrees = 5f
-            )
-        val opacityChanged = lastPuckOpacity == null ||
-            kotlin.math.abs(lastPuckOpacity!! - nextOpacity) >= 0.01f
-
-        if (!rotationChanged && !opacityChanged) return
-
-        runCatching {
-            // Longdo v0.1.8 exposes Pin.setIcon(Bitmap) but not public rotate/opacity setters.
-            // Keep the same Pin object and update only its cached presentation bitmap.
-            pin.setIcon(riderPuckBitmap(nextRotation, nextOpacity))
-            activeMap.requestRender("queuego-rider-puck-presentation")
-        }.onSuccess {
-            lastPuckRotation = nextRotation
-            lastPuckOpacity = nextOpacity
-        }
-    }
-
-    private fun fitOverview(
-        activeMap: com.longdo.api.Map,
+    private fun renderRoutes(
+        activeMap: MapLibreMap,
         state: RiderNavigationMapState,
         force: Boolean
     ) {
-        cancelCameraBearingAnimation()
-        clearNavigationGestureOverrides()
-        val insets = state.viewportInsets.normalized()
-        val signature = listOf(
-            navigationViewportInsetsSignature(insets),
-            state.resolvedActiveStopId().orEmpty(),
-            state.remainingStops().hashCode().toString(),
-            state.styledRemainingRoutes().hashCode().toString()
-        ).joinToString("|")
-        if (!force && signature == lastOverviewSignature) return
+        val routes = state.styledRemainingRoutes()
+        val signature = routes.hashCode()
+        if (!force && signature == lastRouteSignature) return
+        routeLines.toList().forEach { line -> runCatching { activeMap.removePolyline(line) } }
+        routeLines.clear()
+        routes.sortedBy { if (it.style == NavigationRouteStyle.FUTURE) 0 else 1 }
+            .forEach { segment ->
+                if (!segment.renderable) return@forEach
+                val color = if (segment.style == NavigationRouteStyle.ACTIVE) {
+                    android.graphics.Color.rgb(230, 0, 45)
+                } else {
+                    android.graphics.Color.argb(72, 230, 0, 45)
+                }
+                val width = if (segment.style == NavigationRouteStyle.ACTIVE) 8f else 6f
+                routeLines += activeMap.addPolyline(
+                    PolylineOptions()
+                        .addAll(
+                            segment.points.map { point ->
+                                LatLng(point.latitude, point.longitude)
+                            }
+                        )
+                        .color(color)
+                        .width(width)
+                )
+            }
+        lastRouteSignature = signature
+        routeLayerRebuildCount += 1
+        routeGeometryUpdateCount += 1
+    }
 
-        val bounds = navigationOverviewBounds(state) ?: return
-        val activeView = view
-        val viewportDecision = if (
-            activeView != null &&
-            activeView.width > 0 &&
-            activeView.height > 0
-        ) {
-            navigationOverviewViewportDecision(
-                bounds = bounds,
-                insets = insets,
-                viewportWidthPx = activeView.width,
-                viewportHeightPx = activeView.height
-            )
-        } else {
-            NavigationOverviewViewportDecision(
-                center = bounds.center,
-                zoom = navigationOverviewZoom(bounds)
+    private fun renderStops(
+        activeMap: MapLibreMap,
+        state: RiderNavigationMapState,
+        force: Boolean
+    ) {
+        val activeId = state.resolvedActiveStopId()
+        val stops = state.remainingStops()
+        val signature = 31 * stops.hashCode() + (activeId?.hashCode() ?: 0)
+        if (!force && signature == lastStopSignature) return
+        stopMarkers.toList().forEach { marker -> runCatching { activeMap.removeMarker(marker) } }
+        stopMarkers.clear()
+        stops.forEach { stop ->
+            stopMarkers += activeMap.addMarker(
+                MarkerOptions()
+                    .position(LatLng(stop.point.latitude, stop.point.longitude))
+                    .title(
+                        buildString {
+                            append(stop.sequence)
+                            append(" · ")
+                            append(if (stop.kind == NavigationStopKind.PICKUP) "รับ" else "ส่ง")
+                            if (stop.label.isNotBlank()) {
+                                append(" · ")
+                                append(stop.label)
+                            }
+                        }
+                    )
             )
         }
+        stopMutationCount += 1
+        lastStopSignature = signature
+    }
 
-        runCatching {
-            // v0.1.8 does not expose the newer RectF-padded bound overload.
-            // Use QueueGo's renderer-independent viewport policy, then apply the resulting
-            // north-up center/zoom through APIs that exist in the pinned AAR.
-            activeMap.setTilt(0f)
-            activeMap.rotate(0f, true)
-            activeMap.setLocation(
-                MapLocation(
-                    viewportDecision.center.longitude,
-                    viewportDecision.center.latitude
-                ),
-                true
+    private fun renderDemand(
+        activeMap: MapLibreMap,
+        state: RiderNavigationMapState,
+        force: Boolean
+    ) {
+        val zones = state.renderableDemandZones()
+        val signature = zones.hashCode()
+        if (!force && signature == lastDemandSignature) return
+        demandMarkers.toList().forEach { marker -> runCatching { activeMap.removeMarker(marker) } }
+        demandMarkers.clear()
+        zones.forEach { zone ->
+            demandMarkers += activeMap.addMarker(
+                MarkerOptions()
+                    .position(LatLng(zone.point.latitude, zone.point.longitude))
+                    .title("พื้นที่งานระดับ " + zone.level)
             )
-            activeMap.setZoom(viewportDecision.zoom, true)
-        }.onSuccess {
+        }
+        demandMutationCount += 1
+        lastDemandSignature = signature
+    }
+
+    private fun renderRider(activeMap: MapLibreMap, fix: NavigationMapFix?) {
+        if (fix?.point?.valid != true) return
+        val target = LatLng(fix.point.latitude, fix.point.longitude)
+        val marker = riderMarker
+        if (marker == null) {
+            riderMarker = activeMap.addMarker(
+                MarkerOptions()
+                    .position(target)
+                    .title("Rider")
+            )
+            lastRenderedRiderFix = fix
+            return
+        }
+        if (!shouldMoveRiderMarker(lastRenderedRiderFix, fix)) return
+        val previous = lastRenderedRiderFix
+        val from = previous?.point
+        riderAnimator?.cancel()
+        if (from != null && shouldAnimateRiderMarker(from, fix.point)) {
+            riderAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = riderMarkerAnimationMillis(previous, fix)
+                addUpdateListener { animation ->
+                    val t = animation.animatedFraction.toDouble()
+                    marker.position = LatLng(
+                        from.latitude + (fix.point.latitude - from.latitude) * t,
+                        from.longitude + (fix.point.longitude - from.longitude) * t
+                    )
+                }
+                start()
+            }
+        } else {
+            marker.position = target
+        }
+        lastRenderedRiderFix = fix
+    }
+
+    private fun renderCamera(
+        activeMap: MapLibreMap,
+        state: RiderNavigationMapState,
+        force: Boolean
+    ) {
+        if (state.viewMode == NavigationViewMode.OVERVIEW) {
+            val bounds = navigationOverviewBounds(state) ?: return
+            val viewWidth = view?.width?.coerceAtLeast(1) ?: 1
+            val viewHeight = view?.height?.coerceAtLeast(1) ?: 1
+            val decision = navigationOverviewViewportDecision(
+                bounds,
+                state.viewportInsets,
+                viewWidth,
+                viewHeight
+            )
+            val signature = 31 * decision.hashCode() + state.remainingStops().hashCode()
+            if (!force && signature == lastOverviewSignature) return
+            activeMap.animateCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .target(LatLng(decision.center.latitude, decision.center.longitude))
+                        .zoom(decision.zoom.toDouble())
+                        .bearing(0.0)
+                        .tilt(0.0)
+                        .build()
+                ),
+                CAMERA_OVERVIEW_ANIMATION_MS
+            )
             lastOverviewSignature = signature
+            lastCameraPoint = decision.center
             lastCameraBearing = 0f
             lastCameraTilt = 0f
-            lastCameraCenter = viewportDecision.center
-        }
-    }
-
-    private fun renderDemandZones(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
-        if (state.demandZones == demandSource) return
-        val desired = state.renderableDemandZones().associateBy { it.id }
-        var succeeded = true
-
-        demandPins.keys.filter { it !in desired.keys }.toList().forEach { id ->
-            val rendered = demandPins[id] ?: return@forEach
-            if (runCatching { activeMap.removePin(rendered.pin) }.isSuccess) {
-                demandPins.remove(id)
-                demandMutationCount += 1
-            } else succeeded = false
+            return
         }
 
-        desired.values.forEach { zone ->
-            val signature = listOf(
-                zone.point.latitude.toString(),
-                zone.point.longitude.toString(),
-                zone.level.toString(),
-                zone.windowHours.toString()
-            ).joinToString("|")
-            val existing = demandPins[zone.id]
-            if (existing?.signature == signature) return@forEach
-            if (existing != null) {
-                if (runCatching { activeMap.removePin(existing.pin) }.isFailure) {
-                    succeeded = false
-                    return@forEach
-                }
-                demandPins.remove(zone.id)
-                demandMutationCount += 1
-            }
-            val pin = Pin(
-                MapLocation(zone.point.longitude, zone.point.latitude),
-                demandBitmap(zone.level)
-            )
-            // Longdo Pin anchors at bitmap center by default. Keep the demand halo centered
-            // on the coarse cell; stop markers use a negative Y offset only because they
-            // have a pointed tip.
-            if (runCatching { activeMap.pushPin(pin) }.isSuccess) {
-                demandPins[zone.id] = RenderedDemandZone(signature, pin)
-                demandMutationCount += 1
-            } else succeeded = false
-        }
-        demandSource = if (succeeded && demandPins.keys == desired.keys) state.demandZones else null
-    }
-
-    private fun renderStops(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
-        val activeStopId = state.resolvedActiveStopId()
-        if (state.stops == stopSource && activeStopId == stopActiveId) return
-        val desired = state.remainingStops().associateBy { it.id }
-        var renderSucceeded = true
-
-        stopPins.keys.filter { it !in desired.keys }.toList().forEach { id ->
-            val rendered = stopPins[id] ?: return@forEach
-            val removed = runCatching { activeMap.removePin(rendered.pin) }.isSuccess
-            if (removed) {
-                stopPins.remove(id)
-                stopMutationCount += 1
-            } else {
-                renderSucceeded = false
-            }
-        }
-
-        desired.values.forEach { stop ->
-            val signature = listOf(
-                stop.sequence.toString(),
-                stop.kind.name,
-                stop.point.latitude.toString(),
-                stop.point.longitude.toString(),
-                (stop.id == activeStopId).toString()
-            ).joinToString("|")
-            val existing = stopPins[stop.id]
-            if (existing?.signature == signature) return@forEach
-
-            if (existing != null) {
-                val removed = runCatching { activeMap.removePin(existing.pin) }.isSuccess
-                if (!removed) {
-                    renderSucceeded = false
-                    return@forEach
-                }
-                stopPins.remove(stop.id)
-                stopMutationCount += 1
-            }
-
-            val pin = Pin(
-                MapLocation(stop.point.longitude, stop.point.latitude),
-                stopBitmap(stop.kind, stop.sequence, stop.id == activeStopId)
-            )
-            pin.setOffset(PointF(0f, -0.4f))
-            val pushed = runCatching { activeMap.pushPin(pin) }
-                .onSuccess {
-                    stopPins[stop.id] = RenderedStop(signature, pin)
-                    stopMutationCount += 1
-                }
-                .isSuccess
-            if (!pushed) renderSucceeded = false
-        }
-
-        if (renderSucceeded && stopPins.keys == desired.keys) {
-            stopSource = state.stops
-            stopActiveId = activeStopId
-        } else {
-            // Do not cache a partial frame: the next refresh/resume must retry missing pins.
-            stopSource = null
-            stopActiveId = null
-        }
-        publishDiagnostics()
-    }
-
-    private fun renderRoutes(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
-        val activeStopId = state.resolvedActiveStopId()
-        val remainingStopIds = state.remainingStops().mapTo(linkedSetOf()) { it.id }
-        if (state.routes == routeSource &&
-            activeStopId == routeActiveId &&
-            remainingStopIds == routeRemainingStopIds
-        ) return
-
-        // Keep the route object order stable: future legs render first and the active leg last.
-        val routes = state.styledRemainingRoutes()
-            .sortedBy { if (it.style == NavigationRouteStyle.FUTURE) 0 else 1 }
-
-        // Reconcile each leg independently. Rerouting/removing the active leg must not
-        // remove future lines that are still valid. Failed mutations remain retryable.
-        val previous = renderedRouteSegments.zip(routeLines).associate { (segment, line) ->
-            segment.id to (segment to line)
-        }.toMutableMap()
-        val nextLines = mutableListOf<Line>()
-        val nextSegments = mutableListOf<NavigationRouteSegment>()
-        var succeeded = true
-        var topologyChanged = false
-        var geometryChanged = false
-        for (segment in routes) {
-            val retained = previous.remove(segment.id)
-            val oldSegment = retained?.first
-            val oldLine = retained?.second
-            val sameStyle = oldSegment != null && oldSegment.toStopId == segment.toStopId &&
-                oldSegment.style == segment.style
-            if (oldLine != null && sameStyle) {
-                val mutated = oldSegment!!.points == segment.points || runCatching {
-                    oldLine.setLocation(segment.points.map {
-                        MapLocation(it.longitude, it.latitude)
-                    }.toTypedArray())
-                    geometryChanged = true
-                }.isSuccess
-                if (mutated) {
-                    nextLines += oldLine
-                    nextSegments += segment
-                    continue
-                }
-            }
-            // Topology/style changed or an in-place mutation failed: replace only this leg.
-            if (oldLine != null && runCatching { activeMap.removeLine(oldLine) }.isFailure) {
-                nextLines += oldLine
-                nextSegments += requireNotNull(oldSegment)
-                succeeded = false
-                continue
-            }
-            topologyChanged = true
-            val line = Line(segment.points.map { MapLocation(it.longitude, it.latitude) }.toTypedArray()).apply {
-                setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)
-                setColor(if (segment.style == NavigationRouteStyle.ACTIVE) ACTIVE_ROUTE_COLOR else FUTURE_ROUTE_COLOR)
-            }
-            if (runCatching { activeMap.addLine(line) }.isSuccess) {
-                nextLines += line
-                nextSegments += segment
-            } else succeeded = false
-        }
-        previous.values.forEach { (segment, line) ->
-            topologyChanged = true
-            if (runCatching { activeMap.removeLine(line) }.isFailure) {
-                nextLines += line
-                nextSegments += segment
-                succeeded = false
-            }
-        }
-        routeLines.clear()
-        routeLines.addAll(nextLines)
-        renderedRouteSegments = nextSegments
-        if (topologyChanged) routeLayerRebuildCount += 1
-        if (geometryChanged) routeGeometryUpdateCount += 1
-        routeSource = if (succeeded) state.routes else null
-        routeActiveId = if (succeeded) activeStopId else null
-        routeRemainingStopIds = if (succeeded) remainingStopIds else emptySet()
-
-        publishDiagnostics()
-    }
-
-    private fun followRider(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
-        val fix = state.rider ?: return
-        if (navigationTransformGestureActive) return
-
-        val renderedBearing = runCatching { normalizeNavigationBearing(activeMap.getRotate()) }
-            .getOrNull()
-            ?: lastCameraBearing
+        lastOverviewSignature = null
+        if (!state.followRider) return
+        val renderedBearing = activeMap.cameraPosition.bearing.toFloat()
         val decision = navigationCameraDecision(state, renderedBearing) ?: return
-        val speed = fix.speedMetersPerSecond
-        val movementThreshold = navigationCameraMovementThresholdMeters(speed)
-        val centerMoved = lastCameraCenter == null ||
-            navigationHaversineMeters(lastCameraCenter!!, decision.center) >= movementThreshold
+        val pointChanged = lastCameraPoint == null ||
+            navigationHaversineMeters(lastCameraPoint!!, decision.center) >=
+            navigationCameraMovementThresholdMeters(state.rider?.speedMetersPerSecond)
         val bearingChanged = navigationBearingChangedEnough(
-            renderedBearing,
+            lastCameraBearing ?: renderedBearing,
             decision.bearingDegrees,
-            minimumDeltaDegrees = CAMERA_BEARING_MIN_DELTA_DEGREES
+            CAMERA_BEARING_MIN_DELTA_DEGREES
         )
-        val navigationActive = state.perspectiveCameraEnabled || state.remainingStops().isNotEmpty()
-        val nextTilt = if (!navigationActive) {
-            0f
-        } else {
-            lastCameraTilt?.let {
-                smoothNavigationTilt(it, decision.tiltDegrees)
-            } ?: decision.tiltDegrees
-        }
-        val tiltChanged = navigationTiltChangedEnough(lastCameraTilt, nextTilt)
+        val tiltChanged = navigationTiltChangedEnough(
+            lastCameraTilt,
+            decision.tiltDegrees
+        )
+        if (!force && !pointChanged && !bearingChanged && !tiltChanged) return
 
-        val now = SystemClock.elapsedRealtime()
-        if (manualFollowZoomUntilMs > 0L && now >= manualFollowZoomUntilMs) {
-            manualFollowZoom = null
-            manualFollowZoomUntilMs = 0L
-        }
-        val targetZoom = manualFollowZoom
-            ?.takeIf { manualFollowZoomUntilMs > now }
-            ?: decision.zoom
-        val currentZoom = runCatching { activeMap.getZoom() }.getOrNull()
-        val requestedZoomChange = currentZoom == null || currentZoom != targetZoom
-        val zoomChangeAllowed = requestedZoomChange && (
-            lastCameraZoomChangeAtMs == 0L ||
-                now - lastCameraZoomChangeAtMs >= CAMERA_ZOOM_MIN_INTERVAL_MS ||
-                (currentZoom != null && kotlin.math.abs(currentZoom - targetZoom) >= 2)
-            )
-
-        if (!centerMoved && !bearingChanged && !tiltChanged && !zoomChangeAllowed) return
-
-        runCatching {
-            if (centerMoved) {
-                activeMap.setLocation(
-                    MapLocation(decision.center.longitude, decision.center.latitude),
-                    true
-                )
-            }
-            if (zoomChangeAllowed) {
-                activeMap.setZoom(targetZoom, true)
-            }
-            if (tiltChanged) {
-                activeMap.setTilt(nextTilt)
-            }
-        }.onSuccess {
-            lastCameraFix = fix.point
-            if (centerMoved) lastCameraCenter = decision.center
-            if (tiltChanged) lastCameraTilt = nextTilt
-            if (zoomChangeAllowed) lastCameraZoomChangeAtMs = now
-        }
-
-        if (bearingChanged) {
-            decision.bearingDegrees?.let { animateCameraBearing(activeMap, it, now, speed) }
-        } else if (renderedBearing != null) {
-            lastCameraBearing = renderedBearing
-        }
+        val targetBearing = decision.bearingDegrees ?: renderedBearing
+        activeMap.animateCamera(
+            CameraUpdateFactory.newCameraPosition(
+                CameraPosition.Builder()
+                    .target(LatLng(decision.center.latitude, decision.center.longitude))
+                    .zoom(decision.zoom.toDouble())
+                    .bearing(targetBearing.toDouble())
+                    .tilt(decision.tiltDegrees.toDouble())
+                    .build()
+            ),
+            CAMERA_ANIMATION_MS
+        )
+        lastCameraPoint = decision.center
+        lastCameraBearing = targetBearing
+        lastCameraTilt = decision.tiltDegrees
     }
 
-    private fun markerBitmap(resId: Int): Bitmap =
-        markerBitmaps[resId] ?: renderVector(resId).also { markerBitmaps[resId] = it }
-
-    private fun riderPuckBitmap(rotationDegrees: Float, opacity: Float): Bitmap {
-        val normalized = normalizeNavigationBearing(rotationDegrees)
-        val rotationBucket = ((((normalized + 2.5f) / 5f).toInt()) * 5) % 360
-        val opacityPercent = (opacity.coerceIn(0f, 1f) * 100f + 0.5f).toInt()
-        if (rotationBucket == 0 && opacityPercent >= 100) {
-            return markerBitmap(SharedR.drawable.qg_map_rider)
-        }
-
-        val key = RiderPuckBitmapKey(rotationBucket, opacityPercent)
-        return riderPuckBitmaps.getOrPut(key) {
-            val base = markerBitmap(SharedR.drawable.qg_map_rider)
-            Bitmap.createBitmap(
-                base.width.coerceAtLeast(1),
-                base.height.coerceAtLeast(1),
-                Bitmap.Config.ARGB_8888
-            ).also { output ->
-                val canvas = Canvas(output)
-                val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-                    alpha = (opacityPercent * 255 / 100).coerceIn(0, 255)
-                }
-                canvas.save()
-                canvas.rotate(
-                    rotationBucket.toFloat(),
-                    base.width / 2f,
-                    base.height / 2f
-                )
-                canvas.drawBitmap(base, 0f, 0f, paint)
-                canvas.restore()
-            }
-        }
-    }
-
-    private fun demandBitmap(level: Int): Bitmap =
-        demandBitmaps.getOrPut(level.coerceIn(1, 3)) {
-            val normalized = level.coerceIn(1, 3)
-            val density = view?.resources?.displayMetrics?.density?.coerceAtLeast(1f) ?: 1f
-            val sizeDp = when (normalized) { 1 -> 56f; 2 -> 70f; else -> 86f }
-            val size = (sizeDp * density).toInt().coerceAtLeast(1)
-            val alpha = when (normalized) { 1 -> 42; 2 -> 58; else -> 76 }
-            Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { bitmap ->
-                val canvas = Canvas(bitmap)
-                val center = size / 2f
-                val radius = size * 0.45f
-                canvas.drawCircle(center, center, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.argb(alpha, 230, 0, 45)
-                    style = Paint.Style.FILL
-                })
-                canvas.drawCircle(center, center, radius * 0.52f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.argb((alpha + 34).coerceAtMost(150), 230, 0, 45)
-                    style = Paint.Style.FILL
-                })
-                canvas.drawCircle(center, center, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.argb(105, 230, 0, 45)
-                    style = Paint.Style.STROKE
-                    strokeWidth = 1.5f * density
-                })
-            }
-        }
-
-    private fun stopBitmap(kind: NavigationStopKind, number: Int, active: Boolean): Bitmap =
-        stopBitmaps.getOrPut(Triple(kind, number, active)) {
-            val resId = if (kind == NavigationStopKind.PICKUP) SharedR.drawable.qg_map_pickup
-            else SharedR.drawable.qg_map_dropoff
-            val base = renderVector(resId)
-            val scale = base.width / 48f
-            val bitmap = Bitmap.createBitmap(
-                base.width + (8f * scale).toInt(),
-                base.height + (9f * scale).toInt(),
-                Bitmap.Config.ARGB_8888
+    private fun publishCamera() {
+        val activeMap = map ?: return
+        val camera = activeMap.cameraPosition
+        val target = camera.target
+        onCameraChanged(
+            NavigationMapCamera(
+                point = NavigationMapPoint(target.latitude, target.longitude),
+                zoom = camera.zoom.toInt().coerceIn(0, 24),
+                bearingDegrees = camera.bearing.toFloat(),
+                tiltDegrees = camera.tilt.toFloat()
             )
-            val canvas = Canvas(bitmap)
-            canvas.drawBitmap(base, 0f, 9f * scale, null)
-            base.recycle()
-
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            paint.color = if (active) Color.rgb(230, 0, 45) else Color.WHITE
-            canvas.drawRoundRect(33f * scale, 0f, 55f * scale, 19f * scale, 7f * scale, 7f * scale, paint)
-            paint.color = if (active) Color.WHITE else Color.rgb(14, 36, 56)
-            paint.typeface = Typeface.DEFAULT_BOLD
-            paint.textAlign = Paint.Align.CENTER
-            paint.textSize = (if (number < 100) 12f else 9f) * scale
-            val baseline = 9.5f * scale - (paint.ascent() + paint.descent()) / 2f
-            canvas.drawText(number.toString(), 44f * scale, baseline, paint)
-            bitmap
-        }
-
-    private fun renderVector(resId: Int): Bitmap {
-        val context = requireNotNull(view?.context) { "Navigation map view is not attached" }
-        val drawable = requireNotNull(context.getDrawable(resId)) { "Map marker resource unavailable: $resId" }
-        val width = drawable.intrinsicWidth.coerceAtLeast(1)
-        val height = drawable.intrinsicHeight.coerceAtLeast(1)
-        return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, width, height)
-            drawable.draw(canvas)
-        }
+        )
     }
 
     private fun publishDiagnostics() {
@@ -1362,106 +476,38 @@ private class RiderNavigationMapHolder {
                 viewCreatedCount = viewCreatedCount,
                 mapCreatedCount = mapCreatedCount,
                 routeLayerRebuildCount = routeLayerRebuildCount,
-                routeGeometryUpdateCount = routeGeometryUpdateCount,
                 stopMutationCount = stopMutationCount,
-                demandMutationCount = demandMutationCount,
                 renderPassCount = renderPassCount,
-                snapshotCaptureCount = snapshotCaptureCount,
-                snapshotBridgeCount = snapshotBridgeCount,
-                snapshotBridgeFailureCount = snapshotBridgeFailureCount,
-                mapReplacementCount = mapReplacementCount,
-                snapshotVisible = snapshotVisible,
-                riderPuckPresent = riderPin != null
+                routeGeometryUpdateCount = routeGeometryUpdateCount,
+                demandMutationCount = demandMutationCount,
+                riderPuckPresent = riderMarker != null
             )
         )
     }
 
-    fun resetSurface(): Boolean {
-        var graphicsReleased = runCatching { shutdownSdk() }.isSuccess
-        map?.let { activeMap ->
-            routeLines.forEach { line ->
-                if (runCatching { activeMap.removeLine(line) }.isFailure) graphicsReleased = false
-            }
-            riderPin?.let { pin ->
-                if (runCatching { activeMap.removePin(pin) }.isFailure) graphicsReleased = false
-            }
-            stopPins.values.forEach { rendered ->
-                if (runCatching { activeMap.removePin(rendered.pin) }.isFailure) graphicsReleased = false
-            }
-            demandPins.values.forEach { rendered ->
-                if (runCatching { activeMap.removePin(rendered.pin) }.isFailure) graphicsReleased = false
-            }
-        }
-        riderMarkerAnimator?.cancel()
-        riderMarkerAnimator = null
-        cancelCameraBearingAnimation()
-        clearNavigationGestureOverrides()
-        lastCameraBearingAnimationAtMs = 0L
+    private fun resetSurface() {
+        riderAnimator?.cancel()
+        riderAnimator = null
+        stop()
         routeLines.clear()
-        renderedRouteSegments = emptyList()
-        stopPins.clear()
-        demandPins.clear()
-        riderPin = null
+        stopMarkers.clear()
+        demandMarkers.clear()
+        riderMarker = null
         map = null
+        styleReady = false
+        view?.onDestroy()
         view = null
-        container = null
-        snapshotOverlay?.setImageDrawable(null)
-        snapshotOverlay = null
-        snapshotBitmap?.takeIf { !it.isRecycled }?.recycle()
-        snapshotBitmap = null
-        mainHandler.removeCallbacksAndMessages(null)
-        snapshotCaptureInFlight = false
-        snapshotRefreshScheduled = false
-        snapshotVisible = false
-        pendingBridgeWithoutSnapshot = false
-        surfaceVisible = false
-        puckFreshnessGeneration += 1
-        rendererWatchGeneration += 1
-        announcedReplacementMap = null
-        lastKnownCamera = null
-        lastRenderedRiderFix = null
-        lastCameraFix = null
-        lastCameraCenter = null
-        lastCameraBearing = null
-        lastCameraTilt = null
-        lastCameraZoomChangeAtMs = 0L
-        navigationInteractionEnabled = null
-        lastPuckRotation = null
-        lastPuckOpacity = null
-        lastOverviewSignature = null
+        started = false
         resumed = false
-        stopSource = null
-        stopActiveId = null
-        routeSource = null
-        routeActiveId = null
-        routeRemainingStopIds = emptySet()
-        return graphicsReleased
-    }
-
-    private fun releaseBitmapCaches(recyclePixels: Boolean) {
-        if (recyclePixels) markerBitmaps.values.forEach { bitmap ->
-            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
-        }
-        markerBitmaps.clear()
-        if (recyclePixels) riderPuckBitmaps.values.forEach { bitmap ->
-            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
-        }
-        riderPuckBitmaps.clear()
-        if (recyclePixels) stopBitmaps.values.forEach { bitmap ->
-            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
-        }
-        stopBitmaps.clear()
-        if (recyclePixels) demandBitmaps.values.forEach { bitmap ->
-            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
-        }
-        demandBitmaps.clear()
+        lastRouteSignature = null
+        lastStopSignature = null
+        lastDemandSignature = null
+        lastRenderedRiderFix = null
     }
 
     fun dispose() {
-        val graphicsReleased = resetSurface()
-        // Longdo Pin accepts caller-owned Bitmap directly. If renderer removal failed,
-        // drop strong Java references but do not recycle pixels that native code may still hold.
-        releaseBitmapCaches(graphicsReleased)
+        if (disposed) return
+        resetSurface()
         disposed = true
         unbindCallbacks()
     }
@@ -1484,9 +530,14 @@ private object RiderNavigationMapRegistry {
     @Synchronized
     fun acquire(stateKey: String, lifecycle: Lifecycle): RiderNavigationMapHolder {
         val current = activeHolder
-        if (activeKey == stateKey && activeLifecycle === lifecycle &&
-            current != null && !current.disposed
-        ) return current
+        if (
+            activeKey == stateKey &&
+            activeLifecycle === lifecycle &&
+            current != null &&
+            !current.disposed
+        ) {
+            return current
+        }
 
         detachLifecycleObserver()
         current?.dispose()
@@ -1507,8 +558,6 @@ private object RiderNavigationMapRegistry {
         if (activeKey == stateKey && activeHolder === holder) {
             holder.retainAcrossVisibilityLoss()
             holder.unbindCallbacks()
-            // Keep the lifecycle observer registered while Home is unmounted so an Activity
-            // destroy cannot leave a retained MapGLSurfaceView holding the old Activity context.
         }
     }
 
@@ -1524,9 +573,8 @@ private object RiderNavigationMapRegistry {
 }
 
 /**
- * Standalone navigation-map surface. Keep stateKey stable for the Rider account/session,
- * never an order id. Recomposition/refresh updates overlays only; the account-keyed registry
- * retains the same MapGLSurfaceView when Home is temporarily unmounted for another Rider tab.
+ * QueueGo navigation surface. Routing/matching/camera policy stays QueueGo-owned while
+ * MapLibre renders QueueGo's installed vector package. No public-routing fallback.
  */
 @Composable
 fun RiderNavigationMap(
@@ -1534,12 +582,15 @@ fun RiderNavigationMap(
     state: RiderNavigationMapState,
     modifier: Modifier = Modifier,
     initialCamera: NavigationMapCamera? = null,
+    mapSourceUri: String? = null,
     onMapReady: (Boolean) -> Unit = {},
     onCameraChanged: (NavigationMapCamera) -> Unit = {},
     onUserGesture: () -> Unit = {},
     onDiagnostics: ((NavigationMapDiagnostics) -> Unit)? = null
 ) {
-    require(stateKey.isNotBlank()) { "Navigation map stateKey must be stable and non-blank" }
+    require(stateKey.isNotBlank()) {
+        "Navigation map stateKey must be stable and non-blank"
+    }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentState = rememberUpdatedState(state)
@@ -1547,123 +598,35 @@ fun RiderNavigationMap(
     val currentCameraChanged = rememberUpdatedState(onCameraChanged)
     val currentUserGesture = rememberUpdatedState(onUserGesture)
     val currentDiagnostics = rememberUpdatedState(onDiagnostics)
-    val holder = remember(stateKey, lifecycle) { RiderNavigationMapRegistry.acquire(stateKey, lifecycle) }
+    val holder = remember(stateKey, lifecycle) {
+        RiderNavigationMapRegistry.acquire(stateKey, lifecycle)
+    }
     holder.bindCallbacks(
+        ready = { currentReady.value(it) },
         cameraChanged = { currentCameraChanged.value(it) },
+        userGesture = { currentUserGesture.value() },
         diagnostics = { currentDiagnostics.value?.invoke(it) }
     )
 
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            val retainedRoot = holder.container?.takeIf { it.context === context }
-            if (holder.container != null && retainedRoot == null) {
-                // Activity/context changed: never retain Views backed by a destroyed Activity.
-                holder.resetSurface()
-            }
-            val root = retainedRoot ?: FrameLayout(context).also { frame ->
-                val view = LayoutInflater.from(context)
-                    .inflate(SharedR.layout.view_longdo_shared_map, frame, false) as MapGLSurfaceView
-                view.setPreserveEGLContextOnPause(true)
-                frame.addView(
-                    view,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
-                    )
-                )
-                val overlay = ImageView(context).apply {
-                    scaleType = ImageView.ScaleType.FIT_XY
-                    visibility = View.GONE
-                    isClickable = false
-                    isFocusable = false
+            val sourceUri = mapSourceUri ?: queueGoMapVectorSourceUri(context)
+            if (sourceUri == null) {
+                currentReady.value(false)
+                MapView(context)
+            } else {
+                val view = holder.ensureView(context, sourceUri, initialCamera)
+                (view.parent as? ViewGroup)?.removeView(view)
+                if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                    holder.start()
                 }
-                frame.addView(
-                    overlay,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
-                    )
-                )
-                holder.view = view
-                holder.attachContainer(frame, overlay)
-                holder.markViewCreated()
-            }
-            (root.parent as? android.view.ViewGroup)?.removeView(root)
-            val view = requireNotNull(holder.view)
-            val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
-            var touchDownX = 0f
-            var touchDownY = 0f
-            var userGestureReported = false
-            var transformGestureActive = false
-            view.setOnTouchListener { _, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        touchDownX = event.x
-                        touchDownY = event.y
-                        userGestureReported = false
-                        transformGestureActive = false
-                    }
-                    MotionEvent.ACTION_POINTER_DOWN -> {
-                        if (event.pointerCount >= 2 && !transformGestureActive) {
-                            transformGestureActive = true
-                            userGestureReported = true
-                            holder.beginNavigationTransformGesture()
-                        }
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        if (event.pointerCount >= 2) {
-                            if (!transformGestureActive) {
-                                transformGestureActive = true
-                                userGestureReported = true
-                                holder.beginNavigationTransformGesture()
-                            }
-                        } else if (!transformGestureActive && !userGestureReported) {
-                            val dx = event.x - touchDownX
-                            val dy = event.y - touchDownY
-                            if (dx * dx + dy * dy >= touchSlop * touchSlop) {
-                                userGestureReported = true
-                                holder.beginNavigationPanGesture()
-                                currentUserGesture.value()
-                            }
-                        }
-                    }
-                    MotionEvent.ACTION_UP,
-                    MotionEvent.ACTION_CANCEL -> {
-                        if (transformGestureActive) holder.endNavigationTransformGesture()
-                        transformGestureActive = false
-                        userGestureReported = false
-                    }
+                if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                    holder.resume()
                 }
-                false
-            }
-            view.setListener(object : IMapListener {
-                    override fun onMapCreated(map: com.longdo.api.Map) {
-                        view.post {
-                            if (holder.disposed) return@post
-                            runCatching {
-                                // Initial callbacks and delayed replacement callbacks share the
-                                // same setup path. Silent renderer swaps are adopted by resume().
-                                holder.configureMap(context, map, initialCamera)
-                                // A duplicate SDK callback for the same map is only a render retry;
-                                // never reset base/camera or force the visible map to assemble again.
-                                holder.render(currentState.value)
-                                holder.resume()
-                            }.onSuccess {
-                                currentReady.value(true)
-                            }.onFailure {
-                                Log.e("QueueGoNavMap", "map_setup_failed", it)
-                                currentReady.value(false)
-                            }
-                        }
-                    }
-                })
-            if (holder.map != null) {
                 holder.render(currentState.value)
-                currentReady.value(true)
+                view
             }
-            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) holder.resume()
-            root
         },
         update = {
             holder.render(state)
@@ -1673,24 +636,19 @@ fun RiderNavigationMap(
     DisposableEffect(lifecycle, stateKey) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
+                Lifecycle.Event.ON_START -> holder.start()
                 Lifecycle.Event.ON_RESUME -> holder.resume()
-                Lifecycle.Event.ON_PAUSE -> holder.retainAcrossVisibilityLoss()
-                Lifecycle.Event.ON_DESTROY -> RiderNavigationMapRegistry.destroy(stateKey, holder)
+                Lifecycle.Event.ON_PAUSE -> holder.pause()
+                Lifecycle.Event.ON_STOP -> holder.stop()
+                Lifecycle.Event.ON_DESTROY ->
+                    RiderNavigationMapRegistry.destroy(stateKey, holder)
                 else -> Unit
             }
         }
         lifecycle.addObserver(observer)
         onDispose {
             lifecycle.removeObserver(observer)
-            holder.view?.setOnTouchListener(null)
-            if (lifecycle.currentState == Lifecycle.State.DESTROYED) {
-                RiderNavigationMapRegistry.destroy(stateKey, holder)
-            } else {
-                // Tab/screen navigation may unmount Home while the account session remains active.
-                // Keep the SDK renderer alive; detaching/reattaching must not trigger Longdo Map Pause.
-                RiderNavigationMapRegistry.release(stateKey, holder)
-            }
-            currentReady.value(false)
+            RiderNavigationMapRegistry.release(stateKey, holder)
         }
     }
 }

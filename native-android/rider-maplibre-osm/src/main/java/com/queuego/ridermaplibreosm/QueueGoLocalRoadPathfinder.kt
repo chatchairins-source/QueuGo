@@ -96,7 +96,7 @@ internal fun findQueueGoLocalRoadPath(
     queue += QueueGoPathQueueItem(start, 0.0)
 
     while (queue.isNotEmpty()) {
-        val current = queue.poll()
+        val current = queue.poll() ?: break
         val knownDistance = best[current.key] ?: continue
         if (current.distanceMeters > knownDistance + DISTANCE_EPSILON_METERS) continue
         if (!visited.add(current.key)) continue

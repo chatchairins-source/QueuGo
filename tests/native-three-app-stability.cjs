@@ -368,9 +368,11 @@ ok(
   'Rider camera result proof promotion must run through the serialized IO path'
 );
 ok(
-  riderAppForProofIo.includes('resumeCollection = verifyCollection') &&
-  !riderAppForProofIo.includes('resumeCollection = pendingProofStore.loadVerification'),
-  'Rider verification composition must never synchronously read durable proof state'
+  riderAppForProofIo.includes('val saved = pendingProofIo {') &&
+  riderAppForProofIo.includes('pendingProofStore.loadVerification(auth.user.id)') &&
+  !riderAppForProofIo.includes('verifyCollection') &&
+  !riderAppForProofIo.includes('resumeCollection ='),
+  'Rider verification recovery must stay serialized off Main and must not restore a removed collection sub-flow'
 );
 ok(
   riderAppForProofIo.includes('Server mutation already committed; stale local proof is reconciled later.') &&
@@ -614,57 +616,64 @@ ok(
   'Rider navigation-map camera/view-mode Keystore restore and high-frequency persistence must stay off Main'
 );
 
-const riderNavigationRouteClient=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt');
+const riderNavigationRouteClient=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/QueueGoNavigationRouteClient.kt');
+const legacyLongdoRoutePath=path.join(root,'rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt');
 ok(
-  riderNavigationRouteClient.includes('LONGDO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
-  riderNavigationRouteClient.includes('LONGDO_ROUTE_MAX_FEATURES = 2_048') &&
-  riderNavigationRouteClient.includes('LONGDO_ROUTE_MAX_POINTS = 12_000') &&
-  riderNavigationRouteClient.includes('readLongdoRouteResponseBounded') &&
-  !riderNavigationRouteClient.includes('response.body?.string()'),
-  'Rider navigation route HTTP/GeoJSON memory must stay bounded before parse and renderer allocation'
+  riderNavigationRouteClient.includes('QUEUEGO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
+  riderNavigationRouteClient.includes('QUEUEGO_ROUTE_MAX_STEPS = 2_048') &&
+  riderNavigationRouteClient.includes('QUEUEGO_ROUTE_MAX_POINTS = 12_000') &&
+  riderNavigationRouteClient.includes('readQueueGoRouteResponseBounded') &&
+  !riderNavigationRouteClient.includes('response.body?.string()') &&
+  !fs.existsSync(legacyLongdoRoutePath),
+  'Rider QueueGo route HTTP/JSON memory must stay bounded and legacy external route client must stay removed'
 );
 
 const riderNavigationMapRuntime=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
 ok(
-  riderNavigationMapRuntime.includes('RIDER_NAV_SNAPSHOT_MAX_SIDE_PX = 1280') &&
-  riderNavigationMapRuntime.includes('val sourceMaxSide = maxOf(sourceWidth, sourceHeight)') &&
-  riderNavigationMapRuntime.includes('val snapshotScale = minOf(') &&
-  riderNavigationMapRuntime.includes('RIDER_NAV_SNAPSHOT_MAX_SIDE_PX.toFloat() / sourceMaxSide.toFloat()') &&
-  riderNavigationMapRuntime.includes('Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)'),
-  'Rider navigation continuity PixelCopy snapshots must cap bitmap dimensions before allocation'
+  riderNavigationMapRuntime.includes('MapLibre.getInstance') &&
+  riderNavigationMapRuntime.includes('RiderNavigationMapRegistry') &&
+  riderNavigationMapRuntime.includes('holder.retainAcrossVisibilityLoss()') &&
+  riderNavigationMapRuntime.includes('current?.dispose()') &&
+  !riderNavigationMapRuntime.includes('PixelCopy') &&
+  !riderNavigationMapRuntime.includes('Bitmap.createBitmap('),
+  'Rider MapLibre continuity must retain one lifecycle holder without PixelCopy snapshot bitmap allocation'
 );
 
 ok(
-  riderNavigationMapRuntime.includes('fun resetSurface(): Boolean') &&
-  riderNavigationMapRuntime.includes('var graphicsReleased = runCatching { shutdownSdk() }.isSuccess') &&
-  riderNavigationMapRuntime.includes('if (runCatching { activeMap.removePin(pin) }.isFailure) graphicsReleased = false') &&
-  riderNavigationMapRuntime.includes('private fun releaseBitmapCaches(recyclePixels: Boolean)') &&
-  riderNavigationMapRuntime.includes('if (recyclePixels) markerBitmaps.values.forEach') &&
-  riderNavigationMapRuntime.includes('markerBitmaps.clear()') &&
-  riderNavigationMapRuntime.includes('riderPuckBitmaps.clear()') &&
-  riderNavigationMapRuntime.includes('stopBitmaps.clear()') &&
-  riderNavigationMapRuntime.includes('demandBitmaps.clear()') &&
-  riderNavigationMapRuntime.includes('val graphicsReleased = resetSurface()') &&
-  riderNavigationMapRuntime.includes('releaseBitmapCaches(graphicsReleased)'),
-  'Rider navigation bitmap caches must drop strong refs on dispose and recycle pixels only after renderer graphics release succeeds'
+  riderNavigationMapRuntime.includes('private fun resetSurface()') &&
+  riderNavigationMapRuntime.includes('riderAnimator?.cancel()') &&
+  riderNavigationMapRuntime.includes('routeLines.clear()') &&
+  riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
+  riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
+  riderNavigationMapRuntime.includes('riderMarker = null') &&
+  riderNavigationMapRuntime.includes('map = null') &&
+  riderNavigationMapRuntime.includes('view?.onDestroy()') &&
+  riderNavigationMapRuntime.includes('view = null') &&
+  !riderNavigationMapRuntime.includes('markerBitmaps') &&
+  !riderNavigationMapRuntime.includes('Bitmap.createBitmap('),
+  'Rider MapLibre dispose must drop renderer, marker and view refs without legacy bitmap caches'
 );
 
-const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
+const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
 ok(
-  riderLongdoMap.includes('withContext(Dispatchers.IO) { stateStore.loadMapCamera(stateKey) }') &&
-  riderLongdoMap.includes('riderMapCameraIoScope.launch') &&
-  riderLongdoMap.includes('riderMapCameraPersistMutex.withLock') &&
-  !riderLongdoMap.includes('mutableStateOf(stateStore.loadMapCamera(stateKey))') &&
-  !riderLongdoMap.includes('RiderLongdoHolder(cameraState) { camera -> stateStore.saveMapCamera(stateKey, camera) }'),
-  'Rider Longdo camera restore/persistence must keep encrypted Keystore I/O off Main and map callbacks'
+  riderLongdoMap.includes('withContext(Dispatchers.IO) {') &&
+  riderLongdoMap.includes('sessionStore.loadMapCamera(stateKey)') &&
+  riderLongdoMap.includes('pendingCameraPersistence') &&
+  riderLongdoMap.includes('sessionStore.saveMapCamera(stateKey, camera)') &&
+  riderLongdoMap.includes('persistenceHydrated') &&
+  !riderLongdoMap.includes('mutableStateOf(sessionStore.loadMapCamera(stateKey))'),
+  'Rider MapLibre camera restore/persistence must keep SessionStore I/O off Main and map callbacks'
 );
+const legacyRiderLongdoMapPath=path.join(root,'rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
 ok(
-  riderLongdoMap.includes('val pinsReleased = runCatching { map?.clearPin() }.isSuccess') &&
-  riderLongdoMap.includes('if (pinsReleased)') &&
-  riderLongdoMap.includes('markerBitmaps.values.forEach') &&
-  riderLongdoMap.includes('stopBitmaps.values.forEach') &&
-  riderLongdoMap.includes('bitmap.recycle()'),
-  'Rider Longdo marker caches must recycle only after pins are released, avoiding renderer use-after-recycle during GL teardown'
+  !fs.existsSync(legacyRiderLongdoMapPath) &&
+  riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
+  riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
+  riderNavigationMapRuntime.includes('riderMarker = null') &&
+  riderNavigationMapRuntime.includes('view?.onDestroy()') &&
+  !riderNavigationMapRuntime.includes('markerBitmaps') &&
+  !riderNavigationMapRuntime.includes('stopBitmaps'),
+  'Rider MapLibre renderer must release marker references without restoring legacy app-owned bitmap caches'
 );
 
 const sharedManifest=read('shared/src/main/AndroidManifest.xml');

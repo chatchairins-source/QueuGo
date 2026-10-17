@@ -24,12 +24,11 @@ dependencies {
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("junit:junit:4.13.2")
     implementation(project(":shared"))
-    // Longdo MapLocationManager references GooglePlayServicesUtil during GL map creation.
-    implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("androidx.compose.ui:ui:1.11.4")
     implementation("androidx.compose.foundation:foundation:1.11.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.maplibre.gl:android-sdk-opengl:13.5.3")
 }

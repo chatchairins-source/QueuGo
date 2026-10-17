@@ -1,63 +1,35 @@
 const assert=require('assert');
 const fs=require('fs');
+const read=p=>fs.readFileSync(p,'utf8');
 
-const source=fs.readFileSync('native-android/rider/src/androidTest/java/com/queuego/rider/RiderMapRuntimeTest.kt','utf8');
-const capture=fs.readFileSync('native-android/qa/capture-rider-launch.py','utf8');
-const map=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt','utf8');
+const map=read('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
+const runtime=read('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt');
+const host=read('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt');
+const shared=read('native-android/shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 
-assert(source.includes('System.currentTimeMillis() - started < 60_000'),
-  'Longdo tile evidence must allow up to 60 seconds for CI/emulator network latency');
-assert(source.includes('finalFraction <= 0.01')&&
-  source.includes('allowIncompleteTiles')&&
-  source.includes('if (!allowIncompleteTiles)'),
-  'Longdo main runtime must retain strict <=1% gray-tile completion while map-display evidence may continue to nonblank/GPS checks on slow tiles');
-assert(source.includes('Real map tiles still incomplete after 60 seconds'),
-  'Longdo tile failure must remain fail-closed after the extended evidence window');
-assert(source.includes('first_frame_gray_fraction')&&source.includes('final_gray_fraction'),
-  'Longdo runtime evidence must keep first/final tile completeness measurements');
-assert(!source.includes('System.currentTimeMillis() - started < 30_000'),
-  'The known-flaky 30 second Longdo tile deadline must not return');
-assert(capture.indexOf('retain_real_map_frames(output / "map-frames")') <
-  capture.indexOf('assert "OK (1 test)" in (after.stdout + after.stderr)'),
-  'Actual first/final map frames and camera metrics must survive failed instrumentation');
-assert(capture.includes('"rm", "-rf", "files/map-runtime"'),
-  'Generated map frames must be cleared before testing to prevent stale evidence');
-assert((capture.match(/"allowIncompleteTiles", "true"/g)||[]).length>=2&&
-  capture.includes('dominant_fraction < 0.95'),
-  'Both native-pilot and map-display runtime may relax only strict tile completion while map-display still rejects blank rendered maps');
-assert(map.includes('layerURL = "https://ms.longdo.com/map/msn-server/tile.php"')&&!map.includes('ms2.longdo.com/mmmap/img.php'),
-  'Initial native layer must match the endpoint selected by the actual key checker');
-assert(capture.includes('len(retained_frames["files"]) == 9'),
-  'A successful instrumentation run must retain all nine valid original evidence files');
-require('child_process').execFileSync('python3',['tests/native-map-evidence-retention.py'],{stdio:'inherit'});
-assert(map.includes('R.drawable.qg_rider_current_location')&&
-  map.includes('latestDeviceLocation')&&map.includes('recenterOnNextFix = true'),
-  'Rider map must use the QueueGo current-location marker and refresh/recenter again on the next fresh location fix');
-assert(map.includes('private fun renderRiderMarkerBitmap')&&
-  map.includes('Bitmap.createBitmap')&&map.includes('drawable.draw(canvas)')&&
-  map.includes('Pin(mapLocation, markerBitmap(context, R.drawable.qg_rider_current_location))')&&
-  map.includes('stopBitmap(context, visual, number)'),
-  'Rider Longdo v0.1.8 markers must render vector resources to Bitmap before Pin construction');
-assert(map.includes('currentLocationPin')&&
-  map.includes('existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_STEPS)')&&
-  map.includes('pin.setOffset(PointF(0f, -0.4f))')&&
-  !map.includes('append(location?.first).append(",").append(location?.second)'),
-  'Rider GPS updates must move the current-location pin smoothly without rebuilding numbered stops on every fix');
-assert(map.includes('private const val RIDER_MAP_LOCATION_ANIMATION_STEPS = 18')&&
-  !map.includes('RIDER_MAP_LOCATION_ANIMATION_SECONDS'),
-  'Rider Longdo v0.1.8 marker animation must use the SDK interpolation-step Int contract, not seconds');
-assert(map.includes('RIDER_MAP_LOCATION_REFRESH_MS = 2_500L')&&
-  map.includes('RIDER_MAP_LOCATION_REFRESH_METERS = 2f')&&
-  map.includes('RIDER_MAP_LAST_KNOWN_MAX_AGE_MS = 120_000L')&&
-  map.includes('RIDER_MAP_LOCATION_REFRESH_MS,')&&
-  map.includes('ageMs in 0L..RIDER_MAP_LAST_KNOWN_MAX_AGE_MS'),
-  'Rider map must follow a fresh foreground GPS fix instead of presenting an old last-known location as current');
-assert(map.includes('latestDeviceLocation = null')&&
-  map.includes('refreshOverlays(context, currentJob, currentPickups, currentBundleOrders)'),
-  'Rider map must discard an in-memory pre-background fix and redraw from fresh location state on resume');
-for(const marker of ['qg_marker_pickup','qg_marker_dropoff','qg_rider_brand_q']){
-  assert(fs.existsSync('native-android/rider/src/main/res/drawable/'+marker+'.xml'),
-    'QueueGo branded marker missing: '+marker);
+for(const source of [map,runtime,host,shared]){
+  assert(!/com\.longdo|LongdoMapAndroidSDK|longdo\.map|api\.longdo|ms\.longdo/i.test(source),
+    'Native map runtime must never depend on legacy Longdo');
 }
 
-console.log('Native Rider Longdo runtime evidence budget contracts: PASS');
+assert(map.includes('RiderNavigationMapRegistry'));
+assert(map.includes('retainAcrossVisibilityLoss()'));
+assert(map.includes('viewCreatedCount')&&map.includes('mapCreatedCount'));
+assert(map.includes('ValueAnimator.ofFloat(0f, 1f)'));
+assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 1_200L'));
+assert(map.includes('navigationCameraDecision('));
+assert(map.includes('CameraUpdateFactory.newCameraPosition'));
+
+assert(runtime.includes('gpsRefreshTabReturnAndOverlayUpdatesReuseSameMapView'));
+assert(runtime.includes('assertEquals(1, it.latestDiagnostics.viewCreatedCount)'));
+assert(runtime.includes('assertEquals(1, it.latestDiagnostics.mapCreatedCount)'));
+assert(runtime.includes('manualDragReportsGestureButTapDoesNot'));
+assert(runtime.includes('activityRecreationCreatesFreshMapViewForFreshActivityContext'));
+assert(host.includes('mapSourceUri = "asset://queuego-nav-runtime-tilejson.json"'));
+assert(fs.existsSync('native-android/rider-navigation-map/src/debug/assets/queuego-nav-runtime-tilejson.json'));
+assert(fs.existsSync('native-android/rider-navigation-map/src/debug/assets/queuego-nav-runtime.mvt'));
+
+assert(shared.includes('queueGoMapServiceBaseUrl'));
+assert(shared.includes('startsWith("https://")'));
+assert(shared.includes('pmtiles://'));
+console.log('Native Rider QueueGo MapLibre runtime continuity contracts: PASS');

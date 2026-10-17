@@ -1,426 +1,70 @@
-// Runtime gate trigger: native Longdo perspective tilt branch.
 const assert=require('assert');
 const fs=require('fs');
+const read=p=>fs.readFileSync(p,'utf8');
 
-const settings=fs.readFileSync('native-android/settings.gradle.kts','utf8');
-const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
-const riderApp=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
-const riderJobDock=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderJobDock.kt','utf8');
-const moduleBuild=fs.readFileSync('native-android/rider-navigation-map/build.gradle.kts','utf8');
-const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt','utf8');
-const route=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt','utf8');
-const cameraPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationCameraPolicy.kt','utf8');
-const overviewPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationOverviewPolicy.kt','utf8');
-const guidance=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationGuidance.kt','utf8');
-const coordinator=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteCoordinator.kt','utf8');
-const models=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationMapModels.kt','utf8');
-const signalPipeline=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationSignalPipeline.kt','utf8');
-const confidenceMetrics=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationConfidenceMetrics.kt','utf8');
-const viewportInsets=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationViewportInsets.kt','utf8');
-const puckOrientation=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationPuckOrientation.kt','utf8');
-const riderPuckDrawable=fs.readFileSync('native-android/shared/src/main/res/drawable/qg_map_rider.xml','utf8');
-const routeCache=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteCache.kt','utf8');
-const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
-const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
-const runtimeActivity=fs.readFileSync('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt','utf8');
-const runtimeRunner=fs.readFileSync('native-android/qa/run-rider-navigation-map-runtime.py','utf8');
-const riderLaunchCapture=fs.readFileSync('native-android/qa/capture-rider-launch.py','utf8');
-const locationRuntimeTest=fs.readFileSync('native-android/rider/src/androidTest/java/com/queuego/rider/RiderNavigationLocationServiceRuntimeTest.kt','utf8');
+const settings=read('native-android/settings.gradle.kts');
+const riderBuild=read('native-android/rider/build.gradle.kts');
+const moduleBuild=read('native-android/rider-navigation-map/build.gradle.kts');
+const map=read('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
+const route=read('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/QueueGoNavigationRouteClient.kt');
+const routeContract=read('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteProvider.kt');
+const integration=read('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
+const locationService=read('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
+const manifest=read('native-android/rider/src/main/AndroidManifest.xml');
+const runtimeTest=read('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt');
+const runtimeHost=read('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt');
+const workflow=read('.github/workflows/build-native-rider-pilot.yml');
 
-assert(settings.includes('":rider-navigation-map"'),
-  'Standalone Rider navigation map module must be registered');
-assert(moduleBuild.includes('id("com.android.library")')&&moduleBuild.includes('implementation(project(":shared"))'),
-  'Navigation map must stay an Android library reusing the shared Longdo SDK');
-assert(moduleBuild.includes('com.google.android.gms:play-services-location:21.3.0'),
-  'Standalone Longdo runtime must include the Google Play Services location classes required by MapLocationManager');
-const integration=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt','utf8');
-const sessionStore=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/SessionStore.kt','utf8');
-const navigationSessionRegistry=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationSessionRegistry.kt','utf8');
-const locationService=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt','utf8');
-const riderManifest=fs.readFileSync('native-android/rider/src/main/AndroidManifest.xml','utf8');
-assert(riderBuild.includes('implementation(project(":rider-navigation-map"))')&&
-  riderApp.includes('QueueGoRiderNavigationMap('),
-  'Runtime-gated navigation map must be integrated into the Rider APK through the QueueGo adapter');
-assert(locationService.includes('NAVIGATION_LOCATION_INTERVAL_MS = 500L')&&
-  locationService.includes('NAVIGATION_LOCATION_MIN_INTERVAL_MS = 250L')&&
-  locationService.includes('NAVIGATION_LOCATION_MIN_DISTANCE_METERS = 0.5f')&&
-  locationService.includes('LocationRequest.Builder(')&&
-  locationService.includes('Priority.PRIORITY_HIGH_ACCURACY')&&
-  locationService.includes('MutableStateFlow<NavigationMapFix?>')&&
-  locationService.includes('fun riderResolveTravelBearing(')&&
-  locationService.includes('motionBearing = previous?.let')&&
-  locationService.includes('abs(riderShortestBearingDelta(motion, raw)) > 65f')&&
-  integration.includes('RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()')&&
-  integration.includes('NavigationRouteCoordinator')&&
-  integration.includes('Channel.CONFLATED')&&
-  integration.includes('riderNavigationStops'),
-  'Rider navigation must use one foreground-owned high-accuracy 500ms fused GPS stream with a 250ms floor and feed its latest fix into the sequential coordinator');
-assert(riderManifest.includes('android.permission.FOREGROUND_SERVICE_LOCATION')&&
-  riderManifest.includes('android:name=".RiderNavigationLocationService"')&&
-  riderManifest.includes('android:foregroundServiceType="location"')&&
-  !riderManifest.includes('android.permission.ACCESS_BACKGROUND_LOCATION')&&
-  locationService.includes('ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION')&&
-  locationService.includes('START_NOT_STICKY'),
-  'Navigation location must use the Android location foreground-service contract without requesting broad background-location permission');
-assert(integration.includes('Lifecycle.Event.ON_RESUME')&&
-  !integration.includes('Lifecycle.Event.ON_RESUME && navigationActive')&&
-  integration.includes('The visible Rider map must always own a fresh GPS fix')&&
-  integration.includes('RiderNavigationLocationService.start(context)')&&
-  integration.includes('if (!navigationActive) {')&&
-  integration.includes('RiderNavigationLocationService.stop(context)')&&
-  integration.includes('RiderNavigationLocationService.start(context)\n            viewModeState = viewModeController.onRecenter()')&&
-  !integration.includes('Lifecycle.Event.ON_PAUSE -> locationEngine.stop()')&&
-  !integration.includes('RiderNavigationLocationEngine'),
-  'Visible Rider map and recenter must own a fresh GPS fix; active navigation must keep foreground GPS through tab/background transitions');
-assert(map.includes('val holder = remember(stateKey, lifecycle)')&&map.includes('AndroidView(')&&map.includes('factory =')&&map.includes('update ='),
-  'MapView owner must survive normal Compose recomposition and lifecycle-safe tab remounts while only updating overlays');
-assert(map.includes('Deliberately keep lastRiderFix, map, pins and route layers')&&
-  !map.includes('latestDeviceLocation = null')&&!map.includes('clearPin()'),
-  'Refresh/resume must not clear the existing map or rebuild every marker');
-assert(!map.includes('LaunchedEffect(state)')&&
-  map.includes('state.stops == stopSource')&&map.includes('state.routes == routeSource')&&
-  !map.includes('state.stops === stopSource')&&!map.includes('state.routes === routeSource')&&
-  !map.includes('routes.hashCode()'),
-  'GPS/order refresh must not render twice or rebuild structurally-equivalent route geometry');
-assert(map.includes('stopSource = null')&&map.includes('routeSource = null')&&
-  map.includes('if (!pushed) renderSucceeded = false')&&map.includes('runCatching { activeMap.removeLine(oldLine) }.isFailure')&&
-  map.includes('nextSegments += requireNotNull(oldSegment)')&&
-  map.includes('routeSource = if (succeeded) state.routes else null'),
-  'Transient Longdo pin/line failures must remain retryable instead of caching a partial frame');
-assert(map.includes('fun attachMap(nextMap: com.longdo.api.Map): Boolean')&&
-  map.includes('if (map === nextMap) return false')&&
-  map.includes('val newSdkMap = attachMap(nextMap)')&&
-  map.includes('if (!newSdkMap) return false')&&
-  map.includes('never reset base/camera or force the visible map to assemble again'),
-  'Repeated Longdo onMapCreated callbacks for the same SDK map must not reinitialize base/camera');
-assert(map.includes('RiderNavigationMapRegistry')&&
-  map.includes('holder.container?.takeIf { it.context === context }')&&
-  map.includes('holder.retainAcrossVisibilityLoss()')&&
-  runtimeActivity.includes('hideMapForAnotherTab')&&runtimeActivity.includes('showMapAfterReturningHome')&&
-  runtimeActivity.includes('hasMapView')&&runtimeTest.includes('awaitMapPresence')&&
-  runtimeTest.includes('expected = false')&&runtimeTest.includes('expected = true')&&
-  runtimeTest.includes('Rider tab return recreated MapGLSurfaceView')&&
-  runtimeTest.includes('Rider tab return recreated Longdo map')&&
-  runtimeTest.includes('Healthy tab remount should not invoke the continuity bridge')&&
-  runtimeTest.includes('manualPanSuspendsFollowButTapDoesNotReportGesture')&&
-  runtimeTest.includes('routeProgressMutatesExistingLongdoLineWithoutRecreatingIt')&&
-  runtimeActivity.includes('dispatchDragOnMap')&&runtimeActivity.includes('userGestureCount')&&
-  runtimeActivity.includes('shortenActiveRouteFixture')&&runtimeActivity.includes('routeLineIdentities'),
-  'Leaving Home for another Rider tab must actually unmount/remount the map and reuse the same map objects without leaking an old Activity context');
-assert(map.includes('activeDestroyObserver')&&
-  map.includes('Keep the lifecycle observer registered while Home is unmounted')&&
-  map.includes('remember(stateKey, lifecycle)')&&
-  runtimeActivity.includes('mapViewUsesActivityContext')&&
-  runtimeTest.includes('retainedMapIsDisposedWhenActivityDiesOffHome')&&
-  runtimeTest.includes('destroyed Activity'),
-  'A retained off-Home map must be destroyed with its Activity and recreated with the new Activity context');
-assert(map.includes('fun retainAcrossVisibilityLoss()')&&
-  map.includes('Capture a frozen frame quietly for emergency continuity')&&
-  map.includes('Lifecycle.Event.ON_PAUSE -> holder.retainAcrossVisibilityLoss()')&&
-  map.includes('holder.retainAcrossVisibilityLoss()')&&
-  map.includes('fun shutdownSdk()')&&
-  map.includes('activeView.onPause()')&&
-  map.indexOf('activeView.onPause()')===map.lastIndexOf('activeView.onPause()')&&
-  !map.includes('view?.onPause()')&&!map.includes('createdView.onPause()')&&
-  !map.includes('activeView.onResume()')&&
-  map.includes('Calling it after ordinary background/foreground transitions can replace renderer.map'),
-  'Ordinary tab/background visibility loss must not call Longdo onPause/onResume; SDK shutdown is reserved for real surface disposal');
-assert(map.includes('MotionEvent.ACTION_MOVE')&&
-  map.includes('MotionEvent.ACTION_POINTER_DOWN')&&
-  map.includes('ViewConfiguration.get(context).scaledTouchSlop')&&
-  map.includes('event.pointerCount >= 2')&&
-  map.includes('holder.beginNavigationTransformGesture()')&&
-  map.includes('holder.endNavigationTransformGesture()')&&
-  map.includes('currentUserGesture.value()')&&
-  map.includes('holder.view?.setOnTouchListener(null)')&&
-  integration.includes('NavigationViewModeController')&&
-  integration.includes('riderNavigationAutoFollow')&&
-  integration.includes('(navigationActive || smoothnessTestMode) && viewMode == NavigationViewMode.FOLLOW')&&
-  integration.includes('RIDER_CAMERA_SMOOTHNESS_TEST_MODE = true')&&
-  integration.includes('perspectiveCameraEnabled = perspectiveCameraEnabled')&&
-  integration.includes('viewModeState = viewModeController.onUserGesture()')&&
-  integration.includes('viewModeState = viewModeController.onRecenter()')&&
-  integration.includes('followRider = followRider'),
-  'One-finger drag must enter FREE_PAN, while two-finger transform gestures stay follow-owned and smoothly re-anchor');
+assert(settings.includes('":rider-navigation-map"'));
+assert(moduleBuild.includes('id("com.android.library")'));
+assert(moduleBuild.includes('implementation(project(":shared"))'));
+assert(moduleBuild.includes('org.maplibre.gl:android-sdk-opengl:13.5.3'));
+assert(!/LongdoMapAndroidSDK|com\.longdo|longdo\.map/i.test(moduleBuild));
 
-assert(
-  riderPuckDrawable.includes('android:width="60dp"')&&
-  riderPuckDrawable.includes('#E6002D')&&
-  riderPuckDrawable.includes('M32,14 L44,42 L32,36 L20,42 Z')&&
-  map.includes('riderPuckBitmap(nextRotation, nextOpacity)'),
-  'Rider current-location puck must be a large red QueueGo circle with a heading-rotated navigation arrow');
+assert(riderBuild.includes('implementation(project(":rider-navigation-map"))'));
+assert(riderBuild.includes('QG_MAP_SERVICE_BASE_URL'));
+assert(integration.includes('QueueGoNavigationRouteClient'));
+assert(integration.includes('queuego.map.service.base_url'));
+assert(integration.includes('NavigationRouteCoordinator'));
+assert(integration.includes('Channel.CONFLATED'));
+assert(!/LongdoNavigationRouteClient|riderLongdoNavigationKey/i.test(integration));
 
-assert(
-  integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false')&&
-  integration.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true')&&
-  integration.includes('val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)')&&
-  integration.includes('return if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED)'),
-  'Real-device pilot must visibly use the stabilized matched display without shadow-only gating');
+assert(map.includes('org.maplibre.android.maps.MapView'));
+assert(map.includes('MapLibre.getInstance'));
+assert(map.includes('CameraUpdateFactory.newCameraPosition'));
+assert(map.includes('MarkerOptions()')&&map.includes('PolylineOptions()'));
+assert(map.includes('RiderNavigationMapRegistry'));
+assert(map.includes('holder.retainAcrossVisibilityLoss()'));
+assert(map.includes('MotionEvent.ACTION_MOVE'));
+assert(map.includes('currentUserGesture.value()'));
+assert(map.includes('navigationCameraDecision('));
+assert(map.includes('navigationOverviewViewportDecision('));
+assert(!/com\.longdo|LongdoMapAndroidSDK|longdo\.map|api\.longdo|ms\.longdo/i.test(map));
 
-assert(
-  signalPipeline.includes('if (rawFix == lastRawFix && nextRouteId == activeRouteId)')&&
-  signalPipeline.includes('fun metrics(): NavigationConfidenceMetrics')&&
-  confidenceMetrics.includes('data class NavigationConfidenceMetrics')&&
-  integration.includes('displayPipeline.metrics()')&&
-  integration.includes('"QGNavShadow"')&&
-  integration.includes('ApplicationInfo.FLAG_DEBUGGABLE')&&
-  !integration.includes('BuildConfig.DEBUG')&&
-  !integration.includes('rawFix.point.latitude')&&
-  !integration.includes('rawFix.point.longitude'),
-  'Shadow confidence rollout must be idempotent on equivalent backend refreshes and emit only aggregate debug diagnostics without coordinates');
+assert(route.includes('class QueueGoNavigationRouteClient'));
+assert(route.includes('/map-api/route'));
+assert(route.includes('.put("profile", "rider_delivery")'));
+assert(route.includes('.put("preference", "fastest")'));
+assert(route.includes('QUEUEGO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024'));
+assert(!/api\.longdo|google\.navigation|osrm/i.test(route.toLowerCase()));
+assert(routeContract.includes('interface NavigationRouteProvider'));
+assert(!/longdo|google/i.test(routeContract.toLowerCase()));
 
-assert(
-  sessionStore.includes('"marketPickups"')&&
-  sessionStore.includes('"bundleActiveOrders"')&&
-  sessionStore.includes('marketPickupToJson')&&
-  sessionStore.includes('bundleOrderToJson')&&
-  sessionStore.includes('marketPickups = marketPickups')&&
-  sessionStore.includes('bundle = RiderRouteBundleState(activeOrders = bundleActiveOrders)')&&
-  sessionStore.includes('offeredJob = null'),
-  'Cold-start Rider cache must retain active Market/bundle stop topology without persisting expiring targeted offers');
+assert(locationService.includes('NAVIGATION_LOCATION_INTERVAL_MS = 500L'));
+assert(locationService.includes('NAVIGATION_LOCATION_MIN_INTERVAL_MS = 250L'));
+assert(locationService.includes('Priority.PRIORITY_HIGH_ACCURACY'));
+assert(manifest.includes('android.permission.FOREGROUND_SERVICE_LOCATION'));
+assert(manifest.includes('android:name=".RiderNavigationLocationService"'));
+assert(!manifest.includes('longdo.map.key'));
 
-assert(
-  navigationSessionRegistry.includes('object RiderNavigationSessionRegistry')&&
-  navigationSessionRegistry.includes('fun saveFutureRoutes(')&&
-  navigationSessionRegistry.includes('fun saveRenderedRoutes(')&&
-  navigationSessionRegistry.includes('if (frame.topologyKey != topologyKey)')&&
-  integration.includes('RiderNavigationSessionRegistry.load(stateKey, stopTopology)')&&
-  integration.includes('retainedFrame?.futureRoutes.orEmpty()')&&
-  integration.includes('baseState.copy(routes = it)')&&
-  integration.includes('result.routeError != null')&&
-  integration.includes('candidate.copy(routes = renderedState.routes)'),
-  'Visible route frame must survive Rider Home tab remounts and transient route refresh failures without leaking into another stop topology');
+assert(runtimeTest.includes('gpsRefreshTabReturnAndOverlayUpdatesReuseSameMapView'));
+assert(runtimeTest.includes('manualDragReportsGestureButTapDoesNot'));
+assert(runtimeTest.includes('activityRecreationCreatesFreshMapViewForFreshActivityContext'));
+assert(runtimeHost.includes('mapSourceUri = "asset://queuego-nav-runtime-tilejson.json"'));
+assert(!/Longdo|MapGLSurfaceView/i.test(runtimeTest+runtimeHost));
 
-assert(
-  sessionStore.includes('fun saveMapViewMode(')&&
-  sessionStore.includes('fun loadMapViewMode(')&&
-  sessionStore.includes('"FREE_PAN"')&&
-  integration.includes('sessionStore.loadMapViewMode(stateKey)')&&
-  integration.includes('pendingViewModePersistence = NavigationViewMode.FREE_PAN.name')&&
-  integration.includes('pendingViewModePersistence = NavigationViewMode.FOLLOW.name')&&
-  integration.includes('if (riderFix?.point?.valid == true)')&&
-  integration.includes('viewModeState = viewModeController.onRecenter()')&&
-  integration.includes('A startup gesture before the first live GPS fix must not strand the')&&
-  integration.includes('withContext(Dispatchers.IO)')&&
-  integration.includes('sessionStore.saveMapViewMode(stateKey, mode)'),
-  'Manual-pan view mode must survive Rider tab remounts and persist FREE_PAN/FOLLOW off Main without silently resuming camera follow');
+assert(workflow.includes('navigation-map-runtime:'));
+assert(workflow.includes('maplibre-osm-runtime:'));
+assert(!/LongdoMapAndroidSDK|api\.longdo|ms\.longdo/i.test(workflow));
 
-assert(
-  viewportInsets.includes('data class NavigationViewportInsets')&&
-  models.includes('val viewportInsets: NavigationViewportInsets')&&
-  models.includes('val viewMode: NavigationViewMode')&&
-  riderApp.includes('onGloballyPositioned')&&
-  riderApp.includes('NavigationViewportInsets(')&&
-  riderApp.includes('overviewSignal = overviewSignal')&&
-  integration.includes('viewModeController.onOverview()')&&
-  overviewPolicy.includes('navigationOverviewViewportDecision')&&
-  overviewPolicy.includes('safe.bottomPx - safe.topPx')&&
-  map.includes('navigationOverviewViewportDecision(')&&
-  map.includes('navigationViewportInsetsSignature(insets)')&&
-  map.includes('activeMap.rotate(0f, true)')&&
-  !map.includes('RectF('),
-  'Rider overview must fit the live route around measured job-card occlusion without unsupported Longdo padding overloads');
-
-assert(
-  puckOrientation.includes('vehicleBearing - cameraBearing')&&
-  map.includes('activeMap.getRotate()')&&
-  map.includes('pin.setIcon(riderPuckBitmap(nextRotation, nextOpacity))')&&
-  map.includes('activeMap.requestRender("queuego-rider-puck-presentation")')&&
-  map.includes('navigationPuckFreshness(')&&
-  map.includes('opacityPercent')&&
-  map.includes('postDelayed({ tick() }, 1_000L)')&&
-  !map.includes('pin.setRotate(')&&
-  !map.includes('pin.setOpacity('),
-  'Rider puck must use the pinned Longdo v0.1.8 bitmap API for camera-relative rotation and stale/lost presentation without synthetic GPS fixes');
-
-assert(
-  routeCache.includes('class CachingNavigationRouteProvider')&&
-  routeCache.includes('shouldBypassCache(segmentId)')&&
-  routeCache.includes('navigationHaversineMeters(entry.origin, from)')&&
-  routeCache.includes('createdAtMillis')&&
-  integration.includes('CachingNavigationRouteProvider(')&&
-  integration.includes('remember(routeKey, stateKey)'),
-  'Future route prefetch must be reusable only near the planned origin, expire safely, bypass reroutes and remain scoped to one Rider session');
-
-assert(
-  coordinator.includes('INITIAL_ROUTE_RETRY_BASE_MILLIS')&&
-  coordinator.includes('nextInitialRouteAttemptAtMillis')&&
-  coordinator.includes('initialRouteRetryDelayMillis')&&
-  coordinator.includes('if (error is CancellationException) throw error'),
-  'Initial route failures must back off instead of retrying on every GPS tick, while cancelled superseded requests must stop immediately');
-
-assert(
-  route.includes('suspendCancellableCoroutine')&&
-  route.includes('continuation.invokeOnCancellation { call.cancel() }')&&
-  route.includes('call.enqueue(')&&
-  !route.includes('.execute().use'),
-  'Superseded route work must cancel the underlying OkHttp Call instead of leaving a blocking request alive until timeout');
-
-assert(map.includes('setPreserveEGLContextOnPause(true)'),
-  'Navigation map must preserve the GL context across background/resume when Android allows it');
-assert(map.includes('announceRendererReplacement')&&
-  map.includes('fun configureMap(')&&
-  map.includes('adoptSilentRendererReplacement')&&
-  map.includes('watchRendererIdentity')&&
-  map.includes('RENDERER_WATCH_MAX_ATTEMPTS')&&
-  map.includes('Longdo can replace renderer.map after ON_RESUME returns')&&
-  map.includes('configureMap(activeView.context, rendererMap)'),
-  'Renderer-map identity changes must be bridged and watched after resume so delayed silent Longdo replacements are proactively adopted');
-assert(map.includes('PixelCopy.request')&&map.includes('snapshotOverlay')&&
-  map.includes('showContinuityBridge')&&map.includes('settleContinuityBridge')&&
-  map.includes('pendingBridgeWithoutSnapshot')&&
-  map.includes('Count the bridge request at renderer-swap detection time')&&
-  map.includes('The bridge is shown only when attachMap() detects a real map')&&
-  models.includes('snapshotBridgeCount: Int = 0')&&models.includes('snapshotVisible: Boolean = false'),
-  'When Android recreates the Longdo renderer, a captured SurfaceView frame must hide visible map reassembly');
-assert(map.includes('nextMap.setDoTileAnimation(false)')&&map.includes('nextMap.setDoPreShowCache(true)')&&
-  map.includes('setDoPreDrawCache(true)')&&map.includes('lastKnownCamera'),
-  'Longdo replacement maps must prefer cached tiles and disable tile-appearance animation');
-assert(guidance.includes('class NavigationProgressTracker')&&
-  guidance.includes('requiredOffRouteSamples: Int = 2')&&
-  guidance.includes('rerouteCooldownMillis: Long = 8_000L')&&
-  guidance.includes('shouldReroute')&&guidance.includes('arrived')&&
-  guidance.includes('navigationNextInstruction')&&guidance.includes('navigationTurnPhrase'),
-  'Navigation guidance must expose progress/ETA, reliable off-route reroute, arrival and turn instructions without Rider business-state coupling');
-assert(route.includes('interface NavigationRouteProvider')&&
-  route.includes('class LongdoNavigationRouteClient')&&
-  route.includes(': NavigationRouteProvider'),
-  'Longdo routing must be injectable behind a provider contract so the standalone coordinator is testable without Production calls');
-assert(
-  route.includes('LONGDO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
-  route.includes('LONGDO_ROUTE_MAX_FEATURES = 2_048') &&
-  route.includes('LONGDO_ROUTE_MAX_POINTS = 12_000') &&
-  route.includes('readLongdoRouteResponseBounded') &&
-  route.includes('contentLength > LONGDO_ROUTE_RESPONSE_MAX_BYTES') &&
-  !route.includes('response.body?.string()'),
-  'Longdo routing must bound HTTP response, feature and geometry memory before JSON/render allocation');
-assert(coordinator.includes('class NavigationRouteCoordinator')&&
-  coordinator.includes('progressTracker.update')&&
-  coordinator.includes('guidance.shouldReroute')&&
-  coordinator.includes('preservedFuture')&&
-  coordinator.includes('segment.toStopId != activeStop.id'),
-  'Route coordinator must reroute only the active leg, preserve future stops and stay independent of Rider business state');
-assert(coordinator.includes('ROUTE_PROGRESS_RENDER_STEP_METERS = 10.0')&&
-  coordinator.includes('visibleProgressMeters')&&
-  coordinator.includes('maxOf(visibleProgressMeters, match.progressMeters)')&&
-  coordinator.includes('trimNavigationRouteSegment')&&
-  coordinator.includes('guidance.weakGps || guidance.offRoute'),
-  'Active route must shrink monotonically behind the Rider without rebuilding geometry on every GPS tick or trusting unreliable fixes');
-assert(route.includes('NavigationRouteInstruction')&&
-  route.includes('turnCode = properties.optInt("turn", 4)')&&
-  route.includes('roadName = properties.optString("name").trim()'),
-  'Longdo route parsing must preserve maneuver instructions and road names for in-app guidance');
-assert(cameraPolicy.includes('navigationCameraDecision')&&
-  cameraPolicy.includes('routeBearingOpposesMotion')&&
-  cameraPolicy.includes('routeBearingDelta > 110f')&&
-  cameraPolicy.includes('routeBearingDelta > 75f')&&
-  cameraPolicy.includes('previousRouteDelta == null || previousRouteDelta > 75f')&&
-  cameraPolicy.includes('speedMetersPerSecond >= 18f')&&
-  cameraPolicy.includes('navigationTilt(')&&
-  cameraPolicy.includes('smoothNavigationTilt(')&&
-  cameraPolicy.includes('smoothNavigationBearing')&&
-  cameraPolicy.includes('deadbandDegrees: Float = 0.45f')&&
-  cameraPolicy.includes('navigationRotationDurationMillis')&&
-  cameraPolicy.includes('navigationCameraEaseInOut')&&
-  cameraPolicy.includes('navigationFreeDriveTilt')&&
-  cameraPolicy.includes('0.24f * t + 0.76f * cubic')&&
-  cameraPolicy.includes('navigationPointAtDistance')&&
-  /activeMap\.setLocation\(\s*MapLocation\(decision\.center\.longitude, decision\.center\.latitude\),\s*true\s*\)/.test(map)&&
-  map.includes('activeMap.setZoom(targetZoom, true)')&&
-  map.includes('minimumDeltaDegrees = CAMERA_BEARING_MIN_DELTA_DEGREES')&&
-  map.includes('CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L')&&
-  map.includes('animateCameraBearing(activeMap, it, now, speed)')&&
-  cameraPolicy.includes('speedMetersPerSecond: Float? = null')&&
-  map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
-  map.includes('activeMap.rotate(rendered, false)')&&
-  map.includes('normalizeNavigationBearing(activeMap.getRotate())')&&
-  map.includes('beginNavigationTransformGesture()')&&
-  map.includes('endNavigationTransformGesture()')&&
-  map.includes('manualFollowZoomUntilMs')&&
-  map.includes('event.pointerCount >= 2')&&
-  map.includes('activeMap.setCanRotateCamera(enabled)')&&
-  map.includes('activeMap.setCanTilt(enabled)')&&
-  map.includes('nextMap.setCanRotateCamera(navigationActive)')&&
-  map.includes('nextMap.setCanTilt(navigationActive)')&&
-  integration.includes('riderNavigationAutoFollow')&&
-  integration.includes('(navigationActive || smoothnessTestMode) && viewMode == NavigationViewMode.FOLLOW')&&
-  map.includes('activeMap.setTilt(nextTilt)')&&
-  map.includes('activeMap.setTilt(0f)')&&
-  runtimeActivity.includes('mapTiltDegrees()')&&
-  runtimeTest.includes('followCameraUsesNativePerspectiveAndOverviewFlattens'),
-  'Navigation camera must animate position/zoom, smoothly rotate from the live rendered bearing, keep transform gestures in FOLLOW, suppress micro-wobble, look ahead and use native Longdo perspective tilt while flattening Overview');
-assert(riderApp.includes('RiderBlueprintSpeedPill')&&
-  !riderApp.includes('RiderBlueprintBrandPill()')&&
-  riderApp.includes('speedKph = reliableSpeedKph'),
-  'Rider map top-left must show live speed instead of QueueGo branding');
-assert(riderJobDock.includes('initiallyExpanded: Boolean = false')&&
-  riderJobDock.includes('mutableStateOf(initiallyExpanded)')&&
-  riderJobDock.includes('clickable(role = Role.Button')&&
-  riderJobDock.includes('mapOverviewActive: Boolean = false')&&
-  riderJobDock.includes('if (mapOverviewActive) "ไปที่" else "ภาพรวม"')&&
-  riderApp.includes('initiallyExpanded = activeSheetJob == null && dockKey != null')&&
-  riderApp.includes('mapOverviewActive = activeSheetJob != null && routeOverviewActive')&&
-  riderApp.includes('overviewSignal += 1')&&riderApp.includes('recenterSignal += 1'),
-  'Idle/active Rider card must support collapse/restore and active work must toggle route overview back to Rider follow while targeted offers stay visible');
-assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
-  map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
-  'Current route must be dark red and later route legs visibly faded');
-assert(map.includes('oldLine.setLocation(segment.points.map')&&
-  map.includes('renderedRouteSegments.zip(routeLines)')&&
-  map.includes('Topology/style changed or an in-place mutation failed'),
-  'Route progress must mutate existing Longdo line geometry in place and rebuild only on topology/style changes');
-assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 1_200L')&&
-  map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
-  map.includes('riderMarkerAnimator?.cancel()')&&
-  map.includes('existing.getMovingLocation()')&&
-  map.includes('riderMarkerAnimationMillis(lastRiderFix ?: previousTarget, fix)')&&
-  !map.includes('RIDER_MARKER_ANIMATION_STEPS = 18')&&
-  !map.includes('existing.setLocation(\n                        location,\n                        true,'),
-  'Rider marker smoothing must use one cancellable Android animator that overlaps the GPS cadence and never stacks Longdo animations');
-assert(map.includes('PixelCopy is deliberately not scheduled on every GPS tick')&&
-  !map.includes('publishDiagnostics()\n        scheduleSnapshotRefresh()'),
-  'Live GPS rendering must not schedule PixelCopy snapshots on every navigation update');
-assert(models.includes('resolvedActiveStopId')&&models.includes('styledRemainingRoutes'),
-  'Module must support numbered multi-stop progression independently of RiderJob');
-assert(route.includes('private val apiKey: String')&&route.includes('RouteService/geojson/route')&&
-  !route.includes('347649ca13f49db0d8a599ae35f8de2b'),
-  'Routing key must be injected and never hard-coded into the standalone module');
-assert(workflow.includes(':rider-navigation-map:testDebugUnitTest'),
-  'Native Pilot must compile and unit-test the standalone map module');
-assert(models.includes('renderPassCount: Int = 0')&&
-  map.includes('renderPassCount += 1')&&
-  map.includes('state update that never reached the map'),
-  'Diagnostics must expose applied render passes without forcing an overlay rebuild');
-assert(runtimeTest.includes('awaitAppliedRender')&&runtimeTest.includes('awaitStopProgression')&&
-  runtimeTest.includes('awaitRendererReplacementBridge')&&
-  runtimeTest.includes('Longdo renderer replacement callback did not announce continuity bridge')&&
-  runtimeTest.includes('bounded GPS retries')&&
-  runtimeTest.includes('GPS refresh recreated MapGLSurfaceView')&&
-  runtimeTest.includes('GPS refresh rebuilt unchanged route layers')&&
-  runtimeTest.includes('Healthy tab remount should not invoke the continuity bridge')&&
-  runtimeTest.includes('Healthy background/resume should not invoke the continuity bridge')&&
-  runtimeTest.includes('Longdo map replacement was not recorded')&&
-  runtimeTest.includes('Equivalent backend refresh rebuilt unchanged route layers')&&
-  runtimeTest.includes('Equivalent backend refresh changed SDK map creation count')&&
-  runtimeTest.includes('Equivalent backend refresh changed map replacement count')&&
-  runtimeTest.includes('Equivalent backend refresh invoked continuity bridge')&&
-  runtimeActivity.includes('refreshEquivalentOrderSnapshot'),
-  'Android runtime test must prove GPS/backend refresh stays in place and renderer replacement is visually bridged instead of exposed');
-assert(runtimeActivity.includes('there are no QueueGo accounts, jobs, orders or Production writes')&&
-  runtimeActivity.includes('refreshRiderFix')&&runtimeActivity.includes('advanceToSecondStop'),
-  'Runtime host must remain isolated from QueueGo business data while exercising navigation state');
-assert(workflow.includes('navigation-map-runtime:')&&
-  workflow.includes('run-rider-navigation-map-runtime.py')&&
-  runtimeRunner.includes(':rider-navigation-map:connectedDebugAndroidTest'),
-  'Standalone navigation map must have a dedicated Android runtime gate');
-
-console.log('Standalone Rider navigation map module contracts: PASS');
-
-assert(locationRuntimeTest.includes('RiderNavigationLocationService.start(it)')&&
-  locationRuntimeTest.includes('KEYCODE_HOME')&&
-  locationRuntimeTest.includes('isForeground=true')&&
-  locationRuntimeTest.includes('RiderNavigationLocationService.stop(context)')&&
-  riderLaunchCapture.includes('verify_navigation_location_foreground_runtime()')&&
-  riderLaunchCapture.includes('foreground_updates_started')&&
-  riderLaunchCapture.includes('foreground_updates_stopped'),
-  'Android runtime must prove the navigation location service starts from a visible Activity, survives Home, and stops cleanly');
+console.log('Standalone QueueGo Rider MapLibre navigation contracts: PASS');

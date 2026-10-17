@@ -36,8 +36,25 @@ assert((app.match(/riderPickupReadCanReplace\("in_progress"/g)||[]).length>=2 &&
   'Manual and Market start-delivery must commit in_progress locally and reject stale picked_up reads before optional external navigation');
 assert(!app.includes('RiderNavigationController()')&&!app.includes('RiderNavigationSpeaker(context)')&&!app.includes('if (navigationState.active)'),
   'Rider Home must keep the retired legacy navigation engine removed while using the current QueueGo navigation map module');
+assert(app.includes('Text("นำทางด้วย QueueGo"')&&
+  app.includes('fun startQueueGoNavigation')&&
+  app.includes('onQueueGoNavigate = {')&&
+  app.includes('startQueueGoNavigation()'),
+  'Normal active-job card must make QueueGo in-app navigation the primary action');
+assert(!app.includes('private fun openReturnNavigation('),
+  'Return-to-shop flow must not retain a separate external navigation implementation');
+const returnFlow=app.slice(
+  app.indexOf('current.deliveryReturn != null -> {'),
+  app.indexOf('current.activeJob == null && current.laundry.activeJob != null')
+);
+assert(returnFlow.includes('startQueueGoNavigation(')&&
+  returnFlow.includes('นำทางกลับร้านด้วยแผนที่ QueueGo')&&
+  returnFlow.includes('นำทางไปจุดคืนถัดไปด้วยแผนที่ QueueGo')&&
+  !returnFlow.includes('openNavigation(context')&&
+  !returnFlow.includes('google.navigation'),
+  'Return-to-shop and next-return-stop navigation must stay inside QueueGo');
 assert(app.includes('Text("นำทางด้วย Google Maps"'),
-  'Normal active-job card must show a distinct Google Maps button');
+  'Normal active-job card must keep Google Maps only as a distinct optional action');
 const acceptFlow=app.slice(app.indexOf('fun acceptTargetedOffer('),app.indexOf('// Navigation and visible UI renew'));
 assert(!acceptFlow.includes('openNavigation(context'),
   'Accepting a targeted offer must never force-open Google Maps');

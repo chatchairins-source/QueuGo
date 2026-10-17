@@ -26,8 +26,9 @@ data class NavigationGuidanceState(
 
 class NavigationProgressTracker(
     private val nowMillis: () -> Long = { System.currentTimeMillis() },
-    private val requiredOffRouteSamples: Int = 2,
-    private val rerouteCooldownMillis: Long = 8_000L
+    private val requiredOffRouteSamples: Int = 3,
+    private val rerouteCooldownMillis: Long = 20_000L,
+    private val routeMatcher: NavigationHybridMatcher = NavigationHybridMatcher()
 ) {
     private var consecutiveOffRouteSamples = 0
     private var lastRerouteAtMillis: Long? = null
@@ -35,6 +36,7 @@ class NavigationProgressTracker(
     fun reset() {
         consecutiveOffRouteSamples = 0
         lastRerouteAtMillis = null
+        routeMatcher.reset()
     }
 
     fun update(
@@ -49,9 +51,9 @@ class NavigationProgressTracker(
 
         val accuracy = fix.accuracyMeters?.takeIf { it.isFinite() && it >= 0f }
         val weakGps = accuracy != null && accuracy > WEAK_GPS_ACCURACY_METERS
-        val match = matchNavigationRoute(leg.segment, fix.point) ?: return NavigationGuidanceState(
-            weakGps = weakGps
-        )
+        val hybridMatch = routeMatcher.match(leg.segment, fix)
+            ?: return NavigationGuidanceState(weakGps = weakGps)
+        val match = hybridMatch.routeMatch
 
         val geometryLength = match.geometryDistanceMeters.coerceAtLeast(1.0)
         val progressRatio = (match.progressMeters / geometryLength).coerceIn(0.0, 1.0)

@@ -7,6 +7,10 @@ on:
         description: Successful evidence workflow run on this exact HEAD containing queuego-native-release-certification
         required: true
         type: string
+      map_service_base_url:
+        description: Production QueueGo Map service base URL (HTTPS origin or /map-api base)
+        required: true
+        type: string
       version_name:
         description: Release versionName in x.y.z form
         required: true
@@ -53,6 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
+      QG_MAP_SERVICE_BASE_URL: ${{ inputs.map_service_base_url }}
       QG_NATIVE_VERSION_NAME: ${{ inputs.version_name }}
       QG_CUSTOMER_VERSION_CODE: ${{ inputs.customer_version_code }}
       QG_MERCHANT_VERSION_CODE: ${{ inputs.merchant_version_code }}
@@ -80,7 +85,24 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import os, re
+          import ipaddress, os, re
+          from urllib.parse import urlsplit
+
+          map_url = os.environ.get("QG_MAP_SERVICE_BASE_URL", "").strip()
+          parsed = urlsplit(map_url)
+          if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+              raise SystemExit("::error::map_service_base_url must be an HTTPS QueueGo Map base URL")
+          if parsed.path.rstrip("/") not in ("", "/map-api"):
+              raise SystemExit("::error::map_service_base_url path must be empty or /map-api")
+          host = parsed.hostname.lower()
+          if host == "localhost" or host.endswith(".localhost"):
+              raise SystemExit("::error::map_service_base_url must not target localhost")
+          try:
+              ip = ipaddress.ip_address(host)
+          except ValueError:
+              ip = None
+          if ip is not None and (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_unspecified):
+              raise SystemExit("::error::map_service_base_url must not target a private or local IP")
 
           version = os.environ.get("QG_NATIVE_VERSION_NAME", "")
           if not re.fullmatch(r"\d+\.\d+\.\d+", version):
@@ -255,14 +277,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: '9.6.0'
-
-      - name: Download verified Longdo Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p native-android/rider/libs
-          curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar"             -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
-          echo "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | sha256sum -c -
 
       - name: Download verified Android bundletool
         shell: bash

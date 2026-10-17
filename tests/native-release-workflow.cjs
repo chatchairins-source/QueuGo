@@ -9,6 +9,11 @@ ok(!/\n\s*push:/.test(workflow),'certified release must never run from push');
 ok(workflow.includes('refs/heads/queuego-native-android-v1'),'release must be restricted to Native Source of Truth branch');
 ok(workflow.includes('actions: read'),'release must have Actions read permission for certification evidence');
 ok(workflow.includes('certification_run_id'),'release must require an external certification run');
+ok(workflow.includes('map_service_base_url'),'release must require an explicit QueueGo Map service base URL');
+ok(workflow.includes('QG_MAP_SERVICE_BASE_URL: ${{ inputs.map_service_base_url }}'),'release must inject the certified QueueGo Map URL into Rider packaging');
+ok(workflow.includes('map_service_base_url must be an HTTPS QueueGo Map base URL'),'release must reject non-HTTPS or malformed QueueGo Map URLs');
+ok(workflow.includes('map_service_base_url path must be empty or /map-api'),'release must restrict QueueGo Map URL to the service base');
+ok(workflow.includes('map_service_base_url must not target localhost')&&workflow.includes('private or local IP'),'release must reject local/private map endpoints');
 ok(workflow.includes('QG_NATIVE_CERTIFICATION_RUN_ID'),'release artifact provenance must retain the certification run id');
 ok(workflow.includes('QG_CERTIFIED_NATIVE_PILOT_RUN_ID=$pilot_run_id'),'final release must export the independently revalidated Native Pilot run id to the canonical gate verifier');
 ok(workflow.includes('QG_CERTIFIED_BACKUP_RESTORE_RUN_ID=$backup_run_id'),'final release must export the independently revalidated Backup Restore run id to the canonical gate verifier');
@@ -33,6 +38,7 @@ for(const pkg of ['com.queuego.customer','com.queuego.merchant','com.queuego.rid
 }
 ok(workflow.includes('mobilesdk_app_id'),'release workflow must reject incomplete Firebase clients');
 for(const env of [
+  'QG_MAP_SERVICE_BASE_URL',
   'QG_NATIVE_VERSION_NAME',
   'QG_CUSTOMER_VERSION_CODE',
   'QG_MERCHANT_VERSION_CODE',
@@ -53,9 +59,8 @@ ok(workflow.includes('Reject WebView before release packaging')&&workflow.includ
 ok(workflow.includes('bundletool-all-1.18.3.jar'),'release workflow must pin bundletool 1.18.3');
 ok(workflow.includes('a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29'),'release workflow must pin the certified bundletool SHA-256');
 ok(workflow.includes('QG_BUNDLETOOL_JAR')&&workflow.includes('QG_BUNDLETOOL_SHA256'),'release workflow must pass pinned bundletool identity to artifact verification');
-ok(workflow.includes('0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c'),'certified release must pin the observed Longdo SDK SHA-256');
-ok(workflow.includes('sha256sum -c -'),'certified release Longdo integrity gate must use SHA-256');
-ok(!workflow.includes('md5sum -c -'),'certified release must not use MD5 for Longdo integrity');
+ok(!/LongdoMapAndroidSDK|longdo\.map|api\.longdo|ms\.longdo/i.test(workflow),
+  'certified release must never download, configure or package legacy Longdo');
 for(const task of [
   ':customer:assembleRelease',':customer:bundleRelease',
   ':merchant:assembleRelease',':merchant:bundleRelease',

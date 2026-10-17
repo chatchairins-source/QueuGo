@@ -10,13 +10,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
-import com.longdo.api.MapGLSurfaceView
+import org.maplibre.android.maps.MapView
 import java.util.concurrent.CountDownLatch
 
-/**
- * Debug-only host for the standalone navigation map. Coordinates are renderer fixtures only:
- * there are no QueueGo accounts, jobs, orders or Production writes in this activity.
- */
 class NavigationMapRuntimeActivity : ComponentActivity() {
     val mapReady = CountDownLatch(1)
 
@@ -39,6 +35,7 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
                     stateKey = "runtime-session",
                     state = mapState.value,
                     modifier = Modifier.fillMaxSize(),
+                    mapSourceUri = "asset://queuego-nav-runtime-tilejson.json",
                     onMapReady = { if (it) mapReady.countDown() },
                     onUserGesture = { userGestureCount += 1 },
                     onDiagnostics = { latestDiagnostics = it }
@@ -75,8 +72,8 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         val previous = mapState.value
         mapState.value = previous.copy(
             stops = previous.stops.map { it.copy() },
-            routes = previous.routes.map { segment ->
-                segment.copy(points = segment.points.toList())
+            routes = previous.routes.map { route ->
+                route.copy(points = route.points.toList())
             }
         )
     }
@@ -89,30 +86,6 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
             },
             activeStopId = "dropoff-2"
         )
-    }
-
-    fun shortenActiveRouteFixture() {
-        val previous = mapState.value
-        mapState.value = previous.copy(
-            routes = previous.routes.map { segment ->
-                if (segment.id == "fixture-leg-1" && segment.points.size > 2) {
-                    segment.copy(
-                        points = listOf(
-                            NavigationMapPoint(13.7572, 100.5030),
-                            segment.points.last()
-                        )
-                    )
-                } else {
-                    segment
-                }
-            }
-        )
-    }
-
-    fun replaceActiveRouteFixture() {
-        mapState.value = mapState.value.copy(routes = mapState.value.routes.map {
-            if (it.id == "fixture-leg-1") it.copy(id = "fixture-reroute") else it
-        })
     }
 
     fun showDemandHeatmapFixture(level: Int = 1) {
@@ -141,12 +114,6 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         mapState.value = mapState.value.copy(demandZones = emptyList())
     }
 
-    fun routeLineIdentities(): List<Int> {
-        val mapView = requireNotNull(findMapView(window.decorView))
-        val activeMap = requireNotNull(mapView.renderer.map)
-        return activeMap.allLines.map { line -> System.identityHashCode(line) }
-    }
-
     fun dispatchTapOnMap() {
         dispatchSinglePointerGesture(deltaX = 0f)
     }
@@ -158,31 +125,19 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
     private fun dispatchSinglePointerGesture(deltaX: Float) {
         val view = requireNotNull(findMapView(window.decorView))
         val downTime = SystemClock.uptimeMillis()
-        val startX = (view.width.coerceAtLeast(400) / 2f)
-        val startY = (view.height.coerceAtLeast(400) / 2f)
+        val startX = view.width.coerceAtLeast(400) / 2f
+        val startY = view.height.coerceAtLeast(400) / 2f
         val down = MotionEvent.obtain(
-            downTime,
-            downTime,
-            MotionEvent.ACTION_DOWN,
-            startX,
-            startY,
-            0
+            downTime, downTime, MotionEvent.ACTION_DOWN,
+            startX, startY, 0
         )
         val move = MotionEvent.obtain(
-            downTime,
-            downTime + 16L,
-            MotionEvent.ACTION_MOVE,
-            startX + deltaX,
-            startY,
-            0
+            downTime, downTime + 16L, MotionEvent.ACTION_MOVE,
+            startX + deltaX, startY, 0
         )
         val up = MotionEvent.obtain(
-            downTime,
-            downTime + 32L,
-            MotionEvent.ACTION_UP,
-            startX + deltaX,
-            startY,
-            0
+            downTime, downTime + 32L, MotionEvent.ACTION_UP,
+            startX + deltaX, startY, 0
         )
         try {
             view.dispatchTouchEvent(down)
@@ -197,49 +152,14 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
 
     fun hasMapView(): Boolean = findMapView(window.decorView) != null
 
-    fun mapViewIdentity(): Int = System.identityHashCode(requireNotNull(findMapView(window.decorView)))
-
-    fun sdkMapIdentity(): Int {
-        val view = requireNotNull(findMapView(window.decorView))
-        return System.identityHashCode(requireNotNull(view.renderer.map))
-    }
-
-    fun mapTiltDegrees(): Float {
-        val view = requireNotNull(findMapView(window.decorView))
-        return requireNotNull(view.renderer.map).getTilt()
-    }
-
-    fun mapBearingDegrees(): Float {
-        val view = requireNotNull(findMapView(window.decorView))
-        return requireNotNull(view.renderer.map).getRotate()
-    }
-
-    fun finishJobFixture() {
-        mapState.value = mapState.value.copy(
-            stops = emptyList(), routes = emptyList(), activeStopId = null,
-            followRider = true, viewMode = NavigationViewMode.FOLLOW
-        )
-    }
-
-    fun showOverviewForTiltFixture() {
-        mapState.value = mapState.value.copy(
-            followRider = false,
-            viewMode = NavigationViewMode.OVERVIEW
-        )
-    }
-
-    fun restoreFollowForTiltFixture() {
-        mapState.value = mapState.value.copy(
-            followRider = true,
-            viewMode = NavigationViewMode.FOLLOW
-        )
-    }
+    fun mapViewIdentity(): Int =
+        System.identityHashCode(requireNotNull(findMapView(window.decorView)))
 
     fun mapViewUsesActivityContext(): Boolean =
         requireNotNull(findMapView(window.decorView)).context === this
 
-    private fun findMapView(view: View): MapGLSurfaceView? {
-        if (view is MapGLSurfaceView) return view
+    private fun findMapView(view: View): MapView? {
+        if (view is MapView) return view
         if (view is ViewGroup) {
             for (index in 0 until view.childCount) {
                 findMapView(view.getChildAt(index))?.let { return it }
@@ -265,22 +185,35 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         )
         val start = NavigationMapPoint(13.7563, 100.5018)
         return RiderNavigationMapState(
-            rider = NavigationMapFix(start, bearingDegrees = 15f, accuracyMeters = 6f),
+            rider = NavigationMapFix(
+                start,
+                bearingDegrees = 15f,
+                accuracyMeters = 6f
+            ),
             stops = listOf(pickup, dropoff),
             routes = listOf(
                 NavigationRouteSegment(
                     id = "fixture-leg-1",
                     toStopId = pickup.id,
-                    points = listOf(start, NavigationMapPoint(13.7572, 100.5030), pickup.point)
+                    points = listOf(
+                        start,
+                        NavigationMapPoint(13.7572, 100.5030),
+                        pickup.point
+                    )
                 ),
                 NavigationRouteSegment(
                     id = "fixture-leg-2",
                     toStopId = dropoff.id,
-                    points = listOf(pickup.point, NavigationMapPoint(13.7598, 100.5062), dropoff.point)
+                    points = listOf(
+                        pickup.point,
+                        NavigationMapPoint(13.7598, 100.5062),
+                        dropoff.point
+                    )
                 )
             ),
             activeStopId = pickup.id,
-            followRider = true
+            followRider = true,
+            perspectiveCameraEnabled = true
         )
     }
 }

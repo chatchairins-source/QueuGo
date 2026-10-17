@@ -50,7 +50,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgLine
-import com.queuego.shared.QgLongdoLocationPickerMap
+import com.queuego.shared.QgLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
 import kotlinx.coroutines.delay
@@ -131,9 +131,9 @@ internal fun CustomerLocationPickerScreen(
     }
 
     LaunchedEffect(mapReady) {
-        // Do not launch the Android location-permission dialog while Longdo's GL surface
+        // Do not launch the Android location-permission dialog while QueueGo map surface
         // is still being created. On physical devices that Activity pause can race
-        // Longdo 0.1.8 renderer initialization and close the Customer app.
+        // map renderer initialization and close the Customer app.
         // Keep Production behavior (automatic GPS on open) but only after the map is ready.
         if (!mapReady || autoGpsRequested) return@LaunchedEffect
         autoGpsRequested = true
@@ -201,7 +201,7 @@ internal fun CustomerLocationPickerScreen(
                 .background(Color(0xFFF0F1F2))
                 .border(1.dp, QgLine, RoundedCornerShape(14.dp))
         ) {
-            QgLongdoLocationPickerMap(
+            QgLocationPickerMap(
                 initialPoint = selectedPoint,
                 recenterPoint = externalPoint,
                 recenterToken = recenterToken,

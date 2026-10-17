@@ -1,4 +1,5 @@
 node_modules
+map-assets/
 
 native-android/**/build/
 native-android/**/.gradle/
@@ -12,3 +13,4 @@ native-android/**/keystore.properties
 native-android/**/__pycache__/
 
 supabase/.temp/
+/map-assets/

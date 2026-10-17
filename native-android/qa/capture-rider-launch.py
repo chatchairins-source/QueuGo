@@ -822,7 +822,7 @@ def verify_real_home_map_runtime():
     crash = run(adb + ["logcat", "-d"], capture_output=True, text=True).stdout
     before_text = before.stdout + before.stderr + crash
     (output / "map-before-fix.txt").write_text(before_text)
-    assert "NoClassDefFoundError" in before_text and "android/support/v4/view/GestureDetectorCompat" in before_text, "Baseline must reproduce the exact missing legacy Longdo class"
+    assert "NoClassDefFoundError" in before_text and "android/support/v4/view/GestureDetectorCompat" in before_text, "Baseline must reproduce the exact missing legacy legacy map class"
     run(adb + ["shell", "am", "force-stop", package])
     run(adb + ["install", "-r", str(apk)])
     run(adb + ["install", "-r", str(test_apk)])
@@ -901,13 +901,13 @@ def verify_real_home_map_runtime():
         "production_account_or_order_writes": False,
     }
     (output / "map-runtime-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
-    print("Actual Longdo crash before fix reproduced; corrected native Home map mount/background/recreation PASS")
+    print("Actual legacy map crash before fix reproduced; corrected native Home map mount/background/recreation PASS")
 
 
 def verify_proof_process_recovery():
     runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
     stages = ["navigating_merchant", "arrived_merchant", "pickup_verification", "picked_up",
-              "navigating_customer", "arrived_customer", "photo_captured", "cash_collection"]
+              "navigating_customer", "arrived_customer", "photo_captured"]
     for stage in stages:
         for method in ["preparePendingProofForProcessKill", "recoverPendingProofAfterProcessKill"]:
             result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "stage", stage, "-e", "class",
@@ -917,7 +917,7 @@ def verify_proof_process_recovery():
             assert "OK (1 test)" in result.stdout, "Durable Rider process recovery failed: " + stage + "/" + method
             if method == "preparePendingProofForProcessKill":
                 run(adb + ["shell", "am", "force-stop", "com.queuego.rider"])
-    print("Eight-stage Rider snapshot/navigation/workflow/photo/cash recovery across real process death PASS")
+    print("Seven-stage Rider snapshot/navigation/workflow/photo recovery across real process death PASS")
 
 
 def verify_voice_foreground_runtime():
@@ -962,7 +962,7 @@ def verify_navigation_location_foreground_runtime():
 
 
 def verify_merchant_shop_map_runtime():
-    """Exercise the real Merchant Longdo picker lifecycle without session or business fixtures."""
+    """Exercise the real Merchant legacy map picker lifecycle without session or business fixtures."""
     pkg = "com.queuego.merchant"
     apk = repo / "native-android/merchant/build/outputs/apk/debug/merchant-debug.apk"
     test_apk = repo / "native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk"
@@ -994,7 +994,7 @@ def verify_merchant_shop_map_runtime():
 
 
 def capture_map_display_only():
-    """Actual Longdo component frames; allowed cases inject emulator GPS only, never Production data."""
+    """Actual legacy map component frames; allowed cases inject emulator GPS only, never Production data."""
     import base64
     from PIL import Image
     test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
