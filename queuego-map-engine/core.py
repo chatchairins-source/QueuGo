@@ -337,6 +337,7 @@ class Engine:
         return {'items':result,'data':self.metadata(),'authoritative_live_closure_feed':False}
     def progress(self,body):
         route=self.cached(body['route_id']);point=self.point(body);context=body.get('context') or {}
+        if context.get('route_id') not in (None,body['route_id']):context={}
         accuracy=float(body.get('accuracy',float('inf')))
         accurate=math.isfinite(accuracy) and 0<=accuracy<=50
         if not accurate:return {'accepted':False,'reason':'poor_or_missing_accuracy','context':context,'reroute':False,'arrived':False}
@@ -365,7 +366,7 @@ class Engine:
         steps=[step for leg in route['legs'] for step in leg['steps']]
         upcoming=next((step for step in steps if step['begin_shape_index']>result['shape_index']),steps[-1] if steps else None)
         to_maneuver=max(0,sum(haversine(a,b) for a,b in zip(line[:upcoming['begin_shape_index']],line[1:upcoming['begin_shape_index']+1]))-result['progress_m']) if upcoming else 0
-        context={'last_timestamp':now,'last_raw':current,'off_route_hits':hits,'last_reroute_at':last_reroute,'arrival_hits':arrival_hits,'progress_m':result['progress_m']}
+        context={'route_id':body['route_id'],'last_timestamp':now,'last_raw':current,'off_route_hits':hits,'last_reroute_at':last_reroute,'arrival_hits':arrival_hits,'progress_m':result['progress_m']}
         return {'accepted':True,'snapped_position':result['point'],'bearing':result['bearing'],'off_route_distance_m':result['distance_m'],'remaining_distance_m':result['remaining_m'],'remaining_duration_s':route['estimatedDuration']*result['remaining_m']/max(1,result['total_m']),'maneuver':upcoming,'distance_to_maneuver_m':to_maneuver,'reroute':reroute,'arrived':arrival_hits>=3,'context':context,'data':self.metadata()}
     def match(self,body):
         trace=body.get('points') or []

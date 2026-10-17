@@ -38,6 +38,8 @@ for i in range(3):
     result=engine.progress({**fix,**far,'timestamp':now+i,'context':context});context=result['context'];events.append(result['reroute'])
 check('off route requires repeated evidence',events==[False,False,True],events)
 rerouted=engine.route({'points':[far,points[1]]})['routes'][0];check('off route to actual reroute',rerouted['distance']>0)
+fresh_context=engine.progress({'route_id':rerouted['route_id'],**far,'accuracy':10,'timestamp':now+4,'context':{**context,'route_id':route['route_id'],'last_reroute_at':now+999,'arrival_hits':2}})
+check('new route resets prior route navigation evidence',fresh_context['context']['route_id']==rerouted['route_id'] and fresh_context['context']['last_reroute_at']==0 and fresh_context['context']['arrival_hits']==0 and not fresh_context['reroute'])
 result=engine.progress({**fix,**far,'timestamp':now+3,'context':context});check('reroute cooldown',not result['reroute'])
 end=route['geometry']['coordinates'][-1];context={};events=[]
 for i in range(3):

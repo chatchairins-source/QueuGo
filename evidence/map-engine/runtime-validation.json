@@ -150,6 +150,11 @@
       "detail": null
     },
     {
+      "name": "new route resets prior route navigation evidence",
+      "passed": true,
+      "detail": null
+    },
+    {
       "name": "reroute cooldown",
       "passed": true,
       "detail": null
