@@ -654,14 +654,15 @@ ok(
   'Rider MapLibre dispose must drop renderer, marker and view refs without legacy bitmap caches'
 );
 
-const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
+const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
 ok(
-  riderLongdoMap.includes('withContext(Dispatchers.IO) { stateStore.loadMapCamera(stateKey) }') &&
-  riderLongdoMap.includes('riderMapCameraIoScope.launch') &&
-  riderLongdoMap.includes('riderMapCameraPersistMutex.withLock') &&
-  !riderLongdoMap.includes('mutableStateOf(stateStore.loadMapCamera(stateKey))') &&
-  !riderLongdoMap.includes('RiderLongdoHolder(cameraState) { camera -> stateStore.saveMapCamera(stateKey, camera) }'),
-  'Rider Longdo camera restore/persistence must keep encrypted Keystore I/O off Main and map callbacks'
+  riderLongdoMap.includes('withContext(Dispatchers.IO) {') &&
+  riderLongdoMap.includes('sessionStore.loadMapCamera(stateKey)') &&
+  riderLongdoMap.includes('pendingCameraPersistence') &&
+  riderLongdoMap.includes('sessionStore.saveMapCamera(stateKey, camera)') &&
+  riderLongdoMap.includes('persistenceHydrated') &&
+  !riderLongdoMap.includes('mutableStateOf(sessionStore.loadMapCamera(stateKey))'),
+  'Rider MapLibre camera restore/persistence must keep SessionStore I/O off Main and map callbacks'
 );
 ok(
   riderLongdoMap.includes('val pinsReleased = runCatching { map?.clearPin() }.isSuccess') &&
