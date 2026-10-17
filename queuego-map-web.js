@@ -351,15 +351,20 @@ function markerElement(color='#e6002d',html=''){
   });
   return el;
 }
-function marker(map,{lat,lng,color='#e6002d',title='',html='',anchor='center'}={}){
+function marker(map,{lat,lng,color='#e6002d',title='',html='',anchor='center',rotation=0,rotationAlignment='auto',pitchAlignment='auto'}={}){
   if(!map||!valid(lat,lng)) return null;
   const el=markerElement(color,html);
   if(title)el.setAttribute('aria-label',title);
-  return new maplibregl.Marker({element:el,anchor})
-    .setLngLat([Number(lng),Number(lat)])
-    .addTo(map);
+  const marker=new maplibregl.Marker({element:el,anchor,rotationAlignment,pitchAlignment})
+    .setLngLat([Number(lng),Number(lat)]);
+  if(Number.isFinite(Number(rotation)))try{marker.setRotation(Number(rotation))}catch(_){}
+  return marker.addTo(map);
 }
-function moveMarker(m,lat,lng){if(m&&valid(lat,lng))m.setLngLat([Number(lng),Number(lat)]);return m}
+function moveMarker(m,lat,lng,rotation=null){
+  if(m&&valid(lat,lng))m.setLngLat([Number(lng),Number(lat)]);
+  if(m&&Number.isFinite(Number(rotation)))try{m.setRotation(Number(rotation))}catch(_){}
+  return m
+}
 function fit(map,points,{padding=48,maxZoom=16,duration=0}={}){
   if(!map)return;
   const rows=(points||[]).filter(p=>valid(p.lat,p.lng));
