@@ -5,7 +5,7 @@ const models=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rid
 const api=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
 const app=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const ui=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderRouteBundleUi.kt','utf8');
-const map=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt','utf8');
+const map=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt','utf8');
 
 assert(models.includes('data class RiderRouteBundleState('),'Native Rider must carry Production route bundle state');
 assert(models.includes('val activeOrders: List<RiderBundleOrder>')&&models.includes('val candidates: List<RiderBundleCandidate>'),
@@ -44,22 +44,25 @@ assert(ui.includes('"รับร้าน')&&ui.includes('ส่งลูกค
   'Native bundle UI must show pickup/drop order and explicit opt-in claim');
 assert(ui.includes('offer.detourKm')&&ui.includes('offer.addedMinutes')&&ui.includes('offer.riderExtraFee')&&ui.includes('offer.customerSavings'),
   'Native bundle candidate must expose detour, delay, rider extra and customer savings');
-assert(map.includes('bundleOrders: List<RiderBundleOrder> = emptyList()'),
-  'Longdo map must accept the authoritative active bundle stops');
-assert(map.includes('val pickupOrder = numberedOrders.sortedWith')&&
-  map.includes('val dropOrder = numberedOrders.sortedWith')&&
-  map.includes('pickupOrder.size + index + 1'),
-  'Longdo map must number bundled pickup stops first and customer drops after them');
-assert(map.includes('!bundled.job.shopArrived && !bundled.job.isDelivering'),
-  'Bundle pickup marker must disappear once that Rider reaches or passes the shop stop');
-assert(map.includes('append(job?.shopArrived ?: false)')&&
-  map.includes('.append(it.job.shopArrived).append(":")')&&
-  map.includes('job?.arrivedShopAt'),
-  'Rider stop cache must invalidate immediately when shop arrival changes for base and bundled jobs');
-assert(map.includes('addStopPin(job.deliveryLat, job.deliveryLng, 2, RiderStopVisual.DROPOFF)')&&
-  map.includes('!job.shopArrived && !job.isDelivering'),
-  'Base Rider map must keep shop as point 1, customer as point 2, and hide point 1 after shop arrival');
+assert(map.includes('bundleOrders: List<RiderBundleOrder>'),
+  'QueueGo Rider navigation must accept the authoritative active bundle stops');
+assert(map.includes('val rankedStops = RiderRouteBundleState(activeOrders = usable).routeStops()')&&
+  map.includes('compareBy<RiderBundleOrder> { it.bundleSequence }')&&
+  map.includes('compareBy<RiderBundleOrder> { it.dropRank }')&&
+  map.includes('sequence = offset + index + 1'),
+  'QueueGo navigation must preserve authoritative bundle stop ranks, with pickup-first legacy fallback ordering');
+assert(map.includes('kind = if (stop.pickup) NavigationStopKind.PICKUP else NavigationStopKind.DROPOFF')&&
+  map.includes('completed = if (stop.pickup) order.job.isDelivering'),
+  'Bundle pickup stops must complete once the Rider has advanced into delivery');
+assert(map.includes('id = "pickup:" + order.job.id')&&
+  map.includes('id = "drop:" + order.job.id')&&
+  map.includes('completed = order.job.status.lowercase() == "completed"'),
+  'QueueGo bundle stop plan must rebuild from authoritative order progress for pickup and drop stops');
+assert(map.includes('sequence = 1')&&map.includes('kind = NavigationStopKind.PICKUP')&&
+  map.includes('sequence = 2')&&map.includes('kind = NavigationStopKind.DROPOFF')&&
+  map.includes('completed = job.isDelivering'),
+  'Base QueueGo Rider navigation must keep shop as point 1, customer as point 2, and retire pickup after delivery begins');
 assert(app.includes('bundleOrders = snapshot?.bundle?.activeOrders.orEmpty()'),
-  'Home must pass all active bundle stops to Longdo');
+  'Home must pass all active bundle stops to QueueGo navigation');
 
 console.log('Native Rider Production route bundle parity contracts: PASS');
