@@ -11,9 +11,7 @@
  const status=o=>({searching_rider:'กำลังหาคนขับ',rider_assigned:'คนขับกำลังไปจุดรับ',in_progress:'กำลังเดินทาง',completed:'จบการเดินทางแล้ว',cancelled:'ยกเลิกแล้ว',no_rider_available:'ยังไม่มีคนขับพร้อมรับเที่ยว'})[o.status]||o.status;
  function clearPreview(){
   if(!previewMap)return;
-  try{previewMap.Overlays.clear()}catch{}
-  try{previewMap.pause(true)}catch{}
-  try{previewMap.placeholder()?.remove()}catch{}
+  try{previewMap.remove?.()}catch{}
   previewMap=null;
  }
  function stop(){clearTimeout(timer);timer=null;picker?.destroy();picker=null;clearPreview()}
@@ -46,36 +44,64 @@
  }
  function renderRoutePreview(){
   clearPreview();
-  const host=$('ride-route-map');if(!host||typeof longdo==='undefined')return;
+  const host=$('ride-route-map');
+  if(!host||typeof maplibregl==='undefined'||typeof qgQueueGoPickerStyle!=='function')return;
   try{
-   previewMap=new longdo.Map({placeholder:host,language:'th',zoom:pickup||destination?15:6,ui:window.longdo.UiComponent.Mobile});
-   try{previewMap.Ui.LayerSelector.visible(false)}catch{}
-   const points=[];
-   const add=(point,title,color)=>{
-    if(!point||!qgIsValidCoordinate(point.lat,point.lng,true))return;
-    const loc={lat:Number(point.lat),lon:Number(point.lng)};
-    const marker=new longdo.Marker(loc,{title,icon:{html:'<div style="width:22px;height:22px;border-radius:50%;background:'+color+';border:4px solid white;box-shadow:0 3px 12px #0004"></div>'},weight:longdo.OverlayWeight.Top});
-    previewMap.Overlays.add(marker);points.push(loc);
+   const center=pickup&&qgIsValidCoordinate(pickup.lat,pickup.lng,true)
+    ?[Number(pickup.lng),Number(pickup.lat)]
+    :destination&&qgIsValidCoordinate(destination.lat,destination.lng,true)
+      ?[Number(destination.lng),Number(destination.lat)]
+      :[101,15];
+   previewMap=new maplibregl.Map({
+    container:host,
+    style:qgQueueGoPickerStyle(),
+    center,
+    zoom:pickup||destination?15:6,
+    minZoom:5,
+    maxZoom:19,
+    attributionControl:false,
+    dragRotate:false,
+    pitchWithRotate:false
+   });
+   previewMap.touchZoomRotate.disableRotation();
+   previewMap.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),'top-left');
+   previewMap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
+
+   const bounds=new maplibregl.LngLatBounds();
+   const addMarker=(lat,lng,color,title,html)=>{
+    if(!qgIsValidCoordinate(lat,lng,true))return;
+    const el=document.createElement('div');
+    if(html)el.innerHTML=html;
+    else {
+     el.style.width='24px';el.style.height='24px';el.style.borderRadius='50%';
+     el.style.background=color;el.style.border='4px solid #fff';
+     el.style.boxShadow='0 3px 12px rgba(0,0,0,.28)';
+    }
+    el.setAttribute('aria-label',title||'ตำแหน่ง');
+    new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([Number(lng),Number(lat)]).addTo(previewMap);
+    bounds.extend([Number(lng),Number(lat)]);
    };
+
    for(const cluster of (supply.clusters||[])){
     if(!qgIsValidCoordinate(cluster.latitude,cluster.longitude,true))continue;
-    const loc={lat:Number(cluster.latitude),lon:Number(cluster.longitude)};
     const count=Math.max(2,Number(cluster.count||2));
-    const marker=new longdo.Marker(loc,{
-     title:'Rider พร้อมรับงานโดยประมาณ',
-     icon:{html:'<div style="min-width:34px;height:34px;padding:0 7px;border-radius:17px;background:#fff;border:2px solid #e6002d;box-shadow:0 3px 12px #0003;display:flex;align-items:center;justify-content:center;gap:3px;color:#e6002d;font-weight:900;font-size:12px">'+ico('car',16)+'<span>'+count+'</span></div>'},
-     weight:longdo.OverlayWeight.Top
-    });
-    previewMap.Overlays.add(marker);
+    const html='<div style="min-width:36px;height:36px;padding:0 8px;border-radius:18px;background:#fff;border:2px solid #e6002d;box-shadow:0 3px 12px #0003;display:flex;align-items:center;justify-content:center;gap:3px;color:#e6002d;font-weight:900;font-size:12px">'+ico('car',16)+'<span>'+count+'</span></div>';
+    addMarker(cluster.latitude,cluster.longitude,'#e6002d','Rider พร้อมรับงานโดยประมาณ',html);
    }
-   add(pickup,'จุดรับ','#1677ff');add(destination,'จุดหมาย','#e6002d');
-   if(points.length===1){previewMap.location(points[0],true);previewMap.zoom(16,true)}
-   else if(points.length===2){
-    previewMap.location({lat:(points[0].lat+points[1].lat)/2,lon:(points[0].lon+points[1].lon)/2},true);
-    const km=calculateDistanceKm(points[0].lat,points[0].lon,points[1].lat,points[1].lon);
-    previewMap.zoom(km>30?9:km>15?10:km>7?11:km>3?12:km>1.5?13:14,true);
-   }
-   setTimeout(()=>previewMap?.resize(),80);
+   if(pickup)addMarker(pickup.lat,pickup.lng,'#1677ff','จุดรับ');
+   if(destination)addMarker(destination.lat,destination.lng,'#e6002d','จุดหมาย');
+
+   previewMap.once('load',()=>{
+    if(!previewMap)return;
+    if(!bounds.isEmpty()){
+     const ne=bounds.getNorthEast(),sw=bounds.getSouthWest();
+     if(Math.abs(ne.lat-sw.lat)<0.00001&&Math.abs(ne.lng-sw.lng)<0.00001){
+      previewMap.easeTo({center:[sw.lng,sw.lat],zoom:16,duration:0});
+     }else{
+      previewMap.fitBounds(bounds,{padding:48,maxZoom:16,duration:0});
+     }
+    }
+   });
   }catch{clearPreview()}
  }
  async function quickCurrentPickup(){
