@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.queuego.shared.QgLine
-import com.queuego.shared.QgLongdoLocationPickerMap
+import com.queuego.shared.QgQueueGoLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
@@ -251,7 +251,7 @@ internal fun MerchantShopSetupScreen(
                     .clip(RoundedCornerShape(12.dp))
                     .background(androidx.compose.ui.graphics.Color(0xFFE9F5EF))
             ) {
-                QgLongdoLocationPickerMap(
+                QgQueueGoLocationPickerMap(
                     initialPoint = currentPoint,
                     recenterPoint = gpsPoint,
                     recenterToken = recenterToken,
