@@ -9,6 +9,7 @@ const riderJobDock=fs.readFileSync('native-android/rider/src/main/java/com/queue
 const moduleBuild=fs.readFileSync('native-android/rider-navigation-map/build.gradle.kts','utf8');
 const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt','utf8');
 const route=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/QueueGoNavigationRouteClient.kt','utf8');
+const routeContract=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteProvider.kt','utf8');
 const cameraPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationCameraPolicy.kt','utf8');
 const overviewPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationOverviewPolicy.kt','utf8');
 const guidance=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationGuidance.kt','utf8');
@@ -287,6 +288,11 @@ assert(route.includes('class QueueGoNavigationRouteClient')&&
   integration.includes('QueueGoNavigationRouteClient')&&
   !integration.includes('LongdoNavigationRouteClient'),
   'Rider runtime routing must use the QueueGo provider contract with no Longdo route-provider fallback');
+assert(routeContract.includes('interface NavigationRouteProvider')&&
+  routeContract.includes('data class NavigationRouteLeg')&&
+  routeContract.includes('data class NavigationRouteInstruction')&&
+  !routeContract.toLowerCase().includes('longdo')&&!routeContract.toLowerCase().includes('google'),
+  'Route provider contract must be renderer/vendor neutral');
 assert(
   route.includes('QUEUEGO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
   route.includes('QUEUEGO_ROUTE_MAX_STEPS = 2_048') &&
