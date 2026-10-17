@@ -30,6 +30,7 @@ jobs:
           npm ci
           npm test
           python tests/map-field-evidence-validator.py
+          python tests/map-release-gate-report.py
           node node_modules/playwright-core/cli.js install --with-deps chromium
       - name: Pinned real OSM and existing vector package
         run: |
@@ -93,6 +94,13 @@ jobs:
           assert response.status==206 and len(response.read())==16
           print(json.dumps({'engine':health['engine'],'route_distance_m':route['distance'],'vector_range':16,'public_bind':False}))
           PY
+      - name: Build fail-closed release gate report
+        run: |
+          python ops/maps/build_release_gate_report.py \
+            --evidence-dir map-data/evidence \
+            --browser evidence/map-engine/browser-validation.json \
+            --output map-data/evidence/release-gate.json \
+            --require-code-gate
       - uses: actions/upload-artifact@v4
         if: always()
         with:
