@@ -247,7 +247,7 @@ private fun CustomerSearchShopCard(
     ) {
         QgRemoteImage(
             source = shop.logo ?: shop.cover,
-            modifier = Modifier.size(if (compact) 72.dp else 78.dp),
+            modifier = Modifier.size(if (compact) 88.dp else 96.dp),
             fallback = shop.name,
             cornerRadius = 13.dp,
             maxDecodeSide = 256
