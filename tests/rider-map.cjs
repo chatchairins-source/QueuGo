@@ -22,6 +22,12 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('queuego-map-service.js?v=20261017-1'),true);
  eq(source.includes('api.longdo.com/RouteService/geojson/route'),false);
  eq(source.includes("service.call('route'"),true);
+ const inAppNavFn=source.slice(source.indexOf('function qgNavigateInApp('),source.indexOf('/* order status'));
+ eq(inAppNavFn.includes('qgLaunchGoogleNavigation('),false);
+ eq(inAppNavFn.includes("toast('เริ่มนำทางด้วย QueueGo')"),true);
+ eq(source.includes('RIDER_ROUTE_REROUTE_HITS=3'),true);
+ eq(source.includes('RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000'),true);
+ eq(source.includes('function qgRiderRouteNeedsReroute('),true);
  eq(source.includes('maximumAge:0'),true);
  eq(source.includes('class="qg-speed-pill"'),true);
  eq(source.includes('<div class="qg-brand-pill">'),false);
@@ -64,6 +70,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
   setCenter(){},
   setNavigationMode:(m,active,opts)=>{cameraModes.push({m,active,opts});return !!active},
   followNavigationCamera:(m,pos,route,opts)=>{cameraFollows.push({m,pos,route,opts});return {center:pos}},
+  navigationCameraDecision:({lat})=>({routeMatch:{offRouteMeters:Number(lat)>=13.5?90:5}}),
   marker(){return {remove(){}}}
  };
  const session={authUserId:'a',sessionId:'sa'},S={
@@ -123,12 +130,26 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
 
  for(let i=0;i<20;i++)await run('drawActiveRoute()');
  eq(requests.length,1);
- now+=15000;S.pos={lat:13.001,lng:100};await run('drawActiveRoute()');
+ now+=15000;S.pos={lat:13.001,lng:100,accuracy:5};await run('drawActiveRoute()');
+ eq(requests.length,1);
+ eq(routeRemoves.length,0);
+
+ // A stable QueueGo route must survive time/movement and reroute only after
+ // three consecutive accurate off-route fixes.
+ S.pos={lat:13.5,lng:100,accuracy:5};
+ await run('drawActiveRoute()');await run('drawActiveRoute()');
+ eq(requests.length,1);
+ await run('drawActiveRoute()');
  eq(requests.length,2);
  eq(routeRemoves.length,1);
 
- // Changing pickup to delivery invalidates the old request immediately.
- now+=15000;S.pos={lat:13.002,lng:100};gate=deferred();
+ // Weak GPS must never accumulate reroute evidence.
+ S.pos={lat:13.5,lng:100,accuracy:90};
+ for(let i=0;i<5;i++)await run('drawActiveRoute()');
+ eq(requests.length,2);
+
+ // Changing pickup to delivery invalidates an in-flight old-target request immediately.
+ now+=21000;S.pos={lat:13.002,lng:100,accuracy:5};run('clearRiderRoute()');gate=deferred();
  const old=run('drawActiveRoute()'),oldSignal=requests.at(-1).options.signal;
  S.activeOrder.status='in_progress';const oldGate=gate;gate=null;
  await run('drawActiveRoute()');
@@ -157,7 +178,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(cameraFollows.length>0,true);
 
  // Completing a job while the provider is pending cannot redraw its route.
- now+=15000;S.pos={lat:13.003,lng:100};gate=deferred();
+ now+=21000;S.pos={lat:13.003,lng:100,accuracy:5};run('clearRiderRoute()');gate=deferred();
  const retiring=run('drawActiveRoute()'),retiredSignal=requests.at(-1).options.signal;
  S.activeOrder=null;run('syncRiderNavigationCameraMode(true)');await run('drawActiveRoute()');
  eq(run('RIDER_CAMERA_SMOOTHNESS_TEST_MODE'),true);
