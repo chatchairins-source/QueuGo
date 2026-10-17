@@ -29,20 +29,26 @@ function serve(){
   const ok=(v,msg)=>{assert.ok(v,msg);checks++};
 
   await page.route("https://tile.openstreetmap.org/**",route=>route.fulfill({status:200,contentType:"image/png",body:onePx}));
-  await page.route("**/nominatim.openstreetmap.org/**",route=>route.fulfill({status:503,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:"{}"}));
-  await page.route("**/photon.komoot.io/**",route=>route.fulfill({
-    status:200,
-    contentType:"application/json",
-    headers:{"access-control-allow-origin":"*"},
-    body:JSON.stringify({
-      type:"FeatureCollection",
-      features:[{
-        type:"Feature",
-        geometry:{type:"Point",coordinates:[103.09523,14.96691]},
-        properties:{name:"สนามช้าง อินเตอร์เนชั่นแนล เซอร์กิต",city:"บุรีรัมย์",state:"บุรีรัมย์",country:"ประเทศไทย"}
-      }]
-    })
-  }));
+  await page.addInitScript(() => {
+    const nativeFetch=window.fetch.bind(window);
+    window.fetch=async function(input,init){
+      const url=String(typeof input==="string"?input:(input&&input.url)||"");
+      if(url.includes("nominatim.openstreetmap.org")){
+        return new Response("{}",{status:503,headers:{"content-type":"application/json"}});
+      }
+      if(url.includes("photon.komoot.io")){
+        return new Response(JSON.stringify({
+          type:"FeatureCollection",
+          features:[{
+            type:"Feature",
+            geometry:{type:"Point",coordinates:[103.09523,14.96691]},
+            properties:{name:"สนามช้าง อินเตอร์เนชั่นแนล เซอร์กิต",city:"บุรีรัมย์",state:"บุรีรัมย์",country:"ประเทศไทย"}
+          }]
+        }),{status:200,headers:{"content-type":"application/json"}});
+      }
+      return nativeFetch(input,init);
+    };
+  });
 
   await page.goto("http://127.0.0.1:"+port+"/map-view/",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>window.QueueGoMapView&&window.QueueGoMapView.ready===true,null,{timeout:30000});
