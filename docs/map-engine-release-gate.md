@@ -26,7 +26,7 @@ Do not invent missing restrictions or claim their enforcement. Source remains pr
 
 The CI candidate job fails on observed illegal turns but does not silently convert uncovered or malformed restrictions to PASS. A green candidate workflow alone does not close this release gate. No sole-navigation/Android production release until these gaps and physical operation are evidenced.
 
-Runtime policy now fails closed on **all three member ways** of the two malformed relations. Route/alternatives/optimization/matching validate actual traversed way IDs; matrix reachable pairs are audited against the same exclusions and return null if rejected. Native graph data stays unchanged and source tags are preserved; this is an explicit QueueGo uncertainty policy, not an invented traffic rule. Region coverage around those ways is unavailable until independent verification. Map rendering/GPS display can continue.
+Runtime policy fails closed on all member ways of every source-open turn relation: the two malformed relations, the disconnected-member relation, and the one-way direction-conflicting relation. Route/alternatives/optimization/matching validate actual traversed way IDs; matrix reachable pairs are audited against the same exclusions and return null if rejected. Native graph data stays unchanged and source tags are preserved; this is an explicit QueueGo uncertainty policy, not an invented traffic rule. Region coverage around those ways is unavailable until independent verification. Map rendering/GPS display can continue.
 
 Field inspection reference: relation 17320674 has source node at **14.9939137, 103.1069056**; its approach/departure roles are unknown. Relation 2148441 has only from-way 160599219; **15.0133018, 102.8373594** is a representative source vertex on that way, NOT an asserted junction location. Verify actual signs/directions before replacing quarantine. No OSM edits or guessed source repairs were made.
 
@@ -51,3 +51,17 @@ Restriction relation **1538817** is structurally complete but conflicts with the
 - the to way currently ends at the via node, so legal one-way travel cannot depart the via on that member
 
 QueueGo does not swap the relation roles or ignore the one-way tags. The relation is exposed as a `source_direction_conflict` and all its member ways are quarantined from usable routes until independently verified. This is separate from the two malformed relations 2148441 and 17320674. Rendering can continue, but route/matrix/optimization output must fail closed around these uncertain source rules.
+
+
+## Disconnected-member source conflict quarantine
+
+Restriction relation **6982243** is structurally populated but its declared `to` way does not connect to the declared via node in the installed 2026-10-15 OSM extract:
+
+- relation: `no_u_turn`
+- from way: `474747491`
+- to way: `474747490`
+- via node: `4519304658`
+- the from way contains the via node
+- the to way does **not** contain the via node
+
+QueueGo does not invent a connector or move the via node. The relation is exposed as a `source_member_conflict` and both member ways are quarantined from usable route/matrix/optimization output until the source relation is independently verified. This is separate from malformed relations 2148441/17320674 and the one-way direction conflict 1538817.
