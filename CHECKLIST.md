@@ -33,21 +33,25 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Status: IN PROGRESS
 - Active PR: #413
 - Branch: `work-web-rider-queuego-route-authority-20261017`
-- HEAD before fix: `ece9fd795e5e965db9c1c3fbf4cafb27cad4f591`
-- Current CI: QueueGo RC run 39043362341: FAILURE
+- Previous failing HEAD: `ece9fd795e5e965db9c1c3fbf4cafb27cad4f591`
+- Current HEAD: `08e5af506468e08e5d815bc1d8bfc6e5e2b69611`
+- Current CI: exact-head run pending; previous QueueGo RC run 39043362341: FAILURE
+- Fix commits: `8a933b998fb3e4d6441ea99557ae8ba279272ead`, `08e5af506468e08e5d815bc1d8bfc6e5e2b69611`
 - Root cause: stale regression assertion still requires Android navigation to force the Google Maps app package, conflicting with the newer QueueGo in-app navigation authority policy.
 - Evidence: job 117427127897 fails with `Android navigation must force the Google Maps app package`.
-- NEXT: update only the stale test/contract to match the successor policy, run CI, commit checkpoint. Do not reintroduce automatic Google Maps navigation.
+- NEXT: obtain exact-head CI for `08e5af506468e08e5d815bc1d8bfc6e5e2b69611`; keep IN PROGRESS until green. Do not reintroduce automatic Google Maps navigation.
 
 ### 3. Rider Android navigation / QueueGo route authority
 - Status: IN PROGRESS
 - Active PR: #414
 - Branch: `work-native-rider-queuego-route-authority-20261017`
-- HEAD before fix: `4963b9d4df263ca55d21fd1173dc0121cfcde20c`
-- Current CI: QueueGo Map Engine Buriram run 39048730149: FAILURE
+- Previous failing HEAD: `4963b9d4df263ca55d21fd1173dc0121cfcde20c`
+- Current HEAD: `297f9e4a918b8bdab86cc4abebb38d3176ab1842`
+- Current CI: exact-head run pending; previous QueueGo Map Engine Buriram run 39048730149: FAILURE
+- Fix commit: `297f9e4a918b8bdab86cc4abebb38d3176ab1842`
 - Root cause: branch integration gap leaves `admin/index.html` referencing `../catalog/grocery.css?v=20261012` while that local asset is absent on the branch.
 - Evidence: job 117442661425 fails source-integrity with `Broken reference: admin/index.html -> ../catalog/grocery.css?v=20261012`.
-- NEXT: reconcile the missing asset/reference from the newest compatible successor history without reverting navigation work; run exact-head gates.
+- NEXT: obtain exact-head gates for `297f9e4a918b8bdab86cc4abebb38d3176ab1842`; if source-integrity advances to another missing integration asset, fix only from current main/newest compatible successor.
 - Release blockers after source gate: Native Pilot on exact successor, physical GPS/road/navigation acceptance, QueueGo Map runtime/offline release gates.
 - Superseded: PR #412 is an ancestor; do not restart there.
 
