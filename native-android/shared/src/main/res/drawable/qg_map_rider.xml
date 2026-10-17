@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
-<path android:fillColor="#180E2438" android:pathData="M24,3 Q28,3 31,8 L44,38 Q47,45 40,44 L24,38 L8,44 Q1,45 4,38 L17,8 Q20,3 24,3 Z" />
-<path android:fillColor="#FFFFFF" android:pathData="M24,1 Q28,1 30,6 L43,36 Q46,43 39,42 L24,36 L9,42 Q2,43 5,36 L18,6 Q20,1 24,1 Z" />
-<path android:fillColor="#E6002D" android:pathData="M24,5 L40,38 L24,32 L8,38 Z" />
-<path android:fillColor="#FFFFFF" android:pathData="M24,15 L29,26 L24,24 L19,26 Z" />
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="60dp"
+    android:height="60dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <!-- Large QueueGo Rider puck: shadow, white ring, red body, navigation arrow. -->
+    <path
+        android:fillColor="#330E2438"
+        android:pathData="M32,2 A30,30 0,1 1,31.999 2 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,5 A27,27 0,1 1,31.999 5 Z" />
+    <path
+        android:fillColor="#E6002D"
+        android:pathData="M32,9 A23,23 0,1 1,31.999 9 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,14 L44,42 L32,36 L20,42 Z" />
 </vector>
