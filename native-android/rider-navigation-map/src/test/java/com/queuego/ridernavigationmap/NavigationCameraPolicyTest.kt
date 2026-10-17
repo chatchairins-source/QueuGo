@@ -270,6 +270,24 @@ class NavigationCameraPolicyTest {
         assertEquals(state.rider!!.point, decision.center)
     }
 
+    @Test fun explicitIdlePerspectiveTestModeKeepsHeadingAndTilt() {
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(13.0, 100.0),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f
+            ),
+            followRider = true,
+            perspectiveCameraEnabled = true,
+            followZoom = 17
+        )
+        val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)!!
+        assertTrue(decision.bearingDegrees!! in 89f..91f)
+        assertTrue(decision.tiltDegrees > 0f)
+        assertEquals(state.rider!!.point, decision.center)
+    }
+
     @Test fun northCrossingTakesTwoDegreeTurn() {
         assertEquals(0f, smoothNavigationBearing(359f, 1f, 0.5f)!!, 0.001f)
     }
