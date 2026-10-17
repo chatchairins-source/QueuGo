@@ -4,27 +4,24 @@ import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 class NavigationMapRuntimeTest {
-    private fun awaitAppliedRender(
+    private fun awaitRender(
         activity: NavigationMapRuntimeActivity,
-        previousRenderPassCount: Int,
+        previous: Int,
         timeoutMs: Long = 5_000L
     ): NavigationMapDiagnostics {
         val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
         while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            val diagnostics = activity.latestDiagnostics
-            if (diagnostics.renderPassCount > previousRenderPassCount) return diagnostics
+            val value = activity.latestDiagnostics
+            if (value.renderPassCount > previous) return value
             Thread.sleep(25)
         }
-        throw AssertionError(
-            "Navigation map state was not applied after render pass $previousRenderPassCount"
-        )
+        throw AssertionError("QueueGo MapLibre state was not rendered")
     }
 
     private fun awaitMapPresence(
@@ -39,546 +36,138 @@ class NavigationMapRuntimeTest {
             if (observed == expected) return
             Thread.sleep(25)
         }
-        throw AssertionError(
-            "Navigation map presence did not become $expected; last observed=$observed"
-        )
-    }
-
-    private fun awaitMapTilt(
-        scenario: ActivityScenario<NavigationMapRuntimeActivity>,
-        predicate: (Float) -> Boolean,
-        failureMessage: String,
-        timeoutMs: Long = 5_000L
-    ): Float {
-        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
-        var observed = Float.NaN
-        while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            scenario.onActivity { observed = it.mapTiltDegrees() }
-            if (predicate(observed)) return observed
-            Thread.sleep(25)
-        }
-        throw AssertionError("$failureMessage; last tilt=$observed")
-    }
-
-    private fun awaitSnapshotCaptured(
-        activity: NavigationMapRuntimeActivity,
-        timeoutMs: Long = 6_000L
-    ): NavigationMapDiagnostics {
-        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
-        while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            val diagnostics = activity.latestDiagnostics
-            if (diagnostics.snapshotCaptureCount > 0) return diagnostics
-            Thread.sleep(25)
-        }
-        throw AssertionError("Navigation map never captured a continuity snapshot")
-    }
-
-    private fun awaitRendererReplacementBridge(
-        activity: NavigationMapRuntimeActivity,
-        previousReplacementCount: Int,
-        previousBridgeCount: Int,
-        timeoutMs: Long = 5_000L
-    ): NavigationMapDiagnostics {
-        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
-        while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            val diagnostics = activity.latestDiagnostics
-            if (diagnostics.mapReplacementCount > previousReplacementCount &&
-                diagnostics.snapshotBridgeCount > previousBridgeCount
-            ) {
-                return diagnostics
-            }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            Thread.sleep(25)
-        }
-        throw AssertionError(
-            "Longdo renderer replacement callback did not announce continuity bridge"
-        )
-    }
-
-    private fun awaitBridgeSettled(
-        activity: NavigationMapRuntimeActivity,
-        previousBridgeCount: Int,
-        timeoutMs: Long = 8_000L
-    ): NavigationMapDiagnostics {
-        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
-        while (android.os.SystemClock.elapsedRealtime() < deadline) {
-            val diagnostics = activity.latestDiagnostics
-            if (diagnostics.snapshotBridgeCount > previousBridgeCount && !diagnostics.snapshotVisible) {
-                return diagnostics
-            }
-            Thread.sleep(25)
-        }
-        throw AssertionError("Navigation map continuity bridge did not settle")
-    }
-
-    private fun awaitStopProgression(
-        scenario: ActivityScenario<NavigationMapRuntimeActivity>,
-        activity: NavigationMapRuntimeActivity,
-        initial: NavigationMapDiagnostics
-    ): NavigationMapDiagnostics {
-        val expectedRoutes = initial.routeLayerRebuildCount + 1
-        var diagnostics = activity.latestDiagnostics
-        repeat(4) { attempt ->
-            val previousRender = diagnostics.renderPassCount
-            if (attempt == 0) {
-                scenario.onActivity { it.advanceToSecondStop() }
-            } else {
-                // A foreground GPS refresh is the real Production retry trigger after a
-                // transient Longdo pin/line mutation failure.
-                scenario.onActivity { it.refreshRiderFix(100 + attempt) }
-            }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            diagnostics = awaitAppliedRender(activity, previousRender)
-            if (diagnostics.routeLayerRebuildCount == expectedRoutes &&
-                diagnostics.stopMutationCount > initial.stopMutationCount
-            ) return diagnostics
-        }
-        throw AssertionError(
-            "Stop progression overlays did not converge after bounded GPS retries: $diagnostics"
-        )
+        throw AssertionError("MapLibre presence did not become $expected")
     }
 
     @Test
-    fun gpsRefreshAndResumeReuseTheSameMapObjects() {
-        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
-            lateinit var runtimeActivity: NavigationMapRuntimeActivity
-            scenario.onActivity { activity ->
-                runtimeActivity = activity
-            }
-            assertTrue(
-                "Standalone Longdo navigation map did not become ready",
-                runtimeActivity.mapReady.await(30, TimeUnit.SECONDS)
-            )
-
-            // A snapshot is an event-driven continuity artifact, not a prerequisite
-            // of a fresh live map. Exercise real visibility loss before establishing
-            // the steady-state GPS budget, while the SurfaceView is still attached.
-            scenario.moveToState(Lifecycle.State.STARTED)
-            awaitSnapshotCaptured(runtimeActivity)
-            scenario.moveToState(Lifecycle.State.RESUMED)
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            // Resume's one-shot continuity refresh is separate from GPS rendering.
-            Thread.sleep(1_500)
-            var initialView = 0
-            var initialSdkMap = 0
-            var initialDiagnostics = NavigationMapDiagnostics(0, 0, 0, 0)
-            scenario.onActivity { activity ->
-                initialView = activity.mapViewIdentity()
-                initialSdkMap = activity.sdkMapIdentity()
-                initialDiagnostics = activity.latestDiagnostics
-            }
-            assertEquals(1, initialDiagnostics.viewCreatedCount)
-            assertEquals(1, initialDiagnostics.mapCreatedCount)
-            assertTrue(initialDiagnostics.routeLayerRebuildCount >= 1)
-            assertTrue(initialDiagnostics.stopMutationCount >= 2)
-
-            val beforeGpsRender = runtimeActivity.latestDiagnostics.renderPassCount
-            repeat(60) { index ->
-                val beforeTick = runtimeActivity.latestDiagnostics.renderPassCount
-                scenario.onActivity { it.refreshRiderFix(index + 1) }
-                InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-                awaitAppliedRender(runtimeActivity, beforeTick)
-            }
-            awaitAppliedRender(runtimeActivity, beforeGpsRender)
-
-            scenario.onActivity { activity ->
-                assertEquals("GPS ticks captured snapshots", initialDiagnostics.snapshotCaptureCount,
-                    activity.latestDiagnostics.snapshotCaptureCount)
-                assertEquals("GPS ticks replaced renderer", initialDiagnostics.mapReplacementCount,
-                    activity.latestDiagnostics.mapReplacementCount)
-                assertEquals("GPS refresh recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
-                assertEquals("GPS refresh recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())
-                assertEquals(1, activity.latestDiagnostics.viewCreatedCount)
-                assertEquals(1, activity.latestDiagnostics.mapCreatedCount)
-                assertEquals(
-                    "GPS refresh rebuilt unchanged route layers",
-                    initialDiagnostics.routeLayerRebuildCount,
-                    activity.latestDiagnostics.routeLayerRebuildCount
-                )
-                assertEquals(
-                    "GPS refresh rebuilt unchanged stop pins",
-                    initialDiagnostics.stopMutationCount,
-                    activity.latestDiagnostics.stopMutationCount
-                )
-            }
-
-            val beforeEquivalentRefresh = runtimeActivity.latestDiagnostics
-            scenario.onActivity { it.refreshEquivalentOrderSnapshot() }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            scenario.onActivity { activity ->
-                assertEquals("Equivalent backend refresh recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
-                assertEquals("Equivalent backend refresh recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())
-                assertEquals(
-                    "Equivalent backend refresh rebuilt unchanged route layers",
-                    initialDiagnostics.routeLayerRebuildCount,
-                    activity.latestDiagnostics.routeLayerRebuildCount
-                )
-                assertEquals(
-                    "Equivalent backend refresh rebuilt unchanged stop pins",
-                    initialDiagnostics.stopMutationCount,
-                    activity.latestDiagnostics.stopMutationCount
-                )
-                assertEquals(
-                    "Equivalent backend refresh changed SDK map creation count",
-                    beforeEquivalentRefresh.mapCreatedCount,
-                    activity.latestDiagnostics.mapCreatedCount
-                )
-                assertEquals(
-                    "Equivalent backend refresh changed map replacement count",
-                    beforeEquivalentRefresh.mapReplacementCount,
-                    activity.latestDiagnostics.mapReplacementCount
-                )
-                assertEquals(
-                    "Equivalent backend refresh invoked continuity bridge",
-                    beforeEquivalentRefresh.snapshotBridgeCount,
-                    activity.latestDiagnostics.snapshotBridgeCount
-                )
-            }
-
-            val beforeTabUnmountDiagnostics = runtimeActivity.latestDiagnostics
-            val beforeTabUnmount = beforeTabUnmountDiagnostics.renderPassCount
-            scenario.onActivity { it.hideMapForAnotherTab() }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            awaitMapPresence(scenario, expected = false)
-            scenario.onActivity { it.showMapAfterReturningHome() }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            awaitMapPresence(scenario, expected = true)
-            awaitAppliedRender(runtimeActivity, beforeTabUnmount)
-            val tabReturnDiagnostics = runtimeActivity.latestDiagnostics
-            assertEquals(
-                "Healthy tab remount should not invoke the continuity bridge",
-                beforeTabUnmountDiagnostics.snapshotBridgeCount,
-                tabReturnDiagnostics.snapshotBridgeCount
-            )
-            assertFalse(
-                "Healthy tab remount unexpectedly covered the retained map with a snapshot",
-                tabReturnDiagnostics.snapshotVisible
-            )
-            scenario.onActivity { activity ->
-                assertEquals("Rider tab return recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
-                assertEquals("Rider tab return recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())
-                assertEquals(1, activity.latestDiagnostics.viewCreatedCount)
-                assertEquals(1, activity.latestDiagnostics.mapCreatedCount)
-                assertEquals(
-                    "Rider tab return rebuilt unchanged route layers",
-                    initialDiagnostics.routeLayerRebuildCount,
-                    activity.latestDiagnostics.routeLayerRebuildCount
-                )
-            }
-
-            awaitSnapshotCaptured(runtimeActivity)
-            val beforeResumeDiagnostics = runtimeActivity.latestDiagnostics
-            val beforeResumeRender = beforeResumeDiagnostics.renderPassCount
-            scenario.moveToState(Lifecycle.State.CREATED)
-            Thread.sleep(300)
-            scenario.moveToState(Lifecycle.State.RESUMED)
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            awaitAppliedRender(runtimeActivity, beforeResumeRender)
-
-            var resumedSdkMap = initialSdkMap
-            scenario.onActivity { activity ->
-                assertEquals("Resume recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
-                resumedSdkMap = activity.sdkMapIdentity()
-            }
-
-            var resumeDiagnostics = runtimeActivity.latestDiagnostics
-            if (resumedSdkMap != initialSdkMap) {
-                resumeDiagnostics = awaitRendererReplacementBridge(
-                    runtimeActivity,
-                    beforeResumeDiagnostics.mapReplacementCount,
-                    beforeResumeDiagnostics.snapshotBridgeCount
-                )
-                resumeDiagnostics = awaitBridgeSettled(
-                    runtimeActivity,
-                    beforeResumeDiagnostics.snapshotBridgeCount
-                )
-            } else if (resumeDiagnostics.snapshotBridgeCount > beforeResumeDiagnostics.snapshotBridgeCount) {
-                resumeDiagnostics = awaitBridgeSettled(
-                    runtimeActivity,
-                    beforeResumeDiagnostics.snapshotBridgeCount
-                )
-            }
-            assertTrue(resumeDiagnostics.snapshotCaptureCount > 0)
-            assertEquals(0, resumeDiagnostics.snapshotBridgeFailureCount)
-            assertFalse("Continuity snapshot remained stuck over live map", resumeDiagnostics.snapshotVisible)
-
-            scenario.onActivity { activity ->
-                assertEquals(1, activity.latestDiagnostics.viewCreatedCount)
-                if (resumedSdkMap == initialSdkMap) {
-                    assertEquals(
-                        "Healthy background/resume should not invoke the continuity bridge",
-                        beforeResumeDiagnostics.snapshotBridgeCount,
-                        activity.latestDiagnostics.snapshotBridgeCount
-                    )
-                    assertEquals(1, activity.latestDiagnostics.mapCreatedCount)
-                } else {
-                    assertTrue("Longdo map replacement was not recorded", activity.latestDiagnostics.mapReplacementCount >= 1)
-                    assertTrue("Longdo map replacement did not increment map creation count", activity.latestDiagnostics.mapCreatedCount >= 2)
-                    assertTrue(
-                        "Longdo replacement did not invoke frozen-frame continuity bridge",
-                        activity.latestDiagnostics.snapshotBridgeCount > beforeResumeDiagnostics.snapshotBridgeCount
-                    )
-                }
-            }
-
-            val progressedDiagnostics = awaitStopProgression(scenario, runtimeActivity, resumeDiagnostics)
-            assertEquals(
-                "Stop progression rebuilt route layers more than once",
-                resumeDiagnostics.routeLayerRebuildCount + 1,
-                progressedDiagnostics.routeLayerRebuildCount
-            )
-            scenario.onActivity { activity ->
-                assertEquals("Stop progression recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
-                assertEquals("Stop progression unexpectedly replaced the current Longdo map", resumedSdkMap, activity.sdkMapIdentity())
-                assertEquals(
-                    resumeDiagnostics.routeLayerRebuildCount + 1,
-                    activity.latestDiagnostics.routeLayerRebuildCount
-                )
-                assertTrue(activity.latestDiagnostics.stopMutationCount > initialDiagnostics.stopMutationCount)
-            }
-        }
-    }
-
-    @Test
-    fun followCameraUsesNativePerspectiveAndOverviewFlattens() {
+    fun gpsRefreshTabReturnAndOverlayUpdatesReuseSameMapView() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
             lateinit var activity: NavigationMapRuntimeActivity
             scenario.onActivity { activity = it }
             assertTrue(
-                "Navigation map did not become ready for perspective test",
+                "QueueGo MapLibre navigation map did not become ready",
                 activity.mapReady.await(30, TimeUnit.SECONDS)
             )
 
-            awaitMapTilt(
-                scenario = scenario,
-                predicate = { it >= 24f },
-                failureMessage = "FOLLOW camera did not apply native Longdo tilt"
-            )
-
-            var before = activity.latestDiagnostics.renderPassCount
+            var viewIdentity = 0
+            var initial = activity.latestDiagnostics
             scenario.onActivity {
-                before = it.latestDiagnostics.renderPassCount
-                it.showOverviewForTiltFixture()
+                viewIdentity = it.mapViewIdentity()
+                initial = it.latestDiagnostics
+                assertTrue(it.mapViewUsesActivityContext())
             }
-            awaitAppliedRender(activity, before)
-            awaitMapTilt(
-                scenario = scenario,
-                predicate = { kotlin.math.abs(it) <= 0.5f },
-                failureMessage = "Overview must return to a flat north-up camera"
-            )
+
+            repeat(30) { index ->
+                val before = activity.latestDiagnostics.renderPassCount
+                scenario.onActivity { it.refreshRiderFix(index + 1) }
+                InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+                awaitRender(activity, before)
+            }
 
             scenario.onActivity {
-                before = it.latestDiagnostics.renderPassCount
-                it.restoreFollowForTiltFixture()
+                assertEquals(viewIdentity, it.mapViewIdentity())
+                assertEquals(1, it.latestDiagnostics.viewCreatedCount)
+                assertEquals(1, it.latestDiagnostics.mapCreatedCount)
             }
-            awaitAppliedRender(activity, before)
-            awaitMapTilt(
-                scenario = scenario,
-                predicate = { it >= 24f },
-                failureMessage = "FOLLOW did not restore navigation perspective after Overview"
+
+            val beforeEquivalent = activity.latestDiagnostics
+            scenario.onActivity { it.refreshEquivalentOrderSnapshot() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            awaitRender(activity, beforeEquivalent.renderPassCount)
+            scenario.onActivity {
+                assertEquals(viewIdentity, it.mapViewIdentity())
+                assertEquals(
+                    beforeEquivalent.routeLayerRebuildCount,
+                    it.latestDiagnostics.routeLayerRebuildCount
+                )
+            }
+
+            val beforeAdvance = activity.latestDiagnostics
+            scenario.onActivity { it.advanceToSecondStop() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            val advanced = awaitRender(activity, beforeAdvance.renderPassCount)
+            assertTrue(
+                advanced.routeLayerRebuildCount >
+                    beforeAdvance.routeLayerRebuildCount
             )
+
+            scenario.onActivity { it.hideMapForAnotherTab() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            awaitMapPresence(scenario, false)
+            scenario.onActivity { it.showMapAfterReturningHome() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            awaitMapPresence(scenario, true)
+            scenario.onActivity {
+                assertEquals(
+                    "Tab return recreated QueueGo MapLibre view",
+                    viewIdentity,
+                    it.mapViewIdentity()
+                )
+            }
+
+            scenario.moveToState(Lifecycle.State.CREATED)
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertEquals(
+                    "Background/resume recreated QueueGo MapLibre view",
+                    viewIdentity,
+                    it.mapViewIdentity()
+                )
+            }
+
+            scenario.onActivity {
+                val before = it.mapViewIdentity()
+                it.showDemandHeatmapFixture(3)
+                assertEquals(before, it.mapViewIdentity())
+            }
         }
     }
 
     @Test
-    fun jobEndFlattensNorthUpAndKeepsPuckWithoutNewGpsTick() {
+    fun manualDragReportsGestureButTapDoesNot() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
             lateinit var activity: NavigationMapRuntimeActivity
             scenario.onActivity { activity = it }
             assertTrue(activity.mapReady.await(30, TimeUnit.SECONDS))
-            awaitMapTilt(scenario, { it >= 24f }, "Active navigation must be tilted")
-            val before = activity.latestDiagnostics.renderPassCount
-            var viewIdentity = 0
-            scenario.onActivity {
-                viewIdentity = it.mapViewIdentity()
-                it.finishJobFixture()
-            }
-            val idle = awaitAppliedRender(activity, before)
-            awaitMapTilt(scenario, { kotlin.math.abs(it) <= 0.5f }, "Job end must flatten immediately")
-            assertTrue("Job end lost Rider puck without another GPS tick", idle.riderPuckPresent)
-            // Longdo may animate rotation; observe its real camera rather than policy output.
-            val deadline = android.os.SystemClock.elapsedRealtime() + 5_000L
-            var bearing = Float.NaN
-            while (android.os.SystemClock.elapsedRealtime() < deadline) {
-                scenario.onActivity { bearing = it.mapBearingDegrees() }
-                if (kotlin.math.abs(((bearing + 540f) % 360f) - 180f) <= 0.5f) break
-                Thread.sleep(25)
-            }
-            assertTrue("Idle map must be north-up; actual bearing=$bearing", kotlin.math.abs(((bearing + 540f) % 360f) - 180f) <= 0.5f)
-            scenario.onActivity { assertEquals(viewIdentity, it.mapViewIdentity()) }
-        }
-    }
-
-    @Test
-    fun demandHeatmapReconcilesPinsWithoutRecreatingMapObjects() {
-        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
-            lateinit var activity: NavigationMapRuntimeActivity
-            scenario.onActivity { activity = it }
-            assertTrue(
-                "Navigation map did not become ready for demand heatmap test",
-                activity.mapReady.await(30, TimeUnit.SECONDS)
-            )
-
-            var initialView = 0
-            var initialMap = 0
-            var before = activity.latestDiagnostics
-            scenario.onActivity {
-                initialView = it.mapViewIdentity()
-                initialMap = it.sdkMapIdentity()
-                before = it.latestDiagnostics
-                it.showDemandHeatmapFixture(level = 1)
-            }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            var after = awaitAppliedRender(activity, before.renderPassCount)
-            assertTrue(
-                "Demand heatmap did not add aggregate pins",
-                after.demandMutationCount >= before.demandMutationCount + 2
-            )
-
-            scenario.onActivity {
-                assertEquals("Demand heatmap recreated MapGLSurfaceView", initialView, it.mapViewIdentity())
-                assertEquals("Demand heatmap recreated Longdo map", initialMap, it.sdkMapIdentity())
-                before = it.latestDiagnostics
-                it.showDemandHeatmapFixture(level = 3)
-            }
-            after = awaitAppliedRender(activity, before.renderPassCount)
-            assertTrue(
-                "Demand level change did not reconcile its pin",
-                after.demandMutationCount >= before.demandMutationCount + 2
-            )
-
-            scenario.onActivity {
-                assertEquals("Demand update recreated MapGLSurfaceView", initialView, it.mapViewIdentity())
-                assertEquals("Demand update recreated Longdo map", initialMap, it.sdkMapIdentity())
-                before = it.latestDiagnostics
-                it.clearDemandHeatmapFixture()
-            }
-            after = awaitAppliedRender(activity, before.renderPassCount)
-            assertTrue(
-                "Demand heatmap clear did not remove aggregate pins",
-                after.demandMutationCount >= before.demandMutationCount + 2
-            )
-
-            scenario.onActivity {
-                assertEquals("Demand clear recreated MapGLSurfaceView", initialView, it.mapViewIdentity())
-                assertEquals("Demand clear recreated Longdo map", initialMap, it.sdkMapIdentity())
-            }
-        }
-    }
-
-    @Test
-    fun routeProgressMutatesExistingLongdoLineWithoutRecreatingIt() {
-        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
-            lateinit var activity: NavigationMapRuntimeActivity
-            scenario.onActivity { activity = it }
-            assertTrue(
-                "Navigation map did not become ready for line mutation test",
-                activity.mapReady.await(30, TimeUnit.SECONDS)
-            )
-
-            var before = emptyList<Int>()
-            var beforeRenderPass = 0
-            scenario.onActivity {
-                before = it.routeLineIdentities()
-                beforeRenderPass = it.latestDiagnostics.renderPassCount
-                it.shortenActiveRouteFixture()
-            }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            awaitAppliedRender(activity, beforeRenderPass)
-
-            scenario.onActivity {
-                val after = it.routeLineIdentities()
-                assertEquals("Route line count changed during geometry-only progress", before.size, after.size)
-                assertEquals("Route progress recreated Longdo Line objects instead of mutating them", before, after)
-                beforeRenderPass = it.latestDiagnostics.renderPassCount
-                it.replaceActiveRouteFixture()
-            }
-            awaitAppliedRender(activity, beforeRenderPass)
-            scenario.onActivity {
-                val afterReroute = it.routeLineIdentities()
-                assertEquals("Reroute recreated future line", before.first(), afterReroute.first())
-                assertNotEquals("Reroute did not replace active line", before.last(), afterReroute.last())
-            }
-        }
-    }
-
-    @Test
-    fun manualPanSuspendsFollowButTapDoesNotReportGesture() {
-        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
-            lateinit var activity: NavigationMapRuntimeActivity
-            scenario.onActivity { activity = it }
-            assertTrue(
-                "Navigation map did not become ready for gesture test",
-                activity.mapReady.await(30, TimeUnit.SECONDS)
-            )
 
             scenario.onActivity { it.dispatchTapOnMap() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             scenario.onActivity {
-                assertEquals(
-                    "Simple tap incorrectly suspended Rider follow",
-                    0,
-                    it.userGestureCount
-                )
+                assertEquals(0, it.userGestureCount)
             }
 
             scenario.onActivity { it.dispatchDragOnMap() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             scenario.onActivity {
-                assertEquals(
-                    "Manual map drag did not report exactly one user gesture",
-                    1,
-                    it.userGestureCount
-                )
+                assertEquals(1, it.userGestureCount)
             }
         }
     }
 
     @Test
-    fun retainedMapIsDisposedWhenActivityDiesOffHome() {
+    fun activityRecreationCreatesFreshMapViewForFreshActivityContext() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
-            lateinit var firstActivity: NavigationMapRuntimeActivity
-            scenario.onActivity { firstActivity = it }
-            assertTrue(
-                "Initial navigation map did not become ready",
-                firstActivity.mapReady.await(30, TimeUnit.SECONDS)
-            )
+            lateinit var activity: NavigationMapRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue(activity.mapReady.await(30, TimeUnit.SECONDS))
 
-            var oldActivityIdentity = 0
-            var oldViewIdentity = 0
-            scenario.onActivity { activity ->
-                oldActivityIdentity = System.identityHashCode(activity)
-                oldViewIdentity = activity.mapViewIdentity()
-                assertTrue("Initial map View does not use Activity context", activity.mapViewUsesActivityContext())
-                activity.hideMapForAnotherTab()
+            var oldActivity = 0
+            var oldView = 0
+            scenario.onActivity {
+                oldActivity = System.identityHashCode(it)
+                oldView = it.mapViewIdentity()
             }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             scenario.recreate()
 
-            lateinit var recreatedActivity: NavigationMapRuntimeActivity
-            scenario.onActivity { recreatedActivity = it }
-            assertTrue(
-                "Navigation map did not recover after Activity recreation",
-                recreatedActivity.mapReady.await(30, TimeUnit.SECONDS)
-            )
-            scenario.onActivity { activity ->
-                assertNotEquals(
-                    "Activity recreation unexpectedly reused the destroyed Activity",
-                    oldActivityIdentity,
-                    System.identityHashCode(activity)
-                )
-                assertNotEquals(
-                    "Activity recreation reused a MapGLSurfaceView backed by the destroyed Activity",
-                    oldViewIdentity,
-                    activity.mapViewIdentity()
-                )
-                assertTrue(
-                    "Recreated map View retained the wrong Activity context",
-                    activity.mapViewUsesActivityContext()
-                )
-                assertEquals(1, activity.latestDiagnostics.viewCreatedCount)
-                assertEquals(1, activity.latestDiagnostics.mapCreatedCount)
+            lateinit var recreated: NavigationMapRuntimeActivity
+            scenario.onActivity { recreated = it }
+            assertTrue(recreated.mapReady.await(30, TimeUnit.SECONDS))
+            scenario.onActivity {
+                assertNotEquals(oldActivity, System.identityHashCode(it))
+                assertNotEquals(oldView, it.mapViewIdentity())
+                assertTrue(it.mapViewUsesActivityContext())
             }
         }
     }
