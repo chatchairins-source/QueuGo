@@ -125,8 +125,10 @@ class Engine:
                 kind='arrive' if code in (4,5,6) else 'roundabout' if code==26 else 'exit roundabout' if code==27 else 'on ramp' if code in (17,18,19) else 'off ramp' if code in (20,21) else 'turn'
                 steps.append({'distance':maneuver.get('length',0)*1000,'duration':maneuver.get('time',0),'name':(maneuver.get('street_names') or [''])[0],'instruction':thai_maneuver(maneuver),'begin_shape_index':begin+offset,'end_shape_index':end+offset,'maneuver':{'type':kind,'modifier':'uturn' if code in (12,13) else modifier,'location':points[min(begin,len(points)-1)],'bearing_before':maneuver.get('bearing_before'),'bearing_after':maneuver.get('bearing_after')},'vendor_type':code})
             legs.append({'distance':leg['summary']['length']*1000,'duration':leg['summary']['time'],'steps':steps})
-            attributes=self._call('trace_attributes',{'encoded_polyline':leg['shape'],'shape_match':'edge_walk','costing':PROFILES[profile]})
-            trace_edges.extend(attributes.get('edges',[]))
+            # Coincident stops have no traversed edges; do not ask edge_walk to invent one.
+            if leg['summary']['length']>0 and any(haversine(a,b)>.01 for a,b in zip(points,points[1:])):
+                attributes=self._call('trace_attributes',{'encoded_polyline':leg['shape'],'shape_match':'edge_walk','costing':PROFILES[profile]})
+                trace_edges.extend(attributes.get('edges',[]))
         signal_count=sum(bool(e.get('end_node',{}).get('traffic_signal')) for e in trace_edges)
         rough_m=sum(e.get('length',0)*1000 for e in trace_edges if e.get('surface') in ('dirt','gravel','impassable') or e.get('unpaved'))
         base=float(trip['summary']['time']);distance=float(trip['summary']['length'])*1000
@@ -260,9 +262,10 @@ class Engine:
         near_end=haversine(current,line[-1])<35 and result['remaining_m']<60 and float(body['accuracy'])<=25
         arrival_hits=arrival_hits+1 if near_end else 0
         steps=[step for leg in route['legs'] for step in leg['steps']]
-        upcoming=next((step for step in steps if step['end_shape_index']>result['shape_index']),steps[-1] if steps else None)
+        upcoming=next((step for step in steps if step['begin_shape_index']>result['shape_index']),steps[-1] if steps else None)
+        to_maneuver=max(0,sum(haversine(a,b) for a,b in zip(line[:upcoming['begin_shape_index']],line[1:upcoming['begin_shape_index']+1]))-result['progress_m']) if upcoming else 0
         context={'last_timestamp':now,'last_raw':current,'off_route_hits':hits,'last_reroute_at':last_reroute,'arrival_hits':arrival_hits,'progress_m':result['progress_m']}
-        return {'accepted':True,'snapped_position':result['point'],'bearing':result['bearing'],'off_route_distance_m':result['distance_m'],'remaining_distance_m':result['remaining_m'],'remaining_duration_s':route['estimatedDuration']*result['remaining_m']/max(1,result['total_m']),'maneuver':upcoming,'distance_to_maneuver_m':sum(haversine(a,b) for a,b in zip(line[result['shape_index']:upcoming['end_shape_index']+1],line[result['shape_index']+1:upcoming['end_shape_index']+1])) if upcoming else 0,'reroute':reroute,'arrived':arrival_hits>=3,'context':context,'data':self.metadata()}
+        return {'accepted':True,'snapped_position':result['point'],'bearing':result['bearing'],'off_route_distance_m':result['distance_m'],'remaining_distance_m':result['remaining_m'],'remaining_duration_s':route['estimatedDuration']*result['remaining_m']/max(1,result['total_m']),'maneuver':upcoming,'distance_to_maneuver_m':to_maneuver,'reroute':reroute,'arrived':arrival_hits>=3,'context':context,'data':self.metadata()}
     def match(self,body):
         trace=body.get('points') or []
         if not isinstance(trace,list) or not 1<=len(trace)<=64:raise ValueError('Trace needs 1..64 points')

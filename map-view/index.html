@@ -9,8 +9,10 @@
   <meta http-equiv="Expires" content="0">
   <title>QueueGo Map — Buriram</title>
   <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="/map-assets/maplibre-gl.css">
   <style>
+    @font-face{font-family:QueueGoThai;src:url(/map-assets/fonts/NotoSansThai.ttf) format("truetype");font-weight:100 900;font-display:swap}
+    html,body,input,button,select,textarea{font-family:QueueGoThai,system-ui,sans-serif!important}
     :root{
       --red:#e6002d;--ink:#171519;--muted:#716d73;--line:#e9e5e7;--panel:#fff;
       --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px)
@@ -257,26 +259,24 @@
     <p class="source-note">ใช้พิกัดที่ผู้ใช้ปัก + OpenStreetMap/Nominatim/Overpass และข้อมูลหมู่บ้านสาธารณะของกรมการปกครองเมื่อบริการพร้อม ข้อมูลที่ไม่พบสามารถกรอกเองได้</p>
   </section>
 
-  <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
+  <script src="/map-assets/maplibre-gl.js"></script>
+  <script src="/map-assets/pmtiles.js"></script>
   <script src="queuego-map-service.js"></script>
+  <script src="queuego-map-style.js"></script>
   <script>
-  (function(){
+  (async function(){
     "use strict";
 
     const BURIRAM_CENTER=[103.1029,14.9930];
     const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
     const DOPA_BURIRAM="https://opendata_tst.dopa.go.th/downloads/15/%E0%B8%88%E0%B8%B1%E0%B8%87%E0%B8%AB%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%9A%E0%B8%B8%E0%B8%A3%E0%B8%B5%E0%B8%A3%E0%B8%B1%E0%B8%A1%E0%B8%A2%E0%B9%8C.json";
 
+    let packageInfo=null;
+    try{packageInfo=await QueueGoMapService.call("health")}catch(error){console.warn("QueueGo map service unavailable",error)}
+    if(packageInfo&&packageInfo.vector_map){const protocol=new pmtiles.Protocol();maplibregl.addProtocol("pmtiles",protocol.tile)}
     const map=new maplibregl.Map({
       container:"map",
-      style:{
-        version:8,
-        sources:{osm:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},
-        layers:[
-          {id:"background",type:"background",paint:{"background-color":"#e9e7e3"}},
-          {id:"osm",type:"raster",source:"osm"}
-        ]
-      },
+      style:QueueGoMapStyle.create(packageInfo&&packageInfo.vector_map?new URL(packageInfo.vector_url,location.href).href:null),
       center:BURIRAM_CENTER,
       zoom:12.2,
       minZoom:6,

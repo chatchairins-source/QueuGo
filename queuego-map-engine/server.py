@@ -12,7 +12,7 @@ from core import Engine
 MAX_BODY=256*1024
 
 
-def handler(engine,web_root,vector=None,origins=()):
+def handler(engine,web_root,vector=None,origins=(),assets_root=None):
     root=Path(web_root).resolve()
     class API(SimpleHTTPRequestHandler):
         def __init__(self,*args,**kwargs):super().__init__(*args,directory=str(root),**kwargs)
@@ -80,6 +80,14 @@ def handler(engine,web_root,vector=None,origins=()):
             self.serve_public(head=True)
         def serve_public(self,head=False):
             path=urlsplit(self.path).path
+            if path.startswith('/map-assets/'):
+                from urllib.parse import unquote
+                if not assets_root:self.send_error(404);return
+                assets=Path(assets_root).resolve();file=(assets/unquote(path.removeprefix('/map-assets/'))).resolve()
+                if not file.is_relative_to(assets) or not file.is_file():self.send_error(404);return
+                data=file.read_bytes();self.send_response(200);self.send_header('Content-Type',mimetypes.guess_type(file.name)[0] or 'application/octet-stream');self.send_header('Content-Length',str(len(data)));self.send_header('Cache-Control','public, max-age=86400');self.end_headers()
+                if not head:self.wfile.write(data)
+                return
             if path=='/':self.send_response(302);self.send_header('Location','/map-view/');self.end_headers();return
             candidate=Path(self.translate_path(path)).resolve()
             if not candidate.is_relative_to(root) or any(part.startswith('.') for part in candidate.relative_to(root).parts):self.send_error(404);return
@@ -90,9 +98,9 @@ def handler(engine,web_root,vector=None,origins=()):
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--database',required=True);parser.add_argument('--config',required=True);parser.add_argument('--web-root',default=str(Path(__file__).resolve().parents[1]));parser.add_argument('--vector');parser.add_argument('--host',default='127.0.0.1');parser.add_argument('--port',type=int,default=8765);parser.add_argument('--allowed-origin',action='append',default=[])
+    parser=argparse.ArgumentParser();parser.add_argument('--database',required=True);parser.add_argument('--config',required=True);parser.add_argument('--web-root',default=str(Path(__file__).resolve().parents[1]));parser.add_argument('--vector');parser.add_argument('--assets-root');parser.add_argument('--host',default='127.0.0.1');parser.add_argument('--port',type=int,default=8765);parser.add_argument('--allowed-origin',action='append',default=[])
     args=parser.parse_args();engine=Engine(args.database,args.config)
-    server=ThreadingHTTPServer((args.host,args.port),handler(engine,args.web_root,args.vector,args.allowed_origin));server.daemon_threads=True
+    server=ThreadingHTTPServer((args.host,args.port),handler(engine,args.web_root,args.vector,args.allowed_origin,args.assets_root));server.daemon_threads=True
     print(json.dumps({'listening':f'http://{args.host}:{args.port}','data':engine.metadata()},ensure_ascii=False),flush=True)
     server.serve_forever()
 

@@ -1,0 +1,24 @@
+{
+  "distance": 5799,
+  "engine": "QueueGo/Valhalla",
+  "matrix": [
+    [
+      0,
+      370
+    ],
+    [
+      489,
+      0
+    ]
+  ],
+  "nearest": 875543066,
+  "places": 17,
+  "sameMap": true,
+  "pitch": 0,
+  "bearing": 0,
+  "rendered": 4659,
+  "external_requests_blocked": [],
+  "page_errors": [],
+  "tests": "actual Chromium, real graph and vector data; external requests blocked",
+  "physical_device": false
+}
