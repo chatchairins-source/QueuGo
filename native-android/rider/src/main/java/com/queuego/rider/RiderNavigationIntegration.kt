@@ -63,6 +63,11 @@ private fun validNavigationPoint(lat: Double?, lon: Double?): NavigationMapPoint
     return NavigationMapPoint(lat, lon).takeIf { it.valid }
 }
 
+internal fun riderNavigationAutoFollow(
+    navigationActive: Boolean,
+    viewMode: NavigationViewMode
+): Boolean = navigationActive && viewMode == NavigationViewMode.FOLLOW
+
 internal fun riderNavigationStops(
     job: RiderJob?,
     marketPickups: List<MarketPickup>,
@@ -303,8 +308,6 @@ internal fun QueueGoRiderNavigationMap(
     var viewModeState by remember(stateKey) {
         mutableStateOf(viewModeController.state())
     }
-    val followRider = viewModeState.mode == NavigationViewMode.FOLLOW
-
     val stops = remember(job, marketPickups, bundleOrders) {
         riderNavigationStops(job, marketPickups, bundleOrders)
     }
@@ -319,15 +322,15 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
     val navigationActive = stops.any { !it.completed && it.point.valid }
+    val followRider = riderNavigationAutoFollow(navigationActive, viewModeState.mode)
     val riderFix by RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()
 
     LaunchedEffect(navigationActive) {
-        if (!navigationActive) {
-            // Leaving a job must also leave navigation perspective. Restore the normal
-            // top-down FOLLOW camera even if the Rider used overview/free-pan during work.
-            viewModeState = viewModeController.onRecenter()
-            pendingViewModePersistence = NavigationViewMode.FOLLOW.name
-        }
+        // Idle is a normal map: no automatic follow, no navigation tilt/rotation.
+        // A newly active job always starts in FOLLOW. Finishing the job returns the
+        // controller to FOLLOW too, but auto-follow remains disabled until another job starts.
+        viewModeState = viewModeController.onRecenter()
+        pendingViewModePersistence = NavigationViewMode.FOLLOW.name
     }
 
     DisposableEffect(lifecycle, navigationActive, context) {
@@ -539,19 +542,36 @@ internal fun QueueGoRiderNavigationMap(
 
     LaunchedEffect(recenterSignal) {
         if (recenterSignal > 0) {
-            // A recenter tap is also an explicit request for a fresh device fix. This is
-            // important immediately after granting permission or returning to the map.
+            // A recenter tap is also an explicit request for a fresh device fix.
             RiderNavigationLocationService.start(context)
             viewModeState = viewModeController.onRecenter()
             pendingViewModePersistence = NavigationViewMode.FOLLOW.name
             riderFix?.let { fix ->
-                stateChannel.trySend(
-                    baseState.copy(
+                if (navigationActive) {
+                    stateChannel.trySend(
+                        baseState.copy(
+                            rider = fix,
+                            followRider = true,
+                            viewMode = NavigationViewMode.FOLLOW
+                        )
+                    )
+                } else {
+                    // Idle map stays manual. Recenter is a one-shot flat camera move, not
+                    // permission to start following every subsequent GPS fix.
+                    val oneShot = baseState.copy(
                         rider = fix,
                         followRider = true,
                         viewMode = NavigationViewMode.FOLLOW
                     )
-                )
+                    renderedState = oneShot
+                    delay(180L)
+                    if (
+                        latestBaseState.remainingStops().isEmpty() &&
+                        !latestBaseState.followRider
+                    ) {
+                        renderedState = oneShot.copy(followRider = false)
+                    }
+                }
             }
         }
     }
