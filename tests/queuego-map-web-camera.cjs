@@ -90,14 +90,18 @@ Q.setNavigationFollow(map,true);
 
 class GestureMap {
   constructor(opts){
-    this.opts=opts;this.handlers={};this.zoom=opts.zoom;this.bearing=Number(opts.bearing)||0;this.easeCalls=[];
-    this.touchZoomRotate={enableRotation(){},disableRotation(){}};
+    this.opts=opts;this.handlers={};this.zoom=opts.zoom;this.bearing=Number(opts.bearing)||0;this.easeCalls=[];this.maxPitch=opts.maxPitch;
+    this.rotationEnabled=!!opts.dragRotate;this.pitchEnabled=!!opts.pitchWithRotate;
+    this.touchZoomRotate={enableRotation:()=>{this.rotationEnabled=true},disableRotation:()=>{this.rotationEnabled=false}};
+    this.dragRotate={enable:()=>{this.rotationEnabled=true},disable:()=>{this.rotationEnabled=false}};
+    this.touchPitch={enable:()=>{this.pitchEnabled=true},disable:()=>{this.pitchEnabled=false}};
   }
   on(name,fn){this.handlers[name]=fn}
   addControl(){}
   easeTo(opts){this.easeCalls.push(opts);if(Number.isFinite(opts.zoom))this.zoom=opts.zoom;if(Number.isFinite(opts.bearing))this.bearing=opts.bearing}
   getZoom(){return this.zoom}
   getBearing(){return this.bearing}
+  setMaxPitch(v){this.maxPitch=v}
   isStyleLoaded(){return true}
   getLayer(){return null}
   getSource(){return null}
@@ -128,6 +132,18 @@ ok(gestureMap.easeCalls.at(-1).duration>=320,'gesture release rotation must be a
 gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
 eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.003,speed:8,bearing:90,accuracy:5},straight),null,'one-finger pan should still enter free pan');
 
+Q.setNavigationMode(gestureMap,false,{center:{lat:15,lng:103.004},zoom:15,duration:300});
+eq(gestureMap.easeCalls.at(-1).bearing,0,'idle Rider map must return north-up');
+eq(gestureMap.easeCalls.at(-1).pitch,0,'idle Rider map must return top-down');
+eq(gestureMap.maxPitch,0,'idle Rider map must disable navigation pitch');
+eq(gestureMap.rotationEnabled,false,'idle Rider map must disable rotation gestures');
+eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.005,speed:8,bearing:90},straight,{force:true}),null,'idle Rider map must reject automatic follow even when a caller asks to force it');
+
+Q.setNavigationMode(gestureMap,true);
+eq(gestureMap.maxPitch,60,'active job must restore navigation pitch');
+eq(gestureMap.rotationEnabled,true,'active job must restore rotation gestures');
+ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.005,speed:8,bearing:90},straight,{force:true})!=null,'active job must start follow camera');
+
 context.maplibregl={
   LngLatBounds:class{
     constructor(){this.points=[]}
@@ -139,4 +155,4 @@ ok(Q.navigationOverview(map,points,{duration:300}),'overview should fit route');
 eq(map.fit.opts.bearing,0,'overview should return north-up');
 eq(map.fit.opts.pitch,0,'overview should return top-down');
 
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Web 3D follow camera, road heading, turn anticipation, free-pan ownership and overview'}));
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Web idle normal map + active-job 3D follow camera, smooth rotation, gesture ownership and overview'}));
