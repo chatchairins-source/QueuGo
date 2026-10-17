@@ -364,7 +364,13 @@ ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
    riderApp.includes('(maxHeight * 0.62f)')&&
    riderApp.includes('navigationBottomInsetPx = coordinates.size.height + with(navigationDensity) { 68.dp.roundToPx() }')&&
    riderJobDock.includes('rememberSaveable(jobKey)')&&riderJobDock.includes('.draggable(')&&
-   riderJobDock.includes('onClick = ::toggle')&&riderJobDock.includes('Modifier.weight(1f).fillMaxWidth().clipToBounds().verticalScroll(scroll)')&&
+   riderJobDock.includes('onClick = ::toggle')&&
+   riderJobDock.includes('mapOverviewActive: Boolean = false')&&
+   riderJobDock.includes('if (mapOverviewActive) "ไปที่" else "ภาพรวม"')&&
+   riderApp.includes('mapOverviewActive = activeSheetJob != null && routeOverviewActive')&&
+   riderApp.includes('routeOverviewActive = true')&&riderApp.includes('overviewSignal += 1')&&
+   riderApp.includes('routeOverviewActive = false')&&riderApp.includes('recenterSignal += 1')&&
+   riderJobDock.includes('Modifier.weight(1f).fillMaxWidth().clipToBounds().verticalScroll(scroll)')&&
    !riderJobDock.includes('AndroidView')&&riderApp.includes('recenterSignal'),
    'Rider job dock must expand/collapse over retained map, preserve targeted offer visibility, restore idle card size and measure camera inset including bottom navigation');
 ok(riderApp.includes('var auth by remember { mutableStateOf<QueueGoAuth?>(null) }')&&
