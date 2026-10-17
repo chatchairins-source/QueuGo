@@ -29,10 +29,11 @@ function serve(){
   const ok=(v,msg)=>{assert.ok(v,msg);checks++};
 
   await page.route("https://tile.openstreetmap.org/**",route=>route.fulfill({status:200,contentType:"image/png",body:onePx}));
-  await page.route("**/nominatim.openstreetmap.org/**",route=>route.fulfill({status:503,contentType:"application/json",body:"{}"}));
+  await page.route("**/nominatim.openstreetmap.org/**",route=>route.fulfill({status:503,contentType:"application/json",headers:{"access-control-allow-origin":"*"},body:"{}"}));
   await page.route("**/photon.komoot.io/**",route=>route.fulfill({
     status:200,
     contentType:"application/json",
+    headers:{"access-control-allow-origin":"*"},
     body:JSON.stringify({
       type:"FeatureCollection",
       features:[{
