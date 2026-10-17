@@ -640,18 +640,18 @@ ok(
 );
 
 ok(
-  riderNavigationMapRuntime.includes('fun resetSurface(): Boolean') &&
-  riderNavigationMapRuntime.includes('var graphicsReleased = runCatching { shutdownSdk() }.isSuccess') &&
-  riderNavigationMapRuntime.includes('if (runCatching { activeMap.removePin(pin) }.isFailure) graphicsReleased = false') &&
-  riderNavigationMapRuntime.includes('private fun releaseBitmapCaches(recyclePixels: Boolean)') &&
-  riderNavigationMapRuntime.includes('if (recyclePixels) markerBitmaps.values.forEach') &&
-  riderNavigationMapRuntime.includes('markerBitmaps.clear()') &&
-  riderNavigationMapRuntime.includes('riderPuckBitmaps.clear()') &&
-  riderNavigationMapRuntime.includes('stopBitmaps.clear()') &&
-  riderNavigationMapRuntime.includes('demandBitmaps.clear()') &&
-  riderNavigationMapRuntime.includes('val graphicsReleased = resetSurface()') &&
-  riderNavigationMapRuntime.includes('releaseBitmapCaches(graphicsReleased)'),
-  'Rider navigation bitmap caches must drop strong refs on dispose and recycle pixels only after renderer graphics release succeeds'
+  riderNavigationMapRuntime.includes('private fun resetSurface()') &&
+  riderNavigationMapRuntime.includes('riderAnimator?.cancel()') &&
+  riderNavigationMapRuntime.includes('routeLines.clear()') &&
+  riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
+  riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
+  riderNavigationMapRuntime.includes('riderMarker = null') &&
+  riderNavigationMapRuntime.includes('map = null') &&
+  riderNavigationMapRuntime.includes('view?.onDestroy()') &&
+  riderNavigationMapRuntime.includes('view = null') &&
+  !riderNavigationMapRuntime.includes('markerBitmaps') &&
+  !riderNavigationMapRuntime.includes('Bitmap.createBitmap('),
+  'Rider MapLibre dispose must drop renderer, marker and view refs without legacy bitmap caches'
 );
 
 const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
