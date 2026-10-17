@@ -8,6 +8,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert'),{JSDOM}=req
  class StubMap{
   constructor(){this.center={lat:14,lng:103};this.events={}}
   on(name,fn){this.events[name]=fn}
+  once(name,fn){if(name==='load')fn();else this.events[name]=fn}
   getCenter(){return this.center}
  }
  w.maplibregl={};
