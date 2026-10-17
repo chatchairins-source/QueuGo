@@ -29,8 +29,8 @@ function serve(){
   const ok=(v,msg)=>{assert.ok(v,msg);checks++};
 
   await page.route("https://tile.openstreetmap.org/**",route=>route.fulfill({status:200,contentType:"image/png",body:onePx}));
-  await page.route("https://nominatim.openstreetmap.org/**",route=>route.fulfill({status:503,contentType:"application/json",body:"{}"}));
-  await page.route("https://photon.komoot.io/api/**",route=>route.fulfill({
+  await page.route("**/nominatim.openstreetmap.org/**",route=>route.fulfill({status:503,contentType:"application/json",body:"{}"}));
+  await page.route("**/photon.komoot.io/**",route=>route.fulfill({
     status:200,
     contentType:"application/json",
     body:JSON.stringify({
@@ -74,4 +74,4 @@ function serve(){
 
   await context.close();await browser.close();await new Promise(r=>server.close(r));
   console.log(JSON.stringify({checks,failures:0,scope:"QueueGo Map search fallback and result selection"}));
-})().catch(err=>{console.error(err&&err.stack||err);process.exitCode=1});
+})().catch(err=>{console.error(err&&err.stack||err);process.exit(1)});
