@@ -18,6 +18,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = providers.environmentVariable("QG_RIDER_VERSION_CODE").orNull?.toInt() ?: 5
         versionName = providers.environmentVariable("QG_NATIVE_VERSION_NAME").orNull ?: "0.4.1-rider-map"
+        manifestPlaceholders["queuegoMapServiceBaseUrl"] =
+            providers.environmentVariable("QG_MAP_SERVICE_BASE_URL").orNull ?: ""
     }
 
     buildFeatures { compose = true }
