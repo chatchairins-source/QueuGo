@@ -47,7 +47,7 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Status: IN PROGRESS
 - Active PR: #414
 - Branch: `work-native-rider-queuego-route-authority-20261017`
-- Current HEAD: `bb837b4f14a478bba568933f00be9e7908ab6642`
+- Current HEAD: `698d58f1cdb3ea4a3b0603bdba72b98875c1b263`
 - Recovery checkpoint lineage:
   - `297f9e4a918b8bdab86cc4abebb38d3176ab1842` restore current Grocery stylesheet
   - `735cdf215ffe0334839e31f00172116080dcc950` + `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb` forward-port Passenger Ride production backend delta while retaining the newer env-only quote handler
@@ -75,6 +75,11 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - NEXT: in the next bounded chunk only, inspect the current HEAD definition/import scope for `qtRequestTimeout`, fix that single missing-scope/runtime issue, run the relevant test/CI, commit, then stop and report.
 - Release blockers after source gate: Native Pilot on exact successor, physical GPS/road/navigation acceptance, QueueGo Map runtime/offline release gates.
 - Superseded: PR #412 is an ancestor; do not restart there.
+
+- Exact-head run `39051786664` on `bb837b4f14a478bba568933f00be9e7908ab6642` passed Merchant routing with `96 checks / 0 failures`, then failed first in `tests/rider-runtime.cjs` with `0 !== 1`.
+- Root cause: the #414 Rider runtime regression harness was missing the current `syncRiderNavigationCameraMode:()=>false` VM stub already present in `main`/unified, so refresh-path execution diverged from the current runtime contract.
+- Fix commit: `698d58f1cdb3ea4a3b0603bdba72b98875c1b263` forward-ports the current Rider runtime test harness only; Rider runtime implementation was not changed.
+- NEXT: obtain exact-head CI for `698d58f1cdb3ea4a3b0603bdba72b98875c1b263`. If red, fix only the new first failure; if green, continue the #414 gate.
 
 ### 4. Rider online / deployed-schema compatibility
 - Source/test status: DONE on its scoped compatibility fix
