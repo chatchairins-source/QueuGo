@@ -1332,7 +1332,7 @@ private fun RiderHome(
                 val recoveredProof = pendingProofIo {
                     pendingProofStore.saveVerification(
                         auth.user.id,
-                        RiderVerificationResume(job.id, mode, null, false)
+                        RiderVerificationResume(job.id, mode, null)
                     )
                     pendingProofStore.loadConfirmedMatching(
                         userId = auth.user.id,
@@ -1367,7 +1367,7 @@ private fun RiderHome(
                 val recoveredProof = pendingProofIo {
                     pendingProofStore.saveVerification(
                         auth.user.id,
-                        RiderVerificationResume(job.id, "marketPickup", pickup.pickupId, false)
+                        RiderVerificationResume(job.id, "marketPickup", pickup.pickupId)
                     )
                     pendingProofStore.loadConfirmedMatching(
                         userId = auth.user.id,
