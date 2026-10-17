@@ -1,7 +1,7 @@
 // Real browser + actual QueueGo API/graph/vector data. No route or tile fixtures.
 const {chromium}=require('playwright-core'),assert=require('assert'),fs=require('fs');
 (async()=>{
- const browser=await chromium.launch({executablePath:process.env.QUEUEGO_CHROME||'/tmp/queuego-chrome/chrome-headless-shell-linux64/chrome-headless-shell',headless:true,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const browser=await chromium.launch({executablePath:process.env.QUEUEGO_CHROME||chromium.executablePath(),headless:true,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  try{
  const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1});
  const page=await context.newPage(),errors=[],external=[];

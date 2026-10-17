@@ -1,0 +1,75 @@
+name: QueueGo Map Engine Buriram
+on:
+  push:
+    branches: ['work-map-roadgraph-buriram-*']
+    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', '.github/workflows/queuego-map-engine-buriram.yml']
+  pull_request:
+    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', '.github/workflows/queuego-map-engine-buriram.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: queuego-map-engine-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  buriram-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencies and regression
+        run: |
+          pip install -r ops/maps/requirements.txt
+          npm ci
+          npm test
+          npx playwright install --with-deps chromium
+      - name: Pinned real OSM and existing vector package
+        run: |
+          mkdir -p map-data
+          curl --fail --location --retry 3 https://download.geofabrik.de/asia/thailand-261015.osm.pbf --output map-data/thailand.osm.pbf
+          echo '02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf  map-data/thailand.osm.pbf' | sha256sum --check
+          curl --fail --location --retry 3 https://github.com/chatchairins-source/QueuGo/releases/download/rider-buriram-offline-20261016/buriram-shortbread.pmtiles --output map-data/vector.pmtiles
+          echo '30699573ed2068d3c7e4393ad477dbe8febf68f453f27ae88437f5c652a3ddfc  map-data/vector.pmtiles' | sha256sum --check
+      - name: Build normalized database and actual routing tiles
+        run: |
+          python ops/maps/extract_region.py map-data/thailand.osm.pbf map-data/buriram.osm.pbf
+          python ops/maps/normalize_osm.py map-data/buriram.osm.pbf map-data/roads.sqlite
+          python ops/maps/build_engine_graph.py valhalla map-data/buriram.osm.pbf map-data/valhalla --admin-pbf map-data/thailand.osm.pbf
+          python ops/maps/fetch_web_assets.py map-data/web-assets
+      - name: Real graph runtime and restriction evidence
+        run: |
+          mkdir -p map-data/evidence
+          python tests/map-engine-runtime.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/runtime.json
+          python ops/maps/audit_turn_restrictions.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/turns.json
+          python -c "import json; r=json.load(open('map-data/evidence/turns.json')); assert not r['summary'].get('failed',0),r['summary']; print('Uncovered/source-invalid restrictions remain an OPEN release gate:',r['summary'])"
+      - name: Actual browser with external requests blocked
+        run: |
+          export QUEUEGO_CHROME="$(node -p "require('playwright-core').chromium.executablePath()")"
+          python ops/maps/run_browser_validation.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --vector map-data/vector.pmtiles --assets-root map-data/web-assets
+      - name: Offline package and rollback
+        run: |
+          python ops/maps/offline_package.py build --database map-data/roads.sqlite --graph map-data/valhalla --vector map-data/vector.pmtiles --destination map-data/buriram-map-v1 --version buriram-map-v1 > map-data/evidence/package.json
+          PACKAGE_SHA=$(python -c "import json; print(json.load(open('map-data/evidence/package.json'))['sha256'])")
+          python tests/map-package-runtime.py --archive map-data/buriram-map-v1.tar.gz --sha256 "$PACKAGE_SHA" --store map-data/installed --output map-data/evidence/offline.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: queuego-map-buriram-${{ github.sha }}
+          path: |
+            map-data/evidence/
+            evidence/map-engine/browser-validation.json
+            map-data/buriram-map-v1.tar.gz
+            map-data/buriram-map-v1.tar.gz.sha256
+            map-data/buriram.osm.pbf
+            map-data/buriram.osm.manifest.json
+            docs/map-data-sources.md
+            docs/map-engine-selection.md
+            docs/map-offline-package.md
+          retention-days: 14
