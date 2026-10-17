@@ -52,6 +52,21 @@ function serve(){
 
   await page.goto("http://127.0.0.1:"+port+"/map-view/",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>window.QueueGoMapView&&window.QueueGoMapView.ready===true,null,{timeout:30000});
+  const beforeFocus=await page.evaluate(()=>({
+    center:window.QueueGoMapView.map.getCenter().toArray(),
+    zoom:window.QueueGoMapView.map.getZoom(),
+    fontSize:parseFloat(getComputedStyle(document.getElementById("placeSearchInput")).fontSize)
+  }));
+  await page.focus("#placeSearchInput");
+  await page.waitForTimeout(250);
+  const afterFocus=await page.evaluate(()=>({
+    center:window.QueueGoMapView.map.getCenter().toArray(),
+    zoom:window.QueueGoMapView.map.getZoom()
+  }));
+  ok(beforeFocus.fontSize>=16,"search input must stay at least 16px to prevent iPhone focus zoom");
+  ok(Math.abs(afterFocus.zoom-beforeFocus.zoom)<0.000001,"focusing search must not change map zoom");
+  ok(Math.abs(afterFocus.center[0]-beforeFocus.center[0])<0.000001&&Math.abs(afterFocus.center[1]-beforeFocus.center[1])<0.000001,"focusing search must not move map center");
+
 
   await page.fill("#placeSearchInput","สนามช้าง");
   await page.click('#placeSearchForm button[type="submit"]');
