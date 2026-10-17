@@ -1204,6 +1204,17 @@ private fun RiderHome(
         return false
     }
 
+    fun startQueueGoNavigation(message: String = "นำทางด้วยแผนที่ QueueGo"): Boolean {
+        if (!ensureLocationPermission()) {
+            pendingMapRecenter = true
+            return false
+        }
+        routeOverviewActive = false
+        recenterSignal += 1
+        actionMessage = message
+        return true
+    }
+
     fun configureReturnControl() {
         if (Build.VERSION.SDK_INT >= 33 &&
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -2975,10 +2986,7 @@ private fun RiderHome(
                             job = laundryJob,
                             busy = actionBusy,
                             onNavigate = {
-                                if (!ensureLocationPermission()) return@RiderLaundryActiveCard
-                                openNavigation(context, laundryJob.asMapJob())
-                                routeOverviewActive = false
-                                recenterSignal += 1
+                                startQueueGoNavigation("นำทางงานฝากซักด้วยแผนที่ QueueGo")
                             },
                             onAction = { action ->
                                 actionBusy = true
@@ -3008,16 +3016,8 @@ private fun RiderHome(
                                 job = activeJob,
                                 pickups = current.marketPickups,
                                 busy = actionBusy,
-                                onNavigate = { pickup ->
-                                    openNavigation(
-                                        context,
-                                        activeJob.copy(
-                                            status = "ready",
-                                            pickupAddress = pickup.shopAddress,
-                                            pickupLat = pickup.latitude,
-                                            pickupLng = pickup.longitude
-                                        )
-                                    )
+                                onNavigate = { _ ->
+                                    startQueueGoNavigation("นำทางไปจุดรับถัดไปด้วยแผนที่ QueueGo")
                                 },
                                 onVerify = { pickup ->
                                     openMarketPickupVerification(activeJob, pickup)
@@ -3062,7 +3062,9 @@ private fun RiderHome(
                         if (activeJob.isPassenger) {
                             RiderPassengerCard(
                                 job = activeJob, busy = actionBusy, networkAvailable = networkAvailable,
-                                onNavigate = { openNavigation(context, activeJob) },
+                                onNavigate = {
+                                    startQueueGoNavigation("นำทางเที่ยวผู้โดยสารด้วยแผนที่ QueueGo")
+                                },
                                 onChat = { chatJob = activeJob },
                                 onAction = { action ->
                                     if (!actionBusy && requireServerNetwork()) {
@@ -3114,6 +3116,9 @@ private fun RiderHome(
                             networkAvailable = networkAvailable,
                             onDetails = { detailJob = current.activeJob },
                             onChat = { chatJob = current.activeJob },
+                            onQueueGoNavigate = {
+                                startQueueGoNavigation()
+                            },
                             onNavigate = {
                                 val next = current.marketPickups.firstOrNull { !it.done }
                                 val target = if (activeJob.marketOrderId != null && !activeJob.isDelivering && next != null)
@@ -3675,6 +3680,7 @@ private fun ActiveJobCard(
     networkAvailable: Boolean,
     onDetails: () -> Unit,
     onChat: () -> Unit,
+    onQueueGoNavigate: () -> Unit,
     onNavigate: () -> Unit,
     onArriveShop: () -> Unit,
     onPickupVerify: () -> Unit,
@@ -3739,14 +3745,23 @@ private fun ActiveJobCard(
                 Text(if (pickup) "จุดรับสินค้า" else "ที่อยู่จัดส่ง", fontSize = 8.sp, color = QgMuted)
                 Text((if (pickup) job.pickupAddress else job.deliveryAddress) ?: "พิกัดยังไม่พร้อม", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
+            Button(
+                onClick = onQueueGoNavigate,
+                enabled = !busy && job.navigationTarget != null,
+                modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+            ) {
+                QgIcon("route", Modifier.size(19.dp), Color.White)
+                Spacer(Modifier.width(7.dp))
+                Text("นำทางด้วย QueueGo", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Black)
+            }
             OutlinedButton(
                 onClick = onNavigate,
                 enabled = !busy && job.navigationTarget != null,
-                modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_SECONDARY_ACTION_MIN_HEIGHT_DP.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = RIDER_SECONDARY_ACTION_MIN_HEIGHT_DP.dp),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                QgIcon("route", Modifier.size(19.dp), QgRed)
-                Spacer(Modifier.width(7.dp))
                 Text("นำทางด้วย Google Maps", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Bold)
             }
             if (pickup && details != null) {
