@@ -34,9 +34,9 @@ import kotlin.math.max
 
 private const val NAVIGATION_LOCATION_CHANNEL_ID = "queuego_rider_navigation_location"
 private const val NAVIGATION_LOCATION_NOTIFICATION_ID = 4112
-private const val NAVIGATION_LOCATION_INTERVAL_MS = 1_000L
-private const val NAVIGATION_LOCATION_MIN_INTERVAL_MS = 500L
-private const val NAVIGATION_LOCATION_MIN_DISTANCE_METERS = 1f
+private const val NAVIGATION_LOCATION_INTERVAL_MS = 500L
+private const val NAVIGATION_LOCATION_MIN_INTERVAL_MS = 250L
+private const val NAVIGATION_LOCATION_MIN_DISTANCE_METERS = 0.5f
 private const val NAVIGATION_MAX_ACCURACY_METERS = 80f
 private const val NAVIGATION_MAX_REASONABLE_SPEED_MPS = 55f
 private const val NAVIGATION_STALE_LAST_FIX_MS = 30_000L
@@ -203,7 +203,10 @@ class RiderNavigationLocationService : Service() {
 
         if (started) {
             locationUpdatesStarted = true
-            Log.i("QueueGoNavLocation", "foreground_updates_started")
+            Log.i(
+                "QueueGoNavLocation",
+                "foreground_updates_started interval=${NAVIGATION_LOCATION_INTERVAL_MS}ms min=${NAVIGATION_LOCATION_MIN_INTERVAL_MS}ms"
+            )
         } else {
             callback = null
             stopSelf()
