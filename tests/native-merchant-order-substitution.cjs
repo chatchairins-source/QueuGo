@@ -27,7 +27,7 @@ ok(api.includes('(item.itemId.isNullOrBlank()) xor (item.productId.isNullOrBlank
 ok(api.includes('"p_reason", reason.trim().take(200)'),'Native API must keep substitution reason bounded');
 
 ok(ui.includes('private fun MerchantOrderItemEditor('),'Native Merchant must expose an order-item editor');
-ok(ui.includes('Text("แก้ไขรายการ")'),'Assigned Merchant order must expose the editor entry point');
+ok(ui.includes('Text("แก้ไขรายการ"'),'Assigned Merchant order must expose the editor entry point');
 ok(ui.includes('order.status !in setOf("rider_assigned", "assigned")'),'Realtime status advancement must close a stale order editor');
 ok(ui.includes('ลดจำนวน ลบ หรือเลือกสินค้าทดแทนจากร้านได้ก่อนเริ่มเตรียมสินค้า'),'Native editor must retain Production Web substitution guidance');
 ok(ui.includes('item.copy(quantity = (item.quantity - 1).coerceAtLeast(1))'),'Native editor must support decrementing quantity with floor 1');
