@@ -30,28 +30,31 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Superseded/ancestor examples: PR #379 and earlier Local Roads PRs are not restart points when #417 contains their successor integration.
 
 ### 2. Rider Web navigation / QueueGo sole route authority
-- Status: IN PROGRESS
+- Source/test status: DONE
+- Release status: BLOCKED
 - Active PR: #413
 - Branch: `work-web-rider-queuego-route-authority-20261017`
 - Previous failing HEAD: `ece9fd795e5e965db9c1c3fbf4cafb27cad4f591`
 - Current HEAD: `08e5af506468e08e5d815bc1d8bfc6e5e2b69611`
-- Current CI: exact-head run pending; previous QueueGo RC run 39043362341: FAILURE
+- Current CI: QueueGo RC run 39049849304: SUCCESS on `08e5af506468e08e5d815bc1d8bfc6e5e2b69611`; previous run 39043362341 failed on stale policy assertion
 - Fix commits: `8a933b998fb3e4d6441ea99557ae8ba279272ead`, `08e5af506468e08e5d815bc1d8bfc6e5e2b69611`
 - Root cause: stale regression assertion still requires Android navigation to force the Google Maps app package, conflicting with the newer QueueGo in-app navigation authority policy.
 - Evidence: job 117427127897 fails with `Android navigation must force the Google Maps app package`.
-- NEXT: obtain exact-head CI for `08e5af506468e08e5d815bc1d8bfc6e5e2b69611`; keep IN PROGRESS until green. Do not reintroduce automatic Google Maps navigation.
+- Release blocker: authorized QueueGo Map runtime plus physical road/GPS certification inherited from Map release gate.
+- NEXT: no more source rework unless a newer successor/regression appears; do not reintroduce automatic Google Maps navigation.
 
 ### 3. Rider Android navigation / QueueGo route authority
 - Status: IN PROGRESS
 - Active PR: #414
 - Branch: `work-native-rider-queuego-route-authority-20261017`
 - Previous failing HEAD: `4963b9d4df263ca55d21fd1173dc0121cfcde20c`
-- Current HEAD: `297f9e4a918b8bdab86cc4abebb38d3176ab1842`
+- Current HEAD: `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb`
 - Current CI: exact-head run pending; previous QueueGo Map Engine Buriram run 39048730149: FAILURE
-- Fix commit: `297f9e4a918b8bdab86cc4abebb38d3176ab1842`
+- Fix/integration commits: `297f9e4a918b8bdab86cc4abebb38d3176ab1842`, `735cdf215ffe0334839e31f00172116080dcc950`, `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb`
 - Root cause: branch integration gap leaves `admin/index.html` referencing `../catalog/grocery.css?v=20261012` while that local asset is absent on the branch.
 - Evidence: job 117442661425 fails source-integrity with `Broken reference: admin/index.html -> ../catalog/grocery.css?v=20261012`.
-- NEXT: obtain exact-head gates for `297f9e4a918b8bdab86cc4abebb38d3176ab1842`; if source-integrity advances to another missing integration asset, fix only from current main/newest compatible successor.
+- Passenger Ride integration note: #414 is a descendant of #326; PR #387 later production-backend delta was forward-ported via its two new migrations while retaining the newer env-only quote handler.
+- NEXT: obtain exact-head gates for `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb`; if source-integrity advances to another missing integration asset, fix only from current main/newest compatible successor.
 - Release blockers after source gate: Native Pilot on exact successor, physical GPS/road/navigation acceptance, QueueGo Map runtime/offline release gates.
 - Superseded: PR #412 is an ancestor; do not restart there.
 
