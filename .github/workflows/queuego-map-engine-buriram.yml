@@ -29,6 +29,7 @@ jobs:
           pip install -r ops/maps/requirements.txt
           npm ci
           npm test
+          python tests/map-field-evidence-validator.py
           node node_modules/playwright-core/cli.js install --with-deps chromium
       - name: Pinned real OSM and existing vector package
         run: |
