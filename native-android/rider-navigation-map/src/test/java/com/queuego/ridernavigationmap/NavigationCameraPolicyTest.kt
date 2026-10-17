@@ -285,4 +285,57 @@ class NavigationCameraPolicyTest {
             )
         )
     }
+
+    @Test fun subDegreeBearingNoiseStaysInsideDeadband() {
+        assertEquals(
+            90f,
+            smoothNavigationBearing(previous = 90f, target = 90.3f, factor = 0.5f)!!,
+            0.001f
+        )
+    }
+
+    @Test fun nativeFollowCameraUsesGentlerSpeedAwareBearingGain() {
+        assertTrue(navigationBearingSmoothingFactor(20f) < 0.5f)
+        assertTrue(navigationBearingSmoothingFactor(20f) > navigationBearingSmoothingFactor(1f))
+        assertTrue(navigationBearingSmoothingFactor(8f) in 0.30f..0.40f)
+    }
+
+    @Test fun largerTurnsReceiveLongerRotationAnimation() {
+        val small = navigationRotationDurationMillis(
+            currentBearing = 90f,
+            targetBearing = 95f,
+            cadenceMillis = 500L
+        )
+        val corner = navigationRotationDurationMillis(
+            currentBearing = 90f,
+            targetBearing = 180f,
+            cadenceMillis = 500L
+        )
+        assertTrue(corner > small)
+        assertTrue(corner <= 900L)
+        assertTrue(small >= 300L)
+    }
+
+    @Test fun rotationDurationUsesShortestTurnAcrossNorth() {
+        val acrossNorth = navigationRotationDurationMillis(
+            currentBearing = 355f,
+            targetBearing = 5f,
+            cadenceMillis = 500L
+        )
+        val longCorner = navigationRotationDurationMillis(
+            currentBearing = 355f,
+            targetBearing = 175f,
+            cadenceMillis = 500L
+        )
+        assertTrue(acrossNorth < longCorner)
+        assertEquals(10f, navigationShortestBearingDelta(355f, 5f), 0.001f)
+    }
+
+    @Test fun cameraEaseInOutIsContinuousAndCentered() {
+        assertEquals(0f, navigationCameraEaseInOut(0f), 0.001f)
+        assertEquals(0.5f, navigationCameraEaseInOut(0.5f), 0.001f)
+        assertEquals(1f, navigationCameraEaseInOut(1f), 0.001f)
+        assertTrue(navigationCameraEaseInOut(0.25f) < 0.25f)
+        assertTrue(navigationCameraEaseInOut(0.75f) > 0.75f)
+    }
 }
