@@ -33,7 +33,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("aria-label',riderHomeDockCollapsed?'เปิดการ์ดกลับขนาดเดิม':'ย่อการ์ด'"),true);
  eq(source.includes('speed=meters<1.5?0:Math.min(55,meters/seconds)'),true);
  eq(source.includes('riderGpsCadenceMs'),true);
- eq(source.includes('markerDuration=Math.max(260,Math.min(1250'),true);
+ eq(source.includes('Math.max(260,Math.min(1250,Math.round(riderGpsCadenceMs*1.05)))'),true);
  eq(source.includes('function placeRiderMarker(durationOverride=null)'),true);
  eq(source.includes('placeRiderMarker(followed?.animationDuration)'),true);
  eq(source.includes('function qgRiderCameraBottomInset()'),true);
