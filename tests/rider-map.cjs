@@ -12,6 +12,9 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(activeRouteFn.includes("if(isOfferPreview&&!riderRouteCache)focusRiderNavigation"),true);
  eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}'),true);
  eq(source.includes('syncRiderNavigationCameraMode();'),true);
+ eq(source.includes('data-qg-rider-puck="true"'),true);
+ eq(source.includes('background:#e6002d'),true);
+ eq(source.includes("rotationAlignment:'map'"),true);
 
  let now=100000,requests=[],gate=null,serial=0;
  const timers=new Map(),routeAdds=[],routeRemoves=[],fits=[],destroyed=[],badge={style:{}},label={textContent:''};
@@ -95,7 +98,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  now+=15000;S.pos={lat:13.003,lng:100};gate=deferred();
  const retiring=run('drawActiveRoute()'),retiredSignal=requests.at(-1).opts.signal;
  S.activeOrder=null;run('syncRiderNavigationCameraMode(true)');await run('drawActiveRoute()');
- eq(cameraModes.at(-1).active,false);
+ eq(run('RIDER_CAMERA_SMOOTHNESS_TEST_MODE'),true);
+ eq(cameraModes.at(-1).active,true);
  eq(retiredSignal.aborted,true);
  gate.resolve({ok:true,json:async()=>geo});gate=null;await retiring;
  eq(S.routeOverlays.length,0);
