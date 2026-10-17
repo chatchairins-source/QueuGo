@@ -1587,7 +1587,7 @@ private fun CustomerBlueprintShopCard(
     ) {
         QgRemoteImage(
             source = shop.logo ?: shop.cover,
-            modifier = if (compact) Modifier.size(82.dp) else Modifier.size(92.dp),
+            modifier = if (compact) Modifier.size(88.dp) else Modifier.size(96.dp),
             fallback = shop.name,
             cornerRadius = 14.dp
         )
