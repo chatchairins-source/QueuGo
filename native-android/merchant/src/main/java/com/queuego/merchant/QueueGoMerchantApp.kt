@@ -1290,13 +1290,25 @@ private fun DashboardScreen(
         )
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMetricCard("ออเดอร์ทั้งหมด", todayOrders.size.toString(), "orders", Modifier.weight(1f))
-            MerchantMetricCard("เสร็จแล้ว", completedToday.toString(), "clock", Modifier.weight(1f))
+            MerchantMetricCard(
+                "ออเดอร์ทั้งหมด", todayOrders.size.toString(), "orders",
+                Color(0xFFD91F2D), Color(0xFFFFF0F1), Modifier.weight(1f)
+            )
+            MerchantMetricCard(
+                "เสร็จแล้ว", completedToday.toString(), "clock",
+                Color(0xFF148B61), Color(0xFFEAF8F1), Modifier.weight(1f)
+            )
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMetricCard("กำลังเตรียม", preparingToday.toString(), "box", Modifier.weight(1f))
-            MerchantMetricCard("ยกเลิก", cancelledToday.toString(), "close", Modifier.weight(1f))
+            MerchantMetricCard(
+                "กำลังเตรียม", preparingToday.toString(), "box",
+                Color(0xFFB86E00), Color(0xFFFFF5E5), Modifier.weight(1f)
+            )
+            MerchantMetricCard(
+                "ยกเลิก", cancelledToday.toString(), "close",
+                Color(0xFF6E737B), Color(0xFFF1F2F4), Modifier.weight(1f)
+            )
         }
 
         Spacer(Modifier.height(9.dp))
@@ -1408,6 +1420,8 @@ private fun MerchantMetricCard(
     label: String,
     value: String,
     icon: String,
+    accent: Color,
+    soft: Color,
     modifier: Modifier
 ) {
     QgCard(modifier) {
@@ -1415,10 +1429,10 @@ private fun MerchantMetricCard(
             Box(
                 Modifier
                     .size(38.dp)
-                    .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
+                    .background(soft, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                QgIcon(icon, Modifier.size(20.dp), QgRed)
+                QgIcon(icon, Modifier.size(20.dp), accent)
             }
             Spacer(Modifier.width(9.dp))
             Column {
@@ -1436,6 +1450,14 @@ private fun MerchantMenuTile(
     onClick: () -> Unit,
     modifier: Modifier
 ) {
+    val (accent, soft) = when (icon) {
+        "orders", "bell" -> Color(0xFFD91F2D) to Color(0xFFFFF0F1)
+        "store", "box" -> Color(0xFF2E6DB4) to Color(0xFFEDF4FC)
+        "tag", "gallery" -> Color(0xFF7356C8) to Color(0xFFF2EEFC)
+        "chart" -> Color(0xFF148B61) to Color(0xFFEAF8F1)
+        "laundry" -> Color(0xFF198D8A) to Color(0xFFE9F8F7)
+        else -> Color(0xFF6E737B) to Color(0xFFF1F2F4)
+    }
     QgCard(
         modifier
             .height(96.dp)
@@ -1449,10 +1471,10 @@ private fun MerchantMenuTile(
             Box(
                 Modifier
                     .size(38.dp)
-                    .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
+                    .background(soft, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                QgIcon(icon, Modifier.size(20.dp), QgRed)
+                QgIcon(icon, Modifier.size(20.dp), accent)
             }
             Spacer(Modifier.height(7.dp))
             Text(
@@ -1614,6 +1636,10 @@ private fun MerchantOrderDetail(
                 Button(
                     onClick = { onAction("accepted", null) },
                     enabled = !busy,
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = QgGreen,
+                        contentColor = Color.White
+                    ),
                     modifier = Modifier.fillMaxWidth().height(54.dp)
                 ) { Text("รับออเดอร์", fontWeight = FontWeight.ExtraBold) }
                 Spacer(Modifier.height(8.dp))
@@ -1621,7 +1647,11 @@ private fun MerchantOrderDetail(
                     onClick = { cancelOpen = true },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("ปฏิเสธออเดอร์") }
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                        contentColor = QgRed
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF0B7BD))
+                ) { Text("ปฏิเสธออเดอร์", fontWeight = FontWeight.Bold) }
             }
             "accepted" -> {
                 QgCard(Modifier.fillMaxWidth()) {
@@ -1632,7 +1662,11 @@ private fun MerchantOrderDetail(
                     onClick = { cancelOpen = true },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("ยกเลิกออเดอร์") }
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                        contentColor = QgRed
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF0B7BD))
+                ) { Text("ยกเลิกออเดอร์", fontWeight = FontWeight.Bold) }
             }
             "searching_rider" -> {
                 QgCard(Modifier.fillMaxWidth()) {
@@ -1673,6 +1707,10 @@ private fun MerchantOrderDetail(
                 Button(
                     onClick = { onAction("ready", null) },
                     enabled = !busy,
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = QgGreen,
+                        contentColor = Color.White
+                    ),
                     modifier = Modifier.fillMaxWidth().height(58.dp)
                 ) {
                     Text(
