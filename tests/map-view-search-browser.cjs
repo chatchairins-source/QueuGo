@@ -47,7 +47,7 @@ function serve(){
   await page.waitForFunction(()=>window.QueueGoMapView&&window.QueueGoMapView.ready===true,null,{timeout:30000});
 
   await page.fill("#placeSearchInput","สนามช้าง");
-  await page.press("#placeSearchInput","Enter");
+  await page.click('#placeSearchForm button[type="submit"]');
   await page.waitForFunction(()=>document.querySelector("#placeSearchResults")&&!document.querySelector("#placeSearchResults").hidden&&document.querySelector("#placeSearchResults b")&&document.querySelector("#placeSearchResults b").textContent.includes("สนามช้าง"),null,{timeout:10000});
 
   const search=await page.evaluate(()=>({
@@ -67,7 +67,7 @@ function serve(){
   ok(selected.markerCount>=1,"clicking a result must add a visible map marker");
 
   await page.fill("#placeSearchInput","14.993, 103.103");
-  await page.press("#placeSearchInput","Enter");
+  await page.click('#placeSearchForm button[type="submit"]');
   await page.waitForFunction(()=>document.querySelector("#placeSearchResults b")&&document.querySelector("#placeSearchResults b").textContent.includes("พิกัด"),null,{timeout:5000});
   const coordProvider=await page.evaluate(()=>window.QueueGoMapView.state.lastSearchProvider);
   ok(coordProvider==="coordinates","coordinate search must work without an external provider");
