@@ -69,7 +69,10 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - First failure root cause: `tests/network-timeout.cjs` invokes `qtSupabaseAuth()`, and the evaluated runtime reaches `qtRequestTimeout` but that helper is not defined in the test-loaded scope. The first concrete error is `ReferenceError: qtRequestTimeout is not defined`; all preceding reported suites in this run passed, including source-integrity and post-commit UI isolation.
 - Main-sync safety: backup `backup/rider-route-authority-before-main-sync-20261017 @ 992d117cb2ec88da0ad4e04cf90262596154a9c7`; PR #420 main→#414 was conflict-only, never merged, then closed. No force/reset/revert used.
 - Passenger Ride integration note: #414 is a descendant of #326; PR #387 later production-backend delta was forward-ported via its two new migrations while retaining the newer env-only quote handler.
-- NEXT: on the next chunk only, fix the `qtRequestTimeout` ownership/load-order failure on the current #414 successor, run the relevant test/CI, commit, then stop and report. Do not return to PR #412 or older implementations.
+- Latest exact-head failure checkpoint (2026-10-17): PR #414 HEAD `9905f53f7f75cd2237f17271e842946c3406ff5e`, QueueGo Map Engine Buriram run `39050895186` FAILED after source-integrity/realtime/post-commit/Rider checks had already passed.
+- First actual failure: `tests/network-timeout.cjs` expected a timeout-style rejection but received `ReferenceError: qtRequestTimeout is not defined` from `qtSupabaseAuth`.
+- Evidence-backed root cause: the current #414 runtime/test path calls `qtRequestTimeout` from the auth request helper, but that symbol is not defined in the evaluated runtime scope used by `tests/network-timeout.cjs`; the timeout contract therefore fails before it can exercise the intended network timeout behavior.
+- NEXT: in the next bounded chunk only, inspect the current HEAD definition/import scope for `qtRequestTimeout`, fix that single missing-scope/runtime issue, run the relevant test/CI, commit, then stop and report.
 - Release blockers after source gate: Native Pilot on exact successor, physical GPS/road/navigation acceptance, QueueGo Map runtime/offline release gates.
 - Superseded: PR #412 is an ancestor; do not restart there.
 
