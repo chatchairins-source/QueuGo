@@ -399,7 +399,8 @@ ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.incl
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
 const customerManifest=read('customer/src/main/AndroidManifest.xml');
 ok(customerManifest.includes('queuego.map.service.base_url')&&customerManifest.includes('${queuegoMapServiceBaseUrl}')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer QueueGo Map picker must declare map service config and location permission');
-ok(source.includes('deviceLocation')&&source.includes('setLocation(MapLocation')&&source.includes('ldmap.removePin')&&source.includes('pushPin'),'native Rider map must use Android GPS and show rider/job pins');
+const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
+ok(riderNavigationLocationService.includes('LocationServices.getFusedLocationProviderClient')&&riderNavigationLocationService.includes('NavigationMapFix(')&&riderMap.includes('stopMarkers += activeMap.addMarker(')&&riderMap.includes('riderMarker = activeMap.addMarker('),'native Rider QueueGo Map must use Android fused GPS and render rider/job markers');
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
