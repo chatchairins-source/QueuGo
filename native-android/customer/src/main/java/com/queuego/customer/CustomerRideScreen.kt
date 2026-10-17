@@ -168,10 +168,22 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     val editing = picker
     if (editing != null && !frozen) {
         val original = if (editing == "pickup") pickup else destination
-        CustomerLocationPickerScreen(location = original, address = original?.address.orEmpty(), busy = false,
+        CustomerLocationPickerScreen(
+            location = original,
+            address = original?.address.orEmpty(),
+            busy = false,
             resolveAddress = { lat,lng -> customerApi.reverseGeocode(lat,lng) },
             onSave = { if (editing == "pickup") pickup = it else destination = it; quote = null; picker = null },
-            onBack = { picker = null })
+            onBack = { picker = null },
+            title = if (editing == "pickup") "เลือกจุดรับ" else "เลือกจุดหมาย",
+            subtitle = if (editing == "pickup")
+                "ใช้ตำแหน่งปัจจุบันอัตโนมัติ หรือเลื่อนแผนที่เพื่อเลือกเอง"
+            else
+                "เลื่อนแผนที่เพื่อเลือกจุดหมาย หรือใช้ GPS หากต้องการ",
+            saveLabel = "ใช้จุดนี้",
+            autoUseGps = editing == "pickup",
+            mapHeight = 300.dp
+        )
         return
     }
     Column(
