@@ -67,8 +67,11 @@ internal fun navigationCameraDecision(
     val routeBearingOpposesMotion =
         speed != null && speed >= 2f &&
             gpsBearing != null &&
-            routeBearingDelta != null && routeBearingDelta > 75f &&
-            (previousRouteDelta == null || previousRouteDelta > 75f)
+            routeBearingDelta != null && (
+                routeBearingDelta > 110f ||
+                    (routeBearingDelta > 75f &&
+                        (previousRouteDelta == null || previousRouteDelta > 75f))
+                )
     val routeBearingUsable = routeBearing != null && !routeBearingOpposesMotion
 
     val desiredBearing = when {
