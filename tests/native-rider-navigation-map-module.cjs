@@ -17,6 +17,7 @@ const signalPipeline=fs.readFileSync('native-android/rider-navigation-map/src/ma
 const confidenceMetrics=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationConfidenceMetrics.kt','utf8');
 const viewportInsets=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationViewportInsets.kt','utf8');
 const puckOrientation=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationPuckOrientation.kt','utf8');
+const riderPuckDrawable=fs.readFileSync('native-android/shared/src/main/res/drawable/qg_map_rider.xml','utf8');
 const routeCache=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteCache.kt','utf8');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
@@ -128,11 +129,20 @@ assert(map.includes('MotionEvent.ACTION_MOVE')&&
   map.includes('holder.view?.setOnTouchListener(null)')&&
   integration.includes('NavigationViewModeController')&&
   integration.includes('riderNavigationAutoFollow')&&
-  integration.includes('navigationActive && viewMode == NavigationViewMode.FOLLOW')&&
+  integration.includes('(navigationActive || smoothnessTestMode) && viewMode == NavigationViewMode.FOLLOW')&&
+  integration.includes('RIDER_CAMERA_SMOOTHNESS_TEST_MODE = true')&&
+  integration.includes('perspectiveCameraEnabled = perspectiveCameraEnabled')&&
   integration.includes('viewModeState = viewModeController.onUserGesture()')&&
   integration.includes('viewModeState = viewModeController.onRecenter()')&&
   integration.includes('followRider = followRider'),
   'One-finger drag must enter FREE_PAN, while two-finger transform gestures stay follow-owned and smoothly re-anchor');
+
+assert(
+  riderPuckDrawable.includes('android:width="60dp"')&&
+  riderPuckDrawable.includes('#E6002D')&&
+  riderPuckDrawable.includes('M32,14 L44,42 L32,36 L20,42 Z')&&
+  map.includes('riderPuckBitmap(nextRotation, nextOpacity)'),
+  'Rider current-location puck must be a large red QueueGo circle with a heading-rotated navigation arrow');
 
 assert(
   integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false')&&
