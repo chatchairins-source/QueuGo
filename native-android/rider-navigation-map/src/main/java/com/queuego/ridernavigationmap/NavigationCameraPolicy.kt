@@ -449,6 +449,6 @@ internal fun navigationBearingChangedEnough(
 internal fun navigationCameraMovementThresholdMeters(speedMetersPerSecond: Float?): Double = when {
     speedMetersPerSecond == null -> 1.6
     speedMetersPerSecond < 1.2f -> 2.4
-    speedMetersPerSecond < 4f -> 1.8
-    else -> 1.2
+    speedMetersPerSecond < 4f -> 0.9
+    else -> 0.45
 }
