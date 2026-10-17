@@ -899,7 +899,7 @@ function initLocationPicker(containerId,lat,lng,onChange,options={}){
   };
 }
 async function qtReverseGeocodeCustomer(lat,lng){
-  try{const r=await fetch(`https://api.longdo.com/map/services/address?lon=${encodeURIComponent(lng)}&lat=${encodeURIComponent(lat)}&key=347649ca13f49db0d8a599ae35f8de2b`,{signal:AbortSignal.timeout(8000)});if(!r.ok)return '';const a=await r.json();return [a.house_number,a.soi,a.road,a.subdistrict,a.district,a.province,a.postcode].filter(Boolean).join(' ')}catch(e){return ''}
+  return window.QueueGoMapWeb?.reverse ? await window.QueueGoMapWeb.reverse(lat,lng) : '';
 }
 async function openCustomerLocationPicker(){
   const u=S.get();
