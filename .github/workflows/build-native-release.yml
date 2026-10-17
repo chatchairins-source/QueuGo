@@ -278,14 +278,6 @@ jobs:
         with:
           gradle-version: '9.6.0'
 
-      - name: Download verified Longdo Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p native-android/rider/libs
-          curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar"             -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
-          echo "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | sha256sum -c -
-
       - name: Download verified Android bundletool
         shell: bash
         run: |
