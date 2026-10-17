@@ -31,6 +31,8 @@ import java.util.UUID
 internal data class PendingRide(val requestId: String, val quoteId: String) {
     fun body() = JSONObject().put("p_request_id", requestId).put("p_quote_id", quoteId)
 }
+internal data class RideSupplyCluster(val latitude: Double, val longitude: Double, val count: Int)
+internal data class RideSupply(val nearbyCount: Int = 0, val clusters: List<RideSupplyCluster> = emptyList())
 internal data class PassengerRide(val id: String, val number: String, val status: String, val riderId: String?,
     val pickup: String, val destination: String, val fare: Double, val riderName: String?,
     val minutes: Double, val km: Double, val riderLat: Double?, val riderLng: Double?,
@@ -54,6 +56,23 @@ private class PassengerApi(private val http: QueueGoNativeApi = QueueGoNativeApi
         return (0 until rows.length()).map { parsePassengerRide(rows.getJSONObject(it)) }
     }
     suspend fun config(auth: NativeAuth) = http.rpc("queuego_ride_config", auth.session.accessToken) as JSONObject
+    suspend fun supply(auth: NativeAuth, pickup: CustomerLocation): RideSupply {
+        val raw = http.rpc(
+            "queuego_customer_ride_supply",
+            auth.session.accessToken,
+            JSONObject().put("p_lat", pickup.latitude).put("p_lng", pickup.longitude)
+        ) as? JSONObject ?: return RideSupply()
+        val rows = raw.optJSONArray("clusters")
+        val clusters = buildList {
+            if (rows != null) for (i in 0 until rows.length()) {
+                val row = rows.optJSONObject(i) ?: continue
+                val lat = row.optDouble("latitude").takeIf { it.isFinite() && it in 5.0..21.0 } ?: continue
+                val lng = row.optDouble("longitude").takeIf { it.isFinite() && it in 97.0..106.0 } ?: continue
+                add(RideSupplyCluster(lat, lng, row.optInt("count", 2).coerceAtLeast(2)))
+            }
+        }
+        return RideSupply(raw.optInt("nearby_count", 0).coerceAtLeast(0), clusters)
+    }
     suspend fun quote(auth: NativeAuth, pickup: CustomerLocation, destination: CustomerLocation): JSONObject {
         fun point(p: CustomerLocation) = JSONObject().put("lat",p.latitude).put("lng",p.longitude).put("address",p.address)
         return http.functionPost("queuego-ride-quote",auth.session.accessToken,JSONObject().put("pickup",point(pickup)).put("destination",point(destination))) as JSONObject
@@ -88,6 +107,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     var busy by remember { mutableStateOf(false) }
     var gpsBusy by remember { mutableStateOf(false) }
     var permissionPending by remember { mutableStateOf(false) }
+    var supply by remember(auth.user.id) { mutableStateOf(RideSupply()) }
     var error by remember { mutableStateOf<String?>(null) }
 
     suspend fun applyCurrentPickup() {
@@ -165,6 +185,19 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     }
     val current = rides.firstOrNull { it.id == selected }
     val frozen = frozenRideMutation(busy, pending, current)
+
+    LaunchedEffect(auth.user.id, pickup?.latitude, pickup?.longitude, enabled, current?.id) {
+        val point = pickup
+        if (!enabled || point == null || current?.terminal == false) {
+            supply = RideSupply()
+            return@LaunchedEffect
+        }
+        while (isActive) {
+            supply = runCatching { api.supply(auth, point) }.getOrDefault(RideSupply())
+            delay(15_000L)
+        }
+    }
+
     val editing = picker
     if (editing != null && !frozen) {
         val original = if (editing == "pickup") pickup else destination
@@ -258,6 +291,9 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                         destination?.let {
                             add(QgMapPoint(it.latitude,it.longitude,0xFFE6002D.toInt(),QgMapRole.CUSTOMER))
                         }
+                        supply.clusters.forEach { cluster ->
+                            add(QgMapPoint(cluster.latitude,cluster.longitude,0xFFE6002D.toInt(),QgMapRole.RIDER))
+                        }
                     }
                     Box(
                         Modifier.fillMaxWidth().height(245.dp)
@@ -265,6 +301,37 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                             .border(1.dp, QgLine, RoundedCornerShape(16.dp))
                     ) {
                         QgLongdoTrackingMap(points = previewPoints, modifier = Modifier.fillMaxSize())
+                    }
+                    pickup?.let {
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .background(Color(0xFFF7F8FA), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 11.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                Modifier.size(8.dp).background(
+                                    if (supply.nearbyCount > 0) Color(0xFF18A875) else Color(0xFFA0A5AD),
+                                    RoundedCornerShape(99.dp)
+                                )
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    if (supply.nearbyCount > 0)
+                                        "มี Rider พร้อมรับงานใกล้จุดรับ ${supply.nearbyCount} คน"
+                                    else
+                                        "ยังไม่พบ Rider พร้อมรับงานในระยะ 8 กม.",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    "ก่อนจับคู่จะแสดงตำแหน่งเป็นกลุ่มโดยประมาณ · หลังจับคู่จะแสดง Rider จริง",
+                                    color = QgMuted,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
                     }
 
                     RideLocationButton(
