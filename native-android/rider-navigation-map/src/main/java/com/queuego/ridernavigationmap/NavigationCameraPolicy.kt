@@ -1,6 +1,10 @@
 package com.queuego.ridernavigationmap
 
 import kotlin.math.abs
+import kotlin.math.asin
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 
 private const val ROUTE_BEARING_MAX_OFF_ROUTE_METERS = 60.0
 
@@ -82,6 +86,16 @@ internal fun navigationCameraDecision(
             activeRoute,
             (match.progressMeters + lookAheadMeters).coerceAtMost(match.geometryDistanceMeters)
         ) ?: fix.point
+    } else if (state.perspectiveCameraEnabled) {
+        // Keep the Rider puck in the lower navigation zone even while the route is
+        // unavailable/idle. The map looks ahead in the stable travel direction instead
+        // of snapping the Rider back to dead-center between route updates.
+        val forwardDistance = navigationFreeDriveLookAheadMeters(speed)
+        navigationProjectForward(
+            point = fix.point,
+            bearingDegrees = smoothedBearing,
+            distanceMeters = forwardDistance
+        ) ?: fix.point
     } else {
         fix.point
     }
@@ -162,6 +176,45 @@ internal fun navigationTiltChangedEnough(
     if (!next.isFinite()) return false
     if (previous == null || !previous.isFinite()) return true
     return abs(next - previous) >= minimumDeltaDegrees.coerceAtLeast(0.25f)
+}
+
+internal fun navigationFreeDriveLookAheadMeters(speedMetersPerSecond: Float?): Double = when {
+    speedMetersPerSecond == null -> 25.0
+    speedMetersPerSecond >= 18f -> 80.0
+    speedMetersPerSecond >= 11f -> 65.0
+    speedMetersPerSecond >= 5f -> 50.0
+    speedMetersPerSecond >= 2f -> 32.0
+    else -> 15.0
+}
+
+internal fun navigationProjectForward(
+    point: NavigationMapPoint,
+    bearingDegrees: Float?,
+    distanceMeters: Double
+): NavigationMapPoint? {
+    if (!point.valid || bearingDegrees == null || !bearingDegrees.isFinite() || distanceMeters <= 0.0) {
+        return null
+    }
+    val earthRadiusMeters = 6_371_000.0
+    val angularDistance = distanceMeters / earthRadiusMeters
+    val bearing = Math.toRadians(normalizeNavigationBearing(bearingDegrees).toDouble())
+    val lat1 = Math.toRadians(point.latitude)
+    val lon1 = Math.toRadians(point.longitude)
+    val sinLat1 = sin(lat1)
+    val cosLat1 = cos(lat1)
+    val sinDistance = sin(angularDistance)
+    val cosDistance = cos(angularDistance)
+    val lat2 = asin(
+        sinLat1 * cosDistance + cosLat1 * sinDistance * cos(bearing)
+    )
+    val lon2 = lon1 + atan2(
+        sin(bearing) * sinDistance * cosLat1,
+        cosDistance - sinLat1 * sin(lat2)
+    )
+    return NavigationMapPoint(
+        latitude = Math.toDegrees(lat2),
+        longitude = ((Math.toDegrees(lon2) + 540.0) % 360.0) - 180.0
+    ).takeIf { it.valid }
 }
 
 internal fun navigationLookAheadMeters(
