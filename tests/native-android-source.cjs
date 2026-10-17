@@ -178,28 +178,28 @@ const customerApp=read('customer/src/main/java/com/queuego/customer/QueueGoCusto
 const customerLocationPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
 const customerQueueGoMapPicker=read('customer/src/main/java/com/queuego/customer/CustomerQueueGoMapPicker.kt');
 const queueGoMapLibrePicker=read('rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoMapLibrePickerView.kt');
+const sharedQueueGoMap=read('shared/src/main/java/com/queuego/shared/QueueGoMapLibreCompose.kt');
 const customerBuild=read('customer/build.gradle.kts');
 const merchantShopSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
-const sharedLongdoMap=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
 ok(
   customerLocationPicker.includes('LaunchedEffect(mapReady)') &&
   customerLocationPicker.includes('autoGpsRequested') &&
   customerLocationPicker.includes('if (!autoUseGps || !mapReady || autoGpsRequested) return@LaunchedEffect') &&
   !customerLocationPicker.includes('delay(80)\n        onGps()') &&
   customerLocationPicker.includes('CustomerQueueGoMapPicker(') &&
-  customerQueueGoMapPicker.includes('QueueGoMapLibrePickerView') &&
+  customerQueueGoMapPicker.includes('QgQueueGoLocationPickerMap') &&
+  sharedQueueGoMap.includes('QueueGoMapLibrePickerView') &&
   queueGoMapLibrePicker.includes('queueGoRasterStyleJson()') &&
   customerBuild.includes('implementation(project(":rider-maplibre-osm"))'),
-  'Customer location picker must wait for QueueGo Map readiness and reuse the existing MapLibre module'
+  'Customer location picker must wait for QueueGo Map readiness and reuse the shared MapLibre surface'
 );
 ok(
-  merchantShopSetup.includes('QgLongdoLocationPickerMap(') &&
-  sharedLongdoMap.includes('shared_map_on_resume_failed') &&
-  sharedLongdoMap.includes('shared_map_renderer_state_failed') &&
-  sharedLongdoMap.includes('shared_map_on_pause_failed') &&
-  sharedLongdoMap.includes('shared_map_created_pause_failed') &&
-  sharedLongdoMap.includes('runCatching { activeView.onResume() }'),
-  'Merchant shared Longdo picker lifecycle must fail closed while Customer uses QueueGo MapLibre'
+  merchantShopSetup.includes('QgQueueGoLocationPickerMap(') &&
+  !merchantShopSetup.includes('QgLongdoLocationPickerMap(') &&
+  sharedQueueGoMap.includes('fun QgQueueGoLocationPickerMap(') &&
+  sharedQueueGoMap.includes('view.onCreate()') &&
+  sharedQueueGoMap.includes('view.destroy()'),
+  'Merchant shop location picker must use the shared QueueGo MapLibre lifecycle'
 );
 ok(customerAuthScreen.includes('CustomerBottomNavigation(screen = "login", cartCount = guestCartCount)')&&customerAuthScreen.includes('Spacer(Modifier.height(92.dp))'),'Customer native auth must preserve the Production web fixed four-tab navigation and 92dp content clearance');
 ok(customerAuthScreen.includes('.windowInsetsPadding(WindowInsets.statusBars)')&&customerAuthScreen.includes('padding(horizontal = 12.dp, vertical = 6.dp)')&&customerAuthScreen.includes('.widthIn(max = 720.dp)'),'Customer native auth top bar must preserve Production web safe-area, compact spacing and 720px content width');
