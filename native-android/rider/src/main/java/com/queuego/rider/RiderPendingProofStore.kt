@@ -19,7 +19,9 @@ internal data class RiderProofDraft(
 )
 
 internal data class RiderVerificationResume(
-    val workId: String, val mode: String, val pickupId: String?, val collection: Boolean
+    val workId: String,
+    val mode: String,
+    val pickupId: String?
 )
 
 internal fun riderVerificationResumeAllowed(mode: String, status: String, customerArrived: Boolean, pickupPending: Boolean): Boolean =
@@ -65,7 +67,7 @@ internal class RiderPendingProofStore(context: Context) {
 
     fun saveVerification(userId: String, value: RiderVerificationResume) {
         val raw = JSONObject().put("work_id", value.workId).put("mode", value.mode)
-            .put("pickup_id", value.pickupId ?: JSONObject.NULL).put("collection", value.collection)
+            .put("pickup_id", value.pickupId ?: JSONObject.NULL)
             .toString()
         require(raw.length <= RIDER_PENDING_PROOF_MAX_JSON_CHARS) { "ข้อมูลขั้นตอนงานมีขนาดใหญ่เกินกำหนด" }
         check(prefs.edit().putString("workflow:$userId", raw).commit()) {
@@ -75,8 +77,11 @@ internal class RiderPendingProofStore(context: Context) {
 
     fun loadVerification(userId: String): RiderVerificationResume? = runCatching {
         val row = JSONObject(boundedState("workflow:$userId") ?: return null)
-        RiderVerificationResume(row.getString("work_id"), row.getString("mode"),
-            row.optString("pickup_id").takeIf { it.isNotBlank() && it != "null" }, row.optBoolean("collection"))
+        RiderVerificationResume(
+            row.getString("work_id"),
+            row.getString("mode"),
+            row.optString("pickup_id").takeIf { it.isNotBlank() && it != "null" }
+        )
     }.getOrNull()
 
     fun clearVerification(userId: String) {
