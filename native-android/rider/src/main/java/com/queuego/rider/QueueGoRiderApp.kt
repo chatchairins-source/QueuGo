@@ -1078,6 +1078,7 @@ private fun RiderHome(
     ) { grants ->
         val granted = grants.values.any { it }
         actionMessage = if (granted && pendingMapRecenter) {
+            routeOverviewActive = false
             recenterSignal += 1
             "กำลังหาตำแหน่ง"
         } else if (granted) {
@@ -2621,6 +2622,7 @@ private fun RiderHome(
                             ensureLocationPermission()
                         }
                         else -> {
+                            routeOverviewActive = false
                             recenterSignal += 1
                             actionMessage = "กำลังหาตำแหน่ง"
                         }
@@ -2975,6 +2977,7 @@ private fun RiderHome(
                             onNavigate = {
                                 if (!ensureLocationPermission()) return@RiderLaundryActiveCard
                                 openNavigation(context, laundryJob.asMapJob())
+                                routeOverviewActive = false
                                 recenterSignal += 1
                             },
                             onAction = { action ->
