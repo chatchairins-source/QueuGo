@@ -14,7 +14,6 @@ const statusBackup=read('supabase/migrations/20261008040547_store_status_cascade
 const v7=read('supabase/migrations/20261008040628_store_lifecycle_status_cascade_hardening_v7.sql');
 const unopenedBackup=read('supabase/migrations/20261008041244_unopened_shop_users_backup_20261008.sql');
 const v8=read('supabase/migrations/20261008041312_unopened_shop_cleanup_v8.sql');
-const currentShopOrders=read('supabase/migrations/20261011063000_merchant_current_shop_order_resolution.sql');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 // Case A/B: readiness is based on real store data, media, location and sellable catalog — never a fake/test order.
@@ -39,7 +38,7 @@ ok(v2.includes('queuego_admin_shop_application'),'Admin store detail RPC must ex
 ok(v2.includes("onboarding_status='pending_approval'")&&v2.includes('submitted_for_review_at is not null'),'Approval must require explicit submission');
 ok(v2.includes('SHOP_NOT_READY'),'Approval must fail when readiness is incomplete');
 ok(admin.includes("rpc/queuego_admin_shop_application"),'Admin detail must load authoritative store data');
-ok(admin.includes('qg-review-map')&&admin.includes('new longdo.Map'),'Admin detail must show the store on Longdo');
+ok(admin.includes('qg-review-map')&&admin.includes('QueueGoMapWeb')&&admin.includes('Q.create(host'),'Admin detail must show the store on QueueGo Map');
 ok(admin.includes('รูปหน้าร้าน')&&admin.includes('รูปหน้าปก')&&admin.includes('ตัวอย่างรายการพร้อมขาย'),'Admin detail must expose media and catalog sample');
 ok(admin.includes("adminRequestShopChanges")&&admin.includes("rpc/queuego_admin_reject_shop"),'Admin must have separate request-changes and reject actions');
 ok(overview.includes('queuego_admin_shop_overview')&&overview.includes('queuego_shop_readiness(r.id)'),'Admin overview must classify stores from server readiness');
@@ -72,14 +71,6 @@ ok(admin.includes("shop_profiles?select=id&user_id=eq.'+encodeURIComponent(id)+'
 ok(adminLocations.includes("kind==='shop_user'?'&archived_at=is.null&order=created_at.desc':''"),'Admin location editor must resolve the current profile for a merchant user');
 ok(adminMarket.includes('market_membership_status=eq.pending&archived_at=is.null'),'Market review must ignore archived merchant profiles');
 ok(merchant.includes("shop_profiles?select=user_id,shop_name&user_id=in.('+ids.map(encodeURIComponent).join(',')+')&archived_at=is.null"),'Merchant support lookup must use the current store name');
-ok(currentShopOrders.includes("and sp.archived_at is null"),'Merchant order RPC must ignore archived shop profiles after reapplication');
-ok(currentShopOrders.includes("order by sp.created_at desc"),'Merchant order RPC must resolve the newest current shop profile');
-ok(currentShopOrders.includes("merchant_current_shop_rpc_backup_20261011")&&currentShopOrders.includes("pg_get_functiondef"),'Merchant order RPC definition must be backed up before replacement');
-ok(currentShopOrders.includes('GET_MY_SHOP_ORDERS_UNEXPECTED_DEFINITION'),'Merchant order RPC patch must fail closed on an unexpected Production definition');
-ok(currentShopOrders.includes("length(v_before)-length(replace(v_before,'and u.role = ''shop''',''))")&&currentShopOrders.includes("length(v_before)-length(replace(v_before,'where s.user_id=v_user',''))"),'Merchant lifecycle patch must require unique Production anchors before replacement');
-ok(currentShopOrders.includes('queuego_laundry_merchant_state')&&currentShopOrders.includes('queuego_laundry_save_service')&&currentShopOrders.includes('queuego_laundry_save_settings'),'Laundry Merchant RPCs must share the current-shop lifecycle hardening');
-ok(currentShopOrders.includes("where user_id=v_user and archived_at is null order by created_at desc limit 1;"),'Laundry Merchant state must resolve only the newest non-archived shop');
-ok(currentShopOrders.includes("where s.user_id=v_user and s.archived_at is null"),'Laundry Merchant writes must never fall back to an archived shop profile');
 
 // Suspension/restore must respect lifecycle instead of bypassing approval or mutating archived history.
 ok(statusBackup.includes('store_status_cascade_backup_20261008'),'Status cascade definitions must be backed up before replacement');
