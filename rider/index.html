@@ -877,14 +877,18 @@ function startGeolocation(){
       timestamp:fixAt
     };
     updateRiderSpeedUI();
-    placeRiderMarker();
+    let followed=null;
     if(S.map){
       // The first valid fix must reclaim FOLLOW even if the user rotated/pitched
       // the map while Safari was still waiting for GPS after open/refresh.
-      const followed=qgFollowRiderCamera(!hadPosition,hadPosition?420:520);
+      followed=qgFollowRiderCamera(!hadPosition,hadPosition?420:520);
       if(!S._centeredOnce&&!followed){window.QueueGoMapWeb?.setCenter(S.map,S.pos.lat,S.pos.lng,15,350)}
       S._centeredOnce=true;
     }
+    // Camera and puck must interpolate the same GPS segment with the same timing.
+    // Otherwise the camera reaches the new fix before the puck and the vehicle
+    // visibly walks up/down the screen even though FOLLOW is still active.
+    placeRiderMarker(followed?.animationDuration);
     if(S.online) pushLocation();
     const now=Date.now();
     if(S.activeTab==='home'&&(!hadPosition||!S._lastGpsHomeRenderAt||now-S._lastGpsHomeRenderAt>=5000)){
@@ -1573,10 +1577,12 @@ function updateRiderSpeedUI(){
   const speed=qgRiderSpeedKph(S.pos);
   value.textContent=speed===null?'—':String(speed);
 }
-function placeRiderMarker(){
+function placeRiderMarker(durationOverride=null){
  if(!S.pos||!S.map||!window.QueueGoMapWeb)return;
  const heading=qgSmoothedRiderPuckHeading(S.pos);
- const markerDuration=Math.max(260,Math.min(1250,Math.round(riderGpsCadenceMs*1.05)));
+ const markerDuration=Number.isFinite(Number(durationOverride))
+   ? Math.max(220,Math.min(1250,Math.round(Number(durationOverride))))
+   : Math.max(260,Math.min(1250,Math.round(riderGpsCadenceMs*1.05)));
  if(S.riderMarker){
    (window.QueueGoMapWeb.moveMarkerSmooth||window.QueueGoMapWeb.moveMarker)?.(
      S.riderMarker,S.pos.lat,S.pos.lng,heading,{duration:markerDuration}
