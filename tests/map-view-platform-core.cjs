@@ -17,6 +17,7 @@ has("geocodeOverpass","Overpass fallback search provider required");
 has("coordinateSearch","direct coordinate search required");
 has("lastSearchProvider","search provider observability required");
 has("searchMarkerElement","search result marker required");
+has("function esc(value)","search result HTML escaping helper required");
 has("กำลังค้นหา…","search must show non-blocking progress");
 has("engineReverse","reverse geocoding required");
 has("engineNearestRoad","nearest road calculation required");
