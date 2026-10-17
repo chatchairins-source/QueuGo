@@ -111,6 +111,17 @@ async function search(term){
     return (Array.isArray(rows)?rows:[]).map(x=>({lat:Number(x.lat),lng:Number(x.lon),label:String(x.display_name||'')})).filter(x=>valid(x.lat,x.lng));
   }catch(_){return[]}
 }
+async function reverse(lat,lng){
+  if(!valid(lat,lng))return'';
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lng),{
+      headers:{'Accept':'application/json'}
+    });
+    if(!r.ok)return'';
+    const row=await r.json();
+    return String(row?.display_name||'').trim();
+  }catch(_){return''}
+}
 function destroy(map){try{map?.remove?.()}catch(_){}}
-window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,destroy};
+window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy};
 })();
