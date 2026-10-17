@@ -38,7 +38,7 @@ ok(v2.includes('queuego_admin_shop_application'),'Admin store detail RPC must ex
 ok(v2.includes("onboarding_status='pending_approval'")&&v2.includes('submitted_for_review_at is not null'),'Approval must require explicit submission');
 ok(v2.includes('SHOP_NOT_READY'),'Approval must fail when readiness is incomplete');
 ok(admin.includes("rpc/queuego_admin_shop_application"),'Admin detail must load authoritative store data');
-ok(admin.includes('qg-review-map')&&admin.includes('new longdo.Map'),'Admin detail must show the store on Longdo');
+ok(admin.includes('qg-review-map')&&admin.includes('QueueGoMapWeb')&&admin.includes('Q.create(host'),'Admin detail must show the store on QueueGo Map');
 ok(admin.includes('รูปหน้าร้าน')&&admin.includes('รูปหน้าปก')&&admin.includes('ตัวอย่างรายการพร้อมขาย'),'Admin detail must expose media and catalog sample');
 ok(admin.includes("adminRequestShopChanges")&&admin.includes("rpc/queuego_admin_reject_shop"),'Admin must have separate request-changes and reject actions');
 ok(overview.includes('queuego_admin_shop_overview')&&overview.includes('queuego_shop_readiness(r.id)'),'Admin overview must classify stores from server readiness');
