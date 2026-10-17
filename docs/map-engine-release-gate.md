@@ -1,18 +1,18 @@
 # QueueGo Map Buriram release gate — OPEN
 
-Candidate branch: work-map-roadgraph-buriram-20261017. Baseline main: a78bca91f723db3f2117030e91c5d9901413e00a. Use git log and evidence/map-engine for exact checkpoints. No Production deployment or database mutation.
+Candidate branch: work-map-roadgraph-buriram-20261017. Integrated main: 513398a1f6f09cb8b58aceabe8dcb32616d2ae2c. Use git log and evidence/map-engine for exact checkpoints. No Production deployment or database mutation.
 
 | Gate | Evidence / state |
 |---|---|
 | Real road graph build | PASS: normalized 233,320 segments; all three benchmark engines built |
-| A→B, alternatives, multi-stop, matrix, matching, reroute, signals | PASS local actual graph runtime (273 assertions); controlled timing tests are not road recordings |
+| A→B, alternatives, multi-stop, matrix, matching, reroute, signals | PASS local actual graph runtime (283 assertions); controlled timing tests are not road recordings |
 | One-way | PASS sampled directed-edge checks from 12 actual OSM ways; not national coverage |
 | Turn restrictions | OPEN: 62 source relations, directional fixture evidence in turn-restriction-audit.json. No false pass for uncovered approaches |
 | Buriram road categories / physical validation | OPEN: current query/one-way evidence does not cover every required category or physical road condition |
 | Web calls new core | PASS local actual Chromium: route/matrix/nearest/search, actual PMTiles, external requests blocked, retained map and idle pitch/bearing zero |
 | Offline data integrity/activation/rollback | PASS local 6 actual-package checks; data package is not an Android runtime |
 | Full npm | PASS locally after service wiring; rerun after further changes |
-| CI on latest candidate | PENDING new QueueGo Map Engine Buriram workflow |
+| CI on latest candidate | Prior head 2a1b6307 GREEN (Map Engine38986601941/38986605164; RC38986605032); merged-main checkpoint pending its own runs |
 | No fake / proprietary map data | OSM source SHA/provenance retained; no Google Maps geometry or proprietary service endpoints |
 | Licence documentation | docs/map-data-sources.md, map-engine-selection.md, map-offline-package.md; unknown official-source terms remain quarantined |
 | Public hosting / publication | OPEN: local service only; no Production route fallback silently introduced |
