@@ -1,0 +1,291 @@
+(function(){
+'use strict';
+const QG_OSM_STYLE={
+  version:8,
+  sources:{
+    queuego_osm:{
+      type:'raster',
+      tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize:256,
+      attribution:'© OpenStreetMap contributors'
+    }
+  },
+  layers:[
+    {id:'queuego-bg',type:'background',paint:{'background-color':'#f3f0e8'}},
+    {id:'queuego-osm',type:'raster',source:'queuego_osm'}
+  ]
+};
+function ensureQueueGoMapCss(){
+  if(document.getElementById('queuego-map-control-css'))return;
+  const style=document.createElement('style');
+  style.id='queuego-map-control-css';
+  style.textContent=`
+    .queuego-map-host .maplibregl-ctrl-attrib{
+      font:9px/13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+      max-width:calc(100% - 8px)!important;
+      padding:1px 22px 1px 5px!important;
+      min-height:18px!important;
+      border-radius:9px!important;
+    }
+    .queuego-map-host .maplibregl-ctrl-attrib-inner,
+    .queuego-map-host .maplibregl-ctrl-attrib a{
+      font-size:9px!important;
+      line-height:13px!important;
+    }
+    .queuego-map-host .maplibregl-ctrl-attrib-button{
+      width:18px!important;
+      height:18px!important;
+      min-width:18px!important;
+      min-height:18px!important;
+      padding:0!important;
+      margin:0!important;
+      border:0!important;
+      border-radius:50%!important;
+      background-size:14px 14px!important;
+      box-shadow:none!important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+const valid=(lat,lng)=>Number.isFinite(Number(lat))&&Number.isFinite(Number(lng))&&
+  Number(lat)>=5&&Number(lat)<=21&&Number(lng)>=97&&Number(lng)<=106;
+
+const navigationStates=new WeakMap();
+const rad=v=>v*Math.PI/180;
+const deg=v=>v*180/Math.PI;
+const navNormalizeBearing=v=>((Number(v)%360)+360)%360;
+const navShortestDelta=(from,to)=>((navNormalizeBearing(to)-navNormalizeBearing(from)+540)%360)-180;
+const navDistanceMeters=(a,b)=>{
+  const r=6371000,dLat=rad(b.lat-a.lat),dLng=rad(b.lng-a.lng),lat1=rad(a.lat),lat2=rad(b.lat);
+  const s1=Math.sin(dLat/2),s2=Math.sin(dLng/2);
+  return r*2*Math.atan2(Math.sqrt(s1*s1+Math.cos(lat1)*Math.cos(lat2)*s2*s2),Math.sqrt(Math.max(0,1-(s1*s1+Math.cos(lat1)*Math.cos(lat2)*s2*s2))));
+};
+const navBearing=(a,b)=>{
+  const lat1=rad(a.lat),lat2=rad(b.lat),dLng=rad(b.lng-a.lng);
+  return navNormalizeBearing(deg(Math.atan2(Math.sin(dLng)*Math.cos(lat2),Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng))));
+};
+function navRouteParts(route){
+  if(!Array.isArray(route)||!route.length)return[];
+  const first=route[0];
+  const raw=Array.isArray(first)&&first.length>=2&&Number.isFinite(Number(first[0]))?[route]:route;
+  return raw.map(part=>(Array.isArray(part)?part:[]).map(p=>({lng:Number(p?.[0]),lat:Number(p?.[1])})).filter(p=>valid(p.lat,p.lng))).filter(part=>part.length>1);
+}
+function navProject(point,a,b){
+  const ref=rad(point.lat),mLat=111320,mLng=111320*Math.max(.01,Math.cos(ref));
+  const ax=(a.lng-point.lng)*mLng,ay=(a.lat-point.lat)*mLat,bx=(b.lng-point.lng)*mLng,by=(b.lat-point.lat)*mLat;
+  const dx=bx-ax,dy=by-ay,den=dx*dx+dy*dy;
+  const t=den<=.0001?0:Math.max(0,Math.min(1,-(ax*dx+ay*dy)/den));
+  const x=ax+dx*t,y=ay+dy*t;
+  return {point:{lat:a.lat+(b.lat-a.lat)*t,lng:a.lng+(b.lng-a.lng)*t},fraction:t,distance:Math.sqrt(x*x+y*y)};
+}
+function navMatchRoute(route,point){
+  let best=null;
+  for(const part of navRouteParts(route)){
+    let walked=0,total=0;
+    const lengths=[];
+    for(let i=0;i<part.length-1;i++){const d=navDistanceMeters(part[i],part[i+1]);lengths.push(d);total+=d}
+    for(let i=0;i<part.length-1;i++){
+      const leg=lengths[i];if(leg<=.01){walked+=leg;continue}
+      const p=navProject(point,part[i],part[i+1]);
+      if(!best||p.distance<best.offRouteMeters){
+        best={part,snapped:p.point,offRouteMeters:p.distance,progressMeters:walked+leg*p.fraction,geometryDistanceMeters:total,segmentBearingDegrees:navBearing(part[i],part[i+1])};
+      }
+      walked+=leg;
+    }
+  }
+  return best;
+}
+function navPointAt(part,targetMeters){
+  if(!Array.isArray(part)||part.length<2)return null;
+  if(targetMeters<=0)return part[0];
+  let walked=0;
+  for(let i=0;i<part.length-1;i++){
+    const leg=navDistanceMeters(part[i],part[i+1]);if(leg<=.01)continue;
+    if(walked+leg>=targetMeters){
+      const t=Math.max(0,Math.min(1,(targetMeters-walked)/leg));
+      return {lat:part[i].lat+(part[i+1].lat-part[i].lat)*t,lng:part[i].lng+(part[i+1].lng-part[i].lng)*t};
+    }
+    walked+=leg;
+  }
+  return part[part.length-1];
+}
+function navSmoothBearing(previous,target,factor){
+  if(!Number.isFinite(Number(target)))return Number.isFinite(Number(previous))?navNormalizeBearing(previous):null;
+  const t=navNormalizeBearing(target);if(!Number.isFinite(Number(previous)))return t;
+  return navNormalizeBearing(navNormalizeBearing(previous)+navShortestDelta(previous,t)*Math.max(.05,Math.min(1,Number(factor)||.35)));
+}
+function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=[],previousBearing=null,baseZoom=17}={}){
+  if(!valid(lat,lng))return null;
+  const point={lat:Number(lat),lng:Number(lng)},spd=Number.isFinite(Number(speed))&&Number(speed)>=0?Number(speed):null;
+  const acc=Number.isFinite(Number(accuracy))?Number(accuracy):null;
+  const match=navMatchRoute(route,point),reliable=match&&match.offRouteMeters<=60?match:null;
+  let routeBearing=reliable?.segmentBearingDegrees??null;
+  const remaining=match?Math.max(0,match.geometryDistanceMeters-match.progressMeters):null;
+  if(reliable){
+    const desired=spd==null?24:spd>=18?70:spd>=11?55:spd>=5?38:spd>=2?26:14;
+    const ahead=remaining==null?desired:Math.min(desired,Math.max(0,remaining*.45));
+    const future=navPointAt(reliable.part,Math.min(reliable.geometryDistanceMeters,reliable.progressMeters+ahead));
+    if(future&&navDistanceMeters(reliable.snapped,future)>=5){
+      const futureBearing=navBearing(reliable.snapped,future),delta=Math.max(-70,Math.min(70,navShortestDelta(routeBearing,futureBearing)));
+      const bounded=navNormalizeBearing(routeBearing+delta);
+      const blend=spd==null?.30:spd>=18?.46:spd>=11?.44:spd>=5?.40:spd>=2?.30:.18;
+      routeBearing=navSmoothBearing(routeBearing,bounded,blend);
+    }
+  }
+  const gpsBearing=Number.isFinite(Number(bearing))?navNormalizeBearing(Number(bearing)):null;
+  const desiredBearing=routeBearing!=null?routeBearing:(spd==null||spd<.83?previousBearing:(gpsBearing??previousBearing));
+  const smoothing=spd==null?.35:spd>=18?.60:spd>=11?.52:spd>=5?.44:spd>=2?.34:.24;
+  const cameraBearing=navSmoothBearing(previousBearing,desiredBearing,smoothing)??0;
+  let zoom=remaining!=null&&remaining<=60?19:remaining!=null&&remaining<=180?18:spd==null?baseZoom:spd>=18?15:spd>=11?16:spd>=5?17:spd<=1.5?Math.max(baseZoom,18):baseZoom;
+  if(acc!=null&&acc>60)zoom=Math.max(14,zoom-1);
+  zoom=Math.max(14,Math.min(20,zoom));
+  const pitch=Math.max(0,Math.min(55,acc!=null&&acc>80?24:remaining!=null&&remaining<=60?28:remaining!=null&&remaining<=180?34:spd==null?38:spd>=18?52:spd>=11?49:spd>=5?45:spd>=2?40:34));
+  const look=spd==null?55:spd>=18?150:spd>=11?120:spd>=5?85:spd>=2?55:30;
+  const lookAhead=remaining==null?look:Math.min(look,Math.max(0,remaining*.55));
+  const center=reliable?(navPointAt(reliable.part,Math.min(reliable.geometryDistanceMeters,reliable.progressMeters+lookAhead))||point):point;
+  return {center,bearing:cameraBearing,pitch,zoom,routeMatch:match,remainingRouteMeters:remaining};
+}
+function navState(map){
+  let state=navigationStates.get(map);
+  if(!state){state={follow:true,bearing:null};navigationStates.set(map,state)}
+  return state;
+}
+function setNavigationFollow(map,enabled=true){
+  if(!map)return false;navState(map).follow=!!enabled;return navState(map).follow;
+}
+function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17}={}){
+  if(!map)return null;
+  const state=navState(map);if(!force&&!state.follow)return null;
+  if(force)state.follow=true;
+  const decision=navCameraDecision({...fix,route,previousBearing:state.bearing,baseZoom});if(!decision)return null;
+  state.bearing=decision.bearing;
+  try{map.easeTo({center:[decision.center.lng,decision.center.lat],bearing:decision.bearing,pitch:decision.pitch,zoom:decision.zoom,duration,essential:true})}catch(_){return null}
+  return decision;
+}
+function navigationOverview(map,points,{padding=64,maxZoom=16,duration=450}={}){
+  if(!map)return false;setNavigationFollow(map,false);
+  const rows=(points||[]).filter(p=>valid(p.lat,p.lng));if(!rows.length)return false;
+  try{
+    if(rows.length===1){map.easeTo({center:[Number(rows[0].lng),Number(rows[0].lat)],zoom:maxZoom,bearing:0,pitch:0,duration,essential:true});return true}
+    const bounds=new maplibregl.LngLatBounds();rows.forEach(p=>bounds.extend([Number(p.lng),Number(p.lat)]));
+    map.fitBounds(bounds,{padding,maxZoom,duration,bearing:0,pitch:0});return true;
+  }catch(_){return false}
+}
+
+function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=true,navigation=false}={}){
+  if(!host||typeof window.maplibregl==='undefined') return null;
+  ensureQueueGoMapCss();
+  host.classList.add('queuego-map-host');
+  host.replaceChildren();
+  const map=new maplibregl.Map({
+    container:host,
+    style:QG_OSM_STYLE,
+    center:[Number(lng),Number(lat)],
+    zoom:Number(zoom),
+    minZoom,maxZoom,
+    maxPitch:navigation?60:0,
+    interactive,
+    attributionControl:false,
+    dragRotate:!!navigation,
+    pitchWithRotate:!!navigation
+  });
+  if(navigation){
+    navState(map).follow=true;
+    try{map.touchZoomRotate.enableRotation()}catch(_){}
+    const suspend=e=>{if(e&&e.originalEvent)setNavigationFollow(map,false)};
+    for(const event of ['dragstart','rotatestart','pitchstart','zoomstart'])try{map.on(event,suspend)}catch(_){}
+  }else{
+    try{map.touchZoomRotate.disableRotation()}catch(_){}
+  }
+  try{map.addControl(new maplibregl.NavigationControl({showCompass:!!navigation,showZoom:false,visualizePitch:!!navigation}),'top-left')}catch(_){}
+  try{map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right')}catch(_){}
+  return map;
+}
+function markerElement(color='#e6002d',html=''){
+  const el=document.createElement('div');
+  if(html){el.innerHTML=html;return el}
+  Object.assign(el.style,{
+    width:'24px',height:'24px',borderRadius:'50%',background:color,
+    border:'4px solid #fff',boxShadow:'0 3px 12px rgba(0,0,0,.28)'
+  });
+  return el;
+}
+function marker(map,{lat,lng,color='#e6002d',title='',html='',anchor='center'}={}){
+  if(!map||!valid(lat,lng)) return null;
+  const el=markerElement(color,html);
+  if(title)el.setAttribute('aria-label',title);
+  return new maplibregl.Marker({element:el,anchor})
+    .setLngLat([Number(lng),Number(lat)])
+    .addTo(map);
+}
+function moveMarker(m,lat,lng){if(m&&valid(lat,lng))m.setLngLat([Number(lng),Number(lat)]);return m}
+function fit(map,points,{padding=48,maxZoom=16,duration=0}={}){
+  if(!map)return;
+  const rows=(points||[]).filter(p=>valid(p.lat,p.lng));
+  if(!rows.length)return;
+  if(rows.length===1){map.easeTo({center:[Number(rows[0].lng),Number(rows[0].lat)],zoom:maxZoom,duration});return}
+  const bounds=new maplibregl.LngLatBounds();
+  rows.forEach(p=>bounds.extend([Number(p.lng),Number(p.lat)]));
+  map.fitBounds(bounds,{padding,maxZoom,duration});
+}
+function setCenter(map,lat,lng,zoom=16,duration=350){
+  if(map&&valid(lat,lng))map.easeTo({center:[Number(lng),Number(lat)],zoom,duration});
+}
+function addGeoJsonLine(map,id,coordinates,{color='#e6002d',width=6,opacity=1}={}){
+  if(!map||!Array.isArray(coordinates)||coordinates.length<2)return false;
+  const sourceId=id+'-source',layerId=id+'-layer';
+  const apply=()=>{
+    try{
+      if(map.getLayer(layerId))map.removeLayer(layerId);
+      if(map.getSource(sourceId))map.removeSource(sourceId);
+      map.addSource(sourceId,{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'LineString',coordinates}}});
+      map.addLayer({id:layerId,type:'line',source:sourceId,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':color,'line-width':width,'line-opacity':opacity}});
+      return true;
+    }catch(_){return false}
+  };
+  if(map.isStyleLoaded())return apply();
+  map.once('load',apply);return true;
+}
+function removeGeoJsonLine(map,id){
+  if(!map)return;
+  const sourceId=id+'-source',layerId=id+'-layer';
+  try{if(map.getLayer(layerId))map.removeLayer(layerId)}catch(_){}
+  try{if(map.getSource(sourceId))map.removeSource(sourceId)}catch(_){}
+}
+function locate(map,onPoint){
+  if(!navigator.geolocation)return Promise.reject(new Error('เบราว์เซอร์ไม่รองรับ GPS'));
+  return new Promise((resolve,reject)=>{
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const lat=pos.coords.latitude,lng=pos.coords.longitude;
+      if(!valid(lat,lng)){reject(new Error('พิกัด GPS ไม่ถูกต้อง'));return}
+      setCenter(map,lat,lng,16,450);
+      try{onPoint?.(lat,lng)}catch(_){}
+      resolve({lat,lng});
+    },err=>reject(err),{enableHighAccuracy:true,timeout:12000,maximumAge:30000});
+  });
+}
+async function search(term){
+  const q=String(term||'').trim();if(!q)return[];
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=th&q='+encodeURIComponent(q),{
+      headers:{'Accept':'application/json'}
+    });
+    if(!r.ok)return[];
+    const rows=await r.json();
+    return (Array.isArray(rows)?rows:[]).map(x=>({lat:Number(x.lat),lng:Number(x.lon),label:String(x.display_name||'')})).filter(x=>valid(x.lat,x.lng));
+  }catch(_){return[]}
+}
+async function reverse(lat,lng){
+  if(!valid(lat,lng))return'';
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lng),{
+      headers:{'Accept':'application/json'}
+    });
+    if(!r.ok)return'';
+    const row=await r.json();
+    return String(row?.display_name||'').trim();
+  }catch(_){return''}
+}
+function destroy(map){try{map?.remove?.()}catch(_){}}
+window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,navigationCameraDecision:navCameraDecision,followNavigationCamera,setNavigationFollow,navigationOverview};
+})();

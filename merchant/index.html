@@ -50,7 +50,9 @@ body.qgm-app,body.qgm-login{height:auto!important;min-height:100dvh!important;ov
 .qgm-shell{min-height:100dvh!important}
 .qgm-content{padding-bottom:calc(var(--qg-nav-h) + env(safe-area-inset-bottom) + 28px)!important}
 </style>
-<script async src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css" media="print" onload="this.media='all'">
+<script async src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
+<script src="../queuego-map-web.js?v=20261017-3"></script>
 <style id="qgm-setup-checklist-style">.qgm-pending{max-width:680px}.qgm-setup-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.qgm-setup-symbol{font-size:48px;color:#ed0a31}.qgm-setup-list{list-style:none;padding:0;margin:20px 0;border:1px solid #e3e5e9;border-radius:18px;overflow:hidden}.qgm-setup-list li{display:flex;gap:14px;padding:20px 16px;align-items:flex-start;background:#fff}.qgm-setup-list li+li{border-top:1px solid #e3e5e9}.qgm-setup-list b{font-size:17px}.qgm-setup-list p{font-size:14px;margin:6px 0;overflow-wrap:anywhere}.qgm-setup-check{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#858b94;border:2px solid #d4d7dc}.qgm-setup-list .done .qgm-setup-check{background:#0ab76a;color:#fff;border-color:#0ab76a}.qgm-setup-list .qgm-link{padding:6px 0;min-height:40px;text-align:left}.qgm-pending>.qgm-outline{margin:10px 0}</style><script defer src="../queuego-order-number.js"></script>
 <script async src="../queuego-voice-web.js?v=20261012-voice2" onload="if(document.readyState!=='loading'&amp;&amp;typeof qgmActivateVoice==='function'){try{Promise.resolve(qgmActivateVoice()).catch(console.error)}catch(e){console.error(e)}}"></script>
 <style id="qg-merchant-account-compact-v1">
@@ -941,7 +943,7 @@ function qtUpdateNotificationBadge(){const badge=document.getElementById('qgm-no
 
 
 /* ---------- Map helpers ---------- */
-let merchantPicker=null,merchantPickerMap=null;
+let merchantPicker=null;
 
 function qgShopCoordinateProblem(latitude,longitude){
   if(latitude===null||latitude===undefined||longitude===null||longitude===undefined||latitude===''||longitude==='') return 'missing';
@@ -954,23 +956,45 @@ function qgShopCoordinateProblem(latitude,longitude){
   return '';
 }
 function qgIsValidShopCoordinate(latitude,longitude){ return !qgShopCoordinateProblem(latitude,longitude); }
-function qgMerchantLongdoPin(loc){
-  return new longdo.Marker(loc,{title:'พิกัดร้าน',icon:{html:'<div style="width:20px;height:20px;border-radius:50%;background:#e6002d;border:3px solid #fff;box-shadow:0 4px 14px #0004"></div>',offset:{x:0,y:0}},weight:longdo.OverlayWeight.Top});
-}
+
 function initLocationPicker(containerId,lat,lng,onChange){
   merchantPicker?.destroy();merchantPicker=null;
-  const host=document.getElementById(containerId),hasInitial=qgIsValidShopCoordinate(lat,lng),viewLat=hasInitial?Number(lat):15,viewLng=hasInitial?Number(lng):101;
-  if(!host||typeof longdo==='undefined'){toast('แผนที่ยังไม่พร้อม กรุณาลองใหม่');return {map:null,get marker(){return null},locate(){}}}
-  const map=merchantPickerMap||(merchantPickerMap=new longdo.Map({placeholder:host,ui:window.longdo.UiComponent.Mobile}));
-  if(map.placeholder().parentNode!==host)host.replaceChildren(map.placeholder());map.pause(false);map.resize();try{map.Ui.LayerSelector.visible(false)}catch(e){}
-  map.location({lat:viewLat,lon:viewLng},true);map.zoom(hasInitial?15:6,true);
+  const Q=window.QueueGoMapWeb,host=document.getElementById(containerId),hasInitial=qgIsValidShopCoordinate(lat,lng);
+  const viewLat=hasInitial?Number(lat):15,viewLng=hasInitial?Number(lng):101;
+  if(!host||!Q||typeof maplibregl==='undefined'){
+    toast('QueueGo Map ยังไม่พร้อม กรุณาลองใหม่');
+    return {map:null,get marker(){return null},destroy(){},locate(){}};
+  }
+  const map=Q.create(host,{lat:viewLat,lng:viewLng,zoom:hasInitial?15:6});
+  if(!map)return {map:null,get marker(){return null},destroy(){},locate(){}};
   let marker=null,disposed=false;
   const current=()=>!disposed&&host.isConnected;
-  const setPoint=(plat,plng,notify=true)=>{if(!current()||!qgIsValidShopCoordinate(plat,plng))return false;if(marker)try{map.Overlays.remove(marker)}catch(e){};marker=qgMerchantLongdoPin({lat:Number(plat),lon:Number(plng)});map.Overlays.add(marker);if(notify)onChange(Number(plat),Number(plng));return true};
-  const syncCenter=()=>{if(!current())return;const p=map.location();if(p&&qgIsValidShopCoordinate(p.lat,p.lon))setPoint(p.lat,p.lon,true)};
-  try{map.Event.bind('drop',syncCenter)}catch(e){}
-  if(hasInitial)setPoint(viewLat,viewLng,true);
-  const api={map,get marker(){return marker},destroy(){if(disposed)return;disposed=true;map.Event.unbind('drop',syncCenter);map.Overlays.clear();map.pause(true);map.placeholder().remove()},locate(){if(!current())return;if(!navigator.geolocation){toast('เบราว์เซอร์ไม่รองรับ GPS');return}navigator.geolocation.getCurrentPosition(pos=>{if(!current())return;const {latitude,longitude}=pos.coords;if(!qgIsValidShopCoordinate(latitude,longitude)){toast('พิกัด GPS ไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่');return}map.location({lat:latitude,lon:longitude},true);map.zoom(16,true);setPoint(latitude,longitude,true);toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว')},err=>{if(current())toast(err?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':err?.code===3?'รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่':'ไม่สามารถรับตำแหน่ง GPS ได้')},{enableHighAccuracy:true,timeout:12000,maximumAge:30000})}};
+  const setPoint=(plat,plng,notify=true)=>{
+    if(!current()||!qgIsValidShopCoordinate(plat,plng))return false;
+    if(marker)try{marker.remove()}catch(_){}
+    marker=Q.marker(map,{lat:Number(plat),lng:Number(plng),title:'พิกัดร้าน',color:'#e6002d'});
+    if(notify)onChange(Number(plat),Number(plng));
+    return true;
+  };
+  const syncCenter=()=>{if(!current())return;const p=map.getCenter();if(p&&qgIsValidShopCoordinate(p.lat,p.lng))setPoint(p.lat,p.lng,true)};
+  map.on('moveend',syncCenter);
+  if(hasInitial)map.once('load',()=>setPoint(viewLat,viewLng,true));
+  const api={
+    map,
+    get marker(){return marker},
+    destroy(){
+      if(disposed)return;disposed=true;
+      try{map.off('moveend',syncCenter)}catch(_){}
+      try{marker?.remove?.()}catch(_){}
+      Q.destroy(map);
+    },
+    locate(){
+      if(!current())return;
+      Q.locate(map,(plat,plng)=>setPoint(plat,plng,true))
+        .then(()=>toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว'))
+        .catch(err=>toast(err?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':err?.code===3?'รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่':err?.message||'ไม่สามารถรับตำแหน่ง GPS ได้'));
+    }
+  };
   merchantPicker=api;return api;
 }
 
@@ -2244,7 +2268,7 @@ async function qgmFetchSetupReadiness(u){
   {title:'ข้อมูลร้านครบ',done:checks.shop_info===true,note:checks.shop_info?'ชื่อร้าน ผู้ติดต่อ ประเภท ที่อยู่ เบอร์โทร และเวลาทำการครบแล้ว':'กรอกชื่อร้าน ผู้ติดต่อ ประเภท ที่อยู่ เบอร์โทร และเวลาเปิด-ปิด',page:'shop-setup'},
   {title:'รูปหน้าร้าน',done:checks.storefront_image===true,note:checks.storefront_image?'อัปโหลดรูปหน้าร้านสำเร็จแล้ว':'อัปโหลดรูปหน้าร้านจริง',page:'shop-setup'},
   {title:'รูปหน้าปก',done:checks.cover_image===true,note:checks.cover_image?'อัปโหลดรูปหน้าปกสำเร็จแล้ว':'อัปโหลดรูปหน้าปกจริง',page:'shop-setup'},
-  {title:'ตำแหน่งร้าน',done:checks.location===true,note:checks.location?'บันทึกพิกัดร้านแล้ว':'ปักหมุดตำแหน่งร้านบนแผนที่ Longdo',page:'shop-setup'},
+  {title:'ตำแหน่งร้าน',done:checks.location===true,note:checks.location?'บันทึกพิกัดร้านแล้ว':'ปักหมุดตำแหน่งร้านบน QueueGo Map',page:'shop-setup'},
   {title:isLaundry?'บริการฝากซักพร้อมขายอย่างน้อย 1 รายการ':'สินค้า/เมนูพร้อมขายอย่างน้อย 1 รายการ',done:checks.catalog===true||checks.product===true,note:(checks.catalog===true||checks.product===true)?(isLaundry?'มีบริการฝากซักพร้อมขายแล้ว':'มีสินค้า/เมนูพร้อมขายแล้ว'):(isLaundry?'เพิ่มบริการที่มีชื่อ ราคา และเปิดใช้งาน':'เพิ่มสินค้า/เมนูที่มีชื่อ ราคา และเปิดขาย'),page:isLaundry?'shop-laundry':'shop-products'}
  ];
  return {shop,products:[],steps,left:steps.filter(x=>!x.done).length,ready:readiness?.complete===true,readiness};
@@ -2295,7 +2319,7 @@ window.qgmSetupSteps=function(u,shop,products){
  {title:'สร้างบัญชีร้านค้า',done:true,note:'เข้าสู่ระบบบัญชีร้านค้าแล้ว'},
  {title:'ส่งใบสมัครร้านค้า',done:!!shop.id,note:shop.id?'ระบบได้รับข้อมูลร้านแล้ว':'บันทึกข้อมูลร้านเพื่อสร้างใบสมัคร',page:'shop-setup'},
  {title:'กรอกข้อมูลและรูปภาพร้าน',done:!missing.length&&!images.length,note:missing.concat(images).length?'กรุณาเพิ่ม '+missing.concat(images).join(' • '):'ข้อมูลติดต่อ ที่อยู่ และรูปภาพครบแล้ว',page:'shop-setup'},
- {title:'ปักหมุดตำแหน่งร้าน',done:qgIsValidShopCoordinate(data.lat,data.lng),note:qgIsValidShopCoordinate(data.lat,data.lng)?'บันทึกพิกัดร้านแล้ว':'เลือกตำแหน่งหน้าร้านบนแผนที่ Longdo แล้วบันทึก',page:'shop-setup'},
+ {title:'ปักหมุดตำแหน่งร้าน',done:qgIsValidShopCoordinate(data.lat,data.lng),note:qgIsValidShopCoordinate(data.lat,data.lng)?'บันทึกพิกัดร้านแล้ว':'เลือกตำแหน่งหน้าร้านบน QueueGo Map แล้วบันทึก',page:'shop-setup'},
  ...(qgmTopLevelShopCategory(data.category)==='laundry'?[{title:'เตรียมบริการฝากซัก',done:true,note:'หลังร้านผ่านอนุมัติ ให้ตั้งค่าบริการ ราคา และ Rider ในเมนูฝากซัก'}]:[{title:data.category==='grocery'?'เลือกสินค้าและใส่ราคาอย่างน้อย 1 รายการ':'เพิ่มสินค้าอย่างน้อย 1 รายการพร้อมรูป',done:products.some(p=>text(p.name)&&(data.category==='grocery'||text(p.image))&&Number(p.price)>0&&p.available!==false),note:data.category==='grocery'?'เลือกจากสินค้ากลาง เปิดขาย และใส่ราคาของร้าน':'เพิ่มชื่อสินค้า ราคา และรูปสินค้าอย่างน้อย 1 รายการ',page:'shop-products'}]),
  ...(qgmTopLevelShopCategory(data.category)==='market'?[{title:'ยืนยันร้านในตลาดสด',done:shop.market_membership_status==='approved',note:shop.market_membership_status==='approved'?'ผ่านการยืนยันตลาดแล้ว':'เลือกตลาด ระบุจุดขาย และแนบหลักฐานเพื่อให้แอดมินตรวจสอบ',page:'market-membership'}]:[]),
  {title:'รับการอนุมัติจากแอดมิน',done:u.status==='approved',note:u.status==='approved'?'ร้านผ่านการอนุมัติแล้ว':u.status==='suspended'?'บัญชีถูกระงับ กรุณาติดต่อแอดมิน':u.status==='rejected'?'ใบสมัครยังไม่ผ่าน กรุณาติดต่อแอดมินเพื่อสอบถามสิ่งที่ต้องแก้ไข':'เมื่อกรอกข้อมูลครบแล้ว รอแอดมินตรวจสอบใบสมัคร',page:'shop-support'}

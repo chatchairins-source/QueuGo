@@ -259,8 +259,58 @@ const QGCustomer=(()=>{
     if(!closed)track(o,ctx,ticket,key);
     if(o.status==='completed')await reviewForm(o,ticket,key);
   }
-  function track(o,ctx,ticket,key){const host=$('customer-tracking-map');if(!host)return;if(typeof longdo==='undefined'){const status=$('tracking-location-status');if(status)status.textContent='ยังโหลดแผนที่ไม่ได้ กรุณาลองเปิดออเดอร์ใหม่';return;}const map=new longdo.Map({placeholder:host,language:'th',zoom:14});map.Ui.LayerSelector.visible(false);let marker=null;const points=[];function point(lat,lon,title,color,record=true,html=''){if(!qgIsValidCoordinate(lat,lon,true))return null;const loc={lat:Number(lat),lon:Number(lon)};const iconHtml=html||`<div style="width:20px;height:20px;border-radius:50%;background:${color};border:3px solid white"></div>`;const m=new longdo.Marker(loc,{title,icon:{html:iconHtml}});map.Overlays.add(m);if(record)points.push(loc);return m}point(o.pickup_latitude,o.pickup_longitude,'ร้านค้า','#087556');point(o.delivery_latitude,o.delivery_longitude,'จุดส่ง','#e6002d');if(o.status==='searching_rider')point(o.pickup_latitude,o.pickup_longitude,'กำลังค้นหา Rider','',false,'<div class="qg-rider-search-map-pulse"><i></i><b></b><span></span></div>');if(points[0])map.location(points[0],true);
-    const draw=r=>{if(!owned(key,ticket)||!host.isConnected)return;const status=$('tracking-location-status');if(o.status==='searching_rider'){if(marker){map.Overlays.remove(marker);marker=null}if(status)status.textContent='กำลังค้นหา Rider ที่พร้อมรับงานใกล้ร้าน · ระบบจะส่งต่ออัตโนมัติ';return}const live=r&&qgIsValidCoordinate(r.latitude,r.longitude,true)&&!['completed','cancelled'].includes(o.status);if(marker){map.Overlays.remove(marker);marker=null}if(live){marker=point(r.latitude,r.longitude,'Rider · ตำแหน่งล่าสุด','#1677ff',false);if(status)status.textContent='ตำแหน่งล่าสุด · '+date(r.updated_at)+(Date.now()-new Date(r.updated_at).getTime()>120000?' · ยังไม่ได้อัปเดตใหม่':'')}else if(status)status.textContent=['completed','cancelled'].includes(o.status)?'ออเดอร์จบแล้ว':'รอข้อมูลตำแหน่งจริงจาก Rider'};draw(ctx.rider);cleanups.push(()=>{map.Overlays.clear();map.pause(true);host.replaceChildren()});if(!['completed','cancelled'].includes(o.status))poll(async()=>{const next=await context(o.id);draw(next.rider)},7000);
+  function track(o,ctx,ticket,key){
+    const host=$('customer-tracking-map'),Q=window.QueueGoMapWeb;
+    if(!host)return;
+    if(!Q||typeof maplibregl==='undefined'){
+      const status=$('tracking-location-status');
+      if(status)status.textContent='ยังโหลด QueueGo Map ไม่ได้ กรุณาลองเปิดออเดอร์ใหม่';
+      return;
+    }
+    const center=qgIsValidCoordinate(o.pickup_latitude,o.pickup_longitude,true)
+      ?{lat:Number(o.pickup_latitude),lng:Number(o.pickup_longitude)}
+      :qgIsValidCoordinate(o.delivery_latitude,o.delivery_longitude,true)
+        ?{lat:Number(o.delivery_latitude),lng:Number(o.delivery_longitude)}
+        :{lat:15,lng:101};
+    const map=Q.create(host,{...center,zoom:14});
+    if(!map)return;
+    let riderMarker=null;
+    const staticPoints=[];
+    const add=(lat,lng,title,color,record=true,html='')=>{
+      if(!qgIsValidCoordinate(lat,lng,true))return null;
+      const p={lat:Number(lat),lng:Number(lng)};
+      const m=Q.marker(map,{...p,title,color,html});
+      if(record)staticPoints.push(p);
+      return m;
+    };
+    add(o.pickup_latitude,o.pickup_longitude,'ร้านค้า','#087556');
+    add(o.delivery_latitude,o.delivery_longitude,'จุดส่ง','#e6002d');
+    if(o.status==='searching_rider'){
+      add(o.pickup_latitude,o.pickup_longitude,'กำลังค้นหา Rider','#e6002d',false,'<div class="qg-rider-search-map-pulse"><i></i><b></b><span></span></div>');
+    }
+    map.once('load',()=>Q.fit(map,staticPoints,{padding:44,maxZoom:15,duration:0}));
+    const draw=r=>{
+      if(!owned(key,ticket)||!host.isConnected)return;
+      const status=$('tracking-location-status');
+      if(o.status==='searching_rider'){
+        try{riderMarker?.remove?.()}catch(_){}
+        riderMarker=null;
+        if(status)status.textContent='กำลังค้นหา Rider ที่พร้อมรับงานใกล้ร้าน · ระบบจะส่งต่ออัตโนมัติ';
+        return;
+      }
+      const live=r&&qgIsValidCoordinate(r.latitude,r.longitude,true)&&!['completed','cancelled'].includes(o.status);
+      try{riderMarker?.remove?.()}catch(_){}
+      riderMarker=null;
+      if(live){
+        riderMarker=add(r.latitude,r.longitude,'Rider · ตำแหน่งล่าสุด','#1677ff',false);
+        if(status)status.textContent='ตำแหน่งล่าสุด · '+date(r.updated_at)+(Date.now()-new Date(r.updated_at).getTime()>120000?' · ยังไม่ได้อัปเดตใหม่':'');
+      }else if(status){
+        status.textContent=['completed','cancelled'].includes(o.status)?'ออเดอร์จบแล้ว':'รอข้อมูลตำแหน่งจริงจาก Rider';
+      }
+    };
+    draw(ctx.rider);
+    cleanups.push(()=>{try{riderMarker?.remove?.()}catch(_){}Q.destroy(map);host.replaceChildren()});
+    if(!['completed','cancelled'].includes(o.status))poll(async()=>{const next=await context(o.id);draw(next.rider)},7000);
   }
   async function reviewForm(o,ticket,key,edit=false){
     const mine=await db('reviews?select=*&order_id=eq.'+encodeURIComponent(o.id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId)+'&limit=1');
