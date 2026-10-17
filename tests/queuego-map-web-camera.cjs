@@ -96,6 +96,22 @@ ok(easeCalls[0].duration>=320,'follow rotation should not snap instantly');
 ok(easeCalls[0].easing(.25)>.03,'camera easing must retain non-zero edge velocity between GPS samples');
 ok(typeof Q.moveMarkerSmooth==='function','QueueGo Map must expose cancellable smooth marker movement');
 
+const fastTurnCalls=[],slowTurnCalls=[];
+const fastTurnMap={
+  bearing:0,
+  easeTo:opts=>{fastTurnCalls.push(opts);if(Number.isFinite(opts.bearing))fastTurnMap.bearing=opts.bearing},
+  getBearing:()=>fastTurnMap.bearing
+};
+const slowTurnMap={
+  bearing:0,
+  easeTo:opts=>{slowTurnCalls.push(opts);if(Number.isFinite(opts.bearing))slowTurnMap.bearing=opts.bearing},
+  getBearing:()=>slowTurnMap.bearing
+};
+const fastTurn=Q.followNavigationCamera(fastTurnMap,{lat:15,lng:103,speed:20,bearing:90,accuracy:5},[],{duration:520});
+const slowTurn=Q.followNavigationCamera(slowTurnMap,{lat:15,lng:103,speed:3,bearing:90,accuracy:5},[],{duration:520});
+ok(fastTurn.bearing>slowTurn.bearing,'high-speed free-drive bearing must react more strongly to the same turn');
+ok(fastTurnCalls[0].duration<slowTurnCalls[0].duration,'high-speed camera rotation must complete faster than low-speed rotation');
+
 Q.setNavigationFollow(map,false);
 eq(Q.followNavigationCamera(map,{lat:15,lng:103.003,speed:8,bearing:90},straight),null,'free pan must suspend automatic follow');
 Q.setNavigationFollow(map,true);
@@ -141,7 +157,7 @@ ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0025,speed:8,bearing:90,a
 eq(gestureMap.easeCalls.length,duringPinchCalls,'automatic camera writes must pause while fingers are rotating/zooming the map');
 gestureMap.handlers.rotateend({originalEvent:{touches:[]}});
 ok(gestureMap.easeCalls.length>duringPinchCalls,'gesture release must smoothly re-anchor the follow camera');
-ok(gestureMap.easeCalls.at(-1).duration>=320,'gesture release rotation must be animated, not snapped');
+ok(gestureMap.easeCalls.at(-1).duration>=220,'gesture release rotation must remain animated even when speed-aware turn response is fast');
 gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
 eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.003,speed:8,bearing:90,accuracy:5},straight),null,'one-finger pan should still enter free pan');
 
