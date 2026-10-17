@@ -133,13 +133,27 @@ const navCameraEasing=t=>{
   // a sequence of stop/start camera animations.
   return .24*x+.76*cubic;
 };
-function navRotationDuration(currentBearing,targetBearing,cadenceMs,fallback=420){
-  if(!Number.isFinite(Number(currentBearing))||!Number.isFinite(Number(targetBearing)))return Math.max(360,Math.min(1050,Number(fallback)||520));
+function navRotationDuration(currentBearing,targetBearing,cadenceMs,fallback=420,speed=null){
+  const spd=Number.isFinite(Number(speed))&&Number(speed)>=0?Number(speed):null;
+  const profile=spd==null
+    ? {min:420,max:900,cadence:.90,base:340,gain:6.2}
+    : spd>=18
+      ? {min:220,max:460,cadence:.58,base:170,gain:3.7}
+      : spd>=11
+        ? {min:260,max:540,cadence:.64,base:200,gain:4.1}
+        : spd>=5
+          ? {min:310,max:660,cadence:.72,base:240,gain:4.8}
+          : spd>=2
+            ? {min:360,max:760,cadence:.80,base:290,gain:5.4}
+            : {min:420,max:900,cadence:.90,base:340,gain:6.2};
+  if(!Number.isFinite(Number(currentBearing))||!Number.isFinite(Number(targetBearing))){
+    return Math.max(profile.min,Math.min(profile.max,Number(fallback)||520));
+  }
   const angle=Math.abs(navShortestDelta(currentBearing,targetBearing));
   const cadence=Number.isFinite(Number(cadenceMs))&&Number(cadenceMs)>0?Number(cadenceMs):Number(fallback)||520;
-  const cadenceDuration=Math.max(520,Math.min(1150,Math.round(cadence*1.08)));
-  const angleDuration=Math.max(520,Math.min(1200,Math.round(420+angle*8.5)));
-  return Math.max(cadenceDuration,angleDuration);
+  const cadenceDuration=Math.max(profile.min,Math.min(profile.max,Math.round(cadence*profile.cadence)));
+  const angleDuration=Math.max(profile.min,Math.min(profile.max,Math.round(profile.base+angle*profile.gain)));
+  return Math.max(profile.min,Math.min(profile.max,Math.max(cadenceDuration,angleDuration)));
 }
 function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=[],previousBearing=null,baseZoom=17}={}){
   if(!valid(lat,lng))return null;
@@ -155,13 +169,13 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
     if(future&&navDistanceMeters(reliable.snapped,future)>=5){
       const futureBearing=navBearing(reliable.snapped,future),delta=Math.max(-70,Math.min(70,navShortestDelta(routeBearing,futureBearing)));
       const bounded=navNormalizeBearing(routeBearing+delta);
-      const blend=spd==null?.30:spd>=18?.46:spd>=11?.44:spd>=5?.40:spd>=2?.30:.18;
+      const blend=spd==null?.32:spd>=18?.62:spd>=11?.58:spd>=5?.50:spd>=2?.36:.22;
       routeBearing=navSmoothBearing(routeBearing,bounded,blend);
     }
   }
   const gpsBearing=Number.isFinite(Number(bearing))?navNormalizeBearing(Number(bearing)):null;
   const desiredBearing=routeBearing!=null?routeBearing:(spd==null||spd<.83?previousBearing:(gpsBearing??previousBearing));
-  const smoothing=spd==null?.28:spd>=18?.46:spd>=11?.42:spd>=5?.36:spd>=2?.28:.20;
+  const smoothing=spd==null?.30:spd>=18?.68:spd>=11?.62:spd>=5?.52:spd>=2?.38:.24;
   const smoothedBearing=navSmoothBearing(previousBearing,desiredBearing,smoothing);
   const cameraBearing=smoothedBearing??0;
   let zoom=remaining!=null&&remaining<=60?19:remaining!=null&&remaining<=180?18:spd==null?baseZoom:spd>=18?15:spd>=11?16:spd>=5?17:spd<=1.5?Math.max(baseZoom,18):baseZoom;
@@ -275,7 +289,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   const cadence=state.lastAppliedAt?Math.max(0,now-state.lastAppliedAt):duration;
   const smoothDuration=force
     ? Math.max(320,Math.min(560,Number(duration)||420))
-    : navRotationDuration(previousBearing,target.bearing,cadence,duration);
+    : navRotationDuration(previousBearing,target.bearing,cadence,duration,fix?.speed);
   try{
     map.easeTo({
       center:[target.center.lng,target.center.lat],
