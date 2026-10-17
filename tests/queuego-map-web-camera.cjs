@@ -82,6 +82,7 @@ const map={
   bearing:90,
   easeTo:opts=>{easeCalls.push(opts);if(Number.isFinite(opts.bearing))map.bearing=opts.bearing},
   getBearing:()=>map.bearing,
+  getContainer:()=>({clientHeight:1000}),
   fitBounds:(bounds,opts)=>{map.fit={bounds,opts}}
 };
 const followed=Q.followNavigationCamera(map,{
@@ -95,17 +96,25 @@ ok(typeof easeCalls[0].easing==='function','follow rotation must use a smooth ea
 ok(easeCalls[0].duration>=320,'follow rotation should not snap instantly');
 ok(easeCalls[0].easing(.25)>.03,'camera easing must retain non-zero edge velocity between GPS samples');
 ok(typeof Q.moveMarkerSmooth==='function','QueueGo Map must expose cancellable smooth marker movement');
+eq(followed.animationDuration,easeCalls[0].duration,'follow result must expose the exact camera duration used to synchronize the Rider puck');
+eq(easeCalls[0].center[0],103.0020,'follow camera center must stay on Rider longitude instead of projected look-ahead');
+ok(Math.abs(easeCalls[0].center[1]-15.00001)<1e-9,'follow camera center must stay on Rider latitude');
+eq(easeCalls[0].offset[0],0,'follow anchor must stay horizontally centered');
+ok(easeCalls[0].offset[1]>=180&&easeCalls[0].offset[1]<=260,'follow anchor must keep Rider in the lower navigation zone');
+eq(Q.navigationScreenAnchorRatio(8),0.72,'medium-speed screen anchor ratio');
 
 const fastTurnCalls=[],slowTurnCalls=[];
 const fastTurnMap={
   bearing:0,
   easeTo:opts=>{fastTurnCalls.push(opts);if(Number.isFinite(opts.bearing))fastTurnMap.bearing=opts.bearing},
-  getBearing:()=>fastTurnMap.bearing
+  getBearing:()=>fastTurnMap.bearing,
+  getContainer:()=>({clientHeight:1000})
 };
 const slowTurnMap={
   bearing:0,
   easeTo:opts=>{slowTurnCalls.push(opts);if(Number.isFinite(opts.bearing))slowTurnMap.bearing=opts.bearing},
-  getBearing:()=>slowTurnMap.bearing
+  getBearing:()=>slowTurnMap.bearing,
+  getContainer:()=>({clientHeight:1000})
 };
 const fastTurn=Q.followNavigationCamera(fastTurnMap,{lat:15,lng:103,speed:20,bearing:90,accuracy:5},[],{duration:520});
 const slowTurn=Q.followNavigationCamera(slowTurnMap,{lat:15,lng:103,speed:3,bearing:90,accuracy:5},[],{duration:520});
@@ -130,6 +139,7 @@ class GestureMap {
   easeTo(opts){this.easeCalls.push(opts);if(Number.isFinite(opts.zoom))this.zoom=opts.zoom;if(Number.isFinite(opts.bearing))this.bearing=opts.bearing}
   getZoom(){return this.zoom}
   getBearing(){return this.bearing}
+  getContainer(){return {clientHeight:1000}}
   setMaxPitch(v){this.maxPitch=v}
   isStyleLoaded(){return true}
   getLayer(){return null}
@@ -146,6 +156,15 @@ context.maplibregl={
 window.maplibregl=context.maplibregl;
 const host={classList:{add(){}},replaceChildren(){}};
 const gestureMap=Q.create(host,{lat:15,lng:103,zoom:17,navigation:true});
+
+// Startup/refresh regression: manipulating the map before the first GPS fix must not
+// silently abandon FOLLOW. The first valid fix should still own the camera.
+gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
+gestureMap.handlers.rotatestart({originalEvent:{touches:[{},{}]}});
+gestureMap.handlers.rotateend({originalEvent:{touches:[]}});
+ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0015,speed:8,bearing:90,accuracy:5},straight)!=null,
+  'pre-fix rotate/pan must retain follow ownership until first GPS fix');
+
 Q.followNavigationCamera(gestureMap,{lat:15,lng:103.002,speed:8,bearing:90,accuracy:5},straight,{force:true});
 gestureMap.zoom=18.4;
 gestureMap.handlers.zoomend({originalEvent:{touches:[]}});
@@ -160,6 +179,12 @@ ok(gestureMap.easeCalls.length>duringPinchCalls,'gesture release must smoothly r
 ok(gestureMap.easeCalls.at(-1).duration>=220,'gesture release rotation must remain animated even when speed-aware turn response is fast');
 gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
 eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.003,speed:8,bearing:90,accuracy:5},straight),null,'one-finger pan should still enter free pan');
+
+Q.setNavigationFollow(gestureMap,false);
+gestureMap.handlers.rotatestart({originalEvent:{touches:[{},{}]}});
+gestureMap.handlers.rotateend({originalEvent:{touches:[]}});
+ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0035,speed:8,bearing:90,accuracy:5},straight)!=null,
+  'explicit rotate transform must recover follow after dragstart ordering');
 
 Q.setNavigationMode(gestureMap,false,{center:{lat:15,lng:103.004},zoom:15,duration:300});
 eq(gestureMap.easeCalls.at(-1).bearing,0,'idle Rider map must return north-up');

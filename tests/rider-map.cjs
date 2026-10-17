@@ -5,7 +5,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('new longdo.Map'),false);
  eq(source.includes('https://api.longdo.com/map/?key='),false);
  eq(source.includes('QueueGoMapWeb'),true);
- const riderMarkerFn=source.slice(source.indexOf('function placeRiderMarker()'),source.indexOf('function qgRouteBundleHTML()'));
+ const riderMarkerFn=source.slice(source.indexOf('function placeRiderMarker('),source.indexOf('function qgRouteBundleHTML()'));
  eq(riderMarkerFn.includes('QueueGoMapWeb.moveMarker'),true);
  eq(riderMarkerFn.includes('qgRemoveOverlay(S.riderMarker)'),false);
  const activeRouteFn=source.slice(source.indexOf('function drawActiveRoute()'),source.indexOf('/* ---------- sheet'));
@@ -16,7 +16,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("'route': '<svg class=\"ico\""),true);
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
- eq(source.includes('queuego-map-web.js?v=20261017-9'),true);
+ eq(source.includes('queuego-map-web.js?v=20261017-10'),true);
  eq(source.includes('maximumAge:0'),true);
  eq(source.includes('class="qg-speed-pill"'),true);
  eq(source.includes('<div class="qg-brand-pill">'),false);
@@ -33,7 +33,14 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("aria-label',riderHomeDockCollapsed?'เปิดการ์ดกลับขนาดเดิม':'ย่อการ์ด'"),true);
  eq(source.includes('speed=meters<1.5?0:Math.min(55,meters/seconds)'),true);
  eq(source.includes('riderGpsCadenceMs'),true);
- eq(source.includes('markerDuration=Math.max(260,Math.min(1250'),true);
+ eq(source.includes('Math.max(260,Math.min(1250,Math.round(riderGpsCadenceMs*1.05)))'),true);
+ eq(source.includes('function placeRiderMarker(durationOverride=null)'),true);
+ eq(source.includes('placeRiderMarker(followed?.animationDuration)'),true);
+ eq(source.includes('function qgRiderCameraBottomInset()'),true);
+ eq(source.includes('function qgFollowRiderCamera(force=false,duration=420)'),true);
+ eq(source.includes('bottomInset:qgRiderCameraBottomInset()'),true);
+ eq(source.includes('requestAnimationFrame(()=>qgFollowRiderCamera(true,360))'),true);
+ eq(source.includes('qgFollowRiderCamera(!hadPosition,hadPosition?420:520)'),true);
  eq(source.includes('background:#e6002d'),true);
  eq(source.includes("rotationAlignment:'map'"),true);
 
