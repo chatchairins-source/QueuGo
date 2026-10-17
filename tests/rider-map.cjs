@@ -28,6 +28,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('RIDER_ROUTE_REROUTE_HITS=3'),true);
  eq(source.includes('RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000'),true);
  eq(source.includes('function qgRiderRouteNeedsReroute('),true);
+ eq(source.includes("const directionConflict=decision?.routeBearingRejected===true"),true);
  eq(source.includes('maximumAge:0'),true);
  eq(source.includes('class="qg-speed-pill"'),true);
  eq(source.includes('<div class="qg-brand-pill">'),false);
@@ -70,7 +71,9 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
   setCenter(){},
   setNavigationMode:(m,active,opts)=>{cameraModes.push({m,active,opts});return !!active},
   followNavigationCamera:(m,pos,route,opts)=>{cameraFollows.push({m,pos,route,opts});return {center:pos}},
-  navigationCameraDecision:({lat})=>({routeMatch:{offRouteMeters:Number(lat)>=13.5?90:5}}),
+  navigationCameraDecision:({lat})=>Number(lat)>=13.7
+    ? {routeMatch:{offRouteMeters:5},routeBearingRejected:true}
+    : {routeMatch:{offRouteMeters:Number(lat)>=13.5?90:5},routeBearingRejected:false},
   marker(){return {remove(){}}}
  };
  const session={authUserId:'a',sessionId:'sa'},S={
@@ -127,6 +130,15 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(S.routeOverlays.length,1);
  eq(label.textContent,'ไปร้าน • 1.2 กม. • 4 นาที');
  eq(timers.size,0);
+
+ // A nearby parallel/opposite route must not suppress reroute evidence.
+ run('riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0');
+ S.pos={lat:13.7,lng:100,accuracy:5,speed:6,bearing:180};
+ eq(run('qgRiderRouteNeedsReroute(S.pos,riderRouteCache.scope,S.map)'),false);
+ eq(run('qgRiderRouteNeedsReroute(S.pos,riderRouteCache.scope,S.map)'),false);
+ eq(run('qgRiderRouteNeedsReroute(S.pos,riderRouteCache.scope,S.map)'),true);
+ run('riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0');
+ S.pos={lat:13,lng:100,accuracy:5,speed:6,bearing:90};
 
  for(let i=0;i<20;i++)await run('drawActiveRoute()');
  eq(requests.length,1);
