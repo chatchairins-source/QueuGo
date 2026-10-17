@@ -239,7 +239,7 @@ assert(
   routeCache.includes('navigationHaversineMeters(entry.origin, from)')&&
   routeCache.includes('createdAtMillis')&&
   integration.includes('CachingNavigationRouteProvider(')&&
-  integration.includes('remember(routeKey, stateKey)'),
+  integration.includes('remember(routeBaseUrl, stateKey)'),
   'Future route prefetch must be reusable only near the planned origin, expire safely, bypass reroutes and remain scoped to one Rider session');
 
 assert(
