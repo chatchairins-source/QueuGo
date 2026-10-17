@@ -202,11 +202,30 @@ internal fun navigationRouteBearing(
     }
 
     val forwardBearing = navigationBearingDegrees(match.snapped, future)
+    val boundedForwardBearing = navigationBoundAnticipatedBearing(
+        currentBearing = currentBearing,
+        futureBearing = forwardBearing
+    )
     return smoothNavigationBearing(
         previous = currentBearing,
-        target = forwardBearing,
+        target = boundedForwardBearing,
         factor = navigationTurnAnticipationFactor(speedMetersPerSecond)
     ) ?: currentBearing
+}
+
+internal fun navigationBoundAnticipatedBearing(
+    currentBearing: Float,
+    futureBearing: Float,
+    maxAnticipationDegrees: Float = 70f
+): Float {
+    val current = normalizeNavigationBearing(currentBearing)
+    val future = normalizeNavigationBearing(futureBearing)
+    val delta = ((future - current + 540f) % 360f) - 180f
+    val boundedDelta = delta.coerceIn(
+        -maxAnticipationDegrees.coerceIn(20f, 90f),
+        maxAnticipationDegrees.coerceIn(20f, 90f)
+    )
+    return normalizeNavigationBearing(current + boundedDelta)
 }
 
 internal fun navigationBearingLookAheadMeters(
