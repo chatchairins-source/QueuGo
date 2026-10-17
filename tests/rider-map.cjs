@@ -43,6 +43,9 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('bottomInset:qgRiderCameraBottomInset()'),true);
  eq(source.includes('requestAnimationFrame(()=>qgFollowRiderCamera(true,360))'),true);
  eq(source.includes('qgFollowRiderCamera(!hadPosition,hadPosition?420:520)'),true);
+ eq(source.includes('function qgResolveRiderTravelBearing('),true);
+ eq(source.includes('Math.abs(qgRiderBearingDelta(motion,raw))>65'),true);
+ eq((source.match(/followNavigationCamera/g)||[]).length,1);
  eq(source.includes('background:#e6002d'),true);
  eq(source.includes("rotationAlignment:'map'"),true);
 
@@ -76,6 +79,30 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  });
  vm.runInContext(source.slice(source.indexOf('const LONGDO_API_KEY='),source.indexOf('function initMap()')),ctx);
  vm.runInContext(source.slice(source.indexOf('function qgRemoveOverlay('),source.indexOf('/* ---------- sheet')),ctx);
+ const bearingCtx=vm.createContext({
+  Math,Number,
+  validRiderCoordinate:(lat,lng)=>Number.isFinite(Number(lat))&&Number.isFinite(Number(lng)),
+  haversineKm:(lat1,lng1,lat2,lng2)=>{
+    const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+ });
+ vm.runInContext(
+   source.slice(source.indexOf('function qgNormalizeRiderBearing'),source.indexOf('function syncRiderNavigationCameraMode')),
+   bearingCtx
+ );
+ const fused=vm.runInContext(
+   "qgResolveRiderTravelBearing({lat:15,lng:103,bearing:90,timestamp:1000},15,103.00005,270,10,1500)",
+   bearingCtx
+ );
+ eq(fused>80&&fused<100,true);
+ const closeHeading=vm.runInContext(
+   "qgResolveRiderTravelBearing({lat:15,lng:103,bearing:90,timestamp:1000},15,103.00005,95,10,1500)",
+   bearingCtx
+ );
+ eq(closeHeading,95);
+
  const run=s=>vm.runInContext(s,ctx);
 
  gate=deferred();
