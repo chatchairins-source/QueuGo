@@ -48,13 +48,13 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Active PR: #414
 - Branch: `work-native-rider-queuego-route-authority-20261017`
 - Previous failing HEAD: `4963b9d4df263ca55d21fd1173dc0121cfcde20c`
-- Current HEAD: `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb`
-- Current CI: exact-head run pending; previous QueueGo Map Engine Buriram run 39048730149: FAILURE
-- Fix/integration commits: `297f9e4a918b8bdab86cc4abebb38d3176ab1842`, `735cdf215ffe0334839e31f00172116080dcc950`, `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb`
-- Root cause: branch integration gap leaves `admin/index.html` referencing `../catalog/grocery.css?v=20261012` while that local asset is absent on the branch.
-- Evidence: job 117442661425 fails source-integrity with `Broken reference: admin/index.html -> ../catalog/grocery.css?v=20261012`.
+- Current HEAD: `7d0aa2bdeee087685cc350996b70b88dc9abe8f7`
+- Current CI: QueueGo Map Engine Buriram run 39050133344: IN PROGRESS on `7d0aa2bdeee087685cc350996b70b88dc9abe8f7`; previous exact-head run 39050021669 failed on the next missing catalog asset
+- Fix/integration commits: `297f9e4a918b8bdab86cc4abebb38d3176ab1842`, `735cdf215ffe0334839e31f00172116080dcc950`, `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb`, `7d0aa2bdeee087685cc350996b70b88dc9abe8f7`
+- Root cause: branch integration gap carried current `admin/index.html` without the complete current catalog asset set. First missing `grocery.css`, then `normalize.js`; both were restored from exact current-main blobs without changing navigation logic.
+- Evidence: job 117442661425 first failed on missing `grocery.css`; run 39050021669 then advanced and failed on missing `normalize.js`, confirming one incomplete asset-set integration cause.
 - Passenger Ride integration note: #414 is a descendant of #326; PR #387 later production-backend delta was forward-ported via its two new migrations while retaining the newer env-only quote handler.
-- NEXT: obtain exact-head gates for `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb`; if source-integrity advances to another missing integration asset, fix only from current main/newest compatible successor.
+- NEXT: finish run 39050133344 on `7d0aa2bdeee087685cc350996b70b88dc9abe8f7`; only branch Express/other dependent native work from a green successor checkpoint.
 - Release blockers after source gate: Native Pilot on exact successor, physical GPS/road/navigation acceptance, QueueGo Map runtime/offline release gates.
 - Superseded: PR #412 is an ancestor; do not restart there.
 
@@ -120,10 +120,10 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - NEXT: source-side release readiness can be inspected, but publication cannot be marked DONE without signed/Play evidence.
 
 ### 11. Express
-- Status: IN PROGRESS (discovery)
-- Current dedicated active successor: not yet proven from open-PR inventory.
-- Known architecture: shared driver platform and continuous dispatch contain Express-related service concepts, but no dedicated newest Express release PR was identified during this checkpoint.
-- NEXT: search current commits/branches/code for the newest Express implementation before writing code. Do not create a duplicate service flow.
+- Status: IN PROGRESS
+- Discovery result: no `express` branch/commit and no Express/parcel/courier implementation string was found in the current Rider/Customer successor files inspected (`Models.kt`, `QueueGoApi.kt`, `QueueGoRiderApp.kt`, Customer app, Web index).
+- Dependency: must branch from the newest green native successor that already contains Continuous Dispatch + Credit + Passenger Ride + QueueGo navigation. Current candidate is PR #414 after its exact-head CI turns green.
+- NEXT: after #414 is green, create one Express successor from that exact HEAD and add the minimum real 1-pickup/1-drop backend/domain contract first; do not invent a second dispatcher.
 
 ### 12. Laundry
 - Status: IN PROGRESS (release-line reconciliation)
