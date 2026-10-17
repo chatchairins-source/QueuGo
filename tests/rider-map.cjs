@@ -19,6 +19,9 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
  eq(source.includes('queuego-map-web.js?v=20261017-11'),true);
+ eq(source.includes('queuego-map-service.js?v=20261017-1'),true);
+ eq(source.includes('api.longdo.com/RouteService/geojson/route'),false);
+ eq(source.includes("service.call('route'"),true);
  eq(source.includes('maximumAge:0'),true);
  eq(source.includes('class="qg-speed-pill"'),true);
  eq(source.includes('<div class="qg-brand-pill">'),false);
@@ -68,16 +71,16 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
   activeOrder:{id:'o',status:'assigned',pickup_latitude:13.1,pickup_longitude:100.1,delivery_latitude:13.2,delivery_longitude:100.2},
   routeOverlays:[],jobMarkers:[],watchId:null
  };
- const geo={features:[{properties:{distance:1200,interval:240},geometry:{type:'LineString',coordinates:[[100,13],[100.1,13.1]]}}]};
+ const routeResponse={routes:[{distance:1200,duration:240,route_id:'qg-route-1',geometry:{type:'LineString',coordinates:[[100,13],[100.1,13.1]]}}]};
+ const routeService={call:async(action,body,options)=>{requests.push({action,body,options});if(gate)return gate.promise;return routeResponse}};
  const ctx=vm.createContext({
-  S,window:{QueueGoMapWeb:Q},Date:class extends Date{static now(){return now}},Promise,AbortController,Number,String,JSON,encodeURIComponent,
+  S,window:{QueueGoMapWeb:Q,QueueGoMapService:routeService},Date:class extends Date{static now(){return now}},Promise,AbortController,Number,String,JSON,encodeURIComponent,
   document:{hidden:false,getElementById:id=>id==='route-badge'?badge:label},
   navigator:{onLine:true},
   riderSessionMatches:s=>s===S.session,statusFromRow:o=>o.status,haversineKm:(a,b,c,d)=>Math.hypot(a-c,b-d)*111,
-  setTimeout:f=>{timers.set(++serial,f);return serial},clearTimeout:id=>timers.delete(id),
-  fetch:async(url,opts)=>{requests.push({url,opts});if(gate)return gate.promise;return {ok:true,json:async()=>geo}}
+  setTimeout:f=>{timers.set(++serial,f);return serial},clearTimeout:id=>timers.delete(id)
  });
- vm.runInContext(source.slice(source.indexOf('const LONGDO_API_KEY='),source.indexOf('function initMap()')),ctx);
+ vm.runInContext(source.slice(source.indexOf('const RIDER_CAMERA_SMOOTHNESS_TEST_MODE='),source.indexOf('function initMap()')),ctx);
  vm.runInContext(source.slice(source.indexOf('function qgRemoveOverlay('),source.indexOf('/* ---------- sheet')),ctx);
  const bearingCtx=vm.createContext({
   Math,Number,
@@ -109,8 +112,10 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  const first=run('drawActiveRoute()');
  for(let i=0;i<20;i++)run('drawActiveRoute()');
  eq(requests.length,1);
- eq(new URL(requests[0].url).searchParams.get('tlat'),'13.1');
- gate.resolve({ok:true,json:async()=>geo});gate=null;await first;
+ eq(requests[0].action,'route');
+ eq(requests[0].body.profile,'rider_delivery');
+ eq(requests[0].body.points[1].lat,13.1);
+ gate.resolve(routeResponse);gate=null;await first;
  eq(routeAdds.length,1);
  eq(S.routeOverlays.length,1);
  eq(label.textContent,'ไปร้าน • 1.2 กม. • 4 นาที');
@@ -124,12 +129,12 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
 
  // Changing pickup to delivery invalidates the old request immediately.
  now+=15000;S.pos={lat:13.002,lng:100};gate=deferred();
- const old=run('drawActiveRoute()'),oldSignal=requests.at(-1).opts.signal;
+ const old=run('drawActiveRoute()'),oldSignal=requests.at(-1).options.signal;
  S.activeOrder.status='in_progress';const oldGate=gate;gate=null;
  await run('drawActiveRoute()');
  eq(oldSignal.aborted,true);
- eq(new URL(requests.at(-1).url).searchParams.get('tlat'),'13.2');
- const count=routeAdds.length;oldGate.resolve({ok:true,json:async()=>geo});await old;
+ eq(requests.at(-1).body.points[1].lat,13.2);
+ const count=routeAdds.length;oldGate.resolve(routeResponse);await old;
  eq(routeAdds.length,count);
  eq(label.textContent.startsWith('ไปหาลูกค้า'),true);
 
@@ -138,7 +143,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  S.openJobs=[{order:{id:'offer',status:'searching_rider',pickup_latitude:14,pickup_longitude:101,delivery_latitude:14.5,delivery_longitude:101.5}}];
  S.pos={lat:13,lng:100};
  await run('drawActiveRoute()');
- eq(new URL(requests.at(-1).url).searchParams.get('tlat'),'14');
+ eq(requests.at(-1).body.points[1].lat,14);
  eq(label.textContent.startsWith('ไปร้าน'),true);
  eq(fits.at(-1).points[0].lat,13);
  eq(fits.at(-1).points[1].lat,14);
@@ -153,27 +158,27 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
 
  // Completing a job while the provider is pending cannot redraw its route.
  now+=15000;S.pos={lat:13.003,lng:100};gate=deferred();
- const retiring=run('drawActiveRoute()'),retiredSignal=requests.at(-1).opts.signal;
+ const retiring=run('drawActiveRoute()'),retiredSignal=requests.at(-1).options.signal;
  S.activeOrder=null;run('syncRiderNavigationCameraMode(true)');await run('drawActiveRoute()');
  eq(run('RIDER_CAMERA_SMOOTHNESS_TEST_MODE'),true);
  eq(cameraModes.at(-1).active,true);
  eq(retiredSignal.aborted,true);
- gate.resolve({ok:true,json:async()=>geo});gate=null;await retiring;
+ gate.resolve(routeResponse);gate=null;await retiring;
  eq(S.routeOverlays.length,0);
  eq(badge.style.display,'none');
 
  // Failed routing is explicitly an error, never a fabricated straight-line route.
  S.activeOrder={id:'new',status:'assigned',pickup_latitude:14,pickup_longitude:101};
- ctx.fetch=async()=>({ok:true,json:async()=>({features:[]})});
+ ctx.window.QueueGoMapService.call=async()=>({routes:[]});
  await run('drawActiveRoute()');
  eq(label.textContent.includes('โหลดเส้นทางไม่สำเร็จ'),true);
  eq(S.routeOverlays.length,0);
 
  // Provider timeout releases the request so the next attempt can recover.
- ctx.fetch=async(_u,{signal})=>new Promise((_r,reject)=>signal.addEventListener('abort',()=>reject(Error('timeout')),{once:true}));
+ ctx.window.QueueGoMapService.call=async(_action,_body,{signal})=>new Promise((_r,reject)=>signal.addEventListener('abort',()=>reject(Error('timeout')),{once:true}));
  const timeout=run('drawActiveRoute()');for(const fn of [...timers.values()])fn();await timeout;
  eq(timers.size,0);
- ctx.fetch=async()=>({ok:true,json:async()=>geo});
+ ctx.window.QueueGoMapService.call=async()=>routeResponse;
  await run('drawActiveRoute()');
  eq(S.routeOverlays.length,1);
 
@@ -210,5 +215,5 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(writes.length,1);writeGate.resolve();await burst;
  eq(writes.length,2);eq(writes[1].opts.body.latitude,13.19);eq(writes[1].path,'rider_profiles?user_id=eq.rider');
 
- console.log(JSON.stringify({checks,failures:0,scope:'QueueGo MapLibre Rider renderer + idle normal camera/active-job follow + route coalescing/cancellation/timeout/GPS ownership; legacy Longdo visual map forbidden, route provider remains legacy until QueueGo Map Engine release gate'}));
+ console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Rider renderer + QueueGo sole route authority + local route matching/camera + route coalescing/cancellation/timeout/GPS ownership; no external RouteService fallback'}));
 })().catch(e=>{console.error(e);process.exit(1)});
