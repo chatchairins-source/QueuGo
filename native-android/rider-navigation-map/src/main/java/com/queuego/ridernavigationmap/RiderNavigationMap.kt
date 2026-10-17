@@ -678,6 +678,9 @@ private class RiderNavigationMapHolder {
     fun retainAcrossVisibilityLoss() {
         idleCameraGeneration += 1
         surfaceVisible = false
+        cancelCameraBearingAnimation()
+        navigationTransformGestureActive = false
+        navigationTransformGestureGeneration += 1
         puckFreshnessGeneration += 1
         rendererWatchGeneration += 1
         // Tab switches and ordinary background/foreground cycles keep the SDK renderer alive.
@@ -1365,6 +1368,9 @@ private class RiderNavigationMapHolder {
         }
         riderMarkerAnimator?.cancel()
         riderMarkerAnimator = null
+        cancelCameraBearingAnimation()
+        clearNavigationGestureOverrides()
+        lastCameraBearingAnimationAtMs = 0L
         routeLines.clear()
         renderedRouteSegments = emptyList()
         stopPins.clear()
