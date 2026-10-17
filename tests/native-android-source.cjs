@@ -391,7 +391,7 @@ ok(riderSessionStore.includes('saveHomeSnapshot(')&&riderSessionStore.includes('
 ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.includes('android:alwaysRetainTaskState="true"'),'Rider launcher must reuse its existing task instead of creating a fresh work activity after app switching');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
 const customerManifest=read('customer/src/main/AndroidManifest.xml');
-ok(customerManifest.includes('longdo.map.key')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer Longdo picker must declare map key and location permission');
+ok(customerManifest.includes('ACCESS_FINE_LOCATION')&&customerBuild.includes('implementation(project(":rider-maplibre-osm"))'),'native Customer QueueGo Map picker must declare location permission and MapLibre module');
 ok(source.includes('deviceLocation')&&source.includes('setLocation(MapLocation')&&source.includes('ldmap.removePin')&&source.includes('pushPin'),'native Rider map must use Android GPS and show rider/job pins');
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
@@ -415,7 +415,7 @@ ok(source.includes('shop_support_messages?select=id,sender_user_id,body,created_
 const merchantSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
 const merchantImageUpload=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
 const merchantManifest=read('merchant/src/main/AndroidManifest.xml');
-ok(merchantSetup.includes('QgLongdoLocationPickerMap(')&&merchantSetup.includes('ใช้ตำแหน่ง GPS ปัจจุบัน')&&merchantSetup.includes('บันทึกข้อมูลร้าน'),'Merchant native shop setup must preserve Longdo picker, GPS and save flow');
+ok(merchantSetup.includes('QgQueueGoLocationPickerMap(')&&merchantSetup.includes('ใช้ตำแหน่ง GPS ปัจจุบัน')&&merchantSetup.includes('บันทึกข้อมูลร้าน'),'Merchant native shop setup must preserve QueueGo Map picker, GPS and save flow');
 ok(merchantSetup.includes('mobile_accessories')&&merchantSetup.includes('automotive_motorcycle')&&merchantSetup.includes('home_decor'),'Merchant native Shopping setup must preserve web subcategories');
 ok(merchantImageUpload.includes('/storage/v1/object/merchant-media/')&&merchantImageUpload.includes('12 * 1024 * 1024')&&merchantImageUpload.includes('3 * 1024 * 1024'),'Merchant native shop images must use production merchant-media limits');
 ok(merchantManifest.includes('ACCESS_FINE_LOCATION')&&merchantManifest.includes('longdo.map.key'),'Merchant native setup must declare location and Longdo key');
