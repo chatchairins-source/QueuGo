@@ -663,7 +663,7 @@ async function qtPersistKeyRaw(key,val){
     if(key==='qt_audit_log'){ for(const a of (val||[])){ if(!qtUuidLike(a.id)) continue; await qtSupabaseTable('audit_logs?on_conflict=id',{method:'POST',accessToken:token,body:{id:a.id,user_id:qtUuidLike(a.actorId)?a.actorId:null,action:a.action||'system',entity_type:a.entityType||null,entity_id:qtUuidLike(a.entityId)?a.entityId:null,description:a.description||'',metadata:a,created_at:qtIso(a.at)}}); } return; }
     if(key==='qt_products'){ const shopProfileId=async(userId)=>{if(!qtUuidLike(userId))return null; const rows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(userId)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token}); return Array.isArray(rows)&&rows[0]?rows[0].id:null;}; for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('products?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:await shopProfileId(p.shopId),name:p.name||'',description:p.description||'',price:Number(p.price||0),image:p.image||null,available:p.available!==false,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
     if(key==='qt_promotions'){ const promoProfileId=async(userId)=>{if(!qtUuidLike(userId))return null;const rows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(userId)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token});return Array.isArray(rows)&&rows[0]?rows[0].id:null;}; for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('promotions?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:await promoProfileId(p.shopId),shop_name:p.shopName||null,category:p.category||null,area:p.area||null,bid_price:Number(p.bidPrice||0),max_budget:Number(p.maxBudget||0),period_days:Number(p.periodDays||0),status:p.status||'pending',approved_by:p.approvedBy||null,approved_at:p.approvedAt?qtIso(p.approvedAt):null,payment_status:p.paymentStatus||'pending',activated_at:p.activatedAt?qtIso(p.activatedAt):null,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
-    if(key==='qt_settlements'){ for(const x of (val||[])){ if(!qtUuidLike(x.id)) continue; await qtSupabaseTable('settlements?on_conflict=id',{method:'POST',accessToken:token,body:{id:x.id,shop_id:x.shopId,date_key:x.dateKey,status:['pending','processing','completed','cancelled'].includes(x.status)?x.status:'pending',amount:Number(x.amount||x.gp||0),metadata:x,created_at:qtIso(x.createdAt),updated_at:qtIso(Date.now())}}); } return; }
+
   }catch(e){ console.warn('qtPersistKey',key,e); throw e; }
 }
 
@@ -1866,7 +1866,7 @@ button.qt-notif-row:active{transform:scale(.995)}
 let qtSupportSelectedShop=null,qtSupportLoading=false;
 function qtSupportTime(value){return new Date(value).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
 function qtSupportBubble(message,me){
-  return `<div class="qt-support-bubble ${message.sender_user_id===me?'mine':'theirs'}"><div>${escapeHtml(message.body)}</div><small>${message.sender_user_id===me?'คุณ':'คู่สนทนา'} · ${qtSupportTime(message.created_at)}</small>${message.slip_path?`<a class="qt-support-slip" href="#" data-gp-slip="${escapeHtml(message.slip_path)}" onclick="qgmOpenGpSlip(event,this)">ดูสลิป GP</a>`:''}</div>`;
+  return `<div class="qt-support-bubble ${message.sender_user_id===me?'mine':'theirs'}"><div>${escapeHtml(message.body)}</div><small>${message.sender_user_id===me?'คุณ':'คู่สนทนา'} · ${qtSupportTime(message.created_at)}</small></div>`;
 }
 
 function renderShopSupport(){
@@ -3458,33 +3458,7 @@ window.qgmSetShopOpen=async function(toggle){
  finally{toggle.disabled=false}
  Promise.resolve().then(()=>qgmLoadDeliveryReadiness()).catch(()=>{});
 };
-// Read the exact daily GP from orders. A settlement is written only when the slip is submitted.
-window.qgmSubmitGpSlip=async function(date,input){
- const file=input.files?.[0],u=currentUser();if(!file||!u)return;
- if(file.size>5242880){toast('สลิปต้องไม่เกิน 5 MB');input.value='';return}
- const types={'image/png':'png','image/jpeg':'jpg','image/webp':'webp','application/pdf':'pdf'};
- if(!types[file.type]){toast('รองรับ JPG, PNG, WebP หรือ PDF');input.value='';return}
- input.disabled=true;
- try{
-  const token=await qtGetAccessToken(),session=qtSessionRead();if(!token||!session?.authUserId)throw Error('กรุณาเข้าสู่ระบบอีกครั้ง');
-  const path=session.authUserId+'/'+date.replace(/[^0-9-]/g,'')+'-'+crypto.randomUUID()+'.'+types[file.type];
-  const response=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/gp-slips/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':file.type},body:file});
-  if(!response.ok){const err=await response.json().catch(()=>({}));throw Error(err.message||'อัปโหลดสลิปไม่สำเร็จ')}
-  await qtSupabaseTable('rpc/report_shop_gp',{method:'POST',accessToken:token,body:{p_date:date,p_slip_path:path}});
-  toast('ส่งสลิปและแจ้งโอนให้แอดมินแล้ว');
-  Promise.resolve().then(()=>qtHydrateDatabase({light:false})).then(()=>{if(location.hash==='#shop-revenue'&&typeof qgmLoadRevenue==='function')qgmLoadRevenue(date);else window.renderShopSettlement()}).catch(refreshErr=>console.warn('merchant GP post-commit refresh failed',refreshErr));
- }catch(e){toast('แจ้งโอนไม่สำเร็จ: '+(e.message||e))}
- finally{input.disabled=false;input.value=''}
-};
-window.qgmOpenGpSlip=async function(event,link){
- event.preventDefault();
- try{
-  const token=await qtGetAccessToken(),path=link.dataset.gpSlip;
-  const res=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/sign/gp-slips/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:300})});
-  const data=await res.json();if(!res.ok||!data.signedURL)throw Error(data.message||'เปิดสลิปไม่สำเร็จ');
-  window.open(QT_SUPABASE_CONFIG.URL+'/storage/v1'+data.signedURL,'_blank','noopener');
- }catch(e){toast(e.message||'เปิดสลิปไม่สำเร็จ')}
-};
+
 })();
 </script>
 <style id="qgm-shop-location-v14">
@@ -3568,10 +3542,9 @@ window.qgmLoadRevenue=async function(date){
   const money=n=>'฿'+Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
   const due=Number(r.gp_due||0),sales=Number(r.gross_sales||0),cash=Number(r.cash_received||0);
   box.innerHTML=`<section class="qgm-report"><h2>${escapeHtml(new Date(date+'T12:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}))}</h2>
-    <div class="qgm-report-grid"><div><small>ยอดค่าสินค้าหลังไรเดอร์รับ</small><b>${money(sales)}</b></div><div><small>GP ที่ต้องชำระ</small><b>${money(due)}</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>${money(cash)}</b></div><div><small>ออเดอร์ที่ไรเดอร์รับสินค้า</small><b>${Number(r.order_count||0)}</b></div></div>
-    <p class="qgm-report-status">ประมาณการยอดค่าสินค้าหลังหัก GP: ${money(sales-due)} · สถานะ GP: ${escapeHtml(GP_SETTLEMENT_STATUSES[r.gp_status]||r.gp_status||'รอชำระ')}</p>
+    <div class="qgm-report-grid"><div><small>ยอดค่าสินค้าหลังไรเดอร์รับ</small><b>${money(sales)}</b></div><div><small>GP ตามออเดอร์</small><b>${money(due)}</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>${money(cash)}</b></div><div><small>ออเดอร์ที่ไรเดอร์รับสินค้า</small><b>${Number(r.order_count||0)}</b></div></div>
+    <p class="qgm-report-status">หักค่าบริการผ่านเครดิตอัตโนมัติ · ตรวจรายการหักในประวัติเครดิต</p>
     <small>ยอดเงินสดบันทึกอัตโนมัติตาม flow การรับสินค้าของออเดอร์ ไม่ต้องกดยืนยันการรับเงินเพิ่ม</small>
-    ${due>0&&r.gp_status==='pending'?`<label class="qgm-gp-slip">แนบสลิปและแจ้งโอน<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onchange="qgmSubmitGpSlip('${date}',this)"></label>`:''}
     </section>`;
  }catch(e){box.innerHTML='<p class="qgm-report qgm-report-error">โหลดรายงานไม่สำเร็จ: '+escapeHtml(e.message||e)+'</p>'}
 };
