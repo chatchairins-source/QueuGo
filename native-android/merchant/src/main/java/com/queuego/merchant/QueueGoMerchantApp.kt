@@ -559,11 +559,13 @@ private fun MerchantShell(
         }
     }
 
+    val merchantRootScreens = setOf("home", "orders", "products", "promotions", "profile")
+
     Box(Modifier.fillMaxSize()) {
         Scaffold(
         containerColor = QgBg,
         bottomBar = {
-            if (screen in setOf("home", "orders", "products", "promotions", "profile")) {
+            if (screen in merchantRootScreens) {
                 QgBottomNav(
                     selected = screen,
                     items = listOf(
@@ -578,11 +580,13 @@ private fun MerchantShell(
         }
     ) { insets ->
         Column(Modifier.fillMaxSize().padding(insets).background(QgBg)) {
-            MerchantTopBar(
-                unreadCount = notifications.count { !it.isRead },
-                onHome = { screen = "home" },
-                onNotifications = { screen = "notifications" }
-            )
+            if (screen in merchantRootScreens) {
+                MerchantTopBar(
+                    unreadCount = notifications.count { !it.isRead },
+                    onHome = { screen = "home" },
+                    onNotifications = { screen = "notifications" }
+                )
+            }
             if (!message.isNullOrBlank()) {
                 Text(
                     message!!,
@@ -1188,6 +1192,19 @@ private fun DashboardScreen(
     val incoming = orders.filter {
         it.status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "preparing", "ready")
     }
+    val merchantZone = remember { ZoneId.of("Asia/Bangkok") }
+    val today = LocalDate.now(merchantZone)
+    val todayOrders = remember(orders, today) {
+        orders.filter { order ->
+            val raw = order.createdAt.orEmpty()
+            val day = runCatching { Instant.parse(raw).atZone(merchantZone).toLocalDate() }.getOrNull()
+                ?: runCatching { LocalDate.parse(raw.take(10)) }.getOrNull()
+            day == today
+        }
+    }
+    val completedToday = todayOrders.count { it.status.lowercase() in setOf("completed", "delivered") }
+    val preparingToday = todayOrders.count { it.status.lowercase() in setOf("accepted", "shop_accepted", "preparing") }
+    val cancelledToday = todayOrders.count { it.status.lowercase() in setOf("cancelled", "no_rider_available") }
 
     Column(
         Modifier
@@ -1274,13 +1291,13 @@ private fun DashboardScreen(
         )
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMetricCard("ออเดอร์", revenue.orderCount.toString(), "orders", Modifier.weight(1f))
-            MerchantMetricCard("ยอดขาย", "฿" + "%.0f".format(revenue.grossSales), "bag", Modifier.weight(1f))
+            MerchantMetricCard("ออเดอร์ทั้งหมด", todayOrders.size.toString(), "orders", Modifier.weight(1f))
+            MerchantMetricCard("เสร็จแล้ว", completedToday.toString(), "clock", Modifier.weight(1f))
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMetricCard("เงินสดรับ", "฿" + "%.0f".format(revenue.cashReceived), "store", Modifier.weight(1f))
-            MerchantMetricCard("GP ตามออเดอร์", "฿" + "%.0f".format(revenue.gpAmount), "orders", Modifier.weight(1f))
+            MerchantMetricCard("กำลังเตรียม", preparingToday.toString(), "box", Modifier.weight(1f))
+            MerchantMetricCard("ยกเลิก", cancelledToday.toString(), "close", Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(9.dp))
@@ -1313,7 +1330,11 @@ private fun DashboardScreen(
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MerchantMenuTile("ติดต่อแอดมิน", "support", onSupport, Modifier.weight(1f))
-            MerchantMenuTile("ฝากซัก", "laundry", onLaundry, Modifier.weight(1f))
+            if (shop?.category?.lowercase() == "laundry") {
+                MerchantMenuTile("ฝากซัก", "laundry", onLaundry, Modifier.weight(1f))
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
             Spacer(Modifier.weight(1f))
         }
 
