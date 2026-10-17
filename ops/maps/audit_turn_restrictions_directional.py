@@ -188,18 +188,29 @@ with engine.db() as db:
         if not node:
             item["status"]="source_invalid";item["reason"]="via node missing from normalized package";results.append(item);continue
         via=[node["longitude"],node["latitude"]]
+        source_rows={}
+        disconnected=[]
+        for role,ids in (("from",froms),("to",tos)):
+            for wid in ids:
+                row=db.execute("SELECT * FROM ways WHERE id=?",(wid,)).fetchone()
+                source_rows[wid]=row
+                if not row or via_id not in json.loads(row["node_ids"]):disconnected.append({"role":role,"way_id":wid})
+        if disconnected:
+            item["status"]="source_member_conflict";item["reason"]="declared member does not connect to via node";item["disconnected_members"]=disconnected;results.append(item);continue
+
         from_candidates=[]
         for wid in froms:
-            row=db.execute("SELECT * FROM ways WHERE id=?",(wid,)).fetchone()
-            if row:
-                from_candidates.extend((wid,row,b) for b in branches_for_way(row,via_id,"approach"))
+            row=source_rows[wid]
+            from_candidates.extend((wid,row,b) for b in branches_for_way(row,via_id,"approach"))
         to_candidates=[]
         for wid in tos:
-            row=db.execute("SELECT * FROM ways WHERE id=?",(wid,)).fetchone()
-            if row:
-                to_candidates.extend((wid,row,b) for b in branches_for_way(row,via_id,"depart"))
-        if not from_candidates:
-            item["status"]="profile_inapplicable";item["reason"]="motorcycle cannot approach via on source from member";results.append(item);continue
+            row=source_rows[wid]
+            to_candidates.extend((wid,row,b) for b in branches_for_way(row,via_id,"depart"))
+        if not from_candidates or not to_candidates:
+            accessible=all(motorcycle_accessible(json.loads(source_rows[wid]["tags"])) for wid in [*froms,*tos])
+            item["status"]="source_direction_conflict" if accessible else "profile_inapplicable"
+            item["reason"]="current one-way direction prevents declared approach/departure" if accessible else "motorcycle access prevents declared approach/departure"
+            results.append(item);continue
 
         failed=False;uncovered=False;proved=0
         if kind.startswith("no_"):
@@ -256,17 +267,19 @@ with engine.db() as db:
 
 summary={k:sum(r["status"]==k for r in results) for k in sorted({r["status"] for r in results})}
 bad={"failed","uncovered","uncovered_via_way"}
-well_formed_gate=not any(r["status"] in bad for r in results if r["status"]!="source_invalid")
+source_open={"source_invalid","source_member_conflict","source_direction_conflict"}
+well_formed_gate=not any(r["status"] in bad for r in results if r["status"] not in source_open)
 report={
     "dataset":engine.metadata(),
     "rules":results,
     "summary":summary,
     "well_formed_motorcycle_gate":well_formed_gate,
-    "all_source_rules_gate":well_formed_gate and not any(r["status"]=="source_invalid" for r in results),
+    "all_source_rules_gate":well_formed_gate and not any(r["status"] in source_open for r in results),
     "physical_verification":False,
     "limitations":[
         "Directional branch probes prove the installed motorcycle graph behavior, not physical signs.",
-        "Profile-inapplicable means the installed one-way/access graph cannot perform the source maneuver; it is not a claim about other vehicle profiles.",
+        "Profile-inapplicable means motorcycle access tags block the maneuver; it is not a claim about other vehicle profiles.",
+        "Disconnected members and one-way direction conflicts remain source-open and are quarantined by the shared core.",
         "Malformed source relations remain OPEN and are never repaired or guessed."
     ]
 }
