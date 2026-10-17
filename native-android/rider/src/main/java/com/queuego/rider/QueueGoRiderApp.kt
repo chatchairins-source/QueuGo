@@ -912,7 +912,6 @@ private fun RiderHome(
     var verifyDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
     var verifyItems by remember { mutableStateOf<List<RiderItem>>(emptyList()) }
     var verifyMarketPickup by remember { mutableStateOf<MarketPickup?>(null) }
-    var verifyCollection by remember { mutableStateOf(false) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var returnPhotoUri by remember { mutableStateOf<Uri?>(null) }
@@ -1347,7 +1346,6 @@ private fun RiderHome(
                 verifyJob = job
                 verifyItems = loaded.first
                 verifyDetails = loaded.second
-                verifyCollection = false
                 photoUri = recoveredProof?.uri?.let(Uri::parse)
                 pendingCameraUri = null
                 if (recoveredProof != null) {
@@ -1384,7 +1382,6 @@ private fun RiderHome(
                 verifyMarketPickup = pickup
                 verifyItems = emptyList()
                 verifyDetails = null
-                verifyCollection = false
                 photoUri = recoveredProof?.uri?.let(Uri::parse)
                 pendingCameraUri = null
                 actionMessage = if (recoveredProof != null) {
@@ -1416,7 +1413,6 @@ private fun RiderHome(
         verifyItems = emptyList()
         verifyDetails = null
         verifyMarketPickup = null
-        verifyCollection = false
         photoUri = null
         pendingCameraUri = null
     }
@@ -1725,7 +1721,6 @@ private fun RiderHome(
         verifyMode = saved.mode
         verifyJob = job
         verifyMarketPickup = pickup
-        verifyCollection = saved.collection
         photoUri = pendingProofIo {
             pendingProofStore.loadConfirmedMatching(
                 auth.user.id,
@@ -1779,29 +1774,6 @@ private fun RiderHome(
             photoUri = photoUri,
             busy = actionBusy,
             message = actionMessage,
-            resumeCollection = verifyCollection,
-            onCollectionChanged = { collection ->
-                verifyCollection = collection
-                val job = verifyJob
-                val mode = verifyMode
-                val pickupId = verifyMarketPickup?.pickupId
-                if (job != null && mode != null) {
-                    scope.launch {
-                        try {
-                            pendingProofIo {
-                                pendingProofStore.saveVerification(
-                                    auth.user.id,
-                                    RiderVerificationResume(job.id, mode, pickupId, collection)
-                                )
-                            }
-                        } catch (failure: CancellationException) {
-                            throw failure
-                        } catch (_: Exception) {
-                            actionMessage = "บันทึกขั้นตอนงานในเครื่องไม่สำเร็จ · งานยังไม่ถูกส่ง"
-                        }
-                    }
-                }
-            },
             onBack = { closeVerification() },
             onCamera = { openCamera() },
             onChat = { val job = verifyJob; closeVerification(); chatJob = job },
@@ -4163,8 +4135,6 @@ private fun VerificationScreen(
     photoUri: Uri?,
     busy: Boolean,
     message: String?,
-    resumeCollection: Boolean,
-    onCollectionChanged: (Boolean) -> Unit,
     onBack: () -> Unit,
     onCamera: () -> Unit,
     onChat: () -> Unit,
@@ -4176,20 +4146,10 @@ private fun VerificationScreen(
     var previewQuality by remember(photoUri) { mutableStateOf<RiderEvidenceQuality?>(null) }
     val previewReady = previewQuality?.acceptable == true
     val photoReady = photoUri != null
-    var showCollection by rememberSaveable(job.id, mode) { mutableStateOf(resumeCollection) }
-    LaunchedEffect(showCollection) { onCollectionChanged(showCollection) }
-    val collectionReady = riderCollectionReady(job.customerCash, photoReady, previewReady)
-    if (showCollection && photoReady && previewReady && !pickup && !marketPickupMode) {
-        RiderCollectionScreen(
-            modifier = modifier,
-            job = job,
-            busy = busy,
-            message = message,
-            enabled = collectionReady,
-            onBack = { showCollection = false },
-            onComplete = onConfirm
-        )
-        return
+    val deliveryReady = if (!pickup && !marketPickupMode) {
+        riderCollectionReady(job.customerCash, photoReady, previewReady)
+    } else {
+        photoReady && previewReady
     }
     val screenHeight = LocalConfiguration.current.screenHeightDp
     val shortScreen = screenHeight <= 760
@@ -4387,7 +4347,7 @@ private fun VerificationScreen(
                 if (message != null) Text(message, color = QgRed, modifier = Modifier.padding(top = 8.dp))
                 Text(
                     if (pickup || marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า"
-                    else "ถ่ายรูปหลักฐานแล้วกดไปหน้าเก็บเงิน ก่อนสไลด์จบงาน",
+                    else "ถ่ายรูปหลักฐาน ตรวจยอดเงิน แล้วกดจบงานครั้งเดียว",
                     fontSize = 8.sp,
                     color = QgMuted,
                     modifier = Modifier.padding(top = 5.dp)
@@ -4396,98 +4356,27 @@ private fun VerificationScreen(
         }
         Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 10.dp, vertical = 12.dp).widthIn(max = 660.dp).fillMaxWidth()
             .background(Color(0xFAFFFFFF), RoundedCornerShape(18.dp))) {
-            if (photoReady && !pickup && !marketPickupMode) {
-                Button(
-                    onClick = { showCollection = true },
-                    enabled = !busy && collectionReady,
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
-                    shape = RoundedCornerShape(18.dp)
-                ) { Text("ส่งมอบสินค้าและเก็บเงิน", fontWeight = FontWeight.Bold) }
-            } else {
-                Button(
-                    onClick = if (photoReady) onConfirm else onCamera,
-                    enabled = !busy && (!photoReady || previewReady),
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
-                ) {
-                    if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
-                    else Text(
-                        when {
-                            !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"
-                            !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"
-                            !photoReady -> "ถ่ายรูปตอนส่ง"
-                            marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
-                            else -> "ยืนยันรับสินค้า"
-                        },
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+            Button(
+                onClick = if (photoReady) onConfirm else onCamera,
+                enabled = !busy && if (photoReady) deliveryReady else true,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
+            ) {
+                if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
+                else Text(
+                    when {
+                        !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"
+                        !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"
+                        !photoReady -> "ถ่ายรูปตอนส่ง"
+                        marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
+                        pickup -> "ยืนยันรับสินค้า"
+                        else -> "จบงาน"
+                    },
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
-        }
-    }
-}
-
-/** Final cash review reuses completion-with-proof; it creates no additional payment transaction. */
-@Composable
-private fun RiderCollectionScreen(
-    modifier: Modifier,
-    job: RiderJob,
-    busy: Boolean,
-    message: String?,
-    enabled: Boolean,
-    onBack: () -> Unit,
-    onComplete: () -> Unit
-) {
-    BackHandler { if (!busy) onBack() }
-    val amount = riderMoneyBaht(job.customerCash)
-    Column(modifier.fillMaxSize().background(Color(0xFFF7F7F8))) {
-        Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 10.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).clickable(enabled = !busy, onClick = onBack), contentAlignment = Alignment.Center) {
-                Icon(painterResource(R.drawable.qg_rider_flow_back), "ย้อนกลับ", Modifier.size(22.dp), tint = QgRed)
-            }
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("เก็บเงินจากลูกค้า", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Text(job.numberLabel, fontSize = 10.sp, color = QgMuted)
-            }
-            Spacer(Modifier.size(44.dp))
-        }
-        Column(Modifier.weight(1f).widthIn(max = 660.dp).fillMaxWidth().align(Alignment.CenterHorizontally)
-            .verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(112.dp, 82.dp).background(QgRedSoft, RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {
-                Icon(painterResource(R.drawable.qg_rider_cash), null, Modifier.size(66.dp), tint = QgRed)
-            }
-            Spacer(Modifier.height(30.dp))
-            Text("ยอดที่ต้องเก็บจากลูกค้า", color = QgMuted, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text(amount, color = Color(0xFF111111), fontSize = if (amount.length > 12) 34.sp else 56.sp,
-                fontWeight = FontWeight.Black, maxLines = 1)
-            Spacer(Modifier.height(16.dp))
-            Text("ส่งสินค้าให้ลูกค้าเรียบร้อย แล้วตรวจสอบเงินสดก่อนจบงาน", color = QgMuted,
-                fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            if (message != null) Text(message, color = QgRed, modifier = Modifier.padding(top = 14.dp))
-        }
-        Column(Modifier.widthIn(max = 660.dp).fillMaxWidth().align(Alignment.CenterHorizontally)
-            .background(Color.White).padding(horizontal = 14.dp, vertical = 16.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("ทั้งหมด", fontWeight = FontWeight.Bold)
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("เงินสด", color = QgMuted, fontSize = 10.sp)
-                    Text(amount, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            RiderSlideComplete(
-                enabled = enabled,
-                busy = busy,
-                label = "เก็บเงินจากลูกค้าเรียบร้อยแล้ว",
-                onComplete = onComplete
-            )
-            Text("สไลด์ให้สุดเมื่อยอดเงินถูกต้องแล้ว", Modifier.fillMaxWidth().padding(top = 6.dp),
-                color = QgMuted, fontSize = 10.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }
