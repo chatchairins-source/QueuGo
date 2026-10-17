@@ -34,6 +34,9 @@
             android:name="longdo.map.key"
             android:value="347649ca13f49db0d8a599ae35f8de2b" />
         <meta-data
+            android:name="queuego.map.service.base_url"
+            android:value="${queuegoMapServiceBaseUrl}" />
+        <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/qg_notification" />
         <meta-data
