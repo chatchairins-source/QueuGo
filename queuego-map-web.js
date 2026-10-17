@@ -296,6 +296,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   const smoothDuration=force
     ? Math.max(320,Math.min(560,Number(duration)||420))
     : navRotationDuration(previousBearing,target.bearing,cadence,duration,fix?.speed);
+  target.animationDuration=smoothDuration;
   let container=null;
   try{container=map.getContainer?.()||null}catch(_){}
   const viewportHeight=Math.max(0,Number(container?.clientHeight)||0);
@@ -464,8 +465,9 @@ function moveMarkerSmooth(m,lat,lng,rotation=null,{duration=1080}={}){
   const tick=now=>{
     const elapsed=Math.max(0,Number(now)-start);
     const t=Math.max(0,Math.min(1,elapsed/ms));
-    const nextLat=from.lat+(target.lat-from.lat)*t;
-    const nextLng=from.lng+(target.lng-from.lng)*t;
+    const eased=navCameraEasing(t);
+    const nextLat=from.lat+(target.lat-from.lat)*eased;
+    const nextLng=from.lng+(target.lng-from.lng)*eased;
     try{m.setLngLat([nextLng,nextLat])}catch(_){}
     if(rotation!==null&&rotation!==undefined&&Number.isFinite(Number(rotation)))try{m.setRotation(Number(rotation))}catch(_){}
     if(t<1&&markerAnimationStates.get(m)===state){
