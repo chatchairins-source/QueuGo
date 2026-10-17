@@ -568,7 +568,7 @@ internal fun QueueGoRiderNavigationMap(
                     renderedState = oneShot
                     delay(180L)
                     if (
-                        latestBaseState.remainingStops().isEmpty() &&
+                        latestBaseState.stops.none { !it.completed && it.point.valid } &&
                         !latestBaseState.followRider
                     ) {
                         renderedState = oneShot.copy(followRider = false)
