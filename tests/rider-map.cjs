@@ -5,6 +5,11 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('new longdo.Map'),false);
  eq(source.includes('https://api.longdo.com/map/?key='),false);
  eq(source.includes('QueueGoMapWeb'),true);
+ const riderMarkerFn=source.slice(source.indexOf('function placeRiderMarker()'),source.indexOf('function qgRouteBundleHTML()'));
+ eq(riderMarkerFn.includes('QueueGoMapWeb.moveMarker'),true);
+ eq(riderMarkerFn.includes('qgRemoveOverlay(S.riderMarker)'),false);
+ const activeRouteFn=source.slice(source.indexOf('function drawActiveRoute()'),source.indexOf('/* ---------- sheet'));
+ eq(activeRouteFn.includes("if(isOfferPreview&&!riderRouteCache)focusRiderNavigation"),true);
 
  let now=100000,requests=[],gate=null,serial=0;
  const timers=new Map(),routeAdds=[],routeRemoves=[],fits=[],destroyed=[],badge={style:{}},label={textContent:''};

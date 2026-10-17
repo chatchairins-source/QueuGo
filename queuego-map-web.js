@@ -147,20 +147,96 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
 }
 function navState(map){
   let state=navigationStates.get(map);
-  if(!state){state={follow:true,bearing:null};navigationStates.set(map,state)}
+  if(!state){
+    state={
+      follow:true,bearing:null,lastFix:null,lastRoute:[],baseZoom:17,lastDecision:null,lastAppliedAt:0,
+      manualZoom:null,manualZoomUntil:0,reanchorTimer:null
+    };
+    navigationStates.set(map,state);
+  }
   return state;
 }
 function setNavigationFollow(map,enabled=true){
-  if(!map)return false;navState(map).follow=!!enabled;return navState(map).follow;
+  if(!map)return false;
+  const state=navState(map);
+  state.follow=!!enabled;
+  if(!state.follow&&state.reanchorTimer){clearTimeout(state.reanchorTimer);state.reanchorTimer=null}
+  return state.follow;
 }
-function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17}={}){
+function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false}={}){
   if(!map)return null;
-  const state=navState(map);if(!force&&!state.follow)return null;
-  if(force)state.follow=true;
+  const state=navState(map);
+  state.lastFix={...fix};
+  state.lastRoute=Array.isArray(route)?route:[];
+  state.baseZoom=baseZoom;
+  if(force){
+    state.follow=true;
+    state.manualZoom=null;
+    state.manualZoomUntil=0;
+  }
+  if(!state.follow)return null;
   const decision=navCameraDecision({...fix,route,previousBearing:state.bearing,baseZoom});if(!decision)return null;
-  state.bearing=decision.bearing;
-  try{map.easeTo({center:[decision.center.lng,decision.center.lat],bearing:decision.bearing,pitch:decision.pitch,zoom:decision.zoom,duration,essential:true})}catch(_){return null}
-  return decision;
+  const now=Date.now();
+  let targetZoom=decision.zoom;
+  if(preserveZoom||state.manualZoomUntil>now){
+    const currentZoom=Number(map.getZoom?.());
+    if(Number.isFinite(currentZoom))targetZoom=currentZoom;
+    else if(Number.isFinite(state.manualZoom))targetZoom=state.manualZoom;
+  }else{
+    state.manualZoom=null;
+    state.manualZoomUntil=0;
+  }
+  const target={...decision,zoom:targetZoom};
+  const previous=state.lastDecision;
+  if(!force&&previous){
+    const centerDelta=navDistanceMeters(previous.center,target.center);
+    const bearingDelta=Math.abs(navShortestDelta(previous.bearing,target.bearing));
+    const pitchDelta=Math.abs(Number(previous.pitch)-Number(target.pitch));
+    const zoomDelta=Math.abs(Number(previous.zoom)-Number(target.zoom));
+    if(centerDelta<.8&&bearingDelta<.7&&pitchDelta<.5&&zoomDelta<.05){
+      state.bearing=target.bearing;
+      state.lastDecision=target;
+      return target;
+    }
+  }
+  const cadence=state.lastAppliedAt?Math.max(0,now-state.lastAppliedAt):duration;
+  const smoothDuration=force
+    ? Math.min(Number(duration)||420,320)
+    : Math.max(180,Math.min(Number(duration)||420,cadence>0?Math.round(cadence*.72):420));
+  try{
+    map.easeTo({
+      center:[target.center.lng,target.center.lat],
+      bearing:target.bearing,
+      pitch:target.pitch,
+      zoom:target.zoom,
+      duration:smoothDuration,
+      essential:true
+    });
+  }catch(_){return null}
+  state.bearing=target.bearing;
+  state.lastDecision=target;
+  state.lastAppliedAt=now;
+  return target;
+}
+function reanchorNavigationAfterZoom(map){
+  const state=navState(map);
+  if(!state.follow||!state.lastFix)return false;
+  const currentZoom=Number(map.getZoom?.());
+  if(Number.isFinite(currentZoom)){
+    state.manualZoom=currentZoom;
+    state.manualZoomUntil=Date.now()+12000;
+  }
+  if(state.reanchorTimer)clearTimeout(state.reanchorTimer);
+  state.reanchorTimer=setTimeout(()=>{
+    state.reanchorTimer=null;
+    if(!state.follow||!state.lastFix)return;
+    followNavigationCamera(map,state.lastFix,state.lastRoute,{
+      duration:220,
+      baseZoom:state.baseZoom,
+      preserveZoom:true
+    });
+  },70);
+  return true;
 }
 function navigationOverview(map,points,{padding=64,maxZoom=16,duration=450}={}){
   if(!map)return false;setNavigationFollow(map,false);
@@ -192,8 +268,17 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
   if(navigation){
     navState(map).follow=true;
     try{map.touchZoomRotate.enableRotation()}catch(_){}
-    const suspend=e=>{if(e&&e.originalEvent)setNavigationFollow(map,false)};
-    for(const event of ['dragstart','rotatestart','pitchstart','zoomstart'])try{map.on(event,suspend)}catch(_){}
+    const suspendForPan=e=>{
+      const original=e?.originalEvent;
+      if(!original)return;
+      const touches=Number(original.touches?.length||original.targetTouches?.length||0);
+      // A two-finger pinch/rotate is still navigation camera control, not a request
+      // to abandon the Rider. Only an intentional one-finger map pan enters FREE_PAN.
+      if(touches>=2)return;
+      setNavigationFollow(map,false);
+    };
+    try{map.on('dragstart',suspendForPan)}catch(_){}
+    try{map.on('zoomend',e=>{if(e?.originalEvent)reanchorNavigationAfterZoom(map)})}catch(_){}
   }else{
     try{map.touchZoomRotate.disableRotation()}catch(_){}
   }
@@ -234,11 +319,22 @@ function setCenter(map,lat,lng,zoom=16,duration=350){
 function addGeoJsonLine(map,id,coordinates,{color='#e6002d',width=6,opacity=1}={}){
   if(!map||!Array.isArray(coordinates)||coordinates.length<2)return false;
   const sourceId=id+'-source',layerId=id+'-layer';
+  const data={type:'Feature',properties:{},geometry:{type:'LineString',coordinates}};
   const apply=()=>{
     try{
+      const existing=map.getSource(sourceId);
+      if(existing&&typeof existing.setData==='function'){
+        existing.setData(data);
+        if(map.getLayer(layerId)){
+          try{map.setPaintProperty?.(layerId,'line-color',color)}catch(_){}
+          try{map.setPaintProperty?.(layerId,'line-width',width)}catch(_){}
+          try{map.setPaintProperty?.(layerId,'line-opacity',opacity)}catch(_){}
+          return true;
+        }
+      }
       if(map.getLayer(layerId))map.removeLayer(layerId);
       if(map.getSource(sourceId))map.removeSource(sourceId);
-      map.addSource(sourceId,{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'LineString',coordinates}}});
+      map.addSource(sourceId,{type:'geojson',data});
       map.addLayer({id:layerId,type:'line',source:sourceId,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':color,'line-width':width,'line-opacity':opacity}});
       return true;
     }catch(_){return false}
@@ -287,5 +383,5 @@ async function reverse(lat,lng){
   }catch(_){return''}
 }
 function destroy(map){try{map?.remove?.()}catch(_){}}
-window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,navigationCameraDecision:navCameraDecision,followNavigationCamera,setNavigationFollow,navigationOverview};
+window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,navigationCameraDecision:navCameraDecision,followNavigationCamera,setNavigationFollow,navigationOverview,reanchorNavigationAfterZoom};
 })();

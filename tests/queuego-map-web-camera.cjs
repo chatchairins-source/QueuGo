@@ -16,6 +16,8 @@ const context=vm.createContext({
   encodeURIComponent,
   fetch:async()=>({ok:false}),
   navigator:{},
+  setTimeout:fn=>{fn();return 1},
+  clearTimeout(){},
   document:{
     getElementById(){return null},
     createElement(){return {id:'',style:{},textContent:''}},
@@ -80,6 +82,42 @@ ok(Number.isFinite(easeCalls[0].bearing),'follow transition must include bearing
 Q.setNavigationFollow(map,false);
 eq(Q.followNavigationCamera(map,{lat:15,lng:103.003,speed:8,bearing:90},straight),null,'free pan must suspend automatic follow');
 Q.setNavigationFollow(map,true);
+
+
+class GestureMap {
+  constructor(opts){
+    this.opts=opts;this.handlers={};this.zoom=opts.zoom;this.easeCalls=[];
+    this.touchZoomRotate={enableRotation(){},disableRotation(){}};
+  }
+  on(name,fn){this.handlers[name]=fn}
+  addControl(){}
+  easeTo(opts){this.easeCalls.push(opts);if(Number.isFinite(opts.zoom))this.zoom=opts.zoom}
+  getZoom(){return this.zoom}
+  isStyleLoaded(){return true}
+  getLayer(){return null}
+  getSource(){return null}
+  addSource(){}
+  addLayer(){}
+}
+context.maplibregl={
+  Map:GestureMap,
+  NavigationControl:function(){},
+  AttributionControl:function(){},
+  LngLatBounds:class{constructor(){this.points=[]}extend(p){this.points.push(p);return this}}
+};
+window.maplibregl=context.maplibregl;
+const host={classList:{add(){}},replaceChildren(){}};
+const gestureMap=Q.create(host,{lat:15,lng:103,zoom:17,navigation:true});
+Q.followNavigationCamera(gestureMap,{lat:15,lng:103.002,speed:8,bearing:90,accuracy:5},straight,{force:true});
+gestureMap.zoom=18.4;
+gestureMap.handlers.zoomend({originalEvent:{touches:[]}});
+ok(gestureMap.easeCalls.at(-1).zoom>18.3&&gestureMap.easeCalls.at(-1).zoom<18.5,'pinch release must re-anchor Rider while preserving chosen zoom');
+const beforePinchFollow=gestureMap.easeCalls.length;
+gestureMap.handlers.dragstart({originalEvent:{touches:[{},{}]}});
+ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0025,speed:8,bearing:90,accuracy:5},straight)!=null,'two-finger pinch must not abandon Rider follow');
+ok(gestureMap.easeCalls.length>=beforePinchFollow,'pinch follow remains active');
+gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
+eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.003,speed:8,bearing:90,accuracy:5},straight),null,'one-finger pan should still enter free pan');
 
 context.maplibregl={
   LngLatBounds:class{
