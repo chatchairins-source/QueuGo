@@ -42,6 +42,6 @@ Prior exact-head 2a1b6307 CI is GREEN: Map Engine38986601941 and38986605164, RC3
 
 ## Turn-source safety checkpoint — 2026-10-17
 
-The shared core now distinguishes malformed source relations from structurally complete relations whose member one-way directions make the declared from→via→to movement impossible. Both classes fail closed by quarantining their OSM member ways. Current known sets for the installed Buriram extract are malformed `{2148441, 17320674}` and direction-conflicting `{1538817}`. No relation roles or one-way tags are guessed or rewritten.
+The shared core now distinguishes malformed source relations from structurally complete relations whose member one-way directions make the declared from→via→to movement impossible. Both classes fail closed by quarantining their OSM member ways. Current known sets for the installed Buriram extract are malformed `{2148441, 17320674}`, disconnected-member `{6982243}`, and direction-conflicting `{1538817}`. No relation roles or one-way tags are guessed or rewritten.
 
-The turn audit now reports `source_incomplete` and `source_direction_conflict` explicitly instead of treating those cases as generic routing exceptions. Non-promoting diagnostics remain separate from release-gate proof.
+The turn audit now reports `source_incomplete`, `source_member_conflict`, and `source_direction_conflict` explicitly instead of treating those cases as generic routing exceptions. Non-promoting diagnostics remain separate from release-gate proof.
