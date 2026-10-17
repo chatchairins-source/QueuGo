@@ -195,6 +195,9 @@ assert(
   integration.includes('sessionStore.loadMapViewMode(stateKey)')&&
   integration.includes('pendingViewModePersistence = NavigationViewMode.FREE_PAN.name')&&
   integration.includes('pendingViewModePersistence = NavigationViewMode.FOLLOW.name')&&
+  integration.includes('if (riderFix?.point?.valid == true)')&&
+  integration.includes('viewModeState = viewModeController.onRecenter()')&&
+  integration.includes('A startup gesture before the first live GPS fix must not strand the')&&
   integration.includes('withContext(Dispatchers.IO)')&&
   integration.includes('sessionStore.saveMapViewMode(stateKey, mode)'),
   'Manual-pan view mode must survive Rider tab remounts and persist FREE_PAN/FOLLOW off Main without silently resuming camera follow');
