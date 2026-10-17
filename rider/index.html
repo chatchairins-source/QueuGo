@@ -1061,7 +1061,7 @@ function qgMarker(loc,html,title){
   return window.QueueGoMapWeb?.marker(S.map,{lat:Number(loc?.lat),lng:Number(loc?.lon),title:title||'',html})||null;
 }
 function placeJobMarkers(){
-  if(!S.map||typeof longdo==='undefined')return;
+  if(!S.map||!window.QueueGoMapWeb)return;
   (S.jobMarkers||[]).forEach(qgRemoveOverlay);S.jobMarkers=[];
   if(S.laundryJob&&!S.activeOrder){
     const j=S.laundryJob;
