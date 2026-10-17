@@ -1,1 +1,4 @@
 node_modules/
+map-data/
+__pycache__/
+/map-assets/
