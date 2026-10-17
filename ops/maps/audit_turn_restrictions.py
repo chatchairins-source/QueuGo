@@ -93,8 +93,15 @@ for rule in rules:
     if vias and not viaways and len(vias)==1:
         via=vias[0]
         with v.db() as db:
-            from_ok=all(one_way_allows(db,wid,via,True) for wid in froms)
-            to_ok=all(one_way_allows(db,wid,via,False) for wid in tos)
+            def member_connected(wid):
+                row=db.execute('SELECT node_ids FROM ways WHERE id=?',(wid,)).fetchone()
+                return bool(row and via in json.loads(row['node_ids']))
+            member_ok=all(member_connected(wid) for wid in [*froms,*tos])
+            from_ok=member_ok and all(one_way_allows(db,wid,via,True) for wid in froms)
+            to_ok=member_ok and all(one_way_allows(db,wid,via,False) for wid in tos)
+        if not member_ok:
+            result.update(status='source_member_conflict',reason='Declared from/to member does not connect to the via node in the installed source geometry')
+            results.append(result);continue
         if not from_ok or not to_ok:
             result.update(status='source_direction_conflict',reason='Restriction members conflict with current one-way travel direction',from_direction_ok=from_ok,to_direction_ok=to_ok)
             results.append(result);continue
