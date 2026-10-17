@@ -88,6 +88,13 @@ ok(merchantHome.includes('"rider_assigned", "assigned" -> {')&&
 ok(!riderHome.includes('"กำลังเชื่อมต่อ Longdo Map…"')&&
    !riderHome.includes('if (loadError == null) {\n                    CircularProgressIndicator()'),
    'Rider Home must refresh silently without center or side loading indicators when no user action is blocked');
+ok(!fs.existsSync('native-android/rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt'),
+   'Legacy Longdo Rider map must stay deleted');
+const riderNavigationIntegration=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt','utf8');
+ok(riderNavigationIntegration.includes('QueueGoRiderNavigationMap')&&
+   riderNavigationIntegration.includes('RiderNavigationMap(')&&
+   riderNavigationIntegration.includes('QueueGoNavigationRouteClient'),
+   'Rider map surface must remain QueueGo navigation integration backed by QueueGo routing');
 const riderLoadingStart=riderHome.indexOf('private fun LoadingScreen');
 const riderLoginStart=riderHome.indexOf('private fun LoginScreen',riderLoadingStart);
 const riderLoadingSource=riderHome.slice(riderLoadingStart,riderLoginStart);
