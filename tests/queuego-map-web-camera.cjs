@@ -46,10 +46,11 @@ ok(cornerDecision.center.lat>13.0000,'look-ahead center should advance into the 
 const straight=[[103.0000,15.0000],[103.0100,15.0000]];
 const roadWins=Q.navigationCameraDecision({
   lat:15.00001,lng:103.0040,
-  speed:10,bearing:270,accuracy:5,
+  speed:10,bearing:170,accuracy:5,
   route:straight,previousBearing:90
 });
-ok(roadWins.bearing>85&&roadWins.bearing<95,'matched road must beat opposite noisy GPS heading');
+ok(roadWins.bearing>85&&roadWins.bearing<95,'matched road may beat a moderately noisy GPS course when prior motion still agrees with the route');
+eq(roadWins.routeBearingRejected,false,'moderate GPS disagreement must not discard a stable matched-road direction');
 
 const wrongWayRoute=Q.navigationCameraDecision({
   lat:15.00001,lng:103.0040,
