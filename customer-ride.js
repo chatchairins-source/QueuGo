@@ -92,17 +92,47 @@
   if(!current)renderRoutePreview();
  }
  async function pick(which){
-  const old=which==='pickup'?pickup:destination;let point=null,revision=0;
-  layout('<div class="pt"><h1>'+(which==='pickup'?'เลือกจุดรับ':'เลือกจุดหมาย')+'</h1></div><section class="card"><div id="ride-location-map" class="mapbox" style="height:240px"></div><button class="lk" id="ride-gps">ใช้ตำแหน่ง GPS ปัจจุบัน</button><textarea id="ride-address" class="in" maxlength="500" placeholder="ที่อยู่หรือจุดสังเกต">'+esc(old?.address||'')+'</textarea><button id="ride-save-location" class="prim">ใช้จุดนี้</button><button id="ride-back" class="lk">กลับ</button><p id="ride-location-error" role="status"></p></section>','orders');
-  const u=actor();picker=initLocationPicker('ride-location-map',old?.lat,old?.lng,async(lat,lng)=>{
-   point={lat,lng};const version=++revision,field=$('ride-address');if(!field||field.value.trim())return;
-   const address=await qtReverseGeocodeCustomer(lat,lng);if(same(u)&&version===revision&&field.isConnected&&!field.value.trim())field.value=address;
+  const saved=which==='pickup'?pickup:destination;
+  const auto=which==='pickup'&&!saved&&currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)
+    ?{lat:Number(currentPos.lat),lng:Number(currentPos.lng),address:currentPos.address||''}:null;
+  const initial=saved||auto;let point=initial?{lat:initial.lat,lng:initial.lng}:null,revision=0;
+  const title=which==='pickup'?'เลือกจุดรับ':'เลือกจุดหมาย';
+  const subtitle=which==='pickup'?'ใช้ตำแหน่งปัจจุบันอัตโนมัติ หรือเลื่อนแผนที่เพื่อเลือกเอง':'เลื่อนแผนที่เพื่อเลือกจุดหมาย หรือใช้ GPS หากต้องการ';
+  layout(
+   '<div class="pt"><button class="back" id="ride-back">'+ico('back')+'</button><div><h1>'+title+'</h1><p class="sm" style="margin:3px 0 0">'+subtitle+'</p></div></div>'+
+   '<section class="card" style="padding:14px">'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
+     '<button type="button" id="ride-gps" style="min-height:48px;border:1px solid #b8d0ea;border-radius:13px;background:#f7faff;color:#2e6db4;font-weight:800;padding:9px 10px">ใช้ GPS ปัจจุบัน</button>'+
+     '<div style="min-height:48px;border:1px solid #e1e3e7;border-radius:13px;background:#fff;color:#5f6670;font-weight:700;padding:9px 10px;display:flex;align-items:center;justify-content:center;text-align:center">เลื่อนแผนที่เลือกเอง</div>'+
+    '</div>'+
+    '<div id="ride-location-map" class="mapbox" style="height:300px;border-radius:16px;overflow:hidden"></div>'+
+    '<div id="ride-picked-status" class="sm" style="margin:9px 2px 6px;color:#69707a">'+(point?'เลือกพิกัดแล้ว':'กำลังหาตำแหน่ง…')+'</div>'+
+    '<textarea id="ride-address" class="in" maxlength="500" placeholder="ที่อยู่หรือจุดสังเกต">'+esc(initial?.address||'')+'</textarea>'+
+    '<button id="ride-save-location" class="prim" style="min-height:52px;margin-top:10px">ใช้จุดนี้</button>'+
+    '<p id="ride-location-error" role="status" style="margin:8px 2px 0;color:#e6002d"></p>'+
+   '</section>','orders');
+  const u=actor();picker=initLocationPicker('ride-location-map',initial?.lat,initial?.lng,async(lat,lng)=>{
+   point={lat,lng};const version=++revision,field=$('ride-address'),status=$('ride-picked-status');
+   if(status)status.textContent='เลือกพิกัดแล้ว · '+Number(lat).toFixed(6)+', '+Number(lng).toFixed(6);
+   if(!field)return;
+   const previous=field.value.trim();
+   if(previous&&initial?.address&&previous===initial.address)return;
+   if(previous&&!initial?.address)return;
+   const address=await qtReverseGeocodeCustomer(lat,lng);
+   if(same(u)&&version===revision&&field.isConnected){
+    if(!field.value.trim()||field.value.trim()===initial?.address)field.value=address||field.value;
+   }
   });
   $('ride-gps').onclick=()=>picker?.locate();
-  if(which==='pickup'&&!old)setTimeout(()=>picker?.locate(),100);
   $('ride-back').onclick=()=>{picker?.destroy();picker=null;render()};
+  if(which==='pickup'&&!saved){
+   // Saved/current QueueGo location becomes the initial selected point immediately.
+   // If there is no valid saved point, try device GPS after the map is attached.
+   if(!auto)setTimeout(()=>picker?.locate(),180);
+  }
   $('ride-save-location').onclick=()=>{
-   const address=$('ride-address').value.trim();if(!point||address.length<3){$('ride-location-error').textContent='เลือกหมุดและระบุที่อยู่ให้ครบ';return}
+   const address=$('ride-address').value.trim();
+   if(!point||address.length<3){$('ride-location-error').textContent='เลือกพิกัดและระบุที่อยู่ให้ครบ';return}
    const next={...point,address};if(which==='pickup')pickup=next;else destination=next;quote=null;picker?.destroy();picker=null;render();
   };
  }
