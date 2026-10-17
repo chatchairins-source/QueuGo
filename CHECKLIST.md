@@ -47,7 +47,7 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Status: IN PROGRESS
 - Active PR: #414
 - Branch: `work-native-rider-queuego-route-authority-20261017`
-- Current HEAD: `ef03f11a1d20363a8c45b8a3025437ae590d403c`
+- Current HEAD: `478a7dfc9d973dc3a859bdc9b15f60b1da7576d8`
 - Recovery checkpoint lineage:
   - `297f9e4a918b8bdab86cc4abebb38d3176ab1842` restore current Grocery stylesheet
   - `735cdf215ffe0334839e31f00172116080dcc950` + `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb` forward-port Passenger Ride production backend delta while retaining the newer env-only quote handler
@@ -129,6 +129,11 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Root cause: `riderNavigationStops()` and bundle ordering ownership moved to `RiderNavigationIntegration.kt`; the marker-design regression test still looked for those symbols in the app shell.
 - Fix commit: `ef03f11a1d20363a8c45b8a3025437ae590d403c` updates only the test ownership path; Native runtime code is unchanged.
 - NEXT: obtain exact-head CI for `ef03f11a1d20363a8c45b8a3025437ae590d403c`. If red, fix only the new first failure; if green, continue the #414 gate.
+
+- Exact-head run `39053349534` on `ef03f11a1d20363a8c45b8a3025437ae590d403c` passed marker parity and MapLibre runtime/module contracts, then failed first because `tests/native-android-source.cjs` still read removed `QueueGoLongdoMap.kt`.
+- Root cause: Customer/Merchant shared location picking migrated to `QueueGoMap.kt` / `QgLocationPickerMap` backed by MapLibre; the source regression still referenced retired Longdo picker lifecycle strings.
+- Fix commit: `478a7dfc9d973dc3a859bdc9b15f60b1da7576d8` updates only the shared picker lifecycle gate to current QueueGo MapLibre ownership/destroy semantics; native runtime implementation is unchanged.
+- NEXT: obtain exact-head CI for `478a7dfc9d973dc3a859bdc9b15f60b1da7576d8`. If red, fix only the new first failure; if green, continue the #414 gate.
 
 ### 4. Rider online / deployed-schema compatibility
 - Source/test status: DONE on its scoped compatibility fix
