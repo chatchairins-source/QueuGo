@@ -160,7 +160,7 @@ function navState(map){
   let state=navigationStates.get(map);
   if(!state){
     state={
-      follow:true,bearing:null,lastFix:null,lastRoute:[],baseZoom:17,lastDecision:null,lastAppliedAt:0,
+      follow:true,navigationActive:true,bearing:null,lastFix:null,lastRoute:[],baseZoom:17,lastDecision:null,lastAppliedAt:0,
       manualZoom:null,manualZoomUntil:0,reanchorTimer:null,gestureActive:false
     };
     navigationStates.set(map,state);
@@ -177,6 +177,36 @@ function setNavigationFollow(map,enabled=true){
   }
   return state.follow;
 }
+function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
+  if(!map)return false;
+  const state=navState(map),active=!!enabled;
+  state.navigationActive=active;
+  state.gestureActive=false;
+  if(state.reanchorTimer){clearTimeout(state.reanchorTimer);state.reanchorTimer=null}
+  state.manualZoom=null;
+  state.manualZoomUntil=0;
+  if(active){
+    state.follow=true;
+    try{map.setMaxPitch?.(60)}catch(_){}
+    try{map.dragRotate?.enable?.()}catch(_){}
+    try{map.touchZoomRotate?.enableRotation?.()}catch(_){}
+    try{map.touchPitch?.enable?.()}catch(_){}
+    return true;
+  }
+  state.follow=false;
+  state.bearing=0;
+  state.lastDecision=null;
+  state.lastDecisionApplied=null;
+  try{map.dragRotate?.disable?.()}catch(_){}
+  try{map.touchZoomRotate?.disableRotation?.()}catch(_){}
+  try{map.touchPitch?.disable?.()}catch(_){}
+  try{map.setMaxPitch?.(0)}catch(_){}
+  const camera={bearing:0,pitch:0,duration:Math.max(0,Number(duration)||0),easing:navCameraEasing,essential:true};
+  if(center&&valid(center.lat,center.lng))camera.center=[Number(center.lng),Number(center.lat)];
+  if(Number.isFinite(Number(zoom)))camera.zoom=Number(zoom);
+  try{map.easeTo(camera)}catch(_){return false}
+  return false;
+}
 function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false}={}){
   if(!map)return null;
   const state=navState(map);
@@ -189,7 +219,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
     state.manualZoom=null;
     state.manualZoomUntil=0;
   }
-  if(!state.follow)return null;
+  if(!state.navigationActive||!state.follow)return null;
   const renderedBearing=Number(map.getBearing?.());
   const previousBearing=Number.isFinite(renderedBearing)?renderedBearing:state.bearing;
   const decision=navCameraDecision({...fix,route,previousBearing,baseZoom});if(!decision)return null;
@@ -237,7 +267,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
 }
 function reanchorNavigationAfterGesture(map){
   const state=navState(map);
-  if(!state.follow||!state.lastFix)return false;
+  if(!state.navigationActive||!state.follow||!state.lastFix)return false;
   state.gestureActive=true;
   const currentZoom=Number(map.getZoom?.());
   if(Number.isFinite(currentZoom)){
@@ -287,6 +317,7 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
   });
   if(navigation){
     navState(map).follow=true;
+    navState(map).navigationActive=true;
     try{map.touchZoomRotate.enableRotation()}catch(_){}
     const beginGesture=e=>{
       const original=e?.originalEvent;
@@ -408,5 +439,5 @@ async function reverse(lat,lng){
   }catch(_){return''}
 }
 function destroy(map){try{map?.remove?.()}catch(_){}}
-window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,navigationCameraDecision:navCameraDecision,followNavigationCamera,setNavigationFollow,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
+window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,navigationCameraDecision:navCameraDecision,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
 })();
