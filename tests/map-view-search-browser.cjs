@@ -2,7 +2,7 @@ const http=require("http"),fs=require("fs"),path=require("path"),assert=require(
 const {webkit}=require("playwright-core");
 
 const root=path.resolve(__dirname,"..");
-const onePx=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+ZQW7WQAAAABJRU5ErkJggg==","base64");
+const onePx=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGN49+rhfwAJPAO5kbCVAwAAAABJRU5ErkJggg==","base64");
 
 function serve(){
   return new Promise(resolve=>{
@@ -12,6 +12,11 @@ function serve(){
         res.writeHead(200,{"content-type":"text/html; charset=utf-8","cache-control":"no-store"});
         res.end(fs.readFileSync(path.join(root,"map-view/index.html")));
         return;
+      }
+      const file=path.resolve(root,"."+url.pathname);
+      if((url.pathname.startsWith("/map-assets/")||url.pathname.startsWith("/map-view/"))&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()){
+        const type=file.endsWith(".js")?"application/javascript":file.endsWith(".css")?"text/css":"application/octet-stream";
+        res.writeHead(200,{"content-type":type});res.end(fs.readFileSync(file));return;
       }
       res.writeHead(404);res.end("not found");
     });
