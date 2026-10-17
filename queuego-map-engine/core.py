@@ -303,7 +303,10 @@ class Engine:
                 if not waypoints:raise ValueError('No candidate road')
                 return {**base,'matching_method':'nearest_initialization','snapped_position':waypoints[0]['location'],'reroute':base.get('reroute',False),'context':base.get('context',body.get('context') or {})}
             result=self._call('trace_route',{'shape':accepted,'shape_match':'map_snap','costing':costing,'trace_options':{'gps_accuracy':max(1,uncertainty),'search_radius':max(20,min(100,uncertainty*2))},'directions_options':{'units':'kilometers'}})
+            if result.get('alternates'):raise ValueError('Discontinuous trace cannot supply a trusted latest road position')
             route=self._convert(result['trip'],profile,remember=False)
+            latest=[accepted[-1]['lon'],accepted[-1]['lat']]
+            if haversine(latest,route['geometry']['coordinates'][-1])>max(35,uncertainty*2):raise ValueError('Matched endpoint is too far from latest fix')
             return {**base,'matching_method':'Valhalla HMM','matchings':[route],'snapped_position':route['geometry']['coordinates'][-1]}
         except Exception:
             if not evaluation:raise
