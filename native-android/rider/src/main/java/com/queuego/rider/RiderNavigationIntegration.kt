@@ -607,8 +607,15 @@ internal fun QueueGoRiderNavigationMap(
         initialCamera = initialCamera,
         onMapReady = onMapReady,
         onUserGesture = {
-            viewModeState = viewModeController.onUserGesture()
-            pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
+            if (riderFix?.point?.valid == true) {
+                viewModeState = viewModeController.onUserGesture()
+                pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
+            } else {
+                // A startup gesture before the first live GPS fix must not strand the
+                // Rider in FREE_PAN. Keep FOLLOW ownership until a real fix exists.
+                viewModeState = viewModeController.onRecenter()
+                pendingViewModePersistence = NavigationViewMode.FOLLOW.name
+            }
         },
         onCameraChanged = { camera ->
             pendingCameraPersistence = doubleArrayOf(
