@@ -56,7 +56,7 @@ class NavigationGuidanceTest {
         assertFalse(state.shouldReroute)
     }
 
-    @Test fun rerouteNeedsTwoReliableOffRouteSamplesAndCooldown() {
+    @Test fun rerouteNeedsThreeReliableOffRouteSamplesAndTwentySecondCooldown() {
         var now = 20_000L
         val tracker = NavigationProgressTracker(nowMillis = { now })
         val fix = NavigationMapFix(
@@ -65,25 +65,72 @@ class NavigationGuidanceTest {
             speedMetersPerSecond = 6f
         )
         val first = tracker.update(fix, routeLeg(), stop)
+        val second = tracker.update(fix, routeLeg(), stop)
+        val third = tracker.update(fix, routeLeg(), stop)
         assertTrue(first.offRoute)
         assertFalse(first.shouldReroute)
-
-        val second = tracker.update(fix, routeLeg(), stop)
-        assertTrue(second.shouldReroute)
+        assertFalse(second.shouldReroute)
+        assertTrue(third.shouldReroute)
 
         now += 2_000L
-        val third = tracker.update(fix, routeLeg(), stop)
         val fourth = tracker.update(fix, routeLeg(), stop)
-        assertFalse(third.shouldReroute)
-        assertFalse(fourth.shouldReroute)
-
-        now += 8_000L
         val fifth = tracker.update(fix, routeLeg(), stop)
+        assertFalse(fourth.shouldReroute)
+        assertFalse(fifth.shouldReroute)
+
+        now += 20_000L
         val sixth = tracker.update(fix, routeLeg(), stop)
-        // Off-route evidence remained continuous during cooldown, so once the cooldown expires
-        // the next sample should reroute immediately instead of waiting for two new samples.
-        assertTrue(fifth.shouldReroute)
-        assertFalse(sixth.shouldReroute)
+        val seventh = tracker.update(fix, routeLeg(), stop)
+        // Off-route evidence remained continuous during cooldown, so the third reliable sample
+        // after the reset may reroute as soon as the 20-second cooldown has elapsed.
+        assertTrue(sixth.shouldReroute)
+        assertFalse(seventh.shouldReroute)
+    }
+
+    @Test fun authoritativeProgressUsesHybridContinuityAtOverlappingRouteGeometry() {
+        val loop = NavigationRouteLeg(
+            segment = NavigationRouteSegment(
+                id = "loop",
+                toStopId = "shop",
+                points = listOf(
+                    NavigationMapPoint(15.0000, 103.0000),
+                    NavigationMapPoint(15.0000, 103.0100),
+                    NavigationMapPoint(15.0100, 103.0100),
+                    NavigationMapPoint(15.0100, 103.0000),
+                    NavigationMapPoint(15.0000, 103.0000)
+                ),
+                style = NavigationRouteStyle.ACTIVE
+            ),
+            distanceMeters = 4_400.0,
+            durationSeconds = 800.0
+        )
+        val loopStop = stop.copy(point = NavigationMapPoint(15.0000, 103.0000))
+        val tracker = NavigationProgressTracker(nowMillis = { 30_000L })
+
+        val late = tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(15.0030, 103.0000),
+                bearingDegrees = 180f,
+                accuracyMeters = 6f,
+                speedMetersPerSecond = 7f,
+                elapsedRealtimeNanos = 1_000_000_000L
+            ),
+            loop,
+            loopStop
+        )
+        val repeatedEndpoint = tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(15.0000, 103.0000),
+                accuracyMeters = 6f,
+                speedMetersPerSecond = 1f,
+                elapsedRealtimeNanos = 2_000_000_000L
+            ),
+            loop,
+            loopStop
+        )
+
+        assertTrue(repeatedEndpoint.progressMeters!! >= late.progressMeters!! - 35.0)
+        assertTrue(repeatedEndpoint.distanceRemainingMeters!! < 20.0)
     }
 
     @Test fun weakGpsNeverTriggersReroute() {
