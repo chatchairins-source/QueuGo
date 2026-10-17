@@ -10,7 +10,7 @@ members and no prohibited near-via transition is observed.
 import argparse,json,math,sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'queuego-map-engine'))
-from core import Engine,decode_shape,haversine
+from core import Engine,decode_shape,haversine,restriction_source_error
 
 p=argparse.ArgumentParser()
 p.add_argument('--database',required=True)
@@ -58,8 +58,7 @@ def route_edges(route):
     edges=[]
     for leg in route['trip']['legs']:
         coords=decode_shape(leg['shape'])
-        attrs=v._call('trace_attributes',{'encoded_polyline':leg['shape'],'shape_match':'edge_walk','costing':'motorcycle'})
-        for edge in attrs.get('edges',[]):
+        for edge in v.route_trace_edges(leg,'motorcycle'):
             idx=min(int(edge.get('end_shape_index',0)),len(coords)-1)
             edges.append({**edge,'end_point':coords[idx]})
     return edges
@@ -86,8 +85,9 @@ for rule in rules:
     kind=rule['restriction'] or ''
     result={'id':rule['id'],'restriction':kind,'from':froms,'to':tos,'via_nodes':vias,'via_ways':viaways}
 
-    if not froms or not tos or not (vias or viaways):
-        result.update(status='source_incomplete',reason='Restriction is missing required from/to/via members')
+    source_error=restriction_source_error(froms,tos,vias,viaways,kind)
+    if source_error:
+        result.update(status='source_incomplete',reason=source_error)
         results.append(result);continue
 
     if vias and not viaways and len(vias)==1:

@@ -13,7 +13,7 @@ No source rule is invented and physical verification remains separate.
 import argparse,json,math,sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/"queuego-map-engine"))
-from core import Engine,decode_shape,haversine
+from core import Engine,decode_shape,haversine,restriction_source_error
 
 P=argparse.ArgumentParser()
 P.add_argument("--database",required=True)
@@ -101,8 +101,7 @@ def route_edges(query):
         coords=decode_shape(leg["shape"])
         if not shape:shape.extend(coords)
         else:shape.extend(coords[1:] if shape[-1]==coords[0] else coords)
-        attrs=engine._call("trace_attributes",{"encoded_polyline":leg["shape"],"shape_match":"edge_walk","costing":"motorcycle"})
-        for e in attrs.get("edges",[]):
+        for e in engine.route_trace_edges(leg,"motorcycle"):
             idx=min(int(e.get("end_shape_index",0)),len(coords)-1)
             edges.append({**e,"end_point":coords[idx]})
     return route,edges,shape
@@ -125,7 +124,7 @@ def direct_transition(edges,via,from_id,from_branch,to_id,to_branch,kind):
         if not direction_ok(x,from_branch["travel_forward"]) or not direction_ok(y,to_branch["travel_forward"]):continue
         if haversine(x["end_point"],via)>5:continue
         d=delta(float(x.get("end_heading",0)),float(y.get("begin_heading",0)))
-        if restriction_match(kind,d):hits.append({"from_way":from_id,"to_way":to_id,"delta_deg":round(d,1),"via_distance_m":round(haversine(x["end_point"],via),2)})
+        if from_id!=to_id or from_branch["travel_forward"]!=to_branch["travel_forward"]:hits.append({"from_way":from_id,"to_way":to_id,"delta_deg":round(d,1),"via_distance_m":round(haversine(x["end_point"],via),2)})
     # Valhalla can sometimes represent a same-way U-turn without changing way ID.
     if kind=="no_u_turn" and from_id==to_id and not hits:
         for x,y in zip(edges,edges[1:]):
@@ -147,16 +146,18 @@ def probe_pair(via,from_id,fb,to_id,tb,kind,expect_forbidden,relation_id):
     attempts=[]
     for metres in (12,20,35,60):
         q,inc,out,d=query_for_pair(via,from_id,fb,to_id,tb,metres)
-        attempt={"metres":metres,"turn_delta_deg":round(d,1),"query":q}
+        attempt={"metres":metres,"turn_delta_deg":round(d,1),"approach_direction":inc,"departure_direction":out,"query":q}
         try:
             route,edges,shape=route_edges(q)
             attempt["distance_m"]=round(route["trip"]["summary"]["length"]*1000,1)
+            attempt["traversed_edges"]=[{k:e.get(k) for k in ("id","way_id","forward","begin_heading","end_heading","begin_shape_index","end_shape_index")} for e in edges]
             attempt["way_sequence"]=[]
             for e in edges:
                 wid=e.get("way_id")
                 if wid is not None and (not attempt["way_sequence"] or attempt["way_sequence"][-1]!=wid):attempt["way_sequence"].append(wid)
             attempt["anchored"]=anchored(edges,from_id,fb,to_id,tb)
             attempt["direct_hits"]=direct_transition(edges,via,from_id,fb,to_id,tb,kind)
+            attempt["actual_forbidden_transition"]=bool(expect_forbidden and attempt["direct_hits"])
             if attempt["anchored"]:
                 if expect_forbidden:
                     if attempt["direct_hits"]:
@@ -189,8 +190,9 @@ with engine.db() as db:
         rid=rule["id"];kind=rule["restriction"] or ""
         froms=json.loads(rule["from_ways"]);tos=json.loads(rule["to_ways"]);vias=json.loads(rule["via_nodes"]);viaways=json.loads(rule["via_ways"])
         item={"id":rid,"restriction":kind,"from":froms,"to":tos,"via_nodes":vias,"via_ways":viaways,"tests":[]}
-        if not froms or not tos or not (vias or viaways):
-            item["status"]="source_invalid";item["reason"]="missing from/to/via source members";results.append(item);continue
+        source_error=restriction_source_error(froms,tos,vias,viaways,kind)
+        if source_error:
+            item["status"]="source_invalid";item["reason"]=source_error;results.append(item);continue
         if viaways:
             old=legacy_by.get(rid,{})
             if old.get("status")=="passed_approach" and not old.get("violations"):
@@ -213,6 +215,7 @@ with engine.db() as db:
         if disconnected:
             item["status"]="source_member_conflict";item["reason"]="declared member does not connect to via node";item["disconnected_members"]=disconnected;results.append(item);continue
 
+        item["source_branch_evidence"]=[{"way_id":wid,"tags":json.loads(row["tags"]),"approaches":[{k:b[k] for k in ("side","travel_forward")} for b in branches_for_way(row,via_id,"approach")],"departures":[{k:b[k] for k in ("side","travel_forward")} for b in branches_for_way(row,via_id,"depart")]} for wid,row in source_rows.items()]
         from_candidates=[]
         for wid in froms:
             row=source_rows[wid]
@@ -233,9 +236,9 @@ with engine.db() as db:
             for fw,fr,fb in from_candidates:
                 for tw,tr,tb in to_candidates:
                     _,inc,out,d=query_for_pair(via,fw,fb,tw,tb,20)
-                    if restriction_match(kind,d):pairs.append((fw,fb,tw,tb,d))
+                    if (fw!=tw or fb["travel_forward"]!=tb["travel_forward"]) and (len(from_candidates)*len(to_candidates)==1 or restriction_match(kind,d)):pairs.append((fw,fb,tw,tb,d))
             if not pairs:
-                item["status"]="profile_inapplicable";item["reason"]="no motorcycle-valid prohibited branch pair from source geometry";results.append(item);continue
+                item["status"]="uncovered";item["reason"]="no source-anchored prohibited branch pair verified";item["candidate_turn_deltas"]=[{"from_way":fw,"from_side":fb["side"],"to_way":tw,"to_side":tb["side"],"delta_deg":round(query_for_pair(via,fw,fb,tw,tb,20)[3],1)} for fw,fr,fb in from_candidates for tw,tr,tb in to_candidates];results.append(item);continue
             for fw,fb,tw,tb,d in pairs:
                 attempts=probe_pair(via,fw,fb,tw,tb,kind,True,rid)
                 proof=next((x.get("proof") for x in attempts if x.get("proof")),None)
@@ -248,9 +251,9 @@ with engine.db() as db:
             for fw,fr,fb in from_candidates:
                 for tw,tr,tb in to_candidates:
                     _,inc,out,d=query_for_pair(via,fw,fb,tw,tb,20)
-                    if restriction_match(kind,d):legal_pairs.append((fw,fb,tw,tb,d))
+                    if (fw!=tw or fb["travel_forward"]==tb["travel_forward"]) and (len(from_candidates)*len(to_candidates)==1 or restriction_match(kind,d)):legal_pairs.append((fw,fb,tw,tb,d))
             if not legal_pairs:
-                item["status"]="profile_inapplicable";item["reason"]="no motorcycle-valid designated branch pair from source geometry";results.append(item);continue
+                item["status"]="uncovered";item["reason"]="no source-anchored designated branch pair verified";item["candidate_turn_deltas"]=[{"from_way":fw,"from_side":fb["side"],"to_way":tw,"to_side":tb["side"],"delta_deg":round(query_for_pair(via,fw,fb,tw,tb,20)[3],1)} for fw,fr,fb in from_candidates for tw,tr,tb in to_candidates];results.append(item);continue
             legal_ok=False
             for fw,fb,tw,tb,d in legal_pairs:
                 attempts=probe_pair(via,fw,fb,tw,tb,kind,False,rid)
@@ -259,9 +262,9 @@ with engine.db() as db:
                 if proof=="passed_legal_direct":legal_ok=True;proved+=1
             if not legal_ok:uncovered=True
             outgoing=connected_outgoing(db,via_id)
-            legal_keys={(tw,tb["side"]) for _,_,tw,tb,_ in legal_pairs}
-            forbidden_seen=set()
             for fw,fr,fb in from_candidates:
+                legal_keys={(tw,tb["side"]) for lfw,lfb,tw,tb,_ in legal_pairs if lfw==fw and lfb["side"]==fb["side"]}
+                forbidden_seen=set()
                 for tw,tr,tb in outgoing:
                     key=(tw,tb["side"])
                     if key in legal_keys or key in forbidden_seen:continue

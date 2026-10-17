@@ -17,10 +17,32 @@
     "historical_speed_feed": false,
     "unresolved_turn_relations": [
       2148441,
-      17320674
+      17320674,
+      20613951,
+      20613952
     ],
-    "quarantined_way_count": 3,
-    "restriction_policy": "incomplete source relations fail closed on all member ways"
+    "source_member_conflicts": [
+      6982243
+    ],
+    "source_direction_conflicts": [
+      1538817
+    ],
+    "runtime_no_u_turn_relations": [
+      6982135,
+      6982242,
+      6982244,
+      6982245,
+      6982246,
+      6982248,
+      6982249,
+      16142295,
+      16142297,
+      16142299,
+      16142300,
+      16142301
+    ],
+    "quarantined_way_count": 12,
+    "restriction_policy": "incomplete, disconnected-member, or one-way-direction-conflicting source turn relations fail closed on all member ways; same-way no_u_turn reversals are independently rejected at the QueueGo route boundary"
   },
   "checks": [
     {
@@ -193,9 +215,42 @@
       ]
     },
     {
-      "name": "malformed source restrictions quarantined",
+      "name": "unverified source restrictions quarantined",
       "passed": true,
       "detail": null
+    },
+    {
+      "name": "actual loop trace covers full routed length",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "actual loop trace retains traversed quarantined member",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "actual loop quarantine enforced",
+      "passed": true,
+      "detail": "Route touches an unresolved, disconnected-member, or direction-conflicting source turn rule; member ways are quarantined until verified"
+    },
+    {
+      "name": "same-way no-U-turn runtime enforcement loaded",
+      "passed": true,
+      "detail": [
+        6982135,
+        6982242,
+        6982244,
+        6982245,
+        6982246,
+        6982248,
+        6982249,
+        16142295,
+        16142297,
+        16142299,
+        16142300,
+        16142301
+      ]
     },
     {
       "name": "planned alternatives avoid unverified rule members",

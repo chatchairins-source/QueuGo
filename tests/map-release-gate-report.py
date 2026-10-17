@@ -19,6 +19,8 @@ ok(mod.road_cases_pass({"cases":[{"status":"passed"},{"status":"passed_excluded"
 ok(not mod.road_cases_pass({"cases":[{"status":"open"}]}),"open road case fails")
 ok(mod.directional_pass({"well_formed_motorcycle_gate":True,"summary":{"passed_directional":1}}),"directional pass")
 ok(not mod.directional_pass({"well_formed_motorcycle_gate":False,"summary":{}}),"directional false fails")
+for status in ('failed','uncovered','uncovered_via_way'):
+    ok(not mod.directional_pass({'well_formed_motorcycle_gate':True,'summary':{status:1}}),'summary cannot override '+status)
 source=path.read_text()
 for token in [
     '"source_member_conflicts"',

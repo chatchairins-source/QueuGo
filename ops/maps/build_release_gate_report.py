@@ -33,7 +33,7 @@ def staging_pass(staging):
     return bool(staging and staging.get("healthy") is True and staging.get("public_bind") is False and staging.get("read_only_root") is True and staging.get("data_read_only") is True and staging.get("no_new_privileges") is True and staging.get("capabilities_dropped")=="ALL")
 
 def directional_pass(value):
-    return bool(value and value.get("well_formed_motorcycle_gate") is True and not value.get("summary",{}).get("failed",0))
+    return bool(value and value.get("well_formed_motorcycle_gate") is True and not any(value.get("summary",{}).get(k,0) for k in ("failed","uncovered","uncovered_via_way")))
 
 def source_open(runtime):
     data=(runtime or {}).get("dataset") or {}

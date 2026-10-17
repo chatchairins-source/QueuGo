@@ -63,7 +63,17 @@ five=points+[{k:r[k] for k in ('lat','lon')} for r in extra]
 check('five stop route',len(engine.route({'points':five})['routes'][0]['legs'])==4,ids+[r['id'] for r in extra])
 check('five by five ETA matrix',len(engine.matrix({'points':five})['durations'])==5)
 optimized=engine.optimize({'points':five});check('five stop optimization fixed endpoints',sorted(optimized['order'])==list(range(5)) and optimized['order'][0]==0 and optimized['order'][-1]==4,optimized['order'])
-check('unverified source restrictions quarantined',set(engine.unresolved_rules)=={2148441,17320674} and set(engine.member_conflicting_rules)=={6982243} and set(engine.direction_conflicting_rules)=={1538817} and len(engine.quarantined_ways)==7)
+check('unverified source restrictions quarantined',set(engine.unresolved_rules)=={2148441,17320674,20613951,20613952} and set(engine.member_conflicting_rules)=={6982243} and set(engine.direction_conflicting_rules)=={1538817} and len(engine.quarantined_ways)==12)
+loop_query=[{'lon':102.49269829386337,'lat':14.584844360887121,'heading':67,'heading_tolerance':12,'radius':8,'node_snap_tolerance':0},{'lon':102.49255232127798,'lat':14.58478590985722,'heading':248,'heading_tolerance':12,'radius':8,'node_snap_tolerance':0}]
+loop_trip=engine._call('route',{'locations':loop_query,'costing':'motorcycle'})['trip']
+loop_edges=engine.route_trace_edges(loop_trip['legs'][0],'motorcycle')
+check('actual loop trace covers full routed length',abs(sum(e['length']*1000 for e in loop_edges)-loop_trip['summary']['length']*1000)<10)
+check('actual loop trace retains traversed quarantined member',474747491 in {e['way_id'] for e in loop_edges})
+try:
+    engine._convert(loop_trip,'motorcycle',remember=False)
+    check('actual loop quarantine enforced',False)
+except ValueError as error:
+    check('actual loop quarantine enforced','quarantined' in str(error),str(error))
 runtime_no_u_turn_ids={r['relation_id'] for r in engine.runtime_no_u_turn_rules}
 check('same-way no-U-turn runtime enforcement loaded',6982135 in runtime_no_u_turn_ids and 6982244 in runtime_no_u_turn_ids and len(runtime_no_u_turn_ids)>=10,sorted(runtime_no_u_turn_ids))
 check('planned alternatives avoid unverified rule members',all(not engine.quarantined_ways.intersection(r['osm_way_ids']) for r in routes))
@@ -83,7 +93,7 @@ for way in ways:
     result=engine._call('route',{'locations':query,'costing':'motorcycle'})
     checked=0
     for leg in result['trip']['legs']:
-        attrs=engine._call('trace_attributes',{'encoded_polyline':leg['shape'],'shape_match':'edge_walk','costing':'motorcycle'})
+        attrs={'edges':engine.route_trace_edges(leg,'motorcycle')}
         with engine.db() as db:
             for edge in attrs.get('edges',[]):
                 row=db.execute('SELECT tags FROM ways WHERE id=?',(edge.get('way_id'),)).fetchone()

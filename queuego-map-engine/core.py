@@ -66,6 +66,15 @@ def thai_maneuver(maneuver):
     return label
 
 
+def restriction_source_error(froms,tos,vias,viaways,kind):
+    # OSM Relation:restriction member cardinality, never inferred/repaired members.
+    if not froms or not tos or not (vias or viaways):return 'missing from/to/via source members'
+    if (vias and viaways) or len(vias)>1:return 'source must have one via node OR a via-way chain'
+    if len(froms)!=1 and kind!='no_entry':return 'multiple from members only valid for no_entry'
+    if len(tos)!=1 and kind!='no_exit':return 'multiple to members only valid for no_exit'
+    return None
+
+
 class Engine:
     def __init__(self,database,config):
         import valhalla
@@ -95,7 +104,7 @@ class Engine:
                 return index>0 if approach else index<len(nodes)-1
             for rule in db.execute('SELECT * FROM turn_restrictions'):
                 froms=json.loads(rule['from_ways']);tos=json.loads(rule['to_ways']);vias=json.loads(rule['via_nodes']);viaways=json.loads(rule['via_ways'])
-                if not froms or not tos or not (vias or viaways):
+                if restriction_source_error(froms,tos,vias,viaways,rule['restriction']):
                     self.unresolved_rules.append(rule['id']);quarantine(rule);continue
                 if vias and not viaways and len(vias)==1:
                     via=vias[0]
@@ -161,6 +170,21 @@ class Engine:
                 if haversine(point,rule['point'])<=5:
                     raise ValueError('Route violates source no_u_turn relation '+str(rule['relation_id'])+'; QueueGo rejects the raw engine maneuver')
 
+    def route_trace_edges(self,leg,profile):
+        """Audit the complete routed shape; edge_walk can collapse a loop to a shortcut."""
+        points=decode_shape(leg['shape'])
+        expected=float(leg['summary']['length'])*1000
+        def complete(attributes):
+            edges=attributes.get('edges') or []
+            return bool(edges and edges[0].get('begin_shape_index')==0
+                and edges[-1].get('end_shape_index')==len(points)-1
+                and all(x.get('end_shape_index')==y.get('begin_shape_index') for x,y in zip(edges,edges[1:]))
+                and abs(sum(float(e.get('length',0))*1000 for e in edges)-expected)<=max(10,expected*.03))
+        for method in ('edge_walk','map_snap'):
+            attributes=self._call('trace_attributes',{'encoded_polyline':leg['shape'],'shape_match':method,'costing':PROFILES[profile]})
+            if complete(attributes):return attributes['edges']
+        raise ValueError('Cannot audit complete routed edge sequence; refusing partial trace')
+
     def _convert(self,trip,profile,remember=True):
         coordinates=[];legs=[];trace_edges=[]
         for leg in trip['legs']:
@@ -176,8 +200,7 @@ class Engine:
             legs.append({'distance':leg['summary']['length']*1000,'duration':leg['summary']['time'],'steps':steps})
             # Coincident stops have no traversed edges; do not ask edge_walk to invent one.
             if leg['summary']['length']>0 and any(haversine(a,b)>.01 for a,b in zip(points,points[1:])):
-                attributes=self._call('trace_attributes',{'encoded_polyline':leg['shape'],'shape_match':'edge_walk','costing':PROFILES[profile]})
-                for edge in attributes.get('edges',[]):
+                for edge in self.route_trace_edges(leg,profile):
                     record=dict(edge)
                     begin=min(max(0,int(record.get('begin_shape_index',0))),len(points)-1)
                     end=min(max(0,int(record.get('end_shape_index',begin))),len(points)-1)
