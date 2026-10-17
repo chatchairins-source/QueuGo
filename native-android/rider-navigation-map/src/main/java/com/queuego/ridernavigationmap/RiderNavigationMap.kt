@@ -582,6 +582,7 @@ fun RiderNavigationMap(
     state: RiderNavigationMapState,
     modifier: Modifier = Modifier,
     initialCamera: NavigationMapCamera? = null,
+    mapSourceUri: String? = null,
     onMapReady: (Boolean) -> Unit = {},
     onCameraChanged: (NavigationMapCamera) -> Unit = {},
     onUserGesture: () -> Unit = {},
@@ -610,7 +611,7 @@ fun RiderNavigationMap(
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            val sourceUri = queueGoMapVectorSourceUri(context)
+            val sourceUri = mapSourceUri ?: queueGoMapVectorSourceUri(context)
             if (sourceUri == null) {
                 currentReady.value(false)
                 MapView(context)
