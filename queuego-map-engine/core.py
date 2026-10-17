@@ -72,13 +72,30 @@ class Engine:
         self.actor=valhalla.Actor(str(config))
         self.version=valhalla.__version__
         self.database=str(Path(database).resolve())
-        self.unresolved_rules=[];self.quarantined_ways=set()
+        self.unresolved_rules=[];self.direction_conflicting_rules=[];self.quarantined_ways=set()
         with self.db() as db:
             self.dataset=json.loads(db.execute("SELECT value FROM metadata WHERE key='dataset'").fetchone()[0])
+            def quarantine(rule):
+                self.quarantined_ways.update(m['ref'] for m in json.loads(rule['members']) if m['type']=='w')
+            def one_way_allows(wid,via,approach):
+                way=db.execute('SELECT node_ids,tags FROM ways WHERE id=?',(wid,)).fetchone()
+                if not way:return False
+                nodes=json.loads(way['node_ids']);tags=json.loads(way['tags'])
+                if via not in nodes:return False
+                direction=tags.get('oneway:motorcycle',tags.get('oneway'))
+                if direction not in ('yes','1','true','-1'):return True
+                index=nodes.index(via)
+                if direction=='-1':
+                    return index<len(nodes)-1 if approach else index>0
+                return index>0 if approach else index<len(nodes)-1
             for rule in db.execute('SELECT * FROM turn_restrictions'):
-                if not json.loads(rule['from_ways']) or not json.loads(rule['to_ways']) or not (json.loads(rule['via_nodes']) or json.loads(rule['via_ways'])):
-                    self.unresolved_rules.append(rule['id'])
-                    self.quarantined_ways.update(m['ref'] for m in json.loads(rule['members']) if m['type']=='w')
+                froms=json.loads(rule['from_ways']);tos=json.loads(rule['to_ways']);vias=json.loads(rule['via_nodes']);viaways=json.loads(rule['via_ways'])
+                if not froms or not tos or not (vias or viaways):
+                    self.unresolved_rules.append(rule['id']);quarantine(rule);continue
+                if vias and not viaways and len(vias)==1:
+                    via=vias[0]
+                    if not all(one_way_allows(wid,via,True) for wid in froms) or not all(one_way_allows(wid,via,False) for wid in tos):
+                        self.direction_conflicting_rules.append(rule['id']);quarantine(rule)
         self.lock=threading.RLock();self.cache=OrderedDict()
     @contextmanager
     def db(self):
@@ -86,7 +103,7 @@ class Engine:
         try:yield connection
         finally:connection.close()
     def metadata(self):
-        return {'api_version':1,'engine':'QueueGo/Valhalla','engine_version':self.version,'dataset_sha256':self.dataset['extract_sha256'],'source_timestamp':self.dataset['source_replication_timestamp'],'bounds':self.dataset['bounds'],'attribution':'© OpenStreetMap contributors','licence':'ODbL-1.0','live_traffic':False,'historical_speed_feed':False,'unresolved_turn_relations':self.unresolved_rules,'quarantined_way_count':len(self.quarantined_ways),'restriction_policy':'incomplete source relations fail closed on all member ways'}
+        return {'api_version':1,'engine':'QueueGo/Valhalla','engine_version':self.version,'dataset_sha256':self.dataset['extract_sha256'],'source_timestamp':self.dataset['source_replication_timestamp'],'bounds':self.dataset['bounds'],'attribution':'© OpenStreetMap contributors','licence':'ODbL-1.0','live_traffic':False,'historical_speed_feed':False,'unresolved_turn_relations':self.unresolved_rules,'source_direction_conflicts':self.direction_conflicting_rules,'quarantined_way_count':len(self.quarantined_ways),'restriction_policy':'incomplete or one-way-direction-conflicting source turn relations fail closed on all member ways'}
     def profile(self,body):
         profile=body.get('profile','motorcycle')
         if profile not in PROFILES:raise ValueError('Unsupported vehicle profile')
@@ -142,7 +159,7 @@ class Engine:
         # These are explicit planning penalties, not measured historical traffic or a safety guarantee.
         estimated=base+signal_count*EXPECTED_SIGNAL_DELAY_SECONDS
         route={'distance':distance,'duration':base,'estimatedDuration':estimated,'geometry':{'type':'LineString','coordinates':coordinates},'legs':legs,'profile':profile,'signalCount':signal_count,'restrictionCount':0,'osm_way_ids':ways,'cost_components':{'engine_seconds':base,'signal_expected_delay_seconds':signal_count*EXPECTED_SIGNAL_DELAY_SECONDS,'rough_surface_metres':rough_m,'reliability_penalty_seconds':rough_m/10,'historical_samples':0},'data':self.metadata()}
-        if self.quarantined_ways.intersection(ways):raise ValueError('Route touches an unresolved source turn rule; member ways are quarantined until verified')
+        if self.quarantined_ways.intersection(ways):raise ValueError('Route touches an unresolved or direction-conflicting source turn rule; member ways are quarantined until verified')
         # Enforce known hard exclusions on the actual traversed way IDs. Never invent a detour.
         if ways:
             with self.db() as db:
