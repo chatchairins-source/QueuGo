@@ -5,6 +5,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class QueueGoTrustedLocalRoadRoutingTest {
@@ -84,6 +85,59 @@ class QueueGoTrustedLocalRoadRoutingTest {
         } finally {
             directory.deleteRecursively()
         }
+    }
+
+    @Test
+    fun nearestNodeSnapsOnlyInsideExplicitRadius() {
+        val graph = QueueGoTrustedLocalRoadSnapshot(
+            revision = 1L,
+            roads = listOf(road()),
+            junctions = emptyList()
+        ).buildGraphSession()
+
+        val near = graph.nearestNode(
+            point = QueueGoLocalRoadPoint(15.00001, 103.00001),
+            maxSnapMeters = 10.0
+        )
+        assertNotNull(near)
+        assertTrue(near!!.distanceMeters < 2.0)
+        assertEquals(graph.exactNodeId(a), near.nodeId)
+
+        val far = graph.nearestNode(
+            point = QueueGoLocalRoadPoint(15.01, 103.01),
+            maxSnapMeters = 40.0
+        )
+        assertNull(far)
+    }
+
+    @Test
+    fun routeBetweenUsesTrustedGraphGeometryAndNeverBridgesMissingCoverage() {
+        val graph = QueueGoTrustedLocalRoadSnapshot(
+            revision = 1L,
+            roads = listOf(road()),
+            junctions = emptyList()
+        ).buildGraphSession()
+
+        val route = graph.routeBetween(
+            start = QueueGoLocalRoadPoint(15.00001, 103.00001),
+            end = QueueGoLocalRoadPoint(15.00001, 103.00099),
+            vehicle = QueueGoRoutingVehicle.MOTORCYCLE,
+            maxSnapMeters = 10.0
+        )
+        assertEquals(QueueGoLocalRoadPathStatus.FOUND, route.status)
+        assertEquals(listOf(a, b), route.points)
+        assertTrue((route.startSnapMeters ?: Double.MAX_VALUE) < 2.0)
+        assertTrue((route.endSnapMeters ?: Double.MAX_VALUE) < 2.0)
+        assertTrue(route.totalDistanceMeters > 100.0)
+
+        val outside = graph.routeBetween(
+            start = a,
+            end = QueueGoLocalRoadPoint(15.01, 103.01),
+            vehicle = QueueGoRoutingVehicle.MOTORCYCLE,
+            maxSnapMeters = 40.0
+        )
+        assertEquals(QueueGoLocalRoadPathStatus.INVALID_ENDPOINT, outside.status)
+        assertTrue(outside.points.isEmpty())
     }
 
     @Test
