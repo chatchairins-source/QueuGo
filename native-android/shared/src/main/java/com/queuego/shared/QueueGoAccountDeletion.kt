@@ -1,5 +1,7 @@
 package com.queuego.shared
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +33,8 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 
 private const val ACCOUNT_DELETE_RESPONSE_MAX_BYTES = 256 * 1024
+private const val QUEUEGO_PRIVACY_POLICY_URL =
+    "https://chatchairins-source.github.io/QueuGo/docs/privacy.html"
 
 private fun InputStream.readAccountDeleteResponseBounded(): String {
     val output = ByteArrayOutputStream(16 * 1024)
@@ -111,6 +115,17 @@ fun QgAccountDeletionSection(
                 Text(message!!, color = QgRed)
             }
             Spacer(Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(QUEUEGO_PRIVACY_POLICY_URL))
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("นโยบายความเป็นส่วนตัว")
+            }
+            Spacer(Modifier.height(8.dp))
             if (!armed) {
                 OutlinedButton(
                     onClick = {
