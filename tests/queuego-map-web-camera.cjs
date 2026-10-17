@@ -96,6 +96,7 @@ ok(typeof easeCalls[0].easing==='function','follow rotation must use a smooth ea
 ok(easeCalls[0].duration>=320,'follow rotation should not snap instantly');
 ok(easeCalls[0].easing(.25)>.03,'camera easing must retain non-zero edge velocity between GPS samples');
 ok(typeof Q.moveMarkerSmooth==='function','QueueGo Map must expose cancellable smooth marker movement');
+eq(followed.animationDuration,easeCalls[0].duration,'follow result must expose the exact camera duration used to synchronize the Rider puck');
 eq(easeCalls[0].center[0],103.0020,'follow camera center must stay on Rider longitude instead of projected look-ahead');
 ok(Math.abs(easeCalls[0].center[1]-15.00001)<1e-9,'follow camera center must stay on Rider latitude');
 eq(easeCalls[0].offset[0],0,'follow anchor must stay horizontally centered');
