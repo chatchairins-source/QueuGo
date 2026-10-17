@@ -319,11 +319,22 @@ function setCenter(map,lat,lng,zoom=16,duration=350){
 function addGeoJsonLine(map,id,coordinates,{color='#e6002d',width=6,opacity=1}={}){
   if(!map||!Array.isArray(coordinates)||coordinates.length<2)return false;
   const sourceId=id+'-source',layerId=id+'-layer';
+  const data={type:'Feature',properties:{},geometry:{type:'LineString',coordinates}};
   const apply=()=>{
     try{
+      const existing=map.getSource(sourceId);
+      if(existing&&typeof existing.setData==='function'){
+        existing.setData(data);
+        if(map.getLayer(layerId)){
+          try{map.setPaintProperty?.(layerId,'line-color',color)}catch(_){}
+          try{map.setPaintProperty?.(layerId,'line-width',width)}catch(_){}
+          try{map.setPaintProperty?.(layerId,'line-opacity',opacity)}catch(_){}
+          return true;
+        }
+      }
       if(map.getLayer(layerId))map.removeLayer(layerId);
       if(map.getSource(sourceId))map.removeSource(sourceId);
-      map.addSource(sourceId,{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'LineString',coordinates}}});
+      map.addSource(sourceId,{type:'geojson',data});
       map.addLayer({id:layerId,type:'line',source:sourceId,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':color,'line-width':width,'line-opacity':opacity}});
       return true;
     }catch(_){return false}
