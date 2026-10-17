@@ -3,6 +3,7 @@
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
 <script src="../queuego-map-web.js?v=20261017-11"></script>
+<script src="../map-view/queuego-map-service.js?v=20261017-1"></script>
 
 
 <style id="queuego-rider-ui">
@@ -761,10 +762,34 @@ async function doLogout(){
 }
 
 /* ---------- MAIN STAGE ---------- */
-const LONGDO_API_KEY='347649ca13f49db0d8a599ae35f8de2b';
 // Temporary owner-requested road test: keep FOLLOW/3D active while idle so camera
 // smoothness can be evaluated before restoring job-gated perspective behavior.
 const RIDER_CAMERA_SMOOTHNESS_TEST_MODE=true;
+async function qgRequestRiderRoute(from,to,signal){
+  if(!validRiderCoordinate(from?.lat,from?.lng)||!validRiderCoordinate(to?.lat,to?.lng))throw Error('invalid QueueGo route coordinates');
+  const service=window.QueueGoMapService;
+  if(!service?.call)throw Error('QueueGo routing unavailable');
+  const value=await service.call('route',{
+    points:[
+      {lat:Number(from.lat),lon:Number(from.lng)},
+      {lat:Number(to.lat),lon:Number(to.lng)}
+    ],
+    profile:'rider_delivery',
+    preference:'fastest'
+  },{timeout:12000,signal});
+  const route=value?.routes?.[0];
+  const geometry=route?.geometry||{};
+  const parts=geometry.type==='LineString'?[geometry.coordinates]:geometry.type==='MultiLineString'?geometry.coordinates:[];
+  const routes=[];
+  for(const coords of parts){
+    const line=(coords||[]).filter(x=>Array.isArray(x)&&validRiderCoordinate(x[1],x[0])).map(x=>[Number(x[0]),Number(x[1])]);
+    if(line.length>1)routes.push(line);
+  }
+  if(!routes.length)throw Error('QueueGo route unavailable');
+  const dist=Number(route.distance)||0;
+  const time=Number(route.duration)||Number(route.estimatedDuration)||0;
+  return {routes,dist,time,routeId:String(route.route_id||'')};
+}
 let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderNavigationCameraActive=false,riderPuckHeading=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
 function clearRiderRoute(){
   riderRouteRequest?.controller.abort();riderRouteRequest=null;riderRouteCache=null;riderRouteGeometry=[];
@@ -1302,19 +1327,7 @@ function drawLaundryRoute(){
   const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');if(badge)badge.style.display='block';if(txt)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
   request.task=(async()=>{
     try{
-      const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(pos.lng)+'&flat='+encodeURIComponent(pos.lat)+'&tlon='+encodeURIComponent(lng)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
-      const res=await fetch(url,{signal:controller.signal});if(!res.ok)throw Error('route unavailable');const geo=await res.json();
-      if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
-      let dist=0,time=0;const routes=[];
-      for(const feature of geo.features||[]){
-        const p=feature.properties||{};dist+=Number(p.distance)||0;time+=Number(p.interval)||0;
-        const g=feature.geometry||{},parts=g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:[];
-        for(const coords of parts){
-          const line=(coords||[]).filter(x=>validRiderCoordinate(x[1],x[0])).map(x=>[Number(x[0]),Number(x[1])]);
-          if(line.length>1)routes.push(line);
-        }
-      }
-      if(!routes.length)throw Error('route unavailable');
+      const {routes,dist,time}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
@@ -1377,19 +1390,7 @@ function drawActiveRoute(){
   if(isOfferPreview&&!riderRouteCache)focusRiderNavigation(map,pos,{lat:Number(lat),lng:Number(lon)});
   request.task=(async()=>{
     try{
-      const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(pos.lng)+'&flat='+encodeURIComponent(pos.lat)+'&tlon='+encodeURIComponent(lon)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
-      const res=await fetch(url,{signal:controller.signal});if(!res.ok)throw Error('route unavailable');const geo=await res.json();
-      if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
-      let dist=0,time=0;const routes=[];
-      for(const feature of geo.features||[]){
-        const properties=feature.properties||{};dist+=Number(properties.distance)||0;time+=Number(properties.interval)||0;
-        const geometry=feature.geometry||{},parts=geometry.type==='LineString'?[geometry.coordinates]:geometry.type==='MultiLineString'?geometry.coordinates:[];
-        for(const coords of parts){
-          const line=(coords||[]).filter(x=>validRiderCoordinate(x[1],x[0])).map(x=>[Number(x[0]),Number(x[1])]);
-          if(line.length>1)routes.push(line);
-        }
-      }
-      if(!routes.length)throw Error('route unavailable');
+      const {routes,dist,time}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lon)},controller.signal);
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
