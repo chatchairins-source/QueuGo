@@ -72,7 +72,7 @@ class Engine:
         self.actor=valhalla.Actor(str(config))
         self.version=valhalla.__version__
         self.database=str(Path(database).resolve())
-        self.unresolved_rules=[];self.member_conflicting_rules=[];self.direction_conflicting_rules=[];self.quarantined_ways=set()
+        self.unresolved_rules=[];self.member_conflicting_rules=[];self.direction_conflicting_rules=[];self.quarantined_ways=set();self.runtime_no_u_turn_rules=[]
         with self.db() as db:
             self.dataset=json.loads(db.execute("SELECT value FROM metadata WHERE key='dataset'").fetchone()[0])
             def quarantine(rule):
@@ -102,7 +102,11 @@ class Engine:
                     if not all(member_way(wid,via) for wid in [*froms,*tos]):
                         self.member_conflicting_rules.append(rule['id']);quarantine(rule);continue
                     if not all(one_way_allows(wid,via,True) for wid in froms) or not all(one_way_allows(wid,via,False) for wid in tos):
-                        self.direction_conflicting_rules.append(rule['id']);quarantine(rule)
+                        self.direction_conflicting_rules.append(rule['id']);quarantine(rule);continue
+                    if rule['restriction']=='no_u_turn' and len(froms)==1 and froms==tos:
+                        node=db.execute('SELECT longitude,latitude FROM nodes WHERE id=?',(via,)).fetchone()
+                        if node:
+                            self.runtime_no_u_turn_rules.append({'relation_id':rule['id'],'way_id':froms[0],'via_node':via,'point':[node['longitude'],node['latitude']]})
         self.lock=threading.RLock();self.cache=OrderedDict()
     @contextmanager
     def db(self):
@@ -110,7 +114,7 @@ class Engine:
         try:yield connection
         finally:connection.close()
     def metadata(self):
-        return {'api_version':1,'engine':'QueueGo/Valhalla','engine_version':self.version,'dataset_sha256':self.dataset['extract_sha256'],'source_timestamp':self.dataset['source_replication_timestamp'],'bounds':self.dataset['bounds'],'attribution':'© OpenStreetMap contributors','licence':'ODbL-1.0','live_traffic':False,'historical_speed_feed':False,'unresolved_turn_relations':self.unresolved_rules,'source_member_conflicts':self.member_conflicting_rules,'source_direction_conflicts':self.direction_conflicting_rules,'quarantined_way_count':len(self.quarantined_ways),'restriction_policy':'incomplete, disconnected-member, or one-way-direction-conflicting source turn relations fail closed on all member ways'}
+        return {'api_version':1,'engine':'QueueGo/Valhalla','engine_version':self.version,'dataset_sha256':self.dataset['extract_sha256'],'source_timestamp':self.dataset['source_replication_timestamp'],'bounds':self.dataset['bounds'],'attribution':'© OpenStreetMap contributors','licence':'ODbL-1.0','live_traffic':False,'historical_speed_feed':False,'unresolved_turn_relations':self.unresolved_rules,'source_member_conflicts':self.member_conflicting_rules,'source_direction_conflicts':self.direction_conflicting_rules,'runtime_no_u_turn_relations':[r['relation_id'] for r in self.runtime_no_u_turn_rules],'quarantined_way_count':len(self.quarantined_ways),'restriction_policy':'incomplete, disconnected-member, or one-way-direction-conflicting source turn relations fail closed on all member ways; same-way no_u_turn reversals are independently rejected at the QueueGo route boundary'}
     def profile(self,body):
         profile=body.get('profile','motorcycle')
         if profile not in PROFILES:raise ValueError('Unsupported vehicle profile')
@@ -142,6 +146,21 @@ class Engine:
             if not entry or time.monotonic()-entry[0]>3600:raise ValueError('Route expired; restore by recalculating from saved stops')
             self.cache[identifier]=(time.monotonic(),entry[1]);self.cache.move_to_end(identifier)
             return entry[1]
+    def _enforce_runtime_turn_restrictions(self,trace_edges):
+        if not self.runtime_no_u_turn_rules or len(trace_edges)<2:return
+        by_way={}
+        for rule in self.runtime_no_u_turn_rules:by_way.setdefault(rule['way_id'],[]).append(rule)
+        for incoming,outgoing in zip(trace_edges,trace_edges[1:]):
+            way=incoming.get('way_id')
+            if way is None or outgoing.get('way_id')!=way or way not in by_way:continue
+            before=incoming.get('forward');after=outgoing.get('forward')
+            if not isinstance(before,bool) or not isinstance(after,bool) or before==after:continue
+            point=incoming.get('_end_point')
+            if not isinstance(point,list) or len(point)<2:continue
+            for rule in by_way[way]:
+                if haversine(point,rule['point'])<=5:
+                    raise ValueError('Route violates source no_u_turn relation '+str(rule['relation_id'])+'; QueueGo rejects the raw engine maneuver')
+
     def _convert(self,trip,profile,remember=True):
         coordinates=[];legs=[];trace_edges=[]
         for leg in trip['legs']:
@@ -158,7 +177,13 @@ class Engine:
             # Coincident stops have no traversed edges; do not ask edge_walk to invent one.
             if leg['summary']['length']>0 and any(haversine(a,b)>.01 for a,b in zip(points,points[1:])):
                 attributes=self._call('trace_attributes',{'encoded_polyline':leg['shape'],'shape_match':'edge_walk','costing':PROFILES[profile]})
-                trace_edges.extend(attributes.get('edges',[]))
+                for edge in attributes.get('edges',[]):
+                    record=dict(edge)
+                    begin=min(max(0,int(record.get('begin_shape_index',0))),len(points)-1)
+                    end=min(max(0,int(record.get('end_shape_index',begin))),len(points)-1)
+                    record['_begin_point']=points[begin];record['_end_point']=points[end]
+                    trace_edges.append(record)
+        self._enforce_runtime_turn_restrictions(trace_edges)
         signal_count=sum(bool(e.get('end_node',{}).get('traffic_signal')) for e in trace_edges)
         rough_m=sum(e.get('length',0)*1000 for e in trace_edges if e.get('surface') in ('dirt','gravel','impassable') or e.get('unpaved'))
         base=float(trip['summary']['time']);distance=float(trip['summary']['length'])*1000
