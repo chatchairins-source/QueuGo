@@ -300,8 +300,7 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('navigationRotationDurationMillis')&&
   cameraPolicy.includes('navigationCameraEaseInOut')&&
   cameraPolicy.includes('navigationPointAtDistance')&&
-  map.includes('activeMap.setLocation(')&&
-  map.includes('true\n                )')&&
+  /activeMap\.setLocation\(\s*MapLocation\(decision\.center\.longitude, decision\.center\.latitude\),\s*true\s*\)/.test(map)&&
   map.includes('activeMap.setZoom(targetZoom, true)')&&
   map.includes('minimumDeltaDegrees = CAMERA_BEARING_MIN_DELTA_DEGREES')&&
   map.includes('CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L')&&
