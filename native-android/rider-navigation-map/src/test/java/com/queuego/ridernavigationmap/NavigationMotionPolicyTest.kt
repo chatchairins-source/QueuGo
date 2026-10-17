@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NavigationMotionPolicyTest {
-    @Test fun markerAnimationNeverOutrunsGpsCadence() {
+    @Test fun oneSecondGpsCadenceSlightlyOverlapsForContinuousMotion() {
         val previous = NavigationMapFix(
             point = NavigationMapPoint(13.0, 100.0),
             speedMetersPerSecond = 8f,
@@ -17,11 +17,11 @@ class NavigationMotionPolicyTest {
             elapsedRealtimeNanos = 2_000_000_000L
         )
         val millis = riderMarkerAnimationMillis(previous, next)
-        assertTrue(millis < 1_000L)
-        assertTrue(millis <= 600L)
+        assertTrue(millis > 1_000L)
+        assertTrue(millis <= 1_200L)
     }
 
-    @Test fun halfSecondGpsCadenceUsesShorterAnimationInsteadOfOverlap() {
+    @Test fun halfSecondGpsCadenceAlsoOverlapsWithoutRunaway() {
         val previous = NavigationMapFix(
             point = NavigationMapPoint(13.0, 100.0),
             speedMetersPerSecond = 8f,
@@ -31,14 +31,18 @@ class NavigationMotionPolicyTest {
             point = NavigationMapPoint(13.00005, 100.00005),
             elapsedRealtimeNanos = 1_500_000_000L
         )
-        assertTrue(riderMarkerAnimationMillis(previous, next) < 500L)
+        val millis = riderMarkerAnimationMillis(previous, next)
+        assertTrue(millis > 500L)
+        assertTrue(millis <= 600L)
     }
 
-    @Test fun rapidFixesNeverExceedCadenceEvenBelowMinimumAnimation() {
+    @Test fun rapidFixesUseSmallBoundedOverlapBelowMinimumWindow() {
         val previous = NavigationMapFix(point = NavigationMapPoint(13.0, 100.0),
             elapsedRealtimeNanos = 1_000_000_000L)
         val next = previous.copy(elapsedRealtimeNanos = 1_100_000_000L)
-        assertTrue(riderMarkerAnimationMillis(previous, next) < 100L)
+        val millis = riderMarkerAnimationMillis(previous, next)
+        assertTrue(millis > 100L)
+        assertTrue(millis <= 110L)
     }
 
     @Test fun largeCorrectionSnapsWhileOrdinaryMotionAnimates() {
@@ -46,7 +50,7 @@ class NavigationMotionPolicyTest {
         assertFalse(shouldAnimateRiderMarker(start, NavigationMapPoint(13.002, 100.0)))
         assertTrue(shouldAnimateRiderMarker(start, NavigationMapPoint(13.00005, 100.0)))
         val fix = NavigationMapFix(point = start)
-        assertEquals(0.46, riderMarkerAnimationSeconds(null, fix), 0.001)
+        assertEquals(1.05, riderMarkerAnimationSeconds(null, fix), 0.001)
     }
 
     @Test fun standstillGpsJitterDoesNotMoveMarker() {

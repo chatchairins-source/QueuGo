@@ -36,13 +36,13 @@ import com.longdo.api.Pin
 import com.longdo.api.type.MapLocation
 import com.queuego.shared.R as SharedR
 
-private const val RIDER_MARKER_DEFAULT_ANIMATION_MS = 460L
-private const val RIDER_MARKER_MIN_ANIMATION_MS = 120L
-private const val RIDER_MARKER_MAX_ANIMATION_MS = 600L
-private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 0.55
+private const val RIDER_MARKER_DEFAULT_ANIMATION_MS = 1_050L
+private const val RIDER_MARKER_MIN_ANIMATION_MS = 420L
+private const val RIDER_MARKER_MAX_ANIMATION_MS = 1_200L
+private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 1.05
 private const val RIDER_MARKER_TELEPORT_METERS = 120.0
 private const val CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L
-private const val CAMERA_ROTATION_FALLBACK_MS = 420L
+private const val CAMERA_ROTATION_FALLBACK_MS = 520L
 private const val CAMERA_TRANSFORM_SETTLE_MS = 110L
 private const val CAMERA_MANUAL_ZOOM_HOLD_MS = 12_000L
 private const val CAMERA_BEARING_MIN_DELTA_DEGREES = 0.75f
@@ -244,7 +244,7 @@ private class RiderNavigationMapHolder {
         activeMap: com.longdo.api.Map,
         state: RiderNavigationMapState
     ) {
-        val enabled = state.remainingStops().isNotEmpty()
+        val enabled = state.perspectiveCameraEnabled || state.remainingStops().isNotEmpty()
         if (navigationInteractionEnabled == enabled) return
         runCatching {
             activeMap.setCanRotateCamera(enabled)
@@ -263,7 +263,8 @@ private class RiderNavigationMapHolder {
     private fun animateCameraBearing(
         activeMap: com.longdo.api.Map,
         targetBearing: Float,
-        nowMs: Long
+        nowMs: Long,
+        speedMetersPerSecond: Float?
     ) {
         val currentBearing = runCatching { normalizeNavigationBearing(activeMap.getRotate()) }
             .getOrNull()
@@ -282,7 +283,8 @@ private class RiderNavigationMapHolder {
             currentBearing = currentBearing,
             targetBearing = target,
             cadenceMillis = cadence,
-            fallbackMillis = CAMERA_ROTATION_FALLBACK_MS
+            fallbackMillis = CAMERA_ROTATION_FALLBACK_MS,
+            speedMetersPerSecond = speedMetersPerSecond
         )
         cancelCameraBearingAnimation()
         val animator = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -575,7 +577,7 @@ private class RiderNavigationMapHolder {
                 setDoPreDrawCache(true)
             })
             nextMap.setDrawCrossSign(false)
-            val navigationActive = lastState.remainingStops().isNotEmpty()
+            val navigationActive = lastState.perspectiveCameraEnabled || lastState.remainingStops().isNotEmpty()
             nextMap.setCanRotateCamera(navigationActive)
             nextMap.setCanTilt(navigationActive)
             navigationInteractionEnabled = navigationActive
@@ -595,7 +597,7 @@ private class RiderNavigationMapHolder {
                 lastCameraTilt = it
             }
             render(lastState)
-            if (lastState.remainingStops().isEmpty()) settleIdleCamera(nextMap)
+            if (lastState.remainingStops().isEmpty() && !lastState.perspectiveCameraEnabled) settleIdleCamera(nextMap)
         }.onFailure {
             Log.e("QueueGoNavMap", "map_replacement_setup_failed", it)
             throw it
@@ -650,7 +652,7 @@ private class RiderNavigationMapHolder {
         // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
         // never reconstruct the map just because Rider/order state changed.
         render(lastState)
-        if (lastState.remainingStops().isEmpty()) map?.let(::settleIdleCamera)
+        if (lastState.remainingStops().isEmpty() && !lastState.perspectiveCameraEnabled) map?.let(::settleIdleCamera)
         startRendererIdentityWatch()
         startPuckFreshnessTicker()
         if (!replacementPending) settleContinuityBridge()
@@ -759,7 +761,7 @@ private class RiderNavigationMapHolder {
 
         // End/cancel and idle restoration must flatten even before a fresh fix arrives,
         // including a renderer replacement or an old persisted navigation camera.
-        if (state.remainingStops().isEmpty() && (lastCameraTilt != 0f || lastCameraBearing != 0f)) {
+        if (state.remainingStops().isEmpty() && !state.perspectiveCameraEnabled && (lastCameraTilt != 0f || lastCameraBearing != 0f)) {
             runCatching {
                 activeMap.setTilt(0f)
                 activeMap.rotate(0f, false)
@@ -800,7 +802,7 @@ private class RiderNavigationMapHolder {
             else -> lastOverviewSignature = null
         }
         followedFix?.let { renderRiderPresentation(activeMap, it) }
-        if (state.remainingStops().isEmpty() && (leavingNavigation || restoringFollow)) {
+        if (state.remainingStops().isEmpty() && !state.perspectiveCameraEnabled && (leavingNavigation || restoringFollow)) {
             settleIdleCamera(activeMap)
         }
         // Publish once per applied state even when overlays are structurally unchanged.
@@ -817,7 +819,7 @@ private class RiderNavigationMapHolder {
         val generation = ++idleCameraGeneration
         fun check(attempt: Int) {
             if (disposed || map !== targetMap || generation != idleCameraGeneration ||
-                lastState.remainingStops().isNotEmpty() || !lastState.followRider ||
+                lastState.perspectiveCameraEnabled || lastState.remainingStops().isNotEmpty() || !lastState.followRider ||
                 lastState.viewMode != NavigationViewMode.FOLLOW) return
             // A queued SDK navigation rotation can finish after the immediate idle
             // reset. Observe the actual camera for a short bounded window instead of
@@ -1198,7 +1200,7 @@ private class RiderNavigationMapHolder {
             decision.bearingDegrees,
             minimumDeltaDegrees = CAMERA_BEARING_MIN_DELTA_DEGREES
         )
-        val navigationActive = state.remainingStops().isNotEmpty()
+        val navigationActive = state.perspectiveCameraEnabled || state.remainingStops().isNotEmpty()
         val nextTilt = if (!navigationActive) {
             0f
         } else {
@@ -1247,7 +1249,7 @@ private class RiderNavigationMapHolder {
         }
 
         if (bearingChanged) {
-            decision.bearingDegrees?.let { animateCameraBearing(activeMap, it, now) }
+            decision.bearingDegrees?.let { animateCameraBearing(activeMap, it, now, speed) }
         } else if (renderedBearing != null) {
             lastCameraBearing = renderedBearing
         }

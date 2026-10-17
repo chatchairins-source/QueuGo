@@ -1070,6 +1070,7 @@ private fun RiderHome(
 
     var recenterSignal by remember { mutableStateOf(0) }
     var overviewSignal by remember { mutableStateOf(0) }
+    var routeOverviewActive by remember { mutableStateOf(false) }
     var pendingMapRecenter by remember { mutableStateOf(false) }
 
     val locationPermission = rememberLauncherForActivityResult(
@@ -1077,6 +1078,7 @@ private fun RiderHome(
     ) { grants ->
         val granted = grants.values.any { it }
         actionMessage = if (granted && pendingMapRecenter) {
+            routeOverviewActive = false
             recenterSignal += 1
             "กำลังหาตำแหน่ง"
         } else if (granted) {
@@ -2306,7 +2308,7 @@ private fun RiderHome(
             delay(30_000L)
         }
     }
-    val reliableSpeedKph = if (activeNavigationWork) riderReliableSpeedKph(navigationFix) else null
+    val reliableSpeedKph = riderReliableSpeedKph(navigationFix)
     val continuousNavigationMs = if (activeNavigationWork) {
         riderContinuousNavigationMs(navigationSessionStartedMs, navigationClockMs)
     } else {
@@ -2426,33 +2428,18 @@ private fun RiderHome(
                 active = auth.user.status == "active",
                 online = snapshot?.online == true,
                 enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null,
+                speedKph = reliableSpeedKph,
                 onToggle = { changeOnline(snapshot?.online != true) }
             )
         }
 
-        if (activeNavigationWork && (reliableSpeedKph != null || navigationHud != null || restReminderDue || unexpectedStopDue)) {
+        if (activeNavigationWork && (navigationHud != null || restReminderDue || unexpectedStopDue)) {
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(top = 64.dp, start = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                reliableSpeedKph?.let { speed ->
-                    Card(
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xF7FFFFFF)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9E2E4)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-                    ) {
-                        Column(
-                            Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(speed.toString(), fontSize = 21.sp, fontWeight = FontWeight.Black, color = Color(0xFF211E20))
-                            Text("กม./ชม.", fontSize = 8.sp, color = QgMuted, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
                 navigationHud?.let { hud ->
                     Card(
                         modifier = Modifier.widthIn(max = 250.dp),
@@ -2635,6 +2622,7 @@ private fun RiderHome(
                             ensureLocationPermission()
                         }
                         else -> {
+                            routeOverviewActive = false
                             recenterSignal += 1
                             actionMessage = "กำลังหาตำแหน่ง"
                         }
@@ -2693,25 +2681,10 @@ private fun RiderHome(
             }
         }
 
-        if (mapJob != null) {
-            Card(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 116.dp, end = 10.dp)
-                    .size(44.dp)
-                    .clickable { overviewSignal += 1 },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    QgIcon("route", Modifier.size(23.dp), QgRed)
-                }
-            }
-        }
-
         val activeSheetJob = mapJob.takeIf { activeNavigationWork }
+        LaunchedEffect(activeSheetJob?.id) {
+            routeOverviewActive = false
+        }
         val expandedSheetHeight = (maxHeight - 132.dp).coerceAtLeast(0.dp)
         val dockMaximumHeight = if (activeSheetJob != null) {
             // Expanded details leave the top map controls reachable; collapsed height
@@ -2723,15 +2696,40 @@ private fun RiderHome(
             .padding(bottom = 68.dp)
             .widthIn(max = 676.dp)
             .fillMaxWidth()
+        val dockKey = when {
+            activeSheetJob != null -> activeSheetJob.id
+            snapshot?.offeredJob != null -> null
+            else -> "home:" + (snapshot?.online == true).toString()
+        }
+        val dockTitle = activeSheetJob?.let { "งาน " + it.numberLabel }
+            ?: if (snapshot?.online == true) "พร้อมรับงานแล้ว" else "พร้อมรับงานเมื่อคุณพร้อม"
+        val dockDestination = activeSheetJob?.let {
+            (if (it.isDelivering) it.deliveryAddress else it.pickupAddress)
+                ?.takeIf { address -> address.isNotBlank() }
+        } ?: "กดเพื่อย่อหรือเปิดการ์ด"
 
         RiderJobDock(
-            jobKey = activeSheetJob?.id,
-            title = activeSheetJob?.let { "งาน " + it.numberLabel }.orEmpty(),
-            destination = activeSheetJob?.let {
-                (if (it.isDelivering) it.deliveryAddress else it.pickupAddress)
-                    ?.takeIf { address -> address.isNotBlank() }
-            } ?: "ลากขึ้นเพื่อดูรายละเอียดงาน",
+            jobKey = dockKey,
+            title = dockTitle,
+            destination = dockDestination,
             maximumHeight = dockMaximumHeight,
+            initiallyExpanded = activeSheetJob == null && dockKey != null,
+            mapOverviewActive = activeSheetJob != null && routeOverviewActive,
+            onMapModeToggle = if (activeSheetJob != null) {
+                {
+                    if (routeOverviewActive) {
+                        routeOverviewActive = false
+                        if (ensureLocationPermission()) {
+                            recenterSignal += 1
+                        } else {
+                            pendingMapRecenter = true
+                        }
+                    } else {
+                        routeOverviewActive = true
+                        overviewSignal += 1
+                    }
+                }
+            } else null,
             modifier = dockModifier.onGloballyPositioned { coordinates ->
                 navigationBottomInsetPx = coordinates.size.height + with(navigationDensity) { 68.dp.roundToPx() }
             }
@@ -2979,6 +2977,7 @@ private fun RiderHome(
                             onNavigate = {
                                 if (!ensureLocationPermission()) return@RiderLaundryActiveCard
                                 openNavigation(context, laundryJob.asMapJob())
+                                routeOverviewActive = false
                                 recenterSignal += 1
                             },
                             onAction = { action ->
@@ -3907,43 +3906,42 @@ private fun RiderJobTool(icon: String, label: String, enabled: Boolean, modifier
 }
 
 @Composable
-private fun RiderBlueprintBrandPill() {
+private fun RiderBlueprintSpeedPill(speedKph: Int?) {
     Card(
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE7E9))
     ) {
         Row(
-            Modifier.heightIn(min = 44.dp).padding(start = 5.dp, end = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            Modifier.heightIn(min = 44.dp).padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Box(
-                Modifier.size(34.dp).clip(RoundedCornerShape(12.dp)).background(QgRed),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Q", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black)
-            }
-            Spacer(Modifier.width(7.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Queue", color = Color(0xFF211E20), fontSize = 15.sp, fontWeight = FontWeight.Black)
-                Text("Go", color = QgRed, fontSize = 15.sp, fontWeight = FontWeight.Black)
-            }
-            Spacer(Modifier.width(8.dp))
-            Box(Modifier.width(1.dp).height(20.dp).background(Color(0xFFEEE4E7)))
-            Spacer(Modifier.width(8.dp))
-            Text("Rider", color = Color(0xFF8D8589), fontSize = 9.sp)
+            Text(
+                speedKph?.coerceIn(0, 199)?.toString() ?: "—",
+                color = Color(0xFF211E20),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black
+            )
+            Text("กม./ชม.", color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-private fun RiderBlueprintTopBar(active: Boolean, online: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+private fun RiderBlueprintTopBar(
+    active: Boolean,
+    online: Boolean,
+    enabled: Boolean,
+    speedKph: Int?,
+    onToggle: () -> Unit
+) {
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        RiderBlueprintBrandPill()
+        RiderBlueprintSpeedPill(speedKph)
         Card(
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),

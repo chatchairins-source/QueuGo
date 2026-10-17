@@ -48,6 +48,9 @@ import kotlinx.coroutines.withContext
 // Shadow diagnostics are disabled so the Rider sees the exact pipeline being evaluated.
 private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false
 private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true
+// Temporary owner-requested road test: retain FOLLOW/3D with no active job so
+// physical-device camera smoothness can be evaluated before job-gating returns.
+private const val RIDER_CAMERA_SMOOTHNESS_TEST_MODE = true
 
 private fun riderLongdoNavigationKey(context: Context): String? = runCatching {
     context.packageManager
@@ -65,9 +68,10 @@ private fun validNavigationPoint(lat: Double?, lon: Double?): NavigationMapPoint
 
 internal fun riderNavigationAutoFollow(
     navigationActive: Boolean,
-    viewMode: NavigationViewMode
+    viewMode: NavigationViewMode,
+    smoothnessTestMode: Boolean = false
 ): Boolean {
-    return navigationActive && viewMode == NavigationViewMode.FOLLOW
+    return (navigationActive || smoothnessTestMode) && viewMode == NavigationViewMode.FOLLOW
 }
 
 internal fun riderNavigationStops(
@@ -324,13 +328,18 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
     val navigationActive = stops.any { !it.completed && it.point.valid }
-    val followRider = riderNavigationAutoFollow(navigationActive, viewModeState.mode)
+    val perspectiveCameraEnabled = navigationActive || RIDER_CAMERA_SMOOTHNESS_TEST_MODE
+    val followRider = riderNavigationAutoFollow(
+        navigationActive,
+        viewModeState.mode,
+        RIDER_CAMERA_SMOOTHNESS_TEST_MODE
+    )
     val riderFix by RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()
 
     LaunchedEffect(navigationActive) {
-        // Idle is a normal map: no automatic follow, no navigation tilt/rotation.
-        // A newly active job always starts in FOLLOW. Finishing the job returns the
-        // controller to FOLLOW too, but auto-follow remains disabled until another job starts.
+        // A newly active job always starts in FOLLOW. During the temporary smoothness
+        // road test, idle also stays in FOLLOW/3D; disabling the test constant restores
+        // the normal job-gated behavior without changing the camera implementation.
         viewModeState = viewModeController.onRecenter()
         pendingViewModePersistence = NavigationViewMode.FOLLOW.name
     }
@@ -426,6 +435,7 @@ internal fun QueueGoRiderNavigationMap(
         demandZones = if (navigationActive) emptyList() else navigationDemandZones,
         activeStopId = activeStopId,
         followRider = followRider,
+        perspectiveCameraEnabled = perspectiveCameraEnabled,
         followZoom = 17,
         viewMode = viewModeState.mode,
         viewportInsets = viewportInsets.normalized()
@@ -597,8 +607,15 @@ internal fun QueueGoRiderNavigationMap(
         initialCamera = initialCamera,
         onMapReady = onMapReady,
         onUserGesture = {
-            viewModeState = viewModeController.onUserGesture()
-            pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
+            if (riderFix?.point?.valid == true) {
+                viewModeState = viewModeController.onUserGesture()
+                pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
+            } else {
+                // A startup gesture before the first live GPS fix must not strand the
+                // Rider in FREE_PAN. Keep FOLLOW ownership until a real fix exists.
+                viewModeState = viewModeController.onRecenter()
+                pendingViewModePersistence = NavigationViewMode.FOLLOW.name
+            }
         },
         onCameraChanged = { camera ->
             pendingCameraPersistence = doubleArrayOf(

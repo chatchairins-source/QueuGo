@@ -53,6 +53,9 @@ internal fun RiderJobDock(
     destination: String,
     maximumHeight: Dp,
     modifier: Modifier = Modifier,
+    initiallyExpanded: Boolean = false,
+    mapOverviewActive: Boolean = false,
+    onMapModeToggle: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val scroll = rememberScrollState()
@@ -61,7 +64,7 @@ internal fun RiderJobDock(
         return
     }
     val density = LocalDensity.current
-    var expanded by rememberSaveable(jobKey) { mutableStateOf(false) }
+    var expanded by rememberSaveable(jobKey) { mutableStateOf(initiallyExpanded) }
     var headerHeight by remember(jobKey) { mutableIntStateOf(0) }
     val peek = maxOf(with(density) { 92.dp.toPx() }, headerHeight.toFloat())
     val maximum = maxOf(peek, with(density) { maximumHeight.toPx() })
@@ -85,7 +88,7 @@ internal fun RiderJobDock(
         Column(
             Modifier.fillMaxWidth().onSizeChanged { headerHeight = it.height }
                 .semantics {
-                    contentDescription = "การ์ดงาน ลากขึ้นเพื่อเปิด ลากลงเพื่อย่อ"
+                    contentDescription = "การ์ดไรเดอร์ กดหรือลากเพื่อเปิดและย่อ"
                     stateDescription = if (expanded) "เปิดรายละเอียด" else "ย่อรายละเอียด"
                 }
                 .draggable(
@@ -102,16 +105,58 @@ internal fun RiderJobDock(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(Modifier.width(36.dp).height(4.dp).background(Color(0xFFD2CACD), RoundedCornerShape(2.dp)))
-            Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier.align(Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (onMapModeToggle != null) {
+                    Column(
+                        Modifier
+                            .widthIn(min = 58.dp)
+                            .height(42.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (mapOverviewActive) Color(0xFFFFF0F3) else Color(0xFFF9F6F7))
+                            .clickable(role = Role.Button, onClick = onMapModeToggle)
+                            .padding(horizontal = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        QgIcon(
+                            if (mapOverviewActive) "location" else "route",
+                            Modifier.size(19.dp),
+                            QgRed
+                        )
+                        Text(
+                            if (mapOverviewActive) "ไปที่" else "ภาพรวม",
+                            color = QgRed,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Box(
+                    Modifier
+                        .width(58.dp)
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(99.dp))
+                        .background(Color(0xFFF9F6F7))
+                        .clickable(role = Role.Button, onClickLabel = if (expanded) "ย่อการ์ด" else "เปิดการ์ด", onClick = ::toggle),
+                    contentAlignment = Alignment.Center
+                ) {
+                    QgIcon(
+                        "back",
+                        Modifier.size(20.dp).rotate(if (expanded) 270f else 90f),
+                        QgRed
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(destination, color = QgMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Spacer(Modifier.width(10.dp))
-                Text(if (expanded) "ย่อ" else "เปิด", color = QgRed, fontSize = 12.sp)
-                QgIcon("back", Modifier.size(20.dp).rotate(if (expanded) 270f else 90f), QgRed)
             }
         }
         // Keep content mounted at zero remaining height when collapsed, so card-local

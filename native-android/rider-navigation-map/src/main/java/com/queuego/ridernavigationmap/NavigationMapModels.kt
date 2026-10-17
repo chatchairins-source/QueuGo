@@ -62,6 +62,7 @@ data class RiderNavigationMapState(
     val demandZones: List<NavigationDemandZone> = emptyList(),
     val activeStopId: String? = null,
     val followRider: Boolean = true,
+    val perspectiveCameraEnabled: Boolean = false,
     val followZoom: Int = 17,
     val viewMode: NavigationViewMode = NavigationViewMode.FOLLOW,
     val viewportInsets: NavigationViewportInsets = NavigationViewportInsets()

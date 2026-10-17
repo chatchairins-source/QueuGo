@@ -270,6 +270,33 @@ class NavigationCameraPolicyTest {
         assertEquals(state.rider!!.point, decision.center)
     }
 
+    @Test fun explicitIdlePerspectiveTestModeKeepsHeadingAndTilt() {
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(13.0, 100.0),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f
+            ),
+            followRider = true,
+            perspectiveCameraEnabled = true,
+            followZoom = 17
+        )
+        val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)!!
+        assertTrue(decision.bearingDegrees!! in 89f..91f)
+        assertTrue(decision.tiltDegrees >= 48f)
+        assertTrue(decision.center.longitude > state.rider!!.point.longitude)
+        assertTrue(
+            navigationHaversineMeters(state.rider!!.point, decision.center) in 45.0..55.0
+        )
+    }
+
+    @Test fun freeDriveLookAheadGrowsWithSpeedWithoutHugeJumps() {
+        assertTrue(navigationFreeDriveLookAheadMeters(12f) > navigationFreeDriveLookAheadMeters(4f))
+        assertTrue(navigationFreeDriveLookAheadMeters(4f) > navigationFreeDriveLookAheadMeters(0.5f))
+        assertTrue(navigationFreeDriveLookAheadMeters(25f) <= 80.0)
+    }
+
     @Test fun northCrossingTakesTwoDegreeTurn() {
         assertEquals(0f, smoothNavigationBearing(359f, 1f, 0.5f)!!, 0.001f)
     }
@@ -294,10 +321,11 @@ class NavigationCameraPolicyTest {
         )
     }
 
-    @Test fun nativeFollowCameraUsesGentlerSpeedAwareBearingGain() {
-        assertTrue(navigationBearingSmoothingFactor(20f) < 0.5f)
+    @Test fun nativeFollowCameraTurnsMoreAggressivelyAsSpeedRises() {
+        assertTrue(navigationBearingSmoothingFactor(20f) >= 0.65f)
         assertTrue(navigationBearingSmoothingFactor(20f) > navigationBearingSmoothingFactor(1f))
-        assertTrue(navigationBearingSmoothingFactor(8f) in 0.30f..0.40f)
+        assertTrue(navigationBearingSmoothingFactor(8f) in 0.50f..0.54f)
+        assertTrue(navigationTurnAnticipationFactor(20f) > navigationTurnAnticipationFactor(3f))
     }
 
     @Test fun largerTurnsReceiveLongerRotationAnimation() {
@@ -313,7 +341,30 @@ class NavigationCameraPolicyTest {
         )
         assertTrue(corner > small)
         assertTrue(corner <= 900L)
-        assertTrue(small >= 300L)
+        assertTrue(small >= 420L)
+    }
+
+    @Test fun movingCameraThresholdKeepsPuckFromWalkingAcrossScreen() {
+        assertTrue(navigationCameraMovementThresholdMeters(10f) <= 0.5)
+        assertTrue(navigationCameraMovementThresholdMeters(3f) <= 1.0)
+        assertTrue(navigationCameraMovementThresholdMeters(0.5f) > 2.0)
+    }
+
+    @Test fun highSpeedSameTurnFinishesFasterThanLowSpeed() {
+        val fast = navigationRotationDurationMillis(
+            currentBearing = 0f,
+            targetBearing = 90f,
+            cadenceMillis = 500L,
+            speedMetersPerSecond = 20f
+        )
+        val slow = navigationRotationDurationMillis(
+            currentBearing = 0f,
+            targetBearing = 90f,
+            cadenceMillis = 500L,
+            speedMetersPerSecond = 3f
+        )
+        assertTrue(fast < slow)
+        assertTrue(fast <= 460L)
     }
 
     @Test fun rotationDurationUsesShortestTurnAcrossNorth() {
@@ -337,5 +388,6 @@ class NavigationCameraPolicyTest {
         assertEquals(1f, navigationCameraEaseInOut(1f), 0.001f)
         assertTrue(navigationCameraEaseInOut(0.25f) < 0.25f)
         assertTrue(navigationCameraEaseInOut(0.75f) > 0.75f)
+        assertTrue(navigationCameraEaseInOut(0.05f) > 0.01f)
     }
 }

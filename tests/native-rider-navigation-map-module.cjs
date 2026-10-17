@@ -5,6 +5,7 @@ const fs=require('fs');
 const settings=fs.readFileSync('native-android/settings.gradle.kts','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 const riderApp=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
+const riderJobDock=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderJobDock.kt','utf8');
 const moduleBuild=fs.readFileSync('native-android/rider-navigation-map/build.gradle.kts','utf8');
 const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt','utf8');
 const route=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt','utf8');
@@ -17,6 +18,7 @@ const signalPipeline=fs.readFileSync('native-android/rider-navigation-map/src/ma
 const confidenceMetrics=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationConfidenceMetrics.kt','utf8');
 const viewportInsets=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationViewportInsets.kt','utf8');
 const puckOrientation=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationPuckOrientation.kt','utf8');
+const riderPuckDrawable=fs.readFileSync('native-android/shared/src/main/res/drawable/qg_map_rider.xml','utf8');
 const routeCache=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteCache.kt','utf8');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
@@ -39,7 +41,9 @@ const riderManifest=fs.readFileSync('native-android/rider/src/main/AndroidManife
 assert(riderBuild.includes('implementation(project(":rider-navigation-map"))')&&
   riderApp.includes('QueueGoRiderNavigationMap('),
   'Runtime-gated navigation map must be integrated into the Rider APK through the QueueGo adapter');
-assert(locationService.includes('NAVIGATION_LOCATION_INTERVAL_MS = 1_000L')&&
+assert(locationService.includes('NAVIGATION_LOCATION_INTERVAL_MS = 500L')&&
+  locationService.includes('NAVIGATION_LOCATION_MIN_INTERVAL_MS = 250L')&&
+  locationService.includes('NAVIGATION_LOCATION_MIN_DISTANCE_METERS = 0.5f')&&
   locationService.includes('LocationRequest.Builder(')&&
   locationService.includes('Priority.PRIORITY_HIGH_ACCURACY')&&
   locationService.includes('MutableStateFlow<NavigationMapFix?>')&&
@@ -47,7 +51,7 @@ assert(locationService.includes('NAVIGATION_LOCATION_INTERVAL_MS = 1_000L')&&
   integration.includes('NavigationRouteCoordinator')&&
   integration.includes('Channel.CONFLATED')&&
   integration.includes('riderNavigationStops'),
-  'Rider navigation must use one foreground-owned 1-second fused GPS stream and feed its latest fix into the sequential coordinator');
+  'Rider navigation must use one foreground-owned high-accuracy 500ms fused GPS stream with a 250ms floor and feed its latest fix into the sequential coordinator');
 assert(riderManifest.includes('android.permission.FOREGROUND_SERVICE_LOCATION')&&
   riderManifest.includes('android:name=".RiderNavigationLocationService"')&&
   riderManifest.includes('android:foregroundServiceType="location"')&&
@@ -128,11 +132,20 @@ assert(map.includes('MotionEvent.ACTION_MOVE')&&
   map.includes('holder.view?.setOnTouchListener(null)')&&
   integration.includes('NavigationViewModeController')&&
   integration.includes('riderNavigationAutoFollow')&&
-  integration.includes('navigationActive && viewMode == NavigationViewMode.FOLLOW')&&
+  integration.includes('(navigationActive || smoothnessTestMode) && viewMode == NavigationViewMode.FOLLOW')&&
+  integration.includes('RIDER_CAMERA_SMOOTHNESS_TEST_MODE = true')&&
+  integration.includes('perspectiveCameraEnabled = perspectiveCameraEnabled')&&
   integration.includes('viewModeState = viewModeController.onUserGesture()')&&
   integration.includes('viewModeState = viewModeController.onRecenter()')&&
   integration.includes('followRider = followRider'),
   'One-finger drag must enter FREE_PAN, while two-finger transform gestures stay follow-owned and smoothly re-anchor');
+
+assert(
+  riderPuckDrawable.includes('android:width="60dp"')&&
+  riderPuckDrawable.includes('#E6002D')&&
+  riderPuckDrawable.includes('M32,14 L44,42 L32,36 L20,42 Z')&&
+  map.includes('riderPuckBitmap(nextRotation, nextOpacity)'),
+  'Rider current-location puck must be a large red QueueGo circle with a heading-rotated navigation arrow');
 
 assert(
   integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false')&&
@@ -182,6 +195,9 @@ assert(
   integration.includes('sessionStore.loadMapViewMode(stateKey)')&&
   integration.includes('pendingViewModePersistence = NavigationViewMode.FREE_PAN.name')&&
   integration.includes('pendingViewModePersistence = NavigationViewMode.FOLLOW.name')&&
+  integration.includes('if (riderFix?.point?.valid == true)')&&
+  integration.includes('viewModeState = viewModeController.onRecenter()')&&
+  integration.includes('A startup gesture before the first live GPS fix must not strand the')&&
   integration.includes('withContext(Dispatchers.IO)')&&
   integration.includes('sessionStore.saveMapViewMode(stateKey, mode)'),
   'Manual-pan view mode must survive Rider tab remounts and persist FREE_PAN/FOLLOW off Main without silently resuming camera follow');
@@ -299,12 +315,15 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('deadbandDegrees: Float = 0.45f')&&
   cameraPolicy.includes('navigationRotationDurationMillis')&&
   cameraPolicy.includes('navigationCameraEaseInOut')&&
+  cameraPolicy.includes('navigationFreeDriveTilt')&&
+  cameraPolicy.includes('0.24f * t + 0.76f * cubic')&&
   cameraPolicy.includes('navigationPointAtDistance')&&
   /activeMap\.setLocation\(\s*MapLocation\(decision\.center\.longitude, decision\.center\.latitude\),\s*true\s*\)/.test(map)&&
   map.includes('activeMap.setZoom(targetZoom, true)')&&
   map.includes('minimumDeltaDegrees = CAMERA_BEARING_MIN_DELTA_DEGREES')&&
   map.includes('CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L')&&
-  map.includes('animateCameraBearing(activeMap, it, now)')&&
+  map.includes('animateCameraBearing(activeMap, it, now, speed)')&&
+  cameraPolicy.includes('speedMetersPerSecond: Float? = null')&&
   map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
   map.includes('activeMap.rotate(rendered, false)')&&
   map.includes('normalizeNavigationBearing(activeMap.getRotate())')&&
@@ -317,12 +336,25 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   map.includes('nextMap.setCanRotateCamera(navigationActive)')&&
   map.includes('nextMap.setCanTilt(navigationActive)')&&
   integration.includes('riderNavigationAutoFollow')&&
-  integration.includes('navigationActive && viewMode == NavigationViewMode.FOLLOW')&&
+  integration.includes('(navigationActive || smoothnessTestMode) && viewMode == NavigationViewMode.FOLLOW')&&
   map.includes('activeMap.setTilt(nextTilt)')&&
   map.includes('activeMap.setTilt(0f)')&&
   runtimeActivity.includes('mapTiltDegrees()')&&
   runtimeTest.includes('followCameraUsesNativePerspectiveAndOverviewFlattens'),
   'Navigation camera must animate position/zoom, smoothly rotate from the live rendered bearing, keep transform gestures in FOLLOW, suppress micro-wobble, look ahead and use native Longdo perspective tilt while flattening Overview');
+assert(riderApp.includes('RiderBlueprintSpeedPill')&&
+  !riderApp.includes('RiderBlueprintBrandPill()')&&
+  riderApp.includes('speedKph = reliableSpeedKph'),
+  'Rider map top-left must show live speed instead of QueueGo branding');
+assert(riderJobDock.includes('initiallyExpanded: Boolean = false')&&
+  riderJobDock.includes('mutableStateOf(initiallyExpanded)')&&
+  riderJobDock.includes('clickable(role = Role.Button')&&
+  riderJobDock.includes('mapOverviewActive: Boolean = false')&&
+  riderJobDock.includes('if (mapOverviewActive) "ไปที่" else "ภาพรวม"')&&
+  riderApp.includes('initiallyExpanded = activeSheetJob == null && dockKey != null')&&
+  riderApp.includes('mapOverviewActive = activeSheetJob != null && routeOverviewActive')&&
+  riderApp.includes('overviewSignal += 1')&&riderApp.includes('recenterSignal += 1'),
+  'Idle/active Rider card must support collapse/restore and active work must toggle route overview back to Rider follow while targeted offers stay visible');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');
@@ -330,14 +362,14 @@ assert(map.includes('oldLine.setLocation(segment.points.map')&&
   map.includes('renderedRouteSegments.zip(routeLines)')&&
   map.includes('Topology/style changed or an in-place mutation failed'),
   'Route progress must mutate existing Longdo line geometry in place and rebuild only on topology/style changes');
-assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 600L')&&
+assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 1_200L')&&
   map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
   map.includes('riderMarkerAnimator?.cancel()')&&
   map.includes('existing.getMovingLocation()')&&
   map.includes('riderMarkerAnimationMillis(lastRiderFix ?: previousTarget, fix)')&&
   !map.includes('RIDER_MARKER_ANIMATION_STEPS = 18')&&
   !map.includes('existing.setLocation(\n                        location,\n                        true,'),
-  'Rider marker smoothing must use one cancellable Android animator shorter than the GPS cadence and never stack Longdo animations');
+  'Rider marker smoothing must use one cancellable Android animator that overlaps the GPS cadence and never stacks Longdo animations');
 assert(map.includes('PixelCopy is deliberately not scheduled on every GPS tick')&&
   !map.includes('publishDiagnostics()\n        scheduleSnapshotRefresh()'),
   'Live GPS rendering must not schedule PixelCopy snapshots on every navigation update');
