@@ -368,9 +368,11 @@ ok(
   'Rider camera result proof promotion must run through the serialized IO path'
 );
 ok(
-  riderAppForProofIo.includes('resumeCollection = verifyCollection') &&
-  !riderAppForProofIo.includes('resumeCollection = pendingProofStore.loadVerification'),
-  'Rider verification composition must never synchronously read durable proof state'
+  riderAppForProofIo.includes('val saved = pendingProofIo {') &&
+  riderAppForProofIo.includes('pendingProofStore.loadVerification(auth.user.id)') &&
+  !riderAppForProofIo.includes('verifyCollection') &&
+  !riderAppForProofIo.includes('resumeCollection ='),
+  'Rider verification recovery must stay serialized off Main and must not restore a removed collection sub-flow'
 );
 ok(
   riderAppForProofIo.includes('Server mutation already committed; stale local proof is reconciled later.') &&
