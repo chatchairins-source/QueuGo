@@ -309,7 +309,12 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   map.includes('endNavigationTransformGesture()')&&
   map.includes('manualFollowZoomUntilMs')&&
   map.includes('event.pointerCount >= 2')&&
-  map.includes('nextMap.setCanTilt(true)')&&
+  map.includes('activeMap.setCanRotateCamera(enabled)')&&
+  map.includes('activeMap.setCanTilt(enabled)')&&
+  map.includes('nextMap.setCanRotateCamera(navigationActive)')&&
+  map.includes('nextMap.setCanTilt(navigationActive)')&&
+  integration.includes('riderNavigationAutoFollow')&&
+  integration.includes('return navigationActive && viewMode == NavigationViewMode.FOLLOW')&&
   map.includes('activeMap.setTilt(nextTilt)')&&
   map.includes('activeMap.setTilt(0f)')&&
   runtimeActivity.includes('mapTiltDegrees()')&&
