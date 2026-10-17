@@ -94,7 +94,7 @@ fun CustomerTrackingMap(order: CustomerOrder, rider: CustomerTrackingRider?) {
             key(order.id, attempt) {
                 CustomerQueueGoTrackingMap(
                     points = points,
-                    Modifier.fillMaxWidth().height(mapHeight).clip(RoundedCornerShape(15.dp))
+                    modifier = Modifier.fillMaxWidth().height(mapHeight).clip(RoundedCornerShape(15.dp))
                 ) {
                     ready = it
                     if (it) timedOut = false
