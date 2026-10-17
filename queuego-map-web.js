@@ -238,7 +238,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
 function reanchorNavigationAfterGesture(map){
   const state=navState(map);
   if(!state.follow||!state.lastFix)return false;
-  state.gestureActive=false;
+  state.gestureActive=true;
   const currentZoom=Number(map.getZoom?.());
   if(Number.isFinite(currentZoom)){
     state.manualZoom=currentZoom;
@@ -247,13 +247,14 @@ function reanchorNavigationAfterGesture(map){
   if(state.reanchorTimer)clearTimeout(state.reanchorTimer);
   state.reanchorTimer=setTimeout(()=>{
     state.reanchorTimer=null;
-    if(!state.follow||!state.lastFix)return;
+    if(!state.follow||!state.lastFix){state.gestureActive=false;return}
+    state.gestureActive=false;
     followNavigationCamera(map,state.lastFix,state.lastRoute,{
       duration:650,
       baseZoom:state.baseZoom,
       preserveZoom:true
     });
-  },90);
+  },110);
   return true;
 }
 function reanchorNavigationAfterZoom(map){return reanchorNavigationAfterGesture(map)}
