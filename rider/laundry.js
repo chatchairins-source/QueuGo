@@ -9,7 +9,7 @@ async function rpc(name,body={}){
 const money=v=>Number(v||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2});
 function navLink(lat,lng,address){
   try{if(typeof mapsLink==='function')return mapsLink(lat,lng,address)}catch(e){}
-  if(Number.isFinite(Number(lat))&&Number.isFinite(Number(lng)))return 'https://map.longdo.com/?lat='+encodeURIComponent(lat)+'&long='+encodeURIComponent(lng);
+  if(Number.isFinite(Number(lat))&&Number.isFinite(Number(lng)))return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lng);
   return '#';
 }
 function ensureEntry(){

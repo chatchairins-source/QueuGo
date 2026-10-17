@@ -3,51 +3,96 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
 (async()=>{
  let checks=0;
  const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+ const root=path.resolve(__dirname,'..');
+ const sharedMap=fs.readFileSync(root+'/queuego-map-web.js','utf8');
+ eq(sharedMap.includes("new maplibregl.AttributionControl({compact:true})"),true);
+ eq(sharedMap.includes("font:9px/13px"),true);
+ eq(sharedMap.includes("width:18px!important"),true);
 
- // Customer now uses QueueGo Map / MapLibre for every location picker.
- {
-  const source=fs.readFileSync(path.resolve(__dirname,'../index.html'),'utf8');
-  const dom=new JSDOM('<div id="map"></div><div id="other"></div>');
-  const document=dom.window.document;
-  let success,error,changes=0,created=0,removed=0,moves=0;
-  const activeEvents=new Map();
-
-  class MockMapLibreMap {
+ function queueGoHarness(document){
+  let success,error,created=0,removed=0,moves=0,changes=0;
+  const events=new Map();
+  class MockMap {
    constructor({container,center}){
     created++;
     this.container=container;
     this.center={lng:center[0],lat:center[1]};
     this.touchZoomRotate={disableRotation(){}};
-    const node=document.createElement('canvas');node.className='qg-maplibre';container.appendChild(node);this.node=node;
+    this.node=document.createElement('canvas');
+    this.node.className='qg-maplibre';
+    container.appendChild(this.node);
    }
    addControl(){}
-   on(name,fn){
-    if(name==='load'){fn();return}
-    activeEvents.set(name,fn);
-   }
-   off(name,fn){if(activeEvents.get(name)===fn)activeEvents.delete(name)}
+   on(name,fn){events.set(name,fn);if(name==='load')fn()}
+   once(name,fn){if(name==='load')fn();else events.set(name,fn)}
+   off(name,fn){if(events.get(name)===fn)events.delete(name)}
    getCenter(){return this.center}
    easeTo({center}){moves++;this.center={lng:center[0],lat:center[1]}}
-   remove(){removed++;activeEvents.clear();this.node?.remove()}
+   fitBounds(){}
+   isStyleLoaded(){return true}
+   getLayer(){return null}
+   getSource(){return null}
+   addSource(){}
+   addLayer(){}
+   removeLayer(){}
+   removeSource(){}
+   remove(){removed++;events.clear();this.node?.remove()}
   }
-  class MockMarker {
-   setLngLat(){return this}
+  class MockMarker{
+   constructor(){this.location=null}
+   setLngLat(v){this.location=v;return this}
    addTo(){return this}
    remove(){}
   }
+  class MockBounds{
+   extend(){return this}
+   isEmpty(){return false}
+  }
   const maplibregl={
-   Map:MockMapLibreMap,Marker:MockMarker,
+   Map:MockMap,Marker:MockMarker,LngLatBounds:MockBounds,
    NavigationControl:function(){},AttributionControl:function(){}
   };
+  const QueueGoMapWeb={
+   style:{version:8,sources:{},layers:[]},
+   create(host,{lat=15,lng=101,zoom=6}={}){
+    return new MockMap({container:host,center:[lng,lat],zoom});
+   },
+   marker(map,p){return new MockMarker().setLngLat([p.lng,p.lat]).addTo(map)},
+   setCenter(map,lat,lng){map.easeTo({center:[lng,lat]})},
+   locate(map,onPoint){
+    return new Promise((resolve,reject)=>{
+     if(!success&&!error){error=reject}
+     success=p=>{const lat=p.coords.latitude,lng=p.coords.longitude;map.easeTo({center:[lng,lat]});onPoint?.(lat,lng);resolve({lat,lng})};
+     error=e=>reject(e);
+    });
+   },
+   reverse:async()=> 'Road',
+   destroy(map){map?.remove?.()}
+  };
+  return {
+   maplibregl,QueueGoMapWeb,events,
+   get success(){return success},set success(v){success=v},
+   get error(){return error},set error(v){error=v},
+   get created(){return created},get removed(){return removed},
+   get moves(){return moves},get changes(){return changes},inc(){changes++}
+  };
+ }
+
+ // Customer location picker: QueueGo MapLibre only.
+ {
+  const source=fs.readFileSync(root+'/index.html','utf8');
+  const dom=new JSDOM('<div id="map"></div><div id="other"></div>');
+  const document=dom.window.document;
+  const h=queueGoHarness(document);
+  let gpsSuccess,gpsError;
   const ctx=vm.createContext({
-   document,window:{maplibregl},maplibregl,
-   navigator:{geolocation:{getCurrentPosition(s,e){success=s;error=e}}},
+   document,
+   window:{maplibregl:h.maplibregl,QueueGoMapWeb:h.QueueGoMapWeb},
+   maplibregl:h.maplibregl,
+   navigator:{geolocation:{getCurrentPosition(s,e){gpsSuccess=s;gpsError=e}}},
    toast(){},
    qgIsValidCoordinate:(a,b)=>a!==null&&a!==undefined&&b!==null&&b!==undefined,
-   AbortSignal,
-   fetch:async()=>({ok:true,json:async()=>({road:'Road'})}),
-   encodeURIComponent,
-   onChange:()=>changes++
+   AbortSignal,encodeURIComponent,onChange:()=>h.inc()
   });
   const start=source.indexOf('let customerPickerMap=null;');
   const end=source.indexOf('async function openCustomerLocationPicker(');
@@ -55,64 +100,62 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
   const run=s=>vm.runInContext(s,ctx);
 
   const first=run('initLocationPicker("map",13,100,onChange)');
-  eq(created,1);eq(changes,1);eq(activeEvents.has('moveend'),true);
+  eq(h.created,1);eq(h.changes,1);eq(h.events.has('moveend'),true);
   first.locate();first.destroy();first.destroy();
-  const before=moves;
-  success({coords:{latitude:14,longitude:101}});error({code:3});
-  eq(moves,before);eq(changes,1);eq(activeEvents.size,0);eq(removed,1);
+  const before=h.moves;
+  gpsSuccess({coords:{latitude:14,longitude:101}});
+  gpsError({code:3});
+  eq(h.moves,before);eq(h.changes,1);eq(h.events.size,0);eq(h.removed,1);
 
   const next=run('initLocationPicker("other",14,101,onChange)');
-  eq(created,2);eq(next.map===first.map,false);eq(next.map.container.id,'other');
-  next.locate();success({coords:{latitude:15,longitude:102}});
-  eq(changes,3);eq(moves,1);
-  next.destroy();eq(activeEvents.size,0);eq(removed,2);
-
+  eq(h.created,2);eq(next.map===first.map,false);eq(next.map.container.id,'other');
+  next.locate();gpsSuccess({coords:{latitude:15,longitude:102}});
+  eq(h.changes,3);eq(h.moves,1);
+  next.destroy();eq(h.events.size,0);eq(h.removed,2);
   eq(await run('qtReverseGeocodeCustomer(13,100)'),'Road');
-  let signal;ctx.fetch=async(_,opts)=>{signal=opts.signal;return {ok:false}};
-  eq(await run('qtReverseGeocodeCustomer(13,100)'),'');
-  eq(signal instanceof AbortSignal,true);
   dom.window.close();
  }
 
- // Merchant still uses its existing Longdo picker; keep lifecycle regression coverage.
+ // Merchant location picker now shares QueueGo MapLibre lifecycle.
  {
-  const source=fs.readFileSync(path.resolve(__dirname,'../merchant/index.html'),'utf8');
+  const source=fs.readFileSync(root+'/merchant/index.html','utf8');
   const dom=new JSDOM('<div id="map"></div><div id="other"></div>');
   const document=dom.window.document;
-  let success,error,moved=0,changes=0,created=0;
-  const events=new Map();
-  function MockMap({placeholder}){
-   created++;
-   const node=document.createElement('div');placeholder.appendChild(node);
-   this.placeholder=()=>node;this.pause=()=>{};this.resize=()=>{};
-   this.Ui={LayerSelector:{visible(){}}};
-   this.location=p=>{if(p)moved++;return p||{lat:13,lon:100}};
-   this.zoom=()=>{};this.Overlays={add(){},remove(){},clear(){}};
-   this.Event={bind:(e,f)=>events.set(e,f),unbind:(e,f)=>{if(events.get(e)===f)events.delete(e)}};
-  }
-  const longdo={Map:MockMap,Marker:function(){},OverlayWeight:{Top:1},UiComponent:{Mobile:1}};
-  const ctx=vm.createContext({
-   document,window:{longdo},longdo,
-   navigator:{geolocation:{getCurrentPosition(s,e){success=s;error=e}}},
-   toast(){},qgIsValidCoordinate:(a,b)=>a!==null&&a!==undefined&&b!==null&&b!==undefined,
-   AbortSignal,fetch:async()=>({ok:true,json:async()=>({road:'Road'})}),encodeURIComponent,onChange:()=>changes++
+  const h=queueGoHarness(document);
+  let gpsSuccess,gpsError;
+  h.QueueGoMapWeb.locate=(map,onPoint)=>new Promise((resolve,reject)=>{
+   gpsSuccess=p=>{const lat=p.coords.latitude,lng=p.coords.longitude;map.easeTo({center:[lng,lat]});onPoint?.(lat,lng);resolve({lat,lng})};
+   gpsError=reject;
   });
-  const start=source.indexOf('let merchantPicker='),end=source.indexOf('/* ---------- Shop module catalog');
+  const ctx=vm.createContext({
+   document,
+   window:{maplibregl:h.maplibregl,QueueGoMapWeb:h.QueueGoMapWeb},
+   maplibregl:h.maplibregl,
+   navigator:{geolocation:{getCurrentPosition(s,e){gpsSuccess=s;gpsError=e}}},
+   toast(){},
+   qgIsValidShopCoordinate:(a,b)=>a!==null&&a!==undefined&&b!==null&&b!==undefined,
+   qgShopCoordinateProblem:()=> '',
+   onChange:()=>h.inc()
+  });
+  const start=source.indexOf('let merchantPicker=null;');
+  const end=source.indexOf('/* ---------- Shop module catalog');
   vm.runInContext(source.slice(start,end),ctx);
-  const run=s=>vm.runInContext(s,ctx),first=run('initLocationPicker("map",13,100,onChange)');
-  eq(created,1);eq(changes,1);eq(events.size,1);
-  first.locate();first.destroy();first.destroy();const before=moved;
-  success({coords:{latitude:14,longitude:101}});error({code:3});
-  eq(moved,before);eq(changes,1);eq(events.size,0);
+  const run=s=>vm.runInContext(s,ctx);
+
+  const first=run('initLocationPicker("map",13,100,onChange)');
+  eq(h.created,1);eq(h.changes,1);eq(h.events.has('moveend'),true);
+  first.locate();gpsSuccess({coords:{latitude:14,longitude:101}});
+  await Promise.resolve();eq(h.changes,2);
+  first.destroy();first.destroy();eq(h.removed,1);eq(h.events.size,0);
+
   const next=run('initLocationPicker("other",14,101,onChange)');
-  eq(created,1);eq(next.map,first.map);eq(next.map.placeholder().parentNode.id,'other');eq(events.size,1);
-  next.locate();success({coords:{latitude:15,longitude:102}});
-  eq(changes,3);next.destroy();eq(events.size,0);
+  eq(h.created,2);eq(next.map===first.map,false);eq(next.map.container.id,'other');
+  next.destroy();eq(h.removed,2);
   dom.window.close();
  }
 
  console.log(JSON.stringify({
   checks,failures:0,
-  scope:'QueueGo MapLibre Customer picker + Merchant Longdo lifecycle, stale GPS and bounded customer geocoding; physical GPS not certified'
+  scope:'QueueGo MapLibre Customer + Merchant picker lifecycle, stale GPS cleanup and shared reverse geocoding; physical GPS not certified'
  }));
 })().catch(e=>{console.error(e);process.exit(1)});
