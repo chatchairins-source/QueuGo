@@ -2,7 +2,7 @@
 <title>QueueGo Rider</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="../queuego-map-web.js?v=20261017-9"></script>
+<script src="../queuego-map-web.js?v=20261017-10"></script>
 
 
 <style id="queuego-rider-ui">
@@ -783,6 +783,22 @@ function validRiderCoordinate(lat,lon){return lat!==null&&lat!==undefined&&lat!=
 function qgFiniteOrNull(value){return value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null)}
 function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}
 function qgNavigationCameraFollowEnabled(){return RIDER_CAMERA_SMOOTHNESS_TEST_MODE||qgNavigationCameraShouldRun()}
+function qgRiderCameraBottomInset(){
+  const map=document.getElementById('map'),dock=document.getElementById('home-dock'),nav=document.querySelector?.('.qg-bottom-nav')||null;
+  const mr=map?.getBoundingClientRect?.();if(!mr)return 0;
+  let occlusionTop=mr.bottom;
+  for(const el of [dock,nav]){
+    if(!el||el.style?.display==='none')continue;
+    const r=el.getBoundingClientRect?.();if(r&&r.height>0)occlusionTop=Math.min(occlusionTop,r.top);
+  }
+  return Math.max(0,Math.round(mr.bottom-occlusionTop));
+}
+function qgFollowRiderCamera(force=false,duration=420){
+  if(!S.map||!S.pos||!qgNavigationCameraFollowEnabled()||riderRouteOverviewActive)return null;
+  return window.QueueGoMapWeb?.followNavigationCamera?.(S.map,S.pos,riderRouteGeometry,{
+    force,duration,baseZoom:17,bottomInset:qgRiderCameraBottomInset()
+  })||null;
+}
 function qgNormalizeRiderBearing(value){
   const n=Number(value);return Number.isFinite(n)?((n%360)+360)%360:null;
 }
@@ -808,7 +824,7 @@ function syncRiderNavigationCameraMode(force=false){
   riderNavigationCameraActive=active;
   if(active){
     Q.setNavigationMode?.(map,true);
-    if(S.pos)Q.followNavigationCamera?.(map,S.pos,riderRouteGeometry,{force:true,duration:650,baseZoom:17});
+    if(S.pos)qgFollowRiderCamera(true,650);
     return true;
   }
   Q.setNavigationMode?.(map,false,{
@@ -863,9 +879,7 @@ function startGeolocation(){
     updateRiderSpeedUI();
     placeRiderMarker();
     if(S.map){
-      const followed=qgNavigationCameraFollowEnabled()
-        ? window.QueueGoMapWeb?.followNavigationCamera?.(S.map,S.pos,riderRouteGeometry,{duration:420,baseZoom:17})
-        : null;
+      const followed=qgFollowRiderCamera(false,420);
       if(!S._centeredOnce&&!followed){window.QueueGoMapWeb?.setCenter(S.map,S.pos.lat,S.pos.lng,15,350)}
       S._centeredOnce=true;
     }
@@ -898,7 +912,7 @@ function recenterMap(){
   const Q=window.QueueGoMapWeb;
   if(qgNavigationCameraFollowEnabled()){
     Q?.setNavigationMode?.(S.map,true);
-    const followed=Q?.followNavigationCamera?.(S.map,S.pos,riderRouteGeometry,{force:true,duration:650,baseZoom:17});
+    const followed=qgFollowRiderCamera(true,650);
     if(!followed)Q?.setCenter(S.map,S.pos.lat,S.pos.lng,15,350);
   }else{
     riderNavigationCameraActive=false;
@@ -1645,6 +1659,7 @@ function qgApplyHomeDockCollapse(dock,collapsible=true){
    toggle.onclick=()=>{
      riderHomeDockCollapsed=!riderHomeDockCollapsed;
      qgApplyHomeDockCollapse(dock,true);
+     requestAnimationFrame(()=>qgFollowRiderCamera(true,360));
    };
  }
 }
