@@ -1621,7 +1621,11 @@ private fun MerchantOrderDetail(
                                         )
                                     )
                                 }
-                            }
+                            },
+                            colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFF2E6DB4)
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFB8D0EA))
                         ) {
                             Text("โทร", fontWeight = FontWeight.Bold)
                         }
@@ -1693,14 +1697,22 @@ private fun MerchantOrderDetail(
                 OutlinedButton(
                     onClick = { editOpen = true },
                     enabled = !busy && items.isNotEmpty(),
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF5F6670)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD9DCE1)),
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("แก้ไขรายการ") }
+                ) { Text("แก้ไขรายการ", fontWeight = FontWeight.Bold) }
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { cancelOpen = true },
                     enabled = !busy,
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                        contentColor = QgRed
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF0B7BD)),
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("ยกเลิกออเดอร์") }
+                ) { Text("ยกเลิกออเดอร์", fontWeight = FontWeight.Bold) }
             }
             "preparing" -> {
                 val left = readinessLeft(order.readyEstimateAt, order.preparingAt, now)
