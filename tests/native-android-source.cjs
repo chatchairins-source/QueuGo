@@ -177,22 +177,24 @@ const customerGuestShell=read('customer/src/main/java/com/queuego/customer/Custo
 const customerApp=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
 const customerLocationPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
 const merchantShopSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
-const sharedLongdoMap=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
+const sharedQueueGoMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(
   customerLocationPicker.includes('LaunchedEffect(mapReady)') &&
   customerLocationPicker.includes('autoGpsRequested') &&
   customerLocationPicker.includes('if (!mapReady || autoGpsRequested) return@LaunchedEffect') &&
   !customerLocationPicker.includes('delay(80)\n        onGps()'),
-  'Customer location picker must wait for native Longdo readiness before automatic GPS permission handoff'
+  'Customer location picker must wait for QueueGo Map readiness before automatic GPS permission handoff'
 );
 ok(
-  merchantShopSetup.includes('QgLongdoLocationPickerMap(') &&
-  sharedLongdoMap.includes('shared_map_on_resume_failed') &&
-  sharedLongdoMap.includes('shared_map_renderer_state_failed') &&
-  sharedLongdoMap.includes('shared_map_on_pause_failed') &&
-  sharedLongdoMap.includes('shared_map_created_pause_failed') &&
-  sharedLongdoMap.includes('runCatching { activeView.onResume() }'),
-  'Customer/Merchant shared Longdo picker lifecycle must fail closed instead of crashing the native process'
+  merchantShopSetup.includes('QgLocationPickerMap(') &&
+  sharedQueueGoMap.includes('MapLibre.getInstance') &&
+  sharedQueueGoMap.includes('fun QgLocationPickerMap(') &&
+  sharedQueueGoMap.includes('Lifecycle.Event.ON_RESUME -> holder.resume()') &&
+  sharedQueueGoMap.includes('Lifecycle.Event.ON_PAUSE -> holder.pause()') &&
+  sharedQueueGoMap.includes('Lifecycle.Event.ON_DESTROY -> holder.destroy()') &&
+  sharedQueueGoMap.includes('view?.onDestroy()') &&
+  sharedQueueGoMap.includes('holder.destroy()'),
+  'Customer/Merchant shared QueueGo MapLibre picker lifecycle must follow lifecycle ownership and destroy the MapView'
 );
 ok(customerAuthScreen.includes('CustomerBottomNavigation(screen = "login", cartCount = guestCartCount)')&&customerAuthScreen.includes('Spacer(Modifier.height(92.dp))'),'Customer native auth must preserve the Production web fixed four-tab navigation and 92dp content clearance');
 ok(customerAuthScreen.includes('.windowInsetsPadding(WindowInsets.statusBars)')&&customerAuthScreen.includes('padding(horizontal = 12.dp, vertical = 6.dp)')&&customerAuthScreen.includes('.widthIn(max = 720.dp)'),'Customer native auth top bar must preserve Production web safe-area, compact spacing and 720px content width');
