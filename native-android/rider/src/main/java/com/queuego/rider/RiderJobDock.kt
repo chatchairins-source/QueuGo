@@ -53,6 +53,7 @@ internal fun RiderJobDock(
     destination: String,
     maximumHeight: Dp,
     modifier: Modifier = Modifier,
+    initiallyExpanded: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val scroll = rememberScrollState()
@@ -61,7 +62,7 @@ internal fun RiderJobDock(
         return
     }
     val density = LocalDensity.current
-    var expanded by rememberSaveable(jobKey) { mutableStateOf(false) }
+    var expanded by rememberSaveable(jobKey) { mutableStateOf(initiallyExpanded) }
     var headerHeight by remember(jobKey) { mutableIntStateOf(0) }
     val peek = maxOf(with(density) { 92.dp.toPx() }, headerHeight.toFloat())
     val maximum = maxOf(peek, with(density) { maximumHeight.toPx() })
@@ -85,7 +86,7 @@ internal fun RiderJobDock(
         Column(
             Modifier.fillMaxWidth().onSizeChanged { headerHeight = it.height }
                 .semantics {
-                    contentDescription = "การ์ดงาน ลากขึ้นเพื่อเปิด ลากลงเพื่อย่อ"
+                    contentDescription = "การ์ดไรเดอร์ กดหรือลากเพื่อเปิดและย่อ"
                     stateDescription = if (expanded) "เปิดรายละเอียด" else "ย่อรายละเอียด"
                 }
                 .draggable(
