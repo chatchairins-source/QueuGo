@@ -664,13 +664,16 @@ ok(
   !riderLongdoMap.includes('mutableStateOf(sessionStore.loadMapCamera(stateKey))'),
   'Rider MapLibre camera restore/persistence must keep SessionStore I/O off Main and map callbacks'
 );
+const legacyRiderLongdoMapPath=path.join(root,'rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
 ok(
-  riderLongdoMap.includes('val pinsReleased = runCatching { map?.clearPin() }.isSuccess') &&
-  riderLongdoMap.includes('if (pinsReleased)') &&
-  riderLongdoMap.includes('markerBitmaps.values.forEach') &&
-  riderLongdoMap.includes('stopBitmaps.values.forEach') &&
-  riderLongdoMap.includes('bitmap.recycle()'),
-  'Rider Longdo marker caches must recycle only after pins are released, avoiding renderer use-after-recycle during GL teardown'
+  !fs.existsSync(legacyRiderLongdoMapPath) &&
+  riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
+  riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
+  riderNavigationMapRuntime.includes('riderMarker = null') &&
+  riderNavigationMapRuntime.includes('view?.onDestroy()') &&
+  !riderNavigationMapRuntime.includes('markerBitmaps') &&
+  !riderNavigationMapRuntime.includes('stopBitmaps'),
+  'Rider MapLibre renderer must release marker references without restoring legacy app-owned bitmap caches'
 );
 
 const sharedManifest=read('shared/src/main/AndroidManifest.xml');
