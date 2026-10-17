@@ -129,8 +129,10 @@
   const reference=which==='destination'&&!saved
     ?(pickup&&qgIsValidCoordinate(pickup.lat,pickup.lng,true)?pickup:(currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)?currentPos:null))
     :null;
-  const initial=saved||auto||reference;
-  let point=(saved||auto)?{lat:initial.lat,lng:initial.lng}:null,revision=0;
+  const selectedInitial=saved||auto;
+  const initial=selectedInitial||reference;
+  const initialAddress=selectedInitial?.address||'';
+  let point=selectedInitial?{lat:initial.lat,lng:initial.lng}:null,revision=0;
   const title=which==='pickup'?'เลือกจุดรับ':'เลือกจุดหมาย';
   const subtitle=which==='pickup'?'ใช้ตำแหน่งปัจจุบันอัตโนมัติ หรือเลื่อนแผนที่เพื่อเลือกเอง':'เลื่อนแผนที่เพื่อเลือกจุดหมาย หรือใช้ GPS หากต้องการ';
   layout(
@@ -143,7 +145,7 @@
     '<div id="ride-location-map" class="mapbox" style="height:330px;border-radius:16px;overflow:hidden"></div>'+
     '<p class="sm" style="margin:8px 2px 2px;color:#69707a">ลากแผนที่ให้กากบาทอยู่ตรงจุดที่ต้องการ แล้วกด “เลือกจุดกึ่งกลางแผนที่”</p>'+
     '<div id="ride-picked-status" class="sm" style="margin:9px 2px 6px;color:#69707a">'+(point?'เลือกพิกัดแล้ว':'กำลังหาตำแหน่ง…')+'</div>'+
-    '<textarea id="ride-address" class="in" maxlength="500" placeholder="ที่อยู่หรือจุดสังเกต">'+esc(initial?.address||'')+'</textarea>'+
+    '<textarea id="ride-address" class="in" maxlength="500" placeholder="ที่อยู่หรือจุดสังเกต">'+esc(initialAddress)+'</textarea>'+
     '<button id="ride-save-location" class="prim" style="min-height:52px;margin-top:10px">ใช้จุดนี้</button>'+
     '<p id="ride-location-error" role="status" style="margin:8px 2px 0;color:#e6002d"></p>'+
    '</section>','orders');
@@ -152,11 +154,11 @@
    if(status)status.textContent='เลือกพิกัดแล้ว · '+Number(lat).toFixed(6)+', '+Number(lng).toFixed(6);
    if(!field)return;
    const previous=field.value.trim();
-   if(previous&&initial?.address&&previous===initial.address)return;
-   if(previous&&!initial?.address)return;
+   if(previous&&initialAddress&&previous===initialAddress)return;
+   if(previous&&!initialAddress)return;
    const address=await qtReverseGeocodeCustomer(lat,lng);
    if(same(u)&&version===revision&&field.isConnected){
-    if(!field.value.trim()||field.value.trim()===initial?.address)field.value=address||field.value;
+    if(!field.value.trim()||field.value.trim()===initialAddress)field.value=address||field.value;
    }
   },{selectInitial:!!(saved||auto)});
   $('ride-gps').onclick=()=>picker?.locate();
