@@ -175,7 +175,18 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
     }
   }
   const gpsBearing=Number.isFinite(Number(bearing))?navNormalizeBearing(Number(bearing)):null;
-  const desiredBearing=routeBearing!=null?routeBearing:(spd==null||spd<.83?previousBearing:(gpsBearing??previousBearing));
+  const routeBearingDelta=gpsBearing!=null&&routeBearing!=null
+    ? Math.abs(navShortestDelta(gpsBearing,routeBearing))
+    : null;
+  const previousRouteDelta=Number.isFinite(Number(previousBearing))&&routeBearing!=null
+    ? Math.abs(navShortestDelta(previousBearing,routeBearing))
+    : null;
+  const routeBearingOpposesMotion=(spd??0)>=2&&gpsBearing!=null&&(
+    routeBearingDelta>110||
+    (routeBearingDelta>75&&(previousRouteDelta==null||previousRouteDelta>75))
+  );
+  const routeBearingUsable=routeBearing!=null&&!routeBearingOpposesMotion;
+  const desiredBearing=routeBearingUsable?routeBearing:(spd==null||spd<.83?previousBearing:(gpsBearing??previousBearing));
   const smoothing=spd==null?.30:spd>=18?.68:spd>=11?.62:spd>=5?.52:spd>=2?.38:.24;
   const smoothedBearing=navSmoothBearing(previousBearing,desiredBearing,smoothing);
   const cameraBearing=smoothedBearing??0;
@@ -192,10 +203,10 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
   ));
   const look=spd==null?55:spd>=18?150:spd>=11?120:spd>=5?85:spd>=2?55:30;
   const lookAhead=remaining==null?look:Math.min(look,Math.max(0,remaining*.55));
-  const center=reliable
+  const center=reliable&&routeBearingUsable
     ? (navPointAt(reliable.part,Math.min(reliable.geometryDistanceMeters,reliable.progressMeters+lookAhead))||point)
     : (smoothedBearing!=null?(navProjectForward(point,smoothedBearing,navFreeDriveLookAheadMeters(spd))||point):point);
-  return {center,bearing:cameraBearing,pitch,zoom,routeMatch:match,remainingRouteMeters:remaining};
+  return {center,bearing:cameraBearing,pitch,zoom,routeMatch:match,remainingRouteMeters:remaining,routeBearingRejected:routeBearing!=null&&!routeBearingUsable};
 }
 function navState(map){
   let state=navigationStates.get(map);

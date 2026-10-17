@@ -2,7 +2,7 @@
 <title>QueueGo Rider</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="../queuego-map-web.js?v=20261017-10"></script>
+<script src="../queuego-map-web.js?v=20261017-11"></script>
 
 
 <style id="queuego-rider-ui">
@@ -805,6 +805,36 @@ function qgNormalizeRiderBearing(value){
 function qgRiderBearingDelta(from,to){
   return ((to-from+540)%360)-180;
 }
+function qgBearingBetweenPoints(from,to){
+  if(!from||!to||!validRiderCoordinate(from.lat,from.lng)||!validRiderCoordinate(to.lat,to.lng))return null;
+  const lat1=Number(from.lat)*Math.PI/180,lat2=Number(to.lat)*Math.PI/180;
+  const dLng=(Number(to.lng)-Number(from.lng))*Math.PI/180;
+  const y=Math.sin(dLng)*Math.cos(lat2);
+  const x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
+  const bearing=Math.atan2(y,x)*180/Math.PI;
+  return qgNormalizeRiderBearing(bearing);
+}
+function qgResolveRiderTravelBearing(previous,nextLat,nextLng,rawHeading,speed,fixAt){
+  const raw=qgNormalizeRiderBearing(rawHeading);
+  const prior=qgNormalizeRiderBearing(previous?.bearing);
+  if(!previous||!Number.isFinite(Number(previous.timestamp))||!Number.isFinite(Number(fixAt))||Number(fixAt)<=Number(previous.timestamp)){
+    return raw??prior;
+  }
+  const seconds=(Number(fixAt)-Number(previous.timestamp))/1000;
+  const meters=haversineKm(previous.lat,previous.lng,nextLat,nextLng)*1000;
+  const motion=seconds>0&&seconds<=5&&Number.isFinite(meters)&&meters>=2.2
+    ? qgBearingBetweenPoints(previous,{lat:Number(nextLat),lng:Number(nextLng)})
+    : null;
+  const spd=Number.isFinite(Number(speed))&&Number(speed)>=0?Number(speed):null;
+  if(raw===null)return motion??prior;
+  if(spd!=null&&spd>=2){
+    if(motion!==null&&Math.abs(qgRiderBearingDelta(motion,raw))>65)return motion;
+    if(prior!==null&&Math.abs(qgRiderBearingDelta(prior,raw))>120){
+      if(motion===null||Math.abs(qgRiderBearingDelta(prior,motion))<70)return motion??prior;
+    }
+  }
+  return raw;
+}
 function qgSmoothedRiderPuckHeading(fix){
   const raw=qgNormalizeRiderBearing(fix?.bearing),speed=Number(fix?.speed);
   if(raw===null)return riderPuckHeading;
@@ -868,10 +898,18 @@ function startGeolocation(){
         speed=meters<1.5?0:Math.min(55,meters/seconds);
       }
     }
+    const bearing=qgResolveRiderTravelBearing(
+      previous,
+      pos.coords.latitude,
+      pos.coords.longitude,
+      qgFiniteOrNull(pos.coords.heading),
+      speed,
+      fixAt
+    );
     S.pos = {
       lat:pos.coords.latitude,
       lng:pos.coords.longitude,
-      bearing:qgFiniteOrNull(pos.coords.heading),
+      bearing,
       speed,
       accuracy:qgFiniteOrNull(pos.coords.accuracy),
       timestamp:fixAt
@@ -1280,7 +1318,7 @@ function drawLaundryRoute(){
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
-      window.QueueGoMapWeb?.followNavigationCamera?.(map,pos,riderRouteGeometry,{duration:420,baseZoom:17});
+      // Route rendering owns geometry only. GPS Follow is the single camera writer.
       riderRouteCache={scope,map,pos:{...pos},at:Date.now()};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
@@ -1355,7 +1393,7 @@ function drawActiveRoute(){
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
-      window.QueueGoMapWeb?.followNavigationCamera?.(map,pos,riderRouteGeometry,{duration:420,baseZoom:17});
+      // Route rendering owns geometry only. GPS Follow is the single camera writer.
       riderRouteCache={scope,map,pos:{...pos},at:Date.now()};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
