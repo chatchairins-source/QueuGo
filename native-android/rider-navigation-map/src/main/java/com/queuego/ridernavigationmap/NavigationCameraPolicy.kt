@@ -50,12 +50,32 @@ internal fun navigationCameraDecision(
         )
     } else null
 
-    // Keep the navigation camera aligned to the matched road whenever the Rider is
-    // confidently on-route. Raw GNSS course can jump left/right between adjacent fixes,
-    // especially on motorcycles and urban roads, so it is only the fallback when there
-    // is no reliable route segment to follow.
+    // A nearest-segment match can land on the opposite carriageway or a U-turn leg.
+    // Reject that route bearing only when both the live GNSS course and the previous
+    // camera course agree that the Rider is travelling the other way. This preserves
+    // road snapping through one noisy GPS course while preventing 180-degree camera flips.
+    val routeBearingDelta = if (gpsBearing != null && routeBearing != null) {
+        abs(navigationShortestBearingDelta(gpsBearing, routeBearing))
+    } else null
+    val previousRouteDelta = if (
+        previousBearingDegrees != null &&
+        previousBearingDegrees.isFinite() &&
+        routeBearing != null
+    ) {
+        abs(navigationShortestBearingDelta(previousBearingDegrees, routeBearing))
+    } else null
+    val routeBearingOpposesMotion =
+        speed != null && speed >= 2f &&
+            gpsBearing != null &&
+            routeBearingDelta != null && (
+                routeBearingDelta > 110f ||
+                    (routeBearingDelta > 75f &&
+                        (previousRouteDelta == null || previousRouteDelta > 75f))
+                )
+    val routeBearingUsable = routeBearing != null && !routeBearingOpposesMotion
+
     val desiredBearing = when {
-        routeBearing != null -> routeBearing
+        routeBearingUsable -> routeBearing
         speed == null || speed < 0.83f -> previousBearingDegrees
         else -> gpsBearing ?: previousBearingDegrees
     }
@@ -88,7 +108,12 @@ internal fun navigationCameraDecision(
     }
 
     val lookAheadMeters = navigationLookAheadMeters(speed, remaining)
-    val center = if (activeRoute != null && match != null && match.offRouteMeters <= ROUTE_BEARING_MAX_OFF_ROUTE_METERS) {
+    val center = if (
+        activeRoute != null &&
+        match != null &&
+        match.offRouteMeters <= ROUTE_BEARING_MAX_OFF_ROUTE_METERS &&
+        routeBearingUsable
+    ) {
         navigationPointAtDistance(
             activeRoute,
             (match.progressMeters + lookAheadMeters).coerceAtMost(match.geometryDistanceMeters)

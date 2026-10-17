@@ -113,6 +113,26 @@ class RiderNavigationIntegrationTest {
         assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.OVERVIEW, smoothnessTestMode = true))
     }
 
+    @Test fun travelBearingRejectsOppositeRawHeadingWhenMotionAgrees() {
+        val resolved = riderResolveTravelBearing(
+            priorBearing = 90f,
+            rawBearing = 270f,
+            motionBearing = 92f,
+            speedMetersPerSecond = 10f
+        )
+        assertEquals(92f, resolved!!, 0.001f)
+    }
+
+    @Test fun travelBearingKeepsNearbyRawHeading() {
+        val resolved = riderResolveTravelBearing(
+            priorBearing = 90f,
+            rawBearing = 95f,
+            motionBearing = 92f,
+            speedMetersPerSecond = 10f
+        )
+        assertEquals(95f, resolved!!, 0.001f)
+    }
+
     @Test fun targetedOfferCountsAsNavigationWorkAndStartsFollowCamera() {
         val offeredStops = riderNavigationStops(
             job(status = "searching_rider"),

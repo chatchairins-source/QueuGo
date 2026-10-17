@@ -159,7 +159,7 @@ class NavigationCameraPolicyTest {
                 bearingDegrees = 270f,
                 accuracyMeters = 5f,
                 speedMetersPerSecond = 10f,
-                bearingAccuracyDegrees = 4f
+                bearingAccuracyDegrees = 85f
             ),
             stops = listOf(
                 NavigationMapStop(
@@ -176,6 +176,78 @@ class NavigationCameraPolicyTest {
         val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)
 
         assertTrue(decision!!.bearingDegrees!! in 85f..95f)
+    }
+
+    @Test fun strongLiveTravelCourseRecoversEvenIfPreviousCameraWasWrong() {
+        val eastbound = NavigationRouteSegment(
+            id = "eastbound-wrong-previous",
+            toStopId = "shop",
+            points = listOf(
+                NavigationMapPoint(15.0000, 103.0000),
+                NavigationMapPoint(15.0000, 103.0100)
+            ),
+            style = NavigationRouteStyle.ACTIVE
+        )
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(15.00001, 103.0040),
+                bearingDegrees = 270f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 10f,
+                bearingAccuracyDegrees = 4f
+            ),
+            stops = listOf(
+                NavigationMapStop(
+                    id = "shop",
+                    sequence = 1,
+                    kind = NavigationStopKind.PICKUP,
+                    point = NavigationMapPoint(15.0000, 103.0100)
+                )
+            ),
+            routes = listOf(eastbound),
+            activeStopId = "shop"
+        )
+
+        val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)
+
+        assertTrue(decision!!.bearingDegrees!! > 180f)
+        assertTrue(decision.center.longitude <= state.rider!!.point.longitude)
+    }
+
+    @Test fun oppositeRouteMatchCannotFlipCameraWhenMotionAndPreviousCourseAgree() {
+        val eastbound = NavigationRouteSegment(
+            id = "eastbound-wrong-carriageway",
+            toStopId = "shop",
+            points = listOf(
+                NavigationMapPoint(15.0000, 103.0000),
+                NavigationMapPoint(15.0000, 103.0100)
+            ),
+            style = NavigationRouteStyle.ACTIVE
+        )
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(15.00001, 103.0040),
+                bearingDegrees = 270f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 10f,
+                bearingAccuracyDegrees = 4f
+            ),
+            stops = listOf(
+                NavigationMapStop(
+                    id = "shop",
+                    sequence = 1,
+                    kind = NavigationStopKind.PICKUP,
+                    point = NavigationMapPoint(15.0000, 103.0100)
+                )
+            ),
+            routes = listOf(eastbound),
+            activeStopId = "shop"
+        )
+
+        val decision = navigationCameraDecision(state, previousBearingDegrees = 270f)
+
+        assertTrue(decision!!.bearingDegrees!! in 250f..290f)
+        assertTrue(decision.center.longitude <= state.rider!!.point.longitude)
     }
 
     @Test fun highwaySpeedUsesStrongForwardPerspective() {
