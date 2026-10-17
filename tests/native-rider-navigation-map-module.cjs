@@ -309,6 +309,8 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('deadbandDegrees: Float = 0.45f')&&
   cameraPolicy.includes('navigationRotationDurationMillis')&&
   cameraPolicy.includes('navigationCameraEaseInOut')&&
+  cameraPolicy.includes('navigationFreeDriveTilt')&&
+  cameraPolicy.includes('0.24f * t + 0.76f * cubic')&&
   cameraPolicy.includes('navigationPointAtDistance')&&
   /activeMap\.setLocation\(\s*MapLocation\(decision\.center\.longitude, decision\.center\.latitude\),\s*true\s*\)/.test(map)&&
   map.includes('activeMap.setZoom(targetZoom, true)')&&
@@ -340,14 +342,14 @@ assert(map.includes('oldLine.setLocation(segment.points.map')&&
   map.includes('renderedRouteSegments.zip(routeLines)')&&
   map.includes('Topology/style changed or an in-place mutation failed'),
   'Route progress must mutate existing Longdo line geometry in place and rebuild only on topology/style changes');
-assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 600L')&&
+assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 1_200L')&&
   map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
   map.includes('riderMarkerAnimator?.cancel()')&&
   map.includes('existing.getMovingLocation()')&&
   map.includes('riderMarkerAnimationMillis(lastRiderFix ?: previousTarget, fix)')&&
   !map.includes('RIDER_MARKER_ANIMATION_STEPS = 18')&&
   !map.includes('existing.setLocation(\n                        location,\n                        true,'),
-  'Rider marker smoothing must use one cancellable Android animator shorter than the GPS cadence and never stack Longdo animations');
+  'Rider marker smoothing must use one cancellable Android animator that overlaps the GPS cadence and never stacks Longdo animations');
 assert(map.includes('PixelCopy is deliberately not scheduled on every GPS tick')&&
   !map.includes('publishDiagnostics()\n        scheduleSnapshotRefresh()'),
   'Live GPS rendering must not schedule PixelCopy snapshots on every navigation update');
