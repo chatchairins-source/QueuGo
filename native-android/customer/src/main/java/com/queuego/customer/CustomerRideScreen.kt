@@ -257,7 +257,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                 }
             }
             if (trackingPoints.isNotEmpty()) {
-                QgLongdoTrackingMap(
+                CustomerQueueGoTrackingMap(
                     points = trackingPoints,
                     modifier = Modifier.fillMaxWidth().height(245.dp)
                 )
@@ -301,7 +301,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                             .background(Color(0xFFF0F1F2), RoundedCornerShape(16.dp))
                             .border(1.dp, QgLine, RoundedCornerShape(16.dp))
                     ) {
-                        QgLongdoTrackingMap(points = previewPoints, modifier = Modifier.fillMaxSize())
+                        CustomerQueueGoTrackingMap(points = previewPoints, modifier = Modifier.fillMaxSize())
                     }
                     pickup?.let {
                         Row(
