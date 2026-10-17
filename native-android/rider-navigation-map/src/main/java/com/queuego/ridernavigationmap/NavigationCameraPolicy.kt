@@ -105,7 +105,12 @@ internal fun navigationCameraDecision(
     }
 
     val lookAheadMeters = navigationLookAheadMeters(speed, remaining)
-    val center = if (activeRoute != null && match != null && match.offRouteMeters <= ROUTE_BEARING_MAX_OFF_ROUTE_METERS) {
+    val center = if (
+        activeRoute != null &&
+        match != null &&
+        match.offRouteMeters <= ROUTE_BEARING_MAX_OFF_ROUTE_METERS &&
+        routeBearingUsable
+    ) {
         navigationPointAtDistance(
             activeRoute,
             (match.progressMeters + lookAheadMeters).coerceAtMost(match.geometryDistanceMeters)
