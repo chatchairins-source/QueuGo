@@ -3,13 +3,18 @@ package com.queuego.customer
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +33,9 @@ internal data class PendingRide(val requestId: String, val quoteId: String) {
 }
 internal data class PassengerRide(val id: String, val number: String, val status: String, val riderId: String?,
     val pickup: String, val destination: String, val fare: Double, val riderName: String?,
-    val minutes: Double, val km: Double, val riderLat: Double?, val riderLng: Double?) {
+    val minutes: Double, val km: Double, val riderLat: Double?, val riderLng: Double?,
+    val pickupLat: Double? = null, val pickupLng: Double? = null,
+    val destinationLat: Double? = null, val destinationLng: Double? = null) {
     val terminal get() = status in listOf("completed", "cancelled", "no_rider_available")
 }
 internal fun parsePassengerRide(o: JSONObject): PassengerRide {
@@ -36,7 +43,8 @@ internal fun parsePassengerRide(o: JSONObject): PassengerRide {
     fun point(k: String) = if (o.isNull(k)) null else o.optDouble(k).takeIf { it.isFinite() }
     return PassengerRide(o.getString("id"), nativeOrderNumber(o.optString("order_number")), o.getString("status"), text("rider_id"),
         o.optString("pickup_address"), o.optString("delivery_address"), o.getDouble("fare"), text("rider_name"),
-        o.getDouble("duration_minutes"), o.getDouble("distance_km"), point("rider_latitude"), point("rider_longitude"))
+        o.getDouble("duration_minutes"), o.getDouble("distance_km"), point("rider_latitude"), point("rider_longitude"),
+        point("pickup_latitude"), point("pickup_longitude"), point("delivery_latitude"), point("delivery_longitude"))
 }
 private class PassengerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun state(auth: NativeAuth, id: String? = null): List<PassengerRide> {
@@ -78,7 +86,58 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     var loaded by remember(auth.user.id) { mutableStateOf(false) }
     var enabled by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var gpsBusy by remember { mutableStateOf(false) }
+    var permissionPending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    suspend fun applyCurrentPickup() {
+        val position = customerRegistrationLocation(context)
+        val address = runCatching {
+            customerApi.reverseGeocode(position.latitude, position.longitude)
+        }.getOrNull().orEmpty().ifBlank { "ตำแหน่งปัจจุบัน" }
+        pickup = CustomerLocation(position.latitude, position.longitude, address)
+        quote = null
+    }
+
+    fun loadCurrentPickup() {
+        if (gpsBusy || permissionPending || busy || pending != null) return
+        gpsBusy = true
+        scope.launch {
+            try {
+                applyCurrentPickup()
+                error = null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error = e.message ?: "ยังอ่านตำแหน่งปัจจุบันไม่ได้"
+            } finally {
+                gpsBusy = false
+            }
+        }
+    }
+
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        permissionPending = false
+        if (grants.values.any { it }) loadCurrentPickup()
+        else error = "กรุณาอนุญาตตำแหน่งเพื่อใช้ตำแหน่งปัจจุบันเป็นจุดรับ"
+    }
+
+    fun requestCurrentPickup() {
+        val granted = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED ||
+            context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (granted) loadCurrentPickup()
+        else if (!permissionPending) {
+            permissionPending = true
+            locationPermission.launch(arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ))
+        }
+    }
     suspend fun refresh() {
         val recent = api.state(auth)
         val current = if (selected != null && recent.none { it.id == selected }) api.state(auth,selected) + recent else recent
@@ -105,7 +164,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
         }
     }
     val current = rides.firstOrNull { it.id == selected }
-    val frozen = busy || pending != null || current?.terminal == false
+    val frozen = frozenRideMutation(busy, pending, current)
     val editing = picker
     if (editing != null && !frozen) {
         val original = if (editing == "pickup") pickup else destination
@@ -115,9 +174,21 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             onBack = { picker = null })
         return
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        TextButton(onClick = onBack, enabled = !busy) { Text("กลับ") }
-        Text("รับส่งผู้โดยสาร",style = MaterialTheme.typography.headlineSmall,fontWeight = FontWeight.Bold)
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(onClick = onBack, enabled = !busy, contentPadding = PaddingValues(horizontal = 14.dp)) {
+                Text("‹", fontWeight = FontWeight.ExtraBold)
+            }
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text("บริการเรียกรถ",style = MaterialTheme.typography.headlineSmall,fontWeight = FontWeight.ExtraBold)
+                Text("รับส่งผู้โดยสารด้วย QueueGo",color = QgMuted,style = MaterialTheme.typography.bodySmall)
+            }
+        }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (!loaded) Text("กำลังตรวจสถานะเที่ยวล่าสุด…")
         if (current != null) {
@@ -128,8 +199,22 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             current.riderName?.let { Text("คนขับ: " + it) }
             if (!current.terminal && current.riderId != null) OutlinedButton(onClick = { onContact(current.id) },enabled = !busy) { Text("ติดต่อคนขับ") }
             Text("เส้นทางที่ประเมิน ${customerNumber(current.km,1)} กม. · เวลาวิ่งประมาณ ${customerNumber(current.minutes,0)} นาที ไม่รวมเวลารอคนขับ")
-            if (!current.terminal && current.riderLat != null && current.riderLng != null) {
-                QgLongdoTrackingMap(points = listOf(QgMapPoint(current.riderLat,current.riderLng,0xFFE6002D.toInt(),QgMapRole.RIDER)),modifier = Modifier.fillMaxWidth().height(220.dp))
+            val trackingPoints = buildList {
+                if (current.pickupLat != null && current.pickupLng != null) {
+                    add(QgMapPoint(current.pickupLat,current.pickupLng,0xFF1677FF.toInt(),QgMapRole.MERCHANT))
+                }
+                if (current.destinationLat != null && current.destinationLng != null) {
+                    add(QgMapPoint(current.destinationLat,current.destinationLng,0xFFE6002D.toInt(),QgMapRole.CUSTOMER))
+                }
+                if (!current.terminal && current.riderLat != null && current.riderLng != null) {
+                    add(QgMapPoint(current.riderLat,current.riderLng,0xFFE6002D.toInt(),QgMapRole.RIDER))
+                }
+            }
+            if (trackingPoints.isNotEmpty()) {
+                QgLongdoTrackingMap(
+                    points = trackingPoints,
+                    modifier = Modifier.fillMaxWidth().height(245.dp)
+                )
             }
             if (current.status == "searching_rider" && current.riderId == null && pending == null) {
                 OutlinedButton(enabled = !busy,onClick = {
@@ -144,19 +229,101 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             if (current.terminal && pending == null) Button(onClick = { selected = null;quote = null },enabled = !busy) { Text("เรียกรถเที่ยวใหม่") }
         } else {
             if (loaded && !enabled) Text("บริการเรียกรถยังไม่เปิดให้ใช้ในขณะนี้")
-            OutlinedButton(enabled = loaded && enabled && !frozen,onClick = { picker = "pickup" }) { Text("จุดรับ: " + (pickup?.address ?: "เลือกบนแผนที่")) }
-            OutlinedButton(enabled = loaded && enabled && !frozen,onClick = { picker = "destination" }) { Text("จุดหมาย: " + (destination?.address ?: "เลือกบนแผนที่")) }
-            if (quote == null && pending == null) Button(enabled = loaded && enabled && !frozen && pickup != null && destination != null,onClick = {
-                busy = true; scope.launch {
-                    try { quote = api.quote(auth,requireNotNull(pickup),requireNotNull(destination));error = null }
-                    catch (e: CancellationException) { throw e }
-                    catch (e: Exception) { error = e.message ?: "ยังประเมินเส้นทางไม่ได้" }
-                    finally { busy = false }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val previewPoints = buildList {
+                        pickup?.let {
+                            add(QgMapPoint(it.latitude,it.longitude,0xFF1677FF.toInt(),QgMapRole.MERCHANT))
+                        }
+                        destination?.let {
+                            add(QgMapPoint(it.latitude,it.longitude,0xFFE6002D.toInt(),QgMapRole.CUSTOMER))
+                        }
+                    }
+                    Box(
+                        Modifier.fillMaxWidth().height(245.dp)
+                            .background(Color(0xFFF0F1F2), RoundedCornerShape(16.dp))
+                            .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+                    ) {
+                        QgLongdoTrackingMap(points = previewPoints, modifier = Modifier.fillMaxSize())
+                    }
+
+                    RideLocationButton(
+                        label = "จุดรับ",
+                        address = pickup?.address ?: "เลือกบนแผนที่",
+                        color = Color(0xFF1677FF),
+                        enabled = loaded && enabled && !frozen,
+                        onClick = { picker = "pickup" }
+                    )
+                    RideLocationButton(
+                        label = "จุดหมาย",
+                        address = destination?.address ?: "เลือกบนแผนที่",
+                        color = QgRed,
+                        enabled = loaded && enabled && !frozen,
+                        onClick = { picker = "destination" }
+                    )
+
+                    if (pickup == null && pending == null && enabled) {
+                        OutlinedButton(
+                            onClick = ::requestCurrentPickup,
+                            enabled = !gpsBusy && !permissionPending && !frozen,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (gpsBusy || permissionPending) "กำลังอ่านตำแหน่ง…" else "ใช้ตำแหน่งปัจจุบันเป็นจุดรับ")
+                        }
+                    }
+
+                    if (quote == null && pending == null) {
+                        Button(
+                            enabled = loaded && enabled && !frozen && pickup != null && destination != null,
+                            onClick = {
+                                busy = true
+                                scope.launch {
+                                    try {
+                                        quote = api.quote(auth,requireNotNull(pickup),requireNotNull(destination))
+                                        error = null
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        error = e.message ?: "ยังประเมินเส้นทางไม่ได้"
+                                    } finally {
+                                        busy = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(52.dp)
+                        ) { Text(if (busy) "กำลังตรวจเส้นทาง…" else "ดูค่าโดยสาร", fontWeight = FontWeight.ExtraBold) }
+                    }
+
+                    quote?.let { price ->
+                        Column(
+                            Modifier.fillMaxWidth()
+                                .background(Color(0xFFF7F8FA), RoundedCornerShape(14.dp))
+                                .padding(12.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text("ค่าโดยสารเงินสด", modifier = Modifier.weight(1f))
+                                Text(
+                                    customerBaht(price.getDouble("fare")),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                            Text(
+                                "ระยะทาง ${customerNumber(price.getDouble("distance_km"),1)} กม. · เวลาวิ่งประมาณ ${customerNumber(price.getDouble("duration_minutes"),0)} นาที",
+                                color = QgMuted,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
                 }
-            }) { Text(if (busy) "กำลังตรวจเส้นทาง…" else "ดูค่าโดยสาร") }
-            quote?.let { price ->
-                Text("ค่าโดยสารเงินสด " + customerBaht(price.getDouble("fare")),fontWeight = FontWeight.Bold)
-                Text("เวลาวิ่งประมาณ ${customerNumber(price.getDouble("duration_minutes"),0)} นาที ไม่รวมเวลารอคนขับ")
             }
         }
         if (pending != null || current == null && quote != null) Button(enabled = loaded && !busy,onClick = {
@@ -177,5 +344,34 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
         if (current == null && pending == null) rides.filter { it.terminal }.take(5).forEach { old ->
             TextButton(onClick = { selected = old.id }) { Text(old.number + " · " + customerBaht(old.fare)) }
         }
+    }
+}
+
+
+private fun frozenRideMutation(busy: Boolean, pending: PendingRide?, current: PassengerRide?): Boolean =
+    busy || pending != null || current?.terminal == false
+
+@Composable
+private fun RideLocationButton(
+    label: String,
+    address: String,
+    color: Color,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 62.dp),
+        shape = RoundedCornerShape(14.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp)
+    ) {
+        Box(Modifier.size(12.dp).background(color, RoundedCornerShape(99.dp)))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+            Text(label, color = QgMuted, style = MaterialTheme.typography.labelSmall)
+            Text(address, color = Color(0xFF17181A), fontWeight = FontWeight.Bold, maxLines = 1)
+        }
+        Text("›", color = QgMuted, fontWeight = FontWeight.ExtraBold)
     }
 }
