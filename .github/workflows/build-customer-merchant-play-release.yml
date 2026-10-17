@@ -1,0 +1,261 @@
+name: QueueGo Customer Merchant Play Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: Release versionName in x.y.z form
+        required: true
+        type: string
+      customer_version_code:
+        description: Customer release versionCode
+        required: true
+        type: string
+      merchant_version_code:
+        description: Merchant release versionCode
+        required: true
+        type: string
+      customer_play_max_version_code:
+        description: Highest Customer versionCode currently observed in Play Console
+        required: true
+        type: string
+      merchant_play_max_version_code:
+        description: Highest Merchant versionCode currently observed in Play Console
+        required: true
+        type: string
+      signing_certificate_sha256:
+        description: Upload/signing certificate SHA-256 fingerprint
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-customer-merchant-play-release
+  cancel-in-progress: false
+
+jobs:
+  play-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      QG_NATIVE_VERSION_NAME: ${{ inputs.version_name }}
+      QG_CUSTOMER_VERSION_CODE: ${{ inputs.customer_version_code }}
+      QG_MERCHANT_VERSION_CODE: ${{ inputs.merchant_version_code }}
+      QG_CUSTOMER_PLAY_MAX_VERSION_CODE: ${{ inputs.customer_play_max_version_code }}
+      QG_MERCHANT_PLAY_MAX_VERSION_CODE: ${{ inputs.merchant_play_max_version_code }}
+      QG_ANDROID_SIGNING_CERT_SHA256: ${{ inputs.signing_certificate_sha256 }}
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Require Native Source of Truth branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/queuego-native-android-v1" ]; then
+            echo "::error::Play release may run only from queuego-native-android-v1"
+            exit 1
+          fi
+
+      - name: Validate Customer and Merchant release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+          version = os.environ.get("QG_NATIVE_VERSION_NAME", "")
+          if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              raise SystemExit("::error::version_name must be x.y.z")
+          for role in ("CUSTOMER", "MERCHANT"):
+              release_raw = os.environ.get(f"QG_{role}_VERSION_CODE", "")
+              play_raw = os.environ.get(f"QG_{role}_PLAY_MAX_VERSION_CODE", "")
+              if not release_raw.isdigit() or not play_raw.isdigit():
+                  raise SystemExit(f"::error::{role} versionCode inputs must be non-negative integers")
+              release_code, play_max = int(release_raw), int(play_raw)
+              if release_code <= 0 or release_code > 2100000000:
+                  raise SystemExit(f"::error::{role} release versionCode is out of range")
+              if release_code <= play_max:
+                  raise SystemExit(f"::error::{role} release versionCode must exceed observed Play maximum")
+          cert = re.sub(r"[^0-9a-fA-F]", "", os.environ.get("QG_ANDROID_SIGNING_CERT_SHA256", ""))
+          if not re.fullmatch(r"[0-9a-fA-F]{64}", cert):
+              raise SystemExit("::error::signing_certificate_sha256 must be a SHA-256 fingerprint")
+          PY
+
+      - name: Require Customer and Merchant release secrets
+        shell: bash
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+          QG_ANDROID_KEYSTORE_B64: ${{ secrets.QG_ANDROID_KEYSTORE_B64 }}
+          QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 QG_ANDROID_KEYSTORE_B64 QG_ANDROID_STORE_PASSWORD QG_ANDROID_KEY_ALIAS QG_ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing release secret: $name"
+              exit 1
+            fi
+          done
+
+      - uses: actions/setup-java@17f84c3641ba7b8f6deff6309fc4c864478f5d62 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Prepare Firebase and release signing
+        shell: bash
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+          QG_ANDROID_KEYSTORE_B64: ${{ secrets.QG_ANDROID_KEYSTORE_B64 }}
+          QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          firebase="$RUNNER_TEMP/queuego-google-services.json"
+          keystore="$RUNNER_TEMP/queuego-release.keystore"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$firebase"
+          printf '%s' "$QG_ANDROID_KEYSTORE_B64" | base64 --decode > "$keystore"
+          test -s "$firebase"
+          test -s "$keystore"
+
+          QG_FIREBASE_CONFIG="$firebase" python3 - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+          source = Path(os.environ["QG_FIREBASE_CONFIG"])
+          data = json.loads(source.read_text())
+          if not data.get("project_info", {}).get("project_id"):
+              raise SystemExit("::error::Firebase config is missing project_id")
+          clients = data.get("client") or []
+          for package, target in {
+              "com.queuego.customer": Path("native-android/customer/google-services.json"),
+              "com.queuego.merchant": Path("native-android/merchant/google-services.json"),
+          }.items():
+              matches = [c for c in clients if c.get("client_info", {}).get("android_client_info", {}).get("package_name") == package]
+              if len(matches) != 1 or not matches[0].get("client_info", {}).get("mobilesdk_app_id"):
+                  raise SystemExit(f"::error::Firebase config requires one complete client for {package}")
+              shutil.copyfile(source, target)
+              target.chmod(0o600)
+          PY
+
+          listing="$(keytool -J-Duser.language=en -J-Duser.country=US -list -v \
+            -keystore "$keystore" \
+            -storepass:env QG_ANDROID_STORE_PASSWORD \
+            -alias "$QG_ANDROID_KEY_ALIAS")"
+          fingerprint="$(printf '%s\n' "$listing" | sed -n 's/^[[:space:]]*SHA256:[[:space:]]*//p' | head -n 1)"
+          actual="$(printf '%s' "$fingerprint" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+          expected="$(printf '%s' "$QG_ANDROID_SIGNING_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Android release certificate does not match the approved fingerprint"
+            exit 1
+          fi
+          echo "QG_ANDROID_KEYSTORE_PATH=$keystore" >> "$GITHUB_ENV"
+
+      - name: Install JS test dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Customer and Merchant release regression
+        run: |
+          node tests/account-deletion-privacy.cjs
+          node tests/customer-checkout-ui-reliability.cjs
+          node tests/customer-features.cjs
+          node tests/customer-live.cjs
+          node tests/customer-search.cjs
+          node tests/customer-session.cjs
+          node tests/customer-support.cjs
+          node tests/merchant-action-reliability.cjs
+          node tests/merchant-delivery-readiness.cjs
+          node tests/merchant-product-reliability.cjs
+          node tests/merchant-realtime.cjs
+          node tests/merchant-routing.cjs
+          node tests/native-customer-checkout-reliability.cjs
+          node tests/native-customer-merchant-push.cjs
+          node tests/native-merchant-grocery-catalog.cjs
+          node tests/native-merchant-order-substitution.cjs
+          node tests/native-push-session-binding.cjs
+
+      - name: Native Customer and Merchant unit tests
+        run: gradle -p native-android :shared:testDebugUnitTest :customer:testDebugUnitTest :merchant:testDebugUnitTest --no-build-cache --stacktrace
+
+      - name: Verify Play policy surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/privacy.html
+          test -s docs/account-deletion.html
+          grep -q 'นโยบายความเป็นส่วนตัว' native-android/shared/src/main/java/com/queuego/shared/QueueGoAccountDeletion.kt
+          grep -q 'QgAccountDeletionSection' native-android/customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt
+          grep -q 'QgAccountDeletionSection' native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt
+          if grep -R -E 'android\.webkit\.WebView|<WebView\b|loadUrl\(' native-android/customer native-android/merchant native-android/shared; then
+            echo "::error::WebView is forbidden in the native Play release"
+            exit 1
+          fi
+
+      - name: Build signed Customer and Merchant APK/AAB
+        env:
+          QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+        run: |
+          gradle -p native-android \
+            :customer:assembleRelease :customer:bundleRelease \
+            :merchant:assembleRelease :merchant:bundleRelease \
+            --no-build-cache --stacktrace
+
+      - name: Verify Android 16 KB page-size packaging
+        run: |
+          python3 native-android/qa/verify-16kb-page-size.py \
+            native-android/customer/build/outputs/apk/release/customer-release.apk \
+            native-android/merchant/build/outputs/apk/release/merchant-release.apk
+
+      - name: Verify signed AABs
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            native-android/customer/build/outputs/bundle/release/customer-release.aab \
+            native-android/merchant/build/outputs/bundle/release/merchant-release.aab
+          do
+            test -s "$file"
+            jarsigner -verify "$file" >/dev/null
+          done
+
+      - name: Collect Play release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/queuego-customer-merchant-play-${QG_NATIVE_VERSION_NAME}"
+          mkdir -p "$out"
+          cp native-android/customer/build/outputs/bundle/release/customer-release.aab "$out/QueueGo-Customer-${QG_NATIVE_VERSION_NAME}.aab"
+          cp native-android/merchant/build/outputs/bundle/release/merchant-release.aab "$out/QueueGo-Merchant-${QG_NATIVE_VERSION_NAME}.aab"
+          cp native-android/customer/build/outputs/apk/release/customer-release.apk "$out/QueueGo-Customer-${QG_NATIVE_VERSION_NAME}-release.apk"
+          cp native-android/merchant/build/outputs/apk/release/merchant-release.apk "$out/QueueGo-Merchant-${QG_NATIVE_VERSION_NAME}-release.apk"
+          (cd "$out" && sha256sum * > SHA256SUMS.txt)
+
+      - name: Retain Customer and Merchant Play artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-customer-merchant-play-${{ inputs.version_name }}
+          path: ${{ runner.temp }}/queuego-customer-merchant-play-${{ inputs.version_name }}/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove decoded credentials
+        if: always()
+        shell: bash
+        run: |
+          rm -f native-android/customer/google-services.json
+          rm -f native-android/merchant/google-services.json
+          rm -f "$RUNNER_TEMP/queuego-google-services.json"
+          rm -f "$RUNNER_TEMP/queuego-release.keystore"
