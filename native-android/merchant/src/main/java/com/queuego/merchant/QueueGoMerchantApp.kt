@@ -1302,6 +1302,17 @@ private fun DashboardScreen(
         Spacer(Modifier.height(9.dp))
         MerchantRevenueEntry(onRevenue)
 
+        Spacer(Modifier.height(16.dp))
+        QgSectionTitle("ออเดอร์ที่ต้องจัดการ", "รับ → เตรียม → พร้อมส่ง")
+        Spacer(Modifier.height(10.dp))
+        when {
+            loading && orders.isEmpty() -> CircularProgressIndicator()
+            incoming.isEmpty() -> QgCard(Modifier.fillMaxWidth()) {
+                Text("ยังไม่มีออเดอร์ที่ต้องจัดการ", color = QgMuted)
+            }
+            else -> incoming.take(3).forEach { MerchantOrderCard(it, onOpen) }
+        }
+
         Text(
             "จัดการร้าน",
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 14.dp),
@@ -1346,16 +1357,6 @@ private fun DashboardScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        QgSectionTitle("ออเดอร์ที่ต้องจัดการ", "รับ → เตรียม → พร้อมส่ง")
-        Spacer(Modifier.height(10.dp))
-        when {
-            loading && orders.isEmpty() -> CircularProgressIndicator()
-            incoming.isEmpty() -> QgCard(Modifier.fillMaxWidth()) {
-                Text("ยังไม่มีออเดอร์ที่ต้องจัดการ", color = QgMuted)
-            }
-            else -> incoming.take(6).forEach { MerchantOrderCard(it, onOpen) }
-        }
         Spacer(Modifier.height(28.dp))
     }
 }
