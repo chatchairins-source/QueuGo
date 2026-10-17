@@ -36,3 +36,18 @@ Field inspection reference: relation 17320674 has source node at **14.9939137, 1
 The candidate now includes an opt-in `/map-view/?field-qa=1` recorder plus `ops/maps/validate_field_evidence.py`. The recorder stays hidden during normal map use, never uploads raw GPS automatically, captures package identity, accepted GPS fixes, shared-core map matching, active-route progress, GPS gaps and background/foreground transitions, and exports versioned JSON for owner-controlled review.
 
 Validation is fail-closed: a tool pass is only **candidate physical evidence**, never certification and never an automatic release-gate close. Required real sessions remain village lane, frontage/service-road behavior, U-turn, parallel-road GPS, signal-loss/recovery, background→foreground, reroute and arrival. See `docs/map-field-qa.md`.
+
+
+## Source-direction conflict quarantine
+
+Restriction relation **1538817** is structurally complete but conflicts with the current one-way direction of its own OSM members in the installed 2026-10-15 extract:
+
+- relation: `only_straight_on`
+- from way: `1090716630`
+- to way: `1090716624`
+- via node: `370559614`
+- both member ways are `oneway=yes`
+- the from way currently begins at the via node, so legal one-way travel cannot approach the via on that member
+- the to way currently ends at the via node, so legal one-way travel cannot depart the via on that member
+
+QueueGo does not swap the relation roles or ignore the one-way tags. The relation is exposed as a `source_direction_conflict` and all its member ways are quarantined from usable routes until independently verified. This is separate from the two malformed relations 2148441 and 17320674. Rendering can continue, but route/matrix/optimization output must fail closed around these uncertain source rules.
