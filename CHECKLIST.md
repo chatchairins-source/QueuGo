@@ -47,14 +47,27 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Status: IN PROGRESS
 - Active PR: #414
 - Branch: `work-native-rider-queuego-route-authority-20261017`
-- Previous failing HEAD: `4963b9d4df263ca55d21fd1173dc0121cfcde20c`
-- Current HEAD: `7d0aa2bdeee087685cc350996b70b88dc9abe8f7`
-- Current CI: QueueGo Map Engine Buriram run 39050133344: IN PROGRESS on `7d0aa2bdeee087685cc350996b70b88dc9abe8f7`; previous exact-head run 39050021669 failed on the next missing catalog asset
-- Fix/integration commits: `297f9e4a918b8bdab86cc4abebb38d3176ab1842`, `735cdf215ffe0334839e31f00172116080dcc950`, `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb`, `7d0aa2bdeee087685cc350996b70b88dc9abe8f7`
-- Root cause: branch integration gap carried current `admin/index.html` without the complete current catalog asset set. First missing `grocery.css`, then `normalize.js`; both were restored from exact current-main blobs without changing navigation logic.
-- Evidence: job 117442661425 first failed on missing `grocery.css`; run 39050021669 then advanced and failed on missing `normalize.js`, confirming one incomplete asset-set integration cause.
+- Previous failing sequence: `4963b9d4df263ca55d21fd1173dc0121cfcde20c` -> `297f9e4a918b8bdab86cc4abebb38d3176ab1842` -> `7d0aa2bdeee087685cc350996b70b88dc9abe8f7` -> `992d117cb2ec88da0ad4e04cf90262596154a9c7` -> `55ea1afd4bad60c48e5524762039fdedbdff667b`
+- Current HEAD: `59a32dd7cfba0b540280ae085e1f5d0a0a79e5c8`
+- Root cause now established:
+  - #414 is a long-lived native successor that contains newer Web/Map references but its `package.json` lacked the Map unified lifecycle hook `pretest: python3 ops/maps/fetch_web_assets.py map-assets`.
+  - QueueGo Map assets are intentionally generated/pinned at test/runtime setup and are not committed. Unified #417 has the pretest hook and passes; #414 did not, so `source-integrity` saw missing local assets.
+  - Earlier missing Grocery/Voice references were also evidence of branch integration drift, but the `map-assets` failure proves generated-asset setup must be fixed at the lifecycle level rather than committing generated files.
+- Failure evidence:
+  - run 39050021669: missing `catalog/normalize.js`
+  - run 39050133344: missing `admin/grocery-catalog.js`
+  - run 39050226710: missing `queuego-voice-web.js`
+  - run 39050304624: missing `map-assets/maplibre-gl.css`
+- Fix/integration commits already on this successor:
+  - `297f9e4a918b8bdab86cc4abebb38d3176ab1842` restore current Grocery stylesheet
+  - `735cdf215ffe0334839e31f00172116080dcc950` + `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb` forward-port Passenger Ride production backend delta while retaining newer env-only quote handler
+  - `7d0aa2bdeee087685cc350996b70b88dc9abe8f7` restore current Grocery normalize helper
+  - `992d117cb2ec88da0ad4e04cf90262596154a9c7` restore current Admin Grocery catalog asset
+  - `55ea1afd4bad60c48e5524762039fdedbdff667b` restore current Customer Grocery catalog asset
+  - `59a32dd7cfba0b540280ae085e1f5d0a0a79e5c8` restore pinned Map asset generation before regression
+- Main-sync attempt: backup `backup/rider-route-authority-before-main-sync-20261017 @ 992d117cb2ec88da0ad4e04cf90262596154a9c7`; integration PR #420 was not merged because GitHub reported conflicts and was closed. No force/reset/revert used.
 - Passenger Ride integration note: #414 is a descendant of #326; PR #387 later production-backend delta was forward-ported via its two new migrations while retaining the newer env-only quote handler.
-- NEXT: finish run 39050133344 on `7d0aa2bdeee087685cc350996b70b88dc9abe8f7`; only branch Express/other dependent native work from a green successor checkpoint.
+- NEXT: obtain exact-head CI for `59a32dd7cfba0b540280ae085e1f5d0a0a79e5c8`. If it fails, use the new first failing assertion as evidence; do not return to ancestor PR #412 or commit generated map assets.
 - Release blockers after source gate: Native Pilot on exact successor, physical GPS/road/navigation acceptance, QueueGo Map runtime/offline release gates.
 - Superseded: PR #412 is an ancestor; do not restart there.
 
