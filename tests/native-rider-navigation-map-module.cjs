@@ -292,19 +292,29 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('navigationTilt(')&&
   cameraPolicy.includes('smoothNavigationTilt(')&&
   cameraPolicy.includes('smoothNavigationBearing')&&
+  cameraPolicy.includes('deadbandDegrees: Float = 0.45f')&&
+  cameraPolicy.includes('navigationRotationDurationMillis')&&
+  cameraPolicy.includes('navigationCameraEaseInOut')&&
   cameraPolicy.includes('navigationPointAtDistance')&&
   map.includes('activeMap.setLocation(')&&
   map.includes('true\n                )')&&
-  map.includes('activeMap.setZoom(decision.zoom, true)')&&
-  map.includes('minimumDeltaDegrees = 2.5f')&&
+  map.includes('activeMap.setZoom(targetZoom, true)')&&
+  map.includes('minimumDeltaDegrees = CAMERA_BEARING_MIN_DELTA_DEGREES')&&
   map.includes('CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L')&&
-  map.includes('decision.bearingDegrees?.let { activeMap.rotate(it, true) }')&&
+  map.includes('animateCameraBearing(activeMap, it, now)')&&
+  map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
+  map.includes('activeMap.rotate(rendered, false)')&&
+  map.includes('normalizeNavigationBearing(activeMap.getRotate())')&&
+  map.includes('beginNavigationTransformGesture()')&&
+  map.includes('endNavigationTransformGesture()')&&
+  map.includes('manualFollowZoomUntilMs')&&
+  map.includes('event.pointerCount >= 2')&&
   map.includes('nextMap.setCanTilt(true)')&&
   map.includes('activeMap.setTilt(nextTilt)')&&
   map.includes('activeMap.setTilt(0f)')&&
   runtimeActivity.includes('mapTiltDegrees()')&&
   runtimeTest.includes('followCameraUsesNativePerspectiveAndOverviewFlattens'),
-  'Navigation camera must animate position/zoom, suppress micro-wobble, look ahead and use native Longdo perspective tilt while flattening Overview');
+  'Navigation camera must animate position/zoom, smoothly rotate from the live rendered bearing, keep transform gestures in FOLLOW, suppress micro-wobble, look ahead and use native Longdo perspective tilt while flattening Overview');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');
