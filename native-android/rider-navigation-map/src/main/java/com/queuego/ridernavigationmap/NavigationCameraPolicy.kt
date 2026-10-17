@@ -314,7 +314,8 @@ internal fun navigationCameraEaseInOut(fraction: Float): Float {
     return if (t < 0.5f) {
         4f * t * t * t
     } else {
-        1f - kotlin.math.pow(-2f * t + 2f, 3f) / 2f
+        val inverse = -2f * t + 2f
+        1f - (inverse * inverse * inverse) / 2f
     }
 }
 
