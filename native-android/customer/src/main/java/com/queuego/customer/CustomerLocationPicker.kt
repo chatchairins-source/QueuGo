@@ -142,10 +142,10 @@ internal fun CustomerLocationPickerScreen(
     }
 
     LaunchedEffect(mapReady) {
-        // Do not launch the Android location-permission dialog while Longdo's GL surface
-        // is still being created. On physical devices that Activity pause can race
-        // Longdo 0.1.8 renderer initialization and close the Customer app.
-        // Keep Production behavior (automatic GPS on open) but only after the map is ready.
+        // Do not launch the Android location-permission dialog while QueueGo MapLibre
+        // is still creating its GL surface. The permission Activity can pause the host
+        // during renderer startup on physical devices. Keep automatic GPS behavior,
+        // but only after QueueGo Map reports readiness.
         if (!autoUseGps || !mapReady || autoGpsRequested) return@LaunchedEffect
         autoGpsRequested = true
         delay(150)
