@@ -88,6 +88,17 @@ assert(map.includes('stopSource = null')&&map.includes('routeSource = null')&&
   map.includes('nextSegments += requireNotNull(oldSegment)')&&
   map.includes('routeSource = if (succeeded) state.routes else null'),
   'Transient Longdo pin/line failures must remain retryable instead of caching a partial frame');
+assert(
+  !map.includes('MapLocationManager')&&
+  !map.includes('RouteService/geojson/route')&&
+  !map.includes('google.navigation')&&
+  !map.includes('LongdoNavigationRouteClient')&&
+  map.includes('navigationCameraDecision')&&
+  map.includes('followRider(')&&
+  map.includes('activeMap.setLocation(')&&
+  map.includes('activeMap.rotate('),
+  'Map renderer must stay passive: QueueGo GPS/matcher/camera own navigation and external SDK tracking/routing must remain absent'
+);
 assert(map.includes('fun attachMap(nextMap: com.longdo.api.Map): Boolean')&&
   map.includes('if (map === nextMap) return false')&&
   map.includes('val newSdkMap = attachMap(nextMap)')&&
