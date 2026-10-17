@@ -931,7 +931,13 @@ function overviewRoute(){
   const points=qgOverviewRoutePoints();
   if(points.length<2){toast('ยังไม่มีเส้นทางให้ดูทั้งหมด');return}
   riderRouteOverviewActive=true;qgSyncCardMapMode();
-  window.QueueGoMapWeb?.navigationOverview?.(S.map,points,{padding:72,maxZoom:16,duration:450});
+  const dockHeight=Math.max(0,Number(document.getElementById('home-dock')?.getBoundingClientRect?.().height)||0);
+  const bottomPadding=Math.max(92,Math.min(360,Math.round(dockHeight+42)));
+  window.QueueGoMapWeb?.navigationOverview?.(S.map,points,{
+    padding:{top:72,right:52,bottom:bottomPadding,left:52},
+    maxZoom:16,
+    duration:450
+  });
 }
 
 /* ---------- online toggle ---------- */
@@ -1649,6 +1655,7 @@ function qgSetHomeDockHTML(dock,html,collapsible=true){
 }
 function renderHomeDock(){
  const dock=document.getElementById('home-dock');if(!dock)return;
+ if(!S.activeOrder)riderRouteOverviewActive=false;
  if(S.laundryJob&&!S.activeOrder){qgSetHomeDockHTML(dock,`<section class="qg-home-card">${qgLaundryActiveHTML()}</section>`,true);placeJobMarkers();return}
  if(S.activeOrder){qgSetHomeDockHTML(dock,jobCardHTML(S.activeOrder)+qgRouteBundleHTML(),true);bindJobCardEvents(S.activeOrder);qgBindRouteBundleUI();if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);return}
  if(!S.online){qgSetHomeDockHTML(dock,`<section class="qg-home-card"><div class="qg-home-title"><span class="qg-home-icon">${QTICON.loc}</span><div><h2>พร้อมรับงานเมื่อคุณพร้อม</h2><p>เปิดรับงานแล้วระบบจะค้นหางานใกล้ตำแหน่งปัจจุบัน</p></div></div><button class="qg-btn qg-btn-primary" id="go-online">เปิดรับงาน</button></section>`,true);document.getElementById('go-online').onclick=toggleOnline;return}
