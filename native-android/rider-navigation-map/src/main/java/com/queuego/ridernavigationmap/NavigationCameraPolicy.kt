@@ -321,12 +321,12 @@ internal fun navigationBearingLookAheadMeters(
 }
 
 internal fun navigationTurnAnticipationFactor(speedMetersPerSecond: Float?): Float = when {
-    speedMetersPerSecond == null -> 0.30f
-    speedMetersPerSecond >= 18f -> 0.46f
-    speedMetersPerSecond >= 11f -> 0.44f
-    speedMetersPerSecond >= 5f -> 0.40f
-    speedMetersPerSecond >= 2f -> 0.30f
-    else -> 0.18f
+    speedMetersPerSecond == null -> 0.32f
+    speedMetersPerSecond >= 18f -> 0.62f
+    speedMetersPerSecond >= 11f -> 0.58f
+    speedMetersPerSecond >= 5f -> 0.50f
+    speedMetersPerSecond >= 2f -> 0.36f
+    else -> 0.22f
 }
 
 internal fun smoothNavigationBearing(
@@ -347,12 +347,12 @@ internal fun smoothNavigationBearing(
 }
 
 internal fun navigationBearingSmoothingFactor(speedMetersPerSecond: Float?): Float = when {
-    speedMetersPerSecond == null -> 0.28f
-    speedMetersPerSecond >= 18f -> 0.46f
-    speedMetersPerSecond >= 11f -> 0.42f
-    speedMetersPerSecond >= 5f -> 0.36f
-    speedMetersPerSecond >= 2f -> 0.28f
-    else -> 0.20f
+    speedMetersPerSecond == null -> 0.30f
+    speedMetersPerSecond >= 18f -> 0.68f
+    speedMetersPerSecond >= 11f -> 0.62f
+    speedMetersPerSecond >= 5f -> 0.52f
+    speedMetersPerSecond >= 2f -> 0.38f
+    else -> 0.24f
 }
 
 internal fun navigationShortestBearingDelta(from: Float, to: Float): Float {
@@ -365,24 +365,33 @@ internal fun navigationRotationDurationMillis(
     currentBearing: Float?,
     targetBearing: Float?,
     cadenceMillis: Long?,
-    fallbackMillis: Long = 520L
+    fallbackMillis: Long = 520L,
+    speedMetersPerSecond: Float? = null
 ): Long {
+    val speed = speedMetersPerSecond?.takeIf { it.isFinite() && it >= 0f }
+    val minDuration: Long
+    val maxDuration: Long
+    val cadenceFactor: Double
+    val angleBase: Float
+    val angleGain: Float
+    when {
+        speed == null -> { minDuration = 420L; maxDuration = 900L; cadenceFactor = 0.90; angleBase = 340f; angleGain = 6.2f }
+        speed >= 18f -> { minDuration = 220L; maxDuration = 460L; cadenceFactor = 0.58; angleBase = 170f; angleGain = 3.7f }
+        speed >= 11f -> { minDuration = 260L; maxDuration = 540L; cadenceFactor = 0.64; angleBase = 200f; angleGain = 4.1f }
+        speed >= 5f -> { minDuration = 310L; maxDuration = 660L; cadenceFactor = 0.72; angleBase = 240f; angleGain = 4.8f }
+        speed >= 2f -> { minDuration = 360L; maxDuration = 760L; cadenceFactor = 0.80; angleBase = 290f; angleGain = 5.4f }
+        else -> { minDuration = 420L; maxDuration = 900L; cadenceFactor = 0.90; angleBase = 340f; angleGain = 6.2f }
+    }
     if (currentBearing == null || !currentBearing.isFinite() ||
         targetBearing == null || !targetBearing.isFinite()
     ) {
-        return fallbackMillis.coerceIn(360L, 1_050L)
+        return fallbackMillis.coerceIn(minDuration, maxDuration)
     }
     val angle = abs(navigationShortestBearingDelta(currentBearing, targetBearing))
-    val cadence = cadenceMillis
-        ?.takeIf { it > 0L }
-        ?: fallbackMillis
-    val cadenceDuration = (cadence * 1.08)
-        .toLong()
-        .coerceIn(520L, 1_150L)
-    val angleDuration = (420f + angle * 8.5f)
-        .toLong()
-        .coerceIn(520L, 1_200L)
-    return maxOf(cadenceDuration, angleDuration)
+    val cadence = cadenceMillis?.takeIf { it > 0L } ?: fallbackMillis
+    val cadenceDuration = (cadence * cadenceFactor).toLong().coerceIn(minDuration, maxDuration)
+    val angleDuration = (angleBase + angle * angleGain).toLong().coerceIn(minDuration, maxDuration)
+    return maxOf(cadenceDuration, angleDuration).coerceIn(minDuration, maxDuration)
 }
 
 internal fun navigationCameraEaseInOut(fraction: Float): Float {
