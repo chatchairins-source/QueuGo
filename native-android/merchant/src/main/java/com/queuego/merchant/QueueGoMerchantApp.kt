@@ -1226,15 +1226,6 @@ private fun DashboardScreen(
                 }
             }
 
-            if (!shop.cover.isNullOrBlank()) {
-                Spacer(Modifier.height(2.dp))
-                QgRemoteImage(
-                    shop.cover,
-                    Modifier.fillMaxWidth().height(128.dp),
-                    shop.name,
-                    maxDecodeSide = 512
-                )
-            }
         }
 
         if (shop != null) {
