@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgIcon
 import com.queuego.shared.QgLine
-import com.queuego.shared.QgLongdoLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
@@ -220,7 +219,7 @@ internal fun CustomerLocationPickerScreen(
                     .background(Color(0xFFF0F1F2))
                     .border(1.dp, Color(0xFFE7E9ED), RoundedCornerShape(20.dp))
             ) {
-                QgLongdoLocationPickerMap(
+                CustomerQueueGoMapPicker(
                     initialPoint = cameraPoint,
                     recenterPoint = externalPoint,
                     recenterToken = recenterToken,
