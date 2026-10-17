@@ -284,7 +284,7 @@ class NavigationCameraPolicyTest {
         )
         val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)!!
         assertTrue(decision.bearingDegrees!! in 89f..91f)
-        assertTrue(decision.tiltDegrees > 0f)
+        assertTrue(decision.tiltDegrees >= 48f)
         assertTrue(decision.center.longitude > state.rider!!.point.longitude)
         assertTrue(
             navigationHaversineMeters(state.rider!!.point, decision.center) in 45.0..55.0
@@ -339,8 +339,8 @@ class NavigationCameraPolicyTest {
             cadenceMillis = 500L
         )
         assertTrue(corner > small)
-        assertTrue(corner <= 900L)
-        assertTrue(small >= 300L)
+        assertTrue(corner <= 1_200L)
+        assertTrue(small >= 520L)
     }
 
     @Test fun rotationDurationUsesShortestTurnAcrossNorth() {
@@ -364,5 +364,6 @@ class NavigationCameraPolicyTest {
         assertEquals(1f, navigationCameraEaseInOut(1f), 0.001f)
         assertTrue(navigationCameraEaseInOut(0.25f) < 0.25f)
         assertTrue(navigationCameraEaseInOut(0.75f) > 0.75f)
+        assertTrue(navigationCameraEaseInOut(0.05f) > 0.01f)
     }
 }
