@@ -32,7 +32,7 @@ class RiderProofPersistenceTest {
             deliveryAddress = "test delivery", deliveryLat = 14.98, deliveryLng = 103.11,
             deliveryFee = 25.0, marketOrderId = null,
             arrivedShopAt = if (stage == "navigating_merchant") null else "2026-10-14T00:00:00Z",
-            arrivedCustomerAt = if (stage in setOf("arrived_customer", "photo_captured", "photo_captured")) "2026-10-14T00:01:00Z" else null,
+            arrivedCustomerAt = if (stage in setOf("arrived_customer", "photo_captured")) "2026-10-14T00:01:00Z" else null,
             shopCash = 100.0, customerCash = 125.0)
     }
 
@@ -46,11 +46,11 @@ class RiderProofPersistenceTest {
             .putBoolean(riderNavigationKey(job), stage in setOf("navigating_merchant", "navigating_customer"))
             .commit())
         val store = RiderPendingProofStore(context)
-        if (stage in setOf("pickup_verification", "photo_captured", "photo_captured")) {
+        if (stage in setOf("pickup_verification", "photo_captured")) {
             store.saveVerification("process-kill-test", RiderVerificationResume("test-order",
-                if (stage == "pickup_verification") "pickup" else "delivery", null, false))
+                if (stage == "pickup_verification") "pickup" else "delivery", null))
         }
-        if (stage in setOf("photo_captured", "photo_captured")) {
+        if (stage == "photo_captured") {
             val dir = File(context.filesDir, "queuego-evidence").apply { mkdirs() }
             val file = File(dir, "proof-process-kill-test.jpg")
             val image = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888)
@@ -82,8 +82,8 @@ class RiderProofPersistenceTest {
                 context.getSharedPreferences("rider_navigation", 0).getBoolean(riderNavigationKey(snapshot.activeJob!!), false))
             val workflow = store.loadVerification("process-kill-test")
             if (stage == "pickup_verification") assertEquals("pickup", workflow!!.mode)
-            if (stage in setOf("photo_captured", "photo_captured")) {
-                                val draft = store.loadConfirmedMatching("process-kill-test", RIDER_PROOF_SLOT_DELIVERY,
+            if (stage == "photo_captured") {
+                val draft = store.loadConfirmedMatching("process-kill-test", RIDER_PROOF_SLOT_DELIVERY,
                     "test-order", "delivery", null)
                 assertNotNull(draft)
                 val bitmap = context.contentResolver.openInputStream(android.net.Uri.parse(draft!!.uri))?.use {
