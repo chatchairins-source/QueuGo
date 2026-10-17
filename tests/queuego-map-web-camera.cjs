@@ -58,6 +58,15 @@ const wrongWayRoute=Q.navigationCameraDecision({
 });
 eq(wrongWayRoute.routeBearingRejected,true,'opposite-direction route match must be rejected when GPS and prior motion agree');
 ok(wrongWayRoute.bearing>250&&wrongWayRoute.bearing<290,'camera must keep the Rider travel direction instead of rotating back onto an opposite route segment');
+ok(wrongWayRoute.center.lng<103.0040,'wrong-way route match must not move the look-ahead center back onto the opposite route direction');
+
+const wrongPreviousStillRecovers=Q.navigationCameraDecision({
+  lat:15.00001,lng:103.0040,
+  speed:10,bearing:270,accuracy:5,
+  route:straight,previousBearing:90
+});
+eq(wrongPreviousStillRecovers.routeBearingRejected,true,'strong live travel direction must reject a 180-degree route match even when the previous camera was wrong');
+ok(wrongPreviousStillRecovers.bearing>180,'camera must begin recovering toward the live travel direction instead of staying locked to the wrong route');
 
 const fast=Q.navigationCameraDecision({
   lat:15.00001,lng:103.0020,
