@@ -280,7 +280,7 @@ ok(merchantAppSource.includes('runMerchantPushProfileAction')&&
    merchantAppSource.includes('title = "การแจ้งเตือนเบื้องหลัง"')&&
    merchantAppSource.includes('title = "ทดสอบการแจ้งเตือน"'),
    'Merchant profile must use the real native push subscription and server test path rather than a local-only sound check');
-ok(source.includes('MerchantMenuTile')&&source.includes('height(128.dp)')&&source.includes('"จัดการร้าน"'),'Merchant native dashboard must preserve store cover KPI and menu-grid blueprint');
+ok(source.includes('MerchantMenuTile')&&source.includes('"จัดการร้าน"')&&source.includes('QgRemoteImage(shop.logo ?: shop.cover')&&!source.includes('shop.cover, Modifier.fillMaxWidth().height(128.dp)'),'Merchant native dashboard must preserve compact store identity and menu-grid blueprint without the removed full-width cover banner');
 ok(source.includes('RiderBlueprintTopBar')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve approved topbar job-card and accept-countdown blueprint');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
