@@ -103,16 +103,27 @@ internal fun RiderJobDock(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(Modifier.width(36.dp).height(4.dp).background(Color(0xFFD2CACD), RoundedCornerShape(2.dp)))
-            Spacer(Modifier.height(8.dp))
+            Box(
+                Modifier
+                    .align(Alignment.End)
+                    .width(58.dp)
+                    .height(30.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(Color(0xFFF9F6F7)),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon(
+                    "back",
+                    Modifier.size(20.dp).rotate(if (expanded) 270f else 90f),
+                    QgRed
+                )
+            }
+            Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(destination, color = QgMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Spacer(Modifier.width(10.dp))
-                Text(if (expanded) "ย่อ" else "เปิด", color = QgRed, fontSize = 12.sp)
-                QgIcon("back", Modifier.size(20.dp).rotate(if (expanded) 270f else 90f), QgRed)
             }
         }
         // Keep content mounted at zero remaining height when collapsed, so card-local
