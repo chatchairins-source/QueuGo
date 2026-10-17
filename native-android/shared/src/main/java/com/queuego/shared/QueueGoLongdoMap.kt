@@ -286,12 +286,16 @@ fun QgLongdoLocationPickerMap(
     recenterPoint: QgMapPoint?,
     recenterToken: Int,
     modifier: Modifier = Modifier,
+    selectInitialPoint: Boolean = true,
     onCenterChanged: (QgMapPoint) -> Unit,
+    onCenterObserved: (QgMapPoint) -> Unit = {},
     onReady: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val holder = remember { LocationPickerMapHolder() }
     val currentCenterChanged = rememberUpdatedState(onCenterChanged)
+    val currentCenterObserved = rememberUpdatedState(onCenterObserved)
+    val currentSelectInitial = rememberUpdatedState(selectInitialPoint)
     val currentReady = rememberUpdatedState(onReady)
     val currentInitial = rememberUpdatedState(initialPoint)
     val currentRecenter = rememberUpdatedState(recenterPoint)
@@ -327,11 +331,14 @@ fun QgLongdoLocationPickerMap(
                                             action: String?,
                                             isUserAction: Boolean
                                         ) {
-                                            if (!isUserAction || holder.disposed) return
+                                            if (holder.disposed) return
                                             val point = QgMapPoint(location.lat, location.lon, 0)
                                             if (point.valid) {
                                                 view.post {
-                                                    if (!holder.disposed) currentCenterChanged.value(point)
+                                                    if (!holder.disposed) {
+                                                        currentCenterObserved.value(point)
+                                                        if (isUserAction) currentCenterChanged.value(point)
+                                                    }
                                                 }
                                             }
                                         }
@@ -349,7 +356,10 @@ fun QgLongdoLocationPickerMap(
                                                 ?: QgMapPoint(15.0, 101.0, 0)
                                             map.setZoom(if (currentInitial.value?.valid == true) 16 else 6)
                                             map.setLocation(MapLocation(start.longitude, start.latitude), false, false)
-                                            currentInitial.value?.takeIf { it.valid }?.let(currentCenterChanged.value)
+                                            currentCenterObserved.value(start)
+                                            if (currentSelectInitial.value) {
+                                                currentInitial.value?.takeIf { it.valid }?.let(currentCenterChanged.value)
+                                            }
                                             val requested = currentRecenter.value?.takeIf { it.valid }
                                             if (requested != null && (requested.latitude != start.latitude ||
                                                     requested.longitude != start.longitude)) {
