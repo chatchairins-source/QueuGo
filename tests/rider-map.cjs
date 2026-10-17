@@ -13,6 +13,10 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}'),true);
  eq(source.includes('syncRiderNavigationCameraMode();'),true);
  eq(source.includes('data-qg-rider-puck="true"'),true);
+ eq(source.includes("'route': '<svg class=\"ico\""),true);
+ eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
+ eq(source.includes('${QTICON.route}'),true);
+ eq(source.includes('queuego-map-web.js?v=20261017-7'),true);
  eq(source.includes('background:#e6002d'),true);
  eq(source.includes("rotationAlignment:'map'"),true);
 

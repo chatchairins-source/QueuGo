@@ -51,6 +51,7 @@ const valid=(lat,lng)=>Number.isFinite(Number(lat))&&Number.isFinite(Number(lng)
   Number(lat)>=5&&Number(lat)<=21&&Number(lng)>=97&&Number(lng)<=106;
 
 const navigationStates=new WeakMap();
+const markerAnimationStates=new WeakMap();
 const rad=v=>v*Math.PI/180;
 const deg=v=>v*180/Math.PI;
 const navNormalizeBearing=v=>((Number(v)%360)+360)%360;
@@ -125,13 +126,19 @@ function navSmoothBearing(previous,target,factor){
   if(Math.abs(delta)<.45)return p;
   return navNormalizeBearing(p+delta*Math.max(.05,Math.min(1,Number(factor)||.35)));
 }
-const navCameraEasing=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const navCameraEasing=t=>{
+  const x=Math.max(0,Math.min(1,Number(t)||0));
+  const cubic=x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+  // Keep some velocity at both ends so a ~1 Hz GPS stream does not look like
+  // a sequence of stop/start camera animations.
+  return .24*x+.76*cubic;
+};
 function navRotationDuration(currentBearing,targetBearing,cadenceMs,fallback=420){
-  if(!Number.isFinite(Number(currentBearing))||!Number.isFinite(Number(targetBearing)))return Math.max(260,Math.min(760,Number(fallback)||420));
+  if(!Number.isFinite(Number(currentBearing))||!Number.isFinite(Number(targetBearing)))return Math.max(360,Math.min(1050,Number(fallback)||520));
   const angle=Math.abs(navShortestDelta(currentBearing,targetBearing));
-  const cadence=Number.isFinite(Number(cadenceMs))&&Number(cadenceMs)>0?Number(cadenceMs):Number(fallback)||420;
-  const cadenceDuration=Math.max(260,Math.min(720,Math.round(cadence*.82)));
-  const angleDuration=Math.max(300,Math.min(900,Math.round(260+angle*9)));
+  const cadence=Number.isFinite(Number(cadenceMs))&&Number(cadenceMs)>0?Number(cadenceMs):Number(fallback)||520;
+  const cadenceDuration=Math.max(520,Math.min(1150,Math.round(cadence*1.08)));
+  const angleDuration=Math.max(520,Math.min(1200,Math.round(420+angle*8.5)));
   return Math.max(cadenceDuration,angleDuration);
 }
 function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=[],previousBearing=null,baseZoom=17}={}){
@@ -160,7 +167,14 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
   let zoom=remaining!=null&&remaining<=60?19:remaining!=null&&remaining<=180?18:spd==null?baseZoom:spd>=18?15:spd>=11?16:spd>=5?17:spd<=1.5?Math.max(baseZoom,18):baseZoom;
   if(acc!=null&&acc>60)zoom=Math.max(14,zoom-1);
   zoom=Math.max(14,Math.min(20,zoom));
-  const pitch=Math.max(0,Math.min(55,acc!=null&&acc>80?24:remaining!=null&&remaining<=60?28:remaining!=null&&remaining<=180?34:spd==null?38:spd>=18?52:spd>=11?49:spd>=5?45:spd>=2?40:34));
+  const freeDrive=!reliable;
+  const pitch=Math.max(0,Math.min(55,
+    acc!=null&&acc>80?(freeDrive?28:24):
+    remaining!=null&&remaining<=60?28:
+    remaining!=null&&remaining<=180?34:
+    freeDrive?(spd==null?44:spd>=18?53:spd>=11?51:spd>=5?48:spd>=2?44:40):
+    spd==null?38:spd>=18?52:spd>=11?49:spd>=5?45:spd>=2?40:34
+  ));
   const look=spd==null?55:spd>=18?150:spd>=11?120:spd>=5?85:spd>=2?55:30;
   const lookAhead=remaining==null?look:Math.min(look,Math.max(0,remaining*.55));
   const center=reliable
@@ -377,6 +391,37 @@ function moveMarker(m,lat,lng,rotation=null){
   if(m&&rotation!==null&&rotation!==undefined&&Number.isFinite(Number(rotation)))try{m.setRotation(Number(rotation))}catch(_){}
   return m
 }
+function moveMarkerSmooth(m,lat,lng,rotation=null,{duration=1080}={}){
+  if(!m||!valid(lat,lng))return m;
+  const target={lat:Number(lat),lng:Number(lng)};
+  let previous=null;
+  try{previous=m.getLngLat?.()||null}catch(_){}
+  const from={lat:Number(previous?.lat),lng:Number(previous?.lng)};
+  const existing=markerAnimationStates.get(m);
+  if(existing?.frame&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(existing.frame);
+  const ms=Math.max(240,Math.min(1400,Number(duration)||1080));
+  if(!valid(from.lat,from.lng)||typeof requestAnimationFrame!=='function'){
+    return moveMarker(m,target.lat,target.lng,rotation);
+  }
+  const start=(typeof performance!=='undefined'&&typeof performance.now==='function')?performance.now():Date.now();
+  const state={frame:null};
+  markerAnimationStates.set(m,state);
+  const tick=now=>{
+    const elapsed=Math.max(0,Number(now)-start);
+    const t=Math.max(0,Math.min(1,elapsed/ms));
+    const nextLat=from.lat+(target.lat-from.lat)*t;
+    const nextLng=from.lng+(target.lng-from.lng)*t;
+    try{m.setLngLat([nextLng,nextLat])}catch(_){}
+    if(rotation!==null&&rotation!==undefined&&Number.isFinite(Number(rotation)))try{m.setRotation(Number(rotation))}catch(_){}
+    if(t<1&&markerAnimationStates.get(m)===state){
+      state.frame=requestAnimationFrame(tick);
+    }else if(markerAnimationStates.get(m)===state){
+      markerAnimationStates.delete(m);
+    }
+  };
+  state.frame=requestAnimationFrame(tick);
+  return m;
+}
 function fit(map,points,{padding=48,maxZoom=16,duration=0}={}){
   if(!map)return;
   const rows=(points||[]).filter(p=>valid(p.lat,p.lng));
@@ -456,5 +501,5 @@ async function reverse(lat,lng){
   }catch(_){return''}
 }
 function destroy(map){try{map?.remove?.()}catch(_){}}
-window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,navigationCameraDecision:navCameraDecision,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
+window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,navigationCameraDecision:navCameraDecision,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
 })();
