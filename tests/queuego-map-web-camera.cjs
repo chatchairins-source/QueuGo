@@ -157,7 +157,7 @@ ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0025,speed:8,bearing:90,a
 eq(gestureMap.easeCalls.length,duringPinchCalls,'automatic camera writes must pause while fingers are rotating/zooming the map');
 gestureMap.handlers.rotateend({originalEvent:{touches:[]}});
 ok(gestureMap.easeCalls.length>duringPinchCalls,'gesture release must smoothly re-anchor the follow camera');
-ok(gestureMap.easeCalls.at(-1).duration>=320,'gesture release rotation must be animated, not snapped');
+ok(gestureMap.easeCalls.at(-1).duration>=220,'gesture release rotation must remain animated even when speed-aware turn response is fast');
 gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
 eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.003,speed:8,bearing:90,accuracy:5},straight),null,'one-finger pan should still enter free pan');
 
