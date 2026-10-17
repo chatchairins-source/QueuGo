@@ -47,27 +47,28 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Status: IN PROGRESS
 - Active PR: #414
 - Branch: `work-native-rider-queuego-route-authority-20261017`
-- Previous failing sequence: `4963b9d4df263ca55d21fd1173dc0121cfcde20c` -> `297f9e4a918b8bdab86cc4abebb38d3176ab1842` -> `7d0aa2bdeee087685cc350996b70b88dc9abe8f7` -> `992d117cb2ec88da0ad4e04cf90262596154a9c7` -> `55ea1afd4bad60c48e5524762039fdedbdff667b`
-- Current HEAD: `59a32dd7cfba0b540280ae085e1f5d0a0a79e5c8`
-- Root cause now established:
-  - #414 is a long-lived native successor that contains newer Web/Map references but its `package.json` lacked the Map unified lifecycle hook `pretest: python3 ops/maps/fetch_web_assets.py map-assets`.
-  - QueueGo Map assets are intentionally generated/pinned at test/runtime setup and are not committed. Unified #417 has the pretest hook and passes; #414 did not, so `source-integrity` saw missing local assets.
-  - Earlier missing Grocery/Voice references were also evidence of branch integration drift, but the `map-assets` failure proves generated-asset setup must be fixed at the lifecycle level rather than committing generated files.
-- Failure evidence:
-  - run 39050021669: missing `catalog/normalize.js`
-  - run 39050133344: missing `admin/grocery-catalog.js`
-  - run 39050226710: missing `queuego-voice-web.js`
-  - run 39050304624: missing `map-assets/maplibre-gl.css`
-- Fix/integration commits already on this successor:
+- Current HEAD: `9905f53f7f75cd2237f17271e842946c3406ff5e`
+- Recovery checkpoint lineage:
   - `297f9e4a918b8bdab86cc4abebb38d3176ab1842` restore current Grocery stylesheet
-  - `735cdf215ffe0334839e31f00172116080dcc950` + `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb` forward-port Passenger Ride production backend delta while retaining newer env-only quote handler
+  - `735cdf215ffe0334839e31f00172116080dcc950` + `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb` forward-port Passenger Ride production backend delta while retaining the newer env-only quote handler
   - `7d0aa2bdeee087685cc350996b70b88dc9abe8f7` restore current Grocery normalize helper
   - `992d117cb2ec88da0ad4e04cf90262596154a9c7` restore current Admin Grocery catalog asset
   - `55ea1afd4bad60c48e5524762039fdedbdff667b` restore current Customer Grocery catalog asset
-  - `59a32dd7cfba0b540280ae085e1f5d0a0a79e5c8` restore pinned Map asset generation before regression
-- Main-sync attempt: backup `backup/rider-route-authority-before-main-sync-20261017 @ 992d117cb2ec88da0ad4e04cf90262596154a9c7`; integration PR #420 was not merged because GitHub reported conflicts and was closed. No force/reset/revert used.
+  - `59a32dd7cfba0b540280ae085e1f5d0a0a79e5c8` add pinned Map asset generation before regression
+  - `4bd4825d01f724882403e9a3514569d48b78bacb` lock Playwright runtime for Map validation
+  - `d335a75d4a9e4825bda5c31cc61e6884802d3d49` restore current Merchant Grocery catalog asset; the immediately preceding successor also restored Merchant Grocery image preview
+  - `9905f53f7f75cd2237f17271e842946c3406ff5e` restore credit-only Merchant GP retirement on current successor
+- Established CI root causes and evidence:
+  - Earlier source-integrity failures were caused by long-lived branch integration drift plus missing generated Map asset lifecycle setup. Unified #417 generates pinned/checksummed `map-assets` in `pretest`; #414 originally did not.
+  - After `59a32dd...` and Playwright lock, source-integrity advanced to 94 scripts / 80 local references / 0 failures.
+  - Exact-head run 39050648816 on `d335a75...` then failed at `Retired GP slip reporting must have no post-commit path`.
+  - #414/current main had reintroduced legacy Merchant GP slip mutation/view paths after the credit-retirement successor; credit #332/#333 has zero `report_shop_gp`, `qgmSubmitGpSlip`, `settlements?on_conflict`, `qgmOpenGpSlip`, `data-gp-slip` and `gp-slips` runtime paths.
+  - `9905f53...` forward-ports only the credit-retirement delta onto the latest #414 Merchant implementation: removes settlements write path, GP slip support link/viewer, GP slip submit RPC path and restores automatic-credit revenue copy.
+- Verification before commit `9905f53...`: the same forbidden runtime contract used by `tests/legacy-gp-retirement.cjs` was checked and no forbidden Merchant GP mutation/view path remained.
+- Current CI: QueueGo Map Engine Buriram run `39050895186` is IN PROGRESS on exact HEAD `9905f53f7f75cd2237f17271e842946c3406ff5e`.
+- Main-sync safety: backup `backup/rider-route-authority-before-main-sync-20261017 @ 992d117cb2ec88da0ad4e04cf90262596154a9c7`; PR #420 main→#414 was conflict-only, never merged, then closed. No force/reset/revert used.
 - Passenger Ride integration note: #414 is a descendant of #326; PR #387 later production-backend delta was forward-ported via its two new migrations while retaining the newer env-only quote handler.
-- NEXT: obtain exact-head CI for `59a32dd7cfba0b540280ae085e1f5d0a0a79e5c8`. If it fails, use the new first failing assertion as evidence; do not return to ancestor PR #412 or commit generated map assets.
+- NEXT: read the first failing assertion from run `39050895186`. If green, mark source/test DONE and move to the next dependency. If red, fix only the new evidence-backed root cause on the current successor; do not return to PR #412 or older implementations.
 - Release blockers after source gate: Native Pilot on exact successor, physical GPS/road/navigation acceptance, QueueGo Map runtime/offline release gates.
 - Superseded: PR #412 is an ancestor; do not restart there.
 
