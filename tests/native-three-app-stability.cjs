@@ -598,7 +598,7 @@ ok(
 );
 
 const customerPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
-ok(customerPicker.includes('mapReady')&&customerPicker.includes('delay(150)'),'Customer location permission must remain delayed until Longdo renderer is ready');
+ok(customerPicker.includes('mapReady')&&customerPicker.includes('delay(150)')&&customerPicker.includes('CustomerQueueGoMapPicker('),'Customer location permission must remain delayed until QueueGo Map renderer is ready');
 
 const riderNavigationIntegration=read('rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
 ok(
