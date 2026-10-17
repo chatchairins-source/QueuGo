@@ -126,6 +126,23 @@ class NavigationCameraPolicyTest {
         )
     }
 
+    @Test fun hairpinLookAheadCannotWhipTheCameraAroundInOneDecision() {
+        val bounded = navigationBoundAnticipatedBearing(
+            currentBearing = 90f,
+            futureBearing = 270f
+        )
+        val delta = kotlin.math.abs(((bounded - 90f + 540f) % 360f) - 180f)
+        assertTrue(delta <= 70.001f)
+    }
+
+    @Test fun anticipatedBearingBoundHandlesNorthWrap() {
+        val bounded = navigationBoundAnticipatedBearing(
+            currentBearing = 350f,
+            futureBearing = 20f
+        )
+        assertTrue(bounded < 21f || bounded > 349f)
+    }
+
     @Test fun matchedRoadWinsOverOppositeGpsCourseAtDrivingSpeed() {
         val eastbound = NavigationRouteSegment(
             id = "eastbound",
