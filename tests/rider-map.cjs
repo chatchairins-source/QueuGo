@@ -10,16 +10,21 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(riderMarkerFn.includes('qgRemoveOverlay(S.riderMarker)'),false);
  const activeRouteFn=source.slice(source.indexOf('function drawActiveRoute()'),source.indexOf('/* ---------- sheet'));
  eq(activeRouteFn.includes("if(isOfferPreview&&!riderRouteCache)focusRiderNavigation"),true);
+ eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob)}'),true);
+ eq(source.includes('syncRiderNavigationCameraMode();'),true);
 
  let now=100000,requests=[],gate=null,serial=0;
  const timers=new Map(),routeAdds=[],routeRemoves=[],fits=[],destroyed=[],badge={style:{}},label={textContent:''};
  const map={id:'queuego-map'};
+ const cameraModes=[],cameraFollows=[];
  const Q={
   addGeoJsonLine:(m,id,line,style)=>{routeAdds.push({m,id,line,style});return true},
   removeGeoJsonLine:(m,id)=>routeRemoves.push({m,id}),
   fit:(m,points,opts)=>fits.push({m,points,opts}),
   destroy:m=>destroyed.push(m),
   setCenter(){},
+  setNavigationMode:(m,active,opts)=>{cameraModes.push({m,active,opts});return !!active},
+  followNavigationCamera:(m,pos,route,opts)=>{cameraFollows.push({m,pos,route,opts});return {center:pos}},
   marker(){return {remove(){}}}
  };
  const session={authUserId:'a',sessionId:'sa'},S={
@@ -78,13 +83,19 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(fits.at(-1).points[0].lat,13);
  eq(fits.at(-1).points[1].lat,14);
  eq(fits.at(-1).opts.maxZoom,16);
+ eq(run('qgNavigationCameraShouldRun()'),false);
 
  S.openJobs=[];S.activeOrder={id:'o',status:'assigned',pickup_latitude:13.1,pickup_longitude:100.1,delivery_latitude:13.2,delivery_longitude:100.2};
+ eq(run('qgNavigationCameraShouldRun()'),true);
+ run('syncRiderNavigationCameraMode(true)');
+ eq(cameraModes.at(-1).active,true);
+ eq(cameraFollows.length>0,true);
 
  // Completing a job while the provider is pending cannot redraw its route.
  now+=15000;S.pos={lat:13.003,lng:100};gate=deferred();
  const retiring=run('drawActiveRoute()'),retiredSignal=requests.at(-1).opts.signal;
- S.activeOrder=null;await run('drawActiveRoute()');
+ S.activeOrder=null;run('syncRiderNavigationCameraMode(true)');await run('drawActiveRoute()');
+ eq(cameraModes.at(-1).active,false);
  eq(retiredSignal.aborted,true);
  gate.resolve({ok:true,json:async()=>geo});gate=null;await retiring;
  eq(S.routeOverlays.length,0);
@@ -138,5 +149,5 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(writes.length,1);writeGate.resolve();await burst;
  eq(writes.length,2);eq(writes[1].opts.body.latitude,13.19);eq(writes[1].path,'rider_profiles?user_id=eq.rider');
 
- console.log(JSON.stringify({checks,failures:0,scope:'QueueGo MapLibre Rider renderer + route coalescing/cancellation/timeout/GPS ownership; legacy Longdo visual map forbidden, route provider remains legacy until QueueGo Map Engine release gate'}));
+ console.log(JSON.stringify({checks,failures:0,scope:'QueueGo MapLibre Rider renderer + idle normal camera/active-job follow + route coalescing/cancellation/timeout/GPS ownership; legacy Longdo visual map forbidden, route provider remains legacy until QueueGo Map Engine release gate'}));
 })().catch(e=>{console.error(e);process.exit(1)});
