@@ -22,6 +22,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('<div class="qg-brand-pill">'),false);
  eq(source.includes('function qgSetHomeDockHTML'),true);
  eq(source.includes('qg-dock-collapsed'),true);
+ eq(source.includes('margin:0 18px 6px auto'),true);
  eq(source.includes("aria-label',riderHomeDockCollapsed?'เปิดการ์ดกลับขนาดเดิม':'ย่อการ์ด'"),true);
  eq(source.includes('speed=meters<1.5?0:Math.min(55,meters/seconds)'),true);
  eq(source.includes('riderGpsCadenceMs'),true);
