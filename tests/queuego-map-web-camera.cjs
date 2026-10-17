@@ -51,6 +51,14 @@ const roadWins=Q.navigationCameraDecision({
 });
 ok(roadWins.bearing>85&&roadWins.bearing<95,'matched road must beat opposite noisy GPS heading');
 
+const wrongWayRoute=Q.navigationCameraDecision({
+  lat:15.00001,lng:103.0040,
+  speed:10,bearing:270,accuracy:5,
+  route:straight,previousBearing:270
+});
+eq(wrongWayRoute.routeBearingRejected,true,'opposite-direction route match must be rejected when GPS and prior motion agree');
+ok(wrongWayRoute.bearing>250&&wrongWayRoute.bearing<290,'camera must keep the Rider travel direction instead of rotating back onto an opposite route segment');
+
 const fast=Q.navigationCameraDecision({
   lat:15.00001,lng:103.0020,
   speed:20,bearing:90,accuracy:5,
