@@ -1,6 +1,7 @@
 package com.queuego.rider
 
 import com.queuego.ridernavigationmap.NavigationStopKind
+import com.queuego.ridernavigationmap.NavigationViewMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -92,5 +93,17 @@ class RiderNavigationIntegrationTest {
         val broken = job().copy(pickupLat = null, pickupLng = null)
         val stops = riderNavigationStops(broken, emptyList(), emptyList())
         assertTrue(stops.isEmpty())
+    }
+
+    @Test fun idleMapNeverAutoFollowsUntilAJobExists() {
+        assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.FOLLOW))
+        assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.FREE_PAN))
+        assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.OVERVIEW))
+    }
+
+    @Test fun activeJobStartsFollowCameraButRespectsManualPan() {
+        assertTrue(riderNavigationAutoFollow(true, NavigationViewMode.FOLLOW))
+        assertFalse(riderNavigationAutoFollow(true, NavigationViewMode.FREE_PAN))
+        assertFalse(riderNavigationAutoFollow(true, NavigationViewMode.OVERVIEW))
     }
 }
