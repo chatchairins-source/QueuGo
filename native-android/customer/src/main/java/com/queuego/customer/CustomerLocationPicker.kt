@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -50,10 +51,13 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.queuego.shared.QgIcon
 import com.queuego.shared.QgLine
 import com.queuego.shared.QgLongdoLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
+import com.queuego.shared.QgRed
 import kotlinx.coroutines.delay
 
 @Composable
@@ -170,139 +174,202 @@ internal fun CustomerLocationPickerScreen(
         mutableStateOf(cameraPoint)
     }
 
+    val addressLabel = when {
+        title.contains("จุดรับ") -> "ที่อยู่จุดรับ"
+        title.contains("จุดหมาย") -> "ที่อยู่จุดส่ง"
+        else -> "ที่อยู่จัดส่ง"
+    }
+
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = 14.dp)
     ) {
-        Row(
-            Modifier.padding(top = 8.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Spacer(Modifier.height(8.dp))
+        Text(
+            title,
+            fontSize = 30.sp,
+            lineHeight = 34.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF111827)
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            subtitle,
+            color = Color(0xFF8A9099),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(18.dp))
+
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(24.dp))
+                .border(1.dp, Color(0xFFECEEF2), RoundedCornerShape(24.dp))
+                .padding(14.dp)
         ) {
             Box(
                 Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .fillMaxWidth()
+                    .height(mapHeight)
+                    .semantics { stateDescription = if (mapReady) "แผนที่พร้อมใช้งาน" else "กำลังโหลดแผนที่" }
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFFF0F1F2))
+                    .border(1.dp, Color(0xFFE7E9ED), RoundedCornerShape(20.dp))
+            ) {
+                QgLongdoLocationPickerMap(
+                    initialPoint = cameraPoint,
+                    recenterPoint = externalPoint,
+                    recenterToken = recenterToken,
+                    modifier = Modifier.fillMaxSize(),
+                    selectInitialPoint = selectedPoint != null,
+                    onCenterChanged = { point ->
+                        observedCenter = point
+                        draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
+                    },
+                    onCenterObserved = { point -> observedCenter = point },
+                    onReady = { mapReady = it }
+                )
+                if (!mapReady) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center).size(28.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+                OutlinedButton(
+                    onClick = {
+                        observedCenter?.takeIf { it.valid }?.let { point ->
+                            draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
+                        }
+                    },
+                    enabled = !busy && observedCenter?.valid == true,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).height(42.dp),
+                    shape = RoundedCornerShape(99.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color(0xF7FFFFFF),
+                        contentColor = Color(0xFF343941)
+                    )
+                ) {
+                    Text("เลือกตรงกลาง", fontWeight = FontWeight.ExtraBold)
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(17.dp))
                     .background(Color.White)
-                    .border(1.dp, QgLine, RoundedCornerShape(12.dp))
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
+                    .border(1.dp, Color(0xFFE4E7EC), RoundedCornerShape(17.dp))
+                    .clickable(enabled = !gpsBusy && !busy, onClick = ::requestGps)
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier
+                        .size(42.dp)
+                        .background(Color(0xFFFFF0F2), RoundedCornerShape(99.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    QgIcon("pin", Modifier.size(20.dp), QgRed)
+                }
+                Spacer(Modifier.size(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (gpsBusy) "กำลังอ่านตำแหน่ง GPS…" else "ใช้ตำแหน่ง GPS ปัจจุบัน",
+                        color = QgRed,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        "ค้นหาตำแหน่งของคุณบนแผนที่",
+                        color = Color(0xFF9AA0AA),
+                        fontSize = 13.sp
+                    )
+                }
+                Text("›", color = Color(0xFF6F7680), fontSize = 28.sp)
+            }
+
+            gpsMessage?.let {
+                Spacer(Modifier.height(7.dp))
+                Text(it, color = QgMuted, fontSize = 13.sp)
+            }
+
+            Spacer(Modifier.height(14.dp))
+            Text(
+                addressLabel,
+                color = Color(0xFF8B929D),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Spacer(Modifier.height(7.dp))
+            OutlinedTextField(
+                value = draftAddress,
+                onValueChange = { draft = draft.edit(it) },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                maxLines = 3,
+                shape = RoundedCornerShape(17.dp),
+                placeholder = { Text("ที่อยู่หรือจุดสังเกต") }
+            )
+
+            Text(
+                selected?.let { "เลือกพิกัดแล้ว" } ?: "เลื่อนแผนที่หรือใช้ GPS เพื่อเลือกพิกัด",
+                color = Color(0xFF8A9099),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 7.dp, start = 2.dp)
+            )
+
+            Spacer(Modifier.height(14.dp))
+            Button(
+                onClick = {
+                    selected?.let { onSave(it.copy(address = draftAddress.trim())) }
+                },
+                enabled = !busy && selected != null && draftAddress.isNotBlank(),
+                modifier = Modifier.fillMaxWidth().height(58.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = QgRed,
+                    contentColor = Color.White
+                )
+            ) {
+                if (busy) {
+                    CircularProgressIndicator(
+                        Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                } else {
+                    QgIcon("pin", Modifier.size(20.dp), Color.White)
+                    Spacer(Modifier.size(7.dp))
+                    Text(saveLabel, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = onBack,
+                modifier = Modifier.height(52.dp),
+                shape = RoundedCornerShape(17.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFF4F5),
+                    contentColor = QgRed
+                ),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp)
             ) {
                 Icon(
                     painter = painterResource(R.drawable.qg_shop_back),
-                    contentDescription = "ย้อนกลับ",
-                    tint = Color(0xFF24272D),
-                    modifier = Modifier.size(22.dp)
+                    contentDescription = null,
+                    tint = QgRed,
+                    modifier = Modifier.size(20.dp)
                 )
-            }
-            Spacer(Modifier.size(8.dp))
-            Text(title, fontWeight = FontWeight.ExtraBold)
-        }
-
-        Text(
-            subtitle,
-            color = QgMuted
-        )
-        Spacer(Modifier.height(10.dp))
-
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(mapHeight)
-                .semantics { stateDescription = if (mapReady) "แผนที่พร้อมใช้งาน" else "กำลังโหลดแผนที่" }
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFFF0F1F2))
-                .border(1.dp, QgLine, RoundedCornerShape(14.dp))
-        ) {
-            QgLongdoLocationPickerMap(
-                initialPoint = cameraPoint,
-                recenterPoint = externalPoint,
-                recenterToken = recenterToken,
-                modifier = Modifier.fillMaxSize(),
-                selectInitialPoint = selectedPoint != null,
-                onCenterChanged = { point ->
-                    observedCenter = point
-                    draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
-                },
-                onCenterObserved = { point -> observedCenter = point },
-                onReady = { mapReady = it }
-            )
-            if (!mapReady) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center).size(28.dp),
-                    strokeWidth = 2.dp
-                )
+                Spacer(Modifier.size(7.dp))
+                Text("กลับ", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
-
-        Spacer(Modifier.height(12.dp))
-        Text("วิธีเลือกตำแหน่ง", fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(6.dp))
-        OutlinedButton(
-            onClick = ::requestGps,
-            enabled = !gpsBusy && !busy,
-            modifier = Modifier.fillMaxWidth().height(48.dp)
-        ) {
-            Text(if (gpsBusy) "กำลังอ่านตำแหน่ง GPS…" else "ใช้ตำแหน่ง GPS ปัจจุบัน")
-        }
-        Spacer(Modifier.height(7.dp))
-        OutlinedButton(
-            onClick = {
-                observedCenter?.takeIf { it.valid }?.let { point ->
-                    draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
-                }
-            },
-            enabled = !busy && observedCenter?.valid == true,
-            modifier = Modifier.fillMaxWidth().height(48.dp)
-        ) {
-            Text("เลือกจุดกึ่งกลางแผนที่", fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.height(7.dp))
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFF7F8FA), RoundedCornerShape(12.dp))
-                .border(1.dp, QgLine, RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 11.dp)
-        ) {
-            Text("ลากแผนที่ให้กากบาทอยู่ตรงจุดที่ต้องการ แล้วกดเลือกจุดกึ่งกลางแผนที่", color = QgMuted, fontWeight = FontWeight.Bold)
-        }
-        gpsMessage?.let {
-            Spacer(Modifier.height(6.dp))
-            Text(it, color = QgMuted)
-        }
-
-        Spacer(Modifier.height(8.dp))
-        Text(
-            selected?.let { "เลือกพิกัดแล้ว · %.6f, %.6f".format(it.latitude, it.longitude) }
-                ?: "กำลังรอพิกัด",
-            color = QgMuted
-        )
-
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(
-            value = draftAddress,
-            onValueChange = {
-                draft = draft.edit(it)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-            label = { Text("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต") }
-        )
-
-        Spacer(Modifier.height(12.dp))
-        Button(
-            onClick = {
-                selected?.let { onSave(it.copy(address = draftAddress.trim())) }
-            },
-            enabled = !busy && selected != null && draftAddress.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(52.dp)
-        ) {
-            if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            else Text(saveLabel, fontWeight = FontWeight.ExtraBold)
-        }
-        Spacer(Modifier.height(26.dp))
+        Spacer(Modifier.height(28.dp))
     }
 }
 
