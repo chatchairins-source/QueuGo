@@ -12,7 +12,7 @@ assert(road.includes('while (cache.size > 32)'));
 assert(road.includes('line.setLocation('));
 assert(!road.includes('setZoom(') && !road.includes('setLocation(MapLocation('));
 assert(!road.includes('google.navigation') && !road.includes('TextToSpeech') && !road.includes('interval'));
-assert(map.includes('roadDisplay.update(') && map.includes('roadDisplay.pause()') && map.includes('roadDisplay.dispose()'));
+assert(map.includes('renderRoutes(activeMap, state, force)') && map.includes('activeMap.removePolyline(line)') && map.includes('routeLines.clear()'));
 const disposeAt=map.indexOf('fun dispose()');
 const clearPinAt=map.indexOf('clearPin()');
 assert(disposeAt>=0 && clearPinAt>disposeAt && clearPinAt===map.lastIndexOf('clearPin()'));
