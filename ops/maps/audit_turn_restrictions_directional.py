@@ -267,7 +267,7 @@ with engine.db() as db:
                     if key in legal_keys or key in forbidden_seen:continue
                     forbidden_seen.add(key)
                     _,inc,out,d=query_for_pair(via,fw,fb,tw,tb,20)
-                    attempts=probe_pair(via,fw,fb,tw,tb,kind,True)
+                    attempts=probe_pair(via,fw,fb,tw,tb,kind,True,rid)
                     proof=next((x.get("proof") for x in attempts if x.get("proof")),None)
                     item["tests"].append({"role":"only_rule_forbidden_exit","from_way":fw,"from_side":fb["side"],"to_way":tw,"to_side":tb["side"],"expected_delta_deg":round(d,1),"attempts":attempts,"proof":proof})
                     if proof=="failed_prohibited_traversal":failed=True
