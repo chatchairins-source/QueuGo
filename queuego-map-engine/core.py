@@ -72,7 +72,13 @@ class Engine:
         self.actor=valhalla.Actor(str(config))
         self.version=valhalla.__version__
         self.database=str(Path(database).resolve())
-        with self.db() as db:self.dataset=json.loads(db.execute("SELECT value FROM metadata WHERE key='dataset'").fetchone()[0])
+        self.unresolved_rules=[];self.quarantined_ways=set()
+        with self.db() as db:
+            self.dataset=json.loads(db.execute("SELECT value FROM metadata WHERE key='dataset'").fetchone()[0])
+            for rule in db.execute('SELECT * FROM turn_restrictions'):
+                if not json.loads(rule['from_ways']) or not json.loads(rule['to_ways']) or not (json.loads(rule['via_nodes']) or json.loads(rule['via_ways'])):
+                    self.unresolved_rules.append(rule['id'])
+                    self.quarantined_ways.update(m['ref'] for m in json.loads(rule['members']) if m['type']=='w')
         self.lock=threading.RLock();self.cache=OrderedDict()
     @contextmanager
     def db(self):
@@ -80,7 +86,7 @@ class Engine:
         try:yield connection
         finally:connection.close()
     def metadata(self):
-        return {'api_version':1,'engine':'QueueGo/Valhalla','engine_version':self.version,'dataset_sha256':self.dataset['extract_sha256'],'source_timestamp':self.dataset['source_replication_timestamp'],'bounds':self.dataset['bounds'],'attribution':'© OpenStreetMap contributors','licence':'ODbL-1.0','live_traffic':False,'historical_speed_feed':False}
+        return {'api_version':1,'engine':'QueueGo/Valhalla','engine_version':self.version,'dataset_sha256':self.dataset['extract_sha256'],'source_timestamp':self.dataset['source_replication_timestamp'],'bounds':self.dataset['bounds'],'attribution':'© OpenStreetMap contributors','licence':'ODbL-1.0','live_traffic':False,'historical_speed_feed':False,'unresolved_turn_relations':self.unresolved_rules,'quarantined_way_count':len(self.quarantined_ways),'restriction_policy':'incomplete source relations fail closed on all member ways'}
     def profile(self,body):
         profile=body.get('profile','motorcycle')
         if profile not in PROFILES:raise ValueError('Unsupported vehicle profile')
@@ -136,6 +142,7 @@ class Engine:
         # These are explicit planning penalties, not measured historical traffic or a safety guarantee.
         estimated=base+signal_count*EXPECTED_SIGNAL_DELAY_SECONDS
         route={'distance':distance,'duration':base,'estimatedDuration':estimated,'geometry':{'type':'LineString','coordinates':coordinates},'legs':legs,'profile':profile,'signalCount':signal_count,'restrictionCount':0,'osm_way_ids':ways,'cost_components':{'engine_seconds':base,'signal_expected_delay_seconds':signal_count*EXPECTED_SIGNAL_DELAY_SECONDS,'rough_surface_metres':rough_m,'reliability_penalty_seconds':rough_m/10,'historical_samples':0},'data':self.metadata()}
+        if self.quarantined_ways.intersection(ways):raise ValueError('Route touches an unresolved source turn rule; member ways are quarantined until verified')
         # Enforce known hard exclusions on the actual traversed way IDs. Never invent a detour.
         if ways:
             with self.db() as db:
@@ -182,7 +189,17 @@ class Engine:
         for row in rows:
             for cell in row:
                 i,j=cell['from_index'],cell['to_index'];durations[i][j]=cell.get('time');distances[i][j]=None if cell.get('distance') is None else cell['distance']*1000
-        return {'code':'Ok','durations':durations,'distances':distances,'profile':profile,'data':self.metadata()}
+        # Native matrix has no traversed-edge output. Audit each reachable pair against
+        # the same canonical exclusions; unknown permission must not become a usable ETA.
+        if self.quarantined_ways:
+            for i in range(count):
+                for j in range(count):
+                    if i==j or durations[i][j] is None:continue
+                    try:
+                        trip=self._call('route',{'locations':[points[i],points[j]],'costing':costing,'directions_options':{'units':'kilometers'}})['trip']
+                        self._convert(trip,profile,remember=False)
+                    except (ValueError,RuntimeError):durations[i][j]=None;distances[i][j]=None
+        return {'code':'Ok','durations':durations,'distances':distances,'profile':profile,'data':self.metadata(),'unavailable_policy':'Native unreachable or canonical restriction audit rejected; null is not a fabricated ETA'}
     def optimize(self,body):
         points=self.points(body);profile,costing=self.profile(body)
         result=self._call('optimized_route',{'locations':points,'costing':costing,'directions_options':{'units':'kilometers'}})

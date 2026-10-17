@@ -14,7 +14,13 @@
     "attribution": "© OpenStreetMap contributors",
     "licence": "ODbL-1.0",
     "live_traffic": false,
-    "historical_speed_feed": false
+    "historical_speed_feed": false,
+    "unresolved_turn_relations": [
+      2148441,
+      17320674
+    ],
+    "quarantined_way_count": 3,
+    "restriction_policy": "incomplete source relations fail closed on all member ways"
   },
   "checks": [
     {
@@ -185,6 +191,21 @@
         1,
         4
       ]
+    },
+    {
+      "name": "malformed source restrictions quarantined",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "planned alternatives avoid unverified rule members",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "unverified junction cannot yield unsafe route",
+      "passed": true,
+      "detail": null
     },
     {
       "name": "oneway edge direction",

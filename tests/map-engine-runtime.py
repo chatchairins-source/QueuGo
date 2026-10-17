@@ -63,6 +63,13 @@ five=points+[{k:r[k] for k in ('lat','lon')} for r in extra]
 check('five stop route',len(engine.route({'points':five})['routes'][0]['legs'])==4,ids+[r['id'] for r in extra])
 check('five by five ETA matrix',len(engine.matrix({'points':five})['durations'])==5)
 optimized=engine.optimize({'points':five});check('five stop optimization fixed endpoints',sorted(optimized['order'])==list(range(5)) and optimized['order'][0]==0 and optimized['order'][-1]==4,optimized['order'])
+check('malformed source restrictions quarantined',set(engine.unresolved_rules)=={2148441,17320674} and len(engine.quarantined_ways)==3)
+check('planned alternatives avoid unverified rule members',all(not engine.quarantined_ways.intersection(r['osm_way_ids']) for r in routes))
+with engine.db() as db:blocked=db.execute('SELECT coordinates FROM ways WHERE id=170350136').fetchone()
+blocked_line=json.loads(blocked['coordinates']);blocked_points=[{'lon':q[0],'lat':q[1]} for q in [blocked_line[0],blocked_line[-1]]]
+try:
+    blocked_routes=engine.route({'points':blocked_points},True)['routes'];check('unverified junction cannot yield unsafe route',all(not engine.quarantined_ways.intersection(r['osm_way_ids']) for r in blocked_routes))
+except ValueError:check('unverified junction route fails closed',True)
 # Validate actual edge orientation for reverse requests around real one-way roads.
 with engine.db() as db:
     ways=db.execute("SELECT id,coordinates,tags FROM ways WHERE json_extract(tags,'$.oneway') IN ('yes','1','-1') AND json_extract(tags,'$.highway') IN ('residential','tertiary','secondary','primary','trunk') ORDER BY id LIMIT 12").fetchall()
