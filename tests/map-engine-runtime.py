@@ -43,6 +43,26 @@ end=route['geometry']['coordinates'][-1];context={};events=[]
 for i in range(3):
     result=engine.progress({**fix,'lon':end[0],'lat':end[1],'timestamp':now+i,'context':context});context=result['context'];events.append(result['arrived'])
 check('arrival repeated evidence',events==[False,False,True],events)
+# Time-labelled geometry is a controlled test using real OSM route positions, not recorded GPS.
+timed=[];clock=now
+for lon,lat in route['geometry']['coordinates'][:12]:
+    if timed:clock+=max(1,haversine([timed[-1]['lon'],timed[-1]['lat']],[lon,lat])/8)
+    timed.append({'lon':lon,'lat':lat,'accuracy':15,'speed':8,'timestamp':clock})
+matched=engine.match({'points':timed});check('timestamp and accuracy aware HMM',matched['matching_method']=='Valhalla HMM')
+check('latest inaccurate fix rejected',not engine.match({'points':timed+[{**timed[-1],'accuracy':100}]})['accepted'])
+gap=engine.match({'points':[timed[0],{**timed[-1],'timestamp':clock+30}]});check('signal loss resets HMM trace',gap['matching_method']=='nearest_initialization')
+context={};events=[]
+for i in range(3):
+    result=engine.match({'points':[{**far,'accuracy':10,'timestamp':now+i}],'route_id':route['route_id'],'context':context});context=result['context'];events.append(result['reroute'])
+check('matching preserves repeated raw off route evidence',events==[False,False,True],events)
+with engine.db() as db:
+    extra=[]
+    for lat,lon in [(14.985,103.11),(15.015,103.11)]:
+        row=db.execute("SELECT n.id,n.latitude AS lat,n.longitude AS lon FROM segments s JOIN nodes n ON n.id=s.from_node WHERE s.road_class='residential' ORDER BY (n.latitude-?)*(n.latitude-?)+(n.longitude-?)*(n.longitude-?) LIMIT 1",(lat,lat,lon,lon)).fetchone();extra.append(dict(row))
+five=points+[{k:r[k] for k in ('lat','lon')} for r in extra]
+check('five stop route',len(engine.route({'points':five})['routes'][0]['legs'])==4,ids+[r['id'] for r in extra])
+check('five by five ETA matrix',len(engine.matrix({'points':five})['durations'])==5)
+optimized=engine.optimize({'points':five});check('five stop optimization fixed endpoints',sorted(optimized['order'])==list(range(5)) and optimized['order'][0]==0 and optimized['order'][-1]==4,optimized['order'])
 # Validate actual edge orientation for reverse requests around real one-way roads.
 with engine.db() as db:
     ways=db.execute("SELECT id,coordinates,tags FROM ways WHERE json_extract(tags,'$.oneway') IN ('yes','1','-1') AND json_extract(tags,'$.highway') IN ('residential','tertiary','secondary','primary','trunk') ORDER BY id LIMIT 12").fetchall()

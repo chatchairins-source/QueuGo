@@ -136,6 +136,57 @@
       ]
     },
     {
+      "name": "timestamp and accuracy aware HMM",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "latest inaccurate fix rejected",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "signal loss resets HMM trace",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "matching preserves repeated raw off route evidence",
+      "passed": true,
+      "detail": [
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "name": "five stop route",
+      "passed": true,
+      "detail": [
+        11593547727,
+        1661819325,
+        12712892020,
+        8666963108,
+        1815041536
+      ]
+    },
+    {
+      "name": "five by five ETA matrix",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "five stop optimization fixed endpoints",
+      "passed": true,
+      "detail": [
+        0,
+        2,
+        3,
+        1,
+        4
+      ]
+    },
+    {
       "name": "oneway edge direction",
       "passed": true,
       "detail": {

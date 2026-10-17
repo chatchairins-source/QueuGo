@@ -33,3 +33,12 @@ node tests/map-engine-browser.cjs
 Browser test requires an actual service on localhost:8766 and Chromium (`QUEUEGO_CHROME` may select the executable). The service and browser need the same network namespace in isolated runners. Production hosting/auth/rate limits/TLS, Android runtime packaging, all restriction/road fixtures, physical GPS and sole-navigation release remain OPEN.
 
 Static/source builds run `npm test` with a pretest asset preparation step into ignored `map-assets/`. Deploy this generated directory together with the web files; source-integrity retains its missing-reference check. `--assets-root` overrides the local server asset location; default is `<web-root>/map-assets`. Python 3 is needed for this preparation step. The map graph/server still requires its own runtime hosting; uploading static files alone does not supply /map-api.
+
+Candidate hosting (no deployment performed):
+
+```
+docker build -f queuego-map-engine/Dockerfile -t queuego-map:buriram-v1 .
+docker run --rm --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m -p 127.0.0.1:8765:8765 -v /absolute/verified-package-store:/data:ro queuego-map:buriram-v1
+```
+
+The runtime verifies the active package, writes transient absolute config under /tmp and serves only the copied Map View public directory. Package/store mutation stays in the explicit install/activate CLI. Put the loopback port behind controlled same-origin TLS ingress before a public pilot. Container recipe is supplied for review; Docker is unavailable in this workspace, so no image-build/size/security certification is claimed. The same installed-package entrypoint can be run/tested directly with Python. Hosting needs a VM/container target with persistent package storage; static web hosting alone cannot run this native graph.

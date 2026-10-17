@@ -2,9 +2,9 @@ name: QueueGo Map Engine Buriram
 on:
   push:
     branches: ['work-map-roadgraph-buriram-*']
-    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', '.github/workflows/queuego-map-engine-buriram.yml']
+    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', '.github/workflows/queuego-map-engine-buriram.yml']
   pull_request:
-    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', '.github/workflows/queuego-map-engine-buriram.yml']
+    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', '.github/workflows/queuego-map-engine-buriram.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,7 +29,7 @@ jobs:
           pip install -r ops/maps/requirements.txt
           npm ci
           npm test
-          npx playwright install --with-deps chromium
+          node node_modules/playwright-core/cli.js install --with-deps chromium
       - name: Pinned real OSM and existing vector package
         run: |
           mkdir -p map-data
@@ -58,6 +58,7 @@ jobs:
           python ops/maps/offline_package.py build --database map-data/roads.sqlite --graph map-data/valhalla --vector map-data/vector.pmtiles --destination map-data/buriram-map-v1 --version buriram-map-v1 > map-data/evidence/package.json
           PACKAGE_SHA=$(python -c "import json; print(json.load(open('map-data/evidence/package.json'))['sha256'])")
           python tests/map-package-runtime.py --archive map-data/buriram-map-v1.tar.gz --sha256 "$PACKAGE_SHA" --store map-data/installed --output map-data/evidence/offline.json
+          python tests/map-installed-runtime.py --store map-data/installed --assets-root map-assets --output map-data/evidence/installed-entrypoint.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

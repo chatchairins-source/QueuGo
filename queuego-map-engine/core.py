@@ -269,26 +269,44 @@ class Engine:
     def match(self,body):
         trace=body.get('points') or []
         if not isinstance(trace,list) or not 1<=len(trace)<=64:raise ValueError('Trace needs 1..64 points')
-        profile,costing=self.profile(body);accepted=[]
-        for value in trace:
-            point=self.point(value)
-            accuracy=value.get('accuracy')
-            if accuracy is not None and (not isinstance(accuracy,(float,int)) or not math.isfinite(accuracy) or accuracy>50 or accuracy<0):continue
-            if value.get('heading') is not None and isinstance(value['heading'],(float,int)) and math.isfinite(value['heading']):point['heading']=value['heading']%360
-            accepted.append(point)
-        if not accepted:return {'accepted':False,'reason':'no_accurate_fixes','reroute':False,'context':body.get('context') or {}}
-        if len(accepted)<2:
-            nearest=self.nearest({**accepted[-1],'profile':profile});waypoints=nearest['waypoints']
-            return {'accepted':bool(waypoints),'matching_method':'nearest_initialization','snapped_position':waypoints[0]['location'] if waypoints else None,'reroute':False,'context':body.get('context') or {},'data':self.metadata()}
-        result=self._call('trace_route',{'shape':accepted,'shape_match':'map_snap','costing':costing,'directions_options':{'units':'kilometers'}})
-        route=self._convert(result['trip'],profile,remember=False)
-        response={'accepted':True,'matching_method':'Valhalla HMM','matchings':[route],'snapped_position':route['geometry']['coordinates'][-1],'data':self.metadata()}
+        evaluation=None
         if body.get('route_id'):
-            latest=trace[-1]
-            evaluation=self.progress({**latest,'route_id':body['route_id'],'context':body.get('context') or {}})
-            # Progress/off-route is evaluated against the accurate raw fix; a bad route snap
-            # must not erase genuine repeated off-route evidence. Display uses matched road.
-            response.update(evaluation)
-            if evaluation.get('accepted'):response['snapped_position']=route['geometry']['coordinates'][-1]
-            else:response.pop('snapped_position',None)
-        return response
+            planned=self.cached(body['route_id'])
+            if body.get('profile',planned['profile'])!=planned['profile']:raise ValueError('Matching profile differs from planned route')
+            body={**body,'profile':planned['profile']}
+            evaluation=self.progress({**trace[-1],'route_id':body['route_id'],'context':body.get('context') or {}})
+            if not evaluation['accepted']:return evaluation
+        profile,costing=self.profile(body);accepted=[];accuracies=[];last_time=None;last_accepted_index=-1
+        for index,value in enumerate(trace):
+            point=self.point(value);accuracy=value.get('accuracy')
+            if accuracy is not None and (not isinstance(accuracy,(float,int)) or not math.isfinite(accuracy) or accuracy>50 or accuracy<0):continue
+            stamp=value.get('timestamp');speed=value.get('speed');heading=value.get('heading')
+            if stamp is not None:
+                if not isinstance(stamp,(float,int)) or not math.isfinite(stamp) or stamp<=0:continue
+                if last_time is not None:
+                    if stamp<=last_time:continue
+                    if stamp-last_time>15:accepted=[];accuracies=[]
+                    elif accepted and haversine([accepted[-1]['lon'],accepted[-1]['lat']],[point['lon'],point['lat']])/(stamp-last_time)>60:continue
+                point['time']=stamp;last_time=stamp
+            moving=isinstance(speed,(float,int)) and math.isfinite(speed) and speed>=2
+            if moving and isinstance(heading,(float,int)) and math.isfinite(heading):point['heading']=heading%360
+            accepted.append(point);last_accepted_index=index
+            if accuracy is not None:accuracies.append(accuracy)
+        if not accepted:return {'accepted':False,'reason':'no_accurate_fixes','reroute':False,'context':body.get('context') or {}}
+        if last_accepted_index!=len(trace)-1:return {'accepted':False,'reason':'invalid_latest_fix','reroute':False,'context':body.get('context') or {}}
+        uncertainty=sorted(accuracies)[len(accuracies)//2] if accuracies else 5
+        base={'accepted':True,'data':self.metadata(),'matching_available':True}
+        if evaluation:base.update(evaluation)
+        try:
+            if len(accepted)<2:
+                nearest=self.nearest({**accepted[-1],'profile':profile});waypoints=nearest['waypoints']
+                if not waypoints:raise ValueError('No candidate road')
+                return {**base,'matching_method':'nearest_initialization','snapped_position':waypoints[0]['location'],'reroute':base.get('reroute',False),'context':base.get('context',body.get('context') or {})}
+            result=self._call('trace_route',{'shape':accepted,'shape_match':'map_snap','costing':costing,'trace_options':{'gps_accuracy':max(1,uncertainty),'search_radius':max(20,min(100,uncertainty*2))},'directions_options':{'units':'kilometers'}})
+            route=self._convert(result['trip'],profile,remember=False)
+            return {**base,'matching_method':'Valhalla HMM','matchings':[route],'snapped_position':route['geometry']['coordinates'][-1]}
+        except Exception:
+            if not evaluation:raise
+            # Accurate raw evidence can still trigger reroute when no graph match exists.
+            # Never label raw GPS as a road snap or hide off-route evidence with route projection.
+            return {**base,'matching_method':'raw_fix_unmatched','matching_available':False,'snapped_position':None,'display_position':[float(trace[-1]['lon']),float(trace[-1]['lat'])]}

@@ -91,10 +91,10 @@ def activate(store,version):
     finally:os.close(descriptor)
     return value
 
-def resolve(store):
+def resolve(store,runtime_directory=None):
     store=Path(store);version=safe_name(json.loads((store/'active.json').read_text())['current']);root=store/version;verify(root)
     config=json.loads((root/'valhalla.json').read_text());config['mjolnir']['tile_dir']=str((root/'tiles').resolve())
-    runtime=store/('runtime-'+version+'.json');runtime.write_text(json.dumps(config))
+    runtime=Path(runtime_directory or store)/('runtime-'+version+'.json');runtime.parent.mkdir(parents=True,exist_ok=True);runtime.write_text(json.dumps(config))
     return {'database':str(root/'roads.sqlite'),'config':str(runtime),'vector':str(root/'vector.pmtiles')}
 
 def main():

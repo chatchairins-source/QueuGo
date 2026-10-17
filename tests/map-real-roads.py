@@ -39,3 +39,5 @@ for row in closed:
     results.append({'case':'inaccessible_road','osm_way_id':row['way_id'],'points':points,'status':status,'tags':json.loads(row['attributes'])})
 report={'dataset':engine.metadata(),'cases':results,'physical_road_test':False,'limitations':['service road is not certified as frontage without source tags/field verification','rural residential category does not certify a named village-lane field test','U-turn and parallel-road GPS recordings still required','no background/signal-loss physical certification']}
 Path(a.output).write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n');print(json.dumps({'cases':len(results),'open':[r['case'] for r in results if r['status']=='open']}))
+
+if any(r['status']=='open' for r in results) or len(closed)<5:raise SystemExit('Required actual road-category/access coverage missing')

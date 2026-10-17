@@ -272,7 +272,7 @@
     const DOPA_BURIRAM="https://opendata_tst.dopa.go.th/downloads/15/%E0%B8%88%E0%B8%B1%E0%B8%87%E0%B8%AB%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%9A%E0%B8%B8%E0%B8%A3%E0%B8%B5%E0%B8%A3%E0%B8%B1%E0%B8%A1%E0%B8%A2%E0%B9%8C.json";
 
     let packageInfo=null;
-    try{packageInfo=await QueueGoMapService.call("health")}catch(error){console.warn("QueueGo map service unavailable",error)}
+    try{packageInfo=await QueueGoMapService.call("health",{},{timeout:1500})}catch(error){console.warn("QueueGo map service unavailable",error)}
     if(packageInfo&&packageInfo.vector_map){const protocol=new pmtiles.Protocol();maplibregl.addProtocol("pmtiles",protocol.tile)}
     const map=new maplibregl.Map({
       container:"map",
@@ -684,9 +684,10 @@
         if(!result.accepted){$("navOffset").textContent="กำลังรอตำแหน่งที่แม่นยำ";return}
         state.matchTrace=points;state.matchContext=result.context||{};
         state.lastPosition={lat,lon,accuracy,speed:c.speed,at:Date.now()};recordSpeedSample(position);
-        if(result.snapped_position){
+        const displayPosition=result.snapped_position||result.display_position;
+        if(displayPosition){
           if(!state.currentLocationMarker)state.currentLocationMarker=new maplibregl.Marker({element:currentLocationElement()}).addTo(map);
-          state.currentLocationMarker.setLngLat(result.snapped_position);
+          state.currentLocationMarker.setLngLat(displayPosition);
         }
         if(Number.isFinite(result.remaining_duration_s))$("navEta").textContent="ETA "+Math.max(1,Math.round(result.remaining_duration_s/60))+" นาที";
         $("navSpeed").textContent=Number.isFinite(c.speed)&&c.speed>=0?"ความเร็ว "+Math.round(c.speed*3.6)+" กม./ชม.":"ความเร็ว —";
