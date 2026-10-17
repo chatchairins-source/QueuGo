@@ -3,6 +3,7 @@
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
 <script src="../queuego-map-web.js?v=20261017-11"></script>
+<script src="../map-view/queuego-map-service.js?v=20261017-1"></script>
 
 
 <style id="queuego-rider-ui">
@@ -256,38 +257,20 @@ function haversineKm(lat1,lon1,lat2,lon2){
   const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-function qgLaunchGoogleNavigation(target){
-  const ua=String(navigator.userAgent||''),dest=target.lat+','+target.lng;
-  let appUrl='';
-  if(/Android/i.test(ua)){
-    appUrl='intent://?q='+encodeURIComponent(dest)+'&mode=d#Intent;scheme=google.navigation;package=com.google.android.apps.maps;end';
-  }else if(/iPhone|iPad|iPod/i.test(ua)){
-    appUrl='comgooglemaps://?daddr='+encodeURIComponent(dest)+'&directionsmode=driving';
-  }else{
-    toast('การนำทางต้องเปิดจากโทรศัพท์ที่ติดตั้ง Google Maps');
-    return false;
-  }
-  let leftPage=false,timer=null;
-  const markHidden=()=>{if(document.hidden)leftPage=true};
-  document.addEventListener('visibilitychange',markHidden);
-  const cleanup=()=>{if(timer)clearTimeout(timer);document.removeEventListener('visibilitychange',markHidden)};
-  window.addEventListener('pagehide',cleanup,{once:true});
-  timer=setTimeout(()=>{
-    cleanup();
-    if(!leftPage&&!document.hidden)toast('เปิด Google Maps ไม่สำเร็จ กรุณาติดตั้งแอป Google Maps');
-  },1200);
-  try{window.location.href=appUrl}
-  catch(_){cleanup();toast('เปิด Google Maps ไม่สำเร็จ กรุณาติดตั้งแอป Google Maps');return false}
-  return true;
-}
 function qgNavigateInApp(lat,lng){
   const target={lat:Number(lat),lng:Number(lng)};
   if(!validRiderCoordinate(target.lat,target.lng)){toast('พิกัดปลายทางยังไม่พร้อม');return false}
-  if(S.map&&S.pos&&validRiderCoordinate(S.pos.lat,S.pos.lng)){
-    focusRiderNavigation(S.map,S.pos,target);
-    drawActiveRoute();
+  if(!S.map||!S.pos||!validRiderCoordinate(S.pos.lat,S.pos.lng)){
+    toast('QueueGo Navigation ยังรอตำแหน่ง GPS');
+    return false;
   }
-  return qgLaunchGoogleNavigation(target);
+  riderRouteOverviewActive=false;
+  qgSyncCardMapMode();
+  window.QueueGoMapWeb?.setNavigationMode?.(S.map,true);
+  qgFollowRiderCamera(true,520);
+  drawActiveRoute();
+  toast('เริ่มนำทางด้วย QueueGo');
+  return true;
 }
 
 /* order status <-> db column + note tag, matching the main QueueGo app */
@@ -761,15 +744,68 @@ async function doLogout(){
 }
 
 /* ---------- MAIN STAGE ---------- */
-const LONGDO_API_KEY='347649ca13f49db0d8a599ae35f8de2b';
 // Temporary owner-requested road test: keep FOLLOW/3D active while idle so camera
 // smoothness can be evaluated before restoring job-gated perspective behavior.
 const RIDER_CAMERA_SMOOTHNESS_TEST_MODE=true;
-let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderNavigationCameraActive=false,riderPuckHeading=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
+async function qgRequestRiderRoute(from,to,signal){
+  if(!validRiderCoordinate(from?.lat,from?.lng)||!validRiderCoordinate(to?.lat,to?.lng))throw Error('invalid QueueGo route coordinates');
+  const service=window.QueueGoMapService;
+  if(!service?.call)throw Error('QueueGo routing unavailable');
+  const value=await service.call('route',{
+    points:[
+      {lat:Number(from.lat),lon:Number(from.lng)},
+      {lat:Number(to.lat),lon:Number(to.lng)}
+    ],
+    profile:'rider_delivery',
+    preference:'fastest'
+  },{timeout:12000,signal});
+  const route=value?.routes?.[0];
+  const geometry=route?.geometry||{};
+  const parts=geometry.type==='LineString'?[geometry.coordinates]:geometry.type==='MultiLineString'?geometry.coordinates:[];
+  const routes=[];
+  for(const coords of parts){
+    const line=(coords||[]).filter(x=>Array.isArray(x)&&validRiderCoordinate(x[1],x[0])).map(x=>[Number(x[0]),Number(x[1])]);
+    if(line.length>1)routes.push(line);
+  }
+  if(!routes.length)throw Error('QueueGo route unavailable');
+  const dist=Number(route.distance)||0;
+  const time=Number(route.duration)||Number(route.estimatedDuration)||0;
+  return {routes,dist,time,routeId:String(route.route_id||'')};
+}
+const RIDER_ROUTE_OFF_ROUTE_METERS=60;
+const RIDER_ROUTE_REROUTE_HITS=3;
+const RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000;
+let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteHits=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
 function clearRiderRoute(){
   riderRouteRequest?.controller.abort();riderRouteRequest=null;riderRouteCache=null;riderRouteGeometry=[];
+  riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0;
   (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
   const badge=document.getElementById('route-badge');if(badge)badge.style.display='none';
+}
+function qgRiderRouteNeedsReroute(pos,scope,map){
+  if(!riderRouteCache||riderRouteCache.scope!==scope||riderRouteCache.map!==map||!riderRouteGeometry.length)return true;
+  const accuracy=qgFiniteOrNull(pos?.accuracy);
+  if(accuracy!==null&&accuracy>50)return false;
+  const decision=window.QueueGoMapWeb?.navigationCameraDecision?.({
+    lat:Number(pos.lat),lng:Number(pos.lng),
+    speed:qgFiniteOrNull(pos.speed),bearing:qgFiniteOrNull(pos.bearing),accuracy,
+    route:riderRouteGeometry,previousBearing:riderPuckHeading
+  });
+  const offRoute=Number(decision?.routeMatch?.offRouteMeters);
+  if(!Number.isFinite(offRoute))return false;
+  const speed=qgFiniteOrNull(pos?.speed);
+  const directionConflict=decision?.routeBearingRejected===true&&(speed===null||speed>=2);
+  if(offRoute<=RIDER_ROUTE_OFF_ROUTE_METERS&&!directionConflict){
+    riderRouteOffRouteHits=0;
+    return false;
+  }
+  riderRouteOffRouteHits+=1;
+  if(riderRouteOffRouteHits<RIDER_ROUTE_REROUTE_HITS)return false;
+  const now=Date.now();
+  if(riderRouteLastRerouteAt&&now-riderRouteLastRerouteAt<RIDER_ROUTE_REROUTE_COOLDOWN_MS)return false;
+  riderRouteLastRerouteAt=now;
+  riderRouteOffRouteHits=0;
+  return true;
 }
 function disposeRiderMap(){
   riderLocationEpoch++;clearRiderRoute();
@@ -1297,29 +1333,19 @@ function drawLaundryRoute(){
   const current=()=>S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&String(S.laundryJob?.job_id)===String(j.job_id)&&String(S.laundryJob?.job_status)===String(j.job_status);
   if(riderRouteRequest?.scope===scope&&riderRouteRequest.map===map)return riderRouteRequest.task;
   if(riderRouteCache?.scope!==scope||riderRouteCache?.map!==map)clearRiderRoute();
+  if(riderRouteCache&&!qgRiderRouteNeedsReroute(pos,scope,map))return Promise.resolve();
   if(document.hidden||!navigator.onLine)return Promise.resolve();
   const controller=new AbortController(),request={scope,map,controller},timer=setTimeout(()=>controller.abort(),12000);
   const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');if(badge)badge.style.display='block';if(txt)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
   request.task=(async()=>{
     try{
-      const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(pos.lng)+'&flat='+encodeURIComponent(pos.lat)+'&tlon='+encodeURIComponent(lng)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
-      const res=await fetch(url,{signal:controller.signal});if(!res.ok)throw Error('route unavailable');const geo=await res.json();
+      const {routes,dist,time,routeId}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
-      let dist=0,time=0;const routes=[];
-      for(const feature of geo.features||[]){
-        const p=feature.properties||{};dist+=Number(p.distance)||0;time+=Number(p.interval)||0;
-        const g=feature.geometry||{},parts=g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:[];
-        for(const coords of parts){
-          const line=(coords||[]).filter(x=>validRiderCoordinate(x[1],x[0])).map(x=>[Number(x[0]),Number(x[1])]);
-          if(line.length>1)routes.push(line);
-        }
-      }
-      if(!routes.length)throw Error('route unavailable');
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteCache={scope,map,pos:{...pos},at:Date.now()};
+      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
@@ -1366,7 +1392,7 @@ function drawActiveRoute(){
   };
   if(riderRouteRequest?.scope===scope&&riderRouteRequest.map===map)return riderRouteRequest.task;
   if(riderRouteCache?.scope!==scope||riderRouteCache?.map!==map)clearRiderRoute();
-  if(riderRouteCache){const age=Date.now()-riderRouteCache.at,moved=haversineKm(pos.lat,pos.lng,riderRouteCache.pos.lat,riderRouteCache.pos.lng);if(age<10000||(age<60000&&moved<0.03))return Promise.resolve()}
+  if(riderRouteCache&&!qgRiderRouteNeedsReroute(pos,scope,map))return Promise.resolve();
   if(document.hidden||!navigator.onLine)return Promise.resolve();
   const controller=new AbortController(),request={scope,map,controller};
   const timer=setTimeout(()=>controller.abort(),12000);
@@ -1377,24 +1403,13 @@ function drawActiveRoute(){
   if(isOfferPreview&&!riderRouteCache)focusRiderNavigation(map,pos,{lat:Number(lat),lng:Number(lon)});
   request.task=(async()=>{
     try{
-      const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(pos.lng)+'&flat='+encodeURIComponent(pos.lat)+'&tlon='+encodeURIComponent(lon)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
-      const res=await fetch(url,{signal:controller.signal});if(!res.ok)throw Error('route unavailable');const geo=await res.json();
+      const {routes,dist,time,routeId}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lon)},controller.signal);
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
-      let dist=0,time=0;const routes=[];
-      for(const feature of geo.features||[]){
-        const properties=feature.properties||{};dist+=Number(properties.distance)||0;time+=Number(properties.interval)||0;
-        const geometry=feature.geometry||{},parts=geometry.type==='LineString'?[geometry.coordinates]:geometry.type==='MultiLineString'?geometry.coordinates:[];
-        for(const coords of parts){
-          const line=(coords||[]).filter(x=>validRiderCoordinate(x[1],x[0])).map(x=>[Number(x[0]),Number(x[1])]);
-          if(line.length>1)routes.push(line);
-        }
-      }
-      if(!routes.length)throw Error('route unavailable');
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteCache={scope,map,pos:{...pos},at:Date.now()};
+      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
