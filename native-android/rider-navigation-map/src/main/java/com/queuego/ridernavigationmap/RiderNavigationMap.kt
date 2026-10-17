@@ -263,7 +263,8 @@ private class RiderNavigationMapHolder {
     private fun animateCameraBearing(
         activeMap: com.longdo.api.Map,
         targetBearing: Float,
-        nowMs: Long
+        nowMs: Long,
+        speedMetersPerSecond: Float?
     ) {
         val currentBearing = runCatching { normalizeNavigationBearing(activeMap.getRotate()) }
             .getOrNull()
@@ -282,7 +283,8 @@ private class RiderNavigationMapHolder {
             currentBearing = currentBearing,
             targetBearing = target,
             cadenceMillis = cadence,
-            fallbackMillis = CAMERA_ROTATION_FALLBACK_MS
+            fallbackMillis = CAMERA_ROTATION_FALLBACK_MS,
+            speedMetersPerSecond = speedMetersPerSecond
         )
         cancelCameraBearingAnimation()
         val animator = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -1247,7 +1249,7 @@ private class RiderNavigationMapHolder {
         }
 
         if (bearingChanged) {
-            decision.bearingDegrees?.let { animateCameraBearing(activeMap, it, now) }
+            decision.bearingDegrees?.let { animateCameraBearing(activeMap, it, now, speed) }
         } else if (renderedBearing != null) {
             lastCameraBearing = renderedBearing
         }
