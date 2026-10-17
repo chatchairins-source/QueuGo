@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "dataset": {
+    "schema_version": 1,
+    "region": "buriram-padded",
+    "bounds": [
+      102.369,
+      14.109,
+      103.592,
+      15.819
+    ],
+    "coverage_note": "Padded Buriram operating envelope; includes adjacent border roads, not an administrative-boundary claim.",
+    "source": "OpenStreetMap / Geofabrik Thailand",
+    "licence": "ODbL-1.0",
+    "attribution": "© OpenStreetMap contributors",
+    "download_url": "https://download.geofabrik.de/asia/thailand-latest.osm.pbf",
+    "source_replication_timestamp": "2026-10-15T20:21:00Z",
+    "source_sha256": "02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf",
+    "extract_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+    "extract_bytes": 10808396,
+    "selected_counts": {
+      "nodes": 1719514,
+      "ways": 105729,
+      "restriction_relations": 62
+    },
+    "built_at": "2026-10-16T23:37:07.544470+00:00",
+    "restriction_handling": "Reference-complete selected restriction relations, with original tags and members; no fabricated topology."
+  },
+  "counts": {
+    "nodes": 1009491,
+    "ways": 103756,
+    "segments": 233320,
+    "turn_restrictions": 62,
+    "places": 2538,
+    "traffic_signals": 208,
+    "barriers": 1253
+  },
+  "database_bytes": 325079040,
+  "conflation": "OSM identity and shared nodes only; no geometric union",
+  "physical_verification": false
+}

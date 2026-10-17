@@ -1,0 +1,119 @@
+name: QueueGo Map Engine Buriram
+on:
+  push:
+    branches: ['work-map-roadgraph-buriram-*']
+    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', 'tests/map-staging-*', '.github/workflows/queuego-map-engine-buriram.yml']
+  pull_request:
+    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', '.github/workflows/queuego-map-engine-buriram.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: queuego-map-engine-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  buriram-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencies and regression
+        run: |
+          pip install -r ops/maps/requirements.txt
+          npm ci
+          npm test
+          python tests/map-field-evidence-validator.py
+          python tests/map-release-gate-report.py
+          python tests/map-engine-trace-safety.py
+          node node_modules/playwright-core/cli.js install --with-deps chromium
+      - name: Pinned real OSM and existing vector package
+        run: |
+          mkdir -p map-data
+          curl --fail --location --retry 3 https://download.geofabrik.de/asia/thailand-261015.osm.pbf --output map-data/thailand.osm.pbf
+          echo '02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf  map-data/thailand.osm.pbf' | sha256sum --check
+          curl --fail --location --retry 3 https://github.com/chatchairins-source/QueuGo/releases/download/rider-buriram-offline-20261016/buriram-shortbread.pmtiles --output map-data/vector.pmtiles
+          echo '30699573ed2068d3c7e4393ad477dbe8febf68f453f27ae88437f5c652a3ddfc  map-data/vector.pmtiles' | sha256sum --check
+      - name: Build normalized database and actual routing tiles
+        run: |
+          python ops/maps/extract_region.py map-data/thailand.osm.pbf map-data/buriram.osm.pbf
+          python ops/maps/normalize_osm.py map-data/buriram.osm.pbf map-data/roads.sqlite
+          python ops/maps/build_engine_graph.py valhalla map-data/buriram.osm.pbf map-data/valhalla --admin-pbf map-data/thailand.osm.pbf
+      - name: Real graph runtime and restriction evidence
+        run: |
+          mkdir -p map-data/evidence
+          python tests/map-engine-runtime.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/runtime.json
+          python tests/map-real-roads.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/real-roads.json
+          python ops/maps/audit_turn_restrictions.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/turns.json
+          python ops/maps/diagnose_turn_restrictions.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --audit map-data/evidence/turns.json --output map-data/evidence/turn-diagnostics.json
+          python ops/maps/audit_turn_restrictions_directional.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --legacy-audit map-data/evidence/turns.json --output map-data/evidence/turns-directional.json
+          python -c "import json; r=json.load(open('map-data/evidence/turns.json')); assert not r['summary'].get('failed',0),r['summary']; print('Uncovered/source-invalid restrictions remain an OPEN release gate:',r['summary'])"
+      - name: Actual browser with external requests blocked
+        run: |
+          export QUEUEGO_CHROME="$(node -p "require('playwright-core').chromium.executablePath()")"
+          python ops/maps/run_browser_validation.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --vector map-data/vector.pmtiles --assets-root map-assets
+      - name: Offline package and rollback
+        run: |
+          python ops/maps/offline_package.py build --database map-data/roads.sqlite --graph map-data/valhalla --vector map-data/vector.pmtiles --destination map-data/buriram-map-v1 --version buriram-map-v1 > map-data/evidence/package.json
+          PACKAGE_SHA=$(python -c "import json; print(json.load(open('map-data/evidence/package.json'))['sha256'])")
+          python tests/map-package-runtime.py --archive map-data/buriram-map-v1.tar.gz --sha256 "$PACKAGE_SHA" --store map-data/installed --output map-data/evidence/offline.json
+          python tests/map-installed-runtime.py --store map-data/installed --assets-root map-assets --output map-data/evidence/installed-entrypoint.json
+      - name: Candidate container runs offline with mounted real data
+        run: python ops/maps/check_container.py --store map-data/installed --output map-data/evidence/container.json --tag queuego-map:${{ github.sha }}
+      - name: Loopback-only staging runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() { python ops/maps/stage_container.py stop --name queuego-map-staging-ci >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          python tests/map-staging-contract.py
+          python ops/maps/stage_container.py start \
+            --store map-data/installed \
+            --tag queuego-map:${{ github.sha }} \
+            --name queuego-map-staging-ci \
+            --port 18765 \
+            --output map-data/evidence/staging.json
+          python - <<'PY'
+          import json,urllib.request
+          base='http://127.0.0.1:18765'
+          health=json.load(urllib.request.urlopen(base+'/map-api/health',timeout=5))
+          assert health['engine']=='QueueGo/Valhalla'
+          html=urllib.request.urlopen(base+'/map-view/',timeout=5).read().decode('utf-8')
+          assert 'QueueGo Map' in html
+          body={'points':[{'lat':14.9918756,'lon':103.0994795},{'lat':15.0088319,'lon':103.1300059}]}
+          req=urllib.request.Request(base+'/map-api/route',data=json.dumps(body).encode(),headers={'Content-Type':'application/json'})
+          route=json.load(urllib.request.urlopen(req,timeout=10))['routes'][0]
+          assert route['distance']>1000
+          vector=urllib.request.Request(base+'/map-api/vector.pmtiles',headers={'Range':'bytes=0-15'})
+          response=urllib.request.urlopen(vector,timeout=5)
+          assert response.status==206 and len(response.read())==16
+          print(json.dumps({'engine':health['engine'],'route_distance_m':route['distance'],'vector_range':16,'public_bind':False}))
+          PY
+      - name: Build fail-closed release gate report
+        run: |
+          python ops/maps/build_release_gate_report.py \
+            --evidence-dir map-data/evidence \
+            --browser evidence/map-engine/browser-validation.json \
+            --output map-data/evidence/release-gate.json \
+            --require-code-gate
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: queuego-map-buriram-${{ github.sha }}
+          path: |
+            map-data/evidence/
+            evidence/map-engine/browser-validation.json
+            map-data/buriram-map-v1.tar.gz
+            map-data/buriram-map-v1.tar.gz.sha256
+            map-data/buriram.osm.pbf
+            map-data/buriram.osm.manifest.json
+            docs/map-data-sources.md
+            docs/map-engine-selection.md
+            docs/map-offline-package.md
+          retention-days: 14

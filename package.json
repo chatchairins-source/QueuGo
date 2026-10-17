@@ -6,7 +6,9 @@
     "catalog:build": "node ops/grocery/build-research-catalog.cjs",
     "test:grocery": "node tests/grocery-catalog.cjs && node tests/grocery-ui.cjs && node tests/grocery-admin.cjs && node tests/grocery-checkout-lock-order.cjs && node tests/grocery-makro.cjs && node tests/grocery-cold-exclusion.cjs && node tests/grocery-connection.cjs && node tests/grocery-source-categories.cjs",
     "test:grocery:browser": "node tests/grocery-browser.cjs",
-    "test:merchant:browser": "node tests/merchant-boot-browser.cjs"
+    "test:merchant:browser": "node tests/merchant-boot-browser.cjs",
+    "pretest": "python3 ops/maps/fetch_web_assets.py map-assets",
+    "posttest": "node tests/map-field-qa.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

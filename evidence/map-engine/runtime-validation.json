@@ -1,0 +1,2612 @@
+{
+  "dataset": {
+    "api_version": 1,
+    "engine": "QueueGo/Valhalla",
+    "engine_version": "3.9.1",
+    "dataset_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+    "source_timestamp": "2026-10-15T20:21:00Z",
+    "bounds": [
+      102.369,
+      14.109,
+      103.592,
+      15.819
+    ],
+    "attribution": "© OpenStreetMap contributors",
+    "licence": "ODbL-1.0",
+    "live_traffic": false,
+    "historical_speed_feed": false,
+    "unresolved_turn_relations": [
+      2148441,
+      17320674,
+      20613951,
+      20613952
+    ],
+    "source_member_conflicts": [
+      6982243
+    ],
+    "source_direction_conflicts": [
+      1538817
+    ],
+    "runtime_no_u_turn_relations": [
+      6982135,
+      6982242,
+      6982244,
+      6982245,
+      6982246,
+      6982248,
+      6982249,
+      16142295,
+      16142297,
+      16142299,
+      16142300,
+      16142301
+    ],
+    "quarantined_way_count": 12,
+    "restriction_policy": "incomplete, disconnected-member, or one-way-direction-conflicting source turn relations fail closed on all member ways; same-way no_u_turn reversals are independently rejected at the QueueGo route boundary"
+  },
+  "checks": [
+    {
+      "name": "real A to B",
+      "passed": true,
+      "detail": {
+        "nodes": [
+          11593547727,
+          1661819325
+        ],
+        "distance_m": 5799.0
+      }
+    },
+    {
+      "name": "alternatives",
+      "passed": true,
+      "detail": 3
+    },
+    {
+      "name": "shortest",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fewer_signals",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "reliable",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "multi stop",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "matrix",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "optimization fixed endpoints",
+      "passed": true,
+      "detail": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "signal traversal count",
+      "passed": true,
+      "detail": 4
+    },
+    {
+      "name": "geocode",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "nearest",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "HMM matching",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "route progress",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "negative GPS accuracy rejected",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "poor GPS accuracy rejected",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "stale GPS rejected",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "off route requires repeated evidence",
+      "passed": true,
+      "detail": [
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "name": "off route to actual reroute",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "new route resets prior route navigation evidence",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "reroute cooldown",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "arrival repeated evidence",
+      "passed": true,
+      "detail": [
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "name": "timestamp and accuracy aware HMM",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "latest inaccurate fix rejected",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "signal loss resets HMM trace",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "matching preserves repeated raw off route evidence",
+      "passed": true,
+      "detail": [
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "name": "five stop route",
+      "passed": true,
+      "detail": [
+        11593547727,
+        1661819325,
+        12712892020,
+        8666963108,
+        1815041536
+      ]
+    },
+    {
+      "name": "five by five ETA matrix",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "five stop optimization fixed endpoints",
+      "passed": true,
+      "detail": [
+        0,
+        2,
+        3,
+        1,
+        4
+      ]
+    },
+    {
+      "name": "unverified source restrictions quarantined",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "actual loop trace covers full routed length",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "actual loop trace retains traversed quarantined member",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "actual loop quarantine enforced",
+      "passed": true,
+      "detail": "Route touches an unresolved, disconnected-member, or direction-conflicting source turn rule; member ways are quarantined until verified"
+    },
+    {
+      "name": "nearest excludes actual quarantined way",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "single quarantined fix fails safely",
+      "passed": true,
+      "detail": "No safe candidate road"
+    },
+    {
+      "name": "same-way no-U-turn runtime enforcement loaded",
+      "passed": true,
+      "detail": [
+        6982135,
+        6982242,
+        6982244,
+        6982245,
+        6982246,
+        6982248,
+        6982249,
+        16142295,
+        16142297,
+        16142299,
+        16142300,
+        16142301
+      ]
+    },
+    {
+      "name": "planned alternatives avoid unverified rule members",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "unverified junction cannot yield unsafe route",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 465671764,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 465671764,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 465671764,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 465671764,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 465671756,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 591045815,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 591045815,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 153792867,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 202909550,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 200228368,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 200228369,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 170350689,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 772780354,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 772780354,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 772780354,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 772780354,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 772780355,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 574960476,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 574960476,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630316,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 285630313,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 875543068,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1080775437,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 875543067,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101160,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101159,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101159,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101159,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101159,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101156,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101156,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101156,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101156,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101156,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101163,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101162,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101176,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101175,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101175,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101174,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101178,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101177,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101179,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101179,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1454101179,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 466052957,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 466052957,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 466052957,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1369041821,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1369041820,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1369041820,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1369041820,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 466052951,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 466052955,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 466052954,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 302130073,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103113,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103113,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103113,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103113,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103113,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103113,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103110,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889363,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103114,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103114,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103114,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103114,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103114,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103114,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1094103114,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 386889364,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242236,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242235,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242235,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242235,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242235,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242235,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242235,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242235,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1043681646,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1043681646,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1043681649,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1043681648,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242233,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242233,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242233,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242233,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242233,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 958242234,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 541985742,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 541985742,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 541985742,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 541985737,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 541985739,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 541985739,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 541985739,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 935658971,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 935658971,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 935658971,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 935658971,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 935658971,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 935658971,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 295563944,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 495713112,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 495713112,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 495713112,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 495713112,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 495713112,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 495713112,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 495713112,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1109975585,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 272073838,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 272073838,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 272073838,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 272073838,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 272073838,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 272073838,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 272073838,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 272073838,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 272073838,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 272073838,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 1449266727,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 581632087,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 581632090,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 581632090,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "oneway edge direction",
+      "passed": true,
+      "detail": {
+        "way": 581632090,
+        "forward": true,
+        "oneway": "yes"
+      }
+    },
+    {
+      "name": "real one-way query coverage",
+      "passed": true,
+      "detail": [
+        {
+          "query_way": 23751094,
+          "directed_edges_checked": 5
+        },
+        {
+          "query_way": 28306443,
+          "directed_edges_checked": 3
+        },
+        {
+          "query_way": 29255518,
+          "directed_edges_checked": 1
+        },
+        {
+          "query_way": 32902993,
+          "directed_edges_checked": 28
+        },
+        {
+          "query_way": 35745939,
+          "directed_edges_checked": 78
+        },
+        {
+          "query_way": 35764116,
+          "directed_edges_checked": 40
+        },
+        {
+          "query_way": 35764158,
+          "directed_edges_checked": 60
+        },
+        {
+          "query_way": 36335309,
+          "directed_edges_checked": 21
+        },
+        {
+          "query_way": 38210435,
+          "directed_edges_checked": 0
+        },
+        {
+          "query_way": 38212379,
+          "directed_edges_checked": 1
+        },
+        {
+          "query_way": 40550343,
+          "directed_edges_checked": 11
+        },
+        {
+          "query_way": 40600252,
+          "directed_edges_checked": 4
+        }
+      ]
+    }
+  ],
+  "physical_road_test": false,
+  "trace_provenance": "OSM route-derived matching; controlled GPS/timing evidence checks are algorithm fixtures, not physical recordings",
+  "remaining_gates": [
+    "all turn relations and real road categories",
+    "browser/background restoration",
+    "offline activation/rollback",
+    "public deployment",
+    "Android integration"
+  ]
+}

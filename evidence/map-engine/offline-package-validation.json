@@ -1,0 +1,18 @@
+{
+  "archive_sha256": "9bc6bf7170ede0a81dc43faf5ebd57b569fc0ec9061f2ba151e5feb786ec8266",
+  "archive_bytes": 118953852,
+  "uncompressed_bytes": 383511217,
+  "checks": [
+    "corrupt archive rejected",
+    "failed install preserves active pointer",
+    "all component checksums",
+    "atomic new version activation",
+    "rollback to verified previous",
+    "route after offline install and rollback"
+  ],
+  "route_distance_m": 5799.0,
+  "dataset_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+  "android_runtime_included": false,
+  "public_download_published": false,
+  "rollback_fixture": "two package version identifiers using identical actual OSM data; no second dataset freshness claim"
+}
