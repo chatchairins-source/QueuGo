@@ -140,3 +140,30 @@ If a stream is blocked, state exactly what evidence/action is required to unbloc
 When the current platform/session permits continued execution, proceed from one completed chunk to the next without waiting for the owner to issue a separate command.
 
 If the platform/session terminates, work cannot continue asynchronously by assumption. The repository checkpoints in this workflow are the recovery mechanism for the next session.
+
+## Owner `ต่อ` continuation command
+
+The owner command `ต่อ` means the previous work stream was interrupted. It is not a request to start a new task and requires no clarification.
+
+On every `ต่อ`, immediately execute this recovery sequence:
+
+1. Read `WORKFLOW.md`.
+2. Read `CHECKLIST.md`.
+3. Identify the latest workstream recorded in the checklist.
+4. Fetch and verify the newest real successor/descendant HEAD for that workstream.
+5. Inspect commit history after the recorded checkpoint.
+6. Summarize recovered progress in no more than 3 lines and cite the relevant commit SHA(s).
+7. Resume immediately from the recorded `NEXT` item.
+
+Additional permanent rules for `ต่อ` and all QueueGo work:
+
+- Never go back to an older implementation when newer committed work exists.
+- Never start a new implementation for functionality already present in the successor line.
+- Never repeat work that already has a commit checkpoint.
+- Work only in small bounded chunks: fix -> test -> commit -> update `CHECKLIST.md` with status and exact `NEXT`.
+- After every commit, update `NEXT` in `CHECKLIST.md` before relying on conversational context for continuation.
+- Continue directly to the next unblocked chunk without waiting for another owner command when the current session/platform permits.
+- Continue across all workstreams that can be completed in the current environment, in dependency/Release-Gate order.
+- If a task requires owner action, a physical device, real GPS/road testing, signing credentials, Play Console, Production cutover, public hosting approval, or another unavailable external step, mark it `BLOCKED`, record exactly what the owner must do/provide, then continue with the next unblocked workstream.
+- Never mark any scope `DONE` unless a commit SHA and relevant test/build/CI evidence both exist.
+- `source/test ready` and `ready to launch` are separate states and must never be conflated.
