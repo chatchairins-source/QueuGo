@@ -235,6 +235,16 @@
       "detail": "Route touches an unresolved, disconnected-member, or direction-conflicting source turn rule; member ways are quarantined until verified"
     },
     {
+      "name": "nearest excludes actual quarantined way",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "single quarantined fix fails safely",
+      "passed": true,
+      "detail": "No safe candidate road"
+    },
+    {
       "name": "same-way no-U-turn runtime enforcement loaded",
       "passed": true,
       "detail": [

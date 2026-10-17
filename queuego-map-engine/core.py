@@ -249,6 +249,7 @@ class Engine:
         point=self.point(body);profile,costing=self.profile(body)
         result=self._call('locate',{'locations':[point],'costing':costing,'verbose':True})
         edges=result[0].get('edges',[]) if result else []
+        edges=[e for e in edges if e.get('edge_info',{}).get('way_id') is not None and e['edge_info']['way_id'] not in self.quarantined_ways]
         if not edges:return {'code':'NoSegment','waypoints':[],'data':self.metadata()}
         edge=min(edges,key=lambda e:e.get('distance',float('inf')))
         info=edge.get('edge_info',{})
@@ -389,7 +390,8 @@ class Engine:
         try:
             if len(accepted)<2:
                 nearest=self.nearest({**accepted[-1],'profile':profile});waypoints=nearest['waypoints']
-                if not waypoints:raise ValueError('No candidate road')
+                if not waypoints:raise ValueError('No safe candidate road')
+                if waypoints[0].get('distance',float('inf'))>max(35,uncertainty*2):raise ValueError('Nearest safe road is too far from latest fix')
                 return {**base,'matching_method':'nearest_initialization','snapped_position':waypoints[0]['location'],'reroute':base.get('reroute',False),'context':base.get('context',body.get('context') or {})}
             result=self._call('trace_route',{'shape':accepted,'shape_match':'map_snap','costing':costing,'trace_options':{'gps_accuracy':max(1,uncertainty),'search_radius':max(20,min(100,uncertainty*2))},'directions_options':{'units':'kilometers'}})
             if result.get('alternates'):raise ValueError('Discontinuous trace cannot supply a trusted latest road position')

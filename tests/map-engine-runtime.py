@@ -74,6 +74,16 @@ try:
     check('actual loop quarantine enforced',False)
 except ValueError as error:
     check('actual loop quarantine enforced','quarantined' in str(error),str(error))
+with engine.db() as db:
+    blocked_line=json.loads(db.execute('SELECT coordinates FROM ways WHERE id=474747491').fetchone()[0])
+blocked_fix=blocked_line[len(blocked_line)//2]
+nearest_blocked=engine.nearest({'lon':blocked_fix[0],'lat':blocked_fix[1]})
+check('nearest excludes actual quarantined way',all(w['osm_way_id'] not in engine.quarantined_ways for w in nearest_blocked['waypoints']))
+try:
+    initialization=engine.match({'points':[{'lon':blocked_fix[0],'lat':blocked_fix[1],'accuracy':5}]})
+    check('single fix never initializes on quarantined road',any(initialization.get('snapped_position')==w['location'] and w['osm_way_id'] not in engine.quarantined_ways and w['distance']<=35 for w in nearest_blocked['waypoints']))
+except ValueError as error:
+    check('single quarantined fix fails safely',True,str(error))
 runtime_no_u_turn_ids={r['relation_id'] for r in engine.runtime_no_u_turn_rules}
 check('same-way no-U-turn runtime enforcement loaded',6982135 in runtime_no_u_turn_ids and 6982244 in runtime_no_u_turn_ids and len(runtime_no_u_turn_ids)>=10,sorted(runtime_no_u_turn_ids))
 check('planned alternatives avoid unverified rule members',all(not engine.quarantined_ways.intersection(r['osm_way_ids']) for r in routes))
