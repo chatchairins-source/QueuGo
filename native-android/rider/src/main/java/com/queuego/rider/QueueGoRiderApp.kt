@@ -2902,7 +2902,6 @@ private fun RiderHome(
                                     scope.launch {
                                         runCatching { api.startDeliveryReturn(auth, returnCase.caseId) }
                                             .onSuccess {
-                                                actionMessage = "เริ่มคืนสินค้า · กำลังเปิดนำทางกลับร้าน"
                                                 val updated = runCatching { api.riderSnapshot(auth) }
                                                     .onFailure { if (it is CancellationException) throw it }
                                                     .getOrNull()
@@ -2910,7 +2909,9 @@ private fun RiderHome(
                                                     snapshot = updated
                                                     persistCommittedSnapshot(updated)
                                                 }
-                                                openReturnNavigation(context, updated?.deliveryReturn ?: returnCase)
+                                                startQueueGoNavigation(
+                                                    "เริ่มคืนสินค้า · นำทางกลับร้านด้วยแผนที่ QueueGo"
+                                                )
                                             }
                                             .onFailure {
                                                 playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
@@ -2920,7 +2921,9 @@ private fun RiderHome(
                                     }
                                 }
                             },
-                            onNavigate = { openReturnNavigation(context, returnCase) },
+                            onNavigate = {
+                                startQueueGoNavigation("นำทางกลับร้านด้วยแผนที่ QueueGo")
+                            },
                             onCaptureProof = { openReturnCamera() },
                             onCompleteReturn = {
                                 val proof = returnPhotoUri
@@ -2966,7 +2969,9 @@ private fun RiderHome(
                                                     playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.RETURN_STOP_SUCCESS)
                                                     actionMessage = "คืนจุดนี้เรียบร้อย · ไปจุดคืนถัดไป"
                                                     updated?.deliveryReturn?.takeIf { it.canReturnToShop }?.let {
-                                                        openReturnNavigation(context, it)
+                                                        startQueueGoNavigation(
+                                                            "คืนจุดนี้เรียบร้อย · นำทางไปจุดคืนถัดไปด้วยแผนที่ QueueGo"
+                                                        )
                                                     }
                                                 }
                                             }.onFailure {
