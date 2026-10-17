@@ -304,6 +304,11 @@
     let toastTimer=0;
 
     const $=id=>document.getElementById(id);
+    function esc(value){
+      return String(value==null?"":value).replace(/[&<>"']/g,function(ch){
+        return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];
+      });
+    }
     function toast(msg){
       const t=$("toast");t.textContent=msg;t.classList.add("show");
       clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
