@@ -630,12 +630,13 @@ ok(
 
 const riderNavigationMapRuntime=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
 ok(
-  riderNavigationMapRuntime.includes('RIDER_NAV_SNAPSHOT_MAX_SIDE_PX = 1280') &&
-  riderNavigationMapRuntime.includes('val sourceMaxSide = maxOf(sourceWidth, sourceHeight)') &&
-  riderNavigationMapRuntime.includes('val snapshotScale = minOf(') &&
-  riderNavigationMapRuntime.includes('RIDER_NAV_SNAPSHOT_MAX_SIDE_PX.toFloat() / sourceMaxSide.toFloat()') &&
-  riderNavigationMapRuntime.includes('Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)'),
-  'Rider navigation continuity PixelCopy snapshots must cap bitmap dimensions before allocation'
+  riderNavigationMapRuntime.includes('MapLibre.getInstance') &&
+  riderNavigationMapRuntime.includes('RiderNavigationMapRegistry') &&
+  riderNavigationMapRuntime.includes('holder.retainAcrossVisibilityLoss()') &&
+  riderNavigationMapRuntime.includes('current?.dispose()') &&
+  !riderNavigationMapRuntime.includes('PixelCopy') &&
+  !riderNavigationMapRuntime.includes('Bitmap.createBitmap('),
+  'Rider MapLibre continuity must retain one lifecycle holder without PixelCopy snapshot bitmap allocation'
 );
 
 ok(
