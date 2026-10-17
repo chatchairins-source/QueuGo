@@ -8,7 +8,7 @@ import org.junit.Test
 import java.io.File
 
 class RiderProofPersistenceTest {
-    private fun stage(): String = InstrumentationRegistry.getArguments().getString("stage") ?: "cash_collection"
+    private fun stage(): String = InstrumentationRegistry.getArguments().getString("stage") ?: "photo_captured"
 
     private fun isolatedContext(): android.content.Context {
         val base = InstrumentationRegistry.getInstrumentation().targetContext
@@ -32,7 +32,7 @@ class RiderProofPersistenceTest {
             deliveryAddress = "test delivery", deliveryLat = 14.98, deliveryLng = 103.11,
             deliveryFee = 25.0, marketOrderId = null,
             arrivedShopAt = if (stage == "navigating_merchant") null else "2026-10-14T00:00:00Z",
-            arrivedCustomerAt = if (stage in setOf("arrived_customer", "photo_captured", "cash_collection")) "2026-10-14T00:01:00Z" else null,
+            arrivedCustomerAt = if (stage in setOf("arrived_customer", "photo_captured", "photo_captured")) "2026-10-14T00:01:00Z" else null,
             shopCash = 100.0, customerCash = 125.0)
     }
 
@@ -46,11 +46,11 @@ class RiderProofPersistenceTest {
             .putBoolean(riderNavigationKey(job), stage in setOf("navigating_merchant", "navigating_customer"))
             .commit())
         val store = RiderPendingProofStore(context)
-        if (stage in setOf("pickup_verification", "photo_captured", "cash_collection")) {
+        if (stage in setOf("pickup_verification", "photo_captured", "photo_captured")) {
             store.saveVerification("process-kill-test", RiderVerificationResume("test-order",
-                if (stage == "pickup_verification") "pickup" else "delivery", null, stage == "cash_collection"))
+                if (stage == "pickup_verification") "pickup" else "delivery", null, false))
         }
-        if (stage in setOf("photo_captured", "cash_collection")) {
+        if (stage in setOf("photo_captured", "photo_captured")) {
             val dir = File(context.filesDir, "queuego-evidence").apply { mkdirs() }
             val file = File(dir, "proof-process-kill-test.jpg")
             val image = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888)
@@ -82,9 +82,8 @@ class RiderProofPersistenceTest {
                 context.getSharedPreferences("rider_navigation", 0).getBoolean(riderNavigationKey(snapshot.activeJob!!), false))
             val workflow = store.loadVerification("process-kill-test")
             if (stage == "pickup_verification") assertEquals("pickup", workflow!!.mode)
-            if (stage in setOf("photo_captured", "cash_collection")) {
-                assertEquals(stage == "cash_collection", workflow!!.collection)
-                val draft = store.loadConfirmedMatching("process-kill-test", RIDER_PROOF_SLOT_DELIVERY,
+            if (stage in setOf("photo_captured", "photo_captured")) {
+                                val draft = store.loadConfirmedMatching("process-kill-test", RIDER_PROOF_SLOT_DELIVERY,
                     "test-order", "delivery", null)
                 assertNotNull(draft)
                 val bitmap = context.contentResolver.openInputStream(android.net.Uri.parse(draft!!.uri))?.use {
@@ -105,7 +104,7 @@ class RiderProofPersistenceTest {
         }
     }
 
-    @Test fun savedCameraFileAndCashStageSurviveStoreRecreation() {
+    @Test fun savedCameraFileAndSingleProofWorkflowSurviveStoreRecreation() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val user = "proof-persistence-test"
         val dir = File(context.filesDir, "queuego-evidence").apply { mkdirs() }
@@ -119,12 +118,12 @@ class RiderProofPersistenceTest {
             file.outputStream().use { image.compress(Bitmap.CompressFormat.JPEG, 90, it) }
             image.recycle()
             assertNotNull(RiderPendingProofStore(context).promoteCapture(user, RIDER_PROOF_SLOT_DELIVERY))
-            first.saveVerification(user, RiderVerificationResume("test-order", "delivery", null, true))
+            first.saveVerification(user, RiderVerificationResume("test-order", "delivery", null))
             // Drop every store instance; re-read the same durable on-disk identity.
             val resumed = RiderPendingProofStore(context)
             assertEquals(uri.toString(), resumed.loadConfirmedMatching(user, RIDER_PROOF_SLOT_DELIVERY,
                 "test-order", "delivery", null)?.uri)
-            assertTrue(resumed.loadVerification(user)!!.collection)
+            assertEquals("delivery", resumed.loadVerification(user)!!.mode)
             assertNull(resumed.loadConfirmedMatching(user, RIDER_PROOF_SLOT_DELIVERY, "another-order", "delivery", null))
             // Clearing Android cache cannot remove the confirmed filesDir photo.
             File(context.cacheDir, "queuego-evidence").deleteRecursively()
