@@ -358,7 +358,7 @@ ok(riderApi.includes('/functions/v1/queuego-push')&&riderApi.includes('"subscrib
 ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes('UUID.randomUUID().toString()'),'Rider push subscription must use a stable UUID device id');
 ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
 ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
-ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
+ok(source.includes('QueueGoRiderNavigationMap(')&&gradle.includes('implementation(project(\":rider-navigation-map\"))')&&read('rider-navigation-map/build.gradle.kts').includes('org.maplibre.gl:android-sdk-opengl:13.5.3'),'native Rider must include QueueGo MapLibre navigation host');
 const riderJobDock=read('rider/src/main/java/com/queuego/rider/RiderJobDock.kt');
 ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
    riderApp.includes('RiderJobDock(')&&riderApp.includes('val dockKey = when {')&&
