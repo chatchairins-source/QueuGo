@@ -47,6 +47,9 @@ assert(locationService.includes('NAVIGATION_LOCATION_INTERVAL_MS = 500L')&&
   locationService.includes('LocationRequest.Builder(')&&
   locationService.includes('Priority.PRIORITY_HIGH_ACCURACY')&&
   locationService.includes('MutableStateFlow<NavigationMapFix?>')&&
+  locationService.includes('fun riderResolveTravelBearing(')&&
+  locationService.includes('motionBearing = previous?.let')&&
+  locationService.includes('abs(riderShortestBearingDelta(motion, raw)) > 65f')&&
   integration.includes('RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()')&&
   integration.includes('NavigationRouteCoordinator')&&
   integration.includes('Channel.CONFLATED')&&
@@ -309,6 +312,7 @@ assert(route.includes('NavigationRouteInstruction')&&
   'Longdo route parsing must preserve maneuver instructions and road names for in-app guidance');
 assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('routeBearingOpposesMotion')&&
+  cameraPolicy.includes('routeBearingDelta > 110f')&&
   cameraPolicy.includes('routeBearingDelta > 75f')&&
   cameraPolicy.includes('previousRouteDelta == null || previousRouteDelta > 75f')&&
   cameraPolicy.includes('speedMetersPerSecond >= 18f')&&
