@@ -107,6 +107,12 @@ class RiderNavigationIntegrationTest {
         assertFalse(riderNavigationAutoFollow(true, NavigationViewMode.OVERVIEW))
     }
 
+    @Test fun smoothnessRoadTestCanEnableIdleFollowWithoutChangingDefaultPolicy() {
+        assertTrue(riderNavigationAutoFollow(false, NavigationViewMode.FOLLOW, smoothnessTestMode = true))
+        assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.FREE_PAN, smoothnessTestMode = true))
+        assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.OVERVIEW, smoothnessTestMode = true))
+    }
+
     @Test fun targetedOfferCountsAsNavigationWorkAndStartsFollowCamera() {
         val offeredStops = riderNavigationStops(
             job(status = "searching_rider"),
