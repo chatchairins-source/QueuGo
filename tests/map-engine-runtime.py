@@ -64,6 +64,8 @@ check('five stop route',len(engine.route({'points':five})['routes'][0]['legs'])=
 check('five by five ETA matrix',len(engine.matrix({'points':five})['durations'])==5)
 optimized=engine.optimize({'points':five});check('five stop optimization fixed endpoints',sorted(optimized['order'])==list(range(5)) and optimized['order'][0]==0 and optimized['order'][-1]==4,optimized['order'])
 check('unverified source restrictions quarantined',set(engine.unresolved_rules)=={2148441,17320674} and set(engine.member_conflicting_rules)=={6982243} and set(engine.direction_conflicting_rules)=={1538817} and len(engine.quarantined_ways)==7)
+runtime_no_u_turn_ids={r['relation_id'] for r in engine.runtime_no_u_turn_rules}
+check('same-way no-U-turn runtime enforcement loaded',6982135 in runtime_no_u_turn_ids and 6982244 in runtime_no_u_turn_ids and len(runtime_no_u_turn_ids)>=10,sorted(runtime_no_u_turn_ids))
 check('planned alternatives avoid unverified rule members',all(not engine.quarantined_ways.intersection(r['osm_way_ids']) for r in routes))
 with engine.db() as db:blocked=db.execute('SELECT coordinates FROM ways WHERE id=170350136').fetchone()
 blocked_line=json.loads(blocked['coordinates']);blocked_points=[{'lon':q[0],'lat':q[1]} for q in [blocked_line[0],blocked_line[-1]]]
