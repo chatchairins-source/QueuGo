@@ -36,13 +36,13 @@ import com.longdo.api.Pin
 import com.longdo.api.type.MapLocation
 import com.queuego.shared.R as SharedR
 
-private const val RIDER_MARKER_DEFAULT_ANIMATION_MS = 460L
-private const val RIDER_MARKER_MIN_ANIMATION_MS = 120L
-private const val RIDER_MARKER_MAX_ANIMATION_MS = 600L
-private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 0.55
+private const val RIDER_MARKER_DEFAULT_ANIMATION_MS = 1_050L
+private const val RIDER_MARKER_MIN_ANIMATION_MS = 420L
+private const val RIDER_MARKER_MAX_ANIMATION_MS = 1_200L
+private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 1.05
 private const val RIDER_MARKER_TELEPORT_METERS = 120.0
 private const val CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L
-private const val CAMERA_ROTATION_FALLBACK_MS = 420L
+private const val CAMERA_ROTATION_FALLBACK_MS = 520L
 private const val CAMERA_TRANSFORM_SETTLE_MS = 110L
 private const val CAMERA_MANUAL_ZOOM_HOLD_MS = 12_000L
 private const val CAMERA_BEARING_MIN_DELTA_DEGREES = 0.75f
