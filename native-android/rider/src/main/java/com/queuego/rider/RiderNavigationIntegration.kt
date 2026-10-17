@@ -66,7 +66,9 @@ private fun validNavigationPoint(lat: Double?, lon: Double?): NavigationMapPoint
 internal fun riderNavigationAutoFollow(
     navigationActive: Boolean,
     viewMode: NavigationViewMode
-): Boolean = navigationActive && viewMode == NavigationViewMode.FOLLOW
+): Boolean {
+    return navigationActive && viewMode == NavigationViewMode.FOLLOW
+}
 
 internal fun riderNavigationStops(
     job: RiderJob?,
