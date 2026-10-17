@@ -296,7 +296,8 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   const smoothDuration=force
     ? Math.max(320,Math.min(560,Number(duration)||420))
     : navRotationDuration(previousBearing,target.bearing,cadence,duration,fix?.speed);
-  const container=runSafe(()=>map.getContainer?.())||null;
+  let container=null;
+  try{container=map.getContainer?.()||null}catch(_){}
   const viewportHeight=Math.max(0,Number(container?.clientHeight)||0);
   const ratio=navScreenAnchorRatio(speed);
   const inset=Math.max(0,Math.min(viewportHeight*.6,Number(state.lastBottomInset)||0));
@@ -380,14 +381,38 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
       if(!original)return;
       const touches=Number(original.touches?.length||original.targetTouches?.length||0);
       const state=navState(map);
+      // Before the first GPS fix there is nothing meaningful to free-pan away from.
+      // Keep FOLLOW ownership so a startup/refresh rotate cannot strand the Rider off-screen.
+      if(!state.lastFix){
+        state.follow=true;
+        state.gestureActive=true;
+        return;
+      }
       if(touches>=2){
+        state.follow=true;
         state.gestureActive=true;
         return;
       }
       setNavigationFollow(map,false);
     };
-    const keepGesture=e=>{if(e?.originalEvent&&navState(map).follow)navState(map).gestureActive=true};
-    const endGesture=e=>{if(e?.originalEvent&&navState(map).follow)reanchorNavigationAfterGesture(map)};
+    const keepGesture=e=>{
+      if(!e?.originalEvent)return;
+      const state=navState(map);
+      // Pinch/rotate/pitch are temporary camera transforms, not a request to abandon
+      // Rider follow. This also recovers from MapLibre emitting dragstart before rotatestart.
+      state.follow=true;
+      state.gestureActive=true;
+    };
+    const endGesture=e=>{
+      if(!e?.originalEvent)return;
+      const state=navState(map);
+      if(!state.lastFix){
+        state.gestureActive=false;
+        state.follow=true;
+        return;
+      }
+      if(state.follow)reanchorNavigationAfterGesture(map);
+    };
     try{map.on('dragstart',beginGesture)}catch(_){}
     for(const event of ['zoomstart','rotatestart','pitchstart'])try{map.on(event,keepGesture)}catch(_){}
     for(const event of ['zoomend','rotateend','pitchend'])try{map.on(event,endGesture)}catch(_){}
