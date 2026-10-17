@@ -416,6 +416,7 @@ fun QgLocationPickerMap(
                                     return@addOnCameraIdleListener
                                 }
                                 val target = map.cameraPosition.target
+                                    ?: return@addOnCameraIdleListener
                                 QgMapPoint(target.latitude, target.longitude, 0)
                                     .takeIf { it.valid }
                                     ?.let(holder.onCenterChanged)
