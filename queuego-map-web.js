@@ -175,7 +175,11 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
     }
   }
   const gpsBearing=Number.isFinite(Number(bearing))?navNormalizeBearing(Number(bearing)):null;
-  const desiredBearing=routeBearing!=null?routeBearing:(spd==null||spd<.83?previousBearing:(gpsBearing??previousBearing));
+  const routeBearingDelta=gpsBearing!=null&&routeBearing!=null
+    ? Math.abs(navShortestDelta(gpsBearing,routeBearing))
+    : null;
+  const routeBearingUsable=routeBearing!=null&&!((spd??0)>=2&&gpsBearing!=null&&routeBearingDelta>75);
+  const desiredBearing=routeBearingUsable?routeBearing:(spd==null||spd<.83?previousBearing:(gpsBearing??previousBearing));
   const smoothing=spd==null?.30:spd>=18?.68:spd>=11?.62:spd>=5?.52:spd>=2?.38:.24;
   const smoothedBearing=navSmoothBearing(previousBearing,desiredBearing,smoothing);
   const cameraBearing=smoothedBearing??0;
@@ -195,7 +199,7 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
   const center=reliable
     ? (navPointAt(reliable.part,Math.min(reliable.geometryDistanceMeters,reliable.progressMeters+lookAhead))||point)
     : (smoothedBearing!=null?(navProjectForward(point,smoothedBearing,navFreeDriveLookAheadMeters(spd))||point):point);
-  return {center,bearing:cameraBearing,pitch,zoom,routeMatch:match,remainingRouteMeters:remaining};
+  return {center,bearing:cameraBearing,pitch,zoom,routeMatch:match,remainingRouteMeters:remaining,routeBearingRejected:routeBearing!=null&&!routeBearingUsable};
 }
 function navState(map){
   let state=navigationStates.get(map);
