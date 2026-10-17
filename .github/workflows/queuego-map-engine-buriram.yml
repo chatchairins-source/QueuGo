@@ -48,6 +48,7 @@ jobs:
           python tests/map-engine-runtime.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/runtime.json
           python tests/map-real-roads.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/real-roads.json
           python ops/maps/audit_turn_restrictions.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/turns.json
+          python ops/maps/diagnose_turn_restrictions.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --audit map-data/evidence/turns.json --output map-data/evidence/turn-diagnostics.json
           python -c "import json; r=json.load(open('map-data/evidence/turns.json')); assert not r['summary'].get('failed',0),r['summary']; print('Uncovered/source-invalid restrictions remain an OPEN release gate:',r['summary'])"
       - name: Actual browser with external requests blocked
         run: |
