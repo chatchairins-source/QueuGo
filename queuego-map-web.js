@@ -15,11 +15,45 @@ const QG_OSM_STYLE={
     {id:'queuego-osm',type:'raster',source:'queuego_osm'}
   ]
 };
+function ensureQueueGoMapCss(){
+  if(document.getElementById('queuego-map-control-css'))return;
+  const style=document.createElement('style');
+  style.id='queuego-map-control-css';
+  style.textContent=`
+    .queuego-map-host .maplibregl-ctrl-attrib{
+      font:9px/13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+      max-width:calc(100% - 8px)!important;
+      padding:1px 22px 1px 5px!important;
+      min-height:18px!important;
+      border-radius:9px!important;
+    }
+    .queuego-map-host .maplibregl-ctrl-attrib-inner,
+    .queuego-map-host .maplibregl-ctrl-attrib a{
+      font-size:9px!important;
+      line-height:13px!important;
+    }
+    .queuego-map-host .maplibregl-ctrl-attrib-button{
+      width:18px!important;
+      height:18px!important;
+      min-width:18px!important;
+      min-height:18px!important;
+      padding:0!important;
+      margin:0!important;
+      border:0!important;
+      border-radius:50%!important;
+      background-size:14px 14px!important;
+      box-shadow:none!important;
+    }
+  `;
+  document.head.appendChild(style);
+}
 const valid=(lat,lng)=>Number.isFinite(Number(lat))&&Number.isFinite(Number(lng))&&
   Number(lat)>=5&&Number(lat)<=21&&Number(lng)>=97&&Number(lng)<=106;
 
 function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=true}={}){
   if(!host||typeof window.maplibregl==='undefined') return null;
+  ensureQueueGoMapCss();
+  host.classList.add('queuego-map-host');
   host.replaceChildren();
   const map=new maplibregl.Map({
     container:host,
