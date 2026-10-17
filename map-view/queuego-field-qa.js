@@ -140,8 +140,22 @@
     state.session.events.push({type:"geolocation_error",at:nowIso(),code:error&&error.code||null,message:error&&error.message||""});
     render();
   }
+  function refreshActiveRoute(){
+    const mapState=root.QueueGoMapView&&root.QueueGoMapView.state;
+    const activeRoute=mapState&&mapState.routes&&mapState.routes[mapState.selectedRoute];
+    if(!mapState||!mapState.navigationActive||!activeRoute||!activeRoute.route_id)return;
+    const nav=state.session&&state.session.navigation;
+    if(!nav)return;
+    if(nav.route_id!==activeRoute.route_id){
+      const previous=nav.route_id||null;
+      nav.active=true;nav.route_id=activeRoute.route_id;nav.route_profile=activeRoute.profile||nav.route_profile||"motorcycle";nav.route_distance_m=Number(activeRoute.distance)||null;
+      state.matchContext={};
+      state.session.events.push({type:"route_changed",at:nowIso(),previous_route_id:previous,route_id:nav.route_id});
+    }
+  }
   async function onFix(position){
     if(!state.recording||!state.session)return;
+    refreshActiveRoute();
     const fix=cleanFix(position);
     if(!finite(fix.lat)||!finite(fix.lon))return;
     const fixAt=Date.parse(fix.at);
