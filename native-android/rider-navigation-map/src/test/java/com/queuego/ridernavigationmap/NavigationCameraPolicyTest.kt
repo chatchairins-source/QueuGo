@@ -79,6 +79,53 @@ class NavigationCameraPolicyTest {
         assertTrue(decision.bearingDegrees!! in 88f..91f)
     }
 
+    @Test fun followCameraBeginsTurningBeforeARealCorner() {
+        val cornerRoute = NavigationRouteSegment(
+            id = "corner",
+            toStopId = "shop",
+            points = listOf(
+                NavigationMapPoint(13.0000, 100.0000),
+                NavigationMapPoint(13.0000, 100.0004),
+                NavigationMapPoint(13.0004, 100.0004)
+            ),
+            style = NavigationRouteStyle.ACTIVE
+        )
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.00030),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f,
+                bearingAccuracyDegrees = 4f
+            ),
+            stops = listOf(
+                NavigationMapStop(
+                    id = "shop",
+                    sequence = 1,
+                    kind = NavigationStopKind.PICKUP,
+                    point = cornerRoute.points.last()
+                )
+            ),
+            routes = listOf(cornerRoute),
+            activeStopId = "shop",
+            followZoom = 17
+        )
+
+        val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)
+
+        assertNotNull(decision)
+        assertTrue(decision!!.bearingDegrees!! < 89f)
+        assertTrue(decision.bearingDegrees!! > 60f)
+        assertTrue(decision.center.latitude > state.rider!!.point.latitude)
+    }
+
+    @Test fun fasterRidingLooksFartherAheadForCameraHeading() {
+        assertTrue(
+            navigationBearingLookAheadMeters(20f, 2_000.0) >
+                navigationBearingLookAheadMeters(4f, 2_000.0)
+        )
+    }
+
     @Test fun matchedRoadWinsOverOppositeGpsCourseAtDrivingSpeed() {
         val eastbound = NavigationRouteSegment(
             id = "eastbound",
