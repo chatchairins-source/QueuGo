@@ -8,7 +8,7 @@ const riderApp=fs.readFileSync('native-android/rider/src/main/java/com/queuego/r
 const riderJobDock=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderJobDock.kt','utf8');
 const moduleBuild=fs.readFileSync('native-android/rider-navigation-map/build.gradle.kts','utf8');
 const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt','utf8');
-const route=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt','utf8');
+const route=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/QueueGoNavigationRouteClient.kt','utf8');
 const cameraPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationCameraPolicy.kt','utf8');
 const overviewPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationOverviewPolicy.kt','utf8');
 const guidance=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationGuidance.kt','utf8');
@@ -282,18 +282,19 @@ assert(guidance.includes('class NavigationProgressTracker')&&
   guidance.includes('shouldReroute')&&guidance.includes('arrived')&&
   guidance.includes('navigationNextInstruction')&&guidance.includes('navigationTurnPhrase'),
   'Navigation guidance must expose progress/ETA, reliable off-route reroute, arrival and turn instructions without Rider business-state coupling');
-assert(route.includes('interface NavigationRouteProvider')&&
-  route.includes('class LongdoNavigationRouteClient')&&
-  route.includes(': NavigationRouteProvider'),
-  'Longdo routing must be injectable behind a provider contract so the standalone coordinator is testable without Production calls');
+assert(route.includes('class QueueGoNavigationRouteClient')&&
+  route.includes(': NavigationRouteProvider')&&
+  integration.includes('QueueGoNavigationRouteClient')&&
+  !integration.includes('LongdoNavigationRouteClient'),
+  'Rider runtime routing must use the QueueGo provider contract with no Longdo route-provider fallback');
 assert(
-  route.includes('LONGDO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
-  route.includes('LONGDO_ROUTE_MAX_FEATURES = 2_048') &&
-  route.includes('LONGDO_ROUTE_MAX_POINTS = 12_000') &&
-  route.includes('readLongdoRouteResponseBounded') &&
-  route.includes('contentLength > LONGDO_ROUTE_RESPONSE_MAX_BYTES') &&
+  route.includes('QUEUEGO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
+  route.includes('QUEUEGO_ROUTE_MAX_STEPS = 2_048') &&
+  route.includes('QUEUEGO_ROUTE_MAX_POINTS = 12_000') &&
+  route.includes('readQueueGoRouteResponseBounded') &&
+  route.includes('contentLength > QUEUEGO_ROUTE_RESPONSE_MAX_BYTES') &&
   !route.includes('response.body?.string()'),
-  'Longdo routing must bound HTTP response, feature and geometry memory before JSON/render allocation');
+  'QueueGo routing must bound HTTP response, maneuver and geometry memory before JSON/render allocation');
 assert(coordinator.includes('class NavigationRouteCoordinator')&&
   coordinator.includes('progressTracker.update')&&
   coordinator.includes('guidance.shouldReroute')&&
@@ -307,9 +308,9 @@ assert(coordinator.includes('ROUTE_PROGRESS_RENDER_STEP_METERS = 10.0')&&
   coordinator.includes('guidance.weakGps || guidance.offRoute'),
   'Active route must shrink monotonically behind the Rider without rebuilding geometry on every GPS tick or trusting unreliable fixes');
 assert(route.includes('NavigationRouteInstruction')&&
-  route.includes('turnCode = properties.optInt("turn", 4)')&&
-  route.includes('roadName = properties.optString("name").trim()'),
-  'Longdo route parsing must preserve maneuver instructions and road names for in-app guidance');
+  route.includes('turnCode = step.optInt("vendor_type", 7)')&&
+  route.includes('roadName = step.optString("name").trim()'),
+  'QueueGo route parsing must preserve QueueGo maneuver instructions and road names for in-app guidance');
 assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('routeBearingOpposesMotion')&&
   cameraPolicy.includes('routeBearingDelta > 110f')&&
@@ -382,9 +383,16 @@ assert(map.includes('PixelCopy is deliberately not scheduled on every GPS tick')
   'Live GPS rendering must not schedule PixelCopy snapshots on every navigation update');
 assert(models.includes('resolvedActiveStopId')&&models.includes('styledRemainingRoutes'),
   'Module must support numbered multi-stop progression independently of RiderJob');
-assert(route.includes('private val apiKey: String')&&route.includes('RouteService/geojson/route')&&
-  !route.includes('347649ca13f49db0d8a599ae35f8de2b'),
-  'Routing key must be injected and never hard-coded into the standalone module');
+assert(route.includes('/map-api/route')&&
+  route.includes('.put("profile", "rider_delivery")')&&
+  route.includes('.put("preference", "fastest")')&&
+  !route.includes('api.longdo.com')&&!route.includes('google.navigation'),
+  'Rider route selection must use QueueGo Map API only with no public routing fallback');
+assert(riderBuild.includes('QG_MAP_SERVICE_BASE_URL')&&
+  integration.includes('queuego.map.service.base_url')&&
+  integration.includes('riderQueueGoMapServiceBaseUrl')&&
+  !integration.includes('riderLongdoNavigationKey'),
+  'QueueGo routing endpoint must be explicitly configured and fail closed when absent');
 assert(workflow.includes(':rider-navigation-map:testDebugUnitTest'),
   'Native Pilot must compile and unit-test the standalone map module');
 assert(models.includes('renderPassCount: Int = 0')&&
