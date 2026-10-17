@@ -10,7 +10,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(riderMarkerFn.includes('qgRemoveOverlay(S.riderMarker)'),false);
  const activeRouteFn=source.slice(source.indexOf('function drawActiveRoute()'),source.indexOf('/* ---------- sheet'));
  eq(activeRouteFn.includes("if(isOfferPreview&&!riderRouteCache)focusRiderNavigation"),true);
- eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob)}'),true);
+ eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}'),true);
  eq(source.includes('syncRiderNavigationCameraMode();'),true);
 
  let now=100000,requests=[],gate=null,serial=0;
@@ -83,7 +83,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(fits.at(-1).points[0].lat,13);
  eq(fits.at(-1).points[1].lat,14);
  eq(fits.at(-1).opts.maxZoom,16);
- eq(run('qgNavigationCameraShouldRun()'),false);
+ eq(run('qgNavigationCameraShouldRun()'),true);
 
  S.openJobs=[];S.activeOrder={id:'o',status:'assigned',pickup_latitude:13.1,pickup_longitude:100.1,delivery_latitude:13.2,delivery_longitude:100.2};
  eq(run('qgNavigationCameraShouldRun()'),true);
