@@ -4580,42 +4580,6 @@ private fun openGoogleMapsInstallPage(context: Context) {
     runCatching { context.startActivity(intent) }
 }
 
-private fun openReturnNavigation(context: Context, state: RiderDeliveryReturn) {
-    if (!hasGoogleMaps(context)) {
-        openGoogleMapsInstallPage(context)
-        return
-    }
-    if (!Settings.canDrawOverlays(context)) {
-        runCatching {
-            context.startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + context.packageName)
-                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-            )
-        }
-        return
-    }
-
-    val query = if (state.shopLatitude != null && state.shopLongitude != null) {
-        state.shopLatitude.toString() + "," + state.shopLongitude.toString()
-    } else {
-        Uri.encode(state.shopAddress ?: state.shopName ?: return)
-    }
-
-    RiderReturnService.start(context)
-    val mapsIntent = Intent(
-        Intent.ACTION_VIEW,
-        Uri.parse("google.navigation:q=" + query + "&mode=d")
-    ).apply {
-        setPackage(GOOGLE_MAPS_PACKAGE)
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    if (!runCatching { context.startActivity(mapsIntent) }.isSuccess) {
-        RiderReturnService.stop(context)
-    }
-}
-
 private fun openAfterWorkRecommendationNavigation(
     context: Context,
     recommendation: RiderAfterWorkRecommendation
