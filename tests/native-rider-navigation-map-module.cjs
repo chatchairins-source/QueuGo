@@ -308,6 +308,9 @@ assert(route.includes('NavigationRouteInstruction')&&
   route.includes('roadName = properties.optString("name").trim()'),
   'Longdo route parsing must preserve maneuver instructions and road names for in-app guidance');
 assert(cameraPolicy.includes('navigationCameraDecision')&&
+  cameraPolicy.includes('routeBearingOpposesMotion')&&
+  cameraPolicy.includes('routeBearingDelta > 75f')&&
+  cameraPolicy.includes('previousRouteDelta == null || previousRouteDelta > 75f')&&
   cameraPolicy.includes('speedMetersPerSecond >= 18f')&&
   cameraPolicy.includes('navigationTilt(')&&
   cameraPolicy.includes('smoothNavigationTilt(')&&
