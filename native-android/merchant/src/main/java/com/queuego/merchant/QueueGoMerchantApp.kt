@@ -1646,7 +1646,7 @@ private fun MerchantOrderDetail(
                 OutlinedButton(
                     onClick = { cancelOpen = true },
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                     colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
                         contentColor = QgRed
                     ),
@@ -1661,7 +1661,7 @@ private fun MerchantOrderDetail(
                 OutlinedButton(
                     onClick = { cancelOpen = true },
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                     colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
                         contentColor = QgRed
                     ),
