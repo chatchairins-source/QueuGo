@@ -614,14 +614,16 @@ ok(
   'Rider navigation-map camera/view-mode Keystore restore and high-frequency persistence must stay off Main'
 );
 
-const riderNavigationRouteClient=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt');
+const riderNavigationRouteClient=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/QueueGoNavigationRouteClient.kt');
+const legacyLongdoRoutePath=path.join(root,'rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt');
 ok(
-  riderNavigationRouteClient.includes('LONGDO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
-  riderNavigationRouteClient.includes('LONGDO_ROUTE_MAX_FEATURES = 2_048') &&
-  riderNavigationRouteClient.includes('LONGDO_ROUTE_MAX_POINTS = 12_000') &&
-  riderNavigationRouteClient.includes('readLongdoRouteResponseBounded') &&
-  !riderNavigationRouteClient.includes('response.body?.string()'),
-  'Rider navigation route HTTP/GeoJSON memory must stay bounded before parse and renderer allocation'
+  riderNavigationRouteClient.includes('QUEUEGO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
+  riderNavigationRouteClient.includes('QUEUEGO_ROUTE_MAX_STEPS = 2_048') &&
+  riderNavigationRouteClient.includes('QUEUEGO_ROUTE_MAX_POINTS = 12_000') &&
+  riderNavigationRouteClient.includes('readQueueGoRouteResponseBounded') &&
+  !riderNavigationRouteClient.includes('response.body?.string()') &&
+  !fs.existsSync(legacyLongdoRoutePath),
+  'Rider QueueGo route HTTP/JSON memory must stay bounded and legacy external route client must stay removed'
 );
 
 const riderNavigationMapRuntime=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
