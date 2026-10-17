@@ -344,6 +344,12 @@ class NavigationCameraPolicyTest {
         assertTrue(small >= 420L)
     }
 
+    @Test fun movingCameraThresholdKeepsPuckFromWalkingAcrossScreen() {
+        assertTrue(navigationCameraMovementThresholdMeters(10f) <= 0.5)
+        assertTrue(navigationCameraMovementThresholdMeters(3f) <= 1.0)
+        assertTrue(navigationCameraMovementThresholdMeters(0.5f) > 2.0)
+    }
+
     @Test fun highSpeedSameTurnFinishesFasterThanLowSpeed() {
         val fast = navigationRotationDurationMillis(
             currentBearing = 0f,
