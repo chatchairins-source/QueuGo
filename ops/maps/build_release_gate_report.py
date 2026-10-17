@@ -18,7 +18,7 @@ def all_runtime_checks(runtime):
     return bool(runtime and runtime.get("checks") and all(x.get("passed") for x in runtime["checks"]))
 
 def road_cases_pass(real):
-    return bool(real and real.get("cases") and not any(x.get("status")=="open" for x in real["cases"]))
+    return bool(real and real.get("cases") and all(x.get("status") in ("passed","passed_excluded","passed_unavailable") for x in real["cases"]))
 
 def browser_pass(browser):
     return bool(browser and browser.get("engine")=="QueueGo/Valhalla" and browser.get("distance",0)>0 and browser.get("rendered",0)>0 and browser.get("sameMap") is True and browser.get("restoration_recomputed") is True and browser.get("retained_on_visibility") is True and not browser.get("external_requests_blocked") and not browser.get("page_errors"))
@@ -68,7 +68,9 @@ def field_summary(field_dir):
         "covered_scenarios":sorted(x for x in scenarios if x),
         "reroute_observed":reroute,
         "arrival_observed":arrival,
-        "complete":complete,
+        "candidate_coverage_complete":complete,
+        "complete":False,
+        "review_required":"Candidate telemetry coverage never certifies physical roads automatically",
     }
 
 def main():

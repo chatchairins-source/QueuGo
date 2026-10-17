@@ -21,6 +21,16 @@ ok(mod.directional_pass({"well_formed_motorcycle_gate":True,"summary":{"passed_d
 ok(not mod.directional_pass({"well_formed_motorcycle_gate":False,"summary":{}}),"directional false fails")
 for status in ('failed','uncovered','uncovered_via_way'):
     ok(not mod.directional_pass({'well_formed_motorcycle_gate':True,'summary':{status:1}}),'summary cannot override '+status)
+for status in ('failed','unknown',None):
+    ok(not mod.road_cases_pass({'cases':[{'status':status}]}),'road status fails closed: '+str(status))
+# Isolated summary fixtures: even complete candidate coverage cannot certify roads.
+with tempfile.TemporaryDirectory() as directory:
+    scenarios=['village_lane','frontage_road','u_turn','parallel_road','signal_loss','background_foreground']
+    for index,scenario in enumerate(scenarios):
+        Path(directory,str(index)+'.json').write_text(json.dumps({'candidate_evidence':True,'scenario':scenario,'metrics':{'reroute_observations':1,'arrival_observations':1}}))
+    fields=mod.field_summary(directory)
+    ok(fields['candidate_coverage_complete'],'coverage collected')
+    ok(fields['complete'] is False,'candidate coverage never auto-certifies physical road')
 source=path.read_text()
 for token in [
     '"source_member_conflicts"',
