@@ -4,6 +4,10 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
  let checks=0;
  const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
  const root=path.resolve(__dirname,'..');
+ const sharedMap=fs.readFileSync(root+'/queuego-map-web.js','utf8');
+ eq(sharedMap.includes("new maplibregl.AttributionControl({compact:true})"),true);
+ eq(sharedMap.includes("font:9px/13px"),true);
+ eq(sharedMap.includes("width:18px!important"),true);
 
  function queueGoHarness(document){
   let success,error,created=0,removed=0,moves=0,changes=0;
