@@ -82,7 +82,10 @@ def restriction_match(kind,d):
 
 def query_for_pair(via,from_id,from_branch,to_id,to_branch,metres):
     start=point_along(from_branch["geometry"],metres)
-    end=point_along(to_branch["geometry"],metres)
+    # A same-way U-turn probe must not use identical start/end coordinates: that lets
+    # the vendor router satisfy the request as a zero-length or arbitrarily oriented trip.
+    end_metres=metres+17 if from_id==to_id and from_branch["side"]==to_branch["side"] else metres
+    end=point_along(to_branch["geometry"],end_metres)
     incoming=bearing(start,via);outgoing=bearing(via,end)
     q=[
         {"lon":start[0],"lat":start[1],"heading":round(incoming),"heading_tolerance":12,"radius":8,"node_snap_tolerance":0},
