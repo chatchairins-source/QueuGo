@@ -95,9 +95,11 @@ ok(riderLoadingStart>=0&&riderLoginStart>riderLoadingStart&&
    riderLoadingSource.includes('Box(modifier.fillMaxSize())')&&
    !riderLoadingSource.includes('CircularProgressIndicator'),
    'Rider session restoration must stay interaction-blocking but visually silent without a center spinner');
-ok(riderHome.includes('private fun RiderBlueprintBrandPill()')&&riderHome.includes('horizontalArrangement = Arrangement.SpaceBetween')&&
-   riderHome.includes('Text("Queue"')&&riderHome.includes('Text("Go", color = QgRed')&&riderHome.includes('Text("Rider", color = Color(0xFF8D8589)'),
-   'Rider Native home topbar must retain the Production QueueGo Rider brand pill beside online status');
+ok(riderHome.includes('private fun RiderBlueprintSpeedPill(speedKph: Int?)')&&
+   riderHome.includes('speedKph = reliableSpeedKph')&&
+   riderHome.includes('Text("กม./ชม."')&&
+   !riderHome.includes('private fun RiderBlueprintBrandPill()'),
+   'Rider Native home topbar must show live speed beside online status and remove QueueGo branding per owner road-test direction');
 ok(riderHome.includes('shop = offerShopDisplay')&&riderHome.includes('logoUrl = shop?.shopLogo')&&
    riderHome.includes('value = shop?.shopName ?: job.pickupAddress ?: "ร้านค้า"')&&
    riderHome.includes('trailing = if (job.isPassenger) "จุดรับ" else "รับสินค้า"')&&
