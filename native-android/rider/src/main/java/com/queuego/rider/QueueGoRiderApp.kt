@@ -1070,6 +1070,7 @@ private fun RiderHome(
 
     var recenterSignal by remember { mutableStateOf(0) }
     var overviewSignal by remember { mutableStateOf(0) }
+    var routeOverviewActive by remember { mutableStateOf(false) }
     var pendingMapRecenter by remember { mutableStateOf(false) }
 
     val locationPermission = rememberLauncherForActivityResult(
@@ -2678,25 +2679,10 @@ private fun RiderHome(
             }
         }
 
-        if (mapJob != null) {
-            Card(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 116.dp, end = 10.dp)
-                    .size(44.dp)
-                    .clickable { overviewSignal += 1 },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    QgIcon("route", Modifier.size(23.dp), QgRed)
-                }
-            }
-        }
-
         val activeSheetJob = mapJob.takeIf { activeNavigationWork }
+        LaunchedEffect(activeSheetJob?.id) {
+            routeOverviewActive = false
+        }
         val expandedSheetHeight = (maxHeight - 132.dp).coerceAtLeast(0.dp)
         val dockMaximumHeight = if (activeSheetJob != null) {
             // Expanded details leave the top map controls reachable; collapsed height
@@ -2726,6 +2712,22 @@ private fun RiderHome(
             destination = dockDestination,
             maximumHeight = dockMaximumHeight,
             initiallyExpanded = activeSheetJob == null && dockKey != null,
+            mapOverviewActive = activeSheetJob != null && routeOverviewActive,
+            onMapModeToggle = if (activeSheetJob != null) {
+                {
+                    if (routeOverviewActive) {
+                        routeOverviewActive = false
+                        if (ensureLocationPermission()) {
+                            recenterSignal += 1
+                        } else {
+                            pendingMapRecenter = true
+                        }
+                    } else {
+                        routeOverviewActive = true
+                        overviewSignal += 1
+                    }
+                }
+            } else null,
             modifier = dockModifier.onGloballyPositioned { coordinates ->
                 navigationBottomInsetPx = coordinates.size.height + with(navigationDensity) { 68.dp.roundToPx() }
             }
