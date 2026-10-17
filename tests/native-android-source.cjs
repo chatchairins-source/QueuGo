@@ -539,8 +539,11 @@ ok(riderApp.includes('RiderLaundryActiveCard(')&&riderApp.includes('RiderLaundry
 ok(!nativeRealtimeSubscriptions.includes('laundry_rider_'),'Rider must not subscribe to shop-managed Laundry dispatch');
 ok(riderApi.includes('"queuego_route_bundle_active_orders"')&&riderApi.includes('"queuego_route_bundle_candidates"')&&riderApi.includes('"bundle_claim"'),'Rider Native must use Production Route Bundle reads and idempotent claim');
 ok(riderApp.includes('RiderRouteBundlePanel(')&&riderApp.includes('bundleOrders = snapshot?.bundle?.activeOrders.orEmpty()'),'Rider Native Home must render Route Bundle state and pass every stop to Longdo');
-ok(riderMap.includes('bundleOrders: List<RiderBundleOrder> = emptyList()')&&
-   riderMap.includes('val pickupOrder = numberedOrders.sortedWith')&&
-   riderMap.includes('val dropOrder = numberedOrders.sortedWith')&&
-   riderMap.includes('pickupOrder.size + index + 1'),
-   'Rider Native Longdo must render every live Route Bundle stop with stable pickup-then-drop numbering');
+const riderNavigationIntegration=read('rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
+ok(riderNavigationIntegration.includes('bundleOrders: List<RiderBundleOrder>')&&
+   riderNavigationIntegration.includes('val pickups = usable.sortedWith')&&
+   riderNavigationIntegration.includes('compareBy<RiderBundleOrder> { it.bundleSequence }')&&
+   riderNavigationIntegration.includes('compareBy<RiderBundleOrder> { it.dropRank }')&&
+   riderNavigationIntegration.includes('val offset = pickups.size')&&
+   riderNavigationIntegration.includes('sequence = offset + index + 1'),
+   'Rider Native QueueGo navigation must render every live Route Bundle stop with stable pickup-then-drop numbering');
