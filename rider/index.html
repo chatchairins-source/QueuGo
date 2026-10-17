@@ -284,11 +284,17 @@ function qgLaunchGoogleNavigation(target){
 function qgNavigateInApp(lat,lng){
   const target={lat:Number(lat),lng:Number(lng)};
   if(!validRiderCoordinate(target.lat,target.lng)){toast('พิกัดปลายทางยังไม่พร้อม');return false}
-  if(S.map&&S.pos&&validRiderCoordinate(S.pos.lat,S.pos.lng)){
-    focusRiderNavigation(S.map,S.pos,target);
-    drawActiveRoute();
+  if(!S.map||!S.pos||!validRiderCoordinate(S.pos.lat,S.pos.lng)){
+    toast('QueueGo Navigation ยังรอตำแหน่ง GPS');
+    return false;
   }
-  return qgLaunchGoogleNavigation(target);
+  riderRouteOverviewActive=false;
+  qgSyncCardMapMode();
+  window.QueueGoMapWeb?.setNavigationMode?.(S.map,true);
+  qgFollowRiderCamera(true,520);
+  drawActiveRoute();
+  toast('เริ่มนำทางด้วย QueueGo');
+  return true;
 }
 
 /* order status <-> db column + note tag, matching the main QueueGo app */
