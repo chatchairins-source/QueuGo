@@ -75,6 +75,7 @@ ok(freeDrive,'free-drive camera decision');
 ok(freeDrive.center.lng>103,'free-drive 3D camera should look ahead in the travel direction');
 ok(freeDrive.center.lng<103.001,'free-drive look-ahead must stay bounded instead of jumping far ahead');
 ok(freeDrive.pitch>0,'free-drive smoothness test must retain 3D pitch without an active route');
+ok(freeDrive.pitch>=44,'free-drive road test should keep a clearly visible 3D perspective');
 
 const easeCalls=[];
 const map={
@@ -92,6 +93,8 @@ ok(easeCalls[0].pitch>0,'follow transition must include pitch');
 ok(Number.isFinite(easeCalls[0].bearing),'follow transition must include bearing');
 ok(typeof easeCalls[0].easing==='function','follow rotation must use a smooth easing curve');
 ok(easeCalls[0].duration>=320,'follow rotation should not snap instantly');
+ok(easeCalls[0].easing(.25)>.03,'camera easing must retain non-zero edge velocity between GPS samples');
+ok(typeof Q.moveMarkerSmooth==='function','QueueGo Map must expose cancellable smooth marker movement');
 
 Q.setNavigationFollow(map,false);
 eq(Q.followNavigationCamera(map,{lat:15,lng:103.003,speed:8,bearing:90},straight),null,'free pan must suspend automatic follow');
