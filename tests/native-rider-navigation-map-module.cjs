@@ -121,14 +121,18 @@ assert(map.includes('fun retainAcrossVisibilityLoss()')&&
 assert(map.includes('MotionEvent.ACTION_MOVE')&&
   map.includes('MotionEvent.ACTION_POINTER_DOWN')&&
   map.includes('ViewConfiguration.get(context).scaledTouchSlop')&&
+  map.includes('event.pointerCount >= 2')&&
+  map.includes('holder.beginNavigationTransformGesture()')&&
+  map.includes('holder.endNavigationTransformGesture()')&&
   map.includes('currentUserGesture.value()')&&
   map.includes('holder.view?.setOnTouchListener(null)')&&
   integration.includes('NavigationViewModeController')&&
-  integration.includes('val followRider = viewModeState.mode == NavigationViewMode.FOLLOW')&&
+  integration.includes('riderNavigationAutoFollow')&&
+  integration.includes('navigationActive && viewMode == NavigationViewMode.FOLLOW')&&
   integration.includes('viewModeState = viewModeController.onUserGesture()')&&
   integration.includes('viewModeState = viewModeController.onRecenter()')&&
   integration.includes('followRider = followRider'),
-  'Manual drag or pinch must suspend navigation follow until the Rider explicitly recenters');
+  'One-finger drag must enter FREE_PAN, while two-finger transform gestures stay follow-owned and smoothly re-anchor');
 
 assert(
   integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false')&&
