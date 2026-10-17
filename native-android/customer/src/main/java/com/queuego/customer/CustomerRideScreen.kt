@@ -212,10 +212,11 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             subtitle = if (editing == "pickup")
                 "ใช้ตำแหน่งปัจจุบันอัตโนมัติ หรือเลื่อนแผนที่เพื่อเลือกเอง"
             else
-                "เลื่อนแผนที่เพื่อเลือกจุดหมาย หรือใช้ GPS หากต้องการ",
+                "แผนที่จะเริ่มใกล้จุดรับ ลากไปยังจุดส่งแล้วกดเลือกจุดกึ่งกลางแผนที่",
             saveLabel = "ใช้จุดนี้",
             autoUseGps = editing == "pickup",
-            mapHeight = 300.dp
+            mapHeight = 330.dp,
+            cameraLocation = if (editing == "destination" && original == null) pickup else original
         )
         return
     }
