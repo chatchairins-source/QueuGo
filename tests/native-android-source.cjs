@@ -356,13 +356,17 @@ ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow
 ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
 const riderJobDock=read('rider/src/main/java/com/queuego/rider/RiderJobDock.kt');
 ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
-   riderApp.includes('RiderJobDock(')&&riderApp.includes('jobKey = activeSheetJob?.id')&&
+   riderApp.includes('RiderJobDock(')&&riderApp.includes('val dockKey = when {')&&
+   riderApp.includes('activeSheetJob != null -> activeSheetJob.id')&&
+   riderApp.includes('snapshot?.offeredJob != null -> null')&&
+   riderApp.includes('else -> "home:" + (snapshot?.online == true).toString()')&&
+   riderApp.includes('initiallyExpanded = activeSheetJob == null && dockKey != null')&&
    riderApp.includes('(maxHeight * 0.62f)')&&
    riderApp.includes('navigationBottomInsetPx = coordinates.size.height + with(navigationDensity) { 68.dp.roundToPx() }')&&
    riderJobDock.includes('rememberSaveable(jobKey)')&&riderJobDock.includes('.draggable(')&&
    riderJobDock.includes('onClick = ::toggle')&&riderJobDock.includes('Modifier.weight(1f).fillMaxWidth().clipToBounds().verticalScroll(scroll)')&&
    !riderJobDock.includes('AndroidView')&&riderApp.includes('recenterSignal'),
-   'Rider job dock must expand/collapse over retained map, preserve card content and measure camera inset including bottom navigation');
+   'Rider job dock must expand/collapse over retained map, preserve targeted offer visibility, restore idle card size and measure camera inset including bottom navigation');
 ok(riderApp.includes('var auth by remember { mutableStateOf<QueueGoAuth?>(null) }')&&
    riderApp.includes('var restoring by remember { mutableStateOf(true) }')&&
    riderApp.includes('val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&
