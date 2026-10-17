@@ -346,8 +346,12 @@ assert(riderApp.includes('RiderBlueprintSpeedPill')&&
 assert(riderJobDock.includes('initiallyExpanded: Boolean = false')&&
   riderJobDock.includes('mutableStateOf(initiallyExpanded)')&&
   riderJobDock.includes('clickable(role = Role.Button')&&
-  riderApp.includes('initiallyExpanded = activeSheetJob == null && dockKey != null'),
-  'Idle/active Rider card must support tap-to-collapse and restore to its original expanded size while targeted offers stay visible');
+  riderJobDock.includes('mapOverviewActive: Boolean = false')&&
+  riderJobDock.includes('if (mapOverviewActive) "ไปที่" else "ภาพรวม"')&&
+  riderApp.includes('initiallyExpanded = activeSheetJob == null && dockKey != null')&&
+  riderApp.includes('mapOverviewActive = activeSheetJob != null && routeOverviewActive')&&
+  riderApp.includes('overviewSignal += 1')&&riderApp.includes('recenterSignal += 1'),
+  'Idle/active Rider card must support collapse/restore and active work must toggle route overview back to Rider follow while targeted offers stay visible');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');
