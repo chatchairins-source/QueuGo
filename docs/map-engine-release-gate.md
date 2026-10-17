@@ -29,3 +29,10 @@ The CI candidate job fails on observed illegal turns but does not silently conve
 Runtime policy now fails closed on **all three member ways** of the two malformed relations. Route/alternatives/optimization/matching validate actual traversed way IDs; matrix reachable pairs are audited against the same exclusions and return null if rejected. Native graph data stays unchanged and source tags are preserved; this is an explicit QueueGo uncertainty policy, not an invented traffic rule. Region coverage around those ways is unavailable until independent verification. Map rendering/GPS display can continue.
 
 Field inspection reference: relation 17320674 has source node at **14.9939137, 103.1069056**; its approach/departure roles are unknown. Relation 2148441 has only from-way 160599219; **15.0133018, 102.8373594** is a representative source vertex on that way, NOT an asserted junction location. Verify actual signs/directions before replacing quarantine. No OSM edits or guessed source repairs were made.
+
+
+## Physical field QA tooling — READY, evidence still OPEN
+
+The candidate now includes an opt-in `/map-view/?field-qa=1` recorder plus `ops/maps/validate_field_evidence.py`. The recorder stays hidden during normal map use, never uploads raw GPS automatically, captures package identity, accepted GPS fixes, shared-core map matching, active-route progress, GPS gaps and background/foreground transitions, and exports versioned JSON for owner-controlled review.
+
+Validation is fail-closed: a tool pass is only **candidate physical evidence**, never certification and never an automatic release-gate close. Required real sessions remain village lane, frontage/service-road behavior, U-turn, parallel-road GPS, signal-loss/recovery, background→foreground, reroute and arrival. See `docs/map-field-qa.md`.
