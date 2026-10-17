@@ -778,7 +778,7 @@ function disposeRiderMap(){
 }
 function validRiderCoordinate(lat,lon){return lat!==null&&lat!==undefined&&lat!==''&&lon!==null&&lon!==undefined&&lon!==''&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lon))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180}
 function qgFiniteOrNull(value){return value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null)}
-function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob)}
+function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}
 function syncRiderNavigationCameraMode(force=false){
   const Q=window.QueueGoMapWeb,map=S.map;
   if(!Q||!map)return false;
