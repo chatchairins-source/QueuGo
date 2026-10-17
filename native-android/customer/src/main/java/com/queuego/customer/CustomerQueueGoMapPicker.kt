@@ -32,9 +32,7 @@ internal fun CustomerQueueGoMapPicker(
     val currentReady = rememberUpdatedState(onReady)
 
     val view = remember(context) {
-        QueueGoMapLibrePickerView(context).apply {
-            onCreate()
-        }
+        QueueGoMapLibrePickerView(context)
     }
 
     DisposableEffect(view, lifecycleOwner) {
@@ -47,6 +45,7 @@ internal fun CustomerQueueGoMapPicker(
             if (point.valid) currentObserved.value(point)
         }
         view.onReady = { ready -> currentReady.value(ready) }
+        view.onCreate()
 
         fun sync(state: Lifecycle.State) {
             if (state.isAtLeast(Lifecycle.State.STARTED)) view.onStart() else view.onStop()
