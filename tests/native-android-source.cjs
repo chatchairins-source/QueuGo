@@ -140,7 +140,7 @@ ok(customerMain.includes('QueueGoCustomerApp(')&&customerMain.includes('setConte
 ok(merchantMain.includes('QueueGoMerchantApp(')&&merchantMain.includes('setContent')&&!merchantMain.includes('QueueGoRoleNativeApp'),'Merchant must launch full native app, not role shell');
 ok(source.includes('queuego_place_cash_order'),'Customer native checkout must use production cash-order RPC');
 const customerCartCheckout=read('customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt');
-ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(115.dp)')&&customerCartCheckout.includes('QgLongdoLocationPickerMap')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with checkout Longdo map and fixed action dock');
+ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(115.dp)')&&customerCartCheckout.includes('CustomerQueueGoMapPicker')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with QueueGo Map picker and fixed action dock');
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
 ok(customerCartCheckout.includes('checkoutPending: Boolean')&&customerCartCheckout.includes('enabled = !checkoutPending')&&customerCartCheckout.includes('pendingCheckout: PendingCustomerCheckout?')&&customerCartCheckout.includes('p_expected_delivery_fee'),'Customer pending checkout must lock cart edits and render the persisted Production quote');
 ok(source.includes('loadActiveOrder(auth)')&&source.includes('&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned,picked_up,in_progress)'),'Customer checkout must preserve Production active-order guard before creating another order');
@@ -176,23 +176,30 @@ const customerAuthScreen=read('customer/src/main/java/com/queuego/customer/Custo
 const customerGuestShell=read('customer/src/main/java/com/queuego/customer/CustomerGuestShell.kt');
 const customerApp=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
 const customerLocationPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
+const customerQueueGoMapPicker=read('customer/src/main/java/com/queuego/customer/CustomerQueueGoMapPicker.kt');
+const queueGoMapLibrePicker=read('rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoMapLibrePickerView.kt');
+const sharedQueueGoMap=read('shared/src/main/java/com/queuego/shared/QueueGoMapLibreCompose.kt');
+const customerBuild=read('customer/build.gradle.kts');
 const merchantShopSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
-const sharedLongdoMap=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
 ok(
   customerLocationPicker.includes('LaunchedEffect(mapReady)') &&
   customerLocationPicker.includes('autoGpsRequested') &&
-  customerLocationPicker.includes('if (!mapReady || autoGpsRequested) return@LaunchedEffect') &&
-  !customerLocationPicker.includes('delay(80)\n        onGps()'),
-  'Customer location picker must wait for native Longdo readiness before automatic GPS permission handoff'
+  customerLocationPicker.includes('if (!autoUseGps || !mapReady || autoGpsRequested) return@LaunchedEffect') &&
+  !customerLocationPicker.includes('delay(80)\n        onGps()') &&
+  customerLocationPicker.includes('CustomerQueueGoMapPicker(') &&
+  customerQueueGoMapPicker.includes('QgQueueGoLocationPickerMap') &&
+  sharedQueueGoMap.includes('QueueGoMapLibrePickerView') &&
+  queueGoMapLibrePicker.includes('queueGoRasterStyleJson()') &&
+  customerBuild.includes('implementation(project(":rider-maplibre-osm"))'),
+  'Customer location picker must wait for QueueGo Map readiness and reuse the shared MapLibre surface'
 );
 ok(
-  merchantShopSetup.includes('QgLongdoLocationPickerMap(') &&
-  sharedLongdoMap.includes('shared_map_on_resume_failed') &&
-  sharedLongdoMap.includes('shared_map_renderer_state_failed') &&
-  sharedLongdoMap.includes('shared_map_on_pause_failed') &&
-  sharedLongdoMap.includes('shared_map_created_pause_failed') &&
-  sharedLongdoMap.includes('runCatching { activeView.onResume() }'),
-  'Customer/Merchant shared Longdo picker lifecycle must fail closed instead of crashing the native process'
+  merchantShopSetup.includes('QgQueueGoLocationPickerMap(') &&
+  !merchantShopSetup.includes('QgLongdoLocationPickerMap(') &&
+  sharedQueueGoMap.includes('fun QgQueueGoLocationPickerMap(') &&
+  sharedQueueGoMap.includes('view.onCreate()') &&
+  sharedQueueGoMap.includes('view.destroy()'),
+  'Merchant shop location picker must use the shared QueueGo MapLibre lifecycle'
 );
 ok(customerAuthScreen.includes('CustomerBottomNavigation(screen = "login", cartCount = guestCartCount)')&&customerAuthScreen.includes('Spacer(Modifier.height(92.dp))'),'Customer native auth must preserve the Production web fixed four-tab navigation and 92dp content clearance');
 ok(customerAuthScreen.includes('.windowInsetsPadding(WindowInsets.statusBars)')&&customerAuthScreen.includes('padding(horizontal = 12.dp, vertical = 6.dp)')&&customerAuthScreen.includes('.widthIn(max = 720.dp)'),'Customer native auth top bar must preserve Production web safe-area, compact spacing and 720px content width');
@@ -205,7 +212,7 @@ ok(source.includes('CustomerPromotionScreen(')&&source.includes('qg_public_promo
 ok(source.includes('auth: NativeAuth?')&&source.includes('onRequireLogin'),'Customer public shop/Market renderers must share native implementations without fake authenticated actors');
 ok(source.includes('ServiceCategoryScreen')&&source.includes('"category" -> ServiceCategoryScreen'),'Food Drink Grocery Shopping must use dedicated native category pages');
 
-ok(source.includes('CustomerCategoryButton')&&source.includes('.size(54.dp)')&&source.includes('Modifier.size(92.dp)')&&source.includes('top = 13.dp, bottom = 10.dp')&&source.includes('fontSize = 18.sp'),'Customer native Home must preserve approved web location, category, heading and shop-card proportions');
+ok(source.includes('CustomerCategoryButton')&&source.includes('.size(54.dp)')&&source.includes('Modifier.size(88.dp)')&&source.includes('Modifier.size(96.dp)')&&source.includes('top = 13.dp, bottom = 10.dp')&&source.includes('fontSize = 18.sp'),'Customer native Home must preserve approved web location, category, heading and responsive shop-card proportions');
 ok(source.includes('CustomerTopAction(')&&source.includes('R.drawable.qg_nav_bag')&&source.includes('R.drawable.qg_top_bell')&&source.includes('R.drawable.qg_top_user'),'Customer top actions must remain exact icon-first web vectors');
 const merchantMainSource=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
 ok(
@@ -273,7 +280,7 @@ ok(merchantAppSource.includes('runMerchantPushProfileAction')&&
    merchantAppSource.includes('title = "การแจ้งเตือนเบื้องหลัง"')&&
    merchantAppSource.includes('title = "ทดสอบการแจ้งเตือน"'),
    'Merchant profile must use the real native push subscription and server test path rather than a local-only sound check');
-ok(source.includes('MerchantMenuTile')&&source.includes('height(128.dp)')&&source.includes('"จัดการร้าน"'),'Merchant native dashboard must preserve store cover KPI and menu-grid blueprint');
+ok(source.includes('MerchantMenuTile')&&source.includes('"จัดการร้าน"')&&source.includes('QgRemoteImage(shop.logo ?: shop.cover')&&!source.includes('shop.cover, Modifier.fillMaxWidth().height(128.dp)'),'Merchant native dashboard must preserve compact store identity and menu-grid blueprint without the removed full-width cover banner');
 ok(source.includes('RiderBlueprintTopBar')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve approved topbar job-card and accept-countdown blueprint');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
@@ -384,7 +391,7 @@ ok(riderSessionStore.includes('saveHomeSnapshot(')&&riderSessionStore.includes('
 ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.includes('android:alwaysRetainTaskState="true"'),'Rider launcher must reuse its existing task instead of creating a fresh work activity after app switching');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
 const customerManifest=read('customer/src/main/AndroidManifest.xml');
-ok(customerManifest.includes('longdo.map.key')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer Longdo picker must declare map key and location permission');
+ok(customerManifest.includes('ACCESS_FINE_LOCATION')&&customerBuild.includes('implementation(project(":rider-maplibre-osm"))'),'native Customer QueueGo Map picker must declare location permission and MapLibre module');
 ok(source.includes('deviceLocation')&&source.includes('setLocation(MapLocation')&&source.includes('ldmap.removePin')&&source.includes('pushPin'),'native Rider map must use Android GPS and show rider/job pins');
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
@@ -408,7 +415,7 @@ ok(source.includes('shop_support_messages?select=id,sender_user_id,body,created_
 const merchantSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
 const merchantImageUpload=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
 const merchantManifest=read('merchant/src/main/AndroidManifest.xml');
-ok(merchantSetup.includes('QgLongdoLocationPickerMap(')&&merchantSetup.includes('ใช้ตำแหน่ง GPS ปัจจุบัน')&&merchantSetup.includes('บันทึกข้อมูลร้าน'),'Merchant native shop setup must preserve Longdo picker, GPS and save flow');
+ok(merchantSetup.includes('QgQueueGoLocationPickerMap(')&&merchantSetup.includes('ใช้ตำแหน่ง GPS ปัจจุบัน')&&merchantSetup.includes('บันทึกข้อมูลร้าน'),'Merchant native shop setup must preserve QueueGo Map picker, GPS and save flow');
 ok(merchantSetup.includes('mobile_accessories')&&merchantSetup.includes('automotive_motorcycle')&&merchantSetup.includes('home_decor'),'Merchant native Shopping setup must preserve web subcategories');
 ok(merchantImageUpload.includes('/storage/v1/object/merchant-media/')&&merchantImageUpload.includes('12 * 1024 * 1024')&&merchantImageUpload.includes('3 * 1024 * 1024'),'Merchant native shop images must use production merchant-media limits');
 ok(merchantManifest.includes('ACCESS_FINE_LOCATION')&&merchantManifest.includes('longdo.map.key'),'Merchant native setup must declare location and Longdo key');

@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
-        tools:replace="android:label,android:allowBackup,android:fullBackupContent,android:dataExtractionRules"
+        tools:replace="android:label,android:theme,android:allowBackup,android:fullBackupContent,android:dataExtractionRules"
         android:label="QueueGo Merchant"
         android:icon="@mipmap/ic_queuego_launcher"
         android:roundIcon="@mipmap/ic_queuego_launcher"

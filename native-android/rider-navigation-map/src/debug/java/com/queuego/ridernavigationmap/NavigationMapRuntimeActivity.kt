@@ -35,7 +35,7 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             if (mapMounted.value) {
-                RiderNavigationMap(
+                RiderNavigationMapLegacyLongdo(
                     stateKey = "runtime-session",
                     state = mapState.value,
                     modifier = Modifier.fillMaxSize(),

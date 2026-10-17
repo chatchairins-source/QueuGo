@@ -63,15 +63,15 @@ ok(merchantUi.includes('"no_rider_available" -> QgCard')&&merchantUi.includes('�
   'Merchant detail must render a terminal no-rider state');
 ok(merchantUi.includes('"cancelled" -> QgCard')&&merchantUi.includes('ออเดอร์ถูกยกเลิก'),
   'Merchant detail must render cancelled as a terminal state');
-ok(merchantUi.includes('"pending" -> {')&&merchantUi.includes('onAction("accepted", null)')&&merchantUi.includes('Text("ปฏิเสธออเดอร์")'),
+ok(merchantUi.includes('"pending" -> {')&&merchantUi.includes('onAction("accepted", null)')&&merchantUi.includes('Text("ปฏิเสธออเดอร์"'),
   'Merchant pending state must expose accept plus guarded rejection');
-ok(merchantUi.includes('"accepted" -> {')&&merchantUi.includes('ร้านรับออเดอร์แล้ว · รอระบบจัดหา Rider')&&merchantUi.includes('Text("ยกเลิกออเดอร์")'),
+ok(merchantUi.includes('"accepted" -> {')&&merchantUi.includes('ร้านรับออเดอร์แล้ว · รอระบบจัดหา Rider')&&merchantUi.includes('Text("ยกเลิกออเดอร์"'),
   'Merchant accepted compatibility state must wait and retain guarded cancellation');
 ok(merchantUi.includes('"searching_rider" -> {')&&
    merchantUi.includes('รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์')&&
    merchantUi.includes('MerchantReadyEstimateControls(order, busy, onAdjustReady)'),
   'Merchant searching_rider must remain non-preparing while publishing readiness for dispatch');
-ok(merchantUi.includes('"rider_assigned", "assigned" -> {')&&merchantUi.includes('onAction("preparing", null)')&&merchantUi.includes('Text("ยกเลิกออเดอร์")'),
+ok(merchantUi.includes('"rider_assigned", "assigned" -> {')&&merchantUi.includes('onAction("preparing", null)')&&merchantUi.includes('Text("ยกเลิกออเดอร์"'),
   'Merchant rider-assigned state must expose prepare plus guarded cancellation');
 ok(merchantUi.includes('"preparing" -> {')&&merchantUi.includes('onAction("ready", null)'),
   'Merchant preparing state must move to ready');

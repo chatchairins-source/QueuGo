@@ -28,8 +28,7 @@ import kotlinx.coroutines.launch
 internal fun MerchantPromotionScreen(
     auth: NativeAuth,
     shop: MerchantShop,
-    api: MerchantApi,
-    onBack: () -> Unit
+    api: MerchantApi
 ) {
     val scope = rememberCoroutineScope()
     var rows by remember(shop.id) { mutableStateOf<List<MerchantPromotion>>(emptyList()) }
@@ -62,15 +61,9 @@ internal fun MerchantPromotionScreen(
             .padding(horizontal = 12.dp)
     ) {
         Row(
-            Modifier.padding(top = 6.dp, bottom = 8.dp),
+            Modifier.padding(top = 8.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(
-                onClick = onBack,
-                modifier = Modifier.height(38.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)
-            ) { Text("กลับ") }
-            Spacer(Modifier.width(10.dp))
             Text("โปรโมชั่น", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
         }
 
@@ -83,6 +76,10 @@ internal fun MerchantPromotionScreen(
         Spacer(Modifier.height(10.dp))
         OutlinedButton(
             onClick = { creating = !creating },
+            colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFF7356C8)
+            ),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCFC2F2)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (creating) "ปิดฟอร์มสร้างโปรโมชั่น" else "สร้างโปรโมชั่นใหม่")
@@ -124,6 +121,10 @@ internal fun MerchantPromotionScreen(
                 }
                 Spacer(Modifier.height(10.dp))
                 Button(
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF7356C8),
+                        contentColor = Color.White
+                    ),
                     onClick = {
                         val amount = budget.toDoubleOrNull()
                         val period = days.toIntOrNull()

@@ -1307,7 +1307,7 @@ private object RiderNavigationMapRegistry {
  * retains the same MapGLSurfaceView when Home is temporarily unmounted for another Rider tab.
  */
 @Composable
-fun RiderNavigationMap(
+fun RiderNavigationMapLegacyLongdo(
     stateKey: String,
     state: RiderNavigationMapState,
     modifier: Modifier = Modifier,

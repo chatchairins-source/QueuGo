@@ -31,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgLine
-import com.queuego.shared.QgLongdoLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
@@ -261,7 +260,7 @@ internal fun CustomerCheckoutScreen(
                             .background(Color(0xFFF0F1F2))
                             .border(1.dp, QgLine, RoundedCornerShape(15.dp))
                     ) {
-                        QgLongdoLocationPickerMap(
+                        CustomerQueueGoMapPicker(
                             initialPoint = selected?.let { QgMapPoint(it.latitude, it.longitude, 0) },
                             recenterPoint = location?.takeIf { validCheckoutPoint(it.latitude, it.longitude) }
                                 ?.let { QgMapPoint(it.latitude, it.longitude, 0) },

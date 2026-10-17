@@ -19,7 +19,7 @@
 
     <application
         android:label="QueueGo Rider"
-        tools:replace="android:label,android:allowBackup,android:fullBackupContent,android:dataExtractionRules"
+        tools:replace="android:label,android:allowBackup,android:fullBackupContent,android:dataExtractionRules,android:theme"
         android:icon="@mipmap/ic_queuego_launcher"
         android:roundIcon="@mipmap/ic_queuego_launcher"
         android:theme="@style/AppTheme"

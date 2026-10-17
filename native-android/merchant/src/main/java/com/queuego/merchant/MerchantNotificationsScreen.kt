@@ -112,10 +112,10 @@ internal fun MerchantNotificationsScreen(
             Box(
                 Modifier
                     .size(36.dp)
-                    .background(Color(0xFFFFF0F3), RoundedCornerShape(11.dp)),
+                    .background(Color(0xFFEDF4FC), RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                QgIcon("bell", Modifier.size(19.dp), QgRed)
+                QgIcon("bell", Modifier.size(19.dp), Color(0xFF2E6DB4))
             }
             Spacer(Modifier.width(9.dp))
             Column(Modifier.weight(1f)) {
@@ -126,7 +126,7 @@ internal fun MerchantNotificationsScreen(
                     fontSize = 9.sp
                 )
             }
-            Text("ทดสอบเสียง", color = QgRed, fontSize = 9.5.sp, fontWeight = FontWeight.ExtraBold)
+            Text("ทดสอบเสียง", color = Color(0xFF2E6DB4), fontSize = 9.5.sp, fontWeight = FontWeight.ExtraBold)
         }
 
         Spacer(Modifier.height(10.dp))
