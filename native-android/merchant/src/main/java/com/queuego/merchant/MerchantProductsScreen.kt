@@ -199,13 +199,20 @@ internal fun MerchantProductsScreen(
     }
     if (shopCategory == "grocery") {
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.White).padding(12.dp)) {
-            Button(onClick = onAddManual, enabled = !busy,
-                colors = ButtonDefaults.buttonColors(containerColor = QgRed),
-                modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("เพิ่มสินค้าเอง", fontWeight = FontWeight.ExtraBold) }
+            OutlinedButton(
+                onClick = onAddManual,
+                enabled = !busy,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = QgRed),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9AAB2)),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) { Text("เพิ่มสินค้าเอง", fontWeight = FontWeight.ExtraBold) }
             Spacer(Modifier.height(8.dp))
-            Button(onClick = onOpenCatalog, enabled = !busy,
+            Button(
+                onClick = onOpenCatalog,
+                enabled = !busy,
                 colors = ButtonDefaults.buttonColors(containerColor = QgRed),
-                modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("เพิ่มสินค้าจากแคตตาล็อก", fontWeight = FontWeight.ExtraBold) }
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) { Text("เพิ่มสินค้าจากแคตตาล็อก", fontWeight = FontWeight.ExtraBold) }
         }
     }
     }
@@ -616,6 +623,8 @@ internal fun MerchantProductEditorScreen(
                         if (deleteArmed) onDelete(product) else deleteArmed = true
                     },
                     enabled = !busy,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = QgRed),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF0B7BD)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
