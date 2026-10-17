@@ -65,3 +65,10 @@ Restriction relation **6982243** is structurally populated but its declared `to`
 - the to way does **not** contain the via node
 
 QueueGo does not invent a connector or move the via node. The relation is exposed as a `source_member_conflict` and both member ways are quarantined from usable route/matrix/optimization output until the source relation is independently verified. This is separate from malformed relations 2148441/17320674 and the one-way direction conflict 1538817.
+
+## 2026-10-17 current directional/source safety checkpoint
+Directional evidence now covers62 relations:50 passed_directional,5 passed_legacy_via_way,1 passed_runtime_block,4 source_invalid,1 source_member_conflict,1 source_direction_conflict. No failed/uncovered. This supersedes prior sampled/uncovered counts, without closing the source/physical gate.
+
+Malformed20613951 and20613952 each contain multiple via nodes and multiple from ways for no_u_turn. The generic member-cardinality validator quarantines all members rather than interpreting only the first via or guessing an order. OSM member specification: https://wiki.openstreetmap.org/wiki/Relation:restriction . Total source-open relations6, quarantined member ways12. Evidence is evidence/map-engine/turn-restriction-directional.json.
+
+A complete route-edge trace is required: Valhalla edge_walk can collapse a535m real loop into17m and omit quarantined traversals. Shared core retries complete HMM tracing and rejects unverifiable traces; all safety checks use that full sequence. Nearest/single-fix initialization exclude quarantine as well. Explicit private access is rejected absent more-specific profile permission. Current actual graph regression289 checks; actual source road categories/access22 cases, including Nang Rong/Satuek and tunnel. These are graph queries, not field certification. Exact successor CI still applies; no Production deployment is authorized.

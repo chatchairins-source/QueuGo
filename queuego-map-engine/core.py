@@ -213,7 +213,7 @@ class Engine:
         ways=list(dict.fromkeys(e['way_id'] for e in trace_edges if e.get('way_id')))
         # These are explicit planning penalties, not measured historical traffic or a safety guarantee.
         estimated=base+signal_count*EXPECTED_SIGNAL_DELAY_SECONDS
-        route={'distance':distance,'duration':base,'estimatedDuration':estimated,'geometry':{'type':'LineString','coordinates':coordinates},'legs':legs,'profile':profile,'signalCount':signal_count,'restrictionCount':0,'osm_way_ids':ways,'cost_components':{'engine_seconds':base,'signal_expected_delay_seconds':signal_count*EXPECTED_SIGNAL_DELAY_SECONDS,'rough_surface_metres':rough_m,'reliability_penalty_seconds':rough_m/10,'historical_samples':0},'data':self.metadata()}
+        route={'distance':distance,'duration':base,'estimatedDuration':estimated,'geometry':{'type':'LineString','coordinates':coordinates},'legs':legs,'profile':profile,'signalCount':signal_count,'restrictionCount':0,'osm_way_ids':ways,'osm_edge_ids':[e['id'] for e in trace_edges if 'id' in e],'cost_components':{'engine_seconds':base,'signal_expected_delay_seconds':signal_count*EXPECTED_SIGNAL_DELAY_SECONDS,'rough_surface_metres':rough_m,'reliability_penalty_seconds':rough_m/10,'historical_samples':0},'data':self.metadata()}
         if self.quarantined_ways.intersection(ways):raise ValueError('Route touches an unresolved, disconnected-member, or direction-conflicting source turn rule; member ways are quarantined until verified')
         # Enforce known hard exclusions on the actual traversed way IDs. Never invent a detour.
         if ways:
@@ -222,7 +222,7 @@ class Engine:
             for row in rows:
                 tags=json.loads(row['tags']);access=tags.get('motorcycle') if PROFILES[profile]=='motorcycle' else tags.get('motorcar')
                 access=access or tags.get('motor_vehicle') or tags.get('vehicle') or tags.get('access')
-                if tags.get('highway')=='construction' or access=='no':raise ValueError('Engine candidate uses a known closed/inaccessible way')
+                if tags.get('highway')=='construction' or access in ('no','private'):raise ValueError('Engine candidate uses a known closed/inaccessible way')
                 if any('conditional' in key for key in tags):raise ValueError('Conditional road rule requires a supported time-aware package')
         return self._remember(route) if remember else route
     def route(self,body,alternatives=False):
@@ -250,6 +250,17 @@ class Engine:
         result=self._call('locate',{'locations':[point],'costing':costing,'verbose':True})
         edges=result[0].get('edges',[]) if result else []
         edges=[e for e in edges if e.get('edge_info',{}).get('way_id') is not None and e['edge_info']['way_id'] not in self.quarantined_ways]
+        with self.db() as db:
+            eligible=[]
+            for candidate in edges:
+                row=db.execute('SELECT tags FROM ways WHERE id=?',(candidate['edge_info']['way_id'],)).fetchone()
+                if not row:continue
+                tags=json.loads(row['tags'])
+                access=tags.get('motorcycle') if costing=='motorcycle' else tags.get('motorcar')
+                access=access or tags.get('motor_vehicle') or tags.get('vehicle') or tags.get('access')
+                if tags.get('highway')=='construction' or access in ('no','private') or any('conditional' in key for key in tags):continue
+                eligible.append(candidate)
+            edges=eligible
         if not edges:return {'code':'NoSegment','waypoints':[],'data':self.metadata()}
         edge=min(edges,key=lambda e:e.get('distance',float('inf')))
         info=edge.get('edge_info',{})
