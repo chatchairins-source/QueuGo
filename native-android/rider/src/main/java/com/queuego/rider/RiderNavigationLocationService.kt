@@ -30,6 +30,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.abs
 import kotlin.math.max
 
 private const val NAVIGATION_LOCATION_CHANNEL_ID = "queuego_rider_navigation_location"
@@ -40,6 +41,37 @@ private const val NAVIGATION_LOCATION_MIN_DISTANCE_METERS = 0.5f
 private const val NAVIGATION_MAX_ACCURACY_METERS = 80f
 private const val NAVIGATION_MAX_REASONABLE_SPEED_MPS = 55f
 private const val NAVIGATION_STALE_LAST_FIX_MS = 30_000L
+
+internal fun riderShortestBearingDelta(from: Float, to: Float): Float {
+    val a = ((from % 360f) + 360f) % 360f
+    val b = ((to % 360f) + 360f) % 360f
+    return ((b - a + 540f) % 360f) - 180f
+}
+
+internal fun riderResolveTravelBearing(
+    priorBearing: Float?,
+    rawBearing: Float?,
+    motionBearing: Float?,
+    speedMetersPerSecond: Float?
+): Float? {
+    val prior = priorBearing?.takeIf { it.isFinite() }?.let { ((it % 360f) + 360f) % 360f }
+    val raw = rawBearing?.takeIf { it.isFinite() }?.let { ((it % 360f) + 360f) % 360f }
+    val motion = motionBearing?.takeIf { it.isFinite() }?.let { ((it % 360f) + 360f) % 360f }
+    val speed = speedMetersPerSecond?.takeIf { it.isFinite() && it >= 0f }
+
+    if (raw == null) return motion ?: prior
+    if (speed != null && speed >= 2f) {
+        if (motion != null && abs(riderShortestBearingDelta(motion, raw)) > 65f) {
+            return motion
+        }
+        if (prior != null && abs(riderShortestBearingDelta(prior, raw)) > 120f) {
+            if (motion == null || abs(riderShortestBearingDelta(prior, motion)) < 70f) {
+                return motion ?: prior
+            }
+        }
+    }
+    return raw
+}
 
 internal object RiderNavigationLocationStore {
     private val mutableFix = MutableStateFlow<NavigationMapFix?>(null)
@@ -108,6 +140,7 @@ class RiderNavigationLocationService : Service() {
     private var dispatchHeartbeat: Job? = null
     private var callback: LocationCallback? = null
     private var lastAccepted: Location? = null
+    private var lastResolvedBearing: Float? = null
     private var locationUpdatesStarted = false
     private var freshLocationRequest: CancellationTokenSource? = null
 
@@ -264,16 +297,31 @@ class RiderNavigationLocationService : Service() {
             if (distance > maximumJump) return
         }
 
+        val rawBearing = location.bearing.takeIf { location.hasBearing() && it.isFinite() }
+        val speed = location.speed.takeIf { location.hasSpeed() && it.isFinite() && it >= 0f }
+        val motionBearing = previous?.let { prior ->
+            val deltaSeconds =
+                (location.elapsedRealtimeNanos - prior.elapsedRealtimeNanos) / 1_000_000_000.0
+            val distance = prior.distanceTo(location)
+            if (deltaSeconds > 0.0 && deltaSeconds <= 5.0 && distance >= 2.2f) {
+                prior.bearingTo(location).takeIf { it.isFinite() }
+            } else null
+        }
+        val resolvedBearing = riderResolveTravelBearing(
+            priorBearing = lastResolvedBearing,
+            rawBearing = rawBearing,
+            motionBearing = motionBearing,
+            speedMetersPerSecond = speed
+        )
         lastAccepted = Location(location)
+        lastResolvedBearing = resolvedBearing
         RiderNavigationLocationStore.publish(
             NavigationMapFix(
                 point = NavigationMapPoint(location.latitude, location.longitude),
-                bearingDegrees =
-                    location.bearing.takeIf { location.hasBearing() && it.isFinite() },
+                bearingDegrees = resolvedBearing,
                 accuracyMeters =
                     location.accuracy.takeIf { location.hasAccuracy() && it.isFinite() },
-                speedMetersPerSecond =
-                    location.speed.takeIf { location.hasSpeed() && it.isFinite() && it >= 0f },
+                speedMetersPerSecond = speed,
                 elapsedRealtimeNanos = location.elapsedRealtimeNanos,
                 bearingAccuracyDegrees = location.bearingAccuracyDegrees.takeIf {
                     location.hasBearingAccuracy() && it.isFinite() && it >= 0f
