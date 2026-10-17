@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
-import com.queuego.shared.QgLongdoTrackingMap
+import com.queuego.shared.QgTrackingMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
@@ -93,7 +93,7 @@ fun CustomerTrackingMap(order: CustomerOrder, rider: CustomerTrackingRider?) {
         Spacer(Modifier.height(7.dp))
         if (points.isNotEmpty()) {
             key(order.id, attempt) {
-                QgLongdoTrackingMap(
+                QgTrackingMap(
                     points,
                     Modifier.fillMaxWidth().height(mapHeight).clip(RoundedCornerShape(15.dp))
                 ) {
