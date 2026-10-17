@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(p,'utf8');
 const riderRes='native-android/rider/src/main/res/drawable/';
 const asset=name=>read(riderRes+name+'.xml');
 const nav=read('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
-const app=read('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
+const integration=read('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
 const overlay=read('native-android/rider/src/main/java/com/queuego/rider/RiderReturnService.kt');
 
 assert(asset('qg_marker_pickup').includes('#E6002D'));
@@ -18,9 +18,9 @@ assert(nav.includes('NavigationRouteStyle.ACTIVE')&&nav.includes('NavigationRout
 assert(nav.includes('RiderNavigationMapRegistry')&&nav.includes('retainAcrossVisibilityLoss()'));
 assert(!/com\.longdo|LongdoMapAndroidSDK|longdo\.map/i.test(nav));
 
-assert(app.includes('riderNavigationStops('));
-assert(app.includes('compareBy<RiderBundleOrder> { it.bundleSequence }'));
-assert(app.includes('compareBy<RiderBundleOrder> { it.dropRank }'));
+assert(integration.includes('riderNavigationStops('));
+assert(integration.includes('compareBy<RiderBundleOrder> { it.bundleSequence }'));
+assert(integration.includes('compareBy<RiderBundleOrder> { it.dropRank }'));
 assert(overlay.includes('R.drawable.qg_rider_brand_q'));
 assert(!overlay.includes('text = "Q"'));
 
