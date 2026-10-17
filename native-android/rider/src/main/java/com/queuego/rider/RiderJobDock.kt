@@ -54,6 +54,8 @@ internal fun RiderJobDock(
     maximumHeight: Dp,
     modifier: Modifier = Modifier,
     initiallyExpanded: Boolean = false,
+    mapOverviewActive: Boolean = false,
+    onMapModeToggle: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val scroll = rememberScrollState()
@@ -103,20 +105,51 @@ internal fun RiderJobDock(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                Modifier
-                    .align(Alignment.End)
-                    .width(58.dp)
-                    .height(30.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(Color(0xFFF9F6F7)),
-                contentAlignment = Alignment.Center
+            Row(
+                Modifier.align(Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                QgIcon(
-                    "back",
-                    Modifier.size(20.dp).rotate(if (expanded) 270f else 90f),
-                    QgRed
-                )
+                if (onMapModeToggle != null) {
+                    Column(
+                        Modifier
+                            .widthIn(min = 58.dp)
+                            .height(42.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (mapOverviewActive) Color(0xFFFFF0F3) else Color(0xFFF9F6F7))
+                            .clickable(role = Role.Button, onClick = onMapModeToggle)
+                            .padding(horizontal = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        QgIcon(
+                            if (mapOverviewActive) "location" else "route",
+                            Modifier.size(19.dp),
+                            QgRed
+                        )
+                        Text(
+                            if (mapOverviewActive) "ไปที่" else "ภาพรวม",
+                            color = QgRed,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Box(
+                    Modifier
+                        .width(58.dp)
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(99.dp))
+                        .background(Color(0xFFF9F6F7))
+                        .clickable(role = Role.Button, onClickLabel = if (expanded) "ย่อการ์ด" else "เปิดการ์ด", onClick = ::toggle),
+                    contentAlignment = Alignment.Center
+                ) {
+                    QgIcon(
+                        "back",
+                        Modifier.size(20.dp).rotate(if (expanded) 270f else 90f),
+                        QgRed
+                    )
+                }
             }
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
