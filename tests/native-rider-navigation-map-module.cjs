@@ -318,7 +318,7 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   map.includes('nextMap.setCanRotateCamera(navigationActive)')&&
   map.includes('nextMap.setCanTilt(navigationActive)')&&
   integration.includes('riderNavigationAutoFollow')&&
-  integration.includes('return navigationActive && viewMode == NavigationViewMode.FOLLOW')&&
+  integration.includes('navigationActive && viewMode == NavigationViewMode.FOLLOW')&&
   map.includes('activeMap.setTilt(nextTilt)')&&
   map.includes('activeMap.setTilt(0f)')&&
   runtimeActivity.includes('mapTiltDegrees()')&&
