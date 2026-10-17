@@ -256,23 +256,66 @@ internal fun navigationTurnAnticipationFactor(speedMetersPerSecond: Float?): Flo
 internal fun smoothNavigationBearing(
     previous: Float?,
     target: Float?,
-    factor: Float
+    factor: Float,
+    deadbandDegrees: Float = 0.45f
 ): Float? {
     val normalizedTarget = target?.takeIf { it.isFinite() }?.let(::normalizeNavigationBearing)
         ?: return previous?.takeIf { it.isFinite() }?.let(::normalizeNavigationBearing)
     val normalizedPrevious = previous?.takeIf { it.isFinite() }?.let(::normalizeNavigationBearing)
         ?: return normalizedTarget
-    val shortestDelta = ((normalizedTarget - normalizedPrevious + 540f) % 360f) - 180f
-    return normalizeNavigationBearing(normalizedPrevious + shortestDelta * factor.coerceIn(0.05f, 1f))
+    val shortestDelta = navigationShortestBearingDelta(normalizedPrevious, normalizedTarget)
+    if (abs(shortestDelta) < deadbandDegrees.coerceIn(0f, 5f)) return normalizedPrevious
+    return normalizeNavigationBearing(
+        normalizedPrevious + shortestDelta * factor.coerceIn(0.05f, 1f)
+    )
 }
 
 internal fun navigationBearingSmoothingFactor(speedMetersPerSecond: Float?): Float = when {
-    speedMetersPerSecond == null -> 0.35f
-    speedMetersPerSecond >= 18f -> 0.60f
-    speedMetersPerSecond >= 11f -> 0.52f
-    speedMetersPerSecond >= 5f -> 0.44f
-    speedMetersPerSecond >= 2f -> 0.34f
-    else -> 0.24f
+    speedMetersPerSecond == null -> 0.28f
+    speedMetersPerSecond >= 18f -> 0.46f
+    speedMetersPerSecond >= 11f -> 0.42f
+    speedMetersPerSecond >= 5f -> 0.36f
+    speedMetersPerSecond >= 2f -> 0.28f
+    else -> 0.20f
+}
+
+internal fun navigationShortestBearingDelta(from: Float, to: Float): Float {
+    val normalizedFrom = normalizeNavigationBearing(from)
+    val normalizedTo = normalizeNavigationBearing(to)
+    return ((normalizedTo - normalizedFrom + 540f) % 360f) - 180f
+}
+
+internal fun navigationRotationDurationMillis(
+    currentBearing: Float?,
+    targetBearing: Float?,
+    cadenceMillis: Long?,
+    fallbackMillis: Long = 420L
+): Long {
+    if (currentBearing == null || !currentBearing.isFinite() ||
+        targetBearing == null || !targetBearing.isFinite()
+    ) {
+        return fallbackMillis.coerceIn(260L, 760L)
+    }
+    val angle = abs(navigationShortestBearingDelta(currentBearing, targetBearing))
+    val cadence = cadenceMillis
+        ?.takeIf { it > 0L }
+        ?: fallbackMillis
+    val cadenceDuration = (cadence * 0.82)
+        .toLong()
+        .coerceIn(260L, 720L)
+    val angleDuration = (260f + angle * 9f)
+        .toLong()
+        .coerceIn(300L, 900L)
+    return maxOf(cadenceDuration, angleDuration)
+}
+
+internal fun navigationCameraEaseInOut(fraction: Float): Float {
+    val t = fraction.coerceIn(0f, 1f)
+    return if (t < 0.5f) {
+        4f * t * t * t
+    } else {
+        1f - kotlin.math.pow(-2f * t + 2f, 3f) / 2f
+    }
 }
 
 internal fun normalizeNavigationBearing(value: Float): Float =
@@ -310,7 +353,7 @@ internal fun navigationBearingChangedEnough(
 ): Boolean {
     if (next == null) return false
     if (previous == null) return true
-    val delta = abs(((next - previous + 540f) % 360f) - 180f)
+    val delta = abs(navigationShortestBearingDelta(previous, next))
     return delta >= minimumDeltaDegrees.coerceAtLeast(0.5f)
 }
 
