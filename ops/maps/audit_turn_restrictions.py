@@ -26,6 +26,27 @@ with v.db() as db:rules=db.execute('SELECT * FROM turn_restrictions ORDER BY id'
 for rule in rules:
     froms=json.loads(rule['from_ways']);tos=json.loads(rule['to_ways']);vias=json.loads(rule['via_nodes']);viaways=json.loads(rule['via_ways']);kind=rule['restriction'] or ''
     result={'id':rule['id'],'restriction':kind,'from':froms,'to':tos,'via_nodes':vias,'via_ways':viaways}
+    if not froms or not tos or not (vias or viaways):
+        result.update(status='source_incomplete',reason='Restriction is missing required from/to/via members')
+        results.append(result);continue
+    if vias and not viaways and len(vias)==1:
+        via=vias[0]
+        with v.db() as db:
+            def one_way_allows(wid,approach):
+                row=db.execute('SELECT node_ids,tags FROM ways WHERE id=?',(wid,)).fetchone()
+                if not row:return False
+                nodes=json.loads(row['node_ids']);tags=json.loads(row['tags'])
+                if via not in nodes:return False
+                direction=tags.get('oneway:motorcycle',tags.get('oneway'))
+                if direction not in ('yes','1','true','-1'):return True
+                index=nodes.index(via)
+                if direction=='-1':return index<len(nodes)-1 if approach else index>0
+                return index>0 if approach else index<len(nodes)-1
+            from_ok=all(one_way_allows(wid,True) for wid in froms)
+            to_ok=all(one_way_allows(wid,False) for wid in tos)
+        if not from_ok or not to_ok:
+            result.update(status='source_direction_conflict',reason='Restriction members conflict with current one-way travel direction',from_direction_ok=from_ok,to_direction_ok=to_ok)
+            results.append(result);continue
     try:
         with v.db() as db:
             def way(w):return db.execute('SELECT * FROM ways WHERE id=?',(w,)).fetchone()
