@@ -1,0 +1,140 @@
+# QueueGo Active Work Checklist
+
+Last governance checkpoint: `WORKFLOW.md` commit `9439569c15f72568b3398a1072f6d2285c8e7ce7`
+
+This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
+
+## Dependency order
+
+### 0. Work continuity / anti-repeat process
+- Status: DONE
+- Branch: `main`
+- HEAD/commit: `9439569c15f72568b3398a1072f6d2285c8e7ce7`
+- Evidence: `WORKFLOW.md` exists on main and defines startup, checkpoint, successor, release and interruption rules.
+- NEXT: keep this checklist updated after every bounded chunk.
+
+### 1. QueueGo Map / Buriram routing core / unified route authority
+- Source/test status: DONE
+- Release status: BLOCKED
+- Active integration PR: #417
+- Branch: `work-queuego-map-route-authority-unified-20261017`
+- HEAD: `de5c206fb0798115ef1bff8052ddc22358a2d33f`
+- Evidence:
+  - QueueGo RC Tests run 39043592024: SUCCESS
+  - QueueGo Map Engine Buriram run 39043592049: SUCCESS
+- Release blockers:
+  - Production/public hosting not approved
+  - physical Buriram road/GPS certification not complete
+  - Android full offline routing runtime not complete
+- NEXT: do not claim launch-ready; continue unblocked dependent source work while these remain blocked.
+- Superseded/ancestor examples: PR #379 and earlier Local Roads PRs are not restart points when #417 contains their successor integration.
+
+### 2. Rider Web navigation / QueueGo sole route authority
+- Status: IN PROGRESS
+- Active PR: #413
+- Branch: `work-web-rider-queuego-route-authority-20261017`
+- HEAD before fix: `ece9fd795e5e965db9c1c3fbf4cafb27cad4f591`
+- Current CI: QueueGo RC run 39043362341: FAILURE
+- Root cause: stale regression assertion still requires Android navigation to force the Google Maps app package, conflicting with the newer QueueGo in-app navigation authority policy.
+- Evidence: job 117427127897 fails with `Android navigation must force the Google Maps app package`.
+- NEXT: update only the stale test/contract to match the successor policy, run CI, commit checkpoint. Do not reintroduce automatic Google Maps navigation.
+
+### 3. Rider Android navigation / QueueGo route authority
+- Status: IN PROGRESS
+- Active PR: #414
+- Branch: `work-native-rider-queuego-route-authority-20261017`
+- HEAD before fix: `4963b9d4df263ca55d21fd1173dc0121cfcde20c`
+- Current CI: QueueGo Map Engine Buriram run 39048730149: FAILURE
+- Root cause: branch integration gap leaves `admin/index.html` referencing `../catalog/grocery.css?v=20261012` while that local asset is absent on the branch.
+- Evidence: job 117442661425 fails source-integrity with `Broken reference: admin/index.html -> ../catalog/grocery.css?v=20261012`.
+- NEXT: reconcile the missing asset/reference from the newest compatible successor history without reverting navigation work; run exact-head gates.
+- Release blockers after source gate: Native Pilot on exact successor, physical GPS/road/navigation acceptance, QueueGo Map runtime/offline release gates.
+- Superseded: PR #412 is an ancestor; do not restart there.
+
+### 4. Rider online / deployed-schema compatibility
+- Source/test status: DONE on its scoped compatibility fix
+- Release status: BLOCKED
+- PR: #365
+- Branch: `work-native-rider-online-production-compat-20261016`
+- HEAD: `e2f643605124008b311c47ca3c43706bead7d990`
+- Root cause already recorded in PR: deployed Production orders schema lacked optional `ride_distance_km`, causing initial Rider snapshot failure and disabled online switch.
+- Release blocker: authenticated real-device online confirmation remains owner acceptance.
+- NEXT: do not reimplement compatibility logic; physical authenticated verification when owner/device evidence is available.
+
+### 5. Customer Android location/address runtime
+- Status: BLOCKED
+- PRs: #366/#367 ancestry
+- Latest listed dedicated location-runtime head: `4d65d54b9aacdad74d139c80498d592edb7c9102`
+- Remaining evidence: authenticated address/shop switching, process restoration, physical-device crash reproduction/acceptance.
+- NEXT: no claim of device completion until physical evidence exists; avoid reopening older camera/location implementations unless a newer successor proves a regression.
+
+### 6. Passenger Ride
+- Source/backend status: DONE for scoped production-compatible backend
+- Release status: IN PROGRESS / BLOCKED where physical evidence is required
+- PR: #387
+- Branch: `work-ride-production-enable-20261017`
+- HEAD: `d460c7fed64438f1c9fdacae0c2ef5647405ad5f`
+- Evidence: QueueGo RC run 39004653410: SUCCESS
+- NEXT: verify newest descendant integration with current Rider navigation/dispatch; complete unblocked source integration before physical Customer↔Rider E2E. Physical trip/GPS/device evidence remains BLOCKED.
+
+### 7. Continuous dispatch / multi-stop stack
+- Status: IN PROGRESS
+- PR: #325
+- Branch: `work-native-rider-continuous-dispatch-20261015`
+- HEAD: `42a789642bc04f02e99400653f54291ee12ce7fa`
+- Known boundary: Saver remains OFF; live route-bundle cap remains 2; Passenger Ride production enablement and nonzero-fee paths have release dependencies.
+- NEXT: determine whether a newer descendant already contains this work before any modification. Do not restart #325 if credit/Ride/native successors already descend from it.
+
+### 8. Merchant/Rider credit, top-up and GP replacement
+- Source/test status: DONE for staged source on current credit successor chain
+- Release status: BLOCKED
+- Successor chain: #331 -> #332 -> #333
+- Latest listed head: PR #333 `b3d61be03f2150181dbdb6c253b25c785759a243`
+- Evidence in PR chain: credit ledger/retirement/Admin promo tests and race gates pass.
+- Release blockers: `docs/CREDIT-RELEASE-GATE.md`, reviewed migration rollout, live provider verification where paid topups are enabled, authenticated physical-device evidence, controlled Production activation.
+- NEXT: inspect for newer descendant before edits; no Production financial activation without the gate.
+
+### 9. Merchant Grocery catalog
+- Web source status: DONE for deployed web-first 414-image/catalog work as separately validated.
+- Native source/test status: DONE for scoped catalog port
+- Release status: BLOCKED
+- PR: #364
+- Branch: `work-native-merchant-grocery-approved-web-20261016`
+- HEAD: `95ef486d5c7d801c0b76cd82080c2549a4c4c57a`
+- Release blockers: physical-device catalog acceptance and signed-release certification.
+- NEXT: do not confuse 10,000-item source/test coverage with launch readiness; reconcile only through newer native successor if one exists.
+
+### 10. Customer + Merchant Play Store release
+- Status: BLOCKED
+- PR: #384
+- Branch: `work-native-playstore-customer-merchant-20261017`
+- HEAD: `3dfb9e757121d13d9e9ea24e92f5d800e1eec7b4`
+- Blockers: signed release AAB/signing, Play Console Closed Testing and physical acceptance.
+- NEXT: source-side release readiness can be inspected, but publication cannot be marked DONE without signed/Play evidence.
+
+### 11. Express
+- Status: IN PROGRESS (discovery)
+- Current dedicated active successor: not yet proven from open-PR inventory.
+- Known architecture: shared driver platform and continuous dispatch contain Express-related service concepts, but no dedicated newest Express release PR was identified during this checkpoint.
+- NEXT: search current commits/branches/code for the newest Express implementation before writing code. Do not create a duplicate service flow.
+
+### 12. Laundry
+- Status: IN PROGRESS (release-line reconciliation)
+- Older dedicated PR #141 exists, while newer Rider navigation/dispatch successors contain Laundry handling.
+- NEXT: determine the newest descendant containing shop-managed Laundry rules before edits; treat #141 as historical unless proven otherwise.
+
+## Physical / external blockers owner must eventually supply
+
+These are not code-completion claims:
+- real-device authenticated Rider online confirmation;
+- physical GPS/road/navigation test in Buriram, including parallel roads/U-turn/reroute/background-foreground;
+- authenticated Customer↔Rider Passenger Ride physical E2E;
+- physical Merchant catalog acceptance;
+- signing credentials/process and signed release AAB;
+- Play Console Closed Testing;
+- explicitly approved Production/public QueueGo Map hosting;
+- controlled Production credit/payment cutover and provider verification where applicable.
+
+## Superseded rule
+
+Do not treat every open PR as active work. Before touching any older PR, compare ancestry against the newest relevant successor. If newer work contains or replaces it, record it as superseded and continue only from the newer HEAD.
