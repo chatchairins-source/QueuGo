@@ -926,8 +926,7 @@ private fun MerchantShell(
                         MerchantPromotionScreen(
                             auth = auth,
                             shop = activeShop,
-                            api = api,
-                            onBack = { screen = "home" }
+                            api = api
                         )
                     }
                 }
