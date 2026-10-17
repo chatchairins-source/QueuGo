@@ -133,6 +133,7 @@ private class RiderNavigationMapHolder {
     private var lastCameraBearingAnimationAtMs: Long = 0L
     private var navigationTransformGestureActive = false
     private var navigationTransformGestureGeneration = 0
+    private var navigationInteractionEnabled: Boolean? = null
     private var manualFollowZoom: Int? = null
     private var manualFollowZoomUntilMs: Long = 0L
     private var lastCameraFix: NavigationMapPoint? = null
@@ -237,6 +238,26 @@ private class RiderNavigationMapHolder {
     fun beginNavigationPanGesture() {
         clearNavigationGestureOverrides()
         cancelCameraBearingAnimation()
+    }
+
+    private fun syncNavigationInteractionMode(
+        activeMap: com.longdo.api.Map,
+        state: RiderNavigationMapState
+    ) {
+        val enabled = state.remainingStops().isNotEmpty()
+        if (navigationInteractionEnabled == enabled) return
+        runCatching {
+            activeMap.setCanRotateCamera(enabled)
+            activeMap.setCanTilt(enabled)
+        }.onSuccess {
+            navigationInteractionEnabled = enabled
+            if (!enabled) {
+                cancelCameraBearingAnimation()
+                clearNavigationGestureOverrides()
+            }
+        }.onFailure {
+            Log.w("QueueGoNavMap", "navigation_interaction_mode_failed", it)
+        }
     }
 
     private fun animateCameraBearing(
@@ -507,6 +528,7 @@ private class RiderNavigationMapHolder {
         riderMarkerAnimator = null
         cancelCameraBearingAnimation()
         clearNavigationGestureOverrides()
+        navigationInteractionEnabled = null
         map = nextMap
         announcedReplacementMap = null
         riderPin = null
@@ -553,15 +575,16 @@ private class RiderNavigationMapHolder {
                 setDoPreDrawCache(true)
             })
             nextMap.setDrawCrossSign(false)
-            nextMap.setCanRotateCamera(true)
-            nextMap.setCanTilt(true)
+            val navigationActive = lastState.remainingStops().isNotEmpty()
+            nextMap.setCanRotateCamera(navigationActive)
+            nextMap.setCanTilt(navigationActive)
+            navigationInteractionEnabled = navigationActive
             val start = camera?.point?.takeIf { it.valid }
                 ?: lastState.rider?.point?.takeIf { it.valid }
                 ?: lastState.remainingStops().firstOrNull()?.point
                 ?: NavigationMapPoint(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
             nextMap.setLocation(MapLocation(start.longitude, start.latitude))
             nextMap.setZoom(camera?.zoom?.coerceIn(4, 20) ?: 15)
-            val navigationActive = lastState.remainingStops().isNotEmpty()
             val bearing = if (navigationActive) camera?.bearingDegrees ?: lastCameraBearing else 0f
             bearing?.takeIf { it.isFinite() }?.let {
                 nextMap.rotate(((it % 360f) + 360f) % 360f, false)
@@ -723,6 +746,7 @@ private class RiderNavigationMapHolder {
                 lastState.viewMode != NavigationViewMode.OVERVIEW
         lastState = state
         val activeMap = map ?: return
+        syncNavigationInteractionMode(activeMap, state)
         if (!state.followRider || state.viewMode != NavigationViewMode.FOLLOW) {
             clearNavigationGestureOverrides()
             cancelCameraBearingAnimation()
@@ -1399,6 +1423,7 @@ private class RiderNavigationMapHolder {
         lastCameraBearing = null
         lastCameraTilt = null
         lastCameraZoomChangeAtMs = 0L
+        navigationInteractionEnabled = null
         lastPuckRotation = null
         lastPuckOpacity = null
         lastOverviewSignature = null
