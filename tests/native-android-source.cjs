@@ -334,7 +334,7 @@ ok(riderApp.includes('if (current == null) {')&&
    riderApp.includes('Text("ลองเชื่อมต่ออีกครั้ง")')&&
    !riderApp.includes('"กำลังเชื่อมต่อ Longdo Map…"'),
    'Rider refresh errors must keep an existing safe snapshot visible and initial loading must stay silent unless there is a real first-load failure');
-const riderMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
+const riderMap=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
 const nativeRealtimeSubscriptions=read('shared/src/main/java/com/queuego/shared/NativeRealtimeSubscription.kt');
 const riderDispatchLaundryMigration=fs.readFileSync(path.resolve(root,'..','supabase','migrations','20261009044500_rider_dispatch_excludes_active_laundry.sql'),'utf8');
 ok(riderDispatchLaundryMigration.includes("from public.laundry_rider_jobs lj")&&riderDispatchLaundryMigration.includes("lj.status in('assigned','accepted','arrived','collected')"),'automatic Rider dispatch must not offer normal delivery work during an active Laundry leg');
