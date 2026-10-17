@@ -74,11 +74,18 @@ internal fun navigationCameraDecision(
         remainingRouteMeters = remaining,
         accuracyMeters = fix.accuracyMeters
     )
-    val tilt = navigationTilt(
-        speedMetersPerSecond = speed,
-        remainingRouteMeters = remaining,
-        accuracyMeters = fix.accuracyMeters
-    )
+    val tilt = if (state.perspectiveCameraEnabled && reliableRouteMatch == null) {
+        navigationFreeDriveTilt(
+            speedMetersPerSecond = speed,
+            accuracyMeters = fix.accuracyMeters
+        )
+    } else {
+        navigationTilt(
+            speedMetersPerSecond = speed,
+            remainingRouteMeters = remaining,
+            accuracyMeters = fix.accuracyMeters
+        )
+    }
 
     val lookAheadMeters = navigationLookAheadMeters(speed, remaining)
     val center = if (activeRoute != null && match != null && match.offRouteMeters <= ROUTE_BEARING_MAX_OFF_ROUTE_METERS) {
@@ -148,6 +155,22 @@ internal fun navigationTilt(
         speedMetersPerSecond >= 5f -> 44f
         speedMetersPerSecond >= 2f -> 40f
         else -> 34f
+    }
+    return target.coerceIn(0f, 50f)
+}
+
+internal fun navigationFreeDriveTilt(
+    speedMetersPerSecond: Float?,
+    accuracyMeters: Float?
+): Float {
+    val target = when {
+        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 80f -> 28f
+        speedMetersPerSecond == null -> 44f
+        speedMetersPerSecond >= 18f -> 50f
+        speedMetersPerSecond >= 11f -> 50f
+        speedMetersPerSecond >= 5f -> 48f
+        speedMetersPerSecond >= 2f -> 44f
+        else -> 40f
     }
     return target.coerceIn(0f, 50f)
 }
@@ -342,34 +365,37 @@ internal fun navigationRotationDurationMillis(
     currentBearing: Float?,
     targetBearing: Float?,
     cadenceMillis: Long?,
-    fallbackMillis: Long = 420L
+    fallbackMillis: Long = 520L
 ): Long {
     if (currentBearing == null || !currentBearing.isFinite() ||
         targetBearing == null || !targetBearing.isFinite()
     ) {
-        return fallbackMillis.coerceIn(260L, 760L)
+        return fallbackMillis.coerceIn(360L, 1_050L)
     }
     val angle = abs(navigationShortestBearingDelta(currentBearing, targetBearing))
     val cadence = cadenceMillis
         ?.takeIf { it > 0L }
         ?: fallbackMillis
-    val cadenceDuration = (cadence * 0.82)
+    val cadenceDuration = (cadence * 1.08)
         .toLong()
-        .coerceIn(260L, 720L)
-    val angleDuration = (260f + angle * 9f)
+        .coerceIn(520L, 1_150L)
+    val angleDuration = (420f + angle * 8.5f)
         .toLong()
-        .coerceIn(300L, 900L)
+        .coerceIn(520L, 1_200L)
     return maxOf(cadenceDuration, angleDuration)
 }
 
 internal fun navigationCameraEaseInOut(fraction: Float): Float {
     val t = fraction.coerceIn(0f, 1f)
-    return if (t < 0.5f) {
+    val cubic = if (t < 0.5f) {
         4f * t * t * t
     } else {
         val inverse = -2f * t + 2f
         1f - (inverse * inverse * inverse) / 2f
     }
+    // Retain a small linear component so consecutive 1 Hz GPS samples do not
+    // decelerate the camera all the way to zero between every update.
+    return 0.24f * t + 0.76f * cubic
 }
 
 internal fun normalizeNavigationBearing(value: Float): Float =
