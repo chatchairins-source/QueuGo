@@ -22,7 +22,8 @@ assert(api.includes('laundry = laundry'),'Rider snapshot must carry Production l
 assert(api.includes('fallbackStatus = if (name == "pool") "waiting" else "assigned"'),'Laundry pool/active state must preserve Production transition defaults');
 
 assert(!app.includes('snapshot?.laundry?.activeJob?.let(::riderLaundryNavigationTarget)'),'Laundry work must not activate the retired in-app navigation controller');
-assert(app.includes('startQueueGoNavigation("นำทางงานฝากซักด้วยแผนที่ QueueGo")')&&\n  !app.includes('openNavigation(context, laundryJob.asMapJob())'),'Laundry primary navigation must stay inside QueueGo instead of handing control to Google Maps');
+assert(app.includes('startQueueGoNavigation("นำทางงานฝากซักด้วยแผนที่ QueueGo")')&&
+  !app.includes('openNavigation(context, laundryJob.asMapJob())'),'Laundry primary navigation must stay inside QueueGo instead of handing control to Google Maps');
 assert(app.includes('snapshot?.laundry?.activeJob?.asMapJob()'),'QueueGo Rider map must display active laundry endpoints');
 assert(app.includes('RiderLaundryActiveCard('),'Home must render an active laundry card');
 assert(app.includes('RiderLaundryPoolCard('),'Home must render claimable laundry work');
