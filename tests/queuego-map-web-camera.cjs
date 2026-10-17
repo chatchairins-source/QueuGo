@@ -82,6 +82,7 @@ const map={
   bearing:90,
   easeTo:opts=>{easeCalls.push(opts);if(Number.isFinite(opts.bearing))map.bearing=opts.bearing},
   getBearing:()=>map.bearing,
+  getContainer:()=>({clientHeight:1000}),
   fitBounds:(bounds,opts)=>{map.fit={bounds,opts}}
 };
 const followed=Q.followNavigationCamera(map,{
@@ -95,17 +96,24 @@ ok(typeof easeCalls[0].easing==='function','follow rotation must use a smooth ea
 ok(easeCalls[0].duration>=320,'follow rotation should not snap instantly');
 ok(easeCalls[0].easing(.25)>.03,'camera easing must retain non-zero edge velocity between GPS samples');
 ok(typeof Q.moveMarkerSmooth==='function','QueueGo Map must expose cancellable smooth marker movement');
+eq(easeCalls[0].center[0],103.0020,'follow camera center must stay on Rider longitude instead of projected look-ahead');
+ok(Math.abs(easeCalls[0].center[1]-15.00001)<1e-9,'follow camera center must stay on Rider latitude');
+eq(easeCalls[0].offset[0],0,'follow anchor must stay horizontally centered');
+ok(easeCalls[0].offset[1]>=180&&easeCalls[0].offset[1]<=260,'follow anchor must keep Rider in the lower navigation zone');
+eq(Q.navigationScreenAnchorRatio(8),0.72,'medium-speed screen anchor ratio');
 
 const fastTurnCalls=[],slowTurnCalls=[];
 const fastTurnMap={
   bearing:0,
   easeTo:opts=>{fastTurnCalls.push(opts);if(Number.isFinite(opts.bearing))fastTurnMap.bearing=opts.bearing},
-  getBearing:()=>fastTurnMap.bearing
+  getBearing:()=>fastTurnMap.bearing,
+  getContainer:()=>({clientHeight:1000})
 };
 const slowTurnMap={
   bearing:0,
   easeTo:opts=>{slowTurnCalls.push(opts);if(Number.isFinite(opts.bearing))slowTurnMap.bearing=opts.bearing},
-  getBearing:()=>slowTurnMap.bearing
+  getBearing:()=>slowTurnMap.bearing,
+  getContainer:()=>({clientHeight:1000})
 };
 const fastTurn=Q.followNavigationCamera(fastTurnMap,{lat:15,lng:103,speed:20,bearing:90,accuracy:5},[],{duration:520});
 const slowTurn=Q.followNavigationCamera(slowTurnMap,{lat:15,lng:103,speed:3,bearing:90,accuracy:5},[],{duration:520});
@@ -130,6 +138,7 @@ class GestureMap {
   easeTo(opts){this.easeCalls.push(opts);if(Number.isFinite(opts.zoom))this.zoom=opts.zoom;if(Number.isFinite(opts.bearing))this.bearing=opts.bearing}
   getZoom(){return this.zoom}
   getBearing(){return this.bearing}
+  getContainer(){return {clientHeight:1000}}
   setMaxPitch(v){this.maxPitch=v}
   isStyleLoaded(){return true}
   getLayer(){return null}
