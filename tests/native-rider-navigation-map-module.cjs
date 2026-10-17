@@ -5,6 +5,7 @@ const fs=require('fs');
 const settings=fs.readFileSync('native-android/settings.gradle.kts','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 const riderApp=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
+const riderJobDock=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderJobDock.kt','utf8');
 const moduleBuild=fs.readFileSync('native-android/rider-navigation-map/build.gradle.kts','utf8');
 const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt','utf8');
 const route=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt','utf8');
@@ -318,7 +319,8 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   map.includes('activeMap.setZoom(targetZoom, true)')&&
   map.includes('minimumDeltaDegrees = CAMERA_BEARING_MIN_DELTA_DEGREES')&&
   map.includes('CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L')&&
-  map.includes('animateCameraBearing(activeMap, it, now)')&&
+  map.includes('animateCameraBearing(activeMap, it, now, speed)')&&
+  cameraPolicy.includes('speedMetersPerSecond: Float? = null')&&
   map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
   map.includes('activeMap.rotate(rendered, false)')&&
   map.includes('normalizeNavigationBearing(activeMap.getRotate())')&&
@@ -337,6 +339,15 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   runtimeActivity.includes('mapTiltDegrees()')&&
   runtimeTest.includes('followCameraUsesNativePerspectiveAndOverviewFlattens'),
   'Navigation camera must animate position/zoom, smoothly rotate from the live rendered bearing, keep transform gestures in FOLLOW, suppress micro-wobble, look ahead and use native Longdo perspective tilt while flattening Overview');
+assert(riderApp.includes('RiderBlueprintSpeedPill')&&
+  !riderApp.includes('RiderBlueprintBrandPill()')&&
+  riderApp.includes('speedKph = reliableSpeedKph'),
+  'Rider map top-left must show live speed instead of QueueGo branding');
+assert(riderJobDock.includes('initiallyExpanded: Boolean = false')&&
+  riderJobDock.includes('mutableStateOf(initiallyExpanded)')&&
+  riderJobDock.includes('clickable(role = Role.Button')&&
+  riderApp.includes('initiallyExpanded = activeSheetJob == null && dockKey != null'),
+  'Idle/active Rider card must support tap-to-collapse and restore to its original expanded size while targeted offers stay visible');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');
