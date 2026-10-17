@@ -1328,6 +1328,7 @@ function drawLaundryRoute(){
   request.task=(async()=>{
     try{
       const {routes,dist,time}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
+      if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
@@ -1391,6 +1392,7 @@ function drawActiveRoute(){
   request.task=(async()=>{
     try{
       const {routes,dist,time}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lon)},controller.signal);
+      if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
