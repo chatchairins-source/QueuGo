@@ -767,11 +767,10 @@
       }).filter(r=>Number.isFinite(Number(r.lat))&&Number.isFinite(Number(r.lon)));
     }
     function escapeOverpassRegex(value){
-      return String(value||"").replace(/[\\.^$|?*+(){}\[\]]/g,"\\    async function engineGeocode(query){
-      const url=NOMINATIM+"/search?format=jsonv2&addressdetails=1&limit=8&accept-language=th,en&viewbox=102.4,15.8,103.5,14.1&q="+encodeURIComponent(query);
-      const r=await fetchTimeout(url,{headers:{"Accept-Language":"th,en"}},12000);if(!r.ok)throw Error("geocode "+r.status);
-      return await r.json();
-    }").replace(/"/g,'\\"').slice(0,80);
+      return String(value||"")
+        .replace(/[\\.^$|?*+(){}\[\]]/g,function(ch){return "\\"+ch})
+        .replace(/"/g,'\\"')
+        .slice(0,80);
     }
     async function geocodeNominatim(query){
       const url=NOMINATIM+"/search?format=jsonv2&addressdetails=1&limit=8&accept-language=th,en&viewbox=102.4,15.8,103.5,14.1&q="+encodeURIComponent(query);
