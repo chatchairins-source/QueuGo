@@ -48,6 +48,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgLine
 import com.queuego.shared.QgLongdoLocationPickerMap
@@ -63,7 +64,12 @@ internal fun CustomerLocationPickerScreen(
     resolveAddress: suspend (Double, Double) -> String?,
     onSave: (CustomerLocation) -> Unit,
     onBack: () -> Unit,
-    readGps: (suspend () -> CustomerLocation?)? = null
+    readGps: (suspend () -> CustomerLocation?)? = null,
+    title: String = "เลือกที่อยู่จัดส่ง",
+    subtitle: String = "ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง",
+    saveLabel: String = "บันทึกที่อยู่นี้",
+    autoUseGps: Boolean = true,
+    mapHeight: Dp = 150.dp
 ) {
     val draftSaver = remember {
         listSaver<CustomerLocationDraft, Any>(
@@ -135,7 +141,7 @@ internal fun CustomerLocationPickerScreen(
         // is still being created. On physical devices that Activity pause can race
         // Longdo 0.1.8 renderer initialization and close the Customer app.
         // Keep Production behavior (automatic GPS on open) but only after the map is ready.
-        if (!mapReady || autoGpsRequested) return@LaunchedEffect
+        if (!autoUseGps || !mapReady || autoGpsRequested) return@LaunchedEffect
         autoGpsRequested = true
         delay(150)
         lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
@@ -168,7 +174,7 @@ internal fun CustomerLocationPickerScreen(
         ) {
             Box(
                 Modifier
-                    .size(38.dp)
+                    .size(46.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.White)
                     .border(1.dp, QgLine, RoundedCornerShape(12.dp))
@@ -179,15 +185,15 @@ internal fun CustomerLocationPickerScreen(
                     painter = painterResource(R.drawable.qg_shop_back),
                     contentDescription = "ย้อนกลับ",
                     tint = Color(0xFF24272D),
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
             Spacer(Modifier.size(8.dp))
-            Text("เลือกที่อยู่จัดส่ง", fontWeight = FontWeight.ExtraBold)
+            Text(title, fontWeight = FontWeight.ExtraBold)
         }
 
         Text(
-            "ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง",
+            subtitle,
             color = QgMuted
         )
         Spacer(Modifier.height(10.dp))
@@ -195,7 +201,7 @@ internal fun CustomerLocationPickerScreen(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(mapHeight)
                 .semantics { stateDescription = if (mapReady) "แผนที่พร้อมใช้งาน" else "กำลังโหลดแผนที่" }
                 .clip(RoundedCornerShape(14.dp))
                 .background(Color(0xFFF0F1F2))
@@ -220,15 +226,34 @@ internal fun CustomerLocationPickerScreen(
         }
 
         Spacer(Modifier.height(12.dp))
-        OutlinedButton(onClick = ::requestGps, enabled = !gpsBusy && !busy) {
+        Text("วิธีเลือกตำแหน่ง", fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        OutlinedButton(
+            onClick = ::requestGps,
+            enabled = !gpsBusy && !busy,
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) {
             Text(if (gpsBusy) "กำลังอ่านตำแหน่ง GPS…" else "ใช้ตำแหน่ง GPS ปัจจุบัน")
         }
-        gpsMessage?.let { Text(it, color = QgMuted) }
+        Spacer(Modifier.height(7.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF7F8FA), RoundedCornerShape(12.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(12.dp))
+                .padding(horizontal = 12.dp, vertical = 11.dp)
+        ) {
+            Text("หรือเลื่อนแผนที่เพื่อเลือกพิกัดเอง", color = QgMuted, fontWeight = FontWeight.Bold)
+        }
+        gpsMessage?.let {
+            Spacer(Modifier.height(6.dp))
+            Text(it, color = QgMuted)
+        }
 
         Spacer(Modifier.height(8.dp))
         Text(
-            selected?.let { "Lat: %.6f · Lng: %.6f".format(it.latitude, it.longitude) }
-                ?: "Lat: -- · Lng: --",
+            selected?.let { "เลือกพิกัดแล้ว · %.6f, %.6f".format(it.latitude, it.longitude) }
+                ?: "กำลังรอพิกัด",
             color = QgMuted
         )
 
@@ -252,7 +277,7 @@ internal fun CustomerLocationPickerScreen(
             modifier = Modifier.fillMaxWidth().height(52.dp)
         ) {
             if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            else Text("บันทึกที่อยู่นี้", fontWeight = FontWeight.ExtraBold)
+            else Text(saveLabel, fontWeight = FontWeight.ExtraBold)
         }
         Spacer(Modifier.height(26.dp))
     }
