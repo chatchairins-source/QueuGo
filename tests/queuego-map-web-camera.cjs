@@ -66,6 +66,16 @@ const poor=Q.navigationCameraDecision({
 });
 eq(poor.pitch,24,'poor GPS accuracy should reduce perspective');
 
+const freeDrive=Q.navigationCameraDecision({
+  lat:15,lng:103,
+  speed:8,bearing:90,accuracy:5,
+  route:[],previousBearing:90
+});
+ok(freeDrive,'free-drive camera decision');
+ok(freeDrive.center.lng>103,'free-drive 3D camera should look ahead in the travel direction');
+ok(freeDrive.center.lng<103.001,'free-drive look-ahead must stay bounded instead of jumping far ahead');
+ok(freeDrive.pitch>0,'free-drive smoothness test must retain 3D pitch without an active route');
+
 const easeCalls=[];
 const map={
   bearing:90,
@@ -155,4 +165,4 @@ ok(Q.navigationOverview(map,points,{duration:300}),'overview should fit route');
 eq(map.fit.opts.bearing,0,'overview should return north-up');
 eq(map.fit.opts.pitch,0,'overview should return top-down');
 
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Web idle normal map + active-job 3D follow camera, smooth rotation, gesture ownership and overview'}));
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Web free-drive 3D look-ahead + active-job follow, smooth rotation, gesture ownership and overview'}));
