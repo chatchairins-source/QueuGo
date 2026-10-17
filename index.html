@@ -930,6 +930,7 @@ ${qgHomeBannerMarkup(homeSlides)}
 <button class="cat" onclick="go('grocery')"><i>${ico('bottle',25)}</i><b>ร้านขายของชำ</b></button>
 <button class="cat" onclick="location.href='laundry/'"><i>${ico('grid',25)}</i><b>ฝากซัก</b></button>
 <button class="cat" onclick="go('market')"><i>${ico('basket',25)}</i><b>ตลาดสด</b></button>
+<button class="cat" onclick="go('ride')"><i>${ico('car',25)}</i><b>บริการเรียกรถ</b></button>
 <button class="cat" onclick="go('shopping')"><i>${ico('shopping',25)}</i><b>ช้อปปิ้ง</b></button>
 </div></section>
 
@@ -1322,6 +1323,7 @@ addEventListener('hashchange',()=>route());
 <script>QueueGoPush.configure({role:'customer',getAccessToken:()=>token(true)});</script>
 <script src="customer-features.js?v=20261012-chat6"></script>
 <script src="customer-laundry.js?v=20261006-orderlist5"></script>
+<script src="customer-ride.js?v=20261017-web1"></script>
 <script>route();</script>
 <script src="catalog/customer-grocery.js?v=20261012"></script>
 </body>
