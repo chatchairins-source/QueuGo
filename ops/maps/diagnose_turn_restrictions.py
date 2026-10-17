@@ -18,7 +18,8 @@ p.add_argument("--output",required=True)
 a=p.parse_args()
 engine=Engine(a.database,a.config)
 audit=json.loads(Path(a.audit).read_text())
-target_ids={r["id"] for r in audit.get("rules",[]) if r.get("status")!="passed_approach"}
+audit_by_id={r["id"]:r for r in audit.get("rules",[])}
+target_ids={rid for rid,r in audit_by_id.items() if r.get("status")!="passed_approach"}
 
 def heading(a,b):
     return (math.degrees(math.atan2((b[0]-a[0])*math.cos(math.radians(a[1])),b[1]-a[1]))+360)%360
@@ -106,7 +107,12 @@ with engine.db() as db:
         if rule["id"] not in target_ids:continue
         froms=json.loads(rule["from_ways"]);tos=json.loads(rule["to_ways"])
         vias=json.loads(rule["via_nodes"]);viaways=json.loads(rule["via_ways"])
-        item={"id":rule["id"],"restriction":rule["restriction"],"from":froms,"to":tos,"via_nodes":vias,"via_ways":viaways,"probes":[]}
+        source_status=audit_by_id.get(rule["id"],{}).get("status")
+        item={"id":rule["id"],"restriction":rule["restriction"],"from":froms,"to":tos,"via_nodes":vias,"via_ways":viaways,"source_audit_status":source_status,"probes":[]}
+        if source_status in ("source_incomplete","source_direction_conflict"):
+            item["diagnostic_status"]=source_status
+            item["reason"]=audit_by_id[rule["id"]].get("reason")
+            results.append(item);continue
         if not froms or not tos or not (vias or viaways):
             item["diagnostic_status"]="source_incomplete"
             results.append(item);continue
