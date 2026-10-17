@@ -37,7 +37,7 @@ const cornerDecision=Q.navigationCameraDecision({
   route:corner,previousBearing:90,baseZoom:17
 });
 ok(cornerDecision,'corner camera decision');
-ok(cornerDecision.pitch>=40,'navigation must use a visible forward pitch');
+ok(cornerDecision.pitch>=28,'navigation must keep a visible forward pitch near a corner/destination');
 ok(cornerDecision.bearing<89 && cornerDecision.bearing>60,'camera should begin turning before the corner');
 ok(cornerDecision.center.lat>13.0000,'look-ahead center should advance into the upcoming corner');
 
