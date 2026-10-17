@@ -76,6 +76,10 @@ internal fun MerchantPromotionScreen(
         Spacer(Modifier.height(10.dp))
         OutlinedButton(
             onClick = { creating = !creating },
+            colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFF7356C8)
+            ),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCFC2F2)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (creating) "ปิดฟอร์มสร้างโปรโมชั่น" else "สร้างโปรโมชั่นใหม่")
@@ -117,6 +121,10 @@ internal fun MerchantPromotionScreen(
                 }
                 Spacer(Modifier.height(10.dp))
                 Button(
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF7356C8),
+                        contentColor = Color.White
+                    ),
                     onClick = {
                         val amount = budget.toDoubleOrNull()
                         val period = days.toIntOrNull()
