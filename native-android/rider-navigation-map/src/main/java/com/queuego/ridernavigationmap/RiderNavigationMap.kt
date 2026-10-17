@@ -244,7 +244,7 @@ private class RiderNavigationMapHolder {
         activeMap: com.longdo.api.Map,
         state: RiderNavigationMapState
     ) {
-        val enabled = state.remainingStops().isNotEmpty()
+        val enabled = state.perspectiveCameraEnabled || state.remainingStops().isNotEmpty()
         if (navigationInteractionEnabled == enabled) return
         runCatching {
             activeMap.setCanRotateCamera(enabled)
@@ -575,7 +575,7 @@ private class RiderNavigationMapHolder {
                 setDoPreDrawCache(true)
             })
             nextMap.setDrawCrossSign(false)
-            val navigationActive = lastState.remainingStops().isNotEmpty()
+            val navigationActive = lastState.perspectiveCameraEnabled || lastState.remainingStops().isNotEmpty()
             nextMap.setCanRotateCamera(navigationActive)
             nextMap.setCanTilt(navigationActive)
             navigationInteractionEnabled = navigationActive
@@ -595,7 +595,7 @@ private class RiderNavigationMapHolder {
                 lastCameraTilt = it
             }
             render(lastState)
-            if (lastState.remainingStops().isEmpty()) settleIdleCamera(nextMap)
+            if (lastState.remainingStops().isEmpty() && !lastState.perspectiveCameraEnabled) settleIdleCamera(nextMap)
         }.onFailure {
             Log.e("QueueGoNavMap", "map_replacement_setup_failed", it)
             throw it
@@ -650,7 +650,7 @@ private class RiderNavigationMapHolder {
         // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
         // never reconstruct the map just because Rider/order state changed.
         render(lastState)
-        if (lastState.remainingStops().isEmpty()) map?.let(::settleIdleCamera)
+        if (lastState.remainingStops().isEmpty() && !lastState.perspectiveCameraEnabled) map?.let(::settleIdleCamera)
         startRendererIdentityWatch()
         startPuckFreshnessTicker()
         if (!replacementPending) settleContinuityBridge()
@@ -759,7 +759,7 @@ private class RiderNavigationMapHolder {
 
         // End/cancel and idle restoration must flatten even before a fresh fix arrives,
         // including a renderer replacement or an old persisted navigation camera.
-        if (state.remainingStops().isEmpty() && (lastCameraTilt != 0f || lastCameraBearing != 0f)) {
+        if (state.remainingStops().isEmpty() && !state.perspectiveCameraEnabled && (lastCameraTilt != 0f || lastCameraBearing != 0f)) {
             runCatching {
                 activeMap.setTilt(0f)
                 activeMap.rotate(0f, false)
@@ -800,7 +800,7 @@ private class RiderNavigationMapHolder {
             else -> lastOverviewSignature = null
         }
         followedFix?.let { renderRiderPresentation(activeMap, it) }
-        if (state.remainingStops().isEmpty() && (leavingNavigation || restoringFollow)) {
+        if (state.remainingStops().isEmpty() && !state.perspectiveCameraEnabled && (leavingNavigation || restoringFollow)) {
             settleIdleCamera(activeMap)
         }
         // Publish once per applied state even when overlays are structurally unchanged.
@@ -817,7 +817,7 @@ private class RiderNavigationMapHolder {
         val generation = ++idleCameraGeneration
         fun check(attempt: Int) {
             if (disposed || map !== targetMap || generation != idleCameraGeneration ||
-                lastState.remainingStops().isNotEmpty() || !lastState.followRider ||
+                lastState.perspectiveCameraEnabled || lastState.remainingStops().isNotEmpty() || !lastState.followRider ||
                 lastState.viewMode != NavigationViewMode.FOLLOW) return
             // A queued SDK navigation rotation can finish after the immediate idle
             // reset. Observe the actual camera for a short bounded window instead of
@@ -1198,7 +1198,7 @@ private class RiderNavigationMapHolder {
             decision.bearingDegrees,
             minimumDeltaDegrees = CAMERA_BEARING_MIN_DELTA_DEGREES
         )
-        val navigationActive = state.remainingStops().isNotEmpty()
+        val navigationActive = state.perspectiveCameraEnabled || state.remainingStops().isNotEmpty()
         val nextTilt = if (!navigationActive) {
             0f
         } else {
