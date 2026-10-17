@@ -109,7 +109,7 @@ with engine.db() as db:
         vias=json.loads(rule["via_nodes"]);viaways=json.loads(rule["via_ways"])
         source_status=audit_by_id.get(rule["id"],{}).get("status")
         item={"id":rule["id"],"restriction":rule["restriction"],"from":froms,"to":tos,"via_nodes":vias,"via_ways":viaways,"source_audit_status":source_status,"probes":[]}
-        if source_status in ("source_incomplete","source_direction_conflict"):
+        if source_status in ("source_incomplete","source_member_conflict","source_direction_conflict"):
             item["diagnostic_status"]=source_status
             item["reason"]=audit_by_id[rule["id"]].get("reason")
             results.append(item);continue
