@@ -1280,7 +1280,7 @@ function drawLaundryRoute(){
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
-      window.QueueGoMapWeb?.followNavigationCamera?.(map,pos,riderRouteGeometry,{duration:420,baseZoom:17});
+      // Route rendering owns geometry only. GPS Follow is the single camera writer.
       riderRouteCache={scope,map,pos:{...pos},at:Date.now()};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
@@ -1355,7 +1355,7 @@ function drawActiveRoute(){
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
-      window.QueueGoMapWeb?.followNavigationCamera?.(map,pos,riderRouteGeometry,{duration:420,baseZoom:17});
+      // Route rendering owns geometry only. GPS Follow is the single camera writer.
       riderRouteCache={scope,map,pos:{...pos},at:Date.now()};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
