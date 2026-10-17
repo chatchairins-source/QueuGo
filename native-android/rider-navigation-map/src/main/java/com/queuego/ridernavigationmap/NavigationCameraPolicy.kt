@@ -18,7 +18,7 @@ internal fun navigationCameraDecision(
     previousBearingDegrees: Float?
 ): NavigationCameraDecision? {
     val fix = state.rider?.takeIf { it.point.valid } ?: return null
-    val navigationActive = state.remainingStops().isNotEmpty()
+    val navigationActive = state.perspectiveCameraEnabled || state.remainingStops().isNotEmpty()
     if (!navigationActive) {
         return NavigationCameraDecision(
             center = fix.point,
