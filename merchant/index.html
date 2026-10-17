@@ -2268,7 +2268,7 @@ async function qgmFetchSetupReadiness(u){
   {title:'ข้อมูลร้านครบ',done:checks.shop_info===true,note:checks.shop_info?'ชื่อร้าน ผู้ติดต่อ ประเภท ที่อยู่ เบอร์โทร และเวลาทำการครบแล้ว':'กรอกชื่อร้าน ผู้ติดต่อ ประเภท ที่อยู่ เบอร์โทร และเวลาเปิด-ปิด',page:'shop-setup'},
   {title:'รูปหน้าร้าน',done:checks.storefront_image===true,note:checks.storefront_image?'อัปโหลดรูปหน้าร้านสำเร็จแล้ว':'อัปโหลดรูปหน้าร้านจริง',page:'shop-setup'},
   {title:'รูปหน้าปก',done:checks.cover_image===true,note:checks.cover_image?'อัปโหลดรูปหน้าปกสำเร็จแล้ว':'อัปโหลดรูปหน้าปกจริง',page:'shop-setup'},
-  {title:'ตำแหน่งร้าน',done:checks.location===true,note:checks.location?'บันทึกพิกัดร้านแล้ว':'ปักหมุดตำแหน่งร้านบนแผนที่ Longdo',page:'shop-setup'},
+  {title:'ตำแหน่งร้าน',done:checks.location===true,note:checks.location?'บันทึกพิกัดร้านแล้ว':'ปักหมุดตำแหน่งร้านบน QueueGo Map',page:'shop-setup'},
   {title:isLaundry?'บริการฝากซักพร้อมขายอย่างน้อย 1 รายการ':'สินค้า/เมนูพร้อมขายอย่างน้อย 1 รายการ',done:checks.catalog===true||checks.product===true,note:(checks.catalog===true||checks.product===true)?(isLaundry?'มีบริการฝากซักพร้อมขายแล้ว':'มีสินค้า/เมนูพร้อมขายแล้ว'):(isLaundry?'เพิ่มบริการที่มีชื่อ ราคา และเปิดใช้งาน':'เพิ่มสินค้า/เมนูที่มีชื่อ ราคา และเปิดขาย'),page:isLaundry?'shop-laundry':'shop-products'}
  ];
  return {shop,products:[],steps,left:steps.filter(x=>!x.done).length,ready:readiness?.complete===true,readiness};
@@ -2319,7 +2319,7 @@ window.qgmSetupSteps=function(u,shop,products){
  {title:'สร้างบัญชีร้านค้า',done:true,note:'เข้าสู่ระบบบัญชีร้านค้าแล้ว'},
  {title:'ส่งใบสมัครร้านค้า',done:!!shop.id,note:shop.id?'ระบบได้รับข้อมูลร้านแล้ว':'บันทึกข้อมูลร้านเพื่อสร้างใบสมัคร',page:'shop-setup'},
  {title:'กรอกข้อมูลและรูปภาพร้าน',done:!missing.length&&!images.length,note:missing.concat(images).length?'กรุณาเพิ่ม '+missing.concat(images).join(' • '):'ข้อมูลติดต่อ ที่อยู่ และรูปภาพครบแล้ว',page:'shop-setup'},
- {title:'ปักหมุดตำแหน่งร้าน',done:qgIsValidShopCoordinate(data.lat,data.lng),note:qgIsValidShopCoordinate(data.lat,data.lng)?'บันทึกพิกัดร้านแล้ว':'เลือกตำแหน่งหน้าร้านบนแผนที่ Longdo แล้วบันทึก',page:'shop-setup'},
+ {title:'ปักหมุดตำแหน่งร้าน',done:qgIsValidShopCoordinate(data.lat,data.lng),note:qgIsValidShopCoordinate(data.lat,data.lng)?'บันทึกพิกัดร้านแล้ว':'เลือกตำแหน่งหน้าร้านบน QueueGo Map แล้วบันทึก',page:'shop-setup'},
  ...(qgmTopLevelShopCategory(data.category)==='laundry'?[{title:'เตรียมบริการฝากซัก',done:true,note:'หลังร้านผ่านอนุมัติ ให้ตั้งค่าบริการ ราคา และ Rider ในเมนูฝากซัก'}]:[{title:data.category==='grocery'?'เลือกสินค้าและใส่ราคาอย่างน้อย 1 รายการ':'เพิ่มสินค้าอย่างน้อย 1 รายการพร้อมรูป',done:products.some(p=>text(p.name)&&(data.category==='grocery'||text(p.image))&&Number(p.price)>0&&p.available!==false),note:data.category==='grocery'?'เลือกจากสินค้ากลาง เปิดขาย และใส่ราคาของร้าน':'เพิ่มชื่อสินค้า ราคา และรูปสินค้าอย่างน้อย 1 รายการ',page:'shop-products'}]),
  ...(qgmTopLevelShopCategory(data.category)==='market'?[{title:'ยืนยันร้านในตลาดสด',done:shop.market_membership_status==='approved',note:shop.market_membership_status==='approved'?'ผ่านการยืนยันตลาดแล้ว':'เลือกตลาด ระบุจุดขาย และแนบหลักฐานเพื่อให้แอดมินตรวจสอบ',page:'market-membership'}]:[]),
  {title:'รับการอนุมัติจากแอดมิน',done:u.status==='approved',note:u.status==='approved'?'ร้านผ่านการอนุมัติแล้ว':u.status==='suspended'?'บัญชีถูกระงับ กรุณาติดต่อแอดมิน':u.status==='rejected'?'ใบสมัครยังไม่ผ่าน กรุณาติดต่อแอดมินเพื่อสอบถามสิ่งที่ต้องแก้ไข':'เมื่อกรอกข้อมูลครบแล้ว รอแอดมินตรวจสอบใบสมัคร',page:'shop-support'}
