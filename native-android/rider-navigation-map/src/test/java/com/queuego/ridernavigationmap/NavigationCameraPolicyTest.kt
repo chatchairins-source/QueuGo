@@ -211,6 +211,7 @@ class NavigationCameraPolicyTest {
         val decision = navigationCameraDecision(state, previousBearingDegrees = 270f)
 
         assertTrue(decision!!.bearingDegrees!! in 250f..290f)
+        assertTrue(decision.center.longitude < state.rider!!.point.longitude)
     }
 
     @Test fun highwaySpeedUsesStrongForwardPerspective() {
