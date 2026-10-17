@@ -36,11 +36,15 @@ internal fun navigationCameraDecision(
     val reliableRouteMatch = match?.takeIf { it.offRouteMeters <= ROUTE_BEARING_MAX_OFF_ROUTE_METERS }
 
     val gpsBearing = navigationUsableGpsBearing(fix)
-    val routeBearing = reliableRouteMatch?.segmentBearingDegrees
-        ?.takeIf { it.isFinite() }
-        ?.let(::normalizeNavigationBearing)
     val speed = fix.speedMetersPerSecond
         ?.takeIf { it.isFinite() && it >= 0f }
+    val routeBearing = if (activeRoute != null && reliableRouteMatch != null) {
+        navigationRouteBearing(
+            segment = activeRoute,
+            match = reliableRouteMatch,
+            speedMetersPerSecond = speed
+        )
+    } else null
 
     // Keep the navigation camera aligned to the matched road whenever the Rider is
     // confidently on-route. Raw GNSS course can jump left/right between adjacent fixes,
@@ -174,6 +178,60 @@ internal fun navigationLookAheadMeters(
     }
     return if (remainingRouteMeters == null) desired
     else minOf(desired, (remainingRouteMeters * 0.55).coerceAtLeast(0.0))
+}
+
+internal fun navigationRouteBearing(
+    segment: NavigationRouteSegment,
+    match: NavigationRouteMatch,
+    speedMetersPerSecond: Float?
+): Float? {
+    val currentBearing = match.segmentBearingDegrees
+        ?.takeIf { it.isFinite() }
+        ?.let(::normalizeNavigationBearing)
+        ?: return null
+    val remaining = (match.geometryDistanceMeters - match.progressMeters).coerceAtLeast(0.0)
+    val lookAhead = navigationBearingLookAheadMeters(speedMetersPerSecond, remaining)
+    if (lookAhead < 5.0) return currentBearing
+
+    val future = navigationPointAtDistance(
+        segment,
+        (match.progressMeters + lookAhead).coerceAtMost(match.geometryDistanceMeters)
+    ) ?: return currentBearing
+    if (!future.valid || navigationHaversineMeters(match.snapped, future) < 5.0) {
+        return currentBearing
+    }
+
+    val forwardBearing = navigationBearingDegrees(match.snapped, future)
+    return smoothNavigationBearing(
+        previous = currentBearing,
+        target = forwardBearing,
+        factor = navigationTurnAnticipationFactor(speedMetersPerSecond)
+    ) ?: currentBearing
+}
+
+internal fun navigationBearingLookAheadMeters(
+    speedMetersPerSecond: Float?,
+    remainingRouteMeters: Double?
+): Double {
+    val desired = when {
+        speedMetersPerSecond == null -> 24.0
+        speedMetersPerSecond >= 18f -> 70.0
+        speedMetersPerSecond >= 11f -> 55.0
+        speedMetersPerSecond >= 5f -> 38.0
+        speedMetersPerSecond >= 2f -> 26.0
+        else -> 14.0
+    }
+    return if (remainingRouteMeters == null) desired
+    else minOf(desired, (remainingRouteMeters * 0.45).coerceAtLeast(0.0))
+}
+
+internal fun navigationTurnAnticipationFactor(speedMetersPerSecond: Float?): Float = when {
+    speedMetersPerSecond == null -> 0.30f
+    speedMetersPerSecond >= 18f -> 0.46f
+    speedMetersPerSecond >= 11f -> 0.44f
+    speedMetersPerSecond >= 5f -> 0.40f
+    speedMetersPerSecond >= 2f -> 0.30f
+    else -> 0.18f
 }
 
 internal fun smoothNavigationBearing(
