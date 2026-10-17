@@ -2,7 +2,7 @@ const http=require("http"),fs=require("fs"),path=require("path"),assert=require(
 const {webkit}=require("playwright-core");
 
 const root=path.resolve(__dirname,"..");
-const onePx=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+ZQW7WQAAAABJRU5ErkJggg==","base64");
+const onePx=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGN49+rhfwAJPAO5kbCVAwAAAABJRU5ErkJggg==","base64");
 
 function serve(){
   return new Promise(resolve=>{
