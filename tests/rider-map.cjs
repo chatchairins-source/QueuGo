@@ -28,6 +28,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('function qgOverviewRoutePoints()'),true);
  eq(source.includes('riderRouteOverviewActive=true;qgSyncCardMapMode()'),true);
  eq(source.includes('riderRouteOverviewActive=false;qgSyncCardMapMode()'),true);
+ eq(source.includes('padding:{top:72,right:52,bottom:bottomPadding,left:52}'),true);
+ eq(source.includes("if(!S.activeOrder)riderRouteOverviewActive=false"),true);
  eq(source.includes("aria-label',riderHomeDockCollapsed?'เปิดการ์ดกลับขนาดเดิม':'ย่อการ์ด'"),true);
  eq(source.includes('speed=meters<1.5?0:Math.min(55,meters/seconds)'),true);
  eq(source.includes('riderGpsCadenceMs'),true);
