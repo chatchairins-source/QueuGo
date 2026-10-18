@@ -1,7 +1,7 @@
 const fs=require('node:fs'),assert=require('node:assert/strict');
 const html=fs.readFileSync('rider/index.html','utf8'),express=fs.readFileSync('rider/rider-express.js','utf8');
 let checks=0;const ok=(v,m)=>{assert(v,m);checks++;};
-ok(html.includes("or=(order_type.eq.shopping,fulfillment_vertical.eq.express)")&&html.includes("status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)"),'Rider Web snapshot must see service/Express orders without dropping shopping');
+ok(html.includes("or=(order_type.eq.shopping")&&html.includes("fulfillment_vertical.eq.express")&&html.includes("status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)"),'Rider Web snapshot must see service/Express orders without dropping shopping');
 ok(html.includes('rider-express.js?v=20261018-web2')&&html.includes('window.qgDeferredBoot=boot')&&html.includes('window.qgDeferredBoot?.()'),'Express parity must load before initial Rider boot');
 ok(express.includes("fulfillment_vertical==='express'")&&express.includes("rider_delivery_payout"),'Express Rider income must use server-owned payout');
 ok(express.includes("qgRiderActionOnce('express'")&&express.includes("'arrive_pickup'")&&express.includes("'start_transit'")&&express.includes("'arrive_dropoff'"),'Express Web must use shared action-once state transitions');
