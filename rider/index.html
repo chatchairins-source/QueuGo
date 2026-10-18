@@ -1,9 +1,9 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#e6002d">
 <title>QueueGo Rider</title>
-<meta name="queuego-web-build" content="rider-20261018-route-arrow1">
+<meta name="queuego-web-build" content="rider-20261018-route-arrow2">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="../queuego-map-web.js?v=20261018-13"></script>
+<script src="../queuego-map-web.js?v=20261018-14"></script>
 
 
 <style id="queuego-rider-ui">
@@ -770,7 +770,7 @@ const RIDER_CAMERA_SMOOTHNESS_TEST_MODE=true;
 const RIDER_ROUTE_OFF_ROUTE_METERS=60;
 const RIDER_ROUTE_REROUTE_HITS=3;
 const RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000;
-let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteHits=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
+let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteHits=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderPuckHeadingFix=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
 function clearRiderRoute(){
   riderRouteRequest?.controller.abort();riderRouteRequest=null;riderRouteCache=null;riderRouteGeometry=[];
   riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0;
@@ -833,7 +833,7 @@ function disposeRiderMap(){
   if(S.watchId!==null&&S.watchId!==undefined)navigator.geolocation?.clearWatch(S.watchId);
   (S.jobMarkers||[]).forEach(qgRemoveOverlay);qgRemoveOverlay(S.riderMarker);
   if(S.map)window.QueueGoMapWeb?.destroy(S.map);
-  riderMapInstance=null;riderNavigationCameraActive=false;riderPuckHeading=null;riderGpsCadenceMs=1000;riderLastGpsFixAt=0;
+  riderMapInstance=null;riderNavigationCameraActive=false;riderPuckHeading=null;riderPuckHeadingFix=null;riderGpsCadenceMs=1000;riderLastGpsFixAt=0;
   Object.assign(S,{watchId:null,map:null,riderMarker:null,jobMarkers:[],pos:null,_centeredOnce:false,_lastGpsHomeRenderAt:0});
 }
 function validRiderCoordinate(lat,lon){return lat!==null&&lat!==undefined&&lat!==''&&lon!==null&&lon!==undefined&&lon!==''&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lon))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180}
@@ -853,7 +853,7 @@ function qgRiderCameraBottomInset(){
 function qgFollowRiderCamera(force=false,duration=420){
   if(!S.map||!S.pos||!qgNavigationCameraFollowEnabled()||riderRouteOverviewActive)return null;
   return window.QueueGoMapWeb?.followNavigationCamera?.(S.map,S.pos,riderRouteGeometry,{
-    force,duration,baseZoom:17,bottomInset:qgRiderCameraBottomInset()
+    force,duration,baseZoom:17,bottomInset:qgRiderCameraBottomInset(),puckBearing:qgSmoothedRiderPuckHeading(S.pos)
   })||null;
 }
 function qgNormalizeRiderBearing(value){
@@ -894,6 +894,9 @@ function qgResolveRiderTravelBearing(previous,nextLat,nextLng,rawHeading,speed,f
   return raw;
 }
 function qgSmoothedRiderPuckHeading(fix){
+  // The camera and puck consume one heading update for each accepted GPS fix.
+  if(fix===riderPuckHeadingFix)return riderPuckHeading;
+  riderPuckHeadingFix=fix;
   const raw=qgNormalizeRiderBearing(fix?.bearing),speed=Number(fix?.speed);
   if(raw===null)return riderPuckHeading;
   if(riderPuckHeading===null){riderPuckHeading=raw;return riderPuckHeading}

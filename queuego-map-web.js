@@ -274,7 +274,7 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   try{map.easeTo(camera)}catch(_){return false}
   return false;
 }
-function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false,bottomInset=null}={}){
+function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false,bottomInset=null,puckBearing=null}={}){
   if(!map)return null;
   const state=navState(map);
   const normalizedRoute=Array.isArray(route)?route:[];
@@ -311,7 +311,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
     ? {lat:Number(fix.lat),lng:Number(fix.lng)}
     : decision.center);
   const speed=navHasNumber(fix?.speed)&&Number(fix.speed)>=0?Number(fix.speed):null;
-  const target={...decision,zoom:targetZoom,cameraCenter:riderCenter};
+  const target={...decision,bearing:navHasNumber(puckBearing)?navNormalizeBearing(Number(puckBearing)):decision.bearing,zoom:targetZoom,cameraCenter:riderCenter};
   state.bearing=target.bearing;
   state.lastDecision=target;
   if(state.gestureActive&&!force)return target;
@@ -485,6 +485,7 @@ function moveMarkerSmooth(m,lat,lng,rotation=null,{duration=1080,onPosition=null
   let previous=null;
   try{previous=m.getLngLat?.()||null}catch(_){}
   const from={lat:Number(previous?.lat),lng:Number(previous?.lng)};
+  const fromRotation=m.getRotation?.();
   const existing=markerAnimationStates.get(m);
   if(existing?.frame&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(existing.frame);
   const ms=Math.max(240,Math.min(1400,Number(duration)||1080));
@@ -501,7 +502,7 @@ function moveMarkerSmooth(m,lat,lng,rotation=null,{duration=1080,onPosition=null
     const nextLat=from.lat+(target.lat-from.lat)*eased;
     const nextLng=from.lng+(target.lng-from.lng)*eased;
     try{m.setLngLat([nextLng,nextLat]);onPosition?.({lat:nextLat,lng:nextLng})}catch(_){}
-    if(rotation!==null&&rotation!==undefined&&navHasNumber(rotation))try{m.setRotation(Number(rotation))}catch(_){}
+    if(navHasNumber(rotation))try{m.setRotation(navHasNumber(fromRotation)?navNormalizeBearing(Number(fromRotation)+navShortestDelta(Number(fromRotation),Number(rotation))*eased):Number(rotation))}catch(_){}
     if(t<1&&markerAnimationStates.get(m)===state){
       state.frame=requestAnimationFrame(tick);
     }else if(markerAnimationStates.get(m)===state){

@@ -413,3 +413,6 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 
 ## 2026-10-18 real route disappearance and aligned arrows
 - Owner20:43 recording plus actual MapLibre reproduction proves casing loading can suppress red fill via past load event. Existing helper now applies immediately and owns style.load retry/removal. Direction chevrons, displayed remaining-only route and same-point camera/puck road snap (<=12m, known accuracy<=35m, no opposite heading) preserve raw GPS/full route authority. Native reuses its hybrid signal pipeline; renderer alignment/chevrons only. Build route-arrow1; parente8d3716910d08a804c978bc738ab9ec021f0aa70; full exact CI and physical acceptance required.
+
+## 2026-10-18 camera follows shared Rider course
+- Owner asks camera behind/rotating with Rider arrow. Cache Web smoothed course once per fix for camera and puck; interpolate puck yaw with same easing. Native FOLLOW uses existing filtered course via existing camera policy option; keep unknown-heading, gesture, lifecycle and all route safety gates. Build route-arrow2; exact full CI and physical acceptance required.
