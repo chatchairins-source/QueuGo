@@ -107,11 +107,14 @@ ok(riderHome.includes('private fun RiderBlueprintSpeedPill(speedKph: Int?)')&&
    riderHome.includes('Text("กม./ชม."')&&
    !riderHome.includes('private fun RiderBlueprintBrandPill()'),
    'Rider Native home topbar must show live speed beside online status and remove QueueGo branding per owner road-test direction');
-ok(riderHome.includes('shop = offerShopDisplay')&&riderHome.includes('logoUrl = shop?.shopLogo')&&
-   riderHome.includes('value = shop?.shopName ?: job.pickupAddress ?: "ร้านค้า"')&&
-   riderHome.includes('trailing = if (job.isPassenger) "จุดรับ" else "รับสินค้า"')&&
-   riderHome.includes('trailing = if (job.isPassenger) "จุดส่ง" else "ส่งสินค้า"'),
-   'Rider offer card must retain Production shop identity and pickup/delivery row semantics while giving Ride passenger-specific labels');
+ok(riderHome.includes('shop = offerShopDisplay')&&
+   riderHome.includes('logoUrl = if (job.isExpress) null else shop?.shopLogo')&&
+   riderHome.includes('job.isPassenger -> "รับผู้โดยสาร"')&&
+   riderHome.includes('job.isExpress -> "รับพัสดุ"')&&
+   riderHome.includes('job.isPassenger -> "ไปยังจุดหมาย"')&&
+   riderHome.includes('job.isExpress -> "ส่งพัสดุ"')&&
+   riderHome.includes('else -> "รับที่ร้าน"')&&riderHome.includes('else -> "ส่งให้ลูกค้า"'),
+   'Rider offer card must preserve Food shop identity, Ride passenger labels and Express pickup/dropoff semantics without pretending Express has a shop');
 ok(riderApi.includes('suspend fun offerShopDisplay(')&&riderApi.includes('/rest/v1/orders?select=shop_id&id=eq.')&&
    riderApi.includes('/rest/v1/shop_profiles?select=shop_name,public_logo&id=eq.'),
    'Rider offer identity must come from the authenticated Production order/shop profile path, not mock data');
