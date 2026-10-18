@@ -99,5 +99,46 @@ class CustomerPermissionTests(unittest.TestCase):
             self.exercise(True, [], [])
 
 
+
+class NavigationLocationLifecycleEvidenceTests(unittest.TestCase):
+    def helper(self):
+        fn = next(n for n in TREE.body if isinstance(n, ast.FunctionDef) and n.name == 'assert_navigation_location_lifecycle')
+        scope = {}
+        exec(compile(ast.Module(body=[fn], type_ignores=[]), '<location lifecycle evidence>', 'exec'), scope)
+        return scope['assert_navigation_location_lifecycle']
+
+    def test_allowed_service_survives_eight_cycles_restarts_on_recreate_and_cleans_up(self):
+        log = "\n".join(
+            ["foreground_updates_started"] +
+            [f"lifecycle_stress_cycle={i}" for i in range(1, 9)] +
+            ["foreground_updates_stopped", "foreground_updates_started", "foreground_updates_stopped"]
+        )
+        self.assertEqual((2, 2, 8), self.helper()(log, True, "phone-allowed"))
+
+    def test_allowed_rejects_missing_recreate_restart(self):
+        log = "\n".join(
+            ["foreground_updates_started"] +
+            [f"lifecycle_stress_cycle={i}" for i in range(1, 9)] +
+            ["foreground_updates_stopped"]
+        )
+        with self.assertRaisesRegex(AssertionError, "did not restart"):
+            self.helper()(log, True, "phone-allowed")
+
+    def test_allowed_rejects_cleanup_imbalance(self):
+        log = "\n".join(
+            ["foreground_updates_started", "foreground_updates_started"] +
+            [f"lifecycle_stress_cycle={i}" for i in range(1, 9)] +
+            ["foreground_updates_stopped"]
+        )
+        with self.assertRaisesRegex(AssertionError, "cleanup imbalance"):
+            self.helper()(log, True, "phone-allowed")
+
+    def test_denied_rejects_any_foreground_location_service(self):
+        log = "\n".join([f"lifecycle_stress_cycle={i}" for i in range(1, 9)])
+        self.assertEqual((0, 0, 8), self.helper()(log, False, "phone-denied"))
+        with self.assertRaisesRegex(AssertionError, "without permission"):
+            self.helper()(log + "\nforeground_updates_started", False, "phone-denied")
+
+
 if __name__ == '__main__':
     unittest.main()

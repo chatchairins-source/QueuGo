@@ -1087,6 +1087,22 @@ def verify_merchant_shop_map_runtime():
         print("QUEUEGO_MERCHANT_SHOP_MAP_PASS " + state)
 
 
+
+def assert_navigation_location_lifecycle(full_log, granted, viewport):
+    """Validate real foreground-location ownership without inventing Activity restarts."""
+    starts = full_log.count("foreground_updates_started")
+    stops = full_log.count("foreground_updates_stopped")
+    cycles = full_log.count("lifecycle_stress_cycle=")
+    assert cycles >= 8, "Activity lifecycle stress was not exercised: " + viewport
+    if granted:
+        # The foreground service intentionally survives CREATED/RESUMED transitions.
+        # It restarts for ActivityScenario.recreate(), then must clean up at close.
+        assert starts >= 2, "Foreground location service did not restart after recreate: " + viewport
+        assert stops == starts, "Foreground location service cleanup imbalance: " + viewport
+    else:
+        assert starts == 0 and stops == 0, "Location service ran without permission: " + viewport
+    return starts, stops, cycles
+
 def capture_map_display_only():
     """Capture actual QueueGo map frames from real debug tiles or approved HTTPS hosting."""
     if not queuego_map_runtime_configured():
@@ -1134,12 +1150,9 @@ def capture_map_display_only():
         if "OK (1 test)" not in result.stdout:
             print("QUEUEGO_MAP_FAILURE_LOG\n" + full_log[-24000:])
         assert "OK (1 test)" in result.stdout, "Actual map mount/lifecycle test failed: " + viewport
-        starts = full_log.count("foreground_updates_started")
-        stops = full_log.count("foreground_updates_stopped")
-        if granted:
-            assert starts >= 3 and stops >= 3, "Foreground location lifecycle was not exercised: " + viewport
-        else:
-            assert starts == 0, "Location updates started without permission"
+        starts, stops, cycles = assert_navigation_location_lifecycle(full_log, granted, viewport)
+        print("QUEUEGO_NAV_LOCATION_LIFECYCLE " + viewport +
+              " starts=" + str(starts) + " stops=" + str(stops) + " cycles=" + str(cycles))
         runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
         (directory / "android-runtime.txt").write_text(runtime)
         assert_no_package_crash(package, directory / "crash-buffer.txt")
