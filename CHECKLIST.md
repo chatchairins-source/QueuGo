@@ -430,3 +430,14 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - This checkpoint adds only the unified release branch selector to those existing jobs and adds an executable predicate test requiring all eight non-publishing gates.
 - Runtime/business logic is unchanged. `publish-rider-road-test` remains forbidden for this integration branch.
 - NEXT: require the new exact-head run to execute (not skip) all race + map jobs and Native Pilot; inspect the first real failure only. No Production mutation.
+
+
+### 2026-10-18 unified release exact-head result
+- Validated executable HEAD: `123b72971a556e1d350f8ab8487e97f17613c9e7`.
+- QueueGo Native Android Pilot run 3353 / Actions `39099141100`: **SUCCESS**.
+- PASS jobs: `native-pilot`, `express-races`, `passenger-ride-races`, `credit-races`, `continuous-dispatch-races`, `map-display-only`, `navigation-map-runtime`, `maplibre-osm-runtime`.
+- Native Pilot evidence: Full QueueGo regression, source integrity, Android unit tests, Customer/Merchant/Rider APK build, Android 16 KB packaging, WebView rejection, launch/map/voice lifecycle and real launch evidence upload all PASS.
+- Release publication guard: `publish-rider-road-test` remained SKIPPED.
+- Source/code status: Express + Passenger Ride + Credit/Top-up + Continuous Dispatch + Laundry shop-managed + Grocery image-rights integration is green at the validated executable HEAD above. PR #426 is the current unified successor; duplicate PR #427/#428 are superseded.
+- BLOCKED outside source CI: physical-device GPS/road evidence; authenticated Grocery Merchant save/reopen on real iPhone/Android; approved QueueGo Map Production runtime configuration where required; signed AAB + Play Closed Testing; controlled Production migration/function cutover.
+- NEXT: no Production mutation from this checkpoint. Use this branch as the resume Source of Truth; any new code fix must be a strict descendant and must get a new exact-head CI run.
