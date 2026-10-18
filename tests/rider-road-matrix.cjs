@@ -93,7 +93,7 @@ const assert=require('node:assert/strict');
  const {PGlite}=require('@electric-sql/pglite');
  const sqlDb=new PGlite();
  await sqlDb.exec(require('./fixtures/rider-dispatch-schema.cjs')());
- await sqlDb.exec("create function auth.role() returns text language sql as $select coalesce(nullif(current_setting('test.role',true),''),'authenticated')$;");
+ await sqlDb.exec("create function auth.role() returns text language sql as 'select coalesce(nullif(current_setting(''test.role'',true),''''),''authenticated'')';");
  await sqlDb.exec(phase2);
  const rev='2026-10-18T00:00:00Z';
  const stackIds=[
