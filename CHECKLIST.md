@@ -44,7 +44,8 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - NEXT: no more source rework unless a newer successor/regression appears; do not reintroduce automatic Google Maps navigation.
 
 ### 3. Rider Android navigation / QueueGo route authority
-- Status: IN PROGRESS
+- Source/test status: DONE
+- Release status: BLOCKED
 - Active PR: #414
 - Branch: `work-native-rider-queuego-route-authority-20261017`
 - Current HEAD: `e8446b540566d012d83acf8520578bdbd4f16ce0`
@@ -203,6 +204,12 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Root cause: later Admin history had overwritten PR #332 credit-retirement integration: `credit.js`/`admin-credit` routing were absent while `qt_settlements`, GP slip review and `admin_review_gp` remained. Merchant and Native Merchant were already clean.
 - Fix commit: `e8446b540566d012d83acf8520578bdbd4f16ce0` forward-ports the Admin-only retirement delta from PR #332 onto the current Admin file: loads credit center, removes settlement hydration/persistence and GP slip/review UI, redirects `admin-gp` to credit, preserves Saver and newer Return-to-Sender blocks.
 - NEXT: obtain exact-head CI for `e8446b540566d012d83acf8520578bdbd4f16ce0`; if red, fix only the new first failure; if green, continue the #414 gate.
+
+- Exact-head QueueGo Map Engine Buriram run `39083016044` on `e8446b540566d012d83acf8520578bdbd4f16ce0`: SUCCESS. Dependencies/regression, pinned OSM/vector package, normalized database/routing tiles, real graph/restriction evidence, browser-with-external-requests-blocked, offline package/rollback, candidate offline container, loopback staging contract and release-gate report all completed successfully.
+- Source/test conclusion: DONE for the current #414 successor. This does not certify physical GPS/road behavior, real-device navigation continuity, signed release or Production/public hosting.
+- Release blockers: physical Rider device/GPS/road certification in Buriram, exact-device background/foreground navigation acceptance, and the parent QueueGo Map runtime/offline release gates.
+- OWNER ACTION TO UNBLOCK RELEASE: install the certified Rider build for this exact successor on a real Android device and perform the recorded Buriram GPS/road/navigation acceptance route; provide physical evidence/logs. Production/public Map hosting remains separately gated.
+- NEXT: continue to the next unblocked source/test workstream in dependency order; do not modify #414 again unless a newer successor or a new regression appears.
 
 ### 4. Rider online / deployed-schema compatibility
 - Source/test status: DONE on its scoped compatibility fix
