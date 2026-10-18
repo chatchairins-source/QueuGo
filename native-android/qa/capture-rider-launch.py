@@ -1103,6 +1103,39 @@ def assert_navigation_location_lifecycle(full_log, granted, viewport):
         assert starts == 0 and stops == 0, "Location service ran without permission: " + viewport
     return starts, stops, cycles
 
+def run_map_instrumentation_with_live_gps(instrument, gps_fix):
+    """Run Rider instrumentation and inject emulator GPS only after location subscription starts."""
+    if gps_fix is None:
+        return run(instrument, capture_output=True, text=True, timeout=210)
+    process = subprocess.Popen(instrument, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        deadline = time.monotonic() + 45
+        started = False
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                break
+            probe = subprocess.run(
+                adb + ["logcat", "-d", "-s", "QueueGoNavLocation:I"],
+                capture_output=True, text=True, timeout=15, check=False
+            )
+            if "foreground_updates_started" in probe.stdout:
+                started = True
+                break
+            time.sleep(0.25)
+        assert started, "Rider foreground location subscription did not start before GPS injection"
+        # Repeat the emulator fix after subscription so FusedLocationProvider receives
+        # a genuinely fresh measurement rather than relying on a pre-start lastLocation.
+        for _ in range(3):
+            run(adb + ["emu", "geo", "fix", str(gps_fix[0]), str(gps_fix[1])])
+            time.sleep(0.35)
+        stdout, stderr = process.communicate(timeout=210)
+        return subprocess.CompletedProcess(instrument, process.returncode, stdout, stderr)
+    except Exception:
+        process.kill()
+        process.wait(timeout=15)
+        raise
+
+
 def capture_map_display_only():
     """Capture actual QueueGo map frames from real debug tiles or approved HTTPS hosting."""
     if not queuego_map_runtime_configured():
@@ -1131,9 +1164,6 @@ def capture_map_display_only():
                 adb + ["shell", "pm", command, package, "android.permission." + permission],
                 capture_output=True, text=True, timeout=15, check=False
             )
-        if gps_fix is not None:
-            run(adb + ["emu", "geo", "fix", str(gps_fix[0]), str(gps_fix[1])])
-            time.sleep(1)
         run(adb + ["logcat", "-b", "all", "-c"])
         instrument = adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
                             "com.queuego.rider.RiderMapRuntimeTest",
@@ -1142,7 +1172,7 @@ def capture_map_display_only():
             instrument += ["-e", "expectedLongitude", str(gps_fix[0]),
                            "-e", "expectedLatitude", str(gps_fix[1])]
         instrument += ["com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"]
-        result = run(instrument, capture_output=True, text=True, timeout=210)
+        result = run_map_instrumentation_with_live_gps(instrument, gps_fix)
         (directory / "instrumentation.txt").write_text(result.stdout + result.stderr)
         print("QUEUEGO_MAP_INSTRUMENTATION " + viewport + "\n" + result.stdout + result.stderr)
         full_log = run(adb + ["logcat", "-d", "-v", "threadtime"], capture_output=True, text=True).stdout

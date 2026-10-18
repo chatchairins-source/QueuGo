@@ -24,6 +24,7 @@ class RiderMapRuntimeTest {
                 assertTrue("QueueGo MapLibre did not create the actual native map", ready!!.await(30, TimeUnit.SECONDS))
             }
             awaitRealMap()
+            awaitExpectedGpsFix()
             scenario.onActivity { it.recenterMap() }
             val initialCamera = captureRealFrame("initial", scenario)
             assertExpectedGpsCamera(initialCamera)
@@ -91,6 +92,27 @@ class RiderMapRuntimeTest {
         assertEquals("Actual SDK longitude jumped", expected[0], actual[0], 0.0001)
         assertEquals("Actual SDK latitude jumped", expected[1], actual[1], 0.0001)
         assertEquals("Actual SDK zoom changed", expected[2], actual[2], 0.0)
+    }
+
+    private fun awaitExpectedGpsFix() {
+        val args = InstrumentationRegistry.getArguments()
+        val expectedLongitude = args.getString("expectedLongitude")?.toDoubleOrNull() ?: return
+        val expectedLatitude = args.getString("expectedLatitude")?.toDoubleOrNull() ?: return
+        val deadline = System.currentTimeMillis() + 30_000L
+        var matched = false
+        while (System.currentTimeMillis() < deadline) {
+            val fix = RiderNavigationLocationStore.fix.value
+            if (fix != null &&
+                kotlin.math.abs(fix.point.longitude - expectedLongitude) <= 0.002 &&
+                kotlin.math.abs(fix.point.latitude - expectedLatitude) <= 0.002
+            ) {
+                matched = true
+                break
+            }
+            Thread.sleep(100)
+        }
+        assertTrue("Rider foreground location pipeline did not receive the injected GPS fix", matched)
+        Log.i("QueueGoMapRuntime", "injected_gps_store_verified")
     }
 
     private fun assertExpectedGpsCamera(actual: DoubleArray) {
