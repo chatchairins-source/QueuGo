@@ -48,6 +48,11 @@ class RiderMapRuntimeTest {
             assertExpectedGpsCamera(resumedCamera)
             scenario.recreate()
             awaitRealMap()
+            // Recreate restarts the navigation foreground service; its onDestroy
+            // intentionally clears the store, so require a fresh provider/debug
+            // test fix before asserting the recreated camera.
+            awaitExpectedGpsFix()
+            scenario.onActivity { it.recenterMap() }
             val recreatedCamera = captureRealFrame("recreated", scenario)
             assertSameCamera(initialCamera, recreatedCamera)
             assertExpectedGpsCamera(recreatedCamera)
