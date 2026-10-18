@@ -740,8 +740,32 @@ def verify_three_role_system_kill_recovery():
             timeout=20,
         )
         (directory / "trim-complete.txt").write_text(trim_complete.stdout + trim_complete.stderr)
-        run(adb + ["shell", "am", "kill", pkg])
-        time.sleep(1)
+        run(adb + ["shell", "am", "kill", pkg"])
+
+        # ActivityManager kill is asynchronous and on some AOSP emulator builds a
+        # WebView/renderer binding can keep the debuggable app process alive even
+        # after HOME + COMPLETE trim. Poll first. If it is still alive, deliver
+        # SIGKILL as the app UID via run-as. This models abrupt LMK/process death
+        # without force-stop semantics, so the subsequent start still exercises
+        # ordinary cold recreation rather than Android's stopped-package state.
+        kill_mode = "am-kill"
+        kill_deadline = time.time() + 5
+        remaining = package_pids(pkg)
+        while remaining and time.time() < kill_deadline:
+            time.sleep(0.25)
+            remaining = package_pids(pkg)
+        if remaining:
+            kill_mode = "run-as-sigkill"
+            for pid in remaining:
+                subprocess.run(
+                    adb + ["shell", "run-as", pkg, "kill", "-9", str(pid)],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+            kill_deadline = time.time() + 5
+            while package_pids(pkg) and time.time() < kill_deadline:
+                time.sleep(0.25)
 
         dead = subprocess.run(
             adb + ["shell", "pidof", pkg],
@@ -749,8 +773,10 @@ def verify_three_role_system_kill_recovery():
             text=True,
             timeout=15,
         )
-        (directory / "after-kill-pid.txt").write_text(dead.stdout + dead.stderr)
-        assert not dead.stdout.strip(), f"{role} process did not die after background am kill"
+        (directory / "after-kill-pid.txt").write_text(
+            "mode=" + kill_mode + "\n" + dead.stdout + dead.stderr
+        )
+        assert not dead.stdout.strip(), f"{role} process did not die after system-style abrupt kill"
 
         relaunched = run(
             adb + ["shell", "am", "start", "-W", "-n", component_name],
@@ -801,6 +827,7 @@ def verify_three_role_system_kill_recovery():
             "running_critical_trim_exit": trim_running.returncode,
             "complete_trim_exit": trim_complete.returncode,
             "background_am_kill": "PASS",
+            "kill_mode": kill_mode,
             "cold_relaunch": "PASS",
             "fatal_exception": False,
             "physical_device": False,
