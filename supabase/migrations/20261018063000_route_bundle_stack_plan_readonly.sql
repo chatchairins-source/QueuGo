@@ -15,6 +15,13 @@ declare
  v_revision timestamptz;
  v_orders jsonb;
  v_count integer;
+ v_bundle public.route_bundles%rowtype;
+ v_live_plan jsonb;
+ v_prefix jsonb:='[]'::jsonb;
+ v_next jsonb;
+ v_next_key text;
+ v_done boolean;
+ k record;
 begin
  if auth.role()<>'service_role' then raise exception 'service role required'; end if;
  if p_primary_order_id is null or p_candidate_order_id is null or p_primary_order_id=p_candidate_order_id then return null; end if;
@@ -43,6 +50,7 @@ begin
    if not exists(
     select 1 from public.orders o
     where o.id=v_order and o.rider_id=v_cache.rider_id
+      and o.route_bundle_id is not distinct from v_cache.bundle_id
       and o.status in ('rider_assigned','preparing','ready','assigned','picked_up','in_progress')
       and o.updated_at is not distinct from v_revision
    ) then return null; end if;
@@ -59,6 +67,31 @@ begin
     and not (o.id=any(v_cache.order_ids))
  ) then return null; end if;
 
+ if v_cache.bundle_id is not null then
+  select * into v_bundle from public.route_bundles rb
+  where rb.id=v_cache.bundle_id and rb.rider_id=v_cache.rider_id and rb.status='ACTIVE'
+    and rb.route_revision=v_cache.bundle_revision;
+  if not found then return null; end if;
+
+  -- Same cancellation filtering and completed-prefix/next-stop semantics as
+  -- qg_private.validate_bundle_stop_plan. Keep raw stop objects for exact identity.
+  select coalesce(jsonb_agg(p.s order by p.n),'[]'::jsonb) into v_live_plan
+  from jsonb_array_elements(v_bundle.stop_plan) with ordinality p(s,n)
+  join public.orders o on o.id=(p.s->>'order_id')::uuid
+  where o.status<>'cancelled';
+  for k in select p.s from jsonb_array_elements(v_live_plan) with ordinality p(s,n) order by p.n loop
+   select case when k.s->>'kind'='pickup' then o.status in ('picked_up','in_progress','completed')
+               else o.status='completed' end into v_done
+   from public.orders o where o.id=(k.s->>'order_id')::uuid;
+   if not coalesce(v_done,false) then v_next:=k.s; exit; end if;
+   v_prefix:=v_prefix||jsonb_build_array(k.s);
+  end loop;
+  if v_next is null then return null; end if;
+  select e.key into v_next_key from jsonb_each(v_cache.point_map) e
+  where e.value->>'orderId'=v_next->>'order_id' and e.value->>'kind'=v_next->>'kind';
+  if v_next_key is null then return null; end if;
+ end if;
+
  select jsonb_object_agg(
    o.id::text,
    jsonb_build_object(
@@ -72,6 +105,11 @@ begin
  where o.id=any(v_cache.order_ids);
 
  return jsonb_build_object(
+  'bundleId',v_cache.bundle_id,
+  'routeRevision',v_cache.bundle_revision,
+  'committedPrefix',v_prefix,
+  'lockedNext',v_next_key,
+  'lockedNextStop',v_next,
   'primaryOrderId',v_cache.primary_order_id,
   'candidateOrderId',v_cache.candidate_order_id,
   'orderIds',to_jsonb(v_cache.order_ids),

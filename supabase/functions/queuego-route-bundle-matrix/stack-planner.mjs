@@ -35,6 +35,11 @@ export function planStackRoute(input){
  const orderIds=input?.orderIds,pointMap=input?.pointMap,edges=input?.edges,orders=input?.orders;
  if(!Array.isArray(orderIds)||orderIds.length<2||orderIds.length>5||new Set(orderIds).size!==orderIds.length)throw Error('invalid stack orders');
  if(!pointMap||typeof pointMap!=='object'||pointMap.R?.kind!=='rider'||!edges||typeof edges!=='object'||!orders||typeof orders!=='object')throw Error('invalid stack evidence');
+ const bundleId=input.bundleId??null,routeRevision=input.routeRevision??null;
+ const committedPrefix=input.committedPrefix??[],lockedNext=input.lockedNext??null,lockedNextStop=input.lockedNextStop??null;
+ if(!Array.isArray(committedPrefix)||
+    (bundleId!==null&&(!Number.isSafeInteger(routeRevision)||routeRevision<0||typeof lockedNext!=='string'||!lockedNextStop))||
+    (lockedNext!==null&&(!pointMap[lockedNext]||pointMap[lockedNext].orderId!==lockedNextStop?.order_id||pointMap[lockedNext].kind!==lockedNextStop?.kind)))throw Error('invalid stack commitment');
  const entries=Object.entries(pointMap);
  const mapped=orderIds.map(orderId=>{
   const status=orders[orderId]?.status;
@@ -48,7 +53,9 @@ export function planStackRoute(input){
  const dropKeys=mapped.map(o=>o.dropoff);
  let best=null,bestSequence=null;
  for(const pickups of permutations(pickupKeys))for(const drops of permutations(dropKeys)){
-  const sequence=pickups.concat(drops),score=routeScore(sequence,edges);
+  const sequence=pickups.concat(drops);
+  if(lockedNext!==null&&sequence[0]!==lockedNext)continue;
+  const score=routeScore(sequence,edges);
   if(better(score,best)){best=score;bestSequence=sequence;}
  }
  if(!best||!bestSequence)throw Error('route plan unavailable');
@@ -57,6 +64,9 @@ export function planStackRoute(input){
   return {rank:index+1,key,orderId:point.orderId,kind:point.kind};
  });
  return {
+  bundleId,routeRevision,
+  committedPrefix:committedPrefix.map(stop=>({...stop})),
+  lockedNext,lockedNextStop:lockedNextStop?{...lockedNextStop}:null,
   orders:orderIds.length,
   pickupStops:pickupKeys.length,
   dropoffStops:dropKeys.length,

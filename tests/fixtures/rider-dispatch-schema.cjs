@@ -13,7 +13,7 @@ module.exports=()=>`create role anon;create role authenticated;create role servi
  create table laundry_rider_jobs(rider_id uuid,status text);
  create table qg_rider_delivery_returns(rider_id uuid,status text);
  create table qg_private.rider_destination_preferences(rider_id uuid,enabled boolean,latitude float8,longitude float8);
- create table route_bundles(id uuid primary key default gen_random_uuid(),rider_id uuid,primary_order_id uuid,status text,created_at timestamptz default now(),updated_at timestamptz);
+ create table route_bundles(id uuid primary key default gen_random_uuid(),rider_id uuid,primary_order_id uuid,status text,stop_plan jsonb not null default '[]'::jsonb,route_revision bigint not null default 0,created_at timestamptz default now(),updated_at timestamptz);
  create table payments(order_id uuid,status text,amount numeric,updated_at timestamptz,id uuid default gen_random_uuid(),payment_method text default 'cash',paid_at timestamptz);
  create table rider_cash_advances(order_id uuid,rider_id uuid,shop_id uuid,amount numeric,paid_at timestamptz);
  create table merchant_cash_receipts(order_id uuid,shop_id uuid,amount numeric,received_at timestamptz);
