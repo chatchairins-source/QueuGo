@@ -49,7 +49,7 @@ class CustomerLocationP0RuntimeTest {
         val target = mutableStateOf<com.queuego.shared.QgMapPoint?>(null)
         val token = mutableStateOf(0)
         compose.setContent {
-            com.queuego.shared.QgLongdoLocationPickerMap(
+            com.queuego.shared.QgLocationPickerMap(
                 initialPoint = null, recenterPoint = target.value, recenterToken = token.value,
                 modifier = Modifier.fillMaxSize().testTag("camera-owner-map"),
                 onCenterChanged = { selections.incrementAndGet() }, onReady = { ready.set(it) })

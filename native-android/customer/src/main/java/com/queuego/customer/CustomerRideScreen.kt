@@ -129,7 +129,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             if (!current.terminal && current.riderId != null) OutlinedButton(onClick = { onContact(current.id) },enabled = !busy) { Text("ติดต่อคนขับ") }
             Text("เส้นทางที่ประเมิน ${customerNumber(current.km,1)} กม. · เวลาวิ่งประมาณ ${customerNumber(current.minutes,0)} นาที ไม่รวมเวลารอคนขับ")
             if (!current.terminal && current.riderLat != null && current.riderLng != null) {
-                QgLongdoTrackingMap(points = listOf(QgMapPoint(current.riderLat,current.riderLng,0xFFE6002D.toInt(),QgMapRole.RIDER)),modifier = Modifier.fillMaxWidth().height(220.dp))
+                QgTrackingMap(points = listOf(QgMapPoint(current.riderLat,current.riderLng,0xFFE6002D.toInt(),QgMapRole.RIDER)),modifier = Modifier.fillMaxWidth().height(220.dp))
             }
             if (current.status == "searching_rider" && current.riderId == null && pending == null) {
                 OutlinedButton(enabled = !busy,onClick = {

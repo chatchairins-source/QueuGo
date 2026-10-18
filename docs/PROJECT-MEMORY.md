@@ -1786,3 +1786,6 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-18 equal map snapshot runtime gate
 - Candidate 5866726a fixes only an instrumentation expectation: equal mutableStateOf snapshot must retain render/map/route identities, not await a new render. 0360622b artifact 12120113047 reproduces failure at test line 76 after all 30 changed-GPS renders pass; other two tests pass. Navigation/native source 272/marker contracts pass locally. Await actual Android exact-head gate before completion; production renderer unchanged.
+
+## 2026-10-18 Customer shared map consumers
+- 0360622b Native Pilot 39084056688 first compile failure: Customer checkout and Ride still reference deleted QgLongdo map APIs. Bind existing callers and location instrumentation to QgLocationPickerMap/QgTrackingMap; signatures unchanged. Native source 272/0, checkout recovery 12/0 and Ride 93 PASS locally. Await exact-head native compile; retain physical release gate.

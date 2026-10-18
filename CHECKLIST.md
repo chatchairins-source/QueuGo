@@ -350,3 +350,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Candidate: assert equal render count after idle plus existing map identity/route layer checks; retain positive awaitRender checks for changed GPS and stop advancement. Do not force redundant production renders or relax timeout/identity checks.
 - Local evidence: navigation module PASS, native source 272/0, marker/overlay contracts PASS, integration job predicates 16/0, whitespace PASS. Actual Android instrumentation must pass on the new exact HEAD before this scope is DONE.
 - NEXT: publish candidate to #421, inspect exact-head navigation instrumentation and first native compile failure; check newer #414 successors before edits. Express still waits for green integrated Native Pilot.
+
+### 2026-10-18 Customer shared-map compile integration
+- Status: IN PROGRESS; source candidate `177dcae2`. Parent published integration `a7c89a01`; latest #414 still 0360622b when fetched before commit.
+- Exact-head evidence: Native Pilot 39084056688 / native-pilot job 117546811190 on 0360622b first failed CustomerCartCheckout.kt:34 unresolved QgLongdoLocationPickerMap; CustomerRideScreen.kt:132 also referenced retired QgLongdoTrackingMap. Those files were unchanged in a7c89a01.
+- Root cause: shared renderer API was renamed to existing QgLocationPickerMap/QgTrackingMap, but Customer checkout/Ride and location instrumentation callers retained deleted symbols. Callback parameters and QgMapPoint contract already match the current shared API.
+- Change: bind those three Customer callsites to the existing QueueGo APIs; update the corresponding source regression expectation. No duplicate wrapper or SDK restoration. Merchant/Rider debug callsite errors from the same log are separate next bounded integration work.
+- Verification: native source 272/0, native checkout recovery 12/0, Passenger Ride SQL 93 PASS, whitespace PASS. Android compilation remains pending; do not mark this candidate DONE until exact-head build evidence exists.
+- NEXT: publish successor, read exact-head Native Pilot first failure. Navigation equal-snapshot candidate is already published as a7c89a01 and awaiting actual instrumentation. Physical road/device/signing gates remain blocked.
