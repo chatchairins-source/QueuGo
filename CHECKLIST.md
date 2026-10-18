@@ -771,3 +771,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - First failure was PGlite parameter inference only: fixture parameter `$7` was reused in numeric columns and `100+$7`, producing `integer versus numeric`.
 - Added explicit `::numeric` casts inside the isolated fixture INSERT. Runtime migration/business logic is unchanged; no Production mutation.
 - NEXT: exact-head CI.
+
+
+### 2026-10-18 Native3400 stale-evidence fixture follows targeted-offer authority
+- Exact Route Bundle HEAD `33685cc9` run3400 passed SQL parsing and all independent races. Native Pilot first failed because the stale-evidence fixture attempted authenticated generalized claim without first publishing the required 30-second targeted offer, so the secure runtime correctly returned `live targeted offer required`.
+- The fixture now raises the isolated max_orders rule inside a transaction, publishes the exact quote through `queuego_offer_route_bundle_stack_quote` as service_role, then mutates the candidate revision and claims as authenticated Rider. This preserves the targeted-offer-first authority while still proving stale matrix/order evidence fails closed.
+- The transaction rollback removes the temporary rule/offer/revision changes. Production, live cap and business logic are unchanged.
+- NEXT: exact-head Native Pilot, then merge latest Map base descendant before judging map-display on PR #435.

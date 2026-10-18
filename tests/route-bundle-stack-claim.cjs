@@ -84,8 +84,11 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   await assert.rejects(db.query("select queuego_claim_route_bundle_stack($1)",[quote]),/route bundle order limit reached/);checks++;
 
   await db.exec("begin");
-  await db.query("update orders set updated_at='2026-10-18T00:00:01Z' where id=$1",[D]);
   await db.query("insert into queuego_platform_rules(rule_key,value) values('route_bundle.max_orders','3'::jsonb) on conflict(rule_key) do update set value=excluded.value");
+  await db.query("select set_config('test.role','service_role',false)");
+  eq((await db.query("select queuego_offer_route_bundle_stack_quote($1) ok",[quote])).rows[0].ok,true);
+  await db.query("update orders set updated_at='2026-10-18T00:00:01Z' where id=$1",[D]);
+  await db.query("select set_config('test.role','authenticated',false)");
   await assert.rejects(db.query("select queuego_claim_route_bundle_stack($1)",[quote]),/stack road evidence expired|stack order revision changed/);checks++;
   await db.exec("rollback");
 
