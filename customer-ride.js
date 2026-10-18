@@ -21,7 +21,7 @@
  function render(){
   if(!onRide())return;const current=rows.find(o=>o.id===selected),p=pending();
   let html='<div class="pt"><button class="back" onclick="go(\'home\')">'+ico('back')+'</button><h1>รับส่งผู้โดยสาร</h1></div>';
-  if(error)html+='<p role="alert">'+esc(error)+'</p>';
+  if(error)html+='<p role="alert">'+esc(error)+'</p><button class="lk" data-action="retry" '+(busy?'disabled':'')+'>ลองโหลดอีกครั้ง</button>';
   if(current){
    html+='<section class="card"><h2>'+esc(QueueGoOrderNumber.format(current))+'</h2><b>'+esc(status(current))+'</b><p>จุดรับ: '+esc(current.pickup_address)+'</p><p>จุดหมาย: '+esc(current.delivery_address)+'</p><p>ค่าโดยสารเงินสด <b>'+baht(current.fare)+'</b></p><p>คนขับ: '+esc(current.rider_name||'กำลังหา')+'</p><p>เส้นทางที่ประเมิน '+Number(current.distance_km).toLocaleString('th-TH')+' กม. · เวลาวิ่งประมาณ '+Math.ceil(current.duration_minutes)+' นาที ไม่รวมเวลารอคนขับ</p>';
    if(!terminal(current)&&current.rider_id)html+='<button class="lk" onclick="go(\'order-chat/'+esc(current.id)+'\')">ติดต่อคนขับ</button>';
@@ -53,7 +53,7 @@
   };
  }
  async function action(kind){
-  if(busy)return;if(kind==='pickup'||kind==='destination')return pick(kind);
+  if(busy)return;if(kind==='retry')return V.ride(selected);if(kind==='pickup'||kind==='destination')return pick(kind);
   if(kind==='new'){selected=null;quote=null;error='';return render()}
   const u=actor();busy=true;error='';render();
   try{
@@ -83,8 +83,16 @@
   const u=actor();if(!u)return go('login');stop();
   if(owner!==u){owner=u;pickup=currentPos?{lat:currentPos.lat,lng:currentPos.lng,address:currentPos.address}:null;destination=quote=selected=null;rows=[];error='';}
   if(id)selected=id;
-  const c=await rpc('queuego_ride_config');if(!same(u)||ticket!==routeVersion)return;config=c;
-  await refresh();if(!same(u)||ticket!==routeVersion)return;render();schedule();
+  error='';
+  try{
+   const c=await rpc('queuego_ride_config');if(!same(u)||ticket!==routeVersion)return;config=c||{};
+   await refresh();if(!same(u)||ticket!==routeVersion)return;
+  }catch(e){
+   if(!same(u)||ticket!==routeVersion)return;
+   config={enabled:false,configured:false};
+   error='โหลดข้อมูลเที่ยวไม่สำเร็จ กรุณาลองอีกครั้ง';
+  }
+  render();schedule();
  };
  const ordinary=V.order;
  V.order=async(id,ticket=routeVersion)=>{

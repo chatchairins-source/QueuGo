@@ -1771,3 +1771,6 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-18 Native integration continuity
 - #414 parent e8446b54 passed Map Engine full regression. Native Pilot absent because Admin-only changes were outside its push path filter. Commit 6998fde0 covers shared Web regression inputs. Obtain exact-head Native Pilot before Express/release claims; Production unchanged.
+
+## 2026-10-18 Passenger Ride entry successor
+- a2a64c9b on 575a10a1 retains concurrent MapLibre packaging fix, restores recoverable Customer Ride entry after config/state RPC failure with retry and account/route fencing. Runtime 10/0, Customer 79/0, Ride 93 PASS; no Production mutation. Ongoing QueueGo pushes authorized. Inspect raw Actions run collection for full Native runs. Release still needs real device/GPS/signing evidence.
