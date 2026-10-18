@@ -52,7 +52,7 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Release status: BLOCKED
 - Active PR: #414
 - Branch: `work-native-rider-queuego-route-authority-20261017`
-- Current HEAD: `575a10a1e1d05e6f437dbfe7ca5002f0e9967d3a`
+- Current HEAD: `0360622b086ab4e1bd844cbe5310a7716d04dfa6`
 - Recovery checkpoint lineage:
   - `297f9e4a918b8bdab86cc4abebb38d3176ab1842` restore current Grocery stylesheet
   - `735cdf215ffe0334839e31f00172116080dcc950` + `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb` forward-port Passenger Ride production backend delta while retaining the newer env-only quote handler
@@ -219,6 +219,10 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Root cause: workflow commit `0b181932df2cd774b93ae8d533b81f10524193e6` intentionally removed the retired Longdo Android SDK download/SHA gate when Native Pilot switched to QueueGo MapLibre, but the release regression from 2026-10-10 still required the deleted Longdo artifact.
 - Fix commit: `575a10a1e1d05e6f437dbfe7ca5002f0e9967d3a` updates only the release test: it requires exact active MapLibre `13.5.3`, requires QueueGo MapLibre display/lifecycle CI gates, and forbids reintroducing the retired Longdo SDK download/integrity path.
 - NEXT: obtain exact-head Native Pilot and Map Engine results for `575a10a1e1d05e6f437dbfe7ca5002f0e9967d3a`; if red, fix only the new first failure. Do not resume Passenger Ride until #414 exact-head gates are green.
+
+- Exact-head Native Pilot run `39083719573` on `575a10a1e1d05e6f437dbfe7ca5002f0e9967d3a` advanced past the MapLibre release-gate regression, then failed Kotlin compilation. The first chronological compile failure was `RiderNavigationMap.kt:465` because MapLibre `cameraPosition.target` is nullable and the code dereferenced `latitude/longitude` directly.
+- Fix commit: `0360622b086ab4e1bd844cbe5310a7716d04dfa6` changes only `publishCamera()` to return when `camera.target` is null before constructing `NavigationMapPoint`. Later Customer/Merchant compile failures from the same run are intentionally deferred until the next exact-head first failure.
+- NEXT: obtain exact-head Native Pilot and Map Engine results for `0360622b086ab4e1bd844cbe5310a7716d04dfa6`; if red, fix only the new first failure. Do not resume Passenger Ride until #414 exact-head gates are green.
 
 ### 4. Rider online / deployed-schema compatibility
 - Source/test status: DONE on its scoped compatibility fix
