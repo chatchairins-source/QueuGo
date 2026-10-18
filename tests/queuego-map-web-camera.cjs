@@ -28,6 +28,14 @@ vm.runInContext(source,context);
 const Q=window.QueueGoMapWeb;
 ok(!!Q,'QueueGoMapWeb must export');
 
+// Safari may omit heading; missing values must never become a northbound fix.
+for(const missing of [null,undefined,'']){
+ const unknown=Q.navigationCameraDecision({lat:15,lng:103,speed:10,bearing:missing,route:[],previousBearing:270});
+ eq(unknown.bearing,270,'missing GPS heading must preserve westbound camera course');
+ const routeOnly=Q.navigationCameraDecision({lat:15,lng:103.004,speed:10,bearing:missing,route:[[103,15],[103.01,15]],previousBearing:270});
+ eq(routeOnly.routeBearingRejected,false,'missing heading cannot be evidence of opposite motion');
+}
+
 const corner=[
   [100.0000,13.0000],
   [100.0004,13.0000],
@@ -68,6 +76,32 @@ const wrongPreviousStillRecovers=Q.navigationCameraDecision({
 });
 eq(wrongPreviousStillRecovers.routeBearingRejected,true,'strong live travel direction must reject a 180-degree route match even when the previous camera was wrong');
 ok(wrongPreviousStillRecovers.bearing>180,'camera must begin recovering toward the live travel direction instead of staying locked to the wrong route');
+
+const overlappingReturn=[
+  [103.0000,15.0000],
+  [103.0100,15.0000],
+  [103.0000,15.0000]
+];
+const continuityWins=Q.navigationCameraDecision({
+  lat:15.0000,lng:103.0060,
+  speed:0,bearing:null,accuracy:5,
+  route:overlappingReturn,previousBearing:270,previousRouteProgress:1600
+});
+ok(continuityWins.routeMatch.progressMeters>1000,'QueueGo matcher must preserve forward route progress instead of snapping back to an overlapping earlier segment');
+ok(continuityWins.routeMatch.segmentBearingDegrees>250&&continuityWins.routeMatch.segmentBearingDegrees<290,'continuity-aware matching must stay on the return-direction segment');
+
+const parallelChoice=[
+  [103.0000,15.0000],
+  [103.0100,15.0000],
+  [103.0100,15.00010],
+  [103.0000,15.00010]
+];
+const headingWins=Q.navigationCameraDecision({
+  lat:15.00005,lng:103.0060,
+  speed:10,bearing:270,accuracy:5,
+  route:parallelChoice,previousBearing:270,previousRouteProgress:1500
+});
+ok(headingWins.routeMatch.segmentBearingDegrees>250&&headingWins.routeMatch.segmentBearingDegrees<290,'QueueGo matcher must use live travel direction to avoid an adjacent opposite carriageway');
 
 const fast=Q.navigationCameraDecision({
   lat:15.00001,lng:103.0020,

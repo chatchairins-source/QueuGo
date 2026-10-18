@@ -8,7 +8,7 @@ eq(!!offerPoll,true);eq(Number(offerPoll[1])<=3000,true);
 eq(src.includes('riderOfferPollTimer=setInterval(qgPollRiderOfferNow,OFFER_POLL_MS)'),true);
 eq(src.includes("sbRpc('qg_get_my_rider_offer',{},token)"),true);
 eq(src.includes("if(Array.isArray(rows)&&rows.some(x=>x?.order_id))await refreshData();"),true);
-eq(src.includes('function qgOpenCashConfirmPage({o,mode,amount,onConfirm,onBack})'),true);
+eq(src.includes('function qgOpenCashConfirmPage('),false);
 eq(src.includes('ตรวจสอบรายการ'),true);
 eq(src.includes('ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า'),true);
 eq(src.includes('ชำระเงินให้ร้านเรียบร้อยแล้ว'),true);

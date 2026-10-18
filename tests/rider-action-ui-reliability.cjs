@@ -19,8 +19,8 @@ ok(rider.includes("rpc/qg_pickup_with_photo"),'normal pickup must use the photo-
 ok(rider.includes("rpc/qg_market_pickup_with_photo"),'market pickup must use the photo-backed RPC');
 ok(rider.includes('id="qg-pickup-photo-next" disabled'),'pickup must gate cash confirmation behind a required photo');
 ok(!rider.includes('data-pick-check'),'pickup must not require redundant checkbox confirmations');
-ok(rider.includes('function qgBindSlideAction(input,{idleLabel,busyLabel,onComplete})'),'pickup/delivery slide actions must share one guarded implementation');
-ok(rider.includes("Number(input.value)<92"),'slide action must require a deliberate near-complete gesture');
+ok(!rider.includes('function qgBindSlideAction('),'single-proof flow must not restore slide-to-confirm');
+ok(!rider.includes('id="qg-rider-cash-confirm"'),'cash amount belongs on the single proof screen');
 ok(rider.includes('RIDER V5 — STRICT REBUILD'),'Rider production CSS must be the V5 strict rebuild');
 ok(rider.includes('RIDER V5 COMPACT DENSITY'),'Rider V5 must keep the compact-density production layout');
 ok(rider.includes('.qg-home-card,.qg-offer-card,.qg-active-card{background:rgba(255,255,255,.985);border:1px solid #eee5e8;border-radius:21px;'),'Rider home/active cards must remain compact');

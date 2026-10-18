@@ -47,9 +47,10 @@ function ensureQueueGoMapCss(){
   `;
   document.head.appendChild(style);
 }
-const valid=(lat,lng)=>Number.isFinite(Number(lat))&&Number.isFinite(Number(lng))&&
+const valid=(lat,lng)=>navHasNumber(lat)&&navHasNumber(lng)&&
   Number(lat)>=5&&Number(lat)<=21&&Number(lng)>=97&&Number(lng)<=106;
 
+const navHasNumber=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
 const navigationStates=new WeakMap();
 const markerAnimationStates=new WeakMap();
 const rad=v=>v*Math.PI/180;
@@ -68,7 +69,7 @@ const navBearing=(a,b)=>{
 const navFreeDriveLookAheadMeters=spd=>spd==null?25:spd>=18?80:spd>=11?65:spd>=5?50:spd>=2?32:15;
 const navScreenAnchorRatio=spd=>spd==null?.68:spd>=18?.76:spd>=11?.74:spd>=5?.72:spd>=2?.69:.66;
 function navProjectForward(point,bearing,distanceMeters){
-  if(!point||!valid(point.lat,point.lng)||!Number.isFinite(Number(bearing))||!Number.isFinite(Number(distanceMeters))||Number(distanceMeters)<=0)return null;
+  if(!point||!valid(point.lat,point.lng)||!navHasNumber(bearing)||!navHasNumber(distanceMeters)||Number(distanceMeters)<=0)return null;
   const R=6371000,angular=Number(distanceMeters)/R,br=rad(navNormalizeBearing(bearing)),lat1=rad(point.lat),lon1=rad(point.lng);
   const lat2=Math.asin(Math.sin(lat1)*Math.cos(angular)+Math.cos(lat1)*Math.sin(angular)*Math.cos(br));
   const lon2=lon1+Math.atan2(Math.sin(br)*Math.sin(angular)*Math.cos(lat1),Math.cos(angular)-Math.sin(lat1)*Math.sin(lat2));
@@ -89,8 +90,11 @@ function navProject(point,a,b){
   const x=ax+dx*t,y=ay+dy*t;
   return {point:{lat:a.lat+(b.lat-a.lat)*t,lng:a.lng+(b.lng-a.lng)*t},fraction:t,distance:Math.sqrt(x*x+y*y)};
 }
-function navMatchRoute(route,point){
+function navMatchRoute(route,point,{bearing=null,speed=null,previousProgress=null}={}){
   let best=null;
+  const spd=navHasNumber(speed)&&Number(speed)>=0?Number(speed):null;
+  const travelBearing=spd!=null&&spd>=2&&navHasNumber(bearing)?navNormalizeBearing(Number(bearing)):null;
+  const priorProgress=navHasNumber(previousProgress)?Number(previousProgress):null;
   for(const part of navRouteParts(route)){
     let walked=0,total=0;
     const lengths=[];
@@ -98,8 +102,18 @@ function navMatchRoute(route,point){
     for(let i=0;i<part.length-1;i++){
       const leg=lengths[i];if(leg<=.01){walked+=leg;continue}
       const p=navProject(point,part[i],part[i+1]);
-      if(!best||p.distance<best.offRouteMeters){
-        best={part,snapped:p.point,offRouteMeters:p.distance,progressMeters:walked+leg*p.fraction,geometryDistanceMeters:total,segmentBearingDegrees:navBearing(part[i],part[i+1])};
+      const progress=walked+leg*p.fraction;
+      const segmentBearing=navBearing(part[i],part[i+1]);
+      const headingDelta=travelBearing==null?null:Math.abs(navShortestDelta(travelBearing,segmentBearing));
+      const headingPenalty=headingDelta==null?0:
+        headingDelta<=35?headingDelta*.08:
+        headingDelta<=75?2.8+(headingDelta-35)*.35:
+        16.8+(headingDelta-75)*1.4;
+      const backtrack=priorProgress==null?0:Math.max(0,priorProgress-progress-35);
+      const continuityPenalty=backtrack*2.5;
+      const score=p.distance+headingPenalty+continuityPenalty;
+      if(!best||score<best.score){
+        best={part,snapped:p.point,offRouteMeters:p.distance,progressMeters:progress,geometryDistanceMeters:total,segmentBearingDegrees:segmentBearing,headingDeltaDegrees:headingDelta,score};
       }
       walked+=leg;
     }
@@ -121,8 +135,8 @@ function navPointAt(part,targetMeters){
   return part[part.length-1];
 }
 function navSmoothBearing(previous,target,factor){
-  if(!Number.isFinite(Number(target)))return Number.isFinite(Number(previous))?navNormalizeBearing(previous):null;
-  const t=navNormalizeBearing(target);if(!Number.isFinite(Number(previous)))return t;
+  if(!navHasNumber(target))return navHasNumber(previous)?navNormalizeBearing(previous):null;
+  const t=navNormalizeBearing(target);if(!navHasNumber(previous))return t;
   const p=navNormalizeBearing(previous),delta=navShortestDelta(p,t);
   if(Math.abs(delta)<.45)return p;
   return navNormalizeBearing(p+delta*Math.max(.05,Math.min(1,Number(factor)||.35)));
@@ -135,7 +149,7 @@ const navCameraEasing=t=>{
   return .24*x+.76*cubic;
 };
 function navRotationDuration(currentBearing,targetBearing,cadenceMs,fallback=420,speed=null){
-  const spd=Number.isFinite(Number(speed))&&Number(speed)>=0?Number(speed):null;
+  const spd=navHasNumber(speed)&&Number(speed)>=0?Number(speed):null;
   const profile=spd==null
     ? {min:420,max:900,cadence:.90,base:340,gain:6.2}
     : spd>=18
@@ -147,20 +161,22 @@ function navRotationDuration(currentBearing,targetBearing,cadenceMs,fallback=420
           : spd>=2
             ? {min:360,max:760,cadence:.80,base:290,gain:5.4}
             : {min:420,max:900,cadence:.90,base:340,gain:6.2};
-  if(!Number.isFinite(Number(currentBearing))||!Number.isFinite(Number(targetBearing))){
+  if(!navHasNumber(currentBearing)||!navHasNumber(targetBearing)){
     return Math.max(profile.min,Math.min(profile.max,Number(fallback)||520));
   }
   const angle=Math.abs(navShortestDelta(currentBearing,targetBearing));
-  const cadence=Number.isFinite(Number(cadenceMs))&&Number(cadenceMs)>0?Number(cadenceMs):Number(fallback)||520;
+  const cadence=navHasNumber(cadenceMs)&&Number(cadenceMs)>0?Number(cadenceMs):Number(fallback)||520;
   const cadenceDuration=Math.max(profile.min,Math.min(profile.max,Math.round(cadence*profile.cadence)));
   const angleDuration=Math.max(profile.min,Math.min(profile.max,Math.round(profile.base+angle*profile.gain)));
   return Math.max(profile.min,Math.min(profile.max,Math.max(cadenceDuration,angleDuration)));
 }
-function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=[],previousBearing=null,baseZoom=17}={}){
+function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=[],previousBearing=null,previousRouteProgress=null,baseZoom=17}={}){
   if(!valid(lat,lng))return null;
-  const point={lat:Number(lat),lng:Number(lng)},spd=Number.isFinite(Number(speed))&&Number(speed)>=0?Number(speed):null;
-  const acc=Number.isFinite(Number(accuracy))?Number(accuracy):null;
-  const match=navMatchRoute(route,point),reliable=match&&match.offRouteMeters<=60?match:null;
+  const point={lat:Number(lat),lng:Number(lng)},spd=navHasNumber(speed)&&Number(speed)>=0?Number(speed):null;
+  const acc=navHasNumber(accuracy)?Number(accuracy):null;
+  const gpsBearing=navHasNumber(bearing)?navNormalizeBearing(Number(bearing)):null;
+  const match=navMatchRoute(route,point,{bearing:gpsBearing,speed:spd,previousProgress:previousRouteProgress});
+  const reliable=match&&match.offRouteMeters<=60?match:null;
   let routeBearing=reliable?.segmentBearingDegrees??null;
   const remaining=match?Math.max(0,match.geometryDistanceMeters-match.progressMeters):null;
   if(reliable){
@@ -174,11 +190,10 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
       routeBearing=navSmoothBearing(routeBearing,bounded,blend);
     }
   }
-  const gpsBearing=Number.isFinite(Number(bearing))?navNormalizeBearing(Number(bearing)):null;
   const routeBearingDelta=gpsBearing!=null&&routeBearing!=null
     ? Math.abs(navShortestDelta(gpsBearing,routeBearing))
     : null;
-  const previousRouteDelta=Number.isFinite(Number(previousBearing))&&routeBearing!=null
+  const previousRouteDelta=navHasNumber(previousBearing)&&routeBearing!=null
     ? Math.abs(navShortestDelta(previousBearing,routeBearing))
     : null;
   const routeBearingOpposesMotion=(spd??0)>=2&&gpsBearing!=null&&(
@@ -255,17 +270,20 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   try{map.setMaxPitch?.(0)}catch(_){}
   const camera={bearing:0,pitch:0,duration:Math.max(0,Number(duration)||0),easing:navCameraEasing,essential:true};
   if(center&&valid(center.lat,center.lng))camera.center=[Number(center.lng),Number(center.lat)];
-  if(Number.isFinite(Number(zoom)))camera.zoom=Number(zoom);
+  if(navHasNumber(zoom))camera.zoom=Number(zoom);
   try{map.easeTo(camera)}catch(_){return false}
   return false;
 }
 function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false,bottomInset=null}={}){
   if(!map)return null;
   const state=navState(map);
+  const normalizedRoute=Array.isArray(route)?route:[];
+  const sameRoute=state.lastRoute===normalizedRoute;
+  const previousRouteProgress=sameRoute?state.lastDecision?.routeMatch?.progressMeters:null;
   state.lastFix={...fix};
-  state.lastRoute=Array.isArray(route)?route:[];
+  state.lastRoute=normalizedRoute;
   state.baseZoom=baseZoom;
-  if(Number.isFinite(Number(bottomInset))&&Number(bottomInset)>=0)state.lastBottomInset=Number(bottomInset);
+  if(navHasNumber(bottomInset)&&Number(bottomInset)>=0)state.lastBottomInset=Number(bottomInset);
   if(force){
     state.follow=true;
     state.gestureActive=false;
@@ -275,7 +293,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   if(!state.navigationActive||!state.follow)return null;
   const renderedBearing=Number(map.getBearing?.());
   const previousBearing=Number.isFinite(renderedBearing)?renderedBearing:state.bearing;
-  const decision=navCameraDecision({...fix,route,previousBearing,baseZoom});if(!decision)return null;
+  const decision=navCameraDecision({...fix,route:normalizedRoute,previousBearing,previousRouteProgress,baseZoom});if(!decision)return null;
   const now=Date.now();
   let targetZoom=decision.zoom;
   if(preserveZoom||state.manualZoomUntil>now){
@@ -289,7 +307,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   const riderCenter=valid(fix?.lat,fix?.lng)
     ? {lat:Number(fix.lat),lng:Number(fix.lng)}
     : decision.center;
-  const speed=Number.isFinite(Number(fix?.speed))&&Number(fix.speed)>=0?Number(fix.speed):null;
+  const speed=navHasNumber(fix?.speed)&&Number(fix.speed)>=0?Number(fix.speed):null;
   const target={...decision,zoom:targetZoom,cameraCenter:riderCenter};
   state.bearing=target.bearing;
   state.lastDecision=target;
@@ -450,12 +468,12 @@ function marker(map,{lat,lng,color='#e6002d',title='',html='',anchor='center',ro
   if(title)el.setAttribute('aria-label',title);
   const marker=new maplibregl.Marker({element:el,anchor,rotationAlignment,pitchAlignment})
     .setLngLat([Number(lng),Number(lat)]);
-  if(Number.isFinite(Number(rotation)))try{marker.setRotation(Number(rotation))}catch(_){}
+  if(navHasNumber(rotation))try{marker.setRotation(Number(rotation))}catch(_){}
   return marker.addTo(map);
 }
 function moveMarker(m,lat,lng,rotation=null){
   if(m&&valid(lat,lng))m.setLngLat([Number(lng),Number(lat)]);
-  if(m&&rotation!==null&&rotation!==undefined&&Number.isFinite(Number(rotation)))try{m.setRotation(Number(rotation))}catch(_){}
+  if(m&&rotation!==null&&rotation!==undefined&&navHasNumber(rotation))try{m.setRotation(Number(rotation))}catch(_){}
   return m
 }
 function moveMarkerSmooth(m,lat,lng,rotation=null,{duration=1080}={}){
@@ -480,7 +498,7 @@ function moveMarkerSmooth(m,lat,lng,rotation=null,{duration=1080}={}){
     const nextLat=from.lat+(target.lat-from.lat)*eased;
     const nextLng=from.lng+(target.lng-from.lng)*eased;
     try{m.setLngLat([nextLng,nextLat])}catch(_){}
-    if(rotation!==null&&rotation!==undefined&&Number.isFinite(Number(rotation)))try{m.setRotation(Number(rotation))}catch(_){}
+    if(rotation!==null&&rotation!==undefined&&navHasNumber(rotation))try{m.setRotation(Number(rotation))}catch(_){}
     if(t<1&&markerAnimationStates.get(m)===state){
       state.frame=requestAnimationFrame(tick);
     }else if(markerAnimationStates.get(m)===state){

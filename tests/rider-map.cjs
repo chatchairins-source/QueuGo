@@ -18,7 +18,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("'route': '<svg class=\"ico\""),true);
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
- eq(source.includes('queuego-map-web.js?v=20261017-11'),true);
+ eq(source.includes('queuego-map-web.js?v=20261018-12'),true);
  eq(source.includes('maximumAge:0'),true);
  eq(source.includes('class="qg-speed-pill"'),true);
  eq(source.includes('<div class="qg-brand-pill">'),false);
@@ -61,6 +61,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
   setCenter(){},
   setNavigationMode:(m,active,opts)=>{cameraModes.push({m,active,opts});return !!active},
   followNavigationCamera:(m,pos,route,opts)=>{cameraFollows.push({m,pos,route,opts});return {center:pos}},
+  navigationCameraDecision:({lat})=>({routeMatch:{offRouteMeters:Number(lat)>=13.5?90:5},routeBearingRejected:false}),
   marker(){return {remove(){}}}
  };
  const session={authUserId:'a',sessionId:'sa'},S={
@@ -119,11 +120,15 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  for(let i=0;i<20;i++)await run('drawActiveRoute()');
  eq(requests.length,1);
  now+=15000;S.pos={lat:13.001,lng:100};await run('drawActiveRoute()');
- eq(requests.length,2);
- eq(routeRemoves.length,1);
+ eq(requests.length,1);eq(routeRemoves.length,0);
+ // Preserve the existing road route until three off-route samples agree.
+ S.pos={lat:13.5,lng:100,accuracy:5};await run('drawActiveRoute()');await run('drawActiveRoute()');
+ eq(requests.length,1);await run('drawActiveRoute()');
+ eq(requests.length,2);eq(routeRemoves.length,1);
 
  // Changing pickup to delivery invalidates the old request immediately.
- now+=15000;S.pos={lat:13.002,lng:100};gate=deferred();
+ now+=25000;S.pos={lat:13.5,lng:100,accuracy:5};gate=deferred();
+ await run('drawActiveRoute()');await run('drawActiveRoute()');
  const old=run('drawActiveRoute()'),oldSignal=requests.at(-1).opts.signal;
  S.activeOrder.status='in_progress';const oldGate=gate;gate=null;
  await run('drawActiveRoute()');
