@@ -57,10 +57,10 @@ function render(){
     '<label class="qgl-check"><input id="qgl-enabled" type="checkbox" '+(settings.enabled?'checked':'')+'> เปิดรับคำขอฝากซักของร้าน</label>'+
     '<div class="qgl-grid">'+
       '<label>รูปแบบค่ารับส่ง<select id="qgl-mode"><option value="separate" '+(settings.delivery_fee_mode!=='round_trip'?'selected':'')+'>แยกค่ารับ / ส่งคืน</option><option value="round_trip" '+(settings.delivery_fee_mode==='round_trip'?'selected':'')+'>ค่ารับส่งรวม</option></select></label>'+
-      '<label>ยอดบริการขั้นต่ำ (บาท)<input id="qgl-min" type="number" min="0" step="1" value="'+money(settings.minimum_order)+'"></label>'+
-      '<label>ค่ารับผ้า (บาท)<input id="qgl-pickup" type="number" min="0" step="1" value="'+money(settings.base_pickup_fee)+'"></label>'+
-      '<label>ค่าส่งคืน (บาท)<input id="qgl-return" type="number" min="0" step="1" value="'+money(settings.return_fee)+'"></label>'+
-      '<label>ค่ารับส่งรวม (บาท)<input id="qgl-round" type="number" min="0" step="1" value="'+money(settings.round_trip_fee)+'"></label>'+
+      '<label>ยอดบริการขั้นต่ำ (บาท)<input id="qgl-min" type="number" min="0" step="1" value="'+esc(Number(settings.minimum_order||0))+'"></label>'+
+      '<label>ค่ารับผ้า (บาท)<input id="qgl-pickup" type="number" min="0" step="1" value="'+esc(Number(settings.base_pickup_fee||0))+'"></label>'+
+      '<label>ค่าส่งคืน (บาท)<input id="qgl-return" type="number" min="0" step="1" value="'+esc(Number(settings.return_fee||0))+'"></label>'+
+      '<label>ค่ารับส่งรวม (บาท)<input id="qgl-round" type="number" min="0" step="1" value="'+esc(Number(settings.round_trip_fee||0))+'"></label>'+
     '</div><p class="qgl-note">หากเลือก “ค่ารับส่งรวม” ระบบจะแบ่งค่ารอบระหว่างงานรับผ้าและงานส่งคืนให้อัตโนมัติ และ snapshot ราคาไว้กับออเดอร์</p>'+
     '<button class="qgm-primary" id="qgl-save-settings" type="button">บันทึกค่าฝากซัก</button></section>';
 

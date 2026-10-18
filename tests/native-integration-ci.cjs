@@ -26,3 +26,13 @@ for(const job of ['native-pilot','continuous-dispatch-races','passenger-ride-rac
  assert.equal(selected(job,'work-native-release-unified-20261018'),true,'Unified release successor must run '+job+' rather than silently skip a release gate');checks++;
 }
 assert.equal(selected('publish-rider-road-test','work-native-release-unified-20261018'),false,'Unified release integration must not publish a road-test release');checks++;
+
+for (const ref of ['work-native-route-bundle-matrix-phase2-20261018', 'work-native-route-bundle-matrix-sqlgate-20261018', 'work-native-route-bundle-readonly-planner-20261018', 'work-native-route-bundle-release-20261018']) {
+ for (const job of ['native-pilot','continuous-dispatch-races','passenger-ride-races','credit-races','express-races','map-display-only','navigation-map-runtime','maplibre-osm-runtime']) {
+  assert.equal(selected(job,ref),true,ref+' must execute '+job); checks++;
+ }
+ assert.equal(selected('publish-rider-road-test',ref),false,ref+' must not publish'); checks++;
+}
+const mapWorkflow=fs.readFileSync('.github/workflows/queuego-map-engine-buriram.yml','utf8');
+assert.ok(mapWorkflow.includes("'work-native-route-bundle-*'"),'Route Bundle successors require the existing Map Engine gate'); checks++;
+console.log(JSON.stringify({checks,failures:0,scope:'all integrated successor gates, publication excluded'}));

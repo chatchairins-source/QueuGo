@@ -5,6 +5,8 @@
  const terminal=o=>!o||['completed','cancelled','no_rider_available'].includes(o.status);
  const key=()=> 'qg_customer_express_pending_v1:'+S.get()?.userId;
  const actor=()=>S.get()?.userId||'';
+ const coordinate=(value,limit)=>['number','string'].includes(typeof value)&&String(value).trim()!==''&&Number.isFinite(Number(value))&&Math.abs(Number(value))<=limit?Number(value):null;
+ const point=(lat,lng)=>{const y=coordinate(lat,90),x=coordinate(lng,180);return y===null||x===null?null:[x,y]};
  const onExpress=()=>location.hash.split('/')[0]==='#express';
  const rpc=(name,body={})=>db('rpc/'+name,{method:'POST',body});
  const same=u=>actor()===u&&onExpress();
@@ -25,12 +27,13 @@
  }
  function mountTracking(o){
   try{trackingMap?.remove()}catch{}trackingMap=null;
-  const host=$('express-live-map'),rLat=Number(o?.rider_latitude),rLng=Number(o?.rider_longitude);if(!host||!Number.isFinite(rLat)||!Number.isFinite(rLng)||typeof maplibregl==='undefined')return;
+  const host=$('express-live-map'),rider=point(o?.rider_latitude,o?.rider_longitude);if(!host||!rider||typeof maplibregl==='undefined')return;
+  const [rLng,rLat]=rider;
   trackingMap=new maplibregl.Map({container:host,style:qgQueueGoPickerStyle(),center:[rLng,rLat],zoom:14,minZoom:5,maxZoom:19,attributionControl:false,dragRotate:false,pitchWithRotate:false});
   trackingMap.touchZoomRotate.disableRotation();trackingMap.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),'top-left');
   const pts=[
-   [Number(o.pickup_longitude),Number(o.pickup_latitude),'#232323'],
-   [Number(o.delivery_longitude),Number(o.delivery_latitude),'#777777'],
+   [...(point(o.pickup_latitude,o.pickup_longitude)||[]),'#232323'],
+   [...(point(o.delivery_latitude,o.delivery_longitude)||[]),'#777777'],
    [rLng,rLat,'#e6002d']
   ].filter(x=>Number.isFinite(x[0])&&Number.isFinite(x[1]));
   trackingMap.on('load',()=>{if(!trackingMap)return;const bounds=new maplibregl.LngLatBounds();pts.forEach(p=>{new maplibregl.Marker({color:p[2],scale:.85}).setLngLat([p[0],p[1]]).addTo(trackingMap);bounds.extend([p[0],p[1]])});if(pts.length>1)trackingMap.fitBounds(bounds,{padding:38,maxZoom:15,duration:0})});
@@ -48,7 +51,7 @@
    html+='<p>ค่าส่งเงินสด <b>'+baht(current.fare)+'</b></p><p>เส้นทาง '+Number(current.distance_km||0).toLocaleString('th-TH',{maximumFractionDigits:1})+' กม. · ประมาณ '+Math.ceil(Number(current.duration_minutes||0))+' นาที</p>';
    html+='<p>ไรเดอร์: '+esc(current.rider_name||'กำลังหา')+'</p>';
    if(!terminal(current)&&current.rider_id)html+='<button class="lk" onclick="go(\'order-chat/'+esc(current.id)+'\')">ติดต่อไรเดอร์</button>';
-   if(!terminal(current)&&Number.isFinite(Number(current.rider_latitude))&&Number.isFinite(Number(current.rider_longitude)))html+='<div id="express-live-map" class="mapbox" style="height:220px"></div>';
+   if(!terminal(current)&&point(current.rider_latitude,current.rider_longitude))html+='<div id="express-live-map" class="mapbox" style="height:220px"></div>';
    if(current.status==='searching_rider'&&!current.rider_id&&!p)html+='<button class="lk" data-action="cancel" '+(busy?'disabled':'')+'>ยกเลิกงาน Express</button>';
    if(terminal(current)&&!p)html+='<button class="prim" data-action="new">ส่งพัสดุรายการใหม่</button>';
    html+='</section>';
