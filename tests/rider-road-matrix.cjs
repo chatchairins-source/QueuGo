@@ -86,6 +86,7 @@ const assert=require('node:assert/strict');
  const fs=require('node:fs');
  const phase2=fs.readFileSync('supabase/migrations/20261018060000_route_bundle_multi_stop_matrix_phase2.sql','utf8');
  assert(phase2.includes('qg_private.route_bundle_stack_matrices')&&phase2.includes('queuego_cache_route_bundle_stack_matrix'));checks++;
+ assert(phase2.includes("::timestamptz is distinct from")&&!phase2.includes("updated_at#>>")&&!phase2.includes("updated_at::text"));checks++;
  assert(!phase2.includes('create or replace function public.queuego_claim_route_bundle')&&!phase2.includes("values('feature.route_bundle'")&&!phase2.includes("route_bundle.max_orders','5"));checks++;
  globalThis.fetch=originalFetch;
  console.log(JSON.stringify({checks,failures:0,scope:'isolated road adapter + service-only 5-order stack matrix groundwork; live claim/cap/feature flags unchanged; no live provider calls'}));
