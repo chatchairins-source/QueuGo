@@ -797,3 +797,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Kept that strict resolver unchanged in name/signature and added separate non-throwing `package_pids_optional(pkg: str)` only for expected process-death polling. Strict runtime crash evidence still asserts that live QueueGo process IDs resolve before PID-scoped AndroidRuntime collection.
 - No acceptance threshold, app runtime, force-stop behavior or Production state changed.
 - NEXT: exact-head Native Pilot; runtime process-death path must now be reached.
+
+
+### 2026-10-18 Native3406 named-dollar structural assertion alignment
+- Exact Route Bundle HEAD `563039b9` passed migration parsing, generalized financial/quality stages and all independent races, then failed only because the source-structure assertion still expected the old anonymous `as $$` delimiter.
+- The targeted-offer function intentionally uses named PostgreSQL delimiter `$qg$` after the parser publication fix. Updated only the structural assertion to require that exact deliberate delimiter.
+- No SQL runtime behavior, targeted-offer authority, claim logic, cap, payout or Production state changed.
+- NEXT: exact-head CI; continue only from first real failure.

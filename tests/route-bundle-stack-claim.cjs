@@ -134,7 +134,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   eq((sql.match(/create or replace function public\.queuego_claim_route_bundle_stack\(p_quote_id uuid\)/gi)||[]).length,1);
   eq((sql.match(/create or replace function public\.queuego_offer_route_bundle_stack_quote\(p_quote_id uuid\)/gi)||[]).length,1);
   assert(sql.includes("live targeted offer required")&&sql.includes("qg_rider_offer_history"));checks++;
-  assert(sql.includes("queuego_offer_route_bundle_stack_quote(p_quote_id uuid)\nreturns boolean\nlanguage plpgsql\nsecurity definer\nset search_path=public,pg_temp\nas $$"));checks++;
+  assert(sql.includes("queuego_offer_route_bundle_stack_quote(p_quote_id uuid)\nreturns boolean\nlanguage plpgsql\nsecurity definer\nset search_path=public,pg_temp\nas $qg$"));checks++;
   eq((sql.match(/Safety: this migration stages 3-5 quote\/claim machinery only/g)||[]).length,1);
  }finally{await db.close();}
  console.log(JSON.stringify({checks,failures:0,scope:'staged 3-order quote cache + atomic Rider claim, exact revision/rule/membership locks, funding conservation, default max_orders=2 blocks activation'}));
