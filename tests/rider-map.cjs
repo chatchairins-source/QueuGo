@@ -112,8 +112,10 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(requests.length,1);
  eq(new URL(requests[0].url).searchParams.get('tlat'),'13.1');
  gate.resolve({ok:true,json:async()=>geo});gate=null;await first;
- eq(routeAdds.length,1);
- eq(S.routeOverlays.length,1);
+ eq(routeAdds.length,2);
+ eq(routeAdds.map(x=>[x.style.color,x.style.width]),[['#ffffff',16],['#e6002d',12]]);
+ eq(routeAdds[0].line,routeAdds[1].line);
+ eq(S.routeOverlays.length,2);
  eq(label.textContent,'ไปร้าน • 1.2 กม. • 4 นาที');
  eq(timers.size,0);
 
@@ -124,7 +126,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  // Preserve the existing road route until three off-route samples agree.
  S.pos={lat:13.5,lng:100,accuracy:5};await run('drawActiveRoute()');await run('drawActiveRoute()');
  eq(requests.length,1);await run('drawActiveRoute()');
- eq(requests.length,2);eq(routeRemoves.length,1);
+ eq(requests.length,2);eq(routeRemoves.length,2);
 
  // Changing pickup to delivery invalidates the old request immediately.
  now+=25000;S.pos={lat:13.5,lng:100,accuracy:5};gate=deferred();
@@ -180,7 +182,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(timers.size,0);
  ctx.fetch=async()=>({ok:true,json:async()=>geo});
  await run('drawActiveRoute()');
- eq(S.routeOverlays.length,1);
+ eq(S.routeOverlays.length,2);
 
  // Invalid/missing coordinates never become a route to (0,0).
  S.activeOrder.pickup_latitude=null;await run('drawActiveRoute()');
