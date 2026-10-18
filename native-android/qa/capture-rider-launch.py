@@ -44,13 +44,45 @@ package = "com.queuego.rider"
 component = package + "/.MainActivity"
 
 
+# Same pinned, real Buriram vector archive as Map Engine CI. It is provisioned
+# through adb into debug app-private storage, never embedded in a release APK.
+CI_MAP_URL = "https://github.com/chatchairins-source/QueuGo/releases/download/rider-buriram-offline-20261016/buriram-shortbread.pmtiles"
+CI_MAP_SHA256 = "30699573ed2068d3c7e4393ad477dbe8febf68f453f27ae88437f5c652a3ddfc"
+
+
+def provision_real_map(pkg):
+    if os.environ.get("QG_DEBUG_MAP_ARCHIVE") != "1":
+        return
+    import urllib.request
+    archive = Path(os.environ["RUNNER_TEMP"]) / "queuego-ci-buriram.pmtiles"
+    if not archive.is_file():
+        with urllib.request.urlopen(CI_MAP_URL, timeout=90) as response, archive.open("wb") as target:
+            import shutil
+            shutil.copyfileobj(response, target)
+    actual = hashlib.sha256(archive.read_bytes()).hexdigest()
+    assert actual == CI_MAP_SHA256, "Real Buriram map archive checksum mismatch"
+    device_archive = "/data/local/tmp/queuego-ci-buriram.pmtiles"
+    run(adb + ["push", str(archive), device_archive])
+    run(adb + ["shell", "run-as", pkg, "mkdir", "-p", "files"])
+    run(adb + ["shell", "run-as", pkg, "cp", device_archive, "files/queuego-ci-buriram.pmtiles"])
+    verified = run(adb + ["shell", "run-as", pkg, "sha256sum", "files/queuego-ci-buriram.pmtiles"],
+                   capture_output=True, text=True).stdout.split()[0]
+    assert verified == CI_MAP_SHA256, "App-private real map archive checksum mismatch"
+    (output / (pkg + "-map-source.json")).write_text(json.dumps({
+        "source_url": CI_MAP_URL, "sha256": actual, "source": "pinned real Buriram PMTiles",
+        "debug_only": True, "public_runtime_certified": False,
+        "routing_certified": False, "physical_gps_certified": False
+    }, indent=2))
+
+
 def queuego_map_runtime_configured():
-    """True only when an approved HTTPS QueueGo Map runtime is supplied to this run."""
-    return os.environ.get("QG_MAP_SERVICE_BASE_URL", "").strip().startswith("https://")
+    """Exercise real tiles in debug CI or use the approved HTTPS runtime."""
+    return os.environ.get("QG_DEBUG_MAP_ARCHIVE") == "1" or os.environ.get("QG_MAP_SERVICE_BASE_URL", "").strip().startswith("https://")
 
 
 def record_map_runtime_blocked(scope):
     """Record an external release blocker without turning it into a false runtime PASS."""
+    assert os.environ.get("QG_DEBUG_MAP_ARCHIVE") != "1", "Requested real-map CI must execute, never report BLOCKED"
     directory = output / "map-runtime-blockers"
     directory.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -220,6 +252,10 @@ def capture_customer_location():
         directory = output / "customer-location" / permission_state
         directory.mkdir(parents=True, exist_ok=True)
         run(adb + ["shell", "pm", "clear", pkg])
+        provision_real_map(pkg)
+        if os.environ.get("QG_DEBUG_MAP_ARCHIVE") == "1":
+            # Emulator GPS stays within the real archive; never changes a user address.
+            run(adb + ["emu", "geo", "fix", "103.0994795", "14.9918756"])
         if permission_state == "allowed":
             for permission in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"):
                 run(adb + ["shell", "pm", "grant", pkg, "android.permission." + permission])
@@ -668,6 +704,7 @@ def verify_three_role_system_kill_recovery():
 
         # Emulator-only clean state. No Production account/order/data mutation.
         run(adb + ["shell", "pm", "clear", pkg])
+        provision_real_map(pkg)
         run(adb + ["logcat", "-b", "all", "-c"])
         started = run(
             adb + ["shell", "am", "start", "-W", "-n", component_name],
@@ -868,6 +905,7 @@ def verify_real_home_map_runtime():
     run(adb + ["shell", "wm", "density", "440"])
     run(adb + ["shell", "am", "force-stop", package])
     run(adb + ["install", "-r", str(apk)])
+    provision_real_map(package)
     run(adb + ["install", "-r", str(test_apk)])
     # Clear only generated evidence so a partial run cannot retain stale frames.
     run(adb + ["shell", "run-as", package, "rm", "-rf", "files/map-runtime"])
@@ -1009,7 +1047,7 @@ def verify_navigation_location_foreground_runtime():
 
 
 def verify_merchant_shop_map_runtime():
-    """Exercise the real Merchant QueueGo map picker when approved runtime hosting exists."""
+    """Exercise the real Merchant QueueGo map picker with a real map source."""
     if not queuego_map_runtime_configured():
         record_map_runtime_blocked("merchant-shop-map")
         return
@@ -1018,6 +1056,7 @@ def verify_merchant_shop_map_runtime():
     test_apk = repo / "native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk"
     runner = "com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner"
     run(adb + ["install", "-r", str(apk)])
+    provision_real_map(pkg)
     run(adb + ["install", "-r", str(test_apk)])
     directory = output / "merchant-shop-map"
     directory.mkdir(parents=True, exist_ok=True)
@@ -1044,7 +1083,7 @@ def verify_merchant_shop_map_runtime():
 
 
 def capture_map_display_only():
-    """Capture actual QueueGo map frames only when approved runtime hosting is configured."""
+    """Capture actual QueueGo map frames from real debug tiles or approved HTTPS hosting."""
     if not queuego_map_runtime_configured():
         record_map_runtime_blocked("rider-map-display")
         return
@@ -1057,8 +1096,8 @@ def capture_map_display_only():
     evidence = []
     for viewport, dimensions, density, granted, gps_fix in (
         ("phone-denied", "1080x2280", "440", False, None),
-        ("phone-allowed", "1080x2280", "440", True, (100.612345, 13.712345)),
-        ("large-allowed", "1600x2560", "240", True, (100.632345, 13.732345)),
+        ("phone-allowed", "1080x2280", "440", True, (103.0994795, 14.9918756)),
+        ("large-allowed", "1600x2560", "240", True, (103.1300059, 15.0088319)),
     ):
         directory = output / viewport
         directory.mkdir(exist_ok=True)
@@ -1166,6 +1205,7 @@ with (output / "emulator.log").open("w") as log:
             assert time.monotonic() < deadline, "Android boot timed out; no Native screenshot certified"
             time.sleep(5)
         run(adb + ["install", "-r", str(apk)])
+        provision_real_map(package)
         run(adb + ["logcat", "-b", "all", "-c"])
         if os.environ.get("QG_CUSTOMER_LOCATION_ONLY") == "1":
             capture_customer_location()

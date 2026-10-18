@@ -1,6 +1,8 @@
 package com.queuego.rider
 
 import android.os.Bundle
+import com.queuego.ridernavigationmap.NavigationMapCamera
+import com.queuego.ridernavigationmap.NavigationMapPoint
 import android.view.View
 import android.view.ViewGroup
 import org.maplibre.android.maps.MapLibreMap
@@ -38,6 +40,7 @@ class RiderMapRuntimeActivity : ComponentActivity() {
             QueueGoRiderNavigationMap(
                 modifier = Modifier.fillMaxSize(),
                 stateKey = "runtime-map",
+                fallbackCamera = NavigationMapCamera(NavigationMapPoint(14.9918756, 103.0994795), 16),
                 job = null,
                 marketPickups = emptyList(),
                 recenterSignal = recenterSignal.intValue,
