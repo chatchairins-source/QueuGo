@@ -342,3 +342,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Post-successor merge checks: integrated CI predicates 16/0, native release packaging guard PASS, navigation module PASS, Native Grocery 23/0, whitespace PASS. Existing security allowlist 30/0 and authenticated review 31/0 passed with restored migrations.
 - NEXT: publish merged integration tree to #421; inspect exact-head Native Pilot compile/runtime and race outcomes. Express remains pending integrated green Native Pilot.
 - Release BLOCKED: owner must validate authenticated Merchant catalog search/category, priced save, reload and image display on real iPhone/Android; source tests do not certify this or authorize deployment. Existing signing/Closed Testing/Production gates remain open.
+
+### 2026-10-18 equivalent-snapshot Android runtime gate
+- Status: IN PROGRESS; candidate source commit `5866726a`, parent published integration `38a72642229255d2fb8e28c34edfb4e4cb532ac6`. No production renderer change.
+- Evidence: exact #414 HEAD 0360622b Native Pilot 39084056688, navigation job 117546810999 failed instrumentation. Artifact 12120113047 XML shows 3 tests / 1 failure: gpsRefreshTabReturnAndOverlayUpdatesReuseSameMapView at line 76, `QueueGo MapLibre state was not rendered`. Activity recreation and gesture tests passed; all 30 changed-GPS updates passed before the equal snapshot step.
+- Root cause: refreshEquivalentOrderSnapshot() copies structurally equal data into default mutableStateOf; equality suppresses recomposition. The test wrongly awaited an additional render on unchanged state before checking route-layer reuse.
+- Candidate: assert equal render count after idle plus existing map identity/route layer checks; retain positive awaitRender checks for changed GPS and stop advancement. Do not force redundant production renders or relax timeout/identity checks.
+- Local evidence: navigation module PASS, native source 272/0, marker/overlay contracts PASS, integration job predicates 16/0, whitespace PASS. Actual Android instrumentation must pass on the new exact HEAD before this scope is DONE.
+- NEXT: publish candidate to #421, inspect exact-head navigation instrumentation and first native compile failure; check newer #414 successors before edits. Express still waits for green integrated Native Pilot.

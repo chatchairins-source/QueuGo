@@ -1783,3 +1783,6 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-18 Grocery source reconciliation
 - 65dc9579 restores only missing existing Grocery migration/provenance/test files from main 9a541522; no Runtime UI replacement or Production mutation. Existing Grocery suite 262 PASS; full npm pre/test/post EXIT 0. Merge aaabae4a retains #421 0bb3426a and #414 0360622b. Native Grocery 23/0, navigation module and packaging guard PASS. Publish merged integration; physical Merchant save/reopen and signed release remain blocked.
+
+## 2026-10-18 equal map snapshot runtime gate
+- Candidate 5866726a fixes only an instrumentation expectation: equal mutableStateOf snapshot must retain render/map/route identities, not await a new render. 0360622b artifact 12120113047 reproduces failure at test line 76 after all 30 changed-GPS renders pass; other two tests pass. Navigation/native source 272/marker contracts pass locally. Await actual Android exact-head gate before completion; production renderer unchanged.

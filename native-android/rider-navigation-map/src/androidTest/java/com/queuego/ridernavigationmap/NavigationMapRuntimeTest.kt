@@ -73,8 +73,14 @@ class NavigationMapRuntimeTest {
             val beforeEquivalent = activity.latestDiagnostics
             scenario.onActivity { it.refreshEquivalentOrderSnapshot() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            awaitRender(activity, beforeEquivalent.renderPassCount)
             scenario.onActivity {
+                // mutableStateOf uses structural equality: copying an equal
+                // snapshot must not schedule a render just to satisfy this test.
+                assertEquals(
+                    "Equivalent snapshot unnecessarily rendered the map",
+                    beforeEquivalent.renderPassCount,
+                    it.latestDiagnostics.renderPassCount
+                )
                 assertEquals(viewIdentity, it.mapViewIdentity())
                 assertEquals(
                     beforeEquivalent.routeLayerRebuildCount,
