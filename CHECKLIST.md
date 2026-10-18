@@ -778,3 +778,16 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - The fixture now raises the isolated max_orders rule inside a transaction, publishes the exact quote through `queuego_offer_route_bundle_stack_quote` as service_role, then mutates the candidate revision and claims as authenticated Rider. This preserves the targeted-offer-first authority while still proving stale matrix/order evidence fails closed.
 - The transaction rollback removes the temporary rule/offer/revision changes. Production, live cap and business logic are unchanged.
 - NEXT: exact-head Native Pilot, then merge latest Map base descendant before judging map-display on PR #435.
+
+### 2026-10-18 Map3397 stale prior-scope cleanup fencing
+- Exact `e1004229` map-display artifact proves current `large-allowed` process PID4542 started location twice and stopped twice. The harness nevertheless counted 2/3 because a delayed `foreground_updates_stopped` from prior phone-allowed PID4328 landed after logcat clear and before the new scope's first start.
+- Lifecycle evidence now fences the granted scope at its first `foreground_updates_started` marker and requires exact start/stop balance from that point forward. It still requires >=2 starts (recreate exercised) and exact cleanup equality; no production service behavior or acceptance threshold is weakened.
+- Denied scopes remain strict 0 starts / 0 stops.
+- NEXT: exact-head Map CI.
+
+
+### 2026-10-18 Native3401 process-death pidof semantics
+- Exact Map HEAD `5efd473d` run3401: map-display-only, MapLibre runtime, navigation runtime, Ride/Express/Credit/Dispatch races all SUCCESS. Native Pilot completed source regression then failed only because `package_pids()` called the strict `run(check=True)` wrapper; Android `pidof` exit 1 means the process is already dead, which is the expected process-death condition.
+- `package_pids(pkg, required=True)` now uses non-throwing `subprocess.run(..., check=False)`. Existing callers remain strict by default; only system-kill polling passes `required=False`.
+- Production app code is unchanged. No force-stop semantics introduced. Physical OEM process-recreation evidence remains a separate release gate.
+- NEXT: exact-head Native Pilot and Map display lifecycle.

@@ -98,10 +98,19 @@ def record_map_runtime_blocked(scope):
     print("QUEUEGO_MAP_RUNTIME_BLOCKED " + json.dumps(payload))
 
 
-def package_pids(pkg: str):
-    result = run(adb + ["shell", "pidof", pkg], capture_output=True, text=True)
+def package_pids(pkg: str, required: bool = True):
+    # pidof exits 1 when no process exists. During process-death polling that is
+    # the expected success condition, so do not route it through run(check=True).
+    result = subprocess.run(
+        adb + ["shell", "pidof", pkg],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
     pids = [value for value in result.stdout.strip().split() if value.isdigit()]
-    assert pids, f"{pkg} process is not running"
+    if required:
+        assert pids, f"{pkg} process is not running"
     return pids
 
 
@@ -750,10 +759,10 @@ def verify_three_role_system_kill_recovery():
         # ordinary cold recreation rather than Android's stopped-package state.
         kill_mode = "am-kill"
         kill_deadline = time.time() + 5
-        remaining = package_pids(pkg)
+        remaining = package_pids(pkg, required=False)
         while remaining and time.time() < kill_deadline:
             time.sleep(0.25)
-            remaining = package_pids(pkg)
+            remaining = package_pids(pkg, required=False)
         if remaining:
             kill_mode = "run-as-sigkill"
             for pid in remaining:
@@ -764,7 +773,7 @@ def verify_three_role_system_kill_recovery():
                     timeout=15,
                 )
             kill_deadline = time.time() + 5
-            while package_pids(pkg) and time.time() < kill_deadline:
+            while package_pids(pkg, required=False) and time.time() < kill_deadline:
                 time.sleep(0.25)
 
         dead = subprocess.run(
@@ -1116,17 +1125,25 @@ def verify_merchant_shop_map_runtime():
 
 
 def assert_navigation_location_lifecycle(full_log, granted, viewport):
-    """Validate real foreground-location ownership without inventing Activity restarts."""
-    starts = full_log.count("foreground_updates_started")
-    stops = full_log.count("foreground_updates_stopped")
+    """Validate real foreground-location ownership without counting stale prior-scope teardown."""
     cycles = full_log.count("lifecycle_stress_cycle=")
     assert cycles >= 8, "Activity lifecycle stress was not exercised: " + viewport
     if granted:
+        # A force-stop from the prior viewport can emit its final onDestroy/stop
+        # after logcat has been cleared. Fence ownership at this scope's first
+        # foreground start; then require exact start/stop balance from there.
+        first_start = full_log.find("foreground_updates_started")
+        assert first_start >= 0, "Foreground location service never started: " + viewport
+        owned_log = full_log[first_start:]
+        starts = owned_log.count("foreground_updates_started")
+        stops = owned_log.count("foreground_updates_stopped")
         # The foreground service intentionally survives CREATED/RESUMED transitions.
         # It restarts for ActivityScenario.recreate(), then must clean up at close.
         assert starts >= 2, "Foreground location service did not restart after recreate: " + viewport
         assert stops == starts, "Foreground location service cleanup imbalance: " + viewport
     else:
+        starts = full_log.count("foreground_updates_started")
+        stops = full_log.count("foreground_updates_stopped")
         assert starts == 0 and stops == 0, "Location service ran without permission: " + viewport
     return starts, stops, cycles
 
