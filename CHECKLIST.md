@@ -389,3 +389,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Native Rider API now reuses `qg_rider_action_once(kind=express)`, `qg_express_pickup_with_photo` and `qg_express_complete_with_photo`; proof retries reconcile against the existing proof tables.
 - No second dispatcher, wallet, route engine or proof store was introduced. No Production migration/enablement.
 - NEXT: wire Customer Express screen + Rider Express active card on this same successor, then require exact-head Native Pilot/Express race gates.
+
+
+### 2026-10-18 Express unified successor checkpoint B
+- Unified successor HEAD parents: Rider UI `6bd7d8d70f3ca7aea617d66e263cd6e67c0290f1`, Express backend `b1e37818f9ff171e57daf8675f5018a2431a03f7`, Customer UI proof `eb3b8b56362a318d661a3754d364ec49fc9e8ef5`.
+- Verified Express Phase 1 backend migration/tests are byte-identical on the Rider successor; trusted quote workflow trigger and proof instrumentation are retained from the newer client path.
+- Exact-head gates already green before unification: backend run 3337 `b1e37818f9ff171e57daf8675f5018a2431a03f7`; client run 3336 `2813452191f56be83969f0cc761890a6ef3c3a90`; Customer UI run 3345 `eb3b8b56362a318d661a3754d364ec49fc9e8ef5`; Rider UI run 3347 `6bd7d8d70f3ca7aea617d66e263cd6e67c0290f1`.
+- Laundry shop-managed run 3341 `0c5f91b9f7014e1928bc33d08c124e5be619e8f9` SUCCESS; Grocery image-rights run 3342 `9fc5f81f82bfbab351dfd2db94486a3ef65f86b5` SUCCESS.
+- NEXT: require exact-head CI on this unified merge; then mark physical-device/GPS/signed AAB/Closed Testing/Production cutover as BLOCKED until owner/device actions. No Production enablement in this checkpoint.
