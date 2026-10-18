@@ -1170,7 +1170,8 @@ def capture_map_display_only():
                             "-e", "allowIncompleteTiles", "true"]
         if gps_fix is not None:
             instrument += ["-e", "expectedLongitude", str(gps_fix[0]),
-                           "-e", "expectedLatitude", str(gps_fix[1])]
+                           "-e", "expectedLatitude", str(gps_fix[1]),
+                           "-e", "allowDebugStoreInjection", "true"]
         instrument += ["com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"]
         result = run_map_instrumentation_with_live_gps(instrument, gps_fix)
         (directory / "instrumentation.txt").write_text(result.stdout + result.stderr)

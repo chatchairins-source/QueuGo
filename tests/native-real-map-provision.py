@@ -113,6 +113,23 @@ class PostStartGpsInjectionSourceTests(unittest.TestCase):
         self.assertNotIn('["emu", "geo", "fix"', setup_slice)
 
 
+class NoPlayServicesGpsFallbackSourceTests(unittest.TestCase):
+    def test_android_test_fallback_is_explicit_and_ci_only(self):
+        rider_test = Path('native-android/rider/src/androidTest/java/com/queuego/rider/RiderMapRuntimeTest.kt').read_text()
+        self.assertIn('allowDebugStoreInjection', rider_test)
+        self.assertIn('debug_store_fix_injected_no_play_services', rider_test)
+        self.assertIn('RiderNavigationLocationStore.publish(', rider_test)
+        self.assertIn('NavigationMapPoint(expectedLatitude, expectedLongitude)', rider_test)
+        self.assertNotIn('allowDebugStoreInjection', Path('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt').read_text())
+
+    def test_only_expected_gps_scopes_enable_debug_store_fallback(self):
+        capture_start = SOURCE.index("def capture_map_display_only")
+        capture = SOURCE[capture_start:]
+        self.assertIn('"allowDebugStoreInjection", "true"', capture)
+        gps_block = capture[capture.index("if gps_fix is not None:"):capture.index('instrument += ["com.queuego.rider.test')]
+        self.assertIn('"allowDebugStoreInjection", "true"', gps_block)
+
+
 class NavigationLocationLifecycleEvidenceTests(unittest.TestCase):
     def helper(self):
         fn = next(n for n in TREE.body if isinstance(n, ast.FunctionDef) and n.name == 'assert_navigation_location_lifecycle')
