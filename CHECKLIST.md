@@ -449,3 +449,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Change: generalize the existing road adapter to 2–11 validated points; add service-authorized `action=stack` that discovers the current same-bundle orders plus one unassigned candidate; add private 90-second full-stack evidence cache and service-only cache RPC.
 - Safety: no `queuego_claim_route_bundle` replacement, no `route_bundle.max_orders` change, no Saver/continuous-dispatch enablement and no Production mutation. Live capacity stays 2 until a later pricing/claim phase consumes this evidence and passes races.
 - NEXT: run exact-head source/CI. If green, Phase 2 claim/pricing can consume the stack matrix in a separate successor; if red, fix only the first failure.
+
+
+### 2026-10-18 Map Engine exact-head release integration gate
+- Parent unified release successor: `33756e905388cec5c3945594f56272d4976faf26`; runtime remains unchanged in this checkpoint.
+- Finding: Buriram Map Engine source is already present in the unified release tree, but its dedicated workflow only auto-ran on `work-map-roadgraph-buriram-*`; final release successors could therefore change shared `map-view/**` code without obtaining the full OSM/Valhalla/browser/offline-package/container gate on the same HEAD.
+- Change: final `work-native-release-unified-*` pushes now select the existing Map Engine workflow. External Actions are pinned to reviewed 40-hex commits; `tests/github-actions-pinning.cjs` now includes this workflow and reviewed `actions/setup-python@v5` SHA `a26af69be951a213d495a4c3e4e4022e16d87065`.
+- NEXT: require exact-head Native Pilot plus QueueGo Map Engine Buriram CI on the new successor. Production map hosting, physical GPS/road validation, signed AAB/Closed Testing and Production cutover remain BLOCKED.
