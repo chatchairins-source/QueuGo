@@ -740,7 +740,7 @@ def verify_three_role_system_kill_recovery():
             timeout=20,
         )
         (directory / "trim-complete.txt").write_text(trim_complete.stdout + trim_complete.stderr)
-        run(adb + ["shell", "am", "kill", pkg"])
+        run(adb + ["shell", "am", "kill", pkg])
 
         # ActivityManager kill is asynchronous and on some AOSP emulator builds a
         # WebView/renderer binding can keep the debuggable app process alive even
