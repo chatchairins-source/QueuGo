@@ -1,6 +1,7 @@
 // Service-only evidence producer for existing SQL dispatch/route-bundle quote, never an assigner.
 import {buildRoadMatrix} from './road-matrix.mjs';
 import {planStackRoute} from './stack-planner.mjs';
+import {simulateStackFinancialPlan} from './stack-financial-plan.mjs';
 import {refreshRouteMatrices,workerTokenMatches} from './refresh.mjs';
 const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 export function createRouteBundleMatrixHandler(env,fetcher=fetch){
@@ -16,21 +17,43 @@ return async(req)=>{
  const headers={apikey:service,authorization:'Bearer '+service,'content-type':'application/json'};
  try{
   const input=await req.json();
-  if(input.action==='plan'){
+  if(input.action==='plan'||input.action==='quote'){
    if(!uuid(input.primaryOrderId)||!uuid(input.candidateOrderId)||input.primaryOrderId===input.candidateOrderId)return reply({error:'invalid orders'},400);
-   const planRes=await fetcher(base+'/rest/v1/rpc/queuego_route_bundle_stack_plan_input',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
+   const planRes=await fetcher(base+'/rest/v1/rpc/queuego_route_bundle_stack_financial_input',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
     p_primary_order_id:input.primaryOrderId,p_candidate_order_id:input.candidateOrderId
    })});
    if(!planRes.ok)throw Error('stack plan input read failed');
    const evidence=await planRes.json();
    if(!evidence||typeof evidence!=='object')return reply({cached:false,readOnly:true},409);
-   return reply({cached:true,readOnly:true,...planStackRoute(evidence)});
+   const plan=planStackRoute(evidence);
+   const generalized=Array.isArray(evidence.orderIds)&&evidence.orderIds.length>=3;
+   const financial=generalized
+     ? simulateStackFinancialPlan(evidence,plan)
+     : {mode:'existing-two-order-live-quote',generalized:false};
+   if(input.action==='plan')return reply({cached:true,readOnly:true,...plan,financial});
+   if(!generalized)return reply({error:'two-order quote remains on existing live authority',quoteCached:false},409);
+   if(!financial?.eligible)return reply({cached:true,quoteCached:false,readOnlyBusinessState:true,...plan,financial},409);
+   const stopPlan=[...(Array.isArray(evidence.committedPrefix)?evidence.committedPrefix:[]),
+    ...plan.stops.map(stop=>({order_id:stop.orderId,kind:stop.kind}))];
+   const cacheRes=await fetcher(base+'/rest/v1/rpc/queuego_cache_route_bundle_stack_quote',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
+    p_primary_order_id:input.primaryOrderId,p_candidate_order_id:input.candidateOrderId,
+    p_stop_plan:stopPlan,p_financial:financial
+   })});
+   if(!cacheRes.ok)throw Error('stack quote cache failed');
+   const quoteId=await cacheRes.json();
+   if(!uuid(quoteId))return reply({cached:true,quoteCached:false,readOnlyBusinessState:true,...plan,financial},409);
+   const offerRes=await fetcher(base+'/rest/v1/rpc/queuego_offer_route_bundle_stack_quote',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
+    p_quote_id:quoteId
+   })});
+   if(!offerRes.ok)throw Error('stack targeted offer publish failed');
+   const offerPublished=await offerRes.json();
+   return reply({cached:true,quoteCached:true,offerPublished:offerPublished===true,readOnlyBusinessState:true,quoteId,...plan,financial});
   }
   if(!key)return reply({error:'routing not configured'},503);
   if(input.action==='refresh'){
    const produce=pair=>createRouteBundleMatrixHandler(env,fetcher)(new Request(req.url,{
     method:'POST',headers:{authorization:'Bearer '+service,'content-type':'application/json'},body:JSON.stringify(pair)}));
-   return reply(await refreshRouteMatrices(base,headers,fetcher,produce));
+   return reply(await refreshRouteMatrices(base,headers,fetcher,produce,{includeStack:true}));
   }
   if(!uuid(input.primaryOrderId)||!uuid(input.candidateOrderId)||input.primaryOrderId===input.candidateOrderId)return reply({error:'invalid orders'},400);
   const fields='id,rider_id,status,updated_at,route_bundle_id,route_bundle_sequence,created_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude';
@@ -65,6 +88,16 @@ return async(req)=>{
    })});
    if(!cached.ok)throw Error('stack evidence rejected');
    const acknowledged=await cached.json();
+   if(acknowledged===true&&orders.length>=3&&input.quoteAfterCache===true){
+    const quoteResponse=await createRouteBundleMatrixHandler(env,fetcher)(new Request(req.url,{
+     method:'POST',headers:{authorization:'Bearer '+service,'content-type':'application/json'},
+     body:JSON.stringify({action:'quote',primaryOrderId:a.id,candidateOrderId:b.id})
+    }));
+    const quoteBody=await quoteResponse.json();
+    return reply({cached:true,expiresSeconds:90,orders:orders.length,points:Object.keys(points).length,
+     quoteCached:quoteBody.quoteCached===true,offerPublished:quoteBody.offerPublished===true,
+     quoteReason:quoteBody.financial?.reason??null});
+   }
    return reply({cached:acknowledged===true,expiresSeconds:90,orders:orders.length,points:Object.keys(points).length},acknowledged===true?200:409);
   }
   const edges=await buildRoadMatrix({AP:point(a,'pickup'),AD:point(a,'delivery'),BP:point(b,'pickup'),BD:point(b,'delivery'),RP:{lat:rider?.latitude,lng:rider?.longitude}},key,{fetcher,signal:AbortSignal.timeout(45000)});

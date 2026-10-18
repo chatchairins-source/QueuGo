@@ -26,6 +26,8 @@ on:
       - work-native-rpc-null-contract-20261010
       - work-native-pos-edit-idempotency-20261010
     paths:
+      - CHECKLIST.md
+      - docs/PROJECT-MEMORY.md
       # Full regression consumes shared Web sources; validate their exact HEAD too.
       - 'admin/**'
       - 'merchant/**'
@@ -53,6 +55,9 @@ on:
       - 'tests/express*.cjs'
       - 'tests/fixtures/express*.cjs'
       - 'supabase/functions/queuego-express-quote/**'
+      # Route Bundle Phase 2 full regression consumes these exact SQL/Edge sources.
+      - 'supabase/functions/queuego-route-bundle-matrix/**'
+      - 'supabase/migrations/*route_bundle*.sql'
       - 'queuego-credit.js'
       - 'queuego-credit.css'
       - 'ops/native-push-session-binding-proposal-*.sql'
@@ -247,6 +252,36 @@ jobs:
         env:
           QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_dispatch_gate
         run: node tests/rider-continuous-dispatch-races.cjs
+
+  route-bundle-stack-races:
+    if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_bundle_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_bundle_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Independent PostgreSQL 3–5 Order Route Bundle races
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_bundle_gate
+        run: node tests/route-bundle-stack-races.cjs
 
   passenger-ride-races:
     if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}

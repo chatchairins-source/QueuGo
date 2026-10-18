@@ -18,12 +18,34 @@ function edge(edges,from,to){
  if(!Number.isFinite(km)||km<0||!Number.isFinite(minutes)||minutes<0)throw Error('incomplete road matrix');
  return {km,minutes};
 }
-function routeScore(sequence,edges){
+function readyMinutes(input,orderId){
+ const operational=Boolean(input?.financialOrders&&input?.financialEvaluatedAt);
+ if(!operational)return 0;
+ const at=input.financialOrders?.[orderId]?.merchantReadyEstimateAt;
+ const base=input.financialEvaluatedAt;
+ if(typeof at!=='string'||!at)throw Error('merchant readiness unavailable');
+ const wait=(Date.parse(at)-Date.parse(base))/60000;
+ if(!Number.isFinite(wait))throw Error('invalid merchant readiness');
+ return wait>0?wait:0;
+}
+function routeScore(sequence,edges,input){
  let from='R',km=0,minutes=0;
+ const finishMinutesByKey={},pickupWaitMinutesByOrder={};
+ const operational=Boolean(input?.financialOrders&&input?.financialEvaluatedAt);
  for(const to of sequence){
-  const leg=edge(edges,from,to);km+=leg.km;minutes+=leg.minutes;from=to;
+  const leg=edge(edges,from,to);km+=leg.km;minutes+=leg.minutes;
+  const point=input?.pointMap?.[to];
+  if(operational&&point?.kind==='pickup'){
+   const ready=readyMinutes(input,point.orderId);
+   const wait=Math.max(ready-minutes,0);
+   pickupWaitMinutesByOrder[point.orderId]=wait;
+   minutes+=wait;
+  }
+  if(operational)minutes+=2;
+  finishMinutesByKey[to]=minutes;
+  from=to;
  }
- return {km,minutes,key:sequence.join('>')};
+ return {km,minutes,key:sequence.join('>'),finishMinutesByKey,pickupWaitMinutesByOrder};
 }
 function better(a,b){
  if(!b)return true;
@@ -31,9 +53,9 @@ function better(a,b){
  if(a.km!==b.km)return a.km<b.km;
  return a.key<b.key;
 }
-export function planStackRoute(input){
- const orderIds=input?.orderIds,pointMap=input?.pointMap,edges=input?.edges,orders=input?.orders;
- if(!Array.isArray(orderIds)||orderIds.length<2||orderIds.length>5||new Set(orderIds).size!==orderIds.length)throw Error('invalid stack orders');
+function planOrders(input,selectedOrderIds,minOrders){
+ const orderIds=selectedOrderIds,pointMap=input?.pointMap,edges=input?.edges,orders=input?.orders;
+ if(!Array.isArray(orderIds)||orderIds.length<minOrders||orderIds.length>5||new Set(orderIds).size!==orderIds.length)throw Error('invalid stack orders');
  if(!pointMap||typeof pointMap!=='object'||pointMap.R?.kind!=='rider'||!edges||typeof edges!=='object'||!orders||typeof orders!=='object')throw Error('invalid stack evidence');
  const bundleId=input.bundleId??null,routeRevision=input.routeRevision??null;
  const committedPrefix=input.committedPrefix??[],lockedNext=input.lockedNext??null,lockedNextStop=input.lockedNextStop??null;
@@ -51,11 +73,13 @@ export function planStackRoute(input){
  });
  const pickupKeys=mapped.filter(o=>!PICKUP_DONE.has(o.status)).map(o=>o.pickup);
  const dropKeys=mapped.map(o=>o.dropoff);
+ const selectedKeys=new Set([...pickupKeys,...dropKeys]);
+ if(lockedNext!==null&&!selectedKeys.has(lockedNext))throw Error('locked next outside selected orders');
  let best=null,bestSequence=null;
  for(const pickups of permutations(pickupKeys))for(const drops of permutations(dropKeys)){
   const sequence=pickups.concat(drops);
   if(lockedNext!==null&&sequence[0]!==lockedNext)continue;
-  const score=routeScore(sequence,edges);
+  const score=routeScore(sequence,edges,input);
   if(better(score,best)){best=score;bestSequence=sequence;}
  }
  if(!best||!bestSequence)throw Error('route plan unavailable');
@@ -71,8 +95,22 @@ export function planStackRoute(input){
   pickupStops:pickupKeys.length,
   dropoffStops:dropKeys.length,
   stops,
+  finishMinutesByKey:{...best.finishMinutesByKey},
+  pickupWaitMinutesByOrder:{...best.pickupWaitMinutesByOrder},
   totalKm:Math.round(best.km*1000)/1000,
   totalMinutes:Math.round(best.minutes*100)/100,
   policy:'all-pickups-before-dropoffs-v1'
  };
+}
+export function planStackRoute(input){
+ const orderIds=input?.orderIds;
+ if(!Array.isArray(orderIds)||orderIds.length<2||orderIds.length>5)throw Error('invalid stack orders');
+ return planOrders(input,orderIds,2);
+}
+export function planExistingStackRoute(input){
+ const candidate=input?.candidateOrderId;
+ if(typeof candidate!=='string')throw Error('invalid candidate order');
+ const orderIds=input?.orderIds?.filter(orderId=>orderId!==candidate);
+ if(!Array.isArray(orderIds)||orderIds.length<1||orderIds.length>4)throw Error('invalid existing stack orders');
+ return planOrders(input,orderIds,1);
 }

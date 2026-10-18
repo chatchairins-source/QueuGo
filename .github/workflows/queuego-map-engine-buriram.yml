@@ -2,7 +2,7 @@ name: QueueGo Map Engine Buriram
 on:
   push:
     branches: ['work-map-roadgraph-buriram-*', 'work-native-release-unified-*', 'work-native-route-bundle-*']
-    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', 'tests/map-staging-*', '.github/workflows/queuego-map-engine-buriram.yml']
+    paths: ['CHECKLIST.md', 'docs/PROJECT-MEMORY.md', 'queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', 'tests/map-staging-*', 'supabase/functions/queuego-route-bundle-matrix/**', 'supabase/migrations/*route_bundle*.sql', 'tests/route-bundle-*', '.github/workflows/queuego-map-engine-buriram.yml']
   pull_request:
     paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', '.github/workflows/queuego-map-engine-buriram.yml']
   workflow_dispatch:

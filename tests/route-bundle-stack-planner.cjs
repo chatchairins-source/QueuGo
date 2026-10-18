@@ -2,27 +2,27 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{PGlite}=requir
 const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 (async()=>{
  let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
- const {planStackRoute}=await import('../supabase/functions/queuego-route-bundle-matrix/stack-planner.mjs');
+ const {planStackRoute,planExistingStackRoute}=await import('../supabase/functions/queuego-route-bundle-matrix/stack-planner.mjs');
  const orderIds=[id(70),id(71)];
  const pointMap={R:{kind:'rider'},AP:{orderId:orderIds[0],kind:'pickup'},AD:{orderId:orderIds[0],kind:'dropoff'},BP:{orderId:orderIds[1],kind:'pickup'},BD:{orderId:orderIds[1],kind:'dropoff'}};
  const keys=Object.keys(pointMap),edges={};
  for(const a of keys)for(const b of keys)if(a!==b)edges[a+'|'+b]={km:10,minutes:10};
  Object.assign(edges,{'R|BP':{km:1,minutes:1},'BP|AP':{km:1,minutes:1},'AP|AD':{km:1,minutes:1},'AD|BD':{km:1,minutes:1}});
- const input={orderIds,pointMap,edges,orders:{[orderIds[0]]:{status:'ready'},[orderIds[1]]:{status:'searching_rider'}}};
+ const input={orderIds,candidateOrderId:orderIds[1],pointMap,edges,orders:{[orderIds[0]]:{status:'ready'},[orderIds[1]]:{status:'searching_rider'}}};
  const before=JSON.stringify(input),plan=planStackRoute(input);
  eq(plan.stops.map(s=>s.key),['BP','AP','AD','BD']);eq(plan.totalKm,4);eq(plan.totalMinutes,4);eq(plan.policy,'all-pickups-before-dropoffs-v1');eq(JSON.stringify(input),before);
  const picked=JSON.parse(JSON.stringify(input));picked.orders[orderIds[0]].status='picked_up';picked.edges['R|BP']={km:1,minutes:1};picked.edges['BP|AD']={km:1,minutes:1};picked.edges['AD|BD']={km:1,minutes:1};
- eq(planStackRoute(picked).stops.map(s=>s.key),['BP','AD','BD']);
+ eq(planStackRoute(picked).stops.map(s=>s.key),['BP','AD','BD']);eq(planExistingStackRoute(input).stops.map(s=>s.key),['AP','AD']);
  assert.throws(()=>planStackRoute({...input,orderIds:[...orderIds,id(72),id(73),id(74),id(75)]}),/invalid stack orders/);checks++;
  const broken=JSON.parse(JSON.stringify(input));delete broken.edges['R|AP'];delete broken.edges['R|BP'];assert.throws(()=>planStackRoute(broken),/incomplete road matrix/);checks++;
 
  // Handler plan action reads existing cache only: no provider call and no cache write.
- const evidence={...input,primaryOrderId:orderIds[0],candidateOrderId:orderIds[1],expiresAt:'2026-10-18T00:01:00Z'};
+ const evidence={...input,primaryOrderId:orderIds[0],candidateOrderId:orderIds[1],expiresAt:'2026-10-18T00:01:00Z',financialPolicyVersion:'stack-savings-group-weighted-v1',financialEvaluatedAt:'2026-10-18T00:00:00Z',financialOrders:{[orderIds[0]]:{currentFeeSatang:2500,lockedRiderPayoutSatang:2500,merchantReadyEstimateAt:'2026-10-18T00:00:00Z'},[orderIds[1]]:{currentFeeSatang:2500,lockedRiderPayoutSatang:null,merchantReadyEstimateAt:'2026-10-18T00:00:00Z'}},financialRules:{existingGroupSavingsPercent:50,incrementalKmRateSatangPerKm:500,pickupCostSatang:200,dropoffCostSatang:200,minuteRateSatangPerMinute:100,maxDetourMeters:1500,maxDelaySeconds:300,maxPickupWaitSeconds:300}};
  let providerCalls=0,rpcCalls=0;
  const fetcher=async(url,options)=>{
   const u=new URL(url);
   if(u.hostname==='api.longdo.com'){providerCalls++;throw Error('plan must not call provider');}
-  if(u.pathname==='/rest/v1/rpc/queuego_route_bundle_stack_plan_input'){
+  if(u.pathname==='/rest/v1/rpc/queuego_route_bundle_stack_financial_input'){
    rpcCalls++;eq(JSON.parse(options.body),{p_primary_order_id:orderIds[0],p_candidate_order_id:orderIds[1]});
    return {ok:true,json:async()=>evidence};
   }
@@ -33,7 +33,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  const handler=createRouteBundleMatrixHandler({get:k=>env[k]},fetcher);
  const req=new Request('https://edge.invalid',{method:'POST',headers:{authorization:'Bearer isolated-service','content-type':'application/json'},body:JSON.stringify({action:'plan',primaryOrderId:orderIds[0],candidateOrderId:orderIds[1]})});
  const response=await handler(req);eq(response.status,200);
- const body=await response.json();eq(body.cached,true);eq(body.readOnly,true);eq(body.stops.map(s=>s.key),['BP','AP','AD','BD']);eq(providerCalls,0);eq(rpcCalls,1);
+ const body=await response.json();eq(body.cached,true);eq(body.readOnly,true);eq(body.stops.map(s=>s.key),['BP','AP','AD','BD']);eq(body.financial,{mode:'existing-two-order-live-quote',generalized:false});eq(providerCalls,0);eq(rpcCalls,1);
 
  // Execute the read-only RPC against isolated PostgreSQL-compatible state.
  const db=new PGlite();

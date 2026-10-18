@@ -36,3 +36,13 @@ for (const ref of ['work-native-route-bundle-matrix-phase2-20261018', 'work-nati
 const mapWorkflow=fs.readFileSync('.github/workflows/queuego-map-engine-buriram.yml','utf8');
 assert.ok(mapWorkflow.includes("'work-native-route-bundle-*'"),'Route Bundle successors require the existing Map Engine gate'); checks++;
 console.log(JSON.stringify({checks,failures:0,scope:'all integrated successor gates, publication excluded'}));
+
+for(const ref of ['work-native-route-bundle-financial-sim-20261018','work-native-route-bundle-future']){
+ assert.equal(selected('route-bundle-stack-races',ref),true); checks++;
+ assert.equal(selected('publish-rider-road-test',ref),false); checks++;
+}
+for(const source of ['supabase/functions/queuego-route-bundle-matrix/**','supabase/migrations/*route_bundle*.sql','tests/route-bundle-*']){
+ assert.ok(mapWorkflow.split('  pull_request:')[0].includes("'"+source+"'"),'Map Engine must run on exact stack-source changes: '+source); checks++;
+}
+assert.ok(workflow.includes('run: node tests/route-bundle-stack-races.cjs')); checks++;
+console.log(JSON.stringify({checks,failures:0,scope:'generalized stack independent races and exact-head Map Engine selection'}));

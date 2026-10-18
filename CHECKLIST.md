@@ -580,6 +580,121 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Added source regression ensuring the map capture no longer pre-injects GPS before instrumentation. Existing lifecycle, camera continuity, tile, crash and explicit FGS cleanup gates remain intact.
 - NEXT: exact-head map CI; require phone-allowed and large-allowed to log `injected_gps_store_verified` + `injected_gps_camera_verified`. Public HTTPS hosting and physical road/GPS acceptance remain separate BLOCKED release gates.
 
+### 2026-10-18 Route Bundle Phase 2 versioned financial allocation checkpoint
+- Base: strict descendant of real-map HEAD `f9bd7e9c83399d596d85f1f7252514a7ca7976d0`; live claim/cap remains unchanged at 2 and no Production mutation is allowed.
+- Implemented pure read-only policy `stack-savings-group-weighted-v1` using integer satang: candidate available saving is split by the existing group percentage; the existing group's share is weighted by current committed fees with floor + largest-remainder allocation and immutable Order-ID tie-break.
+- Existing Rider locked payouts are preserved exactly; candidate Rider payout is the passed incremental compensation; no Rider/platform bonus is created. If proposed customer collections cannot fund all preserved payouts, simulation returns ineligible with explicit funding gap instead of inventing subsidy.
+- Local isolated test: 19/0 checks PASS for pair parity, 4-order weighted 445/333/222 satang allocation, deterministic remainder, funding-gap rejection, positive-savings guard and unrepresentable money/rule rejection.
+- NEXT: bind this policy to authoritative read-only route/readiness evidence and existing pair cost oracle, then add 2–5 order financial/quality conservation tests. Do not raise live cap or mutate claims until atomic concurrent-claim gate passes.
+
+
+### 2026-10-18 authoritative Route Bundle financial snapshot
+- Added service-role-only STABLE `queuego_route_bundle_stack_financial_input` on top of the existing exact-revision/full-active-set/committed-next reader. It reads current customer fee, preserved Rider payout, Merchant readiness and shop category in the same PostgreSQL statement snapshot; caller-supplied money is not accepted.
+- Financial rule snapshot is versioned with `stack-savings-group-weighted-v1` and returns satang/km, pickup/dropoff/minute costs, detour limit and effective food/cafe delay cap. Function follows Supabase security guidance: explicit search_path, PUBLIC/anon/authenticated execute revoked, service_role only.
+- Added isolated PGlite regression to the full npm gate; it checks exact 50.00/55.00/40.00 THB conversion to satang, default rule snapshot, food 5-minute cap, stale revision rejection, role rejection and read-only SQL.
+- Fixture now mirrors already-existing `orders.rider_delivery_payout` and `merchant_ready_estimate_at` columns used by current migrations. No Production migration was applied from this chat.
+- NEXT: compute generalized incremental route burden from the same 2–5 order matrix/readiness snapshot, feed only that server-derived compensation into the versioned allocator, then test financial + quality rejection and atomic claim locking.
+
+
+### 2026-10-18 generalized 3–5 Order financial/quality read-only plan
+- QueueGo stack planner now optionally uses the authoritative financial snapshot to include Merchant-ready waiting and 2-minute stop service time while preserving the same pickup-first + committed-next policy. Existing callers without financial evidence retain the prior travel-only behavior.
+- Added read-only existing-stack baseline planner (1–4 current Orders). Generalized 3–5 financial plan measures candidate detour against that baseline, compares every existing dropoff delay plus candidate ride delay, enforces max-detour/effective max-delay, and derives incremental Rider compensation only from server road/readiness evidence.
+- Compensation reuses current rule components: incremental km + pickup + dropoff + delay minutes. It is then passed to `stack-savings-group-weighted-v1`; locked existing Rider payouts remain untouched and any funding gap rejects the stack.
+- Local focused operational test: 14/0 PASS. 3-order case produced 1,000 m detour, 6 min max delay, 1,500 satang candidate Rider compensation, deterministic 781/469/1,250 satang customer savings, 9,500 collections = 9,500 Rider payouts. Food 5-minute limit and 20-minute Merchant readiness both reject.
+- Edge handler `action=plan` now reads `queuego_route_bundle_stack_financial_input`; for 3–5 it returns the generalized read-only financial gate. Two-order money remains explicitly delegated to the existing live pair quote authority to avoid duplicate pricing semantics.
+- NEXT: exact-head PGlite/full CI; then implement atomic 3–5 claim mutation behind the existing max_orders=2 rollout cap with row locks/revision/membership/financial revalidation. Do not activate 3–5 live until that concurrent-claim gate is green.
+
+
+### 2026-10-18 generalized readiness fail-closed correction
+- Review of exact `2d9a0dca` found generalized operational planning treated missing `merchantReadyEstimateAt` as zero wait and had no direct 5-minute pickup-wait rejection. That could make incomplete readiness evidence look eligible.
+- Planner now rejects missing/invalid readiness whenever authoritative financial evidence is active, records per-Order pickup waits, and the generalized financial gate rejects any actual planned pickup wait above 300 seconds before detour/delay or money allocation.
+- Financial snapshot now carries `maxPickupWaitSeconds=300`, matching the existing pair readiness gate. Focused tests use explicit readiness timestamps, expect 20-minute candidate readiness to fail with the readiness-wait reason, and assert missing readiness fails closed.
+- No live claim/cap, price, Rider payout or Production state changed. NEXT: exact-head test/CI, then atomic generalized claim behind max_orders=2.
+
+
+### 2026-10-18 staged atomic generalized Route Bundle claim
+- Added short-lived private stack quote cache. The service-role cache RPC re-reads the authoritative exact-revision financial snapshot, validates the versioned funded allocation, preserves the committed prefix, requires one pickup + one dropoff per 3–5 active/candidate Order and stores only a <=30s quote.
+- Added authenticated Rider `queuego_claim_route_bundle_stack(quote_id)`: locks Rider, quote, bundle and every quoted Order; revalidates exact matrix/order revisions, complete active membership, bundle revision, current platform financial rules, Customer fee ceilings, locked Rider payouts, supported verticals, NEXT/Laundry conflicts and quote funding before any mutation.
+- Mutation preserves every existing locked Rider payout, applies only quoted lower Customer fees, assigns the candidate payout from incremental burden, refreshes pending payment/delivery rows, commits the full stop plan with route_revision+1, consumes the quote, writes audit and Customer/Merchant notifications atomically.
+- Safety gate is explicit: target count must be <= current `route_bundle.max_orders`; the existing default/fallback remains 2, so this 3–5 claim path is staged but cannot activate itself. No rule/feature or Production value is changed by the migration.
+- Added isolated PGlite gate to full npm test: quote cache succeeds, default cap 2 blocks claim, stale revision fails, opt-in test rule 3 permits one atomic 3-Order claim, Customer collections equal preserved/new Rider payouts exactly, route revision advances once, and quote replay is rejected.
+- NEXT: wire service handler `action=quote` to cache only an eligible 3–5 financial plan; run exact-head full/Native CI and add a competing-claim race test before any reviewed cap increase.
+
+
+### 2026-10-18 service quote handoff for generalized stacks
+- Existing route-bundle matrix Edge handler now supports explicit `action=quote` only for 3–5 Orders. It reuses the same authoritative financial snapshot + planner + generalized financial gate; `action=plan` remains read-only.
+- An eligible generalized plan is converted to committed-prefix + remaining stop-plan objects and sent to the service-only SQL quote cache. Ineligible financial/readiness/quality plans return 409 and never create a quote. Two-Order quote behavior remains on the existing live pair authority.
+- Quote response explicitly reports `readOnlyBusinessState=true`: only a short-lived private quote row is written; no Order, price, assignment, bundle revision or feature/rule changes occur.
+- Added isolated handler test to full npm gate for plan-no-write, eligible quote cache payload and readiness-ineligible no-cache behavior.
+- NEXT: add a competing-candidate claim race fixture, then require exact-head full/Native CI. Live 3–5 remains blocked by max_orders=2.
+
+
+### 2026-10-18 generalized quote route-binding + competing-candidate stale gate
+- Hardened the private quote cache so money and route cannot diverge: `p_stop_plan` must now equal committed prefix + the exact `financial.route.fullKeys` translated through the authoritative snapshot point map. A reversed or otherwise different valid-looking plan returns null and is never claimable.
+- Extended isolated staged-claim coverage with two candidates quoted against the same bundle revision. After one claim advances `route_revision`, the other candidate's quote fails closed; the existing Rider advisory lock + bundle row lock + exact revision fence remain the concurrency authority.
+- The financial fixture now carries the actual route `fullKeys`, matching the Edge evaluator output. No Production data/rule/feature was changed and `route_bundle.max_orders` still defaults/falls back to 2.
+- NEXT: exact-head full/Native CI. If green, source logic for generalized quote/claim is gated; remaining activation requires reviewed cap rollout plus physical multi-stop acceptance.
+
+
+### 2026-10-18 exact-head financial simulator syntax repair
+- Native run3377 on `3db1faa2` reached the Route Bundle section after all preceding suites passed, then Node stopped at module parse with `SyntaxError: Invalid or unexpected token`.
+- Root cause is exact and source-local: the initial simulator checkpoint accidentally committed escaped template-literal delimiters (`\``) and a double-escaped numeric regex (`\\d`) as literal JavaScript source.
+- Fixed only those source escapes: template literal is valid JavaScript and percent parsing again matches decimal digits. Financial policy/math is unchanged. Successor `85b937d7` route/claim hardening is preserved.
+- NEXT: exact-head CI must pass this parser boundary before any additional feature mutation.
+
+
+### 2026-10-18 corrected route-binding source generation
+- Root cause of the corrupted successor insertion is confirmed: JavaScript string replacement interpreted the SQL regex tail `$'` as the special “suffix of input” replacement token and duplicated the rest of the migration.
+- Rebuilt the staged quote/claim migration from intact `bacbb461` and re-applied exact route/money binding using callback replacement, so dollar signs are literal SQL text.
+- Pre-commit structural gate: migration length 21425 bytes, exactly 1 quote-cache function, 1 generalized claim function and 1 safety footer; competing-candidate test and `cfc98869` simulator parser fix remain on the branch.
+- No Production mutation; generalized 3–5 claim is still blocked by default/fallback `route_bundle.max_orders=2`.
+
+
+### 2026-10-18 migration anti-duplication executable guard
+- The staged claim regression now asserts exactly one generalized quote-cache function, one generalized claim function and one safety footer, in addition to executing the migration in PGlite.
+- This specifically prevents recurrence of the source-generation `$'` replacement expansion that duplicated the claim body. No business behavior or Production state changes.
+
+
+### 2026-10-18 exact-head Route Bundle first CI failure — JSON object cardinality
+- Exact successor `85a5f494`, Native3382/native-pilot: every preceding source suite reached the Route Bundle financial gates successfully, then PostgreSQL-compatible execution stopped in `queuego_route_bundle_stack_financial_input` because `jsonb_object_length(jsonb)` is not a PostgreSQL function.
+- Replaced the invalid helper with an exact key count: `select count(*) from jsonb_object_keys(v_financial_orders)`. Semantics remain unchanged: fail closed unless the authoritative financial object has one entry for every 2–5 snapshot Order.
+- No pricing, claim, cap, payout, feature or Production behavior changed. Existing financial snapshot/claim tests exercise this function directly, so exact-head CI is the regression gate.
+- NEXT: run successor CI and fix the next first actual failure only.
+
+
+### 2026-10-18 DB-side generalized Rider compensation recomputation
+- SQL quote validation now recomputes candidate Rider incremental compensation from detour meters, km rate, pickup/dropoff cost and added minutes in the authoritative financial-rule snapshot.
+- Added an internally-consistent underpayment tamper case (1,300 -> 1,200 satang with adjusted totals); the service-only quote cache must reject it. This closes the gap where service JSON could otherwise define its own incremental payout.
+- No cap/feature/Production activation; default generalized path remains blocked by max_orders=2.
+
+
+### 2026-10-18 generalized targeted 30-second offer gate
+- Closed the authority gap between a valid 3–5 quote and Rider acceptance. Added service-role-only `queuego_offer_route_bundle_stack_quote` that publishes into the EXISTING `qg_rider_order_offers` table for at most 30 seconds; no second pool/queue exists.
+- Offer publication is fail-closed on current max_orders, route-bundle feature, active/online Rider, exact bundle revision, exact candidate revision, complete quoted active membership, Laundry/return conflicts and any already-live offer for the candidate or Rider. Current default cap=2 therefore prevents 3–5 offers from becoming live.
+- Generalized claim now requires and row-locks that exact live targeted offer for the authenticated Rider. Successful assignment records the existing offer-history `accepted` outcome and consumes the offer in the same transaction.
+- Edge `action=quote` publishes the targeted offer after caching an eligible short-lived quote and returns `offerPublished`. Isolated tests cover cap=3 publication, one live offer per Rider, offer history/consumption and stale competing quote refusal.
+- No Production rule/feature/cap changed. NEXT: extend bounded refresh discovery so active 2–4 Order bundles can actually generate `action=stack` evidence/quote work only when max_orders permits.
+
+
+### 2026-10-18 targeted-offer SQL delimiter fix
+- Audited successor `a7faf569` before waiting for CI and found the new service-only targeted-offer function used invalid PL/pgSQL dollar quoting (`as $ ... end $;`).
+- Corrected it to `as $$ ... end $$;` and added an executable source assertion for the exact SECURITY DEFINER/search_path/function delimiter header.
+- Targeted 30-second offer authority, claim requirement, offer history, compensation recomputation and max_orders=2 safety remain unchanged.
+
+
+### 2026-10-18 generalized stack discovery to targeted offer chain
+- Added service-role-only `queuego_route_bundle_stack_refresh_claim` using the EXISTING route-matrix lease. It emits `action=stack` only for active 2–4 Order bundles when continuous dispatch is enabled and current max_orders>=3; fallback cap=2 returns no work.
+- Discovery requires one coherent active bundle, online/available Rider with an active readiness lease, no outside active job, no NEXT/Laundry/return/live-offer conflict, supported nearby candidate and no fresh same-revision stack matrix. It never assigns or reprices.
+- Existing Edge refresh now runs legacy pair discovery then generalized stack discovery through the same release RPC. A successful 3–5 stack matrix immediately enters the existing generalized quote path, which in turn publishes the 30-second targeted offer only when the rollout cap still permits it.
+- Added isolated SQL discovery, refresh-worker orchestration and handler stack→quote→offer coverage to the full npm gate. No Production feature/rule/cap mutation.
+- NEXT: exact-head CI. Once green, remaining generalized Route Bundle gates are reviewed cap activation and physical 3–5 stop acceptance.
+
+
+### 2026-10-18 generalized stack discovery compatibility correction
+- Exact `6caa800f` Native3386/native-pilot reached the existing `rider-road-matrix.cjs` contract and failed because every 3–5 `action=stack` response had been widened with quote fields, even for legacy evidence-only callers.
+- Preserved the established `action=stack` API: automatic quote/offer chaining now requires explicit `quoteAfterCache=true`. Only the new cap-gated generalized stack discovery emits that flag; existing direct/manual stack evidence calls keep their original response shape.
+- Updated discovery/worker/handler focused tests to carry and assert the explicit flag. No pricing, assignment, payout, cap, feature or Production state changed.
+- NEXT: exact-head CI; then fix only the next first actual failure.
 
 ### 2026-10-18 real-map fourth actual failure — AOSP emulator has no Google Play location provider
 - Exact Map HEAD `95692e4e`, Native3381/map-display job117622313292: real QueueGo/MapLibre scopes reached Rider phone-allowed after the foreground service logged `foreground_updates_started`, but the test failed waiting for the expected location-store fix. Logcat repeatedly reports `GooglePlayServicesUtil ... requires the Google Play Store, but it is missing`, `SERVICE_INVALID`, and `fresh_location_unavailable`.
@@ -589,11 +704,42 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - NEXT: exact-head real-map CI; inspect the next first runtime failure only.
 
 
+### 2026-10-18 stack discovery isolated-schema dependency correction
+- Pre-CI audit found the new discovery test referenced `qg_private.rider_dispatch_preferences` while the minimal fixture intentionally does not create that later Phase-1 table.
+- The test now loads the real predecessor migrations in order: continuous dispatch → dynamic stop plan → route-matrix replenishment → Phase-2 stack matrix → generalized stack discovery. The hand-made lease table was removed.
+- Production migration dependency was already valid; this fixes only isolated test setup and increases fidelity to the actual schema chain. No runtime/Production behavior changed.
+- NEXT: exact-head CI.
+
 ### 2026-10-18 no-GMS recreate location-store continuity
 - Follow-up to the CI-only GPS fallback: the prior lifecycle evidence proves `scenario.recreate()` restarts the navigation foreground service, whose production `onDestroy()` correctly clears the location store.
 - Android instrumentation now requires a fresh expected fix after recreate and explicitly recenters before capturing the recreated real-map frame. On a GMS-capable device this still prefers the real provider; on the explicit no-GMS CI scope it reuses the androidTest-only store fallback.
 - Production service/location behavior remains unchanged; physical GPS/GMS certification remains a separate gate.
 
+
+### 2026-10-18 refresh helper backward-compatibility correction
+- Exact `13edb751` Native3390/native-pilot reached legacy `rider-road-matrix.cjs` and failed because `refreshRouteMatrices` unconditionally called the new stack-discovery RPC, changing both failure counts and the established helper return shape for existing callers/mocks.
+- Generalized discovery is now explicit: `refreshRouteMatrices(...,{includeStack:true})`. The Edge worker's `action=refresh` opts in; legacy helper callers remain pair-only and preserve their exact historical `{refreshed,failed}` / busy response.
+- The generalized refresh-worker test explicitly opts in and still proves pair discovery → stack discovery → same lease release. Production assignment/pricing/cap remains unchanged.
+- NEXT: exact-head CI, then fix only the next actual failure.
+
+
+### 2026-10-18 additive stack-refresh rollout isolation
+- Pre-CI compatibility audit found an older Edge worker transport can know only `queuego_route_matrix_refresh_claim/release`. If the new stack coordinator is not deployed/recognized yet, unconditional propagation would turn an otherwise successful legacy pair refresh into HTTP 503.
+- With `includeStack=true`, stack discovery is now an additive optional extension: coordinator failure is ignored after the established pair refresh completes. The existing pair coordinator remains strict; stack work that was successfully leased still uses the same finally/release path, with lease expiry as the crash fallback.
+- This preserves rollout ordering and old worker behavior while allowing the new discovery path whenever its migration is present. No assignment/pricing/cap state changed.
+
+
+### 2026-10-18 targeted stack-offer exact-member revision hardening
+- Offer publication now revalidates every existing stack member against the quote's exact `updated_at`, Rider and bundle ID before showing the 30-second offer. Previously complete active membership was checked, but an existing Order could change readiness/financial state without changing the bundle revision and still receive an offer that claim would reject.
+- Added rollback regression: mutate an existing member revision after quote → offer publisher returns false; rollback restores the snapshot → offer publishes. Atomic claim revision checks remain unchanged.
+- This reduces unclaimable Rider offers without relaxing any gate. Current max_orders fallback stays 2; no Production mutation.
+
+
+### 2026-10-18 Native3394 generalized stack SQL parser correction
+- Exact Route Bundle HEAD `aba47fa6` run3394 reached generalized financial/quality tests, then PGlite failed parsing `20261018083000_route_bundle_stack_quote_claim_staged.sql` at position 10556.
+- Root cause: the targeted-offer function alone opened with `as $` and closed with `end $;` instead of PostgreSQL `$$` dollar quoting.
+- Corrected only the two delimiters inside `queuego_offer_route_bundle_stack_quote`. No business rule, payout, cap, feature flag or Production migration was changed; max_orders remains 2.
+- NEXT: exact-head CI; fix only the next first failure.
 
 ### 2026-10-18 Native3391 process-death harness correction
 - Exact Map HEAD `89f1a556` run3391: map-display-only SUCCESS, MapLibre/navigation/race jobs SUCCESS; native-pilot failed only in three-role system-kill recovery because Customer remained alive one second after asynchronous `am kill`.
@@ -602,12 +748,36 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Evidence records whether `am-kill` or `run-as-sigkill` was required. Release still needs physical OEM process-recreation evidence; emulator harness is not a physical certification.
 - NEXT: exact-head Native Pilot; fix only the next real failure.
 
-
 ### 2026-10-18 Native3395 harness syntax correction
 - Exact Map HEAD `749f3f73` Native3395 failed before Android build at Python parse line 743: the new system-kill harness had a one-character typo `pkg"]`.
 - Corrected only that list terminator to `pkg])`. No app/runtime logic changed.
 - NEXT: exact-head CI and then process-death runtime evidence.
 
+
+### 2026-10-18 Native3398 SQL delimiter publication correction
+- Exact `2e9bf04c` still showed the targeted-offer function with single-dollar delimiters; inspection of commit `067a423c` proved that prior intended delimiter correction did not actually change the migration blob.
+- Replaced only this function's body delimiter with explicit PostgreSQL named dollar quote `$qg$` / `$qg$`, avoiding ambiguous publication. Commit diff must include the migration file.
+- No generalized claim/offer business logic, cap, feature, payout or Production state changed.
+
+
+### 2026-10-18 Route Bundle exact-head Native Pilot trigger coverage
+- The Native Pilot full regression executes Route Bundle Phase-2 SQL/Edge tests, but its push path filter did not include `supabase/functions/queuego-route-bundle-matrix/**` or `supabase/migrations/*route_bundle*.sql`. Therefore SQL-only correction `529cd5aa` did not receive a new exact-head run.
+- Added those two existing source families to the Native Pilot push paths. The workflow file is itself selected, so this checkpoint must trigger exact-head CI.
+- No runtime, cap, pricing, claim or Production behavior changed.
+
+
+### 2026-10-18 Native3399 staged-claim fixture parameter typing
+- Exact `c74e3b7f` run3399 proved the migration parses and generalized tests advance into `route-bundle-stack-claim.cjs`.
+- First failure was PGlite parameter inference only: fixture parameter `$7` was reused in numeric columns and `100+$7`, producing `integer versus numeric`.
+- Added explicit `::numeric` casts inside the isolated fixture INSERT. Runtime migration/business logic is unchanged; no Production mutation.
+- NEXT: exact-head CI.
+
+
+### 2026-10-18 Native3400 stale-evidence fixture follows targeted-offer authority
+- Exact Route Bundle HEAD `33685cc9` run3400 passed SQL parsing and all independent races. Native Pilot first failed because the stale-evidence fixture attempted authenticated generalized claim without first publishing the required 30-second targeted offer, so the secure runtime correctly returned `live targeted offer required`.
+- The fixture now raises the isolated max_orders rule inside a transaction, publishes the exact quote through `queuego_offer_route_bundle_stack_quote` as service_role, then mutates the candidate revision and claims as authenticated Rider. This preserves the targeted-offer-first authority while still proving stale matrix/order evidence fails closed.
+- The transaction rollback removes the temporary rule/offer/revision changes. Production, live cap and business logic are unchanged.
+- NEXT: exact-head Native Pilot, then merge latest Map base descendant before judging map-display on PR #435.
 
 ### 2026-10-18 Map3397 stale prior-scope cleanup fencing
 - Exact `e1004229` map-display artifact proves current `large-allowed` process PID4542 started location twice and stopped twice. The harness nevertheless counted 2/3 because a delayed `foreground_updates_stopped` from prior phone-allowed PID4328 landed after logcat clear and before the new scope's first start.
@@ -622,9 +792,80 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Production app code is unchanged. No force-stop semantics introduced. Physical OEM process-recreation evidence remains a separate release gate.
 - NEXT: exact-head Native Pilot and Map display lifecycle.
 
-
 ### 2026-10-18 Native3402 preserve strict PID evidence contract
 - Exact Map HEAD `6404f42f` Native3402 failed in `tests/native-android-source.cjs` before emulator capture because the established static contract requires strict resolver signature `def package_pids(pkg: str)`.
 - Kept that strict resolver unchanged in name/signature and added separate non-throwing `package_pids_optional(pkg: str)` only for expected process-death polling. Strict runtime crash evidence still asserts that live QueueGo process IDs resolve before PID-scoped AndroidRuntime collection.
 - No acceptance threshold, app runtime, force-stop behavior or Production state changed.
 - NEXT: exact-head Native Pilot; runtime process-death path must now be reached.
+
+
+### 2026-10-18 Native3406 named-dollar structural assertion alignment
+- Exact Route Bundle HEAD `563039b9` passed migration parsing, generalized financial/quality stages and all independent races, then failed only because the source-structure assertion still expected the old anonymous `as $$` delimiter.
+- The targeted-offer function intentionally uses named PostgreSQL delimiter `$qg$` after the parser publication fix. Updated only the structural assertion to require that exact deliberate delimiter.
+- No SQL runtime behavior, targeted-offer authority, claim logic, cap, payout or Production state changed.
+- NEXT: exact-head CI; continue only from first real failure.
+
+
+### 2026-10-18 Native3407 handler fixture committed-next alignment
+- Exact Route Bundle HEAD `5d02fd6f` passed staged atomic claim `43/0`; the next failure moved to `route-bundle-stack-handler-quote.mjs` line 50 where read-only `plan` returned 503.
+- Root cause: the handler fixture still modeled an ACTIVE bundle with `bundleId/routeRevision` but `lockedNext=null`. The hardened planner intentionally fails closed unless an active bundle supplies its authoritative committed next stop.
+- Fixture now binds `lockedNext='O0P'` to `{order_id:A,kind:'pickup'}`, matching its existing point map and expected pickup-first route. Runtime planner/handler/claim logic is unchanged.
+- NEXT: exact-head CI; continue only from the next actual failure.
+
+
+### 2026-10-18 Native3408 refresh-worker legacy return-shape alignment
+- Exact Route Bundle HEAD `aa9f64ba` passed staged claim `43/0`, handler quote `19/0` and stack discovery `10/0`, then failed only in the new refresh-worker fixture.
+- Established `refreshRouteMatrices` compatibility intentionally returns `{refreshed,failed}` whenever any lease is claimed; `busyOrDisabled:true` exists only when no work/lease is claimed. It never returns `busyOrDisabled:false` on the legacy success shape.
+- Updated only the generalized refresh-worker expectation to `{refreshed:1,failed:0}`. Runtime helper behavior and backward compatibility remain unchanged.
+- NEXT: exact-head CI; continue from the next actual failure only.
+
+## 2026-10-18 Route Bundle exact-head coverage checkpoint
+- Stream: Route Bundle 3–5 / release gate coverage. Branch: `work-native-route-bundle-financial-sim-20261018`; verified baseline HEAD `7dda03fb65ed0ee2c6f20a2efebdbb085a6d354a` is the only fetched remote branch containing that commit; no newer open PR successor was found. Backup: `backup/route-bundle-before-exact-gates-20261018`.
+- Baseline CI: Native Pilot #3409 / run `39116190364` SUCCESS on that exact SHA. All eight required jobs ran successfully: native-pilot, Map display, navigation, MapLibre, Dispatch/Ride/Express/Credit races. Publication alone was intentionally SKIPPED. Full regression, Kotlin unit tests, three APK builds, 16 KB packaging, WebView rejection and launch/map/voice capture steps all SUCCESS.
+- Coverage gap: baseline had no exact-head Map Engine run (path filter omitted Route Bundle SQL/Edge/tests); staged PGlite competing-quote tests were sequential, not an independent PostgreSQL concurrency gate.
+- Change: extend existing Map Engine push selector to Route Bundle sources; add isolated `route-bundle-stack-races` job to the existing Native workflow. No duplicate runtime/dispatcher/engine/payment implementation. Actual PostgreSQL tests exercise 3/4/5 Orders with forced row-lock overlap, competing targeted offer publication, duplicate claim/replay, stale losing quote, locked Rider payouts, integer-satang conservation and disconnect-before-commit rollback.
+- Test result: Node syntax PASS; integrated selector 76/0, pinned Actions 98/0 and release workflow 57/0 PASS. New PostgreSQL execution requires its isolated CI service; this environment has no working PostgreSQL service. Full local regression status is recorded in the following verification checkpoint; exact new HEAD CI is REQUIRED.
+- STATUS: IN PROGRESS (source/CI coverage); ACTIVATION BLOCKED. Runtime migration/cap/feature/pricing/payout/Production state unchanged; existing max_orders default remains 2.
+- BLOCKER: no physical/signing/provider/Production gate has been certified by these changes. NEXT: publish this bounded checkpoint, inspect exact-head Native + Map Engine runs; open first actual failing job log before any fix. Once all pass, record SOURCE READY / ACTIVATION BLOCKED, never RELEASE DONE.
+
+## 2026-10-18 canonical Route Bundle / all-service release handoff
+- Stream: Route Bundle 3–5 and inherited Unified Release services.
+- Branch: `work-native-route-bundle-financial-sim-20261018`; checkpoint source HEAD `c15327d6c547ea6f49b0ae2bd8e6c8e959d87430` (published through connected GitHub Git-data API; local tested tree `5f1e0f71c1001ff202a28ca08833cb6cb68cab1b` exactly matches). Local `d8d393d1` is the same tree with different commit metadata, not a separate implementation. Continue from the remote successor, never that local sibling.
+- Tests: complete local `npm test` pre/test/post EXIT 0; clean-checkout `npm run test --ignore-scripts` EXIT 0. Initial dirty-tree-only release-evidence-bundler rejection was resolved by checkpointing the tree, without changing its clean-checkout guard.
+- CI: exact `c15327d6` Native #3410 / `39125420995`, new `route-bundle-stack-races` job `117669423270`: PASS **100 checks / 0 failures** on PostgreSQL 17.0011. All Dispatch/Ride/Express/Credit independent race jobs SUCCESS. Native unit/APK/map jobs still running when this checkpoint was prepared. Exact push Map Engine `39125421124` also running (PR event `39125425161` is separate). Verify containing successor's fresh runs before CI DONE.
+- Route Bundle source/isolated suites PASS: committed-next/full-membership/revision planner 73; financial simulator 19; authoritative financial snapshot 18; quality/readiness 15; staged claim/route-binding/offer authority 43; service quote 19; generalized discovery 10; refresh worker 3. Real PostgreSQL 3/4/5 races additionally prove one targeted offer winner, row-lock claim replay rejection, losing-quote rejection, exact satang conservation, preserved existing payouts, one audit/accepted history, revision increment once, and full rollback on precommit disconnect.
+- Audit: Passenger Ride/Express Web + Native/state/quote/proof/cash/recovery suites, Credit ledger/Edge/Web/Admin/retired-GP/13-migration chain, Grocery categories/search/price/visibility/approved-image projection, and shop-managed Laundry numeric fee preservation all remain in the inherited full regression. No rewritten dispatcher, router, payment, wallet, proof or catalog. Earlier checklist/audit notes saying generalized finance/claim is absent are historical and superseded by the staged implementation in this successor.
+- STATUS: SOURCE DONE for the bounded concurrency/selector scope (`c15327d6` + actual PostgreSQL evidence); overall CI IN PROGRESS pending complete exact successor Native/Map Engine. PHYSICAL BLOCKED / SIGNING BLOCKED / PRODUCTION BLOCKED. **ACTIVATION BLOCKED**; live `route_bundle.max_orders` remains unchanged/default 2. No Production query/migration/rule/feature/provider call was made.
+- NEXT: inspect final exact successor Native + Map Engine outcomes; on failure read first failing job log, correct only that root cause and rerun. If all pass, SOURCE READY / CI DONE, with the owner gates below still BLOCKED. Do not activate 3–5 or call RELEASE READY/RELEASE DONE.
+
+### OWNER ACTION REQUIRED — external acceptance gates
+Every row remains BLOCKED until actual evidence is attached; emulator/source checks do not close it. Use authorized acceptance accounts and controlled orders, not fabricated Production data. Record exact SHA/APK digest, device/OS, time, order/trip ID, screen recording and redacted logs as applicable. Store no credentials in evidence.
+
+| Gate / STATUS | Account and equipment | Actions required | Required evidence |
+| --- | --- | --- | --- |
+| Buriram Rider GPS / PHYSICAL BLOCKED | Active approved Rider, Android with real GPS; independent observer | Start approved trip, tap current position and existing navigation; verify GPS marker/road alignment safely while stationary or observed | Exact build, device/GPS permission, real route and timestamped screen/log evidence |
+| Parallel road, U-turn, reroute / PHYSICAL BLOCKED | Same Rider/device; real Buriram roads | On a safe legal route test adjacent-road discrimination, legal U-turn and off-route recovery; observer operates UI | Expected/actual road and turn geometry, reroute latency, route IDs, screen/GPS log |
+| Background → foreground / PHYSICAL BLOCKED | Rider + physical Android | During active job switch apps/lock/unlock, return; verify job, marker, camera and route persist | Before/after video, job/revision and lifecycle logs, no reload/duplicate action |
+| OEM process death/restore / PHYSICAL BLOCKED | Customer/Merchant/Rider accounts; actual Android devices | During controlled active state allow OS process termination, reopen and verify state recovery without duplicate mutation | Device/OS/build, process evidence and recovered order/state/audit |
+| Passenger Ride / PHYSICAL BLOCKED | Customer and publicly licensed approved Rider; two physical devices | Request → accept → arrive pickup → start → track → destination → cash → complete; interrupt/reopen | Trip ID, both device recordings, state/audit sequence, cash and restore evidence |
+| Express / PHYSICAL BLOCKED | Sender/Customer and approved Rider; two physical devices/cameras | Quote/request → targeted accept → pickup proof → travel → dropoff proof → cash/complete; interrupt upload/reopen | Order ID, proof references, both recordings, cash/state and recovery audit |
+| Grocery Safari / PHYSICAL BLOCKED | Real Merchant; iPhone Safari | Merchant → สินค้า → เพิ่มสินค้าจากแคตตาล็อก; search/category, set price, tick storefront/delivery, save/reopen; verify approved image, reject unpriced visibility | iPhone/iOS/Safari/build, saved SKU/settings and reopen recording; no login loop/white page |
+| Grocery Android / PHYSICAL BLOCKED | Same Merchant; physical Merchant Android app | Repeat priced catalog add, flags, save/reopen/category/image flow | APK SHA, Android/device, SKU references and recording |
+| Laundry / PHYSICAL BLOCKED | Laundry Merchant/staff + Customer; real Merchant device | Shop-managed pickup → wash → return → cash; save/reopen configured numeric fee/minimum | Account role, order, persisted original numeric fees/minimums, state/receipt evidence; no general Rider pool |
+| Route Bundle 3–5 acceptance / PHYSICAL BLOCKED | Approved Rider, participating Merchants/Customers; physical Android and reviewed isolated acceptance environment | Complete 3, then 4, then 5 approved multi-stop orders; test committed-next, readiness/wait, cancelled/stale offers, interruption and proof/cash at each stop. Cap opt-in only in explicitly approved acceptance environment | Every order/stop/revision, quote/offer/claim logs, proof/cash, customer fee sum and unchanged locked Rider payout; physical results do not themselves authorize Production cap change |
+| Provider / PRODUCTION BLOCKED | Authorized provider dashboard + Admin finance account, approved sandbox/live configuration | Verify signed webhook, duplicate/replay rejection, paid top-up settlement and ledger reconciliation under explicit rail approval | Provider event/signature verification result, transaction/ledger references and reconciliation; never secrets |
+| Public map HTTPS / PRODUCTION BLOCKED | Hosting/config owner + approved domain/TLS runtime | Approve/deploy QueueGo map tiles/routing on public HTTPS; configure release runtime and verify actual physical app tiles/route | Approved origin/config, TLS/health/real tile-route responses and device recording; debug PMTiles is not this approval |
+| Signed AAB / SIGNING BLOCKED | Authorized release signer; secure signing/CI environment | Supply approved signing configuration through secret store; build/verify Customer/Merchant/Rider release AABs | Artifact SHA, signature certificate fingerprint, package/version and verification report; never signing passwords/keys |
+| Play Closed Testing / SIGNING BLOCKED | Play Console owner/release manager + enrolled testers/physical Android | Upload approved signed AABs, configure Closed Testing, install via Play and execute required acceptance | Play track/version/review status, opt-in/install and tester/device acceptance records |
+| Production cutover / PRODUCTION BLOCKED | Authorized deployment/DB owner and approved backup/change window | Review migration/function/config plan, backups/rollback and every applicable gate; execute approved cutover only after release approval | Approval/change record, backup, exact applied versions, post-cutover smoke/ledger audit; reviewed cap change remains a separate explicit action |
+
+## 2026-10-18 verified SOURCE READY / ACTIVATION BLOCKED
+- Stream: Route Bundle 3–5 and inherited Unified Release services; branch `work-native-route-bundle-financial-sim-20261018`.
+- Verified source HEAD: `cb649475e023ca05bf4647f89299bf9d3847088b`; tree `b9bd7000928be2800ea247f6c48714c212907019`. This documentation checkpoint changes no runtime, migration, workflow, test or financial source.
+- CI DONE on that exact HEAD: Native #3411 / `39125601986` SUCCESS; QueueGo Map Engine push #151 / `39125601981` SUCCESS. Native jobs all SUCCESS: Full QueueGo regression/unit/three APK/16KB/no-WebView/launch-map-voice lifecycle, route-bundle-stack-races, continuous-dispatch-races, passenger-ride-races, express-races, credit-races, navigation-map-runtime, maplibre-osm-runtime and map-display-only. Release publication remains intentionally SKIPPED.
+- PostgreSQL race job `117670009359`: 100/0 PASS on PostgreSQL17, 3/4/5 Orders, forced independent row-lock overlap, single targeted offer winner, replay/stale rejection, preserved locked Rider payouts, exact satang conservation and disconnect-before-commit rollback.
+- Map display job `117670009346`: actual Customer denied/allowed and Merchant denied/allowed scopes PASS; Rider phone-denied/phone-allowed/large-allowed mount/background/recreation all PASS with exact source metadata and no Production/account/order writes. Debug PMTiles + injected emulator GPS evidence is not physical positioning or release HTTPS approval; visible tiles still require owner visual acceptance.
+- Map Engine job `117670006986`: actual graph/roads/directional restriction gates, external-request-blocked Chromium, offline package/rollback, no-network container, loopback staging and release-gate report PASS. The existing six source-open restrictions remain quarantined (four malformed/incomplete, one member conflict, one direction conflict); `all_source_rules_gate=false` is deliberately still OPEN. They are not six hidden code-test failures. See `docs/map-engine-release-gate.md`: relations 2148441, 17320674, 20613951, 20613952, 6982243, 1538817; all 12 affected member ways are excluded until independently verified.
+- STATUS: SOURCE READY / CI DONE for verified source above. PHYSICAL BLOCKED / SIGNING BLOCKED / PRODUCTION BLOCKED; ACTIVATION BLOCKED. Not RELEASE READY or RELEASE DONE. Live cap remains unchanged/default `route_bundle.max_orders=2`; no Production change or live 3–5 activation occurred.
+- OWNER ACTION REQUIRED (additional map-source gate): authorized map/data reviewer with actual sign/direction/junction evidence must inspect those six OSM relations, document lawful from/via/to members and one-way directions, and approve independently evidenced source correction + rebuilt package + quarantine/release-gate rerun. Never invent connectors, swap roles or lift quarantine based on CI alone. Use the physical/hosting acceptance accounts/devices/actions/evidence table above for the other gates.
+- NEXT: inspect the documentation-only successor's exact Native + Map Engine runs selected automatically by the checkpoint paths. If green, no additional implementation is pending in this requested source/CI scope; proceed only to the explicit owner acceptance/signing/provider/public-HTTPS/source-data/Play/Production gates above. If red, read its first actual failing job log before changing anything. On resume fetch newest successor before using this recorded SHA.
