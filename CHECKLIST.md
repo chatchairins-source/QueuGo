@@ -733,3 +733,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Offer publication now revalidates every existing stack member against the quote's exact `updated_at`, Rider and bundle ID before showing the 30-second offer. Previously complete active membership was checked, but an existing Order could change readiness/financial state without changing the bundle revision and still receive an offer that claim would reject.
 - Added rollback regression: mutate an existing member revision after quote → offer publisher returns false; rollback restores the snapshot → offer publishes. Atomic claim revision checks remain unchanged.
 - This reduces unclaimable Rider offers without relaxing any gate. Current max_orders fallback stays 2; no Production mutation.
+
+
+### 2026-10-18 Native3394 generalized stack SQL parser correction
+- Exact Route Bundle HEAD `aba47fa6` run3394 reached generalized financial/quality tests, then PGlite failed parsing `20261018083000_route_bundle_stack_quote_claim_staged.sql` at position 10556.
+- Root cause: the targeted-offer function alone opened with `as $` and closed with `end $;` instead of PostgreSQL `$$` dollar quoting.
+- Corrected only the two delimiters inside `queuego_offer_route_bundle_stack_quote`. No business rule, payout, cap, feature flag or Production migration was changed; max_orders remains 2.
+- NEXT: exact-head CI; fix only the next first failure.
