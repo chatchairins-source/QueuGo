@@ -601,3 +601,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 ### 2026-10-18 inherit deterministic real-map FGS cleanup
 - Pulled the exact test-only cleanup from map successor `8450cce9` into this financial descendant: after Rider map ActivityScenario closes, instrumentation explicitly stops the navigation location foreground service and waits for onDestroy/log cleanup.
 - This prevents the financial successor from re-running the already-understood 2-start/1-stop harness failure while preserving production service behavior. Exact CI must still prove 2/2 allowed and 0/0 denied.
+
+
+### 2026-10-18 staged atomic generalized Route Bundle claim
+- Added short-lived private stack quote cache. The service-role cache RPC re-reads the authoritative exact-revision financial snapshot, validates the versioned funded allocation, preserves the committed prefix, requires one pickup + one dropoff per 3–5 active/candidate Order and stores only a <=30s quote.
+- Added authenticated Rider `queuego_claim_route_bundle_stack(quote_id)`: locks Rider, quote, bundle and every quoted Order; revalidates exact matrix/order revisions, complete active membership, bundle revision, current platform financial rules, Customer fee ceilings, locked Rider payouts, supported verticals, NEXT/Laundry conflicts and quote funding before any mutation.
+- Mutation preserves every existing locked Rider payout, applies only quoted lower Customer fees, assigns the candidate payout from incremental burden, refreshes pending payment/delivery rows, commits the full stop plan with route_revision+1, consumes the quote, writes audit and Customer/Merchant notifications atomically.
+- Safety gate is explicit: target count must be <= current `route_bundle.max_orders`; the existing default/fallback remains 2, so this 3–5 claim path is staged but cannot activate itself. No rule/feature or Production value is changed by the migration.
+- Added isolated PGlite gate to full npm test: quote cache succeeds, default cap 2 blocks claim, stale revision fails, opt-in test rule 3 permits one atomic 3-Order claim, Customer collections equal preserved/new Rider payouts exactly, route revision advances once, and quote replay is rejected.
+- NEXT: wire service handler `action=quote` to cache only an eligible 3–5 financial plan; run exact-head full/Native CI and add a competing-claim race test before any reviewed cap increase.

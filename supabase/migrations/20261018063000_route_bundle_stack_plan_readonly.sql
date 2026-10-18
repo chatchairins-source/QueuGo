@@ -112,6 +112,8 @@ begin
   'lockedNextStop',v_next,
   'primaryOrderId',v_cache.primary_order_id,
   'candidateOrderId',v_cache.candidate_order_id,
+  'riderId',v_cache.rider_id,
+  'orderRevisions',v_cache.order_revisions,
   'orderIds',to_jsonb(v_cache.order_ids),
   'pointMap',v_cache.point_map,
   'edges',v_cache.edges,
