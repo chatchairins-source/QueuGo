@@ -304,9 +304,12 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
     state.manualZoom=null;
     state.manualZoomUntil=0;
   }
-  const riderCenter=valid(fix?.lat,fix?.lng)
+  // Use the same confidence-bounded presentation point as the Rider puck.
+  // Raw fixes stay authoritative and are never rewritten for display alignment.
+  const presentation=remainingNavigationRoute(normalizedRoute,fix,fix);
+  const riderCenter=presentation?.position||(valid(fix?.lat,fix?.lng)
     ? {lat:Number(fix.lat),lng:Number(fix.lng)}
-    : decision.center;
+    : decision.center);
   const speed=navHasNumber(fix?.speed)&&Number(fix.speed)>=0?Number(fix.speed):null;
   const target={...decision,zoom:targetZoom,cameraCenter:riderCenter};
   state.bearing=target.bearing;
@@ -476,7 +479,7 @@ function moveMarker(m,lat,lng,rotation=null){
   if(m&&rotation!==null&&rotation!==undefined&&navHasNumber(rotation))try{m.setRotation(Number(rotation))}catch(_){}
   return m
 }
-function moveMarkerSmooth(m,lat,lng,rotation=null,{duration=1080}={}){
+function moveMarkerSmooth(m,lat,lng,rotation=null,{duration=1080,onPosition=null}={}){
   if(!m||!valid(lat,lng))return m;
   const target={lat:Number(lat),lng:Number(lng)};
   let previous=null;
@@ -486,7 +489,7 @@ function moveMarkerSmooth(m,lat,lng,rotation=null,{duration=1080}={}){
   if(existing?.frame&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(existing.frame);
   const ms=Math.max(240,Math.min(1400,Number(duration)||1080));
   if(!valid(from.lat,from.lng)||typeof requestAnimationFrame!=='function'){
-    return moveMarker(m,target.lat,target.lng,rotation);
+    const result=moveMarker(m,target.lat,target.lng,rotation);onPosition?.(target);return result;
   }
   const start=(typeof performance!=='undefined'&&typeof performance.now==='function')?performance.now():Date.now();
   const state={frame:null};
@@ -497,7 +500,7 @@ function moveMarkerSmooth(m,lat,lng,rotation=null,{duration=1080}={}){
     const eased=navCameraEasing(t);
     const nextLat=from.lat+(target.lat-from.lat)*eased;
     const nextLng=from.lng+(target.lng-from.lng)*eased;
-    try{m.setLngLat([nextLng,nextLat])}catch(_){}
+    try{m.setLngLat([nextLng,nextLat]);onPosition?.({lat:nextLat,lng:nextLng})}catch(_){}
     if(rotation!==null&&rotation!==undefined&&navHasNumber(rotation))try{m.setRotation(Number(rotation))}catch(_){}
     if(t<1&&markerAnimationStates.get(m)===state){
       state.frame=requestAnimationFrame(tick);
@@ -520,37 +523,64 @@ function fit(map,points,{padding=48,maxZoom=16,duration=0}={}){
 function setCenter(map,lat,lng,zoom=16,duration=350){
   if(map&&valid(lat,lng))map.easeTo({center:[Number(lng),Number(lat)],zoom,duration});
 }
-function addGeoJsonLine(map,id,coordinates,{color='#e6002d',width=6,opacity=1}={}){
+// Each overlay owns its style listener. A pending tile/source is not a new style load.
+const lineOwners=new WeakMap();
+function addGeoJsonLine(map,id,coordinates,{color='#e6002d',width=6,opacity=1,arrows=false}={}){
   if(!map||!Array.isArray(coordinates)||coordinates.length<2)return false;
-  const sourceId=id+'-source',layerId=id+'-layer';
+  let owners=lineOwners.get(map);if(!owners){owners=new Map();lineOwners.set(map,owners)}
+  const old=owners.get(id);if(old)map.off?.('style.load',old.apply);
+  const sourceId=id+'-source',layerId=id+'-layer',arrowId=id+'-arrows';
+  const owner={apply:null};owners.set(id,owner);
   const data={type:'Feature',properties:{},geometry:{type:'LineString',coordinates}};
   const apply=()=>{
+    if(owners.get(id)!==owner)return false;
     try{
-      const existing=map.getSource(sourceId);
-      if(existing&&typeof existing.setData==='function'){
-        existing.setData(data);
-        if(map.getLayer(layerId)){
-          try{map.setPaintProperty?.(layerId,'line-color',color)}catch(_){}
-          try{map.setPaintProperty?.(layerId,'line-width',width)}catch(_){}
-          try{map.setPaintProperty?.(layerId,'line-opacity',opacity)}catch(_){}
-          return true;
-        }
+      const source=map.getSource(sourceId);
+      if(source)source.setData(data);else map.addSource(sourceId,{type:'geojson',data});
+      if(!map.getLayer(layerId))map.addLayer({id:layerId,type:'line',source:sourceId,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':color,'line-width':width,'line-opacity':opacity}});
+      else{
+        map.setPaintProperty?.(layerId,'line-color',color);
+        map.setPaintProperty?.(layerId,'line-width',width);
+        map.setPaintProperty?.(layerId,'line-opacity',opacity);
       }
-      if(map.getLayer(layerId))map.removeLayer(layerId);
-      if(map.getSource(sourceId))map.removeSource(sourceId);
-      map.addSource(sourceId,{type:'geojson',data});
-      map.addLayer({id:layerId,type:'line',source:sourceId,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':color,'line-width':width,'line-opacity':opacity}});
+      if(arrows&&!map.getLayer(arrowId)){
+        const imageId='qg-route-direction-white';
+        if(!map.hasImage?.(imageId)){
+          const canvas=document.createElement('canvas');canvas.width=32;canvas.height=32;
+          const ctx=canvas.getContext('2d');ctx.clearRect(0,0,32,32);
+          ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';
+          ctx.beginPath();ctx.moveTo(10,6);ctx.lineTo(22,16);ctx.lineTo(10,26);ctx.stroke();
+          map.addImage(imageId,ctx.getImageData(0,0,32,32),{pixelRatio:2});
+        }
+        map.addLayer({id:arrowId,type:'symbol',source:sourceId,layout:{'symbol-placement':'line','symbol-spacing':80,'icon-image':imageId,'icon-size':.85,'icon-rotation-alignment':'map','icon-pitch-alignment':'map','icon-keep-upright':false,'icon-allow-overlap':true,'icon-ignore-placement':true}});
+      }
       return true;
     }catch(_){return false}
   };
-  if(map.isStyleLoaded())return apply();
-  map.once('load',apply);return true;
+  owner.apply=apply;map.on?.('style.load',apply);
+  // Attempt now: isStyleLoaded() can be false merely because our casing source loads.
+  // If the style itself is still absent, the owned style.load listener retries safely.
+  apply();return true;
 }
 function removeGeoJsonLine(map,id){
   if(!map)return;
-  const sourceId=id+'-source',layerId=id+'-layer';
-  try{if(map.getLayer(layerId))map.removeLayer(layerId)}catch(_){}
-  try{if(map.getSource(sourceId))map.removeSource(sourceId)}catch(_){}
+  const owner=lineOwners.get(map)?.get(id);if(owner)map.off?.('style.load',owner.apply);
+  lineOwners.get(map)?.delete(id);
+  for(const layerId of [id+'-arrows',id+'-layer'])try{if(map.getLayer(layerId))map.removeLayer(layerId)}catch(_){}
+  try{if(map.getSource(id+'-source'))map.removeSource(id+'-source')}catch(_){}
+}
+function remainingNavigationRoute(route,point,{bearing=null,speed=null,accuracy=null}={}){
+  if(!valid(point?.lat,point?.lng)||!navHasNumber(accuracy)||Number(accuracy)>35)return null;
+  const decision=navCameraDecision({...point,bearing,speed,accuracy,route});
+  const match=decision?.routeMatch;if(!match||decision.routeBearingRejected||match.offRouteMeters>12)return null;
+  let walked=0;const part=match.part,remaining=[];
+  remaining.push([match.snapped.lng,match.snapped.lat]);
+  for(let i=0;i<part.length-1;i++){
+    walked+=navDistanceMeters(part[i],part[i+1]);
+    if(walked>match.progressMeters+.1)remaining.push([part[i+1].lng,part[i+1].lat]);
+  }
+  // The endpoint is presentation-only. Keep the complete route for match/reroute/ETA.
+  return {position:match.snapped,lines:remaining.length>1?[remaining]:[],match};
 }
 function locate(map,onPoint){
   if(!navigator.geolocation)return Promise.reject(new Error('เบราว์เซอร์ไม่รองรับ GPS'));
@@ -587,5 +617,5 @@ async function reverse(lat,lng){
   }catch(_){return''}
 }
 function destroy(map){try{map?.remove?.()}catch(_){}}
-window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,navigationCameraDecision:navCameraDecision,navigationScreenAnchorRatio:navScreenAnchorRatio,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
+window.QueueGoMapWeb={style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,remainingNavigationRoute,navigationCameraDecision:navCameraDecision,navigationScreenAnchorRatio:navScreenAnchorRatio,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
 })();
