@@ -98,10 +98,19 @@ def record_map_runtime_blocked(scope):
     print("QUEUEGO_MAP_RUNTIME_BLOCKED " + json.dumps(payload))
 
 
-def package_pids(pkg: str):
-    result = run(adb + ["shell", "pidof", pkg], capture_output=True, text=True)
+def package_pids(pkg: str, required: bool = True):
+    # pidof exits 1 when no process exists. During process-death polling that is
+    # the expected success condition, so do not route it through run(check=True).
+    result = subprocess.run(
+        adb + ["shell", "pidof", pkg],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
     pids = [value for value in result.stdout.strip().split() if value.isdigit()]
-    assert pids, f"{pkg} process is not running"
+    if required:
+        assert pids, f"{pkg} process is not running"
     return pids
 
 
@@ -750,10 +759,10 @@ def verify_three_role_system_kill_recovery():
         # ordinary cold recreation rather than Android's stopped-package state.
         kill_mode = "am-kill"
         kill_deadline = time.time() + 5
-        remaining = package_pids(pkg)
+        remaining = package_pids(pkg, required=False)
         while remaining and time.time() < kill_deadline:
             time.sleep(0.25)
-            remaining = package_pids(pkg)
+            remaining = package_pids(pkg, required=False)
         if remaining:
             kill_mode = "run-as-sigkill"
             for pid in remaining:
@@ -764,7 +773,7 @@ def verify_three_role_system_kill_recovery():
                     timeout=15,
                 )
             kill_deadline = time.time() + 5
-            while package_pids(pkg) and time.time() < kill_deadline:
+            while package_pids(pkg, required=False) and time.time() < kill_deadline:
                 time.sleep(0.25)
 
         dead = subprocess.run(
