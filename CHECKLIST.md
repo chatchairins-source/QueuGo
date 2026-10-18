@@ -391,3 +391,14 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - NEXT: run exact-head full regression/Native compile on this successor; if green, prepare the controlled Laundry deployment migration separately. No Production change in this lane.
 
 - Validation successor: `work-native-laundry-shop-managed-reconcile-20261018`; adds an executable gate requiring named shop staff on both pickup/return transport legs. NEXT remains exact-head Native Pilot before any deployment migration.
+
+
+### 2026-10-18 Laundry shop-managed client retirement successor
+- Parent validation successor: `b45b0ffb21c830aaadea35d26dd984bab2c87da5`; historical PR #141 is not the active implementation line.
+- Authoritative transport remains shop-managed: Merchant assigns named shop staff for pickup/return; general QueueGo Rider pool/invite/mode/claim endpoints remain historical/revoked.
+- Native Rider snapshot no longer reads retired Laundry RPC state; this successor additionally removes callable retired Laundry RPC methods and Home pool/active-job actions.
+- Native encrypted Home restore no longer serializes/restores `laundryActiveJob`; an old app snapshot cannot resurrect a retired platform-Rider Laundry job after upgrade.
+- Web Rider remains a fail-closed compatibility shim and does not call retired Laundry RPCs.
+- Forward-port: Rider proof/process-death instrumentation installs its own androidTest APK so approved Map hosting remains an independent BLOCKED gate.
+- No historical Laundry tables/orders/events are dropped and no Production mutation is performed.
+- NEXT: require exact-head full regression + three-APK/native runtime evidence; Merchant physical shop-staff pickup/return acceptance remains a release gate.

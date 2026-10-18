@@ -752,13 +752,11 @@ private fun RiderHome(
     val demandHeatmapEligible =
         snapshot?.online == true &&
             snapshot?.activeJob == null &&
-            snapshot?.laundry?.activeJob == null &&
             snapshot?.offeredJob == null
 
     val homeActionEligible =
         snapshot != null &&
             snapshot?.activeJob == null &&
-            snapshot?.laundry?.activeJob == null &&
             snapshot?.offeredJob == null
 
     LaunchedEffect(auth.user.id, auth.session.accessToken, homeActionEligible, lifecycle) {
@@ -1660,7 +1658,6 @@ private fun RiderHome(
         networkAvailable,
         snapshot?.online,
         snapshot?.activeJob?.id,
-        snapshot?.laundry?.activeJob?.jobId,
         snapshot?.offeredJob?.id
     ) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -1670,7 +1667,7 @@ private fun RiderHome(
                     riderSnapshotPollIntervalMs(
                         networkAvailable = networkAvailable,
                         online = snapshot?.online == true,
-                        hasActiveWork = snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null,
+                        hasActiveWork = snapshot?.activeJob != null,
                         hasOffer = snapshot?.offeredJob != null
                     )
                 )
@@ -2006,7 +2003,7 @@ private fun RiderHome(
     }
 
     fun changeOnline(enabled: Boolean) {
-        if (actionBusy || snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null || snapshot == null) return
+        if (actionBusy || snapshot?.activeJob != null || snapshot == null) return
         if (enabled) {
             val diagnostics = readRiderDiagnostics(context)
             if (!diagnostics.networkReady) {
@@ -2080,7 +2077,6 @@ private fun RiderHome(
         networkAvailable,
         snapshot?.online,
         snapshot?.activeJob?.id,
-        snapshot?.laundry?.activeJob?.jobId,
         snapshot?.deliveryReturn?.caseId,
         snapshot?.offeredJob?.id,
         lifecycle
@@ -2102,7 +2098,7 @@ private fun RiderHome(
                         networkAvailable = networkAvailable,
                         online = current.online,
                         hasActiveJob = current.activeJob != null,
-                        hasLaundryJob = current.laundry.activeJob != null,
+                        hasLaundryJob = false,
                         hasDeliveryReturn = current.deliveryReturn != null,
                         hasOffer = current.offeredJob != null,
                         actionBusy = actionBusy
@@ -2199,13 +2195,13 @@ private fun RiderHome(
         RiderNavigationDispatchReadiness.bind(RiderNavigationDispatchReadiness.Binding(
             auth.user.id, auth.session.sessionId, snapshot?.riderProfileId, snapshot?.activeJob?.id,
             networkAvailable && snapshot?.online == true && !actionBusy &&
-                snapshot?.deliveryReturn == null && snapshot?.laundry?.activeJob == null))
+                snapshot?.deliveryReturn == null))
     }
     DisposableEffect(auth.user.id, auth.session.sessionId) {
         onDispose { RiderNavigationDispatchReadiness.clear(auth.user.id) }
     }
     LaunchedEffect(autoAcceptEnabled, stopAfterWorkPending, networkAvailable, snapshot?.online,
-        snapshot?.deliveryReturn?.caseId, snapshot?.laundry?.activeJob?.jobId,
+        snapshot?.deliveryReturn?.caseId,
         actionBusy, lifecycle, auth.session.accessToken) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
@@ -2223,7 +2219,6 @@ private fun RiderHome(
         networkAvailable,
         snapshot?.online,
         snapshot?.activeJob?.id,
-        snapshot?.laundry?.activeJob?.jobId,
         snapshot?.offeredJob?.id,
         snapshot?.offeredJob?.offerExpiresAt,
         actionBusy,
@@ -2239,7 +2234,7 @@ private fun RiderHome(
                     enabled = riderAutoAcceptAllowedWhileStopping(autoAcceptEnabled, stopAfterWorkPending),
                     networkAvailable = networkAvailable,
                     online = current.online,
-                    hasActiveWork = current.activeJob != null || current.laundry.activeJob != null,
+                    hasActiveWork = current.activeJob != null,
                     actionBusy = actionBusy,
                     secondsLeft = riderOfferSecondsLeft(offer.offerExpiresAt)
                 )
@@ -2253,7 +2248,7 @@ private fun RiderHome(
                     enabled = riderAutoAcceptAllowedWhileStopping(autoAcceptEnabled, stopAfterWorkPending),
                     networkAvailable = networkAvailable,
                     online = snapshot?.online == true,
-                    hasActiveWork = snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null,
+                    hasActiveWork = snapshot?.activeJob != null,
                     actionBusy = actionBusy,
                     secondsLeft = riderOfferSecondsLeft(latest.offerExpiresAt)
                 )
@@ -2273,11 +2268,10 @@ private fun RiderHome(
             pickupLng = returnCase.shopLongitude
         )
     }
-    val mapJob = returnMapJob ?: snapshot?.activeJob ?: snapshot?.laundry?.activeJob?.asMapJob() ?: snapshot?.offeredJob
+    val mapJob = returnMapJob ?: snapshot?.activeJob ?: snapshot?.offeredJob
     val activeNavigationWork =
         snapshot?.deliveryReturn?.canReturnToShop == true ||
-            snapshot?.activeJob != null ||
-            snapshot?.laundry?.activeJob != null
+            snapshot?.activeJob != null
     val connectivityNotice = riderConnectivityNotice(
         consecutiveRefreshFailures = consecutiveSnapshotFailures,
         hasSnapshot = snapshot != null,
@@ -2410,7 +2404,7 @@ private fun RiderHome(
             RiderBlueprintTopBar(
                 active = auth.user.status == "active",
                 online = snapshot?.online == true,
-                enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null,
+                enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null,
                 speedKph = reliableSpeedKph,
                 onToggle = { changeOnline(snapshot?.online != true) }
             )
@@ -2734,7 +2728,7 @@ private fun RiderHome(
                     }
                 }
             } else {
-                if (current.activeJob == null && current.offeredJob == null && current.laundry.activeJob == null) {
+                if (current.activeJob == null && current.offeredJob == null) {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFCFFFFFF)),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))) {
@@ -2841,23 +2835,6 @@ private fun RiderHome(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                fun claimLaundry(laundryJob: RiderLaundryJob) {
-                    if (actionBusy) return
-                    actionBusy = true
-                    scope.launch {
-                        runCatching { api.claimLaundryJob(auth, laundryJob.jobId) }
-                            .onSuccess {
-                                actionMessage = "รับงานฝากซักแล้ว"
-                                runCatching { api.riderSnapshot(auth) }
-                                    .onFailure { if (it is CancellationException) throw it }
-                                    .onSuccess { updated ->
-                                        snapshot = updated
-                                    }
-                            }
-                            .onFailure { actionMessage = it.message ?: "รับงานฝากซักไม่สำเร็จ" }
-                        actionBusy = false
-                    }
-                }
                 when {
                     current.deliveryReturn != null -> {
                         val returnCase = current.deliveryReturn
@@ -2953,35 +2930,6 @@ private fun RiderHome(
                                             actionBusy = false
                                         }
                                     }
-                                }
-                            }
-                        )
-                    }
-                    current.activeJob == null && current.laundry.activeJob != null -> {
-                        val laundryJob = current.laundry.activeJob
-                        RiderLaundryActiveCard(
-                            job = laundryJob,
-                            busy = actionBusy,
-                            onNavigate = {
-                                startQueueGoNavigation("นำทางงานฝากซักด้วยแผนที่ QueueGo")
-                            },
-                            onAction = { action ->
-                                actionBusy = true
-                                scope.launch {
-                                    runCatching { api.laundryJobAction(auth, laundryJob.jobId, action) }
-                                        .onSuccess {
-                                            actionMessage = when (action) {
-                                                "arrive" -> "บันทึกถึงจุดรับแล้ว"
-                                                "collect" -> "รับผ้าแล้ว · กำลังนำทางต่อ"
-                                                "deliver" -> "ส่งงานฝากซักถึงปลายทางแล้ว"
-                                                else -> "อัปเดตงานฝากซักแล้ว"
-                                            }
-                                            runCatching { api.riderSnapshot(auth) }
-                                                .onFailure { if (it is CancellationException) throw it }
-                                                .onSuccess { snapshot = it }
-                                        }
-                                        .onFailure { actionMessage = it.message ?: "อัปเดตงานฝากซักไม่สำเร็จ" }
-                                    actionBusy = false
                                 }
                             }
                         )
@@ -3228,20 +3176,6 @@ private fun RiderHome(
                                 actionMessage = "ข้อเสนอนี้หมดเวลา ระบบกำลังส่งงานให้ Rider คนถัดไป"
                                 scope.launch { refreshSnapshot() }
                             }
-                        )
-                        if (current.laundry.pool.isNotEmpty()) {
-                            RiderLaundryPoolCard(
-                                jobs = current.laundry.pool,
-                                busy = actionBusy,
-                                onClaim = ::claimLaundry
-                            )
-                        }
-                    }
-                    current.laundry.pool.isNotEmpty() -> {
-                        RiderLaundryPoolCard(
-                            jobs = current.laundry.pool,
-                            busy = actionBusy,
-                            onClaim = ::claimLaundry
                         )
                     }
                     else -> Unit

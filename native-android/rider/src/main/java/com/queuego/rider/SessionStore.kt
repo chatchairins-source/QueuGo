@@ -169,7 +169,6 @@ class SessionStore(private val context: Context) {
             .put("riderProfileId", snapshot.riderProfileId)
         snapshot.activeJob?.let { root.put("activeJob", riderJobToJson(it)) }
         snapshot.nextJob?.let { root.put("nextJob", riderJobToJson(it)) }
-        snapshot.laundry.activeJob?.let { root.put("laundryActiveJob", laundryJobToJson(it)) }
         root.put(
             "marketPickups",
             JSONArray().apply {
@@ -196,7 +195,6 @@ class SessionStore(private val context: Context) {
         val root = JSONObject(decrypt(raw))
         if (root.optString("userId") != userId) return null
         val activeJob = root.optJSONObject("activeJob")?.let(::riderJobFromJson)
-        val laundryActive = root.optJSONObject("laundryActiveJob")?.let(::laundryJobFromJson)
         val marketPickups = root.optJSONArray("marketPickups").jsonObjects()
             .mapNotNull { item -> runCatching { marketPickupFromJson(item) }.getOrNull() }
         val bundleActiveOrders = root.optJSONArray("bundleActiveOrders").jsonObjects()
@@ -209,7 +207,7 @@ class SessionStore(private val context: Context) {
             marketPickups = marketPickups,
             riderProfileId = root.optString("riderProfileId")
                 .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
-            laundry = RiderLaundryState(activeJob = laundryActive),
+            laundry = RiderLaundryState(),
             bundle = RiderRouteBundleState(activeOrders = bundleActiveOrders)
         )
     }.getOrNull()
@@ -315,55 +313,6 @@ class SessionStore(private val context: Context) {
         fulfillmentVertical = o.optNullableString("fulfillmentVertical") ?: "food",
         rideDurationMinutes = o.optNullableDouble("rideDurationMinutes"),
         rideDistanceKm = o.optNullableDouble("rideDistanceKm")
-    )
-
-    private fun laundryJobToJson(job: RiderLaundryJob): JSONObject = JSONObject()
-        .put("jobId", job.jobId)
-        .put("laundryOrderId", job.laundryOrderId)
-        .put("orderNumber", job.orderNumber)
-        .put("leg", job.leg)
-        .put("jobStatus", job.jobStatus)
-        .put("orderStatus", job.orderStatus)
-        .put("hubId", job.hubId)
-        .put("hubName", job.hubName)
-        .put("shopName", job.shopName)
-        .put("serviceName", job.serviceName)
-        .put("actualQuantity", job.actualQuantity)
-        .put("pricingType", job.pricingType)
-        .put("jobFee", job.jobFee)
-        .put("fromAddress", job.fromAddress)
-        .put("fromLatitude", job.fromLatitude)
-        .put("fromLongitude", job.fromLongitude)
-        .put("toAddress", job.toAddress)
-        .put("toLatitude", job.toLatitude)
-        .put("toLongitude", job.toLongitude)
-        .put("customerAmount", job.customerAmount)
-        .put("actualKg", job.actualKg)
-        .put("createdAt", job.createdAt)
-
-    private fun laundryJobFromJson(o: JSONObject): RiderLaundryJob = RiderLaundryJob(
-        jobId = o.getString("jobId"),
-        laundryOrderId = o.getString("laundryOrderId"),
-        orderNumber = o.optNullableString("orderNumber"),
-        leg = o.getString("leg"),
-        jobStatus = o.getString("jobStatus"),
-        orderStatus = o.optNullableString("orderStatus"),
-        hubId = o.optNullableString("hubId"),
-        hubName = o.optNullableString("hubName"),
-        shopName = o.optNullableString("shopName"),
-        serviceName = o.optNullableString("serviceName"),
-        actualQuantity = o.optNullableDouble("actualQuantity"),
-        pricingType = o.optNullableString("pricingType"),
-        jobFee = o.optDouble("jobFee", 0.0),
-        fromAddress = o.optNullableString("fromAddress"),
-        fromLatitude = o.optNullableDouble("fromLatitude"),
-        fromLongitude = o.optNullableDouble("fromLongitude"),
-        toAddress = o.optNullableString("toAddress"),
-        toLatitude = o.optNullableDouble("toLatitude"),
-        toLongitude = o.optNullableDouble("toLongitude"),
-        customerAmount = o.optNullableDouble("customerAmount"),
-        actualKg = o.optNullableDouble("actualKg"),
-        createdAt = o.optNullableString("createdAt")
     )
 
     private fun JSONArray?.jsonObjects(): List<JSONObject> {

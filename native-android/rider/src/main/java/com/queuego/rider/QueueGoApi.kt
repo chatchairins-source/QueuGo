@@ -1653,45 +1653,6 @@ class QueueGoApi {
         Unit
     }
 
-    suspend fun setLaundryMode(auth: QueueGoAuth, enabled: Boolean) = withContext(Dispatchers.IO) {
-        rpc(
-            "queuego_set_laundry_rider_mode",
-            auth.session.accessToken,
-            JSONObject().put("p_enabled", enabled)
-        )
-        Unit
-    }
-
-    suspend fun respondLaundryInvite(auth: QueueGoAuth, inviteId: String, accept: Boolean) =
-        withContext(Dispatchers.IO) {
-            rpc(
-                "queuego_laundry_rider_invite_action",
-                auth.session.accessToken,
-                JSONObject().put("p_invite_id", inviteId).put("p_accept", accept)
-            )
-            Unit
-        }
-
-    suspend fun claimLaundryJob(auth: QueueGoAuth, jobId: String) = withContext(Dispatchers.IO) {
-        rpc(
-            "queuego_claim_laundry_job",
-            auth.session.accessToken,
-            JSONObject().put("p_job_id", jobId)
-        )
-        Unit
-    }
-
-    suspend fun laundryJobAction(auth: QueueGoAuth, jobId: String, action: String) =
-        withContext(Dispatchers.IO) {
-            require(action in setOf("arrive", "collect", "deliver")) { "สถานะงานฝากซักไม่ถูกต้อง" }
-            rpc(
-                "queuego_laundry_rider_action",
-                auth.session.accessToken,
-                JSONObject().put("p_job_id", jobId).put("p_action", action)
-            )
-            Unit
-        }
-
     suspend fun verificationDetails(auth: QueueGoAuth, orderId: String): RiderVerificationDetails =
         withContext(Dispatchers.IO) {
             val order = requestArray("GET", "/rest/v1/orders?select=shop_id,customer_id,note&id=eq." + enc(orderId) + "&limit=1", auth.session.accessToken)
@@ -2204,80 +2165,6 @@ class QueueGoApi {
         }
 
         return RiderRouteBundleState(activeOrders = activeOrders, candidates = candidates)
-    }
-
-    private fun readLaundryState(token: String): RiderLaundryState {
-        val root = rpc("queuego_laundry_rider_state", token, JSONObject()) as? JSONObject
-            ?: return RiderLaundryState()
-
-        val invitesJson = root.optJSONArray("invites") ?: JSONArray()
-        val invites = buildList {
-            for (i in 0 until invitesJson.length()) {
-                val row = invitesJson.optJSONObject(i) ?: continue
-                val inviteId = row.optString("invite_id")
-                if (inviteId.isBlank()) continue
-                add(
-                    RiderLaundryInvite(
-                        inviteId = inviteId,
-                        hubId = row.optString("hub_id"),
-                        hubName = row.optString("hub_name").ifBlank { "ร้านฝากซัก" },
-                        shopName = row.optString("shop_name").ifBlank { "ร้านฝากซัก" },
-                        status = row.optString("status"),
-                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
-                    )
-                )
-            }
-        }
-
-        fun jobs(name: String): List<RiderLaundryJob> {
-            val rows = root.optJSONArray(name) ?: JSONArray()
-            val fallbackStatus = if (name == "pool") "waiting" else "assigned"
-            return buildList {
-                for (i in 0 until rows.length()) {
-                    val row = rows.optJSONObject(i) ?: continue
-                    parseLaundryJob(row, fallbackStatus)?.let { add(it) }
-                }
-            }
-        }
-
-        return RiderLaundryState(
-            featureEnabled = root.optBoolean("feature_enabled", false),
-            modeEnabled = root.optBoolean("mode_enabled", false),
-            invites = invites,
-            activeJob = jobs("active_jobs").firstOrNull(),
-            pool = jobs("pool")
-        )
-    }
-
-    private fun parseLaundryJob(row: JSONObject, fallbackStatus: String): RiderLaundryJob? {
-        val jobId = row.optString("job_id")
-        val laundryOrderId = row.optString("laundry_order_id")
-        if (jobId.isBlank() || laundryOrderId.isBlank()) return null
-        fun text(name: String): String? = row.optString(name).takeIf { it.isNotBlank() && it != "null" }
-        return RiderLaundryJob(
-            jobId = jobId,
-            laundryOrderId = laundryOrderId,
-            orderNumber = text("order_number"),
-            leg = row.optString("leg").ifBlank { "pickup" },
-            jobStatus = row.optString("job_status").ifBlank { fallbackStatus },
-            orderStatus = text("order_status"),
-            hubId = text("hub_id"),
-            hubName = text("hub_name"),
-            shopName = text("shop_name"),
-            serviceName = text("service_name"),
-            actualQuantity = row.doubleOrNull("actual_quantity"),
-            pricingType = text("pricing_type"),
-            jobFee = row.doubleOrZero("job_fee"),
-            fromAddress = text("from_address"),
-            fromLatitude = row.doubleOrNull("from_latitude"),
-            fromLongitude = row.doubleOrNull("from_longitude"),
-            toAddress = text("to_address"),
-            toLatitude = row.doubleOrNull("to_latitude"),
-            toLongitude = row.doubleOrNull("to_longitude"),
-            customerAmount = row.doubleOrNull("customer_amount"),
-            actualKg = row.doubleOrNull("actual_kg"),
-            createdAt = text("created_at")
-        )
     }
 
     private fun parseJob(o: JSONObject) = RiderJob(
