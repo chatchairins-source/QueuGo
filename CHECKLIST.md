@@ -709,3 +709,8 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - The test now loads the real predecessor migrations in order: continuous dispatch → dynamic stop plan → route-matrix replenishment → Phase-2 stack matrix → generalized stack discovery. The hand-made lease table was removed.
 - Production migration dependency was already valid; this fixes only isolated test setup and increases fidelity to the actual schema chain. No runtime/Production behavior changed.
 - NEXT: exact-head CI.
+
+### 2026-10-18 no-GMS recreate location-store continuity
+- Follow-up to the CI-only GPS fallback: the prior lifecycle evidence proves `scenario.recreate()` restarts the navigation foreground service, whose production `onDestroy()` correctly clears the location store.
+- Android instrumentation now requires a fresh expected fix after recreate and explicitly recenters before capturing the recreated real-map frame. On a GMS-capable device this still prefers the real provider; on the explicit no-GMS CI scope it reuses the androidTest-only store fallback.
+- Production service/location behavior remains unchanged; physical GPS/GMS certification remains a separate gate.
