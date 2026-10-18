@@ -52,7 +52,7 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Release status: BLOCKED
 - Active PR: #414
 - Branch: `work-native-rider-queuego-route-authority-20261017`
-- Current HEAD: `e8446b540566d012d83acf8520578bdbd4f16ce0`
+- Current HEAD: `575a10a1e1d05e6f437dbfe7ca5002f0e9967d3a`
 - Recovery checkpoint lineage:
   - `297f9e4a918b8bdab86cc4abebb38d3176ab1842` restore current Grocery stylesheet
   - `735cdf215ffe0334839e31f00172116080dcc950` + `7826b019e89847d8cdeae17b3faa63fdd7a3d3cb` forward-port Passenger Ride production backend delta while retaining the newer env-only quote handler
@@ -214,6 +214,11 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Release blockers: physical Rider device/GPS/road certification in Buriram, exact-device background/foreground navigation acceptance, and the parent QueueGo Map runtime/offline release gates.
 - OWNER ACTION TO UNBLOCK RELEASE: install the certified Rider build for this exact successor on a real Android device and perform the recorded Buriram GPS/road/navigation acceptance route; provide physical evidence/logs. Production/public Map hosting remains separately gated.
 - NEXT: continue to the next unblocked source/test workstream in dependency order; do not modify #414 again unless a newer successor or a new regression appears.
+
+- Successor `43325ab6899b5d4dc08e67215abf7eadd03694ad` expanded Native Pilot triggers to shared Web sources. Exact-head Native Pilot run `39083523167` then failed first in `tests/native-release-gate.cjs` at `Native pilot CI must pin the observed Longdo SDK SHA-256`.
+- Root cause: workflow commit `0b181932df2cd774b93ae8d533b81f10524193e6` intentionally removed the retired Longdo Android SDK download/SHA gate when Native Pilot switched to QueueGo MapLibre, but the release regression from 2026-10-10 still required the deleted Longdo artifact.
+- Fix commit: `575a10a1e1d05e6f437dbfe7ca5002f0e9967d3a` updates only the release test: it requires exact active MapLibre `13.5.3`, requires QueueGo MapLibre display/lifecycle CI gates, and forbids reintroducing the retired Longdo SDK download/integrity path.
+- NEXT: obtain exact-head Native Pilot and Map Engine results for `575a10a1e1d05e6f437dbfe7ca5002f0e9967d3a`; if red, fix only the new first failure. Do not resume Passenger Ride until #414 exact-head gates are green.
 
 ### 4. Rider online / deployed-schema compatibility
 - Source/test status: DONE on its scoped compatibility fix
