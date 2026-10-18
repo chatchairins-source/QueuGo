@@ -674,3 +674,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Generalized claim now requires and row-locks that exact live targeted offer for the authenticated Rider. Successful assignment records the existing offer-history `accepted` outcome and consumes the offer in the same transaction.
 - Edge `action=quote` publishes the targeted offer after caching an eligible short-lived quote and returns `offerPublished`. Isolated tests cover cap=3 publication, one live offer per Rider, offer history/consumption and stale competing quote refusal.
 - No Production rule/feature/cap changed. NEXT: extend bounded refresh discovery so active 2–4 Order bundles can actually generate `action=stack` evidence/quote work only when max_orders permits.
+
+
+### 2026-10-18 targeted-offer SQL delimiter fix
+- Audited successor `a7faf569` before waiting for CI and found the new service-only targeted-offer function used invalid PL/pgSQL dollar quoting (`as $ ... end $;`).
+- Corrected it to `as $$ ... end $$;` and added an executable source assertion for the exact SECURITY DEFINER/search_path/function delimiter header.
+- Targeted 30-second offer authority, claim requirement, offer history, compensation recomputation and max_orders=2 safety remain unchanged.
