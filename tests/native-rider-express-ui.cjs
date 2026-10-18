@@ -16,5 +16,6 @@ ok(card.includes('expressSenderName')&&card.includes('expressReceiverName')&&car
 ok(app.includes('job.isExpress -> "Express ส่งด่วน"')&&app.includes('job.isExpress -> "รับพัสดุ"')&&app.includes('job.isExpress -> "ส่งพัสดุ"'),'Express offer must not render food-shop wording');
 ok(api.includes('qg_express_pickup_with_photo')&&api.includes('qg_express_complete_with_photo'),'Express UI must reuse the existing proof RPC client');
 ok(customer.includes('queuego_request_express')&&customer.includes('queuego_express_state'),'Unified Express checkout must contain the Customer request/state surface');
-ok(migration.includes('CREATE OR REPLACE FUNCTION public.queuego_request_express')&&migration.includes('qg_express_pickup_with_photo')&&migration.includes('qg_express_complete_with_photo'),'Unified Express checkout must contain the shared backend request and proof RPCs');
+const migrationLower=migration.toLowerCase();
+ok(migrationLower.includes('create or replace function public.queuego_request_express')&&migrationLower.includes('qg_express_pickup_with_photo')&&migrationLower.includes('qg_express_complete_with_photo'),'Unified Express checkout must contain the shared backend request and proof RPCs');
 console.log(JSON.stringify({checks,failures:0,scope:'Native Rider Express offer/active/proof presentation and state-machine wiring; no Production mutation'}));
