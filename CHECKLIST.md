@@ -380,3 +380,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Grocery source/native/full regression remains green on this integrated head; authenticated physical Merchant save/reopen is still a release blocker.
 - Express remains the only new service implementation lane and must branch from the newest integrated successor; no second dispatcher may be created.
 - NEXT: obtain exact-head Native Pilot after this fix; while it runs, continue Express on a child successor and reconcile Laundry only through the existing Continuous Dispatch lineage.
+
+
+### 2026-10-18 Grocery image-rights gate lane
+- Status: IN PROGRESS on `work-native-grocery-image-rights-gate-20261018`, branched from integrated `d0c12dd9db62f20691ad76f802f0ff708bac93c6`.
+- Production read-only audit: 10,000 active source products have source image URLs; 439 active master products exist; 414 masters have `image_source` but all 439 are `image_status=pending`; zero approved master images are currently available.
+- Root cause: Merchant projection used `coalesce(image,image_source)`, and Web/Native source-add UI could hotlink review-only candidate URLs even though the repository image policy explicitly says candidates are not reuse approval.
+- Change: source search URLs remain stored as provenance/review data, but Web/Native Merchant source rows no longer render them. The new projection migration returns an image only when `image_status='approved'` and the approved master image is present. Static preview candidates are no longer used by Merchant UI.
+- Production status: unchanged. No image was approved, copied, uploaded or deployed. Approval still requires identity + reuse-rights evidence and QueueGo-controlled storage.
+- NEXT: exact-head Grocery/full Native CI; then authenticated Merchant acceptance. Image population remains BLOCKED on actual reuse-rights evidence, not on source URL availability.

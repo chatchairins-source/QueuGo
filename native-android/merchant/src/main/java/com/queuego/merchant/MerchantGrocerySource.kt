@@ -10,7 +10,8 @@ internal fun merchantGrocerySourcePage(rows: JSONArray): MerchantGroceryCatalogP
             val id = r.optString("source_product_id").trim()
             val title = r.optString("title_th").trim()
             if (id.isBlank() || title.isBlank()) continue
-            val image = r.optString("image_url").takeIf { it.startsWith("https://images.mango-prod.siammakro.cloud/") }
+            // Source image_url is provenance/review input only. It is not a reuse grant.
+            val image: String? = null
             add(MerchantGroceryCatalogItem(
                 id = "source:$id", brand = r.optString("brand"), name = title,
                 variant = r.optString("barcode").takeUnless { it == "null" }.orEmpty(),
