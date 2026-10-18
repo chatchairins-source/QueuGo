@@ -18,6 +18,14 @@ class RiderPendingProofStoreTest {
         assertFalse(riderVerificationResumeAllowed("delivery", "completed", true, false))
     }
 
+    @Test fun expressProofResumeUsesExpressStagesWithoutReopeningCommittedProof() {
+        assertTrue(riderVerificationResumeAllowed("expressPickup", "rider_assigned", false, false))
+        assertFalse(riderVerificationResumeAllowed("expressPickup", "picked_up", false, false))
+        assertTrue(riderVerificationResumeAllowed("expressDelivery", "in_progress", true, false))
+        assertFalse(riderVerificationResumeAllowed("expressDelivery", "in_progress", false, false))
+        assertFalse(riderVerificationResumeAllowed("expressDelivery", "completed", true, false))
+    }
+
     @Test fun marketResumeCannotRepeatCompletedStop() {
         assertTrue(riderVerificationResumeAllowed("marketPickup", "ready", false, true))
         assertFalse(riderVerificationResumeAllowed("marketPickup", "ready", false, false))

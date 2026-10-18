@@ -27,8 +27,10 @@ internal data class RiderVerificationResume(
 internal fun riderVerificationResumeAllowed(mode: String, status: String, customerArrived: Boolean, pickupPending: Boolean): Boolean =
     when (mode) {
         "pickup" -> status == "ready"
+        "expressPickup" -> status == "rider_assigned"
         "marketPickup" -> pickupPending && status in setOf("rider_assigned", "assigned", "preparing", "ready")
         "delivery" -> status == "in_progress" && customerArrived
+        "expressDelivery" -> status == "in_progress" && customerArrived
         else -> false
     }
 

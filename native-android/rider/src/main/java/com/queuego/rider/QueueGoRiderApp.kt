@@ -863,7 +863,7 @@ private fun RiderHome(
     LaunchedEffect(snapshot?.activeJob?.id, auth.session.accessToken) {
         homeDetails = null
         activeLoadSummary = null
-        snapshot?.activeJob?.takeUnless { it.isPassenger }?.let { job ->
+        snapshot?.activeJob?.takeUnless { it.isPassenger || it.isExpress }?.let { job ->
             try {
                 homeDetails = api.verificationDetails(auth, job.id)
             } catch (e: CancellationException) {
@@ -885,7 +885,7 @@ private fun RiderHome(
     LaunchedEffect(snapshot?.offeredJob?.id, auth.session.accessToken) {
         offerShopDisplay = null
         offerLoadSummary = null
-        snapshot?.offeredJob?.takeUnless { it.isPassenger }?.let { job ->
+        snapshot?.offeredJob?.takeUnless { it.isPassenger || it.isExpress }?.let { job ->
             try {
                 offerShopDisplay = api.offerShopDisplay(auth, job.id)
             } catch (e: CancellationException) {
@@ -1324,7 +1324,14 @@ private fun RiderHome(
         actionMessage = null
         scope.launch {
             try {
-                val loaded = coroutineScope {
+                val effectiveMode = when {
+                    job.isExpress && mode == "pickup" -> "expressPickup"
+                    job.isExpress && mode == "delivery" -> "expressDelivery"
+                    else -> mode
+                }
+                val loaded = if (job.isExpress) {
+                    emptyList<RiderItem>() to null
+                } else coroutineScope {
                     val items = async { api.orderItems(auth, job.id) }
                     val details = async { api.verificationDetails(auth, job.id) }
                     items.await() to details.await()
@@ -1332,17 +1339,17 @@ private fun RiderHome(
                 val recoveredProof = pendingProofIo {
                     pendingProofStore.saveVerification(
                         auth.user.id,
-                        RiderVerificationResume(job.id, mode, null)
+                        RiderVerificationResume(job.id, effectiveMode, null)
                     )
                     pendingProofStore.loadConfirmedMatching(
                         userId = auth.user.id,
                         slot = RIDER_PROOF_SLOT_DELIVERY,
                         workId = job.id,
-                        mode = mode,
+                        mode = effectiveMode,
                         marketPickupId = null
                     )
                 }
-                verifyMode = mode
+                verifyMode = effectiveMode
                 verifyJob = job
                 verifyItems = loaded.first
                 verifyDetails = loaded.second
@@ -1354,7 +1361,7 @@ private fun RiderHome(
             } catch (failure: CancellationException) {
                 throw failure
             } catch (failure: Exception) {
-                actionMessage = failure.message ?: "โหลดรายการไม่สำเร็จ"
+                actionMessage = failure.message ?: "เปิดขั้นตอนหลักฐานไม่สำเร็จ"
             } finally {
                 actionBusy = false
             }
@@ -1415,6 +1422,37 @@ private fun RiderHome(
         verifyMarketPickup = null
         photoUri = null
         pendingCameraUri = null
+    }
+
+    fun commitExpressAction(job: RiderJob, action: String, successMessage: String) {
+        if (actionBusy || !requireServerNetwork()) return
+        actionBusy = true
+        actionMessage = null
+        scope.launch {
+            try {
+                val status = api.expressAction(auth, job, action)
+                val now = java.time.Instant.now().toString()
+                val committedJob = job.copy(
+                    status = status,
+                    arrivedShopAt = if (action == "arrive_pickup") (job.arrivedShopAt ?: now) else job.arrivedShopAt,
+                    arrivedCustomerAt = if (action == "arrive_dropoff") (job.arrivedCustomerAt ?: now) else job.arrivedCustomerAt
+                )
+                snapshot?.takeIf { it.activeJob?.id == job.id }?.copy(activeJob = committedJob)?.let {
+                    snapshot = it
+                    persistCommittedSnapshot(it)
+                }
+                actionMessage = successMessage
+                runCatching { api.riderSnapshot(auth) }
+                    .onFailure { if (it is CancellationException) throw it }
+                    .onSuccess { snapshot = it; persistCommittedSnapshot(it) }
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (failure: Exception) {
+                actionMessage = failure.message ?: "อัปเดตงาน Express ไม่สำเร็จ"
+            } finally {
+                actionBusy = false
+            }
+        }
     }
 
     fun commitArrival(job: RiderJob, target: String) {
@@ -1730,12 +1768,15 @@ private fun RiderHome(
                 saved.pickupId
             )
         }?.uri?.let(Uri::parse)
-        if (pickup == null) {
+        if (pickup == null && !job.isExpress) {
             try {
                 verifyItems = api.orderItems(auth, job.id)
                 verifyDetails = api.verificationDetails(auth, job.id)
             } catch (failure: CancellationException) { throw failure }
             catch (_: Exception) { actionMessage = "กู้คืนขั้นตอนงานแล้ว · รายการจะพร้อมเมื่อเชื่อมต่อได้" }
+        } else if (job.isExpress) {
+            verifyItems = emptyList()
+            verifyDetails = null
         }
     }
 
@@ -1793,6 +1834,22 @@ private fun RiderHome(
                 scope.launch {
                     val result = runCatching {
                         when (verifyMode) {
+                            "expressPickup" -> api.expressPickupWithPhoto(
+                                context,
+                                auth,
+                                job,
+                                uri,
+                                location?.first,
+                                location?.second
+                            )
+                            "expressDelivery" -> api.expressCompleteWithPhoto(
+                                context,
+                                auth,
+                                job,
+                                uri,
+                                location?.first,
+                                location?.second
+                            )
                             "pickup" -> api.pickupWithPhoto(
                                 context,
                                 auth,
@@ -1822,6 +1879,53 @@ private fun RiderHome(
                     result.onSuccess { mutationResult ->
                         val completedMode = verifyMode
                         val completedMarketPickupId = verifyMarketPickup?.pickupId
+
+                        if (completedMode == "expressPickup" || completedMode == "expressDelivery") {
+                            val before = snapshot
+                            val pickupDone = completedMode == "expressPickup"
+                            val localAfter = if (pickupDone) {
+                                before?.copy(
+                                    activeJob = before.activeJob?.takeIf { it.id == job.id }?.copy(status = "picked_up")
+                                        ?: job.copy(status = "picked_up"),
+                                    offeredJob = null
+                                )
+                            } else {
+                                before?.copy(activeJob = null, offeredJob = null)
+                            }
+                            actionMessage = if (pickupDone) "รับพัสดุแล้ว · กดเริ่มนำส่ง" else "ส่งพัสดุสำเร็จแล้ว"
+                            if (pickupDone) {
+                                playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.PICKUP_SUCCESS)
+                            } else {
+                                RiderReturnService.stop(context)
+                            }
+                            if (localAfter != null) {
+                                snapshot = localAfter
+                                persistCommittedSnapshot(localAfter)
+                            }
+                            scope.launch {
+                                try {
+                                    pendingProofIo {
+                                        pendingProofStore.clearConfirmedMatching(
+                                            userId = auth.user.id,
+                                            slot = RIDER_PROOF_SLOT_DELIVERY,
+                                            workId = job.id,
+                                            mode = completedMode,
+                                            marketPickupId = null
+                                        )
+                                    }
+                                } catch (failure: CancellationException) {
+                                    throw failure
+                                } catch (_: Exception) {
+                                    // Express server mutation already committed; stale proof is reconciled later.
+                                }
+                            }
+                            closeVerification()
+                            runCatching { api.riderSnapshot(auth) }
+                                .onFailure { if (it is CancellationException) throw it }
+                                .onSuccess { snapshot = it; persistCommittedSnapshot(it) }
+                            return@onSuccess
+                        }
+
                         var pickupCommittedStatus = if (completedMode == "pickup") {
                             riderPickupCommittedStatus(mutationResult)
                         } else null
@@ -3080,6 +3184,19 @@ private fun RiderHome(
                                     }
                                 }
                             )
+                        } else if (activeJob.isExpress) {
+                            RiderExpressCard(
+                                job = activeJob,
+                                busy = actionBusy,
+                                networkAvailable = networkAvailable,
+                                onNavigate = { startQueueGoNavigation("นำทางงาน Express ด้วยแผนที่ QueueGo") },
+                                onChat = { chatJob = activeJob },
+                                onArrivePickup = { commitExpressAction(activeJob, "arrive_pickup", "ถึงจุดรับพัสดุแล้ว") },
+                                onPickupProof = { openVerification("pickup", activeJob) },
+                                onStartTransit = { commitExpressAction(activeJob, "start_transit", "เริ่มนำส่งพัสดุแล้ว") },
+                                onArriveDropoff = { commitExpressAction(activeJob, "arrive_dropoff", "ถึงจุดส่งพัสดุแล้ว") },
+                                onDeliveryProof = { openVerification("delivery", activeJob) }
+                            )
                         } else ActiveJobCard(
                             job = if (
                                 activeJob.marketOrderId != null &&
@@ -3513,7 +3630,7 @@ private fun OfferCard(
         Column(Modifier.padding(if (LocalConfiguration.current.screenHeightDp <= 760) 10.dp else 12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
-                    Text(if (job.isPassenger) "เที่ยวโดยสาร" else "งานใหม่ใกล้คุณ", color = QgRed, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                    Text(when { job.isPassenger -> "เที่ยวโดยสาร"; job.isExpress -> "Express ส่งด่วน"; else -> "งานใหม่ใกล้คุณ" }, color = QgRed, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
                     Text(job.numberLabel, fontWeight = FontWeight.Black, fontSize = 24.sp)
                 }
                 Box(
@@ -3531,20 +3648,20 @@ private fun OfferCard(
             }
             Spacer(Modifier.height(8.dp))
             RiderOfferPlaceRow(
-                logoUrl = shop?.shopLogo,
-                fallback = (shop?.shopName ?: job.pickupAddress ?: "Q").take(1),
-                icon = null,
-                label = if (job.isPassenger) "รับผู้โดยสาร" else "รับที่ร้าน",
-                value = shop?.shopName ?: job.pickupAddress ?: "ร้านค้า",
-                trailing = if (job.isPassenger) "จุดรับ" else "รับสินค้า"
+                logoUrl = if (job.isExpress) null else shop?.shopLogo,
+                fallback = (if (job.isExpress) job.pickupAddress else shop?.shopName ?: job.pickupAddress ?: "Q")?.take(1),
+                icon = if (job.isExpress) "express" else null,
+                label = when { job.isPassenger -> "รับผู้โดยสาร"; job.isExpress -> "รับพัสดุ"; else -> "รับที่ร้าน" },
+                value = if (job.isExpress) (job.pickupAddress ?: "จุดรับพัสดุ") else (shop?.shopName ?: job.pickupAddress ?: "ร้านค้า"),
+                trailing = when { job.isPassenger -> "จุดรับ"; job.isExpress -> "จุดรับ"; else -> "รับสินค้า" }
             )
             RiderOfferPlaceRow(
                 logoUrl = null,
                 fallback = null,
                 icon = "location",
-                label = if (job.isPassenger) "ไปยังจุดหมาย" else "ส่งให้ลูกค้า",
-                value = job.deliveryAddress ?: "จุดส่งสินค้า",
-                trailing = if (job.isPassenger) "จุดส่ง" else "ส่งสินค้า"
+                label = when { job.isPassenger -> "ไปยังจุดหมาย"; job.isExpress -> "ส่งพัสดุ"; else -> "ส่งให้ลูกค้า" },
+                value = job.deliveryAddress ?: if (job.isExpress) "จุดส่งพัสดุ" else "จุดส่งสินค้า",
+                trailing = if (job.isPassenger || job.isExpress) "จุดส่ง" else "ส่งสินค้า"
             )
 
             Row(
@@ -3552,11 +3669,11 @@ private fun OfferCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 RiderOfferMetric("ระยะทาง", (pickupKm?.let { "%.1f".format(it) } ?: "—") + " กม.", Modifier.weight(1f))
-                RiderOfferMetric("เวลาประมาณ", ((if (job.isPassenger) job.rideDurationMinutes?.let { kotlin.math.ceil(it).toInt().toString() } else deliveryKm?.let { kotlin.math.ceil(it / 25.0 * 60.0).toInt().coerceAtLeast(1).toString() }) ?: "—") + " นาที", Modifier.weight(1f))
+                RiderOfferMetric("เวลาประมาณ", ((when { job.isPassenger -> job.rideDurationMinutes; job.isExpress -> job.expressDurationMinutes; else -> deliveryKm?.let { kotlin.math.ceil(it / 25.0 * 60.0).coerceAtLeast(1.0) } }?.let { kotlin.math.ceil(it).toInt().toString() }) ?: "—") + " นาที", Modifier.weight(1f))
                 RiderOfferMetric("รายได้", riderMoneyBaht(job.deliveryFee), Modifier.weight(1f), highlight = true)
             }
 
-            RiderLoadSummaryBlock(loadSummary, compact = true)
+            if (!job.isExpress) RiderLoadSummaryBlock(loadSummary, compact = true)
 
             Row(
                 Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -4141,12 +4258,15 @@ private fun VerificationScreen(
     onCallCustomer: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    val pickup = mode == "pickup"
+    val expressMode = mode == "expressPickup" || mode == "expressDelivery"
+    val pickup = mode == "pickup" || mode == "expressPickup"
     val marketPickupMode = mode == "marketPickup"
     var previewQuality by remember(photoUri) { mutableStateOf<RiderEvidenceQuality?>(null) }
     val previewReady = previewQuality?.acceptable == true
     val photoReady = photoUri != null
-    val deliveryReady = if (!pickup && !marketPickupMode) {
+    val deliveryReady = if (expressMode) {
+        photoReady && previewReady
+    } else if (!pickup && !marketPickupMode) {
         riderCollectionReady(job.customerCash, photoReady, previewReady)
     } else {
         photoReady && previewReady
@@ -4165,7 +4285,7 @@ private fun VerificationScreen(
                     Icon(painterResource(R.drawable.qg_rider_flow_back), "ย้อนกลับ", Modifier.size(22.dp), tint = Color(0xFFE23A4C))
                 }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if (pickup || marketPickupMode) "รับสินค้าที่ร้าน" else "ส่งสินค้าให้ลูกค้า", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(when { expressMode && pickup -> "รับพัสดุที่จุดรับ"; expressMode -> "ส่งพัสดุที่จุดส่ง"; pickup || marketPickupMode -> "รับสินค้าที่ร้าน"; else -> "ส่งสินค้าให้ลูกค้า" }, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     Text(job.numberLabel, fontSize = 8.sp, color = Color(0xFF8A8387))
                 }
                 Spacer(Modifier.size(44.dp))
@@ -4174,10 +4294,10 @@ private fun VerificationScreen(
                 .padding(horizontal = 10.dp).padding(top = if (shortScreen) 7.dp else 9.dp, bottom = 92.dp)) {
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(Modifier.padding(horizontal = 11.dp, vertical = if (shortScreen) 9.dp else 12.dp)) {
-                        Text(if (pickup || marketPickupMode) "รับสินค้าที่ร้าน" else "ส่งสินค้าให้ลูกค้า", fontSize = 9.sp, color = QgMuted)
-                        Text(when { marketPickupMode -> "ตรวจจุดรับและถ่ายรูป"; pickup -> "ตรวจสอบรายการและถ่ายรูป"; else -> "ตรวจสอบและส่งมอบสินค้า" },
+                        Text(when { expressMode && pickup -> "รับพัสดุที่จุดรับ"; expressMode -> "ส่งพัสดุที่จุดส่ง"; pickup || marketPickupMode -> "รับสินค้าที่ร้าน"; else -> "ส่งสินค้าให้ลูกค้า" }, fontSize = 9.sp, color = QgMuted)
+                        Text(when { expressMode && pickup -> "ตรวจพัสดุและถ่ายรูป"; expressMode -> "ถ่ายรูปก่อนส่งมอบ"; marketPickupMode -> "ตรวจจุดรับและถ่ายรูป"; pickup -> "ตรวจสอบรายการและถ่ายรูป"; else -> "ตรวจสอบและส่งมอบสินค้า" },
                             fontSize = if (shortScreen) 18.sp else 20.sp, fontWeight = FontWeight.Bold)
-                        Text(if (pickup || marketPickupMode) "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว" else "ตรวจรายการและถ่ายรูปหลักฐานในหน้าเดียว", fontSize = 9.sp, color = QgMuted)
+                        Text(if (expressMode) "ใช้รูปหลักฐานหนึ่งรูปต่อจุด ห้ามข้ามขั้นตอน" else if (pickup || marketPickupMode) "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว" else "ตรวจรายการและถ่ายรูปหลักฐานในหน้าเดียว", fontSize = 9.sp, color = QgMuted)
                     }
                 }
                 if (pickup && details != null) {
@@ -4209,7 +4329,16 @@ private fun VerificationScreen(
                         RiderProofMetaRow(R.drawable.qg_rider_nav_user, "ลูกค้า", details.customerName ?: "ลูกค้า")
                     }
                 }
-                if (!pickup && !marketPickupMode) {
+                if (expressMode) {
+                    RiderProofCard(shortScreen) {
+                        RiderProofMetaRow(R.drawable.qg_rider_flow_jobs, "พัสดุ", (job.expressItemType ?: "พัสดุ") + " · " + riderMoneyNumber(job.expressWeightKg) + " กก. · " + (job.expressSize ?: "ไม่ระบุขนาด"))
+                        RiderProofMetaRow(R.drawable.qg_rider_nav_user, "ผู้ส่ง", job.expressSenderName ?: "ผู้ส่ง")
+                        RiderProofMetaRow(R.drawable.qg_rider_flow_loc, if (pickup) "จุดรับ" else "จุดส่ง", if (pickup) (job.pickupAddress ?: "จุดรับพัสดุ") else (job.deliveryAddress ?: "จุดส่งพัสดุ"))
+                        if (!pickup) RiderProofMetaRow(R.drawable.qg_rider_nav_user, "ผู้รับ", job.expressReceiverName ?: "ผู้รับ")
+                        if (!job.expressInstructions.isNullOrBlank()) RiderProofMetaRow(R.drawable.qg_rider_flow_jobs, "หมายเหตุ", job.expressInstructions)
+                    }
+                }
+                if (!pickup && !marketPickupMode && !expressMode) {
                     RiderProofCard(shortScreen) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Column(Modifier.weight(1f)) {
@@ -4248,7 +4377,7 @@ private fun VerificationScreen(
                 }
                 Spacer(Modifier.height(14.dp))
 
-                if (!marketPickupMode) Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
+                if (!marketPickupMode && !expressMode) Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE6E8)),
                     colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(Modifier.padding(horizontal = 10.dp, vertical = if (shortScreen) 8.dp else 9.dp)) {
@@ -4272,7 +4401,7 @@ private fun VerificationScreen(
                             }
                             if (index < items.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
                         }
-                        if (pickup && job.shopCash != null) {
+                        if (pickup && !expressMode && job.shopCash != null) {
                             Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFEEE6E8)))
                             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("รวมค่าสินค้า", fontSize = 10.sp)
@@ -4282,7 +4411,7 @@ private fun VerificationScreen(
                     }
                 }
 
-                if (pickup) details?.note?.let { RiderProofNote(it, shortScreen) }
+                if (pickup && !expressMode) details?.note?.let { RiderProofNote(it, shortScreen) }
                 if (pickup && job.shopCash != null) {
                     Spacer(Modifier.height(6.dp))
                     RiderCashPanel(
@@ -4291,20 +4420,32 @@ private fun VerificationScreen(
                         note = "จ่ายร้านตามยอดนี้ก่อนรับสินค้า"
                     )
                 }
-                if (!pickup && !marketPickupMode && (job.customerCash == null || !job.customerCash.isFinite() || job.customerCash < 0.0)) {
+                if (!pickup && !marketPickupMode && !expressMode && (job.customerCash == null || !job.customerCash.isFinite() || job.customerCash < 0.0)) {
                     Text("ยังตรวจสอบยอดเงินจากระบบไม่ได้ กรุณากลับและเปิดรายการใหม่", color = QgRed,
                         modifier = Modifier.padding(vertical = 8.dp), fontSize = 12.sp)
                 }
-                if (!pickup && !marketPickupMode && job.customerCash != null) {
+                if (!pickup && !marketPickupMode && !expressMode && job.customerCash != null) {
                     Spacer(Modifier.height(6.dp))
                     RiderCustomerCashPanel(job)
+                }
+                if (expressMode && !pickup) {
+                    Spacer(Modifier.height(6.dp))
+                    RiderCashPanel(
+                        title = "ค่าส่งเงินสด",
+                        amount = job.customerCash ?: job.deliveryFee ?: 0.0,
+                        note = "เก็บค่าส่งตามยอดก่อนกดจบงาน"
+                    )
                 }
                 Spacer(Modifier.height(6.dp))
                 if (photoUri == null) {
                     RiderProofCard(shortScreen) {
                         Text("แนวทางรูปหลักฐาน", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         Text(
-                            if (pickup || marketPickupMode) {
+                            if (expressMode && pickup) {
+                                "ให้เห็นพัสดุที่รับและจุดรับในเฟรมเดียว ภาพต้องชัด"
+                            } else if (expressMode) {
+                                "ให้เห็นพัสดุและจุดส่งในเฟรมเดียว ภาพต้องชัด"
+                            } else if (pickup || marketPickupMode) {
                                 "ให้เห็นสินค้าทั้งหมดในเฟรมเดียว ภาพต้องชัด และอย่าบังสินค้า"
                             } else {
                                 "ให้เห็นสินค้าและจุดส่งในเฟรมเดียว ภาพต้องชัด และไม่จำเป็นต้องถ่ายหน้าลูกค้า"
@@ -4320,7 +4461,7 @@ private fun VerificationScreen(
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                         Column(Modifier.padding(10.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(if (pickup || marketPickupMode) "รูปตอนรับสินค้า" else "รูปตอนส่งสินค้า", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(when { expressMode && pickup -> "รูปตอนรับพัสดุ"; expressMode -> "รูปตอนส่งพัสดุ"; pickup || marketPickupMode -> "รูปตอนรับสินค้า"; else -> "รูปตอนส่งสินค้า" }, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 Text("จำเป็น", fontSize = 8.sp, color = QgMuted)
                             }
                             Box(Modifier.fillMaxWidth().padding(top = 8.dp).height(if (shortScreen) 108.dp else (screenHeight * .31f).coerceIn(160f, 215f).dp)
@@ -4346,7 +4487,9 @@ private fun VerificationScreen(
                 }
                 if (message != null) Text(message, color = QgRed, modifier = Modifier.padding(top = 8.dp))
                 Text(
-                    if (pickup || marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า"
+                    if (expressMode && pickup) "ถ่ายรูปพัสดุก่อนยืนยันรับ"
+                    else if (expressMode) "ถ่ายรูปที่จุดส่งและเก็บค่าส่งก่อนจบงาน"
+                    else if (pickup || marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า"
                     else "ถ่ายรูปหลักฐาน ตรวจยอดเงิน แล้วกดจบงานครั้งเดียว",
                     fontSize = 8.sp,
                     color = QgMuted,
@@ -4366,9 +4509,13 @@ private fun VerificationScreen(
                 if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
                 else Text(
                     when {
+                        !photoReady && expressMode && pickup -> "ถ่ายรูปพัสดุที่รับ"
+                        !photoReady && expressMode -> "ถ่ายรูปพัสดุที่ส่ง"
                         !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"
                         !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"
                         !photoReady -> "ถ่ายรูปตอนส่ง"
+                        expressMode && pickup -> "ยืนยันรับพัสดุ"
+                        expressMode -> "ส่งพัสดุและจบงาน"
                         marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
                         pickup -> "ยืนยันรับสินค้า"
                         else -> "จบงาน"

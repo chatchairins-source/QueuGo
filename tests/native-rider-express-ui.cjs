@@ -1,0 +1,16 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const app=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
+const card=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderExpressCard.kt','utf8');
+const api=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
+const proof=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderPendingProofStore.kt','utf8');
+let checks=0;const ok=(v,m)=>{assert(v,m);checks++;};
+ok((app.match(/takeUnless \{ it\.isPassenger \|\| it\.isExpress \}/g)||[]).length>=2,'Express must not query food shop/item metadata');
+ok(app.includes('RiderExpressCard(')&&app.includes('commitExpressAction(activeJob, "arrive_pickup"')&&app.includes('commitExpressAction(activeJob, "start_transit"')&&app.includes('commitExpressAction(activeJob, "arrive_dropoff"'),'Express active job must use its own state actions');
+ok(app.includes('"expressPickup" -> api.expressPickupWithPhoto')&&app.includes('"expressDelivery" -> api.expressCompleteWithPhoto'),'Express proof must use Express-specific photo RPCs');
+ok(app.includes('job.isExpress && mode == "pickup" -> "expressPickup"')&&app.includes('job.isExpress && mode == "delivery" -> "expressDelivery"'),'Express proof must have durable workflow identities');
+ok(proof.includes('"expressPickup" -> status == "rider_assigned"')&&proof.includes('"expressDelivery" -> status == "in_progress" && customerArrived'),'Express process recovery must follow authoritative stages');
+for(const token of ['ถึงจุดรับแล้ว','ถ่ายรูปและรับพัสดุ','เริ่มนำส่ง','ถึงจุดส่งแล้ว','ถ่ายรูปส่งและจบงาน']) ok(card.includes(token),'Express Rider step missing '+token);
+ok(card.includes('expressSenderName')&&card.includes('expressReceiverName')&&card.includes('expressWeightKg'),'Express Rider card must show parcel/sender/receiver facts');
+ok(app.includes('job.isExpress -> "Express ส่งด่วน"')&&app.includes('job.isExpress -> "รับพัสดุ"')&&app.includes('job.isExpress -> "ส่งพัสดุ"'),'Express offer must not render food-shop wording');
+ok(api.includes('qg_express_pickup_with_photo')&&api.includes('qg_express_complete_with_photo'),'Express UI must reuse the existing proof RPC client');
+console.log(JSON.stringify({checks,failures:0,scope:'Native Rider Express offer/active/proof presentation and state-machine wiring; no Production mutation'}));
