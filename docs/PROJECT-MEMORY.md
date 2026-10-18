@@ -1780,3 +1780,6 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-18 integrated race and camera successor
 - cd55e341 Native Pilot 39083971696: real independent PostgreSQL Dispatch 45/0, Ride 41/0, Credit 17 PASS and MapLibre OSM runtime SUCCESS. Full local npm pre/test/post EXIT 0. Merge #414 successor 0360622b nullable camera guard into #421; no duplicate fix. Grocery backend provenance restoration 65dc9579 has 262 source tests PASS, full regression pending. Express waits for integrated Native build gate.
+
+## 2026-10-18 Grocery source reconciliation
+- 65dc9579 restores only missing existing Grocery migration/provenance/test files from main 9a541522; no Runtime UI replacement or Production mutation. Existing Grocery suite 262 PASS; full npm pre/test/post EXIT 0. Merge aaabae4a retains #421 0bb3426a and #414 0360622b. Native Grocery 23/0, navigation module and packaging guard PASS. Publish merged integration; physical Merchant save/reopen and signed release remain blocked.

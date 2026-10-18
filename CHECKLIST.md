@@ -332,3 +332,13 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Relevant merged-source checks: standalone navigation-map module PASS, integrated CI predicates 16/0. No reset/revert/force.
 - NEXT: publish the merged #421 tree with both parents, finish exact-head Native Pilot 39084056688 / successor jobs; inspect first failure only. Grocery source reconciliation is staged in separate worktree commit 65dc9579, 262 existing checks PASS; its full npm regression is running before publication.
 - Express remains IN PROGRESS waiting for integrated Native Pilot source/build gate, not a physical-owner blocker. Physical navigation, signing and Production gates remain BLOCKED as above.
+
+### 2026-10-18 Grocery backend/provenance source reconciliation
+- Source/test status: DONE for missing-source restoration, commit `65dc9579`; merge `aaabae4a` retains newest published #421 `0bb3426a` plus #414 nullable-camera successor 0360622b.
+- Root cause: current integration restored Grocery Web/Native screens but omitted the existing backend migration/test/provenance module. Main's Grocery regression first failed ENOENT catalog/thai-grocery-import.json; all 11 Grocery migrations and 9 Web/SQL tests were absent.
+- Restoration source: exact existing blobs from main `9a541522f12aa14d5df1c9cfcf087b1bb5ad7015`. Only missing files restored; current Runtime/Web/Native UI retained. No migration applied, no catalog imported, no Production mutation.
+- Restored existing source: 11 migrations, 9 tests, real-fact/provenance inputs and their existing collection/import/probe dependencies. Registered existing Grocery suite in full npm test.
+- Evidence: Grocery Admin 17, Catalog SQL 84, cash lock 5, cold exclusion 4, connection recovery 12, image identity 21, Makro scope 66, source categories 13, DOM 40 = 262 PASS. Full `npm test` on 65dc9579 EXIT 0 including map asset pretest and field posttest 28/0. Isolated 10k-row benchmark is not Production performance or data.
+- Post-successor merge checks: integrated CI predicates 16/0, native release packaging guard PASS, navigation module PASS, Native Grocery 23/0, whitespace PASS. Existing security allowlist 30/0 and authenticated review 31/0 passed with restored migrations.
+- NEXT: publish merged integration tree to #421; inspect exact-head Native Pilot compile/runtime and race outcomes. Express remains pending integrated green Native Pilot.
+- Release BLOCKED: owner must validate authenticated Merchant catalog search/category, priced save, reload and image display on real iPhone/Android; source tests do not certify this or authorize deployment. Existing signing/Closed Testing/Production gates remain open.

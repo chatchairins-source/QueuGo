@@ -1,0 +1,65 @@
+name: Makro public catalog probe
+
+on:
+  push:
+    branches:
+      - work-grocery-makro-full-catalog-20261015
+    paths:
+      - 'ops/grocery/probe-makro.cjs'
+      - 'ops/grocery/probe-makro-direct.cjs'
+      - 'ops/grocery/sync-makro-dry-branded.cjs'
+      - 'ops/grocery/import-makro-source-catalog.cjs'
+      - 'supabase/migrations/20261015165000_makro_grocery_source_catalog.sql'
+      - 'merchant/grocery-catalog.js'
+      - 'tests/grocery-makro.cjs'
+      - 'tests/grocery-ui.cjs'
+      - '.github/workflows/makro-public-catalog-probe.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'ops/grocery/probe-makro.cjs'
+      - 'ops/grocery/probe-makro-direct.cjs'
+      - 'ops/grocery/sync-makro-dry-branded.cjs'
+      - 'ops/grocery/import-makro-source-catalog.cjs'
+      - 'supabase/migrations/20261015165000_makro_grocery_source_catalog.sql'
+      - 'merchant/grocery-catalog.js'
+      - 'tests/grocery-makro.cjs'
+      - 'tests/grocery-ui.cjs'
+      - '.github/workflows/makro-public-catalog-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install project tooling
+        run: npm ci --ignore-scripts
+      - name: Probe Makro PRO public category page
+        run: node ops/grocery/probe-makro.cjs
+      - name: Verify direct Makro catalog API
+        run: node ops/grocery/probe-makro-direct.cjs 120
+      - name: Build branded non-fresh Makro catalog
+        run: node ops/grocery/sync-makro-dry-branded.cjs
+      - name: Validate generated 10k source snapshot
+        run: node ops/grocery/import-makro-source-catalog.cjs artifacts/makro-catalog/makro-grocery-branded.json
+      - name: Verify Makro catalog contract
+        run: node tests/grocery-makro.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: makro-grocery-source-catalog
+          path: |
+            artifacts/makro-probe
+            artifacts/makro-catalog/makro-grocery-branded.json
+          if-no-files-found: warn
+          compression-level: 9
