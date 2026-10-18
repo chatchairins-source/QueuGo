@@ -26,6 +26,8 @@ on:
       - work-native-rpc-null-contract-20261010
       - work-native-pos-edit-idempotency-20261010
     paths:
+      - CHECKLIST.md
+      - docs/PROJECT-MEMORY.md
       # Full regression consumes shared Web sources; validate their exact HEAD too.
       - 'admin/**'
       - 'merchant/**'
