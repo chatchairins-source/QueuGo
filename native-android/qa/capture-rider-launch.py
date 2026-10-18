@@ -243,6 +243,18 @@ def capture_customer_market(directory: Path, dimensions: str):
             "populated_cart_e2e_certified": False, "visual_parity_certified": False}
 
 
+def customer_location_permission_nodes(nodes, directory):
+    # CustomerLocationPicker automatically requests GPS after mapReady. Without
+    # a map source that callback never runs, so exercise its explicit GPS action.
+    if not queuego_map_runtime_configured():
+        gps_action = next((n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน"), None)
+        assert gps_action is not None, "GPS action missing before permission request"
+        gb = [int(x) for x in re.findall(r"\d+", gps_action.get("bounds", ""))]
+        run(adb + ["shell", "input", "tap", str((gb[0]+gb[2])//2), str((gb[1]+gb[3])//2)])
+    return wait_ui(directory / "permission.xml", lambda ns: any(
+        n.get("resource-id", "").endswith("permission_deny_button") for n in ns))
+
+
 def capture_customer_location():
     """Tap the real Customer guest Home location entry; no coordinate or account fixtures."""
     pkg = "com.queuego.customer"
@@ -275,16 +287,9 @@ def capture_customer_location():
             raise AssertionError("Actual Customer location picker crashed on open")
         nodes = read_ui(directory / "picker.xml")
         if permission_state == "denied":
-            # Current QueueGo picker asks Android permission only after the explicit
-            # GPS action. Opening the picker itself must not prompt.
-            gps_action = next((n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน"), None)
-            assert gps_action is not None, "GPS action missing before permission request"
-            gb = [int(x) for x in re.findall(r"\d+", gps_action.get("bounds", ""))]
-            run(adb + ["shell", "input", "tap", str((gb[0]+gb[2])//2), str((gb[1]+gb[3])//2)])
-            nodes = wait_ui(directory / "permission.xml", lambda ns: any(
-                n.get("resource-id", "").endswith("permission_deny_button") for n in ns))
+            nodes = customer_location_permission_nodes(nodes, directory)
             deny = next((n for n in nodes if n.get("resource-id", "").endswith("permission_deny_button")), None)
-            assert deny is not None, "Expected actual Android location permission request after GPS action"
+            assert deny is not None, "Expected actual Android location permission request"
             b = [int(x) for x in re.findall(r"\d+", deny.get("bounds", ""))]
             run(adb + ["shell", "input", "tap", str((b[0]+b[2])//2), str((b[1]+b[3])//2)])
         time.sleep(20)

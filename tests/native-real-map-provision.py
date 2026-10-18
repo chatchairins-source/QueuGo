@@ -68,5 +68,36 @@ class ProvisionTests(unittest.TestCase):
             self.scope['record_map_runtime_blocked']('customer-location-allowed')
 
 
+class CustomerPermissionTests(unittest.TestCase):
+    def exercise(self, configured, initial_nodes, permission_nodes):
+        import re
+        calls = []
+        def wait_ui(path, predicate):
+            self.assertTrue(predicate(permission_nodes), "Actual permission dialog must be required")
+            return permission_nodes
+        fn = next(n for n in TREE.body if isinstance(n, ast.FunctionDef) and n.name == 'customer_location_permission_nodes')
+        scope = dict(queuego_map_runtime_configured=lambda: configured, re=re, adb=['adb'],
+                     run=lambda args: calls.append(args), wait_ui=wait_ui)
+        exec(compile(ast.Module(body=[fn], type_ignores=[]), '<actual permission capture>', 'exec'), scope)
+        result = scope['customer_location_permission_nodes'](initial_nodes, Path('/evidence'))
+        return calls, result
+
+    def test_ready_map_waits_for_automatic_permission_without_tapping_hidden_gps(self):
+        # Matches exact run3367 picker.xml, where the Android dialog owns the UI.
+        dialog = [{'resource-id': 'com.android.permissioncontroller:id/permission_deny_button'}]
+        calls, result = self.exercise(True, dialog, dialog)
+        self.assertEqual([], calls)
+        self.assertEqual(dialog, result)
+
+    def test_unconfigured_map_still_exercises_explicit_gps_permission(self):
+        calls, _ = self.exercise(False, [{'text': 'ใช้ตำแหน่ง GPS ปัจจุบัน', 'bounds': '[10,20][30,40]'}],
+                                 [{'resource-id': 'permission_deny_button'}])
+        self.assertEqual([['adb', 'shell', 'input', 'tap', '20', '30']], calls)
+
+    def test_ready_map_cannot_pass_without_actual_permission_dialog(self):
+        with self.assertRaisesRegex(AssertionError, 'Actual permission dialog'):
+            self.exercise(True, [], [])
+
+
 if __name__ == '__main__':
     unittest.main()
