@@ -1,13 +1,13 @@
 export const STACK_FINANCIAL_POLICY_VERSION = 'stack-savings-group-weighted-v1';
 
 function nonNegativeSafeInteger(value, label) {
-  if (!Number.isSafeInteger(value) || value < 0) throw new Error(\`invalid \${label}\`);
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`invalid ${label}`);
   return value;
 }
 
 function parsePercentToBasisPoints(value) {
   const text = String(value).trim();
-  if (!/^\\d+(?:\\.\\d{1,2})?$/.test(text)) throw new Error('invalid existing group savings percent');
+  if (!/^\d+(?:\.\d{1,2})?$/.test(text)) throw new Error('invalid existing group savings percent');
   const [whole, fraction = ''] = text.split('.');
   const basisPoints = Number(whole) * 100 + Number((fraction + '00').slice(0, 2));
   if (!Number.isSafeInteger(basisPoints) || basisPoints <= 0 || basisPoints >= 10000) {

@@ -625,3 +625,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Extended isolated staged-claim coverage with two candidates quoted against the same bundle revision. After one claim advances `route_revision`, the other candidate's quote fails closed; the existing Rider advisory lock + bundle row lock + exact revision fence remain the concurrency authority.
 - The financial fixture now carries the actual route `fullKeys`, matching the Edge evaluator output. No Production data/rule/feature was changed and `route_bundle.max_orders` still defaults/falls back to 2.
 - NEXT: exact-head full/Native CI. If green, source logic for generalized quote/claim is gated; remaining activation requires reviewed cap rollout plus physical multi-stop acceptance.
+
+
+### 2026-10-18 exact-head financial simulator syntax repair
+- Native run3377 on `3db1faa2` reached the Route Bundle section after all preceding suites passed, then Node stopped at module parse with `SyntaxError: Invalid or unexpected token`.
+- Root cause is exact and source-local: the initial simulator checkpoint accidentally committed escaped template-literal delimiters (`\``) and a double-escaped numeric regex (`\\d`) as literal JavaScript source.
+- Fixed only those source escapes: template literal is valid JavaScript and percent parsing again matches decimal digits. Financial policy/math is unchanged. Successor `85b937d7` route/claim hardening is preserved.
+- NEXT: exact-head CI must pass this parser boundary before any additional feature mutation.
