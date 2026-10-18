@@ -236,7 +236,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $qg$
 declare
  q qg_private.route_bundle_stack_quotes%rowtype;
  rb public.route_bundles%rowtype;
@@ -326,7 +326,7 @@ begin
  insert into public.notifications(user_id,title,message,type,reference_id)
  values(r.user_id,'มีงานพ่วงใหม่','มีงานพ่วงเส้นทางเดียวกัน กรุณาตอบรับภายใน 30 วินาที','order',q.candidate_order_id);
  return true;
-end $;
+end $qg$;
 revoke all on function public.queuego_offer_route_bundle_stack_quote(uuid) from public,anon,authenticated;
 grant execute on function public.queuego_offer_route_bundle_stack_quote(uuid) to service_role;
 

@@ -752,3 +752,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Exact Map HEAD `749f3f73` Native3395 failed before Android build at Python parse line 743: the new system-kill harness had a one-character typo `pkg"]`.
 - Corrected only that list terminator to `pkg])`. No app/runtime logic changed.
 - NEXT: exact-head CI and then process-death runtime evidence.
+
+
+### 2026-10-18 Native3398 SQL delimiter publication correction
+- Exact `2e9bf04c` still showed the targeted-offer function with single-dollar delimiters; inspection of commit `067a423c` proved that prior intended delimiter correction did not actually change the migration blob.
+- Replaced only this function's body delimiter with explicit PostgreSQL named dollar quote `$qg$` / `$qg$`, avoiding ambiguous publication. Commit diff must include the migration file.
+- No generalized claim/offer business logic, cap, feature, payout or Production state changed.
