@@ -28,6 +28,7 @@ begin
 
  select coalesce(jsonb_agg(jsonb_build_object(
    'action','stack',
+   'quoteAfterCache',true,
    'primaryOrderId',x.primary_id,
    'candidateOrderId',x.candidate_id
  ) order by x.created_at,x.candidate_id),'[]'::jsonb)

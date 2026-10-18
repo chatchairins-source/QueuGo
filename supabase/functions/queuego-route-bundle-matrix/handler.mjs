@@ -88,7 +88,7 @@ return async(req)=>{
    })});
    if(!cached.ok)throw Error('stack evidence rejected');
    const acknowledged=await cached.json();
-   if(acknowledged===true&&orders.length>=3){
+   if(acknowledged===true&&orders.length>=3&&input.quoteAfterCache===true){
     const quoteResponse=await createRouteBundleMatrixHandler(env,fetcher)(new Request(req.url,{
      method:'POST',headers:{authorization:'Bearer '+service,'content-type':'application/json'},
      body:JSON.stringify({action:'quote',primaryOrderId:a.id,candidateOrderId:b.id})

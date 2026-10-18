@@ -688,3 +688,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Existing Edge refresh now runs legacy pair discovery then generalized stack discovery through the same release RPC. A successful 3–5 stack matrix immediately enters the existing generalized quote path, which in turn publishes the 30-second targeted offer only when the rollout cap still permits it.
 - Added isolated SQL discovery, refresh-worker orchestration and handler stack→quote→offer coverage to the full npm gate. No Production feature/rule/cap mutation.
 - NEXT: exact-head CI. Once green, remaining generalized Route Bundle gates are reviewed cap activation and physical 3–5 stop acceptance.
+
+
+### 2026-10-18 generalized stack discovery compatibility correction
+- Exact `6caa800f` Native3386/native-pilot reached the existing `rider-road-matrix.cjs` contract and failed because every 3–5 `action=stack` response had been widened with quote fields, even for legacy evidence-only callers.
+- Preserved the established `action=stack` API: automatic quote/offer chaining now requires explicit `quoteAfterCache=true`. Only the new cap-gated generalized stack discovery emits that flag; existing direct/manual stack evidence calls keep their original response shape.
+- Updated discovery/worker/handler focused tests to carry and assert the explicit flag. No pricing, assignment, payout, cap, feature or Production state changed.
+- NEXT: exact-head CI; then fix only the next first actual failure.

@@ -87,7 +87,7 @@ const stackFetcher=async(url,options={})=>{
 };
 const stackEnv={SUPABASE_SERVICE_ROLE_KEY:'svc',SUPABASE_URL:'https://backend.invalid',QUEUEGO_LONGDO_KEY:'key'};
 const stackHandler=createRouteBundleMatrixHandler({get:k=>stackEnv[k]},stackFetcher);
-const stackReq=new Request('https://edge.invalid',{method:'POST',headers:{authorization:'Bearer svc','content-type':'application/json'},body:JSON.stringify({action:'stack',primaryOrderId:A,candidateOrderId:D})});
+const stackReq=new Request('https://edge.invalid',{method:'POST',headers:{authorization:'Bearer svc','content-type':'application/json'},body:JSON.stringify({action:'stack',quoteAfterCache:true,primaryOrderId:A,candidateOrderId:D})});
 const stackRes=await stackHandler(stackReq),stackBody=await stackRes.json();
 eq(stackRes.status,200);eq(stackBody.cached,true);eq(stackBody.quoteCached,true);eq(stackBody.offerPublished,true);eq(stackCacheCalls,1);
 assert(providerCalls>0);checks++;
