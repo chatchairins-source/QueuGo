@@ -18,7 +18,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("'route': '<svg class=\"ico\""),true);
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
- eq(source.includes('queuego-map-web.js?v=20261017-11'),true);
+ eq(source.includes('queuego-map-web.js?v=20261018-12'),true);
  eq(source.includes('queuego-map-service.js?v=20261017-1'),true);
  eq(source.includes('api.longdo.com/RouteService/geojson/route'),false);
  eq(source.includes('google.navigation:'),false);
@@ -108,6 +108,11 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
    source.slice(source.indexOf('function qgNormalizeRiderBearing'),source.indexOf('function syncRiderNavigationCameraMode')),
    bearingCtx
  );
+ for(const missing of ['null','undefined',"''"]){
+  eq(vm.runInContext('qgNormalizeRiderBearing('+missing+')',bearingCtx),null);
+  eq(vm.runInContext("qgResolveRiderTravelBearing({lat:15,lng:103,bearing:270,timestamp:1000},15,103,"+missing+",10,1500)",bearingCtx),270);
+ }
+ eq(vm.runInContext('qgNormalizeRiderBearing(0)',bearingCtx),0);
  const fused=vm.runInContext(
    "qgResolveRiderTravelBearing({lat:15,lng:103,bearing:90,timestamp:1000},15,103.00005,270,10,1500)",
    bearingCtx

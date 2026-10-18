@@ -28,6 +28,14 @@ vm.runInContext(source,context);
 const Q=window.QueueGoMapWeb;
 ok(!!Q,'QueueGoMapWeb must export');
 
+// Safari may omit heading; missing values must never become a northbound fix.
+for(const missing of [null,undefined,'']){
+ const unknown=Q.navigationCameraDecision({lat:15,lng:103,speed:10,bearing:missing,route:[],previousBearing:270});
+ eq(unknown.bearing,270,'missing GPS heading must preserve westbound camera course');
+ const routeOnly=Q.navigationCameraDecision({lat:15,lng:103.004,speed:10,bearing:missing,route:[[103,15],[103.01,15]],previousBearing:270});
+ eq(routeOnly.routeBearingRejected,false,'missing heading cannot be evidence of opposite motion');
+}
+
 const corner=[
   [100.0000,13.0000],
   [100.0004,13.0000],
