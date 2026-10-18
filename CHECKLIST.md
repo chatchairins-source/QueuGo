@@ -607,3 +607,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Exact Map HEAD `749f3f73` Native3395 failed before Android build at Python parse line 743: the new system-kill harness had a one-character typo `pkg"]`.
 - Corrected only that list terminator to `pkg])`. No app/runtime logic changed.
 - NEXT: exact-head CI and then process-death runtime evidence.
+
+
+### 2026-10-18 Map3397 stale prior-scope cleanup fencing
+- Exact `e1004229` map-display artifact proves current `large-allowed` process PID4542 started location twice and stopped twice. The harness nevertheless counted 2/3 because a delayed `foreground_updates_stopped` from prior phone-allowed PID4328 landed after logcat clear and before the new scope's first start.
+- Lifecycle evidence now fences the granted scope at its first `foreground_updates_started` marker and requires exact start/stop balance from that point forward. It still requires >=2 starts (recreate exercised) and exact cleanup equality; no production service behavior or acceptance threshold is weakened.
+- Denied scopes remain strict 0 starts / 0 stops.
+- NEXT: exact-head Map CI.
