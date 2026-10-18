@@ -98,9 +98,10 @@ def record_map_runtime_blocked(scope):
     print("QUEUEGO_MAP_RUNTIME_BLOCKED " + json.dumps(payload))
 
 
-def package_pids(pkg: str, required: bool = True):
+def package_pids_optional(pkg: str):
     # pidof exits 1 when no process exists. During process-death polling that is
-    # the expected success condition, so do not route it through run(check=True).
+    # the expected success condition, so keep this non-throwing helper separate
+    # from the established strict evidence resolver below.
     result = subprocess.run(
         adb + ["shell", "pidof", pkg],
         capture_output=True,
@@ -108,9 +109,12 @@ def package_pids(pkg: str, required: bool = True):
         timeout=15,
         check=False,
     )
-    pids = [value for value in result.stdout.strip().split() if value.isdigit()]
-    if required:
-        assert pids, f"{pkg} process is not running"
+    return [value for value in result.stdout.strip().split() if value.isdigit()]
+
+
+def package_pids(pkg: str):
+    pids = package_pids_optional(pkg)
+    assert pids, f"{pkg} process is not running"
     return pids
 
 
@@ -759,10 +763,10 @@ def verify_three_role_system_kill_recovery():
         # ordinary cold recreation rather than Android's stopped-package state.
         kill_mode = "am-kill"
         kill_deadline = time.time() + 5
-        remaining = package_pids(pkg, required=False)
+        remaining = package_pids_optional(pkg)
         while remaining and time.time() < kill_deadline:
             time.sleep(0.25)
-            remaining = package_pids(pkg, required=False)
+            remaining = package_pids_optional(pkg)
         if remaining:
             kill_mode = "run-as-sigkill"
             for pid in remaining:
@@ -773,7 +777,7 @@ def verify_three_role_system_kill_recovery():
                     timeout=15,
                 )
             kill_deadline = time.time() + 5
-            while package_pids(pkg, required=False) and time.time() < kill_deadline:
+            while package_pids_optional(pkg) and time.time() < kill_deadline:
                 time.sleep(0.25)
 
         dead = subprocess.run(
