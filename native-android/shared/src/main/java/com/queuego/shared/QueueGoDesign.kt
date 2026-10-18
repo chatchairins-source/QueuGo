@@ -359,6 +359,12 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 drawCircle(color, w*.07f, Offset(w*.50f,h*.15f), style=stroke)
                 line(.50f,.22f,.50f,.29f)
             }
+            "express" -> {
+                // Express: parcel box plus forward route arrow.
+                drawRoundRect(color, Offset(w*.18f,h*.28f), Size(w*.50f,h*.44f), CornerRadius(w*.05f), style=stroke)
+                line(.18f,.40f,.43f,.52f); line(.68f,.40f,.43f,.52f); line(.43f,.52f,.43f,.72f)
+                line(.68f,.56f,.88f,.56f); line(.79f,.46f,.88f,.56f); line(.79f,.66f,.88f,.56f)
+            }
             "motorcycle" -> {
                 drawCircle(color, w*.13f, Offset(w*.25f,h*.67f), style=stroke)
                 drawCircle(color, w*.13f, Offset(w*.75f,h*.67f), style=stroke)

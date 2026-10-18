@@ -75,6 +75,27 @@ class CustomerCartStore(context: Context, userId: String) {
         override fun complete(pending: PendingRide) { if (read() == pending) clear() }
     }
 
+    internal fun expressJournal(): CheckoutJournal<PendingExpress> = object : CheckoutJournal<PendingExpress> {
+        override fun read(): PendingExpress? {
+            val raw = boundedPref("pending_express", 1024) ?: return null
+            val o = JSONObject(raw)
+            return PendingExpress(
+                java.util.UUID.fromString(o.getString("request")).toString(),
+                java.util.UUID.fromString(o.getString("quote")).toString()
+            )
+        }
+        override fun write(pending: PendingExpress) {
+            check(
+                prefs.edit().putString(
+                    "pending_express",
+                    JSONObject().put("request", pending.requestId).put("quote", pending.quoteId).toString()
+                ).commit()
+            ) { "บันทึกคำขอ Express ไม่สำเร็จ" }
+        }
+        override fun clear() { check(prefs.edit().remove("pending_express").commit()) }
+        override fun complete(pending: PendingExpress) { if (read() == pending) clear() }
+    }
+
     internal fun journal(): CheckoutJournal<PendingCustomerCheckout> = object : CheckoutJournal<PendingCustomerCheckout> {
         override fun read(): PendingCustomerCheckout? {
             val raw = boundedPref("pending_checkout", CUSTOMER_PENDING_CHECKOUT_MAX_JSON_CHARS) ?: return null

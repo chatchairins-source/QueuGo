@@ -109,7 +109,8 @@ private val categories = listOf(
     "laundry" to "ฝากซัก",
     "market" to "ตลาดสด",
     "shopping" to "ช้อปปิ้ง",
-    "ride" to "บริการเรียกรถ"
+    "ride" to "บริการเรียกรถ",
+    "express" to "ส่งด่วน"
 )
 
 private val homeDedicatedMarketCategories =
@@ -768,6 +769,7 @@ private fun CustomerShell(
                     onCategory = {
                         when (it) {
                             "ride" -> screen = "ride"
+                            "express" -> screen = "express"
                             "market" -> screen = "market"
                             "laundry" -> screen = "laundry"
                             "shopping" -> {
@@ -793,6 +795,19 @@ private fun CustomerShell(
                         } catch (e: CancellationException) { throw e }
                         catch (e: Exception) { message = e.message }
                     } }, onBack = { screen = "home" })
+                "express" -> CustomerExpressScreen(
+                    auth = auth,
+                    initialPickup = location,
+                    cartStore = cartStore,
+                    onContact = { id -> scope.launch {
+                        try {
+                            selectedOrder = api.loadOrderById(auth,id) ?: error("อ่านงาน Express ไม่ได้ กรุณาลองใหม่")
+                            screen = "chat"
+                        } catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { message = e.message }
+                    } },
+                    onBack = { screen = "home" }
+                )
                 "location" -> CustomerLocationPickerScreen(
                     location = location,
                     address = address,
@@ -1558,6 +1573,7 @@ private fun CustomerCategoryButton(
         "market" -> "basket"
         "shopping" -> "shopping"
         "ride" -> "ride"
+        "express" -> "express"
         else -> key
     }
     Column(
