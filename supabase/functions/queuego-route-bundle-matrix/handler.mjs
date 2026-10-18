@@ -21,7 +21,7 @@ return async(req)=>{
    return reply(await refreshRouteMatrices(base,headers,fetcher,produce));
   }
   if(!uuid(input.primaryOrderId)||!uuid(input.candidateOrderId)||input.primaryOrderId===input.candidateOrderId)return reply({error:'invalid orders'},400);
-  const fields='id,rider_id,status,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude';
+  const fields='id,rider_id,status,updated_at,route_bundle_id,route_bundle_sequence,created_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude';
   const res=await fetcher(base+'/rest/v1/orders?select='+fields+'&id=in.('+input.primaryOrderId+','+input.candidateOrderId+')',{headers,signal:AbortSignal.timeout(8000)});
   if(!res.ok)throw Error('order read failed');
   const rows=await res.json();const a=rows.find(r=>r.id===input.primaryOrderId),b=rows.find(r=>r.id===input.candidateOrderId);
@@ -29,6 +29,32 @@ return async(req)=>{
   const rr=await fetcher(base+'/rest/v1/rider_profiles?select=latitude,longitude&id=eq.'+a.rider_id,{headers,signal:AbortSignal.timeout(8000)});
   if(!rr.ok)throw Error('rider read failed');const rider=(await rr.json())[0];
   const point=(o,prefix)=>({lat:o[prefix+'_latitude'],lng:o[prefix+'_longitude']});
+  if(input.action==='stack'){
+   const activeRes=await fetcher(base+'/rest/v1/orders?select='+fields+'&rider_id=eq.'+a.rider_id+
+    '&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)&order=route_bundle_sequence.asc.nullslast,created_at.asc,id.asc',
+    {headers,signal:AbortSignal.timeout(8000)});
+   if(!activeRes.ok)throw Error('active bundle read failed');
+   let active=await activeRes.json();
+   active=active.filter(o=>o.id===a.id||(a.route_bundle_id&&o.route_bundle_id===a.route_bundle_id));
+   if(!active.some(o=>o.id===a.id)||active.length<1||active.length>4)return reply({cached:false},409);
+   const orders=[...active,b];
+   if(new Set(orders.map(o=>o.id)).size!==orders.length||orders.length<2||orders.length>5)return reply({cached:false},409);
+   const points={R:{lat:rider?.latitude,lng:rider?.longitude}},pointMap={R:{kind:'rider'}};
+   orders.forEach((o,index)=>{
+    const p='O'+index+'P',d='O'+index+'D';
+    points[p]=point(o,'pickup');points[d]=point(o,'delivery');
+    pointMap[p]={orderId:o.id,kind:'pickup'};pointMap[d]={orderId:o.id,kind:'dropoff'};
+   });
+   const edges=await buildRoadMatrix(points,key,{fetcher,signal:AbortSignal.timeout(120000)});
+   const cached=await fetcher(base+'/rest/v1/rpc/queuego_cache_route_bundle_stack_matrix',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
+    p_primary_order_id:a.id,p_candidate_order_id:b.id,p_order_ids:orders.map(o=>o.id),
+    p_order_revisions:Object.fromEntries(orders.map(o=>[o.id,o.updated_at])),
+    p_point_map:pointMap,p_rider_latitude:rider.latitude,p_rider_longitude:rider.longitude,p_edges:edges
+   })});
+   if(!cached.ok)throw Error('stack evidence rejected');
+   const acknowledged=await cached.json();
+   return reply({cached:acknowledged===true,expiresSeconds:90,orders:orders.length,points:Object.keys(points).length},acknowledged===true?200:409);
+  }
   const edges=await buildRoadMatrix({AP:point(a,'pickup'),AD:point(a,'delivery'),BP:point(b,'pickup'),BD:point(b,'delivery'),RP:{lat:rider?.latitude,lng:rider?.longitude}},key,{fetcher,signal:AbortSignal.timeout(45000)});
   const cached=await fetcher(base+'/rest/v1/rpc/queuego_cache_route_bundle_matrix',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
    p_primary_order_id:a.id,p_candidate_order_id:b.id,p_primary_updated_at:a.updated_at,p_candidate_updated_at:b.updated_at,

@@ -15,8 +15,10 @@ export function parseRoadLeg(body){
 }
 export async function buildRoadMatrix(points,key,{fetcher=fetch,signal}={}){
  if(typeof key!=='string'||!key)throw Error('routing not configured');
- if(Object.keys(points).length!==5||!Object.values(points).every(validPoint))throw Error('invalid route points');
- const tasks=Object.entries(points).flatMap(([a,from])=>Object.entries(points).filter(([b])=>b!==a).map(([b,to])=>({id:a+'|'+b,from,to})));
+ const entries=Object.entries(points??{});
+ if(entries.length<2||entries.length>11||
+   entries.some(([name,point])=>typeof name!=='string'||name.length<1||name.length>80||name.includes('|')||!validPoint(point)))throw Error('invalid route points');
+ const tasks=entries.flatMap(([a,from])=>entries.filter(([b])=>b!==a).map(([b,to])=>({id:a+'|'+b,from,to})));
  const edges={};let cursor=0;
  await Promise.all(Array.from({length:3},async()=>{
   while(cursor<tasks.length){

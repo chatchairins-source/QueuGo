@@ -441,3 +441,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Source/code status: Express + Passenger Ride + Credit/Top-up + Continuous Dispatch + Laundry shop-managed + Grocery image-rights integration is green at the validated executable HEAD above. PR #426 is the current unified successor; duplicate PR #427/#428 are superseded.
 - BLOCKED outside source CI: physical-device GPS/road evidence; authenticated Grocery Merchant save/reopen on real iPhone/Android; approved QueueGo Map Production runtime configuration where required; signed AAB + Play Closed Testing; controlled Production migration/function cutover.
 - NEXT: no Production mutation from this checkpoint. Use this branch as the resume Source of Truth; any new code fix must be a strict descendant and must get a new exact-head CI run.
+
+
+### 2026-10-18 Route Bundle Phase 2 matrix groundwork
+- Parent Source of Truth: `33756e905388cec5c3945594f56272d4976faf26` (PR #426 docs-only successor of exact executable HEAD `123b72971a556e1d350f8ab8487e97f17613c9e7`, run 3353 SUCCESS).
+- Finding: Native/Web dynamic-stop consumers and SQL `stop_plan` validation already model up to 5 separate orders, but the live claim remains intentionally capped at 2 and the existing road-matrix Edge function only builds Rider + two-order points. Raising the cap directly would overwrite prior stop plans and lacks full road evidence.
+- Change: generalize the existing road adapter to 2–11 validated points; add service-authorized `action=stack` that discovers the current same-bundle orders plus one unassigned candidate; add private 90-second full-stack evidence cache and service-only cache RPC.
+- Safety: no `queuego_claim_route_bundle` replacement, no `route_bundle.max_orders` change, no Saver/continuous-dispatch enablement and no Production mutation. Live capacity stays 2 until a later pricing/claim phase consumes this evidence and passes races.
+- NEXT: run exact-head source/CI. If green, Phase 2 claim/pricing can consume the stack matrix in a separate successor; if red, fix only the first failure.

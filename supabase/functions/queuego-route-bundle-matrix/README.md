@@ -13,3 +13,10 @@ The staged replenishment migration schedules a 20-second wake. It does no networ
 - Keep continuous dispatch OFF and live capacity2 until financial/cancellation, physical background acceptance, provider, and exact-head CI gates pass. A configured worker alone does not authorize rollout.
 
 A service-authorized `POST {"action":"refresh"}` runs bounded replenishment. The original explicit `{primaryOrderId,candidateOrderId}` request remains supported. Failures return no coordinates, credentials or provider URLs. The SQL dispatcher continues on its existing five-second cadence and refuses missing/stale evidence.
+
+
+## Phase 2 multi-stop groundwork
+
+The same service now accepts the service-authorized `{"action":"stack","primaryOrderId":"...","candidateOrderId":"..."}` request. It discovers the Rider's current active bundle, adds only the still-unassigned candidate, builds a bounded road matrix for Rider + pickup/dropoff points, and writes short-lived evidence through `queuego_cache_route_bundle_stack_matrix`.
+
+This is groundwork only: the live claim RPC is unchanged, `route_bundle.max_orders` still defaults to 2, Saver still defaults OFF, and no Production flag is enabled. The generalized road adapter accepts 2–11 points (Rider plus at most 5 pickup/dropoff pairs) and rejects larger/untrusted point sets.
