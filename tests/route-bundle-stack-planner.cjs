@@ -17,7 +17,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  const broken=JSON.parse(JSON.stringify(input));delete broken.edges['R|AP'];delete broken.edges['R|BP'];assert.throws(()=>planStackRoute(broken),/incomplete road matrix/);checks++;
 
  // Handler plan action reads existing cache only: no provider call and no cache write.
- const evidence={...input,primaryOrderId:orderIds[0],candidateOrderId:orderIds[1],expiresAt:'2026-10-18T00:01:00Z',financialPolicyVersion:'stack-savings-group-weighted-v1',financialEvaluatedAt:'2026-10-18T00:00:00Z',financialOrders:{[orderIds[0]]:{currentFeeSatang:2500,lockedRiderPayoutSatang:2500,merchantReadyEstimateAt:null},[orderIds[1]]:{currentFeeSatang:2500,lockedRiderPayoutSatang:null,merchantReadyEstimateAt:null}},financialRules:{existingGroupSavingsPercent:50,incrementalKmRateSatangPerKm:500,pickupCostSatang:200,dropoffCostSatang:200,minuteRateSatangPerMinute:100,maxDetourMeters:1500,maxDelaySeconds:300}};
+ const evidence={...input,primaryOrderId:orderIds[0],candidateOrderId:orderIds[1],expiresAt:'2026-10-18T00:01:00Z',financialPolicyVersion:'stack-savings-group-weighted-v1',financialEvaluatedAt:'2026-10-18T00:00:00Z',financialOrders:{[orderIds[0]]:{currentFeeSatang:2500,lockedRiderPayoutSatang:2500,merchantReadyEstimateAt:'2026-10-18T00:00:00Z'},[orderIds[1]]:{currentFeeSatang:2500,lockedRiderPayoutSatang:null,merchantReadyEstimateAt:'2026-10-18T00:00:00Z'}},financialRules:{existingGroupSavingsPercent:50,incrementalKmRateSatangPerKm:500,pickupCostSatang:200,dropoffCostSatang:200,minuteRateSatangPerMinute:100,maxDetourMeters:1500,maxDelaySeconds:300,maxPickupWaitSeconds:300}};
  let providerCalls=0,rpcCalls=0;
  const fetcher=async(url,options)=>{
   const u=new URL(url);

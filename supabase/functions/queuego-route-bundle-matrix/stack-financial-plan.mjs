@@ -37,7 +37,10 @@ export function simulateStackFinancialPlan(evidence,routePlan){
  const observedDelaySeconds=Math.ceil(maxDelayMinutes*60);
  const maxDetourMeters=integer(rules.maxDetourMeters,'max detour');
  const maxDelaySeconds=integer(rules.maxDelaySeconds,'max delay');
- const route={detourMeters,observedDelaySeconds,maxDetourMeters,maxDelaySeconds,addedMinutes,fullKeys,baselineKeys:baseline.stops.map(s=>s.key),existingDelayMinutes:existingDelays,candidateRideExtraMinutes:candidateRide};
+ const maxPickupWaitSeconds=integer(rules.maxPickupWaitSeconds,'max pickup wait');
+ const pickupWaitSeconds=Object.fromEntries(Object.entries(routePlan.pickupWaitMinutesByOrder||{}).map(([orderId,minutes])=>[orderId,Math.ceil(Number(minutes)*60)]));
+ const route={detourMeters,observedDelaySeconds,maxDetourMeters,maxDelaySeconds,maxPickupWaitSeconds,pickupWaitSeconds,addedMinutes,fullKeys,baselineKeys:baseline.stops.map(s=>s.key),existingDelayMinutes:existingDelays,candidateRideExtraMinutes:candidateRide};
+ if(Object.values(pickupWaitSeconds).some(seconds=>!Number.isFinite(seconds)||seconds>maxPickupWaitSeconds))return {policyVersion:STACK_FINANCIAL_POLICY_VERSION,eligible:false,reason:'merchant readiness wait exceeds policy',route};
  if(detourMeters>maxDetourMeters)return {policyVersion:STACK_FINANCIAL_POLICY_VERSION,eligible:false,reason:'route detour exceeds policy',route};
  if(observedDelaySeconds>maxDelaySeconds)return {policyVersion:STACK_FINANCIAL_POLICY_VERSION,eligible:false,reason:'route delay exceeds policy',route};
  const rate=integer(rules.incrementalKmRateSatangPerKm,'incremental km rate');

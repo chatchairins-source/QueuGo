@@ -19,25 +19,33 @@ function edge(edges,from,to){
  return {km,minutes};
 }
 function readyMinutes(input,orderId){
- const at=input?.financialOrders?.[orderId]?.merchantReadyEstimateAt;
- const base=input?.financialEvaluatedAt;
- if(!at||!base)return 0;
+ const operational=Boolean(input?.financialOrders&&input?.financialEvaluatedAt);
+ if(!operational)return 0;
+ const at=input.financialOrders?.[orderId]?.merchantReadyEstimateAt;
+ const base=input.financialEvaluatedAt;
+ if(typeof at!=='string'||!at)throw Error('merchant readiness unavailable');
  const wait=(Date.parse(at)-Date.parse(base))/60000;
- return Number.isFinite(wait)&&wait>0?wait:0;
+ if(!Number.isFinite(wait))throw Error('invalid merchant readiness');
+ return wait>0?wait:0;
 }
 function routeScore(sequence,edges,input){
  let from='R',km=0,minutes=0;
- const finishMinutesByKey={};
+ const finishMinutesByKey={},pickupWaitMinutesByOrder={};
  const operational=Boolean(input?.financialOrders&&input?.financialEvaluatedAt);
  for(const to of sequence){
   const leg=edge(edges,from,to);km+=leg.km;minutes+=leg.minutes;
   const point=input?.pointMap?.[to];
-  if(operational&&point?.kind==='pickup')minutes=Math.max(minutes,readyMinutes(input,point.orderId));
+  if(operational&&point?.kind==='pickup'){
+   const ready=readyMinutes(input,point.orderId);
+   const wait=Math.max(ready-minutes,0);
+   pickupWaitMinutesByOrder[point.orderId]=wait;
+   minutes+=wait;
+  }
   if(operational)minutes+=2;
   finishMinutesByKey[to]=minutes;
   from=to;
  }
- return {km,minutes,key:sequence.join('>'),finishMinutesByKey};
+ return {km,minutes,key:sequence.join('>'),finishMinutesByKey,pickupWaitMinutesByOrder};
 }
 function better(a,b){
  if(!b)return true;
@@ -88,6 +96,7 @@ function planOrders(input,selectedOrderIds,minOrders){
   dropoffStops:dropKeys.length,
   stops,
   finishMinutesByKey:{...best.finishMinutesByKey},
+  pickupWaitMinutesByOrder:{...best.pickupWaitMinutesByOrder},
   totalKm:Math.round(best.km*1000)/1000,
   totalMinutes:Math.round(best.minutes*100)/100,
   policy:'all-pickups-before-dropoffs-v1'

@@ -74,7 +74,8 @@ begin
      'dropoffCostSatang',round(public.queuego_rule_numeric('route_bundle.dropoff_cost',2,v_at)*100)::bigint,
      'minuteRateSatangPerMinute',round(public.queuego_rule_numeric('route_bundle.minute_rate',1,v_at)*100)::bigint,
      'maxDetourMeters',round(public.queuego_rule_numeric('route_bundle.max_detour_km',1.5,v_at)*1000)::bigint,
-     'maxDelaySeconds',round(v_max_delay*60)::bigint
+     'maxDelaySeconds',round(v_max_delay*60)::bigint,
+     'maxPickupWaitSeconds',300
    )
  );
 end $$;
