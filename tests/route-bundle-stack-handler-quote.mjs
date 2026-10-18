@@ -9,7 +9,7 @@ const quoteId='00000000-0000-4000-8000-000000000999';
 const pointMap={R:{kind:'rider'},O0P:{orderId:A,kind:'pickup'},O0D:{orderId:A,kind:'dropoff'},O1P:{orderId:C,kind:'pickup'},O1D:{orderId:C,kind:'dropoff'},O2P:{orderId:D,kind:'pickup'},O2D:{orderId:D,kind:'dropoff'}};
 const keys=Object.keys(pointMap),edges={};for(const x of keys)for(const y of keys)if(x!==y)edges[x+'|'+y]={km:.5,minutes:1};
 const evidence={
- bundleId:'00000000-0000-4000-8000-000000000080',routeRevision:7,committedPrefix:[],lockedNext:null,lockedNextStop:null,
+ bundleId:'00000000-0000-4000-8000-000000000080',routeRevision:7,committedPrefix:[],lockedNext:'O0P',lockedNextStop:{order_id:A,kind:'pickup'},
  primaryOrderId:A,candidateOrderId:D,riderId:'00000000-0000-4000-8000-000000000011',
  orderRevisions:{[A]:'2026-10-18T00:00:00Z',[C]:'2026-10-18T00:00:00Z',[D]:'2026-10-18T00:00:00Z'},
  orderIds:[A,C,D],pointMap,edges,orders:{[A]:{status:'ready'},[C]:{status:'ready'},[D]:{status:'searching_rider'}},

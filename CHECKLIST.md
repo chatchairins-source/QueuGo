@@ -804,3 +804,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - The targeted-offer function intentionally uses named PostgreSQL delimiter `$qg$` after the parser publication fix. Updated only the structural assertion to require that exact deliberate delimiter.
 - No SQL runtime behavior, targeted-offer authority, claim logic, cap, payout or Production state changed.
 - NEXT: exact-head CI; continue only from first real failure.
+
+
+### 2026-10-18 Native3407 handler fixture committed-next alignment
+- Exact Route Bundle HEAD `5d02fd6f` passed staged atomic claim `43/0`; the next failure moved to `route-bundle-stack-handler-quote.mjs` line 50 where read-only `plan` returned 503.
+- Root cause: the handler fixture still modeled an ACTIVE bundle with `bundleId/routeRevision` but `lockedNext=null`. The hardened planner intentionally fails closed unless an active bundle supplies its authoritative committed next stop.
+- Fixture now binds `lockedNext='O0P'` to `{order_id:A,kind:'pickup'}`, matching its existing point map and expected pickup-first route. Runtime planner/handler/claim logic is unchanged.
+- NEXT: exact-head CI; continue only from the next actual failure.
