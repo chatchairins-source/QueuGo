@@ -610,3 +610,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Safety gate is explicit: target count must be <= current `route_bundle.max_orders`; the existing default/fallback remains 2, so this 3–5 claim path is staged but cannot activate itself. No rule/feature or Production value is changed by the migration.
 - Added isolated PGlite gate to full npm test: quote cache succeeds, default cap 2 blocks claim, stale revision fails, opt-in test rule 3 permits one atomic 3-Order claim, Customer collections equal preserved/new Rider payouts exactly, route revision advances once, and quote replay is rejected.
 - NEXT: wire service handler `action=quote` to cache only an eligible 3–5 financial plan; run exact-head full/Native CI and add a competing-claim race test before any reviewed cap increase.
+
+
+### 2026-10-18 service quote handoff for generalized stacks
+- Existing route-bundle matrix Edge handler now supports explicit `action=quote` only for 3–5 Orders. It reuses the same authoritative financial snapshot + planner + generalized financial gate; `action=plan` remains read-only.
+- An eligible generalized plan is converted to committed-prefix + remaining stop-plan objects and sent to the service-only SQL quote cache. Ineligible financial/readiness/quality plans return 409 and never create a quote. Two-Order quote behavior remains on the existing live pair authority.
+- Quote response explicitly reports `readOnlyBusinessState=true`: only a short-lived private quote row is written; no Order, price, assignment, bundle revision or feature/rule changes occur.
+- Added isolated handler test to full npm gate for plan-no-write, eligible quote cache payload and readiness-ineligible no-cache behavior.
+- NEXT: add a competing-candidate claim race fixture, then require exact-head full/Native CI. Live 3–5 remains blocked by max_orders=2.

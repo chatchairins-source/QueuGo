@@ -17,7 +17,7 @@ return async(req)=>{
  const headers={apikey:service,authorization:'Bearer '+service,'content-type':'application/json'};
  try{
   const input=await req.json();
-  if(input.action==='plan'){
+  if(input.action==='plan'||input.action==='quote'){
    if(!uuid(input.primaryOrderId)||!uuid(input.candidateOrderId)||input.primaryOrderId===input.candidateOrderId)return reply({error:'invalid orders'},400);
    const planRes=await fetcher(base+'/rest/v1/rpc/queuego_route_bundle_stack_financial_input',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
     p_primary_order_id:input.primaryOrderId,p_candidate_order_id:input.candidateOrderId
@@ -26,10 +26,23 @@ return async(req)=>{
    const evidence=await planRes.json();
    if(!evidence||typeof evidence!=='object')return reply({cached:false,readOnly:true},409);
    const plan=planStackRoute(evidence);
-   const financial=Array.isArray(evidence.orderIds)&&evidence.orderIds.length>=3
+   const generalized=Array.isArray(evidence.orderIds)&&evidence.orderIds.length>=3;
+   const financial=generalized
      ? simulateStackFinancialPlan(evidence,plan)
      : {mode:'existing-two-order-live-quote',generalized:false};
-   return reply({cached:true,readOnly:true,...plan,financial});
+   if(input.action==='plan')return reply({cached:true,readOnly:true,...plan,financial});
+   if(!generalized)return reply({error:'two-order quote remains on existing live authority',quoteCached:false},409);
+   if(!financial?.eligible)return reply({cached:true,quoteCached:false,readOnlyBusinessState:true,...plan,financial},409);
+   const stopPlan=[...(Array.isArray(evidence.committedPrefix)?evidence.committedPrefix:[]),
+    ...plan.stops.map(stop=>({order_id:stop.orderId,kind:stop.kind}))];
+   const cacheRes=await fetcher(base+'/rest/v1/rpc/queuego_cache_route_bundle_stack_quote',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
+    p_primary_order_id:input.primaryOrderId,p_candidate_order_id:input.candidateOrderId,
+    p_stop_plan:stopPlan,p_financial:financial
+   })});
+   if(!cacheRes.ok)throw Error('stack quote cache failed');
+   const quoteId=await cacheRes.json();
+   if(!uuid(quoteId))return reply({cached:true,quoteCached:false,readOnlyBusinessState:true,...plan,financial},409);
+   return reply({cached:true,quoteCached:true,readOnlyBusinessState:true,quoteId,...plan,financial});
   }
   if(!key)return reply({error:'routing not configured'},503);
   if(input.action==='refresh'){
