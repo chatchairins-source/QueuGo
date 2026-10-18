@@ -3,6 +3,8 @@ const app=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/
 const card=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderExpressCard.kt','utf8');
 const api=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
 const proof=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderPendingProofStore.kt','utf8');
+const customer=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerExpressScreen.kt','utf8');
+const migration=fs.readFileSync('supabase/migrations/20261018031500_express_phase1_shared_dispatch.sql','utf8');
 let checks=0;const ok=(v,m)=>{assert(v,m);checks++;};
 ok((app.match(/takeUnless \{ it\.isPassenger \|\| it\.isExpress \}/g)||[]).length>=2,'Express must not query food shop/item metadata');
 ok(app.includes('RiderExpressCard(')&&app.includes('commitExpressAction(activeJob, "arrive_pickup"')&&app.includes('commitExpressAction(activeJob, "start_transit"')&&app.includes('commitExpressAction(activeJob, "arrive_dropoff"'),'Express active job must use its own state actions');
@@ -13,4 +15,6 @@ for(const token of ['ถึงจุดรับแล้ว','ถ่ายร�
 ok(card.includes('expressSenderName')&&card.includes('expressReceiverName')&&card.includes('expressWeightKg'),'Express Rider card must show parcel/sender/receiver facts');
 ok(app.includes('job.isExpress -> "Express ส่งด่วน"')&&app.includes('job.isExpress -> "รับพัสดุ"')&&app.includes('job.isExpress -> "ส่งพัสดุ"'),'Express offer must not render food-shop wording');
 ok(api.includes('qg_express_pickup_with_photo')&&api.includes('qg_express_complete_with_photo'),'Express UI must reuse the existing proof RPC client');
+ok(customer.includes('queuego_request_express')&&customer.includes('queuego_express_state'),'Unified Express checkout must contain the Customer request/state surface');
+ok(migration.includes('CREATE OR REPLACE FUNCTION public.queuego_request_express')&&migration.includes('qg_express_pickup_with_photo')&&migration.includes('qg_express_complete_with_photo'),'Unified Express checkout must contain the shared backend request and proof RPCs');
 console.log(JSON.stringify({checks,failures:0,scope:'Native Rider Express offer/active/proof presentation and state-machine wiring; no Production mutation'}));
