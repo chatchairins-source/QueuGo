@@ -1,6 +1,6 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#e6002d">
 <title>QueueGo Rider</title>
-<meta name="queuego-web-build" content="rider-20261018-camera-proof1">
+<meta name="queuego-web-build" content="rider-20261018-camera-proof2">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
 <script src="../queuego-map-web.js?v=20261018-12"></script>
@@ -777,6 +777,21 @@ function clearRiderRoute(){
   (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
   const badge=document.getElementById('route-badge');if(badge)badge.style.display='none';
 }
+function qgUpdateRiderRouteProgress(decision){
+  const cache=riderRouteCache,match=decision?.routeMatch;
+  if(!cache||cache.map!==S.map||!match||decision.routeBearingRejected)return false;
+  const remaining=qgFiniteOrNull(decision.remainingRouteMeters),length=qgFiniteOrNull(match.geometryDistanceMeters);
+  const offRoute=qgFiniteOrNull(match.offRouteMeters),accuracy=qgFiniteOrNull(S.pos?.accuracy);
+  if(remaining===null||length===null||length<=0||offRoute===null||offRoute>60||(accuracy!==null&&accuracy>50))return false;
+  const totalDistance=qgFiniteOrNull(cache.dist),totalTime=qgFiniteOrNull(cache.time);
+  if(totalDistance===null||totalDistance<=0||!cache.label)return false;
+  const ratio=Math.max(0,Math.min(1,remaining/length)),meters=totalDistance*ratio;
+  const txt=document.getElementById('route-text');if(!txt)return false;
+  const distance=meters<1000?Math.round(meters/10)*10+' ม.':(meters/1000).toFixed(1)+' กม.';
+  const eta=totalTime!==null&&totalTime>0?' • ประมาณ '+Math.max(1,Math.ceil(totalTime*ratio/60))+' นาที':'';
+  txt.textContent=cache.label+' • '+distance+eta;
+  return true;
+}
 function qgRiderRouteNeedsReroute(pos,scope,map){
   if(!riderRouteCache||riderRouteCache.scope!==scope||riderRouteCache.map!==map||!riderRouteGeometry.length)return true;
   const accuracy=qgFiniteOrNull(pos?.accuracy);
@@ -960,6 +975,7 @@ function startGeolocation(){
     // Camera and puck must interpolate the same GPS segment with the same timing.
     // Otherwise the camera reaches the new fix before the puck and the vehicle
     // visibly walks up/down the screen even though FOLLOW is still active.
+    qgUpdateRiderRouteProgress(followed);
     placeRiderMarker(followed?.animationDuration);
     if(S.online) pushLocation();
     const now=Date.now();
@@ -1354,7 +1370,7 @@ function drawLaundryRoute(){
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now()};
+      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),dist,time,label};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
@@ -1429,7 +1445,7 @@ function drawActiveRoute(){
       routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now()};
+      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),dist,time,label};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}

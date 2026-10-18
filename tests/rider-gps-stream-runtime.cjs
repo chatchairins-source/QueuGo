@@ -6,7 +6,7 @@ const S={session,user:{id:'isolated-rider'},pos:initial,map:null,watchId:null,on
 const ctx=vm.createContext({S,Number,Math,Date,
  riderLocationEpoch:0,riderLastGpsFixAt:1000,riderGpsCadenceMs:1000,
  riderSessionMatches:s=>s===session,validRiderCoordinate:(a,b)=>Number.isFinite(a)&&Number.isFinite(b),
- qgResolveRiderTravelBearing:()=>90,updateRiderSpeedUI:()=>paints++,placeRiderMarker(){},
+ qgUpdateRiderRouteProgress(){},qgResolveRiderTravelBearing:()=>90,updateRiderSpeedUI:()=>paints++,placeRiderMarker(){},
  haversineKm:()=>0.01,toast(){},navigator:{geolocation:{clearWatch(){},watchPosition:cb=>{callback=cb;return 1}}},
  window:{QueueGoMapWeb:{moveMarkerSmooth:(_m,_lat,_lng,_heading,opts)=>{duration=opts.duration}}},
  qgSmoothedRiderPuckHeading:()=>90,document:{getElementById:()=>null}
