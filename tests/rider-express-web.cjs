@@ -1,0 +1,13 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const html=fs.readFileSync('rider/index.html','utf8'),express=fs.readFileSync('rider/rider-express.js','utf8');
+let checks=0;const ok=(v,m)=>{assert(v,m);checks++;};
+ok(html.includes("or=(order_type.eq.shopping,fulfillment_vertical.eq.express)")&&html.includes("status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)"),'Rider Web snapshot must see service/Express orders without dropping shopping');
+ok(html.includes('rider-express.js?v=20261018-web2')&&html.includes('window.qgDeferredBoot=boot')&&html.includes('window.qgDeferredBoot?.()'),'Express parity must load before initial Rider boot');
+ok(express.includes("fulfillment_vertical==='express'")&&express.includes("rider_delivery_payout"),'Express Rider income must use server-owned payout');
+ok(express.includes("qgRiderActionOnce('express'")&&express.includes("'arrive_pickup'")&&express.includes("'start_transit'")&&express.includes("'arrive_dropoff'"),'Express Web must use shared action-once state transitions');
+ok(express.includes("'qg_express_pickup_with_photo'")&&express.includes("'qg_express_complete_with_photo'"),'Express Web must use existing proof RPCs');
+ok(express.includes('qg-rider-express-proof-v1:')&&express.includes('qg_pickup_proofs')&&express.includes('qg_delivery_proofs'),'Express proof must persist uploaded path and reconcile ambiguous commits');
+ok(express.includes('Express ส่งด่วน')&&express.includes('รับพัสดุ')&&express.includes('ส่งพัสดุ'),'Express cards must use parcel semantics');
+ok(express.includes("kind:'expressPickup'")&&express.includes("kind:'expressDropoff'"),'QueueGo navigation must keep Express pickup/dropoff stages distinct');
+ok(express.includes("mode:'customer',amount:cash")&&express.includes('ค่าส่งเงินสดที่ต้องเก็บ'),'Express completion must confirm cash collection');
+console.log(JSON.stringify({checks,failures:0,scope:'Rider Web Express targeted offer, active state machine, QueueGo navigation, cash and proof reuse; no Production mutation'}));
