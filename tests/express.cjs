@@ -19,7 +19,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  eq(requested.status,'searching_rider');eq(requested.fare,50);
  eq((await q('select queuego_request_express($1,$2) r',[id(90),quoted.quote_id])).rows[0].r.id,id(90));
  const shape=(await q('select order_type,fulfillment_vertical,express_weight_kg,express_vehicle_type,shop_id,market_order_id from orders where id=$1',[id(90)])).rows[0];
- eq(shape.order_type,'service');eq(shape.fulfillment_vertical,'express');eq(shape.express_weight_kg,2);eq(shape.express_vehicle_type,'motorcycle');eq(shape.shop_id,null);eq(shape.market_order_id,null);
+ eq(shape.order_type,'service');eq(shape.fulfillment_vertical,'express');eq(Number(shape.express_weight_kg),2);eq(shape.express_vehicle_type,'motorcycle');eq(shape.shop_id,null);eq(shape.market_order_id,null);
  eq((await q("select status from payments where order_id=$1",[id(90)])).rows[0].status,'pending');
  await q('select qg_dispatch_rider_offers()');
  const offer=(await q('select rider_id,expires_at>now() live from qg_rider_order_offers where order_id=$1',[id(90)])).rows[0];
