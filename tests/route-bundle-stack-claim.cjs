@@ -41,10 +41,34 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
     {orderId:C,role:'existing',currentFeeSatang:3000,customerSavingSatang:506,proposedFeeSatang:2494,riderPayoutSatang:3000},
     {orderId:D,role:'candidate',currentFeeSatang:4000,customerSavingSatang:1350,proposedFeeSatang:2650,riderPayoutSatang:1300}
    ],
-   route:{detourMeters:1000,observedDelaySeconds:240,addedMinutes:4,incrementalCompensationSatang:1300,pickupWaitSeconds:{[A]:0,[C]:0,[D]:0}}
+   route:{detourMeters:1000,observedDelaySeconds:240,addedMinutes:4,incrementalCompensationSatang:1300,
+    pickupWaitSeconds:{[A]:0,[C]:0,[D]:0},fullKeys:['O0P','O1P','O2P','O0D','O1D','O2D']}
   };
   const quote=(await db.query("select queuego_cache_route_bundle_stack_quote($1,$2,$3::jsonb,$4::jsonb) id",[A,D,JSON.stringify(stopPlan),JSON.stringify(financial)])).rows[0].id;
   assert(quote);checks++;
+
+  // Route/money binding: a valid membership plan with a different stop order
+  // must not be cached against the financial route that was actually evaluated.
+  const mismatched=[...stopPlan].reverse();
+  eq((await db.query("select queuego_cache_route_bundle_stack_quote($1,$2,$3::jsonb,$4::jsonb) id",
+    [A,D,JSON.stringify(mismatched),JSON.stringify(financial)])).rows[0].id,null);
+
+  // Competing candidate quote at the same bundle revision. One winner must make
+  // the other stale once route_revision advances.
+  const E=id(73),orderIdsE=[A,C,E];
+  await db.query("insert into orders(id,order_number,customer_id,shop_id,status,updated_at,delivery_fee,merchant_ready_estimate_at,total_amount) values($1,'QT-E',$2,$3,'searching_rider',$4,40,$4,140)",[E,id(60),id(50),rev]);
+  const pointMapE={R:{kind:'rider'}};
+  orderIdsE.forEach((o,i)=>{pointMapE['O'+i+'P']={orderId:o,kind:'pickup'};pointMapE['O'+i+'D']={orderId:o,kind:'dropoff'}});
+  const keysE=Object.keys(pointMapE),edgesE=Object.fromEntries(keysE.flatMap(a=>keysE.filter(b=>a!==b).map(b=>[a+'|'+b,{km:.5,minutes:1}])));
+  eq((await db.query("select queuego_cache_route_bundle_stack_matrix($1,$2,$3::uuid[],$4::jsonb,$5::jsonb,15,103,$6::jsonb) ok",
+    [A,E,orderIdsE,JSON.stringify(Object.fromEntries(orderIdsE.map(o=>[o,rev]))),JSON.stringify(pointMapE),JSON.stringify(edgesE)])).rows[0].ok,true);
+  const stopPlanE=[{order_id:A,kind:'pickup'},{order_id:C,kind:'pickup'},{order_id:E,kind:'pickup'},{order_id:A,kind:'dropoff'},{order_id:C,kind:'dropoff'},{order_id:E,kind:'dropoff'}];
+  const financialE=structuredClone(financial);
+  financialE.allocations=financial.allocations.map(row=>row.orderId===D?{...row,orderId:E}:row);
+  financialE.route={...financial.route,pickupWaitSeconds:{[A]:0,[C]:0,[E]:0},fullKeys:['O0P','O1P','O2P','O0D','O1D','O2D']};
+  const quoteE=(await db.query("select queuego_cache_route_bundle_stack_quote($1,$2,$3::jsonb,$4::jsonb) id",
+    [A,E,JSON.stringify(stopPlanE),JSON.stringify(financialE)])).rows[0].id;
+  assert(quoteE);checks++;
 
   await db.query("select set_config('test.uid',$1,false)",[id(101)]);
   await db.query("select set_config('test.role','authenticated',false)");
@@ -71,6 +95,10 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   eq(Number(rb.route_revision),8);eq(rb.stop_plan,stopPlan);
   const q=(await db.query("select claimed_at from qg_private.route_bundle_stack_quotes where id=$1",[quote])).rows[0];assert(q.claimed_at);checks++;
   await assert.rejects(db.query("select queuego_claim_route_bundle_stack($1)",[quote]),/stack quote unavailable/);checks++;
+  await assert.rejects(
+    db.query("select queuego_claim_route_bundle_stack($1)",[quoteE]),
+    /bundle revision changed|stack active membership changed/
+  );checks++;
 
   const sql=fs.readFileSync('supabase/migrations/20261018083000_route_bundle_stack_quote_claim_staged.sql','utf8');
   assert(sql.includes("pg_advisory_xact_lock")&&sql.includes("for update")&&sql.includes("v_count>v_max"));checks++;

@@ -618,3 +618,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Quote response explicitly reports `readOnlyBusinessState=true`: only a short-lived private quote row is written; no Order, price, assignment, bundle revision or feature/rule changes occur.
 - Added isolated handler test to full npm gate for plan-no-write, eligible quote cache payload and readiness-ineligible no-cache behavior.
 - NEXT: add a competing-candidate claim race fixture, then require exact-head full/Native CI. Live 3–5 remains blocked by max_orders=2.
+
+
+### 2026-10-18 generalized quote route-binding + competing-candidate stale gate
+- Hardened the private quote cache so money and route cannot diverge: `p_stop_plan` must now equal committed prefix + the exact `financial.route.fullKeys` translated through the authoritative snapshot point map. A reversed or otherwise different valid-looking plan returns null and is never claimable.
+- Extended isolated staged-claim coverage with two candidates quoted against the same bundle revision. After one claim advances `route_revision`, the other candidate's quote fails closed; the existing Rider advisory lock + bundle row lock + exact revision fence remain the concurrency authority.
+- The financial fixture now carries the actual route `fullKeys`, matching the Edge evaluator output. No Production data/rule/feature was changed and `route_bundle.max_orders` still defaults/falls back to 2.
+- NEXT: exact-head full/Native CI. If green, source logic for generalized quote/claim is gated; remaining activation requires reviewed cap rollout plus physical multi-stop acceptance.
