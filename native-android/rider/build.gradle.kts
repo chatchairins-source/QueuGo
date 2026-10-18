@@ -32,6 +32,8 @@ android {
 
 
 dependencies {
+    // Debug lifecycle host reads the actual renderer camera; use the same pinned SDK.
+    debugImplementation("org.maplibre.gl:android-sdk-opengl:13.5.3")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test:runner:1.6.2")

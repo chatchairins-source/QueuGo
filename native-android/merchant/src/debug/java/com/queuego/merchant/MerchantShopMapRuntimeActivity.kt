@@ -5,12 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import com.queuego.shared.QgLongdoLocationPickerMap
+import com.queuego.shared.QgLocationPickerMap
 import com.queuego.shared.QueueGoTheme
 import java.util.concurrent.CountDownLatch
 
 /**
- * Instrumentation-only mount of the exact native Longdo picker used by
+ * Instrumentation-only mount of the exact native QueueGo Map picker used by
  * Merchant "แก้ไขข้อมูลร้าน". It creates no session, shop, order or fake business data.
  */
 class MerchantShopMapRuntimeActivity : ComponentActivity() {
@@ -20,7 +20,7 @@ class MerchantShopMapRuntimeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             QueueGoTheme {
-                QgLongdoLocationPickerMap(
+                QgLocationPickerMap(
                     initialPoint = null,
                     recenterPoint = null,
                     recenterToken = 0,

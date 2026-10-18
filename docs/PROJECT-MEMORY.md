@@ -1789,3 +1789,6 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-18 Customer shared map consumers
 - 0360622b Native Pilot 39084056688 first compile failure: Customer checkout and Ride still reference deleted QgLongdo map APIs. Bind existing callers and location instrumentation to QgLocationPickerMap/QgTrackingMap; signatures unchanged. Native source 272/0, checkout recovery 12/0 and Ride 93 PASS locally. Await exact-head native compile; retain physical release gate.
+
+## 2026-10-18 remaining retired-SDK consumers
+- Parent 8ec3488a CI 39084732493 passes Navigation/MapLibre runtime and three independent races; first compile error is now Merchant debug picker, then remaining Rider legacy SDK consumers. Candidate 01929b60 binds existing QueueGo components, removes unused Longdo renderer/network owner while retaining neutral helper JVM coverage; full npm pre/test/post EXIT 0 including Grocery 262. e8607ea4 removes obsolete baseline APK prerequisite from capture runner, retaining actual crash/PID/9-frame evidence; syntax and stability 106/0 PASS. Actual successor Android build/runtime remains pending. No Production/release mutation.

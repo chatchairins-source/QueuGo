@@ -3,7 +3,8 @@ package com.queuego.rider
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import com.longdo.api.MapGLSurfaceView
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,48 +16,37 @@ import java.util.concurrent.CountDownLatch
 class RiderMapRuntimeActivity : ComponentActivity() {
     val mapReady = CountDownLatch(1)
     private val recenterSignal = mutableIntStateOf(0)
+    private var nativeMap: MapLibreMap? = null
     fun recenterMap() { recenterSignal.intValue += 1 }
-    private fun actualMap(): com.longdo.api.Map {
-        fun find(view: View): MapGLSurfaceView? {
-            if (view is MapGLSurfaceView) return view
-            if (view is ViewGroup) for (i in 0 until view.childCount) {
-                find(view.getChildAt(i))?.let { return it }
-            }
-            return null
+    private fun findMapView(view: View): MapView? {
+        if (view is MapView) return view
+        if (view is ViewGroup) for (i in 0 until view.childCount) {
+            findMapView(view.getChildAt(i))?.let { return it }
         }
-        val map = requireNotNull(find(window.decorView)?.renderer?.map) { "Actual SDK map is not mounted" }
-        return map
-    }
-
-    internal fun showRoadDisplayEvidence(paths: List<List<RiderRoutePoint>>) {
-        val map = actualMap()
-        val first = riderRouteLine(paths.first(), true, resources.displayMetrics.density)
-        val later = riderRouteLine(paths.last(), false, resources.displayMetrics.density)
-        check(first.getColor()[3] == 1f && later.getColor()[3] < .35f)
-        check(first.getColor()[0] < later.getColor()[0])
-        map.addLine(later)
-        map.addLine(first)
+        return null
     }
 
     fun actualMapCamera(): DoubleArray {
-        val map = actualMap()
-        // Exercise the real SDK's same-level path, which dereferences postZoom in 0.1.8.
-        check(map.getZoomListener() != null) { "Real map zoom callback is missing" }
-        map.setZoom(map.getZoom())
-        val location = map.getLocation()
-        return doubleArrayOf(location.lon, location.lat, map.getZoom().toDouble())
+        val camera = requireNotNull(nativeMap) { "Actual QueueGo map is not mounted" }.cameraPosition
+        val target = requireNotNull(camera.target) { "Actual QueueGo camera target is unavailable" }
+        return doubleArrayOf(target.longitude, target.latitude, camera.zoom)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            RiderLongdoMap(
+            QueueGoRiderNavigationMap(
                 modifier = Modifier.fillMaxSize(),
                 stateKey = "runtime-map",
                 job = null,
                 marketPickups = emptyList(),
                 recenterSignal = recenterSignal.intValue,
-                onMapReady = { ready -> if (ready) mapReady.countDown() }
+                onMapReady = { ready ->
+                    if (ready) findMapView(window.decorView)?.getMapAsync { map ->
+                        nativeMap = map
+                        mapReady.countDown()
+                    }
+                }
             )
         }
     }

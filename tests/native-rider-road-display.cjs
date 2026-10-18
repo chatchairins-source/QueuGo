@@ -1,16 +1,18 @@
 const assert=require('assert'), fs=require('fs');
 const road=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderRouteDisplay.kt','utf8');
 const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt','utf8');
-assert(road.includes('floatArrayOf(163f / 255f, 0f, 31f / 255f, 1f)') && road.includes('floatArrayOf(230f / 255f, 0f, 45f / 255f, 76f / 255f)'));
-assert(road.includes('RouteService/geojson/route'));
+const client=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/QueueGoNavigationRouteClient.kt','utf8');
+// The retired Longdo renderer must not remain a second live route owner.
+assert(!/com\.longdo|RouteService\/geojson|class RiderRoadRouteDisplay/.test(road));
+assert(map.includes('android.graphics.Color.rgb(230, 0, 45)') && map.includes('android.graphics.Color.argb(72, 230, 0, 45)'));
+assert(map.includes('routes.sortedBy { if (it.style == NavigationRouteStyle.FUTURE) 0 else 1 }'));
 assert(road.includes('riderRouteDisplayStops') && road.includes('it.bundleSequence') && road.includes('it.dropRank'));
 assert(road.includes('pickups.filter { !it.done }'));
-assert(road.includes('continuation.invokeOnCancellation { call.cancel() }'));
-assert(road.includes('generation != version') && road.includes('map !== activeMap'));
-assert(road.includes('now - startedAt < 15_000') && road.includes('>= 30.0'));
-assert(road.includes('while (cache.size > 32)'));
-assert(road.includes('line.setLocation('));
-assert(!road.includes('setZoom(') && !road.includes('setLocation(MapLocation('));
+assert(client.includes('continuation.invokeOnCancellation { call.cancel() }'));
+assert(client.includes('"$trimmed/map-api/route"') && client.includes('require(url.isHttps)'));
+assert(client.includes('QueueGo route geometry is not renderable'));
+assert(!/RouteService|api\.longdo|google\.com/.test(client));
+assert(!road.includes('setZoom(') && !road.includes('setLocation('));
 assert(!road.includes('google.navigation') && !road.includes('TextToSpeech') && !road.includes('interval'));
 assert(map.includes('renderRoutes(activeMap, state, force)') && map.includes('activeMap.removePolyline(line)') && map.includes('routeLines.clear()'));
 const resetSurfaceAt=map.indexOf('private fun resetSurface()');
@@ -21,8 +23,3 @@ assert(!map.includes('clearPin()'));
 require('./native-rider-google-maps-return.cjs');
 require('./native-rider-route-bundle-parity.cjs');
 console.log('Rider dark active / pale remaining real-road display contracts: PASS');
-
-assert(road.includes('renderedGeometry[leg.id] == geometry) continue'));
-assert(road.includes('retiring.toList().forEach'));
-
-assert(road.includes('lines.keys.any { it !in desired }'));

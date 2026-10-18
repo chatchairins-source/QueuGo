@@ -806,7 +806,6 @@ def retain_real_map_frames(directory):
 
 def verify_real_home_map_runtime():
     """A dependency/lifecycle component test, never an authenticated E2E claim."""
-    baseline = output / "baseline"
     test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
     runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
     instrument = adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
@@ -814,15 +813,6 @@ def verify_real_home_map_runtime():
                         "-e", "allowIncompleteTiles", "true", runner]
     run(adb + ["shell", "wm", "size", "1080x2280"])
     run(adb + ["shell", "wm", "density", "440"])
-    run(adb + ["shell", "am", "force-stop", package])
-    run(adb + ["install", "-r", str(baseline / "rider-untransformed.apk")])
-    run(adb + ["install", "-r", str(baseline / "rider-test.apk")])
-    run(adb + ["logcat", "-b", "all", "-c"])
-    before = subprocess.run(instrument, capture_output=True, text=True, timeout=120)
-    crash = run(adb + ["logcat", "-d"], capture_output=True, text=True).stdout
-    before_text = before.stdout + before.stderr + crash
-    (output / "map-before-fix.txt").write_text(before_text)
-    assert "NoClassDefFoundError" in before_text and "android/support/v4/view/GestureDetectorCompat" in before_text, "Baseline must reproduce the exact missing legacy legacy map class"
     run(adb + ["shell", "am", "force-stop", package])
     run(adb + ["install", "-r", str(apk)])
     run(adb + ["install", "-r", str(test_apk)])
@@ -887,7 +877,8 @@ def verify_real_home_map_runtime():
         "source_head": os.environ["GITHUB_SHA"],
         "workflow_run": os.environ["GITHUB_RUN_ID"],
         "apk_sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
-        "baseline": "reproduced NoClassDefFoundError android/support/v4/view/GestureDetectorCompat",
+        "renderer": "QueueGo MapLibre",
+        "baseline": "not applicable to current renderer; actual lifecycle test required",
         "corrected_instrumentation_process_pid": corrected_pid,
         "corrected_pid_source": (
             "completed_pid" if completed_pids

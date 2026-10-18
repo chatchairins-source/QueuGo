@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.queuego.shared.QgLine
-import com.queuego.shared.QgLongdoLocationPickerMap
+import com.queuego.shared.QgLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
@@ -162,7 +162,7 @@ internal fun RiderMyDestinationDialog(
                         .background(Color(0xFFF0F1F2))
                         .border(1.dp, QgLine, RoundedCornerShape(16.dp))
                 ) {
-                    QgLongdoLocationPickerMap(
+                    QgLocationPickerMap(
                         initialPoint = selected,
                         recenterPoint = gpsPoint,
                         recenterToken = recenterToken,
