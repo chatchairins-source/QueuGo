@@ -572,3 +572,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Existing Rider locked payouts are preserved exactly; candidate Rider payout is the passed incremental compensation; no Rider/platform bonus is created. If proposed customer collections cannot fund all preserved payouts, simulation returns ineligible with explicit funding gap instead of inventing subsidy.
 - Local isolated test: 19/0 checks PASS for pair parity, 4-order weighted 445/333/222 satang allocation, deterministic remainder, funding-gap rejection, positive-savings guard and unrepresentable money/rule rejection.
 - NEXT: bind this policy to authoritative read-only route/readiness evidence and existing pair cost oracle, then add 2–5 order financial/quality conservation tests. Do not raise live cap or mutate claims until atomic concurrent-claim gate passes.
+
+
+### 2026-10-18 authoritative Route Bundle financial snapshot
+- Added service-role-only STABLE `queuego_route_bundle_stack_financial_input` on top of the existing exact-revision/full-active-set/committed-next reader. It reads current customer fee, preserved Rider payout, Merchant readiness and shop category in the same PostgreSQL statement snapshot; caller-supplied money is not accepted.
+- Financial rule snapshot is versioned with `stack-savings-group-weighted-v1` and returns satang/km, pickup/dropoff/minute costs, detour limit and effective food/cafe delay cap. Function follows Supabase security guidance: explicit search_path, PUBLIC/anon/authenticated execute revoked, service_role only.
+- Added isolated PGlite regression to the full npm gate; it checks exact 50.00/55.00/40.00 THB conversion to satang, default rule snapshot, food 5-minute cap, stale revision rejection, role rejection and read-only SQL.
+- Fixture now mirrors already-existing `orders.rider_delivery_payout` and `merchant_ready_estimate_at` columns used by current migrations. No Production migration was applied from this chat.
+- NEXT: compute generalized incremental route burden from the same 2–5 order matrix/readiness snapshot, feed only that server-derived compensation into the versioned allocator, then test financial + quality rejection and atomic claim locking.
