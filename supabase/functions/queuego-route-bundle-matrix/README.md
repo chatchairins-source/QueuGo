@@ -20,3 +20,10 @@ A service-authorized `POST {"action":"refresh"}` runs bounded replenishment. The
 The same service now accepts the service-authorized `{"action":"stack","primaryOrderId":"...","candidateOrderId":"..."}` request. It discovers the Rider's current active bundle, adds only the still-unassigned candidate, builds a bounded road matrix for Rider + pickup/dropoff points, and writes short-lived evidence through `queuego_cache_route_bundle_stack_matrix`.
 
 This is groundwork only: the live claim RPC is unchanged, `route_bundle.max_orders` still defaults to 2, Saver still defaults OFF, and no Production flag is enabled. The generalized road adapter accepts 2–11 points (Rider plus at most 5 pickup/dropoff pairs) and rejects larger/untrusted point sets.
+
+
+### Phase 2 read-only planner
+
+A service-authorized `{"action":"plan","primaryOrderId":"...","candidateOrderId":"..."}` reads only the fresh stack matrix already cached by `action=stack`. The SQL reader rejects expired evidence, changed Order revisions, a candidate that is no longer unassigned/searching, or active Orders that no longer belong to the cached Rider.
+
+The pure planner never calls Longdo and never writes Orders, bundles, prices or cache state. It chooses the minimum-duration route (distance and deterministic key order break ties) while preserving the current QueueGo policy that all pending pickups occur before any customer dropoff. Pickups already completed by `picked_up` / `in_progress` Orders are omitted. Capacity remains at the existing live default/cap of 2 until a later claim/pricing phase is explicitly gated.
