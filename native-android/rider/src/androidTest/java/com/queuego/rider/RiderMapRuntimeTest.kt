@@ -48,6 +48,10 @@ class RiderMapRuntimeTest {
             assertSameCamera(initialCamera, recreatedCamera)
             assertExpectedGpsCamera(recreatedCamera)
         }
+        // ActivityScenario intentionally exercises a location foreground service
+        // that survives ordinary CREATED/RESUMED transitions. End the test by
+        // explicitly stopping that service so cleanup/onDestroy is deterministic
+        // evidence rather than depending on instrumentation process teardown.
         RiderNavigationLocationService.stop(
             InstrumentationRegistry.getInstrumentation().targetContext
         )

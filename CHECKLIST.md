@@ -566,6 +566,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Status: source fix checkpoint ready; exact-head Native CI required. NEXT: run real-map gate again and fix the next first actual runtime failure only. Physical road/GPS acceptance, public HTTPS hosting, signing/Play and Production remain separate BLOCKED gates.
 
 
+### 2026-10-18 strict real-map third actual failure — deterministic final FGS cleanup
+- Exact `f9bd7e9c` Native3369 / Actions39107754467: 7/8 jobs SUCCESS; only map-display job117617178719 failed. Artifact12129575823 phone-allowed proves 8 lifecycle stress cycles, 2 foreground location starts and 1 stop: first stop/start occurred at Activity recreate, but the test ended while the restarted service was intentionally still alive.
+- The harness correctly requires balanced cleanup, so the fix is in instrumentation rather than weakening the gate. `RiderMapRuntimeTest` now explicitly calls `RiderNavigationLocationService.stop(targetContext)` after ActivityScenario closes and waits 750 ms for service onDestroy/log evidence.
+- This is test-only cleanup; Rider production lifecycle/service behavior is unchanged. Expected exact-head evidence is 2 starts / 2 stops for allowed and 0 / 0 for denied, with all existing tile/camera/crash checks retained.
+- NEXT: exact descendant CI must make map-display green. Public HTTPS hosting, physical GPS/real-road acceptance, signing/Play and Production remain separate BLOCKED gates.
+
 ### 2026-10-18 Route Bundle Phase 2 versioned financial allocation checkpoint
 - Base: strict descendant of real-map HEAD `f9bd7e9c83399d596d85f1f7252514a7ca7976d0`; live claim/cap remains unchanged at 2 and no Production mutation is allowed.
 - Implemented pure read-only policy `stack-savings-group-weighted-v1` using integer satang: candidate available saving is split by the existing group percentage; the existing group's share is weighted by current committed fees with floor + largest-remainder allocation and immutable Order-ID tie-break.
@@ -596,11 +602,6 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Planner now rejects missing/invalid readiness whenever authoritative financial evidence is active, records per-Order pickup waits, and the generalized financial gate rejects any actual planned pickup wait above 300 seconds before detour/delay or money allocation.
 - Financial snapshot now carries `maxPickupWaitSeconds=300`, matching the existing pair readiness gate. Focused tests use explicit readiness timestamps, expect 20-minute candidate readiness to fail with the readiness-wait reason, and assert missing readiness fails closed.
 - No live claim/cap, price, Rider payout or Production state changed. NEXT: exact-head test/CI, then atomic generalized claim behind max_orders=2.
-
-
-### 2026-10-18 inherit deterministic real-map FGS cleanup
-- Pulled the exact test-only cleanup from map successor `8450cce9` into this financial descendant: after Rider map ActivityScenario closes, instrumentation explicitly stops the navigation location foreground service and waits for onDestroy/log cleanup.
-- This prevents the financial successor from re-running the already-understood 2-start/1-stop harness failure while preserving production service behavior. Exact CI must still prove 2/2 allowed and 0/0 denied.
 
 
 ### 2026-10-18 staged atomic generalized Route Bundle claim
