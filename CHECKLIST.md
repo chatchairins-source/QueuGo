@@ -423,3 +423,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Merge rule: preserve Express/Ride code from the newest parent, apply Laundry's `QueueGoApi.kt` change only at the Rider Laundry-state hunk, and take the remaining non-conflicting green Laundry/Grocery blobs directly. No reset/revert/force and no duplicate dispatcher/route/payment/proof implementation.
 - BLOCKED outside source CI: physical road/GPS evidence; authenticated Grocery save/reopen on real iPhone/Android; approved QueueGo Map hosting/runtime where required; signed AAB/Closed Testing; controlled Laundry/Grocery/Production cutover.
 - NEXT: require exact-head CI on this unified successor. If green, source/repository Release Gate is ready; only the listed physical/signing/Production gates remain.
+
+
+### 2026-10-18 unified release CI coverage gate
+- Exact unified HEAD `244b5e6ed31fd8df336dad0f2e5dcf3b135837ce` started Native Pilot run 3352; Full QueueGo regression passed, but branch-name predicates skipped the independent Express/Credit/Passenger Ride/Continuous Dispatch races and three map runtime jobs.
+- This checkpoint adds only the unified release branch selector to those existing jobs and adds an executable predicate test requiring all eight non-publishing gates.
+- Runtime/business logic is unchanged. `publish-rider-road-test` remains forbidden for this integration branch.
+- NEXT: require the new exact-head run to execute (not skip) all race + map jobs and Native Pilot; inspect the first real failure only. No Production mutation.
