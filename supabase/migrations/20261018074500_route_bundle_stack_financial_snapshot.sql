@@ -50,7 +50,8 @@ begin
  left join public.shop_profiles s on s.id=o.shop_id
  where o.id=any(v_ids);
 
- if v_financial_orders is null or jsonb_object_length(v_financial_orders)<>cardinality(v_ids) then
+ if v_financial_orders is null
+    or (select count(*) from jsonb_object_keys(v_financial_orders))<>cardinality(v_ids) then
    return null;
  end if;
 
