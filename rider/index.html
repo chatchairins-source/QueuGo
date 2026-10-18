@@ -1,8 +1,9 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#e6002d">
 <title>QueueGo Rider</title>
+<meta name="queuego-web-build" content="rider-20261018-route-arrow3">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="../queuego-map-web.js?v=20261017-11"></script>
+<script src="../queuego-map-web.js?v=20261018-15"></script>
 <script src="../map-view/queuego-map-service.js?v=20261017-1"></script>
 
 
@@ -345,6 +346,7 @@ function startSessionGuard(){
 }
 function stopSessionGuard(){if(sessionGuardTimer){clearInterval(sessionGuardTimer);sessionGuardTimer=null;}}
 function forceSessionLogout(msg){
+  qgCloseRiderFlowPage('qg-pickup-verify');qgCloseRiderFlowPage('qg-delivery-confirm');
   stopSessionGuard();stopPolling();stopRiderChatWatch();window.qgClearRiderInbox?.();window.qgStopNewJobAlert?.();if(qgRiderVoice){qgRiderVoice.destroy();qgRiderVoice=null;}
   disposeRiderMap();
   clearSession();
@@ -775,12 +777,44 @@ async function qgRequestRiderRoute(from,to,signal){
 const RIDER_ROUTE_OFF_ROUTE_METERS=60;
 const RIDER_ROUTE_REROUTE_HITS=3;
 const RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000;
-let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteHits=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
+let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteHits=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderPuckHeadingFix=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
 function clearRiderRoute(){
   riderRouteRequest?.controller.abort();riderRouteRequest=null;riderRouteCache=null;riderRouteGeometry=[];
   riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0;
   (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
   const badge=document.getElementById('route-badge');if(badge)badge.style.display='none';
+}
+function qgRenderRiderRemainingRoute(position){
+  if(!riderRouteCache||riderRouteCache.map!==S.map||!riderRouteGeometry.length)return;
+  const visible=window.QueueGoMapWeb?.remainingNavigationRoute?.(riderRouteGeometry,position,{bearing:S.pos?.bearing,speed:S.pos?.speed,accuracy:S.pos?.accuracy});
+  if(!visible)return; // Weak/off-route/opposite evidence keeps the last real route.
+  const cursor={part:visible.match.partIndex,progress:visible.match.progressMeters},previous=riderRouteCache.displayCursor;
+  if(previous&&(cursor.part<previous.part||(cursor.part===previous.part&&cursor.progress+.5<previous.progress)))return;
+  riderRouteCache.displayCursor=cursor;
+  const wanted=new Set(visible.lines.flatMap((_,i)=>['qg-rider-route-'+i+'-casing','qg-rider-route-'+i]));
+  for(const id of S.routeOverlays||[])if(!wanted.has(id))window.QueueGoMapWeb.removeGeoJsonLine(S.map,id);
+  S.routeOverlays=[...wanted];
+  visible.lines.forEach((line,i)=>{
+    const id='qg-rider-route-'+i;
+    if(i===0&&visible.anchorFirst)line[0]=[Number(position.lng),Number(position.lat)];
+    window.QueueGoMapWeb.addGeoJsonLine(S.map,id+'-casing',line,{color:'#ffffff',width:16});
+    window.QueueGoMapWeb.addGeoJsonLine(S.map,id,line,{color:'#e6002d',width:12,arrows:true});
+  });
+}
+function qgUpdateRiderRouteProgress(decision){
+  const cache=riderRouteCache,match=decision?.routeMatch;
+  if(!cache||cache.map!==S.map||!match||decision.routeBearingRejected)return false;
+  const remaining=qgFiniteOrNull(decision.remainingRouteMeters),length=qgFiniteOrNull(match.geometryDistanceMeters);
+  const offRoute=qgFiniteOrNull(match.offRouteMeters),accuracy=qgFiniteOrNull(S.pos?.accuracy);
+  if(remaining===null||length===null||length<=0||offRoute===null||offRoute>60||(accuracy!==null&&accuracy>50))return false;
+  const totalDistance=qgFiniteOrNull(cache.dist),totalTime=qgFiniteOrNull(cache.time);
+  if(totalDistance===null||totalDistance<=0||!cache.label)return false;
+  const ratio=Math.max(0,Math.min(1,remaining/length)),meters=totalDistance*ratio;
+  const txt=document.getElementById('route-text');if(!txt)return false;
+  const distance=meters<1000?Math.round(meters/10)*10+' ม.':(meters/1000).toFixed(1)+' กม.';
+  const eta=totalTime!==null&&totalTime>0?' • ประมาณ '+Math.max(1,Math.ceil(totalTime*ratio/60))+' นาที':'';
+  txt.textContent=cache.label+' • '+distance+eta;
+  return true;
 }
 function qgRiderRouteNeedsReroute(pos,scope,map){
   if(!riderRouteCache||riderRouteCache.scope!==scope||riderRouteCache.map!==map||!riderRouteGeometry.length)return true;
@@ -812,7 +846,7 @@ function disposeRiderMap(){
   if(S.watchId!==null&&S.watchId!==undefined)navigator.geolocation?.clearWatch(S.watchId);
   (S.jobMarkers||[]).forEach(qgRemoveOverlay);qgRemoveOverlay(S.riderMarker);
   if(S.map)window.QueueGoMapWeb?.destroy(S.map);
-  riderMapInstance=null;riderNavigationCameraActive=false;riderPuckHeading=null;riderGpsCadenceMs=1000;riderLastGpsFixAt=0;
+  riderMapInstance=null;riderNavigationCameraActive=false;riderPuckHeading=null;riderPuckHeadingFix=null;riderGpsCadenceMs=1000;riderLastGpsFixAt=0;
   Object.assign(S,{watchId:null,map:null,riderMarker:null,jobMarkers:[],pos:null,_centeredOnce:false,_lastGpsHomeRenderAt:0});
 }
 function validRiderCoordinate(lat,lon){return lat!==null&&lat!==undefined&&lat!==''&&lon!==null&&lon!==undefined&&lon!==''&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lon))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180}
@@ -832,10 +866,11 @@ function qgRiderCameraBottomInset(){
 function qgFollowRiderCamera(force=false,duration=420){
   if(!S.map||!S.pos||!qgNavigationCameraFollowEnabled()||riderRouteOverviewActive)return null;
   return window.QueueGoMapWeb?.followNavigationCamera?.(S.map,S.pos,riderRouteGeometry,{
-    force,duration,baseZoom:17,bottomInset:qgRiderCameraBottomInset()
+    force,duration,baseZoom:17,bottomInset:qgRiderCameraBottomInset(),puckBearing:qgSmoothedRiderPuckHeading(S.pos)
   })||null;
 }
 function qgNormalizeRiderBearing(value){
+  if(value===null||value===undefined||value==='')return null;
   const n=Number(value);return Number.isFinite(n)?((n%360)+360)%360:null;
 }
 function qgRiderBearingDelta(from,to){
@@ -872,6 +907,9 @@ function qgResolveRiderTravelBearing(previous,nextLat,nextLng,rawHeading,speed,f
   return raw;
 }
 function qgSmoothedRiderPuckHeading(fix){
+  // The camera and puck consume one heading update for each accepted GPS fix.
+  if(fix===riderPuckHeadingFix)return riderPuckHeading;
+  riderPuckHeadingFix=fix;
   const raw=qgNormalizeRiderBearing(fix?.bearing),speed=Number(fix?.speed);
   if(raw===null)return riderPuckHeading;
   if(riderPuckHeading===null){riderPuckHeading=raw;return riderPuckHeading}
@@ -917,7 +955,10 @@ function startGeolocation(){
   S.watchId = navigator.geolocation.watchPosition(pos=>{
     if(!current()||!validRiderCoordinate(pos.coords.latitude,pos.coords.longitude))return;
     const hadPosition=!!S.pos;
+    const previous=S.pos;
     const fixAt=Number.isFinite(Number(pos.timestamp))?Number(pos.timestamp):Date.now();
+    // Cached/out-of-order Safari callbacks must not rewind heading, marker or route.
+    if(previous&&fixAt<=Number(previous.timestamp))return;
     if(riderLastGpsFixAt>0){
       const observed=fixAt-riderLastGpsFixAt;
       if(observed>=100&&observed<=5000){
@@ -925,7 +966,6 @@ function startGeolocation(){
       }
     }
     riderLastGpsFixAt=fixAt;
-    const previous=S.pos;
     let speed=qgFiniteOrNull(pos.coords.speed);
     if(speed===null&&previous&&Number.isFinite(Number(previous.timestamp))&&fixAt>Number(previous.timestamp)){
       const seconds=(fixAt-Number(previous.timestamp))/1000;
@@ -962,6 +1002,7 @@ function startGeolocation(){
     // Camera and puck must interpolate the same GPS segment with the same timing.
     // Otherwise the camera reaches the new fix before the puck and the vehicle
     // visibly walks up/down the screen even though FOLLOW is still active.
+    qgUpdateRiderRouteProgress(followed);
     placeRiderMarker(followed?.animationDuration);
     if(S.online) pushLocation();
     const now=Date.now();
@@ -1342,10 +1383,16 @@ function drawLaundryRoute(){
       const {routes,dist,time,routeId}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
-      routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
+      routes.forEach((line,i)=>{
+        // Screen-pixel strokes stay legible at navigation tilt; both layers share
+        // the authoritative geometry and the existing overlay cleanup lifecycle.
+        const id='qg-rider-route-'+i;
+        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id+'-casing',line,{color:'#ffffff',width:16}))S.routeOverlays.push(id+'-casing');
+        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:12,arrows:true}))S.routeOverlays.push(id);
+      });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId};
+      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
@@ -1406,10 +1453,16 @@ function drawActiveRoute(){
       const {routes,dist,time,routeId}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lon)},controller.signal);
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
-      routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
+      routes.forEach((line,i)=>{
+        // Screen-pixel strokes stay legible at navigation tilt; both layers share
+        // the authoritative geometry and the existing overlay cleanup lifecycle.
+        const id='qg-rider-route-'+i;
+        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id+'-casing',line,{color:'#ffffff',width:16}))S.routeOverlays.push(id+'-casing');
+        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:12,arrows:true}))S.routeOverlays.push(id);
+      });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId};
+      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
@@ -1622,8 +1675,8 @@ function updateStatusUI(){
   if(label)label.textContent=S.online?'ออนไลน์':'ออฟไลน์';
 }
 function qgRiderSpeedKph(fix){
-  const speed=Number(fix?.speed);
-  return Number.isFinite(speed)&&speed>=0?Math.max(0,Math.min(199,Math.round(speed*3.6))):null;
+  const speed=qgFiniteOrNull(fix?.speed);
+  return speed!==null&&Number.isFinite(speed)&&speed>=0?Math.max(0,Math.min(199,Math.round(speed*3.6))):null;
 }
 function updateRiderSpeedUI(){
   const value=document.getElementById('qg-speed-value');if(!value)return;
@@ -1633,21 +1686,25 @@ function updateRiderSpeedUI(){
 function placeRiderMarker(durationOverride=null){
  if(!S.pos||!S.map||!window.QueueGoMapWeb)return;
  const heading=qgSmoothedRiderPuckHeading(S.pos);
- const markerDuration=Number.isFinite(Number(durationOverride))
+ const presentation=window.QueueGoMapWeb.remainingNavigationRoute?.(riderRouteGeometry,S.pos,{bearing:S.pos.bearing,speed:S.pos.speed,accuracy:S.pos.accuracy});
+ const displayPos=presentation?.position||S.pos;
+ const updateRoute=position=>{if(typeof qgRenderRiderRemainingRoute==='function')qgRenderRiderRemainingRoute(position)};
+ const markerDuration=durationOverride!==null&&durationOverride!==undefined&&durationOverride!==''&&Number.isFinite(Number(durationOverride))
    ? Math.max(220,Math.min(1250,Math.round(Number(durationOverride))))
    : Math.max(260,Math.min(1250,Math.round(riderGpsCadenceMs*1.05)));
  if(S.riderMarker){
    (window.QueueGoMapWeb.moveMarkerSmooth||window.QueueGoMapWeb.moveMarker)?.(
-     S.riderMarker,S.pos.lat,S.pos.lng,heading,{duration:markerDuration}
+     S.riderMarker,displayPos.lat,displayPos.lng,heading,{duration:markerDuration,onPosition:updateRoute}
    );
  }else{
    const puck='<div data-qg-rider-puck="true" style="width:48px;height:48px;border-radius:50%;background:#e6002d;border:4px solid #fff;box-sizing:border-box;box-shadow:0 4px 14px rgba(14,36,56,.32);display:grid;place-items:center;pointer-events:none"><svg width="27" height="27" viewBox="0 0 27 27" aria-hidden="true"><path d="M13.5 2.5L23.5 23L13.5 18.2L3.5 23Z" fill="#fff"/></svg></div>';
    S.riderMarker=window.QueueGoMapWeb.marker(S.map,{
-     lat:S.pos.lat,lng:S.pos.lng,title:'ตำแหน่งไรเดอร์',html:puck,
+     lat:displayPos.lat,lng:displayPos.lng,title:'ตำแหน่งไรเดอร์',html:puck,
      rotation:heading??0,rotationAlignment:'map',pitchAlignment:'viewport'
    });
  }
  if(S.activeOrder)drawActiveRoute();
+ if(!S.riderMarker?.getLngLat)updateRoute(displayPos);
 }
 
 function qgRouteBundleHTML(){
@@ -1903,7 +1960,19 @@ async function qgConfirmStageArrival(o,target){
   overlay.querySelector('#qg-arrival-proceed').onclick=async e=>{const button=e.currentTarget;const ok=await proceed(button);if(ok&&overlay.isConnected)close()};
   return false;
 }
-function qgCloseRiderFlowPage(id){document.getElementById(id)?.remove()}
+function qgCloseRiderFlowPage(id){
+  const page=document.getElementById(id);if(!page)return;
+  for(const key of ['_pickupProofUrl','_deliveryProofUrl'])if(page[key])URL.revokeObjectURL(page[key]);
+  page._pickupFile=null;page._deliveryFile=null;page.remove();
+}
+function qgProofPageScope(o){return JSON.stringify([S.user?.id,S.session?.authUserId,S.session?.sessionId,String(o.id)])}
+function qgProofPageCurrent(page,o){return page.isConnected&&page._proofScope===qgProofPageScope(o)}
+function qgResumeProofPage(id,o){
+  const page=document.getElementById(id);
+  if(!page)return false;
+  if(qgProofPageCurrent(page,o)&&Date.now()-page._proofOpenedAt<30*60*1000){page.hidden=false;return true}
+  qgCloseRiderFlowPage(id);return false;
+}
 function qgTelHref(phone){
   const raw=String(phone||'').trim(),safe=raw.replace(/[^0-9+]/g,'');
   return safe?'tel:'+safe:'';
@@ -1911,77 +1980,6 @@ function qgTelHref(phone){
 function qgSafeItemImage(value){
   const v=String(value||'').trim();
   return /^(https:\/\/|data:image\/(?:jpeg|png|webp);base64,)/i.test(v)?v:'';
-}
-function qgOpenCashConfirmPage({o,mode,amount,onConfirm,onBack}){
-  qgCloseRiderFlowPage('qg-rider-cash-confirm');
-  const isShop=mode==='shop',cash=Number(amount||0);
-  const page=document.createElement('section');
-  page.id='qg-rider-cash-confirm';
-  page.className='qg-rider-flow-page qg-cash-confirm-page';
-  page.innerHTML=`<header class="qg-flow-head qg-cash-confirm-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>${isShop?'ชำระเงินให้ร้าน':'เก็บเงินจากลูกค้า'}</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header>
-    <main class="qg-cash-confirm-main">
-      <div class="qg-cash-visual" aria-hidden="true"><span>฿</span></div>
-      <p class="qg-cash-confirm-kicker">${isShop?'ยอดที่ต้องชำระให้ร้าน':'ยอดที่ต้องเก็บจากลูกค้า'}</p>
-      <strong class="qg-cash-confirm-amount">฿${cash.toLocaleString('th-TH')}</strong>
-      <p class="qg-cash-confirm-note">${isShop?'ตรวจสอบยอดกับร้านให้ตรงก่อนยืนยัน':'ส่งสินค้าให้ลูกค้าเรียบร้อย แล้วตรวจสอบเงินสดก่อนจบงาน'}</p>
-    </main>
-    <section class="qg-cash-confirm-dock">
-      <div class="qg-cash-confirm-total"><b>ทั้งหมด</b><span><em>เงินสด</em><strong>฿${cash.toLocaleString('th-TH')}</strong></span></div>
-      <div class="qg-slide-action qg-cash-confirm-slide" style="--slide-progress:0%"><span class="qg-slide-action-label">${isShop?'ชำระเงินให้ร้านเรียบร้อยแล้ว':'เก็บเงินจากลูกค้าเรียบร้อยแล้ว'}</span><input id="qg-cash-confirm-slider" type="range" min="0" max="100" value="0" aria-label="${isShop?'สไลด์เพื่อยืนยันชำระเงินให้ร้าน':'สไลด์เพื่อยืนยันเก็บเงินจากลูกค้า'}"></div>
-      <small>สไลด์ให้สุดเมื่อยอดเงินถูกต้องแล้ว</small>
-    </section>`;
-  document.body.appendChild(page);
-  const close=()=>page.remove();
-  page.querySelector('.qg-flow-head button').onclick=()=>{close();if(typeof onBack==='function')onBack()};
-  const slide=page.querySelector('#qg-cash-confirm-slider');
-  const ctl=qgBindSlideAction(slide,{
-    idleLabel:isShop?'ชำระเงินให้ร้านเรียบร้อยแล้ว':'เก็บเงินจากลูกค้าเรียบร้อยแล้ว',
-    busyLabel:isShop?'กำลังบันทึกการชำระเงิน...':'กำลังบันทึกการรับเงิน...',
-    onComplete:async()=>{
-      const ok=(await onConfirm())!==false;
-      if(ok)close();
-      return ok;
-    }
-  });
-  ctl.setEnabled(true);
-  return page;
-}
-function qgBindSlideAction(input,{idleLabel,busyLabel,onComplete}){
-  if(!input)return {setEnabled:()=>{},reset:()=>{}};
-  const host=input.closest('.qg-slide-action'),label=host?.querySelector('.qg-slide-action-label');
-  let busy=false,raf=0;
-  const paint=value=>{
-    const pct=Math.max(0,Math.min(100,Number(value)||0));
-    if(raf)cancelAnimationFrame(raf);
-    raf=requestAnimationFrame(()=>{raf=0;host?.style.setProperty('--slide-progress',pct+'%')});
-  };
-  const reset=()=>{input.value='0';paint(0)};
-  const setEnabled=enabled=>{
-    if(busy)return;
-    input.disabled=!enabled;
-    host?.classList.toggle('is-disabled',!enabled);
-    if(label)label.textContent=enabled?idleLabel:'ถ่ายรูปก่อนเพื่อเปิดสไลด์';
-    if(!enabled)reset();
-  };
-  const commit=async()=>{
-    if(input.disabled||busy)return;
-    if(Number(input.value)<92)return;
-    busy=true;input.disabled=true;host?.classList.add('is-busy');paint(100);if(label)label.textContent=busyLabel;
-    let ok=false;
-    try{ok=(await onComplete())!==false}catch(e){toast(e?.message||'ดำเนินการไม่สำเร็จ')}
-    if(!ok){
-      busy=false;host?.classList.remove('is-busy');input.disabled=false;if(label)label.textContent=idleLabel;reset();
-    }
-  };
-  input.addEventListener('input',()=>{
-    paint(input.value);
-    if(Number(input.value)>=92)void commit();
-  },{passive:true});
-  input.addEventListener('change',()=>{
-    if(Number(input.value)<92&&!busy)reset();
-  });
-  reset();setEnabled(false);
-  return {setEnabled,reset};
 }
 async function qgPickupWithPhoto(o,file,preparedPhotoPath=null){
   if(!o||!file)return false;
@@ -2007,12 +2005,13 @@ async function qgPickupWithPhoto(o,file,preparedPhotoPath=null){
 }
 async function qgOpenPickupVerify(o){
   if(!o||statusFromRow(o)!=='ready')return false;
-  qgCloseRiderFlowPage('qg-pickup-verify');
+  if(qgResumeProofPage('qg-pickup-verify',o))return true;
   const page=document.createElement('section');page.id='qg-pickup-verify';page.className='qg-rider-flow-page qg-rider-flow-compact';
+  page._proofScope=qgProofPageScope(o);page._proofOpenedAt=Date.now();
   page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>รับสินค้าที่ร้าน</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายการ...</div></main>`;
   document.body.appendChild(page);
   const back=page.querySelector('header button');
-  back.onclick=()=>page.remove();
+  back.onclick=()=>{if(!page._proofBusy)page.hidden=true};
   try{
     const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
     const items=await sbTable('order_items?select=item_name,description,quantity,unit_price,total_price,item_image&order_id=eq.'+encodeURIComponent(o.id)+'&order=created_at.asc',{token});
@@ -2023,7 +2022,7 @@ async function qgOpenPickupVerify(o){
 
     const renderPickupPage=()=>{
       if(!page.isConnected)return;
-      back.onclick=()=>page.remove();
+      back.onclick=()=>{if(!page._proofBusy)page.hidden=true};
       page.querySelector('.qg-flow-body').innerHTML=`
         <section class="qg-pickup-banner"><span>รับสินค้าที่ร้าน</span><h1>ตรวจสอบรายการและถ่ายรูป</h1><p>เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว</p></section>
         <section class="qg-flow-card qg-pickup-meta">
@@ -2033,37 +2032,36 @@ async function qgOpenPickupVerify(o){
         </section>
         ${itemsSection}
         ${note?`<section class="qg-flow-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></section>`:''}
+        <section class="qg-flow-cash"><small>ยอดที่ต้องชำระให้ร้าน</small><b>฿${shopCash.toLocaleString('th-TH')}</b><span>เงินสด · ชำระเงินให้ร้านเรียบร้อยแล้วจึงกดรับสินค้า</span></section>
         <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนรับสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-pickup-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปสินค้าที่รับ"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปสินค้าที่รับ</b><small>ให้เห็นสินค้าที่ตรวจรับจากร้านชัดเจน</small></label><img id="qg-pickup-preview" hidden alt="รูปตอนรับสินค้า"></section>
         <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-photo-next" disabled hidden>ยืนยันรับสินค้า</button>
         <small class="qg-slide-caption">ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า</small>`;
       const input=page.querySelector('#qg-pickup-photo'),preview=page.querySelector('#qg-pickup-preview'),next=page.querySelector('#qg-pickup-photo-next');
       input.onchange=()=>{
+        if(page._proofBusy)return;
         const file=input.files?.[0],proofBox=input.closest('.qg-proof-single');
-        if(page._pickupProofUrl){URL.revokeObjectURL(page._pickupProofUrl);page._pickupProofUrl=null}
-        page._pickupUploadPromise=null;
-        if(!file){preview.hidden=true;proofBox?.classList.remove('has-proof');next.disabled=true;next.hidden=true;return}
-        page._pickupProofUrl=URL.createObjectURL(file);preview.src=page._pickupProofUrl;preview.hidden=false;proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
-        if(typeof window.qgUploadEvidence==='function')page._pickupUploadPromise=window.qgUploadEvidence(file);
+        // Cancelling the native camera must retain the previously selected proof.
+        if(!file)return;
+        page._pickupFile=file;page._pickupPhotoPath=null;
+        if(page._pickupProofUrl)URL.revokeObjectURL(page._pickupProofUrl);
+        page._pickupProofUrl=URL.createObjectURL(file);preview.src=page._pickupProofUrl;preview.hidden=false;
+        proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
       };
-      next.onclick=()=>{
-        const file=input.files?.[0];if(!file){toast('กรุณาถ่ายรูปสินค้าที่รับก่อน');return}
-        page.hidden=true;
-        qgOpenCashConfirmPage({
-          o,mode:'shop',amount:shopCash,
-          onBack:()=>{page.hidden=false},
-          onConfirm:async()=>{
-            let photoPath=null;
-            try{photoPath=page._pickupUploadPromise?await page._pickupUploadPromise:null}catch(_){page._pickupUploadPromise=null}
-            const ok=await qgPickupWithPhoto(o,file,photoPath);
-            if(ok){
-              if(page._pickupProofUrl)URL.revokeObjectURL(page._pickupProofUrl);
-              page.remove();
-              return true;
-            }
-            page.hidden=false;
-            return false;
-          }
-        });
+      next.onclick=async()=>{
+        if(page._proofBusy||!qgProofPageCurrent(page,o))return false;
+        const file=page._pickupFile;if(!file){toast('กรุณาถ่ายรูปหลักฐานก่อน');return false}
+        page._proofBusy=true;next.disabled=true;input.disabled=true;next.textContent='กำลังบันทึก...';
+        try{
+          if(!page._pickupPhotoPath)page._pickupPhotoPath=await window.qgUploadEvidence(file);
+          if(!qgProofPageCurrent(page,o))return false;
+          const ok=await qgPickupWithPhoto(o,file,page._pickupPhotoPath);
+          if(ok){qgCloseRiderFlowPage('qg-pickup-verify');return true}
+          return false;
+        }catch(e){toast('รับสินค้าไม่สำเร็จ: '+(e.message||e));return false}
+        finally{
+          page._proofBusy=false;
+          if(page.isConnected){next.disabled=false;input.disabled=false;next.textContent='รับสินค้าแล้ว'}
+        }
       };
     };
 
@@ -2097,13 +2095,14 @@ function qgShowDeliverySuccess(o){
 }
 async function qgOpenDeliveryConfirm(o){
   if(!o||statusFromRow(o)!=='in_progress')return false;
-  qgCloseRiderFlowPage('qg-delivery-confirm');
+  if(qgResumeProofPage('qg-delivery-confirm',o))return true;
   const page=document.createElement('section');page.id='qg-delivery-confirm';page.className='qg-rider-flow-page qg-rider-flow-compact';
+  page._proofScope=qgProofPageScope(o);page._proofOpenedAt=Date.now();
   const cust=o._customer||{},shop=o._shop||{},note=qgCleanOrderNote(o.note),cash=Number(o.market_order_id?o._marketTripTotal:o.total_amount||0),tel=qgTelHref(cust.phone);
   page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>ส่งสินค้า</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายละเอียด...</div></main>`;
   document.body.appendChild(page);
   const back=page.querySelector('header>button:first-child');
-  back.onclick=()=>page.remove();
+  back.onclick=()=>{if(!page._proofBusy)page.hidden=true};
   try{
     const token=await getAccessToken(),items=await sbTable('order_items?select=item_name,quantity,total_price,item_image&order_id=eq.'+encodeURIComponent(o.id)+'&order=created_at.asc',{token});
     if(!page.isConnected)return false;
@@ -2113,46 +2112,45 @@ async function qgOpenDeliveryConfirm(o){
 
     const renderDeliveryPage=()=>{
       if(!page.isConnected)return;
-      back.onclick=()=>page.remove();
+      back.onclick=()=>{if(!page._proofBusy)page.hidden=true};
       page.querySelector('.qg-flow-body').innerHTML=`
         <section class="qg-flow-hero"><span>ส่งสินค้าให้ลูกค้า</span><h1>ตรวจสอบและส่งมอบสินค้า</h1><p>${esc(qgShortOrder(o))} · ตรวจรายการและถ่ายรูปหลักฐานในหน้าเดียว</p></section>
         <section class="qg-flow-customer"><div><small>ลูกค้า</small><h2>${esc(cust.name||'ลูกค้า')}</h2></div><div class="qg-contact-actions"><button type="button" id="qg-delivery-call" aria-label="โทรหาลูกค้าผ่าน QueueGo">${QTICON.phone}</button><button type="button" id="qg-delivery-chat" aria-label="แชต">${QTICON.chat}</button></div></section>
         <section class="qg-flow-address"><span>${QTICON.loc}</span><div><small>ที่อยู่จัดส่ง</small><b>${esc(o.delivery_address||'จุดส่งสินค้า')}</b></div></section>
         ${note?`<section class="qg-flow-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></section>`:''}
         ${itemsSection}
+        <section class="qg-flow-cash"><small>ยอดที่ต้องเก็บจากลูกค้า</small><b>฿${cash.toLocaleString('th-TH')}</b><span>เงินสด · เก็บเงินจากลูกค้าเรียบร้อยแล้วจึงกดจบงาน</span></section>
         <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนส่งสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-delivery-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปตอนส่งสินค้า"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปตอนส่ง</b><small>ให้เห็นสินค้าและจุดส่งชัดเจน ไม่ต้องถ่ายหน้าลูกค้า</small></label><img id="qg-delivery-preview" hidden alt="รูปตอนส่งสินค้า"></section>
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-delivery-photo-next" disabled hidden>ยืนยันส่งสินค้า</button>
+        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-delivery-photo-next" disabled hidden>ยืนยันส่งสินค้าและจบงาน</button>
         <small class="qg-slide-caption">ตรวจรายการให้ครบและถ่ายรูปหลักฐานก่อนยืนยันส่ง</small>`;
-      page.querySelector('#qg-delivery-chat').onclick=()=>{page.remove();openChat(o)};page.querySelector('#qg-delivery-call').onclick=()=>qgRiderVoiceCall(o,cust.name||'ลูกค้า');
+      page.querySelector('#qg-delivery-chat').onclick=()=>{if(!page._proofBusy){page.hidden=true;openChat(o)}};page.querySelector('#qg-delivery-call').onclick=()=>qgRiderVoiceCall(o,cust.name||'ลูกค้า');
       const input=page.querySelector('#qg-delivery-photo'),preview=page.querySelector('#qg-delivery-preview'),next=page.querySelector('#qg-delivery-photo-next');
       input.onchange=()=>{
+        if(page._proofBusy)return;
         const file=input.files?.[0],proofBox=input.closest('.qg-proof-single');
-        if(page._deliveryProofUrl){URL.revokeObjectURL(page._deliveryProofUrl);page._deliveryProofUrl=null}
-        page._deliveryUploadPromise=null;
-        if(!file){preview.hidden=true;proofBox?.classList.remove('has-proof');next.disabled=true;next.hidden=true;return}
-        page._deliveryProofUrl=URL.createObjectURL(file);preview.src=page._deliveryProofUrl;preview.hidden=false;proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
-        if(typeof window.qgUploadEvidence==='function')page._deliveryUploadPromise=window.qgUploadEvidence(file);
+        // Cancelling the native camera must retain the previously selected proof.
+        if(!file)return;
+        page._deliveryFile=file;page._deliveryPhotoPath=null;
+        if(page._deliveryProofUrl)URL.revokeObjectURL(page._deliveryProofUrl);
+        page._deliveryProofUrl=URL.createObjectURL(file);preview.src=page._deliveryProofUrl;preview.hidden=false;
+        proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
       };
-      next.onclick=()=>{
-        const file=input.files?.[0];if(!file){toast('กรุณาถ่ายรูปตอนส่งสินค้าก่อน');return}
-        page.hidden=true;
-        qgOpenCashConfirmPage({
-          o,mode:'customer',amount:cash,
-          onBack:()=>{page.hidden=false},
-          onConfirm:async()=>{
-            try{
-              let photoPath=null;
-              try{photoPath=page._deliveryUploadPromise?await page._deliveryUploadPromise:null}catch(_){page._deliveryUploadPromise=null}
-              await qgCompleteWithPhoto(o,file,photoPath);
-              if(page._deliveryProofUrl)URL.revokeObjectURL(page._deliveryProofUrl);
-              page.remove();qgShowDeliverySuccess(o);
-              void qgRiderRefreshAfterCommit('rider delivery photo refresh failed');
-              return true;
-            }catch(e){
-              toast('จบงานไม่สำเร็จ: '+(e.message||e));page.hidden=false;return false;
-            }
-          }
-        });
+      next.onclick=async()=>{
+        if(page._proofBusy||!qgProofPageCurrent(page,o))return false;
+        const file=page._deliveryFile;if(!file){toast('กรุณาถ่ายรูปหลักฐานก่อน');return false}
+        page._proofBusy=true;next.disabled=true;input.disabled=true;next.textContent='กำลังบันทึก...';
+        try{
+          if(!page._deliveryPhotoPath)page._deliveryPhotoPath=await window.qgUploadEvidence(file);
+          if(!qgProofPageCurrent(page,o))return false;
+          await qgCompleteWithPhoto(o,file,page._deliveryPhotoPath);
+          qgCloseRiderFlowPage('qg-delivery-confirm');qgShowDeliverySuccess(o);
+          void qgRiderRefreshAfterCommit('rider delivery photo refresh failed');
+          return true;
+        }catch(e){toast('จบงานไม่สำเร็จ: '+(e.message||e));return false}
+        finally{
+          page._proofBusy=false;
+          if(page.isConnected){next.disabled=false;input.disabled=false;next.textContent='ยืนยันส่งสินค้าและจบงาน'}
+        }
       };
     };
 

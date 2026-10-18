@@ -19,7 +19,8 @@ data class NavigationCameraDecision(
 
 internal fun navigationCameraDecision(
     state: RiderNavigationMapState,
-    previousBearingDegrees: Float?
+    previousBearingDegrees: Float?,
+    followPuckBearing: Boolean = false
 ): NavigationCameraDecision? {
     val fix = state.rider?.takeIf { it.point.valid } ?: return null
     val navigationActive = state.perspectiveCameraEnabled || state.remainingStops().isNotEmpty()
@@ -75,6 +76,7 @@ internal fun navigationCameraDecision(
     val routeBearingUsable = routeBearing != null && !routeBearingOpposesMotion
 
     val desiredBearing = when {
+        followPuckBearing && gpsBearing != null && speed != null && speed >= 0.83f -> gpsBearing
         routeBearingUsable -> routeBearing
         speed == null || speed < 0.83f -> previousBearingDegrees
         else -> gpsBearing ?: previousBearingDegrees
