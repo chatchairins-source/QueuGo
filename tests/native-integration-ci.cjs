@@ -15,3 +15,8 @@ for(const ref of ['work-native-rider-queuego-route-authority-20261017','work-nat
  assert.equal(selected('publish-rider-road-test',ref),false,'integration gate must not publish a release');checks++;
 }
 console.log(JSON.stringify({checks,failures:0,scope:'actual Native Pilot job predicates select integrated dispatch/Ride/credit/map gates without publishing releases'}));
+
+for(const job of ['native-pilot','continuous-dispatch-races','passenger-ride-races','credit-races','express-races']){
+ assert.equal(selected(job,'work-native-express-phase1-20261018'),true,'Express successor must run '+job);checks++;
+}
+assert.equal(selected('publish-rider-road-test','work-native-express-phase1-20261018'),false,'Express integration must not publish a release');checks++;
