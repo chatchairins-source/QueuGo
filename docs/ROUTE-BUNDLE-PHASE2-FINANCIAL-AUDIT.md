@@ -34,3 +34,23 @@ Reuse existing exact-revision stack evidence and route planner. First define a v
 Once that contract exists, add a non-mutating simulation result to the existing planner path (no second pricing service). Its server-read input must include current customer-fee ceilings, previously locked per-Order Rider payouts, exact revisions, rule snapshot/version, readiness estimates, committed next stop and each delivery's quality baseline. Its output should include per-Order fees/savings/payout floors, incremental burden, route totals and explicit funding delta, with either eligible or a rejection reason. Keep money as integer satang and reject invalid/unrepresentable values. Reuse pair SQL as a two-Order parity oracle; do not rewrite it as live generalized pricing.
 
 Required tests after rule agreement: pair parity including decimal/rounding boundaries; 2–5 Orders; each customer fee no higher than its current committed fee; every existing Rider payout retained; no bonus; exact satang conservation including explicit funding delta; deterministic residual allocation; no savings/negative budget rejection; readiness waits included in delays; missing/stale evidence rejection; unchanged Orders/payments/dispatch/feature flags. Source and isolated tests cannot certify physical or financial release readiness.
+
+## Concrete allocation proposal for review (not an active pricing rule)
+
+Proposed policy identifier: `stack-savings-group-weighted-v1`. This is a reviewable specification only; no feature, server configuration, quote, assignment or customer/Rider amount selects it automatically.
+
+1. Keep the current incremental-distance/pickup/dropoff/minute cost and existing rule snapshot. Include authoritative readiness waits in burden/time; round compensation upward to satang exactly as the current pair quote does.
+2. Treat all already assigned Orders as the existing group. Use the current `primary_savings_percent` and pair rounding for that group's share of the new candidate's available saving, capped at the sum of the group's current committed fees; give the candidate the remaining satang. For a group containing one Order, this reduces to the current pair split.
+3. Allocate the existing group's saving proportionally to their **current committed customer delivery fees**, never their original solo fees. Use integer satang, floor each weighted share, then assign residual satang by largest fractional remainder, breaking equal remainders by immutable Order ID. Retain every already assigned Order's locked Rider payout. The new candidate's proposed payout is incremental compensation, as in the current pair model.
+4. Reject rather than manufacture a subsidy when customer collections cannot fund all preserved assigned payouts plus incremental compensation. Return the explicit funding gap and rejection reason. Reject a nonpositive saving for the candidate or any existing beneficiary; never increase a current fee or add a Rider bonus. This deliberately limits eligibility and needs business acceptance before implementation.
+5. Return only a proposed allocation with route/revision/rule identifiers and a financial eligibility result. A financial result alone must never authorize assignment: full road/readiness/quality/committed-stop validation and atomic claim checks remain separate.
+
+Arithmetic examples below are isolated policy examples, not real orders, prices, balances or Production evidence:
+
+| Existing group current fees / locked payouts | Candidate current fee | Incremental compensation | Split | Proposed result |
+| --- | --- | --- | --- | --- |
+| 50.00 / 50.00 | 40.00 | 20.00 | Existing group 50%, candidate 50% | Existing fee 40.00, candidate fee 30.00; Rider payouts50.00+20.00; customer collections70.00 = payouts70.00. |
+| 40.00,30.00,20.00 / same payouts | 40.00 | 20.00 | Existing group 50%, candidate 50% | Existing savings 4.45,3.33,2.22; candidate saving 10.00. Collections 110.00 = payouts 110.00; residual satang follows the remainder rule. |
+| Group current fees90.00 / locked payouts 110.00 | 40.00 | 20.00 | Existing group 50%, candidate 50% | Collections 110.00, preserved payouts+increment130.00: reject with funding gap 20.00; no invented top-up/bonus. |
+
+The decision still outstanding is whether this exact versioned group split, weighting/rounding and no-subsidy rejection matches the intended commercial policy. Until that is settled and tested, live capacity remains two and this proposal supplies no live pricing behavior.
