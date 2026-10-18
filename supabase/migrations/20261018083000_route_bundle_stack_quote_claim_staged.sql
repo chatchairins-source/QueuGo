@@ -288,6 +288,20 @@ begin
     (select array_agg(x order by x) from unnest(v_existing) x)
  then return false; end if;
 
+ -- Avoid presenting an offer that the atomic claim would immediately reject.
+ -- Every already-committed member must still be on the exact quoted revision
+ -- and bundle generation, not merely present in the same active-id set.
+ if exists(
+   select 1 from public.orders o
+   where o.id=any(v_existing)
+     and (
+       o.rider_id is distinct from q.rider_id
+       or o.route_bundle_id is distinct from q.bundle_id
+       or o.status not in ('rider_assigned','preparing','ready','assigned','picked_up','in_progress')
+       or o.updated_at is distinct from (q.order_revisions->>o.id::text)::timestamptz
+     )
+ ) then return false; end if;
+
  if exists(select 1 from public.laundry_rider_jobs l where l.rider_id=q.rider_id and l.status in ('assigned','accepted','arrived','collected'))
     or exists(select 1 from public.qg_rider_delivery_returns d where d.rider_id=q.rider_id and d.status not in ('resolved','returned','cancelled'))
  then return false; end if;

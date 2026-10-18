@@ -727,3 +727,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Pre-CI compatibility audit found an older Edge worker transport can know only `queuego_route_matrix_refresh_claim/release`. If the new stack coordinator is not deployed/recognized yet, unconditional propagation would turn an otherwise successful legacy pair refresh into HTTP 503.
 - With `includeStack=true`, stack discovery is now an additive optional extension: coordinator failure is ignored after the established pair refresh completes. The existing pair coordinator remains strict; stack work that was successfully leased still uses the same finally/release path, with lease expiry as the crash fallback.
 - This preserves rollout ordering and old worker behavior while allowing the new discovery path whenever its migration is present. No assignment/pricing/cap state changed.
+
+
+### 2026-10-18 targeted stack-offer exact-member revision hardening
+- Offer publication now revalidates every existing stack member against the quote's exact `updated_at`, Rider and bundle ID before showing the 30-second offer. Previously complete active membership was checked, but an existing Order could change readiness/financial state without changing the bundle revision and still receive an offer that claim would reject.
+- Added rollback regression: mutate an existing member revision after quote → offer publisher returns false; rollback restores the snapshot → offer publishes. Atomic claim revision checks remain unchanged.
+- This reduces unclaimable Rider offers without relaxing any gate. Current max_orders fallback stays 2; no Production mutation.

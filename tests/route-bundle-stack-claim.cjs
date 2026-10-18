@@ -90,6 +90,11 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   await db.exec("rollback");
 
   await db.query("insert into queuego_platform_rules(rule_key,value) values('route_bundle.max_orders','3'::jsonb) on conflict(rule_key) do update set value=excluded.value");
+  await db.exec("begin");
+  await db.query("update orders set updated_at='2026-10-18T00:00:02Z' where id=$1",[A]);
+  await db.query("select set_config('test.role','service_role',false)");
+  eq((await db.query("select queuego_offer_route_bundle_stack_quote($1) ok",[quote])).rows[0].ok,false);
+  await db.exec("rollback");
   await db.query("select set_config('test.role','service_role',false)");
   eq((await db.query("select queuego_offer_route_bundle_stack_quote($1) ok",[quote])).rows[0].ok,true);
   eq((await db.query("select queuego_offer_route_bundle_stack_quote($1) ok",[quoteE])).rows[0].ok,false);
