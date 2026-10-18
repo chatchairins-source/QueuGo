@@ -282,7 +282,15 @@ private class RiderNavigationMapHolder {
                 } else {
                     android.graphics.Color.argb(72, 230, 0, 45)
                 }
-                val width = if (segment.style == NavigationRouteStyle.ACTIVE) 8f else 6f
+                val width = if (segment.style == NavigationRouteStyle.ACTIVE) 12f else 8f
+                // Keep the route distinct from pale roads/buildings at driving tilt.
+                // Store casing and fill in the same list so refresh/dispose removes both.
+                routeLines += activeMap.addPolyline(
+                    PolylineOptions()
+                        .addAll(segment.points.map { LatLng(it.latitude, it.longitude) })
+                        .color(android.graphics.Color.WHITE)
+                        .width(width + 4f)
+                )
                 routeLines += activeMap.addPolyline(
                     PolylineOptions()
                         .addAll(

@@ -134,8 +134,10 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(requests[0].body.profile,'rider_delivery');
  eq(requests[0].body.points[1].lat,13.1);
  gate.resolve(routeResponse);gate=null;await first;
- eq(routeAdds.length,1);
- eq(S.routeOverlays.length,1);
+ eq(routeAdds.length,2);
+ eq(routeAdds.map(x=>[x.style.color,x.style.width]),[['#ffffff',16],['#e6002d',12]]);
+ eq(routeAdds[0].line,routeAdds[1].line);
+ eq(S.routeOverlays.length,2);
  eq(label.textContent,'ไปร้าน • 1.2 กม. • 4 นาที');
  eq(timers.size,0);
 
@@ -161,7 +163,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(requests.length,1);
  await run('drawActiveRoute()');
  eq(requests.length,2);
- eq(routeRemoves.length,1);
+ eq(routeRemoves.length,2);
 
  // Weak GPS must never accumulate reroute evidence.
  S.pos={lat:13.5,lng:100,accuracy:90};
@@ -221,7 +223,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(timers.size,0);
  ctx.window.QueueGoMapService.call=async()=>routeResponse;
  await run('drawActiveRoute()');
- eq(S.routeOverlays.length,1);
+ eq(S.routeOverlays.length,2);
 
  // Invalid/missing coordinates never become a route to (0,0).
  S.activeOrder.pickup_latitude=null;await run('drawActiveRoute()');

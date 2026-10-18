@@ -1,6 +1,6 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#e6002d">
 <title>QueueGo Rider</title>
-<meta name="queuego-web-build" content="rider-20261018-camera-proof2">
+<meta name="queuego-web-build" content="rider-20261018-route-bold1">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
 <script src="../queuego-map-web.js?v=20261018-12"></script>
@@ -1363,7 +1363,13 @@ function drawLaundryRoute(){
       const {routes,dist,time,routeId}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
-      routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
+      routes.forEach((line,i)=>{
+        // Screen-pixel strokes stay legible at navigation tilt; both layers share
+        // the authoritative geometry and the existing overlay cleanup lifecycle.
+        const id='qg-rider-route-'+i;
+        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id+'-casing',line,{color:'#ffffff',width:16}))S.routeOverlays.push(id+'-casing');
+        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:12}))S.routeOverlays.push(id);
+      });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
       riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
@@ -1427,7 +1433,13 @@ function drawActiveRoute(){
       const {routes,dist,time,routeId}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lon)},controller.signal);
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
-      routes.forEach((line,i)=>{const id='qg-rider-route-'+i;if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:6}))S.routeOverlays.push(id)});
+      routes.forEach((line,i)=>{
+        // Screen-pixel strokes stay legible at navigation tilt; both layers share
+        // the authoritative geometry and the existing overlay cleanup lifecycle.
+        const id='qg-rider-route-'+i;
+        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id+'-casing',line,{color:'#ffffff',width:16}))S.routeOverlays.push(id+'-casing');
+        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:12}))S.routeOverlays.push(id);
+      });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
       riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
