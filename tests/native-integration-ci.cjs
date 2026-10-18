@@ -20,3 +20,8 @@ for(const job of ['native-pilot','continuous-dispatch-races','passenger-ride-rac
  assert.equal(selected(job,'work-native-express-phase1-20261018'),true,'Express successor must run '+job);checks++;
 }
 assert.equal(selected('publish-rider-road-test','work-native-express-phase1-20261018'),false,'Express integration must not publish a release');checks++;
+
+for(const job of ['native-pilot','continuous-dispatch-races','passenger-ride-races','credit-races','express-races','map-display-only','navigation-map-runtime','maplibre-osm-runtime']){
+ assert.equal(selected(job,'work-native-six-lane-integration-ci-20261018'),true,'Final six-lane integration must run '+job);checks++;
+}
+assert.equal(selected('publish-rider-road-test','work-native-six-lane-integration-ci-20261018'),false,'Final six-lane integration must not publish a release');checks++;

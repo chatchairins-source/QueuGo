@@ -422,3 +422,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Grocery parent: `9fc5f81f82bfbab351dfd2db94486a3ef65f86b5`, run 3342 SUCCESS. Merchant Web/Native no longer hotlink source/review-only image URLs; only rights-approved master images may project. Production images remain BLOCKED until identity + reuse-rights evidence exists.
 - Merge policy: keep the newer Express/Ride/Credit/Dispatch/QueueGo Map runtime tree; import Laundry/Grocery successor blobs only where those lanes changed the common base. `QueueGoApi.kt` is hunk-merged to preserve Express/Ride client code while disabling general-Rider Laundry state.
 - NEXT: require exact-head CI on this final merged tree. After source/build CI is green, remaining gates are physical-device GPS/road validation, authenticated Grocery Merchant acceptance, signed AAB/Closed Testing, approved QueueGo Map runtime configuration and controlled Production cutover. No Production mutation in this merge.
+
+
+### 2026-10-18 final integration CI coverage checkpoint
+- Parent six-lane merge: `c86d2dc36474b80e2c7e6db74f273636a82ceb3d`, parents Express/Ride/Credit/Dispatch `67fbacdd602afe52aa88aaf9aaedb494eae0f402`, Laundry `0c5f91b9f7014e1928bc33d08c124e5be619e8f9`, Grocery `9fc5f81f82bfbab351dfd2db94486a3ef65f86b5`.
+- Finding: the final `work-native-six-lane-integration-*` branch triggered Native Pilot but silently skipped Express/Credit/Ride/Dispatch races and map runtime jobs because workflow predicates only recognized older integration prefixes.
+- Change: select the existing race/map jobs for the final integration prefix; no new tests, dispatcher, route engine or release publication path is created. `tests/native-integration-ci.cjs` now enforces all eight final-integration jobs and rejects release publication.
+- NEXT: require exact-head CI on this CI successor; inspect the first failure only. Production, signed AAB, Closed Testing and physical GPS/road gates remain unchanged.
