@@ -47,6 +47,15 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   const quote=(await db.query("select queuego_cache_route_bundle_stack_quote($1,$2,$3::jsonb,$4::jsonb) id",[A,D,JSON.stringify(stopPlan),JSON.stringify(financial)])).rows[0].id;
   assert(quote);checks++;
 
+  const underpay=structuredClone(financial);
+  underpay.route.incrementalCompensationSatang=1200;
+  underpay.allocations=underpay.allocations.map(row=>row.orderId===D?{...row,riderPayoutSatang:1200}:row);
+  underpay.riderPayoutTotalSatang=9200;
+  underpay.fundingDeltaSatang=-100;
+  underpay.platformMarginSatang=100;
+  eq((await db.query("select queuego_cache_route_bundle_stack_quote($1,$2,$3::jsonb,$4::jsonb) id",
+    [A,D,JSON.stringify(stopPlan),JSON.stringify(underpay)])).rows[0].id,null);
+
   // Route/money binding: a valid membership plan with a different stop order
   // must not be cached against the financial route that was actually evaluated.
   const mismatched=[...stopPlan].reverse();

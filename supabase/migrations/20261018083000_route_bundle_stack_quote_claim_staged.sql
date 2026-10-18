@@ -48,6 +48,7 @@ declare
  v_payouts bigint:=0;
  v_savings bigint:=0;
  v_increment bigint;
+ v_expected_increment bigint;
  v_wait record;
 begin
  if p_snapshot is null or p_financial is null
@@ -81,7 +82,21 @@ begin
  end loop;
 
  v_increment:=(p_financial->'route'->>'incrementalCompensationSatang')::bigint;
- if v_increment<0 then return false; end if;
+ if v_increment<0
+    or coalesce((p_financial->'route'->>'addedMinutes')::bigint,-1)<0
+ then return false; end if;
+
+ v_expected_increment:=
+   ceil(
+     (p_financial->'route'->>'detourMeters')::numeric
+     * (p_snapshot->'financialRules'->>'incrementalKmRateSatangPerKm')::numeric
+     / 1000
+   )::bigint
+   + (p_snapshot->'financialRules'->>'pickupCostSatang')::bigint
+   + (p_snapshot->'financialRules'->>'dropoffCostSatang')::bigint
+   + (p_financial->'route'->>'addedMinutes')::bigint
+     * (p_snapshot->'financialRules'->>'minuteRateSatangPerMinute')::bigint;
+ if v_increment<>v_expected_increment then return false; end if;
 
  foreach v_id in array v_ids loop
   v_row:=p_snapshot->'financialOrders'->v_id::text;

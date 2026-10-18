@@ -660,3 +660,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Replaced the invalid helper with an exact key count: `select count(*) from jsonb_object_keys(v_financial_orders)`. Semantics remain unchanged: fail closed unless the authoritative financial object has one entry for every 2–5 snapshot Order.
 - No pricing, claim, cap, payout, feature or Production behavior changed. Existing financial snapshot/claim tests exercise this function directly, so exact-head CI is the regression gate.
 - NEXT: run successor CI and fix the next first actual failure only.
+
+
+### 2026-10-18 DB-side generalized Rider compensation recomputation
+- SQL quote validation now recomputes candidate Rider incremental compensation from detour meters, km rate, pickup/dropoff cost and added minutes in the authoritative financial-rule snapshot.
+- Added an internally-consistent underpayment tamper case (1,300 -> 1,200 satang with adjusted totals); the service-only quote cache must reject it. This closes the gap where service JSON could otherwise define its own incremental payout.
+- No cap/feature/Production activation; default generalized path remains blocked by max_orders=2.
