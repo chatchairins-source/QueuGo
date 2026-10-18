@@ -429,3 +429,14 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Finding: the final `work-native-six-lane-integration-*` branch triggered Native Pilot but silently skipped Express/Credit/Ride/Dispatch races and map runtime jobs because workflow predicates only recognized older integration prefixes.
 - Change: select the existing race/map jobs for the final integration prefix; no new tests, dispatcher, route engine or release publication path is created. `tests/native-integration-ci.cjs` now enforces all eight final-integration jobs and rejects release publication.
 - NEXT: require exact-head CI on this CI successor; inspect the first failure only. Production, signed AAB, Closed Testing and physical GPS/road gates remain unchanged.
+
+
+### 2026-10-18 six-lane exact-head Release Gate result
+- Validated executable HEAD: `acc2520cb83bd8f64c89340cf01db95a618083a0`.
+- QueueGo Native Android Pilot run 3355 / `39100343591`: **SUCCESS**.
+- PASS jobs: `native-pilot`, `express-races`, `passenger-ride-races`, `credit-races`, `continuous-dispatch-races`, `map-display-only`, `navigation-map-runtime`, `maplibre-osm-runtime`.
+- Native Pilot PASS evidence: Full QueueGo regression; source integrity; Android unit tests; Customer/Merchant/Rider APK build; Android 16 KB page-size packaging; WebView rejection; native launch/map/voice lifecycle; real launch evidence upload.
+- Release publication guard: `publish-rider-road-test` remained SKIPPED as intended.
+- CODE/CI STATUS: Express + Passenger Ride + Credit/Top-up + Continuous Dispatch + Laundry shop-managed + Grocery image-rights integration is green at the validated executable HEAD above.
+- BLOCKED (owner/device/release actions, not source-code failure): real physical-device GPS/road validation; authenticated Grocery Merchant acceptance; approved QueueGo Map Production runtime configuration; signed AAB and Play Closed Testing; controlled Production database/function cutover for staged migrations/features.
+- NEXT: do not mutate Production from this checkpoint. Use this validated HEAD as the source for physical-device/release-gate work, or create a strictly descendant successor if a new code fix is required.
