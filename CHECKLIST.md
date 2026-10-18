@@ -43,6 +43,10 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 - Release blocker: authorized QueueGo Map runtime plus physical road/GPS certification inherited from Map release gate.
 - NEXT: no more source rework unless a newer successor/regression appears; do not reintroduce automatic Google Maps navigation.
 
+- 2026-10-18 runtime blob verification: PR #413 and unified PR #417 have identical `rider/index.html` (`fd412052...`), `queuego-map-web.js` (`d48480fe...`) and `tests/rider-map.cjs` (`e9614e3b...`). #413 carries the newer corrected action regression test; no runtime merge/reimplementation is required.
+- OWNER ACTION TO UNBLOCK RELEASE: approve/host the QueueGo Map runtime and provide physical Rider Web GPS/road evidence for the Buriram route/camera/reroute acceptance. Until then release remains BLOCKED despite source/test DONE.
+- NEXT: no code work on Rider Web unless a new regression or newer runtime successor appears; continue to Passenger Ride source/test gate.
+
 ### 3. Rider Android navigation / QueueGo route authority
 - Source/test status: DONE
 - Release status: BLOCKED
