@@ -459,7 +459,7 @@ private class RiderNavigationMapHolder {
     private fun publishCamera() {
         val activeMap = map ?: return
         val camera = activeMap.cameraPosition
-        val target = camera.target
+        val target = camera.target ?: return
         onCameraChanged(
             NavigationMapCamera(
                 point = NavigationMapPoint(target.latitude, target.longitude),

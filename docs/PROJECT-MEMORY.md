@@ -1777,3 +1777,6 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-18 integrated Native CI coverage
 - 0b63b727 selects existing independent Dispatch/Ride/Credit races and MapLibre display/lifecycle jobs for #414/#421 branches; legacy predicates skipped them. Executable predicate test 16/0; Grocery source contract 23/0 added to full regression, action pinning 80/0 and native packaging guard PASS. No release publication or Production mutation. Await actual integrated race/build/runtime CI before Express.
+
+## 2026-10-18 integrated race and camera successor
+- cd55e341 Native Pilot 39083971696: real independent PostgreSQL Dispatch 45/0, Ride 41/0, Credit 17 PASS and MapLibre OSM runtime SUCCESS. Full local npm pre/test/post EXIT 0. Merge #414 successor 0360622b nullable camera guard into #421; no duplicate fix. Grocery backend provenance restoration 65dc9579 has 262 source tests PASS, full regression pending. Express waits for integrated Native build gate.

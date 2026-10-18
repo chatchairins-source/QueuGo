@@ -325,3 +325,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Verification: actual job-predicate test 16/0, Native Grocery 23/0, action SHA pinning 80/0, clean-source native-release-gate PASS, whitespace PASS. Credit ledger 59, Edge 77, Web 9, Admin free credit 38 PASS on parent.
 - NEXT: publish to #421; require exact-head independent PostgreSQL races and Native build/runtime evidence, inspect first failure. #414 575a10a1 Native run 39083719573 was still running after packaging/backend gates passed; do not overwrite concurrent work.
 - Release BLOCKED: owner must verify live provider/webhook settlement under controlled activation, real device Grocery authenticated save/reopen and Rider/Customer physical road flow, signed release and Closed Testing. No live money/provider/Production action was performed.
+
+### 2026-10-18 integrated race evidence / nullable-camera successor
+- Verified published HEAD `cd55e341dbbdcd3eb7458d4d5e9c5c4fe265a233`, Native Pilot 39083971696: independent PostgreSQL Dispatch 45/0, Passenger Ride 41/0, Credit 17 PASS; MapLibre OSM runtime SUCCESS. Full local `npm test` including asset pretest + field posttest EXIT 0. Android compile/navigation jobs were still pending.
+- Newest #414 successor `0360622b086ab4e1bd844cbe5310a7716d04dfa6` fixes nullable camera.target after exact 575a10a1 Native Pilot compile failure. Merged this actual successor into #421 rather than duplicating its fix.
+- Relevant merged-source checks: standalone navigation-map module PASS, integrated CI predicates 16/0. No reset/revert/force.
+- NEXT: publish the merged #421 tree with both parents, finish exact-head Native Pilot 39084056688 / successor jobs; inspect first failure only. Grocery source reconciliation is staged in separate worktree commit 65dc9579, 262 existing checks PASS; its full npm regression is running before publication.
+- Express remains IN PROGRESS waiting for integrated Native Pilot source/build gate, not a physical-owner blocker. Physical navigation, signing and Production gates remain BLOCKED as above.
