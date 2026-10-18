@@ -414,3 +414,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - QueueGo navigation keeps `ridePickup` / `rideDropoff` stages distinct; no merchant/photo proof flow is introduced.
 - Source validation through connector: `rider/rider-ride.js` syntax PASS; static gate 8/8 PASS.
 - NEXT: after Native exact-head run 3349 closes green, merge this Web Ride successor (which includes Express Web) into PR #425 and require one exact-head CI run over Web + Native together. No Production mutation.
+
+
+### 2026-10-18 unified release successor — Express / Ride / Laundry / Grocery
+- Parent service successor: `67fbacdd602afe52aa88aaf9aaedb494eae0f402`; exact-head Native Pilot run 3351 / Actions `39098238573` SUCCESS. Full QueueGo regression, Express/Credit/Passenger Ride/Continuous Dispatch races, Native unit tests, three APK builds, 16 KB packaging, WebView rejection and Android launch/map/voice lifecycle all passed.
+- Laundry parent: `0c5f91b9f7014e1928bc33d08c124e5be619e8f9`; run 3341 / Actions `39093754953` SUCCESS. General QueueGo Rider Laundry pool/invites are retired; Merchant shop-managed transport is retained. Production deployment/revocation remains controlled and not performed here.
+- Grocery parent: `9fc5f81f82bfbab351dfd2db94486a3ef65f86b5`; run 3342 / Actions `39093760840` SUCCESS. Review/source image URLs remain provenance only; Merchant Web/Native expose catalog images only through the approved-image gate. No image approval or Production migration is performed here.
+- Merge rule: preserve Express/Ride code from the newest parent, apply Laundry's `QueueGoApi.kt` change only at the Rider Laundry-state hunk, and take the remaining non-conflicting green Laundry/Grocery blobs directly. No reset/revert/force and no duplicate dispatcher/route/payment/proof implementation.
+- BLOCKED outside source CI: physical road/GPS evidence; authenticated Grocery save/reopen on real iPhone/Android; approved QueueGo Map hosting/runtime where required; signed AAB/Closed Testing; controlled Laundry/Grocery/Production cutover.
+- NEXT: require exact-head CI on this unified successor. If green, source/repository Release Gate is ready; only the listed physical/signing/Production gates remain.

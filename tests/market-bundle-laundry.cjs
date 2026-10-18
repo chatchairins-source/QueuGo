@@ -80,11 +80,11 @@ ok(laundry.includes('request_id'),'Laundry idempotency request key missing');
 for(const unit of ['per_kg','per_item','per_set','fixed'])ok(merchantLaundry.includes(unit),'Merchant Laundry pricing unit missing '+unit);
 ok(merchantLaundry.includes('queuego_laundry_save_settings'),'Merchant Laundry settings RPC missing');
 ok(merchantLaundry.includes('queuego_laundry_save_service'),'Merchant Laundry service editor missing');
-ok(merchantLaundry.includes('queuego_laundry_invite_rider'),'Merchant Laundry Rider invite missing');
+ok(merchantLaundry.includes('queuego_laundry_shop_manage'),'Merchant Laundry shop-managed state machine missing');
+ok(merchantLaundry.includes('ชื่อพนักงานไปรับผ้า')&&merchantLaundry.includes('ชื่อพนักงานส่งคืน'),'Merchant Laundry shop staff transport controls missing');
 ok(merchant.includes("case'shop-laundry'"),'Merchant Laundry route missing');
-ok(riderLaundry.includes('queuego_laundry_rider_state'),'Rider Laundry state RPC missing');
-ok(riderLaundry.includes('queuego_claim_laundry_job'),'Rider Laundry claim missing');
-ok(riderLaundry.includes('queuego_laundry_rider_action'),'Rider Laundry lifecycle action missing');
+for(const retired of ['queuego_laundry_rider_state','queuego_claim_laundry_job','queuego_laundry_rider_action','queuego_laundry_invite_rider'])
+  ok(!riderLaundry.includes("rpc('"+retired+"'"),'General Rider Laundry RPC must stay retired from Web: '+retired);
 ok(customerLaundry.includes("V['laundry-order']"),'Customer Laundry status page missing');
 ok(customerLaundry.includes('laundry_order_events'),'Customer Laundry timeline missing');
 
