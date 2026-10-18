@@ -1,36 +1,20 @@
-const fs=require('fs'),path=require('path'),assert=require('assert');
-const root=path.resolve(__dirname,'..');
-const rider=fs.readFileSync(path.join(root,'rider/index.html'),'utf8');
-const reliability=fs.readFileSync(path.join(root,'rider/reliability.js'),'utf8');
-const sql=fs.readFileSync(path.join(root,'supabase/migrations/20261005212500_rider_laundry_action_receipts.sql'),'utf8');
-const dispatchSql=fs.readFileSync(path.join(root,'supabase/migrations/20261009044500_rider_dispatch_excludes_active_laundry.sql'),'utf8');
+const fs=require('fs'),assert=require('assert');
+const rider=fs.readFileSync('rider/laundry.js','utf8');
+const merchant=fs.readFileSync('merchant/laundry.js','utf8');
+const shopSql=fs.readFileSync('QueueGo-Laundry-Shop-Transport.sql','utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
-for(const [rpc,kind] of Object.entries({
-  "rpc/queuego_set_laundry_rider_mode":"laundry_mode",
-  "rpc/queuego_laundry_rider_invite_action":"laundry_invite",
-  "rpc/queuego_claim_laundry_job":"laundry_claim",
-  "rpc/queuego_laundry_rider_action":"laundry_action"
-})){
-  ok(reliability.includes("'"+rpc+"':'"+kind+"'"),rpc+' must use durable Rider intent');
-  ok(rider.includes("qgRiderMutation('"+rpc+"'"),rpc+' UI must use qgRiderMutation');
-}
-
-ok(reliability.includes('[data-laundry-mutation]'),'pending recovery must lock Laundry action controls');
-ok((rider.match(/data-laundry-mutation/g)||[]).length>=4,'Laundry UI controls must opt into recovery lock');
-ok(rider.includes("qgLaundryMutationInFlight"),'Laundry actions must ignore rapid duplicate taps');
-ok(rider.includes("qgLaundryRefreshAfterCommit"),'Laundry post-commit refresh must be non-fatal');
-ok(!rider.includes("await sbTable('rpc/queuego_claim_laundry_job'"),'Laundry claim must not bypass durable action wrapper');
-ok(!/toast\([^;]{0,180}\);await refreshData\(\)/.test(rider),'successful Rider mutation must not be turned into a false failure by refresh');
-for(const kind of ['bundle_claim','laundry_mode','laundry_invite','laundry_claim','laundry_action']){
-  ok(sql.includes("when '"+kind+"'"),kind+' must be supported by qg_rider_action_once');
-}
-ok(sql.includes('pg_advisory_xact_lock'),'Rider receipt wrapper must serialize the request id');
-ok(sql.includes('request id already in use'),'request id payload mismatch must stay blocked');
-ok(!/\bdrop\s+(table|function|schema)\b/i.test(sql),'migration must be additive');
-ok(dispatchSql.includes("from public.laundry_rider_jobs lj")&&dispatchSql.includes("lj.status in('assigned','accepted','arrived','collected')"),'automatic Rider dispatch must exclude Riders performing active Laundry legs');
-ok(dispatchSql.includes("now()+interval '30 seconds'"),'Laundry availability guard must preserve the 30-second sequential offer lease');
-ok(dispatchSql.includes("insert into public.notifications(user_id,title,message,type,reference_id)"),'Laundry availability guard must preserve selected-Rider push notification creation');
-ok(!/\bdrop\s+(table|function|schema)\b/i.test(dispatchSql),'dispatch safety migration must not drop schema objects');
-
-console.log(JSON.stringify({checks,failures:0,scope:'Rider Laundry durable one-tap intents, automatic-dispatch exclusivity and non-fatal post-commit refresh'}));
+for(const rpc of [
+ 'queuego_laundry_rider_state','queuego_set_laundry_rider_mode',
+ 'queuego_laundry_rider_invite_action','queuego_claim_laundry_job','queuego_laundry_rider_action'
+]) ok(!rider.includes("rpc('"+rpc+"'")&&!rider.includes('"'+rpc+'"'),rpc+' must not be callable from general Rider Web');
+ok(rider.includes('งานฝากซักรับ–ส่งโดยพนักงานของร้าน'),'stale Rider Laundry entry must fail closed with shop-managed copy');
+ok(merchant.includes("rpc('queuego_laundry_shop_manage'"),'Merchant Web must use authoritative shop-managed Laundry RPC');
+ok(merchant.includes("p_expected_status:o.status"),'Merchant Web must guard each Laundry transition against stale status');
+ok(merchant.includes("ชื่อพนักงานไปรับผ้า")&&merchant.includes("ชื่อพนักงานส่งคืน"),'Merchant Web must capture staff for pickup and return');
+ok(!merchant.includes("rpc('queuego_laundry_invite_rider'"),'Merchant Web must not invite general QueueGo Riders');
+ok(!merchant.includes('Rider ของบริการฝากซัก'),'Merchant Web must not advertise a platform Rider pool');
+ok(shopSql.includes("revoke all on function %s from public,anon,authenticated"),'shop-managed SQL must revoke retired Rider endpoints');
+ok(shopSql.includes("queuego_laundry_shop_manage"),'shop-managed SQL must keep one authoritative shop state machine');
+ok(shopSql.includes("p_action in ('start_pickup','start_return') and v_staff is null"),'shop-managed pickup/return must require a named shop staff member');
+console.log(JSON.stringify({checks,failures:0,scope:'Laundry shop-managed transport; no general Rider pool or invitation UI'}));

@@ -414,3 +414,37 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - QueueGo navigation keeps `ridePickup` / `rideDropoff` stages distinct; no merchant/photo proof flow is introduced.
 - Source validation through connector: `rider/rider-ride.js` syntax PASS; static gate 8/8 PASS.
 - NEXT: after Native exact-head run 3349 closes green, merge this Web Ride successor (which includes Express Web) into PR #425 and require one exact-head CI run over Web + Native together. No Production mutation.
+
+
+### 2026-10-18 unified release successor — Express / Ride / Laundry / Grocery
+- Parent service successor: `67fbacdd602afe52aa88aaf9aaedb494eae0f402`; exact-head Native Pilot run 3351 / Actions `39098238573` SUCCESS. Full QueueGo regression, Express/Credit/Passenger Ride/Continuous Dispatch races, Native unit tests, three APK builds, 16 KB packaging, WebView rejection and Android launch/map/voice lifecycle all passed.
+- Laundry parent: `0c5f91b9f7014e1928bc33d08c124e5be619e8f9`; run 3341 / Actions `39093754953` SUCCESS. General QueueGo Rider Laundry pool/invites are retired; Merchant shop-managed transport is retained. Production deployment/revocation remains controlled and not performed here.
+- Grocery parent: `9fc5f81f82bfbab351dfd2db94486a3ef65f86b5`; run 3342 / Actions `39093760840` SUCCESS. Review/source image URLs remain provenance only; Merchant Web/Native expose catalog images only through the approved-image gate. No image approval or Production migration is performed here.
+- Merge rule: preserve Express/Ride code from the newest parent, apply Laundry's `QueueGoApi.kt` change only at the Rider Laundry-state hunk, and take the remaining non-conflicting green Laundry/Grocery blobs directly. No reset/revert/force and no duplicate dispatcher/route/payment/proof implementation.
+- BLOCKED outside source CI: physical road/GPS evidence; authenticated Grocery save/reopen on real iPhone/Android; approved QueueGo Map hosting/runtime where required; signed AAB/Closed Testing; controlled Laundry/Grocery/Production cutover.
+- NEXT: require exact-head CI on this unified successor. If green, source/repository Release Gate is ready; only the listed physical/signing/Production gates remain.
+
+
+### 2026-10-18 unified release CI coverage gate
+- Exact unified HEAD `244b5e6ed31fd8df336dad0f2e5dcf3b135837ce` started Native Pilot run 3352; Full QueueGo regression passed, but branch-name predicates skipped the independent Express/Credit/Passenger Ride/Continuous Dispatch races and three map runtime jobs.
+- This checkpoint adds only the unified release branch selector to those existing jobs and adds an executable predicate test requiring all eight non-publishing gates.
+- Runtime/business logic is unchanged. `publish-rider-road-test` remains forbidden for this integration branch.
+- NEXT: require the new exact-head run to execute (not skip) all race + map jobs and Native Pilot; inspect the first real failure only. No Production mutation.
+
+
+### 2026-10-18 unified release exact-head result
+- Validated executable HEAD: `123b72971a556e1d350f8ab8487e97f17613c9e7`.
+- QueueGo Native Android Pilot run 3353 / Actions `39099141100`: **SUCCESS**.
+- PASS jobs: `native-pilot`, `express-races`, `passenger-ride-races`, `credit-races`, `continuous-dispatch-races`, `map-display-only`, `navigation-map-runtime`, `maplibre-osm-runtime`.
+- Native Pilot evidence: Full QueueGo regression, source integrity, Android unit tests, Customer/Merchant/Rider APK build, Android 16 KB packaging, WebView rejection, launch/map/voice lifecycle and real launch evidence upload all PASS.
+- Release publication guard: `publish-rider-road-test` remained SKIPPED.
+- Source/code status: Express + Passenger Ride + Credit/Top-up + Continuous Dispatch + Laundry shop-managed + Grocery image-rights integration is green at the validated executable HEAD above. PR #426 is the current unified successor; duplicate PR #427/#428 are superseded.
+- BLOCKED outside source CI: physical-device GPS/road evidence; authenticated Grocery Merchant save/reopen on real iPhone/Android; approved QueueGo Map Production runtime configuration where required; signed AAB + Play Closed Testing; controlled Production migration/function cutover.
+- NEXT: no Production mutation from this checkpoint. Use this branch as the resume Source of Truth; any new code fix must be a strict descendant and must get a new exact-head CI run.
+
+
+### 2026-10-18 Map Engine exact-head release integration gate
+- Parent unified release successor: `33756e905388cec5c3945594f56272d4976faf26`; runtime remains unchanged in this checkpoint.
+- Finding: Buriram Map Engine source is already present in the unified release tree, but its dedicated workflow only auto-ran on `work-map-roadgraph-buriram-*`; final release successors could therefore change shared `map-view/**` code without obtaining the full OSM/Valhalla/browser/offline-package/container gate on the same HEAD.
+- Change: final `work-native-release-unified-*` pushes now select the existing Map Engine workflow. External Actions are pinned to reviewed 40-hex commits; `tests/github-actions-pinning.cjs` now includes this workflow and reviewed `actions/setup-python@v5` SHA `a26af69be951a213d495a4c3e4e4022e16d87065`.
+- NEXT: require exact-head Native Pilot plus QueueGo Map Engine Buriram CI on the new successor. Production map hosting, physical GPS/road validation, signed AAB/Closed Testing and Production cutover remain BLOCKED.
