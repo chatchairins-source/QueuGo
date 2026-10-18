@@ -52,6 +52,7 @@ on:
       - 'supabase/migrations/*express*.sql'
       - 'tests/express*.cjs'
       - 'tests/fixtures/express*.cjs'
+      - 'supabase/functions/queuego-express-quote/**'
       - 'queuego-credit.js'
       - 'queuego-credit.css'
       - 'ops/native-push-session-binding-proposal-*.sql'
