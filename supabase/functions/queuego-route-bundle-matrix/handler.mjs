@@ -42,7 +42,12 @@ return async(req)=>{
    if(!cacheRes.ok)throw Error('stack quote cache failed');
    const quoteId=await cacheRes.json();
    if(!uuid(quoteId))return reply({cached:true,quoteCached:false,readOnlyBusinessState:true,...plan,financial},409);
-   return reply({cached:true,quoteCached:true,readOnlyBusinessState:true,quoteId,...plan,financial});
+   const offerRes=await fetcher(base+'/rest/v1/rpc/queuego_offer_route_bundle_stack_quote',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
+    p_quote_id:quoteId
+   })});
+   if(!offerRes.ok)throw Error('stack targeted offer publish failed');
+   const offerPublished=await offerRes.json();
+   return reply({cached:true,quoteCached:true,offerPublished:offerPublished===true,readOnlyBusinessState:true,quoteId,...plan,financial});
   }
   if(!key)return reply({error:'routing not configured'},503);
   if(input.action==='refresh'){

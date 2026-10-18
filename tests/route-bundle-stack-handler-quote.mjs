@@ -37,6 +37,10 @@ const fetcher=async(url,options)=>{
   eq(body.p_financial.eligible,true);
   return {ok:true,json:async()=>quoteId};
  }
+ if(u.pathname==='/rest/v1/rpc/queuego_offer_route_bundle_stack_quote'){
+  const body=JSON.parse(options.body);eq(body.p_quote_id,quoteId);
+  return {ok:true,json:async()=>true};
+ }
  throw Error('unexpected '+u.pathname);
 };
 const env={SUPABASE_SERVICE_ROLE_KEY:'svc',SUPABASE_URL:'https://backend.invalid',QUEUEGO_LONGDO_KEY:''};
@@ -47,7 +51,7 @@ const planned=await handler(req('plan'));eq(planned.status,200);
 const plannedBody=await planned.json();eq(plannedBody.readOnly,true);eq(plannedBody.financial.eligible,true);eq(cacheCalls,0);
 
 const quoted=await handler(req('quote'));eq(quoted.status,200);
-const quoteBody=await quoted.json();eq(quoteBody.quoteCached,true);eq(quoteBody.readOnlyBusinessState,true);eq(quoteBody.quoteId,quoteId);eq(cacheCalls,1);eq(inputCalls,2);
+const quoteBody=await quoted.json();eq(quoteBody.quoteCached,true);eq(quoteBody.offerPublished,true);eq(quoteBody.readOnlyBusinessState,true);eq(quoteBody.quoteId,quoteId);eq(cacheCalls,1);eq(inputCalls,2);
 
 const late=structuredClone(evidence);late.financialOrders[D].merchantReadyEstimateAt='2026-10-18T00:20:00Z';
 const lateFetcher=async(url,options)=>{

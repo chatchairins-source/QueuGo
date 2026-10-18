@@ -666,3 +666,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - SQL quote validation now recomputes candidate Rider incremental compensation from detour meters, km rate, pickup/dropoff cost and added minutes in the authoritative financial-rule snapshot.
 - Added an internally-consistent underpayment tamper case (1,300 -> 1,200 satang with adjusted totals); the service-only quote cache must reject it. This closes the gap where service JSON could otherwise define its own incremental payout.
 - No cap/feature/Production activation; default generalized path remains blocked by max_orders=2.
+
+
+### 2026-10-18 generalized targeted 30-second offer gate
+- Closed the authority gap between a valid 3–5 quote and Rider acceptance. Added service-role-only `queuego_offer_route_bundle_stack_quote` that publishes into the EXISTING `qg_rider_order_offers` table for at most 30 seconds; no second pool/queue exists.
+- Offer publication is fail-closed on current max_orders, route-bundle feature, active/online Rider, exact bundle revision, exact candidate revision, complete quoted active membership, Laundry/return conflicts and any already-live offer for the candidate or Rider. Current default cap=2 therefore prevents 3–5 offers from becoming live.
+- Generalized claim now requires and row-locks that exact live targeted offer for the authenticated Rider. Successful assignment records the existing offer-history `accepted` outcome and consumes the offer in the same transaction.
+- Edge `action=quote` publishes the targeted offer after caching an eligible short-lived quote and returns `offerPublished`. Isolated tests cover cap=3 publication, one live offer per Rider, offer history/consumption and stale competing quote refusal.
+- No Production rule/feature/cap changed. NEXT: extend bounded refresh discovery so active 2–4 Order bundles can actually generate `action=stack` evidence/quote work only when max_orders permits.

@@ -90,6 +90,10 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   await db.exec("rollback");
 
   await db.query("insert into queuego_platform_rules(rule_key,value) values('route_bundle.max_orders','3'::jsonb) on conflict(rule_key) do update set value=excluded.value");
+  await db.query("select set_config('test.role','service_role',false)");
+  eq((await db.query("select queuego_offer_route_bundle_stack_quote($1) ok",[quote])).rows[0].ok,true);
+  eq((await db.query("select queuego_offer_route_bundle_stack_quote($1) ok",[quoteE])).rows[0].ok,false);
+  await db.query("select set_config('test.role','authenticated',false)");
   const claimed=(await db.query("select queuego_claim_route_bundle_stack($1) v",[quote])).rows[0].v;
   eq(claimed.status,'rider_assigned');eq(claimed.orders,3);eq(claimed.bundle_revision,8);
 
@@ -103,10 +107,15 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   const rb=(await db.query("select route_revision,stop_plan from route_bundles where id=$1",[bundle])).rows[0];
   eq(Number(rb.route_revision),8);eq(rb.stop_plan,stopPlan);
   const q=(await db.query("select claimed_at from qg_private.route_bundle_stack_quotes where id=$1",[quote])).rows[0];assert(q.claimed_at);checks++;
+  eq((await db.query("select count(*)::int n from qg_rider_offer_history where order_id=$1 and rider_id=$2 and outcome='accepted'",[D,rider])).rows[0].n,1);
+  eq((await db.query("select count(*)::int n from qg_rider_order_offers where order_id=$1",[D])).rows[0].n,0);
   await assert.rejects(db.query("select queuego_claim_route_bundle_stack($1)",[quote]),/stack quote unavailable/);checks++;
+  await db.query("select set_config('test.role','service_role',false)");
+  eq((await db.query("select queuego_offer_route_bundle_stack_quote($1) ok",[quoteE])).rows[0].ok,false);
+  await db.query("select set_config('test.role','authenticated',false)");
   await assert.rejects(
     db.query("select queuego_claim_route_bundle_stack($1)",[quoteE]),
-    /bundle revision changed|stack active membership changed/
+    /live targeted offer required|bundle revision changed|stack active membership changed/
   );checks++;
 
   const sql=fs.readFileSync('supabase/migrations/20261018083000_route_bundle_stack_quote_claim_staged.sql','utf8');
@@ -115,6 +124,8 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   // migration anti-duplication structural guard
   eq((sql.match(/create or replace function public\.queuego_cache_route_bundle_stack_quote\(/gi)||[]).length,1);
   eq((sql.match(/create or replace function public\.queuego_claim_route_bundle_stack\(p_quote_id uuid\)/gi)||[]).length,1);
+  eq((sql.match(/create or replace function public\.queuego_offer_route_bundle_stack_quote\(p_quote_id uuid\)/gi)||[]).length,1);
+  assert(sql.includes("live targeted offer required")&&sql.includes("qg_rider_offer_history"));checks++;
   eq((sql.match(/Safety: this migration stages 3-5 quote\/claim machinery only/g)||[]).length,1);
  }finally{await db.close();}
  console.log(JSON.stringify({checks,failures:0,scope:'staged 3-order quote cache + atomic Rider claim, exact revision/rule/membership locks, funding conservation, default max_orders=2 blocks activation'}));

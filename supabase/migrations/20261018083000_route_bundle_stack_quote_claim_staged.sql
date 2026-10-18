@@ -231,6 +231,91 @@ end $$;
 revoke all on function public.queuego_cache_route_bundle_stack_quote(uuid,uuid,jsonb,jsonb) from public,anon,authenticated;
 grant execute on function public.queuego_cache_route_bundle_stack_quote(uuid,uuid,jsonb,jsonb) to service_role;
 
+create or replace function public.queuego_offer_route_bundle_stack_quote(p_quote_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $
+declare
+ q qg_private.route_bundle_stack_quotes%rowtype;
+ rb public.route_bundles%rowtype;
+ r public.rider_profiles%rowtype;
+ v_candidate public.orders%rowtype;
+ v_existing uuid[];
+ v_active uuid[];
+ v_count integer;
+ v_max integer;
+ v_attempt integer;
+begin
+ if auth.role()<>'service_role' then raise exception 'service role required'; end if;
+ select * into q from qg_private.route_bundle_stack_quotes
+ where id=p_quote_id and claimed_at is null and expires_at>now()
+ for update;
+ if not found then return false; end if;
+
+ v_count:=cardinality(q.order_ids);
+ v_max:=greatest(1,least(5,public.queuego_rule_numeric('route_bundle.max_orders',2,now())::integer));
+ if v_count not between 3 and 5 or v_count>v_max then return false; end if;
+ if not public.queuego_feature_enabled('route_bundle',now()) then return false; end if;
+
+ select * into r from public.rider_profiles
+ where id=q.rider_id and status='active'
+   and coalesce((metadata->>'online')::boolean,false)
+   and coalesce((metadata->>'available')::boolean,false)
+ for update;
+ if not found or not exists(
+   select 1 from public.users u where u.id=r.user_id and u.role='rider' and u.status='active'
+ ) then return false; end if;
+
+ select * into rb from public.route_bundles
+ where id=q.bundle_id and rider_id=q.rider_id and status='ACTIVE' and route_revision=q.bundle_revision
+ for update;
+ if not found then return false; end if;
+
+ select * into v_candidate from public.orders
+ where id=q.candidate_order_id and status='searching_rider' and rider_id is null and route_bundle_id is null
+ for update;
+ if not found
+    or v_candidate.updated_at is distinct from (q.order_revisions->>q.candidate_order_id::text)::timestamptz
+ then return false; end if;
+
+ v_existing:=array_remove(q.order_ids,q.candidate_order_id);
+ select array_agg(o.id order by o.id) into v_active
+ from public.orders o
+ where o.rider_id=q.rider_id and o.status in ('rider_assigned','preparing','ready','assigned','picked_up','in_progress');
+ if coalesce(v_active,'{}'::uuid[]) is distinct from
+    (select array_agg(x order by x) from unnest(v_existing) x)
+ then return false; end if;
+
+ if exists(select 1 from public.laundry_rider_jobs l where l.rider_id=q.rider_id and l.status in ('assigned','accepted','arrived','collected'))
+    or exists(select 1 from public.qg_rider_delivery_returns d where d.rider_id=q.rider_id and d.status not in ('resolved','returned','cancelled'))
+ then return false; end if;
+
+ if exists(
+   select 1 from public.qg_rider_order_offers f
+   where f.order_id=q.candidate_order_id and f.rider_id=q.rider_id and f.expires_at>now()
+ ) then return true; end if;
+
+ if exists(select 1 from public.qg_rider_order_offers f where f.order_id=q.candidate_order_id and f.expires_at>now())
+    or exists(select 1 from public.qg_rider_order_offers f where f.rider_id=q.rider_id and f.expires_at>now())
+ then return false; end if;
+
+ select coalesce(max(h.attempt),0)+1 into v_attempt
+ from public.qg_rider_offer_history h where h.order_id=q.candidate_order_id;
+
+ insert into public.qg_rider_order_offers(order_id,rider_id,offered_at,expires_at,attempt)
+ values(q.candidate_order_id,q.rider_id,now(),least(q.expires_at,now()+interval '30 seconds'),v_attempt)
+ on conflict(order_id) do nothing;
+ if not found then return false; end if;
+
+ insert into public.notifications(user_id,title,message,type,reference_id)
+ values(r.user_id,'มีงานพ่วงใหม่','มีงานพ่วงเส้นทางเดียวกัน กรุณาตอบรับภายใน 30 วินาที','order',q.candidate_order_id);
+ return true;
+end $;
+revoke all on function public.queuego_offer_route_bundle_stack_quote(uuid) from public,anon,authenticated;
+grant execute on function public.queuego_offer_route_bundle_stack_quote(uuid) to service_role;
+
 create or replace function public.queuego_claim_route_bundle_stack(p_quote_id uuid)
 returns jsonb
 language plpgsql
@@ -257,6 +342,7 @@ declare
  v_payout numeric;
  v_max_delay numeric;
  v_rule numeric;
+ v_offer public.qg_rider_order_offers%rowtype;
 begin
  select r.id,r.user_id into v_rider,v_user
  from public.rider_profiles r join public.users u on u.id=r.user_id
@@ -277,6 +363,11 @@ begin
  v_count:=cardinality(q.order_ids);
  v_max:=greatest(1,least(5,public.queuego_rule_numeric('route_bundle.max_orders',2,now())::integer));
  if v_count not between 3 and 5 or v_count>v_max then raise exception 'route bundle order limit reached'; end if;
+
+ select * into v_offer from public.qg_rider_order_offers
+ where order_id=q.candidate_order_id and rider_id=v_rider and expires_at>now()
+ for update;
+ if not found then raise exception 'live targeted offer required'; end if;
 
  select * into rb from public.route_bundles
  where id=q.bundle_id and rider_id=v_rider and status='ACTIVE' and route_revision=q.bundle_revision
@@ -407,7 +498,9 @@ begin
  where id=q.bundle_id and route_revision=q.bundle_revision;
  if not found then raise exception 'bundle revision changed'; end if;
 
- delete from public.qg_rider_order_offers where order_id=q.candidate_order_id;
+ insert into public.qg_rider_offer_history(order_id,rider_id,offered_at,resolved_at,outcome,attempt)
+ values(v_offer.order_id,v_offer.rider_id,v_offer.offered_at,now(),'accepted',v_offer.attempt);
+ delete from public.qg_rider_order_offers where order_id=q.candidate_order_id and rider_id=v_rider;
  update qg_private.route_bundle_stack_quotes set claimed_at=now() where id=q.id;
 
  insert into public.audit_logs(user_id,action,entity_type,entity_id,description,metadata)
