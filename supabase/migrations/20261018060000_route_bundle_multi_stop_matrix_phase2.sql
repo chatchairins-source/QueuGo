@@ -57,11 +57,11 @@ begin
    select 1 from public.orders o
    where o.id=v_order and o.rider_id=v_rider
     and o.status in ('rider_assigned','preparing','ready','assigned','picked_up','in_progress')
-    and to_jsonb(o.updated_at#>>'{}') is not null
+    and o.updated_at is not null
   ) then return false; end if;
-  if p_order_revisions->>v_order::text is distinct from (select o.updated_at::text from public.orders o where o.id=v_order) then return false; end if;
+  if (p_order_revisions->>v_order::text)::timestamptz is distinct from (select o.updated_at from public.orders o where o.id=v_order) then return false; end if;
  end loop;
- if p_order_revisions->>p_candidate_order_id::text is distinct from (select o.updated_at::text from public.orders o where o.id=p_candidate_order_id) then return false; end if;
+ if (p_order_revisions->>p_candidate_order_id::text)::timestamptz is distinct from (select o.updated_at from public.orders o where o.id=p_candidate_order_id) then return false; end if;
 
  v_expected_points:=1+2*cardinality(p_order_ids);
  if (select count(*) from jsonb_object_keys(p_point_map))<>v_expected_points then return false; end if;
