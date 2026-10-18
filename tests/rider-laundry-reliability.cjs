@@ -16,4 +16,5 @@ ok(!merchant.includes("rpc('queuego_laundry_invite_rider'"),'Merchant Web must n
 ok(!merchant.includes('Rider ของบริการฝากซัก'),'Merchant Web must not advertise a platform Rider pool');
 ok(shopSql.includes("revoke all on function %s from public,anon,authenticated"),'shop-managed SQL must revoke retired Rider endpoints');
 ok(shopSql.includes("queuego_laundry_shop_manage"),'shop-managed SQL must keep one authoritative shop state machine');
+ok(shopSql.includes("p_action in ('start_pickup','start_return') and v_staff is null"),'shop-managed pickup/return must require a named shop staff member');
 console.log(JSON.stringify({checks,failures:0,scope:'Laundry shop-managed transport; no general Rider pool or invitation UI'}));

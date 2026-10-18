@@ -389,3 +389,5 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Reconciliation: general Rider snapshots no longer load Laundry pool/invite state; Rider profile/Web entry no longer exposes Laundry work. Merchant Web now uses `queuego_laundry_shop_manage`, records staff for pickup/return and removes Rider invitations. Native Merchant remains the reference shop-managed flow.
 - Deployment status: BLOCKED until the shop-managed SQL is reviewed/applied through a controlled migration; do not revoke Production Rider endpoints before Merchant shop transport is deployed and accepted.
 - NEXT: run exact-head full regression/Native compile on this successor; if green, prepare the controlled Laundry deployment migration separately. No Production change in this lane.
+
+- Validation successor: `work-native-laundry-shop-managed-reconcile-20261018`; adds an executable gate requiring named shop staff on both pickup/return transport legs. NEXT remains exact-head Native Pilot before any deployment migration.
