@@ -51,6 +51,19 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   eq((await db.query("select queuego_cache_route_bundle_stack_matrix($1,$2,$3::uuid[],$4::jsonb,$5::jsonb,15,103,$6::jsonb) ok",[orderIds[0],orderIds[1],orderIds,JSON.stringify(revisions),JSON.stringify(pointMap),JSON.stringify(edges)])).rows[0].ok,true);
   let plannerInput=(await db.query("select queuego_route_bundle_stack_plan_input($1,$2) plan",[orderIds[0],orderIds[1]])).rows[0].plan;
   eq(plannerInput.orderIds.length,2);eq(plannerInput.orders[orderIds[0]].status,'ready');eq(plannerInput.orders[orderIds[1]].status,'searching_rider');
+  // Membership is part of the evidence: another job can be assigned without touching A/B.
+  await db.query("insert into orders(id,order_number,rider_id,customer_id,shop_id,status,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude) values($1,'QT-NEW',$2,$3,$4,'ready',$5,15,103,15.03,103)",[id(72),rider,customer,shop,rev]);
+  for(const status of ['rider_assigned','preparing','ready','assigned','picked_up','in_progress']){
+   await db.query("update orders set status=$2 where id=$1",[id(72),status]);
+   plannerInput=(await db.query("select queuego_route_bundle_stack_plan_input($1,$2) plan",[orderIds[0],orderIds[1]])).rows[0].plan;
+   eq(plannerInput,null);
+  }
+  await db.query("update orders set status='completed' where id=$1",[id(72)]);
+  plannerInput=(await db.query("select queuego_route_bundle_stack_plan_input($1,$2) plan",[orderIds[0],orderIds[1]])).rows[0].plan;
+  eq(plannerInput.orderIds.length,2); // Historical jobs are not active-set changes.
+  await db.query("update orders set status='ready',rider_id=$2 where id=$1",[id(72),id(12)]);
+  plannerInput=(await db.query("select queuego_route_bundle_stack_plan_input($1,$2) plan",[orderIds[0],orderIds[1]])).rows[0].plan;
+  eq(plannerInput.orderIds.length,2); // Another Rider's work must not invalidate this snapshot.
   await db.query("update orders set updated_at=$2 where id=$1",[orderIds[1],'2026-10-18T00:00:01Z']);
   plannerInput=(await db.query("select queuego_route_bundle_stack_plan_input($1,$2) plan",[orderIds[0],orderIds[1]])).rows[0].plan;eq(plannerInput,null);
   await db.query("select set_config('test.role','authenticated',false)");

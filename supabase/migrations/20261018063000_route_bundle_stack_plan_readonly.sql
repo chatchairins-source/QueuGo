@@ -49,6 +49,16 @@ begin
   end if;
  end loop;
 
+ -- Per-order revisions do not detect another job newly assigned to this Rider.
+ -- Together with the loop above, this makes the cached noncandidate set equal
+ -- to the complete authoritative active set in this read-only statement snapshot.
+ if exists(
+  select 1 from public.orders o
+  where o.rider_id=v_cache.rider_id
+    and o.status in ('rider_assigned','preparing','ready','assigned','picked_up','in_progress')
+    and not (o.id=any(v_cache.order_ids))
+ ) then return null; end if;
+
  select jsonb_object_agg(
    o.id::text,
    jsonb_build_object(
