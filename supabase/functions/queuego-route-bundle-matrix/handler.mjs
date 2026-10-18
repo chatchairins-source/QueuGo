@@ -1,6 +1,7 @@
 // Service-only evidence producer for existing SQL dispatch/route-bundle quote, never an assigner.
 import {buildRoadMatrix} from './road-matrix.mjs';
 import {planStackRoute} from './stack-planner.mjs';
+import {simulateStackFinancialPlan} from './stack-financial-plan.mjs';
 import {refreshRouteMatrices,workerTokenMatches} from './refresh.mjs';
 const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 export function createRouteBundleMatrixHandler(env,fetcher=fetch){
@@ -18,13 +19,17 @@ return async(req)=>{
   const input=await req.json();
   if(input.action==='plan'){
    if(!uuid(input.primaryOrderId)||!uuid(input.candidateOrderId)||input.primaryOrderId===input.candidateOrderId)return reply({error:'invalid orders'},400);
-   const planRes=await fetcher(base+'/rest/v1/rpc/queuego_route_bundle_stack_plan_input',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
+   const planRes=await fetcher(base+'/rest/v1/rpc/queuego_route_bundle_stack_financial_input',{method:'POST',headers,signal:AbortSignal.timeout(8000),body:JSON.stringify({
     p_primary_order_id:input.primaryOrderId,p_candidate_order_id:input.candidateOrderId
    })});
    if(!planRes.ok)throw Error('stack plan input read failed');
    const evidence=await planRes.json();
    if(!evidence||typeof evidence!=='object')return reply({cached:false,readOnly:true},409);
-   return reply({cached:true,readOnly:true,...planStackRoute(evidence)});
+   const plan=planStackRoute(evidence);
+   const financial=Array.isArray(evidence.orderIds)&&evidence.orderIds.length>=3
+     ? simulateStackFinancialPlan(evidence,plan)
+     : {mode:'existing-two-order-live-quote',generalized:false};
+   return reply({cached:true,readOnly:true,...plan,financial});
   }
   if(!key)return reply({error:'routing not configured'},503);
   if(input.action==='refresh'){
