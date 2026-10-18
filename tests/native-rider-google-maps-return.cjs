@@ -45,7 +45,7 @@ assert(!app.includes('private fun openReturnNavigation('),
   'Return-to-shop flow must not retain a separate external navigation implementation');
 const returnFlow=app.slice(
   app.indexOf('current.deliveryReturn != null -> {'),
-  app.indexOf('current.activeJob == null && current.laundry.activeJob != null')
+  app.indexOf('current.activeJob != null -> {')
 );
 assert(returnFlow.includes('startQueueGoNavigation(')&&
   returnFlow.includes('นำทางกลับร้านด้วยแผนที่ QueueGo')&&
