@@ -534,8 +534,9 @@ class QueueGoApi {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
         private const val PUBLISHABLE_KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
         private const val TIMEOUT = 15000
-        private const val RIDER_JOB_FIELDS = "id,order_number,status,fulfillment_vertical,ride_distance_km,ride_duration_minutes,pickup_address,pickup_latitude,pickup_longitude," +
-            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,route_bundle_id,subtotal,total_amount,market_order_id," +
+        private const val RIDER_JOB_FIELDS = "id,order_number,status,fulfillment_vertical,ride_distance_km,ride_duration_minutes,express_distance_km,express_duration_minutes," +
+            "express_item_type,express_weight_kg,express_size,express_vehicle_type,express_sender_name,express_sender_phone,express_receiver_name,express_receiver_phone,express_instructions," +
+            "pickup_address,pickup_latitude,pickup_longitude,delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,route_bundle_id,subtotal,total_amount,market_order_id," +
             "rider_arrived_shop_at,rider_arrived_customer_at"
     }
 
@@ -1974,6 +1975,84 @@ class QueueGoApi {
         }
     }
 
+    suspend fun expressAction(auth: QueueGoAuth, job: RiderJob, action: String): String = withContext(Dispatchers.IO) {
+        require(job.isExpress) { "ต้องเป็นงาน Express" }
+        val allowed = setOf("arrive_pickup", "start_transit", "arrive_dropoff")
+        require(action in allowed) { "ขั้นตอน Express ไม่ถูกต้อง" }
+        val result = actionOnce(
+            auth,
+            "express",
+            JSONObject().put("p_order_id", job.id).put("p_action", action)
+        ) as? JSONObject ?: error("ยังยืนยันผลไม่ได้ กรุณาตรวจสถานะอีกครั้ง")
+        result.optString("status").takeIf { it.isNotBlank() }
+            ?: error("สถานะ Express ไม่พร้อม")
+    }
+
+    suspend fun expressPickupWithPhoto(
+        context: Context,
+        auth: QueueGoAuth,
+        job: RiderJob,
+        photoUri: Uri,
+        latitude: Double?,
+        longitude: Double?
+    ): String = withContext(Dispatchers.IO) {
+        require(job.isExpress) { "ต้องเป็นงาน Express" }
+        val path = uploadEvidence(context, auth, photoUri)
+        val requestId = UUID.nameUUIDFromBytes(
+            (auth.user.id + "|express-pickup|" + job.id + "|" + path).toByteArray(StandardCharsets.UTF_8)
+        ).toString()
+        val body = JSONObject()
+            .put("p_request_id", requestId)
+            .put("p_order_id", job.id)
+            .put("p_photo_path", path)
+            .putNullable("p_lat", latitude)
+            .putNullable("p_lng", longitude)
+        val result = riderRecoverMutation(
+            mutate = { rpc("qg_express_pickup_with_photo", auth.session.accessToken, body) },
+            readCommitted = {
+                val status = readMutationOrder(auth, job.id)?.optString("status")
+                if (status in setOf("picked_up", "in_progress") &&
+                    mutationProofExists(auth, "qg_pickup_proofs", job.id, path)) status else null
+            }
+        )
+        when (result) {
+            is JSONObject -> result.optString("status")
+            else -> result?.toString().orEmpty()
+        }.ifBlank { "picked_up" }
+    }
+
+    suspend fun expressCompleteWithPhoto(
+        context: Context,
+        auth: QueueGoAuth,
+        job: RiderJob,
+        photoUri: Uri,
+        latitude: Double?,
+        longitude: Double?
+    ): String = withContext(Dispatchers.IO) {
+        require(job.isExpress) { "ต้องเป็นงาน Express" }
+        val path = uploadEvidence(context, auth, photoUri)
+        val requestId = UUID.nameUUIDFromBytes(
+            (auth.user.id + "|express-complete|" + job.id + "|" + path).toByteArray(StandardCharsets.UTF_8)
+        ).toString()
+        val body = JSONObject()
+            .put("p_request_id", requestId)
+            .put("p_order_id", job.id)
+            .put("p_photo_path", path)
+            .putNullable("p_lat", latitude)
+            .putNullable("p_lng", longitude)
+        val result = riderRecoverMutation(
+            mutate = { rpc("qg_express_complete_with_photo", auth.session.accessToken, body) },
+            readCommitted = {
+                if (readMutationOrder(auth, job.id)?.optString("status") == "completed" &&
+                    mutationProofExists(auth, "qg_delivery_proofs", job.id, path)) "completed" else null
+            }
+        )
+        when (result) {
+            is JSONObject -> result.optString("status")
+            else -> result?.toString().orEmpty()
+        }.ifBlank { "completed" }
+    }
+
     suspend fun passengerAction(auth: QueueGoAuth, job: RiderJob, action: String): String = withContext(Dispatchers.IO) {
         require(job.isPassenger) { "ต้องเป็นเที่ยวโดยสาร" }
         val expected = when (action) {
@@ -2299,7 +2378,18 @@ class QueueGoApi {
         customerDeliveryFee = o.doubleOrNull("delivery_fee"),
         fulfillmentVertical = riderNullableText(o.optString("fulfillment_vertical")) ?: "food",
         rideDurationMinutes = o.doubleOrNull("ride_duration_minutes"),
-        rideDistanceKm = o.doubleOrNull("ride_distance_km")
+        rideDistanceKm = o.doubleOrNull("ride_distance_km"),
+        expressDurationMinutes = o.doubleOrNull("express_duration_minutes"),
+        expressDistanceKm = o.doubleOrNull("express_distance_km"),
+        expressItemType = riderNullableText(o.optString("express_item_type")),
+        expressWeightKg = o.doubleOrNull("express_weight_kg"),
+        expressSize = riderNullableText(o.optString("express_size")),
+        expressVehicleType = riderNullableText(o.optString("express_vehicle_type")),
+        expressSenderName = riderNullableText(o.optString("express_sender_name")),
+        expressSenderPhone = riderNullableText(o.optString("express_sender_phone")),
+        expressReceiverName = riderNullableText(o.optString("express_receiver_name")),
+        expressReceiverPhone = riderNullableText(o.optString("express_receiver_phone")),
+        expressInstructions = riderNullableText(o.optString("express_instructions"))
     )
 
     private fun JSONObject.doubleOrNull(name: String): Double? =

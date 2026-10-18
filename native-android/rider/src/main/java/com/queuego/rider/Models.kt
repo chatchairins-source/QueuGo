@@ -106,9 +106,21 @@ data class RiderJob(
     val customerServiceFee: Double? = null,
     val fulfillmentVertical: String = "food",
     val rideDurationMinutes: Double? = null,
-    val rideDistanceKm: Double? = null
+    val rideDistanceKm: Double? = null,
+    val expressDurationMinutes: Double? = null,
+    val expressDistanceKm: Double? = null,
+    val expressItemType: String? = null,
+    val expressWeightKg: Double? = null,
+    val expressSize: String? = null,
+    val expressVehicleType: String? = null,
+    val expressSenderName: String? = null,
+    val expressSenderPhone: String? = null,
+    val expressReceiverName: String? = null,
+    val expressReceiverPhone: String? = null,
+    val expressInstructions: String? = null
 ) {
     val isPassenger: Boolean get() = fulfillmentVertical == "ride"
+    val isExpress: Boolean get() = fulfillmentVertical == "express"
 
     val numberLabel: String
         get() = nativeOrderNumber(orderNumber)

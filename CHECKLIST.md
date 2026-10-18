@@ -380,3 +380,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Grocery source/native/full regression remains green on this integrated head; authenticated physical Merchant save/reopen is still a release blocker.
 - Express remains the only new service implementation lane and must branch from the newest integrated successor; no second dispatcher may be created.
 - NEXT: obtain exact-head Native Pilot after this fix; while it runs, continue Express on a child successor and reconcile Laundry only through the existing Continuous Dispatch lineage.
+
+
+### 2026-10-18 Express Client checkpoint A
+- Successor base: `a0248910b58e28d8549772650a6c95e7e5f03d43`; existing Express backend, trusted road quote, dispatcher and proof tables are reused.
+- Added authenticated owner-scoped `queuego_express_state` for Customer/Rider/Admin; anonymous access remains revoked.
+- Native Rider `RiderJob` now carries Express distance/duration/item/weight/vehicle/sender/receiver data and exposes `isExpress`.
+- Native Rider API now reuses `qg_rider_action_once(kind=express)`, `qg_express_pickup_with_photo` and `qg_express_complete_with_photo`; proof retries reconcile against the existing proof tables.
+- No second dispatcher, wallet, route engine or proof store was introduced. No Production migration/enablement.
+- NEXT: wire Customer Express screen + Rider Express active card on this same successor, then require exact-head Native Pilot/Express race gates.
