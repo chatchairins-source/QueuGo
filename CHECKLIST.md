@@ -721,3 +721,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Generalized discovery is now explicit: `refreshRouteMatrices(...,{includeStack:true})`. The Edge worker's `action=refresh` opts in; legacy helper callers remain pair-only and preserve their exact historical `{refreshed,failed}` / busy response.
 - The generalized refresh-worker test explicitly opts in and still proves pair discovery → stack discovery → same lease release. Production assignment/pricing/cap remains unchanged.
 - NEXT: exact-head CI, then fix only the next actual failure.
+
+
+### 2026-10-18 additive stack-refresh rollout isolation
+- Pre-CI compatibility audit found an older Edge worker transport can know only `queuego_route_matrix_refresh_claim/release`. If the new stack coordinator is not deployed/recognized yet, unconditional propagation would turn an otherwise successful legacy pair refresh into HTTP 503.
+- With `includeStack=true`, stack discovery is now an additive optional extension: coordinator failure is ignored after the established pair refresh completes. The existing pair coordinator remains strict; stack work that was successfully leased still uses the same finally/release path, with lease expiry as the crash fallback.
+- This preserves rollout ordering and old worker behavior while allowing the new discovery path whenever its migration is present. No assignment/pricing/cap state changed.

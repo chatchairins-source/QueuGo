@@ -20,7 +20,15 @@ export async function refreshRouteMatrices(base, headers, fetcher, produce, {inc
   }
  };
  await run('queuego_route_matrix_refresh_claim');
- if(includeStack)await run('queuego_route_bundle_stack_refresh_claim');
+ if(includeStack){
+  try{
+   await run('queuego_route_bundle_stack_refresh_claim');
+  }catch{
+   // Generalized stack replenishment is an additive rollout path. A missing,
+   // stale-deployment or temporarily unavailable stack coordinator must never
+   // break the established pair evidence refresh or existing Rider jobs.
+  }
+ }
  return claimed===0
   ? {refreshed,failed,busyOrDisabled:true}
   : {refreshed,failed};
