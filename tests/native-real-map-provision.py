@@ -100,6 +100,19 @@ class CustomerPermissionTests(unittest.TestCase):
 
 
 
+class PostStartGpsInjectionSourceTests(unittest.TestCase):
+    def test_capture_waits_for_live_subscription_before_emulator_fix(self):
+        self.assertIn("run_map_instrumentation_with_live_gps(instrument, gps_fix)", SOURCE)
+        self.assertIn('"foreground_updates_started" in probe.stdout', SOURCE)
+        helper_start = SOURCE.index("def run_map_instrumentation_with_live_gps")
+        capture_start = SOURCE.index("def capture_map_display_only")
+        helper = SOURCE[helper_start:capture_start]
+        self.assertIn('["emu", "geo", "fix"', helper)
+        capture = SOURCE[capture_start:]
+        setup_slice = capture[:capture.index('instrument = adb +')]
+        self.assertNotIn('["emu", "geo", "fix"', setup_slice)
+
+
 class NavigationLocationLifecycleEvidenceTests(unittest.TestCase):
     def helper(self):
         fn = next(n for n in TREE.body if isinstance(n, ast.FunctionDef) and n.name == 'assert_navigation_location_lifecycle')

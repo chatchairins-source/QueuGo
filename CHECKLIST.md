@@ -572,6 +572,14 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - This is test-only cleanup; Rider production lifecycle/service behavior is unchanged. Expected exact-head evidence is 2 starts / 2 stops for allowed and 0 / 0 for denied, with all existing tile/camera/crash checks retained.
 - NEXT: exact descendant CI must make map-display green. Public HTTPS hosting, physical GPS/real-road acceptance, signing/Play and Production remain separate BLOCKED gates.
 
+
+### 2026-10-18 strict real-map fourth actual failure — post-subscription GPS handshake
+- Exact `8450cce9` Native3374 map-display reached the large-allowed scope and failed GPS camera assertion: expected 103.1300059 / 15.0088319, actual camera remained at the persisted/fallback 103.0994795 / 14.9918756. This proves the prior phone-allowed scope was not sufficient because its injected point intentionally matched the fallback camera.
+- Root cause is a CI timing race: emulator `geo fix` was injected before Rider instrumentation/location subscription started, while the production fresh-location request requires a post-start measurement; large-allowed exposed the missing fresh callback.
+- Fix keeps production location policy unchanged. Allowed map instrumentation now runs concurrently, waits for the real `foreground_updates_started` log, injects the requested GPS fix three times after subscription, and the Android test independently waits up to 30s until `RiderNavigationLocationStore` contains that exact fix before recenter/camera assertions.
+- Added source regression ensuring the map capture no longer pre-injects GPS before instrumentation. Existing lifecycle, camera continuity, tile, crash and explicit FGS cleanup gates remain intact.
+- NEXT: exact-head map CI; require phone-allowed and large-allowed to log `injected_gps_store_verified` + `injected_gps_camera_verified`. Public HTTPS hosting and physical road/GPS acceptance remain separate BLOCKED release gates.
+
 ### 2026-10-18 Route Bundle Phase 2 versioned financial allocation checkpoint
 - Base: strict descendant of real-map HEAD `f9bd7e9c83399d596d85f1f7252514a7ca7976d0`; live claim/cap remains unchanged at 2 and no Production mutation is allowed.
 - Implemented pure read-only policy `stack-savings-group-weighted-v1` using integer satang: candidate available saving is split by the existing group percentage; the existing group's share is weighted by current committed fees with floor + largest-remainder allocation and immutable Order-ID tie-break.
