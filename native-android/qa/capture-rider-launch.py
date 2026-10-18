@@ -949,6 +949,11 @@ def verify_real_home_map_runtime():
 
 
 def verify_proof_process_recovery():
+    # This process-death gate is independent of QueueGo Map hosting. The Rider
+    # androidTest APK used to be installed as a side effect of the map runtime
+    # test; install it explicitly so a release-gated map does not skip proof QA.
+    test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
+    run(adb + ["install", "-r", str(test_apk)])
     runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
     stages = ["navigating_merchant", "arrived_merchant", "pickup_verification", "picked_up",
               "navigating_customer", "arrived_customer", "photo_captured"]
