@@ -1,9 +1,9 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#e6002d">
 <title>QueueGo Rider</title>
-<meta name="queuego-web-build" content="rider-20261018-route-arrow2">
+<meta name="queuego-web-build" content="rider-20261018-route-arrow3">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="../queuego-map-web.js?v=20261018-14"></script>
+<script src="../queuego-map-web.js?v=20261018-15"></script>
 
 
 <style id="queuego-rider-ui">
@@ -781,9 +781,15 @@ function qgRenderRiderRemainingRoute(position){
   if(!riderRouteCache||riderRouteCache.map!==S.map||!riderRouteGeometry.length)return;
   const visible=window.QueueGoMapWeb?.remainingNavigationRoute?.(riderRouteGeometry,position,{bearing:S.pos?.bearing,speed:S.pos?.speed,accuracy:S.pos?.accuracy});
   if(!visible)return; // Weak/off-route/opposite evidence keeps the last real route.
+  const cursor={part:visible.match.partIndex,progress:visible.match.progressMeters},previous=riderRouteCache.displayCursor;
+  if(previous&&(cursor.part<previous.part||(cursor.part===previous.part&&cursor.progress+.5<previous.progress)))return;
+  riderRouteCache.displayCursor=cursor;
+  const wanted=new Set(visible.lines.flatMap((_,i)=>['qg-rider-route-'+i+'-casing','qg-rider-route-'+i]));
+  for(const id of S.routeOverlays||[])if(!wanted.has(id))window.QueueGoMapWeb.removeGeoJsonLine(S.map,id);
+  S.routeOverlays=[...wanted];
   visible.lines.forEach((line,i)=>{
     const id='qg-rider-route-'+i;
-    line[0]=[Number(position.lng),Number(position.lat)];
+    if(i===0&&visible.anchorFirst)line[0]=[Number(position.lng),Number(position.lat)];
     window.QueueGoMapWeb.addGeoJsonLine(S.map,id+'-casing',line,{color:'#ffffff',width:16});
     window.QueueGoMapWeb.addGeoJsonLine(S.map,id,line,{color:'#e6002d',width:12,arrows:true});
   });
