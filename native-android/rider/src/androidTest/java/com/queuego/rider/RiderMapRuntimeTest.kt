@@ -48,6 +48,11 @@ class RiderMapRuntimeTest {
             assertSameCamera(initialCamera, recreatedCamera)
             assertExpectedGpsCamera(recreatedCamera)
         }
+        RiderNavigationLocationService.stop(
+            InstrumentationRegistry.getInstrumentation().targetContext
+        )
+        Thread.sleep(750)
+        Log.i("QueueGoMapRuntime", "explicit_location_cleanup_requested")
         Log.i("QueueGoMapRuntime", "completed_pid=${Process.myPid()}")
     }
 

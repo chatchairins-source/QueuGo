@@ -596,3 +596,8 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Planner now rejects missing/invalid readiness whenever authoritative financial evidence is active, records per-Order pickup waits, and the generalized financial gate rejects any actual planned pickup wait above 300 seconds before detour/delay or money allocation.
 - Financial snapshot now carries `maxPickupWaitSeconds=300`, matching the existing pair readiness gate. Focused tests use explicit readiness timestamps, expect 20-minute candidate readiness to fail with the readiness-wait reason, and assert missing readiness fails closed.
 - No live claim/cap, price, Rider payout or Production state changed. NEXT: exact-head test/CI, then atomic generalized claim behind max_orders=2.
+
+
+### 2026-10-18 inherit deterministic real-map FGS cleanup
+- Pulled the exact test-only cleanup from map successor `8450cce9` into this financial descendant: after Rider map ActivityScenario closes, instrumentation explicitly stops the navigation location foreground service and waits for onDestroy/log cleanup.
+- This prevents the financial successor from re-running the already-understood 2-start/1-stop harness failure while preserving production service behavior. Exact CI must still prove 2/2 allowed and 0/0 denied.
