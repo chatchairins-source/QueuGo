@@ -380,3 +380,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Grocery source/native/full regression remains green on this integrated head; authenticated physical Merchant save/reopen is still a release blocker.
 - Express remains the only new service implementation lane and must branch from the newest integrated successor; no second dispatcher may be created.
 - NEXT: obtain exact-head Native Pilot after this fix; while it runs, continue Express on a child successor and reconcile Laundry only through the existing Continuous Dispatch lineage.
+
+
+### 2026-10-18 Laundry shop-managed reconciliation lane
+- Status: IN PROGRESS on `work-laundry-shop-managed-reconcile-20261018`, branched from integrated `d0c12dd9db62f20691ad76f802f0ff708bac93c6`.
+- Finding: current source already contains the owner-directed shop-managed state machine in `QueueGo-Laundry-Shop-Transport.sql`, and Native Merchant already captures shop staff. Web Merchant and Web/Native Rider still exposed the older platform-Rider pool/invite flow.
+- Production read-only audit: authenticated role still has execute on the historical Laundry Rider RPCs; `queuego_laundry_shop_manage` is not yet deployed there. Production was not mutated.
+- Reconciliation: general Rider snapshots no longer load Laundry pool/invite state; Rider profile/Web entry no longer exposes Laundry work. Merchant Web now uses `queuego_laundry_shop_manage`, records staff for pickup/return and removes Rider invitations. Native Merchant remains the reference shop-managed flow.
+- Deployment status: BLOCKED until the shop-managed SQL is reviewed/applied through a controlled migration; do not revoke Production Rider endpoints before Merchant shop transport is deployed and accepted.
+- NEXT: run exact-head full regression/Native compile on this successor; if green, prepare the controlled Laundry deployment migration separately. No Production change in this lane.

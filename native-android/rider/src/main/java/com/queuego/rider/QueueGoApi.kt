@@ -1579,8 +1579,9 @@ class QueueGoApi {
                 }
             }
         }
-        val laundry = runCatching { readLaundryState(auth.session.accessToken) }
-            .getOrDefault(RiderLaundryState())
+        // Laundry transport is shop-managed. General QueueGo Riders receive no
+        // Laundry pool/invite/active-job state from the retired platform-Rider RPCs.
+        val laundry = RiderLaundryState()
         val deliveryReturn = runCatching { activeDeliveryReturn(auth) }.getOrNull()
 
         val profileInfo = RiderProfileInfo(
