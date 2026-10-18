@@ -88,6 +88,58 @@ const assert=require('node:assert/strict');
  assert(phase2.includes('qg_private.route_bundle_stack_matrices')&&phase2.includes('queuego_cache_route_bundle_stack_matrix'));checks++;
  assert(phase2.includes("::timestamptz is distinct from")&&!phase2.includes("updated_at#>>")&&!phase2.includes("updated_at::text"));checks++;
  assert(!phase2.includes('create or replace function public.queuego_claim_route_bundle')&&!phase2.includes("values('feature.route_bundle'")&&!phase2.includes("route_bundle.max_orders','5"));checks++;
+
+ // Execute the Phase 2 cache migration against an isolated PostgreSQL-compatible engine.
+ const {PGlite}=require('@electric-sql/pglite');
+ const sqlDb=new PGlite();
+ await sqlDb.exec(require('./fixtures/rider-dispatch-schema.cjs')());
+ await sqlDb.exec("create function auth.role() returns text language sql as $select coalesce(nullif(current_setting('test.role',true),''),'authenticated')$;");
+ await sqlDb.exec(phase2);
+ const rev='2026-10-18T00:00:00Z';
+ const stackIds=[
+  '00000000-0000-4000-8000-000000000070',
+  '00000000-0000-4000-8000-000000000071',
+  '00000000-0000-4000-8000-000000000072',
+  '00000000-0000-4000-8000-000000000073',
+  '00000000-0000-4000-8000-000000000074'
+ ];
+ for(let i=0;i<4;i++)await sqlDb.query(
+  "insert into orders(id,order_number,rider_id,customer_id,shop_id,status,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude) values($1,$2,$3,$4,$5,'ready',$6,15,103,15.01,103)",
+  [stackIds[i],'QT-S'+i,'00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000060','00000000-0000-4000-8000-000000000050',rev]
+ );
+ await sqlDb.query(
+  "insert into orders(id,order_number,customer_id,shop_id,status,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude) values($1,'QT-C',$2,$3,'searching_rider',$4,15,103,15.02,103)",
+  [stackIds[4],'00000000-0000-4000-8000-000000000060','00000000-0000-4000-8000-000000000050',rev]
+ );
+ const stackPointMap={R:{kind:'rider'}},stackPoints=['R'];
+ stackIds.forEach((orderId,index)=>{
+  for(const [suffix,kind] of [['P','pickup'],['D','dropoff']]){
+   const key='O'+index+suffix;stackPoints.push(key);stackPointMap[key]={orderId,kind};
+  }
+ });
+ const stackEdges=Object.fromEntries(stackPoints.flatMap(a=>stackPoints.filter(b=>b!==a).map(b=>[a+'|'+b,{km:0.2,minutes:0.5}])));
+ const stackRevisions=Object.fromEntries(stackIds.map(orderId=>[orderId,rev]));
+ await sqlDb.query("select set_config('test.role','service_role',false)");
+ let cached=(await sqlDb.query(
+  "select queuego_cache_route_bundle_stack_matrix($1,$2,$3::uuid[],$4::jsonb,$5::jsonb,15,103,$6::jsonb) ok",
+  [stackIds[0],stackIds[4],stackIds,JSON.stringify(stackRevisions),JSON.stringify(stackPointMap),JSON.stringify(stackEdges)]
+ )).rows[0].ok;
+ eq(cached,true);
+ eq((await sqlDb.query("select cardinality(order_ids)::int orders,jsonb_object_length(point_map)::int points,jsonb_object_length(edges)::int edges from qg_private.route_bundle_stack_matrices where primary_order_id=$1 and candidate_order_id=$2",[stackIds[0],stackIds[4]])).rows[0],{orders:5,points:11,edges:110});
+ await sqlDb.query("update orders set updated_at=$2 where id=$1",[stackIds[4],'2026-10-18T00:00:01Z']);
+ cached=(await sqlDb.query(
+  "select queuego_cache_route_bundle_stack_matrix($1,$2,$3::uuid[],$4::jsonb,$5::jsonb,15,103,$6::jsonb) ok",
+  [stackIds[0],stackIds[4],stackIds,JSON.stringify(stackRevisions),JSON.stringify(stackPointMap),JSON.stringify(stackEdges)]
+ )).rows[0].ok;
+ eq(cached,false);
+ await sqlDb.query("select set_config('test.role','authenticated',false)");
+ await assert.rejects(
+  sqlDb.query("select queuego_cache_route_bundle_stack_matrix($1,$2,$3::uuid[],$4::jsonb,$5::jsonb,15,103,$6::jsonb)",
+   [stackIds[0],stackIds[4],stackIds,JSON.stringify(stackRevisions),JSON.stringify(stackPointMap),JSON.stringify(stackEdges)]),
+  /service role required/
+ );checks++;
+ await sqlDb.close();
+
  globalThis.fetch=originalFetch;
  console.log(JSON.stringify({checks,failures:0,scope:'isolated road adapter + service-only 5-order stack matrix groundwork; live claim/cap/feature flags unchanged; no live provider calls'}));
 })().catch(e=>{console.error(e);process.exit(1)});
