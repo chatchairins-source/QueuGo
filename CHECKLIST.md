@@ -747,3 +747,8 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - This intentionally avoids `am force-stop`: force-stop changes package stopped-state semantics and would not represent Android LMK/process recreation. Production Customer/Merchant/Rider code is unchanged.
 - Evidence records whether `am-kill` or `run-as-sigkill` was required. Release still needs physical OEM process-recreation evidence; emulator harness is not a physical certification.
 - NEXT: exact-head Native Pilot; fix only the next real failure.
+
+### 2026-10-18 Native3395 harness syntax correction
+- Exact Map HEAD `749f3f73` Native3395 failed before Android build at Python parse line 743: the new system-kill harness had a one-character typo `pkg"]`.
+- Corrected only that list terminator to `pkg])`. No app/runtime logic changed.
+- NEXT: exact-head CI and then process-death runtime evidence.
