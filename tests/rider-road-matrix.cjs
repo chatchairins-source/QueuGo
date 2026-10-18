@@ -125,7 +125,8 @@ const assert=require('node:assert/strict');
   [stackIds[0],stackIds[4],stackIds,JSON.stringify(stackRevisions),JSON.stringify(stackPointMap),JSON.stringify(stackEdges)]
  )).rows[0].ok;
  eq(cached,true);
- eq((await sqlDb.query("select cardinality(order_ids)::int orders,jsonb_object_length(point_map)::int points,jsonb_object_length(edges)::int edges from qg_private.route_bundle_stack_matrices where primary_order_id=$1 and candidate_order_id=$2",[stackIds[0],stackIds[4]])).rows[0],{orders:5,points:11,edges:110});
+ const cachedStack=(await sqlDb.query("select cardinality(order_ids)::int orders,point_map::text point_map_json,edges::text edges_json from qg_private.route_bundle_stack_matrices where primary_order_id=$1 and candidate_order_id=$2",[stackIds[0],stackIds[4]])).rows[0];
+ eq(cachedStack.orders,5);eq(Object.keys(JSON.parse(cachedStack.point_map_json)).length,11);eq(Object.keys(JSON.parse(cachedStack.edges_json)).length,110);
  await sqlDb.query("update orders set updated_at=$2 where id=$1",[stackIds[4],'2026-10-18T00:00:01Z']);
  cached=(await sqlDb.query(
   "select queuego_cache_route_bundle_stack_matrix($1,$2,$3::uuid[],$4::jsonb,$5::jsonb,15,103,$6::jsonb) ok",
