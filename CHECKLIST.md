@@ -764,3 +764,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - The Native Pilot full regression executes Route Bundle Phase-2 SQL/Edge tests, but its push path filter did not include `supabase/functions/queuego-route-bundle-matrix/**` or `supabase/migrations/*route_bundle*.sql`. Therefore SQL-only correction `529cd5aa` did not receive a new exact-head run.
 - Added those two existing source families to the Native Pilot push paths. The workflow file is itself selected, so this checkpoint must trigger exact-head CI.
 - No runtime, cap, pricing, claim or Production behavior changed.
+
+
+### 2026-10-18 Native3399 staged-claim fixture parameter typing
+- Exact `c74e3b7f` run3399 proved the migration parses and generalized tests advance into `route-bundle-stack-claim.cjs`.
+- First failure was PGlite parameter inference only: fixture parameter `$7` was reused in numeric columns and `100+$7`, producing `integer versus numeric`.
+- Added explicit `::numeric` casts inside the isolated fixture INSERT. Runtime migration/business logic is unchanged; no Production mutation.
+- NEXT: exact-head CI.

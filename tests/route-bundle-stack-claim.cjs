@@ -13,7 +13,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 
   const rider=id(11),bundle=id(80),A=id(70),C=id(71),D=id(72),rev='2026-10-18T00:00:00Z';
   for(const [order,num,fee] of [[A,'A',50],[C,'C',30]]){
-   await db.query("insert into orders(id,order_number,rider_id,customer_id,shop_id,status,updated_at,delivery_fee,rider_delivery_payout,merchant_ready_estimate_at,total_amount,route_bundle_id,route_bundle_sequence) values($1,$2,$3,$4,$5,'ready',$6,$7,$7,$6,100+$7,$8,$9)",[order,'QT-'+num,rider,id(60),id(50),rev,fee,bundle,order===A?1:2]);
+   await db.query("insert into orders(id,order_number,rider_id,customer_id,shop_id,status,updated_at,delivery_fee,rider_delivery_payout,merchant_ready_estimate_at,total_amount,route_bundle_id,route_bundle_sequence) values($1,$2,$3,$4,$5,'ready',$6,$7::numeric,$7::numeric,$6,100::numeric+$7::numeric,$8,$9)",[order,'QT-'+num,rider,id(60),id(50),rev,fee,bundle,order===A?1:2]);
    await db.query("insert into payments(order_id,status,amount,updated_at) values($1,'pending',$2,$3)",[order,100+fee,rev]);
    await db.query("insert into deliveries(order_id,rider_id,status,delivery_fee,updated_at) values($1,$2,'assigned',$3,$4)",[order,rider,fee,rev]);
   }
