@@ -58,7 +58,7 @@ assert(standaloneLaundry.includes('src="../queuego-order-number.js"'),'Standalon
 assert(standaloneLaundry.includes("QueueGoOrderNumber.format(data)"),'Standalone Laundry page must use shared formatter for success display');
 assert(!standaloneLaundry.includes("data?.order_number||''"),'Standalone Laundry page must not display raw order_number');
 assert(merchantLaundry.includes('QueueGoOrderNumber.format(o)'),'Merchant Laundry must use shared formatter');
-assert((riderLaundry.match(/QueueGoOrderNumber\.format\(j\)/g)||[]).length>=2,'Rider Laundry pool and active job must use shared formatter');
+assert(!/data-laundry-claim|qg-laundry-rider-panel|QueueGoOrderNumber\.format\(j\)/.test(riderLaundry),'General Rider Laundry compatibility shim must not render retired pool/active order rows');
 assert(laundryCodeMigration.includes("alter column order_number set default public.qg_next_order_number()"),'Laundry new orders must use the shared server allocator');
 assert(laundryCodeMigration.includes("from public.laundry_orders l"),'Shared allocator must reserve active Laundry visible codes');
 assert(posQrCodeMigration.includes("create or replace function public.pos_edit_bill"),'POS bill RPC must remain versioned in source');
