@@ -1,9 +1,9 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#e6002d">
 <title>QueueGo Rider</title>
-<meta name="queuego-web-build" content="rider-20261018-route-bold1">
+<meta name="queuego-web-build" content="rider-20261018-route-arrow1">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="../queuego-map-web.js?v=20261018-12"></script>
+<script src="../queuego-map-web.js?v=20261018-13"></script>
 <script src="../map-view/queuego-map-service.js?v=20261017-1"></script>
 
 
@@ -784,6 +784,17 @@ function clearRiderRoute(){
   (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
   const badge=document.getElementById('route-badge');if(badge)badge.style.display='none';
 }
+function qgRenderRiderRemainingRoute(position){
+  if(!riderRouteCache||riderRouteCache.map!==S.map||!riderRouteGeometry.length)return;
+  const visible=window.QueueGoMapWeb?.remainingNavigationRoute?.(riderRouteGeometry,position,{bearing:S.pos?.bearing,speed:S.pos?.speed,accuracy:S.pos?.accuracy});
+  if(!visible)return; // Weak/off-route/opposite evidence keeps the last real route.
+  visible.lines.forEach((line,i)=>{
+    const id='qg-rider-route-'+i;
+    line[0]=[Number(position.lng),Number(position.lat)];
+    window.QueueGoMapWeb.addGeoJsonLine(S.map,id+'-casing',line,{color:'#ffffff',width:16});
+    window.QueueGoMapWeb.addGeoJsonLine(S.map,id,line,{color:'#e6002d',width:12,arrows:true});
+  });
+}
 function qgUpdateRiderRouteProgress(decision){
   const cache=riderRouteCache,match=decision?.routeMatch;
   if(!cache||cache.map!==S.map||!match||decision.routeBearingRejected)return false;
@@ -1368,7 +1379,7 @@ function drawLaundryRoute(){
         // the authoritative geometry and the existing overlay cleanup lifecycle.
         const id='qg-rider-route-'+i;
         if(window.QueueGoMapWeb?.addGeoJsonLine(map,id+'-casing',line,{color:'#ffffff',width:16}))S.routeOverlays.push(id+'-casing');
-        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:12}))S.routeOverlays.push(id);
+        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:12,arrows:true}))S.routeOverlays.push(id);
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
@@ -1438,7 +1449,7 @@ function drawActiveRoute(){
         // the authoritative geometry and the existing overlay cleanup lifecycle.
         const id='qg-rider-route-'+i;
         if(window.QueueGoMapWeb?.addGeoJsonLine(map,id+'-casing',line,{color:'#ffffff',width:16}))S.routeOverlays.push(id+'-casing');
-        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:12}))S.routeOverlays.push(id);
+        if(window.QueueGoMapWeb?.addGeoJsonLine(map,id,line,{color:'#e6002d',width:12,arrows:true}))S.routeOverlays.push(id);
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
@@ -1666,21 +1677,25 @@ function updateRiderSpeedUI(){
 function placeRiderMarker(durationOverride=null){
  if(!S.pos||!S.map||!window.QueueGoMapWeb)return;
  const heading=qgSmoothedRiderPuckHeading(S.pos);
+ const presentation=window.QueueGoMapWeb.remainingNavigationRoute?.(riderRouteGeometry,S.pos,{bearing:S.pos.bearing,speed:S.pos.speed,accuracy:S.pos.accuracy});
+ const displayPos=presentation?.position||S.pos;
+ const updateRoute=position=>{if(typeof qgRenderRiderRemainingRoute==='function')qgRenderRiderRemainingRoute(position)};
  const markerDuration=durationOverride!==null&&durationOverride!==undefined&&durationOverride!==''&&Number.isFinite(Number(durationOverride))
    ? Math.max(220,Math.min(1250,Math.round(Number(durationOverride))))
    : Math.max(260,Math.min(1250,Math.round(riderGpsCadenceMs*1.05)));
  if(S.riderMarker){
    (window.QueueGoMapWeb.moveMarkerSmooth||window.QueueGoMapWeb.moveMarker)?.(
-     S.riderMarker,S.pos.lat,S.pos.lng,heading,{duration:markerDuration}
+     S.riderMarker,displayPos.lat,displayPos.lng,heading,{duration:markerDuration,onPosition:updateRoute}
    );
  }else{
    const puck='<div data-qg-rider-puck="true" style="width:48px;height:48px;border-radius:50%;background:#e6002d;border:4px solid #fff;box-sizing:border-box;box-shadow:0 4px 14px rgba(14,36,56,.32);display:grid;place-items:center;pointer-events:none"><svg width="27" height="27" viewBox="0 0 27 27" aria-hidden="true"><path d="M13.5 2.5L23.5 23L13.5 18.2L3.5 23Z" fill="#fff"/></svg></div>';
    S.riderMarker=window.QueueGoMapWeb.marker(S.map,{
-     lat:S.pos.lat,lng:S.pos.lng,title:'ตำแหน่งไรเดอร์',html:puck,
+     lat:displayPos.lat,lng:displayPos.lng,title:'ตำแหน่งไรเดอร์',html:puck,
      rotation:heading??0,rotationAlignment:'map',pitchAlignment:'viewport'
    });
  }
  if(S.activeOrder)drawActiveRoute();
+ if(!S.riderMarker?.getLngLat)updateRoute(displayPos);
 }
 
 function qgRouteBundleHTML(){

@@ -1858,3 +1858,6 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-18 bold route from real20:19 recording
 - Continue newest sourcec41453e9/livebad7dcba. Owner asks large visible navigation route. Web6px/no casing becomes12px red with16px white; Native active8 becomes12, future6 becomes8, casing4 wider. Same route geometry/camera/state/proof retained; current one-photo fix stays. Build rider-20261018-route-bold1; source/physical CI gates apply.
+
+## 2026-10-18 real route disappearance and aligned arrows
+- Owner20:43 recording plus actual MapLibre reproduction proves casing loading can suppress red fill via past load event. Existing helper now applies immediately and owns style.load retry/removal. Direction chevrons, displayed remaining-only route and same-point camera/puck road snap (<=12m, known accuracy<=35m, no opposite heading) preserve raw GPS/full route authority. Native reuses its hybrid signal pipeline; renderer alignment/chevrons only. Build route-arrow1; parent58acbd5be2536ab7495390a0bc9692224c184f6c; full exact CI and physical acceptance required.

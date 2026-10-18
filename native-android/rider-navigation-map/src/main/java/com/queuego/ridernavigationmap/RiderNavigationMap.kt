@@ -103,6 +103,7 @@ private class RiderNavigationMapHolder {
     private var riderMarker: Marker? = null
     private var riderAnimator: ValueAnimator? = null
     private val routeLines = mutableListOf<Polyline>()
+    private val activeHeadLines = mutableListOf<Polyline>()
     private val stopMarkers = mutableListOf<Marker>()
     private val demandMarkers = mutableListOf<Marker>()
     private var renderPassCount = 0
@@ -269,11 +270,29 @@ private class RiderNavigationMapHolder {
         state: RiderNavigationMapState,
         force: Boolean
     ) {
-        val routes = state.styledRemainingRoutes()
+        val routes = state.styledRemainingRoutes().map { segment ->
+            // The existing signal pipeline already owns confidence-bounded road snapping.
+            // Trim only a renderer copy; preserve coordinator matching/ETA/reroute thresholds.
+            val fix = state.rider
+            val accuracy = fix?.accuracyMeters
+            val match = fix?.let { matchNavigationRoute(segment, it.point) }
+            val opposite = fix?.bearingDegrees?.let { heading ->
+                match?.segmentBearingDegrees?.let { course ->
+                    (fix.speedMetersPerSecond ?: 0f) >= 2f &&
+                        kotlin.math.abs(navigationShortestBearingDelta(heading, course)) > 75f
+                }
+            } ?: false
+            if (segment.style == NavigationRouteStyle.ACTIVE && accuracy != null &&
+                accuracy.isFinite() && accuracy <= 35f && match != null &&
+                match.offRouteMeters <= 12.0 && !opposite
+            ) trimNavigationRouteSegment(segment, match.progressMeters, match.snapped)
+            else segment
+        }
         val signature = routes.hashCode()
         if (!force && signature == lastRouteSignature) return
         routeLines.toList().forEach { line -> runCatching { activeMap.removePolyline(line) } }
         routeLines.clear()
+        activeHeadLines.clear()
         routes.sortedBy { if (it.style == NavigationRouteStyle.FUTURE) 0 else 1 }
             .forEach { segment ->
                 if (!segment.renderable) return@forEach
@@ -283,6 +302,7 @@ private class RiderNavigationMapHolder {
                     android.graphics.Color.argb(72, 230, 0, 45)
                 }
                 val width = if (segment.style == NavigationRouteStyle.ACTIVE) 12f else 8f
+                val firstLineIndex = routeLines.size
                 // Keep the route distinct from pale roads/buildings at driving tilt.
                 // Store casing and fill in the same list so refresh/dispose removes both.
                 routeLines += activeMap.addPolyline(
@@ -301,10 +321,65 @@ private class RiderNavigationMapHolder {
                         .color(color)
                         .width(width)
                 )
+                if (segment.style == NavigationRouteStyle.ACTIVE) {
+                    activeHeadLines += routeLines.subList(firstLineIndex, routeLines.size)
+                    renderDirectionArrows(activeMap, segment)
+                }
             }
+        riderMarker?.position?.let { alignActiveRouteHead(activeMap, it) }
         lastRouteSignature = signature
         routeLayerRebuildCount += 1
         routeGeometryUpdateCount += 1
+    }
+
+    private fun alignActiveRouteHead(activeMap: MapLibreMap, position: LatLng) {
+        // Presentation follows the exact interpolated puck, not the next GPS target.
+        // Authoritative route/matching/ETA geometry remains in NavigationRouteCoordinator.
+        activeHeadLines.forEach { line ->
+            val first = line.points.firstOrNull()
+            val offset = first?.let {
+                navigationHaversineMeters(
+                    NavigationMapPoint(position.latitude, position.longitude),
+                    NavigationMapPoint(it.latitude, it.longitude)
+                )
+            } ?: Double.POSITIVE_INFINITY
+            if (line.points.size >= 2 && offset <= 12.0) {
+                line.points = listOf(position) + line.points.drop(1)
+                activeMap.updatePolyline(line)
+            }
+        }
+    }
+
+    private fun renderDirectionArrows(activeMap: MapLibreMap, segment: NavigationRouteSegment) {
+        val length = segment.points.zipWithNext().sumOf { (a, b) -> navigationHaversineMeters(a, b) }
+        if (length < 8.0) return
+        var distance = minOf(30.0, length * 0.6)
+        var count = 0
+        while (distance < length && count < 16) {
+            val tip = navigationPointAtDistance(segment, distance) ?: break
+            val back = navigationPointAtDistance(segment, (distance - 8.0).coerceAtLeast(0.0)) ?: break
+            val t = activeMap.projection.toScreenLocation(LatLng(tip.latitude, tip.longitude))
+            val b = activeMap.projection.toScreenLocation(LatLng(back.latitude, back.longitude))
+            val dx = (t.x - b.x).toDouble()
+            val dy = (t.y - b.y).toDouble()
+            val size = hypot(dx, dy)
+            if (size > 0.5) {
+                val ux = dx / size
+                val uy = dy / size
+                fun wing(side: Double): LatLng = activeMap.projection.fromScreenLocation(
+                    android.graphics.PointF(
+                        (t.x - ux * 9.0 - uy * 6.0 * side).toFloat(),
+                        (t.y - uy * 9.0 + ux * 6.0 * side).toFloat()
+                    )
+                )
+                routeLines += activeMap.addPolyline(
+                    PolylineOptions().addAll(listOf(wing(-1.0), LatLng(tip.latitude, tip.longitude), wing(1.0)))
+                        .color(android.graphics.Color.WHITE).width(3.5f)
+                )
+            }
+            distance += 65.0
+            count += 1
+        }
     }
 
     private fun renderStops(
@@ -386,11 +461,13 @@ private class RiderNavigationMapHolder {
                         from.latitude + (fix.point.latitude - from.latitude) * t,
                         from.longitude + (fix.point.longitude - from.longitude) * t
                     )
+                    alignActiveRouteHead(activeMap, marker.position)
                 }
                 start()
             }
         } else {
             marker.position = target
+            alignActiveRouteHead(activeMap, target)
         }
         lastRenderedRiderFix = fix
     }
@@ -499,6 +576,7 @@ private class RiderNavigationMapHolder {
         riderAnimator = null
         stop()
         routeLines.clear()
+        activeHeadLines.clear()
         stopMarkers.clear()
         demandMarkers.clear()
         riderMarker = null
