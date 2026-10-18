@@ -95,7 +95,7 @@ function navMatchRoute(route,point,{bearing=null,speed=null,previousProgress=nul
   const spd=navHasNumber(speed)&&Number(speed)>=0?Number(speed):null;
   const travelBearing=spd!=null&&spd>=2&&navHasNumber(bearing)?navNormalizeBearing(Number(bearing)):null;
   const priorProgress=navHasNumber(previousProgress)?Number(previousProgress):null;
-  for(const part of navRouteParts(route)){
+  for(const [partIndex,part] of navRouteParts(route).entries()){
     let walked=0,total=0;
     const lengths=[];
     for(let i=0;i<part.length-1;i++){const d=navDistanceMeters(part[i],part[i+1]);lengths.push(d);total+=d}
@@ -113,7 +113,7 @@ function navMatchRoute(route,point,{bearing=null,speed=null,previousProgress=nul
       const continuityPenalty=backtrack*2.5;
       const score=p.distance+headingPenalty+continuityPenalty;
       if(!best||score<best.score){
-        best={part,snapped:p.point,offRouteMeters:p.distance,progressMeters:progress,geometryDistanceMeters:total,segmentBearingDegrees:segmentBearing,headingDeltaDegrees:headingDelta,score};
+        best={part,partIndex,snapped:p.point,offRouteMeters:p.distance,progressMeters:progress,geometryDistanceMeters:total,segmentBearingDegrees:segmentBearing,headingDeltaDegrees:headingDelta,score};
       }
       walked+=leg;
     }
@@ -581,7 +581,9 @@ function remainingNavigationRoute(route,point,{bearing=null,speed=null,accuracy=
     if(walked>match.progressMeters+.1)remaining.push([part[i+1].lng,part[i+1].lat]);
   }
   // The endpoint is presentation-only. Keep the complete route for match/reroute/ETA.
-  return {position:match.snapped,lines:remaining.length>1?[remaining]:[],match};
+  const lines=remaining.length>1?[remaining]:[];
+  for(const next of navRouteParts(route).slice(match.partIndex+1))lines.push(next.map(p=>[p.lng,p.lat]));
+  return {position:match.snapped,lines,anchorFirst:remaining.length>1,match};
 }
 function locate(map,onPoint){
   if(!navigator.geolocation)return Promise.reject(new Error('เบราว์เซอร์ไม่รองรับ GPS'));

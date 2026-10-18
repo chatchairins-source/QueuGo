@@ -18,7 +18,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("'route': '<svg class=\"ico\""),true);
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
- eq(source.includes('queuego-map-web.js?v=20261018-14'),true);
+ eq(source.includes('queuego-map-web.js?v=20261018-15'),true);
  eq(source.includes('queuego-map-service.js?v=20261017-1'),true);
  eq(source.includes('api.longdo.com/RouteService/geojson/route'),false);
  eq(source.includes('google.navigation:'),false);
