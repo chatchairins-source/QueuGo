@@ -405,3 +405,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Rider Web: service/Express snapshot visibility, parcel offer/active UI, server-owned Rider payout, shared action-once states, QueueGo navigation, cash confirmation and existing qg-evidence proof RPCs with ambiguous-result recovery.
 - Local source validation through connector: `customer-express.js` syntax PASS, `rider/rider-express.js` syntax PASS; Customer static gate 8/8 PASS; Rider static gate 9/9 PASS.
 - NEXT: merge this Web successor into PR #425 after Native exact-head run 3349 closes green; then require one exact-head CI run covering Web + Native together. No Production deployment/cutover in this checkpoint.
+
+
+### 2026-10-18 Rider Web Passenger Ride parity checkpoint
+- HEAD before checklist: `0d0475fc0fb2ddfcd129db2c51d4b13cd0f8f41c`.
+- Rider Web snapshot/history now includes `fulfillment_vertical=ride` alongside shopping + Express; Ride parity loads after Express and before initial Rider boot.
+- Passenger flow uses shared `qg_rider_action_once(kind=ride)`: arrive pickup → start trip → arrive destination → cash confirm → complete; pre-pickup eligibility/credit requeue is surfaced and reconciled.
+- QueueGo navigation keeps `ridePickup` / `rideDropoff` stages distinct; no merchant/photo proof flow is introduced.
+- Source validation through connector: `rider/rider-ride.js` syntax PASS; static gate 8/8 PASS.
+- NEXT: after Native exact-head run 3349 closes green, merge this Web Ride successor (which includes Express Web) into PR #425 and require one exact-head CI run over Web + Native together. No Production mutation.
