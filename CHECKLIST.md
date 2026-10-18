@@ -397,3 +397,20 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Exact-head gates already green before unification: backend run 3337 `b1e37818f9ff171e57daf8675f5018a2431a03f7`; client run 3336 `2813452191f56be83969f0cc761890a6ef3c3a90`; Customer UI run 3345 `eb3b8b56362a318d661a3754d364ec49fc9e8ef5`; Rider UI run 3347 `6bd7d8d70f3ca7aea617d66e263cd6e67c0290f1`.
 - Laundry shop-managed run 3341 `0c5f91b9f7014e1928bc33d08c124e5be619e8f9` SUCCESS; Grocery image-rights run 3342 `9fc5f81f82bfbab351dfd2db94486a3ef65f86b5` SUCCESS.
 - NEXT: require exact-head CI on this unified merge; then mark physical-device/GPS/signed AAB/Closed Testing/Production cutover as BLOCKED until owner/device actions. No Production enablement in this checkpoint.
+
+
+### 2026-10-18 Express Web parity checkpoint
+- HEAD before checklist: `2d95198ef9059e44031b06b9b3d4bd8401771937`.
+- Customer Web: Express category, 1 pickup/1 dropoff form, trusted road quote, cash request, durable request recovery, owner-scoped state and Rider tracking.
+- Rider Web: service/Express snapshot visibility, parcel offer/active UI, server-owned Rider payout, shared action-once states, QueueGo navigation, cash confirmation and existing qg-evidence proof RPCs with ambiguous-result recovery.
+- Local source validation through connector: `customer-express.js` syntax PASS, `rider/rider-express.js` syntax PASS; Customer static gate 8/8 PASS; Rider static gate 9/9 PASS.
+- NEXT: merge this Web successor into PR #425 after Native exact-head run 3349 closes green; then require one exact-head CI run covering Web + Native together. No Production deployment/cutover in this checkpoint.
+
+
+### 2026-10-18 Rider Web Passenger Ride parity checkpoint
+- HEAD before checklist: `0d0475fc0fb2ddfcd129db2c51d4b13cd0f8f41c`.
+- Rider Web snapshot/history now includes `fulfillment_vertical=ride` alongside shopping + Express; Ride parity loads after Express and before initial Rider boot.
+- Passenger flow uses shared `qg_rider_action_once(kind=ride)`: arrive pickup → start trip → arrive destination → cash confirm → complete; pre-pickup eligibility/credit requeue is surfaced and reconciled.
+- QueueGo navigation keeps `ridePickup` / `rideDropoff` stages distinct; no merchant/photo proof flow is introduced.
+- Source validation through connector: `rider/rider-ride.js` syntax PASS; static gate 8/8 PASS.
+- NEXT: after Native exact-head run 3349 closes green, merge this Web Ride successor (which includes Express Web) into PR #425 and require one exact-head CI run over Web + Native together. No Production mutation.

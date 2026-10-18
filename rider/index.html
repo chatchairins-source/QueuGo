@@ -1228,7 +1228,7 @@ async function readRiderSnapshot(){
   const current=()=>S.user?.id===userId&&S.riderProfile?.id===profileId&&S.session?.sessionId===sessionId&&S.online===online;
   try{
     const token=await getAccessToken();if(!current())return;if(!token)throw Error('Session unavailable');
-    const mine=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)&order=created_at.desc&limit=1',{token});if(!current())return;
+    const mine=await sbTable('orders?select=*&or=(order_type.eq.shopping,fulfillment_vertical.eq.express,fulfillment_vertical.eq.ride)&rider_id=eq.'+encodeURIComponent(profileId)+'&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)&order=created_at.desc&limit=1',{token});if(!current())return;
     let activeOrder=Array.isArray(mine)&&mine[0]?mine[0]:null;let openJobs=[];
     if(!activeOrder&&online&&S.riderProfile?.metadata?.online===true&&S.riderProfile.metadata.available!==true){
       const metadata={...S.riderProfile.metadata,available:true};
@@ -1268,7 +1268,7 @@ async function readRiderSnapshot(){
     if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;
     syncRiderNavigationCameraMode();
     window.qgCheckNewJobs?.(previousOpenJobIds,openJobs.map(x=>x.order));if(S.activeTab==='home')renderHomeDock();placeJobMarkers();
-    const hist=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=eq.completed&order=updated_at.desc&limit=200',{token});if(!current())return;
+    const hist=await sbTable('orders?select=*&or=(order_type.eq.shopping,fulfillment_vertical.eq.express,fulfillment_vertical.eq.ride)&rider_id=eq.'+encodeURIComponent(profileId)+'&status=eq.completed&order=updated_at.desc&limit=200',{token});if(!current())return;
     S.history=Array.isArray(hist)?hist:[];
     try{const k=qgRiderHistoryKey(),history=S.history.slice(0,100);if(k){const json=JSON.stringify({at:Date.now(),history});if(json.length<800000)localStorage.setItem(k,json)}}catch(e){}
     if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox();qgWatchCompletedChat();
@@ -1566,7 +1566,7 @@ function stopPolling(){
   }
 })();
 
-boot();
+window.qgDeferredBoot=boot;
 
 /* QueueGo Rider — non-blocking new job notification */
 (function(){
@@ -2535,6 +2535,9 @@ window.advanceOrder=async function(o){
 
 
 </script>
+<script src="rider-express.js?v=20261018-web2"></script>
+<script src="rider-ride.js?v=20261018-web1"></script>
+<script>window.qgDeferredBoot?.();</script>
 <script id="qg-rider-inbox">
 (function(){
  const key=()=>S.user?.id?'qg-rider-history:'+S.user.id:null;
@@ -2624,7 +2627,7 @@ window.advanceOrder=async function(o){
    panel.querySelector('#qg-ticket-close').onclick=()=>panel.remove();
    panel.onclick=e=>{if(e.target===panel)panel.remove()};
    panel.querySelector('[name=category]').innerHTML=Object.entries(names).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('');
-   request('orders?select=id,order_number&order_type=eq.shopping&order=created_at.desc&limit=50').then(rows=>{
+   request('orders?select=id,order_number&or=(order_type.eq.shopping,fulfillment_vertical.eq.express,fulfillment_vertical.eq.ride)&order=created_at.desc&limit=50').then(rows=>{
      if(!panel.isConnected)return;
      const select=panel.querySelector('[name=order]');
      select.insertAdjacentHTML('beforeend',(rows||[]).map(o=>'<option value="'+escText(o.id)+'">'+escText(qgShortOrder(o))+'</option>').join(''));
