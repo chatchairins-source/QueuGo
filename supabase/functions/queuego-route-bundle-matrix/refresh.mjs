@@ -6,18 +6,22 @@ export async function refreshRouteMatrices(base, headers, fetcher, produce) {
   if(!response.ok)throw Error('refresh coordination unavailable');
   return response.json();
  };
- const work=await rpc('queuego_route_matrix_refresh_claim',{p_limit:2});
- if(!work?.leaseId)return {refreshed:0,failed:0,busyOrDisabled:true};
- let refreshed=0,failed=0;
- try{
-  if(!Array.isArray(work.pairs)||work.pairs.length>2)throw Error('invalid refresh work');
-  const results=await Promise.allSettled(work.pairs.map(pair=>produce(pair)));
-  for(const result of results){if(result.status==='fulfilled'&&result.value.ok)refreshed++;else failed++;}
-  return {refreshed,failed};
- }finally{
-  // Release is fenced by the exact lease. A dead worker expires automatically after90s.
-  await rpc('queuego_route_matrix_refresh_release',{p_lease:work.leaseId});
- }
+ let refreshed=0,failed=0,claimed=0;
+ const run=async(name)=>{
+  const work=await rpc(name,{p_limit:2});
+  if(!work?.leaseId)return;
+  claimed++;
+  try{
+   if(!Array.isArray(work.pairs)||work.pairs.length>2)throw Error('invalid refresh work');
+   const results=await Promise.allSettled(work.pairs.map(pair=>produce(pair)));
+   for(const result of results){if(result.status==='fulfilled'&&result.value.ok)refreshed++;else failed++;}
+  }finally{
+   await rpc('queuego_route_matrix_refresh_release',{p_lease:work.leaseId});
+  }
+ };
+ await run('queuego_route_matrix_refresh_claim');
+ await run('queuego_route_bundle_stack_refresh_claim');
+ return {refreshed,failed,busyOrDisabled:claimed===0};
 }
 
 export async function workerTokenMatches(supplied, expected) {

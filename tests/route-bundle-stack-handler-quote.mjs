@@ -65,3 +65,29 @@ const rejected=await lateHandler(req('quote'));eq(rejected.status,409);
 const rejectedBody=await rejected.json();eq(rejectedBody.quoteCached,false);eq(rejectedBody.financial.reason,'merchant readiness wait exceeds policy');
 
 console.log(JSON.stringify({checks,failures:0,scope:'service quote action caches only eligible 3-5 plan; plan stays read-only; two-order authority unchanged'}));
+
+
+const stackRows=[
+ {id:A,rider_id:'00000000-0000-4000-8000-000000000011',status:'ready',updated_at:'2026-10-18T00:00:00Z',route_bundle_id:evidence.bundleId,route_bundle_sequence:1,created_at:'2026-10-18T00:00:00Z',pickup_latitude:15,pickup_longitude:103,delivery_latitude:15.01,delivery_longitude:103},
+ {id:C,rider_id:'00000000-0000-4000-8000-000000000011',status:'ready',updated_at:'2026-10-18T00:00:00Z',route_bundle_id:evidence.bundleId,route_bundle_sequence:2,created_at:'2026-10-18T00:00:01Z',pickup_latitude:15.001,pickup_longitude:103,delivery_latitude:15.011,delivery_longitude:103}
+];
+const candidateRow={id:D,rider_id:null,status:'searching_rider',updated_at:'2026-10-18T00:00:00Z',route_bundle_id:null,route_bundle_sequence:null,created_at:'2026-10-18T00:00:02Z',pickup_latitude:15.002,pickup_longitude:103,delivery_latitude:15.012,delivery_longitude:103};
+let providerCalls=0,stackCacheCalls=0;
+const stackFetcher=async(url,options={})=>{
+ const u=new URL(url);
+ if(u.hostname==='api.longdo.com'){providerCalls++;return {ok:true,text:async()=>JSON.stringify({data:{distance:500,interval:60},features:[{geometry:{type:'LineString',coordinates:[[103,15],[103,15.01]]},properties:{distance:500,interval:60}}]})};}
+ if(u.pathname==='/rest/v1/orders'&&u.searchParams.has('rider_id'))return {ok:true,json:async()=>stackRows};
+ if(u.pathname==='/rest/v1/orders')return {ok:true,json:async()=>[stackRows[0],candidateRow]};
+ if(u.pathname==='/rest/v1/rider_profiles')return {ok:true,json:async()=>[{latitude:15,longitude:103}]};
+ if(u.pathname==='/rest/v1/rpc/queuego_cache_route_bundle_stack_matrix'){stackCacheCalls++;return {ok:true,json:async()=>true};}
+ if(u.pathname==='/rest/v1/rpc/queuego_route_bundle_stack_financial_input')return {ok:true,json:async()=>structuredClone(evidence)};
+ if(u.pathname==='/rest/v1/rpc/queuego_cache_route_bundle_stack_quote')return {ok:true,json:async()=>quoteId};
+ if(u.pathname==='/rest/v1/rpc/queuego_offer_route_bundle_stack_quote')return {ok:true,json:async()=>true};
+ throw Error('unexpected stack transport '+u.pathname+'?'+u.search);
+};
+const stackEnv={SUPABASE_SERVICE_ROLE_KEY:'svc',SUPABASE_URL:'https://backend.invalid',QUEUEGO_LONGDO_KEY:'key'};
+const stackHandler=createRouteBundleMatrixHandler({get:k=>stackEnv[k]},stackFetcher);
+const stackReq=new Request('https://edge.invalid',{method:'POST',headers:{authorization:'Bearer svc','content-type':'application/json'},body:JSON.stringify({action:'stack',primaryOrderId:A,candidateOrderId:D})});
+const stackRes=await stackHandler(stackReq),stackBody=await stackRes.json();
+eq(stackRes.status,200);eq(stackBody.cached,true);eq(stackBody.quoteCached,true);eq(stackBody.offerPublished,true);eq(stackCacheCalls,1);
+assert(providerCalls>0);checks++;

@@ -680,3 +680,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Audited successor `a7faf569` before waiting for CI and found the new service-only targeted-offer function used invalid PL/pgSQL dollar quoting (`as $ ... end $;`).
 - Corrected it to `as $$ ... end $$;` and added an executable source assertion for the exact SECURITY DEFINER/search_path/function delimiter header.
 - Targeted 30-second offer authority, claim requirement, offer history, compensation recomputation and max_orders=2 safety remain unchanged.
+
+
+### 2026-10-18 generalized stack discovery to targeted offer chain
+- Added service-role-only `queuego_route_bundle_stack_refresh_claim` using the EXISTING route-matrix lease. It emits `action=stack` only for active 2–4 Order bundles when continuous dispatch is enabled and current max_orders>=3; fallback cap=2 returns no work.
+- Discovery requires one coherent active bundle, online/available Rider with an active readiness lease, no outside active job, no NEXT/Laundry/return/live-offer conflict, supported nearby candidate and no fresh same-revision stack matrix. It never assigns or reprices.
+- Existing Edge refresh now runs legacy pair discovery then generalized stack discovery through the same release RPC. A successful 3–5 stack matrix immediately enters the existing generalized quote path, which in turn publishes the 30-second targeted offer only when the rollout cap still permits it.
+- Added isolated SQL discovery, refresh-worker orchestration and handler stack→quote→offer coverage to the full npm gate. No Production feature/rule/cap mutation.
+- NEXT: exact-head CI. Once green, remaining generalized Route Bundle gates are reviewed cap activation and physical 3–5 stop acceptance.

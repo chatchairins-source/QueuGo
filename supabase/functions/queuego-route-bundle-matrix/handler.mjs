@@ -88,6 +88,16 @@ return async(req)=>{
    })});
    if(!cached.ok)throw Error('stack evidence rejected');
    const acknowledged=await cached.json();
+   if(acknowledged===true&&orders.length>=3){
+    const quoteResponse=await createRouteBundleMatrixHandler(env,fetcher)(new Request(req.url,{
+     method:'POST',headers:{authorization:'Bearer '+service,'content-type':'application/json'},
+     body:JSON.stringify({action:'quote',primaryOrderId:a.id,candidateOrderId:b.id})
+    }));
+    const quoteBody=await quoteResponse.json();
+    return reply({cached:true,expiresSeconds:90,orders:orders.length,points:Object.keys(points).length,
+     quoteCached:quoteBody.quoteCached===true,offerPublished:quoteBody.offerPublished===true,
+     quoteReason:quoteBody.financial?.reason??null});
+   }
    return reply({cached:acknowledged===true,expiresSeconds:90,orders:orders.length,points:Object.keys(points).length},acknowledged===true?200:409);
   }
   const edges=await buildRoadMatrix({AP:point(a,'pickup'),AD:point(a,'delivery'),BP:point(b,'pickup'),BD:point(b,'delivery'),RP:{lat:rider?.latitude,lng:rider?.longitude}},key,{fetcher,signal:AbortSignal.timeout(45000)});
