@@ -4,6 +4,8 @@ create table if not exists qg_private.route_bundle_stack_matrices(
  primary_order_id uuid not null references public.orders(id) on delete cascade,
  candidate_order_id uuid not null references public.orders(id) on delete cascade,
  rider_id uuid not null references public.rider_profiles(id) on delete cascade,
+ bundle_id uuid,
+ bundle_revision bigint,
  order_ids uuid[] not null,
  order_revisions jsonb not null check(jsonb_typeof(order_revisions)='object'),
  point_map jsonb not null check(jsonb_typeof(point_map)='object'),
@@ -34,6 +36,8 @@ set search_path=public,pg_temp
 as $$
 declare
  v_rider uuid;
+ v_bundle_id uuid;
+ v_bundle_revision bigint;
  v_count integer;
  v_expected_points integer;
  v_edge_count integer;
@@ -47,7 +51,12 @@ begin
  if p_rider_latitude is null or p_rider_longitude is null or p_rider_latitude not between -90 and 90 or p_rider_longitude not between -180 and 180 then return false; end if;
  if jsonb_typeof(p_order_revisions)<>'object' or jsonb_typeof(p_point_map)<>'object' or jsonb_typeof(p_edges)<>'object' then return false; end if;
 
- select o.rider_id into v_rider from public.orders o where o.id=p_primary_order_id;
+ select o.rider_id,o.route_bundle_id into v_rider,v_bundle_id from public.orders o where o.id=p_primary_order_id;
+ if v_bundle_id is not null then
+  select rb.route_revision into v_bundle_revision from public.route_bundles rb
+  where rb.id=v_bundle_id and rb.rider_id=v_rider and rb.status='ACTIVE';
+  if not found then return false; end if;
+ end if;
  if v_rider is null then return false; end if;
  if not exists(select 1 from public.orders o where o.id=p_candidate_order_id and o.status='searching_rider' and o.rider_id is null and o.market_order_id is null) then return false; end if;
 
@@ -56,6 +65,7 @@ begin
   if not exists(
    select 1 from public.orders o
    where o.id=v_order and o.rider_id=v_rider
+    and o.route_bundle_id is not distinct from v_bundle_id
     and o.status in ('rider_assigned','preparing','ready','assigned','picked_up','in_progress')
     and o.updated_at is not null
   ) then return false; end if;
@@ -91,14 +101,15 @@ begin
 
  delete from qg_private.route_bundle_stack_matrices where expires_at<now()-interval '1 day';
  insert into qg_private.route_bundle_stack_matrices(
-  primary_order_id,candidate_order_id,rider_id,order_ids,order_revisions,point_map,
+  primary_order_id,candidate_order_id,rider_id,bundle_id,bundle_revision,order_ids,order_revisions,point_map,
   rider_latitude,rider_longitude,edges,expires_at
  ) values(
-  p_primary_order_id,p_candidate_order_id,v_rider,p_order_ids,p_order_revisions,p_point_map,
+  p_primary_order_id,p_candidate_order_id,v_rider,v_bundle_id,v_bundle_revision,p_order_ids,p_order_revisions,p_point_map,
   p_rider_latitude,p_rider_longitude,p_edges,now()+interval '90 seconds'
  )
  on conflict(primary_order_id,candidate_order_id) do update set
-  rider_id=excluded.rider_id,order_ids=excluded.order_ids,order_revisions=excluded.order_revisions,
+  rider_id=excluded.rider_id,bundle_id=excluded.bundle_id,bundle_revision=excluded.bundle_revision,
+  order_ids=excluded.order_ids,order_revisions=excluded.order_revisions,
   point_map=excluded.point_map,rider_latitude=excluded.rider_latitude,rider_longitude=excluded.rider_longitude,
   edges=excluded.edges,expires_at=excluded.expires_at,created_at=now();
  return true;
