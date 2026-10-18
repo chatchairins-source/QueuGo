@@ -26,6 +26,13 @@ on:
       - work-native-rpc-null-contract-20261010
       - work-native-pos-edit-idempotency-20261010
     paths:
+      # Full regression consumes shared Web sources; validate their exact HEAD too.
+      - 'admin/**'
+      - 'merchant/**'
+      - 'rider/**'
+      - '*.js'
+      - '*.css'
+      - 'index.html'
       - 'native-android/**'
       - 'tests/**'
       - 'package.json'

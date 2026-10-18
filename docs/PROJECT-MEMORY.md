@@ -1768,3 +1768,6 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## 2026-10-16 Rider map green baseline / sliding card request
 - Remote4f98bc20 / Native Pilot38894791534: all seven relevant gates GREEN and exact-artifact prerelease published. Runtime Longdo7/7, strict shared-map pixels/process-death, JVM/build/lifecycle and three race suites passed. Physical road gate remains OPEN.
 - Owner requested sliding open/close card from supplied video. RiderJobDock now wraps existing job content: compact active summary, tap/header drag expansion, retained scrollable body, per-job saved expansion and actual measured camera inset including bottom bar. No map recreation or workflow/state-machine changes. Replaces the explicitly obsolete fixed-card source requirement; new gesture JVM boundary cases added. Full successor tests/APK pending. Detailed evidence and next action: docs/rider-map-road-test-checkpoint.md.
+
+## 2026-10-18 Native integration continuity
+- #414 parent e8446b54 passed Map Engine full regression. Native Pilot absent because Admin-only changes were outside its push path filter. Commit 6998fde0 covers shared Web regression inputs. Obtain exact-head Native Pilot before Express/release claims; Production unchanged.
