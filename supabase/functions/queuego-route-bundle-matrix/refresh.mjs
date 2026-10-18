@@ -1,5 +1,5 @@
 // Bounded evidence replenishment only. The existing dispatcher remains the only assigner.
-export async function refreshRouteMatrices(base, headers, fetcher, produce) {
+export async function refreshRouteMatrices(base, headers, fetcher, produce, {includeStack=false}={}) {
  const rpc=async(name,body)=>{
   const response=await fetcher(base+'/rest/v1/rpc/'+name,{method:'POST',headers,
    body:JSON.stringify(body),signal:AbortSignal.timeout(8000)});
@@ -20,8 +20,10 @@ export async function refreshRouteMatrices(base, headers, fetcher, produce) {
   }
  };
  await run('queuego_route_matrix_refresh_claim');
- await run('queuego_route_bundle_stack_refresh_claim');
- return {refreshed,failed,busyOrDisabled:claimed===0};
+ if(includeStack)await run('queuego_route_bundle_stack_refresh_claim');
+ return claimed===0
+  ? {refreshed,failed,busyOrDisabled:true}
+  : {refreshed,failed};
 }
 
 export async function workerTokenMatches(supplied, expected) {

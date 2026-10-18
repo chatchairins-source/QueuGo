@@ -53,7 +53,7 @@ return async(req)=>{
   if(input.action==='refresh'){
    const produce=pair=>createRouteBundleMatrixHandler(env,fetcher)(new Request(req.url,{
     method:'POST',headers:{authorization:'Bearer '+service,'content-type':'application/json'},body:JSON.stringify(pair)}));
-   return reply(await refreshRouteMatrices(base,headers,fetcher,produce));
+   return reply(await refreshRouteMatrices(base,headers,fetcher,produce,{includeStack:true}));
   }
   if(!uuid(input.primaryOrderId)||!uuid(input.candidateOrderId)||input.primaryOrderId===input.candidateOrderId)return reply({error:'invalid orders'},400);
   const fields='id,rider_id,status,updated_at,route_bundle_id,route_bundle_sequence,created_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude';

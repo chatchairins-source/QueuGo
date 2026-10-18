@@ -714,3 +714,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Follow-up to the CI-only GPS fallback: the prior lifecycle evidence proves `scenario.recreate()` restarts the navigation foreground service, whose production `onDestroy()` correctly clears the location store.
 - Android instrumentation now requires a fresh expected fix after recreate and explicitly recenters before capturing the recreated real-map frame. On a GMS-capable device this still prefers the real provider; on the explicit no-GMS CI scope it reuses the androidTest-only store fallback.
 - Production service/location behavior remains unchanged; physical GPS/GMS certification remains a separate gate.
+
+
+### 2026-10-18 refresh helper backward-compatibility correction
+- Exact `13edb751` Native3390/native-pilot reached legacy `rider-road-matrix.cjs` and failed because `refreshRouteMatrices` unconditionally called the new stack-discovery RPC, changing both failure counts and the established helper return shape for existing callers/mocks.
+- Generalized discovery is now explicit: `refreshRouteMatrices(...,{includeStack:true})`. The Edge worker's `action=refresh` opts in; legacy helper callers remain pair-only and preserve their exact historical `{refreshed,failed}` / busy response.
+- The generalized refresh-worker test explicitly opts in and still proves pair discovery → stack discovery → same lease release. Production assignment/pricing/cap remains unchanged.
+- NEXT: exact-head CI, then fix only the next actual failure.
