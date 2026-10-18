@@ -365,6 +365,8 @@ jobs:
           fi
       - name: Run actual QueueGo MapLibre display and lifecycle
         env:
+          # Real pinned local tiles exercise lifecycle without approving public hosting.
+          QG_DEBUG_MAP_ARCHIVE: '1'
           QG_MAP_DISPLAY_ONLY: '1'
           QG_CUSTOMER_LOCATION_ONLY: '1'
           QG_CUSTOMER_LOCATION_STRESS: '0'

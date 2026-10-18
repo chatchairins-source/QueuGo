@@ -44,13 +44,45 @@ package = "com.queuego.rider"
 component = package + "/.MainActivity"
 
 
+# Same pinned, real Buriram vector archive as Map Engine CI. It is provisioned
+# through adb into debug app-private storage, never embedded in a release APK.
+CI_MAP_URL = "https://github.com/chatchairins-source/QueuGo/releases/download/rider-buriram-offline-20261016/buriram-shortbread.pmtiles"
+CI_MAP_SHA256 = "30699573ed2068d3c7e4393ad477dbe8febf68f453f27ae88437f5c652a3ddfc"
+
+
+def provision_real_map(pkg):
+    if os.environ.get("QG_DEBUG_MAP_ARCHIVE") != "1":
+        return
+    import urllib.request
+    archive = Path(os.environ["RUNNER_TEMP"]) / "queuego-ci-buriram.pmtiles"
+    if not archive.is_file():
+        with urllib.request.urlopen(CI_MAP_URL, timeout=90) as response, archive.open("wb") as target:
+            import shutil
+            shutil.copyfileobj(response, target)
+    actual = hashlib.sha256(archive.read_bytes()).hexdigest()
+    assert actual == CI_MAP_SHA256, "Real Buriram map archive checksum mismatch"
+    device_archive = "/data/local/tmp/queuego-ci-buriram.pmtiles"
+    run(adb + ["push", str(archive), device_archive])
+    run(adb + ["shell", "run-as", pkg, "mkdir", "-p", "files"])
+    run(adb + ["shell", "run-as", pkg, "cp", device_archive, "files/queuego-ci-buriram.pmtiles"])
+    verified = run(adb + ["shell", "run-as", pkg, "sha256sum", "files/queuego-ci-buriram.pmtiles"],
+                   capture_output=True, text=True).stdout.split()[0]
+    assert verified == CI_MAP_SHA256, "App-private real map archive checksum mismatch"
+    (output / (pkg + "-map-source.json")).write_text(json.dumps({
+        "source_url": CI_MAP_URL, "sha256": actual, "source": "pinned real Buriram PMTiles",
+        "debug_only": True, "public_runtime_certified": False,
+        "routing_certified": False, "physical_gps_certified": False
+    }, indent=2))
+
+
 def queuego_map_runtime_configured():
-    """True only when an approved HTTPS QueueGo Map runtime is supplied to this run."""
-    return os.environ.get("QG_MAP_SERVICE_BASE_URL", "").strip().startswith("https://")
+    """Exercise real tiles in debug CI or use the approved HTTPS runtime."""
+    return os.environ.get("QG_DEBUG_MAP_ARCHIVE") == "1" or os.environ.get("QG_MAP_SERVICE_BASE_URL", "").strip().startswith("https://")
 
 
 def record_map_runtime_blocked(scope):
     """Record an external release blocker without turning it into a false runtime PASS."""
+    assert os.environ.get("QG_DEBUG_MAP_ARCHIVE") != "1", "Requested real-map CI must execute, never report BLOCKED"
     directory = output / "map-runtime-blockers"
     directory.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -66,9 +98,22 @@ def record_map_runtime_blocked(scope):
     print("QUEUEGO_MAP_RUNTIME_BLOCKED " + json.dumps(payload))
 
 
+def package_pids_optional(pkg: str):
+    # pidof exits 1 when no process exists. During process-death polling that is
+    # the expected success condition, so keep this non-throwing helper separate
+    # from the established strict evidence resolver below.
+    result = subprocess.run(
+        adb + ["shell", "pidof", pkg],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    return [value for value in result.stdout.strip().split() if value.isdigit()]
+
+
 def package_pids(pkg: str):
-    result = run(adb + ["shell", "pidof", pkg], capture_output=True, text=True)
-    pids = [value for value in result.stdout.strip().split() if value.isdigit()]
+    pids = package_pids_optional(pkg)
     assert pids, f"{pkg} process is not running"
     return pids
 
@@ -211,6 +256,18 @@ def capture_customer_market(directory: Path, dimensions: str):
             "populated_cart_e2e_certified": False, "visual_parity_certified": False}
 
 
+def customer_location_permission_nodes(nodes, directory):
+    # CustomerLocationPicker automatically requests GPS after mapReady. Without
+    # a map source that callback never runs, so exercise its explicit GPS action.
+    if not queuego_map_runtime_configured():
+        gps_action = next((n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน"), None)
+        assert gps_action is not None, "GPS action missing before permission request"
+        gb = [int(x) for x in re.findall(r"\d+", gps_action.get("bounds", ""))]
+        run(adb + ["shell", "input", "tap", str((gb[0]+gb[2])//2), str((gb[1]+gb[3])//2)])
+    return wait_ui(directory / "permission.xml", lambda ns: any(
+        n.get("resource-id", "").endswith("permission_deny_button") for n in ns))
+
+
 def capture_customer_location():
     """Tap the real Customer guest Home location entry; no coordinate or account fixtures."""
     pkg = "com.queuego.customer"
@@ -220,6 +277,10 @@ def capture_customer_location():
         directory = output / "customer-location" / permission_state
         directory.mkdir(parents=True, exist_ok=True)
         run(adb + ["shell", "pm", "clear", pkg])
+        provision_real_map(pkg)
+        if os.environ.get("QG_DEBUG_MAP_ARCHIVE") == "1":
+            # Emulator GPS stays within the real archive; never changes a user address.
+            run(adb + ["emu", "geo", "fix", "103.0994795", "14.9918756"])
         if permission_state == "allowed":
             for permission in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"):
                 run(adb + ["shell", "pm", "grant", pkg, "android.permission." + permission])
@@ -239,16 +300,9 @@ def capture_customer_location():
             raise AssertionError("Actual Customer location picker crashed on open")
         nodes = read_ui(directory / "picker.xml")
         if permission_state == "denied":
-            # Current QueueGo picker asks Android permission only after the explicit
-            # GPS action. Opening the picker itself must not prompt.
-            gps_action = next((n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน"), None)
-            assert gps_action is not None, "GPS action missing before permission request"
-            gb = [int(x) for x in re.findall(r"\d+", gps_action.get("bounds", ""))]
-            run(adb + ["shell", "input", "tap", str((gb[0]+gb[2])//2), str((gb[1]+gb[3])//2)])
-            nodes = wait_ui(directory / "permission.xml", lambda ns: any(
-                n.get("resource-id", "").endswith("permission_deny_button") for n in ns))
+            nodes = customer_location_permission_nodes(nodes, directory)
             deny = next((n for n in nodes if n.get("resource-id", "").endswith("permission_deny_button")), None)
-            assert deny is not None, "Expected actual Android location permission request after GPS action"
+            assert deny is not None, "Expected actual Android location permission request"
             b = [int(x) for x in re.findall(r"\d+", deny.get("bounds", ""))]
             run(adb + ["shell", "input", "tap", str((b[0]+b[2])//2), str((b[1]+b[3])//2)])
         time.sleep(20)
@@ -668,6 +722,7 @@ def verify_three_role_system_kill_recovery():
 
         # Emulator-only clean state. No Production account/order/data mutation.
         run(adb + ["shell", "pm", "clear", pkg])
+        provision_real_map(pkg)
         run(adb + ["logcat", "-b", "all", "-c"])
         started = run(
             adb + ["shell", "am", "start", "-W", "-n", component_name],
@@ -699,7 +754,31 @@ def verify_three_role_system_kill_recovery():
         )
         (directory / "trim-complete.txt").write_text(trim_complete.stdout + trim_complete.stderr)
         run(adb + ["shell", "am", "kill", pkg])
-        time.sleep(1)
+
+        # ActivityManager kill is asynchronous and on some AOSP emulator builds a
+        # WebView/renderer binding can keep the debuggable app process alive even
+        # after HOME + COMPLETE trim. Poll first. If it is still alive, deliver
+        # SIGKILL as the app UID via run-as. This models abrupt LMK/process death
+        # without force-stop semantics, so the subsequent start still exercises
+        # ordinary cold recreation rather than Android's stopped-package state.
+        kill_mode = "am-kill"
+        kill_deadline = time.time() + 5
+        remaining = package_pids_optional(pkg)
+        while remaining and time.time() < kill_deadline:
+            time.sleep(0.25)
+            remaining = package_pids_optional(pkg)
+        if remaining:
+            kill_mode = "run-as-sigkill"
+            for pid in remaining:
+                subprocess.run(
+                    adb + ["shell", "run-as", pkg, "kill", "-9", str(pid)],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+            kill_deadline = time.time() + 5
+            while package_pids_optional(pkg) and time.time() < kill_deadline:
+                time.sleep(0.25)
 
         dead = subprocess.run(
             adb + ["shell", "pidof", pkg],
@@ -707,8 +786,10 @@ def verify_three_role_system_kill_recovery():
             text=True,
             timeout=15,
         )
-        (directory / "after-kill-pid.txt").write_text(dead.stdout + dead.stderr)
-        assert not dead.stdout.strip(), f"{role} process did not die after background am kill"
+        (directory / "after-kill-pid.txt").write_text(
+            "mode=" + kill_mode + "\n" + dead.stdout + dead.stderr
+        )
+        assert not dead.stdout.strip(), f"{role} process did not die after system-style abrupt kill"
 
         relaunched = run(
             adb + ["shell", "am", "start", "-W", "-n", component_name],
@@ -759,6 +840,7 @@ def verify_three_role_system_kill_recovery():
             "running_critical_trim_exit": trim_running.returncode,
             "complete_trim_exit": trim_complete.returncode,
             "background_am_kill": "PASS",
+            "kill_mode": kill_mode,
             "cold_relaunch": "PASS",
             "fatal_exception": False,
             "physical_device": False,
@@ -868,6 +950,7 @@ def verify_real_home_map_runtime():
     run(adb + ["shell", "wm", "density", "440"])
     run(adb + ["shell", "am", "force-stop", package])
     run(adb + ["install", "-r", str(apk)])
+    provision_real_map(package)
     run(adb + ["install", "-r", str(test_apk)])
     # Clear only generated evidence so a partial run cannot retain stale frames.
     run(adb + ["shell", "run-as", package, "rm", "-rf", "files/map-runtime"])
@@ -1009,7 +1092,7 @@ def verify_navigation_location_foreground_runtime():
 
 
 def verify_merchant_shop_map_runtime():
-    """Exercise the real Merchant QueueGo map picker when approved runtime hosting exists."""
+    """Exercise the real Merchant QueueGo map picker with a real map source."""
     if not queuego_map_runtime_configured():
         record_map_runtime_blocked("merchant-shop-map")
         return
@@ -1018,6 +1101,7 @@ def verify_merchant_shop_map_runtime():
     test_apk = repo / "native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk"
     runner = "com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner"
     run(adb + ["install", "-r", str(apk)])
+    provision_real_map(pkg)
     run(adb + ["install", "-r", str(test_apk)])
     directory = output / "merchant-shop-map"
     directory.mkdir(parents=True, exist_ok=True)
@@ -1043,8 +1127,65 @@ def verify_merchant_shop_map_runtime():
         print("QUEUEGO_MERCHANT_SHOP_MAP_PASS " + state)
 
 
+
+def assert_navigation_location_lifecycle(full_log, granted, viewport):
+    """Validate real foreground-location ownership without counting stale prior-scope teardown."""
+    cycles = full_log.count("lifecycle_stress_cycle=")
+    assert cycles >= 8, "Activity lifecycle stress was not exercised: " + viewport
+    if granted:
+        # A force-stop from the prior viewport can emit its final onDestroy/stop
+        # after logcat has been cleared. Fence ownership at this scope's first
+        # foreground start; then require exact start/stop balance from there.
+        first_start = full_log.find("foreground_updates_started")
+        assert first_start >= 0, "Foreground location service never started: " + viewport
+        owned_log = full_log[first_start:]
+        starts = owned_log.count("foreground_updates_started")
+        stops = owned_log.count("foreground_updates_stopped")
+        # The foreground service intentionally survives CREATED/RESUMED transitions.
+        # It restarts for ActivityScenario.recreate(), then must clean up at close.
+        assert starts >= 2, "Foreground location service did not restart after recreate: " + viewport
+        assert stops == starts, "Foreground location service cleanup imbalance: " + viewport
+    else:
+        starts = full_log.count("foreground_updates_started")
+        stops = full_log.count("foreground_updates_stopped")
+        assert starts == 0 and stops == 0, "Location service ran without permission: " + viewport
+    return starts, stops, cycles
+
+def run_map_instrumentation_with_live_gps(instrument, gps_fix):
+    """Run Rider instrumentation and inject emulator GPS only after location subscription starts."""
+    if gps_fix is None:
+        return run(instrument, capture_output=True, text=True, timeout=210)
+    process = subprocess.Popen(instrument, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        deadline = time.monotonic() + 45
+        started = False
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                break
+            probe = subprocess.run(
+                adb + ["logcat", "-d", "-s", "QueueGoNavLocation:I"],
+                capture_output=True, text=True, timeout=15, check=False
+            )
+            if "foreground_updates_started" in probe.stdout:
+                started = True
+                break
+            time.sleep(0.25)
+        assert started, "Rider foreground location subscription did not start before GPS injection"
+        # Repeat the emulator fix after subscription so FusedLocationProvider receives
+        # a genuinely fresh measurement rather than relying on a pre-start lastLocation.
+        for _ in range(3):
+            run(adb + ["emu", "geo", "fix", str(gps_fix[0]), str(gps_fix[1])])
+            time.sleep(0.35)
+        stdout, stderr = process.communicate(timeout=210)
+        return subprocess.CompletedProcess(instrument, process.returncode, stdout, stderr)
+    except Exception:
+        process.kill()
+        process.wait(timeout=15)
+        raise
+
+
 def capture_map_display_only():
-    """Capture actual QueueGo map frames only when approved runtime hosting is configured."""
+    """Capture actual QueueGo map frames from real debug tiles or approved HTTPS hosting."""
     if not queuego_map_runtime_configured():
         record_map_runtime_blocked("rider-map-display")
         return
@@ -1057,8 +1198,8 @@ def capture_map_display_only():
     evidence = []
     for viewport, dimensions, density, granted, gps_fix in (
         ("phone-denied", "1080x2280", "440", False, None),
-        ("phone-allowed", "1080x2280", "440", True, (100.612345, 13.712345)),
-        ("large-allowed", "1600x2560", "240", True, (100.632345, 13.732345)),
+        ("phone-allowed", "1080x2280", "440", True, (103.0994795, 14.9918756)),
+        ("large-allowed", "1600x2560", "240", True, (103.1300059, 15.0088319)),
     ):
         directory = output / viewport
         directory.mkdir(exist_ok=True)
@@ -1071,18 +1212,16 @@ def capture_map_display_only():
                 adb + ["shell", "pm", command, package, "android.permission." + permission],
                 capture_output=True, text=True, timeout=15, check=False
             )
-        if gps_fix is not None:
-            run(adb + ["emu", "geo", "fix", str(gps_fix[0]), str(gps_fix[1])])
-            time.sleep(1)
         run(adb + ["logcat", "-b", "all", "-c"])
         instrument = adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
                             "com.queuego.rider.RiderMapRuntimeTest",
                             "-e", "allowIncompleteTiles", "true"]
         if gps_fix is not None:
             instrument += ["-e", "expectedLongitude", str(gps_fix[0]),
-                           "-e", "expectedLatitude", str(gps_fix[1])]
+                           "-e", "expectedLatitude", str(gps_fix[1]),
+                           "-e", "allowDebugStoreInjection", "true"]
         instrument += ["com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"]
-        result = run(instrument, capture_output=True, text=True, timeout=210)
+        result = run_map_instrumentation_with_live_gps(instrument, gps_fix)
         (directory / "instrumentation.txt").write_text(result.stdout + result.stderr)
         print("QUEUEGO_MAP_INSTRUMENTATION " + viewport + "\n" + result.stdout + result.stderr)
         full_log = run(adb + ["logcat", "-d", "-v", "threadtime"], capture_output=True, text=True).stdout
@@ -1090,12 +1229,9 @@ def capture_map_display_only():
         if "OK (1 test)" not in result.stdout:
             print("QUEUEGO_MAP_FAILURE_LOG\n" + full_log[-24000:])
         assert "OK (1 test)" in result.stdout, "Actual map mount/lifecycle test failed: " + viewport
-        starts = full_log.count("foreground_updates_started")
-        stops = full_log.count("foreground_updates_stopped")
-        if granted:
-            assert starts >= 3 and stops >= 3, "Foreground location lifecycle was not exercised: " + viewport
-        else:
-            assert starts == 0, "Location updates started without permission"
+        starts, stops, cycles = assert_navigation_location_lifecycle(full_log, granted, viewport)
+        print("QUEUEGO_NAV_LOCATION_LIFECYCLE " + viewport +
+              " starts=" + str(starts) + " stops=" + str(stops) + " cycles=" + str(cycles))
         runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
         (directory / "android-runtime.txt").write_text(runtime)
         assert_no_package_crash(package, directory / "crash-buffer.txt")
@@ -1166,6 +1302,7 @@ with (output / "emulator.log").open("w") as log:
             assert time.monotonic() < deadline, "Android boot timed out; no Native screenshot certified"
             time.sleep(5)
         run(adb + ["install", "-r", str(apk)])
+        provision_real_map(package)
         run(adb + ["logcat", "-b", "all", "-c"])
         if os.environ.get("QG_CUSTOMER_LOCATION_ONLY") == "1":
             capture_customer_location()

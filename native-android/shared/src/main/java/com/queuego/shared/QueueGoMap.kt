@@ -3,6 +3,8 @@ package com.queuego.shared
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
+import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,7 +66,15 @@ fun queueGoMapServiceBaseUrl(context: Context): String? = runCatching {
         ?.takeIf { it.startsWith("https://") }
 }.getOrNull()
 
+private fun queueGoDebugMapArchive(context: Context): File? = queueGoDebugMapArchive(
+    context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0,
+    File(context.filesDir, "queuego-ci-buriram.pmtiles")
+)
+
 fun queueGoMapVectorSourceUri(context: Context): String? {
+    // Only adb run-as on a debuggable APK can provision this real-data CI archive.
+    // Release builds continue to require the configured HTTPS service.
+    queueGoDebugMapArchive(context)?.let { return "pmtiles://file://${it.absolutePath}" }
     val base = queueGoMapServiceBaseUrl(context) ?: return null
     val origin = if (base.endsWith("/map-api")) base.removeSuffix("/map-api") else base
     return "pmtiles://$origin/map-api/vector.pmtiles"
@@ -403,11 +413,11 @@ fun QgLocationPickerMap(
                             map.cameraPosition = CameraPosition.Builder()
                                 .target(
                                     LatLng(
-                                        start?.latitude ?: 15.0,
-                                        start?.longitude ?: 101.0
+                                        start?.latitude ?: if (queueGoDebugMapArchive(ctx) != null) 14.9918756 else 15.0,
+                                        start?.longitude ?: if (queueGoDebugMapArchive(ctx) != null) 103.0994795 else 101.0
                                     )
                                 )
-                                .zoom(if (start != null) 16.0 else 6.0)
+                                .zoom(if (start != null || queueGoDebugMapArchive(ctx) != null) 16.0 else 6.0)
                                 .build()
                             map.addOnCameraIdleListener {
                                 if (holder.destroyed) return@addOnCameraIdleListener

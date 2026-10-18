@@ -543,3 +543,88 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Native exact-source run3366 / `39105592051` IN PROGRESS; at checkpoint four independent PostgreSQL races + MapLibre runtime SUCCESS, remaining Android gates still running. Parent945 run3365 /39105171245 has7/8 SUCCESS with final launch/voice lifecycle pending.
 - Map Engine146 / `39104879637` on cefb6bb8 SUCCESS complete: real OSM graph/restrictions, blocked-network browser, offline package/rollback, container/staging/report. Newer945 Map148 /39105174576 is still fetching pinned external OSM; do not substitute the earlier result for an exact945 result. QueueGo map engine/map-view source is unchanged by the planner successor.
 - NEXT: obtain final exact d371 Native result and record any first failure. Physical/device/signing/provider/hosting/cutover gates remain BLOCKED as detailed above; generalized live3–5 claim/pricing remains blocked on versioned allocation plus standalone financial/quality and atomic concurrent claim tests. Concrete commercial proposal is in docs/ROUTE-BUNDLE-PHASE2-FINANCIAL-AUDIT.md; owner can accept that exact rule or specify a different split/funding rule. No live capacity/price/Production change occurred.
+
+### 2026-10-18 real offline map CI reconciliation
+- Parent: PR433 docs successor `25c3f1b10c6ea1e28449191dae0665c96dc3be2b`; evidence: d371 map-display job succeeded while Customer permission/draft, Merchant and Rider scopes recorded BLOCKED because public HTTPS runtime was empty.
+- Reconciled existing unpublished `294a47b3` debug real-Buriram provisioner with the current crash guards, rather than replacing newer map code. Only the existing 45-minute map-display step opts in. It downloads pinned real release PMTiles, verifies host/device SHA256, copies via debug-only adb run-as, and records source metadata explicitly denying routing/public/physical certification.
+- Shared chooser requires FLAG_DEBUGGABLE and PMTiles v3 header; release still requires HTTPS configuration. Real-map opt-in cannot emit BLOCKED success. Existing pixel, pan, process and draft checks remain unchanged; emulator location/camera stays within actual Buriram coverage.
+- Local PASS: provisioner 5 tests; Native source273, stability106, integration68, Actions pinning94, navigation module/runtime budget/MapLibre contracts; Python syntax and diff whitespace. New Kotlin guard JUnit is included for CI but no local Gradle/emulator exists.
+- Status: IN PROGRESS runtime gate. NEXT: integrated exact-head CI must actually execute Customer denied/allowed/draft, Merchant and Rider tile/lifecycle scopes using verified archive; fix first real failure. Public hosting, physical GPS/roads, signing/Play and Production remain BLOCKED separately. No Production mutation/publication.
+
+### 2026-10-18 strict real-map first actual failure
+- Parent/source `f5fef7dec5fa31cf7eac6798ff0e1b436e8ff35a`, PR434; Native3367 / Actions39106411488 map-display job117613098748: actual Kotlin/instrumentation compile PASS, real archive host/device provisioning PASS, runtime FAIL at `GPS action missing before permission request`.
+- Evidence: artifact12129185048 `customer-location/denied/picker.xml` contains Android permissioncontroller dialog and DENY/WHILE USING THE APP controls, with no app GPS control while dialog owns screen. CustomerLocationPicker already automatically calls requestGps after mapReady +150ms. Previous harness incorrectly required an explicit app GPS tap first; real offline rendering exposed that obsolete assumption.
+- Bounded fix changes capture harness only: with real/configured map wait for actual automatic Android permission dialog; without configured map retain explicit GPS action. Actual deny, pixels, pan, resume, draft/process and all later scopes remain required. App source, permission behavior and release guard unchanged.
+- PASS: actual extracted provision/permission harness8 tests (includes observed permission-dialog shape, missing dialog rejection and explicit no-runtime path), stability106, Native source273, Python syntax, whitespace.
+- Status: IN PROGRESS exact-head runtime. NEXT: publish strict descendant and inspect first actual runtime failure/new exact-head map result; do not label denied/allowed/draft/Merchant/Rider runtime complete before evidence. No Production/public hosting/signing/physical certification.
+
+
+### 2026-10-18 strict real-map second actual failure — foreground lifecycle evidence
+- Exact parent `538cd8d09e26d139c270fad0f1a850387a311972`, Native run3368 / Actions39106933295, map-display job117614776109: Customer real-map scopes and Merchant allowed/denied progressed; Rider phone-denied PASS, Rider phone-allowed instrumentation PASS with injected GPS camera verified, then harness failed at obsolete `starts >= 3 && stops >= 3`.
+- Artifact12129191548 proves the actual lifecycle: phone-allowed logged 8 Activity CREATED/RESUMED stress cycles while the foreground location service stayed alive, then one stop/start across `scenario.recreate()`, and final cleanup — exactly 2 starts / 2 stops. Denied scope logged 0/0. Requiring 3 restarts incorrectly treated foreground-service survival as failure.
+- Fix: capture gate now requires >=8 Activity stress cycles, >=2 starts for permitted scope, and balanced start/stop cleanup; denied scope requires 0/0. Added isolated regression cases for recreate restart, cleanup imbalance and denied permission. App/service behavior is unchanged.
+- Status: source fix checkpoint ready; exact-head Native CI required. NEXT: run real-map gate again and fix the next first actual runtime failure only. Physical road/GPS acceptance, public HTTPS hosting, signing/Play and Production remain separate BLOCKED gates.
+
+
+### 2026-10-18 strict real-map third actual failure — deterministic final FGS cleanup
+- Exact `f9bd7e9c` Native3369 / Actions39107754467: 7/8 jobs SUCCESS; only map-display job117617178719 failed. Artifact12129575823 phone-allowed proves 8 lifecycle stress cycles, 2 foreground location starts and 1 stop: first stop/start occurred at Activity recreate, but the test ended while the restarted service was intentionally still alive.
+- The harness correctly requires balanced cleanup, so the fix is in instrumentation rather than weakening the gate. `RiderMapRuntimeTest` now explicitly calls `RiderNavigationLocationService.stop(targetContext)` after ActivityScenario closes and waits 750 ms for service onDestroy/log evidence.
+- This is test-only cleanup; Rider production lifecycle/service behavior is unchanged. Expected exact-head evidence is 2 starts / 2 stops for allowed and 0 / 0 for denied, with all existing tile/camera/crash checks retained.
+- NEXT: exact descendant CI must make map-display green. Public HTTPS hosting, physical GPS/real-road acceptance, signing/Play and Production remain separate BLOCKED gates.
+
+
+### 2026-10-18 strict real-map fourth actual failure — post-subscription GPS handshake
+- Exact `8450cce9` Native3374 map-display reached the large-allowed scope and failed GPS camera assertion: expected 103.1300059 / 15.0088319, actual camera remained at the persisted/fallback 103.0994795 / 14.9918756. This proves the prior phone-allowed scope was not sufficient because its injected point intentionally matched the fallback camera.
+- Root cause is a CI timing race: emulator `geo fix` was injected before Rider instrumentation/location subscription started, while the production fresh-location request requires a post-start measurement; large-allowed exposed the missing fresh callback.
+- Fix keeps production location policy unchanged. Allowed map instrumentation now runs concurrently, waits for the real `foreground_updates_started` log, injects the requested GPS fix three times after subscription, and the Android test independently waits up to 30s until `RiderNavigationLocationStore` contains that exact fix before recenter/camera assertions.
+- Added source regression ensuring the map capture no longer pre-injects GPS before instrumentation. Existing lifecycle, camera continuity, tile, crash and explicit FGS cleanup gates remain intact.
+- NEXT: exact-head map CI; require phone-allowed and large-allowed to log `injected_gps_store_verified` + `injected_gps_camera_verified`. Public HTTPS hosting and physical road/GPS acceptance remain separate BLOCKED release gates.
+
+
+### 2026-10-18 real-map fourth actual failure — AOSP emulator has no Google Play location provider
+- Exact Map HEAD `95692e4e`, Native3381/map-display job117622313292: real QueueGo/MapLibre scopes reached Rider phone-allowed after the foreground service logged `foreground_updates_started`, but the test failed waiting for the expected location-store fix. Logcat repeatedly reports `GooglePlayServicesUtil ... requires the Google Play Store, but it is missing`, `SERVICE_INVALID`, and `fresh_location_unavailable`.
+- This is a CI device capability boundary, not a renderer or production FGS crash: navigation-map-runtime, MapLibre runtime, continuous-dispatch, credit, Ride and Express jobs are green. The AOSP emulator accepts `adb emu geo fix`, but its missing GMS FusedLocationProvider cannot deliver that measurement to the app.
+- Fix is androidTest-only: permitted GPS scopes still start the real foreground location service and first wait for a provider-delivered fix; only when explicit instrumentation flag `allowDebugStoreInjection=true` is present and no provider fix arrives within 3 seconds does the test publish the expected Buriram point into the internal navigation store. Camera/render/lifecycle/recreate/cleanup assertions remain real. Production `RiderNavigationLocationService` is unchanged.
+- Added source guard proving the fallback exists only in androidTest/capture harness and is not present in production service. Physical-device GPS/GMS accuracy and real-road acceptance remain BLOCKED and are not certified by this emulator fallback.
+- NEXT: exact-head real-map CI; inspect the next first runtime failure only.
+
+
+### 2026-10-18 no-GMS recreate location-store continuity
+- Follow-up to the CI-only GPS fallback: the prior lifecycle evidence proves `scenario.recreate()` restarts the navigation foreground service, whose production `onDestroy()` correctly clears the location store.
+- Android instrumentation now requires a fresh expected fix after recreate and explicitly recenters before capturing the recreated real-map frame. On a GMS-capable device this still prefers the real provider; on the explicit no-GMS CI scope it reuses the androidTest-only store fallback.
+- Production service/location behavior remains unchanged; physical GPS/GMS certification remains a separate gate.
+
+
+### 2026-10-18 Native3391 process-death harness correction
+- Exact Map HEAD `89f1a556` run3391: map-display-only SUCCESS, MapLibre/navigation/race jobs SUCCESS; native-pilot failed only in three-role system-kill recovery because Customer remained alive one second after asynchronous `am kill`.
+- Harness now polls `am kill` for up to 5 seconds. If a debuggable AOSP emulator process remains bound (for example by WebView), the test sends SIGKILL through `run-as <package>` as the same app UID, then verifies the process is actually gone before cold relaunch.
+- This intentionally avoids `am force-stop`: force-stop changes package stopped-state semantics and would not represent Android LMK/process recreation. Production Customer/Merchant/Rider code is unchanged.
+- Evidence records whether `am-kill` or `run-as-sigkill` was required. Release still needs physical OEM process-recreation evidence; emulator harness is not a physical certification.
+- NEXT: exact-head Native Pilot; fix only the next real failure.
+
+
+### 2026-10-18 Native3395 harness syntax correction
+- Exact Map HEAD `749f3f73` Native3395 failed before Android build at Python parse line 743: the new system-kill harness had a one-character typo `pkg"]`.
+- Corrected only that list terminator to `pkg])`. No app/runtime logic changed.
+- NEXT: exact-head CI and then process-death runtime evidence.
+
+
+### 2026-10-18 Map3397 stale prior-scope cleanup fencing
+- Exact `e1004229` map-display artifact proves current `large-allowed` process PID4542 started location twice and stopped twice. The harness nevertheless counted 2/3 because a delayed `foreground_updates_stopped` from prior phone-allowed PID4328 landed after logcat clear and before the new scope's first start.
+- Lifecycle evidence now fences the granted scope at its first `foreground_updates_started` marker and requires exact start/stop balance from that point forward. It still requires >=2 starts (recreate exercised) and exact cleanup equality; no production service behavior or acceptance threshold is weakened.
+- Denied scopes remain strict 0 starts / 0 stops.
+- NEXT: exact-head Map CI.
+
+
+### 2026-10-18 Native3401 process-death pidof semantics
+- Exact Map HEAD `5efd473d` run3401: map-display-only, MapLibre runtime, navigation runtime, Ride/Express/Credit/Dispatch races all SUCCESS. Native Pilot completed source regression then failed only because `package_pids()` called the strict `run(check=True)` wrapper; Android `pidof` exit 1 means the process is already dead, which is the expected process-death condition.
+- `package_pids(pkg, required=True)` now uses non-throwing `subprocess.run(..., check=False)`. Existing callers remain strict by default; only system-kill polling passes `required=False`.
+- Production app code is unchanged. No force-stop semantics introduced. Physical OEM process-recreation evidence remains a separate release gate.
+- NEXT: exact-head Native Pilot and Map display lifecycle.
+
+
+### 2026-10-18 Native3402 preserve strict PID evidence contract
+- Exact Map HEAD `6404f42f` Native3402 failed in `tests/native-android-source.cjs` before emulator capture because the established static contract requires strict resolver signature `def package_pids(pkg: str)`.
+- Kept that strict resolver unchanged in name/signature and added separate non-throwing `package_pids_optional(pkg: str)` only for expected process-death polling. Strict runtime crash evidence still asserts that live QueueGo process IDs resolve before PID-scoped AndroidRuntime collection.
+- No acceptance threshold, app runtime, force-stop behavior or Production state changed.
+- NEXT: exact-head Native Pilot; runtime process-death path must now be reached.

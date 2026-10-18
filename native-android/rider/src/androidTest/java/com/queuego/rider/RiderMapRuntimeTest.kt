@@ -4,12 +4,15 @@ import android.graphics.Bitmap
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import android.os.Process
+import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.json.JSONObject
+import com.queuego.ridernavigationmap.NavigationMapFix
+import com.queuego.ridernavigationmap.NavigationMapPoint
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -24,6 +27,7 @@ class RiderMapRuntimeTest {
                 assertTrue("QueueGo MapLibre did not create the actual native map", ready!!.await(30, TimeUnit.SECONDS))
             }
             awaitRealMap()
+            awaitExpectedGpsFix()
             scenario.onActivity { it.recenterMap() }
             val initialCamera = captureRealFrame("initial", scenario)
             assertExpectedGpsCamera(initialCamera)
@@ -44,10 +48,24 @@ class RiderMapRuntimeTest {
             assertExpectedGpsCamera(resumedCamera)
             scenario.recreate()
             awaitRealMap()
+            // Recreate restarts the navigation foreground service; its onDestroy
+            // intentionally clears the store, so require a fresh provider/debug
+            // test fix before asserting the recreated camera.
+            awaitExpectedGpsFix()
+            scenario.onActivity { it.recenterMap() }
             val recreatedCamera = captureRealFrame("recreated", scenario)
             assertSameCamera(initialCamera, recreatedCamera)
             assertExpectedGpsCamera(recreatedCamera)
         }
+        // ActivityScenario intentionally exercises a location foreground service
+        // that survives ordinary CREATED/RESUMED transitions. End the test by
+        // explicitly stopping that service so cleanup/onDestroy is deterministic
+        // evidence rather than depending on instrumentation process teardown.
+        RiderNavigationLocationService.stop(
+            InstrumentationRegistry.getInstrumentation().targetContext
+        )
+        Thread.sleep(750)
+        Log.i("QueueGoMapRuntime", "explicit_location_cleanup_requested")
         Log.i("QueueGoMapRuntime", "completed_pid=${Process.myPid()}")
     }
 
@@ -82,6 +100,47 @@ class RiderMapRuntimeTest {
         assertEquals("Actual SDK longitude jumped", expected[0], actual[0], 0.0001)
         assertEquals("Actual SDK latitude jumped", expected[1], actual[1], 0.0001)
         assertEquals("Actual SDK zoom changed", expected[2], actual[2], 0.0)
+    }
+
+    private fun awaitExpectedGpsFix() {
+        val args = InstrumentationRegistry.getArguments()
+        val expectedLongitude = args.getString("expectedLongitude")?.toDoubleOrNull() ?: return
+        val expectedLatitude = args.getString("expectedLatitude")?.toDoubleOrNull() ?: return
+        val allowDebugStoreInjection = args.getString("allowDebugStoreInjection") == "true"
+
+        fun matchesExpected(): Boolean {
+            val fix = RiderNavigationLocationStore.fix.value ?: return false
+            return kotlin.math.abs(fix.point.longitude - expectedLongitude) <= 0.002 &&
+                kotlin.math.abs(fix.point.latitude - expectedLatitude) <= 0.002
+        }
+
+        // Prefer the real foreground FusedLocationProvider path whenever the
+        // emulator/device provides Google Play services. The CI AOSP emulator
+        // intentionally has no Play Store, so its provider cannot consume
+        // "adb emu geo fix" even though the foreground service is alive.
+        val providerDeadline = System.currentTimeMillis() +
+            if (allowDebugStoreInjection) 3_000L else 30_000L
+        while (System.currentTimeMillis() < providerDeadline && !matchesExpected()) {
+            Thread.sleep(100)
+        }
+
+        if (!matchesExpected() && allowDebugStoreInjection) {
+            RiderNavigationLocationStore.publish(
+                NavigationMapFix(
+                    point = NavigationMapPoint(expectedLatitude, expectedLongitude),
+                    accuracyMeters = 1f,
+                    speedMetersPerSecond = 0f,
+                    elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+                )
+            )
+            Log.i("QueueGoMapRuntime", "debug_store_fix_injected_no_play_services")
+        }
+
+        assertTrue(
+            "Rider foreground location pipeline did not receive the expected GPS fix",
+            matchesExpected()
+        )
+        Log.i("QueueGoMapRuntime", "injected_gps_store_verified")
     }
 
     private fun assertExpectedGpsCamera(actual: DoubleArray) {

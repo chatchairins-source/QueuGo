@@ -253,6 +253,7 @@ internal fun QueueGoRiderNavigationMap(
     demandZones: List<RiderDemandZone> = emptyList(),
     recenterSignal: Int,
     overviewSignal: Int = 0,
+    fallbackCamera: NavigationMapCamera? = null,
     viewportInsets: NavigationViewportInsets = NavigationViewportInsets(),
     onMapReady: (Boolean) -> Unit,
     onGuidance: (NavigationGuidanceState) -> Unit = {}
@@ -282,7 +283,7 @@ internal fun QueueGoRiderNavigationMap(
             }
             camera to mode
         }
-        initialCamera = restored.first
+        initialCamera = restored.first ?: fallbackCamera
         initialViewMode = restored.second
         persistenceHydrated = true
     }
