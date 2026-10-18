@@ -10,7 +10,7 @@ const fetcher=async(url,options)=>{
  throw Error('unexpected RPC '+name);
 };
 const result=await refreshRouteMatrices('https://backend.invalid',{},fetcher,async pair=>{produced.push(pair);return new Response('{}',{status:200});},{includeStack:true});
-eq(result,{refreshed:1,failed:0,busyOrDisabled:false});
+eq(result,{refreshed:1,failed:0});
 eq(produced,[{action:'stack',quoteAfterCache:true,primaryOrderId:'00000000-0000-4000-8000-000000000070',candidateOrderId:'00000000-0000-4000-8000-000000000072'}]);
 eq(calls,['queuego_route_matrix_refresh_claim','queuego_route_bundle_stack_refresh_claim','queuego_route_matrix_refresh_release']);
 console.log(JSON.stringify({checks,failures:0,scope:'existing bounded refresh worker processes generalized stack discovery through the same lease/release authority'}));

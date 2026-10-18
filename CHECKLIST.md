@@ -811,3 +811,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Root cause: the handler fixture still modeled an ACTIVE bundle with `bundleId/routeRevision` but `lockedNext=null`. The hardened planner intentionally fails closed unless an active bundle supplies its authoritative committed next stop.
 - Fixture now binds `lockedNext='O0P'` to `{order_id:A,kind:'pickup'}`, matching its existing point map and expected pickup-first route. Runtime planner/handler/claim logic is unchanged.
 - NEXT: exact-head CI; continue only from the next actual failure.
+
+
+### 2026-10-18 Native3408 refresh-worker legacy return-shape alignment
+- Exact Route Bundle HEAD `aa9f64ba` passed staged claim `43/0`, handler quote `19/0` and stack discovery `10/0`, then failed only in the new refresh-worker fixture.
+- Established `refreshRouteMatrices` compatibility intentionally returns `{refreshed,failed}` whenever any lease is claimed; `busyOrDisabled:true` exists only when no work/lease is claimed. It never returns `busyOrDisabled:false` on the legacy success shape.
+- Updated only the generalized refresh-worker expectation to `{refreshed:1,failed:0}`. Runtime helper behavior and backward compatibility remain unchanged.
+- NEXT: exact-head CI; continue from the next actual failure only.
