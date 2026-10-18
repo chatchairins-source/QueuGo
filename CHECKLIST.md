@@ -456,3 +456,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Finding: Buriram Map Engine source is already present in the unified release tree, but its dedicated workflow only auto-ran on `work-map-roadgraph-buriram-*`; final release successors could therefore change shared `map-view/**` code without obtaining the full OSM/Valhalla/browser/offline-package/container gate on the same HEAD.
 - Change: final `work-native-release-unified-*` pushes now select the existing Map Engine workflow. External Actions are pinned to reviewed 40-hex commits; `tests/github-actions-pinning.cjs` now includes this workflow and reviewed `actions/setup-python@v5` SHA `a26af69be951a213d495a4c3e4e4022e16d87065`.
 - NEXT: require exact-head Native Pilot plus QueueGo Map Engine Buriram CI on the new successor. Production map hosting, physical GPS/road validation, signed AAB/Closed Testing and Production cutover remain BLOCKED.
+
+
+### 2026-10-18 Route Bundle Phase 2 read-only planner
+- Parent SQL-gate HEAD: `384b82e32a87d7e9950f043fd0f57bd0271cc92f`; Full QueueGo regression on run 3362 reached SUCCESS before this child was created, including the isolated PGlite execution of the Phase 2 stack cache.
+- Added a pure stack planner for 2–5 Orders / up to 10 pending stops using only cached exact road edges. Policy remains pickup-first: all pending pickups precede all dropoffs; already-picked Orders omit their pickup stop.
+- Added service-role-only stable `queuego_route_bundle_stack_plan_input` that returns only unexpired cache rows whose exact Order revisions/status/ownership still match. No authenticated/anonymous grant.
+- Edge `action=plan` reads that RPC and does not require/call the routing provider; it performs no cache write, claim, assignment, repricing, payout or feature change.
+- Safety remains unchanged: live `queuego_claim_route_bundle` untouched, `route_bundle.max_orders` unchanged at existing default/cap 2, Saver/continuous-dispatch enablement unchanged, no Production mutation.
+- NEXT: require exact-head planner CI and isolated planner/PGlite tests. Only after green may a separate pricing/claim successor consume the read-only plan.
