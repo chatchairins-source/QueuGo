@@ -414,3 +414,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - QueueGo navigation keeps `ridePickup` / `rideDropoff` stages distinct; no merchant/photo proof flow is introduced.
 - Source validation through connector: `rider/rider-ride.js` syntax PASS; static gate 8/8 PASS.
 - NEXT: after Native exact-head run 3349 closes green, merge this Web Ride successor (which includes Express Web) into PR #425 and require one exact-head CI run over Web + Native together. No Production mutation.
+
+
+### 2026-10-18 final six-lane integration successor
+- Parent release successor: `67fbacdd602afe52aa88aaf9aaedb494eae0f402`; exact-head Native Pilot run 3351 / 39098238573 SUCCESS: Express/Credit/Passenger Ride/Continuous Dispatch races PASS, Full QueueGo regression PASS, Android unit tests PASS, three APK build PASS, 16 KB packaging PASS, emulator launch/map/voice evidence PASS.
+- Laundry parent: `0c5f91b9f7014e1928bc33d08c124e5be619e8f9`, run 3341 SUCCESS. General Rider Laundry pool/invite state is retired; Merchant shop-managed staff pickup/return flow is retained. Production deployment of the shop-managed SQL remains BLOCKED until controlled migration review/acceptance.
+- Grocery parent: `9fc5f81f82bfbab351dfd2db94486a3ef65f86b5`, run 3342 SUCCESS. Merchant Web/Native no longer hotlink source/review-only image URLs; only rights-approved master images may project. Production images remain BLOCKED until identity + reuse-rights evidence exists.
+- Merge policy: keep the newer Express/Ride/Credit/Dispatch/QueueGo Map runtime tree; import Laundry/Grocery successor blobs only where those lanes changed the common base. `QueueGoApi.kt` is hunk-merged to preserve Express/Ride client code while disabling general-Rider Laundry state.
+- NEXT: require exact-head CI on this final merged tree. After source/build CI is green, remaining gates are physical-device GPS/road validation, authenticated Grocery Merchant acceptance, signed AAB/Closed Testing, approved QueueGo Map runtime configuration and controlled Production cutover. No Production mutation in this merge.

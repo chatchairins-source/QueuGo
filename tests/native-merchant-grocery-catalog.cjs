@@ -6,6 +6,7 @@ const api=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/mer
 const app=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt','utf8');
 const products=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt','utf8');
 const screen=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantGroceryCatalogScreen.kt','utf8');
+const source=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantGrocerySource.kt','utf8');
 
 ok(products.includes('shopCategory == "grocery"'),'Grocery Merchant must branch to Grocery-specific add choices');
 ok(products.includes('Text("เพิ่มสินค้าเอง"')&&products.includes('Text("เพิ่มสินค้าจากแคตตาล็อก"'),'Grocery Merchant must expose both manual and master-catalog add actions');
@@ -25,6 +26,7 @@ ok(screen.includes('Text("เพิ่มสินค้าจากแคตต
 ok(screen.includes('Text("ขายหน้าร้าน"')&&screen.includes('Text("เดลิเวอรี่ลูกค้า"'),'Native catalog cards must expose explicit POS and customer Delivery choices');
 ok(screen.includes('GP " + trimCatalogNumber(gpRate)')&&screen.includes('merchantDeliveryPriceFromStore(storePrice, gpRate)'),'Native catalog must preview Delivery price from the existing GP rule');
 ok(screen.includes('QgRemoteImage('),'Native catalog must render centrally supplied product imagery with the shared image component');
+ok(source.includes('val image: String? = null')&&!source.includes('startsWith("https://images.mango-prod.siammakro.cloud/")'),'Native Makro source rows must not hotlink unapproved source imagery');
 ok(screen.includes('remember(item.id, item.productUpdatedAt) { UUID.randomUUID().toString() }'),'Retry-safe request ID must remain stable until the server version changes');
 ok(!screen.includes('ราคาโปร')&&!screen.includes('promo_price'),'Retired Grocery promo-price UI must not return in Native catalog');
 ok(!screen.includes('mock')&&!screen.includes('demo')&&!screen.includes('fake'),'Native Grocery catalog must not ship mock/demo/fake catalog data');
