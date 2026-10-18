@@ -12,6 +12,10 @@ eq(layers.has('route-layer'),true); // source loading must not defer the red fil
 eq(layers.has('route-arrows'),true);
 Q.removeGeoJsonLine(map,'route');eq(layers.has('route-arrows'),false);
 for(const fn of events.get('style.load')||[])fn();eq(layers.has('route-layer'),false);
+const calls=[];
+const camera={getBearing:()=>45,getContainer:()=>({clientHeight:800}),easeTo:x=>calls.push(x)};
+Q.followNavigationCamera(camera,{lat:15,lng:103,bearing:45,speed:8,accuracy:5},[line],{force:true,puckBearing:45});
+eq(calls[0].bearing,45); // route course must not steer away from the shared Rider heading.
 const d=Q.navigationCameraDecision({lat:15.004,lng:103,bearing:0,speed:8,accuracy:5,route:[line]});
 const p=Q.remainingNavigationRoute([line],{lat:15.004,lng:103},{bearing:0,speed:8,accuracy:5});
 eq(p.lines[0][0],[103,15.004]);eq(p.lines[0].length,2);eq(line[0],[103,15]);

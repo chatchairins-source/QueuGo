@@ -6,6 +6,20 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NavigationCameraPolicyTest {
+    @Test fun followCameraUsesFilteredPuckCourseInsteadOfUpcomingRoadBend() {
+        val leg = NavigationRouteSegment("heading", "pickup", listOf(
+            NavigationMapPoint(15.0, 103.0), NavigationMapPoint(15.0, 103.01)
+        ), NavigationRouteStyle.ACTIVE)
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(NavigationMapPoint(15.0, 103.0), bearingDegrees = 45f,
+                accuracyMeters = 5f, speedMetersPerSecond = 8f, bearingAccuracyDegrees = 5f),
+            stops = listOf(NavigationMapStop("pickup", 1, NavigationStopKind.PICKUP, leg.points.last())),
+            routes = listOf(leg), perspectiveCameraEnabled = true
+        )
+        val decision = navigationCameraDecision(state, 45f, followPuckBearing = true)!!
+        assertEquals(45f, decision.bearingDegrees!!, 0.01f)
+    }
+
     private val route = NavigationRouteSegment(
         id = "leg-1",
         toStopId = "shop",

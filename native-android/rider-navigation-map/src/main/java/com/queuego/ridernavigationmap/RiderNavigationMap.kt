@@ -510,7 +510,7 @@ private class RiderNavigationMapHolder {
         lastOverviewSignature = null
         if (!state.followRider) return
         val renderedBearing = activeMap.cameraPosition.bearing.toFloat()
-        val decision = navigationCameraDecision(state, renderedBearing) ?: return
+        val decision = navigationCameraDecision(state, renderedBearing, followPuckBearing = true) ?: return
         val pointChanged = lastCameraPoint == null ||
             navigationHaversineMeters(lastCameraPoint!!, decision.center) >=
             navigationCameraMovementThresholdMeters(state.rider?.speedMetersPerSecond)
