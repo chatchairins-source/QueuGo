@@ -103,6 +103,10 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   const sql=fs.readFileSync('supabase/migrations/20261018083000_route_bundle_stack_quote_claim_staged.sql','utf8');
   assert(sql.includes("pg_advisory_xact_lock")&&sql.includes("for update")&&sql.includes("v_count>v_max"));checks++;
   assert(sql.includes("revoke all on function public.queuego_cache_route_bundle_stack_quote")&&sql.includes("to service_role"));checks++;
+  // migration anti-duplication structural guard
+  eq((sql.match(/create or replace function public\.queuego_cache_route_bundle_stack_quote\(/gi)||[]).length,1);
+  eq((sql.match(/create or replace function public\.queuego_claim_route_bundle_stack\(p_quote_id uuid\)/gi)||[]).length,1);
+  eq((sql.match(/Safety: this migration stages 3-5 quote\/claim machinery only/g)||[]).length,1);
  }finally{await db.close();}
  console.log(JSON.stringify({checks,failures:0,scope:'staged 3-order quote cache + atomic Rider claim, exact revision/rule/membership locks, funding conservation, default max_orders=2 blocks activation'}));
 })().catch(e=>{console.error(e);process.exit(1)});

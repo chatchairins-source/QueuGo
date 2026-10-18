@@ -640,3 +640,8 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Rebuilt the staged quote/claim migration from intact `bacbb461` and re-applied exact route/money binding using callback replacement, so dollar signs are literal SQL text.
 - Pre-commit structural gate: migration length 21425 bytes, exactly 1 quote-cache function, 1 generalized claim function and 1 safety footer; competing-candidate test and `cfc98869` simulator parser fix remain on the branch.
 - No Production mutation; generalized 3–5 claim is still blocked by default/fallback `route_bundle.max_orders=2`.
+
+
+### 2026-10-18 migration anti-duplication executable guard
+- The staged claim regression now asserts exactly one generalized quote-cache function, one generalized claim function and one safety footer, in addition to executing the migration in PGlite.
+- This specifically prevents recurrence of the source-generation `$'` replacement expansion that duplicated the claim body. No business behavior or Production state changes.
