@@ -5,9 +5,13 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  try{
   await db.exec(require('./fixtures/rider-dispatch-schema.cjs')());
   await db.exec("create function auth.role() returns text language sql as 'select coalesce(nullif(current_setting(''test.role'',true),''''),''authenticated'')';");
-  await db.exec("create table qg_private.route_matrix_refresh_lease(singleton boolean primary key default true check(singleton),lease_id uuid,expires_at timestamptz not null default '-infinity');insert into qg_private.route_matrix_refresh_lease(singleton) values(true);");
-  await db.exec(fs.readFileSync('supabase/migrations/20261018060000_route_bundle_multi_stop_matrix_phase2.sql','utf8'));
-  await db.exec(fs.readFileSync('supabase/migrations/20261018090000_route_bundle_stack_refresh_discovery.sql','utf8'));
+  for(const path of [
+   'supabase/migrations/20261014234500_rider_continuous_dispatch_phase1.sql',
+   'supabase/migrations/20261015000356_rider_dynamic_stop_plan_phase1.sql',
+   'supabase/migrations/20261015003035_rider_route_matrix_replenishment_phase1.sql',
+   'supabase/migrations/20261018060000_route_bundle_multi_stop_matrix_phase2.sql',
+   'supabase/migrations/20261018090000_route_bundle_stack_refresh_discovery.sql'
+  ]) await db.exec(fs.readFileSync(path,'utf8'));
   const rider=id(11),bundle=id(80),A=id(70),C=id(71),D=id(72),rev='2026-10-18T00:00:00Z';
   await db.query("insert into orders(id,order_number,rider_id,customer_id,shop_id,status,updated_at,route_bundle_id,route_bundle_sequence,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude) values($1,'QT-A',$2,$3,$4,'ready',$5,$6,1,15,103,15.01,103),($7,'QT-C',$2,$3,$4,'ready',$5,$6,2,15.001,103,15.011,103)",[A,rider,id(60),id(50),rev,bundle,C]);
   await db.query("insert into orders(id,order_number,customer_id,shop_id,status,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude) values($1,'QT-D',$2,$3,'searching_rider',$4,15.002,103,15.012,103)",[D,id(60),id(50),rev]);

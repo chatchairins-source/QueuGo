@@ -702,3 +702,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Fix is androidTest-only: permitted GPS scopes still start the real foreground location service and first wait for a provider-delivered fix; only when explicit instrumentation flag `allowDebugStoreInjection=true` is present and no provider fix arrives within 3 seconds does the test publish the expected Buriram point into the internal navigation store. Camera/render/lifecycle/recreate/cleanup assertions remain real. Production `RiderNavigationLocationService` is unchanged.
 - Added source guard proving the fallback exists only in androidTest/capture harness and is not present in production service. Physical-device GPS/GMS accuracy and real-road acceptance remain BLOCKED and are not certified by this emulator fallback.
 - NEXT: exact-head real-map CI; inspect the next first runtime failure only.
+
+
+### 2026-10-18 stack discovery isolated-schema dependency correction
+- Pre-CI audit found the new discovery test referenced `qg_private.rider_dispatch_preferences` while the minimal fixture intentionally does not create that later Phase-1 table.
+- The test now loads the real predecessor migrations in order: continuous dispatch → dynamic stop plan → route-matrix replenishment → Phase-2 stack matrix → generalized stack discovery. The hand-made lease table was removed.
+- Production migration dependency was already valid; this fixes only isolated test setup and increases fidelity to the actual schema chain. No runtime/Production behavior changed.
+- NEXT: exact-head CI.
