@@ -633,3 +633,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Root cause is exact and source-local: the initial simulator checkpoint accidentally committed escaped template-literal delimiters (`\``) and a double-escaped numeric regex (`\\d`) as literal JavaScript source.
 - Fixed only those source escapes: template literal is valid JavaScript and percent parsing again matches decimal digits. Financial policy/math is unchanged. Successor `85b937d7` route/claim hardening is preserved.
 - NEXT: exact-head CI must pass this parser boundary before any additional feature mutation.
+
+
+### 2026-10-18 corrected route-binding source generation
+- Root cause of the corrupted successor insertion is confirmed: JavaScript string replacement interpreted the SQL regex tail `$'` as the special “suffix of input” replacement token and duplicated the rest of the migration.
+- Rebuilt the staged quote/claim migration from intact `bacbb461` and re-applied exact route/money binding using callback replacement, so dollar signs are literal SQL text.
+- Pre-commit structural gate: migration length 21425 bytes, exactly 1 quote-cache function, 1 generalized claim function and 1 safety footer; competing-candidate test and `cfc98869` simulator parser fix remain on the branch.
+- No Production mutation; generalized 3–5 claim is still blocked by default/fallback `route_bundle.max_orders=2`.
