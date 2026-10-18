@@ -758,3 +758,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Exact `2e9bf04c` still showed the targeted-offer function with single-dollar delimiters; inspection of commit `067a423c` proved that prior intended delimiter correction did not actually change the migration blob.
 - Replaced only this function's body delimiter with explicit PostgreSQL named dollar quote `$qg$` / `$qg$`, avoiding ambiguous publication. Commit diff must include the migration file.
 - No generalized claim/offer business logic, cap, feature, payout or Production state changed.
+
+
+### 2026-10-18 Route Bundle exact-head Native Pilot trigger coverage
+- The Native Pilot full regression executes Route Bundle Phase-2 SQL/Edge tests, but its push path filter did not include `supabase/functions/queuego-route-bundle-matrix/**` or `supabase/migrations/*route_bundle*.sql`. Therefore SQL-only correction `529cd5aa` did not receive a new exact-head run.
+- Added those two existing source families to the Native Pilot push paths. The workflow file is itself selected, so this checkpoint must trigger exact-head CI.
+- No runtime, cap, pricing, claim or Production behavior changed.

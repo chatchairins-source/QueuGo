@@ -53,6 +53,9 @@ on:
       - 'tests/express*.cjs'
       - 'tests/fixtures/express*.cjs'
       - 'supabase/functions/queuego-express-quote/**'
+      # Route Bundle Phase 2 full regression consumes these exact SQL/Edge sources.
+      - 'supabase/functions/queuego-route-bundle-matrix/**'
+      - 'supabase/migrations/*route_bundle*.sql'
       - 'queuego-credit.js'
       - 'queuego-credit.css'
       - 'ops/native-push-session-binding-proposal-*.sql'
