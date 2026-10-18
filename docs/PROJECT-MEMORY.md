@@ -1774,3 +1774,6 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-18 Passenger Ride entry successor
 - a2a64c9b on 575a10a1 retains concurrent MapLibre packaging fix, restores recoverable Customer Ride entry after config/state RPC failure with retry and account/route fencing. Runtime 10/0, Customer 79/0, Ride 93 PASS; no Production mutation. Ongoing QueueGo pushes authorized. Inspect raw Actions run collection for full Native runs. Release still needs real device/GPS/signing evidence.
+
+## 2026-10-18 integrated Native CI coverage
+- 0b63b727 selects existing independent Dispatch/Ride/Credit races and MapLibre display/lifecycle jobs for #414/#421 branches; legacy predicates skipped them. Executable predicate test 16/0; Grocery source contract 23/0 added to full regression, action pinning 80/0 and native packaging guard PASS. No release publication or Production mutation. Await actual integrated race/build/runtime CI before Express.
