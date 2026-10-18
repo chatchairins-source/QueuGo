@@ -504,6 +504,8 @@ ok(source.includes('FOREGROUND_SERVICE_SPECIAL_USE')&&source.includes('RiderRetu
 ok(source.includes('ACTION_MANAGE_OVERLAY_PERMISSION'),'overlay permission must be explicitly user-controlled');
 ok(source.includes('RiderReturnService.stop'),'overlay service must have cleanup path');
 ok(riderMap.includes('MapLibre.getInstance')&&riderMap.includes('if (disposed || view !== mapView) return@getMapAsync')&&riderMap.includes('if (disposed) return@setStyle')&&riderMap.includes('if (disposed || resumed) return')&&riderMap.includes('view?.onPause()')&&riderMap.includes('view?.onDestroy()'),'Rider MapLibre host must guard renderer callbacks and lifecycle after disposal');
+const missingRiderMapSourceBlock=riderMap.slice(riderMap.indexOf('if (sourceUri == null)'),riderMap.indexOf('} else {',riderMap.indexOf('if (sourceUri == null)')));
+ok(missingRiderMapSourceBlock.includes('currentReady.value(false)')&&missingRiderMapSourceBlock.includes('View(context)')&&!missingRiderMapSourceBlock.includes('MapView(context)'),'Rider map must fail closed without constructing MapView when QueueGo runtime hosting is not configured');
 const riderReturnService=read('rider/src/main/java/com/queuego/rider/RiderReturnService.kt');
 ok(riderReturnService.includes('foreground_start_rejected')&&riderReturnService.includes('start_foreground_failed')&&riderReturnService.includes('foregroundStarted'),'Rider navigation return service must tolerate Android foreground-service rejection without crashing');
 ok(!/cash-confirm|ยืนยันชำระเงินให้ร้าน|ยืนยันเก็บเงินจากลูกค้า/i.test(source),'native Rider must not reintroduce manual cash confirmation screens');

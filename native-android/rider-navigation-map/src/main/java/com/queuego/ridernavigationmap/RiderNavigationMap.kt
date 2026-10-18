@@ -3,6 +3,7 @@ package com.queuego.ridernavigationmap
 import android.animation.ValueAnimator
 import android.content.Context
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import androidx.compose.runtime.Composable
@@ -613,8 +614,12 @@ fun RiderNavigationMap(
         factory = { context ->
             val sourceUri = mapSourceUri ?: queueGoMapVectorSourceUri(context)
             if (sourceUri == null) {
+                // QueueGo vector hosting is release-gated. A missing runtime URL must
+                // fail closed without constructing MapView before MapLibre is configured.
                 currentReady.value(false)
-                MapView(context)
+                View(context).apply {
+                    setBackgroundColor(android.graphics.Color.rgb(241, 242, 243))
+                }
             } else {
                 val view = holder.ensureView(context, sourceUri, initialCamera)
                 (view.parent as? ViewGroup)?.removeView(view)

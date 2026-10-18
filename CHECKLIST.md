@@ -369,3 +369,14 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Capture gap: workflow already removed retired-SDK baseline generation but runner still installed rider-untransformed.apk and required legacy crash reproduction. e8607ea4 now runs current tested APK directly; preserves instrumentation success, PID/crash checks and all 9 actual frame/camera artifacts. No fabricated baseline success. Python syntax and retained-gate checks PASS, stability source gate 106/0.
 - NEXT: publish integrated candidate and read first exact-head Native Pilot failure. Do not skip map creation/lifecycle tests or claim runtime completion from source checks; missing authorized map runtime remains a release dependency. Express waits for integrated green build/runtime.
 - Release BLOCKED remains physical GPS/device evidence, signed artifacts/Play testing and approved external runtime/Production activation; no Production mutation or release publication occurred.
+
+
+### 2026-10-18 six-lane exact-head integration checkpoint
+- Active integrated HEAD before this fix: `125d7fd34a20884d02f4b6bd06e3845281f3cb0f`; Native Pilot run `39085335642`.
+- Exact-head PASS lanes: Passenger Ride PostgreSQL race, Continuous Dispatch PostgreSQL race, Credit PostgreSQL race, isolated Navigation Map runtime and MapLibre OSM runtime. Full regression, Native source, three APK build, 16 KB packaging and WebView rejection also PASS.
+- First Native Pilot failure: Rider debug runtime constructed `MapView` while `queuego.map.service.base_url` was empty, causing `MapLibreConfigurationException`. Source now fails closed without constructing MapView until approved QueueGo Map hosting is configured.
+- Map-display-only failure: capture harness expected Android location permission immediately on picker open; current UI requests permission only after the user taps `ใช้ตำแหน่ง GPS ปัจจุบัน`. Harness now follows the real interaction.
+- External QueueGo Map runtime/visible-tile evidence stays `BLOCKED` when `QG_MAP_SERVICE_BASE_URL` is absent; the gate records BLOCKED rather than manufacturing a PASS. When an approved HTTPS runtime variable is configured, the existing map lifecycle/tile/draft evidence runs again.
+- Grocery source/native/full regression remains green on this integrated head; authenticated physical Merchant save/reopen is still a release blocker.
+- Express remains the only new service implementation lane and must branch from the newest integrated successor; no second dispatcher may be created.
+- NEXT: obtain exact-head Native Pilot after this fix; while it runs, continue Express on a child successor and reconcile Laundry only through the existing Continuous Dispatch lineage.

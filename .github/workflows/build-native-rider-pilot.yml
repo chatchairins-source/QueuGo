@@ -84,6 +84,11 @@ concurrency:
   group: queuego-native-${{ github.ref }}
   cancel-in-progress: true
 
+# Empty until QueueGo Map public/runtime hosting is explicitly approved.
+# When configured, the same value is compiled into manifests and exposed to runtime evidence.
+env:
+  QG_MAP_SERVICE_BASE_URL: ${{ vars.QG_MAP_SERVICE_BASE_URL }}
+
 jobs:
   native-pilot:
     runs-on: ubuntu-latest

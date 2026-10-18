@@ -44,6 +44,28 @@ package = "com.queuego.rider"
 component = package + "/.MainActivity"
 
 
+def queuego_map_runtime_configured():
+    """True only when an approved HTTPS QueueGo Map runtime is supplied to this run."""
+    return os.environ.get("QG_MAP_SERVICE_BASE_URL", "").strip().startswith("https://")
+
+
+def record_map_runtime_blocked(scope):
+    """Record an external release blocker without turning it into a false runtime PASS."""
+    directory = output / "map-runtime-blockers"
+    directory.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "source_head": os.environ["GITHUB_SHA"],
+        "workflow_run": os.environ["GITHUB_RUN_ID"],
+        "scope": scope,
+        "status": "BLOCKED",
+        "reason": "QG_MAP_SERVICE_BASE_URL is not configured with approved QueueGo Map hosting",
+        "physical_device": False,
+        "production_mutation": False,
+    }
+    (directory / (scope.replace("/", "-") + ".json")).write_text(json.dumps(payload, indent=2) + "\n")
+    print("QUEUEGO_MAP_RUNTIME_BLOCKED " + json.dumps(payload))
+
+
 def package_pids(pkg: str):
     result = run(adb + ["shell", "pidof", pkg], capture_output=True, text=True)
     pids = [value for value in result.stdout.strip().split() if value.isdigit()]
@@ -217,10 +239,16 @@ def capture_customer_location():
             raise AssertionError("Actual Customer location picker crashed on open")
         nodes = read_ui(directory / "picker.xml")
         if permission_state == "denied":
+            # Current QueueGo picker asks Android permission only after the explicit
+            # GPS action. Opening the picker itself must not prompt.
+            gps_action = next((n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน"), None)
+            assert gps_action is not None, "GPS action missing before permission request"
+            gb = [int(x) for x in re.findall(r"\d+", gps_action.get("bounds", ""))]
+            run(adb + ["shell", "input", "tap", str((gb[0]+gb[2])//2), str((gb[1]+gb[3])//2)])
             nodes = wait_ui(directory / "permission.xml", lambda ns: any(
                 n.get("resource-id", "").endswith("permission_deny_button") for n in ns))
             deny = next((n for n in nodes if n.get("resource-id", "").endswith("permission_deny_button")), None)
-            assert deny is not None, "Expected actual Android location permission request"
+            assert deny is not None, "Expected actual Android location permission request after GPS action"
             b = [int(x) for x in re.findall(r"\d+", deny.get("bounds", ""))]
             run(adb + ["shell", "input", "tap", str((b[0]+b[2])//2), str((b[1]+b[3])//2)])
         time.sleep(20)
@@ -230,6 +258,25 @@ def capture_customer_location():
         nodes = read_ui(directory / "settled.xml")
         assert any(n.get("text") == "เลือกที่อยู่จัดส่ง" for n in nodes), "Customer location screen disappeared"
         assert any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in nodes), "GPS action missing"
+        if not queuego_map_runtime_configured():
+            # The picker itself must remain stable even while public QueueGo Map hosting
+            # is intentionally unconfigured. Tile/pan/GPS-camera proof stays BLOCKED.
+            with (directory / "picker-blocked-runtime.png").open("wb") as png:
+                run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+            run(adb + ["shell", "input", "keyevent", "3"])
+            time.sleep(1)
+            run(adb + ["shell", "am", "start", "-n", pkg + "/.MainActivity"], timeout=15)
+            nodes = wait_ui(directory / "resumed-blocked-runtime.xml", lambda ns: any(
+                n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in ns))
+            assert_no_package_crash(pkg, directory / "blocked-runtime-crash.txt")
+            back = next(n for n in nodes if n.get("content-desc") == "ย้อนกลับ")
+            bb = [int(x) for x in re.findall(r"\d+", back.get("bounds", ""))]
+            run(adb + ["shell", "input", "tap", str((bb[0]+bb[2])//2), str((bb[1]+bb[3])//2)])
+            wait_ui(directory / "back-home-blocked-runtime.xml", lambda ns: any(
+                n.get("text") == "เลือกที่อยู่จัดส่ง" for n in ns) and not any(
+                n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in ns))
+            record_map_runtime_blocked("customer-location-" + permission_state)
+            continue
         with (directory / "picker.png").open("wb") as png:
             run(adb + ["exec-out", "screencap", "-p"], stdout=png)
         from PIL import Image
@@ -273,7 +320,10 @@ def capture_customer_location():
     if os.environ.get("QG_CUSTOMER_LOCATION_STRESS") == "1":
         stress_customer_location()
     if os.environ.get("QG_CUSTOMER_DRAFT_RESTORE") == "1":
-        probe_customer_draft_restore()
+        if queuego_map_runtime_configured():
+            probe_customer_draft_restore()
+        else:
+            record_map_runtime_blocked("customer-location-unsaved-draft-restore")
 
 
 def probe_customer_draft_restore():
@@ -806,6 +856,9 @@ def retain_real_map_frames(directory):
 
 def verify_real_home_map_runtime():
     """A dependency/lifecycle component test, never an authenticated E2E claim."""
+    if not queuego_map_runtime_configured():
+        record_map_runtime_blocked("rider-home-map-runtime")
+        return
     test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
     runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
     instrument = adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
@@ -953,7 +1006,10 @@ def verify_navigation_location_foreground_runtime():
 
 
 def verify_merchant_shop_map_runtime():
-    """Exercise the real Merchant legacy map picker lifecycle without session or business fixtures."""
+    """Exercise the real Merchant QueueGo map picker when approved runtime hosting exists."""
+    if not queuego_map_runtime_configured():
+        record_map_runtime_blocked("merchant-shop-map")
+        return
     pkg = "com.queuego.merchant"
     apk = repo / "native-android/merchant/build/outputs/apk/debug/merchant-debug.apk"
     test_apk = repo / "native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk"
@@ -985,7 +1041,10 @@ def verify_merchant_shop_map_runtime():
 
 
 def capture_map_display_only():
-    """Actual legacy map component frames; allowed cases inject emulator GPS only, never Production data."""
+    """Capture actual QueueGo map frames only when approved runtime hosting is configured."""
+    if not queuego_map_runtime_configured():
+        record_map_runtime_blocked("rider-map-display")
+        return
     import base64
     from PIL import Image
     test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
