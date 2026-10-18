@@ -621,3 +621,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - `package_pids(pkg, required=True)` now uses non-throwing `subprocess.run(..., check=False)`. Existing callers remain strict by default; only system-kill polling passes `required=False`.
 - Production app code is unchanged. No force-stop semantics introduced. Physical OEM process-recreation evidence remains a separate release gate.
 - NEXT: exact-head Native Pilot and Map display lifecycle.
+
+
+### 2026-10-18 Native3402 preserve strict PID evidence contract
+- Exact Map HEAD `6404f42f` Native3402 failed in `tests/native-android-source.cjs` before emulator capture because the established static contract requires strict resolver signature `def package_pids(pkg: str)`.
+- Kept that strict resolver unchanged in name/signature and added separate non-throwing `package_pids_optional(pkg: str)` only for expected process-death polling. Strict runtime crash evidence still asserts that live QueueGo process IDs resolve before PID-scoped AndroidRuntime collection.
+- No acceptance threshold, app runtime, force-stop behavior or Production state changed.
+- NEXT: exact-head Native Pilot; runtime process-death path must now be reached.
