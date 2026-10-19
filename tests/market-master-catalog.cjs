@@ -51,7 +51,7 @@ for(const item of phase2.items) verifySourceItem(item,'phase 2 source fact');
 for(const required of ['ปลา','กุ้ง','ปู','หอย','ปลาหมึก','ผลไม้','ผักสด']){
   assert.ok(phase2.items.some(x=>x.category===required),'phase 2 must cover '+required);
 }
-for(const requiredName of ['ปลานิล','ปลาทับทิม','ปลาดุก','ปลาช่อน','ปลากะพง','ปลาอินทรี','ปลาทู','ปลาเนื้ออ่อน','ปลาหมอ','กุ้ง','ปู','ปูนิ่ม','หอย','หอยนางรม','หอยหวาน','หอยเชลล์','ปลาหมึก','มะม่วง','แตงโม','ส้ม','แอปเปิล','ฝรั่ง','มะละกอ','สับปะรด','องุ่น','ลิ้นจี่','ลำไย','เงาะ','ทุเรียน','มังคุด','ผักชี','ขึ้นฉ่าย','ดอกกะหล่ำ','บร็อกโคลี','ถั่วฝักยาว','ฟักทอง','ขิง','ข่า','ตะไคร้','ใบมะกรูด','พริก','มะเขือ','มะนาว']){
+for(const requiredName of ['ปลานิล','ปลาทับทิม','ปลาดุก','ปลาช่อน','ปลากะพง','ปลาอินทรี','ปลาทู','ปลาเนื้ออ่อน','ปลาหมอ','กุ้ง','กุ้งแชบ๊วย','ปู','ปูทะเล','ปูนิ่ม','หอย','หอยนางรม','หอยหวาน','หอยเชลล์','ปลาหมึก','มะม่วง','แตงโม','ส้ม','แอปเปิล','ฝรั่ง','มะละกอ','สับปะรด','องุ่น','ลิ้นจี่','ลำไย','เงาะ','ทุเรียน','มังคุด','ผักชี','ขึ้นฉ่าย','ดอกกะหล่ำ','บร็อกโคลี','ถั่วฝักยาว','ฟักทอง','ขิง','ข่า','ตะไคร้','ใบมะกรูด','พริก','มะเขือ','มะนาว']){
   assert.ok(phase2.items.some(x=>x.name_th.includes(requiredName)),'phase 2 missing common-market item '+requiredName);
 }
 
@@ -60,6 +60,7 @@ const expansion=read('supabase/migrations/20261019122500_market_fresh_makro_lotu
 const imageReview=read('supabase/migrations/20261019132000_market_image_source_review.sql');
 const phase2Migration=read('supabase/migrations/20261019140000_market_seafood_fruit_veg_expansion.sql');
 const phase2GapFill=read('supabase/migrations/20261019143000_market_phase2_gap_fill.sql');
+const phase2ChaebowMudCrab=read('supabase/migrations/20261019150000_market_phase2_chaebow_mudcrab.sql');
 assert.ok(expansion.includes("'เห็ด'"),'fresh expansion must add mushroom category');
 assert.ok(expansion.includes('Makro PRO')&&expansion.includes("Lotus''s"),'fresh expansion must retain both public sources');
 for(const cat of ["'กุ้ง'","'ปู'","'หอย'","'ปลาหมึก'"]){
@@ -69,6 +70,8 @@ assert.ok(phase2Migration.includes("image,null,'pending'")||phase2Migration.incl
 assert.ok(phase2Migration.includes('Retailer pages/images remain review references only'),'phase 2 must document retailer-image safety');
 assert.ok(phase2GapFill.includes('talaadthai-climbing-perch-small'),'phase 2 gap fill must retain sourced climbing-perch identity');
 assert.ok(phase2GapFill.includes('makro-soft-shell-crab-1kg'),'phase 2 gap fill must retain sourced soft-shell crab');
+assert.ok(phase2ChaebowMudCrab.includes('lotus-shrimp-chaebow-25-30kg'),'phase 2 must retain sourced chaebow shrimp');
+assert.ok(phase2ChaebowMudCrab.includes('talaadthai-mud-crab-medium'),'phase 2 must retain sourced mud crab');
 assert.ok(imageReview.includes('has_image_reference'),'catalog RPC must expose image-review state');
 assert.ok(imageReview.includes("image_status='pending'"),'review candidates must stay pending');
 for(const needle of [
