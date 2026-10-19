@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 46,
+    "approved": 54,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 82
+    "rights_pending": 74
   },
   "items": [
     {
@@ -36,12 +36,12 @@
       "slug": "choy-sum",
       "name_th": "ผักกวางตุ้ง",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/826831-7078708216003",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/fbc17b0636c1476190ffe8a247c648c3?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Choy-sum.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Choy-sum.jpg",
+      "status": "approved",
+      "rights_evidence": "Pokman817 · CC BY-SA 3.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "cabbage",
@@ -608,23 +608,23 @@
       "slug": "makro-choy-sum-500g",
       "name_th": "ผักกวางตุ้งไต้หวัน",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7078708707523-65e7893d-6c84-4efb-a18a-04bd46b6764e.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Choy-sum.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Choy-sum.jpg",
+      "status": "approved",
+      "rights_evidence": "Pokman817 · CC BY-SA 3.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-peeled-garlic-1kg",
       "name_th": "กระเทียมสดปอกเปลือก",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/40dec5834b184e629780def6e7531efb?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Peeled_garlic_cloves.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Peeled_garlic_cloves.jpg",
+      "status": "approved",
+      "rights_evidence": "Fumikas Sagisavas · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-tomato-1kg",
@@ -971,34 +971,34 @@
       "slug": "lotus-hom-banana-bunch",
       "name_th": "กล้วยหอม 1 หวี",
       "category": "ผลไม้",
-      "source_page_url": "https://shopping.lotuss.com/th/product/tesco-hom-banana-bunch-each-2754533",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/2754533.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Bunch_of_bananna.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/c/cf/Bunch_of_bananna.jpg",
+      "status": "approved",
+      "rights_evidence": "Fatimah Bello · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-kinnaree-watermelon-4kg",
       "name_th": "แตงโมกินรีจัมโบ้",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/p/NHA48Uj-551312627531523",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/95d43d48c97443fea8c1e52bc44d855e?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:A_water_melon_fruit.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/1/10/A_water_melon_fruit.jpg",
+      "status": "approved",
+      "rights_evidence": "Salma kyari · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-honey-murcott-orange-1kg",
       "name_th": "ส้มฮันนี่เมอร์คอต",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/p/RZYsqry-79878301101545",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/a61c65942ac6445f8a46f4d66185e77a?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Orange_fruit_(Citrus_%C3%97_sinensis).jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/3/37/Orange_fruit_%28Citrus_%C3%97_sinensis%29.jpg",
+      "status": "approved",
+      "rights_evidence": "Kuttykrishnan Photos · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-fuji-apple-10",
@@ -1037,12 +1037,12 @@
       "slug": "lotus-hom-suwan-pineapple",
       "name_th": "สับปะรดหอมสุวรรณ",
       "category": "ผลไม้",
-      "source_page_url": "https://shopping.lotuss.com/th/product/75595574",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/75595574.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Pineapple_fruit.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/e/ed/Pineapple_fruit.jpg",
+      "status": "approved",
+      "rights_evidence": "Mibrahim74 · CC BY 3.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-shine-muscat-500g",
@@ -1103,12 +1103,12 @@
       "slug": "makro-red-dragon-fruit-1kg",
       "name_th": "แก้วมังกรเนื้อแดง",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/p/sdeKtSF-103354738454522",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/110ddb9af43d439f83b4ba09ae92b3d8?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:%22dragon_fruit.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/9/96/%22dragon_fruit.jpg",
+      "status": "approved",
+      "rights_evidence": "Arivumathi · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-sunlady-cantaloupe-1kg",
