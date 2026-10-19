@@ -70,6 +70,7 @@ const openLicenseImagesBatch5=read('supabase/migrations/20261019164500_market_op
 const openLicenseImagesBatch6=read('supabase/migrations/20261019170000_market_open_license_images_batch6.sql');
 const openLicenseImagesBatch7=read('supabase/migrations/20261019171500_market_open_license_images_batch7.sql');
 const openLicenseImagesBatch8=read('supabase/migrations/20261019173000_market_open_license_images_batch8.sql');
+const openLicenseImagesBatch9=read('supabase/migrations/20261019174500_market_open_license_images_batch9.sql');
 assert.ok(expansion.includes("'เห็ด'"),'fresh expansion must add mushroom category');
 assert.ok(expansion.includes('Makro PRO')&&expansion.includes("Lotus''s"),'fresh expansion must retain both public sources');
 for(const cat of ["'กุ้ง'","'ปู'","'หอย'","'ปลาหมึก'"]){
@@ -118,7 +119,7 @@ for(const row of images.items){
 }
 for(const slug of allSlugs) assert.ok(imageSlugs.has(slug),'missing image-review state for '+slug);
 assert.ok(images.items.some(x=>x.status==='rights_pending'),'must retain verified retailer candidates under rights review');
-assert.ok(images.items.filter(x=>x.status==='approved').length>=33,'must retain approved open-license catalog images');
+assert.ok(images.items.filter(x=>x.status==='approved').length>=46,'must retain approved open-license catalog images');
 assert.equal(images.items.filter(x=>x.status==='source_page_found').length,0,'every current catalog item must have a direct image candidate or approved image');
 assert.equal(images.items.filter(x=>x.status==='family_reference_only').length,0,'all current catalog items must have concrete image evidence');
 for(const slug of ['pork-lean','egg-size-2-10','fresh-tofu-skin','textured-vegetable-protein','ginkgo-nut','dried-squid-medium']){
@@ -149,6 +150,9 @@ for(const slug of ['lotus-ripe-namdokmai-mango-kg','makro-red-lady-papaya-1kg','
 }
 for(const slug of ['makro-import-carrot-1kg','thai-basil','makro-coriander-300g','makro-cauliflower-1kg','makro-onion-1kg']){
   assert.ok(openLicenseImagesBatch8.includes("'"+slug+"'"),'open-license batch 8 missing '+slug);
+}
+for(const slug of ['cabbage','makro-cabbage-500-700g','pork-belly','makro-chicken-drumstick-1kg','egg-size-2-10','egg-size-3-10','makro-enoki-1kg','lotus-enoki-500g','dried-shiitake-small','dried-shiitake-large','makro-tomato-1kg','makro-long-bean-500g','lotus-mackerel-kg']){
+  assert.ok(openLicenseImagesBatch9.includes("'"+slug+"'"),'open-license batch 9 missing '+slug);
 }
 
 const catalog=read('merchant/market-catalog.js');
