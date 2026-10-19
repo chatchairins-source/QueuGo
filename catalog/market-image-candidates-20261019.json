@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 59,
+    "approved": 64,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 69
+    "rights_pending": 64
   },
   "items": [
     {
@@ -652,12 +652,12 @@
       "slug": "makro-tilapia-900g-1kg",
       "name_th": "ปลานิล 0.9-1 กก./ตัว",
       "category": "ปลา",
-      "source_page_url": "https://www.makro.pro/th/p/146263-187607668532060",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/3141236b28564c6ba89ad8a27e2a76b3?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Tilapia_oreochromis_niloticus_fish.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/57/Tilapia_oreochromis_niloticus_fish.jpg",
+      "status": "approved",
+      "rights_evidence": "Raver Duane, U.S. Fish and Wildlife Service · Public domain · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-red-tilapia-900g-1-2kg",
@@ -696,23 +696,23 @@
       "slug": "lotus-snakehead-whole",
       "name_th": "ปลาช่อนทั้งตัว",
       "category": "ปลา",
-      "source_page_url": "https://www.lotuss.com/th/product/striped-snakehead-fish-each-71072624",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/71072624.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Channa_striata.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/f/f5/Channa_striata.jpg",
+      "status": "approved",
+      "rights_evidence": "BEDO (Thailand) · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-seabass-whole-4-6kg",
       "name_th": "ปลากะพงทะเลทั้งตัว 4-6 กก.",
       "category": "ปลา",
-      "source_page_url": "https://shopping.lotuss.com/th/product/52475366",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/77354/52475366.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Lates_calcarifer_(Barramundi)_selling.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Lates_calcarifer_%28Barramundi%29_selling.jpg",
+      "status": "approved",
+      "rights_evidence": "Salil Kumar Mukherjee · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-seabass-sliced",
@@ -806,12 +806,12 @@
       "slug": "makro-river-prawn-small-1kg",
       "name_th": "กุ้งก้ามกรามไซส์เล็ก",
       "category": "กุ้ง",
-      "source_page_url": "https://www.makro.pro/p/8alqV_1-739215489512557",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/739215489512557-f3a5bf65-e437-43e2-9647-0778aa7061d8.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Macrobrachium_rosenbergii.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Macrobrachium_rosenbergii.jpg",
+      "status": "approved",
+      "rights_evidence": "Citron · CC BY-SA 3.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-aro-shrimp-28-35-1kg",
@@ -861,12 +861,12 @@
       "slug": "lotus-cockle-kg",
       "name_th": "หอยแครง",
       "category": "หอย",
-      "source_page_url": "https://shopping.lotuss.com/th/product/51294268",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/51294268.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Anadara_granosa.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Anadara_granosa.jpg",
+      "status": "approved",
+      "rights_evidence": "Stefan · CC BY 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-small-clam",
