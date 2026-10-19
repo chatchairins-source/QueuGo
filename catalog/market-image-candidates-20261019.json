@@ -3,10 +3,10 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "direct_candidates": 78,
-    "source_page_found": 50,
+    "direct_candidates": 90,
+    "source_page_found": 38,
     "family_reference_only": 0,
-    "rights_pending": 78
+    "rights_pending": 90
   },
   "items": [
     {
@@ -905,11 +905,11 @@
       "name_th": "เอโร่ เนื้อหอยแมลงภู่ชิลี",
       "category": "หอย",
       "source_page_url": "https://www.makro.pro/th/p/g9kh8s0-6974641930435",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/4a4385e740f34f19930246db8a4b00ba?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "lotus-peeled-squid-kg",
@@ -960,11 +960,11 @@
       "name_th": "มะม่วงน้ำดอกไม้สุก",
       "category": "ผลไม้",
       "source_page_url": "https://www.lotuss.com/th/product/ripe-namdokmai-mango-4723?openExternalBrowser=1",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/4723.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "lotus-hom-banana-bunch",
@@ -1059,44 +1059,44 @@
       "name_th": "ลิ้นจี่จักรพรรดิ",
       "category": "ผลไม้",
       "source_page_url": "https://www.lotuss.com/th/product/13201220",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/13201220.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-golden-rambutan-2.5kg",
       "name_th": "เงาะสีทอง",
       "category": "ผลไม้",
       "source_page_url": "https://www.makro.pro/th/p/714324-471432494654513",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/471432494654513-3b4f2188-019f-42e7-be00-5ade5fb46fd4.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-monthong-durian-2-3kg",
       "name_th": "ทุเรียนหมอนทอง",
       "category": "ผลไม้",
       "source_page_url": "https://www.makro.pro/th/p/TSZpX5R-645412775209079",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/645412775209079-16459776-c818-4d26-b0f8-4709c19ead0c.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-mangosteen-basket-3kg",
       "name_th": "มังคุดตะกร้า",
       "category": "ผลไม้",
       "source_page_url": "https://www.makro.pro/p/837456-876358407272104",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/876358407272104-70b72f5c-4e76-4546-a0d7-640a432575ef.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-red-dragon-fruit-1kg",
@@ -1125,55 +1125,55 @@
       "name_th": "ผักชี",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/826817-7078705889475",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/8531f32e5532489fbd0901752f7fe6df?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-celery-300g",
       "name_th": "ขึ้นฉ่าย",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/826821-7078707953859",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/4413107ae1154b5091278736954fff4f?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-cauliflower-1kg",
       "name_th": "ดอกกะหล่ำขาวจีน",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/135318-7606380331203",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7606380331203-96cb478c-1b14-442c-b3c5-f6ce805ad1ff.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-broccoli-10kg",
       "name_th": "บร็อกโคลีนอก",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/93132-702158168803212",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/702158168803212-c0e3f6aa-43d3-42b8-94ba-d9eaa5231645.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-long-bean-500g",
       "name_th": "ถั่วฝักยาว",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/125010-7416039112899",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7416039112899-b4429a07-22fa-4398-bb82-a39913bb8aa8.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-large-pumpkin-half-kg",
@@ -1191,11 +1191,11 @@
       "name_th": "ขิงแก่",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/246155-915625040190914",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/915625040190914-88215d3d-60a9-4bcd-a8c7-2eab01a893d5.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-old-galangal-1kg",
