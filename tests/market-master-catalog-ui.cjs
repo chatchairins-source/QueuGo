@@ -68,35 +68,24 @@ const {JSDOM}=require('jsdom');
 
   assert.match(w.document.body.textContent,/เพิ่มสินค้าจากแคตตาล็อก/);
   assert.match(w.document.body.textContent,/ปลานิล/);
-  assert.match(w.document.body.textContent,/รูปอ้างอิงจาก Makro PRO/);
+  assert.doesNotMatch(w.document.body.textContent,/อ้างอิง|Makro PRO|ดูสินค้าต้นทาง|CC BY-SA/);
   assert.ok(w.document.querySelector('.market-catalog-chip'),'category chips must render');
   assert.equal(w.document.querySelectorAll('.market-catalog-card').length,2);
   const catalogImages=[...w.document.querySelectorAll('img.market-catalog-image')];
-  assert.equal(catalogImages.length,2,'Makro preview and approved fallback must both render');
-  assert.deepEqual(catalogImages.map(x=>x.alt).sort(),['ปลานิล','ปลาหมอ'].sort());
-  const credit=[...w.document.querySelectorAll('.market-catalog-credit a')].find(a=>/CC BY-SA 4.0/.test(a.textContent));
-  assert.ok(credit,'approved image must render attribution');
-  assert.equal(credit.getAttribute('rel'),'noopener noreferrer');
-  const makroLink=[...w.document.querySelectorAll('.market-catalog-credit a')].find(a=>/ดูสินค้าต้นทาง/.test(a.textContent));
-  assert.ok(makroLink,'Makro preview must link to the source product page');
-  assert.match(makroLink.href,/makro\.pro/);
+  assert.equal(catalogImages.length,1,'Merchant catalog must show only the clean catalog preview image');
+  assert.equal(catalogImages[0].alt,'ปลานิล');
+  assert.equal(w.document.querySelectorAll('.market-catalog-credit a').length,0,'source links must stay out of Merchant catalog UI');
 
-  // The same approved image and attribution must survive entry into the add flow.
+  // Approved/open-license fallback art is not shown in the Merchant catalog when no catalog preview exists.
   w.qgMarketCatalogChoose('m2');
-  const preview=w.document.querySelector('.market-catalog-preview img');
-  assert.ok(preview,'add form must retain the selected approved product image');
-  assert.equal(preview.alt,'ปลาหมอ');
-  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/CC BY-SA 4.0/);
-  w.qgMarketCatalogImageError(preview);
   assert.equal(w.document.querySelector('.market-catalog-preview img'),null);
-  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/โหลดรูปไม่สำเร็จ/);
-  assert.ok(w.document.querySelector('.market-catalog-preview .market-catalog-credit a'),'image failure must preserve attribution');
+  assert.ok(w.document.querySelector('.market-catalog-preview .market-catalog-placeholder'));
 
   w.qgMarketCatalogChoose('m1');
   const makroPreview=w.document.querySelector('.market-catalog-preview img');
-  assert.ok(makroPreview,'Makro Merchant preview must remain visible in the add form');
+  assert.ok(makroPreview,'Merchant catalog image must remain visible in the add form');
   assert.equal(makroPreview.alt,'ปลานิล');
-  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/รูปอ้างอิงจาก Makro PRO/);
+  assert.doesNotMatch(w.document.querySelector('.market-catalog-preview').textContent,/อ้างอิง|Makro PRO|ดูสินค้าต้นทาง/);
   assert.match(w.document.body.textContent,/ขนาดขายที่ใช้บ่อย/);
   assert.match(w.document.body.textContent,/1 กก./);
   assert.match(w.document.body.textContent,/2 กก./);
