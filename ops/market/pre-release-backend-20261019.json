@@ -1,0 +1,44 @@
+{
+  "functions": [
+    {
+      "name": "market_save_product",
+      "definition": "CREATE OR REPLACE FUNCTION public.market_save_product(p_product uuid, p_name text, p_category text, p_price numeric, p_image text, p_unit text, p_pack_size numeric, p_weight_kg numeric, p_cost numeric, p_initial_stock numeric, p_min_stock numeric, p_available boolean DEFAULT true)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare v_shop uuid;v_id uuid;v_category text;\nbegin\n  v_shop:=public.pos_my_shop();\n  select public_category into v_category from public.shop_profiles where id=v_shop;\n  if v_shop is null or not public.pos_is_owner() or v_category not in ('market','meat','fish','vegetable','fruit','grocery') then raise exception 'market seller access denied'; end if;\n  if length(trim(coalesce(p_name,''))) not between 2 and 100 or length(trim(coalesce(p_category,''))) not between 1 and 80\n     or p_price is null or p_price<0 or p_unit not in ('ชิ้น','กิโลกรัม','ขีด','กรัม','ถุง','แพ็ก','มัด','ลูก','ขวด','กล่อง')\n     or p_pack_size is null or p_pack_size<=0 or p_weight_kg is null or p_weight_kg<=0\n     or p_cost is null or p_cost<0 or p_initial_stock is null or p_initial_stock<0 or p_min_stock is null or p_min_stock<0 then\n    raise exception 'invalid market product';\n  end if;\n  if p_product is null then\n    insert into public.products(shop_id,name,category,price,delivery_price,image,available,delivery_available,stock,metadata)\n      values(v_shop,trim(p_name),trim(p_category),p_price,p_price,p_image,coalesce(p_available,true),true,0,'{}'::jsonb)\n      returning id into v_id;\n    insert into public.market_products(product_id,shop_id,unit,pack_size,item_weight_kg,stock_quantity,min_stock,cost_price)\n      values(v_id,v_shop,p_unit,p_pack_size,p_weight_kg,p_initial_stock,p_min_stock,p_cost);\n    if p_initial_stock>0 then\n      insert into public.market_stock_movements(product_id,shop_id,type,quantity,before_quantity,after_quantity,cost_price,reference_type,actor_id)\n        values(v_id,v_shop,'purchase',p_initial_stock,0,p_initial_stock,p_cost,'initial',auth.uid());\n    end if;\n  else\n    select product_id into v_id from public.market_products where product_id=p_product and shop_id=v_shop for update;\n    if not found then raise exception 'market product not found'; end if;\n    if exists(select 1 from public.market_products where product_id=v_id and stock_quantity>0\n      and (unit<>p_unit or pack_size<>p_pack_size)) then\n      raise exception 'drain or adjust stock before changing sale unit';\n    end if;\n    update public.products set name=trim(p_name),category=trim(p_category),price=p_price,delivery_price=p_price,\n      image=p_image,available=coalesce(p_available,true),updated_at=now() where id=v_id and shop_id=v_shop;\n    update public.market_products set unit=p_unit,pack_size=p_pack_size,item_weight_kg=p_weight_kg,\n      min_stock=p_min_stock,cost_price=p_cost,updated_at=now() where product_id=v_id;\n    -- Stock is changed separately with a movement, never by saving product details.\n  end if;\n  return v_id;\nend $function$\n"
+    },
+    {
+      "name": "pos_is_owner",
+      "definition": "CREATE OR REPLACE FUNCTION public.pos_is_owner()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n select exists(select 1 from public.shop_profiles sp join public.users u on u.id=sp.user_id\n where u.auth_user_id=(select auth.uid()) and u.role='shop' and u.status='active' and sp.status='active')\n$function$\n"
+    },
+    {
+      "name": "pos_my_shop",
+      "definition": "CREATE OR REPLACE FUNCTION public.pos_my_shop()\n RETURNS uuid\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\n select coalesce((select sp.id from public.shop_profiles sp join public.users u on u.id=sp.user_id\n   where u.auth_user_id=(select auth.uid()) and u.role='shop' and u.status='active' and sp.status='active' limit 1),\n  (select s.shop_id from public.pos_staff s join public.shop_profiles sp on sp.id=s.shop_id\n   join public.users u on u.id=sp.user_id where s.user_id=(select auth.uid()) and s.active\n   and sp.status='active' and u.status='active' limit 1))\n$function$\n"
+    }
+  ],
+  "captured_at": "2026-10-19T10:09:17.23897+00:00",
+  "market_policies": [
+    {
+      "cmd": "SELECT",
+      "qual": "((shop_id = pos_my_shop()) OR is_active_admin())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "market_products",
+      "permissive": "PERMISSIVE",
+      "policyname": "market_stock_owner_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((shop_id = pos_my_shop()) OR is_active_admin())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "market_stock_movements",
+      "permissive": "PERMISSIVE",
+      "policyname": "market_movement_owner_read",
+      "schemaname": "public",
+      "with_check": null
+    }
+  ],
+  "source_head": "e273cc59337e62c084926b2dafdaf8b5b7c1a3e5"
+}
