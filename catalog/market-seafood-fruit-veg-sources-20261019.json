@@ -3,12 +3,12 @@
   "retrieved_on": "2026-10-19",
   "policy": "Evidence-backed public product identity/category/pack facts only. Retail prices, merchant cost, stock, GTIN/barcodes and publication rights are not imported or inferred.",
   "counts": {
-    "total": 66,
+    "total": 65,
     "by_category": {
       "ปลา": 13,
       "กุ้ง": 5,
       "ปู": 5,
-      "หอย": 10,
+      "หอย": 9,
       "ปลาหมึก": 4,
       "ผลไม้": 16,
       "ผักสด": 13
@@ -708,18 +708,6 @@
       "source_unit": "หน่วยขายไม่ระบุในหน้าสาธารณะ",
       "source_url": "https://talaadthai.com/products/freshwater-fish-9449-3139",
       "source_name": "ตลาดไท",
-      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
-      "retrieved_on": "2026-10-19"
-    },
-    {
-      "slug": "makro-fresh-oyster-kg",
-      "name_th": "หอยนางรมสดนำเข้า",
-      "category": "หอย",
-      "suggested_unit": "กิโลกรัม",
-      "suggested_pack_size": 1,
-      "source_unit": "กก.ละ",
-      "source_url": "https://www.makro.pro/th/p/122927-141348259039175",
-      "source_name": "Makro PRO",
       "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
       "retrieved_on": "2026-10-19"
     },
