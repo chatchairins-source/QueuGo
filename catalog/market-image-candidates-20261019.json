@@ -3,10 +3,10 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "direct_candidates": 70,
-    "source_page_found": 58,
+    "direct_candidates": 78,
+    "source_page_found": 50,
     "family_reference_only": 0,
-    "rights_pending": 70
+    "rights_pending": 78
   },
   "items": [
     {
@@ -751,22 +751,22 @@
       "name_th": "ปลาทรายขาวขนาดกลาง",
       "category": "ปลา",
       "source_page_url": "https://www.makro.pro/th/p/184731-31434973638933",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/946bb804d0d14ed48f1eab9b7a022c69?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-gourami-sun-dried-500g",
       "name_th": "ปลาสลิดแดดเดียว",
       "category": "ปลา",
       "source_page_url": "https://www.makro.pro/th/p/900973-7499747590339",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7499747590339-f626718d-260b-4d28-89ee-45a3a0dde774.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-white-shrimp-meat-1kg",
@@ -784,22 +784,22 @@
       "name_th": "กุ้งขาวไว้หาง 32-38 ตัว/แพ็ก",
       "category": "กุ้ง",
       "source_page_url": "https://www.makro.pro/th/p/155650-7078809043139",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/dc55fcd347f34bcda801b1713a2e3fde?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-white-shrimp-l-1kg",
       "name_th": "กุ้งขาวไซส์ L 41-45 ตัว/กก.",
       "category": "กุ้ง",
       "source_page_url": "https://www.makro.pro/th/p/079kxgx-7606384754883",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7606384754883-5091d3d5-3fa1-4095-ab69-90cf6173e8d9.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-river-prawn-small-1kg",
@@ -817,11 +817,11 @@
       "name_th": "เอโร่ กุ้ง 28-35 ตัว/กก.",
       "category": "กุ้ง",
       "source_page_url": "https://www.makro.pro/th/p/6jba629-7204398268611",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7204398268611-6d70b4e0-5439-4cd5-bf4e-f3c2d2eec81c.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "lotus-cut-blue-crab-500g",
@@ -872,11 +872,11 @@
       "name_th": "หอยลายขนาดเล็ก",
       "category": "หอย",
       "source_page_url": "https://www.lotuss.com/th/product/75597747",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/75597747.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-mussel-meat-1kg",
@@ -894,11 +894,11 @@
       "name_th": "หอยแมลงภู่ครึ่งฝา",
       "category": "หอย",
       "source_page_url": "https://www.makro.pro/th/p/931585-724338579634982",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/724338579634982-823c79c0-4331-4ee1-b1b7-1a7f3834ad2c.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-chilean-mussel-meat-1kg",
@@ -927,11 +927,11 @@
       "name_th": "หมึกกระดองลอกหนังขนาดกลาง",
       "category": "ปลาหมึก",
       "source_page_url": "https://www.lotuss.com/th/product/75604477",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/75604477.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-squid-rings-1kg",
