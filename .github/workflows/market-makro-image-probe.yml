@@ -1,0 +1,33 @@
+name: Market Makro image probe
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'ops/market/sync-makro-reference-images.cjs'
+      - 'catalog/market-image-candidates-20261019.json'
+      - '.github/workflows/market-makro-image-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Match Market catalog against Makro PRO
+        run: node ops/market/sync-makro-reference-images.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: market-makro-reference-images
+          path: artifacts/market-makro-images/market-makro-reference-images.json
+          if-no-files-found: error
+          compression-level: 9
