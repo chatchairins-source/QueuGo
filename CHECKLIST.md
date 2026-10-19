@@ -485,3 +485,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - TEST: full npm test EXIT0 on pre-batch17 UI tree; focused source integrity PASS (90 scripts/77 refs), catalog contracts PASS, DOM 29 checks PASS. Exact successor CI required.
 - Counts inherited from batch17: 128 items; 88 approved images; 40 rights-pending direct candidates. No Production apply or real Merchant save certified.
 - NEXT: exact successor CI; remaining image rights, shared manual editor weight presets and authenticated Merchant Web acceptance.
+
+
+## 2026-10-19 — Shared manual/catalog Market weight presets
+- IN PROGRESS; branch `work-market-master-catalog-successor-v2-20261019`; published predecessor `840771cdb6b9b23b1665800affd4559930bc9963`; local tested source `53097a3e`.
+- One shared implementation serves manual add/edit and catalog add: 1/2/3kg updates unit, pack and kg weight; custom quantities remain editable, gram/hectogram packs synchronize kg weight. Asset versions updated together. Existing add receipts and source image rights guards preserved.
+- TEST: full npm test EXIT0 on integrated batch17 source plus weight changes; focused DOM 42 checks PASS, catalog data/image/category/access contracts PASS, source integrity PASS. Exact successor CI still required.
+- Catalog: 128 sourced identities; 88 approved images; 40 rights-pending direct candidates; Phase2 70 identities retained. No Production apply, authenticated Merchant save or physical-device certification claimed.
+- NEXT: exact successor CI, remaining image rights; authenticated Merchant browse/filter/add/custom weight/shop-list acceptance before release. No need to repeat already-tested catalog/category implementation.

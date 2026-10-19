@@ -191,7 +191,7 @@ const catalog=read('merchant/market-catalog.js');
 for(const needle of ['qg_market_catalog_page','qg_market_catalog_add','effective_gp_rate','เพิ่มสินค้าจากแคตตาล็อก','เพิ่มสินค้าเข้าร้าน']){
   assert.ok(catalog.includes(needle),'missing Merchant market catalog behavior: '+needle);
 }
-assert.ok(catalog.includes('qgMarketCatalogSetKg(1)')&&catalog.includes('qgMarketCatalogSetKg(2)')&&catalog.includes('qgMarketCatalogSetKg(3)'),'catalog must offer 1/2/3 kg presets');
+assert.ok(catalog.includes('qgMarketAttachWeightPresets(form)'),'catalog must reuse shared weight presets');
 assert.ok(catalog.includes('p_request_id:crypto.randomUUID()'),'Merchant add flow must use a durable request ID');
 assert.ok(catalog.includes("pendingKey(state.shop)"),'Merchant add flow must retain pending request recovery');
 assert.ok(catalog.includes('พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่'),'Merchant must show rights-pending image status');
@@ -214,7 +214,7 @@ for(const category of ['เห็ด','กุ้ง','ปู','หอย','ป�
 }
 const merchant=read('merchant/index.html');
 assert.ok(merchant.includes("case'market-catalog'"));
-assert.ok(merchant.includes('market-catalog.js?v=20261019-market-image-flow3'));
+assert.ok(merchant.includes('market-catalog.js?v=20261019-market-weight4'));
 assert.ok(merchant.includes("'market-stock','market-catalog'"),'pending merchants must be able to prepare catalog/stock');
 
 console.log(JSON.stringify({

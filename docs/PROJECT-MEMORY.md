@@ -427,3 +427,5 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 ## 2026-10-19 Market Catalog continuation from PR441
 - Verified latest successor `68b9b0b9` descends from current main `fa0b7ac9`; PR440 explicitly superseded. 128 sourced products, 84 approved images, 44 rights-pending candidates; Phase2 data exists. Do not recreate catalog or auto-approve retailer images.
 - `6cfb031b` reuses the same image/credit/status rendering in list and add form, with explicit broken-image fallback; the Market gates now participate in npm test. Focused tests pass, full regression/exact CI and authenticated Merchant browser acceptance remain gates. Shared manual-editor kg presets and remaining rights resolution are next; no Production migration applied.
+
+- Successor batch17 `c9c7c040` increases approved images to 88/128, 40 remain rights-pending. Published image-flow successor `840771cd` preserves it; full npm pre-batch17 passed, focused tests after integration passed. Local weight source `53097a3e` shares manual/catalog presets and custom metric synchronization; exact successor CI and authenticated browser acceptance remain required.

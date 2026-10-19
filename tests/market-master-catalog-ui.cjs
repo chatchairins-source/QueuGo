@@ -58,6 +58,7 @@ const {JSDOM}=require('jsdom');
   w.toast=msg=>toasts.push(String(msg));
   w.navigate=route=>{w.location.hash='#'+route};
 
+  w.eval(fs.readFileSync(path.join(root,'merchant/market.js'),'utf8'));
   w.eval(source);
   await w.qgRenderMarketCatalog();
 
@@ -93,6 +94,18 @@ const {JSDOM}=require('jsdom');
   assert.match(w.document.body.textContent,/2 กก./);
   assert.match(w.document.body.textContent,/3 กก./);
 
+  const weightForm=w.document.getElementById('market-catalog-add-form');
+  w.qgMarketAttachWeightPresets(weightForm);
+  assert.equal(weightForm.querySelectorAll('[data-market-weight-presets]').length,1,'shared preset initialization must be idempotent');
+  for(const kg of [1,2,3]){
+    weightForm.querySelectorAll('[data-market-weight-presets] button')[kg-1].click();
+    assert.equal(weightForm.elements.namedItem('weight').value,String(kg));
+    assert.equal(weightForm.elements.namedItem('pack').value,String(kg));
+  }
+  const custom=weightForm.elements.namedItem('pack');custom.value='1.75';custom.dispatchEvent(new w.Event('input'));
+  assert.equal(weightForm.elements.namedItem('weight').value,'1.75','custom kg must remain supported');
+  weightForm.elements.namedItem('unit').value='กรัม';custom.value='750';custom.dispatchEvent(new w.Event('input'));
+  assert.equal(weightForm.elements.namedItem('weight').value,'0.75','grams must convert to kg');
   w.qgMarketCatalogSetKg(2);
   const form=w.document.getElementById('market-catalog-add-form');
   assert.ok(form,'catalog add form must render');
@@ -113,10 +126,18 @@ const {JSDOM}=require('jsdom');
   assert.equal(w.document.querySelector('.market-catalog-card button').disabled,true,'added master must not be addable again');
   assert.equal(w.localStorage.length,0,'successful add must clear pending recovery receipt');
 
+  w.qgMarketEdit();
+  const manual=w.document.getElementById('market-form');
+  assert.ok(manual.querySelector('[data-market-weight-presets]'),'manual add must reuse weight presets');
+  manual.querySelectorAll('[data-market-weight-presets] button')[2].click();
+  assert.equal(manual.elements.namedItem('unit').value,'กิโลกรัม');
+  assert.equal(manual.elements.namedItem('pack').value,'3');
+  assert.equal(manual.elements.namedItem('weight').value,'3');
+
   const addCalls=calls.filter(x=>x.pathname==='rpc/qg_market_catalog_add');
   assert.equal(addCalls.length,1,'single submit must issue exactly one add mutation');
   console.log(JSON.stringify({
-    checks:29,
+    checks:42,
     failures:0,
     scope:'isolated Merchant Market catalog DOM browse/filter/pending+approved image attribution/1-2-3kg/add/reload/idempotent UI; no Production writes'
   }));
