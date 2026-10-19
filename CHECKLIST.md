@@ -445,3 +445,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Batch 13 approves raw pork shoulder, raw bone-in beef short ribs and raw beef round/top-round for the matching shoulder/rib/hip catalog identities; cooked pork-shoulder/tenderloin candidates were explicitly rejected as misleading.
 - Staged migration: `20261019184500_market_open_license_images_batch13.sql`; no Production apply.
 - NEXT: exact-head RC; fix first failure only. If green, continue exact raw/open-license replacements for the remaining 61 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 14 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 14 test checkpoint: `dea3647634cf21b65e882b6d25c3aac653094e76`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 75, rights-pending retailer candidates reduced to 53; source-page-only 0, family-reference-only 0.
+- Batch 14 approves kale (2 catalog identities), celery, half pumpkin, key lime, lychee, rambutan and cantaloupe using verified Commons licensing/attribution evidence.
+- Staged migration: `20261019190000_market_open_license_images_batch14.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 53 rights-pending images and Merchant Web authenticated/physical acceptance.
