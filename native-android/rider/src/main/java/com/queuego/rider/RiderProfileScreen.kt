@@ -51,7 +51,8 @@ fun RiderProfileScreen(
     onSnapshot: (RiderSnapshot) -> Unit,
     onNavigationSettings: () -> Unit,
     onLogout: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    workSettings: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -65,6 +66,7 @@ fun RiderProfileScreen(
     var phone by remember(auth.user.id) { mutableStateOf(displayPhone) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var showAccountDetails by remember { mutableStateOf(false) }
     var showSupport by remember { mutableStateOf(false) }
     var showSafety by remember { mutableStateOf(false) }
     var showLearning by remember { mutableStateOf(false) }
@@ -120,7 +122,6 @@ fun RiderProfileScreen(
     Box(modifier.fillMaxSize().background(Color(0xFFF8F7F8))) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp).padding(top = 15.dp, bottom = 78.dp)) {
-            RiderPassengerLicenseCard(auth, api)
             Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Spacer(Modifier.width(44.dp))
@@ -226,6 +227,14 @@ fun RiderProfileScreen(
                     RiderProfilePill(snapshot?.online == true)
                 }
             }
+            Spacer(Modifier.height(22.dp))
+            RiderProfileSection("บัญชีและเอกสาร") {
+                RiderSettingRow("รถและเอกสาร Rider", "ข้อมูลรถ · สถานะอนุมัติ · เอกสาร", R.drawable.qg_rider_nav_user) {
+                    showAccountDetails = !showAccountDetails
+                }
+            }
+            if (showAccountDetails) {
+                RiderPassengerLicenseCard(auth, api)
             RiderReverificationCard(
                 auth = auth,
                 api = api,
@@ -268,21 +277,9 @@ fun RiderProfileScreen(
                 api = api,
                 modifier = Modifier.padding(top = 9.dp)
             )
-            RiderProfileSection("การรับงาน") {
-                RiderSettingRow("สถานะรับงาน", "เปิดหรือปิดการรับงานจัดส่ง", R.drawable.qg_rider_flow_loc,
-                    enabled = !busy && snapshot != null && snapshot.activeJob == null, green = true,
-                    trailing = { RiderProfilePill(snapshot?.online == true, offlineLabel = "ปิด") }) {
-                    val enabled = snapshot?.online != true
-                    busy = true
-                    scope.launch {
-                        try {
-                            api.setOnline(auth, enabled, null, null)
-                            onSnapshot(api.riderSnapshot(auth))
-                            message = if (enabled) "เปิดรับงานแล้ว" else "ปิดรับงานแล้ว"
-                        } catch (e: CancellationException) { throw e } catch (e: Exception) { message = e.message ?: "เปลี่ยนสถานะไม่สำเร็จ" } finally { busy = false }
-                    }
-                }
             }
+            Spacer(Modifier.height(22.dp))
+            RiderProfileSection("การรับงาน") { workSettings() }
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("บัญชีและช่วยเหลือ") {
                 RiderSettingRow("ตั้งค่าบัญชี", "ชื่อ เบอร์โทร และข้อมูลบัญชี", R.drawable.qg_rider_nav_user, enabled = !busy) {
@@ -356,9 +353,15 @@ fun RiderProfileScreen(
                     }
                 }
                 RiderSettingDivider()
-                // Existing Android-only permission control; never an extra Home card.
+            }
+            Spacer(Modifier.height(22.dp))
+            RiderProfileSection("การนำทางและแผนที่") {
+                // Reuse the existing navigation permission/settings entry.
                 RiderSettingRow("ปุ่มลอยกลับ QueueGo", "ใช้ระหว่างเปิด Google Maps เพื่อนำทาง", R.drawable.qg_rider_flow_loc, onClick = onNavigationSettings)
                 RiderSettingDivider()
+            }
+            Spacer(Modifier.height(22.dp))
+            RiderProfileSection("ขั้นสูง") {
                 RiderSettingRow(
                     "ตรวจสอบระบบ Rider",
                     "ตรวจ GPS · แจ้งเตือน · อินเทอร์เน็ต · Google Maps · ปุ่มลอย",
@@ -452,7 +455,7 @@ fun RiderProfileScreen(
                 RiderAccountField("เบอร์โทรศัพท์", phone, { phone = it.filter(Char::isDigit).take(10) }, !busy, true)
                 Column(Modifier.fillMaxWidth().background(Color(0xFFFAF7F8), RoundedCornerShape(14.dp)).padding(12.dp)) {
                     Text("ข้อมูลรถที่อนุมัติ", color = QgMuted, fontSize = 10.sp)
-                    Text(riderVehicleLabel(profile?.vehicleType) + (profile?.vehiclePlate?.let { " · $it" } ?: ""), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(riderVehicleLabel(profile?.vehicleType) + (profile?.vehiclePlate?.let { " · $it" } ?: ""), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     Text("หากต้องการเปลี่ยนรถหรือทะเบียน ให้แจ้งฝ่ายดูแลเพื่อป้องกันข้อมูลอนุมัติไม่ตรงกับรถที่ใช้งานจริง", fontSize = 10.sp, color = QgMuted)
                 }
                 Text("หน้านี้แก้เฉพาะชื่อที่แสดงและเบอร์โทร ไม่เปลี่ยนสถานะอนุมัติ เอกสารยืนยันตัวตน ข้อมูลรถที่ผ่านการตรวจ หรือบัญชีการเงิน",
@@ -467,7 +470,7 @@ fun RiderProfileScreen(
                             message = "บันทึกการตั้งค่าแล้ว"
                         } catch (e: CancellationException) { throw e } catch (e: Exception) { message = e.message ?: "บันทึกการตั้งค่าไม่สำเร็จ" } finally { busy = false }
                     }
-                }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(18.dp),
+                }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp), shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))) {
                     Text(if (busy) "กำลังบันทึก…" else "บันทึกการตั้งค่า", fontWeight = FontWeight.Black)
                 }
@@ -489,9 +492,9 @@ fun RiderProfileScreen(
 @Composable
 private fun RiderProfileSection(title: String, content: @Composable () -> Unit) {
     Column {
-        Text(title, color = Color(0xFF898287), fontWeight = FontWeight.Black, fontSize = 9.sp, modifier = Modifier.padding(horizontal = 2.dp))
+        Text(title, color = Color(0xFF898287), fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp))
         Spacer(Modifier.height(5.dp))
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFFEEE6E8)), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column { content() }
         }
     }
@@ -501,14 +504,14 @@ private fun RiderProfileSection(title: String, content: @Composable () -> Unit) 
 private fun RiderSettingRow(title: String, detail: String, icon: Int, enabled: Boolean = true, green: Boolean = false,
     danger: Boolean = false, trailing: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
     val color = if (danger) QgRed else if (green) Color(0xFF14A35C) else Color(0xFF777177)
-    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-        .padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-        Box(Modifier.size(34.dp).background(if (danger) QgRedSoft else if (green) Color(0xFFEDF9F2) else Color(0xFFF7F4F5), RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+        .padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) {
             Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (danger) QgRed else Color(0xFF211E20), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Text(detail, color = Color(0xFF8A8387), fontSize = 8.5.sp, lineHeight = 11.5.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(title, color = if (danger) QgRed else Color(0xFF211E20), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(detail, color = Color(0xFF8A8387), fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 2.dp))
         }
         if (trailing != null) trailing() else Text("›", color = Color(0xFFB4ADB1), fontSize = 21.sp)
     }
@@ -556,4 +559,10 @@ private fun riderVehicleLabel(type: String?): String = when (type) {
     "saleng" -> "รถซาเล้ง"
     null, "" -> "รถที่อนุมัติ"
     else -> type
+}
+
+@Composable
+internal fun RiderSettingDestinationRow(enabled: Boolean, onClick: () -> Unit) {
+    RiderSettingRow("ปลายทางของฉัน", "ตั้งค่าความต้องการเส้นทางรับงาน", R.drawable.qg_rider_flow_loc,
+        enabled = enabled, onClick = onClick)
 }

@@ -1,5 +1,7 @@
 package com.queuego.rider
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.core.animateDpAsState
 
 import android.Manifest
@@ -2047,8 +2049,44 @@ private fun RiderHome(
                     api = api,
                     onSnapshot = { snapshot = it },
                     onNavigationSettings = { configureReturnControl() },
+                    workSettings = {
+                        RiderAcceptanceModeControl(
+                            autoAcceptEnabled = autoAcceptEnabled,
+                            enabled = dispatchPreferencesHydrated && !actionBusy,
+                            onAutoAcceptChanged = { enabled ->
+                                autoAcceptEnabled = enabled
+                                scope.launch {
+                                    try {
+                                        dispatchPreferenceWriteMutex.withLock {
+                                            acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
+                                        }
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Exception) {
+                                        actionMessage = "บันทึกโหมดรับงานไม่สำเร็จ"
+                                    }
+                                }
+                                actionMessage = if (enabled) {
+                                    "เปิดรับงานอัตโนมัติแล้ว"
+                                } else {
+                                    "เปลี่ยนเป็นเลือกงานเองแล้ว"
+                                }
+                            },
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+
+                        RiderSettingDestinationRow(enabled = destinationLoaded && !actionBusy) { showDestination = true }
+                    },
                     onLogout = onLogout,
                     modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 748.dp).fillMaxSize()
+                )
+            }
+            if (showDestination) {
+                RiderMyDestinationDialog(
+                    auth = auth, api = api, current = destinationPreference,
+                    currentGps = navigationFix?.point?.let { it.latitude to it.longitude },
+                    onSaved = { destinationPreference = it },
+                    onClose = { showDestination = false }
                 )
             }
             RiderBottomNavigation(
@@ -2464,20 +2502,10 @@ private fun RiderHome(
             onGuidance = { navigationGuidance = it }
         )
 
-        Column(
-            Modifier
-                .align(Alignment.TopCenter)
-                .widthIn(max = 740.dp)
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 7.dp)
-        ) {
-            RiderBlueprintTopBar(
-                active = auth.user.status == "active",
-                online = snapshot?.online == true,
-                enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null,
-                speedKph = reliableSpeedKph,
-                onToggle = { changeOnline(snapshot?.online != true) }
-            )
+        if (activeNavigationWork) {
+            Box(Modifier.align(Alignment.TopStart).padding(12.dp)) {
+                RiderBlueprintSpeedPill(reliableSpeedKph)
+            }
         }
 
         if (activeNavigationWork && (navigationHud != null || restReminderDue || unexpectedStopDue)) {
@@ -2632,30 +2660,6 @@ private fun RiderHome(
             }
         }
 
-        if (mapJob == null && snapshot?.online == true && demandZones.isNotEmpty()) {
-            Card(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 64.dp, start = 10.dp),
-                shape = RoundedCornerShape(99.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFD8DC)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        Modifier
-                            .size(9.dp)
-                            .background(QgRed.copy(alpha = 0.55f), androidx.compose.foundation.shape.CircleShape)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text("พื้นที่งาน 24 ชม.", color = Color(0xFF5F5559), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
 
         Card(
             modifier = Modifier
@@ -2685,49 +2689,6 @@ private fun RiderHome(
             }
         }
 
-        if (
-            mapJob == null &&
-            snapshot?.online == true &&
-            destinationLoaded
-        ) {
-            Card(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 116.dp, end = 10.dp)
-                    .widthIn(max = 190.dp)
-                    .clickable(enabled = !actionBusy) { showDestination = true },
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (destinationPreference?.enabled == true) Color(0xFFFFF2F4) else Color(0xF8FFFFFF)
-                ),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (destinationPreference?.enabled == true) Color(0xFFFFC9D0) else Color(0xFFEEE5E8)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    QgIcon("route", Modifier.size(20.dp), QgRed)
-                    Column {
-                        Text(
-                            riderDestinationControlLabel(destinationPreference),
-                            color = Color(0xFF211E20),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Black,
-                            maxLines = 1
-                        )
-                        if (destinationPreference?.enabled == true) {
-                            Text("soft preference", color = QgMuted, fontSize = 7.5.sp)
-                        }
-                    }
-                }
-            }
-        }
-
         val activeSheetJob = mapJob.takeIf { activeNavigationWork }
         LaunchedEffect(activeSheetJob?.id) {
             routeOverviewActive = false
@@ -2746,7 +2707,7 @@ private fun RiderHome(
         val dockKey = when {
             activeSheetJob != null -> activeSheetJob.id
             snapshot?.offeredJob != null -> null
-            else -> "home:" + (snapshot?.online == true).toString()
+            else -> null
         }
         val dockTitle = activeSheetJob?.let { "งาน " + it.numberLabel }
             ?: if (snapshot?.online == true) "พร้อมรับงานแล้ว" else "พร้อมรับงานเมื่อคุณพร้อม"
@@ -2799,110 +2760,11 @@ private fun RiderHome(
                 }
             } else {
                 if (current.activeJob == null && current.offeredJob == null && current.laundry.activeJob == null) {
-                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFCFFFFFF)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))) {
-                    Column(Modifier.padding(if (shortHome) 10.dp else 12.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                            Box(Modifier.size(44.dp).background(QgRedSoft, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                                QgIcon(if (current.online) "home" else "location", Modifier.size(24.dp), QgRed)
-                            }
-                            Column {
-                                Text(if (current.online) "พร้อมรับงานแล้ว" else "พร้อมรับงานเมื่อคุณพร้อม", fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Black)
-                                Text(if (current.online) {
-                                    if (lastKnownLocation(context) != null) "กำลังค้นหางานใกล้คุณ" else "กำลังรอตำแหน่ง GPS"
-                                } else "เปิดรับงานแล้วระบบจะค้นหางานใกล้ตำแหน่งปัจจุบัน", color = QgMuted, fontSize = 10.sp)
-                            }
-                        }
-                        if (current.online) {
-                        Spacer(Modifier.height(if (shortHome) 7.dp else 9.dp))
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf("วันนี้" to (todaySummary?.jobs?.let { "$it งาน" } ?: "— งาน"),
-                                "รายได้" to riderMoneyBaht(todaySummary?.income),
-                                "ออนไลน์" to (todaySummary?.onlineHours?.let { "%.1f ชม.".format(it) } ?: "— ชม.")
-                            ).forEach { (label, value) ->
-                                Column(Modifier.weight(1f).background(Color(0xFFFAF6F7), RoundedCornerShape(15.dp)).padding(horizontal = 6.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(label, fontSize = 8.sp, color = QgMuted)
-                                    Text(value, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                                }
-                            }
-                        }
-                        }
-                        val homeActionCards = riderHomeActionCards(
-                            missions = homeMissions,
-                            diagnostics = readRiderDiagnostics(context),
-                            documents = availabilityDocuments,
-                            documentsLoaded = current.online && availabilityDocumentsLoaded,
-                            reverification = availabilityReverification,
-                            reverificationLoaded = current.online && availabilityReverificationLoaded,
-                            vehicleInspection = availabilityVehicleInspection,
-                            vehicleInspectionLoaded = current.online && availabilityVehicleInspectionLoaded,
-                            selectedVehicle = availabilitySelectedVehicle,
-                            vehiclesLoaded = current.online && availabilityVehiclesLoaded
-                        )
-                        RiderHomeActionCards(
-                            cards = homeActionCards,
-                            onAction = { target ->
-                                activeTab = when (target) {
-                                    RiderHomeActionTarget.EARNINGS -> "earn"
-                                    RiderHomeActionTarget.PROFILE -> "profile"
-                                }
-                            }
-                        )
-                        RiderAcceptanceModeControl(
-                            autoAcceptEnabled = autoAcceptEnabled,
-                            enabled = dispatchPreferencesHydrated && !actionBusy,
-                            onAutoAcceptChanged = { enabled ->
-                                autoAcceptEnabled = enabled
-                                scope.launch {
-                                    try {
-                                        dispatchPreferenceWriteMutex.withLock {
-                                            acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
-                                        }
-                                    } catch (cancelled: CancellationException) {
-                                        throw cancelled
-                                    } catch (_: Exception) {
-                                        actionMessage = "บันทึกโหมดรับงานไม่สำเร็จ"
-                                    }
-                                }
-                                actionMessage = if (enabled) {
-                                    "เปิดรับงานอัตโนมัติแล้ว"
-                                } else {
-                                    "เปลี่ยนเป็นเลือกงานเองแล้ว"
-                                }
-                            },
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    if (current.online) {
-                        OutlinedButton(onClick = { changeOnline(false) }, enabled = !actionBusy,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 46.dp),
-                            shape = RoundedCornerShape(15.dp)) { Text("ปิดรับงาน", fontSize = 15.sp, fontWeight = FontWeight.Black) }
-                    } else {
-                        val readiness = riderAvailabilityReadiness(
-                            diagnostics = readRiderDiagnostics(context),
-                            firebaseConfigured = riderFirebaseConfigured(context),
-                            reverification = availabilityReverification,
-                            reverificationLoaded = availabilityReverificationLoaded,
-                            documents = availabilityDocuments,
-                            documentsLoaded = availabilityDocumentsLoaded,
-                            vehicleInspection = availabilityVehicleInspection,
-                            vehicleInspectionLoaded = availabilityVehicleInspectionLoaded,
-                            selectedVehicle = availabilitySelectedVehicle,
-                            vehiclesLoaded = availabilityVehiclesLoaded
-                        )
-                        RiderAvailabilityReadinessCard(
-                            readiness = readiness,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                        Button(onClick = { changeOnline(true) }, enabled = !actionBusy,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 46.dp),
-                            shape = RoundedCornerShape(15.dp)) { Text("เปิดรับงาน", fontSize = 15.sp, fontWeight = FontWeight.Black) }
-                    }
-                    if (current.online) Text("อยู่ใกล้ย่านร้านอาหาร ตลาด และร้านค้าที่เข้าร่วม จะช่วยให้ได้รับงานเร็วขึ้น",
-                        modifier = Modifier.fillMaxWidth().padding(top = 7.dp).background(Color(0xFFFFF4F6), RoundedCornerShape(14.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
-                        color = Color(0xFF7B6870), fontSize = 9.sp, lineHeight = 13.sp)
-                    }
-                    }
+                    RiderReadyCard(
+                        online = current.online,
+                        enabled = !actionBusy,
+                        onCheckedChange = { changeOnline(it) }
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
                 fun claimLaundry(laundryJob: RiderLaundryJob) {
@@ -3998,54 +3860,30 @@ private fun RiderBlueprintSpeedPill(speedKph: Int?) {
 }
 
 @Composable
-private fun RiderBlueprintTopBar(
-    active: Boolean,
-    online: Boolean,
-    enabled: Boolean,
-    speedKph: Int?,
-    onToggle: () -> Unit
-) {
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+private fun RiderReadyCard(online: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Card(
+        Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        RiderBlueprintSpeedPill(speedKph)
-        Card(
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE7E9))
-        ) {
-            Row(
-                Modifier.heightIn(min = 44.dp).padding(start = 10.dp, end = 5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    Modifier
-                        .size(8.dp)
-                        .clip(androidx.compose.foundation.shape.CircleShape)
-                        .background(if (online && active) Color(0xFF18B968) else Color(0xFFB7B2B4))
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    if (online && active) "ออนไลน์" else "ออฟไลน์",
-                    color = Color(0xFF756E72),
-                    fontWeight = FontWeight.Black,
-                    fontSize = 10.sp
-                )
-                Spacer(Modifier.width(6.dp))
-                Box(
-                    Modifier.size(width = 43.dp, height = 29.dp).clip(RoundedCornerShape(99.dp))
-                        .background(if (online) Color(0xFF1FBE70) else Color(0xFFD9D5D7))
-                        .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Switch, onClick = onToggle),
-                    contentAlignment = if (online) Alignment.CenterEnd else Alignment.CenterStart
-                ) {
-                    Box(
-                        Modifier.padding(horizontal = 3.dp).size(23.dp)
-                            .background(Color.White, androidx.compose.foundation.shape.CircleShape)
-                    )
-                }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(10.dp).background(
+                if (online) Color(0xFF12A651) else Color(0xFFA2A2A7),
+                androidx.compose.foundation.shape.CircleShape))
+            Column(Modifier.weight(1f)) {
+                Text(if (online) "พร้อมรับงานแล้ว" else "ยังไม่พร้อมรับงาน",
+                    fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold)
+                Text(if (online) "คุณจะได้รับงานในพื้นที่ใกล้เคียง" else "เปิดเพื่อเริ่มรับงาน",
+                    fontSize = 13.sp, lineHeight = 19.sp, color = QgMuted,
+                    modifier = Modifier.padding(top = 3.dp))
             }
+            androidx.compose.material3.Switch(
+                checked = online, onCheckedChange = onCheckedChange, enabled = enabled,
+                modifier = Modifier.semantics { contentDescription = "พร้อมรับงาน" },
+                colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = QgRed,
+                    checkedThumbColor = Color.White))
         }
     }
 }

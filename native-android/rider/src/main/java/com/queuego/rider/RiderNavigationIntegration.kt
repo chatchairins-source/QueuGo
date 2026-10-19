@@ -48,9 +48,8 @@ import kotlinx.coroutines.withContext
 // Shadow diagnostics are disabled so the Rider sees the exact pipeline being evaluated.
 private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false
 private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true
-// Temporary owner-requested road test: retain FOLLOW/3D with no active job so
-// physical-device camera smoothness can be evaluated before job-gating returns.
-private const val RIDER_CAMERA_SMOOTHNESS_TEST_MODE = true
+// Idle Home uses normal map mode; active work owns the navigation camera.
+private const val RIDER_CAMERA_SMOOTHNESS_TEST_MODE = false
 
 private fun riderQueueGoMapServiceBaseUrl(context: Context): String? = runCatching {
     context.packageManager

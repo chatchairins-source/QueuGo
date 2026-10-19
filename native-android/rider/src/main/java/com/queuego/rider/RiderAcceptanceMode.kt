@@ -61,24 +61,18 @@ internal fun RiderAcceptanceModeControl(
 ) {
     Card(
         modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(15.dp),
-        border = BorderStroke(
-            1.dp,
-            if (autoAcceptEnabled) Color(0xFFFFCDD3) else Color(0xFFEEE5E8)
-        ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (autoAcceptEnabled) Color(0xFFFFF3F5) else Color(0xFFFAF7F8)
-        )
+        shape = RoundedCornerShape(0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 9.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    "โหมดรับงาน",
+                    "รับงานอัตโนมัติ",
                     fontWeight = FontWeight.Black,
-                    fontSize = 11.sp,
+                    fontSize = 15.sp,
                     color = Color(0xFF211E20)
                 )
                 Text(
@@ -88,15 +82,15 @@ internal fun RiderAcceptanceModeControl(
                         "เลือกเอง · ดูรายละเอียดแล้วกดรับภายใน 30 วินาที"
                     },
                     color = QgMuted,
-                    fontSize = 8.5.sp,
-                    lineHeight = 12.sp,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
                     modifier = Modifier.padding(top = 2.dp)
                 )
                 if (autoAcceptEnabled) {
                     Text(
                         "งานพ่วงและงานฝากซักยังต้องกดรับเอง",
                         color = QgRed,
-                        fontSize = 8.sp,
+                        fontSize = 12.sp,
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
@@ -104,7 +98,8 @@ internal fun RiderAcceptanceModeControl(
             Switch(
                 checked = autoAcceptEnabled,
                 onCheckedChange = onAutoAcceptChanged,
-                enabled = enabled
+                enabled = enabled,
+                colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = QgRed)
             )
         }
     }
