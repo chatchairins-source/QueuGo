@@ -1,0 +1,32 @@
+name: Market Makro gapfill probe
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'ops/market/probe-makro-gapfill-images.cjs'
+      - '.github/workflows/market-makro-gapfill-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Search Makro candidates for remaining Market products
+        run: node ops/market/probe-makro-gapfill-images.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: market-makro-gapfill-candidates
+          path: artifacts/market-makro-gapfill/market-makro-gapfill-candidates.json
+          if-no-files-found: error
+          compression-level: 9
