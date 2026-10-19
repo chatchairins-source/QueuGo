@@ -31,7 +31,7 @@ function clean(v){
     .replace(/\b(?:kg|g|ml|l|xl|xxl|s|m|l)\b/gi,' ')
     .replace(/[0-9.,/%×x+-]+/g,' ')
     .replace(/ซีพี|เอโร่|โลตัส|makro|aro/gi,' ')
-    .replace(/[^\p{L}\p{N}]+/gu,' ')
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu,' ')
     .replace(/\s+/g,' ')
     .trim();
 }
