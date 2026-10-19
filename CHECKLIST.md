@@ -387,4 +387,7 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Added source-backed Thai Market master identities, authenticated Merchant catalog browse/add flow, idempotent add receipts, GP-derived Delivery preview, separate manual add, and pending-Merchant access for catalog preparation.
 - Staged new migration as `20261019114500_market_master_catalog.sql`; no Production apply in this checkpoint.
 - Source contract gate: `tests/market-master-catalog.cjs`; full CI still required.
-- NEXT: run exact-head CI, fix first failure if any, then expand the Market catalog category coverage and images only from verifiable sources/rights.
+
+- Fresh-source expansion: added 33 current public product facts from Makro PRO and Lotus's covering pork, chicken, duck, beef, mushrooms and common vegetables. Retail prices are intentionally not imported.
+- Weight-selling UX: catalog items sold by kilogram now expose 1 kg / 2 kg / 3 kg quick presets while keeping custom quantity input.
+- NEXT: run exact-head CI, fix first failure if any, then continue seafood/fruit coverage and images only from verifiable sources/rights.
