@@ -14,6 +14,7 @@ const {JSDOM}=require('jsdom');
   const calls=[];
   const toasts=[];
   let added=false;
+  let gpDenied=false;
 
   w.currentUser=()=>({id:'shop-user-1',type:'shop',category:'market',shopProfileId:'shop-profile-1'});
   w.QT_SYNC={profileMaps:{shopByUserId:new Map()}};
@@ -40,7 +41,7 @@ const {JSDOM}=require('jsdom');
         product_id:null,price:null,delivery_price:null
       }];
     }
-    if(pathname==='rpc/effective_gp_rate') return [{effective_gp_rate:10}];
+    if(pathname==='rpc/effective_gp_rate'){if(gpDenied)throw Error('shop access denied');return [{effective_gp_rate:10}]}
     if(pathname==='rpc/qg_market_catalog_add'){
       assert.equal(options.body.p_master_product_id,'m1');
       assert.equal(options.body.p_unit,'กิโลกรัม');
@@ -134,10 +135,18 @@ const {JSDOM}=require('jsdom');
   assert.equal(manual.elements.namedItem('pack').value,'3');
   assert.equal(manual.elements.namedItem('weight').value,'3');
 
+  gpDenied=true;
+  await w.qgRenderMarketCatalog();
+  assert.equal(w.document.querySelectorAll('.market-catalog-card').length,2,'denied optional GP preview must not block catalog');
+  w.qgMarketCatalogChoose('m2');
+  w.document.querySelector('[name="price"]').value='100';w.qgMarketCatalogPricePreview();
+  assert.match(w.document.getElementById('market-catalog-delivery-preview').textContent,/คำนวณ GP อัตโนมัติหลังบันทึก/);
+  assert.doesNotMatch(w.document.getElementById('market-catalog-delivery-preview').textContent,/GP 0/,'unknown GP must never become zero');
+
   const addCalls=calls.filter(x=>x.pathname==='rpc/qg_market_catalog_add');
   assert.equal(addCalls.length,1,'single submit must issue exactly one add mutation');
   console.log(JSON.stringify({
-    checks:42,
+    checks:45,
     failures:0,
     scope:'isolated Merchant Market catalog DOM browse/filter/pending+approved image attribution/1-2-3kg/add/reload/idempotent UI; no Production writes'
   }));

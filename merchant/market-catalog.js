@@ -22,8 +22,8 @@ function shell(body){
   </section>`,'shop-profile');
 }
 function error(e){const msg=String(e?.message||e||'เกิดข้อผิดพลาด');const el=document.getElementById('market-catalog-error');if(el)el.textContent=msg;try{toast('แคตตาล็อกตลาด: '+msg)}catch(_){}}
-function gpRate(raw){const v=Array.isArray(raw)?raw[0]:raw;if(v&&typeof v==='object'){const n=Number(v.effective_gp_rate??v.rate??v.value);return Number.isFinite(n)?n:null}const n=Number(v);return Number.isFinite(n)?n:null}
-function deliveryPrice(storePrice){const p=Number(storePrice),r=Number(state.gpRate);return Number.isFinite(p)&&p>0&&Number.isFinite(r)&&r>=0&&r<=100?Math.round(p*(1+r/100)*100)/100:null}
+
+function deliveryPrice(storePrice){if(state.gpRate==null)return null;const p=Number(storePrice),r=Number(state.gpRate);return Number.isFinite(p)&&p>0&&Number.isFinite(r)&&r>=0&&r<=100?Math.round(p*(1+r/100)*100)/100:null}
 function deliveryNote(storePrice){const d=deliveryPrice(storePrice),r=Number(state.gpRate);return Number.isFinite(d)?`GP ${r.toLocaleString('th-TH',{maximumFractionDigits:2})}% · ราคาเดลิเวอรี่ ${d.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})} บาท`:'ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก'}
 window.qgMarketCatalogPricePreview=()=>{const input=document.querySelector('#market-catalog-add-form [name="price"]'),out=document.getElementById('market-catalog-delivery-preview');if(out)out.textContent=deliveryNote(input?.value)};
 window.qgMarketCatalogSetKg=kg=>qgMarketSetWeightPreset(document.getElementById('market-catalog-add-form'),kg);
@@ -84,9 +84,9 @@ async function load(){
     const [cats,page,gp]=await Promise.all([
       rpc('qg_market_master_categories',{}),
       rpc('qg_market_catalog_page',{p_query:state.query,p_category:state.category,p_offset:state.offset}),
-      rpc('effective_gp_rate',{p_shop_profile_id:id})
+      qgMarketReadGpRate(id)
     ]);
-    state.gpRate=gpRate(gp);
+    state.gpRate=gp;
     if(!active(epoch,id))return;
     state.categories=Array.isArray(cats)?cats:[];
     const rows=Array.isArray(page)?page:[];
