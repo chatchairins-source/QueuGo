@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 91,
+    "approved": 93,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 37
+    "rights_pending": 35
   },
   "items": [
     {
@@ -751,12 +751,12 @@
       "slug": "makro-white-sand-fish-1kg",
       "name_th": "ปลาทรายขาวขนาดกลาง",
       "category": "ปลา",
-      "source_page_url": "https://www.makro.pro/th/p/184731-31434973638933",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/946bb804d0d14ed48f1eab9b7a022c69?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Sillago_sihama_Thailand.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/f/fd/Sillago_sihama_Thailand.jpg",
+      "status": "approved",
+      "rights_evidence": "Sahat Ratmuangkhwang · CC BY 3.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Original 640×480 whole Sillago sihama photograph visually reviewed; species illustration only, no retailer size/weight claim. Thai Department of Fisheries confirms ทรายขาว as local name for Sillago sihama: https://www4.fisheries.go.th/local/file_document/20210818113216_1_file.pdf page45."
     },
     {
       "slug": "makro-gourami-sun-dried-500g",
@@ -877,7 +877,7 @@
       "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented. Review 2026-10-19: rejected Commons Bivalvia.jpg because it shows empty shells of multiple species; not suitable for fresh edible clam commodity."
     },
     {
       "slug": "makro-mussel-meat-1kg",
@@ -1367,12 +1367,12 @@
       "slug": "lotus-shrimp-chaebow-25-30kg",
       "name_th": "กุ้งแชบ๊วย 25-30 ตัว/กก.",
       "category": "กุ้ง",
-      "source_page_url": "https://www.lotuss.com/th/product/52195167?openExternalBrowser=1",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/52195167.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Jerbung_Pj_DSC_1970.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Jerbung_Pj_DSC_1970.jpg",
+      "status": "approved",
+      "rights_evidence": "Kembangraps · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct Lotus's product image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Raw whole Fenneropenaeus merguiensis on ice; original photo visually reviewed 1224×1632. Reuse already approved commodity illustration, not evidence of retailer origin or 25-30 count; actual size fact remains retailer-source backed."
     },
     {
       "slug": "talaadthai-shrimp-chaebow-medium",

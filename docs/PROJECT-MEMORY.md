@@ -459,3 +459,7 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - This supersedes the previous login-blocked release checkpoint: authenticated backend and module flow is verified using the authorized test shop. Full signed-in-browser appearance/physical-device acceptance remains explicitly unclaimed; anonymous browser verifies deployed asset tags only.
 - Remaining image work:40 retailer candidates still need exact reusable replacements or rights evidence; keep pending placeholders.79 unique approved-image URLs audited:24 HTTP200,55 HTTP429 batch-rate-limited,zero404; do not falsely mark these as deleted or auto-approve pending retailer art.
 - NEXT: continue only remaining exact image/rights work from newest main descendant; keep test shop unpublished. Do not recreate catalog, migrations, presets, optional-GP fix or add receipts, and do not restart PR440/closed441.
+
+## 2026-10-19 — Market image continuation after PR443
+- Source main7959ede0 records live128 items/91 approved images/37 rights pending. Main CI and Pages both successful. Catalog, receipts, editable1/2/3kg, pending-owner and optional GP flow already implemented; continue image rights only.
+- Batch20 stages two reviewed species/commodity images (banana prawn, white sand fish) with existing rights fields, taking staged counts93/35. Never infer retailer size/brand/pack from a generic photo. Rejected mixed empty-shell art for edible clam. NEXT: exact-source tests/CI, forward-only migration and live readback; do not claim signed-in physical-device appearance certification.
