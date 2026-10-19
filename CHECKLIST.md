@@ -461,3 +461,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Batch 15 approves king oyster mushroom, whole king mackerel, whole white shrimp, frozen squid rings, chilled squid tentacles and whole blue crab using verified Commons license/attribution evidence.
 - Staged migration: `20261019191500_market_open_license_images_batch15.sql`; no Production apply.
 - NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 47 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 16 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 16 test checkpoint: `069e3c3eb61b5fcb96d85f91a030cf7462f8cd66`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 84, rights-pending retailer candidates reduced to 44; source-page-only 0, family-reference-only 0.
+- Batch 16 approves raw chicken leg quarter, sliced catfish and raw soft-shell crab on ice with verified Commons license/attribution evidence.
+- Staged migration: `20261019193000_market_open_license_images_batch16.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 44 rights-pending images and Merchant Web authenticated/physical acceptance.
