@@ -214,7 +214,7 @@ for(const category of ['เห็ด','กุ้ง','ปู','หอย','ป�
 }
 const merchant=read('merchant/index.html');
 assert.ok(merchant.includes("case'market-catalog'"));
-assert.ok(merchant.includes('market-catalog.js?v=20261019-market-catalog2'));
+assert.ok(merchant.includes('market-catalog.js?v=20261019-market-image-flow3'));
 assert.ok(merchant.includes("'market-stock','market-catalog'"),'pending merchants must be able to prepare catalog/stock');
 
 console.log(JSON.stringify({

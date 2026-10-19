@@ -28,16 +28,29 @@ function deliveryNote(storePrice){const d=deliveryPrice(storePrice),r=Number(sta
 window.qgMarketCatalogPricePreview=()=>{const input=document.querySelector('#market-catalog-add-form [name="price"]'),out=document.getElementById('market-catalog-delivery-preview');if(out)out.textContent=deliveryNote(input?.value)};
 window.qgMarketCatalogSetKg=kg=>{const form=document.getElementById('market-catalog-add-form');if(!form)return;const pack=form.querySelector('[name="pack"]'),weight=form.querySelector('[name="weight"]'),unit=form.querySelector('[name="unit"]');if(unit)unit.value='กิโลกรัม';if(pack)pack.value=String(kg);if(weight)weight.value=String(kg)};
 function active(epoch,shopId){return epoch===state.epoch&&shopId===state.shop&&location.hash.replace('#','').split('/')[0]==='market-catalog'}
-function card(r){
-  const linked=!!r.product_id;
-  const image=r.image? `<img class="market-catalog-image" src="${E(r.image)}" alt="${E(r.name_th)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'market-catalog-image market-catalog-placeholder',textContent:'${E((r.name_th||'?').charAt(0))}'}))">`:`<div class="market-catalog-image market-catalog-placeholder" aria-label="ยังไม่มีรูป ${E(r.name_th)}">${E((r.name_th||'?').charAt(0))}</div>`;
+function productImage(r){
+  const image=r.image? `<img class="market-catalog-image" src="${E(r.image)}" alt="${E(r.name_th)}" loading="lazy" onerror="qgMarketCatalogImageError(this)">`:`<div class="market-catalog-image market-catalog-placeholder" aria-label="ยังไม่มีรูป ${E(r.name_th)}">${E((r.name_th||'?').charAt(0))}</div>`;
   const imageStatus=r.image
     ?`<small>รูปสินค้า: ผ่านการอนุมัติแล้ว</small>${r.image_source&&r.image_rights_evidence?`<small class="market-catalog-credit">รูป: <a href="${E(r.image_source)}" target="_blank" rel="noopener noreferrer">${E(r.image_rights_evidence)}</a></small>`:''}`
     :r.has_image_reference?'<small>รูปสินค้า: พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่</small>':'<small>รูปสินค้า: กำลังหารูปที่ตรวจสอบแหล่งที่มาได้</small>';
+  return `<div class="market-catalog-media">${image}<div class="market-catalog-image-status">${imageStatus}</div></div>`;
+}
+window.qgMarketCatalogImageError=img=>{
+  const media=img.closest('.market-catalog-media');
+  const fallback=document.createElement('div');
+  fallback.className='market-catalog-image market-catalog-placeholder';
+  fallback.textContent='โหลดรูปไม่สำเร็จ';
+  fallback.setAttribute('role','img');
+  fallback.setAttribute('aria-label','โหลดรูป '+img.alt+' ไม่สำเร็จ');
+  img.replaceWith(fallback);
+  const status=media?.querySelector('.market-catalog-image-status');
+  if(status){const note=document.createElement('small');note.textContent='โหลดรูปไม่สำเร็จ · ลองเปิดหน้านี้อีกครั้ง';status.prepend(note)}
+};
+function card(r){
+  const linked=!!r.product_id;
   return `<article class="market-catalog-card" data-search="${E((r.name_th+' '+r.category).toLocaleLowerCase('th-TH'))}">
-    ${image}<div class="market-catalog-info"><b>${E(r.name_th)}</b><small>${E(r.category)} · หน่วยอ้างอิง ${E(r.source_unit)}</small>
+    ${productImage(r)}<div class="market-catalog-info"><b>${E(r.name_th)}</b><small>${E(r.category)} · หน่วยอ้างอิง ${E(r.source_unit)}</small>
     ${r.suggested_unit?`<small>หน่วยที่ระบบแนะนำ: ${E(r.suggested_pack_size)} ${E(r.suggested_unit)} / ชุด</small>`:'<small>หน่วยอ้างอิงยังไม่ตรงกับหน่วยขายในระบบ — ร้านเลือกหน่วยเอง</small>'}
-    ${imageStatus}
     ${linked?`<strong>มีในร้านแล้ว · หน้าร้าน ${Number(r.price??0).toLocaleString('th-TH')} บาท · เดลิเวอรี่ ${Number(r.delivery_price??r.price??0).toLocaleString('th-TH')} บาท</strong>`:''}</div>
     <button type="button" class="${linked?'qgm-outline':'qgm-primary'}" ${linked?'disabled':''} onclick="qgMarketCatalogChoose('${E(r.id)}')">${linked?'มีในร้านแล้ว':'เพิ่มเข้าร้าน'}</button>
   </article>`;
@@ -92,6 +105,7 @@ window.qgMarketCatalogChoose=id=>{
   const weight=suggestedUnit==='กิโลกรัม'?pack:suggestedUnit==='ขีด'?pack/10:suggestedUnit==='กรัม'?pack/1000:'';
   shell(`<form id="market-catalog-add-form" class="market-form">
     <button type="button" class="qgm-outline" onclick="qgRenderMarketCatalog()">‹ กลับแคตตาล็อก</button>
+    <div class="market-catalog-preview">${productImage(r)}</div>
     <h2>${E(r.name_th)}</h2><p>${E(r.category)} · หน่วยอ้างอิง ${E(r.source_unit)}</p>
     <label>ราคาหน้าร้าน / ชุด (บาท)<input name="price" type="number" min="0.01" max="999999" step="0.01" required oninput="qgMarketCatalogPricePreview()"></label>
     <small id="market-catalog-delivery-preview">ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก</small>

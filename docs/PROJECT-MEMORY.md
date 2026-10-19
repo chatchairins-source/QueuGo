@@ -422,3 +422,8 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 
 ## 2026-10-19 Web-first real places
 - Pinned OSM3079 places/1284 business-service records via PR437; same shared asset/search/display with explicit source attribution and coordinate selection. Imported records are not merchants/orderable. Preserve current live routing/camera/proof and project only bounded UI/data. Full/exact gates required; native same-asset integration follows.
+
+
+## 2026-10-19 Market Catalog continuation from PR441
+- Verified latest successor `68b9b0b9` descends from current main `fa0b7ac9`; PR440 explicitly superseded. 128 sourced products, 84 approved images, 44 rights-pending candidates; Phase2 data exists. Do not recreate catalog or auto-approve retailer images.
+- `6cfb031b` reuses the same image/credit/status rendering in list and add form, with explicit broken-image fallback; the Market gates now participate in npm test. Focused tests pass, full regression/exact CI and authenticated Merchant browser acceptance remain gates. Shared manual-editor kg presets and remaining rights resolution are next; no Production migration applied.

@@ -477,3 +477,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Batch 17 approves dried bamboo shoots, fresh tofu skin, textured vegetable protein and peeled ginkgo nuts using verified Commons licensing/attribution evidence.
 - Staged migration: `20261019194500_market_open_license_images_batch17.sql`; no Production apply.
 - NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 40 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market image add-form verification
+- IN PROGRESS; branch `work-market-master-catalog-successor-v2-20261019`; base `c9c7c040917867e86978e975dcf7ba87ec3a8ddc`; local source/test commit `6cfb031b3214f717c4b5c046dccea35b91dbef85`.
+- Reused image/credit/status renderer for list and add form, accessible broken-image feedback; versioned assets. Market data and DOM tests now execute in npm test/RC.
+- TEST: full npm test EXIT0 on pre-batch17 UI tree; focused source integrity PASS (90 scripts/77 refs), catalog contracts PASS, DOM 29 checks PASS. Exact successor CI required.
+- Counts inherited from batch17: 128 items; 88 approved images; 40 rights-pending direct candidates. No Production apply or real Merchant save certified.
+- NEXT: exact successor CI; remaining image rights, shared manual editor weight presets and authenticated Merchant Web acceptance.

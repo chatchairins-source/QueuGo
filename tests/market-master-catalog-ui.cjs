@@ -74,7 +74,20 @@ const {JSDOM}=require('jsdom');
   assert.match(credit.textContent,/CC BY-SA 4.0/);
   assert.equal(credit.getAttribute('rel'),'noopener noreferrer');
 
+  // The same approved image and attribution must survive entry into the add flow.
+  w.qgMarketCatalogChoose('m2');
+  const preview=w.document.querySelector('.market-catalog-preview img');
+  assert.ok(preview,'add form must retain the selected approved product image');
+  assert.equal(preview.alt,'ปลาหมอ');
+  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/CC BY-SA 4.0/);
+  w.qgMarketCatalogImageError(preview);
+  assert.equal(w.document.querySelector('.market-catalog-preview img'),null);
+  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/โหลดรูปไม่สำเร็จ/);
+  assert.ok(w.document.querySelector('.market-catalog-preview .market-catalog-credit a'),'image failure must preserve attribution');
+
   w.qgMarketCatalogChoose('m1');
+  assert.equal(w.document.querySelector('.market-catalog-preview img'),null,'rights-pending candidate must not load in add form');
+  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/รอตรวจสิทธิ์/);
   assert.match(w.document.body.textContent,/ขนาดขายที่ใช้บ่อย/);
   assert.match(w.document.body.textContent,/1 กก./);
   assert.match(w.document.body.textContent,/2 กก./);
@@ -103,7 +116,7 @@ const {JSDOM}=require('jsdom');
   const addCalls=calls.filter(x=>x.pathname==='rpc/qg_market_catalog_add');
   assert.equal(addCalls.length,1,'single submit must issue exactly one add mutation');
   console.log(JSON.stringify({
-    checks:21,
+    checks:29,
     failures:0,
     scope:'isolated Merchant Market catalog DOM browse/filter/pending+approved image attribution/1-2-3kg/add/reload/idempotent UI; no Production writes'
   }));
