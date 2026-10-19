@@ -261,6 +261,7 @@
 
   <script src="../map-assets/maplibre-gl.js"></script>
   <script src="../map-assets/pmtiles.js"></script>
+  <script src="../queuego-map-web.js?v=20261019-places1"></script>
   <script src="queuego-map-service.js"></script>
   <script src="queuego-map-style.js"></script>
   <script>
@@ -841,6 +842,10 @@
     async function engineGeocode(query){
       const direct=coordinateSearch(query);
       if(direct.length){state.lastSearchProvider="coordinates";return direct}
+      try{
+        const local=await window.QueueGoMapWeb?.searchPlaceCatalog(query,{center:map.getCenter(),limit:20});
+        if(local?.length){state.lastSearchProvider="queuego-catalog";return local.map(p=>({...p,lon:String(p.lng),lat:String(p.lat),display_name:[p.name,...Object.values(p.address||{})].join(", "),provider:"queuego-catalog"}))}
+      }catch(_){}
       if(packageInfo){state.lastSearchProvider="queuego";return QueueGoMapService.call("geocode",{q:query})}
       const providers=[["nominatim",geocodeNominatim],["photon",geocodePhoton],["overpass",geocodeOverpass]];
       let lastError=null;
@@ -981,7 +986,9 @@
       toilet:'["amenity"="toilets"]'
     };
     async function engineNearby(category,lat,lon,radius=5000){
-      const items=await QueueGoMapService.call("nearby",{category,lat,lon,radius});
+      let items=null;
+      if(!packageInfo)try{items=await window.QueueGoMapWeb?.nearbyPlaces(category,lat,lon,radius)}catch(_){}
+      if(!items)items=await QueueGoMapService.call("nearby",{category,lat,lon,radius});
       return items.map(x=>({type:"Feature",geometry:{type:"Point",coordinates:[Number(x.lon),Number(x.lat)]},properties:{name:x.display_name,kind:x.category,category}}));
     }
     function renderNearby(features){
@@ -1037,6 +1044,7 @@
       }
     }
 
+    window.QueueGoMapWeb?.attachPlaces?.(map);
     window.QueueGoMapEngine={
       geocode:engineGeocode,
       reverseGeocode:(lat,lon)=>engineReverse(lat,lon),

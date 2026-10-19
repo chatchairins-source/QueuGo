@@ -32,6 +32,38 @@ def speed(tags):
     return estimate, 'queuego:road_class_estimate_v1'
 
 
+def named_place(tags):
+    category = next((tags[k] for k in ('amenity','shop','tourism','healthcare','office','craft','leisure','place','railway','public_transport') if tags.get(k)), None)
+    name = tags.get('name:th') or tags.get('name') or tags.get('official_name') or (tags.get('brand') if tags.get('shop') or tags.get('amenity') else None)
+    if not name or not category or category in ('vacant','no','yes','construction','disused','abandoned'):
+        return None
+    if tags.get('disused') == 'yes' or tags.get('abandoned') == 'yes':
+        return None
+    return name, category
+
+
+def area_point(coordinates):
+    # OSM area representative, never claimed to be a verified entrance.
+    ring = coordinates[:-1] if coordinates[0] == coordinates[-1] else coordinates
+    if len(ring) < 3:
+        return ring[0]
+    twice_area = xsum = ysum = 0.0
+    for a,b in zip(ring, ring[1:]+ring[:1]):
+        cross = a[0]*b[1]-b[0]*a[1]
+        twice_area += cross
+        xsum += (a[0]+b[0])*cross
+        ysum += (a[1]+b[1])*cross
+    if abs(twice_area) < 1e-12:
+        return ring[0]
+    point = (xsum/(3*twice_area), ysum/(3*twice_area))
+    inside = False
+    x,y = point
+    for a,b in zip(ring, ring[1:]+ring[:1]):
+        if (a[1]>y) != (b[1]>y) and x < (b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]:
+            inside = not inside
+    return point if inside else ring[0]
+
+
 def build(pbf, database, schema):
     pbf, database = Path(pbf), Path(database)
     assert not database.exists(), 'Refuse to overwrite an immutable normalized graph'
@@ -43,12 +75,17 @@ def build(pbf, database, schema):
             tags = dict(node.tags)
             if tags:
                 node_attrs[node.id] = (tags, node.version, str(node.timestamp))
-                if tags.get('name') or tags.get('name:th'):
-                    if any(tags.get(k) for k in ('place','amenity','shop','tourism','railway','public_transport')):
-                        places.append(('node', node.id, tags.get('name:th') or tags['name'], node.lon, node.lat,
-                                       tags.get('amenity') or tags.get('shop') or tags.get('place') or tags.get('tourism') or tags.get('railway') or tags.get('public_transport'), tags))
+                candidate = named_place(tags)
+                if candidate and node.location.valid():
+                    places.append(('node', node.id, candidate[0], node.lon, node.lat, candidate[1], tags))
         def way(self, way):
             tags = dict(way.tags)
+            candidate = named_place(tags)
+            if candidate and len(way.nodes) >= 3 and all(n.location.valid() for n in way.nodes):
+                coordinates = [(n.lon,n.lat) for n in way.nodes]
+                if coordinates[0] == coordinates[-1]:
+                    lon,lat = area_point(coordinates)
+                    places.append(('way', way.id, candidate[0], lon, lat, candidate[1], tags))
             if not tags.get('highway'): return
             refs = [n.ref for n in way.nodes]
             if len(refs) < 2: return

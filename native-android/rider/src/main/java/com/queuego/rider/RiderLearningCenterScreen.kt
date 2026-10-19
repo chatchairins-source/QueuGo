@@ -1,6 +1,5 @@
 package com.queuego.rider
 
-import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,20 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
-
-internal fun riderShouldShowLearningOnboarding(activeUser: Boolean, seen: Boolean): Boolean =
-    activeUser && !seen
-
-internal class RiderLearningOnboardingStore(context: Context) {
-    private val prefs = context.getSharedPreferences("queuego-rider-learning", Context.MODE_PRIVATE)
-
-    fun hasSeen(userId: String): Boolean =
-        prefs.getBoolean("onboarding-v1:$userId", false)
-
-    fun markSeen(userId: String) {
-        prefs.edit().putBoolean("onboarding-v1:$userId", true).apply()
-    }
-}
 
 internal data class RiderLearningLesson(
     val id: String,
@@ -55,10 +40,10 @@ internal fun riderLearningLessons(): List<RiderLearningLesson> = listOf(
     RiderLearningLesson(
         id = "merchant-navigation",
         title = "เดินทางไปร้าน",
-        summary = "ใช้ Google Maps สำหรับนำทาง แล้วกลับ QueueGo ด้วยปุ่ม Q",
+        summary = "ดูเส้นทางและลูกศร Rider บนแผนที่ QueueGo",
         steps = listOf(
-            "กดนำทางไปร้านเพื่อเปิดแอป Google Maps",
-            "ปุ่มลอย Q ช่วยกลับเข้าหน้างานเดิมโดยไม่เริ่มงานใหม่",
+            "กดนำทางไปร้านเพื่อดูเส้นทางไปยังจุดรับสินค้า",
+            "ติดตามเส้นทางและลูกศรบนแผนที่ โดยใช้สถานะงานเดิม",
             "เมื่อใกล้ร้านให้กลับ QueueGo เพื่อดำเนินขั้นตอนรับสินค้า"
         )
     ),

@@ -1867,3 +1867,13 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-18 exhausted route lifecycle
 - Endpoint replay exposes leftover red/casing when remaining geometry becomes empty. Reconcile renderer-owned IDs, remove exhausted/past multipart overlays and preserve later authoritative parts. Full road geometry/heading/financial authority unchanged. Build route-arrow3; require exact CI and physical acceptance.
+
+## 2026-10-19 Buriram business places
+- Owner authorizes real business places on QueueGo Map. Start from latest531c1ac9/mainf836f05d; branch work-native-route-bundle-places-20261019 and backup retained. Existing normalized places/geocode/nearby reused, now including named area ways. Pinned parent CI PBF checksum verified; snapshot Oct15 includes3079 named places/1284 business-service records in padded envelope. Same ODbL JSON for Web/Android; no imported record becomes verified or orderable or auto-linked to a merchant. Next integrate search/display and require full/exact CI; physical entrance/contact verification separate.
+
+## 2026-10-19 Web place catalog integration
+- Existing map helper/search/map-view geocode/nearby reuse one pinned catalog; add generic business dots/named labels/details and explicit pin selection, retain source/ODbL and unverified status. Native will bundle this same asset. No merchant/order mutation or inferred commerce eligibility. Catalog/search/DOM tests PASS; full/exact gates required; Web-first review.
+
+## 2026-10-19 owner: no startup tutorial; missing credit/Admin UI
+- Owner wants service/how-to guidance in settings only. Remove automatic Rider learning popup entirely; retain existing manual settings guide and operational readiness gates. Refresh obsolete Google Maps lesson to existing QueueGo navigation.
+- Read-only live audit finds no credit functions/tables despite deployed queuego-credit Edge handler. Existing Native credit cards are staged under earnings; main lacks current credit/Admin grant UI. Do not claim source implementation is live payment activation. Continue bounded UI and release-gate work; no fake balances, duplicate ledger, live provider calls or Production migration outside release gate. Places Android integration remains pending after this owner priority.

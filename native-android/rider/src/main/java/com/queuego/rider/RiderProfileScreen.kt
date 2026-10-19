@@ -290,7 +290,7 @@ fun RiderProfileScreen(
                 }
                 RiderSettingDivider()
                 RiderSettingRow(
-                    "ศูนย์เรียนรู้ Rider",
+                    "แนะนำบริการและวิธีใช้งาน",
                     "รับงาน · นำทาง · รับสินค้า · Market · ส่งลูกค้า · ความปลอดภัย",
                     R.drawable.qg_rider_flow_jobs
                 ) { showLearning = true }

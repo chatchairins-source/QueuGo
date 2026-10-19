@@ -143,7 +143,6 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
     }
     val api = remember { QueueGoApi() }
     val store = remember { SessionStore(context) }
-    val learningStore = remember(context) { RiderLearningOnboardingStore(context) }
     val scope = rememberCoroutineScope()
 
     // Rider session restore touches SharedPreferences + Android Keystore + AES/GCM.
@@ -156,7 +155,6 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
     var restorationError by remember { mutableStateOf(false) }
     var restorationAttempt by remember { mutableStateOf(0) }
     var registrationOpen by remember { mutableStateOf(false) }
-    var learningOnboardingDismissed by remember(auth?.user?.id) { mutableStateOf(false) }
 
     LaunchedEffect(restorationAttempt) {
         restoring = auth == null
@@ -327,45 +325,7 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                 )
             }
         }
-        val learningUserId = auth?.user?.id
-        val learningActive =
-            !restoring &&
-                !restorationError &&
-                !registrationOpen &&
-                auth?.user?.status == "active" &&
-                !learningUserId.isNullOrBlank()
-        val learningSeen =
-            if (learningUserId.isNullOrBlank()) true else learningStore.hasSeen(learningUserId)
-        if (
-            !learningOnboardingDismissed &&
-            riderShouldShowLearningOnboarding(learningActive, learningSeen) &&
-            !learningUserId.isNullOrBlank()
-        ) {
-            Dialog(
-                onDismissRequest = {
-                    learningStore.markSeen(learningUserId)
-                    learningOnboardingDismissed = true
-                },
-                properties = DialogProperties(usePlatformDefaultWidth = false)
-            ) {
-                Surface(
-                    Modifier
-                        .padding(14.dp)
-                        .widthIn(max = 620.dp)
-                        .fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color.White
-                ) {
-                    RiderLearningCenterScreen(
-                        onClose = {
-                            learningStore.markSeen(learningUserId)
-                            learningOnboardingDismissed = true
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
+
     }
 }
 
