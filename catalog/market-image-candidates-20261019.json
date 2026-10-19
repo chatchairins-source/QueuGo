@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 75,
+    "approved": 81,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 53
+    "rights_pending": 47
   },
   "items": [
     {
@@ -520,12 +520,12 @@
       "slug": "makro-king-oyster-500g",
       "name_th": "เห็ดนางรมหลวง",
       "category": "เห็ด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/e8123af7dda24c188c59c8f8a292b8da?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Kr%C3%A4uter-Seitling_Pleurotus_eryngii.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Kr%C3%A4uter-Seitling_Pleurotus_eryngii.jpg",
+      "status": "approved",
+      "rights_evidence": "Holger Krisp · CC BY 3.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-fresh-shiitake-100g",
@@ -729,12 +729,12 @@
       "slug": "lotus-king-mackerel-3-5kg",
       "name_th": "ปลาอินทรี 3-5 กก./ตัว",
       "category": "ปลา",
-      "source_page_url": "https://www.lotuss.com/th/product/52475660",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/77354/52475660.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:King-mackerel.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/c/c1/King-mackerel.jpg",
+      "status": "approved",
+      "rights_evidence": "ScubaBear68 · cropped by Wemler · CC BY 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-mackerel-kg",
@@ -795,12 +795,12 @@
       "slug": "makro-white-shrimp-l-1kg",
       "name_th": "กุ้งขาวไซส์ L 41-45 ตัว/กก.",
       "category": "กุ้ง",
-      "source_page_url": "https://www.makro.pro/th/p/079kxgx-7606384754883",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7606384754883-5091d3d5-3fa1-4095-ab69-90cf6173e8d9.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:White_shrimp.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/6/68/White_shrimp.jpg",
+      "status": "approved",
+      "rights_evidence": "Gayandream · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-river-prawn-small-1kg",
@@ -938,23 +938,23 @@
       "slug": "makro-squid-rings-1kg",
       "name_th": "เอโร่ ปลาหมึกหั่นวง",
       "category": "ปลาหมึก",
-      "source_page_url": "https://www.makro.pro/th/p/810222-6974604771523",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/3be99f0f53bc4289b61024ac7be552e8?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Frozen_squid_rings.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/6/62/Frozen_squid_rings.jpg",
+      "status": "approved",
+      "rights_evidence": "Fumikas Sagisavas · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-squid-tentacles-1kg",
       "name_th": "หนวดปลาหมึก",
       "category": "ปลาหมึก",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fish%20and%20Seafood/37437",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/6974600347843-751c2228-0a01-4ae1-ad79-051ae203b967.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Chilled_squid_tentacles.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Chilled_squid_tentacles.jpg",
+      "status": "approved",
+      "rights_evidence": "François Nguyen · CC BY 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-ripe-namdokmai-mango-kg",
@@ -1345,12 +1345,12 @@
       "slug": "makro-blue-crab-large-1kg",
       "name_th": "ปูม้าขนาดใหญ่",
       "category": "ปู",
-      "source_page_url": "https://www.makro.pro/th/p/168350-831006247598074",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/bd28d8d1a65348cd9aa4f2a44395f6a5?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Blue-Crab_Patrick_J._Lynch_CC-BY.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/9/93/Blue-Crab_Patrick_J._Lynch_CC-BY.jpg",
+      "status": "approved",
+      "rights_evidence": "Patrick J. Lynch · CC BY 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-longan-1kg",
