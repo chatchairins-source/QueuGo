@@ -419,3 +419,6 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 
 ## 2026-10-18 exhausted route lifecycle
 - Endpoint replay exposes leftover red/casing when remaining geometry becomes empty. Reconcile renderer-owned IDs, remove exhausted/past multipart overlays and preserve later authoritative parts. Full road geometry/heading/financial authority unchanged. Build route-arrow3; require exact CI and physical acceptance.
+
+## 2026-10-19 Web-first real places
+- Pinned OSM3079 places/1284 business-service records via PR437; same shared asset/search/display with explicit source attribution and coordinate selection. Imported records are not merchants/orderable. Preserve current live routing/camera/proof and project only bounded UI/data. Full/exact gates required; native same-asset integration follows.

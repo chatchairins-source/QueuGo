@@ -258,6 +258,7 @@
   </section>
 
   <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
+  <script src="../queuego-map-web.js?v=20261019-places1"></script>
   <script>
   (function(){
     "use strict";
@@ -812,6 +813,10 @@
     async function engineGeocode(query){
       const direct=coordinateSearch(query);
       if(direct.length){state.lastSearchProvider="coordinates";return direct}
+      try{
+        const local=await window.QueueGoMapWeb?.searchPlaceCatalog(query,{center:map.getCenter(),limit:20});
+        if(local?.length){state.lastSearchProvider="queuego-catalog";return local.map(p=>({...p,lon:String(p.lng),lat:String(p.lat),display_name:[p.name,...Object.values(p.address||{})].join(", "),provider:"queuego-catalog"}))}
+      }catch(_){}
       const providers=[["nominatim",geocodeNominatim],["photon",geocodePhoton],["overpass",geocodeOverpass]];
       let lastError=null;
       for(const [name,fn] of providers){
@@ -977,6 +982,11 @@
       toilet:'["amenity"="toilets"]'
     };
     async function engineNearby(category,lat,lon,radius=5000){
+      try{
+        const local=await window.QueueGoMapWeb?.nearbyPlaces(category,lat,lon,radius);
+        if(local)return local.map(x=>({type:"Feature",geometry:{type:"Point",coordinates:[Number(x.lon),Number(x.lat)]},properties:{name:x.display_name,kind:x.category,category}}));
+      }catch(_){}
+
       const filter=NEARBY_FILTERS[category];if(!filter)throw Error("unknown category");
       const q='[out:json][timeout:25];nwr(around:'+Math.min(10000,Math.max(250,radius))+','+lat+','+lon+')'+filter+';out center tags;';
       let data=null,last=null;
@@ -1046,6 +1056,7 @@
       }
     }
 
+    window.QueueGoMapWeb?.attachPlaces?.(map);
     window.QueueGoMapEngine={
       geocode:engineGeocode,
       reverseGeocode:(lat,lon)=>engineReverse(lat,lon),

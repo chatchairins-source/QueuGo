@@ -2,7 +2,7 @@ const http=require("http"),fs=require("fs"),path=require("path"),assert=require(
 const {webkit}=require("playwright-core");
 
 const root=path.resolve(__dirname,"..");
-const onePx=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+ZQW7WQAAAABJRU5ErkJggg==","base64");
+const onePx=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGN49+rhfwAJPAO5kbCVAwAAAABJRU5ErkJggg==","base64");
 
 function serve(){
   return new Promise(resolve=>{
@@ -12,6 +12,11 @@ function serve(){
         res.writeHead(200,{"content-type":"text/html; charset=utf-8","cache-control":"no-store"});
         res.end(fs.readFileSync(path.join(root,"map-view/index.html")));
         return;
+      }
+      const file=path.resolve(root,"."+url.pathname);
+      if((url.pathname.startsWith("/map-assets/")||url.pathname.startsWith("/map-view/")||url.pathname.startsWith("/data/maps/")||url.pathname==="/queuego-map-web.js")&&file.startsWith(root+path.sep)&&fs.existsSync(file)&&fs.statSync(file).isFile()){
+        const type=file.endsWith(".js")?"application/javascript":file.endsWith(".css")?"text/css":"application/octet-stream";
+        res.writeHead(200,{"content-type":type});res.end(fs.readFileSync(file));return;
       }
       res.writeHead(404);res.end("not found");
     });
@@ -68,7 +73,7 @@ function serve(){
   ok(Math.abs(afterFocus.center[0]-beforeFocus.center[0])<0.000001&&Math.abs(afterFocus.center[1]-beforeFocus.center[1])<0.000001,"focusing search must not move map center");
 
 
-  await page.fill("#placeSearchInput","สนามช้าง");
+  await page.fill("#placeSearchInput","fixture-provider-fallback-only");
   await page.click('#placeSearchForm button[type="submit"]');
   await page.waitForFunction(()=>document.querySelector("#placeSearchResults")&&!document.querySelector("#placeSearchResults").hidden&&document.querySelector("#placeSearchResults b")&&document.querySelector("#placeSearchResults b").textContent.includes("สนามช้าง"),null,{timeout:10000});
 
@@ -88,6 +93,11 @@ function serve(){
   ok(Math.abs(selected.center[0]-103.09523)<0.02&&Math.abs(selected.center[1]-14.96691)<0.02,"clicking a result must move the map");
   ok(selected.markerCount>=1,"clicking a result must add a visible map marker");
 
+  await page.fill("#placeSearchInput","7-Eleven");
+  await page.click('#placeSearchForm button[type="submit"]');
+  await page.waitForFunction(()=>window.QueueGoMapView.state.lastSearchProvider==="queuego-catalog",null,{timeout:10000});
+  const localResult=await page.locator("#placeSearchResults b").first().textContent();
+  ok(localResult.toLowerCase().includes("7-eleven"),"actual pinned local business catalog must search without public geocoder");
   await page.fill("#placeSearchInput","14.993, 103.103");
   await page.click('#placeSearchForm button[type="submit"]');
   await page.waitForFunction(()=>document.querySelector("#placeSearchResults b")&&document.querySelector("#placeSearchResults b").textContent.includes("พิกัด"),null,{timeout:5000});
