@@ -571,6 +571,95 @@ async function qtHydrateDatabase(opts){
   }
 }
 
+/* Admin control pages do not need orders, chat, payments or the full product inventory.
+   Keep this path intentionally small so Approval / Shops / Users remain responsive as
+   operational tables grow. The full hydrator still powers order/detail pages. */
+let QT_ADMIN_CONTROL_HYDRATE=null;
+async function qtHydrateAdminControlData(){
+  if(QT_ADMIN_CONTROL_HYDRATE) return QT_ADMIN_CONTROL_HYDRATE;
+  QT_ADMIN_CONTROL_HYDRATE=(async()=>{
+    const me=qtSessionRead();
+    if(me?.role!=='admin') return qtHydrateDatabase({light:false});
+    const token=await qtGetAccessToken();
+    if(!token) throw new Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
+
+    const previous=new Map(dbGet('qt_users',[]).map(u=>[String(u.id),u]));
+    const [userRows,shops,techs,riders,shopOverview,promos]=await Promise.all([
+      qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,metadata,created_at,updated_at',{accessToken:token}),
+      qtSupabaseTable('shop_profiles?select=id,user_id,shop_name,phone,address,latitude,longitude,status,onboarding_status,submitted_for_review_at,approved_at,archived_at,public_category,public_subcategories,metadata,created_at',{accessToken:token}).catch(e=>{console.warn('[QueueGo] admin control shop_profiles read failed:',e);return null}),
+      qtSupabaseTable('technician_profiles?select=id,user_id,technician_type,service_area,address,latitude,longitude,status,metadata',{accessToken:token}).catch(e=>{console.warn('[QueueGo] admin control technician_profiles read failed:',e);return null}),
+      qtSupabaseTable('rider_profiles?select=id,user_id,rider_name,phone,vehicle_type,vehicle_plate,address,latitude,longitude,status,metadata,updated_at',{accessToken:token}).catch(e=>{console.warn('[QueueGo] admin control rider_profiles read failed:',e);return null}),
+      qtSupabaseTable('rpc/queuego_admin_shop_overview',{method:'POST',accessToken:token,body:{}}).catch(e=>{console.warn('[QueueGo] admin control shop overview failed:',e);return null}),
+      qtSupabaseTable('promotions?select=id,shop_id,shop_name,category,area,bid_price,max_budget,period_days,status,approved_by,approved_at,payment_status,activated_at,created_at,metadata',{accessToken:token}).catch(e=>{console.warn('[QueueGo] admin control promotions read failed:',e);return null})
+    ]);
+
+    const nextUsers=(Array.isArray(userRows)?userRows:[]).map(row=>Object.assign({},previous.get(String(row.id))||{},qtUserFromRow(row)));
+    const byId=new Map(nextUsers.map(u=>[String(u.id),u]));
+    const oldMaps=QT_SYNC.profileMaps||{shopById:new Map(),techById:new Map(),riderById:new Map()};
+    const profileMaps={
+      shopById:Array.isArray(shops)?new Map(shops.filter(x=>x?.id&&x?.user_id).map(x=>[x.id,x.user_id])):oldMaps.shopById,
+      techById:Array.isArray(techs)?new Map(techs.filter(x=>x?.id&&x?.user_id).map(x=>[x.id,x.user_id])):oldMaps.techById,
+      riderById:Array.isArray(riders)?new Map(riders.filter(x=>x?.id&&x?.user_id).map(x=>[x.id,x.user_id])):oldMaps.riderById
+    };
+    QT_SYNC.profileMaps=profileMaps;
+
+    const overviewByShop=new Map((Array.isArray(shopOverview)?shopOverview:[]).filter(x=>x?.shop_id).map(x=>[String(x.shop_id),x]));
+    if(Array.isArray(shops)){
+      const newestShop=new Map();
+      for(const x of shops.filter(x=>x?.user_id)){
+        const prev=newestShop.get(String(x.user_id)),xp=x.archived_at?1:0,pp=prev?.archived_at?1:0;
+        if(!prev||xp<pp||(xp===pp&&String(x.created_at||'')>String(prev.created_at||''))) newestShop.set(String(x.user_id),x);
+      }
+      for(const [userId,x] of newestShop){
+        const u=byId.get(userId); if(!u) continue;
+        const lock={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};
+        const ov=overviewByShop.get(String(x.id));
+        Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),{
+          shopProfileId:x.id,shopName:x.shop_name,public_category:x.public_category,
+          public_subcategories:x.public_subcategories,
+          shoppingSubcategories:Array.isArray(x.public_subcategories)?x.public_subcategories:(x.metadata?.shoppingSubcategories||[]),
+          category:x.public_category||x.metadata?.category||u.category,address:x.address,lat:x.latitude,lng:x.longitude,
+          onboardingStatus:x.onboarding_status||'draft',submittedForReviewAt:x.submitted_for_review_at||null,
+          approvedAt:x.approved_at||null,archivedAt:x.archived_at||null,shopDbStatus:x.status,
+          shopReadiness:ov?.readiness||u.shopReadiness||null,shopOrderCount:Number(ov?.order_count||u.shopOrderCount||0)
+        });
+        delete u.password; Object.assign(u,lock);
+      }
+    }
+    if(Array.isArray(techs)) for(const x of techs.filter(x=>x?.user_id)){
+      const u=byId.get(String(x.user_id)); if(!u) continue;
+      const lock={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};
+      Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),{
+        jobTypes:(x.technician_type||'').split(',').filter(Boolean),serviceArea:x.service_area,address:x.address,lat:x.latitude,lng:x.longitude
+      }); delete u.password; Object.assign(u,lock);
+    }
+    if(Array.isArray(riders)) for(const x of riders.filter(x=>x?.user_id)){
+      const u=byId.get(String(x.user_id)); if(!u) continue;
+      const lock={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};
+      Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),{
+        vehicleType:x.vehicle_type,vehiclePlate:x.vehicle_plate,address:x.address,lat:x.latitude,lng:x.longitude,
+        online:typeof x.metadata?.online==='boolean'?x.metadata.online:false
+      }); delete u.password; Object.assign(u,lock);
+    }
+
+    QT_DB_CACHE.qt_users=nextUsers;
+    qtMarkClean('qt_users');
+    if(Array.isArray(promos)){
+      QT_DB_CACHE.qt_promotions=promos.map(x=>Object.assign({
+        id:x.id,shopId:x.shop_id,shopName:x.shop_name,category:x.category,area:x.area,
+        bidPrice:Number(x.bid_price||0),maxBudget:Number(x.max_budget||0),periodDays:Number(x.period_days||0),
+        status:x.status,approvedBy:x.approved_by,approvedAt:x.approved_at?new Date(x.approved_at).getTime():null,
+        paymentStatus:x.payment_status,activatedAt:x.activated_at?new Date(x.activated_at).getTime():null,
+        createdAt:new Date(x.created_at).getTime()
+      },x.metadata||{}));
+    }
+    QT_DB_READY.value=true;
+    return true;
+  })().finally(()=>{QT_ADMIN_CONTROL_HYDRATE=null});
+  return QT_ADMIN_CONTROL_HYDRATE;
+}
+
+
 
 function toast(msg){
   const t = document.createElement('div');
@@ -610,7 +699,8 @@ async function qtAdminRefresh(target='dashboard'){
   const admin=currentUser();
   if(!admin || admin.type!=='admin'){ toast('เฉพาะ Admin เท่านั้น'); return false; }
   try{
-    await qtHydrateDatabase();
+    if(target==='governance') await qtHydrateAdminControlData();
+    else await qtHydrateDatabase();
     toast('ข้อมูลสมาชิกจากฐานข้อมูลอัปเดตแล้ว');
     if(target==='governance') renderAdminGovernance(); else renderAdminDashboard(currentUser());
     return true;
@@ -927,7 +1017,7 @@ async function qgAdminDeleteUnopenedShop(userId){
    const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
    await qtSupabaseTable('rpc/queuego_admin_delete_unopened_shop',{method:'POST',accessToken:token,body:{p_shop_user_id:u.id,p_reason:reason.trim()}});
    toast('ลบรายการสมัครแล้ว สามารถสมัครร้านใหม่ได้');
-   await qtHydrateDatabase({light:false});renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0);
+   await qtHydrateAdminControlData();renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0);
  }catch(e){toast('ลบรายการสมัครไม่สำเร็จ: '+(e.message||e))}
 }
 window.qgAdminDeleteUnopenedShop=qgAdminDeleteUnopenedShop;
@@ -936,7 +1026,7 @@ async function qgAdminArchiveShop(userId){
  const u=dbGet('qt_users',[]).find(x=>x.type==='shop'&&String(x.id)===String(userId));if(!u?.shopProfileId)return toast('ไม่พบโปรไฟล์ร้าน');
  const reason=await qgAdminInput({title:'นำร้านออกจากระบบ',label:'เหตุผล'});if(reason===null)return;
  if(!confirm('ยืนยันนำร้าน “'+(u.shopName||u.name||'ร้านค้า')+'” ออกจากการให้บริการ? ประวัติออเดอร์เดิมจะยังอยู่'))return;
- try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_admin_archive_shop',{method:'POST',accessToken:token,body:{p_shop_id:u.shopProfileId,p_reason:reason.trim()||null}});toast('นำร้านออกจากการให้บริการแล้ว');await qtHydrateDatabase({light:false});renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0)}
+ try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_admin_archive_shop',{method:'POST',accessToken:token,body:{p_shop_id:u.shopProfileId,p_reason:reason.trim()||null}});toast('นำร้านออกจากการให้บริการแล้ว');await qtHydrateAdminControlData();renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0)}
  catch(e){toast('ดำเนินการไม่สำเร็จ: '+(e.message||e))}
 }
 window.qgAdminArchiveShop=qgAdminArchiveShop;
@@ -1045,7 +1135,9 @@ async function qtSyncTick(force){
     const full=(QT_SYNC.tick%8===0)||(me&&!isApproved(me))||!QT_DB_FULL_TRIED; /* light poll every 8s, full refresh about once a minute */
     const before=qtSyncSignature();
     const seenNotifs=new Set(dbGet('qt_notifications',[]).map(n=>n.id));
-    await qtHydrateDatabase({light:!full});
+    const adminControl=me?.type==='admin'&&location.hash==='#admin-governance'&&typeof qtHydrateAdminControlData==='function';
+    if(adminControl&&window.QT_REALTIME_STATUS==='SUBSCRIBED'&&!force) return;
+    if(adminControl) await qtHydrateAdminControlData(); else await qtHydrateDatabase({light:!full});
     if(!qtAccessToken()){ qtResetCache(); return; } /* logged out while fetching */
     Object.keys(QT_SYNC.dirty).forEach(k=>{ QT_DB_CACHE[k]=QT_SYNC.dirty[k]; });
     if(me){ dbGet('qt_notifications',[]).forEach(n=>{ if(n.userId===me.id && !n.read && !seenNotifs.has(n.id)){ try{ qtHandleNewNotification(n); }catch(e){} } }); }
@@ -1065,7 +1157,11 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   if(hadSession) await qtRestoreOwnUser(); /* one small request (own account row) so a refresh keeps the signed-in user */
   router();
   qtStartSyncLoop(); /* does not block the UI */
-  setTimeout(()=>{ qtBackgroundHydrate({light:false}); },0);
+  setTimeout(()=>{
+    const adminControl=qtSessionRead()?.role==='admin'&&location.hash==='#admin-governance'&&typeof qtHydrateAdminControlData==='function';
+    if(adminControl) qtHydrateAdminControlData().then(()=>qtRerenderAfterHydrate()).catch(e=>console.warn('Admin control hydrate failed',e));
+    else qtBackgroundHydrate({light:false});
+  },0);
 });
 
 /* V5.33: a page that throws while rendering used to leave the previous screen frozen with dead buttons and no clue why. Now the error is logged and shown. */
@@ -1730,7 +1826,7 @@ async function qgLoadAdminCash(day){
   function refreshControls(){
     if(controlRefresh)return controlRefresh;
     const note=document.getElementById('qg-admin-refresh-note');if(note)note.textContent='กำลังอัปเดตข้อมูลจากฐานข้อมูล…';
-    controlRefresh=qtHydrateDatabase({light:false}).then(()=>{
+    controlRefresh=qtHydrateAdminControlData().then(()=>{
       if(location.hash!=='#admin-governance')return;
       const field=document.activeElement;
       if(field&&/^(INPUT|TEXTAREA|SELECT)$/.test(field.tagName)){const n=document.getElementById('qg-admin-refresh-note');if(n)n.textContent='ข้อมูลใหม่พร้อมแล้ว กดรีเฟรชเมื่อกรอกข้อมูลเสร็จ';return}
@@ -1774,7 +1870,7 @@ async function qgLoadAdminCash(day){
     }catch(e){toast('บันทึกสถานะไม่สำเร็จ: '+e.message);return}
     finally{busy.delete(id)}
     toast(({approve:'อนุมัติ',reject:'ไม่อนุมัติ',suspend:'ระงับ',restore:'ปลดระงับ'})[action]+'บัญชีแล้ว');
-    Promise.resolve().then(()=>qtHydrateDatabase({light:false})).then(()=>{
+    Promise.resolve().then(()=>qtHydrateAdminControlData()).then(()=>{
       if(location.hash==='#admin-governance'){try{renderAdminGovernance();setTimeout(()=>qtAdminTab(action==='approve'||action==='reject'?'qt-sec-approval':'qt-sec-security'),0)}catch(e){console.warn('admin account post-commit render failed',e)}}
       else try{renderAdminDashboard(currentUser())}catch(e){console.warn('admin account post-commit dashboard render failed',e)}
     }).catch(e=>console.warn('admin account post-commit hydrate failed',e));
@@ -1784,7 +1880,7 @@ async function qgLoadAdminCash(day){
     if(local?.type!=='shop')return accountAction('approve',id);
     if(busy.has(id)||local.onboardingStatus!=='pending_approval')return;
     busy.add(id);
-    try{const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin ใหม่');await qtSupabaseTable('rpc/queuego_admin_approve_shop',{method:'POST',accessToken:token,body:{p_shop_id:local.shopProfileId}});toast('อนุมัติร้านค้าแล้ว');await qtHydrateDatabase({light:false});if(location.hash==='#admin-governance'){renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-approval'),0)}}
+    try{const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin ใหม่');await qtSupabaseTable('rpc/queuego_admin_approve_shop',{method:'POST',accessToken:token,body:{p_shop_id:local.shopProfileId}});toast('อนุมัติร้านค้าแล้ว');await qtHydrateAdminControlData();if(location.hash==='#admin-governance'){renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-approval'),0)}}
     catch(e){toast('อนุมัติร้านไม่สำเร็จ: '+(e.message||e))}
     finally{busy.delete(id)}
   };
@@ -1794,7 +1890,7 @@ async function qgLoadAdminCash(day){
     if(busy.has(id)||local.onboardingStatus!=='pending_approval')return;
     const note=await qgAdminInput({title:'ส่งกลับให้ร้านแก้ไข',label:'สิ่งที่ต้องแก้ไข'});if(note===null)return;
     busy.add(id);
-    try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_admin_request_shop_changes',{method:'POST',accessToken:token,body:{p_shop_id:local.shopProfileId,p_reason:note.trim()||null}});toast('ส่งกลับให้ร้านแก้ไขแล้ว');await qtHydrateDatabase({light:false});if(location.hash==='#admin-governance'){renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-approval'),0)}}
+    try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_admin_request_shop_changes',{method:'POST',accessToken:token,body:{p_shop_id:local.shopProfileId,p_reason:note.trim()||null}});toast('ส่งกลับให้ร้านแก้ไขแล้ว');await qtHydrateAdminControlData();if(location.hash==='#admin-governance'){renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-approval'),0)}}
     catch(e){toast('ดำเนินการไม่สำเร็จ: '+(e.message||e))}
     finally{busy.delete(id)}
   };
@@ -1805,7 +1901,7 @@ async function qgLoadAdminCash(day){
     const note=await qgAdminInput({title:'ปฏิเสธร้านค้า',label:'เหตุผลที่ปฏิเสธ'});if(note===null)return;
     if(!note.trim())return toast('กรุณาระบุเหตุผล');
     busy.add(id);
-    try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_admin_reject_shop',{method:'POST',accessToken:token,body:{p_shop_id:local.shopProfileId,p_reason:note.trim()}});toast('ปฏิเสธร้านค้าแล้ว');await qtHydrateDatabase({light:false});if(location.hash==='#admin-governance'){renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-approval'),0)}}
+    try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_admin_reject_shop',{method:'POST',accessToken:token,body:{p_shop_id:local.shopProfileId,p_reason:note.trim()}});toast('ปฏิเสธร้านค้าแล้ว');await qtHydrateAdminControlData();if(location.hash==='#admin-governance'){renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-approval'),0)}}
     catch(e){toast('ปฏิเสธร้านไม่สำเร็จ: '+(e.message||e))}
     finally{busy.delete(id)}
   };
