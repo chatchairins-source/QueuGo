@@ -298,7 +298,9 @@ class Engine:
         with self.db() as db:rows=db.execute("SELECT * FROM places WHERE name LIKE ? ESCAPE '\\' ORDER BY length(name),id LIMIT 20",(pattern,)).fetchall()
         return [self._place(row) for row in rows]
     def _place(self,row):
-        return {'place_id':'osm:'+row['osm_type']+':'+str(row['osm_id']),'osm_type':row['osm_type'],'osm_id':row['osm_id'],'display_name':row['name'],'name':row['name'],'lat':str(row['latitude']),'lon':str(row['longitude']),'category':row['category'],'address':{},'source':'OpenStreetMap','licence':'ODbL-1.0'}
+        tags=json.loads(row['tags'])
+        address={k[5:]:v for k,v in tags.items() if k.startswith('addr:')}
+        return {'phone':tags.get('contact:phone') or tags.get('phone'),'website':tags.get('contact:website') or tags.get('website'),'opening_hours':tags.get('opening_hours'),'verified':False,'orderable':False,'source_url':'https://www.openstreetmap.org/'+row['osm_type']+'/'+str(row['osm_id']),'position_precision':'osm_node' if row['osm_type']=='node' else 'osm_area_representative_unverified','place_id':'osm:'+row['osm_type']+':'+str(row['osm_id']),'osm_type':row['osm_type'],'osm_id':row['osm_id'],'display_name':row['name'],'name':row['name'],'lat':str(row['latitude']),'lon':str(row['longitude']),'category':row['category'],'address':address,'source':'OpenStreetMap','licence':'ODbL-1.0'}
     def nearby(self,body):
         point=self.point(body);radius=float(body.get('radius',5000))
         if not math.isfinite(radius) or not 1<=radius<=20000:raise ValueError('Radius must be 1..20000 metres')

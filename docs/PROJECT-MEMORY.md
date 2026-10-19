@@ -1870,3 +1870,6 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-19 Buriram business places
 - Owner authorizes real business places on QueueGo Map. Start from latest531c1ac9/mainf836f05d; branch work-native-route-bundle-places-20261019 and backup retained. Existing normalized places/geocode/nearby reused, now including named area ways. Pinned parent CI PBF checksum verified; snapshot Oct15 includes3079 named places/1284 business-service records in padded envelope. Same ODbL JSON for Web/Android; no imported record becomes verified or orderable or auto-linked to a merchant. Next integrate search/display and require full/exact CI; physical entrance/contact verification separate.
+
+## 2026-10-19 Web place catalog integration
+- Existing map helper/search/map-view geocode/nearby reuse one pinned catalog; add generic business dots/named labels/details and explicit pin selection, retain source/ODbL and unverified status. Native will bundle this same asset. No merchant/order mutation or inferred commerce eligibility. Catalog/search/DOM tests PASS; full/exact gates required; Web-first review.

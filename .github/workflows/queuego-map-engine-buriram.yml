@@ -2,9 +2,9 @@ name: QueueGo Map Engine Buriram
 on:
   push:
     branches: ['work-map-roadgraph-buriram-*', 'work-native-release-unified-*', 'work-native-route-bundle-*']
-    paths: ['CHECKLIST.md', 'docs/PROJECT-MEMORY.md', 'queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', 'tests/map-staging-*', 'supabase/functions/queuego-route-bundle-matrix/**', 'supabase/migrations/*route_bundle*.sql', 'tests/route-bundle-*', '.github/workflows/queuego-map-engine-buriram.yml']
+    paths: ['CHECKLIST.md', 'docs/PROJECT-MEMORY.md', 'queuego-map-engine/**', 'data/maps/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-places-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', 'tests/map-staging-*', 'supabase/functions/queuego-route-bundle-matrix/**', 'supabase/migrations/*route_bundle*.sql', 'tests/route-bundle-*', '.github/workflows/queuego-map-engine-buriram.yml']
   pull_request:
-    paths: ['queuego-map-engine/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', '.github/workflows/queuego-map-engine-buriram.yml']
+    paths: ['queuego-map-engine/**', 'data/maps/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-places-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', '.github/workflows/queuego-map-engine-buriram.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -44,6 +44,8 @@ jobs:
         run: |
           python ops/maps/extract_region.py map-data/thailand.osm.pbf map-data/buriram.osm.pbf
           python ops/maps/normalize_osm.py map-data/buriram.osm.pbf map-data/roads.sqlite
+          python ops/maps/export_places.py map-data/roads.sqlite map-data/places-generated.json
+          python tests/map-places-export.py map-data/places-generated.json data/maps/buriram-places.json
           python ops/maps/build_engine_graph.py valhalla map-data/buriram.osm.pbf map-data/valhalla --admin-pbf map-data/thailand.osm.pbf
       - name: Real graph runtime and restriction evidence
         run: |
@@ -113,6 +115,7 @@ jobs:
             map-data/buriram-map-v1.tar.gz.sha256
             map-data/buriram.osm.pbf
             map-data/buriram.osm.manifest.json
+            map-data/places-generated.json
             docs/map-data-sources.md
             docs/map-engine-selection.md
             docs/map-offline-package.md
