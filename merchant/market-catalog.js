@@ -34,6 +34,7 @@ function card(r){
   return `<article class="market-catalog-card" data-search="${E((r.name_th+' '+r.category).toLocaleLowerCase('th-TH'))}">
     ${image}<div class="market-catalog-info"><b>${E(r.name_th)}</b><small>${E(r.category)} · หน่วยอ้างอิง ${E(r.source_unit)}</small>
     ${r.suggested_unit?`<small>หน่วยที่ระบบแนะนำ: ${E(r.suggested_pack_size)} ${E(r.suggested_unit)} / ชุด</small>`:'<small>หน่วยอ้างอิงยังไม่ตรงกับหน่วยขายในระบบ — ร้านเลือกหน่วยเอง</small>'}
+    ${r.image?'<small>รูปสินค้า: ผ่านการอนุมัติแล้ว</small>':r.has_image_reference?'<small>รูปสินค้า: พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่</small>':'<small>รูปสินค้า: กำลังหารูปที่ตรวจสอบแหล่งที่มาได้</small>'}
     ${linked?`<strong>มีในร้านแล้ว · หน้าร้าน ${Number(r.price??0).toLocaleString('th-TH')} บาท · เดลิเวอรี่ ${Number(r.delivery_price??r.price??0).toLocaleString('th-TH')} บาท</strong>`:''}</div>
     <button type="button" class="${linked?'qgm-outline':'qgm-primary'}" ${linked?'disabled':''} onclick="qgMarketCatalogChoose('${E(r.id)}')">${linked?'มีในร้านแล้ว':'เพิ่มเข้าร้าน'}</button>
   </article>`;
