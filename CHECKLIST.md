@@ -469,3 +469,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Batch 16 approves raw chicken leg quarter, sliced catfish and raw soft-shell crab on ice with verified Commons license/attribution evidence.
 - Staged migration: `20261019193000_market_open_license_images_batch16.sql`; no Production apply.
 - NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 44 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 17 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 17 test checkpoint: `1e6dbe80898e6b9b581dc6401622f09c4abe23d1`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 88, rights-pending retailer candidates reduced to 40; source-page-only 0, family-reference-only 0.
+- Batch 17 approves dried bamboo shoots, fresh tofu skin, textured vegetable protein and peeled ginkgo nuts using verified Commons licensing/attribution evidence.
+- Staged migration: `20261019194500_market_open_license_images_batch17.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 40 rights-pending images and Merchant Web authenticated/physical acceptance.
