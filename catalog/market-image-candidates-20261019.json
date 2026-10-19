@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 33,
+    "approved": 46,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 95
+    "rights_pending": 82
   },
   "items": [
     {
@@ -47,12 +47,12 @@
       "slug": "cabbage",
       "name_th": "กะหล่ำปลี",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/p/qnkxs4n-7325007478979",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/8e55ed93de624e46bf2dc24fd1b37239?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:A_cabbage_vegetables.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/6/62/A_cabbage_vegetables.jpg",
+      "status": "approved",
+      "rights_evidence": "Salma kyari · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "thai-basil",
@@ -135,12 +135,12 @@
       "slug": "pork-belly",
       "name_th": "หมูสามชั้น",
       "category": "เนื้อหมู",
-      "source_page_url": "https://www.makro.pro/p/uz13wwc-7606380298435",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/a313ed9263ef483daba031f9c6af9677?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Freshly_prepared_raw_pork_belly_with_red_onions_and_chili_peppers.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Freshly_prepared_raw_pork_belly_with_red_onions_and_chili_peppers.jpg",
+      "status": "approved",
+      "rights_evidence": "Shixart1985 · CC BY 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "native-chicken",
@@ -168,45 +168,45 @@
       "slug": "egg-size-2-10",
       "name_th": "ไข่ไก่เบอร์ 2 (10 ฟอง)",
       "category": "ไข่",
-      "source_page_url": "https://www.lotuss.com/th/product/betagro-hyegg-no2-chicken-egg-10pcs-51389936?openExternalBrowser=1",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/91051/51389936.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Eggs_Chicken.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Eggs_Chicken.jpg",
+      "status": "approved",
+      "rights_evidence": "safaritravelplus · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct Lotus's product image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "egg-size-3-10",
       "name_th": "ไข่ไก่เบอร์ 3 (10 ฟอง)",
       "category": "ไข่",
-      "source_page_url": "https://www.lotuss.com/th/product/cp-selection-no-3-fresh-egg-10pcs-51177663",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/91051/51177663.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Eggs_Chicken.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Eggs_Chicken.jpg",
+      "status": "approved",
+      "rights_evidence": "safaritravelplus · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "dried-shiitake-small",
       "name_th": "เห็ดหอมจีนขนาดเล็ก",
       "category": "ของแห้ง",
-      "source_page_url": "https://www.lotuss.com/th/product/51976604",
-      "candidate_image_url": "https://publish-p33706-e156581.adobeaemcloud.com/content/dam/aem-cplotusonlinecommerce-project/th/images/magento/catalog/product/new/86587/51976604.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Dried_shiitake_mushrooms.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/e/ef/Dried_shiitake_mushrooms.jpg",
+      "status": "approved",
+      "rights_evidence": "François Nguyen · CC BY 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "dried-shiitake-large",
       "name_th": "เห็ดหอมจีนขนาดใหญ่",
       "category": "ของแห้ง",
-      "source_page_url": "https://www.lotuss.com/th/product/tesco-large-dried-shitake-mushroom-80g-10628258",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/86587/10628258.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Dried_shiitake_mushrooms.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/e/ef/Dried_shiitake_mushrooms.jpg",
+      "status": "approved",
+      "rights_evidence": "François Nguyen · CC BY 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "dried-bamboo-shoot",
@@ -333,12 +333,12 @@
       "slug": "makro-chicken-drumstick-1kg",
       "name_th": "น่องไก่",
       "category": "ไก่ / เป็ด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/1926300794cc4cdb8f8a2854ab0ddf71?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Raw_chicken_drumsticks_(3312851753).jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/2/29/Raw_chicken_drumsticks_%283312851753%29.jpg",
+      "status": "approved",
+      "rights_evidence": "Geoff Peters · CC BY 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-chicken-middle-wing-1kg",
@@ -498,12 +498,12 @@
       "slug": "makro-enoki-1kg",
       "name_th": "เห็ดเข็มทอง",
       "category": "เห็ด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/6976617349315-8ae78f12-af0d-426a-b250-9dbc53ef2e68.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Enoki_mushroom.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/9/90/Enoki_mushroom.jpg",
+      "status": "approved",
+      "rights_evidence": "Mitrofresh · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-white-shimeji-1kg",
@@ -542,12 +542,12 @@
       "slug": "lotus-enoki-500g",
       "name_th": "โลตัส เห็ดเข็มทอง",
       "category": "เห็ด",
-      "source_page_url": "https://www.lotuss.com/th/product/51920008",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/51920008.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Enoki_mushroom.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/9/90/Enoki_mushroom.jpg",
+      "status": "approved",
+      "rights_evidence": "Mitrofresh · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct product image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-import-carrot-1kg",
@@ -575,12 +575,12 @@
       "slug": "makro-cabbage-500-700g",
       "name_th": "กะหล่ำปลีแพ็ค",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/8e55ed93de624e46bf2dc24fd1b37239?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:A_cabbage_vegetables.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/6/62/A_cabbage_vegetables.jpg",
+      "status": "approved",
+      "rights_evidence": "Salma kyari · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-cucumber-500g",
@@ -630,12 +630,12 @@
       "slug": "makro-tomato-1kg",
       "name_th": "มะเขือเทศท้อ",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/p/genggew-7275696226499",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7275696226499-513e3a7a-a01d-4cda-a163-cd8cba8bde1c.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Tomato_Fruit.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Tomato_Fruit.jpg",
+      "status": "approved",
+      "rights_evidence": "Judethedeus · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-onion-1kg",
@@ -740,12 +740,12 @@
       "slug": "lotus-mackerel-kg",
       "name_th": "ปลาทู",
       "category": "ปลา",
-      "source_page_url": "https://www.lotuss.com/th/product/52195081",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/52195081.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Mackerel_fish.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Mackerel_fish.jpg",
+      "status": "approved",
+      "rights_evidence": "Hariprasad Shetty10 · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-white-sand-fish-1kg",
@@ -1169,12 +1169,12 @@
       "slug": "makro-long-bean-500g",
       "name_th": "ถั่วฝักยาว",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/125010-7416039112899",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7416039112899-b4429a07-22fa-4398-bb82-a39913bb8aa8.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Long_beans.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d6/Long_beans.jpg",
+      "status": "approved",
+      "rights_evidence": "Paul Goyette · CC BY-SA 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-large-pumpkin-half-kg",
