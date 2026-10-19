@@ -429,3 +429,12 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - `6cfb031b` reuses the same image/credit/status rendering in list and add form, with explicit broken-image fallback; the Market gates now participate in npm test. Focused tests pass, full regression/exact CI and authenticated Merchant browser acceptance remain gates. Shared manual-editor kg presets and remaining rights resolution are next; no Production migration applied.
 
 - Successor batch17 `c9c7c040` increases approved images to 88/128, 40 remain rights-pending. Published image-flow successor `840771cd` preserves it; full npm pre-batch17 passed, focused tests after integration passed. Local weight source `53097a3e` shares manual/catalog presets and custom metric synchronization; exact successor CI and authenticated browser acceptance remain required.
+
+
+## 2026-10-19 — Actual SQL Market release gate
+- IN PROGRESS; branch `work-market-master-catalog-successor-v2-20261019`; predecessor `83b7bac11b3478ad19d496acf774fc2d5c206f10` passed exact RC2008/run39233210924, including mobile WebKit. Local source commit `3336a6d1`.
+- Actual migration execution found malformed rambutan slug in the staged phase2 seed. Production migration history confirms only Grocery grant `20261019051041` applied today, not these Market migrations. Corrected the unapplied seed to the canonical JSON/image slug; no applied history edited.
+- Actual live read-only function audit confirms POS helpers exclude pending shops. New scoped owner-preparation helper reused by existing Market catalog page/add/manual-save functions allows only owned pending/active nonarchived Market/Grocery profiles; POS, approval, public shop visibility, checkout and financial triggers are unchanged. Owner-only stock/movement read policies enable pending-shop readback.
+- TEST: full npm regression EXIT0; actual isolated SQL migrations + pending browse/add/readback/receipt replay/body mismatch/no duplicate/stock movement once/staff+archived+suspended+anon denial PASS19; Merchant DOM PASS42; source/data/image/category contracts PASS. SQL gate now included in npm test/RC. No Production writes.
+- Counts unchanged: 128 sourced products, 88 approved images, 40 rights-pending. Browser binary download in this host returned truncated archives; use CI WebKit and do not claim signed-in live Merchant acceptance from isolated tests.
+- NEXT: exact successor CI then release-gate review, remaining40 image rights and authenticated Merchant acceptance. No Production apply until exact successor passes.

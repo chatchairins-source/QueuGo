@@ -493,3 +493,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - TEST: full npm test EXIT0 on integrated batch17 source plus weight changes; focused DOM 42 checks PASS, catalog data/image/category/access contracts PASS, source integrity PASS. Exact successor CI still required.
 - Catalog: 128 sourced identities; 88 approved images; 40 rights-pending direct candidates; Phase2 70 identities retained. No Production apply, authenticated Merchant save or physical-device certification claimed.
 - NEXT: exact successor CI, remaining image rights; authenticated Merchant browse/filter/add/custom weight/shop-list acceptance before release. No need to repeat already-tested catalog/category implementation.
+
+
+## 2026-10-19 — Actual SQL Market release gate
+- IN PROGRESS; branch `work-market-master-catalog-successor-v2-20261019`; predecessor `83b7bac11b3478ad19d496acf774fc2d5c206f10` passed exact RC2008/run39233210924, including mobile WebKit. Local source commit `3336a6d1`.
+- Actual migration execution found malformed rambutan slug in the staged phase2 seed. Production migration history confirms only Grocery grant `20261019051041` applied today, not these Market migrations. Corrected the unapplied seed to the canonical JSON/image slug; no applied history edited.
+- Actual live read-only function audit confirms POS helpers exclude pending shops. New scoped owner-preparation helper reused by existing Market catalog page/add/manual-save functions allows only owned pending/active nonarchived Market/Grocery profiles; POS, approval, public shop visibility, checkout and financial triggers are unchanged. Owner-only stock/movement read policies enable pending-shop readback.
+- TEST: full npm regression EXIT0; actual isolated SQL migrations + pending browse/add/readback/receipt replay/body mismatch/no duplicate/stock movement once/staff+archived+suspended+anon denial PASS19; Merchant DOM PASS42; source/data/image/category contracts PASS. SQL gate now included in npm test/RC. No Production writes.
+- Counts unchanged: 128 sourced products, 88 approved images, 40 rights-pending. Browser binary download in this host returned truncated archives; use CI WebKit and do not claim signed-in live Merchant acceptance from isolated tests.
+- NEXT: exact successor CI then release-gate review, remaining40 image rights and authenticated Merchant acceptance. No Production apply until exact successor passes.
