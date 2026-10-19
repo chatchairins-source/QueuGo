@@ -1,0 +1,36 @@
+const fs=require('fs'),assert=require('assert/strict'),path=require('path');
+const root=process.cwd(),{JSDOM}=require(path.join(root,'node_modules/jsdom'));
+if(process.env.QG_MARKET_LIVE_QA!=='1'||!process.env.QG_MARKET_QA_SESSION_FILE)throw Error('Explicit live QA opt-in and private session file required');
+const auth=JSON.parse(fs.readFileSync(process.env.QG_MARKET_QA_SESSION_FILE,'utf8'));
+const key=fs.readFileSync('merchant/index.html','utf8').match(/KEY:\s*['"]([^'"]+)/)[1];
+const base='https://pkypiqhlrmzocysgeqew.supabase.co/rest/v1/';
+async function rpc(p,options={}){const res=await fetch(base+p,{method:options.method||'GET',headers:{apikey:key,Authorization:'Bearer '+auth.access_token,'Content-Type':'application/json'},body:options.body?JSON.stringify(options.body):undefined,signal:AbortSignal.timeout(30000)});const body=await res.json();if(!res.ok)throw Error(res.status+' '+body.message);return body;}
+(async()=>{
+const shops=await rpc('shop_profiles?select=id,user_id,status,onboarding_status,metadata&id=eq.'+encodeURIComponent(auth.shop_id));
+assert.equal(shops.length,1);assert.equal(shops[0].user_id,auth.user_id);assert.equal(shops[0].status,'pending');assert.equal(shops[0].onboarding_status,'draft');assert.equal(shops[0].metadata?.is_test,true,'Live QA may write only to an explicitly marked pending test shop');
+const d=new JSDOM('<!doctype html><body></body>',{url:'https://chatchairins-source.github.io/QueuGo/merchant/#market-catalog',runScripts:'dangerously'}),w=d.window;
+let writes=0;const messages=[];
+w.currentUser=()=>({type:'shop',id:auth.user_id,shopProfileId:auth.shop_id,category:'market',status:'pending'});
+w.QT_SYNC={profileMaps:{shopByUserId:new Map()}};
+w.qtGetAccessToken=async()=>auth.access_token;
+w.qtSupabaseTable=async(p,o)=>{if(p==='rpc/qg_market_catalog_add')writes++;return rpc(p,o)};
+w.qtShopLayout=(title,html)=>{w.document.body.innerHTML=html};w.toast=t=>messages.push(t);w.navigate=p=>{w.location.hash='#'+p};
+w.eval(fs.readFileSync('merchant/market.js','utf8'));w.eval(fs.readFileSync('merchant/market-catalog.js','utf8'));
+await w.qgRenderMarketCatalog();assert.equal(w.document.querySelectorAll('.market-catalog-card').length,50,JSON.stringify(messages)+' '+w.document.body.textContent);
+const cards=[...w.document.querySelectorAll('.market-catalog-card')];
+const choice=cards.find(c=>c.textContent.includes('กิโลกรัม')&&!c.querySelector('button').disabled);
+assert.ok(choice);choice.querySelector('button').click();
+const form=w.document.querySelector('#market-catalog-add-form');assert.ok(form);
+const buttons=form.querySelectorAll('[data-market-weight-presets] button');assert.equal(buttons.length,3);buttons[2].click();
+assert.equal(form.elements.namedItem('weight').value,'3');
+form.elements.namedItem('pack').value='2.25';form.elements.namedItem('pack').dispatchEvent(new w.Event('input'));assert.equal(form.elements.namedItem('weight').value,'2.25');
+for(const [name,value] of Object.entries({price:120,cost:90,stock:3,min:1}))form.elements.namedItem(name).value=String(value);
+form.elements.namedItem('available').checked=false;
+const event={preventDefault(){},submitter:form.querySelector('button[type=submit]')};
+await Promise.all([form.onsubmit(event),form.onsubmit(event)]);
+assert.equal(writes,1);assert.ok(messages.includes('เพิ่มสินค้าเข้าร้านแล้ว'));assert.equal(w.localStorage.length,0);
+assert.ok(w.document.body.textContent.includes('มีในร้านแล้ว'));
+const products=await rpc('market_products?select=product_id,pack_size,item_weight_kg,stock_quantity&shop_id=eq.'+auth.shop_id);
+const added=products.find(p=>Number(p.pack_size)===2.25);assert.ok(added);assert.equal(Number(added.item_weight_kg),2.25);assert.equal(Number(added.stock_quantity),3);
+console.log(JSON.stringify({live_merchant_module:'PASS',backend:'actual authenticated Supabase REST',rendered_rows:50,kg_presets:'1/2/3',custom_weight:2.25,double_submit_writes:writes,readback:'PASS',shop_products:products.length,public_sale:false,scope:'actual Market frontend module in DOM harness with real authenticated backend; full signed-in browser appearance not certified'}));
+})().catch(e=>{console.error(e.message);process.exit(1)});

@@ -378,3 +378,147 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Profile Settings adds My Destination via existing installed destination read/write RPCs and shared map/search/GPS helpers. Saved preferences load from backend; only matching acknowledgement or confirmed lost-response reconciliation shows saved. No new backend/schema/availability/dispatch source or real account/order write in QA.
 - Actual Settings DOM36 PASS covers read/write/duplicate-submit/late response/account fencing/invalid coordinates/GPS disposal. Full TZ=Asia/Bangkok npm pre/test/post EXIT0 on Web projection; same source full suite EXIT0. Production read-only ACL audit confirms anon execute denied, authenticated wrappers call existing live-session/active-Rider guards.
 - Native9e actual three APK/JVM/16KB/full source and five SQL races PASS; containing runtime final result still required. Public Web review activation is this bounded projection only, with existing map transport retained. Authenticated destination save/reopen and phone visual/GPS checks remain BLOCKED by missing usable Rider browser session/physical device; no credential bypass or fabricated Home screenshot.
+
+
+## 2026-10-19 — Market Master Catalog successor v2 (PR #441)
+- Branch: `work-market-master-catalog-successor-v2-20261019`
+- Base: latest main `fa0b7ac941311772b24af8af6565dde7ed9a3f11`; PR #440 is superseded and closed
+- Recovered the existing Market catalog work from `work-market-master-catalog-20261015` onto a clean descendant of current main; the stale branch itself was not reused.
+- Added source-backed Thai Market master identities, authenticated Merchant catalog browse/add flow, idempotent add receipts, GP-derived Delivery preview, separate manual add, and pending-Merchant access for catalog preparation.
+- Staged new migration as `20261019114500_market_master_catalog.sql`; no Production apply in this checkpoint.
+- Source contract gate: `tests/market-master-catalog.cjs`; Merchant DOM flow gate: `tests/market-master-catalog-ui.cjs` (browse/category/image-status/1-2-3 kg/add/reload/no double add); exact-head full CI still required.
+
+- Fresh-source expansion: added 33 current public product facts from Makro PRO and Lotus's covering pork, chicken, duck, beef, mushrooms and common vegetables. Retail prices are intentionally not imported.
+- Weight-selling UX: catalog items sold by kilogram now expose 1 kg / 2 kg / 3 kg quick presets while keeping custom quantity input.
+
+- Market catalog source coverage now: 25 starter + 33 fresh Makro/Lotus + 70 seafood/fruit/veg = 128 sourced catalog identities.
+- Image-review coverage: 128/128 items have a source/review record; 121 have verified direct product-image candidates, 7 retain verified product/source pages pending an exact reusable image, and 0 remain family-reference-only. Approved Production images remain 0 until reuse-rights evidence is documented; no retailer art is published as QueueGo-owned.
+- Added sourced กุ้งแชบ๊วย and ปูทะเล variants; phase-2 migration `20261019150000_market_phase2_chaebow_mudcrab.sql` stages facts only, no retail price/stock.
+- Code checkpoint before this checklist update: `a5c758e4174d5d9587f0629e5948c3b3b03708d3`. Fixed the first exact-CI source-contract failure (invalid decimal slug), retained successful catalog-add authoritative reload/no-double-add behavior, and continued exact image-candidate verification.
+- NEXT: exact-head CI on this successor; fix the first failure only. Continue resolving the 7 remaining source-page-only images, then authenticated/physical Merchant Web acceptance before any Production apply.
+
+
+
+## 2026-10-19 — Market Catalog image/source checkpoint (PR #441)
+- Branch: `work-market-master-catalog-successor-v2-20261019`; current code checkpoint before this checklist update: `945bbe4ad54e698786b10777c516a8c4862cf5a6`; base main: `fa0b7ac941311772b24af8af6565dde7ed9a3f11`.
+- Catalog coverage: 128/128 sourced identities with direct image evidence. Approved open-license/public-domain images: 28; retailer/direct candidates still rights-pending: 100; source-page-only: 0; family-reference-only: 0.
+- Approved batches now include commodity staples plus exact Nam Dok Mai mango, Red Lady papaya, Monthong durian and Shine Muscat; Merchant renders approved image attribution and never renders rights-pending retailer art as approved.
+- Phase 2 remains 70 seafood/fruit/vegetable identities (ปลา 13, กุ้ง 8, ปู 7, หอย 9, ปลาหมึก 4, ผลไม้ 16, ผักสด 13); 1/2/3 kg presets + custom quantity retained. No Production migration/apply performed.
+- TEST: exact-head RC for `945bbe4...` pending GitHub scheduling. NEXT: if RC fails, fix first exact failure only; if green, continue open-license replacements for the remaining 100 rights-pending images and authenticated/physical Merchant Web acceptance before Production.
+
+
+## 2026-10-19 — Market Catalog image batch 9 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 9 test checkpoint: `753adb4fe41bf3fb89caf30f0695fbd92b6b1939`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased from 33 to 46, rights-pending retailer candidates decreased from 95 to 82; source-page-only 0, family-reference-only 0.
+- Batch 9 adds cabbage (2 catalog identities), pork belly, raw chicken drumstick, eggs (2 sizes), enoki (2 identities), dried shiitake (2 sizes), tomato, long bean and mackerel using Commons licensing/attribution evidence.
+- Staged migration: `20261019174500_market_open_license_images_batch9.sql`; no Production apply. Merchant approved-image attribution rendering remains required.
+- NEXT: exact-head RC; fix first failure only. If green, continue open-license replacements for the remaining 82 rights-pending images, then authenticated/physical Merchant Web acceptance before Production.
+
+
+## 2026-10-19 — Market Catalog image batch 10 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 10 test checkpoint: `d51d1bce8bcb2f6a0c4591870c8d6318caf773c7`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 54, rights-pending retailer candidates reduced to 74; source-page-only 0, family-reference-only 0.
+- Batch 10 approves choy sum (2 identities), peeled garlic, banana bunch, watermelon, orange, pineapple and dragon fruit with Commons source/license evidence.
+- Staged migration: `20261019180000_market_open_license_images_batch10.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue open-license replacements for the remaining 74 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 11 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 11 test checkpoint: `17042a52251c48f9850cf6d562df018fd6f1a1f8`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 59, rights-pending retailer candidates reduced to 69; source-page-only 0, family-reference-only 0.
+- Batch 11 approves fresh shiitake, white shimeji, beef shank, pork loin and fresh lemongrass with Commons source/license evidence.
+- Staged migration: `20261019181500_market_open_license_images_batch11.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue open-license replacements for the remaining 69 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 12 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 12 test checkpoint: `7bcd9b3f44c0a02927e5f3f2780de3ff3dca44dc`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 64, rights-pending retailer candidates reduced to 64; source-page-only 0, family-reference-only 0.
+- Batch 12 approves Nile tilapia, snakehead, giant river prawn, whole barramundi/seabass and blood cockle using verified Commons license evidence.
+- Staged migration: `20261019183000_market_open_license_images_batch12.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue open-license replacements for the remaining 64 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 13 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 13 test checkpoint: `3e717b0122b387910eb05ce1f991efa202e89ea4`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 67, rights-pending retailer candidates reduced to 61; source-page-only 0, family-reference-only 0.
+- Batch 13 approves raw pork shoulder, raw bone-in beef short ribs and raw beef round/top-round for the matching shoulder/rib/hip catalog identities; cooked pork-shoulder/tenderloin candidates were explicitly rejected as misleading.
+- Staged migration: `20261019184500_market_open_license_images_batch13.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue exact raw/open-license replacements for the remaining 61 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 14 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 14 test checkpoint: `dea3647634cf21b65e882b6d25c3aac653094e76`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 75, rights-pending retailer candidates reduced to 53; source-page-only 0, family-reference-only 0.
+- Batch 14 approves kale (2 catalog identities), celery, half pumpkin, key lime, lychee, rambutan and cantaloupe using verified Commons licensing/attribution evidence.
+- Staged migration: `20261019190000_market_open_license_images_batch14.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 53 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 15 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 15 test checkpoint: `5c8881a28733d35d4cda77b84f9b415a4c92be86`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 81, rights-pending retailer candidates reduced to 47; source-page-only 0, family-reference-only 0.
+- Batch 15 approves king oyster mushroom, whole king mackerel, whole white shrimp, frozen squid rings, chilled squid tentacles and whole blue crab using verified Commons license/attribution evidence.
+- Staged migration: `20261019191500_market_open_license_images_batch15.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 47 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 16 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 16 test checkpoint: `069e3c3eb61b5fcb96d85f91a030cf7462f8cd66`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 84, rights-pending retailer candidates reduced to 44; source-page-only 0, family-reference-only 0.
+- Batch 16 approves raw chicken leg quarter, sliced catfish and raw soft-shell crab on ice with verified Commons license/attribution evidence.
+- Staged migration: `20261019193000_market_open_license_images_batch16.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 44 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 17 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 17 test checkpoint: `1e6dbe80898e6b9b581dc6401622f09c4abe23d1`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 88, rights-pending retailer candidates reduced to 40; source-page-only 0, family-reference-only 0.
+- Batch 17 approves dried bamboo shoots, fresh tofu skin, textured vegetable protein and peeled ginkgo nuts using verified Commons licensing/attribution evidence.
+- Staged migration: `20261019194500_market_open_license_images_batch17.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 40 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market image add-form verification
+- IN PROGRESS; branch `work-market-master-catalog-successor-v2-20261019`; base `c9c7c040917867e86978e975dcf7ba87ec3a8ddc`; local source/test commit `6cfb031b3214f717c4b5c046dccea35b91dbef85`.
+- Reused image/credit/status renderer for list and add form, accessible broken-image feedback; versioned assets. Market data and DOM tests now execute in npm test/RC.
+- TEST: full npm test EXIT0 on pre-batch17 UI tree; focused source integrity PASS (90 scripts/77 refs), catalog contracts PASS, DOM 29 checks PASS. Exact successor CI required.
+- Counts inherited from batch17: 128 items; 88 approved images; 40 rights-pending direct candidates. No Production apply or real Merchant save certified.
+- NEXT: exact successor CI; remaining image rights, shared manual editor weight presets and authenticated Merchant Web acceptance.
+
+
+## 2026-10-19 — Shared manual/catalog Market weight presets
+- IN PROGRESS; branch `work-market-master-catalog-successor-v2-20261019`; published predecessor `840771cdb6b9b23b1665800affd4559930bc9963`; local tested source `53097a3e`.
+- One shared implementation serves manual add/edit and catalog add: 1/2/3kg updates unit, pack and kg weight; custom quantities remain editable, gram/hectogram packs synchronize kg weight. Asset versions updated together. Existing add receipts and source image rights guards preserved.
+- TEST: full npm test EXIT0 on integrated batch17 source plus weight changes; focused DOM 42 checks PASS, catalog data/image/category/access contracts PASS, source integrity PASS. Exact successor CI still required.
+- Catalog: 128 sourced identities; 88 approved images; 40 rights-pending direct candidates; Phase2 70 identities retained. No Production apply, authenticated Merchant save or physical-device certification claimed.
+- NEXT: exact successor CI, remaining image rights; authenticated Merchant browse/filter/add/custom weight/shop-list acceptance before release. No need to repeat already-tested catalog/category implementation.
+
+
+## 2026-10-19 — Actual SQL Market release gate
+- IN PROGRESS; branch `work-market-master-catalog-successor-v2-20261019`; predecessor `83b7bac11b3478ad19d496acf774fc2d5c206f10` passed exact RC2008/run39233210924, including mobile WebKit. Local source commit `3336a6d1`.
+- Actual migration execution found malformed rambutan slug in the staged phase2 seed. Production migration history confirms only Grocery grant `20261019051041` applied today, not these Market migrations. Corrected the unapplied seed to the canonical JSON/image slug; no applied history edited.
+- Actual live read-only function audit confirms POS helpers exclude pending shops. New scoped owner-preparation helper reused by existing Market catalog page/add/manual-save functions allows only owned pending/active nonarchived Market/Grocery profiles; POS, approval, public shop visibility, checkout and financial triggers are unchanged. Owner-only stock/movement read policies enable pending-shop readback.
+- TEST: full npm regression EXIT0; actual isolated SQL migrations + pending browse/add/readback/receipt replay/body mismatch/no duplicate/stock movement once/staff+archived+suspended+anon denial PASS19; Merchant DOM PASS42; source/data/image/category contracts PASS. SQL gate now included in npm test/RC. No Production writes.
+- Counts unchanged: 128 sourced products, 88 approved images, 40 rights-pending. Browser binary download in this host returned truncated archives; use CI WebKit and do not claim signed-in live Merchant acceptance from isolated tests.
+- NEXT: exact successor CI then release-gate review, remaining40 image rights and authenticated Merchant acceptance. No Production apply until exact successor passes.
+
+
+## 2026-10-19 — Market catalog exact-code release verification
+- Source/test status: DONE for code `e37d3546aff1a1f02f696a165ce8ba4967c95b8a`; exact RC2009/run39234168435 SUCCESS, every step including npm regression, complete Merchant mobile WebKit boot and visual component gates passed.
+- Branch: `work-market-master-catalog-successor-v2-20261019`; 128 sourced products, 88 approved images, 40 explicitly rights-pending direct candidates. No source/image/category/preset implementation restart is needed.
+- Release status: BLOCKED by authenticated actual Merchant add/shop-list acceptance. Live browser inspection at the public Merchant URL showed the login form, with no usable signed-in Merchant session. Real merchant-selected price/cost/stock must be used for a live save; no fabricated Production fixture or account bypass is permitted.
+- Remaining rights work: obtain documented retailer reuse permission or an exact open-license image for the 40 pending rows. Current fallback/status is intentional and approved-image rendering is covered by DOM tests; do not relabel these rows as approved merely to clear the count.
+- Production remains unchanged: Market catalog tables do not yet exist; read-only migration history confirms staged Market files have not been applied. No merge, Production migration, real product mutation or physical-device acceptance is claimed.
+- NEXT: authenticated Merchant acceptance on an authorized review environment, then apply the staged files in order and verify counts/ownership/public asset versions before public activation. Use secure browser authentication if the owner elects to supply a test session; never request secrets in chat. This is a concrete release dependency, not a new coding permission request.
+
+
+## 2026-10-19 — Owner-authorized test shop and real backend acceptance
+- Owner explicitly authorized creating a test shop. Created a dedicated test account through normal Auth signup and owner-scoped registration; marked test metadata, shop pending/draft, product Delivery availability false. No real customer account impersonation, approval bypass or public fake storefront.
+- Pre-release function/policy backup committed on `backup/market-catalog-pre-release-20261019-e273cc59` at `aa57572411bfb5a9e12f65c4f068150dab035d64`. Exact HEAD e273cc59 passed RC2010/run39234648240. All 25 staged Market migrations passed a real-database transaction rehearsal and rollback before atomic activation. Original source migration receipts recorded with their versions to prevent CLI replay. Production readback:128 master rows,88 approved,40 rights-pending.
+- Real authenticated test-shop REST PASS: paging128/no duplicate source IDs, category/search, approved+pending image fields, custom1.75kg, original receipt replay, new request/same master no duplicate, stock unchanged on replay. Actual GP trigger persisted storefront100 and Delivery110. Product availability false; shop remains pending/draft.
+- Live frontend module with actual authenticated REST exposed a real optional-GP403 bug: Promise.all blocked the catalog even though browse/add were authorized. Shared nonblocking GP read now preserves unknown as null and shows server-calculated-after-save copy; no zero GP invented and no financial RPC grants changed. Manual stock and catalog reuse it. Versioned assets `20261019-market-gp5`.
+- Local source/test commit25f8db44: full npm regression EXIT0; Merchant DOM45 and SQL19 PASS. Actual frontend module + real authenticated REST PASS:50 rows,1/2/3kg,custom2.25kg,double-submit1 write,readback correct. This is DOM-harness frontend acceptance, not a claim of physical-device or full signed-in-browser appearance certification.
+- Opt-in live QA harness: `ops/market/live-catalog-qa.cjs`; requires explicit env opt-in, private session file and owned pending/draft shop with is_test metadata. Credentials/tokens never committed. Advisors reviewed: private receipts intentionally deny all direct access; authenticated definer warnings are intentional guarded RPCs, with owner/anon/staff/suspended checks tested.
+- Image HTTP audit:79 unique URLs for88 approved rows;24 HTTP200 image responses,55 rate-limited429 during batch HEAD audit; no404 observed. Stop bulk retrying; keep explicit image failure UI and rights-pending labels. Remaining40 need exact reusable images/rights evidence, not a coding permission.
+- NEXT: exact GP-fix CI, then merge/deploy Web and verify public gp5 bytes; keep test shop unpublished. Physical review and remaining image rights remain separate acceptance limits.
