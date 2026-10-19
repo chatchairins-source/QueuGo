@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 20,
+    "approved": 24,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 108
+    "rights_pending": 104
   },
   "items": [
     {
@@ -1004,23 +1004,23 @@
       "slug": "makro-fuji-apple-10",
       "name_th": "แอปเปิลฟูจิ 10 ผล",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/p/xca7-ql-7416139808963",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7416139808963-7b25cd62-b4d7-49b5-8e85-9faead73b68c.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Fuji_apple.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Fuji_apple.jpg",
+      "status": "approved",
+      "rights_evidence": "Scott Bauer, USDA ARS · Public domain (USDA ARS) · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain commodity image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-guava-1kg",
       "name_th": "ฝรั่ง",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/th/p/320671-481477667716528",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/0f48b74c1584416fa9c74adf9621dc1a?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Fresh_Guava_fruit.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/3/3f/Fresh_Guava_fruit.jpg",
+      "status": "approved",
+      "rights_evidence": "Mohana hari balu · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain commodity image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-red-lady-papaya-1kg",
@@ -1092,12 +1092,12 @@
       "slug": "makro-mangosteen-basket-3kg",
       "name_th": "มังคุดตะกร้า",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/p/837456-876358407272104",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/876358407272104-70b72f5c-4e76-4546-a0d7-640a432575ef.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Garcinia_mangostana_fruit1.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e8/Garcinia_mangostana_fruit1.jpg",
+      "status": "approved",
+      "rights_evidence": "Shin-改 · Public domain · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain commodity image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-red-dragon-fruit-1kg",
@@ -1356,12 +1356,12 @@
       "slug": "makro-longan-1kg",
       "name_th": "ลำไย",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/p/4C6X70K-519588845902332",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/519588845902332-f1bb6a6c-6d3f-4154-848d-a166565560fc.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Thailand_longan.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/4/41/Thailand_longan.jpg",
+      "status": "approved",
+      "rights_evidence": "Fumikas Sagisavas · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct product image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain commodity image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-shrimp-chaebow-25-30kg",
