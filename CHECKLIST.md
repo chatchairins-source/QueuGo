@@ -397,3 +397,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Code checkpoint before this checklist update: `a5c758e4174d5d9587f0629e5948c3b3b03708d3`. Fixed the first exact-CI source-contract failure (invalid decimal slug), retained successful catalog-add authoritative reload/no-double-add behavior, and continued exact image-candidate verification.
 - NEXT: exact-head CI on this successor; fix the first failure only. Continue resolving the 7 remaining source-page-only images, then authenticated/physical Merchant Web acceptance before any Production apply.
 
+
+
+## 2026-10-19 — Market Catalog image/source checkpoint (PR #441)
+- Branch: `work-market-master-catalog-successor-v2-20261019`; current code checkpoint before this checklist update: `945bbe4ad54e698786b10777c516a8c4862cf5a6`; base main: `fa0b7ac941311772b24af8af6565dde7ed9a3f11`.
+- Catalog coverage: 128/128 sourced identities with direct image evidence. Approved open-license/public-domain images: 28; retailer/direct candidates still rights-pending: 100; source-page-only: 0; family-reference-only: 0.
+- Approved batches now include commodity staples plus exact Nam Dok Mai mango, Red Lady papaya, Monthong durian and Shine Muscat; Merchant renders approved image attribution and never renders rights-pending retailer art as approved.
+- Phase 2 remains 70 seafood/fruit/vegetable identities (ปลา 13, กุ้ง 8, ปู 7, หอย 9, ปลาหมึก 4, ผลไม้ 16, ผักสด 13); 1/2/3 kg presets + custom quantity retained. No Production migration/apply performed.
+- TEST: exact-head RC for `945bbe4...` pending GitHub scheduling. NEXT: if RC fails, fix first exact failure only; if green, continue open-license replacements for the remaining 100 rights-pending images and authenticated/physical Merchant Web acceptance before Production.
