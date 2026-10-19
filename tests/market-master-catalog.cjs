@@ -128,6 +128,12 @@ for(const row of images.items){
 for(const slug of allSlugs) assert.ok(imageSlugs.has(slug),'missing image-review state for '+slug);
 assert.ok(images.items.some(x=>x.status==='rights_pending'),'must retain verified retailer candidates under rights review');
 assert.ok(images.items.filter(x=>x.status==='approved').length>=88,'must retain approved open-license catalog images');
+assert.equal(images.counts.approved,images.items.filter(x=>x.status==='approved').length,'approved manifest count');
+assert.equal(images.counts.rights_pending,images.items.filter(x=>x.status==='rights_pending').length,'pending manifest count');
+const duckReview=images.items.find(x=>x.slug==='whole-duck');
+assert.equal(duckReview.status,'approved');
+assert.match(duckReview.rights_evidence,/CC0 1.0/);
+for(const slug of ['makro-duck-whole-s-1kg','lotus-duck-whole-m','lotus-duck-whole-xl'])assert.equal(images.items.find(x=>x.slug===slug).status,'rights_pending','generic duck art must not imply branded pack match');
 assert.equal(images.items.filter(x=>x.status==='source_page_found').length,0,'every current catalog item must have a direct image candidate or approved image');
 assert.equal(images.items.filter(x=>x.status==='family_reference_only').length,0,'all current catalog items must have concrete image evidence');
 for(const slug of ['pork-lean','egg-size-2-10','fresh-tofu-skin','textured-vegetable-protein','ginkgo-nut','dried-squid-medium']){

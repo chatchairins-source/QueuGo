@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 88,
+    "approved": 89,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 40
+    "rights_pending": 39
   },
   "items": [
     {
@@ -157,12 +157,12 @@
       "slug": "whole-duck",
       "name_th": "เป็ดสดทั้งตัว",
       "category": "ไก่ / เป็ด",
-      "source_page_url": "https://www.makro.pro/th/p/552500-921664243522588",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/921664243522588-74c26511-0f2e-4ff4-9db6-18e58db822a2.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Duck,_Duck,_Duck_(2863443552).jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/6/62/Duck%2C_Duck%2C_Duck_%282863443552%29.jpg",
+      "status": "approved",
+      "rights_evidence": "cogdogblog (Alan Levine) · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Visually reviewed raw plucked whole ducks; generic whole-duck commodity illustration only. Not evidence of CP brand or S/M/XL size. Commons license reviewed; original JPEG HTTP 200, 900×1200, 353047 bytes."
     },
     {
       "slug": "egg-size-2-10",
@@ -336,78 +336,7 @@
       "source_page_url": "https://commons.wikimedia.org/wiki/File:Raw_chicken_drumsticks_(3312851753).jpg",
       "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/2/29/Raw_chicken_drumsticks_%283312851753%29.jpg",
       "status": "approved",
-      "rights_evidence": "Geoff Peters · CC BY 2.0 · Wikimedia Commons",
-      "checked_on": "2026-10-19",
-      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
-    },
-    {
-      "slug": "makro-chicken-middle-wing-1kg",
-      "name_th": "ปีกกลางไก่",
-      "category": "ไก่ / เป็ด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/a0105c6292eb423ba883f1d48d29758e?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
-      "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
-    },
-    {
-      "slug": "makro-pork-hip-1kg",
-      "name_th": "สะโพกหมู",
-      "category": "เนื้อหมู",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/8b34b1c4ba894450be3e735188bd698c?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
-      "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
-    },
-    {
-      "slug": "makro-pork-loin-1kg",
-      "name_th": "สันนอกหมู",
-      "category": "เนื้อหมู",
-      "source_page_url": "https://commons.wikimedia.org/wiki/File:Pork_loin.jpg",
-      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/59/Pork_loin.jpg",
-      "status": "approved",
-      "rights_evidence": "Pannet · CC BY 4.0 · Wikimedia Commons",
-      "checked_on": "2026-10-19",
-      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
-    },
-    {
-      "slug": "makro-pork-minced-fat10-1kg",
-      "name_th": "เนื้อหมูบด ผสมมัน 10%",
-      "category": "เนื้อหมู",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7606382592195-94bb55b9-1e96-4bba-a4a2-abc8ccd2108b.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
-      "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
-    },
-    {
-      "slug": "makro-pork-rib-slice-1kg",
-      "name_th": "ซี่โครงหมูตัดเส้น",
-      "category": "เนื้อหมู",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/03731fdc33df46db9188b5324614ce7c?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
-      "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
-    },
-    {
-      "slug": "makro-pork-shoulder-1kg",
-      "name_th": "หัวไหล่หมู",
-      "category": "เนื้อหมู",
-      "source_page_url": "https://commons.wikimedia.org/wiki/File:Boston_butt.jpg",
-      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Boston_butt.jpg",
-      "status": "approved",
-      "rights_evidence": "Mark Miller · CC BY-SA 4.0 · Wikimedia Commons",
-      "checked_on": "2026-10-19",
-      "note": "Open-license image approved for QueueGo catalog display; raw commodity/cut match verified and attribution/license retained."
-    },
-    {
-      "slug": "makro-duck-minced-gizzard-1kg",
+      "rights_evidence"…1285 tokens truncated…minced-gizzard-1kg",
       "name_th": "เนื้อเป็ดบดผสมกึ๋น",
       "category": "ไก่ / เป็ด",
       "source_page_url": "https://www.makro.pro/th/p/928220-357229728318241",
