@@ -390,4 +390,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 
 - Fresh-source expansion: added 33 current public product facts from Makro PRO and Lotus's covering pork, chicken, duck, beef, mushrooms and common vegetables. Retail prices are intentionally not imported.
 - Weight-selling UX: catalog items sold by kilogram now expose 1 kg / 2 kg / 3 kg quick presets while keeping custom quantity input.
-- NEXT: run exact-head CI, fix first failure if any, then continue seafood/fruit coverage and images only from verifiable sources/rights.
+
+- Market catalog source coverage now: 25 starter + 33 fresh Makro/Lotus + 70 seafood/fruit/veg = 128 sourced catalog identities.
+- Image-review coverage: 128/128 items have a source/review record; 57 have direct retailer image candidates, 65 have product/source pages with imagery pending direct extraction, 6 are family/reference-only. Approved Production images remain 0 until reuse-rights evidence is documented; no retailer art is published as QueueGo-owned.
+- Added sourced กุ้งแชบ๊วย and ปูทะเล variants; phase-2 migration `20261019150000_market_phase2_chaebow_mudcrab.sql` stages facts only, no retail price/stock.
+- NEXT: exact-head CI; fix first failure only. Then continue image rights/source resolution and Merchant Web visual/browser acceptance before Production apply.
+
