@@ -62,6 +62,7 @@ const phase2Migration=read('supabase/migrations/20261019140000_market_seafood_fr
 const phase2GapFill=read('supabase/migrations/20261019143000_market_phase2_gap_fill.sql');
 const phase2ChaebowMudCrab=read('supabase/migrations/20261019150000_market_phase2_chaebow_mudcrab.sql');
 const imageSourceGapFill=read('supabase/migrations/20261019151500_market_image_source_gapfill.sql');
+const openLicenseImages=read('supabase/migrations/20261019154500_market_open_license_images.sql');
 assert.ok(expansion.includes("'เห็ด'"),'fresh expansion must add mushroom category');
 assert.ok(expansion.includes('Makro PRO')&&expansion.includes("Lotus''s"),'fresh expansion must retain both public sources');
 for(const cat of ["'กุ้ง'","'ปู'","'หอย'","'ปลาหมึก'"]){
@@ -97,20 +98,29 @@ for(const row of images.items){
   assert.ok(!imageSlugs.has(row.slug),'duplicate image-review row '+row.slug); imageSlugs.add(row.slug);
   assert.ok(allSlugs.has(row.slug),'image-review row has unknown catalog slug '+row.slug);
   assert.match(String(row.source_page_url||''),/^https:\/\//,'image source page '+row.slug);
-  assert.ok(['rights_pending','source_page_found','family_reference_only'].includes(row.status),'invalid image review state '+row.slug);
-  assert.equal(row.rights_evidence,null,'unapproved retailer art must not claim rights evidence');
-  if(row.status==='rights_pending'){
-    assert.match(String(row.candidate_image_url||''),/^https:\/\//,'direct image candidate '+row.slug);
+  assert.ok(['rights_pending','source_page_found','family_reference_only','approved'].includes(row.status),'invalid image review state '+row.slug);
+  if(row.status==='approved'){
+    assert.match(String(row.candidate_image_url||''),/^https:\/\/upload\.wikimedia\.org\//,'approved open-license image '+row.slug);
+    assert.ok(String(row.rights_evidence||'').length>10,'approved image must retain attribution/license evidence '+row.slug);
+    assert.match(row.source_page_url,/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/,'approved image must retain Commons source page '+row.slug);
   }else{
-    assert.equal(row.candidate_image_url,null,'non-direct image state must not carry a direct image candidate '+row.slug);
+    assert.equal(row.rights_evidence,null,'unapproved image must not claim rights evidence '+row.slug);
+    if(row.status==='rights_pending') assert.match(String(row.candidate_image_url||''),/^https:\/\//,'direct image candidate '+row.slug);
+    if(row.status==='source_page_found'||row.status==='family_reference_only') assert.equal(row.candidate_image_url,null,'non-direct image state must not carry a direct image candidate '+row.slug);
   }
 }
 for(const slug of allSlugs) assert.ok(imageSlugs.has(slug),'missing image-review state for '+slug);
-assert.ok(images.items.some(x=>x.status==='rights_pending'),'must retain verified direct image candidates for rights review');
-assert.equal(images.items.filter(x=>x.status==='approved').length,0,'retailer candidates must never be auto-approved');
-assert.equal(images.items.filter(x=>x.status==='family_reference_only').length,0,'all current catalog items must have a concrete product/source page under review');
+assert.ok(images.items.some(x=>x.status==='rights_pending'),'must retain verified retailer candidates under rights review');
+assert.ok(images.items.filter(x=>x.status==='approved').length>=7,'must retain the approved open-license starter images');
+assert.equal(images.items.filter(x=>x.status==='source_page_found').length,0,'every current catalog item must have a direct image candidate or approved image');
+assert.equal(images.items.filter(x=>x.status==='family_reference_only').length,0,'all current catalog items must have concrete image evidence');
 for(const slug of ['pork-lean','egg-size-2-10','fresh-tofu-skin','textured-vegetable-protein','ginkgo-nut','dried-squid-medium']){
   assert.ok(imageSourceGapFill.includes("'"+slug+"'"),'image source gap-fill migration missing '+slug);
+}
+assert.ok(openLicenseImages.includes("image like 'https://upload.wikimedia.org/%'"),'open-license migration must keep Wikimedia rights gate');
+assert.ok(openLicenseImages.includes("image_source like 'https://commons.wikimedia.org/wiki/File:%'"),'open-license migration must keep Commons source-page gate');
+for(const slug of ['dried-lily-flower','dried-squid-medium','talaadthai-climbing-perch-small','talaadthai-shrimp-chaebow-medium','talaadthai-shrimp-chaebow-large','talaadthai-mud-crab-small','talaadthai-mud-crab-medium']){
+  assert.ok(openLicenseImages.includes("'"+slug+"'"),'open-license migration missing '+slug);
 }
 
 const catalog=read('merchant/market-catalog.js');
