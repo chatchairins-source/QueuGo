@@ -30,11 +30,14 @@ window.qgMarketCatalogSetKg=kg=>{const form=document.getElementById('market-cata
 function active(epoch,shopId){return epoch===state.epoch&&shopId===state.shop&&location.hash.replace('#','').split('/')[0]==='market-catalog'}
 function card(r){
   const linked=!!r.product_id;
-  const image=r.image? `<img class="market-catalog-image" src="${E(r.image)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'market-catalog-image market-catalog-placeholder',textContent:'${E((r.name_th||'?').charAt(0))}'}))">`:`<div class="market-catalog-image market-catalog-placeholder">${E((r.name_th||'?').charAt(0))}</div>`;
+  const image=r.image? `<img class="market-catalog-image" src="${E(r.image)}" alt="${E(r.name_th)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'market-catalog-image market-catalog-placeholder',textContent:'${E((r.name_th||'?').charAt(0))}'}))">`:`<div class="market-catalog-image market-catalog-placeholder" aria-label="ยังไม่มีรูป ${E(r.name_th)}">${E((r.name_th||'?').charAt(0))}</div>`;
+  const imageStatus=r.image
+    ?`<small>รูปสินค้า: ผ่านการอนุมัติแล้ว</small>${r.image_source&&r.image_rights_evidence?`<small class="market-catalog-credit">รูป: <a href="${E(r.image_source)}" target="_blank" rel="noopener noreferrer">${E(r.image_rights_evidence)}</a></small>`:''}`
+    :r.has_image_reference?'<small>รูปสินค้า: พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่</small>':'<small>รูปสินค้า: กำลังหารูปที่ตรวจสอบแหล่งที่มาได้</small>';
   return `<article class="market-catalog-card" data-search="${E((r.name_th+' '+r.category).toLocaleLowerCase('th-TH'))}">
     ${image}<div class="market-catalog-info"><b>${E(r.name_th)}</b><small>${E(r.category)} · หน่วยอ้างอิง ${E(r.source_unit)}</small>
     ${r.suggested_unit?`<small>หน่วยที่ระบบแนะนำ: ${E(r.suggested_pack_size)} ${E(r.suggested_unit)} / ชุด</small>`:'<small>หน่วยอ้างอิงยังไม่ตรงกับหน่วยขายในระบบ — ร้านเลือกหน่วยเอง</small>'}
-    ${r.image?'<small>รูปสินค้า: ผ่านการอนุมัติแล้ว</small>':r.has_image_reference?'<small>รูปสินค้า: พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่</small>':'<small>รูปสินค้า: กำลังหารูปที่ตรวจสอบแหล่งที่มาได้</small>'}
+    ${imageStatus}
     ${linked?`<strong>มีในร้านแล้ว · หน้าร้าน ${Number(r.price??0).toLocaleString('th-TH')} บาท · เดลิเวอรี่ ${Number(r.delivery_price??r.price??0).toLocaleString('th-TH')} บาท</strong>`:''}</div>
     <button type="button" class="${linked?'qgm-outline':'qgm-primary'}" ${linked?'disabled':''} onclick="qgMarketCatalogChoose('${E(r.id)}')">${linked?'มีในร้านแล้ว':'เพิ่มเข้าร้าน'}</button>
   </article>`;
