@@ -1,0 +1,424 @@
+{
+  "version": 1,
+  "retrieved_on": "2026-10-19",
+  "policy": "Public product identity/category/pack facts only. Retail prices are intentionally excluded because QueueGo merchants set their own storefront price and Delivery is derived by the existing GP rule. Product images remain null until QueueGo has approved source and reuse-rights evidence.",
+  "sources": [
+    {
+      "name": "Makro PRO",
+      "url": "https://www.makro.pro/fp/fresh-products-at-makro"
+    },
+    {
+      "name": "Makro PRO",
+      "url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448"
+    },
+    {
+      "name": "Makro PRO",
+      "url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Fresh%20for%20Business%20%281%20Jul%20-%2031%20Jul%2026%29/39903"
+    },
+    {
+      "name": "Makro PRO",
+      "url": "https://www.makro.pro/th/p/928220-357229728318241"
+    },
+    {
+      "name": "Makro PRO",
+      "url": "https://www.makro.pro/th/p/552500-921664243522588"
+    },
+    {
+      "name": "Lotus's",
+      "url": "https://www.lotuss.com/th/shop/fresh-food?sort=relevance%3ADESC"
+    },
+    {
+      "name": "Lotus's",
+      "url": "https://www.lotuss.com/th/smartx/category/meat/beef"
+    },
+    {
+      "name": "Lotus's",
+      "url": "https://www.lotuss.com/th/product/75591299?openExternalBrowser=1"
+    },
+    {
+      "name": "Lotus's",
+      "url": "https://www.lotuss.com/th/product/75591305"
+    },
+    {
+      "name": "Lotus's",
+      "url": "https://www.lotuss.com/th/product/75591312"
+    },
+    {
+      "name": "Lotus's",
+      "url": "https://www.lotuss.com/th/product/51262018?openExternalBrowser=1"
+    },
+    {
+      "name": "Lotus's",
+      "url": "https://www.lotuss.com/th/product/51467654"
+    },
+    {
+      "name": "Lotus's",
+      "url": "https://www.lotuss.com/th/product/75713235"
+    }
+  ],
+  "items": [
+    {
+      "slug": "makro-chicken-breast-skin-on-1kg",
+      "name_th": "อกไก่เนื้อล้วนติดหนัง",
+      "category": "ไก่ / เป็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-chicken-leg-quarter-1kg",
+      "name_th": "น่องติดสะโพกไก่",
+      "category": "ไก่ / เป็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-chicken-wing-stick-1kg",
+      "name_th": "ปีกบนไก่",
+      "category": "ไก่ / เป็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-chicken-tenderloin-1kg",
+      "name_th": "สันในไก่",
+      "category": "ไก่ / เป็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-chicken-drumstick-1kg",
+      "name_th": "น่องไก่",
+      "category": "ไก่ / เป็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-chicken-middle-wing-1kg",
+      "name_th": "ปีกกลางไก่",
+      "category": "ไก่ / เป็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-pork-hip-1kg",
+      "name_th": "สะโพกหมู",
+      "category": "เนื้อหมู",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-pork-loin-1kg",
+      "name_th": "สันนอกหมู",
+      "category": "เนื้อหมู",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-pork-minced-fat10-1kg",
+      "name_th": "เนื้อหมูบด ผสมมัน 10%",
+      "category": "เนื้อหมู",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-pork-rib-slice-1kg",
+      "name_th": "ซี่โครงหมูตัดเส้น",
+      "category": "เนื้อหมู",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-pork-shoulder-1kg",
+      "name_th": "หัวไหล่หมู",
+      "category": "เนื้อหมู",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Fresh%20for%20Business%20%281%20Jul%20-%2031%20Jul%2026%29/39903",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-duck-minced-gizzard-1kg",
+      "name_th": "เนื้อเป็ดบดผสมกึ๋น",
+      "category": "ไก่ / เป็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/p/928220-357229728318241",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-duck-whole-s-1kg",
+      "name_th": "ซีพี เป็ดสดอนามัย ขนาด S",
+      "category": "ไก่ / เป็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/p/552500-921664243522588",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-duck-whole-m",
+      "name_th": "ซีพี เป็ดสดอนามัย ไซส์ M",
+      "category": "ไก่ / เป็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.ละ; น้ำหนักตัวประมาณ 2.4-2.6 กก.",
+      "source_url": "https://www.lotuss.com/th/product/51262018?openExternalBrowser=1",
+      "source_name": "Lotus's",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-duck-whole-xl",
+      "name_th": "ซีพี เป็ดสดอนามัย XL",
+      "category": "ไก่ / เป็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.ละ; น้ำหนักตัวประมาณ 2.8-3.0 กก.",
+      "source_url": "https://www.lotuss.com/th/product/51467654",
+      "source_name": "Lotus's",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-beef-sirloin",
+      "name_th": "เนื้อสันนอกโคขุน",
+      "category": "เนื้อวัว",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.ละ",
+      "source_url": "https://www.lotuss.com/th/product/75591299?openExternalBrowser=1",
+      "source_name": "Lotus's",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-beef-shank",
+      "name_th": "เนื้อน่องโคขุน",
+      "category": "เนื้อวัว",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.ละ",
+      "source_url": "https://www.lotuss.com/th/product/75591305",
+      "source_name": "Lotus's",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-beef-rib",
+      "name_th": "เนื้อติดซี่โครงโคขุน",
+      "category": "เนื้อวัว",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.ละ",
+      "source_url": "https://www.lotuss.com/th/product/75591312",
+      "source_name": "Lotus's",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-beef-hip",
+      "name_th": "เนื้อสะโพกวัว",
+      "category": "เนื้อวัว",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.ละ",
+      "source_url": "https://www.lotuss.com/th/smartx/category/meat/beef",
+      "source_name": "Lotus's",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-enoki-1kg",
+      "name_th": "เห็ดเข็มทอง",
+      "category": "เห็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-white-shimeji-1kg",
+      "name_th": "เห็ดชิเมจิขาว",
+      "category": "เห็ด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/en/c/collections/Gold%20Container%20-%20Fresh%20Value%20Deal%20%289%20Jul%202026%29/40637",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-king-oyster-500g",
+      "name_th": "เห็ดนางรมหลวง",
+      "category": "เห็ด",
+      "suggested_unit": "กรัม",
+      "suggested_pack_size": 500,
+      "source_unit": "500 กรัม",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-fresh-shiitake-100g",
+      "name_th": "เห็ดหอมสด",
+      "category": "เห็ด",
+      "suggested_unit": "กรัม",
+      "suggested_pack_size": 100,
+      "source_unit": "100 กรัม",
+      "source_url": "https://www.lotuss.com/th/product/75713235",
+      "source_name": "Lotus's",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-enoki-500g",
+      "name_th": "โลตัส เห็ดเข็มทอง",
+      "category": "เห็ด",
+      "suggested_unit": "กรัม",
+      "suggested_pack_size": 500,
+      "source_unit": "500 กรัม",
+      "source_url": "https://www.lotuss.com/th/shop/fresh-food?sort=relevance%3ADESC",
+      "source_name": "Lotus's",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-import-carrot-1kg",
+      "name_th": "แครอทนอก จีน/เวียดนาม",
+      "category": "ผักสด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-chinese-cabbage-400-600g",
+      "name_th": "ผักกาดขาวปลี",
+      "category": "ผักสด",
+      "suggested_unit": "กรัม",
+      "suggested_pack_size": 500,
+      "source_unit": "400-600 กรัม/ชิ้น",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-cabbage-500-700g",
+      "name_th": "กะหล่ำปลีแพ็ค",
+      "category": "ผักสด",
+      "suggested_unit": "กรัม",
+      "suggested_pack_size": 600,
+      "source_unit": "500-700 กรัม",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-cucumber-500g",
+      "name_th": "แตงกวา",
+      "category": "ผักสด",
+      "suggested_unit": "กรัม",
+      "suggested_pack_size": 500,
+      "source_unit": "500 กรัม",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-kale-500g",
+      "name_th": "ผักคะน้า",
+      "category": "ผักสด",
+      "suggested_unit": "กรัม",
+      "suggested_pack_size": 500,
+      "source_unit": "500 กรัม",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-choy-sum-500g",
+      "name_th": "ผักกวางตุ้งไต้หวัน",
+      "category": "ผักสด",
+      "suggested_unit": "กรัม",
+      "suggested_pack_size": 500,
+      "source_unit": "500 กรัม",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-peeled-garlic-1kg",
+      "name_th": "กระเทียมสดปอกเปลือก",
+      "category": "ผักสด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-tomato-1kg",
+      "name_th": "มะเขือเทศท้อ",
+      "category": "ผักสด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-onion-1kg",
+      "name_th": "หอมใหญ่นอก",
+      "category": "ผักสด",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
+      "source_name": "Makro PRO",
+      "retrieved_on": "2026-10-19"
+    }
+  ]
+}
