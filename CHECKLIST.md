@@ -378,3 +378,13 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Profile Settings adds My Destination via existing installed destination read/write RPCs and shared map/search/GPS helpers. Saved preferences load from backend; only matching acknowledgement or confirmed lost-response reconciliation shows saved. No new backend/schema/availability/dispatch source or real account/order write in QA.
 - Actual Settings DOM36 PASS covers read/write/duplicate-submit/late response/account fencing/invalid coordinates/GPS disposal. Full TZ=Asia/Bangkok npm pre/test/post EXIT0 on Web projection; same source full suite EXIT0. Production read-only ACL audit confirms anon execute denied, authenticated wrappers call existing live-session/active-Rider guards.
 - Native9e actual three APK/JVM/16KB/full source and five SQL races PASS; containing runtime final result still required. Public Web review activation is this bounded projection only, with existing map transport retained. Authenticated destination save/reopen and phone visual/GPS checks remain BLOCKED by missing usable Rider browser session/physical device; no credential bypass or fabricated Home screenshot.
+
+
+## 2026-10-19 — Market Master Catalog successor
+- Branch: `work-market-master-catalog-successor-20261019`
+- Base: latest main `65638570b670b3949457d2fd8317bf4f65d8c0a5`
+- Recovered the existing Market catalog work from `work-market-master-catalog-20261015` onto a clean descendant of current main; the stale branch itself was not reused.
+- Added source-backed Thai Market master identities, authenticated Merchant catalog browse/add flow, idempotent add receipts, GP-derived Delivery preview, separate manual add, and pending-Merchant access for catalog preparation.
+- Staged new migration as `20261019114500_market_master_catalog.sql`; no Production apply in this checkpoint.
+- Source contract gate: `tests/market-master-catalog.cjs`; full CI still required.
+- NEXT: run exact-head CI, fix first failure if any, then expand the Market catalog category coverage and images only from verifiable sources/rights.
