@@ -386,13 +386,14 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Recovered the existing Market catalog work from `work-market-master-catalog-20261015` onto a clean descendant of current main; the stale branch itself was not reused.
 - Added source-backed Thai Market master identities, authenticated Merchant catalog browse/add flow, idempotent add receipts, GP-derived Delivery preview, separate manual add, and pending-Merchant access for catalog preparation.
 - Staged new migration as `20261019114500_market_master_catalog.sql`; no Production apply in this checkpoint.
-- Source contract gate: `tests/market-master-catalog.cjs`; full CI still required.
+- Source contract gate: `tests/market-master-catalog.cjs`; Merchant DOM flow gate: `tests/market-master-catalog-ui.cjs` (browse/category/image-status/1-2-3 kg/add/reload/no double add); exact-head full CI still required.
 
 - Fresh-source expansion: added 33 current public product facts from Makro PRO and Lotus's covering pork, chicken, duck, beef, mushrooms and common vegetables. Retail prices are intentionally not imported.
 - Weight-selling UX: catalog items sold by kilogram now expose 1 kg / 2 kg / 3 kg quick presets while keeping custom quantity input.
 
 - Market catalog source coverage now: 25 starter + 33 fresh Makro/Lotus + 70 seafood/fruit/veg = 128 sourced catalog identities.
-- Image-review coverage: 128/128 items have a source/review record; 57 have direct retailer image candidates, 65 have product/source pages with imagery pending direct extraction, 6 are family/reference-only. Approved Production images remain 0 until reuse-rights evidence is documented; no retailer art is published as QueueGo-owned.
+- Image-review coverage: 128/128 items have a source/review record; 58 have direct retailer image candidates, 64 have product/source pages with imagery pending direct extraction, 6 are family/reference-only. Approved Production images remain 0 until reuse-rights evidence is documented; no retailer art is published as QueueGo-owned.
 - Added sourced กุ้งแชบ๊วย and ปูทะเล variants; phase-2 migration `20261019150000_market_phase2_chaebow_mudcrab.sql` stages facts only, no retail price/stock.
-- NEXT: exact-head CI; fix first failure only. Then continue image rights/source resolution and Merchant Web visual/browser acceptance before Production apply.
+- Code checkpoint before this checklist update: `c706e32150d3d81c1fa3be9af71e4c4d623eee5f`. Fixed successful catalog-add reload so the saved product is read back and cannot be added twice from stale UI.
+- NEXT: exact-head CI; fix first failure only. Then continue image rights/source resolution and authenticated/physical Merchant Web acceptance before any Production apply.
 
