@@ -225,7 +225,7 @@ assert.ok(!market.includes("const CATS=new Set(['market','meat','fish','vegetabl
 assert.ok(!market.includes("'ของใช้ในครัวเรือน'"),'Market manual categories must not offer household/detergent');
 const merchant=read('merchant/index.html');
 assert.ok(merchant.includes("case'market-catalog'"));
-assert.ok(merchant.includes('market-catalog.js?v=20261019-market-gp8'));
+assert.ok(merchant.includes('market-catalog.js?v=20261019-market-clean1'));
 assert.ok(merchant.includes("'market-stock','market-catalog'"),'pending merchants must be able to prepare catalog/stock');
 assert.ok(merchant.includes("if(['market','meat','fish','vegetable','fruit'].includes(qgmShopCategory(u))){navigate('market-stock');return;}"),'Market Product tab must enter Market stock instead of the generic product grid');
 assert.ok(merchant.includes("if(qgmIsMarketProductShop(u))return navigate('market-catalog')"),'legacy Market catalog entry must redirect to the Market Master Catalog');
