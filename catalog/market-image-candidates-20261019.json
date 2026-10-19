@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 28,
+    "approved": 33,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 100
+    "rights_pending": 95
   },
   "items": [
     {
@@ -58,12 +58,12 @@
       "slug": "thai-basil",
       "name_th": "โหระพา",
       "category": "ผักสด",
-      "source_page_url": "https://www.lotuss.com/th/product/75673037",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/75673037.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Sweet_basil_or_ocimum_basilicum.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/0/05/Sweet_basil_or_ocimum_basilicum.jpg",
+      "status": "approved",
+      "rights_evidence": "Lfatty22 · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain commodity image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "spring-onion",
@@ -553,12 +553,12 @@
       "slug": "makro-import-carrot-1kg",
       "name_th": "แครอทนอก จีน/เวียดนาม",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7606383542467-e91c2264-6e5d-410e-bb5f-264f5227a275.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:CARROT.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/4/4a/CARROT.jpg",
+      "status": "approved",
+      "rights_evidence": "Ranjithkumar Murugesan · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain commodity image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-chinese-cabbage-400-600g",
@@ -641,12 +641,12 @@
       "slug": "makro-onion-1kg",
       "name_th": "หอมใหญ่นอก",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/cfd923aa4c714c4382ef12c0a66c9a9e?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Yellow_onion_%F0%9F%A7%85.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Yellow_onion_%F0%9F%A7%85.jpg",
+      "status": "approved",
+      "rights_evidence": "Fumikas Sagisavas · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain commodity image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-tilapia-900g-1kg",
@@ -1125,12 +1125,12 @@
       "slug": "makro-coriander-300g",
       "name_th": "ผักชี",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/826817-7078705889475",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/8531f32e5532489fbd0901752f7fe6df?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Coriander_leaves.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Coriander_leaves.jpg",
+      "status": "approved",
+      "rights_evidence": "Azaadsameer3 · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain commodity image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-celery-300g",
@@ -1147,12 +1147,12 @@
       "slug": "makro-cauliflower-1kg",
       "name_th": "ดอกกะหล่ำขาวจีน",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/135318-7606380331203",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7606380331203-96cb478c-1b14-442c-b3c5-f6ce805ad1ff.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Cauliflower_in_Thailand.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/1/16/Cauliflower_in_Thailand.jpg",
+      "status": "approved",
+      "rights_evidence": "Ronggy · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain commodity image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-broccoli-10kg",
