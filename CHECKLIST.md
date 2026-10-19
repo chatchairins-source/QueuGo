@@ -502,3 +502,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - TEST: full npm regression EXIT0; actual isolated SQL migrations + pending browse/add/readback/receipt replay/body mismatch/no duplicate/stock movement once/staff+archived+suspended+anon denial PASS19; Merchant DOM PASS42; source/data/image/category contracts PASS. SQL gate now included in npm test/RC. No Production writes.
 - Counts unchanged: 128 sourced products, 88 approved images, 40 rights-pending. Browser binary download in this host returned truncated archives; use CI WebKit and do not claim signed-in live Merchant acceptance from isolated tests.
 - NEXT: exact successor CI then release-gate review, remaining40 image rights and authenticated Merchant acceptance. No Production apply until exact successor passes.
+
+
+## 2026-10-19 — Market catalog exact-code release verification
+- Source/test status: DONE for code `e37d3546aff1a1f02f696a165ce8ba4967c95b8a`; exact RC2009/run39234168435 SUCCESS, every step including npm regression, complete Merchant mobile WebKit boot and visual component gates passed.
+- Branch: `work-market-master-catalog-successor-v2-20261019`; 128 sourced products, 88 approved images, 40 explicitly rights-pending direct candidates. No source/image/category/preset implementation restart is needed.
+- Release status: BLOCKED by authenticated actual Merchant add/shop-list acceptance. Live browser inspection at the public Merchant URL showed the login form, with no usable signed-in Merchant session. Real merchant-selected price/cost/stock must be used for a live save; no fabricated Production fixture or account bypass is permitted.
+- Remaining rights work: obtain documented retailer reuse permission or an exact open-license image for the 40 pending rows. Current fallback/status is intentional and approved-image rendering is covered by DOM tests; do not relabel these rows as approved merely to clear the count.
+- Production remains unchanged: Market catalog tables do not yet exist; read-only migration history confirms staged Market files have not been applied. No merge, Production migration, real product mutation or physical-device acceptance is claimed.
+- NEXT: authenticated Merchant acceptance on an authorized review environment, then apply the staged files in order and verify counts/ownership/public asset versions before public activation. Use secure browser authentication if the owner elects to supply a test session; never request secrets in chat. This is a concrete release dependency, not a new coding permission request.
