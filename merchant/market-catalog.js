@@ -124,6 +124,7 @@ window.qgMarketCatalogChoose=id=>{
       await rpc('qg_market_catalog_add',body);
       localStorage.removeItem(pendingKey(state.shop));
       toast('เพิ่มสินค้าเข้าร้านแล้ว');
+      state.loading=false;
       state.offset=0;await load();
     }catch(err){error(err);if(submit)submit.disabled=false;state.loading=false}
   };
