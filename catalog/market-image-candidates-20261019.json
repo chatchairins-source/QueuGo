@@ -3,23 +3,23 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 67,
+    "approved": 75,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 61
+    "rights_pending": 53
   },
   "items": [
     {
       "slug": "kale-mixed",
       "name_th": "ผักคะน้า คละ",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/p/1mv-veh-7078708019395",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7078708019395-16fcfa28-bd85-4bee-8b02-375f5322a593.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Kale_(Green_Vegetable).jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/53/Kale_%28Green_Vegetable%29.jpg",
+      "status": "approved",
+      "rights_evidence": "Catherine Amia · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct product image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "chinese-cabbage",
@@ -597,12 +597,12 @@
       "slug": "makro-kale-500g",
       "name_th": "ผักคะน้า",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7078708019395-16fcfa28-bd85-4bee-8b02-375f5322a593.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Kale_(Green_Vegetable).jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/53/Kale_%28Green_Vegetable%29.jpg",
+      "status": "approved",
+      "rights_evidence": "Catherine Amia · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-choy-sum-500g",
@@ -1059,23 +1059,23 @@
       "slug": "lotus-emperor-lychee-kg",
       "name_th": "ลิ้นจี่จักรพรรดิ",
       "category": "ผลไม้",
-      "source_page_url": "https://www.lotuss.com/th/product/13201220",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/13201220.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Lychee_Fruit.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/3/32/Lychee_Fruit.jpg",
+      "status": "approved",
+      "rights_evidence": "Sanjay Acharya · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-golden-rambutan-2-5kg",
       "name_th": "เงาะสีทอง",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/th/p/714324-471432494654513",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/471432494654513-3b4f2188-019f-42e7-be00-5ade5fb46fd4.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Rambutan_Fruit_(31433).jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/50/Rambutan_Fruit_%2831433%29.jpg",
+      "status": "approved",
+      "rights_evidence": "SarKaLay · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-monthong-durian-2-3kg",
@@ -1114,12 +1114,12 @@
       "slug": "makro-sunlady-cantaloupe-1kg",
       "name_th": "แคนตาลูปซันเลดี้",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/p/VwVgmvK-744823429316792",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/744823429316792-0c62e666-fde5-4ec3-9085-5fe9e56e1d14.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Cantaloupe.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Cantaloupe.jpg",
+      "status": "approved",
+      "rights_evidence": "Renee Comet / National Cancer Institute · Public domain · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-coriander-300g",
@@ -1136,12 +1136,12 @@
       "slug": "makro-celery-300g",
       "name_th": "ขึ้นฉ่าย",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/826821-7078707953859",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/4413107ae1154b5091278736954fff4f?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Mini_celery.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/6/63/Mini_celery.jpg",
+      "status": "approved",
+      "rights_evidence": "Fumikas Sagisavas · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-cauliflower-1kg",
@@ -1180,12 +1180,12 @@
       "slug": "makro-large-pumpkin-half-kg",
       "name_th": "ฟักทองลูกใหญ่ผ่าซีก",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/-IMknyW-141252868777614",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/141252868777614-d6edfb6a-c67f-4a39-b0da-bb172b77ad32.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Pumpkinhalf-03_hg.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Pumpkinhalf-03_hg.jpg",
+      "status": "approved",
+      "rights_evidence": "Hannes Grobe · CC BY 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-old-ginger-1kg",
@@ -1257,12 +1257,12 @@
       "slug": "makro-key-lime-10",
       "name_th": "มะนาวแป้น 10 ลูก",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/157063-7275698356419",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/f66af3c518c149da8370b88eb4b54e18?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Key_lime_(Citrus_%C3%97_aurantiifolia)_-_DSC09279.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Key_lime_%28Citrus_%C3%97_aurantiifolia%29_-_DSC09279.jpg",
+      "status": "approved",
+      "rights_evidence": "Daderot · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-soft-fish-kg",
