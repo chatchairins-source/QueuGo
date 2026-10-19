@@ -33,3 +33,5 @@
   .market-catalog-card>.qgm-primary,.market-catalog-card>.qgm-outline{grid-column:1/-1;width:100%}
   .market-add-actions button{min-width:calc(50% - 6px)}
 }
+
+.market-catalog-credit{font-size:11px;line-height:1.35;color:#667085}.market-catalog-credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}
