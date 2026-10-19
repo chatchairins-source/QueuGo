@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 89,
+    "approved": 91,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 39
+    "rights_pending": 37
   },
   "items": [
     {
@@ -113,23 +113,23 @@
       "slug": "pork-tenderloin-dressed",
       "name_th": "สุกรชำแหละ เนื้อสัน สันใน",
       "category": "เนื้อหมู",
-      "source_page_url": "https://www.makro.pro/th/p/75361-7606385672387",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/bf4d7341c09e4756ad1dc7d3f73a44ec?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Poledwiczka_wieprzowa.JPG",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/0/05/Poledwiczka_wieprzowa.JPG",
+      "status": "approved",
+      "rights_evidence": "Julo · Public domain · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Visually reviewed raw pork tenderloins on cutting board. Generic raw tenderloin/lean pork illustration; no retailer brand, weight or pack claim. Author Julo releases worldwide to public domain. Original JPEG downloaded successfully, 2048×1536. Retailer product facts remain in original catalog source files."
     },
     {
       "slug": "pork-lean",
       "name_th": "หมูเนื้อแดง",
       "category": "เนื้อหมู",
-      "source_page_url": "https://www.lotuss.com/th/product/75592789",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/75592789.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Poledwiczka_wieprzowa.JPG",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/0/05/Poledwiczka_wieprzowa.JPG",
+      "status": "approved",
+      "rights_evidence": "Julo · Public domain · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct Lotus's product image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Visually reviewed raw pork tenderloins on cutting board. Generic raw tenderloin/lean pork illustration; no retailer brand, weight or pack claim. Author Julo releases worldwide to public domain. Original JPEG downloaded successfully, 2048×1536. Retailer product facts remain in original catalog source files."
     },
     {
       "slug": "pork-belly",
