@@ -453,3 +453,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Batch 14 approves kale (2 catalog identities), celery, half pumpkin, key lime, lychee, rambutan and cantaloupe using verified Commons licensing/attribution evidence.
 - Staged migration: `20261019190000_market_open_license_images_batch14.sql`; no Production apply.
 - NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 53 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 15 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 15 test checkpoint: `5c8881a28733d35d4cda77b84f9b415a4c92be86`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 81, rights-pending retailer candidates reduced to 47; source-page-only 0, family-reference-only 0.
+- Batch 15 approves king oyster mushroom, whole king mackerel, whole white shrimp, frozen squid rings, chilled squid tentacles and whole blue crab using verified Commons license/attribution evidence.
+- Staged migration: `20261019191500_market_open_license_images_batch15.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue exact open-license replacements for the remaining 47 rights-pending images and Merchant Web authenticated/physical acceptance.
