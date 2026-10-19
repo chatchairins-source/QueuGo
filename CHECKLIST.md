@@ -437,3 +437,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Batch 12 approves Nile tilapia, snakehead, giant river prawn, whole barramundi/seabass and blood cockle using verified Commons license evidence.
 - Staged migration: `20261019183000_market_open_license_images_batch12.sql`; no Production apply.
 - NEXT: exact-head RC; fix first failure only. If green, continue open-license replacements for the remaining 64 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 13 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 13 test checkpoint: `3e717b0122b387910eb05ce1f991efa202e89ea4`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 67, rights-pending retailer candidates reduced to 61; source-page-only 0, family-reference-only 0.
+- Batch 13 approves raw pork shoulder, raw bone-in beef short ribs and raw beef round/top-round for the matching shoulder/rib/hip catalog identities; cooked pork-shoulder/tenderloin candidates were explicitly rejected as misleading.
+- Staged migration: `20261019184500_market_open_license_images_batch13.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue exact raw/open-license replacements for the remaining 61 rights-pending images and Merchant Web authenticated/physical acceptance.
