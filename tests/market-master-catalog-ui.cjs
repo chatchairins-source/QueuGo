@@ -29,6 +29,9 @@ const {JSDOM}=require('jsdom');
         id:'m1',slug:'tilapia',name_th:'ปลานิล',category:'ปลา',
         suggested_unit:'กิโลกรัม',suggested_pack_size:1,source_unit:'1 กก.',
         image:null,has_image_reference:true,
+        catalog_preview_image:'https://images.mango-prod.siammakro.cloud/product-images/tilapia.jpeg',
+        catalog_preview_source_url:'https://www.makro.pro/th/p/tilapia',
+        catalog_preview_source_name:'Makro PRO',
         product_id:added?'p1':null,
         price:added?100:null,delivery_price:added?110:null
       },{
@@ -65,16 +68,18 @@ const {JSDOM}=require('jsdom');
 
   assert.match(w.document.body.textContent,/เพิ่มสินค้าจากแคตตาล็อก/);
   assert.match(w.document.body.textContent,/ปลานิล/);
-  assert.match(w.document.body.textContent,/พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่/);
+  assert.match(w.document.body.textContent,/รูปอ้างอิงจาก Makro PRO/);
   assert.ok(w.document.querySelector('.market-catalog-chip'),'category chips must render');
   assert.equal(w.document.querySelectorAll('.market-catalog-card').length,2);
-  const approved=w.document.querySelector('img.market-catalog-image');
-  assert.ok(approved,'approved catalog image must render as an image');
-  assert.equal(approved.alt,'ปลาหมอ');
-  const credit=w.document.querySelector('.market-catalog-credit a');
+  const catalogImages=[...w.document.querySelectorAll('img.market-catalog-image')];
+  assert.equal(catalogImages.length,2,'Makro preview and approved fallback must both render');
+  assert.deepEqual(catalogImages.map(x=>x.alt).sort(),['ปลานิล','ปลาหมอ'].sort());
+  const credit=[...w.document.querySelectorAll('.market-catalog-credit a')].find(a=>/CC BY-SA 4.0/.test(a.textContent));
   assert.ok(credit,'approved image must render attribution');
-  assert.match(credit.textContent,/CC BY-SA 4.0/);
   assert.equal(credit.getAttribute('rel'),'noopener noreferrer');
+  const makroLink=[...w.document.querySelectorAll('.market-catalog-credit a')].find(a=>/ดูสินค้าต้นทาง/.test(a.textContent));
+  assert.ok(makroLink,'Makro preview must link to the source product page');
+  assert.match(makroLink.href,/makro\.pro/);
 
   // The same approved image and attribution must survive entry into the add flow.
   w.qgMarketCatalogChoose('m2');
@@ -88,8 +93,10 @@ const {JSDOM}=require('jsdom');
   assert.ok(w.document.querySelector('.market-catalog-preview .market-catalog-credit a'),'image failure must preserve attribution');
 
   w.qgMarketCatalogChoose('m1');
-  assert.equal(w.document.querySelector('.market-catalog-preview img'),null,'rights-pending candidate must not load in add form');
-  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/รอตรวจสิทธิ์/);
+  const makroPreview=w.document.querySelector('.market-catalog-preview img');
+  assert.ok(makroPreview,'Makro Merchant preview must remain visible in the add form');
+  assert.equal(makroPreview.alt,'ปลานิล');
+  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/รูปอ้างอิงจาก Makro PRO/);
   assert.match(w.document.body.textContent,/ขนาดขายที่ใช้บ่อย/);
   assert.match(w.document.body.textContent,/1 กก./);
   assert.match(w.document.body.textContent,/2 กก./);
