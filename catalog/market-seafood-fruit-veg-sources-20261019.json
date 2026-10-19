@@ -3,14 +3,14 @@
   "retrieved_on": "2026-10-19",
   "policy": "Evidence-backed public product identity/category/pack facts only. Retail prices, merchant cost, stock, GTIN/barcodes and publication rights are not imported or inferred.",
   "counts": {
-    "total": 56,
+    "total": 66,
     "by_category": {
-      "ปลา": 11,
+      "ปลา": 13,
       "กุ้ง": 5,
-      "ปู": 3,
-      "หอย": 5,
+      "ปู": 5,
+      "หอย": 10,
       "ปลาหมึก": 4,
-      "ผลไม้": 15,
+      "ผลไม้": 16,
       "ผักสด": 13
     }
   },
@@ -685,6 +685,126 @@
       "source_url": "https://www.makro.pro/th/p/157063-7275698356419",
       "source_name": "Makro PRO",
       "source_note": "Public retailer product/collection fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-soft-fish-kg",
+      "name_th": "ปลาเนื้ออ่อน",
+      "category": "ปลา",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.ละ",
+      "source_url": "https://www.lotuss.com/th/product/52253272",
+      "source_name": "Lotus's",
+      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "talaadthai-climbing-perch-small",
+      "name_th": "ปลาหมอเลี้ยง เบอร์เล็ก",
+      "category": "ปลา",
+      "suggested_unit": null,
+      "suggested_pack_size": null,
+      "source_unit": "หน่วยขายไม่ระบุในหน้าสาธารณะ",
+      "source_url": "https://talaadthai.com/products/freshwater-fish-9449-3139",
+      "source_name": "ตลาดไท",
+      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-fresh-oyster-kg",
+      "name_th": "หอยนางรมสดนำเข้า",
+      "category": "หอย",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.ละ",
+      "source_url": "https://www.makro.pro/th/p/122927-141348259039175",
+      "source_name": "Makro PRO",
+      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-oyster-meat-100g",
+      "name_th": "เนื้อหอยนางรม",
+      "category": "หอย",
+      "suggested_unit": "กรัม",
+      "suggested_pack_size": 100,
+      "source_unit": "100 ก.",
+      "source_url": "https://www.makro.pro/th/p/835213-7275699273923",
+      "source_name": "Makro PRO",
+      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-sweet-snail-kg",
+      "name_th": "หอยหวานกลาง",
+      "category": "หอย",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.ละ",
+      "source_url": "https://www.lotuss.com/th/product/52102814?openExternalBrowser=1",
+      "source_name": "Lotus's",
+      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-clam-1kg",
+      "name_th": "เอโร่ หอยตลับแช่แข็ง 45-60 ตัว/กก.",
+      "category": "หอย",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/p/843376-7167173689539",
+      "source_name": "Makro PRO",
+      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-scallop-half-shell-1kg",
+      "name_th": "เอโร่ หอยเชลล์ติดไข่ครึ่งฝา 8-9 ซม.",
+      "category": "หอย",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/p/143992-7078809567427",
+      "source_name": "Makro PRO",
+      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-soft-shell-crab-1kg",
+      "name_th": "เอโร่ ปูนิ่มแช่แข็ง 7-9 ตัว/กก.",
+      "category": "ปู",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/p/174959-6974747115715",
+      "source_name": "Makro PRO",
+      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-blue-crab-large-1kg",
+      "name_th": "ปูม้าขนาดใหญ่",
+      "category": "ปู",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/p/168350-831006247598074",
+      "source_name": "Makro PRO",
+      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "makro-longan-1kg",
+      "name_th": "ลำไย",
+      "category": "ผลไม้",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "1 กก.",
+      "source_url": "https://www.makro.pro/th/c/fruit-vegetables/fruit/imported-fruit",
+      "source_name": "Makro PRO",
+      "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
       "retrieved_on": "2026-10-19"
     }
   ]
