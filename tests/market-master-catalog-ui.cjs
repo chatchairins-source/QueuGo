@@ -30,6 +30,14 @@ const {JSDOM}=require('jsdom');
         image:null,has_image_reference:true,
         product_id:added?'p1':null,
         price:added?100:null,delivery_price:added?110:null
+      },{
+        id:'m2',slug:'climbing-perch',name_th:'ปลาหมอ',category:'ปลา',
+        suggested_unit:'กิโลกรัม',suggested_pack_size:1,source_unit:'1 กก.',
+        image:'https://upload.wikimedia.org/example.jpg',
+        image_source:'https://commons.wikimedia.org/wiki/File:Example.jpg',
+        image_rights_evidence:'Example Author · CC BY-SA 4.0 · Wikimedia Commons',
+        has_image_reference:true,
+        product_id:null,price:null,delivery_price:null
       }];
     }
     if(pathname==='rpc/effective_gp_rate') return [{effective_gp_rate:10}];
@@ -57,7 +65,14 @@ const {JSDOM}=require('jsdom');
   assert.match(w.document.body.textContent,/ปลานิล/);
   assert.match(w.document.body.textContent,/พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่/);
   assert.ok(w.document.querySelector('.market-catalog-chip'),'category chips must render');
-  assert.equal(w.document.querySelectorAll('.market-catalog-card').length,1);
+  assert.equal(w.document.querySelectorAll('.market-catalog-card').length,2);
+  const approved=w.document.querySelector('img.market-catalog-image');
+  assert.ok(approved,'approved catalog image must render as an image');
+  assert.equal(approved.alt,'ปลาหมอ');
+  const credit=w.document.querySelector('.market-catalog-credit a');
+  assert.ok(credit,'approved image must render attribution');
+  assert.match(credit.textContent,/CC BY-SA 4.0/);
+  assert.equal(credit.getAttribute('rel'),'noopener noreferrer');
 
   w.qgMarketCatalogChoose('m1');
   assert.match(w.document.body.textContent,/ขนาดขายที่ใช้บ่อย/);
@@ -88,8 +103,8 @@ const {JSDOM}=require('jsdom');
   const addCalls=calls.filter(x=>x.pathname==='rpc/qg_market_catalog_add');
   assert.equal(addCalls.length,1,'single submit must issue exactly one add mutation');
   console.log(JSON.stringify({
-    checks:16,
+    checks:21,
     failures:0,
-    scope:'isolated Merchant Market catalog DOM browse/filter/image-status/1-2-3kg/add/reload/idempotent UI; no Production writes'
+    scope:'isolated Merchant Market catalog DOM browse/filter/pending+approved image attribution/1-2-3kg/add/reload/idempotent UI; no Production writes'
   }));
 })().catch(err=>{console.error(err);process.exit(1)});
