@@ -64,6 +64,7 @@ const phase2ChaebowMudCrab=read('supabase/migrations/20261019150000_market_phase
 const imageSourceGapFill=read('supabase/migrations/20261019151500_market_image_source_gapfill.sql');
 const openLicenseImages=read('supabase/migrations/20261019154500_market_open_license_images.sql');
 const openLicenseImagesBatch2=read('supabase/migrations/20261019160000_market_open_license_images_batch2.sql');
+const openLicenseImagesBatch3=read('supabase/migrations/20261019161500_market_open_license_images_batch3.sql');
 assert.ok(expansion.includes("'เห็ด'"),'fresh expansion must add mushroom category');
 assert.ok(expansion.includes('Makro PRO')&&expansion.includes("Lotus''s"),'fresh expansion must retain both public sources');
 for(const cat of ["'กุ้ง'","'ปู'","'หอย'","'ปลาหมึก'"]){
@@ -112,7 +113,7 @@ for(const row of images.items){
 }
 for(const slug of allSlugs) assert.ok(imageSlugs.has(slug),'missing image-review state for '+slug);
 assert.ok(images.items.some(x=>x.status==='rights_pending'),'must retain verified retailer candidates under rights review');
-assert.ok(images.items.filter(x=>x.status==='approved').length>=11,'must retain approved open-license catalog images');
+assert.ok(images.items.filter(x=>x.status==='approved').length>=14,'must retain approved open-license catalog images');
 assert.equal(images.items.filter(x=>x.status==='source_page_found').length,0,'every current catalog item must have a direct image candidate or approved image');
 assert.equal(images.items.filter(x=>x.status==='family_reference_only').length,0,'all current catalog items must have concrete image evidence');
 for(const slug of ['pork-lean','egg-size-2-10','fresh-tofu-skin','textured-vegetable-protein','ginkgo-nut','dried-squid-medium']){
@@ -125,6 +126,9 @@ for(const slug of ['dried-lily-flower','dried-squid-medium','talaadthai-climbing
 }
 for(const slug of ['chinese-cabbage','makro-chinese-cabbage-400-600g','holy-basil-leaves','large-cavendish-banana']){
   assert.ok(openLicenseImagesBatch2.includes("'"+slug+"'"),'open-license batch 2 missing '+slug);
+}
+for(const slug of ['spring-onion','makro-cucumber-500g','water-spinach']){
+  assert.ok(openLicenseImagesBatch3.includes("'"+slug+"'"),'open-license batch 3 missing '+slug);
 }
 
 const catalog=read('merchant/market-catalog.js');
