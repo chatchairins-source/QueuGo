@@ -61,6 +61,7 @@ const imageReview=read('supabase/migrations/20261019132000_market_image_source_r
 const phase2Migration=read('supabase/migrations/20261019140000_market_seafood_fruit_veg_expansion.sql');
 const phase2GapFill=read('supabase/migrations/20261019143000_market_phase2_gap_fill.sql');
 const phase2ChaebowMudCrab=read('supabase/migrations/20261019150000_market_phase2_chaebow_mudcrab.sql');
+const imageSourceGapFill=read('supabase/migrations/20261019151500_market_image_source_gapfill.sql');
 assert.ok(expansion.includes("'เห็ด'"),'fresh expansion must add mushroom category');
 assert.ok(expansion.includes('Makro PRO')&&expansion.includes("Lotus''s"),'fresh expansion must retain both public sources');
 for(const cat of ["'กุ้ง'","'ปู'","'หอย'","'ปลาหมึก'"]){
@@ -107,6 +108,10 @@ for(const row of images.items){
 for(const slug of allSlugs) assert.ok(imageSlugs.has(slug),'missing image-review state for '+slug);
 assert.ok(images.items.some(x=>x.status==='rights_pending'),'must retain verified direct image candidates for rights review');
 assert.equal(images.items.filter(x=>x.status==='approved').length,0,'retailer candidates must never be auto-approved');
+assert.equal(images.items.filter(x=>x.status==='family_reference_only').length,0,'all current catalog items must have a concrete product/source page under review');
+for(const slug of ['pork-lean','egg-size-2-10','fresh-tofu-skin','textured-vegetable-protein','ginkgo-nut','dried-squid-medium']){
+  assert.ok(imageSourceGapFill.includes("'"+slug+"'"),'image source gap-fill migration missing '+slug);
+}
 
 const catalog=read('merchant/market-catalog.js');
 for(const needle of ['qg_market_catalog_page','qg_market_catalog_add','effective_gp_rate','เพิ่มสินค้าจากแคตตาล็อก','เพิ่มสินค้าเข้าร้าน']){
