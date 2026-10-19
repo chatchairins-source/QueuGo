@@ -106,6 +106,7 @@ for(const needle of ['qg_market_catalog_page','qg_market_catalog_add','effective
 assert.ok(catalog.includes('qgMarketCatalogSetKg(1)')&&catalog.includes('qgMarketCatalogSetKg(2)')&&catalog.includes('qgMarketCatalogSetKg(3)'),'catalog must offer 1/2/3 kg presets');
 assert.ok(catalog.includes('พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่'),'Merchant must show rights-pending image status');
 assert.ok(catalog.includes('กำลังหารูปที่ตรวจสอบแหล่งที่มาได้'),'Merchant must show missing-image review status');
+assert.ok(catalog.includes('qgMarketCatalogSetCategory')&&catalog.includes('market-catalog-chip'),'Merchant must expose category chips without duplicate filter state');
 assert.ok(!catalog.includes('src="${E(r.image_source)}"'),'pending external image_source must never render as approved art');
 
 const market=read('merchant/market.js');
@@ -118,7 +119,7 @@ for(const category of ['เห็ด','กุ้ง','ปู','หอย','ป�
 }
 const merchant=read('merchant/index.html');
 assert.ok(merchant.includes("case'market-catalog'"));
-assert.ok(merchant.includes('market-catalog.js?v=20261019-market-catalog1'));
+assert.ok(merchant.includes('market-catalog.js?v=20261019-market-catalog2'));
 assert.ok(merchant.includes("'market-stock','market-catalog'"),'pending merchants must be able to prepare catalog/stock');
 
 console.log(JSON.stringify({
