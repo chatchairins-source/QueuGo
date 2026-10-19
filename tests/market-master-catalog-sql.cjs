@@ -48,6 +48,16 @@ const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'
        or catalog_preview_image like 'https://static.wixstatic.com/%'
        or catalog_preview_image like 'https://www.soontree.co.th/wp-content/uploads/%'
      )`)).rows[0].n,0);
+ const qualityRows=(await db.query(`select slug,catalog_preview_image,catalog_preview_source_name
+   from market_master_products
+   where slug in ('talaadthai-mud-crab-medium','talaadthai-mud-crab-small','lotus-ripe-namdokmai-mango-kg','lotus-sweet-snail-kg')
+   order by slug`)).rows;
+ eq(qualityRows,[
+   {slug:'lotus-ripe-namdokmai-mango-kg',catalog_preview_image:'https://o2o-static.lotuss.com/products/107654/4723_1.jpg',catalog_preview_source_name:"Lotus's"},
+   {slug:'lotus-sweet-snail-kg',catalog_preview_image:'https://o2o-static.lotuss.com/products/107486/52102814_1.jpg',catalog_preview_source_name:"Lotus's"},
+   {slug:'talaadthai-mud-crab-medium',catalog_preview_image:'https://images.mango-prod.siammakro.cloud/SOURCE/6179a059dbef45e4bd7b885d6b915def',catalog_preview_source_name:'Makro PRO'},
+   {slug:'talaadthai-mud-crab-small',catalog_preview_image:'https://images.mango-prod.siammakro.cloud/SOURCE/6179a059dbef45e4bd7b885d6b915def',catalog_preview_source_name:'Makro PRO'}
+ ]);
  for(const review of reviewedImages.items){
    const actual=(await db.query('select image,image_source,image_status,image_rights_evidence from market_master_products where slug=$1',[review.slug])).rows[0];
    eq(actual.image_status,review.status==='approved'?'approved':'pending');
