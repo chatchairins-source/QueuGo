@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 54,
+    "approved": 59,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 74
+    "rights_pending": 69
   },
   "items": [
     {
@@ -366,12 +366,12 @@
       "slug": "makro-pork-loin-1kg",
       "name_th": "สันนอกหมู",
       "category": "เนื้อหมู",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/291270989495295-6411e46c-4815-4b27-8416-ce1c2328eb3e.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Pork_loin.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/59/Pork_loin.jpg",
+      "status": "approved",
+      "rights_evidence": "Pannet · CC BY 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-pork-minced-fat10-1kg",
@@ -465,12 +465,12 @@
       "slug": "lotus-beef-shank",
       "name_th": "เนื้อน่องโคขุน",
       "category": "เนื้อวัว",
-      "source_page_url": "https://www.lotuss.com/th/product/75591305",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/75591305.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Beef_shank.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/4/49/Beef_shank.jpg",
+      "status": "approved",
+      "rights_evidence": "Dragontail ys · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-beef-rib",
@@ -509,12 +509,12 @@
       "slug": "makro-white-shimeji-1kg",
       "name_th": "เห็ดชิเมจิขาว",
       "category": "เห็ด",
-      "source_page_url": "https://www.makro.pro/p/thwn7oc-7243311710403",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/5dec29c684944b4d833d37c32e7250eb?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Shimeji_mushroom.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b7/Shimeji_mushroom.jpg",
+      "status": "approved",
+      "rights_evidence": "Fumikas Sagisavas · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-king-oyster-500g",
@@ -531,12 +531,12 @@
       "slug": "lotus-fresh-shiitake-100g",
       "name_th": "เห็ดหอมสด",
       "category": "เห็ด",
-      "source_page_url": "https://www.lotuss.com/th/product/75713235",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/75713235.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Fresh_shiitake_mushrooms.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/5a/Fresh_shiitake_mushrooms.jpg",
+      "status": "approved",
+      "rights_evidence": "Fumikas Sagisavas · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-enoki-500g",
@@ -1213,12 +1213,12 @@
       "slug": "makro-lemongrass-1kg",
       "name_th": "ตะไคร้",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/207394-7543242555587",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/5843242d741c43358287f80bad8c0fee?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Lemongrass_Fresh.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Lemongrass_Fresh.jpg",
+      "status": "approved",
+      "rights_evidence": "SarKaLay · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-kaffir-lime-leaf-150g",
