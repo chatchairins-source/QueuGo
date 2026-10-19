@@ -117,6 +117,7 @@ private class RiderNavigationMapHolder {
     private var lastCameraBearing: Float? = null
     private var lastCameraTilt: Float? = null
     private var lastOverviewSignature: Int? = null
+    private var lastAppliedRecenterRequest = 0
     private var onCameraChanged: (NavigationMapCamera) -> Unit = {}
     private var onUserGesture: () -> Unit = {}
     private var onDiagnostics: ((NavigationMapDiagnostics) -> Unit)? = null
@@ -508,7 +509,12 @@ private class RiderNavigationMapHolder {
         }
 
         lastOverviewSignature = null
-        if (!state.followRider) return
+        // A one-shot idle recenter must survive map/style/GPS readiness. The old
+        // integration pulsed follow for 180ms, so first-load requests could disappear
+        // before this holder had an SDK map. Consume only after scheduling real motion.
+        val explicitRecenter = state.recenterRequest > 0 &&
+            state.recenterRequest != lastAppliedRecenterRequest
+        if (!state.followRider && !explicitRecenter) return
         val renderedBearing = activeMap.cameraPosition.bearing.toFloat()
         val decision = navigationCameraDecision(state, renderedBearing, followPuckBearing = true) ?: return
         val pointChanged = lastCameraPoint == null ||
@@ -523,7 +529,7 @@ private class RiderNavigationMapHolder {
             lastCameraTilt,
             decision.tiltDegrees
         )
-        if (!force && !pointChanged && !bearingChanged && !tiltChanged) return
+        if (!force && !explicitRecenter && !pointChanged && !bearingChanged && !tiltChanged) return
 
         val targetBearing = decision.bearingDegrees ?: renderedBearing
         activeMap.animateCamera(
@@ -537,6 +543,7 @@ private class RiderNavigationMapHolder {
             ),
             CAMERA_ANIMATION_MS
         )
+        if (explicitRecenter) lastAppliedRecenterRequest = state.recenterRequest
         lastCameraPoint = decision.center
         lastCameraBearing = targetBearing
         lastCameraTilt = decision.tiltDegrees

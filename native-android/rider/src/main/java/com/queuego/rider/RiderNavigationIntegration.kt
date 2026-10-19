@@ -438,7 +438,8 @@ internal fun QueueGoRiderNavigationMap(
         perspectiveCameraEnabled = perspectiveCameraEnabled,
         followZoom = 17,
         viewMode = viewModeState.mode,
-        viewportInsets = viewportInsets.normalized()
+        viewportInsets = viewportInsets.normalized(),
+        recenterRequest = if (navigationActive) 0 else recenterSignal
     )
     val latestBaseState by rememberUpdatedState(baseState)
     var renderedState by remember(stateKey, stopTopology) {
@@ -567,22 +568,6 @@ internal fun QueueGoRiderNavigationMap(
                             viewMode = NavigationViewMode.FOLLOW
                         )
                     )
-                } else {
-                    // Idle map stays manual. Recenter is a one-shot flat camera move, not
-                    // permission to start following every subsequent GPS fix.
-                    val oneShot = baseState.copy(
-                        rider = fix,
-                        followRider = true,
-                        viewMode = NavigationViewMode.FOLLOW
-                    )
-                    renderedState = oneShot
-                    delay(180L)
-                    if (
-                        latestBaseState.stops.none { !it.completed && it.point.valid } &&
-                        !latestBaseState.followRider
-                    ) {
-                        renderedState = oneShot.copy(followRider = false)
-                    }
                 }
             }
         }
