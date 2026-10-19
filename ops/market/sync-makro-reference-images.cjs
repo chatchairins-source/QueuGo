@@ -11,7 +11,7 @@ const CONCURRENCY=4,RETRIES=3;
 
 const ALIASES={
   'pork-tenderloin-dressed':'สันในหมู',
-  'pork-lean':'เนื้อหมู',
+  'pork-lean':'หมูเนื้อแดง',
   'whole-duck':'เป็ดสดทั้งตัว',
   'egg-size-2-10':'ไข่ไก่ เบอร์ 2',
   'egg-size-3-10':'ไข่ไก่ เบอร์ 3',
@@ -51,28 +51,29 @@ function queryFor(item){
 function imageOf(doc){
   return (doc?.images||[]).find(x=>typeof x==='string'&&/^https:\/\/images\.mango-prod\.siammakro\.cloud\//.test(x))||null;
 }
-function score(item,doc){
-  const q=queryFor(item),title=String(doc?.title||doc?.searchTitle||'');
-  const qTokens=tokens(q),tTokens=new Set(tokens(title)),qDistinct=distinctive(q);
-  if(!qTokens.length||!tTokens.size)return 0;
-  if(NEGATIVE.some(x=>compact(title).includes(compact(x))))return -1;
-  const phrase=compact(title).includes(compact(q))||compact(q).includes(compact(title));
-  const allHit=qTokens.filter(t=>tTokens.has(t)).length;
-  const distinctHit=qDistinct.filter(t=>tTokens.has(t)).length;
-  const distinctRatio=qDistinct.length?distinctHit/qDistinct.length:allHit/qTokens.length;
-  let s=.65*distinctRatio+.35*(allHit/qTokens.length);
-  if(phrase)s+=.65;
-  const cat=String(item.category||'');
-  const categoryHints={
-    'เนื้อหมู':['หมู','สุกร'],'เนื้อวัว':['วัว','โค'],'ไก่ / เป็ด':['ไก่','เป็ด'],
-    'ปลา':['ปลา'],'กุ้ง':['กุ้ง'],'ปู':['ปู'],'หอย':['หอย'],'ปลาหมึก':['หมึก'],
-    'ผักสด':['คะน้า','กวางตุ้ง','กะหล่ำ','แตง','มะเขือ','ต้นหอม','กระเทียม','แครอท','กะเพรา','โหระพา','ผักกาด'],
-    'ผลไม้':['กล้วย','มะม่วง','แตงโม','ทุเรียน','ฝรั่ง','มะละกอ','มังคุด','ลำไย','ลิ้นจี่','เงาะ','แก้วมังกร','แคนตาลูป'],
-    'เห็ด':['เห็ด'],'ไข่':['ไข่']
+function categoryFits(item,title){
+  const t=compact(title),cat=String(item.category||'');
+  const hints={
+    'เนื้อหมู':['หมู','สุกร'],'เนื้อวัว':['วัว','โคขุน','โค'],
+    'ไก่ / เป็ด':['ไก่','เป็ด'],'ปลา':['ปลา'],'กุ้ง':['กุ้ง'],'ปู':['ปู'],
+    'หอย':['หอย'],'ปลาหมึก':['หมึก'],
+    'ผักสด':['คะน้า','กวางตุ้ง','กะหล่ำ','แตงกวา','มะเขือ','ต้นหอม','หอมใหญ่','กระเทียม','แครอท','กะเพรา','โหระพา','ผักกาด','ผักชี','ขิง','ตะไคร้','มะกรูด','มะนาว'],
+    'ผลไม้':['กล้วย','มะม่วง','แตงโม','ทุเรียน','ฝรั่ง','มะละกอ','มังคุด','ลำไย','ลิ้นจี่','เงาะ','แก้วมังกร','แคนตาลูป','แอปเปิล'],
+    'เห็ด':['เห็ด'],'ไข่':['ไข่'],
+    'เต้าหู้ / เส้นสด / ลูกชิ้น':['เต้าหู้','เส้น','ลูกชิ้น'],
+    'ของแห้ง':['แห้ง','หมี่','โปรตีนเกษตร','แปะก๊วย','ดอกไม้จีน']
   }[cat]||[];
-  if(categoryHints.some(h=>compact(title).includes(compact(h))))s+=.1;
-  if(!phrase&&qDistinct.length&&distinctRatio<.75)s=Math.min(s,.59);
-  return Math.round(s*1000)/1000;
+  return !hints.length||hints.some(h=>t.includes(compact(h)));
+}
+function score(item,doc){
+  const q=compact(queryFor(item)),title=compact(doc?.title||doc?.searchTitle||'');
+  if(q.length<3||title.length<3)return 0;
+  if(NEGATIVE.some(x=>title.includes(compact(x))))return -1;
+  if(!categoryFits(item,title))return 0;
+  if(title===q)return 2;
+  if(title.includes(q))return 1.5;
+  if(q.length>=6&&q.includes(title)&&title.length/q.length>=.8)return 1.25;
+  return 0;
 }
 async function search(q){
   const body={q,size:20,filters:{storeCodes,isSalesCustomer:false,countryCode:'TH',lang:'th',allowRestrictedProduct:false,allowAlcohol:false},sortBy:'RELEVANCE',autocorrect:true,page:1,autocategorise:true,includeCurations:true,source:'web'};
@@ -95,7 +96,7 @@ async function search(q){
         const docs=await search(q);
         const ranked=docs.map(doc=>({doc,score:score(item,doc),image:imageOf(doc)})).filter(x=>x.image).sort((a,b)=>b.score-a.score);
         const best=ranked[0]||null;
-        const accepted=!!best&&best.score>=0.75;
+        const accepted=!!best&&best.score>=1.25;
         results[i]={
           slug:item.slug,name_th:item.name_th,category:item.category,query:q,
           status:accepted?'matched':'review',
