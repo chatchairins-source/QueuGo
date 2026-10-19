@@ -37,7 +37,7 @@ const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'
  const reviewedImages=JSON.parse(read('catalog/market-image-candidates-20261019.json'));
  eq((await db.query("select count(*)::int n from market_master_products where image_status='approved'")).rows[0].n,reviewedImages.items.filter(x=>x.status==='approved').length);
  const previewCount=(await db.query("select count(*)::int n from market_master_products where catalog_preview_image is not null")).rows[0].n;
- assert.ok(previewCount>=65,'Makro Merchant preview packshots should cover the reviewed direct-image plus strict-match baseline');checks++;
+ assert.ok(previewCount>=88,'Makro Merchant preview packshots should cover the reviewed direct-image and curated Market baseline');checks++;
  eq((await db.query("select count(*)::int n from market_master_products where catalog_preview_image is not null and catalog_preview_image not like 'https://images.mango-prod.siammakro.cloud/%'")).rows[0].n,0);
  for(const review of reviewedImages.items){
    const actual=(await db.query('select image,image_source,image_status,image_rights_evidence from market_master_products where slug=$1',[review.slug])).rows[0];
