@@ -421,3 +421,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Batch 10 approves choy sum (2 identities), peeled garlic, banana bunch, watermelon, orange, pineapple and dragon fruit with Commons source/license evidence.
 - Staged migration: `20261019180000_market_open_license_images_batch10.sql`; no Production apply.
 - NEXT: exact-head RC; fix first failure only. If green, continue open-license replacements for the remaining 74 rights-pending images and Merchant Web authenticated/physical acceptance.
+
+
+## 2026-10-19 — Market Catalog image batch 11 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 11 test checkpoint: `17042a52251c48f9850cf6d562df018fd6f1a1f8`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased to 59, rights-pending retailer candidates reduced to 69; source-page-only 0, family-reference-only 0.
+- Batch 11 approves fresh shiitake, white shimeji, beef shank, pork loin and fresh lemongrass with Commons source/license evidence.
+- Staged migration: `20261019181500_market_open_license_images_batch11.sql`; no Production apply.
+- NEXT: exact-head RC; fix first failure only. If green, continue open-license replacements for the remaining 69 rights-pending images and Merchant Web authenticated/physical acceptance.
