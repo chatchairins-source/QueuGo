@@ -1873,3 +1873,7 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 ## 2026-10-19 Web place catalog integration
 - Existing map helper/search/map-view geocode/nearby reuse one pinned catalog; add generic business dots/named labels/details and explicit pin selection, retain source/ODbL and unverified status. Native will bundle this same asset. No merchant/order mutation or inferred commerce eligibility. Catalog/search/DOM tests PASS; full/exact gates required; Web-first review.
+
+## 2026-10-19 owner: no startup tutorial; missing credit/Admin UI
+- Owner wants service/how-to guidance in settings only. Remove automatic Rider learning popup entirely; retain existing manual settings guide and operational readiness gates. Refresh obsolete Google Maps lesson to existing QueueGo navigation.
+- Read-only live audit finds no credit functions/tables despite deployed queuego-credit Edge handler. Existing Native credit cards are staged under earnings; main lacks current credit/Admin grant UI. Do not claim source implementation is live payment activation. Continue bounded UI and release-gate work; no fake balances, duplicate ledger, live provider calls or Production migration outside release gate. Places Android integration remains pending after this owner priority.

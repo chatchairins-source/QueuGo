@@ -14,17 +14,11 @@ class RiderLearningCenterTest {
 
         val all = lessons.flatMap { listOf(it.title, it.summary) + it.steps }.joinToString("\n")
         assertTrue(all.contains("30 วินาที"))
-        assertTrue(all.contains("Google Maps"))
+        assertTrue(all.contains("แผนที่ QueueGo"))
         assertTrue(all.contains("1 รูป"))
         assertTrue(all.contains("200 เมตร"))
         assertTrue(all.contains("Market"))
         assertTrue(all.contains("ภารกิจ"))
-    }
-
-    @Test fun firstRunLearningPolicyOnlyOpensForActiveUnseenRider() {
-        assertTrue(riderShouldShowLearningOnboarding(activeUser = true, seen = false))
-        assertFalse(riderShouldShowLearningOnboarding(activeUser = true, seen = true))
-        assertFalse(riderShouldShowLearningOnboarding(activeUser = false, seen = false))
     }
 
     @Test fun learningCenterDoesNotRestoreRetiredVerificationFlow() {
