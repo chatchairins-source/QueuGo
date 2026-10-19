@@ -31,18 +31,16 @@ window.qgMarketCatalogPricePreview=()=>{const input=document.querySelector('#mar
 window.qgMarketCatalogSetKg=kg=>qgMarketSetWeightPreset(document.getElementById('market-catalog-add-form'),kg);
 function active(epoch,shopId){return epoch===state.epoch&&shopId===state.shop&&location.hash.replace('#','').split('/')[0]==='market-catalog'}
 function productImage(r){
-  const preview=String(r.catalog_preview_image||'').trim(),approved=String(r.image||'').trim(),src=preview||approved;
+  const preview=String(r.catalog_preview_image||'').trim();
   const isPreview=!!preview;
-  const image=src
-    ? `<img class="market-catalog-image" src="${E(src)}" alt="${E(r.name_th)}" loading="lazy" referrerpolicy="no-referrer" onerror="qgMarketCatalogImageError(this)">`
-    : `<div class="market-catalog-image market-catalog-placeholder" aria-label="ยังไม่มีรูป ${E(r.name_th)}">${E((r.name_th||'?').charAt(0))}</div>`;
+  const image=isPreview
+    ? `<img class="market-catalog-image" src="${E(preview)}" alt="${E(r.name_th)}" loading="lazy" referrerpolicy="no-referrer" onerror="qgMarketCatalogImageError(this)">`
+    : `<div class="market-catalog-image market-catalog-placeholder" aria-label="กำลังเพิ่มรูป Makro สำหรับ ${E(r.name_th)}">กำลังเพิ่มรูป</div>`;
   const sourceName=String(r.catalog_preview_source_name||'Makro PRO');
   const imageStatus=isPreview
     ? `<small class="market-catalog-preview-note">รูปอ้างอิงจาก ${E(sourceName)} · ใช้ช่วยร้านค้าตรวจสินค้า</small>${r.catalog_preview_source_url?`<small class="market-catalog-credit"><a href="${E(r.catalog_preview_source_url)}" target="_blank" rel="noopener noreferrer">ดูสินค้าต้นทาง</a></small>`:''}`
-    :approved
-      ?`<small>รูปสินค้า: ผ่านการอนุมัติแล้ว</small>${r.image_source&&r.image_rights_evidence?`<small class="market-catalog-credit">รูป: <a href="${E(r.image_source)}" target="_blank" rel="noopener noreferrer">${E(r.image_rights_evidence)}</a></small>`:''}`
-      :'<small>กำลังหารูปอ้างอิง Makro ที่ตรงกับสินค้า</small>';
-  return `<div class="market-catalog-media" data-preview="${isPreview?'makro':'approved'}">${image}<div class="market-catalog-image-status">${imageStatus}</div></div>`;
+    : '<small>กำลังเพิ่มรูปอ้างอิง Makro ที่ตรงกับสินค้า</small>';
+  return `<div class="market-catalog-media" data-preview="${isPreview?'makro':'pending'}">${image}<div class="market-catalog-image-status">${imageStatus}</div></div>`;
 }
 window.qgMarketCatalogImageError=img=>{
   const media=img.closest('.market-catalog-media');
