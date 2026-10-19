@@ -3,10 +3,10 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 114,
-    "direct_candidates": 44,
-    "source_page_found": 64,
+    "direct_candidates": 50,
+    "source_page_found": 58,
     "family_reference_only": 6,
-    "rights_pending": 44
+    "rights_pending": 50
   },
   "items": [
     {
@@ -652,44 +652,44 @@
       "name_th": "ปลานิล 0.9-1 กก./ตัว",
       "category": "ปลา",
       "source_page_url": "https://www.makro.pro/th/p/146263-187607668532060",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/3141236b28564c6ba89ad8a27e2a76b3?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-red-tilapia-900g-1.2kg",
       "name_th": "ปลาทับทิม 0.9-1.2 กก./ตัว",
       "category": "ปลา",
       "source_page_url": "https://www.makro.pro/th/p/916297-39582199052231",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/3cd5c537c71d4d1daec7714ace831eab?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-catfish-cut-1kg",
       "name_th": "ปลาดุกหั่นชิ้น",
       "category": "ปลา",
       "source_page_url": "https://www.makro.pro/th/p/231291-7325028778179",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/f2b8198ff5674b40883fc6135fd70d80?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-catfish-400-600g",
       "name_th": "ปลาดุกอุย 400-600 ก.",
       "category": "ปลา",
       "source_page_url": "https://www.makro.pro/th/p/166452-565706619975270",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/270f6ca5a6d8456aa3580dea4efe8399?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "lotus-snakehead-whole",
@@ -729,22 +729,22 @@
       "name_th": "ปลาอินทรี 3-5 กก./ตัว",
       "category": "ปลา",
       "source_page_url": "https://www.lotuss.com/th/product/52475660",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/77354/52475660.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "lotus-mackerel-kg",
       "name_th": "ปลาทู",
       "category": "ปลา",
       "source_page_url": "https://www.lotuss.com/th/product/52195081",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/52195081.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-white-sand-fish-1kg",
