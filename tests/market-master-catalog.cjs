@@ -75,6 +75,7 @@ const openLicenseImagesBatch10=read('supabase/migrations/20261019180000_market_o
 const openLicenseImagesBatch11=read('supabase/migrations/20261019181500_market_open_license_images_batch11.sql');
 const openLicenseImagesBatch12=read('supabase/migrations/20261019183000_market_open_license_images_batch12.sql');
 const openLicenseImagesBatch13=read('supabase/migrations/20261019184500_market_open_license_images_batch13.sql');
+const openLicenseImagesBatch14=read('supabase/migrations/20261019190000_market_open_license_images_batch14.sql');
 assert.ok(expansion.includes("'เห็ด'"),'fresh expansion must add mushroom category');
 assert.ok(expansion.includes('Makro PRO')&&expansion.includes("Lotus''s"),'fresh expansion must retain both public sources');
 for(const cat of ["'กุ้ง'","'ปู'","'หอย'","'ปลาหมึก'"]){
@@ -123,7 +124,7 @@ for(const row of images.items){
 }
 for(const slug of allSlugs) assert.ok(imageSlugs.has(slug),'missing image-review state for '+slug);
 assert.ok(images.items.some(x=>x.status==='rights_pending'),'must retain verified retailer candidates under rights review');
-assert.ok(images.items.filter(x=>x.status==='approved').length>=67,'must retain approved open-license catalog images');
+assert.ok(images.items.filter(x=>x.status==='approved').length>=75,'must retain approved open-license catalog images');
 assert.equal(images.items.filter(x=>x.status==='source_page_found').length,0,'every current catalog item must have a direct image candidate or approved image');
 assert.equal(images.items.filter(x=>x.status==='family_reference_only').length,0,'all current catalog items must have concrete image evidence');
 for(const slug of ['pork-lean','egg-size-2-10','fresh-tofu-skin','textured-vegetable-protein','ginkgo-nut','dried-squid-medium']){
@@ -169,6 +170,9 @@ for(const slug of ['makro-tilapia-900g-1kg','lotus-snakehead-whole','makro-river
 }
 for(const slug of ['makro-pork-shoulder-1kg','lotus-beef-rib','lotus-beef-hip']){
   assert.ok(openLicenseImagesBatch13.includes("'"+slug+"'"),'open-license batch 13 missing '+slug);
+}
+for(const slug of ['kale-mixed','makro-kale-500g','makro-celery-300g','makro-large-pumpkin-half-kg','makro-key-lime-10','lotus-emperor-lychee-kg','makro-golden-rambutan-2-5kg','makro-sunlady-cantaloupe-1kg']){
+  assert.ok(openLicenseImagesBatch14.includes("'"+slug+"'"),'open-license batch 14 missing '+slug);
 }
 
 const catalog=read('merchant/market-catalog.js');
