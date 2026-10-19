@@ -36,6 +36,9 @@ const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'
  );checks++;
  const reviewedImages=JSON.parse(read('catalog/market-image-candidates-20261019.json'));
  eq((await db.query("select count(*)::int n from market_master_products where image_status='approved'")).rows[0].n,reviewedImages.items.filter(x=>x.status==='approved').length);
+ const previewCount=(await db.query("select count(*)::int n from market_master_products where catalog_preview_image is not null")).rows[0].n;
+ assert.ok(previewCount>=38,'Makro Merchant preview packshots should cover the reviewed direct-image baseline');checks++;
+ eq((await db.query("select count(*)::int n from market_master_products where catalog_preview_image is not null and catalog_preview_image not like 'https://images.mango-prod.siammakro.cloud/%'")).rows[0].n,0);
  for(const review of reviewedImages.items){
    const actual=(await db.query('select image,image_source,image_status,image_rights_evidence from market_master_products where slug=$1',[review.slug])).rows[0];
    eq(actual.image_status,review.status==='approved'?'approved':'pending');
@@ -46,6 +49,7 @@ const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'
  await db.exec(`reset role;select set_config('request.jwt.claim.sub','${uid}',false);set role authenticated`);
  const page=await db.query("select qg_market_catalog_page('','ปลา',0) as data");
  assert.ok(page.rows[0].data.length>0,'pending Merchant must browse actual SQL RPC');checks++;
+ assert.ok(page.rows[0].data.every(x=>Object.prototype.hasOwnProperty.call(x,'catalog_preview_image')),'Market RPC must expose Merchant preview image separately from approved storefront art');checks++;
  const master=page.rows[0].data[0].id,request='30000000-0000-4000-8000-000000000001';
  const add=(rid=request,price=100)=>db.query('select qg_market_catalog_add($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) as data',[master,price,'กิโลกรัม',1.75,1.75,80,4,1,true,rid]);
  const first=(await add()).rows[0].data;eq(first.created,true);
