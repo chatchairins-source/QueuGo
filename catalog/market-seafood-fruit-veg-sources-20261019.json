@@ -3,11 +3,11 @@
   "retrieved_on": "2026-10-19",
   "policy": "Evidence-backed public product identity/category/pack facts only. Retail prices, merchant cost, stock, GTIN/barcodes and publication rights are not imported or inferred.",
   "counts": {
-    "total": 65,
+    "total": 70,
     "by_category": {
       "ปลา": 13,
-      "กุ้ง": 5,
-      "ปู": 5,
+      "กุ้ง": 8,
+      "ปู": 7,
       "หอย": 9,
       "ปลาหมึก": 4,
       "ผลไม้": 16,
@@ -793,6 +793,66 @@
       "source_url": "https://www.makro.pro/th/c/fruit-vegetables/fruit/imported-fruit",
       "source_name": "Makro PRO",
       "source_note": "Public retailer/market product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "lotus-shrimp-chaebow-25-30kg",
+      "name_th": "กุ้งแชบ๊วย 25-30 ตัว/กก.",
+      "category": "กุ้ง",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.ละ",
+      "source_url": "https://www.lotuss.com/th/product/52195167?openExternalBrowser=1",
+      "source_name": "Lotus's",
+      "source_note": "Public retailer product fact; QueueGo does not import retailer price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "talaadthai-shrimp-chaebow-medium",
+      "name_th": "กุ้งแชบ๊วย (เลี้ยง) เบอร์กลาง",
+      "category": "กุ้ง",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.",
+      "source_url": "https://talaadthai.com/products/shrimp-9436-2887",
+      "source_name": "ตลาดไท",
+      "source_note": "Public wholesale-market product identity; QueueGo does not import market price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "talaadthai-shrimp-chaebow-large",
+      "name_th": "กุ้งแชบ๊วย (เลี้ยง) เบอร์ใหญ่",
+      "category": "กุ้ง",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.",
+      "source_url": "https://talaadthai.com/products/shrimp-9437-3057",
+      "source_name": "ตลาดไท",
+      "source_note": "Public wholesale-market product identity; QueueGo does not import market price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "talaadthai-mud-crab-small",
+      "name_th": "ปูทะเล ขนาดเล็ก",
+      "category": "ปู",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.",
+      "source_url": "https://talaadthai.com/products/4573",
+      "source_name": "ตลาดไท",
+      "source_note": "Public wholesale-market product identity; QueueGo does not import market price.",
+      "retrieved_on": "2026-10-19"
+    },
+    {
+      "slug": "talaadthai-mud-crab-medium",
+      "name_th": "ปูทะเล ขนาดกลาง",
+      "category": "ปู",
+      "suggested_unit": "กิโลกรัม",
+      "suggested_pack_size": 1,
+      "source_unit": "กก.",
+      "source_url": "https://talaadthai.com/products/4632",
+      "source_name": "ตลาดไท",
+      "source_note": "Public wholesale-market product identity; QueueGo does not import market price.",
       "retrieved_on": "2026-10-19"
     }
   ]
