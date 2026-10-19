@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 64,
+    "approved": 67,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 64
+    "rights_pending": 61
   },
   "items": [
     {
@@ -399,12 +399,12 @@
       "slug": "makro-pork-shoulder-1kg",
       "name_th": "หัวไหล่หมู",
       "category": "เนื้อหมู",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Fresh%20for%20Business%20%281%20Jul%20-%2031%20Jul%2026%29/39903",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7606384197827-6083d8aa-6fcb-4c2f-b498-cd866cbdd16a.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Boston_butt.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Boston_butt.jpg",
+      "status": "approved",
+      "rights_evidence": "Mark Miller · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; raw commodity/cut match verified and attribution/license retained."
     },
     {
       "slug": "makro-duck-minced-gizzard-1kg",
@@ -476,23 +476,23 @@
       "slug": "lotus-beef-rib",
       "name_th": "เนื้อติดซี่โครงโคขุน",
       "category": "เนื้อวัว",
-      "source_page_url": "https://www.lotuss.com/th/product/75591312",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/75591312.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Bone-in_chuck_short_ribs.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/5b/Bone-in_chuck_short_ribs.jpg",
+      "status": "approved",
+      "rights_evidence": "Tim Evanson · CC BY-SA 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; raw commodity/cut match verified and attribution/license retained."
     },
     {
       "slug": "lotus-beef-hip",
       "name_th": "เนื้อสะโพกวัว",
       "category": "เนื้อวัว",
-      "source_page_url": "https://www.lotuss.com/th/product/75591303?openExternalBrowser=1",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/75591303.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Beef_round_top_round_steak_in_pan,_raw.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9e/Beef_round_top_round_steak_in_pan%2C_raw.jpg",
+      "status": "approved",
+      "rights_evidence": "Dbenbenn (David Benbennick) · CC BY-SA 3.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct product image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; raw commodity/cut match verified and attribution/license retained."
     },
     {
       "slug": "makro-enoki-1kg",
