@@ -2,12 +2,14 @@
 (()=>{
 'use strict';
 const MARKET_SHOPS=new Set(['market','meat','fish','vegetable','fruit']);
+const MARKET_MASTER_CATEGORIES=new Set(['ผักสด','เห็ด','ผลไม้','เนื้อหมู','เนื้อวัว','ไก่ / เป็ด','ปลา','กุ้ง','ปู','หอย','ปลาหมึก','ไข่','เต้าหู้ / เส้นสด / ลูกชิ้น','ของแห้ง']);
 const UNITS=['ชิ้น','กิโลกรัม','ขีด','กรัม','ถุง','แพ็ก','มัด','ลูก','ขวด','กล่อง'];
 const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state={epoch:0,rows:[],categories:[],query:'',category:'',offset:0,hasMore:false,loading:false,shop:null,gpRate:null};
 const shop=()=>{const u=currentUser?.();return u?.type==='shop'?u:null};
 const profileId=u=>u&&(u.shopProfileId||QT_SYNC?.profileMaps?.shopByUserId?.get(u.id)||null);
-const permitted=u=>MARKET_SHOPS.has(String(u?.category||''));
+const shopCategory=u=>typeof window.qgmShopCategory==='function'?window.qgmShopCategory(u):String(u?.public_category||u?.category||u?.metadata?.category||'').trim().toLowerCase();
+const permitted=u=>MARKET_SHOPS.has(shopCategory(u));
 const pendingKey=id=>'qg_market_catalog_pending_v1:'+id;
 async function rpc(name,body){
   const accessToken=await qtGetAccessToken();
@@ -88,8 +90,8 @@ async function load(){
     ]);
     state.gpRate=gp;
     if(!active(epoch,id))return;
-    state.categories=Array.isArray(cats)?cats:[];
-    const rows=Array.isArray(page)?page:[];
+    state.categories=(Array.isArray(cats)?cats:[]).filter(c=>MARKET_MASTER_CATEGORIES.has(String(c?.category||'')));
+    const rows=(Array.isArray(page)?page:[]).filter(r=>MARKET_MASTER_CATEGORIES.has(String(r?.category||'')));
     state.hasMore=rows.length>50;state.rows=rows.slice(0,50);paint();
   }catch(e){if(active(epoch,id)){shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p>');error(e)}}
   finally{if(active(epoch,id))state.loading=false}

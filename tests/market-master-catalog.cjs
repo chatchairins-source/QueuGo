@@ -218,10 +218,15 @@ assert.ok(market.includes('ราคาเดลิเวอรี่'));
 for(const category of ['เห็ด','กุ้ง','ปู','หอย','ปลาหมึก']){
   assert.ok(market.includes("'"+category+"'"),'Merchant category selector missing '+category);
 }
+assert.ok(!market.includes("const CATS=new Set(['market','meat','fish','vegetable','fruit','grocery'])"),'Grocery must not enter the Market stock module');
+assert.ok(!market.includes("'ของใช้ในครัวเรือน'"),'Market manual categories must not offer household/detergent');
 const merchant=read('merchant/index.html');
 assert.ok(merchant.includes("case'market-catalog'"));
 assert.ok(merchant.includes('market-catalog.js?v=20261019-market-gp5'));
 assert.ok(merchant.includes("'market-stock','market-catalog'"),'pending merchants must be able to prepare catalog/stock');
+assert.ok(merchant.includes("if(['market','meat','fish','vegetable','fruit'].includes(qgmShopCategory(u))){navigate('market-stock');return;}"),'Market Product tab must enter Market stock instead of the generic product grid');
+assert.ok(merchant.includes("if(qgmIsMarketProductShop(u))return navigate('market-catalog')"),'legacy Market catalog entry must redirect to the Market Master Catalog');
+assert.ok(catalog.includes('MARKET_MASTER_CATEGORIES'),'Market catalog must reject non-market categories client-side');
 
 console.log(JSON.stringify({
   scope:'Market Master Catalog source/image/category/weight/pending-merchant contracts',

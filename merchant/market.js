@@ -1,9 +1,9 @@
 /* QueueGo Market: existing merchant auth, products, orders and Supabase remain authoritative. */
 (()=>{
 'use strict';
-const CATS=new Set(['market','meat','fish','vegetable','fruit','grocery']);
+const CATS=new Set(['market','meat','fish','vegetable','fruit']);
 const FIXED_MARKET_CATS=new Set(['market','meat','fish','vegetable','fruit']);
-const MARKET_PRODUCT_CATEGORIES=['ผักสด','เห็ด','ผลไม้','เนื้อหมู','เนื้อวัว','ไก่ / เป็ด','ปลา','กุ้ง','ปู','หอย','ปลาหมึก','อาหารทะเล','ไข่','เต้าหู้ / เส้นสด / ลูกชิ้น','ของสดพร้อมปรุง','อาหารแช่เย็น / แช่แข็ง','พริกแกง / เครื่องแกง','เครื่องปรุง / ซอส','ข้าวสาร / ธัญพืช','ของแห้ง','อาหารปรุงสำเร็จ','ขนม / ของหวาน','เครื่องดื่ม','ของใช้ในครัวเรือน','ดอกไม้ / ของไหว้','อื่น ๆ'];
+const MARKET_PRODUCT_CATEGORIES=['ผักสด','เห็ด','ผลไม้','เนื้อหมู','เนื้อวัว','ไก่ / เป็ด','ปลา','กุ้ง','ปู','หอย','ปลาหมึก','อาหารทะเล','ไข่','เต้าหู้ / เส้นสด / ลูกชิ้น','ของสดพร้อมปรุง','พริกแกง / เครื่องแกง','ของแห้ง','ดอกไม้ / ของไหว้','อื่น ๆ'];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state={rows:[],movements:[],loading:false,gpRate:null};
 const shop=()=>{const u=currentUser();return u?.type==='shop'?u:null};
@@ -36,7 +36,7 @@ function marketDeliveryPrice(storePrice){if(state.gpRate==null)return null;const
 function marketPriceNote(storePrice){const d=marketDeliveryPrice(storePrice),r=Number(state.gpRate);return Number.isFinite(d)?`GP ${r.toLocaleString('th-TH',{maximumFractionDigits:2})}% · ราคาเดลิเวอรี่ ${d.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})} บาท`:'ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก'}
 function qgMarketRefreshPricePreview(){const input=document.getElementById('market-store-price'),out=document.getElementById('market-delivery-preview');if(out)out.textContent=marketPriceNote(input?.value)}
 window.qgMarketRefreshPricePreview=qgMarketRefreshPricePreview;
-function paint(){if(!permitted()){shell('<p>เลือกประเภทร้านเป็นตลาดสด ร้านเนื้อ ปลา ผัก ผลไม้ หรือของชำในข้อมูลร้านก่อน</p><button class="qgm-primary" onclick="navigate(\'shop-setup\')">แก้ไขข้อมูลร้าน</button>');return;}
+function paint(){if(!permitted()){shell('<p>หน้านี้ใช้เฉพาะร้านตลาดสด ร้านเนื้อ ร้านปลา ร้านผัก หรือร้านผลไม้เท่านั้น</p><button class="qgm-primary" onclick="navigate(\'shop-setup\')">แก้ไขข้อมูลร้าน</button>');return;}
 const rows=state.rows;
 shell(`<div class="market-actions market-add-actions"><button class="qgm-primary" type="button" onclick="navigate('market-catalog')">＋ เพิ่มสินค้าจากแคตตาล็อก</button><button class="qgm-outline" type="button" onclick="qgMarketEdit()">＋ เพิ่มสินค้าเอง</button><button class="qgm-outline" type="button" onclick="qgMarketReload()">อัปเดต</button></div>${rows.length?rows.map(x=>`<article class="market-item"><div><b>${esc(x.name)}</b><small>${esc(x.category)} · ${Number(x.pack_size)} ${esc(x.unit)} / ชุด</small><small>หน้าร้าน ${Number(x.pos_price??x.price??0).toLocaleString('th-TH')} ฿ · เดลิเวอรี่ ${Number(x.delivery_price??x.price??0).toLocaleString('th-TH')} ฿</small><small>คงเหลือ ${Number(x.stock_quantity)} ${esc(x.unit)} · ขายได้ ${Math.floor(Number(x.stock_quantity)/Number(x.pack_size))} ชุด${Number(x.stock_quantity)<=Number(x.min_stock)?' · ใกล้หมด':''}</small><small>ต้นทุน ${Number(x.cost_price).toLocaleString('th-TH')} ฿ / ชุด (เฉพาะเจ้าของร้าน)</small></div><div><button onclick="qgMarketEdit('${x.product_id}')">แก้ไข</button><button onclick="qgMarketStock('${x.product_id}')">รับเข้า / ปรับยอด</button></div></article>`).join(''):'<p>ยังไม่มีสินค้าในตลาด กด “เพิ่มสินค้า” เพื่อเริ่มขาย</p>'}<details><summary>ประวัติสต๊อกล่าสุด</summary>${state.movements.map(x=>`<p>${new Date(x.created_at).toLocaleString('th-TH')} · ${esc(x.type)} ${Number(x.quantity)} · ${esc(x.note||'')}</p>`).join('')||'<p>ยังไม่มีรายการเคลื่อนไหว</p>'}</details>`);
 }

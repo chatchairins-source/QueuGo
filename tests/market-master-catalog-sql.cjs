@@ -30,6 +30,10 @@ const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'
  await db.query("insert into users values($1,$1,'shop','pending')",[uid]);
  await db.query("insert into shop_profiles values($1,$2,'market','pending',null)",[shop,uid]);
  eq((await db.query('select count(*)::int n from market_master_products')).rows[0].n,128);
+ await assert.rejects(
+   db.query("update market_master_products set category='ของใช้ในครัวเรือน' where slug='kale-mixed'"),
+   /market_master_products_market_category_only|check constraint/
+ );checks++;
  const reviewedImages=JSON.parse(read('catalog/market-image-candidates-20261019.json'));
  eq((await db.query("select count(*)::int n from market_master_products where image_status='approved'")).rows[0].n,reviewedImages.items.filter(x=>x.status==='approved').length);
  for(const review of reviewedImages.items){
