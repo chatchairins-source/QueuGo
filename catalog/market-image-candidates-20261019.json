@@ -3,8 +3,9 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "direct_candidates": 121,
-    "source_page_found": 7,
+    "approved": 7,
+    "direct_candidates": 128,
+    "source_page_found": 0,
     "family_reference_only": 0,
     "rights_pending": 121
   },
@@ -233,12 +234,12 @@
       "slug": "dried-lily-flower",
       "name_th": "ดอกไม้จีน",
       "category": "ของแห้ง",
-      "source_page_url": "https://www.makro.pro/th/c/world-of-cuisines/chinese-cuisine",
-      "candidate_image_url": null,
-      "status": "source_page_found",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Dried_daylily.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/7/7c/Dried_daylily.jpg",
+      "status": "approved",
+      "rights_evidence": "Susan Slater · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "textured-vegetable-protein",
@@ -266,12 +267,12 @@
       "slug": "dried-squid-medium",
       "name_th": "ปลาหมึกแห้งขนาดกลาง",
       "category": "ของแห้ง",
-      "source_page_url": "https://www.makro.pro/th/p/-03-00-01-523207652260723",
-      "candidate_image_url": null,
-      "status": "source_page_found",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Dried_squid.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/9/99/Dried_squid.jpg",
+      "status": "approved",
+      "rights_evidence": "Enochlau · CC BY-SA 3.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Verified public Makro PRO dried-squid product page found. Exact medium-grade image remains pending to avoid misrepresenting the catalog item."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "mee-sua-400g",
@@ -1278,12 +1279,12 @@
       "slug": "talaadthai-climbing-perch-small",
       "name_th": "ปลาหมอเลี้ยง เบอร์เล็ก",
       "category": "ปลา",
-      "source_page_url": "https://talaadthai.com/products/freshwater-fish-9449-3139",
-      "candidate_image_url": null,
-      "status": "source_page_found",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Anabas_testudineus_climbing_perch.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b7/Anabas_testudineus_climbing_perch.jpg",
+      "status": "approved",
+      "rights_evidence": "Nayan j Nath · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Public product/source page with imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-oyster-meat-100g",
@@ -1377,45 +1378,45 @@
       "slug": "talaadthai-shrimp-chaebow-medium",
       "name_th": "กุ้งแชบ๊วย (เลี้ยง) เบอร์กลาง",
       "category": "กุ้ง",
-      "source_page_url": "https://talaadthai.com/products/shrimp-9436-2887",
-      "candidate_image_url": null,
-      "status": "source_page_found",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Jerbung_Pj_DSC_1970.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Jerbung_Pj_DSC_1970.jpg",
+      "status": "approved",
+      "rights_evidence": "Kembangraps · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Public product/source page with imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "talaadthai-shrimp-chaebow-large",
       "name_th": "กุ้งแชบ๊วย (เลี้ยง) เบอร์ใหญ่",
       "category": "กุ้ง",
-      "source_page_url": "https://talaadthai.com/products/shrimp-9437-3057",
-      "candidate_image_url": null,
-      "status": "source_page_found",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Jerbung_Pj_DSC_1970.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Jerbung_Pj_DSC_1970.jpg",
+      "status": "approved",
+      "rights_evidence": "Kembangraps · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Public product/source page with imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "talaadthai-mud-crab-small",
       "name_th": "ปูทะเล ขนาดเล็ก",
       "category": "ปู",
-      "source_page_url": "https://talaadthai.com/products/4573",
-      "candidate_image_url": null,
-      "status": "source_page_found",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Mud_crab,_Scylla_serrate.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b1/Mud_crab%2C_Scylla_serrate.jpg",
+      "status": "approved",
+      "rights_evidence": "Queensland State Archives · Public Domain Mark 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Public product/source page with imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "talaadthai-mud-crab-medium",
       "name_th": "ปูทะเล ขนาดกลาง",
       "category": "ปู",
-      "source_page_url": "https://talaadthai.com/products/4632",
-      "candidate_image_url": null,
-      "status": "source_page_found",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Mud_crab,_Scylla_serrate.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b1/Mud_crab%2C_Scylla_serrate.jpg",
+      "status": "approved",
+      "rights_evidence": "Queensland State Archives · Public Domain Mark 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Public product/source page with imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     }
   ]
 }
