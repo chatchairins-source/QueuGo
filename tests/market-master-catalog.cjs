@@ -76,6 +76,9 @@ assert.ok(imageReview.includes('has_image_reference'),'catalog RPC must expose i
 assert.ok(imageReview.includes("image_status='pending'"),'review candidates must stay pending');
 for(const needle of [
   'create table public.market_master_products',
+  'create unique index market_products_shop_master_unique',
+  'primary key(shop_id,request_id)',
+  'request ID body mismatch',
   'alter table public.market_master_products enable row level security',
   'create table market_private.catalog_add_receipts',
   'create or replace function public.qg_market_master_categories()',
@@ -110,10 +113,17 @@ for(const needle of ['qg_market_catalog_page','qg_market_catalog_add','effective
   assert.ok(catalog.includes(needle),'missing Merchant market catalog behavior: '+needle);
 }
 assert.ok(catalog.includes('qgMarketCatalogSetKg(1)')&&catalog.includes('qgMarketCatalogSetKg(2)')&&catalog.includes('qgMarketCatalogSetKg(3)'),'catalog must offer 1/2/3 kg presets');
+assert.ok(catalog.includes('p_request_id:crypto.randomUUID()'),'Merchant add flow must use a durable request ID');
+assert.ok(catalog.includes("pendingKey(state.shop)"),'Merchant add flow must retain pending request recovery');
 assert.ok(catalog.includes('พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่'),'Merchant must show rights-pending image status');
 assert.ok(catalog.includes('กำลังหารูปที่ตรวจสอบแหล่งที่มาได้'),'Merchant must show missing-image review status');
 assert.ok(catalog.includes('qgMarketCatalogSetCategory')&&catalog.includes('market-catalog-chip'),'Merchant must expose category chips without duplicate filter state');
 assert.ok(!catalog.includes('src="${E(r.image_source)}"'),'pending external image_source must never render as approved art');
+
+const marketCss=read('merchant/market.css');
+for(const needle of ['market-catalog-card','market-catalog-image','market-catalog-chips','object-fit:contain']){
+  assert.ok(marketCss.includes(needle),'Market catalog responsive CSS missing '+needle);
+}
 
 const market=read('merchant/market.js');
 assert.ok(market.includes("navigate('market-catalog')"));
