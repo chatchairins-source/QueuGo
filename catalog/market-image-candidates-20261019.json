@@ -3,10 +3,10 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "direct_candidates": 90,
-    "source_page_found": 38,
+    "direct_candidates": 96,
+    "source_page_found": 32,
     "family_reference_only": 0,
-    "rights_pending": 90
+    "rights_pending": 96
   },
   "items": [
     {
@@ -1202,66 +1202,66 @@
       "name_th": "ข่าแก่",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/356461-335646183364767",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/335646183364767-ff8203af-afec-4909-bb5d-5053d14e053f.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-lemongrass-1kg",
       "name_th": "ตะไคร้",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/207394-7543242555587",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/5843242d741c43358287f80bad8c0fee?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-kaffir-lime-leaf-150g",
       "name_th": "ใบมะกรูด",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/207391-7422334861507",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/fea9bb3010c247108dd989d1a00df11d?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-bird-chili-300g",
       "name_th": "พริกขี้หนูสวนเด็ดก้าน",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/862373-7193008636099",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7193008636099-58c3adf4-a50a-4b8a-968f-dbd69023b666.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-thai-eggplant-300g",
       "name_th": "มะเขือเปาะ",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/0phddeor-7422332567747",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/0cbbef6a3aa9409f8934ebf2ba111452?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-key-lime-10",
       "name_th": "มะนาวแป้น 10 ลูก",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/157063-7275698356419",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/f66af3c518c149da8370b88eb4b54e18?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "lotus-soft-fish-kg",
