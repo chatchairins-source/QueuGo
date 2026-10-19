@@ -200,8 +200,8 @@ for(const needle of ['qg_market_catalog_page','qg_market_catalog_add','qgMarketR
 assert.ok(catalog.includes('qgMarketAttachWeightPresets(form)'),'catalog must reuse shared weight presets');
 assert.ok(catalog.includes('p_request_id:crypto.randomUUID()'),'Merchant add flow must use a durable request ID');
 assert.ok(catalog.includes("pendingKey(state.shop)"),'Merchant add flow must retain pending request recovery');
-assert.ok(catalog.includes('พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่'),'Merchant must show rights-pending image status');
-assert.ok(catalog.includes('กำลังหารูปที่ตรวจสอบแหล่งที่มาได้'),'Merchant must show missing-image review status');
+assert.ok(catalog.includes('รูปอ้างอิงจาก'),'Merchant must identify retailer reference-image status');
+assert.ok(catalog.includes('กำลังหารูปอ้างอิง Makro ที่ตรงกับสินค้า'),'Merchant must show missing Makro-image review status');
 assert.ok(catalog.includes('qgMarketCatalogSetCategory')&&catalog.includes('market-catalog-chip'),'Merchant must expose category chips without duplicate filter state');
 assert.ok(catalog.includes("const preview=String(r.catalog_preview_image||'').trim(),approved=String(r.image||'').trim(),src=preview||approved"),'Merchant Market catalog must prefer Makro preview packshots over generic approved art');
 assert.ok(catalog.includes('referrerpolicy="no-referrer"'),'remote retailer preview images must not leak the QueueGo page referrer');
