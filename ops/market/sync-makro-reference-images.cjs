@@ -22,19 +22,29 @@ const ALIASES={
   'large-cavendish-banana':'กล้วยหอม',
   'native-chicken':'ไก่บ้าน'
 };
-const STOP=new Set(['คละ','ขนาด','ใหญ่','เล็ก','กลาง','ไซส์','สด','ทั้งตัว','แพ็ค','แพ็ก','ประมาณ','กก','กรัม','ตัว','ชิ้น','เบอร์','ละ']);
+const STOP=new Set(['คละ','ขนาด','ใหญ่','เล็ก','กลาง','ไซส์','สด','ทั้งตัว','แพ็ค','แพ็ก','ประมาณ','กก','กรัม','ตัว','ชิ้น','เบอร์','ละ','ผัก','เนื้อ','ขาว','หอม','เกรด']);
+const NEGATIVE=['น้ำยาปรับผ้านุ่ม','น้ํายาปรับผ้านุ่ม','ผงซักฟอก','โต๊ะ','เก้าอี้','เฟอร์นิเจอร์','แชมพู','สบู่','กระดาษชำระ','ทิชชู่','เตียง','ชั้นวาง'];
+const segmenter=new Intl.Segmenter('th',{granularity:'word'});
 function clean(v){
-  return String(v||'').toLowerCase()
+  return String(v||'').normalize('NFC').toLowerCase()
     .replace(/\([^)]*\)/g,' ')
     .replace(/\b(?:kg|g|ml|l|xl|xxl|s|m|l)\b/gi,' ')
     .replace(/[0-9.,/%×x+-]+/g,' ')
     .replace(/ซีพี|เอโร่|โลตัส|makro|aro/gi,' ')
     .replace(/[^\p{L}\p{N}]+/gu,' ')
+    .replace(/\s+/g,' ')
     .trim();
 }
 function tokens(v){
-  return clean(v).split(/\s+/).filter(t=>t.length>=2&&!STOP.has(t));
+  const out=[];
+  for(const part of segmenter.segment(clean(v))){
+    const t=part.segment.trim();
+    if(part.isWordLike&&t.length>=2)out.push(t);
+  }
+  return out;
 }
+function distinctive(v){return tokens(v).filter(t=>!STOP.has(t));}
+function compact(v){return clean(v).replace(/\s+/g,'');}
 function queryFor(item){
   return ALIASES[item.slug]||clean(item.name_th);
 }
@@ -42,23 +52,26 @@ function imageOf(doc){
   return (doc?.images||[]).find(x=>typeof x==='string'&&/^https:\/\/images\.mango-prod\.siammakro\.cloud\//.test(x))||null;
 }
 function score(item,doc){
-  const a=new Set(tokens(queryFor(item))),b=new Set(tokens(doc?.title||doc?.searchTitle||''));
-  if(!a.size||!b.size)return 0;
-  let hit=0; for(const t of a) if([...b].some(x=>x.includes(t)||t.includes(x))) hit++;
-  let s=hit/a.size;
-  const title=clean(doc?.title||doc?.searchTitle||'');
-  const q=clean(queryFor(item));
-  if(title===q)s+=.5;
-  else if(title.includes(q)||q.includes(title))s+=.25;
+  const q=queryFor(item),title=String(doc?.title||doc?.searchTitle||'');
+  const qTokens=tokens(q),tTokens=new Set(tokens(title)),qDistinct=distinctive(q);
+  if(!qTokens.length||!tTokens.size)return 0;
+  if(NEGATIVE.some(x=>compact(title).includes(compact(x))))return -1;
+  const phrase=compact(title).includes(compact(q))||compact(q).includes(compact(title));
+  const allHit=qTokens.filter(t=>tTokens.has(t)).length;
+  const distinctHit=qDistinct.filter(t=>tTokens.has(t)).length;
+  const distinctRatio=qDistinct.length?distinctHit/qDistinct.length:allHit/qTokens.length;
+  let s=.65*distinctRatio+.35*(allHit/qTokens.length);
+  if(phrase)s+=.65;
   const cat=String(item.category||'');
   const categoryHints={
-    'เนื้อหมู':['หมู','สุกร'],'เนื้อวัว':['วัว','โค','เนื้อ'],'ไก่ / เป็ด':['ไก่','เป็ด'],
+    'เนื้อหมู':['หมู','สุกร'],'เนื้อวัว':['วัว','โค'],'ไก่ / เป็ด':['ไก่','เป็ด'],
     'ปลา':['ปลา'],'กุ้ง':['กุ้ง'],'ปู':['ปู'],'หอย':['หอย'],'ปลาหมึก':['หมึก'],
-    'ผักสด':['ผัก','คะน้า','กวางตุ้ง','กะหล่ำ','แตง','มะเขือ','หอม','กระเทียม','แครอท','กะเพรา','โหระพา'],
+    'ผักสด':['คะน้า','กวางตุ้ง','กะหล่ำ','แตง','มะเขือ','ต้นหอม','กระเทียม','แครอท','กะเพรา','โหระพา','ผักกาด'],
     'ผลไม้':['กล้วย','มะม่วง','แตงโม','ทุเรียน','ฝรั่ง','มะละกอ','มังคุด','ลำไย','ลิ้นจี่','เงาะ','แก้วมังกร','แคนตาลูป'],
     'เห็ด':['เห็ด'],'ไข่':['ไข่']
   }[cat]||[];
-  if(categoryHints.some(h=>title.includes(h)))s+=.15;
+  if(categoryHints.some(h=>compact(title).includes(compact(h))))s+=.1;
+  if(!phrase&&qDistinct.length&&distinctRatio<.75)s=Math.min(s,.59);
   return Math.round(s*1000)/1000;
 }
 async function search(q){
@@ -82,7 +95,7 @@ async function search(q){
         const docs=await search(q);
         const ranked=docs.map(doc=>({doc,score:score(item,doc),image:imageOf(doc)})).filter(x=>x.image).sort((a,b)=>b.score-a.score);
         const best=ranked[0]||null;
-        const accepted=!!best&&best.score>=0.6;
+        const accepted=!!best&&best.score>=0.75;
         results[i]={
           slug:item.slug,name_th:item.name_th,category:item.category,query:q,
           status:accepted?'matched':'review',
