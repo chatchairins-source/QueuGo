@@ -1,12 +1,12 @@
 {
-  "version": 2,
+  "version": 3,
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
-    "total": 114,
-    "direct_candidates": 50,
-    "source_page_found": 58,
+    "total": 123,
+    "direct_candidates": 57,
+    "source_page_found": 60,
     "family_reference_only": 6,
-    "rights_pending": 50
+    "rights_pending": 57
   },
   "items": [
     {
@@ -1262,6 +1262,105 @@
       "rights_evidence": null,
       "checked_on": "2026-10-19",
       "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+    },
+    {
+      "slug": "lotus-soft-fish-kg",
+      "name_th": "ปลาเนื้ออ่อน",
+      "category": "ปลา",
+      "source_page_url": "https://www.lotuss.com/th/product/52253272",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/52253272.jpg",
+      "status": "rights_pending",
+      "rights_evidence": null,
+      "checked_on": "2026-10-19",
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+    },
+    {
+      "slug": "talaadthai-climbing-perch-small",
+      "name_th": "ปลาหมอเลี้ยง เบอร์เล็ก",
+      "category": "ปลา",
+      "source_page_url": "https://talaadthai.com/products/freshwater-fish-9449-3139",
+      "candidate_image_url": null,
+      "status": "source_page_found",
+      "rights_evidence": null,
+      "checked_on": "2026-10-19",
+      "note": "Public product/source page with imagery found; direct image extraction or reuse-rights review remains pending."
+    },
+    {
+      "slug": "makro-oyster-meat-100g",
+      "name_th": "เนื้อหอยนางรม",
+      "category": "หอย",
+      "source_page_url": "https://www.makro.pro/th/p/835213-7275699273923",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7275699273923-0f2985b4-3834-4faa-acc2-7a59ba91e732.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
+      "rights_evidence": null,
+      "checked_on": "2026-10-19",
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+    },
+    {
+      "slug": "lotus-sweet-snail-kg",
+      "name_th": "หอยหวานกลาง",
+      "category": "หอย",
+      "source_page_url": "https://www.lotuss.com/th/product/52102814?openExternalBrowser=1",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/52102814.jpg",
+      "status": "rights_pending",
+      "rights_evidence": null,
+      "checked_on": "2026-10-19",
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+    },
+    {
+      "slug": "makro-clam-1kg",
+      "name_th": "เอโร่ หอยตลับแช่แข็ง 45-60 ตัว/กก.",
+      "category": "หอย",
+      "source_page_url": "https://www.makro.pro/th/p/843376-7167173689539",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7167173689539-6061688f-dba6-463f-99ff-7156b0b4fc73.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
+      "rights_evidence": null,
+      "checked_on": "2026-10-19",
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+    },
+    {
+      "slug": "makro-scallop-half-shell-1kg",
+      "name_th": "เอโร่ หอยเชลล์ติดไข่ครึ่งฝา 8-9 ซม.",
+      "category": "หอย",
+      "source_page_url": "https://www.makro.pro/th/p/143992-7078809567427",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7078809567427-95beb142-eeb9-467b-bd51-e1f6b81213b0.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
+      "rights_evidence": null,
+      "checked_on": "2026-10-19",
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+    },
+    {
+      "slug": "makro-soft-shell-crab-1kg",
+      "name_th": "เอโร่ ปูนิ่มแช่แข็ง 7-9 ตัว/กก.",
+      "category": "ปู",
+      "source_page_url": "https://www.makro.pro/th/p/174959-6974747115715",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/6974747115715-7f3da9d9-7add-43eb-bbdb-f5c88c8bc9a5.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
+      "rights_evidence": null,
+      "checked_on": "2026-10-19",
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+    },
+    {
+      "slug": "makro-blue-crab-large-1kg",
+      "name_th": "ปูม้าขนาดใหญ่",
+      "category": "ปู",
+      "source_page_url": "https://www.makro.pro/th/p/168350-831006247598074",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/bd28d8d1a65348cd9aa4f2a44395f6a5?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
+      "rights_evidence": null,
+      "checked_on": "2026-10-19",
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+    },
+    {
+      "slug": "makro-longan-1kg",
+      "name_th": "ลำไย",
+      "category": "ผลไม้",
+      "source_page_url": "https://www.makro.pro/th/c/fruit-vegetables/fruit/imported-fruit",
+      "candidate_image_url": null,
+      "status": "source_page_found",
+      "rights_evidence": null,
+      "checked_on": "2026-10-19",
+      "note": "Public product/source page with imagery found; direct image extraction or reuse-rights review remains pending."
     }
   ]
 }
