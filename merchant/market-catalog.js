@@ -26,6 +26,7 @@ function gpRate(raw){const v=Array.isArray(raw)?raw[0]:raw;if(v&&typeof v==='obj
 function deliveryPrice(storePrice){const p=Number(storePrice),r=Number(state.gpRate);return Number.isFinite(p)&&p>0&&Number.isFinite(r)&&r>=0&&r<=100?Math.round(p*(1+r/100)*100)/100:null}
 function deliveryNote(storePrice){const d=deliveryPrice(storePrice),r=Number(state.gpRate);return Number.isFinite(d)?`GP ${r.toLocaleString('th-TH',{maximumFractionDigits:2})}% · ราคาเดลิเวอรี่ ${d.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})} บาท`:'ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก'}
 window.qgMarketCatalogPricePreview=()=>{const input=document.querySelector('#market-catalog-add-form [name="price"]'),out=document.getElementById('market-catalog-delivery-preview');if(out)out.textContent=deliveryNote(input?.value)};
+window.qgMarketCatalogSetKg=kg=>{const form=document.getElementById('market-catalog-add-form');if(!form)return;const pack=form.querySelector('[name="pack"]'),weight=form.querySelector('[name="weight"]'),unit=form.querySelector('[name="unit"]');if(unit)unit.value='กิโลกรัม';if(pack)pack.value=String(kg);if(weight)weight.value=String(kg)};
 function active(epoch,shopId){return epoch===state.epoch&&shopId===state.shop&&location.hash.replace('#','').split('/')[0]==='market-catalog'}
 function card(r){
   const linked=!!r.product_id;
@@ -90,7 +91,7 @@ window.qgMarketCatalogChoose=id=>{
     <label>ราคาหน้าร้าน / ชุด (บาท)<input name="price" type="number" min="0.01" max="999999" step="0.01" required oninput="qgMarketCatalogPricePreview()"></label>
     <small id="market-catalog-delivery-preview">ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก</small>
     <label>หน่วยสต๊อก<select name="unit">${UNITS.map(u=>`<option value="${E(u)}" ${u===suggestedUnit?'selected':''}>${E(u)}</option>`).join('')}</select></label>
-    <label>ปริมาณต่อ 1 ชุดขาย<input name="pack" type="number" min="0.001" max="999999" step="0.001" value="${E(pack)}" required></label>
+    ${suggestedUnit==='กิโลกรัม'?'<div class="market-actions"><small>ขนาดขายที่ใช้บ่อย</small><button type="button" class="qgm-outline" onclick="qgMarketCatalogSetKg(1)">1 กก.</button><button type="button" class="qgm-outline" onclick="qgMarketCatalogSetKg(2)">2 กก.</button><button type="button" class="qgm-outline" onclick="qgMarketCatalogSetKg(3)">3 กก.</button></div>':''}<label>ปริมาณต่อ 1 ชุดขาย<input name="pack" type="number" min="0.001" max="999999" step="0.001" value="${E(pack)}" required></label>
     <label>น้ำหนักต่อชุด (กก.)<input name="weight" type="number" min="0.001" max="999999" step="0.001" value="${E(weight)}" placeholder="กรอกน้ำหนักจริง" required></label>
     <label>ต้นทุนต่อชุด (บาท)<input name="cost" type="number" min="0" max="999999" step="0.01" value="0" required></label>
     <label>สต๊อกเริ่มต้น<input name="stock" type="number" min="0" max="999999" step="0.001" value="0" required></label>
