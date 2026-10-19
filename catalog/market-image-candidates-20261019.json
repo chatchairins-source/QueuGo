@@ -3,10 +3,10 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "direct_candidates": 111,
-    "source_page_found": 17,
+    "direct_candidates": 116,
+    "source_page_found": 12,
     "family_reference_only": 0,
-    "rights_pending": 111
+    "rights_pending": 116
   },
   "items": [
     {
@@ -134,12 +134,12 @@
       "slug": "pork-belly",
       "name_th": "หมูสามชั้น",
       "category": "เนื้อหมู",
-      "source_page_url": "https://www.makro.pro/p/3ql5zp7-6974749180099",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "source_page_url": "https://www.makro.pro/p/uz13wwc-7606380298435",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/a313ed9263ef483daba031f9c6af9677?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "native-chicken",
@@ -508,12 +508,12 @@
       "slug": "makro-white-shimeji-1kg",
       "name_th": "เห็ดชิเมจิขาว",
       "category": "เห็ด",
-      "source_page_url": "https://www.makro.pro/en/c/collections/Gold%20Container%20-%20Fresh%20Value%20Deal%20%289%20Jul%202026%29/40637",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "source_page_url": "https://www.makro.pro/p/thwn7oc-7243311710403",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/5dec29c684944b4d833d37c32e7250eb?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-king-oyster-500g",
@@ -981,12 +981,12 @@
       "slug": "makro-kinnaree-watermelon-4kg",
       "name_th": "แตงโมกินรีจัมโบ้",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Fresh%20Fruit%20Picks%20%288%20-%2014%20Aug%2026%29",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "source_page_url": "https://www.makro.pro/p/NHA48Uj-551312627531523",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/95d43d48c97443fea8c1e52bc44d855e?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-honey-murcott-orange-1kg",
@@ -1003,12 +1003,12 @@
       "slug": "makro-fuji-apple-10",
       "name_th": "แอปเปิลฟูจิ 10 ผล",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Fresh%20Fruit%20Picks%20%288%20-%2014%20Aug%2026%29",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "source_page_url": "https://www.makro.pro/p/xca7-ql-7416139808963",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7416139808963-7b25cd62-b4d7-49b5-8e85-9faead73b68c.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-guava-1kg",
@@ -1113,12 +1113,12 @@
       "slug": "makro-sunlady-cantaloupe-1kg",
       "name_th": "แคนตาลูปซันเลดี้",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Fresh%20Fruit%20Picks%20%288%20-%2014%20Aug%2026%29",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "source_page_url": "https://www.makro.pro/p/VwVgmvK-744823429316792",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/744823429316792-0c62e666-fde5-4ec3-9085-5fe9e56e1d14.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-coriander-300g",
