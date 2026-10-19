@@ -3,10 +3,10 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "direct_candidates": 58,
-    "source_page_found": 64,
-    "family_reference_only": 6,
-    "rights_pending": 58
+    "direct_candidates": 62,
+    "source_page_found": 66,
+    "family_reference_only": 0,
+    "rights_pending": 62
   },
   "items": [
     {
@@ -123,12 +123,12 @@
       "slug": "pork-lean",
       "name_th": "หมูเนื้อแดง",
       "category": "เนื้อหมู",
-      "source_page_url": "https://www.dit.go.th/th/news/press-releases/",
-      "candidate_image_url": null,
-      "status": "family_reference_only",
+      "source_page_url": "https://www.lotuss.com/th/product/75592789",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/75592789.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Only a family/category reference is available so far; do not render as the product image."
+      "note": "Direct Lotus's product image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "pork-belly",
@@ -167,12 +167,12 @@
       "slug": "egg-size-2-10",
       "name_th": "ไข่ไก่เบอร์ 2 (10 ฟอง)",
       "category": "ไข่",
-      "source_page_url": "https://shopping.lotuss.com/th/smartx/category/egg-cheese-butter-and-yogurt/eggs-and-dairy-products-eggs",
-      "candidate_image_url": null,
-      "status": "family_reference_only",
+      "source_page_url": "https://www.lotuss.com/th/product/betagro-hyegg-no2-chicken-egg-10pcs-51389936?openExternalBrowser=1",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/91051/51389936.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Only a family/category reference is available so far; do not render as the product image."
+      "note": "Direct Lotus's product image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "egg-size-3-10",
@@ -223,11 +223,11 @@
       "name_th": "ฟองเต้าหู้สด",
       "category": "เต้าหู้ / เส้นสด / ลูกชิ้น",
       "source_page_url": "https://www.makro.pro/th/p/929752-703370101472939",
-      "candidate_image_url": null,
-      "status": "family_reference_only",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/47072705cf304fd88255afc2bc5477db?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Only a family/category reference is available so far; do not render as the product image."
+      "note": "Direct Makro PRO product image candidate for refrigerated tofu skin/sheet verified from the public product page; publication rights remain pending."
     },
     {
       "slug": "dried-lily-flower",
@@ -244,34 +244,34 @@
       "slug": "textured-vegetable-protein",
       "name_th": "โปรตีนเกษตร",
       "category": "ของแห้ง",
-      "source_page_url": "https://www.dit.go.th/th/news/press-releases/",
+      "source_page_url": "https://www.bigc.co.th/product/khun-yuy-textured-soy-proten-no4-size-300-g.17990",
       "candidate_image_url": null,
-      "status": "family_reference_only",
+      "status": "source_page_found",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Only a family/category reference is available so far; do not render as the product image."
+      "note": "Exact public retailer product page for textured vegetable protein found; direct reusable image and rights evidence remain pending."
     },
     {
       "slug": "ginkgo-nut",
       "name_th": "แปะก๊วย",
       "category": "ของแห้ง",
       "source_page_url": "https://www.makro.pro/p/225112-7115225333955",
-      "candidate_image_url": null,
-      "status": "family_reference_only",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/c1303708979f42e2a03f2bfd47c394f5?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Only a family/category reference is available so far; do not render as the product image."
+      "note": "Direct Makro PRO ginkgo product image candidate verified from the public product page; publication rights remain pending."
     },
     {
       "slug": "dried-squid-medium",
       "name_th": "ปลาหมึกแห้งขนาดกลาง",
       "category": "ของแห้ง",
-      "source_page_url": "https://www.dit.go.th/th/news/press-releases/",
+      "source_page_url": "https://www.makro.pro/th/p/-03-00-01-523207652260723",
       "candidate_image_url": null,
-      "status": "family_reference_only",
+      "status": "source_page_found",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Only a family/category reference is available so far; do not render as the product image."
+      "note": "Verified public Makro PRO dried-squid product page found. Exact medium-grade image remains pending to avoid misrepresenting the catalog item."
     },
     {
       "slug": "mee-sua-400g",
