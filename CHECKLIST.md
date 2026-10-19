@@ -532,3 +532,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - This supersedes the previous login-blocked release checkpoint: authenticated backend and module flow is verified using the authorized test shop. Full signed-in-browser appearance/physical-device acceptance remains explicitly unclaimed; anonymous browser verifies deployed asset tags only.
 - Remaining image work:40 retailer candidates still need exact reusable replacements or rights evidence; keep pending placeholders.79 unique approved-image URLs audited:24 HTTP200,55 HTTP429 batch-rate-limited,zero404; do not falsely mark these as deleted or auto-approve pending retailer art.
 - NEXT: continue only remaining exact image/rights work from newest main descendant; keep test shop unpublished. Do not recreate catalog, migrations, presets, optional-GP fix or add receipts, and do not restart PR440/closed441.
+
+## 2026-10-19 — Image batch18 review checkpoint
+- Branch: work-market-image-rights-20261019; base HEAD 76f472a3b9da9e679b8a4bb8eedc520c1e30272a. Pre-edit checkpoint branch backup/market-images-before-batch18-20261019 at the same SHA.
+- Added CC0 raw whole-duck photo after visual review and license verification; generic whole-duck only. CP S/M/XL remain pending. Rejected Commons Tenderloin_packages.jpg for pork: source categorizes it as beef. Cooked pork tenderloin photos also excluded.
+- Staged catalog128 / approved89 / pending39; production remains128 / 88 / 40 until this new migration is activated. No new products, prices, stock, weights, schema or add-flow implementation.
+- SQL integration now checks every manifest status and every approved image/source/license against actual migrated rows, replacing fixed approved88 assertion. Validation PASS: full npm test EXIT0; Merchant DOM45; actual SQL236; source/category/image contracts128; git diff --check clean.
+- NEXT: full npm regression, publish exact commit/PR, CI; then apply only new batch18 migration and verify count/readback.

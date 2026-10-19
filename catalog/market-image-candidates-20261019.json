@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 88,
+    "approved": 89,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 40
+    "rights_pending": 39
   },
   "items": [
     {
@@ -157,12 +157,12 @@
       "slug": "whole-duck",
       "name_th": "เป็ดสดทั้งตัว",
       "category": "ไก่ / เป็ด",
-      "source_page_url": "https://www.makro.pro/th/p/552500-921664243522588",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/921664243522588-74c26511-0f2e-4ff4-9db6-18e58db822a2.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Duck,_Duck,_Duck_(2863443552).jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/6/62/Duck%2C_Duck%2C_Duck_%282863443552%29.jpg",
+      "status": "approved",
+      "rights_evidence": "cogdogblog (Alan Levine) · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Visually reviewed raw plucked whole ducks; generic whole-duck commodity illustration only. Not evidence of CP brand or S/M/XL size. Commons license reviewed; original JPEG HTTP 200, 900×1200, 353047 bytes."
     },
     {
       "slug": "egg-size-2-10",

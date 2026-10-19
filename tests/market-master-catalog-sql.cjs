@@ -30,7 +30,13 @@ const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'
  await db.query("insert into users values($1,$1,'shop','pending')",[uid]);
  await db.query("insert into shop_profiles values($1,$2,'market','pending',null)",[shop,uid]);
  eq((await db.query('select count(*)::int n from market_master_products')).rows[0].n,128);
- eq((await db.query("select count(*)::int n from market_master_products where image_status='approved'")).rows[0].n,88);
+ const reviewedImages=JSON.parse(read('catalog/market-image-candidates-20261019.json'));
+ eq((await db.query("select count(*)::int n from market_master_products where image_status='approved'")).rows[0].n,reviewedImages.items.filter(x=>x.status==='approved').length);
+ for(const review of reviewedImages.items){
+   const actual=(await db.query('select image,image_source,image_status,image_rights_evidence from market_master_products where slug=$1',[review.slug])).rows[0];
+   eq(actual.image_status,review.status==='approved'?'approved':'pending');
+   if(review.status==='approved')eq(actual,{image:review.candidate_image_url,image_source:review.source_page_url,image_status:'approved',image_rights_evidence:review.rights_evidence});
+ }
  await db.exec('set role anon');
  await assert.rejects(db.query('select qg_market_catalog_page()'),/permission denied/);checks++;
  await db.exec(`reset role;select set_config('request.jwt.claim.sub','${uid}',false);set role authenticated`);
