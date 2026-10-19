@@ -69,28 +69,20 @@ const {JSDOM}=require('jsdom');
   assert.match(w.document.body.textContent,/เพิ่มสินค้าจากแคตตาล็อก/);
   assert.match(w.document.body.textContent,/ปลานิล/);
   assert.match(w.document.body.textContent,/รูปอ้างอิงจาก Makro PRO/);
+  assert.match(w.document.body.textContent,/กำลังเพิ่มรูปอ้างอิง Makro ที่ตรงกับสินค้า/);
   assert.ok(w.document.querySelector('.market-catalog-chip'),'category chips must render');
   assert.equal(w.document.querySelectorAll('.market-catalog-card').length,2);
   const catalogImages=[...w.document.querySelectorAll('img.market-catalog-image')];
-  assert.equal(catalogImages.length,2,'Makro preview and approved fallback must both render');
-  assert.deepEqual(catalogImages.map(x=>x.alt).sort(),['ปลานิล','ปลาหมอ'].sort());
-  const credit=[...w.document.querySelectorAll('.market-catalog-credit a')].find(a=>/CC BY-SA 4.0/.test(a.textContent));
-  assert.ok(credit,'approved image must render attribution');
-  assert.equal(credit.getAttribute('rel'),'noopener noreferrer');
+  assert.equal(catalogImages.length,1,'Merchant Market catalog must render only Makro retailer previews');
+  assert.equal(catalogImages[0].alt,'ปลานิล');
+  assert.equal([...w.document.querySelectorAll('.market-catalog-credit a')].some(a=>/CC BY-SA 4.0/.test(a.textContent)),false,'generic Commons art must stay out of Merchant Market catalog');
   const makroLink=[...w.document.querySelectorAll('.market-catalog-credit a')].find(a=>/ดูสินค้าต้นทาง/.test(a.textContent));
   assert.ok(makroLink,'Makro preview must link to the source product page');
   assert.match(makroLink.href,/makro\.pro/);
 
-  // The same approved image and attribution must survive entry into the add flow.
   w.qgMarketCatalogChoose('m2');
-  const preview=w.document.querySelector('.market-catalog-preview img');
-  assert.ok(preview,'add form must retain the selected approved product image');
-  assert.equal(preview.alt,'ปลาหมอ');
-  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/CC BY-SA 4.0/);
-  w.qgMarketCatalogImageError(preview);
-  assert.equal(w.document.querySelector('.market-catalog-preview img'),null);
-  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/โหลดรูปไม่สำเร็จ/);
-  assert.ok(w.document.querySelector('.market-catalog-preview .market-catalog-credit a'),'image failure must preserve attribution');
+  assert.equal(w.document.querySelector('.market-catalog-preview img'),null,'non-Makro approved art must not leak into the Merchant add form');
+  assert.match(w.document.querySelector('.market-catalog-preview').textContent,/กำลังเพิ่มรูปอ้างอิง Makro/);
 
   w.qgMarketCatalogChoose('m1');
   const makroPreview=w.document.querySelector('.market-catalog-preview img');
