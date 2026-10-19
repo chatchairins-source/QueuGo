@@ -3,22 +3,22 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "direct_candidates": 116,
-    "source_page_found": 12,
+    "direct_candidates": 121,
+    "source_page_found": 7,
     "family_reference_only": 0,
-    "rights_pending": 116
+    "rights_pending": 121
   },
   "items": [
     {
       "slug": "kale-mixed",
       "name_th": "ผักคะน้า คละ",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "source_page_url": "https://www.makro.pro/p/1mv-veh-7078708019395",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7078708019395-16fcfa28-bd85-4bee-8b02-375f5322a593.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct product image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "chinese-cabbage",
@@ -486,12 +486,12 @@
       "slug": "lotus-beef-hip",
       "name_th": "เนื้อสะโพกวัว",
       "category": "เนื้อวัว",
-      "source_page_url": "https://www.lotuss.com/th/smartx/category/meat/beef",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "source_page_url": "https://www.lotuss.com/th/product/75591303?openExternalBrowser=1",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/75591303.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct product image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-enoki-1kg",
@@ -541,12 +541,12 @@
       "slug": "lotus-enoki-500g",
       "name_th": "โลตัส เห็ดเข็มทอง",
       "category": "เห็ด",
-      "source_page_url": "https://www.lotuss.com/th/shop/fresh-food?sort=relevance%3ADESC",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "source_page_url": "https://www.lotuss.com/th/product/51920008",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/51920008.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct product image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-import-carrot-1kg",
@@ -838,12 +838,12 @@
       "slug": "makro-crab-breast-claw-500g",
       "name_th": "เนื้ออกและก้ามปู 500 กรัม",
       "category": "ปู",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Gold%20Container%20-%20Fresh%20Value%20Deal%20%2828%20Jun%202026%29/39790",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "source_page_url": "https://www.makro.pro/p/13ild86K-496850194004493",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/496850194004493-682d2def-0edc-43bf-ba15-ba7a3b79be7d.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct product image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-cut-blue-crab-500g",
@@ -1355,12 +1355,12 @@
       "slug": "makro-longan-1kg",
       "name_th": "ลำไย",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/th/c/fruit-vegetables/fruit/imported-fruit",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "source_page_url": "https://www.makro.pro/p/4C6X70K-519588845902332",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/519588845902332-f1bb6a6c-6d3f-4154-848d-a166565560fc.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page with imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct product image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "lotus-shrimp-chaebow-25-30kg",
