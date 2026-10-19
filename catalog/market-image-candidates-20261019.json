@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 84,
+    "approved": 88,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 44
+    "rights_pending": 40
   },
   "items": [
     {
@@ -212,23 +212,23 @@
       "slug": "dried-bamboo-shoot",
       "name_th": "หน่อไม้จีน",
       "category": "ของแห้ง",
-      "source_page_url": "https://www.makro.pro/th/p/149520-414952099046041",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/835184523168742-0b8b64c8-7631-47f1-a0ad-d55c9b745148.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Dried_bamboo_shoots_(2).jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/a/ad/Dried_bamboo_shoots_%282%29.jpg",
+      "status": "approved",
+      "rights_evidence": "Fumikas Sagisavas · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "fresh-tofu-skin",
       "name_th": "ฟองเต้าหู้สด",
       "category": "เต้าหู้ / เส้นสด / ลูกชิ้น",
-      "source_page_url": "https://www.makro.pro/th/p/929752-703370101472939",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/47072705cf304fd88255afc2bc5477db?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Tofu_skin.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Tofu_skin.jpg",
+      "status": "approved",
+      "rights_evidence": "Andrea Nguyen · CC BY 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct Makro PRO product image candidate for refrigerated tofu skin/sheet verified from the public product page; publication rights remain pending."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "dried-lily-flower",
@@ -245,23 +245,23 @@
       "slug": "textured-vegetable-protein",
       "name_th": "โปรตีนเกษตร",
       "category": "ของแห้ง",
-      "source_page_url": "https://www.bigc.co.th/product/khun-yuy-textured-soy-proten-no4-size-300-g.17990",
-      "candidate_image_url": "https://st.bigc-cs.com/cdn-cgi/image/format=webp,quality=90/public/media/catalog/product/02/88/8851212052002/8851212052002_1-20260605133249-.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Textured_vegetable_protein.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/5e/Textured_vegetable_protein.jpg",
+      "status": "approved",
+      "rights_evidence": "NTK · Public domain · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct Big C product image candidate verified from the exact public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "ginkgo-nut",
       "name_th": "แปะก๊วย",
       "category": "ของแห้ง",
-      "source_page_url": "https://www.makro.pro/p/225112-7115225333955",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/c1303708979f42e2a03f2bfd47c394f5?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Peeled_ginkgo_nuts.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/7/71/Peeled_ginkgo_nuts.jpg",
+      "status": "approved",
+      "rights_evidence": "Fumikas Sagisavas · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct Makro PRO ginkgo product image candidate verified from the public product page; publication rights remain pending."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "dried-squid-medium",
