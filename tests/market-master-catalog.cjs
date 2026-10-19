@@ -200,7 +200,7 @@ for(const needle of ['qg_market_catalog_page','qg_market_catalog_add','qgMarketR
 assert.ok(catalog.includes('qgMarketAttachWeightPresets(form)'),'catalog must reuse shared weight presets');
 assert.ok(catalog.includes('p_request_id:crypto.randomUUID()'),'Merchant add flow must use a durable request ID');
 assert.ok(catalog.includes("pendingKey(state.shop)"),'Merchant add flow must retain pending request recovery');
-assert.ok(catalog.includes('qgMarketCatalogSetCategory')&&catalog.includes('market-catalog-chip'),'Merchant must expose category chips without duplicate filter state');
+assert.ok(catalog.includes('qgMarketCatalogSetCategory')&&catalog.includes('qgg-controls')&&catalog.includes('qgm-search'),'Merchant Market catalog must reuse Grocery search/category control pattern');
 assert.ok(catalog.includes("const src=String(r.catalog_preview_image||'').trim()"),'Merchant Market catalog must render the dedicated clean catalog image only');
 assert.ok(catalog.includes('referrerpolicy="no-referrer"'),'remote catalog images must not leak the QueueGo page referrer');
 assert.ok(!catalog.includes('รูปอ้างอิงจาก'),'Merchant Market catalog must not expose source-reference copy');
@@ -209,9 +209,16 @@ assert.ok(!catalog.includes('กำลังหารูปอ้างอิง
 assert.ok(!catalog.includes('src="${E(r.image_source)}"'),'external source metadata must never render directly as catalog art');
 
 const marketCss=read('merchant/market.css');
-for(const needle of ['market-catalog-card','market-catalog-image','market-catalog-chips','object-fit:contain','grid-template-columns:126px minmax(0,1fr)','width:116px;height:146px']){
-  assert.ok(marketCss.includes(needle),'Market catalog Grocery-parity responsive CSS missing '+needle);
+const groceryCss=read('catalog/grocery.css');
+for(const needle of ['qgg-market-catalog','qgg-source-row>img','market-catalog-preview']){
+  assert.ok(marketCss.includes(needle),'Market catalog Grocery-parity adapter CSS missing '+needle);
 }
+for(const needle of ['.qgg-merchant .qgg-row','grid-template-columns:126px minmax(0,1fr)','width:116px;height:146px','.qgg-price-controls','.qgg-channel-controls','.qgg-gp-note']){
+  assert.ok(groceryCss.includes(needle),'shared Grocery catalog CSS missing '+needle);
+}
+assert.ok(catalog.includes('class="qgg qgg-merchant qgg-market-catalog"'),'Market catalog must directly reuse Grocery merchant shell classes');
+assert.ok(catalog.includes('qgg-row qgg-source-row market-catalog-card'),'Market catalog cards must directly reuse Grocery row classes');
+assert.ok(catalog.includes('data-market-price')&&catalog.includes('data-market-stock'),'Market cards must expose Grocery-style inline price and stock controls');
 
 const market=read('merchant/market.js');
 assert.ok(market.includes("navigate('market-catalog')"));
