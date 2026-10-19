@@ -67,6 +67,7 @@ const openLicenseImagesBatch2=read('supabase/migrations/20261019160000_market_op
 const openLicenseImagesBatch3=read('supabase/migrations/20261019161500_market_open_license_images_batch3.sql');
 const openLicenseImagesBatch4=read('supabase/migrations/20261019163000_market_open_license_images_batch4.sql');
 const openLicenseImagesBatch5=read('supabase/migrations/20261019164500_market_open_license_images_batch5.sql');
+const openLicenseImagesBatch6=read('supabase/migrations/20261019170000_market_open_license_images_batch6.sql');
 assert.ok(expansion.includes("'เห็ด'"),'fresh expansion must add mushroom category');
 assert.ok(expansion.includes('Makro PRO')&&expansion.includes("Lotus''s"),'fresh expansion must retain both public sources');
 for(const cat of ["'กุ้ง'","'ปู'","'หอย'","'ปลาหมึก'"]){
@@ -115,7 +116,7 @@ for(const row of images.items){
 }
 for(const slug of allSlugs) assert.ok(imageSlugs.has(slug),'missing image-review state for '+slug);
 assert.ok(images.items.some(x=>x.status==='rights_pending'),'must retain verified retailer candidates under rights review');
-assert.ok(images.items.filter(x=>x.status==='approved').length>=20,'must retain approved open-license catalog images');
+assert.ok(images.items.filter(x=>x.status==='approved').length>=24,'must retain approved open-license catalog images');
 assert.equal(images.items.filter(x=>x.status==='source_page_found').length,0,'every current catalog item must have a direct image candidate or approved image');
 assert.equal(images.items.filter(x=>x.status==='family_reference_only').length,0,'all current catalog items must have concrete image evidence');
 for(const slug of ['pork-lean','egg-size-2-10','fresh-tofu-skin','textured-vegetable-protein','ginkgo-nut','dried-squid-medium']){
@@ -137,6 +138,9 @@ for(const slug of ['makro-bird-chili-300g','makro-thai-eggplant-300g','makro-kaf
 }
 for(const slug of ['makro-old-galangal-1kg','makro-broccoli-10kg','makro-old-ginger-1kg']){
   assert.ok(openLicenseImagesBatch5.includes("'"+slug+"'"),'open-license batch 5 missing '+slug);
+}
+for(const slug of ['makro-fuji-apple-10','makro-longan-1kg','makro-guava-1kg','makro-mangosteen-basket-3kg']){
+  assert.ok(openLicenseImagesBatch6.includes("'"+slug+"'"),'open-license batch 6 missing '+slug);
 }
 
 const catalog=read('merchant/market-catalog.js');
