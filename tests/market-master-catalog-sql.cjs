@@ -36,9 +36,18 @@ const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'
  );checks++;
  const reviewedImages=JSON.parse(read('catalog/market-image-candidates-20261019.json'));
  eq((await db.query("select count(*)::int n from market_master_products where image_status='approved'")).rows[0].n,reviewedImages.items.filter(x=>x.status==='approved').length);
- const previewCount=(await db.query("select count(*)::int n from market_master_products where catalog_preview_image is not null")).rows[0].n;
- assert.ok(previewCount>=65,'Makro Merchant preview packshots should cover the reviewed direct-image plus strict-match baseline');checks++;
- eq((await db.query("select count(*)::int n from market_master_products where catalog_preview_image is not null and catalog_preview_image not like 'https://images.mango-prod.siammakro.cloud/%'")).rows[0].n,0);
+ const previewCount=(await db.query("select count(*)::int n from market_master_products where active and catalog_preview_image is not null")).rows[0].n;
+ eq(previewCount,128);
+ eq((await db.query("select count(*)::int n from market_master_products where active and catalog_preview_image is null")).rows[0].n,0);
+ eq((await db.query(`select count(*)::int n from market_master_products
+   where active
+     and catalog_preview_image is not null
+     and not (
+       catalog_preview_image like 'https://images.mango-prod.siammakro.cloud/%'
+       or catalog_preview_image like 'https://o2o-static.lotuss.com/%'
+       or catalog_preview_image like 'https://static.wixstatic.com/%'
+       or catalog_preview_image like 'https://www.soontree.co.th/wp-content/uploads/%'
+     )`)).rows[0].n,0);
  for(const review of reviewedImages.items){
    const actual=(await db.query('select image,image_source,image_status,image_rights_evidence from market_master_products where slug=$1',[review.slug])).rows[0];
    eq(actual.image_status,review.status==='approved'?'approved':'pending');

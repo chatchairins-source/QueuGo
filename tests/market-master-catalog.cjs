@@ -207,6 +207,11 @@ assert.ok(!catalog.includes('รูปอ้างอิงจาก'),'Merchant
 assert.ok(!catalog.includes('ดูสินค้าต้นทาง'),'Merchant Market catalog must not expose source links');
 assert.ok(!catalog.includes('กำลังหารูปอ้างอิง'),'Merchant Market catalog must not expose sourcing workflow copy');
 assert.ok(!catalog.includes('src="${E(r.image_source)}"'),'external source metadata must never render directly as catalog art');
+const completeImages=read('supabase/migrations/20261019214000_market_catalog_preview_complete.sql');
+assert.ok(completeImages.includes("v_missing <> 0"),'Market image completion migration must fail if any active item remains without a catalog image');
+for(const trustedHost of ['images.mango-prod.siammakro.cloud','o2o-static.lotuss.com','static.wixstatic.com','www.soontree.co.th/wp-content/uploads']){
+  assert.ok(completeImages.includes(trustedHost),'Market catalog image completion missing trusted host '+trustedHost);
+}
 
 const marketCss=read('merchant/market.css');
 const groceryCss=read('catalog/grocery.css');
