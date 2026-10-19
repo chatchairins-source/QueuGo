@@ -6,6 +6,8 @@
 <script src="../queuego-map-web.js?v=20261019-places1"></script>
 
 
+<link rel="stylesheet" href="../queuego-rider-settings.css?v=20261019-1">
+<script src="../queuego-rider-settings.js?v=20261019-1"></script>
 <style id="queuego-rider-ui">
 :root{
   --qg-red:#e6002d;--qg-red-dark:#b20b29;--qg-red-soft:#fff0f3;--qg-ink:#17171b;--qg-muted:#77747b;
@@ -2318,6 +2320,7 @@ function renderProfilePanel(){
         <h2>การรับงาน</h2>
         <div class="qg-setting-group">
           <button class="qg-setting" id="qg-status-setting"><span class="qg-setting-icon qg-green">${QTICON.loc}</span><div><b>สถานะรับงาน</b><small>จัดการสถานะที่หน้าแรก</small></div><em class="${S.online?'on':''}">${S.online?'ออนไลน์':'ปิด'}</em></button>
+          <button class="qg-setting" id="qg-destination-setting"><span class="qg-setting-icon">${QTICON.route}</span><div><b>ปลายทางของฉัน</b><small>ตั้งค่าความต้องการเส้นทางรับงาน</small></div><strong>›</strong></button>
           <button class="qg-setting" id="qg-laundry-mode" data-laundry-mutation="mode"><span class="qg-setting-icon">${QTICON.jobs}</span><div><b>รับงานฝากซัก</b><small>งานรับ–ส่งผ้าจากร้านที่เข้าร่วม</small></div><em>${S.laundryMode?'เปิด':'ปิด'}</em></button>
         </div>
       </section>
@@ -2345,6 +2348,13 @@ function renderProfilePanel(){
       </section>
     </section>`;
   document.getElementById('qg-status-setting').onclick=()=>switchTab('home');
+  document.getElementById('qg-destination-setting').onclick=()=>{
+    if(!window.QueueGoRiderSettings){toast('โหลดการตั้งค่าไม่ได้ กรุณาลองใหม่');return}
+    window.QueueGoRiderSettings.openDestination({
+      getActor:()=>S.user&&S.riderProfile?JSON.stringify([S.user.id,S.session?.sessionId,S.riderProfile.id]):null,
+      getAccessToken,rpc:sbRpc,map:window.QueueGoMapWeb,gps:S.pos,toast
+    });
+  };
   document.getElementById('qg-laundry-mode').onclick=()=>qgSetLaundryMode(!S.laundryMode);
   document.getElementById('qg-rider-support-link').onclick=()=>qgOpenTicketPanel();
   document.getElementById('qg-account-settings-link').onclick=qgOpenAccountSettings;
