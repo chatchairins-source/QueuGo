@@ -9,12 +9,25 @@
   function retire(){const c=client,ch=channel;client=null;channel=null;if(ch)c?.removeChannel(ch)}
   function stop(){version++;cancelSdk?.();retire();clearTimeout(retryTimer);clearTimeout(refreshTimer);retryTimer=refreshTimer=null;attachTask=null;owner=null;queued=false;status('PAUSED')}
   function retry(){if(retryTimer!==null||!desired())return;const epoch=version;retryTimer=setTimeout(()=>{retryTimer=null;if(epoch===version)sync()},15000)}
-  function scheduleRefresh(reason){if(!desired())return;if(refreshing){queued=true;return}if(refreshTimer!==null)return;const epoch=version,actor=owner;refreshTimer=setTimeout(()=>{refreshTimer=null;if(current(epoch,actor))refresh(reason)},600)}
+  function adminControlRelevant(reason){
+    if(!admin||location.hash!=='#admin-governance'||!String(reason||'').includes(':'))return true;
+    const table=String(reason).split(':',1)[0],section=sessionStorage.getItem('qt_admin_active_tab')||'qt-sec-overview';
+    const relevant={
+      'qt-sec-overview':['users','shop_profiles','technician_profiles','rider_profiles','promotions'],
+      'qt-sec-approval':['users','shop_profiles','technician_profiles','rider_profiles'],
+      'qt-sec-shops':['users','shop_profiles'],
+      'qt-sec-users':['users','shop_profiles','technician_profiles','rider_profiles'],
+      'qt-sec-delivery':['users','rider_profiles'],
+      'qt-sec-security':['users']
+    }[section];
+    return !relevant||relevant.includes(table);
+  }
+  function scheduleRefresh(reason){if(!desired()||!adminControlRelevant(reason))return;if(refreshing){queued=true;return}if(refreshTimer!==null)return;const epoch=version,actor=owner;refreshTimer=setTimeout(()=>{refreshTimer=null;if(current(epoch,actor))refresh(reason)},600)}
   async function refresh(reason){
     const epoch=version,actor=owner;if(!current(epoch,actor))return;
     if(QT_SYNC.busy||QT_DB_HYDRATING||QT_SYNC.pending>0||Date.now()-QT_SYNC.lastWrite<2500){scheduleRefresh(reason);return}
     refreshing=true;QT_SYNC.busy=true;QT_SYNC.dirty={};
-    try{const before=qtSyncSignature(),seenNotifications=!admin?new Set((QT_DB_CACHE.qt_notifications||[]).map(n=>n.id)):null;await qtHydrateDatabase({light:false});if(!current(epoch,actor))return;Object.keys(QT_SYNC.dirty).forEach(k=>QT_DB_CACHE[k]=QT_SYNC.dirty[k]);if(!admin){if(typeof qtProcessLiveNotifications==='function')qtProcessLiveNotifications();else if(typeof qtHandleNewNotification==='function')(QT_DB_CACHE.qt_notifications||[]).filter(n=>!n.read&&!seenNotifications.has(n.id)).forEach(n=>qtHandleNewNotification(n))}qtSyncRerender(before,qtSyncSignature());if(!admin&&typeof qtUpdateNotificationBadge==='function')qtUpdateNotificationBadge();window.dispatchEvent(new CustomEvent('qt:realtime-update',{detail:{reason}}))}
+    try{const before=qtSyncSignature(),seenNotifications=!admin?new Set((QT_DB_CACHE.qt_notifications||[]).map(n=>n.id)):null;const controlFast=admin&&location.hash==='#admin-governance'&&typeof qtHydrateAdminControlData==='function';if(controlFast)await qtHydrateAdminControlData();else await qtHydrateDatabase({light:false});if(!current(epoch,actor))return;Object.keys(QT_SYNC.dirty).forEach(k=>QT_DB_CACHE[k]=QT_SYNC.dirty[k]);if(!admin){if(typeof qtProcessLiveNotifications==='function')qtProcessLiveNotifications();else if(typeof qtHandleNewNotification==='function')(QT_DB_CACHE.qt_notifications||[]).filter(n=>!n.read&&!seenNotifications.has(n.id)).forEach(n=>qtHandleNewNotification(n))}qtSyncRerender(before,qtSyncSignature());if(!admin&&typeof qtUpdateNotificationBadge==='function')qtUpdateNotificationBadge();window.dispatchEvent(new CustomEvent('qt:realtime-update',{detail:{reason}}))}
     catch(e){if(current(epoch,actor)){console.warn('[QueueGo] live refresh failed');retry()}}
     finally{QT_SYNC.dirty={};QT_SYNC.busy=false;refreshing=false;if(current(epoch,actor)&&queued){queued=false;scheduleRefresh('queued')}}
   }
