@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 81,
+    "approved": 84,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 47
+    "rights_pending": 44
   },
   "items": [
     {
@@ -300,12 +300,12 @@
       "slug": "makro-chicken-leg-quarter-1kg",
       "name_th": "น่องติดสะโพกไก่",
       "category": "ไก่ / เป็ด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/775090870054429-5690dc6f-df9c-445c-99a8-48a2333a1499.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Raw_leg_chicken_quarters.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/d/dc/Raw_leg_chicken_quarters.jpg",
+      "status": "approved",
+      "rights_evidence": "Baoothersks · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-chicken-wing-stick-1kg",
@@ -674,12 +674,12 @@
       "slug": "makro-catfish-cut-1kg",
       "name_th": "ปลาดุกหั่นชิ้น",
       "category": "ปลา",
-      "source_page_url": "https://www.makro.pro/th/p/231291-7325028778179",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/f2b8198ff5674b40883fc6135fd70d80?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Catfish_Sliced.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Catfish_Sliced.jpg",
+      "status": "approved",
+      "rights_evidence": "Royalesignature · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-catfish-400-600g",
@@ -1334,12 +1334,12 @@
       "slug": "makro-soft-shell-crab-1kg",
       "name_th": "เอโร่ ปูนิ่มแช่แข็ง 7-9 ตัว/กก.",
       "category": "ปู",
-      "source_page_url": "https://www.makro.pro/th/p/174959-6974747115715",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/6974747115715-7f3da9d9-7add-43eb-bbdb-f5c88c8bc9a5.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Soft-shell_crab_on_ice.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/8/8d/Soft-shell_crab_on_ice.jpg",
+      "status": "approved",
+      "rights_evidence": "Vrlobo888 · Public domain · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license/public-domain image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-blue-crab-large-1kg",
