@@ -32,7 +32,7 @@ function boot(){
  localStorage:{setItem:()=>events.push('cache')},qgRenderMessageInbox:()=>{},qgWatchCompletedChat:()=>{},qgOfferDeclined:()=>false,toast:()=>events.push('error'),console:{error:()=>{}},window:{qtCheckNewJobs:()=>{}}});
  vm.runInContext(src.slice(src.indexOf('let riderTokenRefresh='),src.indexOf('function esc(v)')),ctx);
  vm.runInContext(src.slice(src.indexOf('let riderRefreshTask='),src.indexOf('function placeJobMarkers()')),ctx);
- vm.runInContext(src.slice(src.indexOf('async function toggleOnline(){'),src.indexOf('let riderLocationWrite=')),ctx);
+ vm.runInContext(src.slice(src.indexOf('let riderAvailabilityBusy='),src.indexOf('let riderLocationWrite=')),ctx);
  return {ctx,events,calls,run:s=>vm.runInContext(s,ctx),setSession:s=>{stored=s;ctx.S.session=s},session:()=>stored};
 }
 (async()=>{

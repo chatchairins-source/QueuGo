@@ -1,6 +1,6 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#e6002d">
 <title>QueueGo Rider</title>
-<meta name="queuego-web-build" content="rider-20261018-route-arrow3">
+<meta name="queuego-web-build" content="rider-20261019-ready1">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
 <script src="../queuego-map-web.js?v=20261019-places1"></script>
@@ -61,6 +61,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-support-overlay{position:fixed;z-index:23000;inset:0;background:#17131988;display:grid;place-items:center;padding:14px}.qg-support-dialog{width:min(100%,620px);max-height:90dvh;overflow:auto;background:#fff;border-radius:24px;padding:16px}.qg-support-dialog header{display:flex;justify-content:space-between;align-items:center}.qg-support-dialog header button{width:38px;height:38px;border:0;border-radius:50%;background:#fff0f3;color:var(--qg-red)}.qg-support-dialog form{display:grid;gap:9px}.qg-support-dialog label{font-size:10px;font-weight:850}.qg-support-dialog select,.qg-support-dialog textarea,.qg-support-dialog input{width:100%;margin-top:4px;border:1px solid #e6dde0;border-radius:13px;padding:10px;background:#fff}.qg-support-dialog form>button{height:48px;border:0;border-radius:14px;background:var(--qg-red);color:#fff;font-weight:900}.qg-report-evidence{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px;margin:10px 0}.qg-report-evidence button{min-height:38px;border:0;border-radius:12px;background:#f2eff0;color:#211e20;padding:0 11px;font-weight:850}.qg-report-evidence small{min-width:0;color:#8a8387;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qg-report-evidence small.has-file{color:#168b58}
 .qg-message{position:fixed;z-index:99999;left:14px;right:14px;top:calc(12px + var(--safeT));max-width:520px;margin:auto;padding:11px;border-radius:16px;background:#171519;color:#fff;display:none;align-items:center;gap:10px;box-shadow:0 12px 30px #0004}.qg-message.show{display:flex}.qg-message i{color:#ff4766}.qg-message b{display:block;font-size:11px}.qg-message small{display:block;color:#d7d1d4;font-size:8px}.qg-bundle-card,.qg-mp,.qg-laundry-card,.qg-laundry-active,.qg-laundry-invite{margin-top:9px;padding:12px;border:1px solid #eee6e8;border-radius:17px;background:#fff}.qg-bundle-head,.qg-mp-head,.qg-mp-top,.qg-mp-total{display:flex;justify-content:space-between;gap:8px}.qg-bundle-head small,.qg-mp-head small,.qg-mp-row small{color:#8a8387;font-size:8px}.qg-bundle-order,.qg-bundle-offer,.qg-mp-row{padding:9px 0;border-bottom:1px solid #f0eaec}.qg-bundle-order:last-child,.qg-bundle-offer:last-child,.qg-mp-row:last-child{border-bottom:0}.qg-bundle-card button,.qg-mp-btn{border:0;border-radius:12px;background:#fff0f3;color:var(--qg-red);padding:8px 10px;font-weight:900}.qg-mp-btn{width:100%;margin-top:7px}.qg-mp-btn:disabled{opacity:.5}
 @media(max-width:800px){.qg-auth{grid-template-columns:1fr}.qg-auth-brand{display:none}.qg-auth-card{margin:calc(24px + var(--safeT)) auto}.rider-grid{grid-template-columns:1fr}.qg-register-card{border-radius:22px}}@media(min-width:760px){.qg-home-dock{left:50%;right:auto;width:min(660px,calc(100% - 28px));transform:translateX(-50%)}.qg-topbar{left:50%;right:auto;width:min(720px,calc(100% - 28px));transform:translateX(-50%)}}
+
+/* QueueGo calm Home: one acknowledged availability control. */
+.qg-ready-card{display:flex;align-items:center;gap:14px;padding:22px 20px;background:#fff;border-radius:24px;box-shadow:0 6px 28px #211e2010}
+.qg-ready-card>i{width:10px;height:10px;flex:none;border-radius:50%;background:#a2a2a7}.qg-ready-card.on>i{background:#12a651}
+.qg-ready-card>div{flex:1;min-width:0}.qg-ready-card h2{font-size:20px;line-height:1.4;margin:0;font-weight:700}.qg-ready-card p{font-size:13px;line-height:1.5;margin:4px 0 0;color:#77777f}
+.qg-ready-card .qg-online-switch{width:54px;height:34px;flex:none;min-height:34px}.qg-ready-card .qg-online-switch:after{width:28px;height:28px}.qg-ready-card.on .qg-online-switch{background:var(--qg-red)}.qg-ready-card.on .qg-online-switch:after{transform:translateX(20px)}.qg-online-switch:disabled{opacity:.5}.qg-online-switch:focus-visible{outline:3px solid #e6002d66;outline-offset:4px}
+.qg-stage:has(.qg-ready-card) .qg-topbar{display:none}.qg-stage:has(.qg-ready-card) #overview{display:none}
+.qg-setting-section>h2{font-size:14px;margin:20px 8px 10px;color:#6f6f78}.qg-setting-group{border:0;border-radius:20px}.qg-setting{min-height:64px;padding:14px 16px;gap:12px}.qg-setting b{font-size:15px;font-weight:600}.qg-setting small{font-size:12px;line-height:1.5}.qg-setting-icon{background:transparent;width:26px;height:26px}.qg-setting em{font-size:12px}.qg-profile-card{border:0;padding:18px;border-radius:22px}.qg-profile-card p{font-size:13px}.qg-profile-card span{font-size:11px}
+@media(max-width:360px){.qg-ready-card{padding:18px 14px;gap:10px}.qg-ready-card h2{font-size:17px}.qg-ready-card p{font-size:12px}}
 </style>
 
 <script src="../queuego-order-number.js"></script>
@@ -746,9 +755,8 @@ async function doLogout(){
 }
 
 /* ---------- MAIN STAGE ---------- */
-// Temporary owner-requested road test: keep FOLLOW/3D active while idle so camera
-// smoothness can be evaluated before restoring job-gated perspective behavior.
-const RIDER_CAMERA_SMOOTHNESS_TEST_MODE=true;
+// Idle Home uses normal map mode; existing job context owns navigation camera.
+const RIDER_CAMERA_SMOOTHNESS_TEST_MODE=false;
 async function qgRequestRiderRoute(from,to,signal){
   if(!validRiderCoordinate(from?.lat,from?.lng)||!validRiderCoordinate(to?.lat,to?.lng))throw Error('invalid QueueGo route coordinates');
   const service=window.QueueGoMapService;
@@ -1076,29 +1084,26 @@ function overviewRoute(){
 }
 
 /* ---------- online toggle ---------- */
+let riderAvailabilityBusy=false,riderAvailabilityRevision=0;
 async function toggleOnline(){
-  const next = !S.online;
-  S.online = next;
-  updateStatusUI();
+  if(riderAvailabilityBusy||!S.user||!S.riderProfile)return;
+  // Preserve current work; the server owns whether this transition is allowed.
+  if(S.activeOrder||S.laundryJob){toast('เปลี่ยนสถานะรับงานได้หลังจบงานปัจจุบัน');return;}
+  const next=!S.online,userId=S.user.id,profileId=S.riderProfile.id,session=S.session?.sessionId;
+  const current=()=>S.user?.id===userId&&S.riderProfile?.id===profileId&&S.session?.sessionId===session;
+  riderAvailabilityRevision++;riderAvailabilityBusy=true;updateStatusUI();
   try{
-    const token = await getAccessToken();
-    const meta = Object.assign({}, (S.riderProfile&&S.riderProfile.metadata)||{}, {online:next,available:next});
-    const body = {user_id:S.user.id, rider_name:S.user.name||'ไรเดอร์', phone:S.user.phone||null,
-      vehicle_type:(S.riderProfile&&S.riderProfile.vehicle_type)||null, vehicle_plate:(S.riderProfile&&S.riderProfile.vehicle_plate)||null,
-      latitude:S.pos?S.pos.lat:null, longitude:S.pos?S.pos.lng:null, metadata:meta};
-    let rows;
-    if(S.riderProfile && S.riderProfile.user_id){
-      rows = await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(S.user.id), {method:'PATCH', token, body});
-    }else{
-      rows = await sbTable('rider_profiles', {method:'POST', token, body:{...body,status:'active'}});
-    }
-    S.riderProfile = Array.isArray(rows)?rows[0]:rows;
-    toast(next ? '🟢 เปิดรับงานแล้ว' : '⚪ ปิดรับงานแล้ว');
-    refreshData();
-  }catch(e){
-    console.error(e); S.online = !next; updateStatusUI();
-    toast('เปลี่ยนสถานะไม่สำเร็จ: '+e.message);
-  }
+    const token=await getAccessToken();if(!current())return;
+    const meta={...S.riderProfile.metadata,online:next,available:next};
+    const rows=await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(userId),{method:'PATCH',token,body:{metadata:meta}});
+    if(!current())return;
+    const row=Array.isArray(rows)?rows[0]:rows;
+    if(!row?.id||typeof row.metadata?.online!=='boolean')throw Error('ยังยืนยันสถานะรับงานไม่ได้ กรุณาเชื่อมต่ออีกครั้ง');
+    S.riderProfile=row;S.online=row.metadata.online;
+    toast(S.online?'เปิดรับงานแล้ว':'ปิดรับงานแล้ว');
+    await refreshData();
+  }catch(e){if(current())toast('เปลี่ยนสถานะไม่สำเร็จ: '+e.message);}
+  finally{riderAvailabilityBusy=false;if(current()){updateStatusUI();renderHomeDock();}}
 }
 let riderLocationWrite=null,riderLocationQueued=false;
 function pushLocation(){
@@ -1575,9 +1580,24 @@ async function qgPollRiderOfferNow(){
   }catch(e){console.warn('Rider offer poll failed');}
   finally{riderOfferPollBusy=false;}
 }
+async function qgSyncRiderAvailability(){
+  if(riderAvailabilityBusy||!S.user||!S.riderProfile||document.hidden||!navigator.onLine)return;
+  const userId=S.user.id,sessionId=S.session?.sessionId,profileId=S.riderProfile.id,revision=++riderAvailabilityRevision;
+  try{
+    const token=await getAccessToken();
+    const rows=await sbTable('rider_profiles?select=*&user_id=eq.'+encodeURIComponent(userId)+'&limit=1',{token});
+    if(revision!==riderAvailabilityRevision||riderAvailabilityBusy||S.user?.id!==userId||S.session?.sessionId!==sessionId||S.riderProfile?.id!==profileId)return;
+    const row=Array.isArray(rows)?rows[0]:null;
+    if(row?.id===profileId&&typeof row.metadata?.online==='boolean'){
+      S.riderProfile=row;S.online=row.metadata.online;
+      if(!S.online)S.openJobs=[];
+      updateStatusUI();if(S.activeTab==='home')renderHomeDock();
+    }
+  }catch(_){/* Retain last acknowledged state until reconnect; never invent OFF/ON. */}
+}
 function startPolling(){
   stopPolling();
-  S.pollTimer=setInterval(()=>refreshData(true),POLL_MS);
+  S.pollTimer=setInterval(async()=>{await qgSyncRiderAvailability();refreshData(true)},POLL_MS);
   riderOfferPollTimer=setInterval(qgPollRiderOfferNow,OFFER_POLL_MS);
   setTimeout(qgPollRiderOfferNow,0);
 }
@@ -1591,9 +1611,9 @@ function stopPolling(){
 /* Runtime connectivity resilience */
 (function(){
   const bar=document.createElement('div');bar.id='qg-network-banner';bar.textContent='ออฟไลน์ — ระบบจะเชื่อมต่อใหม่อัตโนมัติ';document.body.appendChild(bar);
-  function sync(){bar.classList.toggle('show',!navigator.onLine);if(navigator.onLine&&!document.hidden&&S.user){checkActiveSession();refreshData();refreshRiderChat();}}
+  function sync(){bar.classList.toggle('show',!navigator.onLine);if(navigator.onLine&&!document.hidden&&S.user){checkActiveSession();qgSyncRiderAvailability().then(()=>refreshData());refreshRiderChat();}}
   addEventListener('online',sync);addEventListener('offline',sync);sync();
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine&&S.user){checkActiveSession();refreshData();refreshRiderChat();}});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine&&S.user){checkActiveSession();qgSyncRiderAvailability().then(()=>refreshData());refreshRiderChat();}});
 })();
 
 
@@ -1658,8 +1678,8 @@ function qgNavHTML(){
 }
 function renderStage(){
   stopPolling();disposeRiderMap();
-  document.getElementById('app').innerHTML=`<div class="stage qg-stage"><div id="map" class="qg-map"></div><header class="qg-topbar"><div class="qg-speed-pill" aria-label="ความเร็วปัจจุบัน"><b id="qg-speed-value">—</b><span>กม./ชม.</span></div><div class="qg-online-pill" id="status-pill"><i></i><span id="status-text">ออฟไลน์</span><button class="qg-online-switch" id="status-switch" aria-label="เปลี่ยนสถานะรับงาน"></button></div></header><div class="qg-route-badge" id="route-badge"><div class="qg-route-icon">${QTICON.loc}</div><div><strong id="route-text">กำลังคำนวณเส้นทาง</strong><small>อัปเดตตามตำแหน่งของคุณ</small></div></div><div class="qg-map-tools"><button class="qg-map-button" id="recenter" aria-label="กลับไปยังตำแหน่งปัจจุบัน">${QTICON.loc}</button><button class="qg-map-button" id="overview" aria-label="ดูเส้นทางทั้งหมด">${QTICON.route}</button></div><main class="qg-home-dock" id="home-dock"></main><section class="qg-panel" id="panel-earn"></section><section class="qg-panel" id="panel-profile"></section>${qgNavHTML()}</div><div class="qg-message" id="qg-message"><i>●</i><div><b>ข้อความใหม่</b><small id="qg-message-text"></small></div></div>`;
-  document.getElementById('status-switch').onclick=toggleOnline;document.getElementById('recenter').onclick=recenterMap;document.getElementById('overview').onclick=overviewRoute;document.querySelectorAll('.qg-nav-item').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));initMap();updateStatusUI();updateRiderSpeedUI();renderHomeDock();startGeolocation();refreshData();startPolling();qgStartMessageWatch();qgRiderVoiceActivate();
+  document.getElementById('app').innerHTML=`<div class="stage qg-stage"><div id="map" class="qg-map"></div><header class="qg-topbar"><div class="qg-speed-pill" aria-label="ความเร็วปัจจุบัน"><b id="qg-speed-value">—</b><span>กม./ชม.</span></div></header><div class="qg-route-badge" id="route-badge"><div class="qg-route-icon">${QTICON.loc}</div><div><strong id="route-text">กำลังคำนวณเส้นทาง</strong><small>อัปเดตตามตำแหน่งของคุณ</small></div></div><div class="qg-map-tools"><button class="qg-map-button" id="recenter" aria-label="กลับไปยังตำแหน่งปัจจุบัน">${QTICON.loc}</button><button class="qg-map-button" id="overview" aria-label="ดูเส้นทางทั้งหมด">${QTICON.route}</button></div><main class="qg-home-dock" id="home-dock"></main><section class="qg-panel" id="panel-earn"></section><section class="qg-panel" id="panel-profile"></section>${qgNavHTML()}</div><div class="qg-message" id="qg-message"><i>●</i><div><b>ข้อความใหม่</b><small id="qg-message-text"></small></div></div>`;
+  document.getElementById('recenter').onclick=recenterMap;document.getElementById('overview').onclick=overviewRoute;document.querySelectorAll('.qg-nav-item').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));initMap();updateStatusUI();updateRiderSpeedUI();renderHomeDock();startGeolocation();refreshData();startPolling();qgStartMessageWatch();qgRiderVoiceActivate();
 }
 function switchTab(tab){
   document.getElementById('qg-rider-inbox')?.remove();S.activeTab=tab;document.querySelectorAll('.qg-nav-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelectorAll('.qg-panel').forEach(p=>p.classList.remove('show'));
@@ -1669,10 +1689,10 @@ function switchTab(tab){
   if(home){renderHomeDock();if(S.map)requestAnimationFrame(()=>{try{S.map.resize?.()}catch(_){}})}
 }
 function updateStatusUI(){
-  const pill=document.getElementById('status-pill'),label=document.getElementById('status-text');
-  if(!pill)return;
-  pill.classList.toggle('on',S.online);
-  if(label)label.textContent=S.online?'ออนไลน์':'ออฟไลน์';
+  const button=document.getElementById('status-switch');
+  if(button){button.setAttribute('aria-checked',String(S.online));button.disabled=riderAvailabilityBusy;}
+  const card=document.getElementById('status-pill');
+  if(card)card.classList.toggle('on',S.online);
 }
 function qgRiderSpeedKph(fix){
   const speed=qgFiniteOrNull(fix?.speed);
@@ -1791,8 +1811,10 @@ function renderHomeDock(){
  if(!S.activeOrder)riderRouteOverviewActive=false;
  if(S.laundryJob&&!S.activeOrder){qgSetHomeDockHTML(dock,`<section class="qg-home-card">${qgLaundryActiveHTML()}</section>`,true);placeJobMarkers();return}
  if(S.activeOrder){qgSetHomeDockHTML(dock,jobCardHTML(S.activeOrder)+qgRouteBundleHTML(),true);bindJobCardEvents(S.activeOrder);qgBindRouteBundleUI();if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);return}
- if(!S.online){qgSetHomeDockHTML(dock,`<section class="qg-home-card"><div class="qg-home-title"><span class="qg-home-icon">${QTICON.loc}</span><div><h2>พร้อมรับงานเมื่อคุณพร้อม</h2><p>เปิดรับงานแล้วระบบจะค้นหางานใกล้ตำแหน่งปัจจุบัน</p></div></div><button class="qg-btn qg-btn-primary" id="go-online">เปิดรับงาน</button></section>`,true);document.getElementById('go-online').onclick=toggleOnline;return}
- if(!S.openJobs.length){const today=new Date().toDateString(),done=(S.history||[]).filter(o=>o.status==='completed'&&new Date(o.updated_at||o.created_at||0).toDateString()===today),income=done.reduce((sum,o)=>sum+Number(riderEarning(o)||0),0);qgSetHomeDockHTML(dock,`<section class="qg-home-card"><div class="qg-home-title"><span class="qg-home-icon">${QTICON.home}</span><div><h2>พร้อมรับงานแล้ว</h2><p>${S.pos?'กำลังค้นหางานใกล้คุณ':'กำลังรอตำแหน่ง GPS'}</p></div></div><div class="qg-home-stats"><div><span>วันนี้</span><b id="qg-wait-jobs">${done.length} งาน</b></div><div><span>รายได้</span><b id="qg-wait-income">฿${income.toLocaleString('th-TH')}</b></div><div><span>ออนไลน์</span><b id="qg-wait-hours">— ชม.</b></div></div><button class="qg-btn qg-btn-secondary" id="go-offline">ปิดรับงาน</button><div class="qg-home-tip">อยู่ใกล้ย่านร้านอาหาร ตลาด และร้านค้าที่เข้าร่วม จะช่วยให้ได้รับงานเร็วขึ้น</div></section>${qgLaundryPoolHTML()}`,true);document.getElementById('go-offline').onclick=toggleOnline;qgRefreshWaitingSummary();return}
+ if(!S.online||!S.openJobs.length){
+   qgSetHomeDockHTML(dock,`<section class="qg-ready-card ${S.online?'on':''}" id="status-pill"><i aria-hidden="true"></i><div><h2>${S.online?'พร้อมรับงานแล้ว':'ยังไม่พร้อมรับงาน'}</h2><p>${S.online?'คุณจะได้รับงานในพื้นที่ใกล้เคียง':'เปิดเพื่อเริ่มรับงาน'}</p></div><button type="button" role="switch" aria-label="พร้อมรับงาน" aria-checked="${S.online}" class="qg-online-switch" id="status-switch"></button></section>`,false);
+   document.getElementById('status-switch').onclick=toggleOnline;updateStatusUI();return;
+ }
  const shown=S.openJobs.slice(0,1);qgSetHomeDockHTML(dock,shown.map(x=>jobCardHTML(x.order,x)).join('')+qgLaundryPoolHTML(),false);shown.forEach(x=>bindJobCardEvents(x.order));
 }
 function qgRouteTarget(o){
@@ -2279,7 +2301,7 @@ function renderProfilePanel(){
       <section class="qg-setting-section">
         <h2>การรับงาน</h2>
         <div class="qg-setting-group">
-          <button class="qg-setting" id="qg-status-setting"><span class="qg-setting-icon qg-green">${QTICON.loc}</span><div><b>สถานะรับงาน</b><small>เปิดหรือปิดการรับงานจัดส่ง</small></div><em class="${S.online?'on':''}">${S.online?'ออนไลน์':'ปิด'}</em></button>
+          <button class="qg-setting" id="qg-status-setting"><span class="qg-setting-icon qg-green">${QTICON.loc}</span><div><b>สถานะรับงาน</b><small>จัดการสถานะที่หน้าแรก</small></div><em class="${S.online?'on':''}">${S.online?'ออนไลน์':'ปิด'}</em></button>
           <button class="qg-setting" id="qg-laundry-mode" data-laundry-mutation="mode"><span class="qg-setting-icon">${QTICON.jobs}</span><div><b>รับงานฝากซัก</b><small>งานรับ–ส่งผ้าจากร้านที่เข้าร่วม</small></div><em>${S.laundryMode?'เปิด':'ปิด'}</em></button>
         </div>
       </section>
@@ -2306,7 +2328,7 @@ function renderProfilePanel(){
         </div>
       </section>
     </section>`;
-  document.getElementById('qg-status-setting').onclick=toggleOnline;
+  document.getElementById('qg-status-setting').onclick=()=>switchTab('home');
   document.getElementById('qg-laundry-mode').onclick=()=>qgSetLaundryMode(!S.laundryMode);
   document.getElementById('qg-rider-support-link').onclick=()=>qgOpenTicketPanel();
   document.getElementById('qg-account-settings-link').onclick=qgOpenAccountSettings;

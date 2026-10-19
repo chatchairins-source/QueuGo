@@ -103,10 +103,10 @@ ok(riderLoadingStart>=0&&riderLoginStart>riderLoadingStart&&
    !riderLoadingSource.includes('CircularProgressIndicator'),
    'Rider session restoration must stay interaction-blocking but visually silent without a center spinner');
 ok(riderHome.includes('private fun RiderBlueprintSpeedPill(speedKph: Int?)')&&
-   riderHome.includes('speedKph = reliableSpeedKph')&&
+   riderHome.includes('RiderBlueprintSpeedPill(reliableSpeedKph)')&&
    riderHome.includes('Text("กม./ชม."')&&
    !riderHome.includes('private fun RiderBlueprintBrandPill()'),
-   'Rider Native home topbar must show live speed beside online status and remove QueueGo branding per owner road-test direction');
+   'Rider speed is contextual to navigation; availability belongs only in the Ready card');
 ok(riderHome.includes('shop = offerShopDisplay')&&
    riderHome.includes('logoUrl = if (job.isExpress) null else shop?.shopLogo')&&
    riderHome.includes('job.isPassenger -> "รับผู้โดยสาร"')&&
