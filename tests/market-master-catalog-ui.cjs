@@ -69,9 +69,14 @@ const {JSDOM}=require('jsdom');
   assert.match(w.document.body.textContent,/เพิ่มสินค้าจากแคตตาล็อก/);
   assert.match(w.document.body.textContent,/ปลานิล/);
   assert.doesNotMatch(w.document.body.textContent,/อ้างอิง|Makro PRO|ดูสินค้าต้นทาง|CC BY-SA/);
-  assert.ok(w.document.querySelector('.market-catalog-chip'),'category chips must render');
-  assert.equal(w.document.querySelectorAll('.market-catalog-card').length,2);
-  const catalogImages=[...w.document.querySelectorAll('img.market-catalog-image')];
+  assert.ok(w.document.querySelector('.qgg.qgg-merchant.qgg-market-catalog'),'Market catalog must reuse Grocery merchant catalog shell');
+  assert.ok(w.document.querySelector('.qgm-search'),'Market catalog must reuse Grocery search control');
+  assert.ok(w.document.querySelector('.qgg-primary-actions'),'Market catalog must reuse Grocery top actions');
+  assert.ok(w.document.querySelector('#market-catalog-category'),'Market catalog must reuse Grocery category select pattern');
+  assert.equal(w.document.querySelectorAll('.market-catalog-card.qgg-row.qgg-source-row').length,2);
+  assert.equal(w.document.querySelectorAll('.market-catalog-card .qgg-price-controls').length,2,'every Market row must expose Grocery-style price controls');
+  assert.equal(w.document.querySelectorAll('.market-catalog-card .qgg-gp-note').length,2,'every Market row must expose Grocery-style GP/delivery note');
+  const catalogImages=[...w.document.querySelectorAll('.market-catalog-card>img')];
   assert.equal(catalogImages.length,1,'Merchant catalog must show only the clean catalog preview image');
   assert.equal(catalogImages[0].alt,'ปลานิล');
   assert.equal(w.document.querySelectorAll('.market-catalog-credit a').length,0,'source links must stay out of Merchant catalog UI');
@@ -142,8 +147,8 @@ const {JSDOM}=require('jsdom');
   const addCalls=calls.filter(x=>x.pathname==='rpc/qg_market_catalog_add');
   assert.equal(addCalls.length,1,'single submit must issue exactly one add mutation');
   console.log(JSON.stringify({
-    checks:45,
+    checks:50,
     failures:0,
-    scope:'isolated Merchant Market catalog DOM browse/filter/pending+approved image attribution/1-2-3kg/add/reload/idempotent UI; no Production writes'
+    scope:'isolated Merchant Market catalog Grocery-parity shell/search/category/row/price/GP plus weight/add/reload/idempotent UI; no Production writes'
   }));
 })().catch(err=>{console.error(err);process.exit(1)});
