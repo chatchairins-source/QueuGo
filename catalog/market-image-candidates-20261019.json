@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 11,
+    "approved": 14,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 117
+    "rights_pending": 114
   },
   "items": [
     {
@@ -69,12 +69,12 @@
       "slug": "spring-onion",
       "name_th": "ต้นหอม",
       "category": "ผักสด",
-      "source_page_url": "https://www.lotuss.com/th/product/lotuss-fresh-spring-onions-1-pack-21701784",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/21701784.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Bunches_of_spring_onions_1.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Bunches_of_spring_onions_1.jpg",
+      "status": "approved",
+      "rights_evidence": "Halima Waziri · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "holy-basil-leaves",
@@ -91,12 +91,12 @@
       "slug": "water-spinach",
       "name_th": "ผักบุ้งจีน",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/p/p6eqk2y-7078709592259",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7078709592259-f65f44a5-dda8-4804-8abf-41f30b4ad668.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Ipomoea_aquatica.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/4/49/Ipomoea_aquatica.jpg",
+      "status": "approved",
+      "rights_evidence": "Eric in SF · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "large-cavendish-banana",
@@ -586,12 +586,12 @@
       "slug": "makro-cucumber-500g",
       "name_th": "แตงกวา",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Perfect%20Pair%20Thai%20Beef%20%26%20Veggies%20%2825%20-%2030%20Sep%202026%29/45215",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/6976617611459-a3469303-2a6a-49a9-b636-7cc455c9c4ed.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Small_cucumber_-_vegetable.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/0/0d/Small_cucumber_-_vegetable.jpg",
+      "status": "approved",
+      "rights_evidence": "Tshrinivasan · CC BY-SA 3.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-kale-500g",
