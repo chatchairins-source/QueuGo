@@ -21,7 +21,7 @@ function verifySourceItem(item,label){
   assert.ok(String(item.name_th||'').trim().length>=2,label+' name');
   assert.ok(allowed.has(item.category),'unsupported category '+item.category);
   assert.match(String(item.source_url||''),/^https:\/\//,label+' source URL');
-  assert.ok(['Makro PRO',"Lotus's",'กรมการค้าภายใน กระทรวงพาณิชย์'].includes(item.source_name),label+' source name '+item.source_name);
+  assert.ok(['Makro PRO',"Lotus's",'กรมการค้าภายใน กระทรวงพาณิชย์','ตลาดไท'].includes(item.source_name),label+' source name '+item.source_name);
   assert.match(String(item.retrieved_on||''),/^\d{4}-\d{2}-\d{2}$/,label+' retrieved date');
   for(const forbidden of forbiddenFacts){
     assert.equal(Object.prototype.hasOwnProperty.call(item,forbidden),false,label+' must not import/invent '+forbidden);
@@ -46,12 +46,12 @@ assert.ok(retail.items.some(x=>/เป็ด/.test(x.name_th)),'fresh expansion 
 assert.ok(retail.items.some(x=>/ไก่/.test(x.name_th)),'fresh expansion must include chicken');
 
 const phase2=readJson('catalog/market-seafood-fruit-veg-sources-20261019.json');
-assert.ok(Array.isArray(phase2.items)&&phase2.items.length>=50,'phase 2 market expansion must be substantial');
+assert.ok(Array.isArray(phase2.items)&&phase2.items.length>=60,'phase 2 market expansion must be substantial');
 for(const item of phase2.items) verifySourceItem(item,'phase 2 source fact');
 for(const required of ['ปลา','กุ้ง','ปู','หอย','ปลาหมึก','ผลไม้','ผักสด']){
   assert.ok(phase2.items.some(x=>x.category===required),'phase 2 must cover '+required);
 }
-for(const requiredName of ['ปลานิล','ปลาทับทิม','ปลาดุก','ปลาช่อน','ปลากะพง','ปลาอินทรี','ปลาทู','กุ้ง','ปู','หอย','ปลาหมึก','มะม่วง','แตงโม','ส้ม','แอปเปิล','ฝรั่ง','มะละกอ','สับปะรด','องุ่น','ลิ้นจี่','เงาะ','ทุเรียน','มังคุด','ผักชี','ขึ้นฉ่าย','ดอกกะหล่ำ','บร็อกโคลี','ถั่วฝักยาว','ฟักทอง','ขิง','ข่า','ตะไคร้','ใบมะกรูด','พริก','มะเขือ','มะนาว']){
+for(const requiredName of ['ปลานิล','ปลาทับทิม','ปลาดุก','ปลาช่อน','ปลากะพง','ปลาอินทรี','ปลาทู','กุ้ง','ปู','หอย','ปลาหมึก','มะม่วง','แตงโม','ส้ม','แอปเปิล','ฝรั่ง','มะละกอ','สับปะรด','องุ่น','ลิ้นจี่','เงาะ','ทุเรียน','มังคุด','ผักชี','ขึ้นฉ่าย','ดอกกะหล่ำ','บร็อกโคลี','ถั่วฝักยาว','ฟักทอง','ขิง','ข่า','ตะไคร้','ใบมะกรูด','พริก','มะเขือ','มะนาว','ปลาเนื้ออ่อน']){
   assert.ok(phase2.items.some(x=>x.name_th.includes(requiredName)),'phase 2 missing common-market item '+requiredName);
 }
 
@@ -59,6 +59,7 @@ const migration=read('supabase/migrations/20261019114500_market_master_catalog.s
 const expansion=read('supabase/migrations/20261019122500_market_fresh_makro_lotus_expansion.sql');
 const imageReview=read('supabase/migrations/20261019132000_market_image_source_review.sql');
 const phase2Migration=read('supabase/migrations/20261019140000_market_seafood_fruit_veg_expansion.sql');
+const phase2GapFill=read('supabase/migrations/20261019143000_market_phase2_gap_fill.sql');
 assert.ok(expansion.includes("'เห็ด'"),'fresh expansion must add mushroom category');
 assert.ok(expansion.includes('Makro PRO')&&expansion.includes("Lotus''s"),'fresh expansion must retain both public sources');
 for(const cat of ["'กุ้ง'","'ปู'","'หอย'","'ปลาหมึก'"]){
@@ -66,6 +67,8 @@ for(const cat of ["'กุ้ง'","'ปู'","'หอย'","'ปลาหมึ
 }
 assert.ok(phase2Migration.includes("image,null,'pending'")||phase2Migration.includes("image,image_status,image_source"),'phase 2 images must remain pending review');
 assert.ok(phase2Migration.includes('Retailer pages/images remain review references only'),'phase 2 must document retailer-image safety');
+assert.ok(phase2GapFill.includes('talaadthai-climbing-perch-small'),'phase 2 gap fill must retain sourced climbing-perch identity');
+assert.ok(phase2GapFill.includes('makro-soft-shell-crab-1kg'),'phase 2 gap fill must retain sourced soft-shell crab');
 assert.ok(imageReview.includes('has_image_reference'),'catalog RPC must expose image-review state');
 assert.ok(imageReview.includes("image_status='pending'"),'review candidates must stay pending');
 for(const needle of [
