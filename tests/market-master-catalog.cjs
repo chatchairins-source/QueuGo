@@ -200,13 +200,13 @@ for(const needle of ['qg_market_catalog_page','qg_market_catalog_add','qgMarketR
 assert.ok(catalog.includes('qgMarketAttachWeightPresets(form)'),'catalog must reuse shared weight presets');
 assert.ok(catalog.includes('p_request_id:crypto.randomUUID()'),'Merchant add flow must use a durable request ID');
 assert.ok(catalog.includes("pendingKey(state.shop)"),'Merchant add flow must retain pending request recovery');
-assert.ok(catalog.includes('รูปอ้างอิงจาก'),'Merchant must identify retailer reference-image status');
-assert.ok(catalog.includes('กำลังหารูปอ้างอิง Makro ที่ตรงกับสินค้า'),'Merchant must show missing Makro-image review status');
 assert.ok(catalog.includes('qgMarketCatalogSetCategory')&&catalog.includes('market-catalog-chip'),'Merchant must expose category chips without duplicate filter state');
-assert.ok(catalog.includes("const preview=String(r.catalog_preview_image||'').trim(),approved=String(r.image||'').trim(),src=preview||approved"),'Merchant Market catalog must prefer Makro preview packshots over generic approved art');
-assert.ok(catalog.includes('referrerpolicy="no-referrer"'),'remote retailer preview images must not leak the QueueGo page referrer');
-assert.ok(catalog.includes('รูปอ้างอิงจาก'),'Market catalog must label retailer art as Merchant reference imagery');
-assert.ok(!catalog.includes('src="${E(r.image_source)}"'),'pending external image_source must never render as approved art');
+assert.ok(catalog.includes("const src=String(r.catalog_preview_image||'').trim()"),'Merchant Market catalog must render the dedicated clean catalog image only');
+assert.ok(catalog.includes('referrerpolicy="no-referrer"'),'remote catalog images must not leak the QueueGo page referrer');
+assert.ok(!catalog.includes('รูปอ้างอิงจาก'),'Merchant Market catalog must not expose source-reference copy');
+assert.ok(!catalog.includes('ดูสินค้าต้นทาง'),'Merchant Market catalog must not expose source links');
+assert.ok(!catalog.includes('กำลังหารูปอ้างอิง'),'Merchant Market catalog must not expose sourcing workflow copy');
+assert.ok(!catalog.includes('src="${E(r.image_source)}"'),'external source metadata must never render directly as catalog art');
 
 const marketCss=read('merchant/market.css');
 for(const needle of ['market-catalog-card','market-catalog-image','market-catalog-chips','object-fit:contain','grid-template-columns:126px minmax(0,1fr)','width:116px;height:146px']){
