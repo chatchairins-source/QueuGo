@@ -201,9 +201,10 @@ assert.ok(catalog.includes('qgMarketAttachWeightPresets(form)'),'catalog must re
 assert.ok(catalog.includes('p_request_id:crypto.randomUUID()'),'Merchant add flow must use a durable request ID');
 assert.ok(catalog.includes("pendingKey(state.shop)"),'Merchant add flow must retain pending request recovery');
 assert.ok(catalog.includes('รูปอ้างอิงจาก'),'Merchant must identify retailer reference-image status');
-assert.ok(catalog.includes('กำลังหารูปอ้างอิง Makro ที่ตรงกับสินค้า'),'Merchant must show missing Makro-image review status');
+assert.ok(catalog.includes('กำลังเพิ่มรูปอ้างอิง Makro ที่ตรงกับสินค้า'),'Merchant must show missing Makro-image review status');
 assert.ok(catalog.includes('qgMarketCatalogSetCategory')&&catalog.includes('market-catalog-chip'),'Merchant must expose category chips without duplicate filter state');
-assert.ok(catalog.includes("const preview=String(r.catalog_preview_image||'').trim(),approved=String(r.image||'').trim(),src=preview||approved"),'Merchant Market catalog must prefer Makro preview packshots over generic approved art');
+assert.ok(catalog.includes("const preview=String(r.catalog_preview_image||'').trim();"),'Merchant Market catalog must read the dedicated Makro preview field');
+assert.ok(!catalog.includes('src=preview||approved'),'Merchant Market catalog must never fall back to generic approved Commons art');
 assert.ok(catalog.includes('referrerpolicy="no-referrer"'),'remote retailer preview images must not leak the QueueGo page referrer');
 assert.ok(catalog.includes('รูปอ้างอิงจาก'),'Market catalog must label retailer art as Merchant reference imagery');
 assert.ok(!catalog.includes('src="${E(r.image_source)}"'),'pending external image_source must never render as approved art');
