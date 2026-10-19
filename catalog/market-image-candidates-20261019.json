@@ -3,10 +3,10 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "direct_candidates": 62,
-    "source_page_found": 66,
+    "direct_candidates": 70,
+    "source_page_found": 58,
     "family_reference_only": 0,
-    "rights_pending": 62
+    "rights_pending": 70
   },
   "items": [
     {
@@ -36,11 +36,11 @@
       "name_th": "ผักกวางตุ้ง",
       "category": "ผักสด",
       "source_page_url": "https://www.makro.pro/th/p/826831-7078708216003",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/fbc17b0636c1476190ffe8a247c648c3?eo-img.format=webp&eo-img.resize=w%2F1080",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "cabbage",
@@ -146,11 +146,11 @@
       "name_th": "ไก่บ้าน",
       "category": "ไก่ / เป็ด",
       "source_page_url": "https://www.lotuss.com/th/product/50862896",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/50862896.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "whole-duck",
@@ -179,33 +179,33 @@
       "name_th": "ไข่ไก่เบอร์ 3 (10 ฟอง)",
       "category": "ไข่",
       "source_page_url": "https://www.lotuss.com/th/product/cp-selection-no-3-fresh-egg-10pcs-51177663",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/91051/51177663.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "dried-shiitake-small",
       "name_th": "เห็ดหอมจีนขนาดเล็ก",
       "category": "ของแห้ง",
       "source_page_url": "https://www.lotuss.com/th/product/51976604",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://publish-p33706-e156581.adobeaemcloud.com/content/dam/aem-cplotusonlinecommerce-project/th/images/magento/catalog/product/new/86587/51976604.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "dried-shiitake-large",
       "name_th": "เห็ดหอมจีนขนาดใหญ่",
       "category": "ของแห้ง",
       "source_page_url": "https://www.lotuss.com/th/product/tesco-large-dried-shitake-mushroom-80g-10628258",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/86587/10628258.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "dried-bamboo-shoot",
@@ -278,11 +278,11 @@
       "name_th": "หมี่ซั่ว 400 กรัม",
       "category": "ของแห้ง",
       "source_page_url": "https://www.lotuss.com/th/product/75610239",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/86587/75610239.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "makro-chicken-breast-skin-on-1kg",
@@ -443,11 +443,11 @@
       "name_th": "ซีพี เป็ดสดอนามัย XL",
       "category": "ไก่ / เป็ด",
       "source_page_url": "https://www.lotuss.com/th/product/51467654",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/107486/51467654.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/source page found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "lotus-beef-sirloin",
@@ -718,11 +718,11 @@
       "name_th": "ปลากะพงทะเลหั่นชิ้น",
       "category": "ปลา",
       "source_page_url": "https://shopping.lotuss.com/th/product/52475412",
-      "candidate_image_url": null,
-      "status": "source_page_found",
+      "candidate_image_url": "https://o2o-static.lotuss.com/products/77354/52475412.jpg",
+      "status": "rights_pending",
       "rights_evidence": null,
       "checked_on": "2026-10-19",
-      "note": "Public product/collection page with product imagery found; direct image extraction or reuse-rights review remains pending."
+      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
     },
     {
       "slug": "lotus-king-mackerel-3-5kg",
