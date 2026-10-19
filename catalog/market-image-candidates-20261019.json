@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 14,
+    "approved": 17,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 114
+    "rights_pending": 111
   },
   "items": [
     {
@@ -1224,34 +1224,34 @@
       "slug": "makro-kaffir-lime-leaf-150g",
       "name_th": "ใบมะกรูด",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/207391-7422334861507",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/fea9bb3010c247108dd989d1a00df11d?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:C_hystrix_kaffir_lime_leaves.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/58/C_hystrix_kaffir_lime_leaves.jpg",
+      "status": "approved",
+      "rights_evidence": "Jpbrigand2 · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-bird-chili-300g",
       "name_th": "พริกขี้หนูสวนเด็ดก้าน",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/862373-7193008636099",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7193008636099-58c3adf4-a50a-4b8a-968f-dbd69023b666.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Thai_chillies_(birds_eye)_-_prik_kii_nu.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Thai_chillies_%28birds_eye%29_-_prik_kii_nu.jpg",
+      "status": "approved",
+      "rights_evidence": "Susan Slater · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-thai-eggplant-300g",
       "name_th": "มะเขือเปาะ",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/p/0phddeor-7422332567747",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/0cbbef6a3aa9409f8934ebf2ba111452?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Thai_eggplant.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/8/8e/Thai_eggplant.jpg",
+      "status": "approved",
+      "rights_evidence": "F_A · CC BY 2.0 · Wikimedia Commons (Flickr license reviewed)",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-key-lime-10",
