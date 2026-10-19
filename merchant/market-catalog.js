@@ -19,7 +19,7 @@ async function rpc(name,body){
 function shell(body){
   qtShopLayout('เพิ่มสินค้าจากแคตตาล็อก',`<section class="qgm-card market-panel market-catalog-panel">
     <div class="market-head"><button type="button" onclick="navigate('market-stock')">‹ สินค้าและสต๊อกตลาด</button><h1>เพิ่มสินค้าจากแคตตาล็อก</h1></div>
-    <p>เลือกสินค้าแบบเดียวกับแคตตาล็อกร้านขายของชำ · รูปอ้างอิงใช้ Makro เป็นหลัก แล้วร้านกำหนดราคา หน่วยขาย น้ำหนัก ต้นทุน และสต๊อกเอง</p>
+    <p>เลือกสินค้าแบบเดียวกับแคตตาล็อกร้านขายของชำ แล้วร้านกำหนดราคา หน่วยขาย น้ำหนัก ต้นทุน และสต๊อกเอง</p>
     <div id="market-catalog-error" role="alert"></div>${body}
   </section>`,'shop-profile');
 }
@@ -31,18 +31,11 @@ window.qgMarketCatalogPricePreview=()=>{const input=document.querySelector('#mar
 window.qgMarketCatalogSetKg=kg=>qgMarketSetWeightPreset(document.getElementById('market-catalog-add-form'),kg);
 function active(epoch,shopId){return epoch===state.epoch&&shopId===state.shop&&location.hash.replace('#','').split('/')[0]==='market-catalog'}
 function productImage(r){
-  const preview=String(r.catalog_preview_image||'').trim(),approved=String(r.image||'').trim(),src=preview||approved;
-  const isPreview=!!preview;
+  const src=String(r.catalog_preview_image||'').trim();
   const image=src
     ? `<img class="market-catalog-image" src="${E(src)}" alt="${E(r.name_th)}" loading="lazy" referrerpolicy="no-referrer" onerror="qgMarketCatalogImageError(this)">`
     : `<div class="market-catalog-image market-catalog-placeholder" aria-label="ยังไม่มีรูป ${E(r.name_th)}">${E((r.name_th||'?').charAt(0))}</div>`;
-  const sourceName=String(r.catalog_preview_source_name||'Makro PRO');
-  const imageStatus=isPreview
-    ? `<small class="market-catalog-preview-note">รูปอ้างอิงจาก ${E(sourceName)} · ใช้ช่วยร้านค้าตรวจสินค้า</small>${r.catalog_preview_source_url?`<small class="market-catalog-credit"><a href="${E(r.catalog_preview_source_url)}" target="_blank" rel="noopener noreferrer">ดูสินค้าต้นทาง</a></small>`:''}`
-    :approved
-      ?`<small>รูปสินค้า: ผ่านการอนุมัติแล้ว</small>${r.image_source&&r.image_rights_evidence?`<small class="market-catalog-credit">รูป: <a href="${E(r.image_source)}" target="_blank" rel="noopener noreferrer">${E(r.image_rights_evidence)}</a></small>`:''}`
-      :'<small>กำลังหารูปอ้างอิง Makro ที่ตรงกับสินค้า</small>';
-  return `<div class="market-catalog-media" data-preview="${isPreview?'makro':'approved'}">${image}<div class="market-catalog-image-status">${imageStatus}</div></div>`;
+  return `<div class="market-catalog-media" data-preview="${src?'catalog':'missing'}">${image}<div class="market-catalog-image-status"></div></div>`;
 }
 window.qgMarketCatalogImageError=img=>{
   const media=img.closest('.market-catalog-media');
@@ -58,8 +51,8 @@ window.qgMarketCatalogImageError=img=>{
 function card(r){
   const linked=!!r.product_id;
   return `<article class="market-catalog-card" data-search="${E((r.name_th+' '+r.category).toLocaleLowerCase('th-TH'))}">
-    ${productImage(r)}<div class="market-catalog-info"><b>${E(r.name_th)}</b><small>${E(r.category)} · หน่วยอ้างอิง ${E(r.source_unit)}</small>
-    ${r.suggested_unit?`<small>หน่วยที่ระบบแนะนำ: ${E(r.suggested_pack_size)} ${E(r.suggested_unit)} / ชุด</small>`:'<small>หน่วยอ้างอิงยังไม่ตรงกับหน่วยขายในระบบ — ร้านเลือกหน่วยเอง</small>'}
+    ${productImage(r)}<div class="market-catalog-info"><b>${E(r.name_th)}</b><small>${E(r.category)} · ขนาดสินค้า ${E(r.source_unit)}</small>
+    ${r.suggested_unit?`<small>ขนาดขายที่แนะนำ: ${E(r.suggested_pack_size)} ${E(r.suggested_unit)} / ชุด</small>`:'<small>ร้านเลือกหน่วยขายเองได้</small>'}
     ${linked?`<strong>มีในร้านแล้ว · หน้าร้าน ${Number(r.price??0).toLocaleString('th-TH')} บาท · เดลิเวอรี่ ${Number(r.delivery_price??r.price??0).toLocaleString('th-TH')} บาท</strong>`:''}</div>
     <button type="button" class="${linked?'qgm-outline':'qgm-primary'}" ${linked?'disabled':''} onclick="qgMarketCatalogChoose('${E(r.id)}')">${linked?'มีในร้านแล้ว':'เพิ่มเข้าร้าน'}</button>
   </article>`;
@@ -115,7 +108,7 @@ window.qgMarketCatalogChoose=id=>{
   shell(`<form id="market-catalog-add-form" class="market-form">
     <button type="button" class="qgm-outline" onclick="qgRenderMarketCatalog()">‹ กลับแคตตาล็อก</button>
     <div class="market-catalog-preview">${productImage(r)}</div>
-    <h2>${E(r.name_th)}</h2><p>${E(r.category)} · หน่วยอ้างอิง ${E(r.source_unit)}</p>
+    <h2>${E(r.name_th)}</h2><p>${E(r.category)} · ขนาดสินค้า ${E(r.source_unit)}</p>
     <label>ราคาหน้าร้าน / ชุด (บาท)<input name="price" type="number" min="0.01" max="999999" step="0.01" required oninput="qgMarketCatalogPricePreview()"></label>
     <small id="market-catalog-delivery-preview">ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก</small>
     <label>หน่วยสต๊อก<select name="unit">${UNITS.map(u=>`<option value="${E(u)}" ${u===suggestedUnit?'selected':''}>${E(u)}</option>`).join('')}</select></label>
