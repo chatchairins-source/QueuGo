@@ -405,3 +405,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Approved batches now include commodity staples plus exact Nam Dok Mai mango, Red Lady papaya, Monthong durian and Shine Muscat; Merchant renders approved image attribution and never renders rights-pending retailer art as approved.
 - Phase 2 remains 70 seafood/fruit/vegetable identities (ปลา 13, กุ้ง 8, ปู 7, หอย 9, ปลาหมึก 4, ผลไม้ 16, ผักสด 13); 1/2/3 kg presets + custom quantity retained. No Production migration/apply performed.
 - TEST: exact-head RC for `945bbe4...` pending GitHub scheduling. NEXT: if RC fails, fix first exact failure only; if green, continue open-license replacements for the remaining 100 rights-pending images and authenticated/physical Merchant Web acceptance before Production.
+
+
+## 2026-10-19 — Market Catalog image batch 9 checkpoint
+- Branch: `work-market-master-catalog-successor-v2-20261019`; batch 9 test checkpoint: `753adb4fe41bf3fb89caf30f0695fbd92b6b1939`.
+- Image coverage: 128/128 catalog identities retain direct image evidence; approved open-license/public-domain images increased from 33 to 46, rights-pending retailer candidates decreased from 95 to 82; source-page-only 0, family-reference-only 0.
+- Batch 9 adds cabbage (2 catalog identities), pork belly, raw chicken drumstick, eggs (2 sizes), enoki (2 identities), dried shiitake (2 sizes), tomato, long bean and mackerel using Commons licensing/attribution evidence.
+- Staged migration: `20261019174500_market_open_license_images_batch9.sql`; no Production apply. Merchant approved-image attribution rendering remains required.
+- NEXT: exact-head RC; fix first failure only. If green, continue open-license replacements for the remaining 82 rights-pending images, then authenticated/physical Merchant Web acceptance before Production.
