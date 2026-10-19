@@ -1,6 +1,6 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#e6002d">
 <title>QueueGo Rider</title>
-<meta name="queuego-web-build" content="rider-20261018-route-arrow3">
+<meta name="queuego-web-build" content="rider-20261019-ready1">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
 <script src="../queuego-map-web.js?v=20261019-places1"></script>
@@ -1084,14 +1084,14 @@ function overviewRoute(){
 }
 
 /* ---------- online toggle ---------- */
-let riderAvailabilityBusy=false;
+let riderAvailabilityBusy=false,riderAvailabilityRevision=0;
 async function toggleOnline(){
   if(riderAvailabilityBusy||!S.user||!S.riderProfile)return;
   // Preserve current work; the server owns whether this transition is allowed.
   if(S.activeOrder||S.laundryJob){toast('เปลี่ยนสถานะรับงานได้หลังจบงานปัจจุบัน');return;}
   const next=!S.online,userId=S.user.id,profileId=S.riderProfile.id,session=S.session?.sessionId;
   const current=()=>S.user?.id===userId&&S.riderProfile?.id===profileId&&S.session?.sessionId===session;
-  riderAvailabilityBusy=true;updateStatusUI();
+  riderAvailabilityRevision++;riderAvailabilityBusy=true;updateStatusUI();
   try{
     const token=await getAccessToken();if(!current())return;
     const meta={...S.riderProfile.metadata,online:next,available:next};
@@ -1582,11 +1582,11 @@ async function qgPollRiderOfferNow(){
 }
 async function qgSyncRiderAvailability(){
   if(riderAvailabilityBusy||!S.user||!S.riderProfile||document.hidden||!navigator.onLine)return;
-  const userId=S.user.id,sessionId=S.session?.sessionId,profileId=S.riderProfile.id;
+  const userId=S.user.id,sessionId=S.session?.sessionId,profileId=S.riderProfile.id,revision=++riderAvailabilityRevision;
   try{
     const token=await getAccessToken();
     const rows=await sbTable('rider_profiles?select=*&user_id=eq.'+encodeURIComponent(userId)+'&limit=1',{token});
-    if(riderAvailabilityBusy||S.user?.id!==userId||S.session?.sessionId!==sessionId||S.riderProfile?.id!==profileId)return;
+    if(revision!==riderAvailabilityRevision||riderAvailabilityBusy||S.user?.id!==userId||S.session?.sessionId!==sessionId||S.riderProfile?.id!==profileId)return;
     const row=Array.isArray(rows)?rows[0]:null;
     if(row?.id===profileId&&typeof row.metadata?.online==='boolean'){
       S.riderProfile=row;S.online=row.metadata.online;
