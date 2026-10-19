@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 7,
+    "approved": 11,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 121
+    "rights_pending": 117
   },
   "items": [
     {
@@ -25,12 +25,12 @@
       "slug": "chinese-cabbage",
       "name_th": "ผักกาดขาวปลี",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7352901501123-bdd63837-ca36-43af-84ab-4cbffcb0cae0.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Napa_Cabbage.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/2/24/Napa_Cabbage.jpg",
+      "status": "approved",
+      "rights_evidence": "SarKaLay စာကလေး · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "choy-sum",
@@ -80,12 +80,12 @@
       "slug": "holy-basil-leaves",
       "name_th": "ใบกะเพรา",
       "category": "ผักสด",
-      "source_page_url": "https://www.lotuss.com/th/product/lotuss-holy-basil-pack-e-20454775",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/20454775.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Holy_Basil_plant_leaves.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/0/02/Holy_Basil_plant_leaves.jpg",
+      "status": "approved",
+      "rights_evidence": "Satheesh Sankaran · CC BY 2.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "water-spinach",
@@ -102,12 +102,12 @@
       "slug": "large-cavendish-banana",
       "name_th": "กล้วยหอมขนาดใหญ่",
       "category": "ผลไม้",
-      "source_page_url": "https://shopping.lotuss.com/th/product/tesco-hom-banana-bunch-each-2754533",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/2754533.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Two_ripe_Cavendish_bananas.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/5/56/Two_ripe_Cavendish_bananas.jpg",
+      "status": "approved",
+      "rights_evidence": "Assumulator · CC BY-SA 3.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "pork-tenderloin-dressed",
@@ -564,12 +564,12 @@
       "slug": "makro-chinese-cabbage-400-600g",
       "name_th": "ผักกาดขาวปลี",
       "category": "ผักสด",
-      "source_page_url": "https://www.makro.pro/th/c/collections/Fresh%20and%20Frozen%20%7C%20Pure%20Veg%20Pure%20Protein%20%288%20-%2014%20Jun%2026%29/38448",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7352901501123-bdd63837-ca36-43af-84ab-4cbffcb0cae0.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Napa_Cabbage.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/2/24/Napa_Cabbage.jpg",
+      "status": "approved",
+      "rights_evidence": "SarKaLay စာကလေး · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-cabbage-500-700g",
