@@ -200,14 +200,17 @@ for(const needle of ['qg_market_catalog_page','qg_market_catalog_add','qgMarketR
 assert.ok(catalog.includes('qgMarketAttachWeightPresets(form)'),'catalog must reuse shared weight presets');
 assert.ok(catalog.includes('p_request_id:crypto.randomUUID()'),'Merchant add flow must use a durable request ID');
 assert.ok(catalog.includes("pendingKey(state.shop)"),'Merchant add flow must retain pending request recovery');
-assert.ok(catalog.includes('พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่'),'Merchant must show rights-pending image status');
-assert.ok(catalog.includes('กำลังหารูปที่ตรวจสอบแหล่งที่มาได้'),'Merchant must show missing-image review status');
+assert.ok(catalog.includes('รูปอ้างอิงจาก'),'Merchant must identify retailer reference-image status');
+assert.ok(catalog.includes('กำลังหารูปอ้างอิง Makro ที่ตรงกับสินค้า'),'Merchant must show missing Makro-image review status');
 assert.ok(catalog.includes('qgMarketCatalogSetCategory')&&catalog.includes('market-catalog-chip'),'Merchant must expose category chips without duplicate filter state');
+assert.ok(catalog.includes("const preview=String(r.catalog_preview_image||'').trim(),approved=String(r.image||'').trim(),src=preview||approved"),'Merchant Market catalog must prefer Makro preview packshots over generic approved art');
+assert.ok(catalog.includes('referrerpolicy="no-referrer"'),'remote retailer preview images must not leak the QueueGo page referrer');
+assert.ok(catalog.includes('รูปอ้างอิงจาก'),'Market catalog must label retailer art as Merchant reference imagery');
 assert.ok(!catalog.includes('src="${E(r.image_source)}"'),'pending external image_source must never render as approved art');
 
 const marketCss=read('merchant/market.css');
-for(const needle of ['market-catalog-card','market-catalog-image','market-catalog-chips','object-fit:contain']){
-  assert.ok(marketCss.includes(needle),'Market catalog responsive CSS missing '+needle);
+for(const needle of ['market-catalog-card','market-catalog-image','market-catalog-chips','object-fit:contain','grid-template-columns:126px minmax(0,1fr)','width:116px;height:146px']){
+  assert.ok(marketCss.includes(needle),'Market catalog Grocery-parity responsive CSS missing '+needle);
 }
 
 const market=read('merchant/market.js');
@@ -222,7 +225,7 @@ assert.ok(!market.includes("const CATS=new Set(['market','meat','fish','vegetabl
 assert.ok(!market.includes("'ของใช้ในครัวเรือน'"),'Market manual categories must not offer household/detergent');
 const merchant=read('merchant/index.html');
 assert.ok(merchant.includes("case'market-catalog'"));
-assert.ok(merchant.includes('market-catalog.js?v=20261019-market-gp6'));
+assert.ok(merchant.includes('market-catalog.js?v=20261019-market-gp8'));
 assert.ok(merchant.includes("'market-stock','market-catalog'"),'pending merchants must be able to prepare catalog/stock');
 assert.ok(merchant.includes("if(['market','meat','fish','vegetable','fruit'].includes(qgmShopCategory(u))){navigate('market-stock');return;}"),'Market Product tab must enter Market stock instead of the generic product grid');
 assert.ok(merchant.includes("if(qgmIsMarketProductShop(u))return navigate('market-catalog')"),'legacy Market catalog entry must redirect to the Market Master Catalog');

@@ -19,7 +19,7 @@ async function rpc(name,body){
 function shell(body){
   qtShopLayout('เพิ่มสินค้าจากแคตตาล็อก',`<section class="qgm-card market-panel market-catalog-panel">
     <div class="market-head"><button type="button" onclick="navigate('market-stock')">‹ สินค้าและสต๊อกตลาด</button><h1>เพิ่มสินค้าจากแคตตาล็อก</h1></div>
-    <p>เลือกชื่อสินค้ามาตรฐาน แล้วร้านกำหนดราคา หน่วยขาย น้ำหนัก ต้นทุน และสต๊อกเอง</p>
+    <p>เลือกสินค้าแบบเดียวกับแคตตาล็อกร้านขายของชำ · รูปอ้างอิงใช้ Makro เป็นหลัก แล้วร้านกำหนดราคา หน่วยขาย น้ำหนัก ต้นทุน และสต๊อกเอง</p>
     <div id="market-catalog-error" role="alert"></div>${body}
   </section>`,'shop-profile');
 }
@@ -31,11 +31,18 @@ window.qgMarketCatalogPricePreview=()=>{const input=document.querySelector('#mar
 window.qgMarketCatalogSetKg=kg=>qgMarketSetWeightPreset(document.getElementById('market-catalog-add-form'),kg);
 function active(epoch,shopId){return epoch===state.epoch&&shopId===state.shop&&location.hash.replace('#','').split('/')[0]==='market-catalog'}
 function productImage(r){
-  const image=r.image? `<img class="market-catalog-image" src="${E(r.image)}" alt="${E(r.name_th)}" loading="lazy" onerror="qgMarketCatalogImageError(this)">`:`<div class="market-catalog-image market-catalog-placeholder" aria-label="ยังไม่มีรูป ${E(r.name_th)}">${E((r.name_th||'?').charAt(0))}</div>`;
-  const imageStatus=r.image
-    ?`<small>รูปสินค้า: ผ่านการอนุมัติแล้ว</small>${r.image_source&&r.image_rights_evidence?`<small class="market-catalog-credit">รูป: <a href="${E(r.image_source)}" target="_blank" rel="noopener noreferrer">${E(r.image_rights_evidence)}</a></small>`:''}`
-    :r.has_image_reference?'<small>รูปสินค้า: พบรูปอ้างอิงแล้ว · รอตรวจสิทธิ์ก่อนเผยแพร่</small>':'<small>รูปสินค้า: กำลังหารูปที่ตรวจสอบแหล่งที่มาได้</small>';
-  return `<div class="market-catalog-media">${image}<div class="market-catalog-image-status">${imageStatus}</div></div>`;
+  const preview=String(r.catalog_preview_image||'').trim(),approved=String(r.image||'').trim(),src=preview||approved;
+  const isPreview=!!preview;
+  const image=src
+    ? `<img class="market-catalog-image" src="${E(src)}" alt="${E(r.name_th)}" loading="lazy" referrerpolicy="no-referrer" onerror="qgMarketCatalogImageError(this)">`
+    : `<div class="market-catalog-image market-catalog-placeholder" aria-label="ยังไม่มีรูป ${E(r.name_th)}">${E((r.name_th||'?').charAt(0))}</div>`;
+  const sourceName=String(r.catalog_preview_source_name||'Makro PRO');
+  const imageStatus=isPreview
+    ? `<small class="market-catalog-preview-note">รูปอ้างอิงจาก ${E(sourceName)} · ใช้ช่วยร้านค้าตรวจสินค้า</small>${r.catalog_preview_source_url?`<small class="market-catalog-credit"><a href="${E(r.catalog_preview_source_url)}" target="_blank" rel="noopener noreferrer">ดูสินค้าต้นทาง</a></small>`:''}`
+    :approved
+      ?`<small>รูปสินค้า: ผ่านการอนุมัติแล้ว</small>${r.image_source&&r.image_rights_evidence?`<small class="market-catalog-credit">รูป: <a href="${E(r.image_source)}" target="_blank" rel="noopener noreferrer">${E(r.image_rights_evidence)}</a></small>`:''}`
+      :'<small>กำลังหารูปอ้างอิง Makro ที่ตรงกับสินค้า</small>';
+  return `<div class="market-catalog-media" data-preview="${isPreview?'makro':'approved'}">${image}<div class="market-catalog-image-status">${imageStatus}</div></div>`;
 }
 window.qgMarketCatalogImageError=img=>{
   const media=img.closest('.market-catalog-media');
