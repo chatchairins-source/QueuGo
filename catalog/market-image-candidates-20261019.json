@@ -3,11 +3,11 @@
   "policy": "Reference/review manifest only. Every catalog item must have an explicit image review state. Retailer images are never copied into QueueGo approved storage or rendered as approved product art without explicit reuse-rights evidence.",
   "counts": {
     "total": 128,
-    "approved": 24,
+    "approved": 28,
     "direct_candidates": 128,
     "source_page_found": 0,
     "family_reference_only": 0,
-    "rights_pending": 104
+    "rights_pending": 100
   },
   "items": [
     {
@@ -960,12 +960,12 @@
       "slug": "lotus-ripe-namdokmai-mango-kg",
       "name_th": "มะม่วงน้ำดอกไม้สุก",
       "category": "ผลไม้",
-      "source_page_url": "https://www.lotuss.com/th/product/ripe-namdokmai-mango-4723?openExternalBrowser=1",
-      "candidate_image_url": "https://o2o-static.lotuss.com/products/107654/4723.jpg",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Mango_fruit_Nam_Dok_Mai.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/a/af/Mango_fruit_Nam_Dok_Mai.jpg",
+      "status": "approved",
+      "rights_evidence": "Ivar Leidus · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Exact cultivar/commodity open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-hom-banana-bunch",
@@ -1026,12 +1026,12 @@
       "slug": "makro-red-lady-papaya-1kg",
       "name_th": "มะละกอเรดเลดี้",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/p/_XORl54-967705863335182",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/SOURCE/56f00735cd75463888c80fc81dd537bd?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Red_lady_fruit.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/7/7e/Red_lady_fruit.jpg",
+      "status": "approved",
+      "rights_evidence": "Vijayanrajapuram · CC BY-SA 4.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Exact cultivar/commodity open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-hom-suwan-pineapple",
@@ -1048,12 +1048,12 @@
       "slug": "makro-shine-muscat-500g",
       "name_th": "องุ่นเขียวไชน์มัสแคท",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/p/xmx9u9p-7499788222659",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/7499788222659-b6508b21-3460-43a9-a696-73078d5f1cfb.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Shine_Muscat_(20241101).jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Shine_Muscat_%2820241101%29.jpg",
+      "status": "approved",
+      "rights_evidence": "Fumikas Sagisavas · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Exact cultivar/commodity open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "lotus-emperor-lychee-kg",
@@ -1081,12 +1081,12 @@
       "slug": "makro-monthong-durian-2-3kg",
       "name_th": "ทุเรียนหมอนทอง",
       "category": "ผลไม้",
-      "source_page_url": "https://www.makro.pro/th/p/TSZpX5R-645412775209079",
-      "candidate_image_url": "https://images.mango-prod.siammakro.cloud/product-images/645412775209079-16459776-c818-4d26-b0f8-4709c19ead0c.jpeg?eo-img.format=webp&eo-img.resize=w%2F1080",
-      "status": "rights_pending",
-      "rights_evidence": null,
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Durian_Monthong_Lokal_Malang.jpg",
+      "candidate_image_url": "https://upload.wikimedia.org/wikipedia/commons/e/eb/Durian_Monthong_Lokal_Malang.jpg",
+      "status": "approved",
+      "rights_evidence": "Vitaamaliaf · CC0 1.0 · Wikimedia Commons",
       "checked_on": "2026-10-19",
-      "note": "Direct retailer image candidate verified from the public product page; not approved for QueueGo publication until reuse rights are documented."
+      "note": "Exact cultivar/commodity open-license image approved for QueueGo catalog display; attribution/license retained in rights_evidence and source page."
     },
     {
       "slug": "makro-mangosteen-basket-3kg",
