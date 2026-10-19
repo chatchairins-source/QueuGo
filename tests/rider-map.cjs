@@ -162,8 +162,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  now+=15000;S.pos={lat:13.003,lng:100};gate=deferred();
  const retiring=run('drawActiveRoute()'),retiredSignal=requests.at(-1).opts.signal;
  S.activeOrder=null;run('syncRiderNavigationCameraMode(true)');await run('drawActiveRoute()');
- eq(run('RIDER_CAMERA_SMOOTHNESS_TEST_MODE'),true);
- eq(cameraModes.at(-1).active,true);
+ eq(run('RIDER_CAMERA_SMOOTHNESS_TEST_MODE'),false);
+ eq(cameraModes.at(-1).active,false);
  eq(retiredSignal.aborted,true);
  gate.resolve({ok:true,json:async()=>geo});gate=null;await retiring;
  eq(S.routeOverlays.length,0);
