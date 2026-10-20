@@ -287,3 +287,12 @@ The successor separates Content and Pricing from Settings using existing banner/
 - Generation/owner/date fencing prevents stale async reads from painting after an Admin/date change.
 - Dedicated runtime regression forces 201 shops, checks two bounded batches and verifies the same totals plus stale-response suppression.
 - Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit/Pages required before merge.
+
+
+## 2026-10-20 Admin GP presentation checkpoint
+- This slice is presentation/language only on top of PR #483 scoped GP reads.
+- Existing daily financial arithmetic and settlement review authority are unchanged.
+- “รายได้ทั้งหมด” was ambiguous in this Admin context, so the live GP page now distinguishes “ยอดขายร้านรวม” from “ค่าบริการ GP รวม”.
+- Raw/technical settlement presentation is mapped to operator-facing labels: รอร้านชำระ, รอตรวจสลิป, ชำระแล้ว, สลิปไม่ผ่าน; unknown server status still falls back to the server value.
+- Shop-specific rate wording now avoids promotion semantics: “อัตราเฉพาะร้าน” instead of “อัตราพิเศษ/โปร”.
+- No Production DB/RLS/grant/provider/credit/top-up mutation in this checkpoint.
