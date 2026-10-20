@@ -90,3 +90,14 @@ Before changing Android release code:
 3. Compare ancestry against this release branch HEAD.
 4. Never copy a superseded implementation over the current QueueGo Map/MapLibre or current app source.
 5. After every release-blocker fix: test/CI, commit, update RELEASE_CHECKLIST.md and this file's final Release HEAD.
+
+
+## Current release HEAD after blocker reconciliation
+
+- Current Release HEAD: `c76b9bc5c7e4d4a5f26356cba7bd7d94b18acc9e`
+- Customer HEAD: `c76b9bc5c7e4d4a5f26356cba7bd7d94b18acc9e`
+- Merchant HEAD: `c76b9bc5c7e4d4a5f26356cba7bd7d94b18acc9e`
+- Rider HEAD: `c76b9bc5c7e4d4a5f26356cba7bd7d94b18acc9e`
+- Passenger Ride fail-closed forward-port: APPLIED from valid old-line commit `be6c2db64de34c8f2e85c48f597f020b8cb9e9cd`.
+- Old Longdo workflow delta from `queuego-native-android-v1`: REJECTED / SUPERSEDED by current QueueGo Map/MapLibre workflow.
+- Next gate: exact-head Native Pilot + Map/route release checks on this HEAD. Do not edit another Native branch while this gate is active.
