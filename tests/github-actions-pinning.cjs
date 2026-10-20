@@ -21,7 +21,7 @@ const workflows=[
 
 for(const path of workflows){
   const source=read(path);
-  const matches=[...source.matchAll(/^\s*uses:\s*([^\s#]+)\s*(?:#.*)?$/gm)];
+  const matches=[...source.matchAll(/^\s*(?:-\s*)?uses:\s*([^\s#]+)\s*(?:#.*)?$/gm)];
   for(const match of matches){
     const spec=match[1];
     if(spec.startsWith('./')) continue;
