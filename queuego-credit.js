@@ -15,6 +15,11 @@
     card.querySelector('[data-note]').textContent=summary.enabled?'แตะเพื่อเติมเครดิตหรือดูประวัติ':'แตะดูเครดิตและประวัติ · เติมเงินจริงยังไม่เปิด';
    }catch(e){if(card.isConnected){card.querySelector('[data-balance]').textContent='ยังโหลดเครดิตไม่ได้';card.querySelector('[data-detail]').textContent='แตะเพื่อดูรายละเอียดและลองใหม่';card.querySelector('[data-note]').textContent=''}}
   },
+  mountBadge:async function(host,{kind,owner,getToken,base,key,onOpen}){
+   if(!host||!owner)return;const button=document.createElement('button');button.type='button';button.className='qg-credit-badge';button.textContent=kind==='merchant'?'เครดิต …':'เครดิต Rider …';button.setAttribute('aria-label',kind==='merchant'?'ดูเครดิตร้านค้า':'ดูเครดิต Rider');if(typeof onOpen==='function')button.onclick=onOpen;host.replaceChildren(button);
+   try{const summary=await post({getToken,base,key},'/rest/v1/rpc/queuego_credit_summary',{p_kind:kind,p_topup:null});if(!button.isConnected)return;button.textContent='เครดิต '+money(summary.available_minor);button.title='เงินจริง '+money(summary.cash_minor)+' · เครดิตฟรี '+money(summary.promo_minor)+' · กันไว้ '+money(summary.held_minor)}
+   catch(e){if(button.isConnected){button.textContent='เครดิต --';button.title='ยังโหลดเครดิตไม่ได้'}}
+  },
   mount:async function(host,{kind,owner,getToken,base,key}){
   if(!host)return;const panel=document.createElement('section');panel.className='qg-credit-panel';
   panel.innerHTML='<h3></h3><p data-balance>กำลังตรวจสอบเครดิต...</p><p data-breakdown></p><form hidden><label>จำนวนเงิน (20–100,000 บาท)<input name="amount" inputmode="decimal" type="text" maxlength="12" required></label><button type="submit">สร้าง QR เติมเครดิต</button></form><button type="button" data-refresh>รีเฟรชยอดและรายการ</button><button type="button" data-new hidden>รายการใหม่</button><p data-status role="status"></p><img data-qr hidden alt="QR เติมเครดิต" width="240" height="240"><div data-entries></div><small>เครดิตใช้ชำระค่าบริการ QueueGo · ถอนหรือโอนไม่ได้</small>';
