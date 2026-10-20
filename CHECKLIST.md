@@ -704,3 +704,13 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - SAFETY: actor/page generation fencing prevents a stale response from another page/account repainting the panel.
 - TEST: dedicated jsdom runtime regression locks 100+1 paging, page-ID profile lookup, no presence-history query, Prev/Next and account-race fencing.
 - NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue remaining Admin performance/coverage gaps. Whole Admin mission remains IN PROGRESS.
+
+
+## 2026-10-20 Admin scoped shop overview only
+- BASE: merged PR #476 / main `0e03fcd1a57a5e2b31177fbd5cefeffab0ce9285`; branch `work-web-admin-scoped-shop-overview-20261020`.
+- PRODUCTION AUTHORITY: `queuego_admin_shop_overview(p_user_ids uuid[])` is SECURITY INVOKER, active-Admin guarded and rejects more than 200 account IDs. The legacy no-arg overload is SECURITY DEFINER, computes readiness/order counts for all shops, and Supabase Security Advisor flags its authenticated exposure.
+- CHANGE: Admin directory fast path now calls only the scoped overload with the current page IDs. The legacy PGRST202/function-missing fallback to the no-arg overload is removed; an unreachable old no-arg Admin hydrate call is removed too.
+- FAILURE MODE: missing scoped RPC now fails closed and surfaces the load error instead of silently falling back to an unbounded all-shop computation.
+- TEST: existing Admin directory runtime now verifies every overview call carries `p_user_ids`, caps at 200, simulates PGRST202 and proves no second/unscoped call occurs.
+- NO DB MUTATION: no grant/RLS/function/schema change in this source-only checkpoint. Legacy backend function retirement remains a separate compatibility/security decision after deployed callers are proven absent.
+- NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue Admin performance/permission coverage. Whole Admin mission remains IN PROGRESS.
