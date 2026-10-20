@@ -749,3 +749,15 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - PRODUCTION APPLY: Supabase migration tool applied version 20261020041534 / name admin_support_inbox_paging_index successfully.
 - VERIFY: pg_indexes now reports shop_support_messages_recent_idx as btree (created_at DESC, id DESC). No data/RLS/grant change occurred.
 - RELEASE STATE: source migration filename is aligned to 20261020041534_admin_support_inbox_paging_index.sql so repository and live migration history match.
+
+
+## 2026-10-20 Admin complaint ticket keyset paging
+- BASE: merged PR #480 / main `a9a6a2271ea0c48bff79d890467e4c002025cf16`; branch `work-web-admin-tickets-keyset-20261020`.
+- BEFORE: complaint modal read a fixed newest `limit=200` page with no way to navigate older records.
+- CHANGE: complaint tickets now use stable `(created_at,id)` keyset paging with a 100/101 sentinel, explicit “ใหม่กว่า/เก่ากว่า” controls, and stale-account/request-generation fencing.
+- MUTATION: existing `qg_admin_ticket_action` is unchanged; after a decision the modal refreshes the same current cursor instead of jumping to newest.
+- SECURITY: direct table read still depends on existing authenticated RLS `qg_tickets_read` (own ticket OR active Admin). No new write authority, no bypass and no UGC changes.
+- SCALE SOURCE: additive candidate migration `20261020042500_admin_ticket_paging_index.sql` adds only `qg_support_tickets_recent_idx(created_at DESC,id DESC)`.
+- CURRENT DATA: Production has 0 complaint tickets at this checkpoint, so this is capacity/UX hardening rather than a claim of current latency gain.
+- TEST: new jsdom runtime regression locks 100/101 paging, no OFFSET, older/newer cursor behavior, same-page mutation refresh, stale-account fencing and the index contract.
+- NEXT: rollback-rehearse the index, require parent main Pages/post-merge RC green, exact-head RC, then apply/verify migration, align live version if needed, rerun exact-head RC, merge/Pages/post-merge RC. Whole Admin mission remains IN PROGRESS.
