@@ -8,7 +8,7 @@ const bucketConfig=JSON.parse(read('native-android/qa/release-evidence-storage.j
 
 ok(/workflow_dispatch:/.test(cert),'release certification must be manual only');
 ok(!/\n\s*push:/.test(cert),'release certification must never run from push');
-ok(cert.includes('refs/heads/queuego-native-android-v1'),'certification must be restricted to Native Source of Truth');
+ok(cert.includes('refs/heads/work-native-route-bundle-play-release-20261021'),'certification must be restricted to Native Source of Truth');
 ok(cert.includes('actions: read'),'certification must have read-only Actions permission for exact-HEAD CI attestation');
 ok(cert.includes('Require successful exact-HEAD Native Pilot CI'),'certification must require automated Native Pilot CI attestation');
 ok(cert.includes('.github/workflows/build-native-rider-pilot.yml')&&cert.includes('.event == "push"')&&cert.includes('.conclusion == "success"'),'certification must pin the successful main-branch Native Pilot workflow identity');
@@ -64,7 +64,7 @@ ok(cert.includes('if: always()')&&cert.includes('queuego-release.keystore')&&cer
 
 ok(release.includes('run_path')&&release.includes('.github/workflows/native-release-certification.yml'),'final release must pin certification workflow identity');
 ok(release.includes('run_event')&&release.includes('workflow_dispatch'),'final release must require manual certification dispatch');
-ok(release.includes('run_branch')&&release.includes('queuego-native-android-v1'),'final release must require certification from Native Source of Truth');
+ok(release.includes('run_branch')&&release.includes('work-native-route-bundle-play-release-20261021'),'final release must require certification from Native Source of Truth');
 ok(release.includes('certified-release-metadata.json'),'final release must require certification metadata');
 ok(release.includes('Certification metadata mismatch'),'final release must fail closed when certified metadata differs');
 ok(release.includes('Certification signing fingerprint does not match release input'),'final release must bind the certified signing identity');
