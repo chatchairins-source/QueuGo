@@ -92,7 +92,7 @@ window.qgAdminEditLocation=async(kind,id)=>{
    try{
     const result=await qtSupabaseRpc('qg_admin_update_location',{p_entity_type:market?'market':'shop',p_entity_id:row.id,p_lat:point.lat,p_lng:point.lon,p_reason:reason,p_expected_lat:row.latitude??null,p_expected_lng:row.longitude??null});
     if(owner()!==actor||dialog!==box)return;if(result?.id!==row.id)throw Error('ไม่ได้รับผลยืนยันจากฐานข้อมูล');close();toast(result.changed?'บันทึกพิกัดและประวัติแล้ว':'พิกัดตรงกับข้อมูลที่บันทึกแล้ว');
-    if(location.hash==='#admin-market')await qgLoadMarketOperations();else{await qtHydrateDatabase({light:false});if(owner()===actor&&location.hash==='#admin-governance'){renderAdminGovernance();qtAdminTab('qt-sec-shops')}}
+    if(location.hash==='#admin-market')await qgLoadMarketOperations();else if(location.hash==='#admin-governance'){await qtHydrateAdminDirectory();if(owner()===actor&&location.hash==='#admin-governance'){renderAdminGovernance();qtAdminTab('qt-sec-shops')}}
    }catch(e){if(owner()===actor&&dialog===box)status.textContent='บันทึกไม่ได้: '+e.message}
    finally{busy=false;if(dialog===box&&owner()===actor)p.busy=false}
   };
