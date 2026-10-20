@@ -103,6 +103,20 @@ const headingWins=Q.navigationCameraDecision({
 });
 ok(headingWins.routeMatch.segmentBearingDegrees>250&&headingWins.routeMatch.segmentBearingDegrees<290,'QueueGo matcher must use live travel direction to avoid an adjacent opposite carriageway');
 
+const nearerWrongCarriageway=[
+  [103.0000,15.00010],
+  [103.0100,15.00010],
+  [103.0100,15.00000],
+  [103.0000,15.00000]
+];
+const ownLaneWins=Q.navigationCameraDecision({
+  lat:15.00002,lng:103.0060,
+  speed:9,bearing:90,accuracy:5,
+  route:nearerWrongCarriageway,previousBearing:90,previousRouteProgress:600
+});
+ok(ownLaneWins.routeMatch.segmentBearingDegrees>70&&ownLaneWins.routeMatch.segmentBearingDegrees<110,'moving Rider must stay matched to the same-direction carriageway even when the opposite carriageway is physically closer');
+ok(ownLaneWins.routeMatch.snapped.lat>15.00005,'Rider puck must remain on the correct carriageway instead of jumping across the median');
+
 const fast=Q.navigationCameraDecision({
   lat:15.00001,lng:103.0020,
   speed:20,bearing:90,accuracy:5,
@@ -275,4 +289,4 @@ ok(Q.navigationOverview(map,points,{duration:300}),'overview should fit route');
 eq(map.fit.opts.bearing,0,'overview should return north-up');
 eq(map.fit.opts.pitch,0,'overview should return top-down');
 
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Web Ready flat heading-up + speed-aware zoom + active-job 3D follow, smooth rotation, gesture ownership and overview'}));
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Web carriageway-locked route matching + Ready flat heading-up + speed-aware zoom + active-job 3D follow, smooth rotation, gesture ownership and overview'}));
