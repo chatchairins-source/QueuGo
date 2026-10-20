@@ -621,7 +621,7 @@ async function qtHydrateAdminDirectory(){
       qtSupabaseTable('shop_profiles?select=id,user_id,shop_name,phone,address,latitude,longitude,status,onboarding_status,submitted_for_review_at,approved_at,archived_at,public_category,public_subcategories,metadata,created_at'+filter+'&order=id.asc&limit=1000',{accessToken:token}),
       qtSupabaseTable('technician_profiles?select=id,user_id,technician_type,service_area,address,latitude,longitude,description,metadata'+filter+'&limit=200',{accessToken:token}),
       qtSupabaseTable('rider_profiles?select=id,user_id,vehicle_type,vehicle_plate,address,latitude,longitude,status,metadata'+filter+'&limit=200',{accessToken:token}),
-      qtSupabaseTable('rpc/queuego_admin_shop_overview?shop_user_id=in.('+ids.join(',')+')&limit=200',{method:'POST',accessToken:token,body:{p_user_ids:ids}}).catch(e=>{if(/(Could not find the function|PGRST202|function .* does not exist)/i.test(e.message||'')&&/shop_overview/.test(e.message||''))return qtSupabaseTable('rpc/queuego_admin_shop_overview?shop_user_id=in.('+ids.join(',')+')&limit=200',{method:'POST',accessToken:token,body:{}});throw e})
+      qtSupabaseTable('rpc/queuego_admin_shop_overview?shop_user_id=in.('+ids.join(',')+')&limit=200',{method:'POST',accessToken:token,body:{p_user_ids:ids}})
     ]):[[],[],[],[]];
     if(qtAccessToken()!==token||qtSessionRead()?.authUserId!==directoryOwner||pageCursor!==(window.QG_ADMIN_DIRECTORY_CURSOR||'')||query!==qgAdminDirectoryNormalizeQuery(window.QG_ADMIN_DIRECTORY_QUERY))return;
     const ownUser=currentUser();
@@ -703,8 +703,6 @@ async function qtHydrateDatabase(opts){
         catch(e){ console.warn('[QueueGo] technician_profiles read failed:',e); }
         try{ riders=await qtSupabaseTable('rider_profiles?select=*',{accessToken:token}); }
         catch(e){ console.warn('[QueueGo] rider_profiles read failed:',e); }
-        if(me?.role==='admin')try{shopOverview=await qtSupabaseTable('rpc/queuego_admin_shop_overview',{method:'POST',accessToken:token,body:{}})}
-        catch(e){console.warn('[QueueGo] shop readiness overview failed:',e)}
 
         const sm=new Map();for(const x of (shops||[]).filter(x=>x&&x.user_id)){const prev=sm.get(x.user_id),xp=x.archived_at?1:0,pp=prev?.archived_at?1:0;if(!prev||xp<pp||(xp===pp&&String(x.created_at||'')>String(prev.created_at||'')))sm.set(x.user_id,x)}
         const som=new Map((Array.isArray(shopOverview)?shopOverview:[]).filter(x=>x&&x.shop_id).map(x=>[String(x.shop_id),x]));
