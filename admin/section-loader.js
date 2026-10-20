@@ -23,6 +23,7 @@ window.qgAdminRead=async function(path,options,read){
  const value=await item.promise;if(version!==readEpoch&&reads.get(key)===item)reads.delete(key);return value;
 };
 const cache=new Map(),ttl=30000;
+window.QG_ADMIN_AUDIT_PAGE=window.QG_ADMIN_AUDIT_PAGE||0;window.QG_ADMIN_NOTIFICATION_PAGE=window.QG_ADMIN_NOTIFICATION_PAGE||0;
 let actor=null,epoch=0;
 const identity=()=>{const s=qtSessionRead();return s?.role==='admin'?s.authUserId+':'+s.userId:null};
 const section=()=>location.hash==='#admin-governance'?qtAdminCurrentSection():(location.hash.slice(1).split('/')[0]||'admin');
@@ -30,7 +31,7 @@ const directory=new Set(['qt-sec-approval','qt-sec-users','qt-sec-shops','qt-sec
 function readScope(){const key=section();return directory.has(key)?'directory:'+JSON.stringify([window.QG_ADMIN_DIRECTORY_QUERY||'',window.QG_ADMIN_DIRECTORY_CURSOR||'']):key==='qt-sec-overview'?'admin':key}
 window.addEventListener('hashchange',()=>stopStale());window.addEventListener('qg:admin-section',()=>stopStale());
 const metrics=window.QG_ADMIN_LOAD_METRICS=[];
-function reset(){epoch++;stopStale(true);cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_QUERY='';history.length=0;window.QG_ADMIN_DIRECTORY_PAGE=null;}
+function reset(){epoch++;stopStale(true);cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_QUERY='';history.length=0;window.QG_ADMIN_DIRECTORY_PAGE=null;window.QG_ADMIN_AUDIT_PAGE=0;window.QG_ADMIN_NOTIFICATION_PAGE=0;window.QG_ADMIN_AUDIT_PAGE_INFO=null;window.QG_ADMIN_NOTIFICATION_PAGE_INFO=null;}
 async function resource(key,load,force){
  if(identity()!==actor)reset();if(!actor)return false;
  stopStale();const now=Date.now(),old=cache.get(key);if(old?.promise&&old.scope===readScope())return old.promise.then(changed=>{if(old.dirty&&identity()===actor&&readScope()===old.scope){old.dirty=false;return resource(key,load,true)}return changed});
@@ -112,6 +113,16 @@ window.qgAdminEnsureSection=function(){
   if(focus&&/^(INPUT|SELECT|TEXTAREA)$/.test(focus.tagName))return;
   rendering=true;try{router()}finally{rendering=false}
  }).catch(e=>{if(e.name==='AbortError')return;const note=document.getElementById('qg-admin-refresh-note');if(note)note.textContent=e.message;else toast(e.message)}).finally(()=>{if(ensures.get(ensureKey)===task)ensures.delete(ensureKey)});ensures.set(ensureKey,task);
+};
+window.qgAdminAuditPage=async function(direction){
+ if(section()!=='qt-sec-audit'||!identity())return;const current=Math.max(0,Number(window.QG_ADMIN_AUDIT_PAGE)||0),info=window.QG_ADMIN_AUDIT_PAGE_INFO||{};
+ if(direction>0&&!info.more)return;window.QG_ADMIN_AUDIT_PAGE=Math.max(0,current+(direction>0?1:-1));window.qgAdminClearReadCache();cache.delete('qt-sec-audit');
+ try{await window.qgAdminLoadSection(true);router()}catch(e){if(e.name!=='AbortError')toast(e.message)}
+};
+window.qgAdminNotificationPage=async function(direction){
+ if(section()!=='notifications'||!identity())return;const current=Math.max(0,Number(window.QG_ADMIN_NOTIFICATION_PAGE)||0),info=window.QG_ADMIN_NOTIFICATION_PAGE_INFO||{};
+ if(direction>0&&!info.more)return;window.QG_ADMIN_NOTIFICATION_PAGE=Math.max(0,current+(direction>0?1:-1));window.qgAdminClearReadCache();cache.delete('notifications');
+ try{await window.qgAdminLoadSection(true);router()}catch(e){if(e.name!=='AbortError')toast(e.message)}
 };
 const history=[];
 window.qgAdminDirectorySearch=async function(value){
