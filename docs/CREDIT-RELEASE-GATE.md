@@ -37,3 +37,7 @@ The owner authorizes Admin-issued promotional GP credit independently of paid to
 ## Evidence
 
 Run npm test on a committed clean tree; credit-specific suites are included. Independent PostgreSQL CI database is loopback-only queuego_credit_gate. Native Pilot builds all three apps; no APK is delivered until the full existing three-role Release Gate passes.
+
+
+### Later Ride guard compatibility (2026-10-20)
+The Ride production migration20261017113000 redefines queuego_platform_rule_guard and drops earlier credit/continuous-dispatch keys. After reconciling the actual deployed history, include forward migration20261020091222_preserve_credit_feature_rule_guard.sql. It only restores validated key support; it does not turn on credit, dispatch or Ride. The rollout-chain regression now replays the later guard before this reconciliation, preserves tariff constraints and verifies rules/ACL unchanged. Do not apply the older13-file chain blindly over a newer Production schema: complete predecessor/function compatibility and provider/physical gates still apply.
