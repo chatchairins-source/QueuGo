@@ -266,3 +266,14 @@ The successor separates Content and Pricing from Settings using existing banner/
 - Production currently contains 0 ticket rows, so this work is future-scale and operator-history coverage, not fabricated present-day performance evidence.
 - Dedicated runtime test rejects OFFSET/fixed-200 behavior and covers paging, mutation refresh and stale-account fencing.
 - Production apply verified: Supabase migration `20261020042804 admin_ticket_paging_index` is live and `pg_indexes` matches the source contract.\n- UGC reports remain a separate bounded-300 RPC follow-up; this candidate does not modify them.
+
+
+## 2026-10-20 Admin UGC moderation pagination candidate
+- BASE: merged PR #481 main `c7d9373504b56eda3f3bdf842c43f997c4fa50d2`.
+- Legacy reader `qg_admin_ugc_reports(p_status)` is active-Admin guarded but hard-limits 300 rows and has no keyset cursor.
+- Candidate keeps `qg_ugc_reports` direct client access denied and adds a public SECURITY INVOKER wrapper over a private SECURITY DEFINER reader guarded by live session + active Admin.
+- Private reader validates optional status, requires a complete cursor pair, caps `p_limit` at 100 and orders by `created_at DESC,id DESC`.
+- Admin UI uses the existing cancellable read-only RPC layer. Existing moderation mutation RPC remains unchanged/non-cancellable, and successful action refreshes the same active page.
+- Existing content snapshot escaping and strict jpeg/png/webp data-image allowlist remain unchanged.
+- Candidate index is `qg_ugc_reports_recent_idx(created_at DESC,id DESC)`; existing status/reported-user indexes remain.
+- Production currently has 0 UGC reports, so this is bounded-history/security-preserving capacity work rather than a fabricated speed claim.
