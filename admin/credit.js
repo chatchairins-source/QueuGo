@@ -1,5 +1,5 @@
-const readRpc=(fn,args={})=>typeof qgAdminRpcRead==='function'?qgAdminRpcRead(fn,args):qtSupabaseRpc(fn,args);
 (function(){
+ const readRpc=(fn,args={})=>typeof qgAdminRpcRead==='function'?qgAdminRpcRead(fn,args):qtSupabaseRpc(fn,args);
  const money=v=>'฿'+(Number(v||0)/100).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
  const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  function grantForm(host){
