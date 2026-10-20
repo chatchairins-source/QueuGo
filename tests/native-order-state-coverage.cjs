@@ -112,11 +112,13 @@ ok(riderUi.includes('job.status == "picked_up" -> onStartDelivery()')&&
    riderUi.includes('val committedJob = current.activeJob.copy(status = "in_progress")')&&
    !riderUi.includes('openNavigation(context, committedRead?.activeJob ?: committedJob)')&&
    riderUi.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"'),
-  'Rider picked_up fallback must commit in_progress and remain in QueueGo until Google Maps is explicitly selected');
-ok(riderUi.includes('Text("นำทางด้วย Google Maps"')&&
+  'Rider picked_up fallback must commit in_progress and remain in QueueGo navigation');
+ok(riderUi.includes('Text("นำทางด้วย QueueGo"')&&
+   !riderUi.includes('Text("นำทางด้วย Google Maps"')&&
+   !riderUi.includes('GOOGLE_MAPS_PACKAGE')&&
    riderUi.includes('pickup -> "ถึงร้านแล้ว"')&&
    riderUi.includes('job.status == "in_progress" -> "ถึงลูกค้าแล้ว"'),
-  'Rider workflow navigation must remain in QueueGo with Google Maps exposed as a separate optional action');
+  'Rider workflow navigation must remain in QueueGo with no Google Maps action');
 ok(riderApi.includes('&status=eq.completed&order=updated_at.desc'),
   'Rider history must retain completed jobs outside the active snapshot');
 ok(!riderApi.includes('status=in.(arrived')&&!riderApi.includes(',arrived'),
