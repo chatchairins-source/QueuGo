@@ -35,8 +35,8 @@ async function loadMarket(state){
   const path='market_master_products?select=id,name_th,category,suggested_unit,source_unit,image,image_status,catalog_preview_image,active&order=name_th.asc,id.asc&limit=51&offset='+state.offset+(query?'&name_th=ilike.*'+encodeURIComponent(query)+'*':'')+(category?'&category=eq.'+encodeURIComponent(category):'')+(['true','false'].includes(active)?'&active=eq.'+active:'');
   const rows=await qtSupabaseTable(path,{accessToken:await qtGetAccessToken()});if(!alive())return;host.replaceChildren();
   for(const row of (rows||[]).slice(0,50)){
-   const card=document.createElement('article');card.className='qg-master-card';const image=row.image_status==='approved'?row.image:row.catalog_preview_image;
-   if(/^https:\/\//.test(image||'')){const img=document.createElement('img');img.src=image;img.alt=row.name_th;img.width=112;img.height=112;img.loading='lazy';img.referrerPolicy='no-referrer';img.onerror=()=>img.remove();card.append(img)}
+   const card=document.createElement('article');card.className='qg-master-card';const image=String(row.catalog_preview_image||'').trim()||(row.image_status==='approved'?row.image:null);
+   if(/^https:\/\//.test(image||'')){const img=document.createElement('img');img.src=image;img.alt=row.name_th;img.width=112;img.height=112;img.loading='lazy';img.referrerPolicy='no-referrer';img.onerror=()=>{const message=document.createElement('span');message.textContent='โหลดรูปสินค้าไม่สำเร็จ';message.setAttribute('role','status');img.replaceWith(message)};card.append(img)}
    const body=document.createElement('div'),name=document.createElement('h3'),detail=document.createElement('p');name.textContent=row.name_th;detail.textContent=row.category+' · '+(row.suggested_unit||row.source_unit)+' · '+(row.active?'เปิดใช้งาน':'ปิดใช้งาน');body.append(name,detail);card.append(body);host.append(card);
   }
   note.textContent='หน้า '+(state.offset/50+1)+' · '+Math.min(rows?.length||0,50)+' รายการ · หน้านี้อ่านสถานะสินค้ากลางจากระบบจริง';prev.disabled=state.offset===0;next.disabled=(rows?.length||0)<=50;
