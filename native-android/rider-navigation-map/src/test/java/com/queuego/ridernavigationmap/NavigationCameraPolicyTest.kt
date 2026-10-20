@@ -356,6 +356,42 @@ class NavigationCameraPolicyTest {
         assertEquals(state.rider!!.point, decision.center)
     }
 
+    @Test fun onlineReadyFollowRotatesHeadingButStaysTopDown() {
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(13.0, 100.0),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f
+            ),
+            followRider = true,
+            perspectiveCameraEnabled = false,
+            followZoom = 17
+        )
+        val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)!!
+        assertTrue(decision.bearingDegrees!! in 89f..91f)
+        assertEquals(0f, decision.tiltDegrees, 0.001f)
+        assertEquals(17, decision.zoom)
+        assertEquals(state.rider!!.point, decision.center)
+    }
+
+    @Test fun onlineReadyStandstillKeepsPreviousHeadingInsteadOfWobbling() {
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(13.0, 100.0),
+                bearingDegrees = 210f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 0.5f
+            ),
+            followRider = true,
+            perspectiveCameraEnabled = false,
+            followZoom = 17
+        )
+        val decision = navigationCameraDecision(state, previousBearingDegrees = 92f)!!
+        assertEquals(92f, decision.bearingDegrees!!, 0.001f)
+        assertEquals(0f, decision.tiltDegrees, 0.001f)
+    }
+
     @Test fun explicitIdlePerspectiveTestModeKeepsHeadingAndTilt() {
         val state = RiderNavigationMapState(
             rider = NavigationMapFix(

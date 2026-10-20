@@ -2491,6 +2491,7 @@ private fun RiderHome(
             job = mapJob,
             marketPickups = snapshot?.marketPickups.orEmpty(),
             bundleOrders = snapshot?.bundle?.activeOrders.orEmpty(),
+            online = snapshot?.online == true,
             demandZones = if (mapJob == null && snapshot?.online == true) demandZones else emptyList(),
             recenterSignal = recenterSignal,
             overviewSignal = overviewSignal,
