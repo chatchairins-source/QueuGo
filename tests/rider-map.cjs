@@ -12,13 +12,15 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(activeRouteFn.includes("if(isOfferPreview&&!riderRouteCache)focusRiderNavigation"),true);
  eq(activeRouteFn.includes('followNavigationCamera?.(map,pos,riderRouteGeometry'),false);
  eq(source.includes('Route rendering owns geometry only. GPS Follow is the single camera writer.'),true);
- eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}'),true);
+ eq(source.includes('function qgNavigationCameraHasWork(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}'),true);
+ eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.online||qgNavigationCameraHasWork())}'),true);
+ eq(source.includes('headingOnly:!qgNavigationCameraHasWork()'),true);
  eq(source.includes('syncRiderNavigationCameraMode();'),true);
  eq(source.includes('data-qg-rider-puck="true"'),true);
  eq(source.includes("'route': '<svg class=\"ico\""),true);
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
- eq(source.includes('queuego-map-web.js?v=20261019-places1'),true);
+ eq(source.includes('queuego-map-web.js?v=20261020-heading1'),true);
  eq(source.includes('maximumAge:0'),true);
  eq(source.includes('class="qg-speed-pill"'),true);
  eq(source.includes('<div class="qg-brand-pill">'),false);
@@ -163,6 +165,12 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  const retiring=run('drawActiveRoute()'),retiredSignal=requests.at(-1).opts.signal;
  S.activeOrder=null;run('syncRiderNavigationCameraMode(true)');await run('drawActiveRoute()');
  eq(run('RIDER_CAMERA_SMOOTHNESS_TEST_MODE'),false);
+ eq(run('qgNavigationCameraHasWork()'),false);
+ eq(run('qgNavigationCameraShouldRun()'),true);
+ eq(cameraModes.at(-1).active,true);
+ eq(cameraFollows.at(-1).opts.headingOnly,true);
+ S.online=false;run('syncRiderNavigationCameraMode(true)');
+ eq(run('qgNavigationCameraShouldRun()'),false);
  eq(cameraModes.at(-1).active,false);
  eq(retiredSignal.aborted,true);
  gate.resolve({ok:true,json:async()=>geo});gate=null;await retiring;
@@ -217,5 +225,5 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(writes.length,1);writeGate.resolve();await burst;
  eq(writes.length,2);eq(writes[1].opts.body.latitude,13.19);eq(writes[1].path,'rider_profiles?user_id=eq.rider');
 
- console.log(JSON.stringify({checks,failures:0,scope:'QueueGo MapLibre Rider renderer + idle normal camera/active-job follow + route coalescing/cancellation/timeout/GPS ownership; legacy Longdo visual map forbidden, route provider remains legacy until QueueGo Map Engine release gate'}));
+ console.log(JSON.stringify({checks,failures:0,scope:'QueueGo MapLibre Rider renderer + online Ready flat heading-up camera/active-job perspective follow + route coalescing/cancellation/timeout/GPS ownership; legacy Longdo visual map forbidden, route provider remains legacy until QueueGo Map Engine release gate'}));
 })().catch(e=>{console.error(e);process.exit(1)});
