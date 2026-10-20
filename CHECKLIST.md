@@ -714,3 +714,14 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - TEST: existing Admin directory runtime now verifies every overview call carries `p_user_ids`, caps at 200, simulates PGRST202 and proves no second/unscoped call occurs.
 - NO DB MUTATION: no grant/RLS/function/schema change in this source-only checkpoint. Legacy backend function retirement remains a separate compatibility/security decision after deployed callers are proven absent.
 - NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue Admin performance/permission coverage. Whole Admin mission remains IN PROGRESS.
+
+
+## 2026-10-20 Admin Orders keyset paging
+- BASE: merged PR #477 / main `d6caeebb5ccf0608707ea391be0035e148b04dd6`; branch `work-web-admin-orders-keyset-20261020`.
+- ROOT CAUSE: Admin Orders used `offset = page * 100`; database work grows with page depth even though rows are already sorted by `created_at desc, id desc`.
+- CHANGE: paging now uses a stable keyset cursor `(created_at,id)` with 100+1 sentinel rows. “ก่อนหน้า” stores cursor history; status-filter changes reset cursor/page; refresh stays on the current cursor.
+- CONSISTENCY: visible-page shop/customer names are still fetched only for the 100 visible orders. Trace/delete/status filtering and local within-page search are unchanged.
+- RACE SAFETY: request-version + Admin-owner fencing prevents a stale old page/filter response from repainting a newer page/account.
+- INDEX EVIDENCE: Production already has `idx_orders_created_at (created_at desc)` and `orders_pkey(id)`; no schema/index mutation is required for this checkpoint.
+- TEST: Admin order runtime rejects any `offset=` order request and verifies next cursor, previous cursor, filter reset, exact-page parties and existing broadcast behavior.
+- NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue Admin performance/coverage. Whole Admin mission remains IN PROGRESS.

@@ -223,3 +223,14 @@ The successor separates Content and Pricing from Settings using existing banner/
 - TEST: directory regression requires `p_user_ids`, <=200 IDs, simulates PGRST202, and verifies exactly one scoped overview attempt with no unscoped retry.
 - No Production function/grant change in this checkpoint; backend retirement of the legacy overload needs separate compatibility evidence.
 - Whole Admin mission remains IN PROGRESS.
+
+
+## 2026-10-20 Admin Orders pagination checkpoint
+- BASE: merged PR #477 main `d6caeebb5ccf0608707ea391be0035e148b04dd6`.
+- BEFORE: `orders?...order=created_at.desc,id.desc&limit=101&offset=page*100`; deeper pages force OFFSET scanning.
+- AFTER CANDIDATE: keyset cursor `created_at.lt(cursor.at) OR (created_at=cursor.at AND id.lt(cursor.id))`, still ordered `created_at desc,id desc`, 101-row sentinel / 100 visible rows.
+- PREVIOUS PAGE: browser stores only cursor history, not order payloads; going back re-queries the authoritative page.
+- FILTER: all / active / completed / cancelled remains server-filtered and resets cursor history. Search remains explicitly “ในหน้านี้” and exact visible-page shop/customer names remain bounded to page IDs.
+- STALE LOADS: generation + Admin owner fencing prevents page/filter/account races.
+- Production already has `idx_orders_created_at` and the order primary key; no DB mutation in this source-only checkpoint.
+- Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit required before merge.
