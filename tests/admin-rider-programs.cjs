@@ -21,7 +21,7 @@ const tick=async()=>{for(let i=0;i<14;i++)await new Promise(r=>setImmediate(r))}
  const remove=[...w.document.querySelectorAll('#qg-insurance-list button')].find(x=>x.textContent==='ลบกรมธรรม์');await remove.onclick();assert(writes.some(x=>x.fn==='qg_admin_delete_rider_insurance'&&x.args.p_policy_id==='p1'));checks++;
  const readNames=new Set(reads.map(x=>x.fn));for(const x of writes)assert(!readNames.has(x.fn));checks++;
  const code=fs.readFileSync('admin/rider-programs.js','utf8');assert(!code.includes('qg_private'));assert(!/service_role/i.test(code));checks+=2;
- const audit=fs.readFileSync('supabase/migrations/20261020031000_admin_rider_program_audit.sql','utf8');
+ const audit=fs.readFileSync('supabase/migrations/20261020030951_admin_rider_program_audit.sql','utf8');
  for(const forbidden of ['policy_number','coverage_summary','support_phone','support_url','action_url'])assert(!audit.includes(forbidden),forbidden+' must remain redacted');
  assert(audit.includes("'redacted',true"));assert.equal((audit.match(/create trigger qg_admin_audit_rider_/g)||[]).length,3);checks+=7;
  for(const p of ['20261014064750_rider_missions_v1.sql','20261014085820_rider_insurance_center_v1.sql','20261014093530_rider_partner_benefits_v1.sql','20261014093948_rider_partner_benefits_toggle_v2.sql'])assert(fs.existsSync('supabase/migrations/'+p));checks+=4;
