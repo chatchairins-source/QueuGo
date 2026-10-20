@@ -262,7 +262,7 @@ The successor separates Content and Pricing from Settings using existing banner/
 - Complaint modal previously read only the latest 200 `qg_support_tickets` rows and had no history navigation.
 - Candidate UI uses `created_at DESC,id DESC`, 101-row sentinel / 100 visible rows, browser cursor history, and same-cursor refresh after `qg_admin_ticket_action`.
 - Existing RLS remains authoritative: authenticated users can read own tickets; active Admin can read all. No policy/grant/state-machine change.
-- Candidate index is `qg_support_tickets_recent_idx(created_at DESC,id DESC)`; existing status/user indexes remain unchanged.
+- Live/source-aligned migration `20261020042804_admin_ticket_paging_index.sql` installs `qg_support_tickets_recent_idx(created_at DESC,id DESC)`; existing status/user indexes remain unchanged.
 - Production currently contains 0 ticket rows, so this work is future-scale and operator-history coverage, not fabricated present-day performance evidence.
 - Dedicated runtime test rejects OFFSET/fixed-200 behavior and covers paging, mutation refresh and stale-account fencing.
-- UGC reports remain a separate bounded-300 RPC follow-up; this candidate does not modify them.
+- Production apply verified: Supabase migration `20261020042804 admin_ticket_paging_index` is live and `pg_indexes` matches the source contract.\n- UGC reports remain a separate bounded-300 RPC follow-up; this candidate does not modify them.
