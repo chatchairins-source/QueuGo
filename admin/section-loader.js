@@ -90,16 +90,16 @@ window.qgAdminLoadSection=async function(force=false,reason=''){
  // Orders, GP, cash, catalog and support have their own bounded loaders. Never hydrate unrelated tables here.
  return false;
 };
-let rendering=false;
+let rendering=false;const ensures=new Map();
 window.qgAdminEnsureSection=function(){
  if(rendering||!identity())return;
- const before=section(),owner=identity();
- window.qgAdminLoadSection().then(changed=>{
+ const before=section(),owner=identity(),ensureKey=before+':'+owner;if(ensures.has(ensureKey))return;
+ const task=window.qgAdminLoadSection().then(changed=>{
   if(!changed||before!==section()||owner!==identity())return;
   const focus=document.activeElement;
   if(focus&&/^(INPUT|SELECT|TEXTAREA)$/.test(focus.tagName))return;
   rendering=true;try{router()}finally{rendering=false}
- }).catch(e=>{const note=document.getElementById('qg-admin-refresh-note');if(note)note.textContent=e.message;else toast(e.message)});
+ }).catch(e=>{const note=document.getElementById('qg-admin-refresh-note');if(note)note.textContent=e.message;else toast(e.message)}).finally(()=>{if(ensures.get(ensureKey)===task)ensures.delete(ensureKey)});ensures.set(ensureKey,task);
 };
 const history=[];
 window.qgAdminDirectoryPage=async function(direction){
