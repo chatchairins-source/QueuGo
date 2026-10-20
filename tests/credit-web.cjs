@@ -21,5 +21,10 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  const merchant=fs.readFileSync('merchant/index.html','utf8'),rider=fs.readFileSync('rider/index.html','utf8');
  eq(merchant.includes('../queuego-credit.js')&&merchant.includes("kind:'merchant',owner:u.id"),true);
  eq(rider.includes('../queuego-credit.js')&&rider.includes("kind:'rider',owner:S.user.id"),true);
+ const admin=fs.readFileSync('admin/index.html','utf8'),adminCredit=fs.readFileSync('admin/credit.js','utf8');
+ eq(admin.includes("['money','เติมเครดิตฟรีร้านค้า','admin-credit','']"),true);
+ eq(admin.includes("['money','เติมเครดิตฟรีร้านค้า','เพิ่มเครดิต GP ให้ร้านค้าที่อนุมัติแล้ว',\"navigate('admin-credit')\"]"),true);
+ eq((admin.match(/navigate\('admin-credit'\)/g)||[]).length>=2,true);
+ eq(adminCredit.includes("title.textContent='ให้เครดิตฟรีร้านค้า'")&&adminCredit.includes("'queuego_admin_grant_merchant_credit'"),true);
  dom.window.close();console.log('Credit Web: '+checks+' checks PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});
