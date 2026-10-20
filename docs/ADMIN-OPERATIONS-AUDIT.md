@@ -150,3 +150,9 @@ The successor separates Content and Pricing from Settings using existing banner/
 - REMAINING: search-scale indexes/aggregates, audit/notification paging and remaining safe matrix controls. Refund/provider financial execution, staged Credit/Ride cutover, and authenticated/physical-device acceptance remain separate release gates; do not bypass them.
 
 - SCALE SEARCH follow-up: Production migration `20261020022140 admin_directory_search_trgm_indexes` applied after rollback rehearsal; existing `pg_trgm 1.6` reused. Four partial/full GIN trigram indexes now cover account name/phone and current shop name/phone contains-search. Production currently has 35 users / 10 current shops; indexes are capacity work, not a claim of current latency improvement. Repo regression locks all four index definitions. Search-scale text indexes are no longer a remaining item.
+
+## 2026-10-20 Audit and notification keyset paging successor
+- Replaced fixed latest-100-only reads with 100/101 keyset pages for Admin audit history and the signed-in Admin notification inbox.
+- Cursor identity is (created_at,id), included in the read scope so navigation cancels/coalesces correctly and old page replies cannot replace the active page.
+- Production migration 20261020022520 supplies only ordering indexes: audit_logs(created_at DESC,id DESC) and notifications(user_id,created_at DESC,id DESC). No new write privilege or RLS bypass.
+- Remaining: audit server-side search/filter ergonomics and other unresolved operational controls remain separate work; this checkpoint does not close the full Admin mission.
