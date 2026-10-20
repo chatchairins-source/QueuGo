@@ -10,6 +10,46 @@ let checks=0;const eq=(a,b,m)=>{assert.deepEqual(a,b,m);checks++;};
  assert(source.includes('grid-template-columns:minmax(0,1fr) minmax(0,1fr)'),'proof preview should use compact two-column layout');
  assert(source.includes('height:124px;min-height:0'),'proof thumbnail should stay compact on normal mobile screens');
  checks+=2;
+ // Execute the real uploader, including camera normalization and Storage errors.
+ // Only browser decode and the network are replaced; no Production calls occur.
+ {
+  const dom=new JSDOM('<body></body>',{url:'https://queuego.invalid/rider/',runScripts:'outside-only'}),w=dom.window;
+  const sent=[],converted=[];let decodeFailure=false,serverFailure=false;
+  const token='header.'+Buffer.from(JSON.stringify({sub:'rider-proof-test'})).toString('base64url')+'.signature';
+  Object.assign(w,{SB:{URL:'https://storage.invalid',KEY:'isolated-public-key'},getAccessToken:async()=>token,
+   compressRiderImage:async(file,size,quality)=>{converted.push({file,size,quality});if(decodeFailure)throw Error('decode');return 'data:image/jpeg;base64,YWJj';},
+   fetch:async(url,options)=>{sent.push({url,options});return {ok:!serverFailure,json:async()=>({message:'isolated storage denied'})};}
+  });
+  w.eval(source.match(/<script id="qg-rider-support">([\s\S]*?)<\/script>/)[1]);
+  const safe=new w.File(['safe'],'proof.png',{type:'image/png'});
+  eq(await w.qgUploadEvidence(null),null,'cancelled camera never uploads');
+  await w.qgUploadEvidence(safe);
+  eq(sent[0].options.body,safe,'safe image uploads unchanged');
+  eq(converted.length,0,'safe image avoids decode');
+  eq(sent[0].options.headers['Content-Type'],'image/png','safe MIME preserved');
+  eq(sent[0].options.headers['x-upsert'],'false','proof cannot overwrite an existing object');
+  assert.match(sent[0].url,/\/qg-evidence\/rider-proof-test\/.+\.png$/);checks++;
+  for(const file of [new w.File(['heic'],'camera.HEIC',{type:'image/heic'}),{name:'camera.HEIF',type:'',size:10},{name:'large.jpg',type:'image/jpeg',size:6*1024*1024}]){
+   await w.qgUploadEvidence(file);
+   const last=sent.at(-1);
+   eq(last.options.headers['Content-Type'],'image/jpeg','normalized MIME matches JPEG body');
+   eq(last.options.body.type,'image/jpeg','decoded image uploads as JPEG Blob');
+   eq(last.options.body.size,3,'normalized body is the decoded image bytes');
+   assert.match(last.url,/\.jpg$/);checks++;
+  }
+  eq(converted.length,3,'HEIC, blank-MIME HEIF and oversized JPEG all normalize');
+  const count=sent.length;
+  for(const file of [{name:'document.pdf',type:'application/pdf',size:3},{name:'huge.jpg',type:'image/jpeg',size:31*1024*1024}]){
+   await assert.rejects(w.qgUploadEvidence(file));checks++;
+  }
+  eq(sent.length,count,'invalid or oversized sources never reach Storage');
+  decodeFailure=true;
+  await assert.rejects(w.qgUploadEvidence({name:'bad.heic',type:'image/heic',size:10}),/แปลงรูป/);checks++;
+  eq(sent.length,count,'failed camera decode never uploads');
+  decodeFailure=false;serverFailure=true;
+  await assert.rejects(w.qgUploadEvidence(safe),/isolated storage denied/);checks++;
+  w.close();
+ }
  for(const mode of ['pickup','delivery']){
   const dom=new JSDOM('<body></body>',{url:'https://queuego.invalid/rider/',runScripts:'outside-only'}),w=dom.window;
   let uploads=0,mutations=0,failNext=true;
