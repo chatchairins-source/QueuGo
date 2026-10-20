@@ -8,14 +8,14 @@ const tick=async()=>{for(let i=0;i<14;i++)await new Promise(r=>setImmediate(r))}
  const block=html.slice(start,end);
  const d=new JSDOM('<main></main>',{url:'https://isolated.invalid/admin/#admin',runScripts:'outside-only'}),w=d.window;
  const uid=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
- let actor={id:uid(1),type:'admin',status:'approved'},calls=[],held=null,toasts=[],checks=0;
+ let actor={id:uid(1),type:'admin',status:'approved'},calls=[],holdNext=false,releaseHeld=null,toasts=[],checks=0;
  const ticket=(i,at='2026-10-20T04:00:00.000Z')=>({id:uid(1000+i),user_id:uid(2000+i),role:'customer',order_id:null,original_order_id:null,category:'other',details:'ticket '+i,status:'OPEN',admin_id:null,admin_note:null,evidence_path:null,created_at:at});
  const first=Array.from({length:101},(_,i)=>ticket(i));
  const second=[ticket(101,'2026-10-19T03:59:59.000Z'),ticket(102,'2026-10-19T03:59:58.000Z')];
  const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const req=async(path,method='GET',body=null)=>{
    calls.push({path,method,body});
-   if(held&&path.startsWith('qg_support_tickets?')){const h=held;await new Promise(r=>h(r))}
+   if(holdNext&&path.startsWith('qg_support_tickets?')){holdNext=false;await new Promise(r=>{releaseHeld=r})}
    if(path.startsWith('qg_support_tickets?')){
      const q=new URL('https://isolated.invalid/'+path).searchParams;
      return q.get('or')?second:first;
@@ -23,8 +23,8 @@ const tick=async()=>{for(let i=0;i<14;i++)await new Promise(r=>setImmediate(r))}
    if(path==='rpc/qg_admin_ticket_action'&&method==='POST')return {ok:true};
    throw Error('unexpected request '+method+' '+path);
  };
- w.currentUser=()=>actor;w.toast=x=>toasts.push(x);w.qgAdminTrace=()=>{};w.qgAdminOpenEvidence=()=>{};
- w.eval('(function(){const active=()=>currentUser()?.type==="admin"&&currentUser()?.status==="approved";const safe='+safe.toString()+';const req='+req.toString()+';const category={other:"อื่น ๆ"};'+block+'\n})();');
+ w.currentUser=()=>actor;w.toast=x=>toasts.push(x);w.qgAdminTrace=()=>{};w.qgAdminOpenEvidence=()=>{};w.__ticketReq=req;w.__ticketSafe=safe;
+ w.eval('(function(){const active=()=>currentUser()?.type==="admin"&&currentUser()?.status==="approved";const safe=v=>window.__ticketSafe(v);const req=(...args)=>window.__ticketReq(...args);const category={other:"อื่น ๆ"};'+block+'\n})();');
  w.qgAdminTickets();await tick();
  let orderCalls=()=>calls.filter(x=>x.path.startsWith('qg_support_tickets?'));
  assert.equal(w.document.querySelectorAll('#qg-v22-admin-tickets article').length,100);checks++;
@@ -39,7 +39,7 @@ const tick=async()=>{for(let i=0;i<14;i++)await new Promise(r=>setImmediate(r))}
  assert(calls.some(x=>x.path==='rpc/qg_admin_ticket_action'&&x.method==='POST'));const refresh=calls.filter(x=>x.path.startsWith('qg_support_tickets?')).at(-1);assert(new URL('https://isolated.invalid/'+refresh.path).searchParams.get('or'));checks+=2;
  w.document.getElementById('qg-ticket-newer').click();await tick();assert(!new URL('https://isolated.invalid/'+orderCalls().at(-1).path).searchParams.get('or'));checks++;
  // Old-account response must not repaint the modal.
- held=r=>{held=null;globalThis.__release=r};calls=[];const before=w.document.querySelector('.qg-content').textContent;const pending=w.qgAdminLoadTickets();await tick();actor={id:uid(9),type:'customer',status:'approved'};globalThis.__release();await pending;await tick();assert.equal(w.document.querySelector('.qg-content').textContent,before);checks++;
+ holdNext=true;calls=[];const before=w.document.querySelector('.qg-content').textContent;const pending=w.qgAdminLoadTickets();await tick();actor={id:uid(9),type:'customer',status:'approved'};assert.equal(typeof releaseHeld,'function');releaseHeld();await pending;await tick();assert.equal(w.document.querySelector('.qg-content').textContent,before);checks+=2;
  assert(!block.includes('limit=200'));assert(!block.includes('offset='));checks+=2;
  const sql=fs.readFileSync('supabase/migrations/20261020042500_admin_ticket_paging_index.sql','utf8');
  assert(sql.includes('qg_support_tickets_recent_idx'));assert(/\(created_at desc, id desc\)/i.test(sql));checks+=2;
