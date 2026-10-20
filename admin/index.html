@@ -101,13 +101,27 @@ async function qtSupabaseAuth(path, body){
   if(!r.ok) throw new Error(data.error_description||data.msg||data.message||'AUTH_ERROR');
   return data;
 }
-async function qtSupabaseRpc(fn,args={}){
-  const token=await qtGetAccessToken();
+async function qtSupabaseRpc(fn,args={},options={}){
+  const token=options.accessToken||await qtGetAccessToken();
   const headers=qtSupabaseHeaders(token);
-  const r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/rpc/'+fn,{method:'POST',headers,body:JSON.stringify(args),signal:AbortSignal.timeout(15000)});
+  const r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/rpc/'+fn,{method:'POST',headers,body:JSON.stringify(args),signal:options.signal||AbortSignal.timeout(15000)});
   const data=await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return null});
   if(!r.ok) throw new Error((data&&data.message)||'RPC_ERROR_'+r.status);
   return data;
+}
+const QT_ADMIN_READ_ONLY_RPCS=new Set([
+  'queuego_admin_merchant_credit_targets','queuego_admin_credit_accounts',
+  'queuego_ride_config','queuego_admin_public_licenses',
+  'qg_admin_live_counts','qg_admin_dispatch_overview','qg_admin_notification_health','qg_admin_rider_review_page'
+]);
+async function qtSupabaseRpcRead(fn,args={}){
+  if(!QT_ADMIN_READ_ONLY_RPCS.has(fn))throw new Error('RPC_NOT_ALLOWLISTED_AS_READ_ONLY');
+  const token=await qtGetAccessToken();if(!token)throw new Error('กรุณาเข้าสู่ระบบใหม่');
+  const read=signal=>qtSupabaseRpc(fn,args,{signal,accessToken:token});
+  if(typeof window!=='undefined'&&typeof window.qgAdminRead==='function'){
+    return window.qgAdminRead('rpc/'+fn+':'+JSON.stringify(args),{method:'POST',readOnly:true,accessToken:token},read);
+  }
+  return read(AbortSignal.timeout(15000));
 }
 async function qtSupabaseTable(path, options={}){
   if(!options.adminReadBypass&&typeof window!=='undefined'&&typeof window.qgAdminRead==='function')return window.qgAdminRead(path,options,signal=>qtSupabaseTable(path,{...options,signal,adminReadBypass:true}));
