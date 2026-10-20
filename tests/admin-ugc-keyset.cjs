@@ -40,7 +40,7 @@ const tick=async()=>{for(let i=0;i<14;i++)await new Promise(r=>setImmediate(r))}
  // Old-account response must not repaint the modal.
  holdNext=true;const before=w.document.querySelector('.qg-content').textContent;const pending=w.qgAdminLoadUGCReports();await tick();actor={id:uid(9),type:'customer',status:'approved'};assert.equal(typeof releaseHeld,'function');releaseHeld();await pending;await tick();assert.equal(w.document.querySelector('.qg-content').textContent,before);checks+=2;
  assert(block.includes("qgAdminRpcRead('qg_admin_ugc_reports_page'"));assert(!block.includes("req('rpc/qg_admin_ugc_reports'"));assert(!block.includes('qg_ugc_reports?'));checks+=3;
- const sql=fs.readFileSync('supabase/migrations/20261020044500_admin_ugc_report_paging.sql','utf8');
+ const sql=fs.readFileSync('supabase/migrations/20261020044510_admin_ugc_report_paging.sql','utf8');
  for(const required of ['qg_private.admin_ugc_reports_page','qg_private.assert_live_session()','public.is_active_admin()','public.qg_admin_ugc_reports_page','security invoker','qg_ugc_reports_recent_idx','limit v_limit+1'])assert(sql.toLowerCase().includes(required.toLowerCase()),required);
  assert(/revoke all on function public\.qg_admin_ugc_reports_page[\s\S]*from public,anon/i.test(sql));assert(/grant execute on function public\.qg_admin_ugc_reports_page[\s\S]*to authenticated,service_role/i.test(sql));checks+=9;
  d.window.close();
