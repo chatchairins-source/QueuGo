@@ -295,3 +295,10 @@ The successor separates Content and Pricing from Settings using existing banner/
 - A failed mutation does not refresh or produce success state.
 - Dedicated runtime regression stubs qtHydrateDatabase to throw, so reintroducing a full hydrate in either path fails the suite.
 - Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit/Pages required before merge.
+
+## 2026-10-20 Admin GP presentation successor v2
+- Rebased safely by reconstruction on merged PR #484 main `a67783798c94a3678174535baf40760da9acd930`; diverged PR #485 is not a merge source.
+- Presentation/language changes only: clearer merchant-fee terminology, settlement status labels, responsive summary/shop/rate cards and clearer slip actions.
+- Existing daily GP arithmetic, scoped <=200 auxiliary reads and settlement review authority remain unchanged.
+- The two #484 directory-scoped post-shop-mutation refreshes are explicitly preserved; no full Admin DB hydrate is reintroduced.
+- No Production DB/RLS/grant/provider/Credit/Top-up mutation in this checkpoint.
