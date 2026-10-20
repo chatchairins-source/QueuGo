@@ -1,4 +1,5 @@
 (function(){
+ const qgAdminCreditReadRpc=(fn,args={})=>typeof qgAdminRpcRead==='function'?qgAdminRpcRead(fn,args):qtSupabaseRpc(fn,args);
  const money=v=>'฿'+(Number(v||0)/100).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
  const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  function grantForm(host){
@@ -30,7 +31,7 @@
   async function loadTargets(){
    const generation=++searching;find.disabled=true;
    try{
-    const rows=await qtSupabaseRpc('queuego_admin_merchant_credit_targets',{p_query:search.value.trim()});
+    const rows=await qgAdminCreditReadRpc('queuego_admin_merchant_credit_targets',{p_query:search.value.trim()});
     if(!alive()||pending||generation!==searching)return;
     target.replaceChildren(new Option('เลือกร้านค้า',''));
     for(const row of rows)target.append(new Option(row.shops+' · '+row.name+' · เครดิตฟรีคงเหลือ '+money(row.promo_minor),row.user_id));
@@ -66,7 +67,7 @@
  window.qgAdminLoadCredit=async function(){
   const host=document.getElementById('qg-credit-admin'),owner=currentUser()?.id;if(!host||!owner||currentUser()?.type!=='admin'||currentUser()?.status!=='approved')return;host.textContent='กำลังโหลดเครดิต...';
   try{
-   const rows=await qtSupabaseRpc('queuego_admin_credit_accounts',{});if(!host.isConnected||currentUser()?.id!==owner||currentUser()?.type!=='admin'||currentUser()?.status!=='approved')return;host.replaceChildren();grantForm(host);
+   const rows=await qgAdminCreditReadRpc('queuego_admin_credit_accounts',{});if(!host.isConnected||currentUser()?.id!==owner||currentUser()?.type!=='admin'||currentUser()?.status!=='approved')return;host.replaceChildren();grantForm(host);
    for(const a of rows){const card=document.createElement('article');card.className='card';const title=document.createElement('h3');title.textContent=(a.kind==='merchant'?'ร้านค้า · ':'Rider · ')+a.name;card.append(title);const total=document.createElement('p');total.textContent='เงินจริง '+money(a.cash_minor)+' · โปรโมชั่น '+money(a.promo_minor)+' · กันไว้ '+money(Number(a.held_cash_minor)+Number(a.held_promo_minor));card.append(total);
     for(const e of a.entries||[]){const row=document.createElement('p');row.textContent=(e.event_type==='promo'?'เครดิตฟรี':e.event_type)+' · '+money(Number(e.cash_delta)+Number(e.promo_delta))+(e.reason?' · '+e.reason:'');if(e.event_type==='capture'){const button=document.createElement('button');button.textContent='คืนค่าบริการ';button.type='button';button.onclick=async()=>{if(button.disabled||!host.isConnected||currentUser()?.id!==owner||currentUser()?.type!=='admin'||currentUser()?.status!=='approved')return;button.disabled=true;try{const reason=await qgAdminInput({title:'คืนค่าบริการเครดิต',label:'เหตุผลการคืน (อย่างน้อย 5 ตัวอักษร)'});if(reason===null||!host.isConnected||currentUser()?.id!==owner||currentUser()?.type!=='admin'||currentUser()?.status!=='approved')return;if(String(reason).trim().length<5)throw Error('กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร');await qtSupabaseRpc('queuego_admin_reverse_credit',{p_entry:e.id,p_reason:String(reason).trim()});toast('บันทึกคืนเครดิตแล้ว');await qgAdminLoadCredit()}catch(err){toast(err.message||'คืนเครดิตไม่สำเร็จ')}finally{button.disabled=false}};row.append(' ',button)}card.append(row)}host.append(card)
    }
