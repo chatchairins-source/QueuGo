@@ -347,6 +347,7 @@ class NavigationCameraPolicyTest {
                 bearingDegrees = 210f,
                 speedMetersPerSecond = 0.5f
             ),
+            followRider = false,
             followZoom = 17
         )
         val decision = navigationCameraDecision(state, previousBearingDegrees = 92f)!!

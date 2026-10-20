@@ -128,12 +128,12 @@ ok(
 ok(rider.includes('if (mergedSnapshot != currentSnapshot)'),'Rider must not encrypt/write an unchanged home snapshot on every 3-second poll');
 ok(rider.includes('withContext(kotlinx.coroutines.Dispatchers.IO)')&&rider.includes('saveHomeSnapshot(auth.user.id, mergedSnapshot)'),'Rider snapshot persistence must execute off Main');
 ok(rider.includes('saveActiveTab(auth.user.id, activeTab)')&&rider.includes('Dispatchers.IO'),'Rider encrypted UI-state persistence must execute off Main');
-const mapsHandoff = rider.slice(rider.indexOf('private fun openNavigation('));
-ok(mapsHandoff.includes('context.startActivity(mapsIntent)') &&
-  mapsHandoff.includes('RiderReturnService.start(context)') &&
-  mapsHandoff.includes('RiderReturnService.stop(context)') &&
-  !/getSharedPreferences|\.commit\s*\(|\.putBoolean\s*\(/.test(mapsHandoff),
-  'Optional Rider Google Maps handoff must preserve the return service without writing workflow state or synchronously committing preferences on Main'
+ok(
+  rider.includes('Text("นำทางด้วย QueueGo"') &&
+  !rider.includes('Text("นำทางด้วย Google Maps"') &&
+  !rider.includes('private fun openNavigation(') &&
+  !rider.includes('RiderReturnService.start(context)'),
+  'Rider navigation must stay inside QueueGo without an external-map handoff or return-overlay start on Main'
 );
 
 const merchantImage=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
