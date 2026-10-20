@@ -137,19 +137,24 @@ async function qtLoadOwnSupabaseUser(accessToken, authUserId){
 <script>
 const QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE=100;
 let QT_ADMIN_RIDER_PRESENCE_VERSION=0;
+let QT_ADMIN_RIDER_PRESENCE_CURSORS=[null],QT_ADMIN_RIDER_PRESENCE_ACTOR=null;
 window.QG_ADMIN_RIDER_PRESENCE_PAGE=window.QG_ADMIN_RIDER_PRESENCE_PAGE||0;
 async function qtRenderAdminRiderPresence(requestedPage){
   const el=document.getElementById('qt-admin-rider-online-panel');
   if(!el||qtAdminCurrentSection()!=='qt-sec-delivery'||location.hash!=='#admin-governance'||document.hidden)return;
-  const page=Number.isInteger(requestedPage)?Math.max(0,requestedPage):Math.max(0,Number(window.QG_ADMIN_RIDER_PRESENCE_PAGE)||0);
+  const presenceActor=qtSessionRead()?.authUserId;
+  if(QT_ADMIN_RIDER_PRESENCE_ACTOR!==presenceActor){QT_ADMIN_RIDER_PRESENCE_ACTOR=presenceActor;QT_ADMIN_RIDER_PRESENCE_CURSORS=[null];window.QG_ADMIN_RIDER_PRESENCE_PAGE=0}
+  let page=Number.isInteger(requestedPage)?Math.max(0,requestedPage):Math.max(0,Number(window.QG_ADMIN_RIDER_PRESENCE_PAGE)||0);
+  if(QT_ADMIN_RIDER_PRESENCE_CURSORS[page]===undefined)page=0;
+  const cursor=QT_ADMIN_RIDER_PRESENCE_CURSORS[page];
   window.QG_ADMIN_RIDER_PRESENCE_PAGE=page;
-  const presenceActor=qtSessionRead()?.authUserId,version=++QT_ADMIN_RIDER_PRESENCE_VERSION;
+  const version=++QT_ADMIN_RIDER_PRESENCE_VERSION;
   const alive=()=>el.isConnected&&qtSessionRead()?.authUserId===presenceActor&&qtAdminCurrentSection()==='qt-sec-delivery'&&location.hash==='#admin-governance'&&version===QT_ADMIN_RIDER_PRESENCE_VERSION&&window.QG_ADMIN_RIDER_PRESENCE_PAGE===page;
   el.textContent='กำลังโหลดสถานะไรเดอร์…';
   try{
     const token=await qtGetAccessToken();
     if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin');
-    const rawUsers=await qtSupabaseTable('users?select=id,name,status&role=eq.rider&order=id.asc&limit='+(QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE+1)+'&offset='+(page*QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE),{accessToken:token});
+    const rawUsers=await qtSupabaseTable('users?select=id,name,status&role=eq.rider&order=id.asc&limit='+(QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE+1)+(cursor?'&id=gt.'+encodeURIComponent(cursor):''),{accessToken:token});
     if(!alive())return;
     const users=(Array.isArray(rawUsers)?rawUsers:[]).slice(0,QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE),ids=users.map(u=>u.id).filter(qtUuidLike);
     const profiles=ids.length?await qtSupabaseTable('rider_profiles?select=id,user_id,status,metadata&user_id=in.('+ids.join(',')+')&limit='+QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE,{accessToken:token}):[];
@@ -171,7 +176,7 @@ async function qtRenderAdminRiderPresence(requestedPage){
       '<div class="row-btns"><button type="button" id="qg-rider-presence-prev" '+(page>0?'':'disabled')+'>ก่อนหน้า</button><button type="button" id="qg-rider-presence-next" '+(more?'':'disabled')+'>ถัดไป</button></div>';
     const prev=el.querySelector('#qg-rider-presence-prev'),nextButton=el.querySelector('#qg-rider-presence-next');
     prev.onclick=()=>{if(page>0&&alive())qtRenderAdminRiderPresence(page-1)};
-    nextButton.onclick=()=>{if(more&&alive())qtRenderAdminRiderPresence(page+1)};
+    nextButton.onclick=()=>{if(more&&alive()){QT_ADMIN_RIDER_PRESENCE_CURSORS[page+1]=users[users.length-1].id;QT_ADMIN_RIDER_PRESENCE_CURSORS.length=page+2;qtRenderAdminRiderPresence(page+1)}};
   }catch(err){if(alive())el.textContent='โหลดสถานะไรเดอร์ไม่สำเร็จ: '+err.message;}
 }
 </script>

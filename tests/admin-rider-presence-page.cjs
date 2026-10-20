@@ -21,7 +21,7 @@ const tick=async()=>{for(let i=0;i<12;i++)await new Promise(r=>setImmediate(r))}
   calls.push(path);
   assert(!path.includes('qg_rider_presence_events'),'must not replay presence history');
   if(path.startsWith('users?')){
-   const m=path.match(/offset=(\d+)/);return pageRows.get(Number(m?.[1]||0))||[];
+   assert(!path.includes('offset='),'presence must not use deep OFFSET');const m=path.match(/id=gt\.(u\d+)/);return pageRows.get(m?100:0)||[];
   }
   if(path.startsWith('rider_profiles?')){
    const ids=(path.match(/user_id=in\.\(([^)]+)\)/)?.[1]||'').split(',').filter(Boolean);
@@ -34,15 +34,18 @@ const tick=async()=>{for(let i=0;i<12;i++)await new Promise(r=>setImmediate(r))}
  let checks=0;
  await w.qtRenderAdminRiderPresence();await tick();
  assert.equal(calls.length,2);checks++;
- assert.match(calls[0],/role=eq\.rider/);assert.match(calls[0],/limit=101/);assert.match(calls[0],/offset=0/);checks+=3;
+ assert.match(calls[0],/role=eq\.rider/);assert.match(calls[0],/limit=101/);assert(!calls[0].includes('offset='));checks+=3;
  assert.match(calls[1],/rider_profiles\?select=id,user_id,status,metadata/);assert.match(calls[1],/limit=100/);checks+=2;
  assert.equal((calls[1].match(/u099/g)||[]).length,1);assert(!calls[1].includes('u100'));checks+=2;
  assert.equal(w.document.querySelectorAll('.qt-rider-online-card').length,100);checks++;
  assert.match(w.document.querySelector('.qt-rider-online-card span').textContent,/ออนไลน์/);checks++;
  const next=w.document.querySelector('#qg-rider-presence-next');assert(next&&!next.disabled);next.onclick();await tick();checks++;
- assert(calls.some(x=>x.startsWith('users?')&&x.includes('offset=100')));assert.equal(w.QG_ADMIN_RIDER_PRESENCE_PAGE,1);checks+=2;
+ assert(calls.some(x=>x.startsWith('users?')&&x.includes('id=gt.u099')));assert.equal(w.QG_ADMIN_RIDER_PRESENCE_PAGE,1);checks+=2;
  assert.equal(w.document.querySelectorAll('.qt-rider-online-card').length,2);assert(w.document.querySelector('#qg-rider-presence-next').disabled);assert(!w.document.querySelector('#qg-rider-presence-prev').disabled);checks+=3;
  const texts=[...w.document.querySelectorAll('.qt-rider-online-card span')].map(x=>x.textContent);assert(texts.includes('พักสิทธิ์'));checks++;
+ // Refresh preserves the cursor; previous re-reads the authoritative first page.
+ calls=[];await w.qtRenderAdminRiderPresence();assert(calls[0].includes('id=gt.u099'));checks++;
+ w.document.querySelector('#qg-rider-presence-prev').onclick();await tick();assert.equal(w.QG_ADMIN_RIDER_PRESENCE_PAGE,0);assert(!calls[calls.length-2].includes('id=gt.'));checks+=2;
  // A response from the old actor must not overwrite the current panel.
  w.QG_ADMIN_RIDER_PRESENCE_PAGE=0;calls=[];let release;
  heldResolve=resolve=>{release=resolve};
