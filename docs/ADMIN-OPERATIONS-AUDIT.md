@@ -150,3 +150,11 @@ The successor separates Content and Pricing from Settings using existing banner/
 - REMAINING: search-scale indexes/aggregates, audit/notification paging and remaining safe matrix controls. Refund/provider financial execution, staged Credit/Ride cutover, and authenticated/physical-device acceptance remain separate release gates; do not bypass them.
 
 - SCALE SEARCH follow-up: Production migration `20261020022140 admin_directory_search_trgm_indexes` applied after rollback rehearsal; existing `pg_trgm 1.6` reused. Four partial/full GIN trigram indexes now cover account name/phone and current shop name/phone contains-search. Production currently has 35 users / 10 current shops; indexes are capacity work, not a claim of current latency improvement. Repo regression locks all four index definitions. Search-scale text indexes are no longer a remaining item.
+
+
+## 2026-10-20 Admin audit / notification paging checkpoint
+- BASE: exact descendant of PR466 source `004743628cba7410b9d7b5769356749d90b25aa6`; PR466 RC #2123 SUCCESS and merged main `cd857a2eea894b791f4397ce253aea08f4bc61fb`.
+- IMPLEMENTED: Audit Log and Admin's notification history now read 101-row sentinel pages and render at most 100 rows. Older pages use a deterministic `(created_at,id)` keyset cursor instead of growing OFFSET scans; previous-page history is kept only in-session. Cursor identity is part of the read scope so an older in-flight page cannot overwrite the active page. Page changes refresh only the active section; no full Admin hydrate.
+- PRODUCTION DB: migration `20261020022520 admin_audit_notification_paging_indexes` applied after rollback rehearsal. Added `audit_logs(created_at desc,id desc)` and `notifications(user_id,created_at desc,id desc)` indexes matching page filters/order. No RLS/grant changes.
+- TEST: section-loader regression now asserts 100/101 keyset queries, no OFFSET paging, older/newer cursor navigation, stable order, page metadata/functions, and both migration indexes. Exact successor full RC/mobile WebKit/Pages still required.
+- REMAINING SOURCE: read-only POST/RPC cancellation and audited safe controls that already have authoritative backend. Provider-backed refund/credit/top-up/Ride cutover, worker/device delivery evidence and physical authenticated acceptance remain Release Gates, not bypass targets.
