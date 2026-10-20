@@ -2503,7 +2503,7 @@ private fun RiderHome(
             onGuidance = { navigationGuidance = it }
         )
 
-        if (activeNavigationWork) {
+        if (snapshot?.online == true || activeNavigationWork) {
             Box(Modifier.align(Alignment.TopStart).padding(12.dp)) {
                 RiderBlueprintSpeedPill(reliableSpeedKph)
             }
