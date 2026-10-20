@@ -36,7 +36,7 @@ Implemented distinguishes existing main features from staged source. View/contro
 | FEATURE | IMPLEMENTED | ADMIN CAN VIEW | ADMIN CAN CONTROL | ADMIN RPC / POLICY | AUDIT LOG | MISSING |
 | --- | --- | --- | --- | --- | --- | --- |
 | Customer users/profile/status | Main | Users, bounded page | suspend/restore existing flow | users RLS and account guards | live users audit trigger | global server search/address inspection |
-| Customer addresses | Main Customer flow | incomplete | no address editor | owner address policies | not fully audited | operational read surface/justification |
+| Customer saved delivery location | Main: users.metadata lat/lng/address; order address snapshots | existing Users detail now shows saved address/map | read-only; no duplicate address book or order rewrite | existing Admin users SELECT/RLS | existing user_view audit | global user lookup; live signed-in acceptance |
 | Customer Orders | Main | Orders/trace | existing reviewed deletion | qg_admin_order_trace / admin_delete_order_cash_safe | existing trace/archive | page/filter beyond current bound |
 | Customer complaints | Main | Support tickets/UGC | ticket/report decision | qg_admin_ticket_action / qg_admin_ugc_report_action | existing guarded RPCs | live signed-in E2E |
 | Merchant approval/documents | Main | Approval/detail | approve/reject/request changes | queuego_admin_shop_application/approve_shop/reject_shop/request_shop_changes | source audit | server directory readiness optimization |
@@ -128,3 +128,8 @@ The successor separates Content and Pricing from Settings using existing banner/
 - CURRENT BASE:3929a38cf61ddda9f26a12d2f0e7508d560386a5 (PR461 exact successor of mainb4b3f9f6). Live function inventory exposes only POS owner refund, not a generic Admin order refund. No provider-backed Admin workflow is deployed.
 - IMPLEMENTED: financial requests remain visible; removed legacy client-only approve action and false success notification. Direct old function calls fail closed with a clear unavailable reason, including repeats/non-Admin. No money, payment, order, audit or notification mutation. Does not claim actual refund processing exists.
 - TEST: financial failclosed8 PASS; full/exact successor CI pending. REMAINING/BLOCKED: authoritative provider-backed refund review/execution, role validation, atomic audit/idempotency and provider confirmation must precede enabling this control. Other unresolved source tasks remain in audit matrix; whole mission IN PROGRESS.
+
+## 2026-10-20 Customer saved-location coverage checkpoint
+- CURRENT BASE:4ae1c89bb5f90f980033384b612988d9cd27791f (PR462 successor). Verified actual Customer source stores one location in users.metadata plus local cache, and immutable per-order delivery snapshots; live schema has no separate address table. Corrected initial inventory's assumed owner address policies.
+- IMPLEMENTED: existing guarded Users detail shows saved delivery address, safely escaped; reuses existing read-only location map with validated coordinates. No additional queries, address table, customer edit, order-location rewrite or new privilege. Existing user_view audit retained; clearly distinguishes current account location from the order snapshot.
+- TEST: Customer detail DOM11 and source95/82 PASS; full/exact CI pending. PRIOR PR461 passed RC39352282187 (full npm/mobile WebKit74) and merged main791a25340f87f7d47d55ab04569b36e4b2f7f4de; Pages verification pending. Whole mission remains IN PROGRESS per matrix.
