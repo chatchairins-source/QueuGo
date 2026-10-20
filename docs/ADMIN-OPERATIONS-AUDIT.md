@@ -234,3 +234,13 @@ The successor separates Content and Pricing from Settings using existing banner/
 - STALE LOADS: generation + Admin owner fencing prevents page/filter/account races.
 - Production already has `idx_orders_created_at` and the order primary key; no DB mutation in this source-only checkpoint.
 - Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit required before merge.
+
+
+## 2026-10-20 Admin Support fallback-refresh checkpoint
+- BASE: merged PR #478 main `0f84fe969b75f3029fad13577c2c4e9ec4b27be2`.
+- BEFORE: the existing 60s Support fallback was route/visibility/online/Admin scoped, but could still run while an operator was reading an older keyset page or composing a reply.
+- AFTER CANDIDATE: the same 60s fallback is additionally limited to newest inbox + newest selected thread + empty reply draft.
+- This preserves the no-Realtime fallback without silently jumping history or refreshing during composition.
+- Inbox/thread request limits and keyset paging are unchanged; no background full hydrate, new timer, DB/RLS/grant/schema change, or realtime publication change.
+- Existing Support runtime regression now verifies old-page and draft suppression plus one bounded newest-idle refresh.
+- Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit/Pages required before merge.
