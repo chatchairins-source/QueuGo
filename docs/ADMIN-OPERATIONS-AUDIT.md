@@ -160,9 +160,17 @@ The successor separates Content and Pricing from Settings using existing banner/
 - REMAINING SOURCE: read-only POST/RPC cancellation and audited safe controls that already have authoritative backend. Provider-backed refund/credit/top-up/Ride cutover, worker/device delivery evidence and physical authenticated acceptance remain Release Gates, not bypass targets.
 
 
-## 2026-10-20 Admin read-only RPC cancellation checkpoint
-- BASE: PR467 keyset-history merged to main `e3c914428b1d86a459a20b313da76eb54a12f41b` after RC #2179 SUCCESS; this is the fresh successor and does not reuse the earlier stale RPC-cancel branch.
-- IMPLEMENTED: `qtSupabaseRpc` accepts an optional AbortSignal. A scoped `qgAdminRpcRead` routes only read-only POST/RPC requests through the existing coalescing/actor/route cancellation layer.
-- READ PATHS: System live counts, Dispatch overview, notification health, Rider review pages, Ride config/public-licence reads, and Credit account/merchant-target reads now cancel when their Admin scope becomes stale.
-- MUTATION SAFETY: Rider review/request actions, Ride configuration/review writes, credit grant/reversal and all other POST mutations stay on normal RPC calls and are never aborted by route changes.
-- TEST: section-loader regression asserts a stale read-only RPC is aborted while the existing mutation test completes without receiving a cancellation signal. Exact RC/mobile WebKit still required before merge.
+## 2026-10-20 Admin shop category editor checkpoint
+- BASE: PR467 keyset history successor; intended base is merged main `e3c914428b1d86a459a20b313da76eb54a12f41b`.
+- PRODUCTION BACKEND: migrations `20261020023357 admin_shop_category_editor` and `20261020023435 admin_shop_category_invoker_hardening` applied. Final RPC `qg_admin_update_shop_category` is SECURITY INVOKER, requires live session + active Admin, anon/PUBLIC EXECUTE denied, authenticated EXECUTE allowed, and the post-hardening security advisor has no finding for it.
+- CONTROL: existing shop-detail dialog now exposes one audited category editor. It reads only the selected current shop, enforces fixed category/subcategory allowlists, requires a 3–500 character reason, requires at least one shopping subcategory, and writes a server Audit Log with before/after values. It does not alter shop approval/open status.
+- TEST: dedicated source regression covers the UI control, selected-shop read, server guards/allowlists/audit, explicit grants and final SECURITY INVOKER hardening. Exact RC/mobile WebKit required before merge.
+
+
+## 2026-10-20 Admin read-only RPC cancellation successor after category-editor sync
+- BASE: current main `b11d6767d06340dd771f2f080710f458df80b18c` includes merged PR #471 audited shop-category editor and its Production-backed SECURITY INVOKER RPC.
+- IMPLEMENTED: read-only Admin POST/RPC work (System live counts, Dispatch overview, notification health, Rider review paging, Ride config/licence reads, Credit account/merchant-target reads) joins the existing route/account AbortController lifecycle. Mutations continue on normal RPC calls and are never route-aborted.
+- FAILURE/FIX EVIDENCE: RC #2195 found a cross-module helper-name collision; successor helpers are module-scoped/uniquely named. RC #2205 then found a stale Rider-review regression requiring direct `qtSupabaseRpc`; the test now requires the cancellable read helper and forbids the old direct read path.
+- PRE-SYNC GATE: RC #2209 on `30a327f76293f587a7ed1defaa2c0c69ca3ee25a` passed full npm, Admin mobile WebKit, Merchant, Map and Grocery gates.
+- FORWARD SYNC: #471 files were preserved on this successor without reset/revert/force; Admin category UI/migrations/tests and read-cancellation changes coexist.
+- NEXT: exact-head RC after the forward sync is required before merge. If green, merge this slice and continue the next authoritative Admin control; external provider/physical release gates remain blocked and must not be bypassed.
