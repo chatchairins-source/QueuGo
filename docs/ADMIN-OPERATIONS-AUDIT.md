@@ -17,7 +17,7 @@ Status: IN PROGRESS, not a completed release. Baseline main b8b9f9883b50d7da3efb
 | --- | --- | --- | --- |
 | Login / restored session | blank app while own-profile restore; then full hydrate | visible verification shell; existing role validation retained; scoped background read | physical Safari/network validation |
 | Overview | users/profiles, all Orders/Items/Chats, quotations, Notifications, Products, Promotions, Settlements, order audit; sequential chains | count-only HEAD requests in parallel; no detail hydrate; shared short read cache coalesces repeated reads | real Production timings; count-query index/scale evidence |
-| Approval / Users / Shops / Security | five PR445 directory reads but unbounded users/profiles; Users omitted from fast path |200-user keyset pages with201 sentinel; profile reads filtered to returned user IDs; shared directory cache | existing shop overview RPC still computes readiness internally for all shops; server-paged replacement/optimization needed |
+| Approval / Users / Shops / Security | five PR445 directory reads but unbounded users/profiles; Users omitted from fast path | 200-user keyset pages with 201 sentinel; profile reads filtered to returned user IDs; scoped shop overview gets only current page IDs | legacy no-arg backend overload still exists but browser fallback is removed; deployed-call compatibility review before backend retirement |
 | Rider status | three reads every5s even for hidden panel | no hidden polling; entry-scoped presence; scoped realtime/fallback; 100+1 Rider pages + page-ID profile read; current metadata online state | no 2,000-row presence replay; physical/Production latency evidence remains |
 | Audit | full hydrate reset audit cache to empty | audit_logs latest100, no unrelated tables | server pagination/search beyond100 |
 | Notifications | all notifications as part of full hydrate | current Admin user's latest100 | paging beyond100 |
@@ -213,3 +213,13 @@ The successor separates Content and Pricing from Settings using existing banner/
 - NO BEHAVIOR BYPASS: user status + Rider profile status + current online boolean still determine the displayed state; no availability/dispatch mutation was added.
 - TEST: `tests/admin-rider-presence-page.cjs` rejects any presence-history query or 2,000-row contract and exercises page navigation plus account race.
 - Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit is required before merge.
+
+
+## 2026-10-20 Scoped shop overview checkpoint
+- BASE: merged PR #476 main `0e03fcd1a57a5e2b31177fbd5cefeffab0ce9285`; Pages #1475 deploys this main line.
+- PRODUCTION EVIDENCE: two overloads exist. `queuego_admin_shop_overview(p_user_ids uuid[])` is SECURITY INVOKER, checks active Admin and caps cardinality at 200. Legacy `queuego_admin_shop_overview()` is SECURITY DEFINER, loops every shop, calls readiness per shop and counts orders per shop; Supabase Security Advisor flags authenticated execution of that legacy definer.
+- SOURCE CHANGE: current Admin fast path no longer catches a missing scoped overload by calling the no-arg overload. It sends only the current directory page IDs and fails closed if the scoped contract is unavailable.
+- CLEANUP: the unreachable no-arg Admin call inside the non-Admin full-hydrate branch is removed so current source has no direct no-arg browser call.
+- TEST: directory regression requires `p_user_ids`, <=200 IDs, simulates PGRST202, and verifies exactly one scoped overview attempt with no unscoped retry.
+- No Production function/grant change in this checkpoint; backend retirement of the legacy overload needs separate compatibility evidence.
+- Whole Admin mission remains IN PROGRESS.
