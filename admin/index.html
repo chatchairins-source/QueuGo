@@ -491,7 +491,8 @@ async function qtRestoreOwnUser(){
    Governance/account screens need only the account directory; never block them
    on orders, chat, products/catalog, settlements or audit history. */
 const QT_ADMIN_DIRECTORY_SECTIONS=new Set(['qt-sec-overview','qt-sec-approval','qt-sec-security','qt-sec-delivery','qt-sec-shops','qt-sec-users']);
-let QT_ADMIN_DIRECTORY_PROMISE=null;
+let QT_ADMIN_DIRECTORY_PROMISE=null,QT_ADMIN_DIRECTORY_PROMISE_KEY='';
+function qgAdminDirectoryNormalizeQuery(value){return String(value||'').normalize('NFC').replace(/[^\p{L}\p{M}\p{N} +'-]/gu,'').trim().replace(/\s+/g,' ').slice(0,80)}
 function qtAdminCurrentSection(){
   try{return sessionStorage.getItem('qt_admin_active_tab')||'qt-sec-overview'}catch(e){return'qt-sec-overview'}
 }
@@ -501,13 +502,14 @@ function qtAdminUsesDirectoryRefresh(section){
 async function qtHydrateAdminDirectory(){
   const session=qtSessionRead();
   if(session?.role!=='admin')throw Error('เฉพาะ Admin เท่านั้น');
-  if(QT_ADMIN_DIRECTORY_PROMISE)return QT_ADMIN_DIRECTORY_PROMISE;
+  const pageCursor=window.QG_ADMIN_DIRECTORY_CURSOR||'',query=qgAdminDirectoryNormalizeQuery(window.QG_ADMIN_DIRECTORY_QUERY),directoryOwner=session.authUserId;
+  const requestKey=JSON.stringify([directoryOwner,pageCursor,query]);
+  if(QT_ADMIN_DIRECTORY_PROMISE&&QT_ADMIN_DIRECTORY_PROMISE_KEY===requestKey)return QT_ADMIN_DIRECTORY_PROMISE;
   const task=(async()=>{
     const token=await qtGetAccessToken();
     if(!token)throw new Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
-    const directoryOwner=qtSessionRead()?.authUserId;
-    const pageCursor=window.QG_ADMIN_DIRECTORY_CURSOR||'';
-    const pageRows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,metadata,created_at&order=id.asc&limit=201'+(pageCursor?'&id=gt.'+encodeURIComponent(pageCursor):''),{accessToken:token});
+    if(qtSessionRead()?.authUserId!==directoryOwner)return;
+    const pageRows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,metadata,created_at&order=id.asc&limit=201'+(pageCursor?'&id=gt.'+encodeURIComponent(pageCursor):'')+(query?'&or='+encodeURIComponent('(name.ilike.*'+query+'*,phone.ilike.*'+query+'*)'):''),{accessToken:token});
     const userRows=(pageRows||[]).slice(0,200);
     const ids=userRows.map(u=>u.id).filter(qtUuidLike);
     const filter='&user_id=in.('+ids.join(',')+')';
@@ -517,9 +519,9 @@ async function qtHydrateAdminDirectory(){
       qtSupabaseTable('rider_profiles?select=id,user_id,vehicle_type,vehicle_plate,address,latitude,longitude,status,metadata'+filter+'&limit=200',{accessToken:token}),
       qtSupabaseTable('rpc/queuego_admin_shop_overview?shop_user_id=in.('+ids.join(',')+')&limit=200',{method:'POST',accessToken:token,body:{p_user_ids:ids}}).catch(e=>{if(/(Could not find the function|PGRST202|function .* does not exist)/i.test(e.message||'')&&/shop_overview/.test(e.message||''))return qtSupabaseTable('rpc/queuego_admin_shop_overview?shop_user_id=in.('+ids.join(',')+')&limit=200',{method:'POST',accessToken:token,body:{}});throw e})
     ]):[[],[],[],[]];
-    if(qtAccessToken()!==token||qtSessionRead()?.authUserId!==directoryOwner||pageCursor!==(window.QG_ADMIN_DIRECTORY_CURSOR||''))return;
+    if(qtAccessToken()!==token||qtSessionRead()?.authUserId!==directoryOwner||pageCursor!==(window.QG_ADMIN_DIRECTORY_CURSOR||'')||query!==qgAdminDirectoryNormalizeQuery(window.QG_ADMIN_DIRECTORY_QUERY))return;
     const ownUser=currentUser();
-    window.QG_ADMIN_DIRECTORY_PAGE={more:pageRows.length>200,last:userRows.at(-1)?.id,cursor:pageCursor};
+    window.QG_ADMIN_DIRECTORY_PAGE={more:pageRows.length>200,last:userRows.at(-1)?.id,cursor:pageCursor,ids};
     const sm=new Map();
     for(const x of (shops||[]).filter(x=>x&&x.user_id)){
       const prev=sm.get(x.user_id),xp=x.archived_at?1:0,pp=prev?.archived_at?1:0;
@@ -563,7 +565,7 @@ async function qtHydrateAdminDirectory(){
     qtMarkClean('qt_users');
     return profileMaps;
   })();
-  QT_ADMIN_DIRECTORY_PROMISE=task;
+  QT_ADMIN_DIRECTORY_PROMISE=task;QT_ADMIN_DIRECTORY_PROMISE_KEY=requestKey;
   try{return await task}
   finally{if(QT_ADMIN_DIRECTORY_PROMISE===task)QT_ADMIN_DIRECTORY_PROMISE=null}
 }
@@ -1031,7 +1033,8 @@ window.qgAdminArchiveShop=qgAdminArchiveShop;
 
 function renderAdminGovernance(){
  const admin=qtAdminOnly();if(!admin)return;
- const users=dbGet('qt_users',[]),promos=dbGet('qt_promotions',[]),orders=dbGet('qt_orders',[]),audit=dbGet('qt_audit_log',[]),settings=qtGetSystemSettings();
+ const pageIds=window.QG_ADMIN_DIRECTORY_PAGE?.ids,visibleIds=Array.isArray(pageIds)?new Set(pageIds):null;
+ const users=dbGet('qt_users',[]).filter(u=>!visibleIds||visibleIds.has(u.id)),promos=dbGet('qt_promotions',[]),orders=dbGet('qt_orders',[]),audit=dbGet('qt_audit_log',[]),settings=qtGetSystemSettings();
  const esc=v=>escapeHtml(String(v??'')),empty=text=>`<p class="qg-empty">${text}</p>`;
  const shopBucket=u=>{
    if(u.archivedAt||u.onboardingStatus==='archived'||u.shopDbStatus==='deleted')return'archived';
@@ -1051,7 +1054,7 @@ function renderAdminGovernance(){
  const activePanel=sessionStorage.getItem('qt_admin_active_tab')||'qt-sec-overview';
  const panel=(id,body)=>id===activePanel?`<section id="${id}" class="qt-admin-panel">${body}</section>`:`<section id="${id}" class="qt-admin-panel" data-lazy="true"></section>`;
  const fields=[['delivery5','ค่าจัดส่ง ≤ 5 กม. (บาท)',0,undefined,1],['delivery10','ค่าจัดส่ง ≤ 10 กม. (บาท)',0,undefined,1],['riderRadius','รัศมีรับงานไรเดอร์ (กม.)',0,undefined,0.5],['techRadius','รัศมีรับงานช่าง (กม.)',0,undefined,0.5],['orderTimeout','Timeout ออเดอร์ (นาที)',1,undefined,1],['systemFee','ค่าธรรมเนียมระบบ (%)',0,100,0.1]];
- layout('จัดการระบบ',`<div class="qt-admin-wrap"><div class="qg-workspace-toolbar"><label>เลือกหมวดจัดการ<select id="qg-admin-section-picker" onchange="qtAdminTab(this.value)">${sections.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select></label><button type="button" class="btn-secondary" onclick="qtAdminRefresh('governance')">รีเฟรชข้อมูล</button></div><p id="qg-admin-refresh-note" class="qt-admin-note" role="status"></p>${['qt-sec-users','qt-sec-shops','qt-sec-approval','qt-sec-security'].includes(sessionStorage.getItem('qt_admin_active_tab'))?'<div class="row-btns"><button type="button" onclick="qgAdminDirectoryPage(-1)">ก่อนหน้า</button><button type="button" onclick="qgAdminDirectoryPage(1)">ถัดไป</button><span>ค้นหาและตัวเลขเฉพาะหน้านี้ · สูงสุด 200 บัญชี</span></div>':''}
+ layout('จัดการระบบ',`<div class="qt-admin-wrap"><div class="qg-workspace-toolbar"><label>เลือกหมวดจัดการ<select id="qg-admin-section-picker" onchange="qtAdminTab(this.value)">${sections.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select></label><button type="button" class="btn-secondary" onclick="qtAdminRefresh('governance')">รีเฟรชข้อมูล</button></div><p id="qg-admin-refresh-note" class="qt-admin-note" role="status"></p>${['qt-sec-users','qt-sec-shops','qt-sec-approval','qt-sec-security'].includes(sessionStorage.getItem('qt_admin_active_tab'))?`<form onsubmit="event.preventDefault();qgAdminDirectorySearch(this.elements.directorySearch.value)"><label>ค้นชื่อหรือเบอร์โทรจากระบบ<input name="directorySearch" type="search" maxlength="80" value="${esc(window.QG_ADMIN_DIRECTORY_QUERY||'')}" placeholder="อย่างน้อย 2 ตัวอักษร"></label><div class="row-btns"><button type="submit">ค้นหา</button><button type="button" onclick="qgAdminDirectorySearch('')">ล้างคำค้น</button></div></form><div class="row-btns"><button type="button" onclick="qgAdminDirectoryPage(-1)">ก่อนหน้า</button><button type="button" onclick="qgAdminDirectoryPage(1)">ถัดไป</button><span>ตัวเลขและประเภทบัญชีเฉพาะผลลัพธ์หน้านี้ · สูงสุด 200 บัญชี</span></div>`:''}
  ${panel('qt-sec-overview',`<h2>งานรอดำเนินการ</h2><div class="qg-workspace-actions"><button onclick="qtAdminTab('qt-sec-approval')">ตรวจผู้ให้บริการ <b>${pending.length}</b></button><button onclick="navigate('admin-market')">ตลาดและสมาชิกตลาด ${qgAdminIcon('pin')}</button><button onclick="navigate('admin-orders')">ดูออเดอร์ ${qgAdminIcon('orders')}</button><button onclick="navigate('admin-gp')">ตรวจ GP และสลิป ${qgAdminIcon('money')}</button></div>`)}
  ${panel('qt-sec-orders','<h2>จัดการออเดอร์</h2><p class="qt-admin-note">ค้นหา ตรวจสถานะ และเปิดประวัติออเดอร์</p><button class="btn-primary" onclick="navigate(\'admin-orders\')">เปิดรายการออเดอร์</button>')}
  ${panel('qt-sec-shops',`<h2>จัดการร้านค้า</h2><div class="qg-shop-filters">${[['all','ทั้งหมด'],['ready','พร้อมใช้งาน'],['pending_review','รออนุมัติ'],['incomplete','ข้อมูลไม่ครบ'],['never_opened','ไม่เคยเปิดใช้งาน'],['archived','ถูกลบ / Archived']].map(([key,label],i)=>`<button class="${i===0?'active':''}" data-shop-filter="${key}" onclick="qgAdminShopFilter('${key}')">${label}</button>`).join('')}</div><input id="qg-shop-search" type="search" aria-label="ค้นหาร้านค้า" placeholder="ค้นหาชื่อร้าน ประเภท หรือเบอร์โทร" oninput="qgAdminShopFilter()"><div class="qg-shop-list">${shopCards||empty('ยังไม่มีร้านค้า')}</div><p id="qg-shop-empty" class="qg-empty" hidden>ไม่พบร้านค้าที่ค้นหา</p>`)}
