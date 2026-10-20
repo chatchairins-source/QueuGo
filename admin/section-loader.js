@@ -33,11 +33,11 @@ const metrics=window.QG_ADMIN_LOAD_METRICS=[];
 function reset(){epoch++;stopStale(true);cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_QUERY='';history.length=0;window.QG_ADMIN_DIRECTORY_PAGE=null;}
 async function resource(key,load,force){
  if(identity()!==actor)reset();if(!actor)return false;
- stopStale();const now=Date.now(),old=cache.get(key);if(old?.promise&&old.scope===readScope())return old.promise;
+ stopStale();const now=Date.now(),old=cache.get(key);if(old?.promise&&old.scope===readScope())return old.promise.then(changed=>{if(old.dirty&&identity()===actor&&readScope()===old.scope){old.dirty=false;return resource(key,load,true)}return changed});
  if(!force&&old?.at&&now-old.at<ttl)return false;
  const version=epoch,owner=actor,scope=readScope(),start=performance.now();
  const item={at:old?.at||0,scope};
- item.promise=(async()=>{try{await load(()=>epoch===version&&identity()===owner&&readScope()===scope);if(epoch!==version||identity()!==owner||readScope()!==scope)return false;item.at=Date.now();metrics.push({section:key,durationMs:Math.round(performance.now()-start)});if(metrics.length>100)metrics.shift();return true}finally{item.promise=null}})();
+ item.promise=(async()=>{try{await load(()=>epoch===version&&identity()===owner&&readScope()===scope);if(epoch!==version||identity()!==owner||readScope()!==scope)return false;item.at=item.dirty?0:Date.now();metrics.push({section:key,durationMs:Math.round(performance.now()-start)});if(metrics.length>100)metrics.shift();return true}finally{item.promise=null}})();
  cache.set(key,item);return item.promise;
 }
 async function count(path,token){
@@ -73,7 +73,7 @@ window.qgAdminLoadSection=async function(force=false,reason=''){
  if(reason&&reason.includes(':')){
   const table=reason.split(':')[0];
   if(!window.qgAdminRealtimeTables().includes(table))return false;
-  const entry=cache.get(key==='qt-sec-overview'?'admin':directory.has(key)?'directory':key);if(entry)entry.at=0;
+  window.qgAdminClearReadCache();const entry=cache.get(key==='qt-sec-overview'?'admin':directory.has(key)?'directory':key);if(entry){entry.at=0;entry.dirty=true;}
  }
  if(key==='admin'||key==='qt-sec-overview')return resource('admin',summary,force);
  if(directory.has(key)){
