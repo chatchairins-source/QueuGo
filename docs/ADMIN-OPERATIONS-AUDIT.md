@@ -277,3 +277,4 @@ The successor separates Content and Pricing from Settings using existing banner/
 - Existing content snapshot escaping and strict jpeg/png/webp data-image allowlist remain unchanged.
 - Candidate index is `qg_ugc_reports_recent_idx(created_at DESC,id DESC)`; existing status/reported-user indexes remain.
 - Production currently has 0 UGC reports, so this is bounded-history/security-preserving capacity work rather than a fabricated speed claim.
+- Rollback rehearsal on Production passed with a real active Admin/live session: page contract valid, incomplete cursor rejected with 22023, anon wrapper/private EXECUTE denied, authenticated public wrapper EXECUTE present, and rollback left no candidate functions/index.
