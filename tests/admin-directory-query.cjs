@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
-(async()=>{const html=fs.readFileSync('admin/index.html','utf8'),start=html.indexOf('let QT_ADMIN_DIRECTORY_PROMISE=null'),end=html.indexOf('async function qtAdminRefreshScoped(',start);let actor='admin',calls=[],gate,release,checks=0;
+(async()=>{const html=fs.readFileSync('admin/index.html','utf8'),start=html.indexOf('let QT_ADMIN_DIRECTORY_PROMISE=null'),end=html.indexOf('async function qtAdminRefreshScoped(',start);let actor='admin',calls=[],gate,release,overviewMissing=false,checks=0;
 const uid=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0'),ctx={window:null,QT_DB_CACHE:{},QT_SYNC:{},qtSessionRead:()=>({role:actor==='admin'?'admin':'customer',authUserId:actor}),qtGetAccessToken:async()=> 'fixture',qtAccessToken:()=> 'fixture',qtUuidLike:v=>/^[a-f0-9-]{36}$/.test(v),qtMarkClean:()=>{},currentUser:()=>({id:uid(1),type:'admin'}),qtUserFromRow:x=>({...x,type:x.role,authUserId:x.auth_user_id})};ctx.window=ctx;
 const qOf=path=>new URL('https://isolated.invalid/'+path).searchParams;
 ctx.qtSupabaseTable=async(path,options)=>{
@@ -22,6 +22,10 @@ ctx.qtSupabaseTable=async(path,options)=>{
    const or=qOf(path).get('or')||'';
    return or.includes('ร้านทอง')?[{user_id:uid(4)}]:[];
  }
+ if(path.startsWith('rpc/queuego_admin_shop_overview')){
+   if(overviewMissing)throw Error('PGRST202 Could not find the function queuego_admin_shop_overview(p_user_ids)');
+   assert(Array.isArray(options?.body?.p_user_ids));assert(options.body.p_user_ids.length<=200);checks+=2;return [];
+ }
  return [];
 };
 vm.createContext(ctx);vm.runInContext(html.slice(start,end),ctx);
@@ -33,8 +37,14 @@ ctx.QG_ADMIN_DIRECTORY_QUERY='ร้านทอง';ctx.QG_ADMIN_DIRECTORY_CURS
 assert(calls[1].path.includes('shop_name.ilike')||decodeURIComponent(calls[1].path).includes('shop_name.ilike'));assert.equal(ctx.QG_ADMIN_DIRECTORY_PAGE.ids[0],uid(4));assert.equal(ctx.QT_DB_CACHE.qt_users[0].id,uid(4));checks+=3;
 ctx.QG_ADMIN_DIRECTORY_QUERY='วิชัย';ctx.QG_ADMIN_DIRECTORY_CURSOR=uid(2);calls=[];await ctx.qtHydrateAdminDirectory();assert(calls[0].path.includes('&id=gt.'+uid(2)));assert(calls[1].path.includes('&user_id=gt.'+uid(2)));checks+=2;
 gate=new Promise(r=>release=r);ctx.QG_ADMIN_DIRECTORY_CURSOR='';ctx.QG_ADMIN_DIRECTORY_QUERY='old';const old=ctx.qtHydrateAdminDirectory();await new Promise(r=>setImmediate(r));ctx.QG_ADMIN_DIRECTORY_QUERY='new';const newer=ctx.qtHydrateAdminDirectory();await newer;assert.equal(ctx.QT_DB_CACHE.qt_users[0].id,uid(3));release();await old;assert.equal(ctx.QT_DB_CACHE.qt_users[0].id,uid(3));checks+=2;
+ctx.QG_ADMIN_DIRECTORY_QUERY='';ctx.QG_ADMIN_DIRECTORY_CURSOR=uid(9);calls=[];overviewMissing=true;
+await assert.rejects(()=>ctx.qtHydrateAdminDirectory(),/PGRST202/);
+const overviewCalls=calls.filter(x=>x.path.startsWith('rpc/queuego_admin_shop_overview'));
+assert.equal(overviewCalls.length,1);assert(Array.isArray(overviewCalls[0].options?.body?.p_user_ids));assert(!calls.some(x=>x.path==='rpc/queuego_admin_shop_overview'&&Object.keys(x.options?.body||{}).length===0));checks+=3;
+overviewMissing=false;
 actor='customer';calls=[];await assert.rejects(()=>ctx.qtHydrateAdminDirectory(),/Admin/);assert.equal(calls.length,0);checks+=2;
 assert(html.includes('qgAdminDirectorySearch(this.elements.directorySearch.value)'));checks++;
+assert(!html.includes("qtSupabaseTable('rpc/queuego_admin_shop_overview',{method:'POST',accessToken:token,body:{}})"));checks++;
 const searchIndexSql=fs.readFileSync('supabase/migrations/20261020022140_admin_directory_search_trgm_indexes.sql','utf8');
 for(const index of ['users_name_trgm_idx','users_phone_trgm_idx','shop_profiles_current_name_trgm_idx','shop_profiles_current_phone_trgm_idx']){assert(searchIndexSql.includes(index));checks++}
 assert((searchIndexSql.match(/gin_trgm_ops/g)||[]).length===4);checks++;
