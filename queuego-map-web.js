@@ -170,6 +170,14 @@ function navRotationDuration(currentBearing,targetBearing,cadenceMs,fallback=420
   const angleDuration=Math.max(profile.min,Math.min(profile.max,Math.round(profile.base+angle*profile.gain)));
   return Math.max(profile.min,Math.min(profile.max,Math.max(cadenceDuration,angleDuration)));
 }
+function navSpeedAwareZoom(speed,baseZoom=17){
+  const base=Math.max(14,Math.min(20,Number(baseZoom)||17));
+  if(!navHasNumber(speed)||Number(speed)<0)return base;
+  const spd=Math.max(0,Math.min(25,Number(speed)));
+  if(spd<=.8)return Math.max(base,18.4);
+  const dynamic=18.4-Math.min(3.4,spd*.14);
+  return Math.round(Math.max(15,Math.min(18.4,dynamic))*10)/10;
+}
 function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=[],previousBearing=null,previousRouteProgress=null,baseZoom=17}={}){
   if(!valid(lat,lng))return null;
   const point={lat:Number(lat),lng:Number(lng)},spd=navHasNumber(speed)&&Number(speed)>=0?Number(speed):null;
@@ -205,9 +213,12 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
   const smoothing=spd==null?.30:spd>=18?.68:spd>=11?.62:spd>=5?.52:spd>=2?.38:.24;
   const smoothedBearing=navSmoothBearing(previousBearing,desiredBearing,smoothing);
   const cameraBearing=smoothedBearing??0;
-  let zoom=remaining!=null&&remaining<=60?19:remaining!=null&&remaining<=180?18:spd==null?baseZoom:spd>=18?15:spd>=11?16:spd>=5?17:spd<=1.5?Math.max(baseZoom,18):baseZoom;
-  if(acc!=null&&acc>60)zoom=Math.max(14,zoom-1);
-  zoom=Math.max(14,Math.min(20,zoom));
+  let zoom=remaining!=null&&remaining<=60?19:
+    remaining!=null&&remaining<=180?18:
+    remaining!=null?(spd==null?baseZoom:spd>=18?15:spd>=11?16:spd>=5?17:spd<=1.5?Math.max(baseZoom,18):baseZoom):
+    navSpeedAwareZoom(spd,baseZoom);
+  if(acc!=null&&acc>60)zoom=Math.max(14,zoom-.7);
+  zoom=Math.round(Math.max(14,Math.min(20,zoom))*10)/10;
   const freeDrive=!reliable;
   const pitch=Math.max(0,Math.min(55,
     acc!=null&&acc>80?(freeDrive?28:24):

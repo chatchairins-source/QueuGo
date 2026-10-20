@@ -255,12 +255,12 @@ const readyHeading=Q.followNavigationCamera(
 ok(readyHeading!=null,'online Ready state must keep Rider heading follow active');
 eq(gestureMap.easeCalls.at(-1).bearing,90,'Ready map must rotate so the Rider arrow points forward');
 eq(gestureMap.easeCalls.at(-1).pitch,0,'Ready heading follow must stay flat instead of entering navigation perspective');
-eq(gestureMap.easeCalls.at(-1).zoom,17,'Ready heading follow must restore speed-aware zoom at medium speed');
+ok(gestureMap.easeCalls.at(-1).zoom<17.4&&gestureMap.easeCalls.at(-1).zoom>17.2,'Ready heading follow must visibly zoom out at medium speed');
 Q.followNavigationCamera(
   gestureMap,{lat:15,lng:103.006,speed:20,bearing:90,accuracy:5},[],
   {force:true,headingOnly:true,puckBearing:90}
 );
-eq(gestureMap.easeCalls.at(-1).zoom,15,'Ready heading follow must zoom out more at high speed');
+ok(gestureMap.easeCalls.at(-1).zoom<15.7&&gestureMap.easeCalls.at(-1).zoom>15.5,'Ready heading follow must zoom out farther at high speed');
 ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0055,speed:8,bearing:90},straight,{force:true,headingOnly:false,puckBearing:90})!=null,'active job must start perspective follow camera');
 ok(gestureMap.easeCalls.at(-1).pitch>0,'active job must restore navigation perspective');
 
