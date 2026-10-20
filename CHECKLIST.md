@@ -656,3 +656,7 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - READ PATHS: System live counts, Dispatch overview, notification health, Rider review pages, Ride config/public-licence reads, and Credit account/merchant-target reads now cancel when their Admin scope becomes stale.
 - MUTATION SAFETY: Rider review/request actions, Ride configuration/review writes, credit grant/reversal and all other POST mutations stay on normal RPC calls and are never aborted by route changes.
 - TEST: section-loader regression asserts a stale read-only RPC is aborted while the existing mutation test completes without receiving a cancellation signal. Exact RC/mobile WebKit still required before merge.
+
+- RC #2195 on `0a3d8a247161b686250fb3a122e4c8cbda94c064` failed first because module-level `readRpc` constants collided when the full critical-client harness loaded Admin modules together; runtime logic had not failed. Successor `6db39b319ed90ba56a9ae6242f80f5e2e7b3b003` scopes/names helpers per module.
+- RC #2205 on `6db39b319ed90ba56a9ae6242f80f5e2e7b3b003` advanced through the new cancellation runtime checks, then failed first at stale Rider-review regression text that still required direct `qtSupabaseRpc`. Fix `aa9af2d62e662ac8a47d0ee4d061b5ef85d67592` now requires `qgAdminOpsReadRpc` and forbids the old direct read call.
+- NEXT: obtain exact-head RC for `aa9af2d62e662ac8a47d0ee4d061b5ef85d67592`; if green, merge this slice before retargeting the already-green shop-category PR #471.
