@@ -557,3 +557,13 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Change: lookup only unique valid requester account IDs from visible requests, bounded50; join labels by Map. A request generation fence rejects stale same-account responses. Existing mutations/RLS and queue limits are unchanged.
 - Test: Market runtime19/0 with scoped applicant query and old/new queue race; source integrity97/83; full npm EXIT0. Hosted exact RC required before merge/Pages.
 - NEXT: exact RC, merge after parent green, verify deployed bytes; continue Native Market catalog parity from newest source38baf74c without merging the Web-only tree over Native files.
+
+
+## 2026-10-20 Admin Market pending-count HEAD reads
+- Status: IN PROGRESS; branch work-web-admin-market-pending-counts-20261020; base mainb1243f3cbe589a613fce3373efd633fe56bfe478 includes PR489/490.
+- Root cause: home Market badge fetched every pending request/member ID only to count rows, and could be truncated by API row caps. A focused count test additionally proved HEAD was classified as a mutation in qgAdminRead, disabling read coalescing.
+- Change: badge uses the existing tracked HEAD/count=exact reader through qgAdminCountRead. HEAD joins GET/read-only RPC caching/cancellation; POST writes remain non-cancellable. Two concurrent same-owner count requests now send one network read.
+- Test: section runtime59/0 proves HEAD/count=exact,1501-row total, coalescing and non-Admin denial; Market19/0; full npm EXIT0; source integrity97/83. Exact RC/mobile WebKit required before merge/Pages.
+- Deployed proof for parents: PR489/490 exact RC green; mainb1243f3c Pages39395057654 SUCCESS and RC39395058304 SUCCESS. Actual HTTPS200 Admin HTML SHA25698feedd0222b659107d56c6a4f3442c21233fd798997057a9821013d12018719 and Market JS SHA256f8ff06a5bdd4d1fa0aa0d88e9c4bcdf9b66b93b4822351e949209f961909e24a match tested bytes.
+- NEXT: exact RC/merge/Pages, then fix Admin Market Master image priority to use the dedicated official catalog preview like Merchant, preserving separate reuse status.
+- Native Market parity is now PR491/a5c0bf8a7986d5510c33e5b93b5a5d0794d83188, strict descendant of green PR439/38baf74c; Native run39395017610 is running. Do not reimplement or merge the Web-only tree over native-android.

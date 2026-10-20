@@ -41,6 +41,11 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
  route='#admin-governance';tab='qt-sec-users';await ctx.qgAdminLoadSection();let cachedReads=0;
  const cachedRead=()=>ctx.qgAdminRead('users?scoped-realtime-test',{},async()=>++cachedReads);await cachedRead();await ctx.qgAdminLoadSection(false,'orders:UPDATE');await cachedRead();assert.equal(cachedReads,1);await ctx.qgAdminLoadSection(false,'users:UPDATE');await cachedRead();assert.equal(cachedReads,2);checks+=2;
  const beforeDirectory=directory;gate=new Promise(r=>release=r);const loadingDirectory=ctx.qgAdminLoadSection(true);await new Promise(r=>setImmediate(r));const changedDuringLoad=ctx.qgAdminLoadSection(false,'users:UPDATE');await new Promise(r=>setImmediate(r));release();gate=null;await Promise.all([loadingDirectory,changedDuringLoad]);assert.equal(directory,beforeDirectory+2);checks++;
+ // Counts share the cancellable HEAD reader and never download/truncate ID rows.
+ let countFetches=0;ctx.fetch=async(u,o)=>{countFetches++;assert.equal(o.method,'HEAD');assert.equal(o.headers.Prefer,'count=exact');return {ok:true,headers:{get:()=> '*/1501'}}};
+ route='#admin';const path='market_requests?select=id&status=eq.pending';
+ const counts=await Promise.all([ctx.qgAdminCountRead(path),ctx.qgAdminCountRead(path)]);assert.equal(counts[0],1501);assert.equal(counts[1],1501);assert.equal(countFetches,1);checks+=3;
+ actor=null;await assert.rejects(ctx.qgAdminCountRead(path),/Admin/);assert.equal(countFetches,1);checks+=2;
  const pagingSql=fs.readFileSync('supabase/migrations/20261020022520_admin_audit_notification_paging_indexes.sql','utf8');assert(pagingSql.includes('audit_logs_created_id_idx'));assert(pagingSql.includes('notifications_user_created_id_idx'));checks+=2;
  console.log(JSON.stringify({checks,failures:0,scope:'executed Admin section loader: request coalescing, TTL, auth fencing, forced refresh, 100/101 keyset audit+notification paging, lightweight routes, GET/HEAD/read-only RPC cancellation, pending coalescing and mutation completion'}));
 })().catch(e=>{console.error(e);process.exit(1)});

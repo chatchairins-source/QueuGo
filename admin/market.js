@@ -11,10 +11,10 @@ window.qgLoadMarketPendingCount=async()=>{
   const el=document.getElementById('qg-home-pending-markets'),owner=actor();if(!el||!owner)return;
   try{
     const [requests,members]=await Promise.all([
-      api('market_requests?select=id&status=eq.pending'),
-      api('shop_profiles?select=id&market_membership_status=eq.pending&archived_at=is.null')
+      qgAdminCountRead('market_requests?select=id&status=eq.pending'),
+      qgAdminCountRead('shop_profiles?select=id&market_membership_status=eq.pending&archived_at=is.null')
     ]);
-    if(el.isConnected&&actor()===owner){el.textContent=String(requests.length+members.length);const total=document.getElementById('qg-home-pending-total');if(total)total.textContent=String(Number(total.dataset.base||0)+requests.length+members.length);}
+    if(el.isConnected&&actor()===owner){el.textContent=String(requests+members);const total=document.getElementById('qg-home-pending-total');if(total)total.textContent=String(Number(total.dataset.base||0)+requests+members);}
   }catch(e){if(el.isConnected&&actor()===owner)el.textContent='โหลดไม่ได้ — เปิดหน้าตลาดเพื่อลองใหม่'}
 };
 window.addEventListener('qt:realtime-update',()=>{
