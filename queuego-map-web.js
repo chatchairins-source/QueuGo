@@ -298,7 +298,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   const decision=navCameraDecision({...fix,route:normalizedRoute,previousBearing,previousRouteProgress,baseZoom});if(!decision)return null;
   const now=Date.now();
   let targetZoom=decision.zoom;
-  if(preserveZoom||headingOnly||state.manualZoomUntil>now){
+  if(preserveZoom||state.manualZoomUntil>now){
     const currentZoom=Number(map.getZoom?.());
     if(Number.isFinite(currentZoom))targetZoom=currentZoom;
     else if(Number.isFinite(state.manualZoom))targetZoom=state.manualZoom;
