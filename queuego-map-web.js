@@ -213,7 +213,10 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
   const smoothing=spd==null?.30:spd>=18?.68:spd>=11?.62:spd>=5?.52:spd>=2?.38:.24;
   const smoothedBearing=navSmoothBearing(previousBearing,desiredBearing,smoothing);
   const cameraBearing=smoothedBearing??0;
-  let zoom=remaining!=null&&remaining<=60?19:remaining!=null&&remaining<=180?18:navSpeedAwareZoom(spd,baseZoom);
+  let zoom=remaining!=null&&remaining<=60?19:
+    remaining!=null&&remaining<=180?18:
+    remaining!=null?(spd==null?baseZoom:spd>=18?15:spd>=11?16:spd>=5?17:spd<=1.5?Math.max(baseZoom,18):baseZoom):
+    navSpeedAwareZoom(spd,baseZoom);
   if(acc!=null&&acc>60)zoom=Math.max(14,zoom-.7);
   zoom=Math.round(Math.max(14,Math.min(20,zoom))*10)/10;
   const freeDrive=!reliable;
