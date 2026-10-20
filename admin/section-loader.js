@@ -11,8 +11,8 @@ function stopStale(all=false){
 }
 window.qgAdminClearReadCache=function(){readEpoch++;reads.clear()};
 window.qgAdminRead=async function(path,options,read){
- if(String(options.method||'GET').toUpperCase()!=='GET'){window.qgAdminClearReadCache();try{return await read()}finally{window.qgAdminClearReadCache()}}
- const key=String(options.accessToken||'')+':'+path,entry=reads.get(key);
+ const method=String(options.method||'GET').toUpperCase();if(method!=='GET'&&!options.readOnly){window.qgAdminClearReadCache();try{return await read()}finally{window.qgAdminClearReadCache()}}
+ const key=String(options.accessToken||'')+':'+method+':'+path,entry=reads.get(key);
  if(entry?.pending&&entry.scope!==readScope()){entry.controller.abort();reads.delete(key)}
  else if(entry&&(entry.pending||Date.now()-entry.at<5000))return entry.promise;
  const version=readEpoch,controller=new AbortController(),release=track(controller),item={at:Date.now(),pending:true,scope:readScope(),controller};
@@ -21,6 +21,10 @@ window.qgAdminRead=async function(path,options,read){
  item.promise=Promise.resolve().then(()=>{if(controller.signal.aborted)throw controller.signal.reason||abortError();return read(controller.signal)}).then(value=>{if(controller.signal.aborted)throw controller.signal.reason||abortError();return value}).catch(e=>{if(reads.get(key)===item)reads.delete(key);throw e}).finally(()=>{item.pending=false;clearTimeout(timer);release();options.signal?.removeEventListener('abort',abort)});
  if(reads.size>=100)reads.delete(reads.keys().next().value);reads.set(key,item);
  const value=await item.promise;if(version!==readEpoch&&reads.get(key)===item)reads.delete(key);return value;
+};
+window.qgAdminRpcRead=function(fn,args={}){
+ const payload=args||{},key='rpc/'+String(fn)+':'+JSON.stringify(payload);
+ return window.qgAdminRead(key,{method:'POST',readOnly:true},signal=>qtSupabaseRpc(fn,payload,{signal}));
 };
 const cache=new Map(),ttl=30000;
 window.QG_ADMIN_AUDIT_PAGE=window.QG_ADMIN_AUDIT_PAGE||0;window.QG_ADMIN_NOTIFICATION_PAGE=window.QG_ADMIN_NOTIFICATION_PAGE||0;
