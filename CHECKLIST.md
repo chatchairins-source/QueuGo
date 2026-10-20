@@ -741,11 +741,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - BASE: stacked successor of PR #479 HEAD b232595212a3dcf817ee503f879fd781ff517e43; branch work-web-admin-support-inbox-index-20261020.
 - QUERY CONTRACT: Support inbox reads newest 200/201 rows globally with ORDER BY created_at DESC, id DESC; thread paging already has a shop-leading index.
 - PRODUCTION BEFORE: indexes are PK(id), sender_user_id, and (shop_user_id, created_at); there is no global recent-inbox order index. Current table is tiny and planner correctly uses Seq Scan+Sort, so this is scale hardening rather than a claim of current latency gain.
-- SOURCE: additive migration 20261020041000_admin_support_inbox_paging_index.sql adds shop_support_messages_recent_idx(created_at DESC,id DESC); no RLS/grant/data/poller change.
+- SOURCE: additive migration 20261020041534_admin_support_inbox_paging_index.sql matches live Supabase version 20261020041534 and adds shop_support_messages_recent_idx(created_at DESC,id DESC); no RLS/grant/data/poller change.
 - ROLLBACK REHEARSAL: Production subtransaction created a temporary equivalent index and deliberately rolled it back; verification returned rehearsal_index_left=0.
 - TEST: existing Support runtime locks the migration/index name and exact column order.
-- NEXT: parent PR #479 must merge/Pages first; then validate this successor, apply migration through Supabase migration tooling only after exact source gate, verify index/advisors, merge/Pages/post-merge RC.
+- NEXT: parent PR #479 is merged/Pages/post-merge green; live migration/index are verified. Run exact-head RC on the version-aligned source, then merge/Pages/post-merge RC.
 
 - PRODUCTION APPLY: Supabase migration tool applied version 20261020041534 / name admin_support_inbox_paging_index successfully.
 - VERIFY: pg_indexes now reports shop_support_messages_recent_idx as btree (created_at DESC, id DESC). No data/RLS/grant change occurred.
-- RELEASE STATE: source migration filename remains 20261020041000_admin_support_inbox_paging_index.sql; applied Supabase version is recorded above because the migration service assigned the live version timestamp.
+- RELEASE STATE: source migration filename is aligned to 20261020041534_admin_support_inbox_paging_index.sql so repository and live migration history match.
