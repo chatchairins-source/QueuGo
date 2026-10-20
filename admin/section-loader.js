@@ -49,7 +49,7 @@ window.qgAdminRealtimeTables=function(){
  const scopes={
   'admin-orders':['orders','deliveries','payments','market_orders','market_order_pickups','laundry_orders'],
   'admin-gp':['settlements','orders'],'admin-cash':['orders','payments','settlements'],
-  'admin-support':['order_chat_messages'],'admin-gp-rates':['shop_profiles'],
+  'admin-support':[],'admin-gp-rates':['shop_profiles'],
   'admin-market':['market_requests','shop_profiles'],'admin-grocery':['products'],
   'notifications':['notifications'],'qt-sec-audit':['audit_logs'],'qt-sec-promote':['promotions'],
   'qt-sec-settings':['queuego_platform_rules'],'qt-sec-finance':['orders','settlements']
@@ -84,7 +84,7 @@ window.qgAdminLoadSection=async function(force=false,reason=''){
   if(valid())QT_DB_CACHE.qt_notifications=(rows||[]).map(n=>({id:n.id,userId:n.user_id,title:n.title,message:n.message,body:n.message,type:n.type,read:n.is_read,createdAt:new Date(n.created_at).getTime()}));
  },force);
  if(force||reason){
-  const loaders={'admin-orders':()=>qgLoadAdminOrders(),'admin-gp':()=>qgLoadAdminGp(),'admin-cash':()=>qgLoadAdminCash(undefined),'admin-market':()=>qgLoadMarketOperations(),'admin-support':()=>qgLoadAdminSupport(),'admin-gp-rates':()=>qtPullGpRates()};
+  const loaders={'admin-orders':()=>qgLoadAdminOrders(),'admin-gp':()=>qgLoadAdminGp(),'admin-cash':()=>qgLoadAdminCash(undefined),'admin-market':()=>qgLoadMarketOperations(),'admin-gp-rates':()=>qtPullGpRates()};
   if(loaders[key])await resource(key,loaders[key],force||!!reason);
  }
  // Orders, GP, cash, catalog and support have their own bounded loaders. Never hydrate unrelated tables here.
