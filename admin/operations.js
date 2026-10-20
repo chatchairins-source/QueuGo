@@ -92,15 +92,32 @@ async function notificationHealth(host,alive){
  }catch(e){if(alive()&&host.isConnected)host.textContent='ตัวอ่านคิวแจ้งเตือนยังไม่พร้อม: '+e.message;}
 }
 async function jobs(kind,host,alive){
- const token=await qtGetAccessToken();
+ let cursor=null,history=[],requestVersion=0;
  const table=kind==='laundry'?'laundry_orders':'orders';
- const query=table+'?select=id,status,created_at'+(kind&&kind!=='laundry'?'&order_type=eq.'+kind:'')+'&order=created_at.desc,id.desc&limit=100';
- const rows=await qtSupabaseTable(query,{accessToken:token});if(!alive())return;host.replaceChildren();
- const note=document.createElement('p');note.textContent='100 รายการล่าสุด · เปิดรายละเอียดเพื่อดูประวัติและหลักฐาน';host.append(note);
- for(const row of rows||[]){const card=document.createElement('article');card.className='card';const title=document.createElement('b');title.textContent=row.id;const line=document.createElement('p');line.textContent=row.status+' · '+new Date(row.created_at).toLocaleString('th-TH');card.append(title,line);
-  if(kind!=='laundry'){const button=document.createElement('button');button.type='button';button.textContent='รายละเอียดและประวัติ';button.onclick=()=>{if(alive())qgAdminTrace(row.id)};card.append(button)}host.append(card)
+ async function read(){
+  const version=++requestVersion,requested=cursor;
+  const current=()=>alive()&&host.isConnected&&version===requestVersion;
+  host.querySelectorAll('button').forEach(b=>b.disabled=true);
+  try{
+   const token=await qtGetAccessToken();if(!current())return;
+   const after=requested?'&or='+encodeURIComponent('(created_at.lt.'+requested.at+',and(created_at.eq.'+requested.at+',id.lt.'+requested.id+'))'):'';
+   const query=table+'?select=id,status,created_at'+(kind&&kind!=='laundry'?'&order_type=eq.'+kind:'')+'&order=created_at.desc,id.desc&limit=101'+after;
+   const raw=await qtSupabaseTable(query,{accessToken:token});if(!current())return;
+   const rows=(Array.isArray(raw)?raw:[]).slice(0,100);host.dataset.jobHistoryPage=String(history.length+1);host.replaceChildren();
+   const note=document.createElement('p');note.textContent='หน้า '+(history.length+1)+' · สูงสุด 100 รายการต่อหน้า · เปิดรายละเอียดเพื่อดูประวัติและหลักฐาน';host.append(note);
+   for(const row of rows){const card=document.createElement('article');card.className='card';const title=document.createElement('b');title.textContent=row.id;const line=document.createElement('p');line.textContent=row.status+' · '+new Date(row.created_at).toLocaleString('th-TH');card.append(title,line);
+    if(kind!=='laundry'){const button=document.createElement('button');button.type='button';button.textContent='รายละเอียดและประวัติ';button.onclick=()=>{if(current())qgAdminTrace(row.id)};card.append(button)}host.append(card)
+   }
+   if(!rows.length){const p=document.createElement('p');p.textContent='ไม่มีรายการในหมวดนี้';host.append(p)}
+   const nav=document.createElement('div');nav.className='row-btns';
+   const prev=document.createElement('button');prev.type='button';prev.textContent='ใหม่กว่า';prev.disabled=!history.length;
+   prev.onclick=()=>{if(!current()||prev.disabled)return;cursor=history.pop();read()};
+   const next=document.createElement('button');next.type='button';next.textContent='เก่ากว่า';next.disabled=!(raw?.length>100&&rows.length);
+   next.onclick=()=>{if(!current()||next.disabled)return;const last=rows[rows.length-1];history.push(cursor);cursor={at:last.created_at,id:last.id};read()};
+   nav.append(prev,next);host.append(nav);
+  }catch(e){if(current()){host.replaceChildren();const p=document.createElement('p'),retry=document.createElement('button');p.textContent='โหลดประวัติไม่ได้: '+e.message;retry.type='button';retry.textContent='ลองอีกครั้ง';retry.onclick=()=>{if(current())read()};host.append(p,retry)}}
  }
- if(!rows?.length){const p=document.createElement('p');p.textContent='ไม่มีรายการในหมวดนี้';host.append(p)}
+ await read();
 }
 async function loadReview(kind,alive,requestedOffset){
  const q=reviewQueues[kind],host=document.getElementById('qg-review-list');if(!q||!host||!alive())return;
@@ -131,5 +148,5 @@ async function loadReview(kind,alive,requestedOffset){
  }catch(e){if(alive()&&host.isConnected)host.textContent='โหลดงานตรวจไม่ได้: '+e.message}
 }
 // Private offer/outbox projections have no client-readable changefeed. Refresh only these visible snapshots.
-setInterval(()=>{const page=location.hash.slice(1);if(!document.hidden&&navigator.onLine&&permitted()&&['admin-system','admin-dispatch'].includes(page))load(page)},60000);
+setInterval(()=>{const page=location.hash.slice(1);if(!document.hidden&&navigator.onLine&&permitted()&&['admin-system','admin-dispatch'].includes(page)&&!document.querySelector('[data-job-history-page]:not([data-job-history-page="1"])'))load(page)},60000);
 })();

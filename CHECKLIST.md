@@ -812,3 +812,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Focused tests: admin-locations 23/0 and shop mutation refresh 14/0. Full npm test EXIT 0 on this source; hosted RC/mobile WebKit required before merge/deploy; physical map acceptance remains unclaimed.
 - NEXT: obtain exact-head RC/mobile WebKit, merge/Pages after green, then continue remaining Admin operations payload/coverage review.
 - Rider evidence refresh: exact PR439 HEAD 38baf74c78a5881a225df5264a9fd28be485bf9b Native run39197043125 and Map run39197043133 are both SUCCESS. Do not repeat its previously pending CI repair. Authenticated operational/device gates still require separate evidence.
+
+
+## 2026-10-20 Admin service job history
+- Status: IN PROGRESS; successor of coordinate refresh PR487 / tested tree1350cbcfde365d2ec3aa266a6da00434c5fc60c1.
+- Evidence: existing Ride/Express/Laundry/Dispatch jobs() used limit100 with no access to older jobs.
+- Change: read-only 100/101 keyset pages ordered created_at DESC,id DESC, newer/older navigation, same-cursor retry and request/account/route fencing. Existing tables, service filters, RLS and trace actions remain authoritative; no job mutations or service activation.
+- Dispatch 60s fallback does not replace an operator's historical job page. Explicit refresh can return to newest.
+- Tests: operational runtime43/0 including 101-row boundary, cursor tie-break, service filters, next/previous, retry and historical fallback suppression; source integrity97 scripts/83 references PASS. Full regression/hosted mobile WebKit required before release.
+- NEXT: exact successor RC, merge/Pages after parent green; then continue unresolved Admin matrix controls and service release evidence. Whole mission remains IN PROGRESS.
