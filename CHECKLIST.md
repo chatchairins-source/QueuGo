@@ -648,3 +648,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - PRODUCTION DB: migration `20261020022520 admin_audit_notification_paging_indexes` applied after rollback rehearsal. Added `audit_logs(created_at desc,id desc)` and `notifications(user_id,created_at desc,id desc)` indexes matching page filters/order. No RLS/grant changes.
 - TEST: section-loader regression now asserts 100/101 keyset queries, no OFFSET paging, older/newer cursor navigation, stable order, page metadata/functions, and both migration indexes. Exact successor full RC/mobile WebKit/Pages still required.
 - REMAINING SOURCE: read-only POST/RPC cancellation and audited safe controls that already have authoritative backend. Provider-backed refund/credit/top-up/Ride cutover, worker/device delivery evidence and physical authenticated acceptance remain Release Gates, not bypass targets.
+
+
+## 2026-10-20 Admin shop category editor checkpoint
+- BASE: PR467 keyset history successor; intended base is merged main `e3c914428b1d86a459a20b313da76eb54a12f41b`.
+- PRODUCTION BACKEND: migrations `20261020023357 admin_shop_category_editor` and `20261020023435 admin_shop_category_invoker_hardening` applied. Final RPC `qg_admin_update_shop_category` is SECURITY INVOKER, requires live session + active Admin, anon/PUBLIC EXECUTE denied, authenticated EXECUTE allowed, and the post-hardening security advisor has no finding for it.
+- CONTROL: existing shop-detail dialog now exposes one audited category editor. It reads only the selected current shop, enforces fixed category/subcategory allowlists, requires a 3–500 character reason, requires at least one shopping subcategory, and writes a server Audit Log with before/after values. It does not alter shop approval/open status.
+- TEST: dedicated source regression covers the UI control, selected-shop read, server guards/allowlists/audit, explicit grants and final SECURITY INVOKER hardening. Exact RC/mobile WebKit required before merge.
