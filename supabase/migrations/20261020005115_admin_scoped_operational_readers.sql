@@ -96,3 +96,10 @@ returns jsonb language sql stable security invoker set search_path=''
 as $$ select qg_private.admin_notification_health(); $$;
 revoke all on function public.qg_admin_notification_health() from public,anon;
 grant execute on function public.qg_admin_notification_health() to authenticated;
+
+-- Match bounded dashboard ordering; existing order/rider-prefixed indexes cannot serve these global views.
+create index if not exists qg_admin_offers_expiry_idx on public.qg_rider_order_offers(expires_at,order_id);
+create index if not exists qg_admin_offer_history_recent_idx on public.qg_rider_offer_history(resolved_at desc,id desc);
+create index if not exists qg_admin_bundles_recent_idx on public.route_bundles(updated_at desc,id desc);
+create index if not exists qg_admin_push_created_idx on public.qg_push_outbox(created_at);
+create index if not exists qg_admin_rider_push_created_idx on public.qg_rider_push_outbox(created_at);
