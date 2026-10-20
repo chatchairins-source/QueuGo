@@ -158,3 +158,11 @@ The successor separates Content and Pricing from Settings using existing banner/
 - PRODUCTION DB: migration `20261020022520 admin_audit_notification_paging_indexes` applied after rollback rehearsal. Added `audit_logs(created_at desc,id desc)` and `notifications(user_id,created_at desc,id desc)` indexes matching page filters/order. No RLS/grant changes.
 - TEST: section-loader regression now asserts 100/101 keyset queries, no OFFSET paging, older/newer cursor navigation, stable order, page metadata/functions, and both migration indexes. Exact successor full RC/mobile WebKit/Pages still required.
 - REMAINING SOURCE: read-only POST/RPC cancellation and audited safe controls that already have authoritative backend. Provider-backed refund/credit/top-up/Ride cutover, worker/device delivery evidence and physical authenticated acceptance remain Release Gates, not bypass targets.
+
+## 2026-10-20 Admin read-only RPC cancellation checkpoint
+- BASE: stacked on PR467 keyset history successor; no reset/revert and no duplicate read subsystem.
+- IMPLEMENTED: explicit `qtSupabaseRpcRead()` allowlist for existing Admin read-only RPCs only (credit targets/accounts, Ride config/licences, live counts, Dispatch overview, notification health, Rider review page). These reads now join the same section/account AbortController lifecycle as Admin GET reads.
+- SAFETY: mutation RPCs continue through `qtSupabaseRpc()` and never opt into navigation cancellation. Grant/reverse credit, Ride configure/licence review, Rider document/review/request actions, account deletion, Market and location mutations are unchanged.
+- TRANSPORT: the normal RPC helper accepts an optional signal/access token only when the allowlisted read wrapper supplies it; mutation calls retain their existing 15-second transport timeout and completion semantics.
+- TEST: section runtime asserts read-only POST cancellation on route change while mutation POST completes; dedicated boundary regression rejects non-allowlisted RPCs and verifies all current read/mutation call sites.
+- NEXT: exact-head RC/mobile WebKit after PR467 is green; merge PR467 first, retarget this successor to main, then continue remaining safe Admin matrix controls.
