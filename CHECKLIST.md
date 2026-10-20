@@ -839,3 +839,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Test: presence runtime23/0; source integrity97/83; full npm EXIT0. Exact-head RC/mobile WebKit required before merge/deploy.
 - Catalog correction: previous continuation conflated image_status with the Merchant catalog_preview_image field. Live read-only SQL now proves128/128 catalog previews populated; approved reuse images93/pending reuse35. Existing merchant/market-catalog.js renders catalog_preview_image and source tests lock that contract. Do not treat35 reuse reviews as35 missing catalog pictures or recreate image work. Customer storefront reuse approval remains separate.
 - NEXT: exact RC -> merge/Pages/readback. Then remove the remaining all-shop applicant lookup in Admin Market by scoping it to visible request owner IDs.
+
+
+## 2026-10-20 Admin Market scoped applicants
+- Status: IN PROGRESS; successor of PR489 source3553f2665acc77ea49aabb067bcc65b987725b3e.
+- Root cause: Market operations fetched all shop profiles only to label at most50 visible market requests, then repeatedly scanned them per row. Concurrent same-Admin loads could repaint an older queue.
+- Change: lookup only unique valid requester account IDs from visible requests, bounded50; join labels by Map. A request generation fence rejects stale same-account responses. Existing mutations/RLS and queue limits are unchanged.
+- Test: Market runtime19/0 with scoped applicant query and old/new queue race; source integrity97/83; full npm EXIT0. Hosted exact RC required before merge/Pages.
+- NEXT: exact RC, merge after parent green, verify deployed bytes; continue Native Market catalog parity from newest source38baf74c without merging the Web-only tree over Native files.

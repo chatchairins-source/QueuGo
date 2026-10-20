@@ -5,6 +5,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const admin=()=>currentUser()?.type==='admin'&&currentUser()?.status==='approved';
 async function api(path){return qtSupabaseTable(path,{accessToken:await qtGetAccessToken()})}
 const actor=()=>admin()?String(currentUser().id):null;
+let marketLoadVersion=0;
 const image=v=>/^(https:\/\/|data:image\/(jpeg|png|webp);base64,)/i.test(String(v||''))?String(v):'';
 window.qgLoadMarketPendingCount=async()=>{
   const el=document.getElementById('qg-home-pending-markets'),owner=actor();if(!el||!owner)return;
@@ -33,17 +34,21 @@ window.renderAdminMarket=async()=>{
   await qgLoadMarketOperations();
 };
 window.qgLoadMarketOperations=async()=>{
-  const el=document.getElementById('qg-market-admin'),owner=actor();if(!el||!owner)return;
+  const el=document.getElementById('qg-market-admin'),owner=actor(),version=++marketLoadVersion;if(!el||!owner)return;
+  const alive=()=>el.isConnected&&actor()===owner&&version===marketLoadVersion;
   try{
-    const [memberships,markets,riders,orders,requests,applicants]=await Promise.all([
+    const [memberships,markets,riders,orders,requests]=await Promise.all([
       api('shop_profiles?select=id,shop_name,market_id,public_category,market_membership_status,market_stall_no,market_zone,market_suggested_distance_km,address,status,latitude,longitude,market_proof_path,public_cover,metadata,markets:market_id(name)&market_membership_status=eq.pending&archived_at=is.null&order=updated_at.asc&limit=100'),
       api('markets?select=id,name,province,district,subdistrict,verified,active,latitude,longitude,assignment_radius_km&order=province.asc,name.asc'),
       api('rider_profiles?select=id,rider_name,vehicle_type,vehicle_plate,vehicle_status,vehicle_capacity_kg,vehicle_verified_at,status,metadata&status=eq.active&order=created_at.desc&limit=100'),
       api('orders?select=id,order_number,status,fulfillment_vertical,subtotal,total_amount,market_order_id,created_at&market_order_id=not.is.null&order=created_at.desc&limit=50'),
-      api('market_requests?select=id,requested_name,province,district,subdistrict,address,latitude,longitude,status,note,requester_shop_user_id,created_at&status=eq.pending&order=created_at.asc&limit=50'),
-      api('shop_profiles?select=user_id,shop_name,public_category,metadata&archived_at=is.null')
+      api('market_requests?select=id,requested_name,province,district,subdistrict,address,latitude,longitude,status,note,requester_shop_user_id,created_at&status=eq.pending&order=created_at.asc&limit=50')
     ]);
-    if(!el.isConnected||actor()!==owner)return;
+    if(!alive())return;
+    const applicantIds=[...new Set((requests||[]).map(r=>r.requester_shop_user_id).filter(id=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id||''))))];
+    const applicants=applicantIds.length?await api('shop_profiles?select=user_id,shop_name,public_category,metadata&archived_at=is.null&user_id=in.('+applicantIds.join(',')+')&limit=50'):[];
+    if(!alive())return;
+    const applicantsByUser=new Map((applicants||[]).map(s=>[s.user_id,s]));
     el.innerHTML=`
       <h2>รออนุมัติร้านสมาชิกตลาด (${(memberships||[]).length})</h2>
       ${(memberships||[]).map(s=>`<article>
@@ -55,14 +60,14 @@ window.qgLoadMarketOperations=async()=>{
         <div><button type="button" onclick="qgAdminEditLocation('shop','${s.id}')">แก้พิกัดร้าน</button><button onclick="qgAdminReviewMarket('${s.id}',true)">อนุมัติ</button><button onclick="qgAdminReviewMarket('${s.id}',false)">ปฏิเสธ</button></div>
       </article>`).join('')||'<p>ไม่มีร้านรออนุมัติ</p>'}
       <h2>คำขอเพิ่มตลาดใหม่ (${(requests||[]).length})</h2>
-      ${(requests||[]).map(r=>`<article><b>${esc(r.requested_name)}</b><p>ร้านผู้ขอ: ${esc((applicants||[]).find(s=>s.user_id===r.requester_shop_user_id)?.shop_name||'ไม่ระบุชื่อร้าน')} · ${esc(qgAdminShopCategory((applicants||[]).find(s=>s.user_id===r.requester_shop_user_id)))}</p> · ${esc(r.subdistrict||'')} ${esc(r.district||'')} ${esc(r.province||'')}<br><small>${esc(r.address||'')} · ${r.latitude!=null&&r.longitude!=null&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?Number(r.latitude).toFixed(5)+', '+Number(r.longitude).toFixed(5):'ไม่มีพิกัด'} · ส่งคำขอ ${new Date(r.created_at).toLocaleString('th-TH')}</small><p>${esc(r.note||'')}</p>${r.latitude!=null&&r.longitude!=null?`<button type="button" onclick="qgAdminViewLocation(${Number(r.latitude)},${Number(r.longitude)},'พิกัดคำขอตลาด')">ดูบนแผนที่</button>`:''}<div><button onclick="qgAdminReviewMarketRequest('${r.id}',true)">อนุมัติและเพิ่มตลาด</button><button onclick="qgAdminReviewMarketRequest('${r.id}',false)">ปฏิเสธ</button></div></article>`).join('')||'<p>ไม่มีคำขอเพิ่มตลาดใหม่</p>'}
+      ${(requests||[]).map(r=>`<article><b>${esc(r.requested_name)}</b><p>ร้านผู้ขอ: ${esc(applicantsByUser.get(r.requester_shop_user_id)?.shop_name||'ไม่ระบุชื่อร้าน')} · ${esc(qgAdminShopCategory(applicantsByUser.get(r.requester_shop_user_id)))}</p> · ${esc(r.subdistrict||'')} ${esc(r.district||'')} ${esc(r.province||'')}<br><small>${esc(r.address||'')} · ${r.latitude!=null&&r.longitude!=null&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?Number(r.latitude).toFixed(5)+', '+Number(r.longitude).toFixed(5):'ไม่มีพิกัด'} · ส่งคำขอ ${new Date(r.created_at).toLocaleString('th-TH')}</small><p>${esc(r.note||'')}</p>${r.latitude!=null&&r.longitude!=null?`<button type="button" onclick="qgAdminViewLocation(${Number(r.latitude)},${Number(r.longitude)},'พิกัดคำขอตลาด')">ดูบนแผนที่</button>`:''}<div><button onclick="qgAdminReviewMarketRequest('${r.id}',true)">อนุมัติและเพิ่มตลาด</button><button onclick="qgAdminReviewMarketRequest('${r.id}',false)">ปฏิเสธ</button></div></article>`).join('')||'<p>ไม่มีคำขอเพิ่มตลาดใหม่</p>'}
       <h2>ตลาดในระบบ</h2>
       ${(markets||[]).map(m=>`<article><b>${esc(m.name)}</b> · ${esc(m.subdistrict||'')} ${esc(m.district||'')} ${esc(m.province||'')}<br><small>${m.verified?'ยืนยันพิกัดแล้ว':'รอตรวจพิกัด'} · รัศมี ${Number(m.assignment_radius_km||0).toFixed(1)} กม. · ${m.latitude==null||m.longitude==null?'ยังไม่มีพิกัด':Number(m.latitude).toFixed(5)+', '+Number(m.longitude).toFixed(5)}</small><div><button type="button" onclick="qgAdminEditLocation('market','${m.id}')">แก้พิกัดตลาด</button></div></article>`).join('')||'<p>ยังไม่มีตลาด</p>'}
       <h2>รถและความจุ</h2>
       ${(riders||[]).map(r=>`<article><b>${esc(r.rider_name||'ไรเดอร์')}</b> · ${esc(r.vehicle_type||'-')} · ${esc(r.vehicle_plate||'')}<br><small>สถานะ ${esc(r.vehicle_status||'-')} · ยืนยัน ${Number(r.vehicle_capacity_kg||0)} กก. · ขอ ${esc(r.metadata?.requestedCapacityKg||'-')} กก.</small><div><button onclick="qgAdminVehicle('${r.id}','active',${Number(r.vehicle_capacity_kg||r.metadata?.requestedCapacityKg||20)})">ตรวจและอนุมัติความจุ</button><button onclick="qgAdminVehicle('${r.id}','suspended',0)">ระงับรถ</button></div></article>`).join('')||'<p>ยังไม่มีไรเดอร์ที่เปิดใช้งาน</p>'}
       <h2>ออเดอร์ตลาดล่าสุด</h2>
       ${(orders||[]).map(o=>`<article><b>${esc(o.order_number||o.id)}</b> · ${esc(o.status)} · ${Number(o.total_amount||0).toLocaleString('th-TH')} ฿</article>`).join('')||'<p>ยังไม่มีออเดอร์ตลาด</p>'}`;
-  }catch(e){if(el.isConnected&&actor()===owner)el.textContent='โหลดข้อมูลไม่ได้ กรุณากดรีเฟรชคำขอ: '+e.message}
+  }catch(e){if(alive())el.textContent='โหลดข้อมูลไม่ได้ กรุณากดรีเฟรชคำขอ: '+e.message}
 };
 window.qgAdminReviewMarket=async(shopId,approve)=>{
   if(!admin())return;
