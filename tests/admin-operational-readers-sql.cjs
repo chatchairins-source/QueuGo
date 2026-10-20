@@ -1,0 +1,54 @@
+const fs=require('fs'),assert=require('assert/strict'),{PGlite}=require('@electric-sql/pglite');
+(async()=>{
+ const db=new PGlite(),migration=fs.readFileSync('supabase/migrations/20261020005115_admin_scoped_operational_readers.sql','utf8');let checks=0;
+ await db.exec(`create role anon;create role authenticated;create schema auth;create schema qg_private;
+ create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ create table users(id uuid primary key,auth_user_id uuid,role text,status text);
+ create function public.is_active_admin() returns boolean language sql stable security definer as $$select exists(select 1 from public.users where auth_user_id=auth.uid() and role='admin' and status='active')$$;
+ create function qg_private.assert_live_session() returns void language plpgsql as $$begin if current_setting('qa.live_session',true) is distinct from 'true' then raise exception 'live session required';end if;end$$;
+ create table shop_profiles(id uuid primary key,user_id uuid,archived_at timestamptz,created_at timestamptz default now());
+ create table orders(id uuid primary key,shop_id uuid);
+ create function queuego_shop_readiness(uuid) returns jsonb language sql stable as $$select jsonb_build_object('complete',true)$$;
+ create table qg_rider_order_offers(order_id uuid,rider_id uuid,offered_at timestamptz,expires_at timestamptz,attempt int);
+ create table qg_rider_offer_history(id bigint,order_id uuid,rider_id uuid,outcome text,attempt int,resolved_at timestamptz);
+ create table route_bundles(id uuid,rider_id uuid,primary_order_id uuid,status text,updated_at timestamptz);
+ create table qg_push_outbox(id uuid,status text,created_at timestamptz,retry_at timestamptz);
+ create table qg_rider_push_outbox(like qg_push_outbox);
+ grant usage on schema public,auth,qg_private to authenticated,anon;
+ grant select on users,shop_profiles,orders to authenticated;
+ alter table users enable row level security;alter table shop_profiles enable row level security;alter table orders enable row level security;
+ create policy users_admin on users for select to authenticated using(is_active_admin());
+ create policy shops_admin on shop_profiles for select to authenticated using(is_active_admin());
+ create policy orders_admin on orders for select to authenticated using(is_active_admin());
+ insert into users values('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','admin','active');
+ insert into shop_profiles values('00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000003',null,now());
+ insert into orders values('00000000-0000-4000-8000-000000000004','00000000-0000-4000-8000-000000000002');
+ insert into qg_push_outbox values(gen_random_uuid(),'pending',now()-interval '10 days',now()-interval '1 minute');
+ insert into qg_push_outbox values(gen_random_uuid(),'sent',now()-interval '10 days',now());
+ insert into qg_rider_push_outbox values(gen_random_uuid(),'dead',now(),now());
+ insert into qg_rider_order_offers values('00000000-0000-4000-8000-000000000004','00000000-0000-4000-8000-000000000005',now()-interval '1 minute',now()-interval '30 seconds',1);
+ `);
+ await db.exec(migration);
+ for(const signature of ['queuego_admin_shop_overview(uuid[])','qg_admin_dispatch_overview(integer)','qg_admin_notification_health()']){
+  const row=(await db.query(`select has_function_privilege('anon',$1,'execute') a,has_function_privilege('authenticated',$1,'execute') b`,[signature])).rows[0];assert.equal(row.a,false);assert.equal(row.b,true);checks+=2;
+ }
+ await db.exec(`set role anon`);await assert.rejects(()=>db.query(`select qg_admin_dispatch_overview(1)`),/permission denied/);checks++;
+ await db.exec(`reset role;set role authenticated;set request.jwt.claim.sub='00000000-0000-4000-8000-000000000099'`);
+ for(const query of [`select * from queuego_admin_shop_overview('{}')`,`select qg_admin_dispatch_overview(10)`,`select qg_admin_notification_health()`]){await assert.rejects(()=>db.query(query),/active admin required/);checks++}
+ await db.exec(`set request.jwt.claim.sub='00000000-0000-4000-8000-000000000001'`);
+ let rows=(await db.query(`select * from queuego_admin_shop_overview(array['00000000-0000-4000-8000-000000000003'::uuid])`)).rows;
+ assert.equal(rows.length,1);assert.equal(Number(rows[0].order_count),1);checks+=2;
+ assert.equal((await db.query(`select * from queuego_admin_shop_overview('{}')`)).rows.length,0);checks++;
+ await assert.rejects(()=>db.query(`select * from queuego_admin_shop_overview(null)`),/at most 200/);checks++;
+ await assert.rejects(()=>db.query(`select * from queuego_admin_shop_overview(array_fill('00000000-0000-4000-8000-000000000003'::uuid,array[201]))`),/at most 200/);checks++;
+ await assert.rejects(()=>db.query(`select qg_admin_dispatch_overview(100)`),/live session required/);checks++;
+ await db.exec(`set qa.live_session='true'`);
+ const dispatch=(await db.query(`select qg_admin_dispatch_overview(1) as v`)).rows[0].v;assert.equal(dispatch.offers.length,1);assert.equal(dispatch.offers[0].expired,true);checks+=2;
+ await assert.rejects(()=>db.query(`select qg_admin_dispatch_overview(101)`),/1..100/);checks++;
+ await assert.rejects(()=>db.query(`select * from qg_push_outbox`),/permission denied/);checks++;
+ await assert.rejects(()=>db.query(`select * from qg_rider_order_offers`),/permission denied/);checks++;
+ const health=(await db.query(`select qg_admin_notification_health() as v`)).rows[0].v;assert.equal(health.channels.length,2);assert.equal(health.channels.find(x=>x.status==='pending').due,1);assert(!JSON.stringify(health).includes('subscription_id'));checks+=3;
+ await db.exec(`reset role;update users set status='suspended';set role authenticated`);
+ await assert.rejects(()=>db.query(`select qg_admin_notification_health()`),/active admin required/);checks++;
+ await db.close();console.log(JSON.stringify({checks,failures:0,scope:'executed bounded Admin read SQL with active-role/live-session guards, anon denial, empty/scoped directory, private-table denial and old backlog visibility; isolated only'}));
+})().catch(e=>{console.error(e);process.exit(1)});

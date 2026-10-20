@@ -8,7 +8,7 @@ const reviewQueues={
  vehicle:{title:'อนุมัติยานพาหนะ',rpc:'qg_admin_rider_vehicle_queue',review:'qg_admin_review_rider_vehicle',photo:'photo_path'},
  documents:{title:'วันหมดอายุเอกสาร',rpc:'qg_admin_rider_document_queue'}
 };
-let generation=0;
+let generation=0,dispatchView='offers';
 const labels={'admin-dispatch':'Dispatch','admin-ride':'Ride · รับส่งผู้โดยสาร','admin-express':'Express · ส่งพัสดุ','admin-laundry':'ฝากซัก','admin-system':'สถานะระบบ','admin-rider-review':'ตรวจเอกสารและยานพาหนะ Rider'};
 window.qgRenderAdminOperations=function(page){
  if(!permitted())return navigate('login');
@@ -18,9 +18,8 @@ window.qgRenderAdminOperations=function(page){
  load(page);
 };
 async function load(page){
- const version=++generation;
  const host=document.getElementById('qg-ops-body'),status=document.getElementById('qg-ops-status'),owner=currentUser()?.id;
- if(!host||!permitted())return;const alive=()=>version===generation&&host.isConnected&&permitted()&&currentUser().id===owner;
+ if(!host||!permitted())return;const refresh=document.getElementById('qg-ops-refresh');if(refresh?.disabled)return;if(refresh)refresh.disabled=true;const version=++generation;const alive=()=>version===generation&&host.isConnected&&permitted()&&currentUser().id===owner;
  try{
   if(page==='admin-rider-review'){
    host.innerHTML='<label>งานตรวจ<select id="qg-review-kind">'+Object.entries(reviewQueues).map(([key,q])=>'<option value="'+key+'">'+q.title+'</option>').join('')+'</select></label><div id="qg-review-list"></div>';
@@ -28,14 +27,37 @@ async function load(page){
   }else if(page==='admin-ride'){
    host.innerHTML='<div id="qg-passenger-controls"></div><div id="qg-service-jobs"></div>';
    await Promise.all([qgRenderPassengerControls(),jobs('ride',host.querySelector('#qg-service-jobs'),alive)]);
+  }else if(page==='admin-dispatch'){
+   host.innerHTML='<section class="card" id="qg-dispatch-overview">กำลังอ่าน targeted offers…</section><div id="qg-dispatch-orders"></div>';
+   await Promise.all([dispatchOverview(host.querySelector('#qg-dispatch-overview'),alive),jobs(null,host.querySelector('#qg-dispatch-orders'),alive)]);
   }else if(page==='admin-system'){
    const summary=await qtSupabaseRpc('qg_admin_live_counts',{});if(!alive())return;host.replaceChildren();
    const p=document.createElement('p');p.textContent='ร้านเปิด '+Number(summary.shops_open||0)+' · Rider ออนไลน์ '+Number(summary.riders_online||0);host.append(p);
    const note=document.createElement('p');note.textContent='จำนวนนี้เป็นสถานะที่บันทึกในระบบ ยังไม่ใช่หลักฐานว่า Push, GPS หรือ worker ทำงานปกติ';host.append(note);
    for(const [key,value]of Object.entries(summary.orders||{})){const line=document.createElement('p');line.textContent=key+' · '+Number(value);host.append(line)}
+   const health=document.createElement('section');health.className='card';host.append(health);await notificationHealth(health,alive);
   }else await jobs(page==='admin-express'?'express':page==='admin-laundry'?'laundry':null,host,alive);
   if(alive())status.textContent='ข้อมูลจากระบบล่าสุด';
  }catch(e){if(alive())status.textContent='ยังโหลดหมวดนี้ไม่ได้: '+e.message+' · ระบบที่ยังไม่เปิดใช้งานต้องผ่าน Release Gate ก่อน';}
+ finally{if(refresh?.isConnected)refresh.disabled=false}
+}
+async function dispatchOverview(host,alive){
+ try{const report=await qtSupabaseRpc('qg_admin_dispatch_overview',{p_limit:100});if(!alive()||!host.isConnected)return;
+  if(!report||!Array.isArray(report.offers)||!Array.isArray(report.history)||!Array.isArray(report.bundles))throw Error('ข้อมูล Dispatch ไม่ครบ');
+  host.replaceChildren();const label=document.createElement('label'),select=document.createElement('select'),list=document.createElement('div'),stamp=document.createElement('p');label.textContent='สถานะการจัดสรรงาน ';label.append(select);stamp.textContent='อ่านล่าสุด '+new Date(report.as_of).toLocaleString('th-TH')+' · สูงสุด 100 รายการต่อหมวด';
+  for(const [key,title]of [['offers','Targeted offers'],['history','ผลตอบรับ / timeout'],['bundles','งานพ่วง']]){const option=document.createElement('option');option.value=key;option.textContent=title+' ('+report[key].length+')';select.append(option)}
+  const paint=()=>{list.replaceChildren();for(const row of report[select.value]){const card=document.createElement('article');card.className='card';const text=document.createElement('p');text.textContent=[row.order_id||row.primary_order_id||row.id,row.rider_id,row.outcome||row.status||(row.expired?'หมดเวลาแล้ว':'รอตอบรับ'),row.attempt?'ครั้งที่ '+row.attempt:'',row.expires_at?'หมดเวลา '+new Date(row.expires_at).toLocaleString('th-TH'):''].filter(Boolean).join(' · ');card.append(text);
+   const order=row.order_id||row.primary_order_id;if(order){const button=document.createElement('button');button.type='button';button.textContent='รายละเอียดออเดอร์';button.onclick=()=>{if(alive())qgAdminTrace(order)};card.append(button)}list.append(card)}if(!report[select.value].length)list.textContent='ไม่มีรายการในหมวดนี้';};
+  select.value=dispatchView;select.onchange=()=>{dispatchView=select.value;paint()};host.append(label,stamp,list);paint();
+ }catch(e){if(alive()&&host.isConnected)host.textContent='ตัวอ่าน Dispatch ยังไม่พร้อม: '+e.message;}
+}
+async function notificationHealth(host,alive){
+ host.textContent='กำลังอ่านสถานะคิวแจ้งเตือน…';
+ try{const report=await qtSupabaseRpc('qg_admin_notification_health',{});if(!alive()||!host.isConnected)return;
+  if(!report||!Array.isArray(report.channels))throw Error('ข้อมูลคิวแจ้งเตือนไม่ครบ');host.replaceChildren();const title=document.createElement('h3'),note=document.createElement('p');title.textContent='คิวแจ้งเตือน';note.textContent='pending/leased รวมงานค้างทั้งหมด · sent/dead เฉพาะ 7 วันล่าสุด · ไม่ใช่หลักฐานว่าเครื่องผู้ใช้ได้รับแล้ว';host.append(title,note);
+  for(const row of report.channels){const line=document.createElement('p');line.textContent=row.channel+' · '+row.status+' · '+Number(row.n)+' รายการ · ถึงเวลาลองส่ง '+Number(row.due)+(row.oldest?' · เก่าสุด '+new Date(row.oldest).toLocaleString('th-TH'):'');host.append(line)}
+  if(!report.channels.length){const empty=document.createElement('p');empty.textContent='ไม่พบงานค้างหรือรายการในช่วงที่ตรวจ';host.append(empty)}
+ }catch(e){if(alive()&&host.isConnected)host.textContent='ตัวอ่านคิวแจ้งเตือนยังไม่พร้อม: '+e.message;}
 }
 async function jobs(kind,host,alive){
  const token=await qtGetAccessToken();
@@ -64,4 +86,6 @@ async function loadReview(kind,alive){
  }if(!rows?.length)host.textContent='ไม่มีรายการตรวจ';
  }catch(e){if(alive()&&host.isConnected)host.textContent='โหลดงานตรวจไม่ได้: '+e.message}
 }
+// Private offer/outbox projections have no client-readable changefeed. Refresh only these visible snapshots.
+setInterval(()=>{const page=location.hash.slice(1);if(!document.hidden&&navigator.onLine&&permitted()&&['admin-system','admin-dispatch'].includes(page))load(page)},60000);
 })();

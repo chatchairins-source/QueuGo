@@ -515,7 +515,7 @@ async function qtHydrateAdminDirectory(){
       qtSupabaseTable('shop_profiles?select=id,user_id,shop_name,phone,address,latitude,longitude,status,onboarding_status,submitted_for_review_at,approved_at,archived_at,public_category,public_subcategories,metadata,created_at'+filter+'&order=id.asc&limit=1000',{accessToken:token}),
       qtSupabaseTable('technician_profiles?select=id,user_id,technician_type,service_area,address,latitude,longitude,description,metadata'+filter+'&limit=200',{accessToken:token}),
       qtSupabaseTable('rider_profiles?select=id,user_id,vehicle_type,vehicle_plate,address,latitude,longitude,status,metadata'+filter+'&limit=200',{accessToken:token}),
-      qtSupabaseTable('rpc/queuego_admin_shop_overview?shop_user_id=in.('+ids.join(',')+')&limit=200',{method:'POST',accessToken:token,body:{}})
+      qtSupabaseTable('rpc/queuego_admin_shop_overview?shop_user_id=in.('+ids.join(',')+')&limit=200',{method:'POST',accessToken:token,body:{p_user_ids:ids}}).catch(e=>{if(/(Could not find the function|PGRST202|function .* does not exist)/i.test(e.message||'')&&/shop_overview/.test(e.message||''))return qtSupabaseTable('rpc/queuego_admin_shop_overview?shop_user_id=in.('+ids.join(',')+')&limit=200',{method:'POST',accessToken:token,body:{}});throw e})
     ]):[[],[],[],[]];
     if(qtAccessToken()!==token||qtSessionRead()?.authUserId!==directoryOwner||pageCursor!==(window.QG_ADMIN_DIRECTORY_CURSOR||''))return;
     const ownUser=currentUser();
