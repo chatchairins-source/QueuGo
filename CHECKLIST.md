@@ -640,3 +640,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - REMAINING: search-scale indexes/aggregates, audit/notification paging and remaining safe matrix controls. Refund/provider financial execution, staged Credit/Ride cutover, and authenticated/physical-device acceptance remain separate release gates; do not bypass them.
 
 - SCALE SEARCH follow-up: Production migration `20261020022140 admin_directory_search_trgm_indexes` applied after rollback rehearsal; existing `pg_trgm 1.6` reused. Four partial/full GIN trigram indexes now cover account name/phone and current shop name/phone contains-search. Production currently has 35 users / 10 current shops; indexes are capacity work, not a claim of current latency improvement. Repo regression locks all four index definitions. Search-scale text indexes are no longer a remaining item.
+
+## 2026-10-20 Admin audit/notification paging checkpoint
+- BASE: cd857a2eea894b791f4397ce253aea08f4bc61fb (merged PR466).
+- IMPLEMENTED: Audit logs and the signed-in Admin notification inbox now use 100/101 deterministic keyset pages ordered by created_at DESC, id DESC; previous/next navigation is cursor-scoped so stale reads cannot overwrite another page.
+- DATABASE: Production migration 20261020022520 already exists with audit_logs(created_at DESC,id DESC) and notifications(user_id,created_at DESC,id DESC) indexes; source migration mirrors only those indexes and changes no RLS/grants.
+- TEST: admin-section runtime covers first/older/newer pages; source index guard is in full npm regression. Exact-head CI required before merge.
+- NEXT: merge only after exact-head CI; then continue unresolved Admin matrix controls/search/financial release gates.
