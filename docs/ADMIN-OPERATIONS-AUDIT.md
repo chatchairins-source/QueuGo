@@ -90,3 +90,11 @@ Implemented distinguishes existing main features from staged source. View/contro
 - Full local npm on first checkpoint passed. Hosted47ead7ca npm passed; WebKit failure was pinned-baseline checkout, not evidence of a successful browser run. Subsequent exact-head results must be recorded before merge.
 - Focused current checks: executed section19; actual operational DOM24; realtime50; Admin interface28; directory category22; network timeout26; source integrity94 scripts/81 references. These are isolated transport/DOM tests.
 - Missing Admin feature controls above remain real source tasks, not automatically BLOCKED on a person. Staged backend/provider/physical-device release gates remain separate. Do not label the complete mission DONE from the first performance slice.
+
+### Follow-up correctness fixes
+
+- Governance inserts only the selected panel into DOM. Hidden account/approval/settings card trees are not mounted. Existing section selection lazily rebuilds the selected panel.
+- Orders now uses100 rows/101 sentinel, deterministic ordering and server status filters. Shop/customer labels are fetched only for IDs present in the page and joined with Maps. Search explicitly applies to the current page.
+- Directory paging exposed an old broadcast dependency on the full user cache. Broadcast now pages recipients200 at a time, bulk-inserts durable per-notification UUIDs with ignore-duplicates, and persists cursor only after acknowledgement. Lost replies retry the same IDs. No live broadcast has been sent for testing.
+- Shop opening had a pre-existing block-scoped desired variable referenced after the successful write; fixed to preserve truthful post-commit UI.
+- Hosted b0abefb9 full npm passed. WebKit then failed a request-count assertion because the test did not wait for the directory navigation/page completion before taking its snapshot; the successor explicitly awaits the real page state and retains the strict no-refetch assertion with diagnostic request output.

@@ -33,8 +33,8 @@ const root=path.resolve(__dirname,'..'),owner='00000000-0000-4000-8000-000000000
   assert(boot.filter(x=>x.method==='GET').every(x=>!/(order_items|order_chat_messages|products|settlements|rider_profiles)/.test(x.path)));checks++;
   assert.equal(boot.filter(x=>x.method==='HEAD'&&x.path.includes('/orders?')).length,1);checks++;
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);checks++;
-  await page.evaluate(()=>qgAdminSection('qt-sec-users'));await page.waitForLoadState('networkidle');
-  const reads=calls.length;await page.evaluate(()=>{qtAdminTab('qt-sec-security');qtAdminTab('qt-sec-users')});await page.waitForLoadState('networkidle');assert.equal(calls.length,reads);checks++;
+  await page.evaluate(()=>qgAdminSection('qt-sec-users'));await page.waitForFunction(()=>location.hash==='#admin-governance'&&window.QG_ADMIN_DIRECTORY_PAGE);await page.waitForLoadState('networkidle');
+  const reads=calls.length;await page.evaluate(()=>{qtAdminTab('qt-sec-security');qtAdminTab('qt-sec-users')});await page.waitForLoadState('networkidle');assert.equal(calls.length,reads,'cached directory tab must not re-fetch: '+JSON.stringify(calls.slice(reads)));checks++;
   await page.evaluate(()=>qtAdminTab('qt-sec-audit'));await page.waitForFunction(()=>document.querySelector('#qt-sec-audit').classList.contains('active'));await page.waitForLoadState('networkidle');assert(calls.some(x=>x.path.includes('/audit_logs?')&&x.path.includes('limit=100')));checks++;
  }
  assert.deepEqual(errors,[]);checks++;results.push({mode,shellMs,readyMs,bootRequests:boot.length,boot});await context.close();

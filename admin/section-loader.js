@@ -16,7 +16,7 @@ const cache=new Map(),ttl=30000;
 let actor=null,epoch=0;
 const identity=()=>{const s=qtSessionRead();return s?.role==='admin'?s.authUserId+':'+s.userId:null};
 const section=()=>location.hash==='#admin-governance'?qtAdminCurrentSection():(location.hash.slice(1).split('/')[0]||'admin');
-const directory=new Set(['qt-sec-approval','qt-sec-users','qt-sec-shops','qt-sec-security','qt-sec-delivery']);
+const directory=new Set(['qt-sec-approval','qt-sec-users','qt-sec-shops','qt-sec-security','qt-sec-delivery','admin-gp-rates']);
 const metrics=window.QG_ADMIN_LOAD_METRICS=[];
 function reset(){epoch++;cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_PAGE=null;}
 async function resource(key,load,force){
@@ -77,6 +77,7 @@ window.qgAdminLoadSection=async function(force=false,reason=''){
   const rows=await read('promotions?select=*&order=created_at.desc&limit=100');
   if(valid())QT_DB_CACHE.qt_promotions=(rows||[]).map(x=>Object.assign({},x.metadata||{},{id:x.id,shopId:x.shop_id,shopName:x.shop_name,bidPrice:x.bid_price,status:x.status}));
  },force);
+ if(key==='qt-sec-finance')return resource(key,async valid=>{const rows=await read('orders?select=id,order_number,metadata,total_amount,created_at&metadata->>refundStatus=eq.requested&order=created_at.desc&limit=100');if(valid())QT_DB_CACHE.qt_orders=(rows||[]).map(qtOrderFromRow)},force);
  if(key==='qt-sec-settings')return resource(key,()=>qtPullSystemSettings(),force);
  if(key==='notifications')return resource(key,async valid=>{
   const rows=await read('notifications?select=id,user_id,title,message,type,is_read,created_at,reference_id&user_id=eq.'+encodeURIComponent(qtSessionRead().userId)+'&order=created_at.desc&limit=100');
