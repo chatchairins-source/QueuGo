@@ -793,3 +793,13 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - NO AUTHORITY CHANGE: queuego_admin_delete_unopened_shop / queuego_admin_archive_shop are unchanged; no RLS/grant/schema/financial/service change.
 - TEST: tests/admin-shop-mutation-refresh.cjs calls both real client functions, forbids any full hydrate, requires one directory refresh per successful mutation, and verifies failed archive causes no refresh.
 - NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue remaining Admin post-action/full-hydrate and loader payload audit. Whole Admin mission remains IN PROGRESS.
+
+## 2026-10-20 Admin GP language/UI polish v2
+- BASE: merged PR #484 / main `a67783798c94a3678174535baf40760da9acd930`; successor branch `work-web-admin-gp-ui-language-v2-20261020` supersedes diverged PR #485.
+- WORDING: main page uses “ค่าบริการร้านค้า (GP)”, “ยอดขายร้าน”, “ค่าบริการที่ต้องชำระ”, “ออเดอร์ที่เข้าเกณฑ์”, and readable settlement labels instead of ambiguous/raw GP wording.
+- RATE PAGE: uses “อัตราเฉพาะร้าน / สิ้นสุดแล้ว” instead of promotion semantics and separates system default vs shop-specific rate clearly.
+- UI: summary metrics, shop cards, status chips, compact slip actions, responsive desktop/mobile layout and cleaner rate cards.
+- SAFETY: GP math, qualifying statuses, <=200 scoped shop/settlement batches, slip signing, `admin_review_gp`, rate writes, RLS/grants are unchanged.
+- PRESERVED #484: unopened-shop delete and archive still refresh only `qtHydrateAdminDirectory()`; no `qtHydrateDatabase({light:false})` remains in Admin source.
+- TEST: `admin-gp-scoped-runtime.cjs` locks scoped batching/math/stale fencing plus terminology/status/slip actions/layout; existing shop-mutation regression remains in the full suite.
+- NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC. Whole Admin mission remains IN PROGRESS.
