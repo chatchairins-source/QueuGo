@@ -133,4 +133,33 @@ class NavigationHybridMatcherTest {
         assertNotNull(second)
         assertTrue(second!!.routeMatch.progressMeters >= first!!.routeMatch.progressMeters - 35.0)
     }
+    @Test
+    fun nearerOppositeCarriagewayIsRejectedWhileMoving() {
+        val route = NavigationRouteSegment(
+            id = "nearer-opposite",
+            toStopId = "stop",
+            points = listOf(
+                NavigationMapPoint(15.00010, 103.0000),
+                NavigationMapPoint(15.00010, 103.0100),
+                NavigationMapPoint(15.00000, 103.0100),
+                NavigationMapPoint(15.00000, 103.0000)
+            )
+        )
+        val matcher = NavigationHybridMatcher()
+        val result = matcher.match(
+            route,
+            NavigationMapFix(
+                point = NavigationMapPoint(15.00002, 103.0060),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 9f,
+                elapsedRealtimeNanos = 1_000_000_000L
+            )
+        )
+
+        assertNotNull(result)
+        assertTrue(result!!.routeMatch.segmentBearingDegrees!! in 70f..110f)
+        assertTrue(result.routeMatch.snapped.latitude > 15.00005)
+    }
+
 }
