@@ -32,9 +32,10 @@ assert(
 );
 assert(
   app.includes('RiderAfterWorkRecommendationTarget.DEMAND_NAVIGATION') &&
-  app.includes('openAfterWorkRecommendationNavigation(context, item)') &&
-  app.includes('google.navigation:q='),
-  'Real demand recommendation must hand off to external Google Maps through the QueueGo return path'
+  app.includes('actionMessage = "เปิดแผนที่ QueueGo เพื่อดูพื้นที่งานใกล้คุณ"') &&
+  !app.includes('openAfterWorkRecommendationNavigation(context, item)') &&
+  !app.includes('google.navigation:q='),
+  'Demand recommendation must return to the QueueGo map without an external Google Maps handoff'
 );
 
 console.log('Native Rider delivery success parity contracts: PASS');
