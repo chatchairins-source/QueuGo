@@ -492,7 +492,7 @@ async function qtRestoreOwnUser(){
    on orders, chat, products/catalog, settlements or audit history. */
 const QT_ADMIN_DIRECTORY_SECTIONS=new Set(['qt-sec-overview','qt-sec-approval','qt-sec-security','qt-sec-delivery','qt-sec-shops','qt-sec-users']);
 let QT_ADMIN_DIRECTORY_PROMISE=null,QT_ADMIN_DIRECTORY_PROMISE_KEY='';
-function qgAdminDirectoryNormalizeQuery(value){return String(value||'').normalize('NFKC').replace(/[^\p{L}\p{M}\p{N} +'-]/gu,'').trim().replace(/\s+/g,' ').slice(0,80)}
+function qgAdminDirectoryNormalizeQuery(value){return String(value||'').normalize('NFC').replace(/[^\p{L}\p{M}\p{N} +'-]/gu,'').trim().replace(/\s+/g,' ').slice(0,80)}
 function qtAdminCurrentSection(){
   try{return sessionStorage.getItem('qt_admin_active_tab')||'qt-sec-overview'}catch(e){return'qt-sec-overview'}
 }
