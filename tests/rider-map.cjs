@@ -23,6 +23,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('queuego-map-web.js?v=20261020-speedzoom2'),true);
  eq(source.includes('maximumAge:0'),true);
  eq(source.includes('class="qg-speed-pill"'),true);
+ eq(source.includes('.qg-route-badge,.qg-route-badge.show{display:none!important}'),true);
+ eq(source.includes('id="route-badge" aria-hidden="true"'),true);
  eq(source.includes('.qg-stage:has(.qg-ready-card) .qg-topbar{display:none}'),false);
  eq(source.includes('<div class="qg-brand-pill">'),false);
  eq(source.includes('function qgSetHomeDockHTML'),true);
