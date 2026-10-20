@@ -9,6 +9,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  eq(host.textContent.includes('เงินจริง ฿123.00'),true);eq(host.querySelector('form').hidden,false);
  const compact=w.document.createElement('div');w.document.body.appendChild(compact);let opened=0;await w.QueueGoCredit.mountSummary(compact,{kind:'merchant',owner:'u1',getToken:async()=>'token',base:'https://backend.invalid',key:'publishable',onOpen:()=>opened++});
  eq(compact.textContent.includes('เครดิตร้านค้า'),true);eq(compact.textContent.includes('ใช้ได้ ฿1,113.00'),true);eq(compact.textContent.includes('เครดิตฟรี ฿1,000.00'),true);compact.querySelector('.qg-credit-summary').click();eq(opened,1);
+ const badge=w.document.createElement('span');w.document.body.appendChild(badge);await w.QueueGoCredit.mountBadge(badge,{kind:'merchant',owner:'u1',getToken:async()=>'token',base:'https://backend.invalid',key:'publishable',onOpen:()=>opened++});eq(badge.textContent.includes('เครดิต ฿1,113.00'),true);badge.querySelector('.qg-credit-badge').click();eq(opened,2);
  host.querySelector('input').value='100.05';fail=true;host.querySelector('form').dispatchEvent(new w.Event('submit',{cancelable:true}));await new Promise(r=>setTimeout(r,20));
  const first=JSON.parse(w.localStorage.getItem('qg-credit-request-v1:u1:merchant'));eq(first.amount_minor,10005);
  fail=false;host.querySelector('form').dispatchEvent(new w.Event('submit',{cancelable:true}));await new Promise(r=>setTimeout(r,20));
@@ -23,6 +24,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  const merchant=fs.readFileSync('merchant/index.html','utf8'),rider=fs.readFileSync('rider/index.html','utf8');
  eq(merchant.includes('../queuego-credit.js')&&merchant.includes("kind:'merchant',owner:u.id"),true);
  eq(merchant.includes("QueueGoCredit.mountSummary(creditHost,{kind:'merchant',owner:u.id")&&merchant.includes("onOpen:()=>navigate('shop-revenue')"),true);
+ eq(merchant.includes("QueueGoCredit.mountBadge(badgeHost,{kind:'merchant',owner:u.id")&&merchant.includes("qgm-header-credit"),true);
  eq(rider.includes('../queuego-credit.js')&&rider.includes("kind:'rider',owner:S.user.id"),true);
  const admin=fs.readFileSync('admin/index.html','utf8'),adminCredit=fs.readFileSync('admin/credit.js','utf8');
  eq(admin.includes("['money','เติมเครดิตฟรีร้านค้า','admin-credit','']"),true);
