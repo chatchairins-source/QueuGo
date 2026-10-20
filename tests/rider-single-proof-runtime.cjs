@@ -7,6 +7,9 @@ let checks=0;const eq=(a,b,m)=>{assert.deepEqual(a,b,m);checks++;};
  assert(source.includes("/\\.(?:jpe?g|png|webp|heic|heif)$/i.test(name)"),'iPhone HEIC/HEIF files must enter normalization path');
  assert.equal(source.includes("if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error"),false,'legacy hard reject must stay removed');
  checks+=4;
+ assert(source.includes('grid-template-columns:minmax(0,1fr) minmax(0,1fr)'),'proof preview should use compact two-column layout');
+ assert(source.includes('height:124px;min-height:0'),'proof thumbnail should stay compact on normal mobile screens');
+ checks+=2;
  for(const mode of ['pickup','delivery']){
   const dom=new JSDOM('<body></body>',{url:'https://queuego.invalid/rider/',runScripts:'outside-only'}),w=dom.window;
   let uploads=0,mutations=0,failNext=true;
