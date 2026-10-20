@@ -86,7 +86,10 @@ window.qgAdminLoadSection=async function(force=false,reason=''){
  if(key==='admin'||key==='qt-sec-overview')return resource('admin',summary,force);
  if(directory.has(key)){
   const changed=await resource('directory',()=>qtHydrateAdminDirectory(),force);
-  if(key==='qt-sec-delivery')await resource('presence',()=>qtRenderAdminRiderPresence(),force);
+  if(key==='qt-sec-delivery'){
+   await resource('presence',()=>qtRenderAdminRiderPresence(),force);
+   if(typeof window.qtRenderAdminRiderMapFeedback==='function')await window.qtRenderAdminRiderMapFeedback();
+  }
   return changed;
  }
  if(key==='qt-sec-audit')return resource(key,async valid=>{
