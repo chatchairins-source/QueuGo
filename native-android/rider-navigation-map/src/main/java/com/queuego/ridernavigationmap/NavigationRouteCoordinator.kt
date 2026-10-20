@@ -192,7 +192,13 @@ class NavigationRouteCoordinator(
         // The full leg remains authoritative for matching/ETA/reroute. Only the renderer copy
         // shrinks, and only from reliable on-route fixes.
         if (guidance.weakGps || guidance.offRoute) return current
-        val match = matchNavigationRoute(leg.segment, fix.point) ?: return current
+        val match = matchNavigationRoute(
+            segment = leg.segment,
+            point = fix.point,
+            bearingDegrees = fix.bearingDegrees,
+            speedMetersPerSecond = fix.speedMetersPerSecond,
+            previousProgressMeters = visibleProgressMeters
+        ) ?: return current
         val monotonicProgress = maxOf(visibleProgressMeters, match.progressMeters)
             .coerceIn(0.0, match.geometryDistanceMeters)
         val remaining = (match.geometryDistanceMeters - monotonicProgress).coerceAtLeast(0.0)
