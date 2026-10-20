@@ -244,3 +244,14 @@ The successor separates Content and Pricing from Settings using existing banner/
 - Inbox/thread request limits and keyset paging are unchanged; no background full hydrate, new timer, DB/RLS/grant/schema change, or realtime publication change.
 - Existing Support runtime regression now verifies old-page and draft suppression plus one bounded newest-idle refresh.
 - Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit/Pages required before merge.
+
+## 2026-10-20 Admin Support inbox-index candidate
+- Stacked on PR #479 exact HEAD b232595212a3dcf817ee503f879fd781ff517e43.
+- The global inbox query is shop_support_messages ORDER BY created_at DESC,id DESC LIMIT 201; Production currently has no index beginning with created_at.
+- Current Production has only a tiny Support dataset, so EXPLAIN currently chooses Seq Scan + Sort at low cost. This checkpoint is future-scale alignment, not fabricated current-speed evidence.
+- Live/source-aligned migration 20261020041534_admin_support_inbox_paging_index.sql adds only shop_support_messages_recent_idx(created_at DESC,id DESC). Thread index behavior is unchanged; no grants/RLS/data writes or Realtime publication changes.
+- Rollback rehearsal succeeded without leaving the rehearsal index behind.
+- Parent PR #479 is merged/Pages/post-merge green; Production migration 20261020041534 is applied and verified. Exact successor RC on the version-aligned source remains the merge gate.
+
+- PRODUCTION APPLY VERIFIED: Supabase migration version 20261020041534 admin_support_inbox_paging_index is live; pg_indexes returns CREATE INDEX shop_support_messages_recent_idx ON public.shop_support_messages USING btree (created_at DESC, id DESC).
+- This confirms the live index matches the source migration contract exactly; planner choice on the current tiny dataset is not used as a latency claim.
