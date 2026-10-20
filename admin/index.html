@@ -170,6 +170,94 @@ async function qtRenderAdminRiderPresence(){
 }
 </script>
 
+<script id="qg-admin-map-feedback-road-alerts">
+(()=>{
+'use strict';
+const readRpc=(fn,args={})=>typeof window.qgAdminRpcRead==='function'?window.qgAdminRpcRead(fn,args):qtSupabaseRpc(fn,args);
+const labels={road_closed:'ถนนปิด',wrong_route:'เส้นทางไม่เหมาะสม',missing_road:'ถนน/ซอยหาย',bad_road:'สภาพถนนไม่ดี',unsafe_turn:'จุดเลี้ยวไม่ปลอดภัย',other:'อื่น ๆ'};
+const publishable=new Set(['road_closed','bad_road','unsafe_turn']);
+const validPoint=(lat,lng)=>Number.isFinite(Number(lat))&&Number.isFinite(Number(lng))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lng))<=180&&(Number(lat)!==0||Number(lng)!==0);
+const categoryLabel=value=>labels[String(value||'')]||String(value||'ไม่ระบุ');
+const defaultMinutes=category=>String(category||'')==='road_closed'?360:1440;
+const durationLabel=minutes=>Number(minutes)>=1440?(Math.round(Number(minutes)/1440)+' วัน'):(Math.round(Number(minutes)/60)+' ชม.');
+const refresh=async()=>{try{window.qgAdminClearReadCache?.();await window.qtRenderAdminRiderMapFeedback?.()}catch(e){if(e?.name!=='AbortError')console.warn(e)}};
+
+window.qtAdminOpenRiderMapFeedbackLocation=function(latitude,longitude,category){
+ const lat=Number(latitude),lng=Number(longitude);
+ if(!validPoint(lat,lng))return toast('พิกัดรายงานไม่ถูกต้อง');
+ if(typeof window.qgAdminViewLocation!=='function')return toast('QueueGo Map ยังไม่พร้อม กรุณารีเฟรชหน้า');
+ window.qgAdminViewLocation(lat,lng,'รายงานแผนที่ · '+categoryLabel(category));
+};
+
+window.qtAdminReviewRiderMapFeedback=async function(feedbackId,decision){
+ if(!['accepted_for_review','dismissed'].includes(decision))return;
+ let note=null;
+ if(decision==='dismissed'){
+  if(typeof qgAdminInput!=='function')return toast('ฟอร์ม Admin ยังไม่พร้อม กรุณารีเฟรชหน้า');
+  const value=await qgAdminInput({title:'ปิดรายงานแผนที่',label:'เหตุผลที่ปิดรายงาน'});
+  if(value===null)return;note=String(value||'').trim();if(!note)return toast('กรุณาระบุเหตุผล');
+ }else if(!window.confirm('รับรายงานนี้เข้าคิวตรวจแผนที่? ระบบจะยังไม่แก้ถนนหรือเส้นทางอัตโนมัติ'))return;
+ try{
+  await qtSupabaseRpc('qg_admin_review_rider_map_feedback',{p_feedback_id:feedbackId,p_decision:decision,p_note:note});
+  toast(decision==='accepted_for_review'?'รับเข้าคิวตรวจแผนที่แล้ว':'ปิดรายงานแล้ว');await refresh();
+ }catch(e){toast('บันทึกผลรายงานไม่สำเร็จ: '+(e.message||e))}
+};
+
+window.qtAdminPublishRiderRoadAlert=async function(feedbackId,category){
+ if(!publishable.has(String(category||'')))return toast('หมวดนี้ไม่สามารถเผยแพร่เป็น Road Alert');
+ const minutes=defaultMinutes(category),label=durationLabel(minutes);
+ if(!window.confirm('เผยแพร่แจ้งเตือนนี้ให้ Rider ใกล้เคียงเป็นเวลา '+label+'?'))return;
+ try{
+  await qtSupabaseRpc('qg_admin_publish_rider_road_alert',{p_feedback_id:feedbackId,p_duration_minutes:minutes});
+  toast('เผยแพร่ Road Alert แล้ว · '+label);await refresh();
+ }catch(e){toast('เผยแพร่ Road Alert ไม่สำเร็จ: '+(e.message||e))}
+};
+
+window.qtAdminDisableRiderRoadAlert=async function(alertId){
+ if(!window.confirm('ปิด Road Alert นี้สำหรับ Rider ทุกคน?'))return;
+ try{
+  await qtSupabaseRpc('qg_admin_disable_rider_road_alert',{p_alert_id:alertId});
+  toast('ปิด Road Alert แล้ว');await refresh();
+ }catch(e){toast('ปิด Road Alert ไม่สำเร็จ: '+(e.message||e))}
+};
+
+window.qtRenderAdminRiderMapFeedback=async function(){
+ const el=document.getElementById('qt-admin-rider-map-feedback-panel');
+ if(!el||qtAdminCurrentSection()!=='qt-sec-delivery'||location.hash!=='#admin-governance'||document.hidden)return;
+ const actor=qtSessionRead()?.authUserId;el.textContent='กำลังโหลดรายงานแผนที่…';
+ try{
+  const [pending,accepted]=await Promise.all([
+   readRpc('qg_admin_rider_map_feedback_queue',{p_status:'pending',p_limit:100}),
+   readRpc('qg_admin_rider_map_feedback_queue',{p_status:'accepted_for_review',p_limit:100})
+  ]);
+  if(!Array.isArray(pending)||!Array.isArray(accepted))throw Error('ข้อมูลรายงานแผนที่ไม่ครบ');
+  if(!el.isConnected||qtSessionRead()?.authUserId!==actor||qtAdminCurrentSection()!=='qt-sec-delivery')return;
+  const card=(row,acceptedMode)=>{
+   const lat=Number(row.latitude),lng=Number(row.longitude),category=String(row.category||''),when=row.created_at?new Date(row.created_at).toLocaleString('th-TH'):'-';
+   const note=row.note?'<p class="qt-admin-note">'+escapeHtml(row.note)+'</p>':'';
+   const location=validPoint(lat,lng)?'<button class="btn-secondary" type="button" onclick="qtAdminOpenRiderMapFeedbackLocation('+lat+','+lng+',\''+escapeHtml(category)+'\')">ดูบน QueueGo Map</button>':'<span class="qt-admin-note">พิกัดไม่ถูกต้อง</span>';
+   let actions='';
+   if(!acceptedMode){
+    actions='<button class="btn-primary" type="button" onclick="qtAdminReviewRiderMapFeedback(\''+escapeHtml(row.id)+'\',\'accepted_for_review\')">รับเข้าคิวตรวจ</button><button class="btn-danger" type="button" onclick="qtAdminReviewRiderMapFeedback(\''+escapeHtml(row.id)+'\',\'dismissed\')">ปิดรายงาน</button>';
+   }else{
+    const active=row.alert_active===true,until=row.alert_expires_at?new Date(row.alert_expires_at).toLocaleString('th-TH'):'';
+    if(active)actions='<button class="btn-danger" type="button" onclick="qtAdminDisableRiderRoadAlert(\''+escapeHtml(row.alert_id)+'\')">ปิด Road Alert</button><span class="qt-admin-note">แจ้งเตือนถึง '+escapeHtml(until)+'</span>';
+    else if(publishable.has(category))actions='<button class="btn-primary" type="button" onclick="qtAdminPublishRiderRoadAlert(\''+escapeHtml(row.id)+'\',\''+escapeHtml(category)+'\')">เผยแพร่ '+escapeHtml(durationLabel(defaultMinutes(category)))+'</button>';
+    else actions='<span class="qt-admin-note">หมวดนี้ใช้ปรับข้อมูลแผนที่ ไม่เผยแพร่เป็น Road Alert</span>';
+   }
+   return '<article class="card"><b>'+escapeHtml(categoryLabel(category))+'</b><p class="qt-admin-note">Rider: '+escapeHtml(row.rider_name||'Rider')+' · '+escapeHtml(when)+'</p>'+note+'<div class="row-btns">'+location+actions+'</div></article>';
+  };
+  const pendingHtml=pending.map(x=>card(x,false)).join('')||'<div class="card">ยังไม่มีรายงานแผนที่รอตรวจ</div>';
+  const acceptedHtml=accepted.map(x=>card(x,true)).join('')||'<div class="card">ยังไม่มีรายงานที่รับเข้าคิวตรวจ</div>';
+  el.innerHTML='<h3>รอตรวจ</h3>'+pendingHtml+'<h3 style="margin-top:14px">รับเข้าคิวตรวจ / Road Alerts</h3>'+acceptedHtml;
+ }catch(e){
+  if(e?.name==='AbortError')return;
+  if(el.isConnected&&qtSessionRead()?.authUserId===actor)el.textContent='โหลดรายงานแผนที่ไม่สำเร็จ: '+(e.message||e);
+ }
+};
+})();
+</script>
+
 <script>
 /* =========================================================================
    QueueGo V5.51 — Single File Application
@@ -1071,7 +1159,7 @@ function renderAdminGovernance(){
  ${panel('qt-sec-shops',`<h2>จัดการร้านค้า</h2><div class="qg-shop-filters">${[['all','ทั้งหมด'],['ready','พร้อมใช้งาน'],['pending_review','รออนุมัติ'],['incomplete','ข้อมูลไม่ครบ'],['never_opened','ไม่เคยเปิดใช้งาน'],['archived','ถูกลบ / Archived']].map(([key,label],i)=>`<button class="${i===0?'active':''}" data-shop-filter="${key}" onclick="qgAdminShopFilter('${key}')">${label}</button>`).join('')}</div><input id="qg-shop-search" type="search" aria-label="ค้นหาร้านค้า" placeholder="ค้นหาชื่อร้าน ประเภท หรือเบอร์โทร" oninput="qgAdminShopFilter()"><div class="qg-shop-list">${shopCards||empty('ยังไม่มีร้านค้า')}</div><p id="qg-shop-empty" class="qg-empty" hidden>ไม่พบร้านค้าที่ค้นหา</p>`)}
  ${panel('qt-sec-grocery','<h2>สินค้ากลางร้านขายของชำ</h2><button class="btn-primary" onclick="navigate(&#39;admin-grocery&#39;)">เปิด Master Catalog</button>')}
  ${panel('qt-sec-users',`<h2>จัดการผู้ใช้</h2><div class="qt-user-category-tabs">${[['customer','ลูกค้า'],['rider','ไรเดอร์'],['shop','ร้านค้า'],['technician','ช่าง'],['admin','แอดมิน']].map(([role,label],i)=>`<button class="qt-user-category-btn ${i===0?'active':''}" data-user-category="${role}" onclick="qtUserCategory('${role}')">${label} (${users.filter(u=>u.type===role).length})</button>`).join('')}</div><input type="search" id="qg-admin-user-search" aria-label="ค้นหาผู้ใช้" placeholder="ค้นหาชื่อ ประเภทร้าน หรือเบอร์โทร" oninput="qgAdminFilterUsers(this.value)">${userPanels}`)}
- ${panel('qt-sec-delivery','<h2>สถานะไรเดอร์</h2><div class="row-btns"><button type="button" onclick="navigate(&#39;admin-rider-review&#39;)">ตรวจเอกสารและยานพาหนะ</button><button type="button" onclick="navigate(&#39;admin-ride&#39;)">ใบขับขี่สาธารณะ</button></div><div id="qt-admin-rider-online-panel" class="card">กำลังโหลดสถานะจากระบบ…</div>')}
+ ${panel('qt-sec-delivery','<h2>สถานะไรเดอร์</h2><div class="row-btns"><button type="button" onclick="navigate(&#39;admin-rider-review&#39;)">ตรวจเอกสารและยานพาหนะ</button><button type="button" onclick="navigate(&#39;admin-ride&#39;)">ใบขับขี่สาธารณะ</button></div><div id="qt-admin-rider-online-panel" class="card">กำลังโหลดสถานะจากระบบ…</div><div class="row-btns" style="margin-top:16px"><h2 style="margin:0">รายงานปัญหาแผนที่ / Road Alerts</h2><button type="button" class="btn-secondary" onclick="qgAdminClearReadCache();qtRenderAdminRiderMapFeedback()">รีเฟรช</button></div><div id="qt-admin-rider-map-feedback-panel">กำลังโหลดรายงานแผนที่…</div>')}
  ${panel('qt-sec-approval',`<h2>รออนุมัติผู้ให้บริการ</h2><div class="qg-approval-tabs">${[['all','ทั้งหมด'],['shop','ร้านค้า'],['rider','ไรเดอร์']].map(([role,label],i)=>`<button class="${i===0?'active':''}" data-approval-filter="${role}" onclick="qgAdminApprovalRole('${role}')">${label}</button>`).join('')}</div><input id="qg-approval-search" type="search" aria-label="ค้นหาใบสมัคร" placeholder="ค้นหาชื่อร้าน ประเภท หรือเบอร์โทร" oninput="qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all')">${approval}<p id="qg-approval-filter-empty" class="qg-empty" ${pending.length?'hidden':''}>ไม่มีใบสมัครที่ตรงกับการค้นหา</p>`)}
  ${panel('qt-sec-promote',`<h2>คำขอ Promote</h2>${promos.map(p=>`<article class="card"><b>${esc(p.shopName||p.shopId)}</b><p>${esc(qtPromoStatusLabel(p.status))} · ${Number(p.bidPrice||0).toLocaleString('th-TH')} บาท</p><div class="row-btns">${p.status==='pending'?`<button class="btn-primary" onclick="adminApprovePromotion('${esc(p.id)}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectPromotion('${esc(p.id)}')">ปฏิเสธ</button>`:''}${p.status==='active'?`<button class="btn-danger" onclick="stopPromote('${esc(p.id)}')">หยุดโปรโมต</button>`:''}</div></article>`).join('')||empty('ยังไม่มีคำขอ Promote')}`)}
  ${panel('qt-sec-finance',`<h2>การเงิน</h2><div class="row-btns"><button class="btn-primary" onclick="navigate('admin-gp')">GP และสลิป</button><button onclick="navigate('admin-cash')">รายงานเงินสด</button></div><h3>คำขอคืนเงิน</h3>${orders.filter(o=>o.refundStatus==='requested').map(o=>`<article class="card"><b>${esc(displayOrderNumber(o))}</b><p>${esc(o.refundReason||'-')} · ${Number(o.total||0).toLocaleString('th-TH')} บาท</p><p role="status">ยังดำเนินการผ่านหน้านี้ไม่ได้ · รอระบบคืนเงินที่ยืนยันผลและบันทึกประวัติฝั่งเซิร์ฟเวอร์</p></article>`).join('')||empty('ไม่มีคำขอคืนเงิน')}`)}
