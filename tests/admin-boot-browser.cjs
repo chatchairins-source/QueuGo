@@ -43,6 +43,16 @@ const root=path.resolve(__dirname,'..'),owner='00000000-0000-4000-8000-000000000
    await page.evaluate(name=>{location.hash='#'+name},routeName);await page.waitForFunction(name=>location.hash==='#'+name,routeName);await page.waitForLoadState('networkidle');
    assert((await page.locator('#app').innerText()).trim().length>0,'visible page: '+routeName);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'mobile overflow: '+routeName);checks+=2;
   }
+  // Exercise the real GP renderer and shipped stylesheet, including empty iOS date controls.
+  await page.evaluate(()=>{const read=dbGet;window.dbGet=(key,fallback)=>key==='qt_users'?[{id:'qa-shop',type:'shop',shopName:'ร้านทดสอบชื่อยาวสำหรับหน้าจอมือถือ'}]:read(key,fallback);window.QT_GP_DEFAULT_RATE=10;location.hash='#admin-gp-rates'});
+  await page.waitForFunction(()=>document.querySelector('#gp-until-qa-shop'));
+  for(const width of [320,390,430]){
+   await page.setViewportSize({width,height:844});
+   const sizes=await page.evaluate(()=>{const card=document.querySelector('#gp-until-qa-shop').closest('.qg-gp-rate-card'),date=card.querySelector('input[type=date]'),number=card.querySelector('input[type=number]');return {background:getComputedStyle(card).backgroundColor,padding:parseFloat(getComputedStyle(card).paddingLeft),date:date.getBoundingClientRect().height,number:number.getBoundingClientRect().height,overflow:document.documentElement.scrollWidth>innerWidth+1}});
+   assert.equal(sizes.background,'rgb(255, 255, 255)');assert(sizes.padding>=14);assert.equal(sizes.date,44);assert.equal(sizes.number,44);assert.equal(sizes.overflow,false);checks+=5;
+  }
+  await page.screenshot({path:'/tmp/queuego-admin-gp-mobile.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
   await page.evaluate(()=>qgAdminSection('qt-sec-overview'));await page.waitForFunction(()=>location.hash==='#admin-governance');
   for(const sectionName of ['qt-sec-overview','qt-sec-orders','qt-sec-shops','qt-sec-grocery','qt-sec-users','qt-sec-delivery','qt-sec-approval','qt-sec-promote','qt-sec-finance','qt-sec-security','qt-sec-notify','qt-sec-audit','qt-sec-settings','qt-sec-permissions']){
    await page.evaluate(name=>qtAdminTab(name),sectionName);await page.waitForFunction(name=>document.querySelector('.qt-admin-panel.active')?.id===name,sectionName);await page.waitForLoadState('networkidle');
