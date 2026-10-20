@@ -725,3 +725,14 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - INDEX EVIDENCE: Production already has `idx_orders_created_at (created_at desc)` and `orders_pkey(id)`; no schema/index mutation is required for this checkpoint.
 - TEST: Admin order runtime rejects any `offset=` order request and verifies next cursor, previous cursor, filter reset, exact-page parties and existing broadcast behavior.
 - NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue Admin performance/coverage. Whole Admin mission remains IN PROGRESS.
+
+
+## 2026-10-20 Admin Support fallback refresh scope
+- BASE: merged PR #478 / main `0f84fe969b75f3029fad13577c2c4e9ec4b27be2`; branch `work-web-admin-support-fallback-scope-20261020`.
+- EXISTING BACKEND: `shop_support_messages` still has no Realtime publication, so the bounded 60s visible-page fallback remains necessary.
+- CHANGE: fallback refresh now runs only on `#admin-support` when the tab is visible, browser online, Admin approved, inbox/thread are both on the newest cursor, and the reply draft is empty.
+- NO HISTORY JUMP: old inbox/thread pages are never auto-refreshed; manual paging stays under operator control.
+- NO TYPING INTERRUPTION: a non-empty reply draft suppresses the timer; explicit refresh and post-send refresh still work.
+- REQUEST BOUNDS UNCHANGED: inbox 200/201 + selected thread 100/101 keyset pages; no extra table, no new poller, no interval reduction, no full hydrate.
+- TEST: existing `admin-support-runtime.cjs` now locks history/draft suppression, newest-idle fallback, hidden-route suppression and stale-actor fencing.
+- NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue remaining safe Admin source gaps. Whole Admin mission remains IN PROGRESS.
