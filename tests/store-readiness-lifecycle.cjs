@@ -66,7 +66,7 @@ ok(admin.includes("if(u.type==='shop')return u.shopProfileId?qgAdminArchiveShop(
 // Current-profile resolution after archive/reapplication.
 ok(!admin.includes('shop_profiles?on_conflict=user_id'),'Admin cache must never recreate a shop through the retired user_id upsert');
 ok(admin.includes("shop_profiles?select=id&user_id=eq.'+encodeURIComponent(u.id)+'&archived_at=is.null&order=created_at.desc&limit=1"),'Admin shop persistence must target the current non-archived profile');
-ok(admin.includes("shop_profiles?select=id,user_id&archived_at=is.null"),'Admin open-state refresh must ignore archived profiles');
+ok(!admin.includes('qgRefreshAdminShopStates'),'Dead Admin open-state refresher must remain removed');
 ok(admin.includes("shop_profiles?select=id&user_id=eq.'+encodeURIComponent(id)+'&archived_at=is.null&order=created_at.desc&limit=1"),'Admin open/close action must resolve the current profile');
 ok(adminLocations.includes("kind==='shop_user'?'&archived_at=is.null&order=created_at.desc':''"),'Admin location editor must resolve the current profile for a merchant user');
 ok(adminMarket.includes('market_membership_status=eq.pending&archived_at=is.null'),'Market review must ignore archived merchant profiles');
