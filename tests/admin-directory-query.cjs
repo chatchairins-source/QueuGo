@@ -35,4 +35,7 @@ ctx.QG_ADMIN_DIRECTORY_QUERY='วิชัย';ctx.QG_ADMIN_DIRECTORY_CURSOR=uid
 gate=new Promise(r=>release=r);ctx.QG_ADMIN_DIRECTORY_CURSOR='';ctx.QG_ADMIN_DIRECTORY_QUERY='old';const old=ctx.qtHydrateAdminDirectory();await new Promise(r=>setImmediate(r));ctx.QG_ADMIN_DIRECTORY_QUERY='new';const newer=ctx.qtHydrateAdminDirectory();await newer;assert.equal(ctx.QT_DB_CACHE.qt_users[0].id,uid(3));release();await old;assert.equal(ctx.QT_DB_CACHE.qt_users[0].id,uid(3));checks+=2;
 actor='customer';calls=[];await assert.rejects(()=>ctx.qtHydrateAdminDirectory(),/Admin/);assert.equal(calls.length,0);checks+=2;
 assert(html.includes('qgAdminDirectorySearch(this.elements.directorySearch.value)'));checks++;
+const searchIndexSql=fs.readFileSync('supabase/migrations/20261020022140_admin_directory_search_trgm_indexes.sql','utf8');
+for(const index of ['users_name_trgm_idx','users_phone_trgm_idx','shop_profiles_current_name_trgm_idx','shop_profiles_current_phone_trgm_idx']){assert(searchIndexSql.includes(index));checks++}
+assert((searchIndexSql.match(/gin_trgm_ops/g)||[]).length===4);checks++;
 console.log(JSON.stringify({checks,failures:0,scope:'actual directory function: Unicode Thai normalization, bounded server account/shop search, scoped profiles, coalescing, keyset cursor, stale-query fencing and non-admin denial'}));})().catch(e=>{console.error(e);process.exit(1)});
