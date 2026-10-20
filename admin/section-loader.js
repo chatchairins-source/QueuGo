@@ -1,14 +1,24 @@
 /* Admin read orchestration only. Existing RLS/RPC authorization remains authoritative. */
 (()=>{
 'use strict';
-const reads=new Map();let readEpoch=0;
+const reads=new Map(),inflight=new Set();let readEpoch=0;
+const abortError=()=>Object.assign(new Error('ยกเลิกการอ่านจากหมวดก่อนหน้า'),{name:'AbortError'});
+function track(controller){const item={controller,scope:readScope()};inflight.add(item);return ()=>inflight.delete(item)}
+function stopStale(all=false){
+ const active=readScope();for(const [key,item]of reads)if(item.pending&&(all||item.scope!==active))reads.delete(key);
+ for(const [key,item]of cache)if(item.promise&&(all||item.scope!==active))cache.delete(key);
+ for(const item of inflight)if(all||item.scope!==active)item.controller.abort();
+}
 window.qgAdminClearReadCache=function(){readEpoch++;reads.clear()};
 window.qgAdminRead=async function(path,options,read){
  if(String(options.method||'GET').toUpperCase()!=='GET'){window.qgAdminClearReadCache();try{return await read()}finally{window.qgAdminClearReadCache()}}
  const key=String(options.accessToken||'')+':'+path,entry=reads.get(key);
- if(entry&&Date.now()-entry.at<5000)return entry.promise;
- const version=readEpoch,item={at:Date.now()};
- item.promise=Promise.resolve().then(read).catch(e=>{if(reads.get(key)===item)reads.delete(key);throw e});
+ if(entry?.pending&&entry.scope!==readScope()){entry.controller.abort();reads.delete(key)}
+ else if(entry&&(entry.pending||Date.now()-entry.at<5000))return entry.promise;
+ const version=readEpoch,controller=new AbortController(),release=track(controller),item={at:Date.now(),pending:true,scope:readScope(),controller};
+ const abort=()=>controller.abort();if(options.signal?.aborted)abort();else options.signal?.addEventListener('abort',abort,{once:true});
+ const timer=setTimeout(()=>controller.abort(Object.assign(new Error('อ่านข้อมูลนานเกินกำหนด'),{name:'TimeoutError'})),15000);
+ item.promise=Promise.resolve().then(()=>{if(controller.signal.aborted)throw controller.signal.reason||abortError();return read(controller.signal)}).then(value=>{if(controller.signal.aborted)throw controller.signal.reason||abortError();return value}).catch(e=>{if(reads.get(key)===item)reads.delete(key);throw e}).finally(()=>{item.pending=false;clearTimeout(timer);release();options.signal?.removeEventListener('abort',abort)});
  if(reads.size>=100)reads.delete(reads.keys().next().value);reads.set(key,item);
  const value=await item.promise;if(version!==readEpoch&&reads.get(key)===item)reads.delete(key);return value;
 };
@@ -17,23 +27,25 @@ let actor=null,epoch=0;
 const identity=()=>{const s=qtSessionRead();return s?.role==='admin'?s.authUserId+':'+s.userId:null};
 const section=()=>location.hash==='#admin-governance'?qtAdminCurrentSection():(location.hash.slice(1).split('/')[0]||'admin');
 const directory=new Set(['qt-sec-approval','qt-sec-users','qt-sec-shops','qt-sec-security','qt-sec-delivery','admin-gp-rates']);
+function readScope(){const key=section();return directory.has(key)?'directory':key==='qt-sec-overview'?'admin':key}
+window.addEventListener('hashchange',()=>stopStale());window.addEventListener('qg:admin-section',()=>stopStale());
 const metrics=window.QG_ADMIN_LOAD_METRICS=[];
-function reset(){epoch++;cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_PAGE=null;}
+function reset(){epoch++;stopStale(true);cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_PAGE=null;}
 async function resource(key,load,force){
  if(identity()!==actor)reset();if(!actor)return false;
  const now=Date.now(),old=cache.get(key);if(old?.promise)return old.promise;
  if(!force&&old?.at&&now-old.at<ttl)return false;
- const version=epoch,owner=actor,start=performance.now();
- const item={at:old?.at||0};
- item.promise=(async()=>{try{await load(()=>epoch===version&&identity()===owner);if(epoch!==version||identity()!==owner)return false;item.at=Date.now();metrics.push({section:key,durationMs:Math.round(performance.now()-start)});if(metrics.length>100)metrics.shift();return true}finally{item.promise=null}})();
+ const version=epoch,owner=actor,scope=readScope(),start=performance.now();
+ const item={at:old?.at||0,scope};
+ item.promise=(async()=>{try{await load(()=>epoch===version&&identity()===owner&&readScope()===scope);if(epoch!==version||identity()!==owner||readScope()!==scope)return false;item.at=Date.now();metrics.push({section:key,durationMs:Math.round(performance.now()-start)});if(metrics.length>100)metrics.shift();return true}finally{item.promise=null}})();
  cache.set(key,item);return item.promise;
 }
 async function count(path,token){
- const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
+ const controller=new AbortController(),release=track(controller),timer=setTimeout(()=>controller.abort(Object.assign(new Error('อ่านสรุปนานเกินกำหนด'),{name:'TimeoutError'})),15000);
  try{const response=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/'+path,{method:'HEAD',headers:{...qtSupabaseHeaders(token),Prefer:'count=exact'},signal:controller.signal});
  if(!response.ok)throw Error('โหลดสรุปไม่สำเร็จ ('+response.status+')');
  const total=response.headers.get('content-range')?.split('/')[1];if(!/^\d+$/.test(total||''))throw Error('ระบบไม่ส่งจำนวนรายการ');return Number(total);
- }finally{clearTimeout(timer)}
+ }finally{clearTimeout(timer);release()}
 }
 async function summary(valid){
  const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
@@ -99,7 +111,7 @@ window.qgAdminEnsureSection=function(){
   const focus=document.activeElement;
   if(focus&&/^(INPUT|SELECT|TEXTAREA)$/.test(focus.tagName))return;
   rendering=true;try{router()}finally{rendering=false}
- }).catch(e=>{const note=document.getElementById('qg-admin-refresh-note');if(note)note.textContent=e.message;else toast(e.message)}).finally(()=>{if(ensures.get(ensureKey)===task)ensures.delete(ensureKey)});ensures.set(ensureKey,task);
+ }).catch(e=>{if(e.name==='AbortError')return;const note=document.getElementById('qg-admin-refresh-note');if(note)note.textContent=e.message;else toast(e.message)}).finally(()=>{if(ensures.get(ensureKey)===task)ensures.delete(ensureKey)});ensures.set(ensureKey,task);
 };
 const history=[];
 window.qgAdminDirectoryPage=async function(direction){

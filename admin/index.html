@@ -110,7 +110,7 @@ async function qtSupabaseRpc(fn,args={}){
   return data;
 }
 async function qtSupabaseTable(path, options={}){
-  if(!options.adminReadBypass&&typeof window!=='undefined'&&typeof window.qgAdminRead==='function')return window.qgAdminRead(path,options,()=>qtSupabaseTable(path,{...options,adminReadBypass:true}));
+  if(!options.adminReadBypass&&typeof window!=='undefined'&&typeof window.qgAdminRead==='function')return window.qgAdminRead(path,options,signal=>qtSupabaseTable(path,{...options,signal,adminReadBypass:true}));
   const headers=qtSupabaseHeaders(options.accessToken);
   const isNotif=String(path).startsWith('notifications');
   const rep=isNotif ? 'return=minimal' : 'return=representation';
@@ -118,7 +118,7 @@ async function qtSupabaseTable(path, options={}){
     headers.Prefer=String(path).includes('on_conflict=') && String(options.method||'').toUpperCase()==='POST'
       ? rep+','+(options.ignoreDuplicates?'resolution=ignore-duplicates':'resolution=merge-duplicates') : rep;
   }
-  const r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/'+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,signal:AbortSignal.timeout(15000)});
+  const r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/'+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,signal:options.signal||AbortSignal.timeout(15000)});
   const data=await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return null});
   if(!r.ok) throw new Error((data&&data.message)||((data&&data.hint)?data.hint:'DB_ERROR_'+r.status));
   return data;
