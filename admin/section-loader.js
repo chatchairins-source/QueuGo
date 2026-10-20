@@ -83,8 +83,9 @@ window.qgAdminLoadSection=async function(force=false,reason=''){
   return changed;
  }
  if(key==='qt-sec-audit')return resource(key,async valid=>{
-  const rows=await read('audit_logs?select=id,user_id,action,entity_type,entity_id,description,created_at&order=created_at.desc,id.desc&limit=100');
-  if(valid())QT_DB_CACHE.qt_audit_log=(rows||[]).map(x=>({id:x.id,actorId:x.user_id,action:x.action,entityType:x.entity_type,entityId:x.entity_id,description:x.description,at:new Date(x.created_at).getTime()}));
+  const page=Math.max(0,Number(window.QG_ADMIN_AUDIT_PAGE)||0);
+  const rows=await read('audit_logs?select=id,user_id,action,entity_type,entity_id,description,created_at&order=created_at.desc,id.desc&limit=101&offset='+(page*100));
+  if(valid()){QT_DB_CACHE.qt_audit_log=(rows||[]).slice(0,100).map(x=>({id:x.id,actorId:x.user_id,action:x.action,entityType:x.entity_type,entityId:x.entity_id,description:x.description,at:new Date(x.created_at).getTime()}));window.QG_ADMIN_AUDIT_PAGE_INFO={page,more:(rows||[]).length>100}}
  },force);
  if(key==='qt-sec-promote')return resource(key,async valid=>{
   const rows=await read('promotions?select=*&order=created_at.desc&limit=100');
@@ -93,8 +94,9 @@ window.qgAdminLoadSection=async function(force=false,reason=''){
  if(key==='qt-sec-finance')return resource(key,async valid=>{const rows=await read('orders?select=id,order_number,metadata,total_amount,created_at&metadata->>refundStatus=eq.requested&order=created_at.desc&limit=100');if(valid())QT_DB_CACHE.qt_orders=(rows||[]).map(qtOrderFromRow)},force);
  if(key==='qt-sec-settings')return resource(key,()=>qtPullSystemSettings(),force);
  if(key==='notifications')return resource(key,async valid=>{
-  const rows=await read('notifications?select=id,user_id,title,message,type,is_read,created_at,reference_id&user_id=eq.'+encodeURIComponent(qtSessionRead().userId)+'&order=created_at.desc&limit=100');
-  if(valid())QT_DB_CACHE.qt_notifications=(rows||[]).map(n=>({id:n.id,userId:n.user_id,title:n.title,message:n.message,body:n.message,type:n.type,read:n.is_read,createdAt:new Date(n.created_at).getTime()}));
+  const page=Math.max(0,Number(window.QG_ADMIN_NOTIFICATION_PAGE)||0);
+  const rows=await read('notifications?select=id,user_id,title,message,type,is_read,created_at,reference_id&user_id=eq.'+encodeURIComponent(qtSessionRead().userId)+'&order=created_at.desc,id.desc&limit=101&offset='+(page*100));
+  if(valid()){QT_DB_CACHE.qt_notifications=(rows||[]).slice(0,100).map(n=>({id:n.id,userId:n.user_id,title:n.title,message:n.message,body:n.message,type:n.type,referenceId:n.reference_id||null,read:n.is_read,createdAt:new Date(n.created_at).getTime()}));window.QG_ADMIN_NOTIFICATION_PAGE_INFO={page,more:(rows||[]).length>100}}
  },force);
  if(force||reason){
   const loaders={'admin-orders':()=>qgLoadAdminOrders(),'admin-gp':()=>qgLoadAdminGp(),'admin-cash':()=>qgLoadAdminCash(undefined),'admin-market':()=>qgLoadMarketOperations(),'admin-gp-rates':()=>qtPullGpRates()};
