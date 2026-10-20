@@ -32,6 +32,7 @@ jobs:
           python tests/map-field-evidence-validator.py
           python tests/map-release-gate-report.py
           python tests/map-engine-trace-safety.py
+          python tests/map-http-resource-bounds.py
           node node_modules/playwright-core/cli.js install --with-deps chromium
       - name: Pinned real OSM and existing vector package
         run: |

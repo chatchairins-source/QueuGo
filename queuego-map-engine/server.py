@@ -5,11 +5,54 @@ import json
 import mimetypes
 from pathlib import Path
 import re
+import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 from core import Engine
 
 MAX_BODY=256*1024
+
+
+class BoundedMapHTTPServer(ThreadingHTTPServer):
+    """Bound accepted connections, including clients stalled before API dispatch.
+
+    TLS/rate limiting still belongs to the authorized ingress. These limits also
+    protect loopback and direct container callers from unbounded worker creation.
+    """
+    daemon_threads=True
+
+    def __init__(self,*args,max_workers=16,request_timeout=15,**kwargs):
+        if not 1<=max_workers<=128 or not 0<request_timeout<=120:
+            raise ValueError('Invalid map HTTP resource limits')
+        self._workers=threading.BoundedSemaphore(max_workers)
+        self.request_timeout=request_timeout
+        super().__init__(*args,**kwargs)
+
+    def get_request(self):
+        request,address=super().get_request()
+        request.settimeout(self.request_timeout)
+        return request,address
+
+    def process_request(self,request,address):
+        if not self._workers.acquire(blocking=False):
+            try:
+                request.sendall(b'HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\nRetry-After: 1\r\nCache-Control: no-store\r\n\r\n')
+            except OSError:
+                pass
+            finally:
+                self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request,address)
+        except BaseException:
+            self._workers.release()
+            raise
+
+    def process_request_thread(self,request,address):
+        try:
+            super().process_request_thread(request,address)
+        finally:
+            self._workers.release()
 
 
 def handler(engine,web_root,vector=None,origins=(),assets_root=None):
@@ -100,7 +143,7 @@ def handler(engine,web_root,vector=None,origins=(),assets_root=None):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--database',required=True);parser.add_argument('--config',required=True);parser.add_argument('--web-root',default=str(Path(__file__).resolve().parents[1]));parser.add_argument('--vector');parser.add_argument('--assets-root');parser.add_argument('--host',default='127.0.0.1');parser.add_argument('--port',type=int,default=8765);parser.add_argument('--allowed-origin',action='append',default=[])
     args=parser.parse_args();engine=Engine(args.database,args.config)
-    server=ThreadingHTTPServer((args.host,args.port),handler(engine,args.web_root,args.vector,args.allowed_origin,args.assets_root or str(Path(args.web_root)/'map-assets')));server.daemon_threads=True
+    server=BoundedMapHTTPServer((args.host,args.port),handler(engine,args.web_root,args.vector,args.allowed_origin,args.assets_root or str(Path(args.web_root)/'map-assets')));server.daemon_threads=True
     print(json.dumps({'listening':f'http://{args.host}:{args.port}','data':engine.metadata()},ensure_ascii=False),flush=True)
     server.serve_forever()
 
