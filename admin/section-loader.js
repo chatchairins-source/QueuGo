@@ -27,13 +27,13 @@ let actor=null,epoch=0;
 const identity=()=>{const s=qtSessionRead();return s?.role==='admin'?s.authUserId+':'+s.userId:null};
 const section=()=>location.hash==='#admin-governance'?qtAdminCurrentSection():(location.hash.slice(1).split('/')[0]||'admin');
 const directory=new Set(['qt-sec-approval','qt-sec-users','qt-sec-shops','qt-sec-security','qt-sec-delivery','admin-gp-rates']);
-function readScope(){const key=section();return directory.has(key)?'directory':key==='qt-sec-overview'?'admin':key}
+function readScope(){const key=section();return directory.has(key)?'directory:'+JSON.stringify([window.QG_ADMIN_DIRECTORY_QUERY||'',window.QG_ADMIN_DIRECTORY_CURSOR||'']):key==='qt-sec-overview'?'admin':key}
 window.addEventListener('hashchange',()=>stopStale());window.addEventListener('qg:admin-section',()=>stopStale());
 const metrics=window.QG_ADMIN_LOAD_METRICS=[];
-function reset(){epoch++;stopStale(true);cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_PAGE=null;}
+function reset(){epoch++;stopStale(true);cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_QUERY='';history.length=0;window.QG_ADMIN_DIRECTORY_PAGE=null;}
 async function resource(key,load,force){
  if(identity()!==actor)reset();if(!actor)return false;
- const now=Date.now(),old=cache.get(key);if(old?.promise)return old.promise;
+ stopStale();const now=Date.now(),old=cache.get(key);if(old?.promise&&old.scope===readScope())return old.promise;
  if(!force&&old?.at&&now-old.at<ttl)return false;
  const version=epoch,owner=actor,scope=readScope(),start=performance.now();
  const item={at:old?.at||0,scope};
@@ -114,6 +114,12 @@ window.qgAdminEnsureSection=function(){
  }).catch(e=>{if(e.name==='AbortError')return;const note=document.getElementById('qg-admin-refresh-note');if(note)note.textContent=e.message;else toast(e.message)}).finally(()=>{if(ensures.get(ensureKey)===task)ensures.delete(ensureKey)});ensures.set(ensureKey,task);
 };
 const history=[];
+window.qgAdminDirectorySearch=async function(value){
+ if(!identity()||!directory.has(section()))return;if(identity()!==actor)reset();
+ const query=qgAdminDirectoryNormalizeQuery(value);if(query&&query.length<2)return toast('กรุณาระบุชื่อหรือเบอร์โทรอย่างน้อย 2 ตัวอักษร');
+ window.QG_ADMIN_DIRECTORY_QUERY=query;window.QG_ADMIN_DIRECTORY_CURSOR='';history.length=0;stopStale();
+ try{await window.qgAdminLoadSection(true);router()}catch(e){if(e.name!=='AbortError')toast(e.message)}
+};
 window.qgAdminDirectoryPage=async function(direction){
  const page=window.QG_ADMIN_DIRECTORY_PAGE;if(!page||!directory.has(section()))return;
  if(direction>0){if(!page.more)return;history.push(page.cursor);window.QG_ADMIN_DIRECTORY_CURSOR=page.last;}
