@@ -228,7 +228,7 @@ function navState(map){
   if(!state){
     state={
       follow:true,navigationActive:true,bearing:null,lastFix:null,lastRoute:[],baseZoom:17,lastDecision:null,lastAppliedAt:0,
-      manualZoom:null,manualZoomUntil:0,reanchorTimer:null,gestureActive:false,lastBottomInset:0
+      manualZoom:null,manualZoomUntil:0,reanchorTimer:null,gestureActive:false,lastBottomInset:0,headingOnly:false
     };
     navigationStates.set(map,state);
   }
@@ -261,6 +261,7 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
     return true;
   }
   state.follow=false;
+  state.headingOnly=false;
   state.bearing=0;
   state.lastDecision=null;
   state.lastDecisionApplied=null;
@@ -274,7 +275,7 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   try{map.easeTo(camera)}catch(_){return false}
   return false;
 }
-function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false,bottomInset=null,puckBearing=null}={}){
+function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false,bottomInset=null,puckBearing=null,headingOnly=false}={}){
   if(!map)return null;
   const state=navState(map);
   const normalizedRoute=Array.isArray(route)?route:[];
@@ -283,6 +284,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   state.lastFix={...fix};
   state.lastRoute=normalizedRoute;
   state.baseZoom=baseZoom;
+  state.headingOnly=!!headingOnly;
   if(navHasNumber(bottomInset)&&Number(bottomInset)>=0)state.lastBottomInset=Number(bottomInset);
   if(force){
     state.follow=true;
@@ -296,7 +298,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   const decision=navCameraDecision({...fix,route:normalizedRoute,previousBearing,previousRouteProgress,baseZoom});if(!decision)return null;
   const now=Date.now();
   let targetZoom=decision.zoom;
-  if(preserveZoom||state.manualZoomUntil>now){
+  if(preserveZoom||headingOnly||state.manualZoomUntil>now){
     const currentZoom=Number(map.getZoom?.());
     if(Number.isFinite(currentZoom))targetZoom=currentZoom;
     else if(Number.isFinite(state.manualZoom))targetZoom=state.manualZoom;
@@ -311,7 +313,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
     ? {lat:Number(fix.lat),lng:Number(fix.lng)}
     : decision.center);
   const speed=navHasNumber(fix?.speed)&&Number(fix.speed)>=0?Number(fix.speed):null;
-  const target={...decision,bearing:navHasNumber(puckBearing)?navNormalizeBearing(Number(puckBearing)):decision.bearing,zoom:targetZoom,cameraCenter:riderCenter};
+  const target={...decision,bearing:navHasNumber(puckBearing)?navNormalizeBearing(Number(puckBearing)):decision.bearing,pitch:headingOnly?0:decision.pitch,zoom:targetZoom,cameraCenter:riderCenter};
   state.bearing=target.bearing;
   state.lastDecision=target;
   if(state.gestureActive&&!force)return target;
@@ -372,7 +374,8 @@ function reanchorNavigationAfterGesture(map){
       duration:650,
       baseZoom:state.baseZoom,
       preserveZoom:true,
-      bottomInset:state.lastBottomInset
+      bottomInset:state.lastBottomInset,
+      headingOnly:state.headingOnly
     });
   },110);
   return true;
