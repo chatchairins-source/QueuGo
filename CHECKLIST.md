@@ -911,3 +911,13 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - DONE (focused uploader runtime test): commit5a34149c exercises actual support uploader with safe PNG passthrough, HEIC, blank-MIME HEIF, oversized JPEG, source rejection, decode failure and Storage rejection. Combined actual proof DOM/upload suite65 checks/0 failures. Decode and transport are isolated substitutes; no physical iPhone or live upload is certified. Full local regression running before publication.
 - IN PROGRESS: Native Rider latest descendant CI, shared release manifest cleanup, Credit/Ride/Express reconciliation, Map runtime transport and Catalog/Laundry checks run independently. Shared branches are not overwritten while other writers advance them.
 - NEXT: complete local full suite and exact hosted CI for the uploader test successor, merge and verify Web bytes; record final Admin RC receipt. Continue newest Native descendant and each unblocked source lane. Physical GPS/authenticated-device, approved hosting/provider/Production release and signed AAB/Play gates remain separate.
+
+
+## 2026-10-21 Admin final freeze
+- Component: Admin Web
+- HEAD: main `2ef2ac18b23a14b5ad8e79d6bc2b0abad3f999e4`; frozen Admin implementation merged via `9bb6e436aee941e1223ae3d941b40c53d4c27f8c` from exact source `9726fbdefff5226530e12cf283756ff49be0eb09`.
+- Build/Test: exact source RC `39418123012` SUCCESS; post-merge RC `39426694586` job `118641612148` SUCCESS; Pages `39426694695` SUCCESS.
+- Integrity: main is 9 commits ahead of the Admin merge checkpoint with no changes in `admin/`, `tests/admin*`, or `role-realtime.js`.
+- Release blocker: none in Admin source. External gates remain for provider-backed refund, Credit/Top-up rollout, Ride/Express activation, authenticated/physical-device acceptance and Android/Play release.
+- Status: DONE / SOURCE FROZEN. Do not reopen superseded Admin branches without a reproducible regression/security defect.
+- NEXT: resume Android Customer/Merchant/Rider Google Play Closed Testing Release Gate from newest release Source of Truth.
