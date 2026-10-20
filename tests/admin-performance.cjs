@@ -20,4 +20,7 @@ ok(!restore.includes('controlRefresh=qtHydrateDatabase({light:false})'),'control
 ok(restore.includes('qtHydrateAdminDirectory()'),'approval actions refresh only the account directory');
 ok(admin.includes("window.QT_REALTIME_STATUS==='SUBSCRIBED'&&!force"),'8-second polling pauses while Admin realtime is healthy');
 ok(realtime.includes("typeof window.qtRealtimeHydrate==='function'"),'Admin realtime can use the scoped hydration hook');
+ok(!admin.includes('qgRefreshAdminShopStates'),'dead legacy shop-state refresher is removed');
+ok(!admin.includes("shop_profiles?select=id,user_id&archived_at=is.null"),'Admin source has no all-current-shops state-refresh query');
+ok(!admin.includes("shop_open_states?select=shop_id,is_open,resume_at"),'Admin source has no all-shop-open-states refresh query');
 console.log(JSON.stringify({checks,failures:0,scope:'Admin governance fast-path excludes orders/catalog/history and avoids duplicate realtime polling'}));

@@ -302,3 +302,14 @@ The successor separates Content and Pricing from Settings using existing banner/
 - Existing daily GP arithmetic, scoped <=200 auxiliary reads and settlement review authority remain unchanged.
 - The two #484 directory-scoped post-shop-mutation refreshes are explicitly preserved; no full Admin DB hydrate is reintroduced.
 - No Production DB/RLS/grant/provider/Credit/Top-up mutation in this checkpoint.
+
+
+## 2026-10-20 Admin source-freeze candidate
+- Scope is frozen to the current feature set. No new Admin product capability is being introduced in this checkpoint.
+- Latest reviewed main before the freeze candidate is `0ce02788416f88965e4b0636c6fca727f7b0e45e`, with Pages and RC green.
+- Removed one dead legacy function, `qgRefreshAdminShopStates()`, whose only behavior was an unbounded all-current-shop + all-shop-open-state refresh against markup no longer present. No live control depended on it.
+- Current Admin route uses scoped section loaders, bounded/keyset directory/orders/audit/notifications/support/tickets/UGC/service-history/Rider presence flows, scoped GP/Market/shop-product reads, and no Admin call path enters the legacy full database hydrate body.
+- Production permission recheck: inspected public Admin RPCs deny anon/PUBLIC EXECUTE. SECURITY DEFINER advisor findings remain on legacy endpoints by design; inspected functions enforce active Admin authorization internally. A rollback-only real non-Admin-subject rehearsal confirmed no suspicious-order visibility and denial of delete-user / approve-shop.
+- Supabase performance advisor reports several newly-added capacity indexes as unused on the current small dataset; those findings are not evidence to remove the indexes and are not treated as release blockers.
+- Remaining items are release/acceptance gates rather than missing Admin feature code: provider-backed refund, staged Credit/Top-up and Ride/Express activation, worker/device delivery evidence, authenticated physical-device acceptance, map/GPS road evidence, signed AAB and Play Console rollout.
+- Freeze exit criteria: exact candidate RC/mobile WebKit green, merge to main, Pages green, post-merge RC green, and deployed Admin bytes match main. After that, Admin source is frozen unless a regression/security bug is found.
