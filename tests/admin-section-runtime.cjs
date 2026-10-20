@@ -14,7 +14,8 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
  await ctx.qgAdminLoadSection(false,'users:UPDATE');assert.equal(directory,2);checks++;
  await ctx.qgAdminLoadSection(true);assert.equal(directory,3);checks++;
  for(const page of ['admin-grocery','admin-market','admin-orders','admin-cash','admin-gp','admin-support']){route='#'+page;await ctx.qgAdminLoadSection();assert.equal(calls.length,7);checks++}
- route='#admin-governance';tab='qt-sec-audit';await ctx.qgAdminLoadSection();assert(calls.at(-1).includes('audit_logs?')&&calls.at(-1).endsWith('limit=100'));checks++;
+ route='#admin-governance';tab='qt-sec-audit';await ctx.qgAdminLoadSection();assert(calls.at(-1).includes('audit_logs?')&&calls.at(-1).includes('order=created_at.desc,id.desc')&&calls.at(-1).endsWith('limit=101&offset=0'));assert.equal(ctx.QG_ADMIN_AUDIT_PAGE_INFO.page,0);checks+=2;
+ route='#notifications';await ctx.qgAdminLoadSection();assert(calls.at(-1).includes('notifications?')&&calls.at(-1).includes('order=created_at.desc,id.desc')&&calls.at(-1).endsWith('limit=101&offset=0'));assert.equal(ctx.QG_ADMIN_NOTIFICATION_PAGE_INFO.page,0);assert.equal(typeof ctx.qgAdminAuditPage,'function');assert.equal(typeof ctx.qgAdminNotificationPage,'function');checks+=4;
  route='#admin';gate=new Promise(r=>release=r);const pending=ctx.qgAdminLoadSection(true);await new Promise(r=>setImmediate(r));actor='b';release();await pending;gate=null;
  assert.notEqual(ctx.QG_ADMIN_SUMMARY?.orders,undefined); // actor A cannot write after B; previous summary is invalidated on next actor read.
  await ctx.qgAdminLoadSection();assert.equal(ctx.QG_ADMIN_SUMMARY.orders,17);checks++;
@@ -34,5 +35,6 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
  route='#admin-governance';tab='qt-sec-users';await ctx.qgAdminLoadSection();let cachedReads=0;
  const cachedRead=()=>ctx.qgAdminRead('users?scoped-realtime-test',{},async()=>++cachedReads);await cachedRead();await ctx.qgAdminLoadSection(false,'orders:UPDATE');await cachedRead();assert.equal(cachedReads,1);await ctx.qgAdminLoadSection(false,'users:UPDATE');await cachedRead();assert.equal(cachedReads,2);checks+=2;
  const beforeDirectory=directory;gate=new Promise(r=>release=r);const loadingDirectory=ctx.qgAdminLoadSection(true);await new Promise(r=>setImmediate(r));const changedDuringLoad=ctx.qgAdminLoadSection(false,'users:UPDATE');await new Promise(r=>setImmediate(r));release();gate=null;await Promise.all([loadingDirectory,changedDuringLoad]);assert.equal(directory,beforeDirectory+2);checks++;
- console.log(JSON.stringify({checks,failures:0,scope:'executed Admin section loader: request coalescing, TTL, auth fencing, forced refresh, bounded audit, lightweight routes, GET/HEAD cancellation, pending coalescing and mutation completion'}));
+ const pagingSql=fs.readFileSync('supabase/migrations/20261020022520_admin_audit_notification_paging_indexes.sql','utf8');assert(pagingSql.includes('audit_logs_created_id_idx'));assert(pagingSql.includes('notifications_user_created_id_idx'));checks+=2;
+ console.log(JSON.stringify({checks,failures:0,scope:'executed Admin section loader: request coalescing, TTL, auth fencing, forced refresh, 100/101 audit+notification paging, lightweight routes, GET/HEAD cancellation, pending coalescing and mutation completion'}));
 })().catch(e=>{console.error(e);process.exit(1)});
