@@ -693,3 +693,14 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - SERVICE BOUNDARY: Ride / Express / Laundry can have additional service-specific release gates; this view does not bypass them.
 - TEST: dedicated jsdom regression locks server-blocker labels, 50-row paging reuse, no private-table access and non-Admin denial.
 - NEXT: exact-head RC/mobile WebKit, merge/Pages, then continue remaining safe matrix gaps. Whole Admin mission remains IN PROGRESS.
+
+
+## 2026-10-20 Admin Rider presence paging
+- BASE: merged PR #475 / main `76ba873fdcccb324e45d98e50240658e062affff`; branch `work-web-admin-rider-presence-page-20261020`.
+- ROOT CAUSE: Rider status re-read all Rider users + all Rider profiles + up to 2,000 historical presence events even though the Admin directory was already scoped and Production records every `metadata.online` change via trigger `qg_record_rider_presence`.
+- CHANGE: presence screen now reads Rider users at 100+1 rows per page, fetches profiles only for those page IDs, and renders the current `rider_profiles.metadata.online` value. Prev/Next preserve access beyond the first page.
+- REQUEST/PAYLOAD: removes the `qg_rider_presence_events?...limit=2000` request entirely and removes unbounded Rider user/profile reads. No schema/RLS/polling/service change.
+- CONSISTENCY: Production trigger evidence confirms each change of `metadata.online` appends the matching presence event; profile current state and event history are therefore not competing authorities for the current switch.
+- SAFETY: actor/page generation fencing prevents a stale response from another page/account repainting the panel.
+- TEST: dedicated jsdom runtime regression locks 100+1 paging, page-ID profile lookup, no presence-history query, Prev/Next and account-race fencing.
+- NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue remaining Admin performance/coverage gaps. Whole Admin mission remains IN PROGRESS.

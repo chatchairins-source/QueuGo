@@ -18,7 +18,7 @@ Status: IN PROGRESS, not a completed release. Baseline main b8b9f9883b50d7da3efb
 | Login / restored session | blank app while own-profile restore; then full hydrate | visible verification shell; existing role validation retained; scoped background read | physical Safari/network validation |
 | Overview | users/profiles, all Orders/Items/Chats, quotations, Notifications, Products, Promotions, Settlements, order audit; sequential chains | count-only HEAD requests in parallel; no detail hydrate; shared short read cache coalesces repeated reads | real Production timings; count-query index/scale evidence |
 | Approval / Users / Shops / Security | five PR445 directory reads but unbounded users/profiles; Users omitted from fast path |200-user keyset pages with201 sentinel; profile reads filtered to returned user IDs; shared directory cache | existing shop overview RPC still computes readiness internally for all shops; server-paged replacement/optimization needed |
-| Rider status | three reads every5s even for hidden panel | no hidden polling; entry-scoped presence; scoped realtime/fallback | presence query2000 still needs a latest-per-rider server reader at scale |
+| Rider status | three reads every5s even for hidden panel | no hidden polling; entry-scoped presence; scoped realtime/fallback; 100+1 Rider pages + page-ID profile read; current metadata online state | no 2,000-row presence replay; physical/Production latency evidence remains |
 | Audit | full hydrate reset audit cache to empty | audit_logs latest100, no unrelated tables | server pagination/search beyond100 |
 | Notifications | all notifications as part of full hydrate | current Admin user's latest100 | paging beyond100 |
 | Orders | own bounded500 list plus unrelated hydrate; names looped over user cache | no unrelated hydrate | proper server filter/page and exact-page names remain |
@@ -203,3 +203,13 @@ The successor separates Content and Pricing from Settings using existing banner/
 - DEVICE BOUNDARY: the Native readiness card also checks network, Firebase configuration, notifications, location permission/service, Google Maps and overlay return. Those are device-side and Admin cannot truthfully certify them from server state, so the Web screen says so instead of inventing a green status.
 - SAFETY: no `set_rider_availability`, no metadata force-enable, no `qg_private` browser read, no Ride/Express/Laundry gate bypass.
 - TEST: dedicated runtime regression covers all four server blocker categories, clear states, page-size reuse, no force-online symbol and non-Admin denial. Exact-head RC/mobile WebKit remains required before merge.
+
+
+## 2026-10-20 Rider presence performance checkpoint
+- BASE: merged PR #475 main `76ba873fdcccb324e45d98e50240658e062affff`; Pages #1474 deployed the exact merge SHA successfully.
+- PRODUCTION AUTHORITY CHECK: `qg_record_rider_presence` is an AFTER INSERT/UPDATE OF metadata trigger on `public.rider_profiles`. It appends a presence row exactly when `metadata.online` changes and stores that same boolean. The current profile field is therefore sufficient for current online/offline state; event history remains history.
+- BEFORE: Rider panel fetched all Rider users, all Rider profiles and up to 2,000 presence events, then replayed the event list client-side to find the latest state.
+- AFTER CANDIDATE: 100+1 Rider users per page, one profile query restricted to the visible page IDs, no presence-history request, Prev/Next paging and actor/page stale-response fencing.
+- NO BEHAVIOR BYPASS: user status + Rider profile status + current online boolean still determine the displayed state; no availability/dispatch mutation was added.
+- TEST: `tests/admin-rider-presence-page.cjs` rejects any presence-history query or 2,000-row contract and exercises page navigation plus account race.
+- Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit is required before merge.

@@ -135,38 +135,44 @@ async function qtLoadOwnSupabaseUser(accessToken, authUserId){
 </script>
 
 <script>
-async function qtRenderAdminRiderPresence(){
+const QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE=100;
+let QT_ADMIN_RIDER_PRESENCE_VERSION=0;
+window.QG_ADMIN_RIDER_PRESENCE_PAGE=window.QG_ADMIN_RIDER_PRESENCE_PAGE||0;
+async function qtRenderAdminRiderPresence(requestedPage){
   const el=document.getElementById('qt-admin-rider-online-panel');
   if(!el||qtAdminCurrentSection()!=='qt-sec-delivery'||location.hash!=='#admin-governance'||document.hidden)return;
-  const presenceActor=qtSessionRead()?.authUserId;
+  const page=Number.isInteger(requestedPage)?Math.max(0,requestedPage):Math.max(0,Number(window.QG_ADMIN_RIDER_PRESENCE_PAGE)||0);
+  window.QG_ADMIN_RIDER_PRESENCE_PAGE=page;
+  const presenceActor=qtSessionRead()?.authUserId,version=++QT_ADMIN_RIDER_PRESENCE_VERSION;
+  const alive=()=>el.isConnected&&qtSessionRead()?.authUserId===presenceActor&&qtAdminCurrentSection()==='qt-sec-delivery'&&location.hash==='#admin-governance'&&version===QT_ADMIN_RIDER_PRESENCE_VERSION&&window.QG_ADMIN_RIDER_PRESENCE_PAGE===page;
   el.textContent='กำลังโหลดสถานะไรเดอร์…';
   try{
     const token=await qtGetAccessToken();
     if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin');
-    const [users,profiles,presence]=await Promise.all([
-      qtSupabaseTable('users?select=id,name,role,status&role=eq.rider',{accessToken:token}),
-      qtSupabaseTable('rider_profiles?select=id,user_id,status,metadata,updated_at',{accessToken:token}),
-      qtSupabaseTable('qg_rider_presence_events?select=rider_id,online,occurred_at&order=occurred_at.desc&limit=2000',{accessToken:token})
-    ]);
-    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
+    const rawUsers=await qtSupabaseTable('users?select=id,name,status&role=eq.rider&order=id.asc&limit='+(QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE+1)+'&offset='+(page*QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE),{accessToken:token});
+    if(!alive())return;
+    const users=(Array.isArray(rawUsers)?rawUsers:[]).slice(0,QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE),ids=users.map(u=>u.id).filter(qtUuidLike);
+    const profiles=ids.length?await qtSupabaseTable('rider_profiles?select=id,user_id,status,metadata&user_id=in.('+ids.join(',')+')&limit='+QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE,{accessToken:token}):[];
+    if(!alive())return;
+    if(!Array.isArray(profiles))throw Error('ข้อมูลโปรไฟล์ไรเดอร์ไม่ครบ');
     const byUser=new Map(profiles.map(p=>[String(p.user_id),p]));
-    const latestPresence=new Map();
-    presence.forEach(ev=>{
-      const key=String(ev?.rider_id||'');
-      if(key&&!latestPresence.has(key))latestPresence.set(key,ev);
-    });
-    if(!el.isConnected||qtSessionRead()?.authUserId!==presenceActor)return;
-    el.innerHTML=users.length?users.map(u=>{
+    const cards=users.length?users.map(u=>{
       const p=byUser.get(String(u.id));
-      const ev=p?.id?latestPresence.get(String(p.id)):null;
-      /* Presence events are the source of truth for the rider's manual online/offline switch.
-         rider_profiles.updated_at is profile/location data and must not be used as a presence TTL. */
-      const switchedOnline=ev?ev.online===true:p?.metadata?.online===true;
+      /* metadata.online is the current switch value. Production trigger qg_record_rider_presence
+         appends an event whenever this exact field changes, so reading the current profile avoids
+         replaying up to 2,000 historical events without changing online semantics. */
+      const switchedOnline=p?.metadata?.online===true;
       const online=u.status==='active'&&p?.status==='active'&&switchedOnline;
-      const state=u.status==='suspended'?'พักสิทธิ์':u.status!=='active'?'รออนุมัติ':online?'ออนไลน์':'ออฟไลน์';
+      const state=u.status==='suspended'?'พักสิทธิ์':u.status!=='active'?'รออนุมัติ':p?.status!=='active'?'โปรไฟล์ยังไม่พร้อม':online?'ออนไลน์':'ออฟไลน์';
       return '<div class="qt-rider-online-card"><strong>'+escapeHtml(u.name||'ไรเดอร์')+'</strong><span style="float:right">'+state+'</span></div>';
-    }).join(''):'<div class="qt-rider-online-card">ยังไม่มีข้อมูลไรเดอร์</div>';
-  }catch(err){if(el.isConnected)el.textContent='โหลดสถานะไรเดอร์ไม่สำเร็จ: '+err.message;}
+    }).join(''):'<div class="qt-rider-online-card">ยังไม่มีข้อมูลไรเดอร์ในหน้านี้</div>';
+    const more=(Array.isArray(rawUsers)?rawUsers.length:0)>QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE;
+    el.innerHTML='<p class="qt-admin-note">สถานะปัจจุบันจาก Rider profile · หน้า '+(page+1)+' · สูงสุด '+QT_ADMIN_RIDER_PRESENCE_PAGE_SIZE+' รายการ</p>'+cards+
+      '<div class="row-btns"><button type="button" id="qg-rider-presence-prev" '+(page>0?'':'disabled')+'>ก่อนหน้า</button><button type="button" id="qg-rider-presence-next" '+(more?'':'disabled')+'>ถัดไป</button></div>';
+    const prev=el.querySelector('#qg-rider-presence-prev'),nextButton=el.querySelector('#qg-rider-presence-next');
+    prev.onclick=()=>{if(page>0&&alive())qtRenderAdminRiderPresence(page-1)};
+    nextButton.onclick=()=>{if(more&&alive())qtRenderAdminRiderPresence(page+1)};
+  }catch(err){if(alive())el.textContent='โหลดสถานะไรเดอร์ไม่สำเร็จ: '+err.message;}
 }
 </script>
 
