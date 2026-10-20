@@ -774,3 +774,13 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - CURRENT DATA: Production currently has 0 UGC report rows at this checkpoint; this is operator-history/scale hardening, not a present-latency claim.
 - TEST: dedicated jsdom/source regression locks guarded reader wiring, 100-row paging, cursor history, same-page moderation refresh, stale-account fencing, wrapper/private privileges and index contract.
 - REHEARSAL: Production rollback-only execution passed with a real active Admin/live session fixture; page JSON contract was valid, partial cursor returned 22023, anon EXECUTE remained denied, authenticated wrapper EXECUTE was present, and rollback left no reader/index objects.\n- PRODUCTION: migration `20261020044510 admin_ugc_report_paging` is applied. Public wrapper is SECURITY INVOKER; private reader is SECURITY DEFINER; anon/PUBLIC EXECUTE are denied on both; authenticated EXECUTE is present; `qg_ugc_reports_recent_idx(created_at DESC,id DESC)` is live.\n- NEXT: rerun exact-head RC on version-aligned source, then merge/Pages/post-merge RC. Whole Admin mission remains IN PROGRESS.
+
+## 2026-10-20 Admin GP scoped daily payload
+- BASE: merged PR #482 / main b4284e3526923426e620500596d04cfae942978b; branch work-web-admin-gp-scoped-shops-20261020.
+- BEFORE: selecting a GP day fetched all shop_profiles plus all settlements for that date, even though the UI only renders shops that have qualifying orders on that day.
+- CHANGE: first read the same qualifying daily orders, derive unique shop IDs, then fetch shop_profiles and settlements only for those IDs in batches of at most 200.
+- FINANCIAL SEMANTICS: subtotal/GP/count math, eligible order statuses, settlement review controls, slip handling and admin_review_gp mutation are unchanged.
+- RACE SAFETY: Admin owner + selected date + request-generation fencing prevents an older day/account response from repainting a newer view.
+- NO DB/RLS CHANGE: source-only payload reduction; no credit/top-up/provider behavior and no financial write authority change.
+- TEST: tests/admin-gp-scoped-runtime.cjs uses 201 unique shops to force two bounded batches, locks totals, rejects unscoped profile/settlement reads and verifies stale-date suppression.
+- NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue remaining Admin loader payload review. Whole Admin mission remains IN PROGRESS.

@@ -1761,6 +1761,7 @@ window.addEventListener('unhandledrejection',e=>{
   const money=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
   const day=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   window.qgGpDay=day();
+  let qgAdminGpLoadVersion=0;
   window.renderAdminGpSettlement=function(){
     const u=currentUser();if(!u||u.type!=='admin'){navigate('login');return;}
     layout('GP ร้านค้า',`<div class="qg-live-gp"><h2>GP ร้านค้า</h2><p>GP คือค่าบริการร้านค้า ไรเดอร์จ่ายเงินสดค่าสินค้าให้ร้าน และเก็บเงินจากลูกค้าเอง</p>
@@ -1775,15 +1776,23 @@ window.addEventListener('unhandledrejection',e=>{
 };
   window.qgLoadAdminGp=async function(){
     const box=document.getElementById('qg-gp-live');if(!box)return;
+    const owner=currentUser()?.id,date=window.qgGpDay,version=++qgAdminGpLoadVersion;
+    const alive=()=>box.isConnected&&currentUser()?.id===owner&&window.qgGpDay===date&&version===qgAdminGpLoadVersion&&location.hash==='#admin-gp';
     try{
       const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-      const date=window.qgGpDay;if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('วันที่ไม่ถูกต้อง');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('วันที่ไม่ถูกต้อง');
       const from=new Date(date+'T00:00:00+07:00'),to=new Date(from.getTime()+86400000);
-      const [orders,shops,settlements]=await Promise.all([
-        qtSupabaseTable('orders?select=id,shop_id,subtotal,gp_amount,gp_rate,status&created_at=gte.'+encodeURIComponent(from.toISOString())+'&created_at=lt.'+encodeURIComponent(to.toISOString())+'&status=in.(picked_up,in_progress,completed)',{accessToken:token}),
-        qtSupabaseTable('shop_profiles?select=id,shop_name',{accessToken:token}),
-        qtSupabaseTable('settlements?select=id,shop_id,date_key,status,amount,metadata&date_key=eq.'+date,{accessToken:token})
+      const orders=await qtSupabaseTable('orders?select=id,shop_id,subtotal,gp_amount,gp_rate,status&created_at=gte.'+encodeURIComponent(from.toISOString())+'&created_at=lt.'+encodeURIComponent(to.toISOString())+'&status=in.(picked_up,in_progress,completed)',{accessToken:token});
+      if(!alive())return;
+      if(!Array.isArray(orders))throw Error('ข้อมูลออเดอร์ไม่ถูกต้อง');
+      const shopIds=[...new Set(orders.map(o=>o.shop_id).filter(qtUuidLike))],chunks=[];
+      for(let i=0;i<shopIds.length;i+=200)chunks.push(shopIds.slice(i,i+200));
+      const [profilePages,settlementPages]=await Promise.all([
+        Promise.all(chunks.map(ids=>qtSupabaseTable('shop_profiles?select=id,shop_name&id=in.('+ids.join(',')+')&limit=200',{accessToken:token}))),
+        Promise.all(chunks.map(ids=>qtSupabaseTable('settlements?select=id,shop_id,date_key,status,amount,metadata&date_key=eq.'+date+'&shop_id=in.('+ids.join(',')+')&limit=200',{accessToken:token})))
       ]);
+      if(!alive())return;
+      const shops=profilePages.flat(),settlements=settlementPages.flat();
       const names=new Map(shops.map(s=>[s.id,s.shop_name]));const per=new Map();
       for(const o of orders){const x=per.get(o.shop_id)||{sales:0,gp:0,count:0};x.sales+=Number(o.subtotal||0);x.gp+=Number(o.gp_amount??Math.round(Number(o.subtotal||0)*Number(o.gp_rate??10))/100);x.count++;per.set(o.shop_id,x);}
       const totals=[...per.values()].reduce((a,x)=>({sales:a.sales+x.sales,gp:a.gp+x.gp,count:a.count+x.count}),{sales:0,gp:0,count:0});
@@ -1798,7 +1807,7 @@ window.addEventListener('unhandledrejection',e=>{
         }box.appendChild(div);
       }
       if(!per.size)box.insertAdjacentHTML('beforeend','<div class="qg-live-gp-card">ไม่มีรายได้ในวันที่เลือก</div>');
-    }catch(e){box.innerHTML='<div class="qg-live-gp-card">โหลด GP ไม่สำเร็จ: '+escapeHtml(e.message||e)+'</div>';}
+    }catch(e){if(alive())box.innerHTML='<div class="qg-live-gp-card">โหลด GP ไม่สำเร็จ: '+escapeHtml(e.message||e)+'</div>';}
   };
   window.qgOpenAdminGpSlip=async function(path){
     try{const token=await qtGetAccessToken();const r=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/sign/gp-slips/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:300})});const d=await r.json();if(!r.ok)throw Error(d.message||'เปิดสลิปไม่สำเร็จ');window.open(QT_SUPABASE_CONFIG.URL+'/storage/v1'+d.signedURL,'_blank','noopener');}catch(e){toast(e.message||'เปิดสลิปไม่สำเร็จ');}
