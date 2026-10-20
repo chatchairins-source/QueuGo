@@ -284,6 +284,14 @@ const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
 const riderPush=read('rider/src/main/java/com/queuego/rider/RiderPush.kt');
 const riderSessionStore=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
+const sharedManifest=read('shared/src/main/AndroidManifest.xml');
+for(const role of ['customer','merchant','rider']){
+  const appManifest=read(role+'/src/main/AndroidManifest.xml');
+  ok(!/longdo\.map\.|api\.longdo\.com/i.test(sharedManifest+'\n'+appManifest),
+     role+' merged app manifest must not inherit retired Longdo key/checker metadata');
+  ok(appManifest.includes('queuego.map.service.base_url')&&appManifest.includes('${queuegoMapServiceBaseUrl}'),
+     role+' must retain its current QueueGo Map service configuration');
+}
 const riderManifest=read('rider/src/main/AndroidManifest.xml');
 const nativeRootGradle=read('build.gradle.kts');
 const runtimeCapture=read('qa/capture-rider-launch.py');
@@ -396,7 +404,7 @@ ok(riderApp.includes('var auth by remember { mutableStateOf<QueueGoAuth?>(null) 
    'Rider must restore encrypted session, monotonic active work snapshot and persisted tab off Main without flashing login after activity recreation');
 ok(riderSessionStore.includes('saveHomeSnapshot(')&&riderSessionStore.includes('loadHomeSnapshot(')&&riderSessionStore.includes('home_snapshot'),'Rider session store must persist encrypted home work state for background/process recovery');
 ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.includes('android:alwaysRetainTaskState="true"'),'Rider launcher must reuse its existing task instead of creating a fresh work activity after app switching');
-ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
+ok(!source.includes('longdo.map.key')&&!source.includes('longdo.map.apikeychecker'),'native apps must not package retired Longdo credential metadata');
 const customerManifest=read('customer/src/main/AndroidManifest.xml');
 ok(customerManifest.includes('queuego.map.service.base_url')&&customerManifest.includes('${queuegoMapServiceBaseUrl}')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer QueueGo Map picker must declare map service config and location permission');
 const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
