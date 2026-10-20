@@ -20,7 +20,7 @@ for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.ride
 ok(/workflow_dispatch/.test(releaseSecrets),'Release secret preflight must be manually runnable after owner configures secrets');
 for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider'])ok(releaseSecrets.includes(id),'Firebase preflight must require Android client '+id);
 ok(releaseSecrets.includes('base64 --decode > /tmp/google-services.json'),'Release preflight must decode Firebase config without committing it');
-ok(releaseSecrets.includes('keytool -list')&&releaseSecrets.includes('keytool -importkeystore'),'Release preflight must validate keystore, alias and key password');
+ok(/keytool[\s\S]{0,180}-list(?:\s+-v)?/.test(releaseSecrets)&&releaseSecrets.includes('keytool -importkeystore'),'Release preflight must validate keystore, alias and key password');
 ok(releaseSecrets.includes('Clean temporary credentials'),'Release preflight must remove decoded credentials from the runner');
 ok(/dedicated Play-review accounts/i.test(access),'Reviewer access must use dedicated reusable accounts');
 ok(/Do not use an actual customer/i.test(access),'Reviewer access must forbid real-user credentials');
