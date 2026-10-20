@@ -1873,20 +1873,6 @@ async function qgLoadAdminCash(day){
 <script id="qg-admin-v21-integration">
 (function(){
 
- window.qgRefreshAdminShopStates=async function(){
-   try{const token=await qtGetAccessToken();
-     const [profiles,states]=await Promise.all([
-       qtSupabaseTable('shop_profiles?select=id,user_id&archived_at=is.null',{accessToken:token}),
-       qtSupabaseTable('shop_open_states?select=shop_id,is_open,resume_at',{accessToken:token})]);
-     const byId=new Map((profiles||[]).map(p=>[String(p.user_id),p.id])),byShop=new Map((states||[]).map(x=>[String(x.shop_id),x]));
-     for(const button of document.querySelectorAll('.qt-admin-shop-row button[onclick^="qtAdminToggleShop"]')){
-       const id=button.getAttribute('onclick').match(/'([^']+)'/)?.[1],s=byShop.get(String(byId.get(id))),open=!s||s.is_open!==false||Boolean(s.resume_at&&new Date(s.resume_at)<=new Date());
-       const user=dbGet('qt_users',[]).find(u=>String(u.id)===id);if(user)user.shopOpen=open;
-       button.textContent=open?'⏸️ ปิดร้าน':'▶️ เปิดร้าน';button.className=open?'btn-danger':'btn-primary';
-       const small=button.closest('.qt-admin-shop-row')?.querySelector('small');if(small)small.textContent=small.textContent.replace(/🔴 ปิดร้าน|🟢 เปิดร้าน/,open?'🟢 เปิดร้าน':'🔴 ปิดร้าน');
-     }
-   }catch(e){console.warn('admin shop status refresh failed',e)}
- };
  window.qtAdminToggleShop=async function(id){
    if(!qtAdminOnly())return;
    const users=dbGet('qt_users',[]),u=users.find(x=>x.type==='shop'&&String(x.id)===String(id));if(!u)return toast('ไม่พบร้านค้า');
