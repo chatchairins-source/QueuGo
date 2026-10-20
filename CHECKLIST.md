@@ -784,3 +784,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - NO DB/RLS CHANGE: source-only payload reduction; no credit/top-up/provider behavior and no financial write authority change.
 - TEST: tests/admin-gp-scoped-runtime.cjs uses 201 unique shops to force two bounded batches, locks totals, rejects unscoped profile/settlement reads and verifies stale-date suppression.
 - NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue remaining Admin loader payload review. Whole Admin mission remains IN PROGRESS.
+
+## 2026-10-20 Admin shop mutation scoped refresh
+- BASE: merged PR #483 / main beb7e48a91d34a860652e3397925ff4dd5e5b9f3; branch work-web-admin-shop-mutation-directory-refresh-20261020.
+- ROOT CAUSE: successful unopened-shop deletion and shop archival still called qtHydrateDatabase({light:false}), reloading unrelated system data after a directory-only mutation.
+- CHANGE: both paths keep their existing authoritative RPC mutation, then refresh only qtHydrateAdminDirectory() and re-render the Shops section.
+- FAILURE SEMANTICS: failed server mutation still does not refresh or acknowledge success.
+- NO AUTHORITY CHANGE: queuego_admin_delete_unopened_shop / queuego_admin_archive_shop are unchanged; no RLS/grant/schema/financial/service change.
+- TEST: tests/admin-shop-mutation-refresh.cjs calls both real client functions, forbids any full hydrate, requires one directory refresh per successful mutation, and verifies failed archive causes no refresh.
+- NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue remaining Admin post-action/full-hydrate and loader payload audit. Whole Admin mission remains IN PROGRESS.
