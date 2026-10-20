@@ -1464,6 +1464,50 @@ window.addEventListener('unhandledrejection',e=>{
     try{qtAudit('system_settings_update',{entityType:'system_settings',entityId:'system',settings:cfg});}catch(e){}
     toast('💾 บันทึกการตั้งค่าแล้ว');
   };
+  window.qgAdminEditShopCategory=async function(shopId,userId){
+    const admin=typeof qtAdminOnly==='function'?qtAdminOnly():null;if(!admin)return;
+    try{
+      const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
+      const rows=await qtSupabaseTable('shop_profiles?select=id,public_category,public_subcategories,archived_at&id=eq.'+encodeURIComponent(shopId)+'&limit=1',{accessToken:token});
+      const shop=rows?.[0];if(!shop||shop.archived_at)throw Error('ไม่พบร้านที่แก้ไขได้');
+      const categories=[['food','ร้านอาหาร'],['cafe','เครื่องดื่ม / คาเฟ่'],['grocery','ร้านขายของชำ'],['laundry','ร้านฝากซัก'],['market','ตลาดสด'],['shopping','ช้อปปิ้ง'],['other','อื่น ๆ']];
+      const subcategories=[['mobile_accessories','มือถือและอุปกรณ์'],['computer_it','คอมพิวเตอร์และไอที'],['automotive_car','อะไหล่รถยนต์'],['automotive_motorcycle','อะไหล่มอเตอร์ไซค์'],['fashion_accessories','เสื้อผ้าและเครื่องประดับ'],['toys','ของเล่น'],['home_decor','ตกแต่งบ้าน']];
+      const selected=new Set(Array.isArray(shop.public_subcategories)?shop.public_subcategories:[]);
+      const box=document.createElement('dialog');box.className='qg-admin-detail';
+      const form=document.createElement('form');form.method='dialog';
+      form.innerHTML='<div class="qg-menu-head"><div><h2>แก้หมวดร้าน</h2><p>การเปลี่ยนแปลงนี้มี Audit Log และไม่เปลี่ยนสถานะอนุมัติร้าน</p></div><button type="button" aria-label="ปิดข้อมูล">✕</button></div>';
+      const categoryLabel=document.createElement('label');categoryLabel.textContent='ประเภทร้าน';
+      const select=document.createElement('select');select.name='category';select.required=true;
+      for(const [value,label] of categories){const option=document.createElement('option');option.value=value;option.textContent=label;if(value===(shop.public_category||'other'))option.selected=true;select.append(option)}
+      categoryLabel.append(select);form.append(categoryLabel);
+      const fieldset=document.createElement('fieldset');fieldset.className='qg-admin-category-subs';
+      const legend=document.createElement('legend');legend.textContent='หมวดย่อยช้อปปิ้ง';fieldset.append(legend);
+      for(const [value,label] of subcategories){const item=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.name='subcategory';input.value=value;input.checked=selected.has(value);item.append(input,document.createTextNode(' '+label));fieldset.append(item)}
+      form.append(fieldset);
+      const reasonLabel=document.createElement('label');reasonLabel.textContent='เหตุผลการแก้ไข';
+      const reason=document.createElement('textarea');reason.name='reason';reason.required=true;reason.maxLength=500;reason.rows=3;reason.placeholder='ระบุเหตุผลอย่างน้อย 3 ตัวอักษร';reasonLabel.append(reason);form.append(reasonLabel);
+      const actions=document.createElement('div');actions.className='row-btns';
+      const save=document.createElement('button');save.type='submit';save.className='btn-primary';save.textContent='บันทึกหมวดร้าน';
+      const cancel=document.createElement('button');cancel.type='button';cancel.className='btn-secondary';cancel.textContent='ยกเลิก';cancel.onclick=()=>box.close();
+      actions.append(save,cancel);form.append(actions);box.append(form);document.body.append(box);
+      const sync=()=>{fieldset.hidden=select.value!=='shopping'};select.onchange=sync;sync();
+      form.onsubmit=async e=>{
+        e.preventDefault();if(save.disabled)return;
+        const why=reason.value.trim(),subs=[...fieldset.querySelectorAll('input:checked')].map(x=>x.value);
+        if(why.length<3){toast('กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร');return}
+        if(select.value==='shopping'&&!subs.length){toast('ร้านช้อปปิ้งต้องเลือกหมวดย่อยอย่างน้อย 1 รายการ');return}
+        save.disabled=true;
+        try{
+          const result=await qtSupabaseRpc('qg_admin_update_shop_category',{p_shop_id:shop.id,p_category:select.value,p_subcategories:select.value==='shopping'?subs:[],p_reason:why});
+          box.close();toast(result?.changed===false?'หมวดร้านไม่มีการเปลี่ยนแปลง':'บันทึกหมวดร้านแล้ว');
+          if(typeof qgAdminClearReadCache==='function')qgAdminClearReadCache();
+          await qtHydrateAdminDirectory();
+          if(location.hash==='#admin-governance'){renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0)}
+        }catch(err){toast('บันทึกหมวดร้านไม่สำเร็จ: '+(err.message||err));save.disabled=false}
+      };
+      box.addEventListener('close',()=>box.remove(),{once:true});form.querySelector('.qg-menu-head button').onclick=()=>box.close();box.showModal();
+    }catch(err){toast('เปิดตัวแก้หมวดร้านไม่สำเร็จ: '+(err.message||err))}
+  };
   window.qtAdminViewUser=async function(id){
     const admin=typeof qtAdminOnly==='function'?qtAdminOnly():null; if(!admin)return;
     const users=typeof dbGet==='function'?dbGet('qt_users',[]):[]; const u=users.find(x=>x.id===id); if(!u){toast('ไม่พบผู้ใช้');return;}
@@ -1491,7 +1535,7 @@ window.addEventListener('unhandledrejection',e=>{
       const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
       const raw=await qtSupabaseTable('rpc/queuego_admin_shop_application',{method:'POST',accessToken:token,body:{p_shop_user_id:u.id}});
       const app=Array.isArray(raw)?raw[0]:raw,shop=app?.shop||{},ready=app?.readiness||{},checks=ready.checks||{};
-      const category={food:'อาหาร',cafe:'เครื่องดื่ม',grocery:'ร้านขายของชำ',market:'ตลาดสด',laundry:'ฝากซัก',other:'อื่น ๆ'}[shop.category]||shop.category||'ไม่ระบุ';
+      const category={food:'อาหาร',cafe:'เครื่องดื่ม',grocery:'ร้านขายของชำ',market:'ตลาดสด',laundry:'ฝากซัก',shopping:'ช้อปปิ้ง',other:'อื่น ๆ'}[shop.category]||shop.category||'ไม่ระบุ';
       const fmt=v=>v?new Date(v).toLocaleString('th-TH'):'-';
       const checkRows=[
         ['ข้อมูลร้านครบ',checks.shop_info],
@@ -1518,6 +1562,7 @@ window.addEventListener('unhandledrejection',e=>{
       ${app.sample_item?`<p class="qt-admin-note">ตัวอย่างรายการพร้อมขาย: <b>${escapeHtml(app.sample_item.name||'-')}</b> · ${Number(app.sample_item.price||0).toLocaleString('th-TH')} บาท</p>`:''}
       <h3>ตำแหน่งร้าน</h3><div class="qg-review-map" aria-label="ตำแหน่งร้านบน QueueGo Map"></div>
       <div class="row-btns"><button class="btn-secondary" type="button" onclick="this.closest('dialog').close();qgAdminEditLocation('shop_user','${escapeHtml(u.id)}')">แก้พิกัดร้าน</button>
+      ${!shop.archived_at?`<button class="btn-secondary" type="button" onclick="this.closest('dialog').close();qgAdminEditShopCategory('${escapeHtml(shop.id)}','${escapeHtml(u.id)}')">แก้หมวดร้าน</button>`:''}
       ${shop.onboarding_status==='pending_approval'?`<button class="btn-primary" type="button" onclick="this.closest('dialog').close();adminApproveUser('${escapeHtml(u.id)}')">อนุมัติ</button><button class="btn-secondary" type="button" onclick="this.closest('dialog').close();adminRequestShopChanges('${escapeHtml(u.id)}')">ส่งกลับแก้ไข</button><button class="btn-danger" type="button" onclick="this.closest('dialog').close();adminRejectUser('${escapeHtml(u.id)}')">ปฏิเสธ</button>`:''}</div>`;
       document.body.append(box);
       let map=null;
