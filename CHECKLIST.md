@@ -757,7 +757,7 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - CHANGE: complaint tickets now use stable `(created_at,id)` keyset paging with a 100/101 sentinel, explicit “ใหม่กว่า/เก่ากว่า” controls, and stale-account/request-generation fencing.
 - MUTATION: existing `qg_admin_ticket_action` is unchanged; after a decision the modal refreshes the same current cursor instead of jumping to newest.
 - SECURITY: direct table read still depends on existing authenticated RLS `qg_tickets_read` (own ticket OR active Admin). No new write authority, no bypass and no UGC changes.
-- SCALE SOURCE: additive candidate migration `20261020042500_admin_ticket_paging_index.sql` adds only `qg_support_tickets_recent_idx(created_at DESC,id DESC)`.
+- SCALE SOURCE: live/source-aligned migration `20261020042804_admin_ticket_paging_index.sql` adds only `qg_support_tickets_recent_idx(created_at DESC,id DESC)`.
 - CURRENT DATA: Production has 0 complaint tickets at this checkpoint, so this is capacity/UX hardening rather than a claim of current latency gain.
 - TEST: new jsdom runtime regression locks 100/101 paging, no OFFSET, older/newer cursor behavior, same-page mutation refresh, stale-account fencing and the index contract.
-- NEXT: rollback-rehearse the index, require parent main Pages/post-merge RC green, exact-head RC, then apply/verify migration, align live version if needed, rerun exact-head RC, merge/Pages/post-merge RC. Whole Admin mission remains IN PROGRESS.
+- PRODUCTION: rollback rehearsal passed; migration `20261020042804 admin_ticket_paging_index` is applied and `pg_indexes` confirms `qg_support_tickets_recent_idx(created_at DESC,id DESC)`. Parent main Pages #1479 and post-merge RC #2323 are green.\n- NEXT: rerun exact-head RC on version-aligned source, then merge/Pages/post-merge RC. Whole Admin mission remains IN PROGRESS.
