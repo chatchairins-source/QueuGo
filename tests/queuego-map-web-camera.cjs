@@ -248,7 +248,6 @@ eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.005,speed:8,bearing:90},s
 Q.setNavigationMode(gestureMap,true);
 eq(gestureMap.maxPitch,60,'heading follow must restore map rotation capability');
 eq(gestureMap.rotationEnabled,true,'heading follow must restore rotation gestures');
-const readyZoom=gestureMap.getZoom();
 const readyHeading=Q.followNavigationCamera(
   gestureMap,{lat:15,lng:103.005,speed:8,bearing:90,accuracy:5},[],
   {force:true,headingOnly:true,puckBearing:90}
@@ -256,7 +255,12 @@ const readyHeading=Q.followNavigationCamera(
 ok(readyHeading!=null,'online Ready state must keep Rider heading follow active');
 eq(gestureMap.easeCalls.at(-1).bearing,90,'Ready map must rotate so the Rider arrow points forward');
 eq(gestureMap.easeCalls.at(-1).pitch,0,'Ready heading follow must stay flat instead of entering navigation perspective');
-eq(gestureMap.easeCalls.at(-1).zoom,readyZoom,'Ready heading follow must preserve the Rider chosen zoom');
+eq(gestureMap.easeCalls.at(-1).zoom,17,'Ready heading follow must restore speed-aware zoom at medium speed');
+Q.followNavigationCamera(
+  gestureMap,{lat:15,lng:103.006,speed:20,bearing:90,accuracy:5},[],
+  {force:true,headingOnly:true,puckBearing:90}
+);
+eq(gestureMap.easeCalls.at(-1).zoom,15,'Ready heading follow must zoom out more at high speed');
 ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0055,speed:8,bearing:90},straight,{force:true,headingOnly:false,puckBearing:90})!=null,'active job must start perspective follow camera');
 ok(gestureMap.easeCalls.at(-1).pitch>0,'active job must restore navigation perspective');
 
@@ -271,4 +275,4 @@ ok(Q.navigationOverview(map,points,{duration:300}),'overview should fit route');
 eq(map.fit.opts.bearing,0,'overview should return north-up');
 eq(map.fit.opts.pitch,0,'overview should return top-down');
 
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Web Ready flat heading-up + active-job 3D follow, smooth rotation, gesture ownership and overview'}));
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Web Ready flat heading-up + speed-aware zoom + active-job 3D follow, smooth rotation, gesture ownership and overview'}));
