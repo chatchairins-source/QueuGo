@@ -1893,8 +1893,8 @@ private fun RiderHome(
                         } else null
 
                         // Current Production pickup normally returns in_progress. A legacy/idempotent
-                        // picked_up row still needs one deliver transition before Google Maps handoff,
-                        // otherwise returning to QueueGo would show "นำทางไปลูกค้า" again.
+                        // picked_up row still needs one deliver transition before QueueGo navigation,
+                        // otherwise the Rider would see "นำทางไปลูกค้า" again.
                         if (completedMode == "pickup" && pickupCommittedStatus == "picked_up") {
                             if (runCatching { api.startDelivery(auth, job.copy(status = "picked_up")) }.isSuccess) {
                                 pickupCommittedStatus = "in_progress"
