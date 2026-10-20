@@ -664,3 +664,13 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - PRE-SYNC GATE: RC #2209 on `30a327f76293f587a7ed1defaa2c0c69ca3ee25a` passed full npm, Admin mobile WebKit, Merchant, Map and Grocery gates.
 - FORWARD SYNC: #471 files were preserved on this successor without reset/revert/force; Admin category UI/migrations/tests and read-cancellation changes coexist.
 - NEXT: exact-head RC after the forward sync is required before merge. If green, merge this slice and continue the next authoritative Admin control; external provider/physical release gates remain blocked and must not be bypassed.
+
+
+## 2026-10-20 Admin Rider Map Feedback / Road Alerts checkpoint
+- BASE: stacked on clean RPC-cancellation successor PR #472; this keeps read-only queue RPCs on the cancellable Admin read layer while review/publish/disable remain mutation RPCs.
+- REUSED BACKEND: Production migrations already exist as `20261014074523 rider_map_feedback_v1`, `20261014110355 rider_road_alerts_v1`, and `20261014110429 rider_road_alerts_fk_index_v2`. Their exact historical Production-aligned source mirrors were restored to the repository; Production was not re-applied.
+- IMPLEMENTED: Rider Admin section restores the existing map-feedback review flow from PR #261 and Road Alert controls from PR #320. Pending reports can be accepted for review or dismissed with reason. Accepted road_closed/bad_road/unsafe_turn reports can publish bounded Road Alerts and active alerts can be disabled.
+- MAP AUTHORITY: “ดูบนแผนที่” reuses existing `qgAdminViewLocation()` / QueueGo Map read-only dialog. No Google Maps URL or duplicate map component.
+- SECURITY: browser reads only public guarded RPCs; it never reads `qg_private.rider_map_feedback` or `qg_private.rider_road_alerts`. Existing wrappers are SECURITY INVOKER, deny anon, and private implementations require live session + active Admin.
+- TEST: dedicated source regression guards RPC/read-vs-mutation wiring, QueueGo Map reuse, no Google Maps fallback/private-table browser access, bounded queue/duration contracts, privilege revocations, and restored migration mirrors. Exact stacked RC/mobile WebKit required before merge.
+- NEXT: merge PR #472 first if its exact gate is green, retarget this successor to main, then obtain exact-head RC before merge. Physical navigation/GPS acceptance remains a separate release gate.
