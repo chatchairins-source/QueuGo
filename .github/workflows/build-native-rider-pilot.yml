@@ -518,3 +518,51 @@ jobs:
             gh release create "$tag" "$asset" SHA256SUMS.txt SOURCE.txt --target "$GITHUB_SHA" --prerelease --title "QueueGo Rider road test ${GITHUB_SHA:0:8}" --notes-file SOURCE.txt
           fi
           echo "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$asset" >> "$GITHUB_STEP_SUMMARY"
+
+
+  release-gate-status:
+    if: ${{ always() && github.ref == 'refs/heads/work-native-route-bundle-play-release-20261021' }}
+    needs:
+      - native-pilot
+      - continuous-dispatch-races
+      - route-bundle-stack-races
+      - passenger-ride-races
+      - credit-races
+      - express-races
+      - map-display-only
+      - navigation-map-runtime
+      - maplibre-osm-runtime
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Publish exact-HEAD release gate status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NATIVE_PILOT: ${{ needs.native-pilot.result }}
+          DISPATCH: ${{ needs.continuous-dispatch-races.result }}
+          ROUTE_BUNDLE: ${{ needs.route-bundle-stack-races.result }}
+          RIDE: ${{ needs.passenger-ride-races.result }}
+          CREDIT: ${{ needs.credit-races.result }}
+          EXPRESS: ${{ needs.express-races.result }}
+          MAP_DISPLAY: ${{ needs.map-display-only.result }}
+          NAVIGATION: ${{ needs.navigation-map-runtime.result }}
+          MAPLIBRE: ${{ needs.maplibre-osm-runtime.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          failures=0
+          for value in "$NATIVE_PILOT" "$DISPATCH" "$ROUTE_BUNDLE" "$RIDE" "$CREDIT" "$EXPRESS" "$MAP_DISPLAY" "$NAVIGATION" "$MAPLIBRE"; do
+            if [ "$value" != "success" ]; then failures=1; fi
+          done
+          if [ "$failures" -eq 0 ]; then
+            state=success
+            description="All 9 QueueGo Native release gates passed"
+          else
+            state=failure
+            description="One or more QueueGo Native release gates failed"
+          fi
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"             -f state="$state"             -f context="queuego/native-release-gate"             -f description="$description"             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          printf 'native-pilot=%s\ndispatch=%s\nroute-bundle=%s\nride=%s\ncredit=%s\nexpress=%s\nmap-display=%s\nnavigation=%s\nmaplibre=%s\n'             "$NATIVE_PILOT" "$DISPATCH" "$ROUTE_BUNDLE" "$RIDE" "$CREDIT" "$EXPRESS" "$MAP_DISPLAY" "$NAVIGATION" "$MAPLIBRE" >> "$GITHUB_STEP_SUMMARY"
+          test "$failures" -eq 0
