@@ -1178,6 +1178,38 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
+    private suspend fun assertMarketCatalogShop(auth: NativeAuth, expectedShopId: String) {
+        require(marketCatalogUuid(expectedShopId))
+        val selected = http.rpc("qg_market_owner_shop", auth.session.accessToken, JSONObject())
+        requireMerchantMarketCatalogShop(selected, expectedShopId)
+    }
+
+    internal suspend fun marketCatalogCategories(auth: NativeAuth): List<String> {
+        val raw = http.rpc("qg_market_master_categories", auth.session.accessToken, JSONObject())
+        check(raw is JSONArray) { "รูปแบบหมวดแคตตาล็อกตลาดไม่ถูกต้อง" }
+        return (0 until raw.length()).map { raw.getJSONObject(it).getString("category") }
+            .filter { it in merchantMarketCatalogCategories }.distinct()
+    }
+
+    internal suspend fun marketCatalogPage(auth: NativeAuth, shopId: String, query: String, category: String, offset: Int): MerchantMarketCatalogPage {
+        require(query.length <= 100 && offset >= 0 && offset % 50 == 0)
+        require(category.isBlank() || category in merchantMarketCatalogCategories)
+        assertMarketCatalogShop(auth, shopId)
+        val raw = http.rpc("qg_market_catalog_page", auth.session.accessToken,
+            JSONObject().put("p_query", query.trim()).put("p_category", category).put("p_offset", offset))
+        check(raw is JSONArray) { "รูปแบบแคตตาล็อกตลาดไม่ถูกต้อง" }
+        return merchantMarketCatalogPage(raw)
+    }
+
+    internal suspend fun addMarketCatalogProduct(auth: NativeAuth, shopId: String, intent: MarketCatalogIntent): String {
+        assertMarketCatalogShop(auth, shopId)
+        val raw = http.rpc("qg_market_catalog_add", auth.session.accessToken, intent.body())
+        check(raw is JSONObject) { "ยังไม่ได้รับผลยืนยันสินค้า กดลองโหลดอีกครั้ง" }
+        val product = raw.optString("product_id")
+        check(marketCatalogUuid(product)) { "ยังไม่ได้รับรหัสสินค้าที่บันทึกแล้ว" }
+        return product
+    }
+
     suspend fun loadMarketStock(
         auth: NativeAuth,
         shopId: String
