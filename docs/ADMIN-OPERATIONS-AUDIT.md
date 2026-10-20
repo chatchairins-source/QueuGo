@@ -287,3 +287,11 @@ The successor separates Content and Pricing from Settings using existing banner/
 - Generation/owner/date fencing prevents stale async reads from painting after an Admin/date change.
 - Dedicated runtime regression forces 201 shops, checks two bounded batches and verifies the same totals plus stale-response suppression.
 - Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit/Pages required before merge.
+
+## 2026-10-20 Shop mutation post-refresh checkpoint
+- Base is merged PR #483 main beb7e48a91d34a860652e3397925ff4dd5e5b9f3.
+- Two Admin shop actions still escaped the scoped-directory architecture: deleting an unopened application and archiving an existing shop each performed a full DB hydrate after a successful RPC.
+- Candidate keeps the same server mutations but replaces only the post-commit read with qtHydrateAdminDirectory(), preserving current query/page behavior and avoiding orders/catalog/chat/financial hydration.
+- A failed mutation does not refresh or produce success state.
+- Dedicated runtime regression stubs qtHydrateDatabase to throw, so reintroducing a full hydrate in either path fails the suite.
+- Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit/Pages required before merge.

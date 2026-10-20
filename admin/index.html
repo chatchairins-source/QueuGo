@@ -1120,7 +1120,7 @@ async function qgAdminDeleteUnopenedShop(userId){
    const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
    await qtSupabaseTable('rpc/queuego_admin_delete_unopened_shop',{method:'POST',accessToken:token,body:{p_shop_user_id:u.id,p_reason:reason.trim()}});
    toast('ลบรายการสมัครแล้ว สามารถสมัครร้านใหม่ได้');
-   await qtHydrateDatabase({light:false});renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0);
+   await qtHydrateAdminDirectory();renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0);
  }catch(e){toast('ลบรายการสมัครไม่สำเร็จ: '+(e.message||e))}
 }
 window.qgAdminDeleteUnopenedShop=qgAdminDeleteUnopenedShop;
@@ -1129,7 +1129,7 @@ async function qgAdminArchiveShop(userId){
  const u=dbGet('qt_users',[]).find(x=>x.type==='shop'&&String(x.id)===String(userId));if(!u?.shopProfileId)return toast('ไม่พบโปรไฟล์ร้าน');
  const reason=await qgAdminInput({title:'นำร้านออกจากระบบ',label:'เหตุผล'});if(reason===null)return;
  if(!confirm('ยืนยันนำร้าน “'+(u.shopName||u.name||'ร้านค้า')+'” ออกจากการให้บริการ? ประวัติออเดอร์เดิมจะยังอยู่'))return;
- try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_admin_archive_shop',{method:'POST',accessToken:token,body:{p_shop_id:u.shopProfileId,p_reason:reason.trim()||null}});toast('นำร้านออกจากการให้บริการแล้ว');await qtHydrateDatabase({light:false});renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0)}
+ try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_admin_archive_shop',{method:'POST',accessToken:token,body:{p_shop_id:u.shopProfileId,p_reason:reason.trim()||null}});toast('นำร้านออกจากการให้บริการแล้ว');await qtHydrateAdminDirectory();renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0)}
  catch(e){toast('ดำเนินการไม่สำเร็จ: '+(e.message||e))}
 }
 window.qgAdminArchiveShop=qgAdminArchiveShop;
