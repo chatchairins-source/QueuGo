@@ -86,6 +86,31 @@ internal fun riderMarkerAnimationMillis(
         )
 }
 
+internal fun navigationRiderDisplayFix(state: RiderNavigationMapState): NavigationMapFix? {
+    val rawFix = state.rider?.takeIf { it.point.valid } ?: return null
+    val activeRoute = state.styledRemainingRoutes()
+        .firstOrNull { it.style == NavigationRouteStyle.ACTIVE }
+    val accuracy = rawFix.accuracyMeters
+    val match = if (
+        activeRoute != null &&
+        accuracy != null &&
+        accuracy.isFinite() &&
+        accuracy <= 35f
+    ) {
+        matchNavigationRoute(
+            segment = activeRoute,
+            point = rawFix.point,
+            bearingDegrees = navigationUsableGpsBearing(rawFix),
+            speedMetersPerSecond = rawFix.speedMetersPerSecond
+        )
+    } else null
+    val displayPoint = match
+        ?.takeIf { it.offRouteMeters <= 12.0 }
+        ?.snapped
+        ?: rawFix.point
+    return rawFix.copy(point = displayPoint)
+}
+
 private class RiderNavigationMapHolder {
     var view: MapView? = null
     var map: MapLibreMap? = null
@@ -438,30 +463,10 @@ private class RiderNavigationMapHolder {
     }
 
     private fun renderRider(activeMap: MapLibreMap, state: RiderNavigationMapState) {
-        val rawFix = state.rider?.takeIf { it.point.valid } ?: return
-        val activeRoute = state.styledRemainingRoutes()
-            .firstOrNull { it.style == NavigationRouteStyle.ACTIVE }
-        val accuracy = rawFix.accuracyMeters
-        val match = if (
-            activeRoute != null &&
-            accuracy != null &&
-            accuracy.isFinite() &&
-            accuracy <= 35f
-        ) {
-            matchNavigationRoute(
-                segment = activeRoute,
-                point = rawFix.point,
-                bearingDegrees = navigationUsableGpsBearing(rawFix),
-                speedMetersPerSecond = rawFix.speedMetersPerSecond
-            )
-        } else null
         // Display-only road alignment: keep authoritative GNSS untouched, but render the
         // Rider on the direction-consistent carriageway when the match is very close.
-        val displayPoint = match
-            ?.takeIf { it.offRouteMeters <= 12.0 }
-            ?.snapped
-            ?: rawFix.point
-        val fix = rawFix.copy(point = displayPoint)
+        val fix = navigationRiderDisplayFix(state) ?: return
+        val displayPoint = fix.point
         val target = LatLng(displayPoint.latitude, displayPoint.longitude)
         val marker = riderMarker
         if (marker == null) {
