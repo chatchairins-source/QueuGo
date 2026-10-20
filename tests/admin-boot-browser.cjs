@@ -20,6 +20,9 @@ const root=path.resolve(__dirname,'..'),owner='00000000-0000-4000-8000-000000000
   let data=[];
   if(u.pathname.endsWith('/users'))data=[{id:owner,auth_user_id:owner,role:'admin',name:'Local QA Admin',status:'active',metadata:{},created_at:'2026-10-01T00:00:00Z'}];
   if(u.pathname.endsWith('/system_settings'))data=[{value:{}}];
+  if(u.pathname.endsWith('/rpc/qg_admin_live_counts'))data={shops_open:1,riders_online:1,orders:{pending:1}};
+  if(u.pathname.endsWith('/rpc/qg_admin_dispatch_overview'))data={as_of:new Date().toISOString(),offers:[],history:[],bundles:[],limit:100};
+  if(u.pathname.endsWith('/rpc/qg_admin_notification_health'))data={as_of:new Date().toISOString(),channels:[{channel:'unified',status:'pending',n:2,due:1,oldest:new Date().toISOString()}]};
   await new Promise(r=>setTimeout(r,50));
   return route.fulfill({status:200,headers,contentType:'application/json',body:req.method()==='HEAD'?'':JSON.stringify(data)});
  });
@@ -28,7 +31,7 @@ const root=path.resolve(__dirname,'..'),owner='00000000-0000-4000-8000-000000000
  await page.locator('.qg-dashboard').waitFor();const shellMs=Date.now()-start;
  if(mode==='after')await page.waitForFunction(()=>window.QG_ADMIN_SUMMARY?.orders===1);
  else await page.waitForFunction(()=>typeof QT_DB_FULL_TRIED!=='undefined'&&QT_DB_FULL_TRIED);
- await page.waitForLoadState('networkidle');const readyMs=Date.now()-start,boot=calls.slice();
+ await page.waitForLoadState('networkidle');const readyMs=Date.now()-start,boot=calls.slice();console.log(JSON.stringify({mode,bootRequests:boot.length,boot}));
  if(mode==='after'){
   assert(boot.filter(x=>x.method==='GET').every(x=>!/(order_items|order_chat_messages|products|settlements|rider_profiles)/.test(x.path)));checks++;
   assert.equal(boot.filter(x=>x.method==='HEAD'&&x.path.includes('/orders?')).length,1);checks++;
