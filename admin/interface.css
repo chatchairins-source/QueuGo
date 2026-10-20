@@ -165,3 +165,83 @@
 .qg-master-card p{margin:0;color:var(--muted)}
 #qg-master-filter{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));align-items:end}
 #qg-master-filter input,#qg-master-filter select{font-size:16px;min-height:44px;width:100%;box-sizing:border-box}
+
+
+/* Admin GP / merchant service fee — compact financial hierarchy */
+.qg-live-gp,.qg-admin-rates{max-width:1100px}
+.qg-gp-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:22px 24px;background:#fff;border:1px solid var(--line);border-radius:18px;margin-bottom:14px}
+.qg-gp-hero>div{min-width:0}
+.qg-gp-hero h2{margin:3px 0 6px;font-size:21px;letter-spacing:-.25px}
+.qg-gp-hero p{max-width:700px;margin:0;color:var(--muted);font-size:12px}
+.qg-gp-hero>button{white-space:nowrap;margin-top:2px}
+.qg-gp-eyebrow{display:block;color:var(--muted);font-size:9px;line-height:1.4;letter-spacing:1.15px;font-weight:600;text-transform:uppercase}
+.qg-gp-toolbar{display:grid;grid-template-columns:auto minmax(180px,240px) 1fr;align-items:center;gap:10px 14px;padding:13px 16px;background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:16px}
+.qg-gp-toolbar label{margin:0;font-size:12px;font-weight:600}
+.qg-gp-toolbar input{min-height:42px}
+.qg-gp-toolbar small{font-size:10px}
+.qg-gp-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 20px}
+.qg-gp-summary>div{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}
+.qg-gp-summary span{display:block;color:var(--muted);font-size:10px;margin-bottom:6px}
+.qg-gp-summary strong{display:block;font-size:24px;line-height:1.25;font-weight:650;letter-spacing:-.3px;overflow-wrap:anywhere}
+.qg-gp-summary small{display:inline;margin-left:5px;font-size:9px}
+.qg-gp-section-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:4px 2px 10px}
+.qg-gp-section-head h3{margin:2px 0 0;font-size:16px}
+.qg-gp-section-head>span{font-size:10px;color:var(--muted)}
+.qg-gp-shop-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.qg-gp-shop-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}
+.qg-gp-shop-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.qg-gp-shop-head>div{min-width:0}
+.qg-gp-shop-head h3{margin:3px 0 0;font-size:14px;overflow-wrap:anywhere}
+.qg-gp-shop-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.qg-gp-shop-metrics>div{background:var(--canvas);border-radius:11px;padding:11px 10px;min-width:0}
+.qg-gp-shop-metrics span{display:block;color:var(--muted);font-size:9px;line-height:1.4;margin-bottom:4px}
+.qg-gp-shop-metrics strong{display:block;font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.qg-gp-chip{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;border-radius:999px;padding:5px 9px;font-size:9px;line-height:1.3;font-weight:600;background:#f1f3f7;color:#657084}
+.qg-gp-chip.paid,.qg-gp-chip.active{background:#e8f7ef;color:#25885e}
+.qg-gp-chip.review{background:#fff4de;color:#9b6a15}
+.qg-gp-chip.rejected,.qg-gp-chip.expired{background:#fff0f2;color:#c44660}
+.qg-gp-chip.pending,.qg-gp-chip.neutral{background:#edf2ff;color:#5b74bd}
+.qg-live-gp-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.qg-live-gp-actions button{font-size:11px}
+.qg-gp-empty{background:#fff;border:1px dashed #d8dde5;border-radius:16px;padding:34px 18px;text-align:center;color:var(--muted)}
+.qg-gp-empty b{display:block;color:var(--ink);font-size:14px;margin-bottom:5px}
+.qg-gp-empty p{margin:0;font-size:11px}
+.qg-gp-rate-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.qg-gp-rate-card{margin:0}
+.qg-gp-rate-default{grid-column:1/-1}
+.qt-gp-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.qt-gp-card-head>div{min-width:0}
+.qt-gp-card-head b{display:block;font-size:14px;margin-top:3px;overflow-wrap:anywhere}
+.qt-gp-ratebox{display:grid;grid-template-columns:44px minmax(0,1fr) auto 44px;align-items:center;gap:8px;margin:10px 0 14px}
+.qt-gp-ratebox button{padding:7px;min-height:44px;font-size:20px}
+.qt-gp-ratebox input{text-align:right;font-size:18px;font-weight:650;font-variant-numeric:tabular-nums}
+.qt-gp-percent{font-size:14px;font-weight:650}
+.qg-gp-rate-field>label,.qt-gp-date label{font-size:10px;color:var(--muted);margin:0 0 5px}
+.qt-gp-date label span{font-weight:400}
+.qt-gp-date{margin-bottom:14px}
+.qt-gp-help{display:block;margin-top:8px;font-size:9px;line-height:1.5}
+.qg-admin-rates .row-btns{margin-top:4px}
+
+@media (max-width:850px){
+ .qg-gp-shop-list,.qg-gp-rate-list{grid-template-columns:1fr}
+ .qg-gp-rate-default{grid-column:auto}
+}
+@media (max-width:560px){
+ .qg-gp-hero{display:block;padding:18px 16px;border-radius:16px}
+ .qg-gp-hero h2{font-size:18px}
+ .qg-gp-hero>button{width:100%;margin-top:14px}
+ .qg-gp-toolbar{grid-template-columns:1fr;padding:13px 14px;gap:6px}
+ .qg-gp-summary{grid-template-columns:1fr 1fr;gap:9px}
+ .qg-gp-summary>div{padding:14px}
+ .qg-gp-summary>div:first-child{grid-column:1/-1}
+ .qg-gp-summary strong{font-size:21px}
+ .qg-gp-shop-card{padding:15px}
+ .qg-gp-shop-head{display:block}
+ .qg-gp-shop-head .qg-gp-chip{margin-top:8px}
+ .qg-gp-shop-metrics{grid-template-columns:1fr 1fr}
+ .qg-gp-shop-metrics>div:first-child{grid-column:1/-1}
+ .qg-live-gp-actions button{flex:1;min-width:120px}
+ .qt-gp-card-head{display:block}
+ .qt-gp-card-head .qg-gp-chip{margin-top:8px;white-space:normal;text-align:center}
+ .qt-gp-ratebox{grid-template-columns:42px minmax(0,1fr) auto 42px}
+}
