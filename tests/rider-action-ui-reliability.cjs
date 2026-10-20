@@ -77,13 +77,13 @@ ok(rider.includes("ข้อมูลรถที่อนุมัติ"),'app
 ok(!rider.includes("vehicle_type:vehicle,vehicle_plate:nextPlate"),'account settings must not silently change approved vehicle identity');
 ok(rider.includes("item_image&order_id=eq."),'pickup/delivery verification must read immutable item image snapshots when available');
 ok(rider.includes("const QG_ARRIVAL_GUARD_KM = 0.2;"),'arrival warning threshold must be 200 metres and advisory');
-ok(rider.includes("scheme=google.navigation;package=com.google.android.apps.maps"),'Android navigation must force the Google Maps app package');
-ok(rider.includes("comgooglemaps://?daddr="),'iOS must open the Google Maps app scheme');
-ok(!rider.includes("https://www.google.com/maps/dir/?api=1&destination="),'Rider navigation must not fall back to the Google Maps website');
+ok(!rider.includes("scheme=google.navigation;package=com.google.android.apps.maps"),'Rider Web must not hand navigation to the Google Maps Android app');
+ok(!rider.includes("comgooglemaps://?daddr="),'Rider Web must not hand navigation to the Google Maps iOS app');
+ok(!rider.includes("https://www.google.com/maps/dir/?api=1&destination="),'Rider navigation must not open the Google Maps website');
 ok(rider.includes("rpc/qg_rider_mark_arrival"),'Rider arrival buttons must persist arrival through the authenticated RPC');
 ok(rider.includes('id="details-'),'active-order card must expose order details');
 ok(rider.includes('id="primary-nav-'),'active-order primary CTA must be navigation after claim');
-ok(rider.includes('package=com.google.android.apps.maps')&&rider.includes('comgooglemaps://'),'Rider primary navigation must hand off to the native Google Maps app');
+ok(rider.includes('function qgNavigateInApp(lat,lng)')&&rider.includes('qgFollowRiderCamera(true,650)'),'Rider primary navigation must remain inside QueueGo Map');
 ok(rider.includes('ยอดที่ต้องชำระให้ร้าน'),'pickup cash page must show cash due to the merchant before handoff');
 ok(rider.includes('ยอดที่ต้องเก็บจากลูกค้า'),'completion cash page must show customer cash before completion');
 ok(!rider.includes('id="qg-pickup-confirm-btn"'),'legacy pickup tap confirmation must stay removed');
