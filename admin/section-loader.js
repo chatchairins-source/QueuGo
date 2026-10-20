@@ -11,7 +11,7 @@ function stopStale(all=false){
 }
 window.qgAdminClearReadCache=function(){readEpoch++;reads.clear()};
 window.qgAdminRead=async function(path,options,read){
- const method=String(options.method||'GET').toUpperCase();if(method!=='GET'&&!options.readOnly){window.qgAdminClearReadCache();try{return await read()}finally{window.qgAdminClearReadCache()}}
+ const method=String(options.method||'GET').toUpperCase();if(method!=='GET'&&method!=='HEAD'&&!options.readOnly){window.qgAdminClearReadCache();try{return await read()}finally{window.qgAdminClearReadCache()}}
  const key=String(options.accessToken||'')+':'+method+':'+path,entry=reads.get(key);
  if(entry?.pending&&entry.scope!==readScope()){entry.controller.abort();reads.delete(key)}
  else if(entry&&(entry.pending||Date.now()-entry.at<5000))return entry.promise;
@@ -55,6 +55,11 @@ async function count(path,token){
  const total=response.headers.get('content-range')?.split('/')[1];if(!/^\d+$/.test(total||''))throw Error('ระบบไม่ส่งจำนวนรายการ');return Number(total);
  }finally{clearTimeout(timer);release()}
 }
+window.qgAdminCountRead=async function(path){
+ if(!identity())throw Error('กรุณาเข้าสู่ระบบ Admin');
+ const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+ return window.qgAdminRead('count:'+path,{method:'HEAD',accessToken:token},()=>count(path,token));
+};
 async function summary(valid){
  const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
  const paths={orders:'orders?select=id',shops:'users?select=id&role=eq.shop',riders:'users?select=id&role=eq.rider',customers:'users?select=id&role=eq.customer',pendingShops:'users?select=id&role=eq.shop&status=eq.pending',pendingRiders:'users?select=id&role=eq.rider&status=eq.pending',promotions:'promotions?select=id&status=eq.pending'};
