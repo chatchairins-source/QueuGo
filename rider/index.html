@@ -3,7 +3,7 @@
 <meta name="queuego-web-build" content="rider-20261019-ready1">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="../queuego-map-web.js?v=20261019-places1"></script>
+<script src="../queuego-map-web.js?v=20261020-heading1"></script>
 
 
 <link rel="stylesheet" href="../queuego-rider-settings.css?v=20261019-1">
@@ -775,8 +775,8 @@ async function doLogout(){
 
 /* ---------- MAIN STAGE ---------- */
 const LONGDO_API_KEY='347649ca13f49db0d8a599ae35f8de2b';
-// Temporary owner-requested road test: keep FOLLOW/3D active while idle so camera
-// smoothness can be evaluated before restoring job-gated perspective behavior.
+// Ready/online Home follows the Rider heading while staying flat.
+// Active work keeps the full perspective navigation camera.
 const RIDER_CAMERA_SMOOTHNESS_TEST_MODE=false;
 const RIDER_ROUTE_OFF_ROUTE_METERS=60;
 const RIDER_ROUTE_REROUTE_HITS=3;
@@ -855,7 +855,8 @@ function disposeRiderMap(){
 }
 function validRiderCoordinate(lat,lon){return lat!==null&&lat!==undefined&&lat!==''&&lon!==null&&lon!==undefined&&lon!==''&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lon))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180}
 function qgFiniteOrNull(value){return value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null)}
-function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}
+function qgNavigationCameraHasWork(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}
+function qgNavigationCameraShouldRun(){return !!(S.online||qgNavigationCameraHasWork())}
 function qgNavigationCameraFollowEnabled(){return RIDER_CAMERA_SMOOTHNESS_TEST_MODE||qgNavigationCameraShouldRun()}
 function qgRiderCameraBottomInset(){
   const map=document.getElementById('map'),dock=document.getElementById('home-dock'),nav=document.querySelector?.('.qg-bottom-nav')||null;
@@ -870,7 +871,8 @@ function qgRiderCameraBottomInset(){
 function qgFollowRiderCamera(force=false,duration=420){
   if(!S.map||!S.pos||!qgNavigationCameraFollowEnabled()||riderRouteOverviewActive)return null;
   return window.QueueGoMapWeb?.followNavigationCamera?.(S.map,S.pos,riderRouteGeometry,{
-    force,duration,baseZoom:17,bottomInset:qgRiderCameraBottomInset(),puckBearing:qgSmoothedRiderPuckHeading(S.pos)
+    force,duration,baseZoom:17,bottomInset:qgRiderCameraBottomInset(),puckBearing:qgSmoothedRiderPuckHeading(S.pos),
+    headingOnly:!qgNavigationCameraHasWork()
   })||null;
 }
 function qgNormalizeRiderBearing(value){
