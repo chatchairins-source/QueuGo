@@ -13,7 +13,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
  await ctx.qgAdminLoadSection(false,'orders:UPDATE');assert.equal(directory,1);checks++;
  await ctx.qgAdminLoadSection(false,'users:UPDATE');assert.equal(directory,2);checks++;
  await ctx.qgAdminLoadSection(true);assert.equal(directory,3);checks++;
- for(const page of ['admin-grocery','admin-market','admin-orders','admin-cash','admin-gp','admin-support']){route='#'+page;await ctx.qgAdminLoadSection(true);assert.equal(calls.length,7);checks++}
+ for(const page of ['admin-grocery','admin-market','admin-orders','admin-cash','admin-gp','admin-support']){route='#'+page;await ctx.qgAdminLoadSection();assert.equal(calls.length,7);checks++}
  route='#admin-governance';tab='qt-sec-audit';await ctx.qgAdminLoadSection();assert(calls.at(-1).includes('audit_logs?')&&calls.at(-1).endsWith('limit=100'));checks++;
  route='#admin';gate=new Promise(r=>release=r);const pending=ctx.qgAdminLoadSection(true);await new Promise(r=>setImmediate(r));actor='b';release();await pending;gate=null;
  assert.notEqual(ctx.QG_ADMIN_SUMMARY?.orders,undefined); // actor A cannot write after B; previous summary is invalidated on next actor read.

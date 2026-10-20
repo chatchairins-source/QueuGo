@@ -1,0 +1,67 @@
+/* Reuse authoritative Orders, Rider review RPCs, Ride and Credit flows. No client state/financial bypass. */
+(()=>{
+'use strict';
+const permitted=()=>currentUser()?.type==='admin'&&currentUser()?.status==='approved';
+const reviewQueues={
+ identity:{title:'ยืนยันตัวตน',rpc:'qg_admin_rider_reverification_queue',review:'qg_admin_review_rider_reverification',request:'qg_admin_request_rider_reverification',photo:'selfie_path'},
+ inspection:{title:'ตรวจสภาพรถ',rpc:'qg_admin_rider_vehicle_inspection_queue',review:'qg_admin_review_rider_vehicle_inspection',request:'qg_admin_request_rider_vehicle_inspection',photo:'vehicle_photo_path'},
+ vehicle:{title:'อนุมัติยานพาหนะ',rpc:'qg_admin_rider_vehicle_queue',review:'qg_admin_review_rider_vehicle',photo:'photo_path'},
+ documents:{title:'วันหมดอายุเอกสาร',rpc:'qg_admin_rider_document_queue'}
+};
+let generation=0;
+const labels={'admin-dispatch':'Dispatch','admin-ride':'Ride · รับส่งผู้โดยสาร','admin-express':'Express · ส่งพัสดุ','admin-laundry':'ฝากซัก','admin-system':'สถานะระบบ','admin-rider-review':'ตรวจเอกสารและยานพาหนะ Rider'};
+window.qgRenderAdminOperations=function(page){
+ if(!permitted())return navigate('login');
+ const title=labels[page];if(!title)return;
+ layout(title,'<section class="card" id="qg-operations"><div class="row-btns"><button type="button" id="qg-ops-refresh">รีเฟรช</button><button type="button" onclick="qgAdminSection(\'qt-sec-settings\')">บริการและราคา</button></div><p role="status" id="qg-ops-status">กำลังโหลดเฉพาะหมวดนี้…</p><div id="qg-ops-body"></div></section>');
+ document.getElementById('qg-ops-refresh').onclick=()=>load(page);
+ load(page);
+};
+async function load(page){
+ const version=++generation;
+ const host=document.getElementById('qg-ops-body'),status=document.getElementById('qg-ops-status'),owner=currentUser()?.id;
+ if(!host||!permitted())return;const alive=()=>version===generation&&host.isConnected&&permitted()&&currentUser().id===owner;
+ try{
+  if(page==='admin-rider-review'){
+   host.innerHTML='<label>งานตรวจ<select id="qg-review-kind">'+Object.entries(reviewQueues).map(([key,q])=>'<option value="'+key+'">'+q.title+'</option>').join('')+'</select></label><div id="qg-review-list"></div>';
+   host.querySelector('select').onchange=()=>loadReview(host.querySelector('select').value,alive);await loadReview('identity',alive);
+  }else if(page==='admin-ride'){
+   host.innerHTML='<div id="qg-passenger-controls"></div><div id="qg-service-jobs"></div>';
+   await Promise.all([qgRenderPassengerControls(),jobs('ride',host.querySelector('#qg-service-jobs'),alive)]);
+  }else if(page==='admin-system'){
+   const summary=await qtSupabaseRpc('qg_admin_live_counts',{});if(!alive())return;host.replaceChildren();
+   const p=document.createElement('p');p.textContent='ร้านเปิด '+Number(summary.shops_open||0)+' · Rider ออนไลน์ '+Number(summary.riders_online||0);host.append(p);
+   const note=document.createElement('p');note.textContent='จำนวนนี้เป็นสถานะที่บันทึกในระบบ ยังไม่ใช่หลักฐานว่า Push, GPS หรือ worker ทำงานปกติ';host.append(note);
+   for(const [key,value]of Object.entries(summary.orders||{})){const line=document.createElement('p');line.textContent=key+' · '+Number(value);host.append(line)}
+  }else await jobs(page==='admin-express'?'express':page==='admin-laundry'?'laundry':null,host,alive);
+  if(alive())status.textContent='ข้อมูลจากระบบล่าสุด';
+ }catch(e){if(alive())status.textContent='ยังโหลดหมวดนี้ไม่ได้: '+e.message+' · ระบบที่ยังไม่เปิดใช้งานต้องผ่าน Release Gate ก่อน';}
+}
+async function jobs(kind,host,alive){
+ const token=await qtGetAccessToken();
+ const table=kind==='laundry'?'laundry_orders':'orders';
+ const query=table+'?select=id,status,created_at'+(kind&&kind!=='laundry'?'&order_type=eq.'+kind:'')+'&order=created_at.desc,id.desc&limit=100';
+ const rows=await qtSupabaseTable(query,{accessToken:token});if(!alive())return;host.replaceChildren();
+ const note=document.createElement('p');note.textContent='100 รายการล่าสุด · เปิดรายละเอียดเพื่อดูประวัติและหลักฐาน';host.append(note);
+ for(const row of rows||[]){const card=document.createElement('article');card.className='card';const title=document.createElement('b');title.textContent=row.id;const line=document.createElement('p');line.textContent=row.status+' · '+new Date(row.created_at).toLocaleString('th-TH');card.append(title,line);
+  if(kind!=='laundry'){const button=document.createElement('button');button.type='button';button.textContent='รายละเอียดและประวัติ';button.onclick=()=>{if(alive())qgAdminTrace(row.id)};card.append(button)}host.append(card)
+ }
+ if(!rows?.length){const p=document.createElement('p');p.textContent='ไม่มีรายการในหมวดนี้';host.append(p)}
+}
+async function loadReview(kind,alive){
+ const q=reviewQueues[kind],host=document.getElementById('qg-review-list');if(!q||!host||!alive())return;host.textContent='กำลังโหลดงานตรวจ…';
+ try{const rows=await qtSupabaseRpc(q.rpc,{});if(!alive()||!host.isConnected||document.getElementById('qg-review-kind')?.value!==kind)return;host.replaceChildren();
+ for(const row of (rows||[]).slice(0,200)){
+  const card=document.createElement('article');card.className='card';const title=document.createElement('b');title.textContent=row.rider_name||row.rider_id;const detail=document.createElement('p');detail.textContent=[row.status||'',row.vehicle_plate||'',row.reason||''].filter(Boolean).join(' · ');card.append(title,detail);
+  const action=(text,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=async()=>{if(!alive()||b.disabled)return;b.disabled=true;try{await fn();if(alive())await loadReview(kind,alive)}catch(e){if(alive())toast(e.message)}finally{if(b.isConnected)b.disabled=false}};card.append(b)};
+  if(row[q.photo])action('ดูหลักฐาน',()=>qgAdminOpenEvidence(row[q.photo]));
+  if(kind==='documents')for(const [key,label]of [['national_id','บัตรประชาชน'],['driver_license','ใบขับขี่'],['vehicle_prb','พ.ร.บ.']]){
+   const form=document.createElement('form'),labelNode=document.createElement('label'),input=document.createElement('input'),button=document.createElement('button');labelNode.textContent=label;input.type='date';input.value=row[key+'_expires_on']||'';labelNode.append(input);button.type='submit';button.textContent='บันทึกวันหมดอายุ';form.append(labelNode,button);form.onsubmit=async e=>{e.preventDefault();if(!alive()||button.disabled)return;button.disabled=true;try{await qtSupabaseRpc('qg_admin_set_rider_document_expiry',{p_rider_id:row.rider_id,p_document_key:key,p_expires_on:input.value||null,p_vehicle_id:key==='vehicle_prb'?row.selected_vehicle_id:null});if(alive())toast('บันทึกวันหมดอายุแล้ว')}catch(err){if(alive())toast(err.message)}finally{button.disabled=false}};card.append(form)
+  }else{
+   if(q.request)action('ขอตรวจใหม่',async()=>{const reason=await qgAdminInput({title:'ขอ'+q.title,label:'เหตุผล'});if(reason===null||!alive())return;if(reason.trim().length<3)throw Error('กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร');await qtSupabaseRpc(q.request,{p_rider_id:row.rider_id,p_reason:reason.trim()})});
+   if(kind==='vehicle'||row.request_id)for(const [decision,text]of [['approved','อนุมัติ'],['rejected','ส่งกลับแก้ไข']])action(text,async()=>{const note=await qgAdminInput({title:text+' · '+q.title,label:'บันทึกผลตรวจ / เหตุผล'});if(note===null||!alive())return;if(note.trim().length<3)throw Error('กรุณาระบุผลตรวจอย่างน้อย 3 ตัวอักษร');await qtSupabaseRpc(q.review,{[kind==='vehicle'?'p_vehicle_id':'p_request_id']:kind==='vehicle'?row.vehicle_id:row.request_id,p_decision:decision,p_note:note.trim()})});
+  }host.append(card);
+ }if(!rows?.length)host.textContent='ไม่มีรายการตรวจ';
+ }catch(e){if(alive()&&host.isConnected)host.textContent='โหลดงานตรวจไม่ได้: '+e.message}
+}
+})();

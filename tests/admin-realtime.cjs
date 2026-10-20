@@ -22,6 +22,11 @@ session={role:'admin',authUserId:'b',userId:'v',accessToken:'other'};w.QT_REALTI
 online=false;w.dispatchEvent(new w.Event('offline'));eq(removed,4);eq(timers.size,0);online=true;w.dispatchEvent(new w.Event('online'));for(let i=0;i<8;i++)await tick();eq(channels.length,5);
 w.dispatchEvent(new w.Event('pagehide'));eq(removed,5);eq(timers.size,0);intervals[0]();await tick();eq(channels.length,5);w.dispatchEvent(new w.Event('pageshow'));for(let i=0;i<8;i++)await tick();eq(channels.length,6);
 session=null;w.QT_REALTIME_FORCE_REFRESH();eq(removed,6);eq(timers.size,0);
+// Actual Admin scope hook retires the former channel and subscribes once to the visible section.
+w.qgAdminRealtimeTables=()=>['users'];session={role:'admin',authUserId:'scope',userId:'scope',accessToken:'scope-token'};w.QT_REALTIME_FORCE_REFRESH();for(let i=0;i<8;i++)await tick();eq(channels.at(-1).events.map(e=>e[1].table),['users']);
+const scopedCount=channels.length;w.dispatchEvent(new w.Event('qg:admin-section'));for(let i=0;i<8;i++)await tick();eq(channels.length,scopedCount);
+w.qgAdminRealtimeTables=()=>['orders','deliveries'];w.dispatchEvent(new w.Event('qg:admin-section'));for(let i=0;i<8;i++)await tick();eq(channels.length,scopedCount+1);eq(channels.at(-1).events.map(e=>e[1].table),['orders','deliveries']);
+session=null;w.QT_REALTIME_FORCE_REFRESH();
 // Approval/catalog/settlement changes must enter the shared render signature.
 const acorn=require('acorn'),html=fs.readFileSync(path.resolve(__dirname,'../admin/index.html'),'utf8');for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){for(const node of acorn.parse(m[1],{ecmaVersion:'latest'}).body)if(node.type==='FunctionDeclaration'&&['qtSyncHash','qtSyncSignature'].includes(node.id.name))vm.runInContext(m[1].slice(node.start,node.end),d.getInternalVMContext())}
 w.currentUser=()=>({status:'approved'});const cache={};w.dbGet=(key,empty)=>cache[key]||empty;for(const key of ['qt_users','qt_products','qt_settlements']){const before=w.qtSyncSignature().main;cache[key]=[{id:'changed',status:'active',price:25}];eq(w.qtSyncSignature().main!==before,true)}d.window.close();

@@ -1,13 +1,24 @@
 /* Admin read orchestration only. Existing RLS/RPC authorization remains authoritative. */
 (()=>{
 'use strict';
+const reads=new Map();let readEpoch=0;
+window.qgAdminClearReadCache=function(){readEpoch++;reads.clear()};
+window.qgAdminRead=async function(path,options,read){
+ if(String(options.method||'GET').toUpperCase()!=='GET'){window.qgAdminClearReadCache();try{return await read()}finally{window.qgAdminClearReadCache()}}
+ const key=String(options.accessToken||'')+':'+path,entry=reads.get(key);
+ if(entry&&Date.now()-entry.at<5000)return entry.promise;
+ const version=readEpoch,item={at:Date.now()};
+ item.promise=Promise.resolve().then(read).catch(e=>{if(reads.get(key)===item)reads.delete(key);throw e});
+ if(reads.size>=100)reads.delete(reads.keys().next().value);reads.set(key,item);
+ const value=await item.promise;if(version!==readEpoch&&reads.get(key)===item)reads.delete(key);return value;
+};
 const cache=new Map(),ttl=30000;
 let actor=null,epoch=0;
 const identity=()=>{const s=qtSessionRead();return s?.role==='admin'?s.authUserId+':'+s.userId:null};
 const section=()=>location.hash==='#admin-governance'?qtAdminCurrentSection():(location.hash.slice(1).split('/')[0]||'admin');
 const directory=new Set(['qt-sec-approval','qt-sec-users','qt-sec-shops','qt-sec-security','qt-sec-delivery']);
 const metrics=window.QG_ADMIN_LOAD_METRICS=[];
-function reset(){epoch++;cache.clear();actor=identity();window.QG_ADMIN_SUMMARY=null;}
+function reset(){epoch++;cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_PAGE=null;}
 async function resource(key,load,force){
  if(identity()!==actor)reset();if(!actor)return false;
  const now=Date.now(),old=cache.get(key);if(old?.promise)return old.promise;
@@ -31,12 +42,25 @@ async function summary(valid){
  if(valid())window.QG_ADMIN_SUMMARY=Object.fromEntries(entries);
 }
 async function read(path){return qtSupabaseTable(path,{accessToken:await qtGetAccessToken()})}
+window.qgAdminRealtimeTables=function(){
+ const key=section();
+ if(key==='admin'||key==='qt-sec-overview')return ['users','orders','promotions','market_requests','shop_profiles'];
+ if(directory.has(key))return ['users','shop_profiles','rider_profiles','technician_profiles'];
+ const scopes={
+  'admin-orders':['orders','deliveries','payments','market_orders','market_order_pickups','laundry_orders'],
+  'admin-gp':['settlements','orders'],'admin-cash':['orders','payments','settlements'],
+  'admin-support':['order_chat_messages'],'admin-gp-rates':['shop_profiles'],
+  'admin-market':['market_requests','shop_profiles'],'admin-grocery':['products'],
+  'notifications':['notifications'],'qt-sec-audit':['audit_logs'],'qt-sec-promote':['promotions'],
+  'qt-sec-settings':['queuego_platform_rules'],'qt-sec-finance':['orders','settlements']
+ };
+ return scopes[key]||[];
+};
 window.qgAdminLoadSection=async function(force=false,reason=''){
  const key=section();
  if(reason&&reason.includes(':')){
   const table=reason.split(':')[0];
-  const used=key==='admin'||key==='qt-sec-overview'?['users','orders','promotions','market_requests','shop_profiles']:directory.has(key)?['users','shop_profiles','rider_profiles','technician_profiles','qg_rider_presence_events']:key==='qt-sec-audit'?['audit_logs']:key==='qt-sec-promote'?['promotions']:[];
-  if(!used.includes(table))return false;
+  if(!window.qgAdminRealtimeTables().includes(table))return false;
   const entry=cache.get(key==='qt-sec-overview'?'admin':directory.has(key)?'directory':key);if(entry)entry.at=0;
  }
  if(key==='admin'||key==='qt-sec-overview')return resource('admin',summary,force);
@@ -58,6 +82,10 @@ window.qgAdminLoadSection=async function(force=false,reason=''){
   const rows=await read('notifications?select=id,user_id,title,message,type,is_read,created_at,reference_id&user_id=eq.'+encodeURIComponent(qtSessionRead().userId)+'&order=created_at.desc&limit=100');
   if(valid())QT_DB_CACHE.qt_notifications=(rows||[]).map(n=>({id:n.id,userId:n.user_id,title:n.title,message:n.message,body:n.message,type:n.type,read:n.is_read,createdAt:new Date(n.created_at).getTime()}));
  },force);
+ if(force||reason){
+  const loaders={'admin-orders':()=>qgLoadAdminOrders(),'admin-gp':()=>qgLoadAdminGp(),'admin-cash':()=>qgLoadAdminCash(undefined),'admin-market':()=>qgLoadMarketOperations(),'admin-support':()=>qgLoadAdminSupport(),'admin-gp-rates':()=>qtPullGpRates()};
+  if(loaders[key])await resource(key,loaders[key],force||!!reason);
+ }
  // Orders, GP, cash, catalog and support have their own bounded loaders. Never hydrate unrelated tables here.
  return false;
 };
@@ -71,6 +99,13 @@ window.qgAdminEnsureSection=function(){
   if(focus&&/^(INPUT|SELECT|TEXTAREA)$/.test(focus.tagName))return;
   rendering=true;try{router()}finally{rendering=false}
  }).catch(e=>{const note=document.getElementById('qg-admin-refresh-note');if(note)note.textContent=e.message;else toast(e.message)});
+};
+const history=[];
+window.qgAdminDirectoryPage=async function(direction){
+ const page=window.QG_ADMIN_DIRECTORY_PAGE;if(!page||!directory.has(section()))return;
+ if(direction>0){if(!page.more)return;history.push(page.cursor);window.QG_ADMIN_DIRECTORY_CURSOR=page.last;}
+ else{if(!history.length)return;window.QG_ADMIN_DIRECTORY_CURSOR=history.pop();}
+ try{await window.qgAdminLoadSection(true);router()}catch(e){toast(e.message)}
 };
 window.addEventListener('storage',e=>{if(e.key===QT_ADMIN_SESSION_KEY)reset()});
 })();
