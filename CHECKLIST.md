@@ -761,3 +761,16 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - CURRENT DATA: Production has 0 complaint tickets at this checkpoint, so this is capacity/UX hardening rather than a claim of current latency gain.
 - TEST: new jsdom runtime regression locks 100/101 paging, no OFFSET, older/newer cursor behavior, same-page mutation refresh, stale-account fencing and the index contract.
 - PRODUCTION: rollback rehearsal passed; migration `20261020042804 admin_ticket_paging_index` is applied and `pg_indexes` confirms `qg_support_tickets_recent_idx(created_at DESC,id DESC)`. Parent main Pages #1479 and post-merge RC #2323 are green.\n- NEXT: rerun exact-head RC on version-aligned source, then merge/Pages/post-merge RC. Whole Admin mission remains IN PROGRESS.
+
+
+## 2026-10-20 Admin UGC moderation keyset paging
+- BASE: merged PR #481 / main `c7d9373504b56eda3f3bdf842c43f997c4fa50d2`; branch `work-web-admin-ugc-keyset-20261020`.
+- BEFORE: Admin UGC modal called legacy `qg_admin_ugc_reports(p_status)`, which returns at most 300 rows and has no older/newer navigation.
+- SECURITY BOUNDARY: `public.qg_ugc_reports` remains client-table denied. Candidate adds `public.qg_admin_ugc_reports_page` as SECURITY INVOKER over `qg_private.admin_ugc_reports_page`; private reader requires `assert_live_session()` + active Admin and caps pages at 100.
+- UI: modal uses cancellable `qgAdminRpcRead`, 100-row keyset pages ordered `created_at DESC,id DESC`, explicit newer/older navigation, and stale-account/request fencing.
+- MUTATION: existing `qg_admin_ugc_report_action` remains direct/non-cancellable; after moderation the same cursor page refreshes.
+- EVIDENCE SAFETY: existing strict snapshot-image data URL allowlist and escaped text rendering are retained; browser never reads `qg_ugc_reports` directly.
+- SCALE SOURCE: candidate migration `20261020044500_admin_ugc_report_paging.sql` adds `qg_ugc_reports_recent_idx(created_at DESC,id DESC)`.
+- CURRENT DATA: Production currently has 0 UGC report rows at this checkpoint; this is operator-history/scale hardening, not a present-latency claim.
+- TEST: dedicated jsdom/source regression locks guarded reader wiring, 100-row paging, cursor history, same-page moderation refresh, stale-account fencing, wrapper/private privileges and index contract.
+- NEXT: rollback rehearsal; exact-head RC; apply/verify migration; align live version if needed; rerun exact-head RC; merge/Pages/post-merge RC. Whole Admin mission remains IN PROGRESS.
