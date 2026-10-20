@@ -136,7 +136,8 @@ async function qtLoadOwnSupabaseUser(accessToken, authUserId){
 <script>
 async function qtRenderAdminRiderPresence(){
   const el=document.getElementById('qt-admin-rider-online-panel');
-  if(!el)return;
+  if(!el||qtAdminCurrentSection()!=='qt-sec-delivery'||location.hash!=='#admin-governance'||document.hidden)return;
+  const presenceActor=qtSessionRead()?.authUserId;
   el.textContent='กำลังโหลดสถานะไรเดอร์…';
   try{
     const token=await qtGetAccessToken();
@@ -153,7 +154,7 @@ async function qtRenderAdminRiderPresence(){
       const key=String(ev?.rider_id||'');
       if(key&&!latestPresence.has(key))latestPresence.set(key,ev);
     });
-    if(!el.isConnected)return;
+    if(!el.isConnected||qtSessionRead()?.authUserId!==presenceActor)return;
     el.innerHTML=users.length?users.map(u=>{
       const p=byUser.get(String(u.id));
       const ev=p?.id?latestPresence.get(String(p.id)):null;
@@ -446,9 +447,6 @@ async function qtBackgroundHydrate(opts){
   let ok=false;
   try{
     await qtHydrateDatabase(opts);
-    try{ if(typeof qtPullSystemSettings==='function') await qtPullSystemSettings(); }catch(e){ console.warn('system settings pull failed',e); }
-    try{ if(typeof qtPullGpRates==='function') await qtPullGpRates(); }catch(e){ console.warn('gp rates pull failed',e); }
-    try{ if(typeof qgPullPlatformRules==='function') await qgPullPlatformRules(); }catch(e){ console.warn('platform rules pull failed',e); }
     ok=true;
   }catch(err){
     console.error('Background hydrate failed:',err);
@@ -461,7 +459,7 @@ async function qtBackgroundHydrate(opts){
   const now=qtAccessToken();
   if(!now){ qtResetCache(); QT_DB_HYDRATE_QUEUED=null; return; } /* logged out while loading */
   if(now!==token) QT_DB_HYDRATE_QUEUED={light:false}; /* another account signed in while loading: load again for it */
-  else if(ok) qtRerenderAfterHydrate();
+  else if(ok&&['admin','admin-governance','notifications'].includes(location.hash.slice(1))) qtRerenderAfterHydrate();
   const q=QT_DB_HYDRATE_QUEUED; QT_DB_HYDRATE_QUEUED=null;
   if(q) setTimeout(()=>qtBackgroundHydrate(q),0);
 }
@@ -491,7 +489,7 @@ async function qtRestoreOwnUser(){
 /* Admin control-center fast path.
    Governance/account screens need only the account directory; never block them
    on orders, chat, products/catalog, settlements or audit history. */
-const QT_ADMIN_DIRECTORY_SECTIONS=new Set(['qt-sec-overview','qt-sec-approval','qt-sec-security','qt-sec-delivery','qt-sec-shops']);
+const QT_ADMIN_DIRECTORY_SECTIONS=new Set(['qt-sec-overview','qt-sec-approval','qt-sec-security','qt-sec-delivery','qt-sec-shops','qt-sec-users']);
 let QT_ADMIN_DIRECTORY_PROMISE=null;
 function qtAdminCurrentSection(){
   try{return sessionStorage.getItem('qt_admin_active_tab')||'qt-sec-overview'}catch(e){return'qt-sec-overview'}
@@ -501,7 +499,7 @@ function qtAdminUsesDirectoryRefresh(section){
 }
 async function qtHydrateAdminDirectory(){
   const session=qtSessionRead();
-  if(session?.role!=='admin')return qtHydrateDatabase({light:false});
+  if(session?.role!=='admin')throw Error('เฉพาะ Admin เท่านั้น');
   if(QT_ADMIN_DIRECTORY_PROMISE)return QT_ADMIN_DIRECTORY_PROMISE;
   const task=(async()=>{
     const token=await qtGetAccessToken();
@@ -560,18 +558,17 @@ async function qtHydrateAdminDirectory(){
   try{return await task}
   finally{if(QT_ADMIN_DIRECTORY_PROMISE===task)QT_ADMIN_DIRECTORY_PROMISE=null}
 }
-async function qtAdminRefreshScoped(){
-  if(qtSessionRead()?.role==='admin'&&location.hash==='#admin-governance'&&qtAdminUsesDirectoryRefresh()){
-    return qtHydrateAdminDirectory();
-  }
-  return qtHydrateDatabase({light:false});
+async function qtAdminRefreshScoped(force=false){
+  if(qtSessionRead()?.role!=='admin')return;
+  return window.qgAdminLoadSection?window.qgAdminLoadSection(force):qtHydrateAdminDirectory();
 }
-window.qtRealtimeHydrate=function(){
-  return qtAdminRefreshScoped();
+window.qtRealtimeHydrate=function(reason){
+  return window.qgAdminLoadSection?window.qgAdminLoadSection(false,reason):qtAdminRefreshScoped();
 };
 
 async function qtHydrateDatabase(opts){
   opts=opts||{}; const light=!!opts.light;
+  if(qtSessionRead()?.role==='admin')return qtAdminRefreshScoped(!!opts.force);
   const token=await qtGetAccessToken();
   if(!token) { QT_DB_READY.value=true; return; }
   try{
@@ -693,7 +690,7 @@ async function qtAdminRefresh(target='dashboard'){
   const admin=currentUser();
   if(!admin || admin.type!=='admin'){ toast('เฉพาะ Admin เท่านั้น'); return false; }
   try{
-    await (target==='governance'?qtAdminRefreshScoped():qtHydrateDatabase({light:false}));
+    await (qtAdminRefreshScoped(true));
     toast('ข้อมูลสมาชิกจากฐานข้อมูลอัปเดตแล้ว');
     if(target==='governance') renderAdminGovernance(); else renderAdminDashboard(currentUser());
     return true;
@@ -1060,7 +1057,7 @@ function renderAdminGovernance(){
  ${panel('qt-sec-audit',`<h2>ประวัติการทำงาน</h2><button onclick="qtAdminRefreshAuditLog()">โหลดประวัติล่าสุด</button>${audit.slice(-100).reverse().map(x=>`<article class="card"><b>${esc(x.action||'-')}</b><p class="qt-admin-note">${esc(users.find(u=>u.id===x.actorId)?.name||x.actorId||'ระบบ')} · ${x.at?new Date(x.at).toLocaleString('th-TH'):'-'}<br>${esc(x.entityType||'')} ${esc(x.entityId||'')}</p></article>`).join('')||empty('ยังไม่มีบันทึก')}`)}
  ${panel('qt-sec-settings',`<h2>ตั้งค่าระบบ</h2><div class="card"><div class="qt-settings-grid">${fields.map(([key,label,min,max,step])=>`<label>${label}<input id="qt-set-${key}" type="number" min="${min}" ${max==null?'':`max="${max}"`} step="${step}" value="${esc(settings[key])}"></label>`).join('')}<label class="qt-settings-toggle">เปิดการแจ้งเตือน<input id="qt-set-notifications" type="checkbox" ${settings.notifications?'checked':''}></label></div><button class="btn-primary btn-block" onclick="qtSaveSystemSettings()">บันทึกการตั้งค่า</button></div><div id="qg-platform-controls" class="card">กำลังโหลดบริการและราคา…</div><div class="card qg-banner-admin-card"><div class="qg-banner-admin-head"><div><h3>แบนเนอร์หน้าแรก</h3><p>รองรับสูงสุด 3 ภาพ สไลด์อัตโนมัติ และเตรียมลิงก์สำหรับโฆษณาในอนาคต</p></div></div><div id="qg-home-banner-manager" class="qg-home-banner-manager">กำลังโหลดแบนเนอร์…</div></div><div class="card qg-banner-admin-card"><div class="qg-banner-admin-head"><div><h3>แบนเนอร์หมวดหมู่</h3><p>อัปโหลดหรือเปลี่ยนภาพของอาหาร เครื่องดื่ม ของชำ ตลาดสด และ Shopping ได้จากจุดเดียว</p></div></div><div id="qg-service-banner-manager" class="qg-home-banner-manager">กำลังโหลดแบนเนอร์หมวดหมู่…</div></div>`)}
  ${panel('qt-sec-permissions','<h2>สิทธิ์ผู้ดูแลระบบ</h2><div class="card"><p>จัดการผู้ใช้ ร้านค้า ไรเดอร์ ออเดอร์ พิกัด และค่าบริการ</p><p class="qt-admin-note">ใช้สิทธิ์บัญชีผู้ดูแลจากระบบกลาง</p></div>')}</div>`);
- window.qtAdminTab=function(id){if(!sections.some(([key])=>key===id))return;sessionStorage.setItem('qt_admin_active_tab',id);document.querySelectorAll('.qt-admin-panel').forEach(el=>el.classList.toggle('active',el.id===id));const picker=document.getElementById('qg-admin-section-picker');if(picker)picker.value=id;const title=sections.find(([key])=>key===id)?.[1];const titleNode=document.querySelector('.qg-page-title h1');if(titleNode)titleNode.textContent=title;document.title=title+' · QueueGo Admin';qgAdminSyncNavigation();if(id==='qt-sec-delivery')qtRenderAdminRiderPresence();if(id==='qt-sec-security')qtSecurityRole(window.QT_SECURITY_ROLE||'customer');if(id==='qt-sec-settings'){qgRenderPlatformControls();if(typeof qgAdminLoadHomeBanners==='function')qgAdminLoadHomeBanners();if(typeof qgAdminLoadServiceBanners==='function')qgAdminLoadServiceBanners();}if(id==='qt-sec-approval')qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');if(id==='qt-sec-shops')qgAdminShopFilter(window.QG_ADMIN_SHOP_FILTER||'all')};
+ window.qtAdminTab=function(id){if(!sections.some(([key])=>key===id))return;sessionStorage.setItem('qt_admin_active_tab',id);document.querySelectorAll('.qt-admin-panel').forEach(el=>el.classList.toggle('active',el.id===id));const picker=document.getElementById('qg-admin-section-picker');if(picker)picker.value=id;const title=sections.find(([key])=>key===id)?.[1];const titleNode=document.querySelector('.qg-page-title h1');if(titleNode)titleNode.textContent=title;document.title=title+' · QueueGo Admin';qgAdminSyncNavigation();if(window.qgAdminEnsureSection)window.qgAdminEnsureSection();if(id==='qt-sec-security')qtSecurityRole(window.QT_SECURITY_ROLE||'customer');if(id==='qt-sec-settings'){qgRenderPlatformControls();if(typeof qgAdminLoadHomeBanners==='function')qgAdminLoadHomeBanners();if(typeof qgAdminLoadServiceBanners==='function')qgAdminLoadServiceBanners();}if(id==='qt-sec-approval')qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');if(id==='qt-sec-shops')qgAdminShopFilter(window.QG_ADMIN_SHOP_FILTER||'all')};
  const saved=sessionStorage.getItem('qt_admin_active_tab');qtAdminTab(sections.some(([id])=>id===saved)?saved:'qt-sec-overview');
 }
 function qgAdminShopFilter(status){if(status)window.QG_ADMIN_SHOP_FILTER=status;const key=window.QG_ADMIN_SHOP_FILTER||'all',query=(document.getElementById('qg-shop-search')?.value||'').trim().toLocaleLowerCase('th');let count=0;document.querySelectorAll('[data-shop-filter]').forEach(b=>b.classList.toggle('active',b.dataset.shopFilter===key));document.querySelectorAll('.qg-shop-card').forEach(card=>{card.hidden=!(key==='all'||card.dataset.bucket===key)||!card.textContent.toLocaleLowerCase('th').includes(query);if(!card.hidden)count++});const empty=document.getElementById('qg-shop-empty');if(empty)empty.hidden=count>0;}
@@ -1122,6 +1119,8 @@ async function qtSyncTick(force){
   if(!qtAccessToken()) return;
   if(QT_SYNC.pending>0 || Date.now()-QT_SYNC.lastWrite<2500) return; /* let our own writes land first */
   const syncUser=currentUser();
+  if(syncUser?.type==='admin'&&!force&&Date.now()-(window.QG_ADMIN_LAST_POLL||0)<60000)return;
+  if(syncUser?.type==='admin')window.QG_ADMIN_LAST_POLL=Date.now();
   if(syncUser?.type==='admin'&&window.QT_REALTIME_STATUS==='SUBSCRIBED'&&!force)return; /* realtime owns freshness; do not re-download the DB every 8s */
   QT_SYNC.busy=true; QT_SYNC.dirty={};
   try{
@@ -1131,7 +1130,7 @@ async function qtSyncTick(force){
     const before=qtSyncSignature();
     const seenNotifs=new Set(dbGet('qt_notifications',[]).map(n=>n.id));
     const scopedAdmin=me?.type==='admin'&&location.hash==='#admin-governance'&&qtAdminUsesDirectoryRefresh();
-    await (scopedAdmin?qtHydrateAdminDirectory():qtHydrateDatabase({light:!full}));
+    await qtAdminRefreshScoped();
     if(!qtAccessToken()){ qtResetCache(); return; } /* logged out while fetching */
     Object.keys(QT_SYNC.dirty).forEach(k=>{ QT_DB_CACHE[k]=QT_SYNC.dirty[k]; });
     if(me){ dbGet('qt_notifications',[]).forEach(n=>{ if(n.userId===me.id && !n.read && !seenNotifs.has(n.id)){ try{ qtHandleNewNotification(n); }catch(e){} } }); }
@@ -1156,7 +1155,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
 /* V5.33: a page that throws while rendering used to leave the previous screen frozen with dead buttons and no clue why. Now the error is logged and shown. */
 function router(){
-  try{ qtRouteRender(); }
+  try{ qtRouteRender(); if(window.qgAdminEnsureSection)window.qgAdminEnsureSection(); }
   catch(err){ console.error('router error',err); try{ toast('แสดงหน้านี้ไม่สำเร็จ: '+String((err&&err.message)||err).slice(0,90)); }catch(e){} }
 }
 
@@ -1210,14 +1209,15 @@ function renderAdminDashboard(user){
  if(!user||user.type!=='admin')return navigate('login');
  const users=dbGet('qt_users',[]),orders=dbGet('qt_orders',[]),promos=dbGet('qt_promotions',[]);
  const pendingUsers=users.filter(u=>['shop','rider','technician'].includes(u.type)&&u.status==='pending');
- const pendingPromos=promos.filter(p=>p.status==='pending').length;
+ const summary=window.QG_ADMIN_SUMMARY;
+ const pendingPromos=summary?.promotions??promos.filter(p=>p.status==='pending').length;
  const shops=users.filter(u=>u.type==='shop'),riders=users.filter(u=>u.type==='rider'),customers=users.filter(u=>u.type==='customer');
  const recent=[...orders].sort((a,b)=>Number(b.createdAt)-Number(a.createdAt)).slice(0,6);
  layout('ภาพรวมระบบ',`<div class="qg-dashboard"><section class="qg-welcome"><div><span class="qg-eyebrow">ศูนย์ควบคุมผู้ดูแล</span><h2>สวัสดี, ${escapeHtml(user.name||'Admin')}</h2><p>งานสำคัญและข้อมูลระบบ อยู่ในที่เดียว</p></div><button type="button" class="qg-refresh" onclick="qtAdminRefresh('dashboard')">${qgAdminIcon('refresh')} รีเฟรช</button></section>
- <div class="qg-kpi-grid">${[['orders','ออเดอร์ที่โหลด',orders.length,'admin-orders'],['shop','ร้านค้า',shops.length,'shops'],['rider','ไรเดอร์',riders.length,'riders'],['users','ลูกค้า',customers.length,'users']].map(([icon,label,value,target])=>`<button class="qg-kpi ${icon}" type="button" onclick="${target==='admin-orders'?"navigate('admin-orders')":target==='shops'?"qgAdminSection('qt-sec-shops')":target==='riders'?"qgAdminSection('qt-sec-delivery')":"qgAdminSection('qt-sec-users')"}"><span class="qg-kpi-icon">${qgAdminIcon(icon)}</span><div><small>${label}</small><strong>${value.toLocaleString('th-TH')}</strong></div>${qgAdminIcon('arrow')}</button>`).join('')}</div>
+ <div class="qg-kpi-grid">${[['orders','ออเดอร์',summary?.orders??'…','admin-orders'],['shop','ร้านค้า',summary?.shops??'…','shops'],['rider','ไรเดอร์',summary?.riders??'…','riders'],['users','ลูกค้า',summary?.customers??'…','users']].map(([icon,label,value,target])=>`<button class="qg-kpi ${icon}" type="button" onclick="${target==='admin-orders'?"navigate('admin-orders')":target==='shops'?"qgAdminSection('qt-sec-shops')":target==='riders'?"qgAdminSection('qt-sec-delivery')":"qgAdminSection('qt-sec-users')"}"><span class="qg-kpi-icon">${qgAdminIcon(icon)}</span><div><small>${label}</small><strong>${value.toLocaleString('th-TH')}</strong></div>${qgAdminIcon('arrow')}</button>`).join('')}</div>
  <div class="qg-dashboard-columns"><section class="qg-dashboard-section"><div class="qg-section-heading"><div><span class="qg-eyebrow">ACTION REQUIRED</span><h2>งานที่ต้องจัดการ</h2></div><span class="qg-count" id="qg-home-pending-total" data-base="${pendingUsers.length+pendingPromos}">${pendingUsers.length+pendingPromos}</span></div><div class="qg-action-list">
- <button type="button" onclick="qgAdminOpenControl('qt-sec-approval','shop')"><span class="qg-action-icon shop">${qgAdminIcon('shop')}</span><span><b>อนุมัติร้านค้า</b><small>ตรวจชื่อร้านและประเภทธุรกิจ</small></span><strong id="qg-home-pending-shops">${pendingUsers.filter(u=>u.type==='shop').length}</strong>${qgAdminIcon('arrow')}</button>
- <button type="button" onclick="qgAdminOpenControl('qt-sec-approval','rider')"><span class="qg-action-icon rider">${qgAdminIcon('rider')}</span><span><b>อนุมัติไรเดอร์</b><small>ตรวจใบสมัครและเอกสาร</small></span><strong id="qg-home-pending-riders">${pendingUsers.filter(u=>u.type==='rider').length}</strong>${qgAdminIcon('arrow')}</button>
+ <button type="button" onclick="qgAdminOpenControl('qt-sec-approval','shop')"><span class="qg-action-icon shop">${qgAdminIcon('shop')}</span><span><b>อนุมัติร้านค้า</b><small>ตรวจชื่อร้านและประเภทธุรกิจ</small></span><strong id="qg-home-pending-shops">${summary?.pendingShops??'…'}</strong>${qgAdminIcon('arrow')}</button>
+ <button type="button" onclick="qgAdminOpenControl('qt-sec-approval','rider')"><span class="qg-action-icon rider">${qgAdminIcon('rider')}</span><span><b>อนุมัติไรเดอร์</b><small>ตรวจใบสมัครและเอกสาร</small></span><strong id="qg-home-pending-riders">${summary?.pendingRiders??'…'}</strong>${qgAdminIcon('arrow')}</button>
  <button type="button" class="qg-market-admin-link" onclick="navigate('admin-market')"><span class="qg-action-icon pin">${qgAdminIcon('pin')}</span><span><b>อนุมัติตลาด</b><small>ตลาดใหม่และร้านสมาชิก</small></span><strong id="qg-home-pending-markets">…</strong>${qgAdminIcon('arrow')}</button>
  <button type="button" onclick="qgAdminSection('qt-sec-promote')"><span class="qg-action-icon bell">${qgAdminIcon('bell')}</span><span><b>คำขอ Promote</b><small>ตรวจคำขอโฆษณาจากร้าน</small></span><strong>${pendingPromos}</strong>${qgAdminIcon('arrow')}</button></div></section>
  <section class="qg-dashboard-section"><div class="qg-section-heading"><div><span class="qg-eyebrow">LATEST ORDERS</span><h2>ออเดอร์ล่าสุด</h2></div><a href="#admin-orders">ดูทั้งหมด ${qgAdminIcon('arrow')}</a></div><div class="qg-recent-orders">${recent.length?recent.map(o=>{const status=ORDER_STATUSES.find(x=>x.key===o.status)?.label||o.status;return `<button type="button" onclick="qgAdminTrace('${escapeHtml(o.id)}')"><span class="qg-order-icon">${qgAdminIcon('orders')}</span><span><b>${escapeHtml(displayOrderNumber(o))}</b><small>${escapeHtml(o.shopName||shops.find(s=>s.id===o.shopId)?.shopName||'ไม่ระบุชื่อร้าน')}</small><span class="qg-status ${escapeHtml(o.status)}">${escapeHtml(status)}</span></span><span class="qg-order-amount">฿${Number(o.total||o.totalAmount||0).toLocaleString('th-TH')}<small>${new Date(o.createdAt).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'})}</small></span></button>`}).join(''):'<p class="qg-empty">ยังไม่มีออเดอร์ที่โหลด</p>'}</div></section></div>
@@ -1314,7 +1314,7 @@ const ORDER_STATUSES = [
       }catch(e){}
     }
   }
-  setInterval(showAdminPresence,5000);
+  window.addEventListener('qt:realtime-update',()=>{if(qtAdminCurrentSection()==='qt-sec-delivery')showAdminPresence()});
   document.addEventListener('DOMContentLoaded',showAdminPresence);
   window.addEventListener('hashchange',showAdminPresence);
 })();
@@ -1506,7 +1506,7 @@ window.addEventListener('unhandledrejection',e=>{
   };
   window.qtAdminRefreshAuditLog=function(){
     const admin=typeof qtAdminOnly==='function'?qtAdminOnly():null; if(!admin)return;
-    try{if(typeof qtHydrateDatabase==='function'){Promise.resolve(qtHydrateDatabase({light:false})).then(()=>{toast('🔄 รีเฟรช Audit Log แล้ว');renderAdminGovernance();}).catch(()=>{toast('รีเฟรชจากฐานข้อมูลไม่สำเร็จ');renderAdminGovernance();});return;}}catch(e){}
+    try{if(typeof qtAdminRefreshScoped==='function'){Promise.resolve(qtAdminRefreshScoped(true)).then(()=>{toast('🔄 รีเฟรช Audit Log แล้ว');renderAdminGovernance();}).catch(()=>{toast('รีเฟรชจากฐานข้อมูลไม่สำเร็จ');renderAdminGovernance();});return;}}catch(e){}
     toast('🔄 รีเฟรช Audit Log แล้ว'); renderAdminGovernance();
   };
   /* Defensive guards: Admin must never be suspended or deleted. */
@@ -2152,5 +2152,6 @@ async function qgLoadAdminCash(day){
 <script src="../catalog/normalize.js?v=20261012"></script>
 <script src="grocery-catalog.js?v=20261012"></script>
 <script src="admin-service-banners.js?v=20261008-banner1"></script>
+<script src="section-loader.js?v=20261020-1"></script>
 </body>
 </html>
