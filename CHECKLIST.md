@@ -630,3 +630,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - TEST: actual directory query16, section34, category22 and source95/82 PASS; exact full suite/CI pending. REMAINING: shop-name-specific global search, Rider queue pagination, search scale indexes/aggregates, unresolved backend/feature matrix and physical/authenticated acceptance. Whole mission IN PROGRESS. NEXT: exact successor CI, merge/Pages and actual deployed asset verification.
 
 - Directory successor follow-up: scoped Realtime invalidates GET cache as well as section TTL; a change during an existing fetch queues exactly one fresh load after completion, avoiding indefinitely cached pre-event data. Unrelated events retain cache. Section orchestration37 and directory16 PASS; exact successor CI pending.
+
+
+## 2026-10-20 Admin Rider review pagination checkpoint
+- BASE: PR465 merged to main `7ba59d04d556f2c1360eff2729f63a86ea7872ab` after RC run `39357745885` SUCCESS. Admin global directory now includes bounded current shop-name/phone search without full hydration.
+- PRODUCTION BACKEND: migration `20261020021801 admin_rider_review_pagination` applied after BEGIN/ROLLBACK rehearsal. One centralized private reader pages identity/inspection/vehicle/document queues; legacy four queue RPCs delegate to it for compatibility. Public wrapper is SECURITY INVOKER; anon/PUBLIC EXECUTE denied, authenticated allowed; post-apply advisor has no finding for the new reader.
+- WEB: Rider review requests 50 rows/page from `qg_admin_rider_review_page`; next/previous navigation and post-action refresh remain on the current page. Removed browser-side full-queue read followed by `.slice(0,200)`.
+- TEST/GATE: source migration contract and Admin operations DOM regression added. Exact successor RC/Pages still required before this slice is DONE.
+- REMAINING: search-scale indexes/aggregates, audit/notification paging and remaining safe matrix controls. Refund/provider financial execution, staged Credit/Ride cutover, and authenticated/physical-device acceptance remain separate release gates; do not bypass them.
