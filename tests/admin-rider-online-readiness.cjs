@@ -1,0 +1,37 @@
+const fs=require('fs'),assert=require('assert/strict'),{JSDOM}=require('jsdom');
+const tick=async()=>{for(let i=0;i<12;i++)await new Promise(r=>setImmediate(r))};
+(async()=>{
+ const dom=new JSDOM('<main id="app"></main>',{url:'https://isolated.invalid/admin/#admin-rider-review',runScripts:'outside-only'}),w=dom.window;
+ let user={id:'00000000-0000-4000-8000-000000000001',type:'admin',status:'approved'},calls=[],nav=[],vehicleSelected=true,documentsExpired=true;
+ w.currentUser=()=>user;w.navigate=x=>nav.push(x);w.toast=()=>{};w.qgAdminInput=async()=>null;w.qgAdminSection=()=>{};w.qgAdminOpenEvidence=()=>{};w.qtGetAccessToken=async()=> 'token';
+ w.layout=(title,html)=>{w.document.getElementById('app').innerHTML=html};
+ w.qtSupabaseTable=async()=>[];
+ w.qtSupabaseRpc=async()=>{throw Error('unexpected mutation')};
+ w.qgAdminRpcRead=async(name,args)=>{
+   calls.push({name,args});
+   assert.equal(name,'qg_admin_rider_review_page');
+   const common={limit:50,offset:Number(args?.p_offset||0),more:false,next_offset:null};
+   if(args.p_kind==='identity')return {...common,items:[{rider_id:'r1',rider_name:'Rider One',request_id:'q1',status:'pending',reason:'ตรวจใหม่'}]};
+   if(args.p_kind==='inspection')return {...common,items:[{rider_id:'r1',rider_name:'Rider One',request_id:'q2',status:'required',reason:'ส่งรูปรถ'}]};
+   if(args.p_kind==='vehicle')return {...common,items:[{rider_id:'r1',rider_name:'Rider One',vehicle_id:'v1',vehicle_plate:'1กก1',status:'pending',is_selected:vehicleSelected,legacy_seed:false}]};
+   const expired=documentsExpired?'2026-01-01':'2099-01-01';
+   return {...common,items:[{rider_id:'r1',rider_name:'Rider One',selected_vehicle_id:'v1',selected_vehicle_plate:'1กก1',national_id_expires_on:expired,driver_license_expires_on:'2099-01-01',vehicle_prb_expires_on:'2099-01-01'}]};
+ };
+ w.eval(fs.readFileSync('admin/operations.js','utf8'));
+ let checks=0;
+ w.qgRenderAdminOperations('admin-rider-review');await tick();
+ assert.match(w.document.querySelector('#qg-ops-body').textContent,/Online readiness จาก server/);checks++;
+ assert.match(w.document.querySelector('#qg-ops-body').textContent,/Network \/ Firebase \/ การแจ้งเตือน \/ GPS \/ Google Maps/);checks++;
+ let badge=w.document.querySelector('[data-online-readiness]');assert.equal(badge.dataset.onlineReadiness,'blocked');assert.match(badge.textContent,/รอ Admin ตรวจยืนยันตัวตน/);checks+=2;
+ assert.equal(calls[0].args.p_limit,50);assert.equal(calls[0].args.p_offset,0);checks+=2;
+ const select=w.document.getElementById('qg-review-kind');
+ select.value='inspection';select.onchange();await tick();badge=w.document.querySelector('[data-online-readiness]');assert.equal(badge.dataset.onlineReadiness,'blocked');assert.match(badge.textContent,/ต้องตรวจสภาพรถก่อนเปิดรับงาน/);checks+=2;
+ select.value='vehicle';select.onchange();await tick();badge=w.document.querySelector('[data-online-readiness]');assert.equal(badge.dataset.onlineReadiness,'blocked');assert.match(badge.textContent,/รถที่เลือกยังไม่ผ่านอนุมัติ/);checks+=2;
+ vehicleSelected=false;select.onchange();await tick();badge=w.document.querySelector('[data-online-readiness]');assert.equal(badge.dataset.onlineReadiness,'clear');assert.match(badge.textContent,/ไม่ใช่รถที่เลือกใช้งาน/);checks+=2;
+ select.value='documents';select.onchange();await tick();badge=w.document.querySelector('[data-online-readiness]');assert.equal(badge.dataset.onlineReadiness,'blocked');assert.match(badge.textContent,/บัตรประชาชน 2026-01-01/);checks+=2;
+ documentsExpired=false;select.onchange();await tick();badge=w.document.querySelector('[data-online-readiness]');assert.equal(badge.dataset.onlineReadiness,'clear');assert.match(badge.textContent,/ไม่มีเอกสารที่หมดอายุ/);checks+=2;
+ const code=fs.readFileSync('admin/operations.js','utf8');assert(!code.includes('set_rider_availability'));assert(!code.includes('qg_private'));assert.match(code,/ห้าม force-enable/);checks+=3;
+ const before=calls.length;user={...user,type:'customer'};w.qgRenderAdminOperations('admin-rider-review');await tick();assert.equal(calls.length,before);assert(nav.includes('login'));checks+=2;
+ dom.window.close();
+ console.log(JSON.stringify({checks,failures:0,scope:'Admin Rider online readiness explanation reuses existing review page and mirrors server online blockers without force-enable'}));
+})().catch(e=>{console.error(e);process.exit(1)});

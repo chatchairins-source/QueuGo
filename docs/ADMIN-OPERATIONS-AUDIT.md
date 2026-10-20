@@ -56,7 +56,7 @@ Implemented distinguishes existing main features from staged source. View/contro
 | Rider vehicles | Live backend + staged UI | new Rider review screen | approve/reject existing vehicles | qg_admin_rider_vehicle_queue/review_rider_vehicle | source audit | complete service capability UI |
 | Rider document expiry | Live backend + staged UI | new Rider review screen | set/clear verified expiry | qg_admin_rider_document_queue/set_rider_document_expiry | source audit | paged queues and real-document acceptance |
 | Public driving licence | Staged Ride | Ride module, backend readiness shown | existing review after deployment | queuego_admin_public_licenses/review_public_license | staged audited review | Production RPCs/release gate |
-| Online eligibility/availability | Main + staged | saved presence/status; review prerequisites | account/review controls, no forced bypass | server online gates | source audit | one operational eligibility explanation per service |
+| Online eligibility/availability | Main + staged | saved presence/status; Rider review rows now explain the four server-enforced base blockers | account/review controls, no forced bypass | server online gates + qg_admin_rider_review_page | source audit | device-side readiness evidence and additional service-specific gates |
 | Food/Market/Grocery capabilities | Main + staged | incomplete | incomplete | existing dispatcher eligibility | source-specific | service capability editor with authoritative guards |
 | Ride/Express capabilities | Staged | job screens/review where available | no unsafe force-enable | existing staged driver/vehicle/licence guards | staged | Production controlled activation |
 | Laundry platform Rider | Main optional flow | bounded Laundry jobs | no forced assignment | existing Laundry invitation/acceptance | existing events | operational platform option UI |
@@ -194,3 +194,12 @@ The successor separates Content and Pricing from Settings using existing banner/
 - AUDIT HARDENING: existing program tables had no audit trigger. Rollback rehearsal passed with synthetic insert/update/delete and redaction sentinels, then Production migration `20261020030951 admin_rider_program_audit` was applied. Three triggers are present and direct anon/authenticated/PUBLIC EXECUTE on the private trigger function is denied. Insurance policy number, coverage summary, support phone/URL and Benefit action URL are never copied into Audit Log metadata.
 - TEST: dedicated DOM/source regression covers existing RPC names, read-vs-mutation separation, bounded Rider selector, non-Admin denial and redaction contract. Exact full RC/mobile WebKit remains required.
 - RELEASE GATES UNCHANGED: provider-backed refund, Credit/Top-up activation, Ride cutover, worker/device-delivery evidence and authenticated physical-device acceptance remain blocked from bypass. Whole Admin mission remains IN PROGRESS.
+
+
+## 2026-10-20 Admin Rider online-readiness checkpoint
+- BASE: PR #474 exact source `ccb5d80a862f524aa8d0bc428abcfdeccf6fe985` passed RC #2260/run `39362964572`, merged to main `c1742d8aaa5d4bd7cccc300ae62a44497e080f3f`; Pages #1473 deployed that exact merge SHA successfully.
+- VERIFIED SERVER RULES: Production online triggers block required/pending/rejected identity re-verification, required/pending/rejected vehicle inspection, a selected non-approved non-legacy vehicle, and expired national ID / driver licence / selected-vehicle PRB.
+- IMPLEMENTED: the existing Admin Rider review screen now labels each visible review row as blocking or not blocking the base online gate and explains why. It reuses the existing paged `qg_admin_rider_review_page`; no extra request or new backend authority is introduced.
+- DEVICE BOUNDARY: the Native readiness card also checks network, Firebase configuration, notifications, location permission/service, Google Maps and overlay return. Those are device-side and Admin cannot truthfully certify them from server state, so the Web screen says so instead of inventing a green status.
+- SAFETY: no `set_rider_availability`, no metadata force-enable, no `qg_private` browser read, no Ride/Express/Laundry gate bypass.
+- TEST: dedicated runtime regression covers all four server blocker categories, clear states, page-size reuse, no force-online symbol and non-Admin denial. Exact-head RC/mobile WebKit remains required before merge.
