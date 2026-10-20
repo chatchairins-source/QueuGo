@@ -17,5 +17,9 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  summary={...summary,enabled:false};host.querySelector('[data-refresh]').click();await new Promise(r=>setTimeout(r,20));eq(host.querySelector('form').hidden,true);
  // Provider data is text, never HTML; hostile URLs never become image sources.
  summary={...summary,enabled:true,entries:[{event_type:'<img src=x onerror=alert(1)>',cash_delta:0,promo_delta:0}],topups:[]};host.querySelector('[data-refresh]').click();await new Promise(r=>setTimeout(r,20));eq(host.querySelectorAll('[onerror]').length,0);
+ // Merchant and Rider pages must keep the shared credit surface mounted; later UI rewrites must not orphan top-up again.
+ const merchant=fs.readFileSync('merchant/index.html','utf8'),rider=fs.readFileSync('rider/index.html','utf8');
+ eq(merchant.includes('../queuego-credit.js')&&merchant.includes("kind:'merchant',owner:u.id"),true);
+ eq(rider.includes('../queuego-credit.js')&&rider.includes("kind:'rider',owner:S.user.id"),true);
  dom.window.close();console.log('Credit Web: '+checks+' checks PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});
