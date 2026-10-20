@@ -95,6 +95,7 @@ function navMatchRoute(route,point,{bearing=null,speed=null,previousProgress=nul
   const spd=navHasNumber(speed)&&Number(speed)>=0?Number(speed):null;
   const travelBearing=spd!=null&&spd>=2&&navHasNumber(bearing)?navNormalizeBearing(Number(bearing)):null;
   const priorProgress=navHasNumber(previousProgress)?Number(previousProgress):null;
+  const forwardAllowance=priorProgress==null?null:(spd==null?120:Math.max(80,spd*12+60));
   for(const [partIndex,part] of navRouteParts(route).entries()){
     let walked=0,total=0;
     const lengths=[];
@@ -105,12 +106,16 @@ function navMatchRoute(route,point,{bearing=null,speed=null,previousProgress=nul
       const progress=walked+leg*p.fraction;
       const segmentBearing=navBearing(part[i],part[i+1]);
       const headingDelta=travelBearing==null?null:Math.abs(navShortestDelta(travelBearing,segmentBearing));
+      // While the Rider is moving, never snap onto an adjacent carriageway or a future
+      // U-turn leg that points against the live course. Wait for the real turn instead.
+      if(headingDelta!=null&&headingDelta>105){walked+=leg;continue}
       const headingPenalty=headingDelta==null?0:
-        headingDelta<=35?headingDelta*.08:
-        headingDelta<=75?2.8+(headingDelta-35)*.35:
-        16.8+(headingDelta-75)*1.4;
-      const backtrack=priorProgress==null?0:Math.max(0,priorProgress-progress-35);
-      const continuityPenalty=backtrack*2.5;
+        headingDelta<=30?headingDelta*.05:
+        headingDelta<=60?1.5+(headingDelta-30)*.25:
+        9+(headingDelta-60)*.9;
+      const backtrack=priorProgress==null?0:Math.max(0,priorProgress-progress-20);
+      const forwardJump=forwardAllowance==null?0:Math.max(0,progress-priorProgress-forwardAllowance);
+      const continuityPenalty=backtrack*3.2+forwardJump*1.35;
       const score=p.distance+headingPenalty+continuityPenalty;
       if(!best||score<best.score){
         best={part,partIndex,snapped:p.point,offRouteMeters:p.distance,progressMeters:progress,geometryDistanceMeters:total,segmentBearingDegrees:segmentBearing,headingDeltaDegrees:headingDelta,score};
