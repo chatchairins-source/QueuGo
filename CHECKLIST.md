@@ -736,3 +736,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - REQUEST BOUNDS UNCHANGED: inbox 200/201 + selected thread 100/101 keyset pages; no extra table, no new poller, no interval reduction, no full hydrate.
 - TEST: existing `admin-support-runtime.cjs` now locks history/draft suppression, newest-idle fallback, hidden-route suppression and stale-actor fencing.
 - NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue remaining safe Admin source gaps. Whole Admin mission remains IN PROGRESS.
+
+## 2026-10-20 Admin Support global inbox index
+- BASE: stacked successor of PR #479 HEAD b232595212a3dcf817ee503f879fd781ff517e43; branch work-web-admin-support-inbox-index-20261020.
+- QUERY CONTRACT: Support inbox reads newest 200/201 rows globally with ORDER BY created_at DESC, id DESC; thread paging already has a shop-leading index.
+- PRODUCTION BEFORE: indexes are PK(id), sender_user_id, and (shop_user_id, created_at); there is no global recent-inbox order index. Current table is tiny and planner correctly uses Seq Scan+Sort, so this is scale hardening rather than a claim of current latency gain.
+- SOURCE: additive migration 20261020041000_admin_support_inbox_paging_index.sql adds shop_support_messages_recent_idx(created_at DESC,id DESC); no RLS/grant/data/poller change.
+- ROLLBACK REHEARSAL: Production subtransaction created a temporary equivalent index and deliberately rolled it back; verification returned rehearsal_index_left=0.
+- TEST: existing Support runtime locks the migration/index name and exact column order.
+- NEXT: parent PR #479 must merge/Pages first; then validate this successor, apply migration through Supabase migration tooling only after exact source gate, verify index/advisors, merge/Pages/post-merge RC.
