@@ -745,3 +745,7 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - ROLLBACK REHEARSAL: Production subtransaction created a temporary equivalent index and deliberately rolled it back; verification returned rehearsal_index_left=0.
 - TEST: existing Support runtime locks the migration/index name and exact column order.
 - NEXT: parent PR #479 must merge/Pages first; then validate this successor, apply migration through Supabase migration tooling only after exact source gate, verify index/advisors, merge/Pages/post-merge RC.
+
+- PRODUCTION APPLY: Supabase migration tool applied version 20261020041534 / name admin_support_inbox_paging_index successfully.
+- VERIFY: pg_indexes now reports shop_support_messages_recent_idx as btree (created_at DESC, id DESC). No data/RLS/grant change occurred.
+- RELEASE STATE: source migration filename remains 20261020041000_admin_support_inbox_paging_index.sql; applied Supabase version is recorded above because the migration service assigned the live version timestamp.
