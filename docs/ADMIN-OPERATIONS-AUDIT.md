@@ -244,3 +244,11 @@ The successor separates Content and Pricing from Settings using existing banner/
 - Inbox/thread request limits and keyset paging are unchanged; no background full hydrate, new timer, DB/RLS/grant/schema change, or realtime publication change.
 - Existing Support runtime regression now verifies old-page and draft suppression plus one bounded newest-idle refresh.
 - Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit/Pages required before merge.
+
+## 2026-10-20 Admin Support inbox-index candidate
+- Stacked on PR #479 exact HEAD b232595212a3dcf817ee503f879fd781ff517e43.
+- The global inbox query is shop_support_messages ORDER BY created_at DESC,id DESC LIMIT 201; Production currently has no index beginning with created_at.
+- Current Production has only a tiny Support dataset, so EXPLAIN currently chooses Seq Scan + Sort at low cost. This checkpoint is future-scale alignment, not fabricated current-speed evidence.
+- Candidate migration adds only shop_support_messages_recent_idx(created_at DESC,id DESC). Thread index behavior is unchanged; no grants/RLS/data writes or Realtime publication changes.
+- Rollback rehearsal succeeded without leaving the rehearsal index behind.
+- Apply/verify the real migration only after parent merge and exact successor source gate.
