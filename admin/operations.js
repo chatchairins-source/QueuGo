@@ -1,7 +1,7 @@
 /* Reuse authoritative Orders, Rider review RPCs, Ride and Credit flows. No client state/financial bypass. */
 (()=>{
 'use strict';
-const readRpc=(fn,args={})=>typeof qgAdminRpcRead==='function'?qgAdminRpcRead(fn,args):qtSupabaseRpc(fn,args);
+const qgAdminOpsReadRpc=(fn,args={})=>typeof qgAdminRpcRead==='function'?qgAdminRpcRead(fn,args):qtSupabaseRpc(fn,args);
 const permitted=()=>currentUser()?.type==='admin'&&currentUser()?.status==='approved';
 const reviewQueues={
  identity:{title:'ยืนยันตัวตน',rpc:'qg_admin_rider_reverification_queue',review:'qg_admin_review_rider_reverification',request:'qg_admin_request_rider_reverification',photo:'selfie_path'},
@@ -34,7 +34,7 @@ async function load(page){
    host.innerHTML='<section class="card" id="qg-dispatch-overview">กำลังอ่าน targeted offers…</section><div id="qg-dispatch-orders"></div>';
    await Promise.all([dispatchOverview(host.querySelector('#qg-dispatch-overview'),alive),jobs(null,host.querySelector('#qg-dispatch-orders'),alive)]);
   }else if(page==='admin-system'){
-   const summary=await readRpc('qg_admin_live_counts',{});if(!alive())return;host.replaceChildren();
+   const summary=await qgAdminOpsReadRpc('qg_admin_live_counts',{});if(!alive())return;host.replaceChildren();
    const p=document.createElement('p');p.textContent='ร้านเปิด '+Number(summary.shops_open||0)+' · Rider ออนไลน์ '+Number(summary.riders_online||0);host.append(p);
    const note=document.createElement('p');note.textContent='จำนวนนี้เป็นสถานะที่บันทึกในระบบ ยังไม่ใช่หลักฐานว่า Push, GPS หรือ worker ทำงานปกติ';host.append(note);
    for(const [key,value]of Object.entries(summary.orders||{})){const line=document.createElement('p');line.textContent=key+' · '+Number(value);host.append(line)}
@@ -45,7 +45,7 @@ async function load(page){
  finally{if(refresh?.isConnected)refresh.disabled=false}
 }
 async function dispatchOverview(host,alive){
- try{const report=await readRpc('qg_admin_dispatch_overview',{p_limit:100});if(!alive()||!host.isConnected)return;
+ try{const report=await qgAdminOpsReadRpc('qg_admin_dispatch_overview',{p_limit:100});if(!alive()||!host.isConnected)return;
   if(!report||!Array.isArray(report.offers)||!Array.isArray(report.history)||!Array.isArray(report.bundles))throw Error('ข้อมูล Dispatch ไม่ครบ');
   host.replaceChildren();const label=document.createElement('label'),select=document.createElement('select'),list=document.createElement('div'),stamp=document.createElement('p');label.textContent='สถานะการจัดสรรงาน ';label.append(select);stamp.textContent='อ่านล่าสุด '+new Date(report.as_of).toLocaleString('th-TH')+' · สูงสุด 100 รายการต่อหมวด';
   for(const [key,title]of [['offers','Targeted offers'],['history','ผลตอบรับ / timeout'],['bundles','งานพ่วง']]){const option=document.createElement('option');option.value=key;option.textContent=title+' ('+report[key].length+')';select.append(option)}
@@ -56,7 +56,7 @@ async function dispatchOverview(host,alive){
 }
 async function notificationHealth(host,alive){
  host.textContent='กำลังอ่านสถานะคิวแจ้งเตือน…';
- try{const report=await readRpc('qg_admin_notification_health',{});if(!alive()||!host.isConnected)return;
+ try{const report=await qgAdminOpsReadRpc('qg_admin_notification_health',{});if(!alive()||!host.isConnected)return;
   if(!report||!Array.isArray(report.channels))throw Error('ข้อมูลคิวแจ้งเตือนไม่ครบ');host.replaceChildren();const title=document.createElement('h3'),note=document.createElement('p');title.textContent='คิวแจ้งเตือน';note.textContent='pending/leased รวมงานค้างทั้งหมด · sent/dead เฉพาะ 7 วันล่าสุด · ไม่ใช่หลักฐานว่าเครื่องผู้ใช้ได้รับแล้ว';host.append(title,note);
   for(const row of report.channels){const line=document.createElement('p');line.textContent=row.channel+' · '+row.status+' · '+Number(row.n)+' รายการ · ถึงเวลาลองส่ง '+Number(row.due)+(row.oldest?' · เก่าสุด '+new Date(row.oldest).toLocaleString('th-TH'):'');host.append(line)}
   if(!report.channels.length){const empty=document.createElement('p');empty.textContent='ไม่พบงานค้างหรือรายการในช่วงที่ตรวจ';host.append(empty)}
@@ -77,7 +77,7 @@ async function loadReview(kind,alive,requestedOffset){
  const q=reviewQueues[kind],host=document.getElementById('qg-review-list');if(!q||!host||!alive())return;
  const offset=Number.isInteger(requestedOffset)?Math.max(0,requestedOffset):Math.max(0,reviewOffsets[kind]||0);reviewOffsets[kind]=offset;host.textContent='กำลังโหลดงานตรวจ…';
  try{
-  const report=await readRpc('qg_admin_rider_review_page',{p_kind:kind,p_limit:reviewPageSize,p_offset:offset});
+  const report=await qgAdminOpsReadRpc('qg_admin_rider_review_page',{p_kind:kind,p_limit:reviewPageSize,p_offset:offset});
   if(!alive()||!host.isConnected||document.getElementById('qg-review-kind')?.value!==kind)return;
   if(!report||!Array.isArray(report.items))throw Error('ข้อมูลคิวตรวจ Rider ไม่ครบ');
   const rows=report.items;if(!rows.length&&offset>0){reviewOffsets[kind]=Math.max(0,offset-reviewPageSize);return loadReview(kind,alive,reviewOffsets[kind])}
