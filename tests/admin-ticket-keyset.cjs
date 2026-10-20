@@ -41,7 +41,7 @@ const tick=async()=>{for(let i=0;i<14;i++)await new Promise(r=>setImmediate(r))}
  // Old-account response must not repaint the modal.
  holdNext=true;calls=[];const before=w.document.querySelector('.qg-content').textContent;const pending=w.qgAdminLoadTickets();await tick();actor={id:uid(9),type:'customer',status:'approved'};assert.equal(typeof releaseHeld,'function');releaseHeld();await pending;await tick();assert.equal(w.document.querySelector('.qg-content').textContent,before);checks+=2;
  assert(!block.includes('limit=200'));assert(!block.includes('offset='));checks+=2;
- const sql=fs.readFileSync('supabase/migrations/20261020042500_admin_ticket_paging_index.sql','utf8');
+ const sql=fs.readFileSync('supabase/migrations/20261020042804_admin_ticket_paging_index.sql','utf8');
  assert(sql.includes('qg_support_tickets_recent_idx'));assert(/\(created_at desc, id desc\)/i.test(sql));checks+=2;
  d.window.close();
  console.log(JSON.stringify({checks,failures:0,scope:'Admin complaint tickets use 100/101 keyset paging, preserve cursor after mutation, fence stale accounts and lock global recent-ticket index'}));
