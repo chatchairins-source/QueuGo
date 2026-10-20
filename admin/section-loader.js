@@ -11,8 +11,9 @@ function stopStale(all=false){
 }
 window.qgAdminClearReadCache=function(){readEpoch++;reads.clear()};
 window.qgAdminRead=async function(path,options,read){
- if(String(options.method||'GET').toUpperCase()!=='GET'){window.qgAdminClearReadCache();try{return await read()}finally{window.qgAdminClearReadCache()}}
- const key=String(options.accessToken||'')+':'+path,entry=reads.get(key);
+ const method=String(options.method||'GET').toUpperCase(),readOnly=method==='GET'||options.readOnly===true;
+ if(!readOnly){window.qgAdminClearReadCache();try{return await read()}finally{window.qgAdminClearReadCache()}}
+ const key=String(options.accessToken||'')+':'+method+':'+path,entry=reads.get(key);
  if(entry?.pending&&entry.scope!==readScope()){entry.controller.abort();reads.delete(key)}
  else if(entry&&(entry.pending||Date.now()-entry.at<5000))return entry.promise;
  const version=readEpoch,controller=new AbortController(),release=track(controller),item={at:Date.now(),pending:true,scope:readScope(),controller};
