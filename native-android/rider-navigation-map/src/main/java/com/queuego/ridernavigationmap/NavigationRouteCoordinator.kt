@@ -195,7 +195,7 @@ class NavigationRouteCoordinator(
         val match = matchNavigationRoute(
             segment = leg.segment,
             point = fix.point,
-            bearingDegrees = fix.bearingDegrees,
+            bearingDegrees = navigationUsableGpsBearing(fix),
             speedMetersPerSecond = fix.speedMetersPerSecond,
             previousProgressMeters = visibleProgressMeters
         ) ?: return current
