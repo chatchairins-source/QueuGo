@@ -98,3 +98,11 @@ Implemented distinguishes existing main features from staged source. View/contro
 - Directory paging exposed an old broadcast dependency on the full user cache. Broadcast now pages recipients200 at a time, bulk-inserts durable per-notification UUIDs with ignore-duplicates, and persists cursor only after acknowledgement. Lost replies retry the same IDs. No live broadcast has been sent for testing.
 - Shop opening had a pre-existing block-scoped desired variable referenced after the successful write; fixed to preserve truthful post-commit UI.
 - Hosted b0abefb9 full npm passed. WebKit then failed a request-count assertion because the test did not wait for the directory navigation/page completion before taking its snapshot; the successor explicitly awaits the real page state and retains the strict no-refetch assertion with diagnostic request output.
+
+### Verified deployment and next source slice
+
+PR457/source42fcd824 passed RC2076/run39348758285 completely. Main827b34cd has the same tree04584c3b. Pages1459/run39349127341 succeeded. Actual HTTPS200 bytes for HTML and all five changed JS assets match that main exactly. Browser login renders and loads versioned Admin scripts; no authenticated Admin session is available, so no live mutation acceptance is claimed.
+
+The successful complete-document mobile WebKit run measured43→10 Supabase boot requests,3392→828ms ready and478→329ms visible shell using the same50ms/request localhost fixtures. This is not Production latency.
+
+The successor separates Content and Pricing from Settings using existing banner/platform controls, introduces a Catalog hub and paged/server-filtered read-only Market Master screen, orders navigation into the requested18 groups, and expands mobile WebKit across every actual route and governance section. Market Master mutations still require a guarded/audited backend; this source does not grant new direct-table writes.
