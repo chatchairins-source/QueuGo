@@ -683,3 +683,13 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - AUDIT: new redacted atomic audit trigger records Admin mutations without policy number, support contact/link, coverage text or benefit URL in `audit_logs`.
 - SAFETY: no mock program rows, no automatic Mission bonus/credit payout, no direct `qg_private` browser access, no service-role key, and no Credit/Ride/provider Release Gate bypass.
 - PRODUCTION: rollback rehearsal passed with insert/update/delete + redaction sentinels; migration `20261020030951 admin_rider_program_audit` is applied. Three triggers exist; direct anon/authenticated/PUBLIC EXECUTE on the private trigger function is denied; Missions/Benefits/Insurance remain 0 real rows.\n- NEXT: run focused/full tests + exact-head RC, then merge/Pages verification. Whole Admin mission remains IN PROGRESS.
+
+
+## 2026-10-20 Admin Rider online-readiness explanation
+- BASE: merged PR #474 / main `c1742d8aaa5d4bd7cccc300ae62a44497e080f3f`; branch `work-web-admin-rider-online-readiness-20261020`.
+- IMPLEMENTED SOURCE: existing Rider review queues now state whether each row is a blocker for the existing server online guards: identity re-verification, vehicle inspection, selected vehicle approval, and expired national ID / driver licence / selected-vehicle PRB.
+- NO NEW AUTHORITY: reuses `qg_admin_rider_review_page`; adds zero queries, zero polling, zero table/RPC/schema changes, and no `set_rider_availability` / force-online action.
+- DEVICE BOUNDARY: Network, Firebase, notification permission, GPS/location service, Google Maps and overlay-return readiness remain device-side evidence and are explicitly not claimed by Admin.
+- SERVICE BOUNDARY: Ride / Express / Laundry can have additional service-specific release gates; this view does not bypass them.
+- TEST: dedicated jsdom regression locks server-blocker labels, 50-row paging reuse, no private-table access and non-Admin denial.
+- NEXT: exact-head RC/mobile WebKit, merge/Pages, then continue remaining safe matrix gaps. Whole Admin mission remains IN PROGRESS.
