@@ -76,6 +76,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     var selected by rememberSaveable(auth.user.id) { mutableStateOf<String?>(initialOrderId) }
     var pending by remember(auth.user.id) { mutableStateOf<PendingRide?>(null) }
     var loaded by remember(auth.user.id) { mutableStateOf(false) }
+    var backendConfirmed by remember(auth.user.id) { mutableStateOf(false) }
     var enabled by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -95,11 +96,15 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                         pending = withContext(Dispatchers.IO) { journal.read() }
                         recovery.reconcile { api.state(auth,it.requestId).singleOrNull() }?.let { selected = it.id }
                         pending = withContext(Dispatchers.IO) { journal.read() }
-                        refresh(); loaded = true
+                        refresh(); backendConfirmed = true; loaded = true
                     }
                     error = null
                 } catch (e: CancellationException) { throw e }
-                catch (e: Exception) { error = e.message ?: "รอเชื่อมต่อเพื่ออ่านสถานะเที่ยว" }
+                catch (e: Exception) {
+                    loaded = true
+                    enabled = false
+                    error = if (backendConfirmed) e.message ?: "รอเชื่อมต่อเพื่ออ่านสถานะเที่ยว" else null
+                }
                 delay(5000)
             }
         }
