@@ -158,3 +158,11 @@ The successor separates Content and Pricing from Settings using existing banner/
 - PRODUCTION DB: migration `20261020022520 admin_audit_notification_paging_indexes` applied after rollback rehearsal. Added `audit_logs(created_at desc,id desc)` and `notifications(user_id,created_at desc,id desc)` indexes matching page filters/order. No RLS/grant changes.
 - TEST: section-loader regression now asserts 100/101 keyset queries, no OFFSET paging, older/newer cursor navigation, stable order, page metadata/functions, and both migration indexes. Exact successor full RC/mobile WebKit/Pages still required.
 - REMAINING SOURCE: read-only POST/RPC cancellation and audited safe controls that already have authoritative backend. Provider-backed refund/credit/top-up/Ride cutover, worker/device delivery evidence and physical authenticated acceptance remain Release Gates, not bypass targets.
+
+
+## 2026-10-20 Admin read-only RPC cancellation checkpoint
+- BASE: successor of PR467 keyset-history HEAD `36a9cc6c111127ddce1b0f4147f2fee375c30f74`; do not reuse the earlier stale RPC-cancel branch.
+- IMPLEMENTED: `qtSupabaseRpc` accepts an optional AbortSignal. A scoped `qgAdminRpcRead` routes only read-only POST/RPC requests through the existing coalescing/actor/route cancellation layer.
+- READ PATHS: System live counts, Dispatch overview, notification health, Rider review pages, Ride config/public-licence reads, and Credit account/merchant-target reads now cancel when their Admin scope becomes stale.
+- MUTATION SAFETY: Rider review/request actions, Ride configuration/review writes, credit grant/reversal and all other POST mutations stay on normal RPC calls and are never aborted by route changes.
+- TEST: section-loader regression asserts a stale read-only RPC is aborted while the existing mutation test completes without receiving a cancellation signal. Exact RC/mobile WebKit still required before merge.
