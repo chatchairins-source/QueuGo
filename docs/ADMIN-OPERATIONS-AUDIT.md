@@ -278,3 +278,12 @@ The successor separates Content and Pricing from Settings using existing banner/
 - Live/source-aligned migration `20261020044510_admin_ugc_report_paging.sql` installs `qg_ugc_reports_recent_idx(created_at DESC,id DESC)`; existing status/reported-user indexes remain.
 - Production currently has 0 UGC reports, so this is bounded-history/security-preserving capacity work rather than a fabricated speed claim.
 - Rollback rehearsal on Production passed with a real active Admin/live session: page contract valid, incomplete cursor rejected with 22023, anon wrapper/private EXECUTE denied, authenticated public wrapper EXECUTE present, and rollback left no candidate functions/index.\n- Production apply verified: migration `20261020044510 admin_ugc_report_paging` is live; public wrapper is SECURITY INVOKER, private reader is SECURITY DEFINER, anon/PUBLIC EXECUTE are denied, authenticated EXECUTE is present, and the global recent-report index matches source.
+
+## 2026-10-20 Admin GP payload checkpoint
+- Base is merged PR #482 main b4284e3526923426e620500596d04cfae942978b.
+- GP daily calculation still needs all qualifying orders for the selected day because the browser currently computes per-shop totals; this checkpoint does not invent a new financial aggregate RPC.
+- The avoidable unbounded reads were shop_profiles and daily settlements. Candidate scopes both to shop IDs observed in the already-loaded daily orders, batching at <=200 IDs.
+- Existing GP calculation and mutation authority are untouched. Cash remains on existing admin_cash_report and is not duplicated.
+- Generation/owner/date fencing prevents stale async reads from painting after an Admin/date change.
+- Dedicated runtime regression forces 201 shops, checks two bounded batches and verifies the same totals plus stale-response suppression.
+- Whole Admin mission remains IN PROGRESS; exact-head RC/mobile WebKit/Pages required before merge.
