@@ -26,7 +26,7 @@ const tick=async()=>{for(let i=0;i<16;i++)await new Promise(r=>setImmediate(r))}
  calls=[];w.location.hash='#admin';timers[0].fn();await tick();assert.equal(calls.length,0);checks++;
  w.location.hash='#admin-support';gate=new Promise(r=>release=r);const task=w.qgLoadAdminSupport();await tick();actor={id:uid(3),type:'customer',status:'approved'};release();await task;assert(!w.document.getElementById('qg-support-status').textContent.includes('แสดงข้อความ'));checks++;gate=null;calls=[];await w.qgLoadAdminSupport();assert.equal(calls.length,0);checks++;
  assert(html.includes('qgAdminSupportCanAutoRefresh'));assert(html.includes('if(inboxCursor||threadCursor)return false'));checks+=2;
- const indexSql=fs.readFileSync('supabase/migrations/20261020041000_admin_support_inbox_paging_index.sql','utf8');
+ const indexSql=fs.readFileSync('supabase/migrations/20261020041534_admin_support_inbox_paging_index.sql','utf8');
  assert(indexSql.includes('shop_support_messages_recent_idx'));assert(/\(created_at desc, id desc\)/i.test(indexSql));checks+=2;
  w.close();console.log(JSON.stringify({checks,failures:0,scope:'actual Support DOM, bounded inbox/thread server queries, keyset paging, newest-idle 60s fallback, draft/history suppression, stale-actor fencing and global inbox index contract; isolated'}));
 })().catch(e=>{console.error(e);process.exit(1)});
