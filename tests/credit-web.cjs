@@ -26,5 +26,9 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  eq(admin.includes("['money','เติมเครดิตฟรีร้านค้า','เพิ่มเครดิต GP ให้ร้านค้าที่อนุมัติแล้ว',\"navigate('admin-credit')\"]"),true);
  eq((admin.match(/navigate\('admin-credit'\)/g)||[]).length>=2,true);
  eq(adminCredit.includes("title.textContent='ให้เครดิตฟรีร้านค้า'")&&adminCredit.includes("'queuego_admin_grant_merchant_credit'"),true);
+ const creditMigration=fs.readFileSync('supabase/migrations/20261020234050_restore_credit_backend_admin_merchant_promo_20261021.sql','utf8');
+ eq(creditMigration.includes('create function public.queuego_admin_merchant_credit_targets')&&creditMigration.includes('create function public.queuego_admin_grant_merchant_credit'),true);
+ eq(creditMigration.includes('revoke all on function public.queuego_admin_grant_merchant_credit(uuid,uuid,bigint,text) from public,anon,service_role')&&creditMigration.includes('grant execute on function public.queuego_admin_grant_merchant_credit(uuid,uuid,bigint,text) to authenticated'),true);
+ eq(/insert\s+into\s+(?:public\.)?queuego_platform_rules/i.test(creditMigration),false);
  dom.window.close();console.log('Credit Web: '+checks+' checks PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});
