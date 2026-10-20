@@ -46,9 +46,19 @@ internal fun navigationCameraDecision(
         } else {
             0f
         }
+        val flatZoom = if (state.followRider) {
+            navigationZoom(
+                baseZoom = state.followZoom,
+                speedMetersPerSecond = speed,
+                remainingRouteMeters = null,
+                accuracyMeters = fix.accuracyMeters
+            )
+        } else {
+            state.followZoom.coerceIn(14, 20)
+        }
         return NavigationCameraDecision(
             center = fix.point,
-            zoom = state.followZoom.coerceIn(14, 20),
+            zoom = flatZoom,
             bearingDegrees = flatBearing,
             tiltDegrees = 0f,
             routeMatch = null,

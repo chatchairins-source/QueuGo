@@ -347,6 +347,7 @@ class NavigationCameraPolicyTest {
                 bearingDegrees = 210f,
                 speedMetersPerSecond = 0.5f
             ),
+            followRider = false,
             followZoom = 17
         )
         val decision = navigationCameraDecision(state, previousBearingDegrees = 92f)!!
@@ -373,6 +374,23 @@ class NavigationCameraPolicyTest {
         assertEquals(0f, decision.tiltDegrees, 0.001f)
         assertEquals(17, decision.zoom)
         assertEquals(state.rider!!.point, decision.center)
+    }
+
+    @Test fun onlineReadyHighSpeedZoomsOutWhileStayingTopDown() {
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(13.0, 100.0),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 20f
+            ),
+            followRider = true,
+            perspectiveCameraEnabled = false,
+            followZoom = 17
+        )
+        val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)!!
+        assertEquals(15, decision.zoom)
+        assertEquals(0f, decision.tiltDegrees, 0.001f)
     }
 
     @Test fun onlineReadyStandstillKeepsPreviousHeadingInsteadOfWobbling() {
