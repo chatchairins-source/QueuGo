@@ -30,7 +30,7 @@ const uid=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
     }
     if(path.startsWith('settlements?')){
       const ids=parseIds(path,'shop_id');
-      return ids.map(id=>({id:uid(7000+Number(id.slice(-3)||0)),shop_id:id,date_key:w.qgGpDay,status:'idle',amount:0,metadata:{}}));
+      return ids.map((id,index)=>({id:uid(7000+Number(id.slice(-3)||0)),shop_id:id,date_key:w.qgGpDay,status:index===0?'processing':'idle',amount:0,metadata:index===0?{slip_path:'fixture-slip.jpg'}:{}}));
     }
     throw Error('unexpected '+path);
   };
@@ -45,7 +45,11 @@ const uid=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   for(const c of settlementCalls){assert(c.path.includes('shop_id=in.('));assert(c.path.includes('&limit=200'));assert(parseIds(c.path,'shop_id').length<=200);checks+=3}
   assert(!profileCalls.some(c=>c.path==='shop_profiles?select=id,shop_name'));assert(!settlementCalls.some(c=>!c.path.includes('shop_id=in.(')));checks+=2;
   const firstText=w.document.getElementById('qg-gp-live').textContent;
-  assert(firstText.includes('ออเดอร์ 201'));assert(firstText.includes('2,010.00'));assert(firstText.includes('201.00'));checks+=3;
+  assert(firstText.includes('ยอดขายร้านรวม'));assert(firstText.includes('ค่าบริการ GP รวม'));assert(firstText.includes('ออเดอร์ที่เข้าเกณฑ์'));checks+=3;
+  assert(firstText.includes('201'));assert(firstText.includes('2,010.00'));assert(firstText.includes('201.00'));checks+=3;
+  assert(firstText.includes('รอตรวจสลิป'));assert(firstText.includes('รอร้านชำระ'));checks+=2;
+  const actionText=w.document.querySelector('.qg-live-gp-actions')?.textContent||'';
+  assert(actionText.includes('เปิดสลิป'));assert(actionText.includes('ยืนยันสลิปและรับ GP'));assert(actionText.includes('ตีกลับสลิป'));checks+=3;
 
   // Old day resolves after a newer day. It must not trigger old scoped reads or repaint.
   calls=[];holdNextOrder=true;oldOrderStarted=false;w.qgGpDay='2026-10-18';const old=w.qgLoadAdminGp();await tick();
@@ -56,6 +60,9 @@ const uid=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   assert.equal(calls.length,beforeRelease);assert(w.document.getElementById('qg-gp-live').textContent.includes('Fresh Shop'));assert(!w.document.getElementById('qg-gp-live').textContent.includes('Old Shop'));checks+=3;
 
   assert(m[1].includes('qgAdminGpLoadVersion'));assert(!m[1].includes("qtSupabaseTable('shop_profiles?select=id,shop_name',{accessToken:token})"));checks+=2;
+  assert(html.includes('ค่าบริการร้านค้า (GP)'));assert(html.includes('อัตราเฉพาะร้าน'));assert(html.includes('อัตราค่าบริการมาตรฐาน'));checks+=3;
+  assert(!html.includes('🎯 อัตราพิเศษ'));assert(!html.includes('โปรหมดอายุแล้ว'));checks+=2;
+  assert(html.includes('qg-gp-summary'));assert(html.includes('qg-gp-shop-card'));assert(html.includes('qg-gp-chip'));checks+=3;
   d.window.close();
-  console.log(JSON.stringify({checks,failures:0,scope:'Admin GP keeps daily financial math while scoping shop/settlement reads to actual day shop IDs in <=200 batches and fencing stale date/account responses'}));
+  console.log(JSON.stringify({checks,failures:0,scope:'Admin GP keeps daily financial math and scoped reads while presenting clearer merchant-fee language, status chips, slip actions and stale date/account fencing'}));
 })().catch(e=>{console.error(e);process.exit(1)});
