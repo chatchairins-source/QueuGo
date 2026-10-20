@@ -1,5 +1,6 @@
 package com.queuego.ridernavigationmap
 
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -13,13 +14,32 @@ data class NavigationRouteMatch(
     val segmentBearingDegrees: Float?
 )
 
-internal fun matchNavigationRoute(segment: NavigationRouteSegment, point: NavigationMapPoint): NavigationRouteMatch? {
+internal fun matchNavigationRoute(
+    segment: NavigationRouteSegment,
+    point: NavigationMapPoint,
+    bearingDegrees: Float? = null,
+    speedMetersPerSecond: Float? = null,
+    previousProgressMeters: Double? = null
+): NavigationRouteMatch? {
     if (!segment.renderable || !point.valid) return null
+    val speed = speedMetersPerSecond?.takeIf { it.isFinite() && it >= 0f }
+    val travelBearing = bearingDegrees
+        ?.takeIf { it.isFinite() && speed != null && speed >= 2f }
+        ?.let(::normalizeNavigationBearing)
+    val forwardAllowance = previousProgressMeters?.let {
+        if (speed == null) 120.0 else maxOf(80.0, speed.toDouble() * 12.0 + 60.0)
+    }
+
+    var bestScore = Double.POSITIVE_INFINITY
     var bestDistance = Double.POSITIVE_INFINITY
     var bestPoint: NavigationMapPoint? = null
     var bestProgress = 0.0
     var bestBearing: Float? = null
     var walked = 0.0
+    var total = 0.0
+    for (index in 0 until segment.points.lastIndex) {
+        total += navigationHaversineMeters(segment.points[index], segment.points[index + 1])
+    }
 
     for (index in 0 until segment.points.lastIndex) {
         val a = segment.points[index]
@@ -27,17 +47,49 @@ internal fun matchNavigationRoute(segment: NavigationRouteSegment, point: Naviga
         val segmentMeters = navigationHaversineMeters(a, b)
         if (segmentMeters <= 0.01) continue
         val projection = projectNavigationPoint(point, a, b)
-        if (projection.distanceMeters < bestDistance) {
+        val progress = walked + segmentMeters * projection.fraction
+        val segmentBearing = navigationBearingDegrees(a, b)
+        val headingDelta = travelBearing?.let {
+            abs(navigationShortestBearingDelta(it, segmentBearing))
+        }
+
+        // At riding speed, an opposite-direction segment is a different carriageway or
+        // a future U-turn leg. Do not pull the Rider across the median just because GPS
+        // happens to be a few meters closer to that geometry.
+        if (headingDelta != null && headingDelta > 105f) {
+            walked += segmentMeters
+            continue
+        }
+
+        val headingPenalty = when {
+            headingDelta == null -> 0.0
+            headingDelta <= 30f -> headingDelta * 0.05
+            headingDelta <= 60f -> 1.5 + (headingDelta - 30f) * 0.25
+            else -> 9.0 + (headingDelta - 60f) * 0.9
+        }
+        val backtrack = previousProgressMeters?.let {
+            (it - progress - 20.0).coerceAtLeast(0.0)
+        } ?: 0.0
+        val forwardJump = if (previousProgressMeters != null && forwardAllowance != null) {
+            (progress - previousProgressMeters - forwardAllowance).coerceAtLeast(0.0)
+        } else 0.0
+        val score = projection.distanceMeters +
+            headingPenalty +
+            backtrack * 3.2 +
+            forwardJump * 1.35
+
+        if (score < bestScore) {
+            bestScore = score
             bestDistance = projection.distanceMeters
             bestPoint = projection.point
-            bestProgress = walked + segmentMeters * projection.fraction
-            bestBearing = navigationBearingDegrees(a, b)
+            bestProgress = progress
+            bestBearing = segmentBearing
         }
         walked += segmentMeters
     }
 
     val snapped = bestPoint ?: return null
-    return NavigationRouteMatch(snapped, bestDistance, bestProgress, walked, bestBearing)
+    return NavigationRouteMatch(snapped, bestDistance, bestProgress, total, bestBearing)
 }
 
 private data class NavigationProjection(
