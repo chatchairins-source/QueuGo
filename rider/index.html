@@ -97,6 +97,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-cash-confirm-dock>small{display:block;margin-top:10px;text-align:center;color:#9b9598;font-size:9px;font-weight:750}
 @media(max-height:700px){.qg-cash-confirm-main{padding-top:34px}.qg-cash-visual{margin-bottom:22px}.qg-cash-confirm-amount{font-size:48px}}
 </style>
+<link rel="stylesheet" href="../queuego-credit.css">
+<script src="../queuego-credit.js"></script>
 </head><body>
 <div id="app"></div><div id="toast" class="toast"></div>
 <script>/* =========================================================================
@@ -2720,7 +2722,8 @@ window.qgRenderEarnings=function(){
      panel.querySelectorAll('[data-days]').forEach(x=>x.classList.toggle('active',x===b));
      const days=Number(b.dataset.days);qgLoadRiderPeriod(days);qgLoadRiderLedger(days);
    });
-   qgLoadRiderPeriod(1);qgLoadRiderLedger(1);
+   {const creditShell=panel.querySelector('.qg-earn-shell');if(creditShell&&window.QueueGoCredit?.mount&&S?.user?.id){const creditHost=document.createElement('div');creditShell.prepend(creditHost);Promise.resolve(QueueGoCredit.mount(creditHost,{kind:'rider',owner:S.user.id,getToken:getAccessToken,base:SB.URL,key:SB.KEY})).catch(err=>console.warn('rider credit surface failed',err))}}
+    qgLoadRiderPeriod(1);qgLoadRiderLedger(1);
  };
  const day=d=>{const x=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return x.year+'-'+x.month+'-'+x.day};
  const baht=n=>'฿'+Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
