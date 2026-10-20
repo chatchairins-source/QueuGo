@@ -16,6 +16,10 @@
 
 <script src="../queuego-order-number.js"></script>
 <link rel="stylesheet" href="admin-banners.css?v=20261008-banner1">
+
+<style id="qg-admin-gp-polish">
+.qg-live-gp{display:grid;gap:16px;max-width:1100px;margin:auto}.qg-gp-heading{padding:22px 24px;border-radius:20px;background:linear-gradient(125deg,#fff4f2,#fff);border:1px solid #f4d9d5}.qg-gp-heading h2{margin:6px 0 8px;font-size:clamp(23px,3vw,30px);letter-spacing:-.035em;color:#25272c}.qg-gp-heading p{margin:0;color:#69717e;line-height:1.65}.qg-gp-eyebrow{font-size:12px;font-weight:800;letter-spacing:.06em;color:#c73836}.qg-live-gp-card{border:1px solid #e9eaf0;border-radius:18px;padding:18px;background:#fff;box-shadow:0 5px 20px rgba(30,40,60,.045)}.qg-gp-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.qg-gp-summary>div{display:grid;gap:7px;padding:16px;background:#f7f8fa;border-radius:13px}.qg-gp-summary span,.qg-gp-shop-values span{font-size:13px;color:#707785}.qg-gp-summary strong{font-size:clamp(18px,2.5vw,27px);color:#242a35;font-variant-numeric:tabular-nums}.qg-gp-shop-title,.qg-gp-shop-values{display:flex;justify-content:space-between;align-items:center;gap:12px}.qg-gp-shop-title{margin-bottom:14px}.qg-gp-shop-title strong{font-size:17px}.qg-gp-shop-title>span{font-size:12px;color:#7b8190}.qg-gp-shop-values{padding:12px 0;border-top:1px solid #edf0f3;border-bottom:1px solid #edf0f3;margin-bottom:10px}.qg-gp-shop-values>div{display:grid;gap:4px}.qg-gp-shop-values b{font-variant-numeric:tabular-nums;font-size:17px}.qg-live-gp-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}@media(max-width:560px){.qg-gp-summary{grid-template-columns:1fr}.qg-gp-heading{padding:18px}.qg-live-gp-card{padding:14px}}
+</style>
 </head>
 <body>
 
@@ -1763,7 +1767,7 @@ window.addEventListener('unhandledrejection',e=>{
   window.qgGpDay=day();
   window.renderAdminGpSettlement=function(){
     const u=currentUser();if(!u||u.type!=='admin'){navigate('login');return;}
-    layout('GP ร้านค้า',`<div class="qg-live-gp"><h2>GP ร้านค้า</h2><p>GP คือค่าบริการร้านค้า ไรเดอร์จ่ายเงินสดค่าสินค้าให้ร้าน และเก็บเงินจากลูกค้าเอง</p>
+    layout('ค่าบริการ GP ร้านค้า',`<div class="qg-live-gp"><div class="qg-gp-heading"><span class="qg-gp-eyebrow">การเงินร้านค้า</span><h2>สรุปค่าบริการ GP</h2><p>ตรวจสอบยอดขาย ค่าบริการแพลตฟอร์ม และสถานะการชำระเงินของแต่ละร้าน</p></div>
       <label>เลือกวันที่ <input id="qg-gp-date" type="date" value="${escapeHtml(window.qgGpDay)}" onchange="qgGpDay=this.value;qgLoadAdminGp()"></label>
       <div id="qg-gp-live">กำลังดึงข้อมูลจากฐานข้อมูล...</div></div>`);
     qgLoadAdminGp();
@@ -1787,9 +1791,9 @@ window.addEventListener('unhandledrejection',e=>{
       const names=new Map(shops.map(s=>[s.id,s.shop_name]));const per=new Map();
       for(const o of orders){const x=per.get(o.shop_id)||{sales:0,gp:0,count:0};x.sales+=Number(o.subtotal||0);x.gp+=Number(o.gp_amount??Math.round(Number(o.subtotal||0)*Number(o.gp_rate??10))/100);x.count++;per.set(o.shop_id,x);}
       const totals=[...per.values()].reduce((a,x)=>({sales:a.sales+x.sales,gp:a.gp+x.gp,count:a.count+x.count}),{sales:0,gp:0,count:0});
-      box.innerHTML=`<div class="qg-live-gp-card"><b>รายได้ทั้งหมด ฿${money(totals.sales)}</b><br>ออเดอร์ ${totals.count} · GP ที่เกิดขึ้นจริง ฿${money(totals.gp)}<br><small>นับเฉพาะออเดอร์ที่ไรเดอร์รับสินค้าแล้ว โดยจัดวันตามวันที่สั่งซื้อ</small></div>`;
+      box.innerHTML=`<div class="qg-live-gp-card"><div class="qg-gp-summary"><div><span>ยอดขายสินค้า</span><strong>฿${money(totals.sales)}</strong></div><div><span>ค่าบริการ GP</span><strong>฿${money(totals.gp)}</strong></div><div><span>ออเดอร์ที่นับ GP</span><strong>${totals.count}</strong></div></div><br><small>นับเฉพาะออเดอร์ที่ไรเดอร์รับสินค้าแล้ว โดยจัดวันตามวันที่สั่งซื้อ</small></div>`;
       for(const [id,x] of per){const settlement=settlements.find(s=>s.shop_id===id);const div=document.createElement('div');div.className='qg-live-gp-card';
-        div.innerHTML='<b>'+escapeHtml(names.get(id)||'ร้านค้า')+'</b><br>รายได้ทั้งหมด ฿'+money(x.sales)+' · GP ฿'+money(x.gp)+' · '+x.count+' ออเดอร์<br><small>สถานะ GP: '+escapeHtml(settlement?.status||'ยังไม่แจ้งโอน')+'</small>';
+        div.innerHTML='<div class="qg-gp-shop-title"><strong>'+escapeHtml(names.get(id)||'ร้านค้า')+'</strong><span>'+x.count+' ออเดอร์</span></div><div class="qg-gp-shop-values"><div><span>ยอดขาย</span><b>฿'+money(x.sales)+'</b></div><div><span>ค่าบริการ GP</span><b>฿'+money(x.gp)+'</b></div></div><small>สถานะชำระเงิน: '+escapeHtml(settlement?.status||'ยังไม่แจ้งโอน')+'</small>';
         if(settlement?.status==='processing'){
           const actions=document.createElement('div');actions.className='qg-live-gp-actions';
           if(settlement.metadata?.slip_path){const a=document.createElement('button');a.className='btn-secondary';a.textContent='ดูสลิป';a.onclick=()=>qgOpenAdminGpSlip(settlement.metadata.slip_path);actions.appendChild(a);}
