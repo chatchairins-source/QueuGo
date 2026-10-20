@@ -1893,8 +1893,8 @@ private fun RiderHome(
                         } else null
 
                         // Current Production pickup normally returns in_progress. A legacy/idempotent
-                        // picked_up row still needs one deliver transition before Google Maps handoff,
-                        // otherwise returning to QueueGo would show "นำทางไปลูกค้า" again.
+                        // picked_up row still needs one deliver transition before QueueGo navigation,
+                        // otherwise the Rider would see "นำทางไปลูกค้า" again.
                         if (completedMode == "pickup" && pickupCommittedStatus == "picked_up") {
                             if (runCatching { api.startDelivery(auth, job.copy(status = "picked_up")) }.isSuccess) {
                                 pickupCommittedStatus = "in_progress"
@@ -2491,6 +2491,7 @@ private fun RiderHome(
             job = mapJob,
             marketPickups = snapshot?.marketPickups.orEmpty(),
             bundleOrders = snapshot?.bundle?.activeOrders.orEmpty(),
+            online = snapshot?.online == true,
             demandZones = if (mapJob == null && snapshot?.online == true) demandZones else emptyList(),
             recenterSignal = recenterSignal,
             overviewSignal = overviewSignal,
@@ -2502,7 +2503,7 @@ private fun RiderHome(
             onGuidance = { navigationGuidance = it }
         )
 
-        if (activeNavigationWork) {
+        if (snapshot?.online == true || activeNavigationWork) {
             Box(Modifier.align(Alignment.TopStart).padding(12.dp)) {
                 RiderBlueprintSpeedPill(reliableSpeedKph)
             }
@@ -3035,13 +3036,6 @@ private fun RiderHome(
                             onQueueGoNavigate = {
                                 startQueueGoNavigation()
                             },
-                            onNavigate = {
-                                val next = current.marketPickups.firstOrNull { !it.done }
-                                val target = if (activeJob.marketOrderId != null && !activeJob.isDelivering && next != null)
-                                    activeJob.copy(pickupAddress = next.shopAddress, pickupLat = next.latitude, pickupLng = next.longitude)
-                                else current.activeJob
-                                openNavigation(context, target)
-                            },
                             onArriveShop = {
                                 requestArrival(current.activeJob, "shop")
                             },
@@ -3261,9 +3255,9 @@ private fun RiderHome(
                             activeTab = "earn"
                         }
                         RiderAfterWorkRecommendationTarget.DEMAND_NAVIGATION -> {
-                            if (openAfterWorkRecommendationNavigation(context, item)) {
-                                deliverySuccessJob = null
-                            }
+                            deliverySuccessJob = null
+                            activeTab = "home"
+                            actionMessage = "เปิดแผนที่ QueueGo เพื่อดูพื้นที่งานใกล้คุณ"
                         }
                     }
                 },
@@ -3597,7 +3591,6 @@ private fun ActiveJobCard(
     onDetails: () -> Unit,
     onChat: () -> Unit,
     onQueueGoNavigate: () -> Unit,
-    onNavigate: () -> Unit,
     onArriveShop: () -> Unit,
     onPickupVerify: () -> Unit,
     onStartDelivery: () -> Unit,
@@ -3671,14 +3664,6 @@ private fun ActiveJobCard(
                 QgIcon("route", Modifier.size(19.dp), Color.White)
                 Spacer(Modifier.width(7.dp))
                 Text("นำทางด้วย QueueGo", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Black)
-            }
-            OutlinedButton(
-                onClick = onNavigate,
-                enabled = !busy && job.navigationTarget != null,
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = RIDER_SECONDARY_ACTION_MIN_HEIGHT_DP.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text("นำทางด้วย Google Maps", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Bold)
             }
             if (pickup && details != null) {
                 RiderPickupGuideBlock(
@@ -4390,98 +4375,4 @@ private fun createEvidenceUri(context: Context): Uri {
     )
 }
 
-private const val GOOGLE_MAPS_PACKAGE = "com.google.android.apps.maps"
-private const val PLAY_STORE_PACKAGE = "com.android.vending"
 
-private fun hasGoogleMaps(context: Context): Boolean {
-    val probe = Intent(
-        Intent.ACTION_VIEW,
-        Uri.parse("google.navigation:q=0,0&mode=d")
-    ).apply {
-        setPackage(GOOGLE_MAPS_PACKAGE)
-    }
-    return probe.resolveActivity(context.packageManager) != null
-}
-
-private fun openGoogleMapsInstallPage(context: Context) {
-    val intent = Intent(
-        Intent.ACTION_VIEW,
-        Uri.parse("market://details?id=" + GOOGLE_MAPS_PACKAGE)
-    ).apply {
-        setPackage(PLAY_STORE_PACKAGE)
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    runCatching { context.startActivity(intent) }
-}
-
-private fun openAfterWorkRecommendationNavigation(
-    context: Context,
-    recommendation: RiderAfterWorkRecommendation
-): Boolean {
-    val latitude = recommendation.latitude
-        ?.takeIf { it.isFinite() && it in -90.0..90.0 }
-        ?: return false
-    val longitude = recommendation.longitude
-        ?.takeIf { it.isFinite() && it in -180.0..180.0 }
-        ?: return false
-
-    if (!hasGoogleMaps(context)) {
-        openGoogleMapsInstallPage(context)
-        return false
-    }
-    if (!Settings.canDrawOverlays(context)) {
-        runCatching {
-            context.startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + context.packageName)
-                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-            )
-        }
-        return false
-    }
-
-    RiderReturnService.start(context)
-    val mapsIntent = Intent(
-        Intent.ACTION_VIEW,
-        Uri.parse("google.navigation:q=" + latitude + "," + longitude + "&mode=d")
-    ).apply {
-        setPackage(GOOGLE_MAPS_PACKAGE)
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    val opened = runCatching { context.startActivity(mapsIntent) }.isSuccess
-    if (!opened) RiderReturnService.stop(context)
-    return opened
-}
-
-private fun openNavigation(context: Context, job: RiderJob) {
-    val target = job.navigationTarget ?: return
-    if (!hasGoogleMaps(context)) {
-        openGoogleMapsInstallPage(context)
-        return
-    }
-    if (!Settings.canDrawOverlays(context)) {
-        runCatching {
-            context.startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + context.packageName)
-                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-            )
-        }
-        return
-    }
-
-    RiderReturnService.start(context)
-    val navigation = Uri.parse(
-        "google.navigation:q=" + target.first + "," + target.second + "&mode=d"
-    )
-    val mapsIntent = Intent(Intent.ACTION_VIEW, navigation).apply {
-        setPackage(GOOGLE_MAPS_PACKAGE)
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    val opened = runCatching { context.startActivity(mapsIntent) }.isSuccess
-    if (!opened) {
-        RiderReturnService.stop(context)
-    }
-}

@@ -55,6 +55,7 @@ internal fun MerchantProductsScreen(
     var query by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf("all") }
     var category by remember { mutableStateOf("") }
+    val hasMasterCatalog = shopCategory == "grocery" || merchantMarketStockPermitted(shopCategory)
     val pricedProducts = merchantPricedProducts(products, shopCategory == "grocery")
     val categories = pricedProducts.map { it.category }.filter { it.isNotBlank() }.distinct().sorted()
     val cleanQuery = query.trim().lowercase()
@@ -74,7 +75,7 @@ internal fun MerchantProductsScreen(
         Modifier
             .fillMaxSize()
             .padding(horizontal = 12.dp),
-        contentPadding = PaddingValues(bottom = if (shopCategory == "grocery") 136.dp else 20.dp)
+        contentPadding = PaddingValues(bottom = if (hasMasterCatalog) 136.dp else 20.dp)
     ) {
         item(key = "products-header") {
             Spacer(Modifier.height(8.dp))
@@ -191,13 +192,13 @@ internal fun MerchantProductsScreen(
             }
         }
 
-        if (shopCategory != "grocery") item(key = "products-add") {
+        if (!hasMasterCatalog) item(key = "products-add") {
             Button(onClick = onOpenCatalog, enabled = !busy, modifier = Modifier.fillMaxWidth().height(48.dp)) {
                 Text("เพิ่มสินค้า", fontWeight = FontWeight.ExtraBold)
             }
         }
     }
-    if (shopCategory == "grocery") {
+    if (hasMasterCatalog) {
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.White).padding(12.dp)) {
             Button(onClick = onAddManual, enabled = !busy,
                 colors = ButtonDefaults.buttonColors(containerColor = QgRed),

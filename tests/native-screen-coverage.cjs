@@ -118,8 +118,10 @@ ok(riderHome.includes('shop = offerShopDisplay')&&
 ok(riderApi.includes('suspend fun offerShopDisplay(')&&riderApi.includes('/rest/v1/orders?select=shop_id&id=eq.')&&
    riderApi.includes('/rest/v1/shop_profiles?select=shop_name,public_logo&id=eq.'),
    'Rider offer identity must come from the authenticated Production order/shop profile path, not mock data');
-ok(riderHome.includes('setPackage(GOOGLE_MAPS_PACKAGE)')&&riderHome.includes('"google.navigation:q="')&&
-   !riderHome.includes('if (navigationState.active)')&&!riderHome.includes('https://www.google.com/maps/dir/'),
-   'Rider navigation must hand off exclusively to the installed Google Maps app without the retired in-app route badge or web fallback');
+ok(riderHome.includes('Text("นำทางด้วย QueueGo"')&&
+   !riderHome.includes('นำทางด้วย Google Maps')&&
+   !riderHome.includes('GOOGLE_MAPS_PACKAGE')&&
+   !riderHome.includes('"google.navigation:q="'),
+   'Rider navigation must remain inside QueueGo without a Google Maps button or external handoff');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Native Customer/Merchant/Rider source-surface coverage; visual parity remains OPEN'}));

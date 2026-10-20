@@ -40,6 +40,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.runtime.key
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -293,6 +294,7 @@ private fun MerchantShell(
             "shop-setup", "hours", "support" -> "profile"
             "notifications", "media", "modules", "market-stock" -> "home"
             "catalog", "grocery-catalog" -> "products"
+            "market-catalog" -> "products"
             "product" -> productReturnScreen
             "order" -> "orders"
             else -> "home"
@@ -727,6 +729,8 @@ private fun MerchantShell(
                             groceryCatalogMode = "all"
                             groceryCatalogOffset = 0
                             screen = "grocery-catalog"
+                        } else if (merchantMarketStockPermitted(shop?.category)) {
+                            screen = "market-catalog"
                         } else {
                             selectedProduct = null
                             newProductCategory = null
@@ -734,6 +738,23 @@ private fun MerchantShell(
                         }
                     }
                 )
+                "market-catalog" -> {
+                    val activeShop = shop
+                    if (activeShop != null && merchantMarketStockPermitted(activeShop.category)) {
+                        key(auth.user.id, activeShop.id) {
+                            MerchantMarketCatalogScreen(auth, activeShop, api,
+                                onSaved = {
+                                    scope.launch {
+                                        try {
+                                            val fresh = api.loadProducts(auth, activeShop.id)
+                                            if (groceryOwner == auth.user.id && shop?.id == activeShop.id) products = fresh
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                                        catch (_: Exception) { message = "บันทึกแล้ว แต่ยังโหลดรายการในร้านไม่ได้" }
+                                    }
+                                }, onBack = { screen = "products" })
+                        }
+                    } else Text("หน้านี้ใช้สำหรับร้านตลาด เนื้อ ปลา ผัก หรือผลไม้", color = QgMuted)
+                }
                 "grocery-catalog" -> {
                     val activeShop = shop
                     if (activeShop == null || activeShop.category != "grocery") {

@@ -2,10 +2,10 @@ const assert=require('assert');
 const fs=require('fs');
 const app=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 
-assert(app.includes('Text("นำทางด้วย Google Maps"'),
-  'Active Rider job card must expose Google Maps as a separate optional action');
+assert(app.includes('Text("นำทางด้วย QueueGo"')&&!app.includes('Text("นำทางด้วย Google Maps"'),
+  'Active Rider job card must expose QueueGo as the only navigation action');
 assert(!app.includes('navigationStarted'),
-  'External Google Maps must not own or advance the Rider workflow state');
+  'Navigation must not use the retired external-map workflow flag');
 assert(app.includes('pickup -> "ถึงร้านแล้ว"'));
 assert(app.includes('job.status == "in_progress" -> "ถึงลูกค้าแล้ว"'));
 

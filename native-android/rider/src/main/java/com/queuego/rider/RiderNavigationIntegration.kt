@@ -48,7 +48,7 @@ import kotlinx.coroutines.withContext
 // Shadow diagnostics are disabled so the Rider sees the exact pipeline being evaluated.
 private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false
 private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true
-// Idle Home uses normal map mode; active work owns the navigation camera.
+// Ready/online Home follows Rider heading while staying flat; active work owns perspective.
 private const val RIDER_CAMERA_SMOOTHNESS_TEST_MODE = false
 
 private fun riderQueueGoMapServiceBaseUrl(context: Context): String? = runCatching {
@@ -68,9 +68,10 @@ private fun validNavigationPoint(lat: Double?, lon: Double?): NavigationMapPoint
 internal fun riderNavigationAutoFollow(
     navigationActive: Boolean,
     viewMode: NavigationViewMode,
+    online: Boolean = false,
     smoothnessTestMode: Boolean = false
 ): Boolean {
-    return (navigationActive || smoothnessTestMode) && viewMode == NavigationViewMode.FOLLOW
+    return (navigationActive || online || smoothnessTestMode) && viewMode == NavigationViewMode.FOLLOW
 }
 
 internal fun riderNavigationStops(
@@ -249,6 +250,7 @@ internal fun QueueGoRiderNavigationMap(
     job: RiderJob?,
     marketPickups: List<MarketPickup>,
     bundleOrders: List<RiderBundleOrder> = emptyList(),
+    online: Boolean = false,
     demandZones: List<RiderDemandZone> = emptyList(),
     recenterSignal: Int,
     overviewSignal: Int = 0,
@@ -330,18 +332,20 @@ internal fun QueueGoRiderNavigationMap(
     val navigationActive = stops.any { !it.completed && it.point.valid }
     val perspectiveCameraEnabled = navigationActive || RIDER_CAMERA_SMOOTHNESS_TEST_MODE
     val followRider = riderNavigationAutoFollow(
-        navigationActive,
-        viewModeState.mode,
-        RIDER_CAMERA_SMOOTHNESS_TEST_MODE
+        navigationActive = navigationActive,
+        viewMode = viewModeState.mode,
+        online = online,
+        smoothnessTestMode = RIDER_CAMERA_SMOOTHNESS_TEST_MODE
     )
     val riderFix by RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()
 
-    LaunchedEffect(navigationActive) {
-        // A newly active job always starts in FOLLOW. During the temporary smoothness
-        // road test, idle also stays in FOLLOW/3D; disabling the test constant restores
-        // the normal job-gated behavior without changing the camera implementation.
-        viewModeState = viewModeController.onRecenter()
-        pendingViewModePersistence = NavigationViewMode.FOLLOW.name
+    LaunchedEffect(navigationActive, online) {
+        // Going online or receiving work starts heading-follow. Manual pan still switches
+        // the view mode until the Rider explicitly recenters or availability/work changes.
+        if (navigationActive || online || RIDER_CAMERA_SMOOTHNESS_TEST_MODE) {
+            viewModeState = viewModeController.onRecenter()
+            pendingViewModePersistence = NavigationViewMode.FOLLOW.name
+        }
     }
 
     DisposableEffect(lifecycle, navigationActive, context) {
@@ -438,7 +442,8 @@ internal fun QueueGoRiderNavigationMap(
         perspectiveCameraEnabled = perspectiveCameraEnabled,
         followZoom = 17,
         viewMode = viewModeState.mode,
-        viewportInsets = viewportInsets.normalized()
+        viewportInsets = viewportInsets.normalized(),
+        recenterRequest = if (navigationActive) 0 else recenterSignal
     )
     val latestBaseState by rememberUpdatedState(baseState)
     var renderedState by remember(stateKey, stopTopology) {
@@ -567,22 +572,6 @@ internal fun QueueGoRiderNavigationMap(
                             viewMode = NavigationViewMode.FOLLOW
                         )
                     )
-                } else {
-                    // Idle map stays manual. Recenter is a one-shot flat camera move, not
-                    // permission to start following every subsequent GPS fix.
-                    val oneShot = baseState.copy(
-                        rider = fix,
-                        followRider = true,
-                        viewMode = NavigationViewMode.FOLLOW
-                    )
-                    renderedState = oneShot
-                    delay(180L)
-                    if (
-                        latestBaseState.stops.none { !it.completed && it.point.valid } &&
-                        !latestBaseState.followRider
-                    ) {
-                        renderedState = oneShot.copy(followRider = false)
-                    }
                 }
             }
         }

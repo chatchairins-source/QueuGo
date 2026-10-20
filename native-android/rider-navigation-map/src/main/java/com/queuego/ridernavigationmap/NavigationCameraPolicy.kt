@@ -23,12 +23,43 @@ internal fun navigationCameraDecision(
     followPuckBearing: Boolean = false
 ): NavigationCameraDecision? {
     val fix = state.rider?.takeIf { it.point.valid } ?: return null
+    val gpsBearing = navigationUsableGpsBearing(fix)
+    val speed = fix.speedMetersPerSecond
+        ?.takeIf { it.isFinite() && it >= 0f }
     val navigationActive = state.perspectiveCameraEnabled || state.remainingStops().isNotEmpty()
     if (!navigationActive) {
+        val desiredFlatBearing = if (state.followRider) {
+            when {
+                gpsBearing != null && speed != null && speed >= 0.83f -> gpsBearing
+                speed == null || speed < 0.83f -> previousBearingDegrees
+                else -> gpsBearing ?: previousBearingDegrees
+            }
+        } else {
+            0f
+        }
+        val flatBearing = if (state.followRider) {
+            smoothNavigationBearing(
+                previous = previousBearingDegrees,
+                target = desiredFlatBearing,
+                factor = navigationBearingSmoothingFactor(speed)
+            ) ?: desiredFlatBearing ?: 0f
+        } else {
+            0f
+        }
+        val flatZoom = if (state.followRider) {
+            navigationZoom(
+                baseZoom = state.followZoom,
+                speedMetersPerSecond = speed,
+                remainingRouteMeters = null,
+                accuracyMeters = fix.accuracyMeters
+            )
+        } else {
+            state.followZoom.coerceIn(14, 20)
+        }
         return NavigationCameraDecision(
             center = fix.point,
-            zoom = state.followZoom.coerceIn(14, 20),
-            bearingDegrees = 0f,
+            zoom = flatZoom,
+            bearingDegrees = flatBearing,
             tiltDegrees = 0f,
             routeMatch = null,
             remainingRouteMeters = null
@@ -40,9 +71,7 @@ internal fun navigationCameraDecision(
     val match = activeRoute?.let { matchNavigationRoute(it, fix.point) }
     val reliableRouteMatch = match?.takeIf { it.offRouteMeters <= ROUTE_BEARING_MAX_OFF_ROUTE_METERS }
 
-    val gpsBearing = navigationUsableGpsBearing(fix)
-    val speed = fix.speedMetersPerSecond
-        ?.takeIf { it.isFinite() && it >= 0f }
+
     val routeBearing = if (activeRoute != null && reliableRouteMatch != null) {
         navigationRouteBearing(
             segment = activeRoute,

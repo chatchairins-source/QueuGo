@@ -95,10 +95,16 @@ class RiderNavigationIntegrationTest {
         assertTrue(stops.isEmpty())
     }
 
-    @Test fun idleMapNeverAutoFollowsUntilAJobExists() {
+    @Test fun offlineIdleMapStaysManualUntilOnlineOrWorkExists() {
         assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.FOLLOW))
         assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.FREE_PAN))
         assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.OVERVIEW))
+    }
+
+    @Test fun onlineReadyMapFollowsHeadingButStillRespectsManualPan() {
+        assertTrue(riderNavigationAutoFollow(false, NavigationViewMode.FOLLOW, online = true))
+        assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.FREE_PAN, online = true))
+        assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.OVERVIEW, online = true))
     }
 
     @Test fun activeJobStartsFollowCameraButRespectsManualPan() {
