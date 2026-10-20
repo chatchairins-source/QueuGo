@@ -2,6 +2,11 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{JSDOM}=require
 const source=process.env.QG_RIDER_SOURCE?fs.readFileSync(process.env.QG_RIDER_SOURCE,'utf8'):fs.readFileSync('rider/index.html','utf8');
 let checks=0;const eq=(a,b,m)=>{assert.deepEqual(a,b,m);checks++;};
 (async()=>{
+ assert(source.includes('async function qgPrepareEvidenceImage(file)'),'web proof uploader must normalize camera images before upload');
+ assert(source.includes("if(supported&&file.size<=5*1024*1024)return {blob:file"),'already-safe evidence should avoid needless recompression');
+ assert(source.includes("/\\.(?:jpe?g|png|webp|heic|heif)$/i.test(name)"),'iPhone HEIC/HEIF files must enter normalization path');
+ assert.equal(source.includes("if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error"),false,'legacy hard reject must stay removed');
+ checks+=4;
  for(const mode of ['pickup','delivery']){
   const dom=new JSDOM('<body></body>',{url:'https://queuego.invalid/rider/',runScripts:'outside-only'}),w=dom.window;
   let uploads=0,mutations=0,failNext=true;
