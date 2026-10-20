@@ -575,3 +575,12 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Change: Admin now prefers the same dedicated official catalog preview as Merchant; approved reuse art is only a fallback where the catalog preview is absent. Actual image errors show an accessible failure message.
 - Test: workspace DOM21/0 proves official preview wins when both image fields exist, unsafe URLs remain rejected and broken-image state is visible; source97/83; full npm EXIT0. Exact hosted RC required before merge/Pages.
 - NEXT: exact RC, merge after parent green, inspect actual deployed Admin image-priority bytes. Preserve image_status reuse approval and all source/RLS/data fields.
+
+
+## 2026-10-20 Admin selected-shop products and stock inspection
+- Status: IN PROGRESS; branch work-web-admin-shop-product-stock-read-20261020, successor of PR493/a5d4823b116fde71ba1789b58fa88411bab15673.
+- Coverage gap: Admin shop detail exposed only one sample product, with no shop-specific product/stock browser. Existing Production SELECT policies already authorize Admin reads: products_admin_select and market_stock_owner_read; no new grant or RLS mutation is needed.
+- Change: existing shop detail opens one read-only product/stock dialog for that selected shop. Uses50/51 ID keyset pages, server name search and same-page refresh; Market stock reads only visible product IDs (<=50). Market decimal stock/units/pack/minimum come from market_products; ordinary product stock remains products.stock. Missing values are shown as unknown.
+- Safety: no POST/PATCH/DELETE, price/stock writes or owner impersonation. Text uses textContent, images require HTTPS, and close/search/account generations fence stale results. A session-storage actor change closes the view.
+- Test: actual DOM/query runtime25/0 covers limits, selected shop and page stock IDs,4.5kg/2.25 pack, previous/next/refresh/search, unsafe image/text and close/account races; source98 scripts/84 references; full npm EXIT0. Exact hosted RC/mobile WebKit required before merge/Pages.
+- NEXT: exact RC/merge/Pages and deployed bytes; continue the remaining Admin audit matrix. This closes the product/stock VIEW inventory gap without adding stock mutation authority.
