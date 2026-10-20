@@ -567,3 +567,11 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Deployed proof for parents: PR489/490 exact RC green; mainb1243f3c Pages39395057654 SUCCESS and RC39395058304 SUCCESS. Actual HTTPS200 Admin HTML SHA25698feedd0222b659107d56c6a4f3442c21233fd798997057a9821013d12018719 and Market JS SHA256f8ff06a5bdd4d1fa0aa0d88e9c4bcdf9b66b93b4822351e949209f961909e24a match tested bytes.
 - NEXT: exact RC/merge/Pages, then fix Admin Market Master image priority to use the dedicated official catalog preview like Merchant, preserving separate reuse status.
 - Native Market parity is now PR491/a5c0bf8a7986d5510c33e5b93b5a5d0794d83188, strict descendant of green PR439/38baf74c; Native run39395017610 is running. Do not reimplement or merge the Web-only tree over native-android.
+
+
+## 2026-10-20 Admin Market Master official preview priority
+- Status: IN PROGRESS; successor of PR492/afd98c57c2e67ab7fb996d23a2e08c432aa9761a.
+- Root cause: Admin Market Master preferred approved generic reuse art over the populated dedicated catalog_preview_image, while Merchant correctly used the clean catalog image. Thus Admin could still display the old commodity pictures despite all128 catalog previews being present.
+- Change: Admin now prefers the same dedicated official catalog preview as Merchant; approved reuse art is only a fallback where the catalog preview is absent. Actual image errors show an accessible failure message.
+- Test: workspace DOM21/0 proves official preview wins when both image fields exist, unsafe URLs remain rejected and broken-image state is visible; source97/83; full npm EXIT0. Exact hosted RC required before merge/Pages.
+- NEXT: exact RC, merge after parent green, inspect actual deployed Admin image-priority bytes. Preserve image_status reuse approval and all source/RLS/data fields.
