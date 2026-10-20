@@ -1935,8 +1935,15 @@ async function qgLoadAdminCash(day){
    event.preventDefault();if(!allowed())return false;const input=document.getElementById('qg-support-reply'),button=event.target.querySelector('button'),body=input?.value.trim(),id=selected,actor=currentUser().id;if(!id||!body||button.disabled)return false;
    button.disabled=true;(async()=>{try{const token=await qtGetAccessToken();if(!allowed()||currentUser().id!==actor)return;await qtSupabaseTable('shop_support_messages',{method:'POST',accessToken:token,body:{shop_user_id:id,sender_user_id:actor,body}});if(!allowed()||currentUser().id!==actor||!input.isConnected)return;input.value='';threadCursor=null;threadHistory.length=0;Promise.resolve().then(()=>qgLoadAdminSupport(true)).catch(refreshErr=>console.warn('admin support post-send refresh failed',refreshErr))}catch(e){if(allowed()&&currentUser().id===actor)toast('ส่งข้อความไม่สำเร็จ: '+(e.message||e))}finally{if(button.isConnected)button.disabled=false}})();return false;
  };
- // This table has no Realtime publication. Refresh its bounded visible snapshot only.
- setInterval(()=>{if(location.hash==='#admin-support'&&!document.hidden&&navigator.onLine&&allowed())qgLoadAdminSupport()},60000);
+ // This table has no Realtime publication. Refresh only the newest visible snapshot.
+ function qgAdminSupportCanAutoRefresh(){
+   if(location.hash!=='#admin-support'||document.hidden||!navigator.onLine||!allowed())return false;
+   if(inboxCursor||threadCursor)return false;
+   const draft=document.getElementById('qg-support-reply');
+   if(draft&&String(draft.value||'').trim())return false;
+   return true;
+ }
+ setInterval(()=>{if(qgAdminSupportCanAutoRefresh())qgLoadAdminSupport()},60000);
 })();
 </script>
 <script id="qg-v22-admin-operations">
