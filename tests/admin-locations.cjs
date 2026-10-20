@@ -56,13 +56,30 @@ const fs=require('fs'),path=require('path'),assert=require('assert'),{JSDOM}=req
  eq(w.document.querySelector('dialog'),null);
  eq(destroyed,1);
 
+ // A committed shop coordinate change must refresh the scoped directory only.
+ let directoryRefreshes=0,governanceRenders=0;
+ w.qtHydrateAdminDirectory=async()=>{directoryRefreshes++};
+ w.qtHydrateDatabase=async()=>{throw Error('full hydrate forbidden')};
+ w.renderAdminGovernance=()=>{governanceRenders++};
+ w.qtAdminTab=tab=>eq(tab,'qt-sec-shops');
+ w.history.replaceState(null,'','#admin-governance');
+ await w.qgAdminEditLocation('shop','market');
+ const shopForm=w.document.querySelector('form');
+ shopForm.elements.reason.value='แก้ทางเข้าร้าน';
+ await shopForm.onsubmit({preventDefault(){}});
+ eq(directoryRefreshes,1);
+ eq(governanceRenders,1);
+ eq(w.document.querySelector('dialog'),null);
+ eq(source.includes('qtHydrateDatabase'),false);
+ const afterShopCalls=calls.length;
+
  w.QueueGoMapWeb=undefined;
  await w.qgAdminEditLocation('market','market');
  const disabled=w.document.querySelector('form');
  disabled.elements.reason.value='ทดสอบแผนที่ไม่พร้อม';
  eq(disabled.querySelector('[type=submit]').disabled,true);
  await disabled.onsubmit({preventDefault(){}});
- eq(calls.length,2);
+ eq(calls.length,afterShopCalls);
 
  gate=new Promise(r=>release=r);
  const pending=w.qgAdminEditLocation('shop','shop');

@@ -513,3 +513,12 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - TEST: actual directory query16, section34, category22 and source95/82 PASS; exact full suite/CI pending. REMAINING: shop-name-specific global search, Rider queue pagination, search scale indexes/aggregates, unresolved backend/feature matrix and physical/authenticated acceptance. Whole mission IN PROGRESS. NEXT: exact successor CI, merge/Pages and actual deployed asset verification.
 
 - Directory successor follow-up: scoped Realtime invalidates GET cache as well as section TTL; a change during an existing fetch queues exactly one fresh load after completion, avoiding indefinitely cached pre-event data. Unrelated events retain cache. Section orchestration37 and directory16 PASS; exact successor CI pending.
+
+
+## 2026-10-20 Admin location scoped refresh continuation
+- Status: IN PROGRESS; base main `92ef6ac8d56e2daf22840248171a9cb5579856d2`, branch `work-admin-location-scoped-refresh-20261020`.
+- Evidence/root cause: admin/locations.js still called qtHydrateDatabase({light:false}) after the authoritative coordinate RPC, reloading unrelated system data despite the existing scoped directory loader.
+- Change: governance coordinate saves now refresh only qtHydrateAdminDirectory(); Market retains its own existing loader. Navigation to unrelated routes causes no directory refresh. RPC payload, expected-coordinate conflict check, server role/audit authority remain unchanged. Versioned location asset updated.
+- Focused tests: admin-locations 23/0 and shop mutation refresh 14/0. Full npm test EXIT 0 on this source; hosted RC/mobile WebKit required before merge/deploy; physical map acceptance remains unclaimed.
+- NEXT: obtain exact-head RC/mobile WebKit, merge/Pages after green, then continue remaining Admin operations payload/coverage review.
+- Rider evidence refresh: exact PR439 HEAD 38baf74c78a5881a225df5264a9fd28be485bf9b Native run39197043125 and Map run39197043133 are both SUCCESS. Do not repeat its previously pending CI repair. Authenticated operational/device gates still require separate evidence.

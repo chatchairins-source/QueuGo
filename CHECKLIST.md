@@ -803,3 +803,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - PRESERVED #484: unopened-shop delete and archive still refresh only `qtHydrateAdminDirectory()`; no `qtHydrateDatabase({light:false})` remains in Admin source.
 - TEST: `admin-gp-scoped-runtime.cjs` locks scoped batching/math/stale fencing plus terminology/status/slip actions/layout; existing shop-mutation regression remains in the full suite.
 - NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC. Whole Admin mission remains IN PROGRESS.
+
+
+## 2026-10-20 Admin location scoped refresh continuation
+- Status: IN PROGRESS; base main `92ef6ac8d56e2daf22840248171a9cb5579856d2`, branch `work-admin-location-scoped-refresh-20261020`.
+- Evidence/root cause: admin/locations.js still called qtHydrateDatabase({light:false}) after the authoritative coordinate RPC, reloading unrelated system data despite the existing scoped directory loader.
+- Change: governance coordinate saves now refresh only qtHydrateAdminDirectory(); Market retains its own existing loader. Navigation to unrelated routes causes no directory refresh. RPC payload, expected-coordinate conflict check, server role/audit authority remain unchanged. Versioned location asset updated.
+- Focused tests: admin-locations 23/0 and shop mutation refresh 14/0. Full npm test EXIT 0 on this source; hosted RC/mobile WebKit required before merge/deploy; physical map acceptance remains unclaimed.
+- NEXT: obtain exact-head RC/mobile WebKit, merge/Pages after green, then continue remaining Admin operations payload/coverage review.
+- Rider evidence refresh: exact PR439 HEAD 38baf74c78a5881a225df5264a9fd28be485bf9b Native run39197043125 and Map run39197043133 are both SUCCESS. Do not repeat its previously pending CI repair. Authenticated operational/device gates still require separate evidence.
