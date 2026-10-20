@@ -16,6 +16,12 @@ class MerchantMarketCatalogTest {
         .put("category", "กุ้ง").put("source_unit", "1 กก.").put("suggested_unit", "กิโลกรัม")
         .put("suggested_pack_size", 1.0).put("catalog_preview_image", "https://images.mango-prod.siammakro.cloud/product.jpg")
 
+    @Test fun replacedOrMissingShopCannotReplayOldShopRequests() {
+        requireMerchantMarketCatalogShop(shop, shop)
+        assertThrows(IllegalStateException::class.java) { requireMerchantMarketCatalogShop(UUID.randomUUID().toString(), shop) }
+        assertThrows(IllegalStateException::class.java) { requireMerchantMarketCatalogShop(null, shop) }
+        assertThrows(IllegalStateException::class.java) { requireMerchantMarketCatalogShop(JSONObject(), shop) }
+    }
     @Test fun pageShowsOnly50AndUsesCurrentCatalogPreview() {
         val rows = JSONArray()
         repeat(51) { rows.put(row()) }

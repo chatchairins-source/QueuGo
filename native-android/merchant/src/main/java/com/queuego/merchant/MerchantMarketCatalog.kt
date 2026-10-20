@@ -50,3 +50,8 @@ internal data class MarketCatalogIntent(
             body.getDouble("p_cost"), body.getDouble("p_initial_stock"), body.getDouble("p_min_stock"), body.getBoolean("p_available")).also { it.validate() }
     }
 }
+
+/** Reject a stale archived/replaced shop before replaying its durable request. Server still owns eligibility. */
+internal fun requireMerchantMarketCatalogShop(actual: Any?, expected: String) {
+    check(actual is String && marketCatalogUuid(expected) && actual == expected) { "ร้านที่ระบบเลือกเปลี่ยนแล้ว กรุณากลับไปโหลดข้อมูลร้านใหม่ก่อนเพิ่มสินค้า" }
+}

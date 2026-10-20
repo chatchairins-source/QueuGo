@@ -61,7 +61,7 @@ internal fun MerchantMarketCatalogScreen(
             try {
                 val old = withContext(Dispatchers.IO) { pending.load() }
                 if (old != null) {
-                    api.addMarketCatalogProduct(auth, old)
+                    api.addMarketCatalogProduct(auth, shop.id, old)
                     withContext(Dispatchers.IO) { pending.clear(old.requestId) }
                     notice = "ยืนยันสินค้าเพิ่มค้างแล้ว"
                     selected = null
@@ -69,7 +69,7 @@ internal fun MerchantMarketCatalogScreen(
                 }
                 coroutineScope {
                     val categoryRead = async { api.marketCatalogCategories(auth) }
-                    val pageRead = async { api.marketCatalogPage(auth, query, category, offset) }
+                    val pageRead = async { api.marketCatalogPage(auth, shop.id, query, category, offset) }
                     val rateRead = async { try { api.effectiveGp(auth, shop.id) } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { null } }
                     val page = pageRead.await()
                     categories = categoryRead.await()
@@ -132,7 +132,7 @@ internal fun MerchantMarketCatalogScreen(
                         try {
                             val stable = withContext(Dispatchers.IO) { pending.prepare(intent) }
                             currentCoroutineContext().ensureActive()
-                            api.addMarketCatalogProduct(auth, stable)
+                            api.addMarketCatalogProduct(auth, shop.id, stable)
                             withContext(Dispatchers.IO) { pending.clear(stable.requestId) }
                             notice = "เพิ่มสินค้าเข้าร้านแล้ว"
                             selected = null
