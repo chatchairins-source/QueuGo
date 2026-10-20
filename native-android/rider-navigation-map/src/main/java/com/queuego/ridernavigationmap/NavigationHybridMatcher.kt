@@ -76,7 +76,20 @@ class NavigationHybridMatcher(
                 backtrack * 3.0 + forwardJump * 0.55
             }
 
-            val headingPenalty = (headingDelta?.toDouble() ?: 0.0) * 0.30
+            // At riding speed, an opposite-direction candidate belongs to the
+            // opposite carriageway or a future U-turn leg. Keep the Rider on the
+            // direction-consistent road until the live course actually turns.
+            if (headingDelta != null && headingDelta > 105f) {
+                walked += segmentMeters
+                continue
+            }
+
+            val headingPenalty = when {
+                headingDelta == null -> 0.0
+                headingDelta <= 30f -> headingDelta * 0.05
+                headingDelta <= 60f -> 1.5 + (headingDelta - 30f) * 0.25
+                else -> 9.0 + (headingDelta - 60f) * 0.9
+            }
             val score = projection.distanceMeters + headingPenalty + continuityPenalty
             val routeMatch = NavigationRouteMatch(
                 snapped = projection.point,
