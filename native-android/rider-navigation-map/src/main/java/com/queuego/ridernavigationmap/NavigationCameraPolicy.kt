@@ -68,7 +68,14 @@ internal fun navigationCameraDecision(
 
     val activeRoute = state.styledRemainingRoutes()
         .firstOrNull { it.style == NavigationRouteStyle.ACTIVE }
-    val match = activeRoute?.let { matchNavigationRoute(it, fix.point) }
+    val match = activeRoute?.let {
+        matchNavigationRoute(
+            segment = it,
+            point = fix.point,
+            bearingDegrees = gpsBearing,
+            speedMetersPerSecond = speed
+        )
+    }
     val reliableRouteMatch = match?.takeIf { it.offRouteMeters <= ROUTE_BEARING_MAX_OFF_ROUTE_METERS }
 
 

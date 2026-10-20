@@ -211,6 +211,8 @@ body.qgm-app,body.qgm-login{height:auto!important;min-height:100dvh!important;ov
  .qgm-report-grid{grid-template-columns:1fr 1fr}
 }
 </style>
+<link rel="stylesheet" href="../queuego-credit.css">
+<script src="../queuego-credit.js"></script>
 </head>
 <body>
 <div id="app"><main id="qgm-boot-recovery" role="status" style="max-width:520px;margin:48px auto;padding:24px;font-family:system-ui,sans-serif;color:#20242a;background:#fff"><h1 style="font-size:22px">QueueGo ร้านค้า</h1><p>กำลังเปิดหน้าร้านค้า หากรอนานให้กดโหลดใหม่</p><button type="button" onclick="location.reload()" style="padding:12px 20px">โหลดใหม่</button><noscript>กรุณาเปิด JavaScript เพื่อใช้งานร้านค้า</noscript></main></div>
@@ -3502,7 +3504,8 @@ window.qgmRenderRevenue=async function(){
  <section class="qgm-report"><label for="qgm-revenue-date"><b>เลือกวันที่</b></label><input id="qgm-revenue-date" class="qgm-report-date" type="date" max="${today}" value="${today}" onchange="qgmLoadRevenue(this.value)">
  <div class="qgm-pause-menu"><button onclick="qgmRevenueOffset(0)">วันนี้</button><button onclick="qgmRevenueOffset(7)">7 วันที่ผ่านมา</button><button onclick="qgmRevenueOffset(30)">30 วันที่ผ่านมา</button></div></section>
  <div id="qgm-revenue-result" aria-live="polite">กำลังโหลดรายงาน...</div>`,'shop-profile');
- qgmLoadRevenue(today);
+ {const creditReport=document.getElementById('qgm-revenue-result');if(creditReport&&window.QueueGoCredit?.mount){const creditHost=document.createElement('div');creditReport.before(creditHost);Promise.resolve(QueueGoCredit.mount(creditHost,{kind:'merchant',owner:u.id,getToken:qtGetAccessToken,base:QT_SUPABASE_CONFIG.URL,key:QT_SUPABASE_CONFIG.KEY})).catch(err=>console.warn('merchant credit surface failed',err))}}
+  qgmLoadRevenue(today);
 
 {const host=document.querySelector('.qgm-content');if(host){const b=document.createElement('button');b.className='qgm-outline';b.textContent='วิเคราะห์ร้านค้า';b.onclick=qgOpenMerchantAnalytics;host.prepend(b)}}
 await Promise.resolve();

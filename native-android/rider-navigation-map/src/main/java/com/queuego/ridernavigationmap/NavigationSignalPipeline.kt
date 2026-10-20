@@ -121,7 +121,12 @@ class NavigationSignalPipeline(
             ?.takeIf { it.renderable }
             ?.let { routeMatcher.match(it, acceptedFix) }
 
-        consecutiveLowConfidenceMatches = when (hybridMatch?.confidence) {
+        // Heading guards can reject every route candidate on a noisy course fix.
+        // That is still an ambiguous active-route sample: retain the same bounded
+        // two-sample display hold used for LOW matches, then release to live GPS.
+        val matchConfidence = hybridMatch?.confidence
+            ?: activeRoute?.takeIf { it.renderable }?.let { NavigationMatchConfidence.LOW }
+        consecutiveLowConfidenceMatches = when (matchConfidence) {
             NavigationMatchConfidence.LOW -> consecutiveLowConfidenceMatches + 1
             NavigationMatchConfidence.HIGH,
             NavigationMatchConfidence.MEDIUM -> 0
@@ -134,7 +139,7 @@ class NavigationSignalPipeline(
             hybridMatch.routeMatch.offRouteMeters <= snapThreshold
 
         val holdAmbiguousMatch = !snapEligible &&
-            hybridMatch?.confidence == NavigationMatchConfidence.LOW &&
+            matchConfidence == NavigationMatchConfidence.LOW &&
             consecutiveLowConfidenceMatches <= 2 &&
             previousDisplayFix != null &&
             navigationHaversineMeters(previousDisplayFix.point, acceptedFix.point) <=

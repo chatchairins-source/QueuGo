@@ -86,6 +86,31 @@ internal fun riderMarkerAnimationMillis(
         )
 }
 
+internal fun navigationRiderDisplayFix(state: RiderNavigationMapState): NavigationMapFix? {
+    val rawFix = state.rider?.takeIf { it.point.valid } ?: return null
+    val activeRoute = state.styledRemainingRoutes()
+        .firstOrNull { it.style == NavigationRouteStyle.ACTIVE }
+    val accuracy = rawFix.accuracyMeters
+    val match = if (
+        activeRoute != null &&
+        accuracy != null &&
+        accuracy.isFinite() &&
+        accuracy <= 35f
+    ) {
+        matchNavigationRoute(
+            segment = activeRoute,
+            point = rawFix.point,
+            bearingDegrees = navigationUsableGpsBearing(rawFix),
+            speedMetersPerSecond = rawFix.speedMetersPerSecond
+        )
+    } else null
+    val displayPoint = match
+        ?.takeIf { it.offRouteMeters <= 12.0 }
+        ?.snapped
+        ?: rawFix.point
+    return rawFix.copy(point = displayPoint)
+}
+
 private class RiderNavigationMapHolder {
     var view: MapView? = null
     var map: MapLibreMap? = null
@@ -261,7 +286,7 @@ private class RiderNavigationMapHolder {
         renderRoutes(activeMap, state, force)
         renderStops(activeMap, state, force)
         renderDemand(activeMap, state, force)
-        renderRider(activeMap, state.rider)
+        renderRider(activeMap, state)
         renderCamera(activeMap, state, force)
         publishDiagnostics()
     }
@@ -276,16 +301,17 @@ private class RiderNavigationMapHolder {
             // Trim only a renderer copy; preserve coordinator matching/ETA/reroute thresholds.
             val fix = state.rider
             val accuracy = fix?.accuracyMeters
-            val match = fix?.let { matchNavigationRoute(segment, it.point) }
-            val opposite = fix?.bearingDegrees?.let { heading ->
-                match?.segmentBearingDegrees?.let { course ->
-                    (fix.speedMetersPerSecond ?: 0f) >= 2f &&
-                        kotlin.math.abs(navigationShortestBearingDelta(heading, course)) > 75f
-                }
-            } ?: false
+            val match = fix?.let {
+                matchNavigationRoute(
+                    segment = segment,
+                    point = it.point,
+                    bearingDegrees = navigationUsableGpsBearing(it),
+                    speedMetersPerSecond = it.speedMetersPerSecond
+                )
+            }
             if (segment.style == NavigationRouteStyle.ACTIVE && accuracy != null &&
                 accuracy.isFinite() && accuracy <= 35f && match != null &&
-                match.offRouteMeters <= 12.0 && !opposite
+                match.offRouteMeters <= 12.0
             ) trimNavigationRouteSegment(segment, match.progressMeters, match.snapped)
             else segment
         }
@@ -436,9 +462,12 @@ private class RiderNavigationMapHolder {
         lastDemandSignature = signature
     }
 
-    private fun renderRider(activeMap: MapLibreMap, fix: NavigationMapFix?) {
-        if (fix?.point?.valid != true) return
-        val target = LatLng(fix.point.latitude, fix.point.longitude)
+    private fun renderRider(activeMap: MapLibreMap, state: RiderNavigationMapState) {
+        // Display-only road alignment: keep authoritative GNSS untouched, but render the
+        // Rider on the direction-consistent carriageway when the match is very close.
+        val fix = navigationRiderDisplayFix(state) ?: return
+        val displayPoint = fix.point
+        val target = LatLng(displayPoint.latitude, displayPoint.longitude)
         val marker = riderMarker
         if (marker == null) {
             riderMarker = activeMap.addMarker(
@@ -453,14 +482,14 @@ private class RiderNavigationMapHolder {
         val previous = lastRenderedRiderFix
         val from = previous?.point
         riderAnimator?.cancel()
-        if (from != null && shouldAnimateRiderMarker(from, fix.point)) {
+        if (from != null && shouldAnimateRiderMarker(from, displayPoint)) {
             riderAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
                 duration = riderMarkerAnimationMillis(previous, fix)
                 addUpdateListener { animation ->
                     val t = animation.animatedFraction.toDouble()
                     marker.position = LatLng(
-                        from.latitude + (fix.point.latitude - from.latitude) * t,
-                        from.longitude + (fix.point.longitude - from.longitude) * t
+                        from.latitude + (displayPoint.latitude - from.latitude) * t,
+                        from.longitude + (displayPoint.longitude - from.longitude) * t
                     )
                     alignActiveRouteHead(activeMap, marker.position)
                 }
