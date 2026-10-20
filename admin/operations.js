@@ -9,6 +9,7 @@ const reviewQueues={
  documents:{title:'วันหมดอายุเอกสาร',rpc:'qg_admin_rider_document_queue'}
 };
 let generation=0,dispatchView='offers';
+const reviewOffsets={identity:0,inspection:0,vehicle:0,documents:0},reviewPageSize=50;
 const labels={'admin-dispatch':'Dispatch','admin-ride':'Ride · รับส่งผู้โดยสาร','admin-express':'Express · ส่งพัสดุ','admin-laundry':'ฝากซัก','admin-system':'สถานะระบบ','admin-rider-review':'ตรวจเอกสารและยานพาหนะ Rider'};
 window.qgRenderAdminOperations=function(page){
  if(!permitted())return navigate('login');
@@ -23,7 +24,8 @@ async function load(page){
  try{
   if(page==='admin-rider-review'){
    host.innerHTML='<label>งานตรวจ<select id="qg-review-kind">'+Object.entries(reviewQueues).map(([key,q])=>'<option value="'+key+'">'+q.title+'</option>').join('')+'</select></label><div id="qg-review-list"></div>';
-   host.querySelector('select').onchange=()=>loadReview(host.querySelector('select').value,alive);await loadReview('identity',alive);
+   reviewOffsets.identity=0;
+   host.querySelector('select').onchange=()=>{const kind=host.querySelector('select').value;reviewOffsets[kind]=0;loadReview(kind,alive)};await loadReview('identity',alive);
   }else if(page==='admin-ride'){
    host.innerHTML='<div id="qg-passenger-controls"></div><div id="qg-service-jobs"></div>';
    await Promise.all([qgRenderPassengerControls(),jobs('ride',host.querySelector('#qg-service-jobs'),alive)]);
@@ -70,20 +72,32 @@ async function jobs(kind,host,alive){
  }
  if(!rows?.length){const p=document.createElement('p');p.textContent='ไม่มีรายการในหมวดนี้';host.append(p)}
 }
-async function loadReview(kind,alive){
- const q=reviewQueues[kind],host=document.getElementById('qg-review-list');if(!q||!host||!alive())return;host.textContent='กำลังโหลดงานตรวจ…';
- try{const rows=await qtSupabaseRpc(q.rpc,{});if(!alive()||!host.isConnected||document.getElementById('qg-review-kind')?.value!==kind)return;host.replaceChildren();
- for(const row of (rows||[]).slice(0,200)){
-  const card=document.createElement('article');card.className='card';const title=document.createElement('b');title.textContent=row.rider_name||row.rider_id;const detail=document.createElement('p');detail.textContent=[row.status||'',row.vehicle_plate||'',row.reason||''].filter(Boolean).join(' · ');card.append(title,detail);
-  const action=(text,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=async()=>{if(!alive()||b.disabled)return;b.disabled=true;try{await fn();if(alive())await loadReview(kind,alive)}catch(e){if(alive())toast(e.message)}finally{if(b.isConnected)b.disabled=false}};card.append(b)};
-  if(row[q.photo])action('ดูหลักฐาน',()=>qgAdminOpenEvidence(row[q.photo]));
-  if(kind==='documents')for(const [key,label]of [['national_id','บัตรประชาชน'],['driver_license','ใบขับขี่'],['vehicle_prb','พ.ร.บ.']]){
-   const form=document.createElement('form'),labelNode=document.createElement('label'),input=document.createElement('input'),button=document.createElement('button');labelNode.textContent=label;input.type='date';input.value=row[key+'_expires_on']||'';labelNode.append(input);button.type='submit';button.textContent='บันทึกวันหมดอายุ';form.append(labelNode,button);form.onsubmit=async e=>{e.preventDefault();if(!alive()||button.disabled)return;button.disabled=true;try{await qtSupabaseRpc('qg_admin_set_rider_document_expiry',{p_rider_id:row.rider_id,p_document_key:key,p_expires_on:input.value||null,p_vehicle_id:key==='vehicle_prb'?row.selected_vehicle_id:null});if(alive())toast('บันทึกวันหมดอายุแล้ว')}catch(err){if(alive())toast(err.message)}finally{button.disabled=false}};card.append(form)
-  }else{
-   if(q.request)action('ขอตรวจใหม่',async()=>{const reason=await qgAdminInput({title:'ขอ'+q.title,label:'เหตุผล'});if(reason===null||!alive())return;if(reason.trim().length<3)throw Error('กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร');await qtSupabaseRpc(q.request,{p_rider_id:row.rider_id,p_reason:reason.trim()})});
-   if(kind==='vehicle'||row.request_id)for(const [decision,text]of [['approved','อนุมัติ'],['rejected','ส่งกลับแก้ไข']])action(text,async()=>{const note=await qgAdminInput({title:text+' · '+q.title,label:'บันทึกผลตรวจ / เหตุผล'});if(note===null||!alive())return;if(note.trim().length<3)throw Error('กรุณาระบุผลตรวจอย่างน้อย 3 ตัวอักษร');await qtSupabaseRpc(q.review,{[kind==='vehicle'?'p_vehicle_id':'p_request_id']:kind==='vehicle'?row.vehicle_id:row.request_id,p_decision:decision,p_note:note.trim()})});
-  }host.append(card);
- }if(!rows?.length)host.textContent='ไม่มีรายการตรวจ';
+async function loadReview(kind,alive,requestedOffset){
+ const q=reviewQueues[kind],host=document.getElementById('qg-review-list');if(!q||!host||!alive())return;
+ const offset=Number.isInteger(requestedOffset)?Math.max(0,requestedOffset):Math.max(0,reviewOffsets[kind]||0);reviewOffsets[kind]=offset;host.textContent='กำลังโหลดงานตรวจ…';
+ try{
+  const report=await qtSupabaseRpc('qg_admin_rider_review_page',{p_kind:kind,p_limit:reviewPageSize,p_offset:offset});
+  if(!alive()||!host.isConnected||document.getElementById('qg-review-kind')?.value!==kind)return;
+  if(!report||!Array.isArray(report.items))throw Error('ข้อมูลคิวตรวจ Rider ไม่ครบ');
+  const rows=report.items;if(!rows.length&&offset>0){reviewOffsets[kind]=Math.max(0,offset-reviewPageSize);return loadReview(kind,alive,reviewOffsets[kind])}
+  host.replaceChildren();
+  const note=document.createElement('p');note.textContent='แสดงสูงสุด '+reviewPageSize+' รายการต่อหน้า · เริ่มที่รายการ '+(offset+1);host.append(note);
+  for(const row of rows){
+   const card=document.createElement('article');card.className='card';const title=document.createElement('b');title.textContent=row.rider_name||row.rider_id;const detail=document.createElement('p');detail.textContent=[row.status||'',row.vehicle_plate||'',row.selected_vehicle_plate||'',row.reason||''].filter(Boolean).join(' · ');card.append(title,detail);
+   const action=(text,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=async()=>{if(!alive()||b.disabled)return;b.disabled=true;try{await fn();if(alive())await loadReview(kind,alive,reviewOffsets[kind])}catch(e){if(alive())toast(e.message)}finally{if(b.isConnected)b.disabled=false}};card.append(b)};
+   if(row[q.photo])action('ดูหลักฐาน',()=>qgAdminOpenEvidence(row[q.photo]));
+   if(kind==='documents')for(const [key,label]of [['national_id','บัตรประชาชน'],['driver_license','ใบขับขี่'],['vehicle_prb','พ.ร.บ.']]){
+    const form=document.createElement('form'),labelNode=document.createElement('label'),input=document.createElement('input'),button=document.createElement('button');labelNode.textContent=label;input.type='date';input.value=row[key+'_expires_on']||'';labelNode.append(input);button.type='submit';button.textContent='บันทึกวันหมดอายุ';form.append(labelNode,button);form.onsubmit=async e=>{e.preventDefault();if(!alive()||button.disabled)return;button.disabled=true;try{await qtSupabaseRpc('qg_admin_set_rider_document_expiry',{p_rider_id:row.rider_id,p_document_key:key,p_expires_on:input.value||null,p_vehicle_id:key==='vehicle_prb'?row.selected_vehicle_id:null});if(alive()){toast('บันทึกวันหมดอายุแล้ว');await loadReview(kind,alive,reviewOffsets[kind])}}catch(err){if(alive())toast(err.message)}finally{if(button.isConnected)button.disabled=false}};card.append(form)
+   }else{
+    if(q.request)action('ขอตรวจใหม่',async()=>{const reason=await qgAdminInput({title:'ขอ'+q.title,label:'เหตุผล'});if(reason===null||!alive())return;if(reason.trim().length<3)throw Error('กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร');await qtSupabaseRpc(q.request,{p_rider_id:row.rider_id,p_reason:reason.trim()})});
+    if(kind==='vehicle'||row.request_id)for(const [decision,text]of [['approved','อนุมัติ'],['rejected','ส่งกลับแก้ไข']])action(text,async()=>{const note=await qgAdminInput({title:text+' · '+q.title,label:'บันทึกผลตรวจ / เหตุผล'});if(note===null||!alive())return;if(note.trim().length<3)throw Error('กรุณาระบุผลตรวจอย่างน้อย 3 ตัวอักษร');await qtSupabaseRpc(q.review,{[kind==='vehicle'?'p_vehicle_id':'p_request_id']:kind==='vehicle'?row.vehicle_id:row.request_id,p_decision:decision,p_note:note.trim()})});
+   }host.append(card);
+  }
+  const nav=document.createElement('div');nav.className='row-btns';
+  const prev=document.createElement('button');prev.type='button';prev.textContent='ก่อนหน้า';prev.disabled=offset===0;prev.onclick=()=>{if(alive()&&!prev.disabled){reviewOffsets[kind]=Math.max(0,offset-reviewPageSize);loadReview(kind,alive,reviewOffsets[kind])}};
+  const next=document.createElement('button');next.type='button';next.textContent='ถัดไป';next.disabled=!report.more;next.onclick=()=>{if(alive()&&!next.disabled){reviewOffsets[kind]=Number.isInteger(report.next_offset)?report.next_offset:offset+reviewPageSize;loadReview(kind,alive,reviewOffsets[kind])}};
+  nav.append(prev,next);host.append(nav);
+  if(!rows.length){const empty=document.createElement('p');empty.textContent='ไม่มีรายการตรวจ';host.append(empty)}
  }catch(e){if(alive()&&host.isConnected)host.textContent='โหลดงานตรวจไม่ได้: '+e.message}
 }
 // Private offer/outbox projections have no client-readable changefeed. Refresh only these visible snapshots.
