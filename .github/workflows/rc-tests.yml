@@ -27,6 +27,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
@@ -35,6 +37,8 @@ jobs:
       - run: npm test
       - name: Install WebKit for complete Merchant mobile boot checks
         run: npx playwright-core install --with-deps webkit
+      - name: Verify Admin fast boot and section isolation in mobile WebKit
+        run: node tests/admin-boot-browser.cjs
       - name: Run complete Merchant document in mobile WebKit
         run: npm run test:merchant:browser
       - name: Verify Map Lab mobile hit targets, pan, zoom and sheet gestures

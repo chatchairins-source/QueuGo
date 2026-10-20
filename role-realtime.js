@@ -2,7 +2,7 @@
 (()=>{
   const admin=typeof QT_ADMIN_SESSION_KEY!=='undefined',role=admin?'admin':'shop',sessionKey=admin?QT_ADMIN_SESSION_KEY:QT_SHOP_SESSION_KEY;
   const tables=admin?['users','shop_profiles','technician_profiles','rider_profiles','products','orders','order_items','deliveries','payments','notifications','order_chat_messages','quotations','promotions','settlements','audit_logs','order_audit','market_orders','market_order_pickups','market_requests','laundry_orders','laundry_rider_jobs','laundry_rider_invites','queuego_platform_rules','route_bundles']:['orders','order_items','deliveries','notifications','order_chat_messages','market_orders','market_order_pickups','laundry_orders','laundry_rider_jobs','laundry_rider_invites'];
-  let owner=null,version=0,client=null,channel=null,attachTask=null,retryTimer=null,refreshTimer=null,refreshing=false,queued=false,cancelSdk=null,pageActive=true;
+  let owner=null,adminScope='',version=0,client=null,channel=null,attachTask=null,retryTimer=null,refreshTimer=null,refreshing=false,queued=false,cancelSdk=null,pageActive=true;
   const desired=()=>{const s=qtSessionRead();const paused=!admin&&['pos','pos-staff-join'].includes(location.hash.slice(1).split('/')[0]);return !paused&&pageActive&&!document.hidden&&navigator.onLine&&s?.role===role&&s.authUserId&&s.userId?s.authUserId+':'+s.userId:null};
   const current=(epoch,actor)=>epoch===version&&actor===owner&&actor===desired();
   function status(value){window.QT_REALTIME_STATUS=value;document.documentElement.dataset.qtRealtime=value.toLowerCase();window.dispatchEvent(new CustomEvent('qt:realtime-status',{detail:{status:value}}))}
@@ -32,14 +32,15 @@
       const c=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:20}}});
       const token=await qtGetAccessToken();if(!current(epoch,actor)){await c.removeAllChannels();return}if(!token)throw Error('Session unavailable');await c.realtime.setAuth(token);if(!current(epoch,actor)){await c.removeAllChannels();return}
       client=c;const ch=c.channel('qg-'+role+'-'+crypto.randomUUID());channel=ch;
-      tables.forEach(table=>ch.on('postgres_changes',{event:'*',schema:'public',table},payload=>{if(current(epoch,actor)&&channel===ch)scheduleRefresh(table+':'+payload.eventType)}));
+      const scopedTables=admin&&typeof window.qgAdminRealtimeTables==='function'?tables.filter(table=>window.qgAdminRealtimeTables().includes(table)):tables;
+      scopedTables.forEach(table=>ch.on('postgres_changes',{event:'*',schema:'public',table},payload=>{if(current(epoch,actor)&&channel===ch)scheduleRefresh(table+':'+payload.eventType)}));
       ch.subscribe(value=>{if(!current(epoch,actor)||channel!==ch)return;status(value);if(value==='SUBSCRIBED'){clearTimeout(retryTimer);retryTimer=null;scheduleRefresh('connected')}else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(value)){retire();retry()}});
     })().catch(()=>{if(current(epoch,actor)){status('CHANNEL_ERROR');retry()}}).finally(()=>{if(attachTask===task)attachTask=null});attachTask=task;
   }
-  function sync(){const actor=desired();if(actor!==owner){stop();owner=actor}if(actor)attach()}
+  function sync(){const actor=desired(),scope=admin&&typeof window.qgAdminRealtimeTables==='function'?window.qgAdminRealtimeTables().slice().sort().join(','):'';if(actor!==owner||scope!==adminScope){stop();owner=actor;adminScope=scope}if(actor)attach()}
   function resume(){sync();scheduleRefresh('resume')}
   window.QT_REALTIME_FORCE_REFRESH=()=>{sync();scheduleRefresh('manual')};
-  window.addEventListener('online',resume);window.addEventListener('offline',sync);window.addEventListener('hashchange',sync);window.addEventListener('pagehide',()=>{pageActive=false;stop()});window.addEventListener('pageshow',()=>{pageActive=true;resume()});
+  window.addEventListener('qg:admin-section',resume);window.addEventListener('online',resume);window.addEventListener('offline',sync);window.addEventListener('hashchange',sync);window.addEventListener('pagehide',()=>{pageActive=false;stop()});window.addEventListener('pageshow',()=>{pageActive=true;resume()});
   window.addEventListener('storage',e=>{if(e.key===sessionKey)resume()});document.addEventListener('visibilitychange',()=>document.hidden?sync():resume());
   setInterval(()=>{sync();if(role==='shop'&&desired())scheduleRefresh('poll')},60000);setTimeout(sync,800);
 })();

@@ -3,7 +3,7 @@ let checks=0;const ok=(v,msg)=>{assert.ok(v,msg);checks++};
 const admin=fs.readFileSync(path.resolve(__dirname,'../admin/index.html'),'utf8');
 const realtime=fs.readFileSync(path.resolve(__dirname,'../role-realtime.js'),'utf8');
 const start=admin.indexOf('async function qtHydrateAdminDirectory()');
-const end=admin.indexOf('async function qtAdminRefreshScoped()',start);
+const end=admin.indexOf('async function qtAdminRefreshScoped(',start);
 ok(start>0&&end>start,'Admin directory fast path exists');
 const fast=admin.slice(start,end);
 ok(fast.includes('Promise.all(['),'directory reads run concurrently');
