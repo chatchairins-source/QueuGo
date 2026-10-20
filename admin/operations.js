@@ -12,6 +12,35 @@ const reviewQueues={
 let generation=0,dispatchView='offers';
 const reviewOffsets={identity:0,inspection:0,vehicle:0,documents:0},reviewPageSize=50;
 const labels={'admin-dispatch':'Dispatch','admin-ride':'Ride · รับส่งผู้โดยสาร','admin-express':'Express · ส่งพัสดุ','admin-laundry':'ฝากซัก','admin-system':'สถานะระบบ','admin-rider-review':'ตรวจเอกสารและยานพาหนะ Rider'};
+const qgRiderOnlineBlockStatuses=new Set(['required','pending','rejected']);
+function qgRiderOnlineReadiness(kind,row){
+ const status=String(row?.status||'').toLowerCase();
+ if(kind==='identity'){
+  const blocked=qgRiderOnlineBlockStatuses.has(status);
+  const detail=blocked?(status==='pending'?'รอ Admin ตรวจยืนยันตัวตน':status==='rejected'?'ยืนยันตัวตนถูกส่งกลับแก้ไข':'ต้องยืนยันตัวตนก่อนเปิดรับงาน'):'ไม่มีสถานะยืนยันตัวตนที่ server ใช้บล็อกการออนไลน์';
+  return {blocked,detail};
+ }
+ if(kind==='inspection'){
+  const blocked=qgRiderOnlineBlockStatuses.has(status);
+  const detail=blocked?(status==='pending'?'รอ Admin ตรวจสภาพรถ':status==='rejected'?'ตรวจสภาพรถถูกส่งกลับแก้ไข':'ต้องตรวจสภาพรถก่อนเปิดรับงาน'):'ไม่มีสถานะตรวจสภาพรถที่ server ใช้บล็อกการออนไลน์';
+  return {blocked,detail};
+ }
+ if(kind==='vehicle'){
+  if(row?.is_selected!==true)return {blocked:false,detail:'รถคันนี้ไม่ใช่รถที่เลือกใช้งาน จึงไม่ใช่ตัวบล็อก online gate'};
+  const blocked=status!=='approved'&&row?.legacy_seed!==true;
+  return {blocked,detail:blocked?'รถที่เลือกยังไม่ผ่านอนุมัติ':'รถที่เลือกไม่ถูก server guard นี้บล็อก'};
+ }
+ if(kind==='documents'){
+  const today=new Date().toISOString().slice(0,10);
+  const expired=[];
+  for(const [key,label] of [['national_id_expires_on','บัตรประชาชน'],['driver_license_expires_on','ใบขับขี่'],['vehicle_prb_expires_on','พ.ร.บ. รถที่เลือก']]){
+   const value=String(row?.[key]||'');
+   if(/^\d{4}-\d{2}-\d{2}$/.test(value)&&value<today)expired.push(label+' '+value);
+  }
+  return {blocked:expired.length>0,detail:expired.length?'เอกสารหมดอายุ: '+expired.join(' · '):'ไม่มีเอกสารที่หมดอายุและ server ใช้บล็อกการออนไลน์'};
+ }
+ return {blocked:false,detail:'ไม่มี online gate สำหรับหมวดนี้'};
+}
 window.qgRenderAdminOperations=function(page){
  if(!permitted())return navigate('login');
  const title=labels[page];if(!title)return;
@@ -24,7 +53,7 @@ async function load(page){
  if(!host||!permitted())return;const refresh=document.getElementById('qg-ops-refresh');if(refresh?.disabled)return;if(refresh)refresh.disabled=true;const version=++generation;const alive=()=>version===generation&&host.isConnected&&permitted()&&currentUser().id===owner;
  try{
   if(page==='admin-rider-review'){
-   host.innerHTML='<label>งานตรวจ<select id="qg-review-kind">'+Object.entries(reviewQueues).map(([key,q])=>'<option value="'+key+'">'+q.title+'</option>').join('')+'</select></label><div id="qg-review-list"></div>';
+   host.innerHTML='<p class="qt-admin-note"><strong>Online readiness จาก server</strong> · หน้านี้อธิบายเฉพาะตัวบล็อกที่ server บังคับจริง: ยืนยันตัวตน, ตรวจสภาพรถ, รถที่เลือก และเอกสารหมดอายุ. Network / Firebase / การแจ้งเตือน / GPS / Google Maps / ปุ่มกลับ QueueGo เป็น device-side และต้องตรวจบนเครื่อง Rider. Ride / Express / Laundry อาจมี gate เฉพาะบริการเพิ่มเติมและห้าม force-enable จากหน้านี้</p><label>งานตรวจ<select id="qg-review-kind">'+Object.entries(reviewQueues).map(([key,q])=>'<option value="'+key+'">'+q.title+'</option>').join('')+'</select></label><div id="qg-review-list"></div>';
    reviewOffsets.identity=0;
    host.querySelector('select').onchange=()=>{const kind=host.querySelector('select').value;reviewOffsets[kind]=0;loadReview(kind,alive)};await loadReview('identity',alive);
   }else if(page==='admin-ride'){
@@ -84,7 +113,7 @@ async function loadReview(kind,alive,requestedOffset){
   host.replaceChildren();
   const note=document.createElement('p');note.textContent='แสดงสูงสุด '+reviewPageSize+' รายการต่อหน้า · เริ่มที่รายการ '+(offset+1);host.append(note);
   for(const row of rows){
-   const card=document.createElement('article');card.className='card';const title=document.createElement('b');title.textContent=row.rider_name||row.rider_id;const detail=document.createElement('p');detail.textContent=[row.status||'',row.vehicle_plate||'',row.selected_vehicle_plate||'',row.reason||''].filter(Boolean).join(' · ');card.append(title,detail);
+   const card=document.createElement('article');card.className='card';const title=document.createElement('b');title.textContent=row.rider_name||row.rider_id;const detail=document.createElement('p');detail.textContent=[row.status||'',row.vehicle_plate||'',row.selected_vehicle_plate||'',row.reason||''].filter(Boolean).join(' · ');card.append(title,detail);const readiness=qgRiderOnlineReadiness(kind,row),readinessNode=document.createElement('p');readinessNode.className='qt-admin-note';readinessNode.dataset.onlineReadiness=readiness.blocked?'blocked':'clear';readinessNode.textContent=(readiness.blocked?'บล็อกการออนไลน์ · ':'ไม่บล็อกการออนไลน์จากหมวดนี้ · ')+readiness.detail;card.append(readinessNode);
    const action=(text,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=async()=>{if(!alive()||b.disabled)return;b.disabled=true;try{await fn();if(alive())await loadReview(kind,alive,reviewOffsets[kind])}catch(e){if(alive())toast(e.message)}finally{if(b.isConnected)b.disabled=false}};card.append(b)};
    if(row[q.photo])action('ดูหลักฐาน',()=>qgAdminOpenEvidence(row[q.photo]));
    if(kind==='documents')for(const [key,label]of [['national_id','บัตรประชาชน'],['driver_license','ใบขับขี่'],['vehicle_prb','พ.ร.บ.']]){
