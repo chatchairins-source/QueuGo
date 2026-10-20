@@ -1659,9 +1659,11 @@ window.addEventListener('unhandledrejection',e=>{
       ${app.sample_item?`<p class="qt-admin-note">ตัวอย่างรายการพร้อมขาย: <b>${escapeHtml(app.sample_item.name||'-')}</b> · ${Number(app.sample_item.price||0).toLocaleString('th-TH')} บาท</p>`:''}
       <h3>ตำแหน่งร้าน</h3><div class="qg-review-map" aria-label="ตำแหน่งร้านบน QueueGo Map"></div>
       <div class="row-btns"><button class="btn-secondary" type="button" onclick="this.closest('dialog').close();qgAdminEditLocation('shop_user','${escapeHtml(u.id)}')">แก้พิกัดร้าน</button>
+      <button class="btn-secondary qg-shop-products-open" type="button">สินค้าและสต๊อก</button>
       ${!shop.archived_at?`<button class="btn-secondary" type="button" onclick="this.closest('dialog').close();qgAdminEditShopCategory('${escapeHtml(shop.id)}','${escapeHtml(u.id)}')">แก้หมวดร้าน</button>`:''}
       ${shop.onboarding_status==='pending_approval'?`<button class="btn-primary" type="button" onclick="this.closest('dialog').close();adminApproveUser('${escapeHtml(u.id)}')">อนุมัติ</button><button class="btn-secondary" type="button" onclick="this.closest('dialog').close();adminRequestShopChanges('${escapeHtml(u.id)}')">ส่งกลับแก้ไข</button><button class="btn-danger" type="button" onclick="this.closest('dialog').close();adminRejectUser('${escapeHtml(u.id)}')">ปฏิเสธ</button>`:''}</div>`;
       document.body.append(box);
+      box.querySelector('.qg-shop-products-open').onclick=()=>{box.close();qgAdminShopProducts(shop.id,shop.shop_name||u.shopName||u.name||'ร้านค้า')};
       let map=null;
       const close=()=>{try{window.QueueGoMapWeb?.destroy(map)}catch(_){ } box.remove()};
       box.addEventListener('close',close,{once:true});box.querySelector('.qg-menu-head button').onclick=()=>box.close();box.showModal();
@@ -2406,5 +2408,6 @@ async function qgLoadAdminCash(day){
 <script src="rider-programs.js?v=20261020-1"></script>
 <script src="workspace.js?v=20261020-official-preview"></script>
 <script src="section-loader.js?v=20261020-market-counts"></script>
+<script src="shop-products.js?v=20261020-1"></script>
 </body>
 </html>
