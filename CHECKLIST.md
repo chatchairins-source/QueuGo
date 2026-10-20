@@ -784,3 +784,13 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - NO DB/RLS CHANGE: source-only payload reduction; no credit/top-up/provider behavior and no financial write authority change.
 - TEST: tests/admin-gp-scoped-runtime.cjs uses 201 unique shops to force two bounded batches, locks totals, rejects unscoped profile/settlement reads and verifies stale-date suppression.
 - NEXT: exact-head RC/mobile WebKit, merge/Pages/post-merge RC, then continue remaining Admin loader payload review. Whole Admin mission remains IN PROGRESS.
+
+
+## 2026-10-20 Admin GP language/UI polish
+- BASE: merged PR #483 / main `beb7e48a91d34a860652e3397925ff4dd5e5b9f3`; branch `work-web-admin-gp-ui-language-20261020`.
+- WORDING: main page now uses “ค่าบริการร้านค้า (GP)”, “ยอดขายร้าน”, “ค่าบริการที่ต้องชำระ”, “ออเดอร์ที่เข้าเกณฑ์”, and readable settlement labels instead of raw/technical GP wording.
+- RATE PAGE: replaces “อัตราพิเศษ / โปรหมดอายุ” with “อัตราเฉพาะร้าน / สิ้นสุดแล้ว” and separates system default vs shop-specific rate clearly.
+- UI: adds summary metrics, shop cards, status chips, compact slip actions, responsive two-column desktop / one-column mobile layout, and cleaner rate cards.
+- FINANCIAL SAFETY: GP math, qualifying order statuses, scoped <=200 shop/settlement batches, slip signing, `admin_review_gp`, rate write tables/RPC behavior, RLS and grants are unchanged.
+- TEST: existing `admin-gp-scoped-runtime.cjs` now also locks terminology, status labels, slip actions, no old promo wording, and required GP layout classes.
+- NEXT: exact-head full RC/mobile WebKit, merge, Pages and post-merge RC before claiming web rollout complete.
