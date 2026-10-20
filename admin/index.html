@@ -1509,12 +1509,12 @@ async function qtGpSaveDefault(){
 }
 function qtGpRateCards(){
   const shops=dbGet('qt_users',[]).filter(u=>u.type==='shop'); const def=Number(window.QT_GP_DEFAULT_RATE); const today=qtLocalDateKey();
-  const head=`<div class="qt-gp-card"><div class="qt-gp-card-head"><div><b>⚙️ อัตรา GP มาตรฐาน</b><div class="qt-admin-note">ค่าเริ่มต้นสำหรับร้านที่ไม่ได้กำหนดอัตราพิเศษ</div></div><span class="badge">ค่าเริ่มต้น</span></div><div class="qt-gp-ratebox"><button class="btn-secondary" onclick="document.getElementById('gp-default-rate').stepDown();">−</button><input id="gp-default-rate" type="number" min="0" max="100" step="0.5" value="${def}"><span class="qt-gp-percent">%</span><button class="btn-secondary" onclick="document.getElementById('gp-default-rate').stepUp();">+</button></div><button class="btn-primary btn-block" onclick="qtGpSaveDefault()">💾 บันทึกอัตรามาตรฐาน</button><small class="qt-gp-help">มีผลกับออเดอร์ใหม่เท่านั้น • ออเดอร์เก่ายังคงอัตราเดิม</small></div>`;
+  const head=`<section class="qt-gp-card qg-gp-rate-card qg-gp-rate-default"><div class="qt-gp-card-head"><div><span class="qg-gp-eyebrow">ค่าเริ่มต้นทั้งระบบ</span><b>อัตราค่าบริการมาตรฐาน</b><div class="qt-admin-note">ใช้กับร้านที่ยังไม่ได้กำหนดอัตราเฉพาะร้าน</div></div><span class="qg-gp-chip neutral">มาตรฐาน ${def}%</span></div><div class="qt-gp-ratebox"><button class="btn-secondary" aria-label="ลดอัตรามาตรฐาน" onclick="document.getElementById('gp-default-rate').stepDown();">−</button><input id="gp-default-rate" type="number" min="0" max="100" step="0.5" value="${def}" aria-label="อัตราค่าบริการมาตรฐาน"><span class="qt-gp-percent">%</span><button class="btn-secondary" aria-label="เพิ่มอัตรามาตรฐาน" onclick="document.getElementById('gp-default-rate').stepUp();">+</button></div><button class="btn-primary btn-block" onclick="qtGpSaveDefault()">บันทึกอัตรามาตรฐาน</button><small class="qt-gp-help">มีผลกับออเดอร์ใหม่เท่านั้น ออเดอร์เดิมยังใช้อัตราที่บันทึกไว้ตอนสั่งซื้อ</small></section>`;
   return head+(shops.map(sh=>{
     const ov=(window.QT_GP_RATES||{})[sh.id]; const active=!!ov&&(!ov.promoUntil||ov.promoUntil>=today); const eff=active?ov.rate:def;
-    const tag=active?`<span class="badge badge-green">🎯 อัตราพิเศษ ${eff}%${ov.promoUntil?' ถึง '+ov.promoUntil:''}</span>`:(ov?`<span class="badge">โปรหมดอายุแล้ว (ใช้ ${def}%)</span>`:`<span class="badge">มาตรฐาน ${def}%</span>`);
-    return `<div class="qt-gp-card"><div class="qt-gp-card-head"><b>🏪 ${escapeHtml(sh.shopName||sh.name)}</b>${tag}</div><div class="qt-gp-ratebox"><button class="btn-secondary" onclick="qtGpNudge('${sh.id}',-1)">−</button><input id="gp-rate-${sh.id}" type="number" min="0" max="100" step="0.5" value="${eff}"><span class="qt-gp-percent">%</span><button class="btn-secondary" onclick="qtGpNudge('${sh.id}',1)">+</button></div><div class="qt-gp-date"><label>ใช้ถึงวันที่ • เว้นว่างหากไม่กำหนดวันสิ้นสุด</label><input id="gp-until-${sh.id}" type="date" value="${ov&&ov.promoUntil?ov.promoUntil:''}"></div><div class="row-btns"><button class="btn-primary" onclick="qtGpSaveRate('${sh.id}')">💾 บันทึกอัตรา</button>${ov?`<button class="btn-secondary" onclick="qtGpResetRate('${sh.id}')">↩️ ใช้ค่ามาตรฐาน</button>`:''}</div></div>`;
-  }).join('')||'<p>ยังไม่มีร้านค้าในระบบ</p>');
+    const tag=active?`<span class="qg-gp-chip active">อัตราเฉพาะร้าน ${eff}%${ov.promoUntil?' · ถึง '+ov.promoUntil:''}</span>`:(ov?`<span class="qg-gp-chip expired">อัตราเฉพาะร้านสิ้นสุดแล้ว · ใช้ ${def}%</span>`:`<span class="qg-gp-chip neutral">ใช้อัตรามาตรฐาน ${def}%</span>`);
+    return `<section class="qt-gp-card qg-gp-rate-card"><div class="qt-gp-card-head"><div><span class="qg-gp-eyebrow">ร้านค้า</span><b>${escapeHtml(sh.shopName||sh.name)}</b></div>${tag}</div><div class="qg-gp-rate-field"><label for="gp-rate-${sh.id}">อัตราค่าบริการร้านนี้</label><div class="qt-gp-ratebox"><button class="btn-secondary" aria-label="ลดอัตราร้าน" onclick="qtGpNudge('${sh.id}',-1)">−</button><input id="gp-rate-${sh.id}" type="number" min="0" max="100" step="0.5" value="${eff}"><span class="qt-gp-percent">%</span><button class="btn-secondary" aria-label="เพิ่มอัตราร้าน" onclick="qtGpNudge('${sh.id}',1)">+</button></div></div><div class="qt-gp-date"><label>สิ้นสุดอัตราเฉพาะร้าน <span>ไม่บังคับ</span></label><input id="gp-until-${sh.id}" type="date" value="${ov&&ov.promoUntil?ov.promoUntil:''}"></div><div class="row-btns"><button class="btn-primary" onclick="qtGpSaveRate('${sh.id}')">บันทึกอัตราร้าน</button>${ov?`<button class="btn-secondary" onclick="qtGpResetRate('${sh.id}')">กลับไปใช้อัตรามาตรฐาน</button>`:''}</div></section>`;
+  }).join('')||'<p class="qg-empty">ยังไม่มีร้านค้าในระบบ</p>');
 }
 
 </script>
@@ -1760,19 +1760,23 @@ window.addEventListener('unhandledrejection',e=>{
 (function(){
   const money=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
   const day=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const settlementMeta=status=>{
+    const key=String(status||'').toLowerCase();
+    if(['paid','approved','completed'].includes(key))return {label:'ชำระแล้ว',tone:'paid'};
+    if(['processing','shop_reported','under_review'].includes(key))return {label:'รอตรวจสลิป',tone:'review'};
+    if(['rejected','declined','failed'].includes(key))return {label:'สลิปไม่ผ่าน',tone:'rejected'};
+    if(['pending_payment','pending','idle',''].includes(key))return {label:'รอร้านชำระ',tone:'pending'};
+    return {label:String(status||'รอร้านชำระ'),tone:'neutral'};
+  };
   window.qgGpDay=day();
   let qgAdminGpLoadVersion=0;
   window.renderAdminGpSettlement=function(){
     const u=currentUser();if(!u||u.type!=='admin'){navigate('login');return;}
-    layout('GP ร้านค้า',`<div class="qg-live-gp"><h2>GP ร้านค้า</h2><p>GP คือค่าบริการร้านค้า ไรเดอร์จ่ายเงินสดค่าสินค้าให้ร้าน และเก็บเงินจากลูกค้าเอง</p>
-      <label>เลือกวันที่ <input id="qg-gp-date" type="date" value="${escapeHtml(window.qgGpDay)}" onchange="qgGpDay=this.value;qgLoadAdminGp()"></label>
-      <div id="qg-gp-live">กำลังดึงข้อมูลจากฐานข้อมูล...</div></div>`);
+    layout('ค่าบริการร้านค้า (GP)',`<div class="qg-live-gp"><section class="qg-gp-hero"><div><span class="qg-gp-eyebrow">การเงินร้านค้า</span><h2>ค่าบริการร้านค้า (GP)</h2><p>ตรวจยอดค่าบริการที่เกิดจากออเดอร์ของร้าน และตรวจสลิปที่ร้านส่งเข้ามา</p></div><button class="btn-secondary" type="button" onclick="navigate('admin-gp-rates')">ตั้งอัตราค่าบริการ</button></section>
+      <div class="qg-gp-toolbar"><label for="qg-gp-date">วันที่สรุปยอด</label><input id="qg-gp-date" type="date" value="${escapeHtml(window.qgGpDay)}" onchange="qgGpDay=this.value;qgLoadAdminGp()"><small>นับออเดอร์ที่ไรเดอร์รับสินค้าแล้ว ตามวันที่สั่งซื้อ</small></div>
+      <div id="qg-gp-live" aria-live="polite">กำลังโหลดข้อมูลค่าบริการ...</div></div>`);
     qgLoadAdminGp();
 
-(()=>{
-   const box=document.querySelector('.qg-live-gp');
-   if(box)box.insertAdjacentHTML('beforeend','<button class="btn-secondary btn-block" type="button" onclick="navigate(\'admin-gp-rates\')">ปรับอัตรา GP ร้านค้า</button>');
- })();
 };
   window.qgLoadAdminGp=async function(){
     const box=document.getElementById('qg-gp-live');if(!box)return;
@@ -1796,25 +1800,26 @@ window.addEventListener('unhandledrejection',e=>{
       const names=new Map(shops.map(s=>[s.id,s.shop_name]));const per=new Map();
       for(const o of orders){const x=per.get(o.shop_id)||{sales:0,gp:0,count:0};x.sales+=Number(o.subtotal||0);x.gp+=Number(o.gp_amount??Math.round(Number(o.subtotal||0)*Number(o.gp_rate??10))/100);x.count++;per.set(o.shop_id,x);}
       const totals=[...per.values()].reduce((a,x)=>({sales:a.sales+x.sales,gp:a.gp+x.gp,count:a.count+x.count}),{sales:0,gp:0,count:0});
-      box.innerHTML=`<div class="qg-live-gp-card"><b>รายได้ทั้งหมด ฿${money(totals.sales)}</b><br>ออเดอร์ ${totals.count} · GP ที่เกิดขึ้นจริง ฿${money(totals.gp)}<br><small>นับเฉพาะออเดอร์ที่ไรเดอร์รับสินค้าแล้ว โดยจัดวันตามวันที่สั่งซื้อ</small></div>`;
-      for(const [id,x] of per){const settlement=settlements.find(s=>s.shop_id===id);const div=document.createElement('div');div.className='qg-live-gp-card';
-        div.innerHTML='<b>'+escapeHtml(names.get(id)||'ร้านค้า')+'</b><br>รายได้ทั้งหมด ฿'+money(x.sales)+' · GP ฿'+money(x.gp)+' · '+x.count+' ออเดอร์<br><small>สถานะ GP: '+escapeHtml(settlement?.status||'ยังไม่แจ้งโอน')+'</small>';
-        if(settlement?.status==='processing'){
+      box.innerHTML=`<section class="qg-gp-summary"><div><span>ยอดขายร้านรวม</span><strong>฿${money(totals.sales)}</strong></div><div><span>ค่าบริการ GP รวม</span><strong>฿${money(totals.gp)}</strong></div><div><span>ออเดอร์ที่เข้าเกณฑ์</span><strong>${totals.count}</strong><small>ออเดอร์</small></div></section><div class="qg-gp-section-head"><div><span class="qg-gp-eyebrow">แยกตามร้าน</span><h3>ยอดค่าบริการของแต่ละร้าน</h3></div><span>${per.size} ร้าน</span></div><div class="qg-gp-shop-list"></div>`;
+      const list=box.querySelector('.qg-gp-shop-list');
+      for(const [id,x] of per){const settlement=settlements.find(s=>s.shop_id===id),meta=settlementMeta(settlement?.status),div=document.createElement('article');div.className='qg-gp-shop-card';
+        div.innerHTML='<div class="qg-gp-shop-head"><div><span class="qg-gp-eyebrow">ร้านค้า</span><h3>'+escapeHtml(names.get(id)||'ร้านค้า')+'</h3></div><span class="qg-gp-chip '+meta.tone+'">'+escapeHtml(meta.label)+'</span></div><div class="qg-gp-shop-metrics"><div><span>ยอดขายร้าน</span><strong>฿'+money(x.sales)+'</strong></div><div><span>ค่าบริการที่ต้องชำระ</span><strong>฿'+money(x.gp)+'</strong></div><div><span>จำนวนออเดอร์</span><strong>'+x.count+'</strong></div></div>';
+        if(['processing','shop_reported','under_review'].includes(String(settlement?.status||'').toLowerCase())){
           const actions=document.createElement('div');actions.className='qg-live-gp-actions';
-          if(settlement.metadata?.slip_path){const a=document.createElement('button');a.className='btn-secondary';a.textContent='ดูสลิป';a.onclick=()=>qgOpenAdminGpSlip(settlement.metadata.slip_path);actions.appendChild(a);}
-          for(const [label,yes] of [['ยืนยันรับ GP',true],['ไม่ผ่าน',false]]){const b=document.createElement('button');b.className=yes?'btn-primary':'btn-secondary';b.textContent=label;b.onclick=()=>qgReviewAdminGp(settlement.id,yes,b);actions.appendChild(b);}
+          if(settlement.metadata?.slip_path){const a=document.createElement('button');a.className='btn-secondary';a.textContent='เปิดสลิป';a.onclick=()=>qgOpenAdminGpSlip(settlement.metadata.slip_path);actions.appendChild(a);}
+          for(const [label,yes] of [['ยืนยันสลิปและรับ GP',true],['ตีกลับสลิป',false]]){const b=document.createElement('button');b.className=yes?'btn-primary':'btn-secondary';b.textContent=label;b.onclick=()=>qgReviewAdminGp(settlement.id,yes,b);actions.appendChild(b);}
           div.appendChild(actions);
-        }box.appendChild(div);
+        }list.appendChild(div);
       }
-      if(!per.size)box.insertAdjacentHTML('beforeend','<div class="qg-live-gp-card">ไม่มีรายได้ในวันที่เลือก</div>');
-    }catch(e){if(alive())box.innerHTML='<div class="qg-live-gp-card">โหลด GP ไม่สำเร็จ: '+escapeHtml(e.message||e)+'</div>';}
+      if(!per.size)box.innerHTML='<div class="qg-gp-empty"><b>ยังไม่มียอดค่าบริการในวันที่เลือก</b><p>เมื่อมีออเดอร์ที่ไรเดอร์รับสินค้าแล้ว ระบบจะแสดงยอดของร้านที่นี่</p></div>';
+    }catch(e){if(alive())box.innerHTML='<div class="qg-gp-empty"><b>โหลดข้อมูลค่าบริการไม่สำเร็จ</b><p>'+escapeHtml(e.message||e)+'</p></div>';}
   };
   window.qgOpenAdminGpSlip=async function(path){
     try{const token=await qtGetAccessToken();const r=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/sign/gp-slips/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:300})});const d=await r.json();if(!r.ok)throw Error(d.message||'เปิดสลิปไม่สำเร็จ');window.open(QT_SUPABASE_CONFIG.URL+'/storage/v1'+d.signedURL,'_blank','noopener');}catch(e){toast(e.message||'เปิดสลิปไม่สำเร็จ');}
   };
   window.qgReviewAdminGp=async function(id,approve,button){
-    let reason=null;if(approve){if(!confirm('ยืนยันว่าได้รับ GP ตามสลิปแล้ว?'))return;}else{reason=await qgAdminInput({title:'สลิป GP ไม่ผ่าน',label:'เหตุผลที่สลิปไม่ผ่าน'});if(reason===null)return;if(!reason.trim()){toast('กรุณาระบุเหตุผล');return;}}
-    button.disabled=true;try{const t=await qtGetAccessToken();await qtSupabaseTable('rpc/admin_review_gp',{method:'POST',accessToken:t,body:{p_settlement_id:id,p_approve:approve,p_reason:reason}});toast('บันทึกผลแล้ว');qgLoadAdminGp();}catch(e){toast(e.message||'บันทึกไม่สำเร็จ');button.disabled=false;}
+    let reason=null;if(approve){if(!confirm('ยืนยันว่าตรวจสลิปแล้วและรับค่าบริการ GP รายการนี้?'))return;}else{reason=await qgAdminInput({title:'ตีกลับสลิป',label:'เหตุผลที่ต้องให้ร้านแก้ไข'});if(reason===null)return;if(!reason.trim()){toast('กรุณาระบุเหตุผล');return;}}
+    button.disabled=true;try{const t=await qtGetAccessToken();await qtSupabaseTable('rpc/admin_review_gp',{method:'POST',accessToken:t,body:{p_settlement_id:id,p_approve:approve,p_reason:reason}});toast('บันทึกผลการตรวจสลิปแล้ว');qgLoadAdminGp();}catch(e){toast(e.message||'บันทึกไม่สำเร็จ');button.disabled=false;}
   };
 })();
 </script>
@@ -1895,8 +1900,9 @@ async function qgLoadAdminCash(day){
 
  window.renderAdminGpRates=function(load=true){
    if(currentUser()?.type!=='admin')return navigate('login');
-   layout('ปรับอัตรา GP','<div class="qg-admin-rates"><h2>ปรับอัตรา GP</h2><p>อัตราที่บันทึกมีผลกับออเดอร์ใหม่</p><div id="qg-rate-cards">'+qtGpRateCards()+'</div><button class="btn-secondary btn-block" onclick="navigate(\'admin-gp\')">กลับไปสรุป GP</button></div>');
-   if(load)qtPullGpRates().then(()=>{if(location.hash==='#admin-gp-rates')renderAdminGpRates(false)}).catch(e=>toast('โหลดอัตรา GP ไม่สำเร็จ'));
+   layout('อัตราค่าบริการร้านค้า','<div class="qg-admin-rates"><section class="qg-gp-hero"><div><span class="qg-gp-eyebrow">ตั้งค่าการเงินร้านค้า</span><h2>อัตราค่าบริการร้านค้า (GP)</h2><p>กำหนดอัตรามาตรฐานของระบบ หรือกำหนดอัตราเฉพาะร้าน อัตราใหม่ใช้กับออเดอร์ใหม่เท่านั้น</p></div><button class="btn-secondary" type="button" onclick="navigate(\'admin-gp\')">กลับไปตรวจยอด GP</button></section><div id="qg-rate-cards" class="qg-gp-rate-list">'+qtGpRateCards()+'</div></div>');
+   if(load)qtPullGpRates().then(()=>{if(location.hash==='#admin-gp-rates')renderAdminGpRates(false)}).catch(e=>toast('โหลดอัตราค่าบริการไม่สำเร็จ'));
+
  };
  for(const name of ['qtGpSaveRate','qtGpResetRate','qtGpSaveDefault']){
    const previous=window[name];
