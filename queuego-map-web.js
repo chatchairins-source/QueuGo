@@ -106,9 +106,11 @@ function navMatchRoute(route,point,{bearing=null,speed=null,previousProgress=nul
       const progress=walked+leg*p.fraction;
       const segmentBearing=navBearing(part[i],part[i+1]);
       const headingDelta=travelBearing==null?null:Math.abs(navShortestDelta(travelBearing,segmentBearing));
-      // While the Rider is moving, never snap onto an adjacent carriageway or a future
-      // U-turn leg that points against the live course. Wait for the real turn instead.
-      if(headingDelta!=null&&headingDelta>105){walked+=leg;continue}
+      // While moving, an opposite-direction segment is almost always the other
+      // carriageway or a future U-turn leg. Give it an effectively disqualifying
+      // penalty when a same-direction candidate exists, but keep it as a diagnostic
+      // fallback so the camera can explicitly reject the route bearing.
+      const directionPenalty=headingDelta!=null&&headingDelta>105?10000:0;
       const headingPenalty=headingDelta==null?0:
         headingDelta<=30?headingDelta*.05:
         headingDelta<=60?1.5+(headingDelta-30)*.25:
@@ -116,7 +118,7 @@ function navMatchRoute(route,point,{bearing=null,speed=null,previousProgress=nul
       const backtrack=priorProgress==null?0:Math.max(0,priorProgress-progress-20);
       const forwardJump=forwardAllowance==null?0:Math.max(0,progress-priorProgress-forwardAllowance);
       const continuityPenalty=backtrack*3.2+forwardJump*1.35;
-      const score=p.distance+headingPenalty+continuityPenalty;
+      const score=p.distance+directionPenalty+headingPenalty+continuityPenalty;
       if(!best||score<best.score){
         best={part,partIndex,snapped:p.point,offRouteMeters:p.distance,progressMeters:progress,geometryDistanceMeters:total,segmentBearingDegrees:segmentBearing,headingDeltaDegrees:headingDelta,score};
       }
