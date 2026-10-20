@@ -509,7 +509,17 @@ async function qtHydrateAdminDirectory(){
     const token=await qtGetAccessToken();
     if(!token)throw new Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
     if(qtSessionRead()?.authUserId!==directoryOwner)return;
-    const pageRows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,metadata,created_at&order=id.asc&limit=201'+(pageCursor?'&id=gt.'+encodeURIComponent(pageCursor):'')+(query?'&or='+encodeURIComponent('(name.ilike.*'+query+'*,phone.ilike.*'+query+'*)'):''),{accessToken:token});
+    let pageRows;
+    if(query){
+      const [accountMatches,shopMatches]=await Promise.all([
+        qtSupabaseTable('users?select=id&order=id.asc&limit=201'+(pageCursor?'&id=gt.'+encodeURIComponent(pageCursor):'')+'&or='+encodeURIComponent('(name.ilike.*'+query+'*,phone.ilike.*'+query+'*)'),{accessToken:token}),
+        qtSupabaseTable('shop_profiles?select=user_id&archived_at=is.null&order=user_id.asc&limit=201'+(pageCursor?'&user_id=gt.'+encodeURIComponent(pageCursor):'')+'&or='+encodeURIComponent('(shop_name.ilike.*'+query+'*,phone.ilike.*'+query+'*)'),{accessToken:token})
+      ]);
+      const matchedIds=[...new Set([...(accountMatches||[]).map(x=>x.id),...(shopMatches||[]).map(x=>x.user_id)])].filter(qtUuidLike).sort().slice(0,201);
+      pageRows=matchedIds.length?await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,metadata,created_at&id=in.('+matchedIds.join(',')+')&order=id.asc&limit=201',{accessToken:token}):[];
+    }else{
+      pageRows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,metadata,created_at&order=id.asc&limit=201'+(pageCursor?'&id=gt.'+encodeURIComponent(pageCursor):''),{accessToken:token});
+    }
     const userRows=(pageRows||[]).slice(0,200);
     const ids=userRows.map(u=>u.id).filter(qtUuidLike);
     const filter='&user_id=in.('+ids.join(',')+')';
