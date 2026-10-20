@@ -6,7 +6,12 @@ const ATTRIBUTION='Open Food Facts contributors';
 
 function barcode(value){
  const clean=String(value??'').replace(/\D/g,'');
- return clean.length>=8&&clean.length<=14?clean:null;
+ if(!clean||clean.length>14)return null;
+ const significant=clean.replace(/^0+/,'')||'0';
+ if(significant.length<=7)return significant.padStart(8,'0');
+ if(significant.length>=9&&significant.length<=12)return significant.padStart(13,'0');
+ if(significant.length===8||significant.length===13||significant.length===14)return significant;
+ return null;
 }
 function httpsUrl(value){
  if(typeof value!=='string'||!value.trim())return null;
