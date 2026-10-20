@@ -674,3 +674,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - SECURITY: browser reads only public guarded RPCs; it never reads `qg_private.rider_map_feedback` or `qg_private.rider_road_alerts`. Existing wrappers are SECURITY INVOKER, deny anon, and private implementations require live session + active Admin.
 - TEST: dedicated source regression guards RPC/read-vs-mutation wiring, QueueGo Map reuse, no Google Maps fallback/private-table browser access, bounded queue/duration contracts, privilege revocations, and restored migration mirrors. Exact stacked RC/mobile WebKit required before merge.
 - NEXT: merge PR #472 first if its exact gate is green, retarget this successor to main, then obtain exact-head RC before merge. Physical navigation/GPS acceptance remains a separate release gate.
+
+
+## 2026-10-20 Admin Rider Programs successor
+- BASE: merged PR #473 / main `93837a8c99b2bb4318ddd1fb122265111b3946d2`; successor branch `work-web-admin-rider-programs-v2-20261020`.
+- IMPLEMENTED SOURCE: restores exact Production-aligned source mirrors for Rider Missions, Insurance and Benefits. Adds one separate Admin workspace for real Missions / Benefits / Insurance using the existing public RPCs only.
+- READ/WRITE BOUNDARY: list RPCs use the scoped cancellable `qgAdminRpcRead` layer; mutations remain direct `qtSupabaseRpc` so navigation never aborts a committed write.
+- AUDIT: new redacted atomic audit trigger records Admin mutations without policy number, support contact/link, coverage text or benefit URL in `audit_logs`.
+- SAFETY: no mock program rows, no automatic Mission bonus/credit payout, no direct `qg_private` browser access, no service-role key, and no Credit/Ride/provider Release Gate bypass.
+- NEXT: rollback-rehearse audit migration against Production, run focused/full tests + exact-head RC, apply the additive audit migration only after rehearsal, then merge/Pages verification. Whole Admin mission remains IN PROGRESS.
