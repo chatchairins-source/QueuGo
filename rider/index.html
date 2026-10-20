@@ -2626,12 +2626,36 @@ window.advanceOrder=async function(o){
  const request=async(path,method='GET',body=null)=>{const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบ');return sbTable(path,{method,token,body})};
  const authSub=t=>{try{return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub}catch(_){return null}};
  const names={missing_item:'สินค้าไม่ครบ',wrong_item:'สินค้าไม่ตรง',damaged_food:'อาหารเสียหาย',rider:'ปัญหาไรเดอร์',merchant:'ปัญหาร้านค้า',payment:'การชำระเงิน',cash:'เงินสด',gp:'GP',other:'อื่น ๆ'};
+ function qgEvidenceDataUrlBlob(data){
+   const value=String(data||''),comma=value.indexOf(',');if(comma<0)throw Error('แปลงรูปหลักฐานไม่สำเร็จ');
+   const header=value.slice(0,comma),mime=(header.match(/^data:([^;]+)/i)||[])[1]||'image/jpeg';
+   const raw=atob(value.slice(comma+1)),bytes=new Uint8Array(raw.length);
+   for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+   return new Blob([bytes],{type:mime});
+ }
+ async function qgPrepareEvidenceImage(file){
+   if(!file)return null;
+   const type=String(file.type||'').toLowerCase(),name=String(file.name||'');
+   const supported=['image/jpeg','image/png','image/webp'].includes(type);
+   if(supported&&file.size<=5*1024*1024)return {blob:file,type,ext:type==='image/png'?'png':type==='image/webp'?'webp':'jpg'};
+   const imageLike=type.startsWith('image/')||/\.(?:jpe?g|png|webp|heic|heif)$/i.test(name);
+   if(!imageLike)throw Error('ไฟล์นี้ไม่ใช่รูปภาพ');
+   if(file.size>30*1024*1024)throw Error('รูปมีขนาดใหญ่เกิน 30 MB กรุณาถ่ายใหม่');
+   let blob=null;
+   for(const [maxSize,quality] of [[1800,.82],[1400,.72],[1100,.64]]){
+     try{blob=qgEvidenceDataUrlBlob(await compressRiderImage(file,maxSize,quality))}catch(e){blob=null}
+     if(blob&&blob.size<=5*1024*1024)break;
+   }
+   if(!blob)throw Error('ไม่สามารถแปลงรูปจากกล้องได้ กรุณาถ่ายใหม่');
+   if(blob.size>5*1024*1024)throw Error('รูปยังใหญ่เกิน 5 MB หลังปรับขนาด กรุณาถ่ายใหม่');
+   return {blob,type:'image/jpeg',ext:'jpg'};
+ }
  async function upload(file){
    if(!file)return null;
-   if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error('หลักฐานต้องเป็น JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB');
+   const prepared=await qgPrepareEvidenceImage(file);
    const token=await getAccessToken(),uid=authSub(token);if(!uid)throw Error('เซสชันไม่ถูกต้อง');
-   const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type],path=uid+'/'+crypto.randomUUID()+'.'+ext;
-   const response=await fetch(SB.URL+'/storage/v1/object/qg-evidence/'+path,{method:'POST',headers:{apikey:SB.KEY,Authorization:'Bearer '+token,'Content-Type':file.type,'x-upsert':'false'},body:file});
+   const path=uid+'/'+crypto.randomUUID()+'.'+prepared.ext;
+   const response=await fetch(SB.URL+'/storage/v1/object/qg-evidence/'+path,{method:'POST',headers:{apikey:SB.KEY,Authorization:'Bearer '+token,'Content-Type':prepared.type,'x-upsert':'false'},body:prepared.blob});
    if(!response.ok){const data=await response.json().catch(()=>({}));throw Error(data.message||'อัปโหลดหลักฐานไม่สำเร็จ')}
    return path;
  }
