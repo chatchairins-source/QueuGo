@@ -651,7 +651,7 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 
 
 ## 2026-10-20 Admin read-only RPC cancellation checkpoint
-- BASE: successor of PR467 keyset-history HEAD `36a9cc6c111127ddce1b0f4147f2fee375c30f74`; do not reuse the earlier stale RPC-cancel branch.
+- BASE: PR467 keyset-history merged to main `e3c914428b1d86a459a20b313da76eb54a12f41b` after RC #2179 SUCCESS; this is the fresh successor and does not reuse the earlier stale RPC-cancel branch.
 - IMPLEMENTED: `qtSupabaseRpc` accepts an optional AbortSignal. A scoped `qgAdminRpcRead` routes only read-only POST/RPC requests through the existing coalescing/actor/route cancellation layer.
 - READ PATHS: System live counts, Dispatch overview, notification health, Rider review pages, Ride config/public-licence reads, and Credit account/merchant-target reads now cancel when their Admin scope becomes stale.
 - MUTATION SAFETY: Rider review/request actions, Ride configuration/review writes, credit grant/reversal and all other POST mutations stay on normal RPC calls and are never aborted by route changes.
