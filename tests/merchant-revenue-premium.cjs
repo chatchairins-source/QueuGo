@@ -24,4 +24,11 @@ assert(!merchant.includes("settings.textContent='⚙ ตั้งค่ากา
 assert(merchant.includes('qgm-credit-head-add'),'top-up control stays in the approved credit header position');
 assert(merchant.includes("historyButton.textContent='ประวัติรายการ'"),'credit actions include a real history shortcut');
 assert(merchant.includes("grid-template-columns:repeat(3,minmax(0,1fr));gap:6px"),'mobile credit actions stay on one compact row');
-console.log('merchant revenue premium 21 checks passed');
+assert(merchant.includes('qgm-revenue-layout-v4'),'revenue page has dedicated layout layer');
+assert(merchant.includes('qgm-revenue-store'),'current store context is part of the title row');
+assert(merchant.includes('qgm-credit-history-card'),'credit history is a separate card, not inside the balance card');
+assert(merchant.includes('qgm-credit-live-status'),'credit status is separated from credit controls');
+assert(merchant.includes("document.body.classList.add('qgm-revenue-page')"),'revenue-only shell spacing is scoped');
+assert(merchant.includes("historyCard.append(historyHead,entries)"),'live entries move into the history section');
+assert(merchant.includes("qgm-wordmark"),'revenue header includes QueueGo wordmark');
+console.log('merchant revenue premium 28 checks passed');
