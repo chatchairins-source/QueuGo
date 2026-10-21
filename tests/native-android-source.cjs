@@ -448,9 +448,11 @@ ok(queueGoCreditCard.includes('"topup" to "เพิ่มเครดิต"')&
 ok(merchantRevenue.includes('QueueGoCreditCard(auth.user.id, auth.session.accessToken, "merchant")')&&riderEarningsCredit.includes('QueueGoCreditCard(auth.user.id, auth.session.accessToken, "rider")'),'Merchant and Rider must reuse the same unified credit component');
 
 ok(source.includes('merchant_revenue_days')&&!source.includes('report_shop_gp'),'Merchant revenue must read reports without the retired GP collection RPC');
+ok(source.includes('gpAmount = r.optDouble("gp_credit_deducted", 0.0)')&&source.includes('legacyGpDue = r.optDouble("gp_due", 0.0)'),'Merchant revenue must separate credit-deducted GP from legacy pre-credit due');
+ok(merchantRevenue.includes('GP ที่หักจากเครดิต')&&merchantRevenue.includes('GP เดิมก่อนระบบเครดิต'),'Merchant native revenue copy must match the unified credit collection model');
 ok(merchantRevenue.includes('7 วันที่ผ่านมา')&&merchantRevenue.includes('30 วันที่ผ่านมา')&&merchantRevenue.includes('ดาวน์โหลดรายงาน 30 วัน (CSV)'),'Merchant native revenue must preserve web period and CSV controls');
 ok(!merchantRevenue.includes('แนบสลิปและแจ้งโอน')&&merchantRevenue.includes('QueueGoCreditCard')&&!fs.existsSync(path.join(root,'merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt')),'Merchant GP collection must use credit only; retired upload implementation must be absent');
-ok(source.includes('MerchantRevenueEntry(')&&source.includes('รายได้ทั้งหมด')&&source.includes('เลือกวัน ดูยอดขาย เงินสด และ GP ย้อนหลัง'),'Merchant native dashboard must preserve revenue entry blueprint');
+ok(source.includes('MerchantRevenueEntry(')&&source.includes('รายได้ทั้งหมด')&&source.includes('เลือกวัน ดูยอดขาย เงินสด และ GP ที่หักจากเครดิต'),'Merchant native dashboard must preserve credit-aligned revenue entry blueprint');
 const merchantPromotion=read('merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt');
 ok(source.includes('promotions?select=id,category,status,max_budget,period_days,payment_status,metadata,created_at')&&source.includes('"promotions"'),'Merchant native promotions must use Production promotions table and route');
 ok(merchantPromotion.includes('ทั้งหมด')&&merchantPromotion.includes('กำลังใช้งาน')&&merchantPromotion.includes('รออนุมัติ')&&merchantPromotion.includes('สร้างโปรโมชั่นใหม่'),'Merchant native promotions must preserve web filters and create flow');
