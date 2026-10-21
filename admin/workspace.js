@@ -13,7 +13,7 @@ window.qgRenderAdminWorkspace=function(page){
   layout('Pricing · ราคาและค่าบริการ','<section class="card"><div class="row-btns"><button type="button" onclick="navigate(\'admin-gp-rates\')">อัตรา GP รายร้าน</button><button type="button" onclick="navigate(\'admin-ride\')">ค่าโดยสาร Ride</button><button type="button" onclick="qgAdminSection(\'qt-sec-settings\')">ค่าจัดส่งและตั้งค่าทั่วไป</button></div></section><section class="card" id="qg-platform-controls">กำลังโหลดกฎราคา…</section>');qgRenderPlatformControls();return;
  }
  if(page==='admin-catalog'){
-  layout('Catalog · สินค้ากลาง','<section class="card"><h2>แคตตาล็อก</h2><div class="row-btns"><button type="button" onclick="navigate(\'admin-grocery\')">Grocery Master</button><button type="button" onclick="navigate(\'admin-market-master\')">Market Master</button><button type="button" onclick="navigate(\'admin-market\')">ตลาดและสมาชิกร้านค้า</button></div></section>');return;
+  layout('Catalog · สินค้ากลาง','<section class="card"><div class="row-btns"><button type="button" onclick="navigate(\'admin-grocery\')">Grocery Master</button><button type="button" onclick="navigate(\'admin-market-master\')">Market Master</button><button type="button" onclick="navigate(\'admin-market\')">ตลาดและสมาชิกร้านค้า</button></div></section>');return;
  }
  if(page==='admin-market-master'){
   const state=marketState={owner:currentUser().id,offset:0,version:0};
