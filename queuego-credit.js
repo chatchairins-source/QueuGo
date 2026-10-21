@@ -1,29 +1,28 @@
 /* Same authenticated credit surface for Merchant and Rider; no provider credentials. */
 (function(){
  const money=n=>'฿'+(Number(n||0)/100).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
- const labels={topup:'เติมเครดิต',promo:'เครดิตโปรโมชั่น',reserve:'กันเครดิต',release:'คืนยอดกัน',capture:'หักค่าบริการ',reversal:'คืนค่าบริการ'};
+ const labels={topup:'เพิ่มเครดิต',promo:'เพิ่มเครดิต',reserve:'กันเครดิต',release:'คืนยอดกัน',capture:'หักค่าบริการ',reversal:'คืนค่าบริการ'};
  const post=async({getToken,base,key},path,body)=>{const token=await getToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');const response=await fetch(base+path,{method:'POST',headers:{apikey:key,authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});if(!response.ok)throw Error('ยังตรวจสอบเครดิตไม่ได้');return response.json()};
  window.QueueGoCredit={
   mountSummary:async function(host,{kind,owner,getToken,base,key,onOpen}){
    if(!host||!owner)return;const card=document.createElement('button');card.type='button';card.className='qg-credit-summary';card.setAttribute('aria-label',kind==='merchant'?'ดูเครดิตร้านค้า':'ดูเครดิต Rider');
-   card.innerHTML='<span class="qg-credit-summary-icon">฿</span><span class="qg-credit-summary-copy"><strong></strong><b data-balance>กำลังโหลด...</b><small data-detail></small><small data-note></small></span><span class="qg-credit-summary-arrow">›</span>';
+   card.innerHTML='<span class="qg-credit-summary-icon">฿</span><span class="qg-credit-summary-copy"><strong></strong><b data-balance>กำลังโหลด...</b><small data-note></small></span><span class="qg-credit-summary-arrow">›</span>';
    card.querySelector('strong').textContent=kind==='merchant'?'เครดิตร้านค้า':'เครดิต Rider';host.replaceChildren(card);
    if(typeof onOpen==='function')card.onclick=onOpen;
    try{const summary=await post({getToken,base,key},'/rest/v1/rpc/queuego_credit_summary',{p_kind:kind,p_topup:null});if(!card.isConnected)return;
     card.querySelector('[data-balance]').textContent='ใช้ได้ '+money(summary.available_minor);
-    card.querySelector('[data-detail]').textContent='เงินจริง '+money(summary.cash_minor)+' · เครดิตฟรี '+money(summary.promo_minor)+' · กันไว้ '+money(summary.held_minor);
-    card.querySelector('[data-note]').textContent=summary.enabled?'แตะเพื่อเติมเครดิตหรือดูประวัติ':'แตะดูเครดิตและประวัติ · เติมเงินจริงยังไม่เปิด';
-   }catch(e){if(card.isConnected){card.querySelector('[data-balance]').textContent='ยังโหลดเครดิตไม่ได้';card.querySelector('[data-detail]').textContent='แตะเพื่อดูรายละเอียดและลองใหม่';card.querySelector('[data-note]').textContent=''}}
+    card.querySelector('[data-note]').textContent=summary.enabled?'แตะเพื่อเติมเครดิตหรือดูประวัติ':'แตะดูเครดิตและประวัติ · ระบบเติมเครดิตยังไม่เปิด';
+   }catch(e){if(card.isConnected){card.querySelector('[data-balance]').textContent='ยังโหลดเครดิตไม่ได้';card.querySelector('[data-note]').textContent=''}}
   },
   mountBadge:async function(host,{kind,owner,getToken,base,key,onOpen}){
    if(!host||!owner)return;const button=document.createElement('button');button.type='button';button.className='qg-credit-badge';button.textContent=kind==='merchant'?'เครดิต …':'เครดิต Rider …';button.setAttribute('aria-label',kind==='merchant'?'ดูเครดิตร้านค้า':'ดูเครดิต Rider');if(typeof onOpen==='function')button.onclick=onOpen;host.replaceChildren(button);
-   try{const summary=await post({getToken,base,key},'/rest/v1/rpc/queuego_credit_summary',{p_kind:kind,p_topup:null});if(!button.isConnected)return;button.textContent='เครดิต '+money(summary.available_minor);button.title='เงินจริง '+money(summary.cash_minor)+' · เครดิตฟรี '+money(summary.promo_minor)+' · กันไว้ '+money(summary.held_minor)}
+   try{const summary=await post({getToken,base,key},'/rest/v1/rpc/queuego_credit_summary',{p_kind:kind,p_topup:null});if(!button.isConnected)return;button.textContent='เครดิต '+money(summary.available_minor);button.title='ยอดเครดิตที่ใช้ได้ '+money(summary.available_minor)}
    catch(e){if(button.isConnected){button.textContent='เครดิต --';button.title='ยังโหลดเครดิตไม่ได้'}}
   },
   mount:async function(host,{kind,owner,getToken,base,key}){
   if(!host)return;const panel=document.createElement('section');panel.className='qg-credit-panel';
-  panel.innerHTML='<h3></h3><p data-balance>กำลังตรวจสอบเครดิต...</p><p data-breakdown></p><form hidden><label>จำนวนเงิน (20–100,000 บาท)<input name="amount" inputmode="decimal" type="text" maxlength="12" required></label><button type="submit">สร้าง QR เติมเครดิต</button></form><button type="button" data-refresh>รีเฟรชยอดและรายการ</button><button type="button" data-new hidden>รายการใหม่</button><p data-status role="status"></p><img data-qr hidden alt="QR เติมเครดิต" width="240" height="240"><div data-entries></div><small>เครดิตใช้ชำระค่าบริการ QueueGo · ถอนหรือโอนไม่ได้</small>';
-  host.appendChild(panel);panel.querySelector('h3').textContent=kind==='merchant'?'เครดิตค่าบริการร้านค้า':'เครดิต Rider';
+  panel.innerHTML='<h3></h3><p data-balance>กำลังตรวจสอบเครดิต...</p><form hidden><label>จำนวนเงิน (20–100,000 บาท)<input name="amount" inputmode="decimal" type="text" maxlength="12" required></label><button type="submit">สร้าง QR เติมเครดิต</button></form><button type="button" data-refresh>รีเฟรชยอดและรายการ</button><button type="button" data-new hidden>รายการใหม่</button><p data-status role="status"></p><img data-qr hidden alt="QR เติมเครดิต" width="240" height="240"><div data-entries></div><small>เครดิตใช้ชำระค่าบริการ QueueGo · ถอนหรือโอนไม่ได้</small>';
+  host.appendChild(panel);panel.querySelector('h3').textContent=kind==='merchant'?'เครดิตร้านค้า':'เครดิต Rider';
   const storageKey='qg-credit-request-v1:'+owner+':'+kind;let busy=false,summary=null;
   const session=()=>{try{const p=JSON.parse(localStorage.getItem(storageKey)||'null');return p?.id&&p?.kind===kind?p:null}catch{return null}};
   const request=(path,body)=>post({getToken,base,key},path,body);
@@ -31,8 +30,7 @@
   const status=s=>{if(current())panel.querySelector('[data-status]').textContent=s};
   const refresh=async()=>{
    summary=await request('/rest/v1/rpc/queuego_credit_summary',{p_kind:kind,p_topup:session()?.id||null});if(!current())return;
-   panel.querySelector('[data-balance]').textContent='ใช้ได้ '+money(summary.available_minor)+' · กันไว้ '+money(summary.held_minor);
-   panel.querySelector('[data-breakdown]').textContent='เงินจริง '+money(summary.cash_minor)+' · โปรโมชั่น '+money(summary.promo_minor);
+   panel.querySelector('[data-balance]').textContent='ใช้ได้ '+money(summary.available_minor);
    const pending=session(),topup=(summary.topups||[]).find(t=>t.id===pending?.id),form=panel.querySelector('form');
    form.hidden=!summary.enabled;form.querySelector("input").disabled=!!pending;form.querySelector('button').textContent=pending?'ตรวจสอบรายการเดิม':'สร้าง QR เติมเครดิต';
    const qr=panel.querySelector('[data-qr]');qr.hidden=true;qr.removeAttribute('src');
