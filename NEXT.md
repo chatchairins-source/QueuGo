@@ -1,6 +1,6 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-22 · Authoritative main: `cc036ee001bf23425d055977f8330e3753749743`n: `a4f12dd39b751e7e05a2d37b54e47863d477f391`
+Current snapshot: 2026-10-22 · Authoritative main: `fbdf63707a5eba1b9bf703891330c7b132e6bb54`
 
 ## Active chunk
 
@@ -60,3 +60,12 @@ After each bounded chunk, update this file and `CHECKLIST.md` with exact SHA, lo
 
 ## Next action
 Continue the POS migration recovery/compatibility review and verify the authorized cashier/device gate status. Do not apply Production migrations without the required acceptance; after that gate, proceed through ordered activation and readback. Then take the next highest-priority unblocked North Star gap. Keep QueueGo/POS NOT DONE until user and release evidence is complete.
+
+
+## POS ambiguous bill session-scope guard — 2026-10-22
+- Read current main `6acd48ef3c130cc1c6b7f4c0958afcc228920414`, no newer POS successor was open. PR #580 guards the ambiguous bill retry with its captured shop and cashier identity; identity mismatch drops the tab-scoped pending request before any order RPC. Regression covers session change after the request is loaded.
+- PR #580 exact RC `39695677982` passed all 12 required stages and merged as `fbdf63707a5eba1b9bf703891330c7b132e6bb54`. Post-merge main RC `39696051611` passed all stages. Pages deployment `39696050699` succeeded on the merge SHA.
+- This recovers an ambiguous online create request safely; it is not an offline sale queue. POS offline sale/outbox/conflict/reconciliation remains unimplemented and unaudited. Production database remains unmodified; cash/inventory migrations and authorized cashier/device acceptance gates remain open. QueueGo/POS are **NOT DONE**.
+
+## Next action
+Continue the controlled POS migration recovery gate; verify authorized cashier/device acceptance status before any Production activation. In parallel, audit the POS online pending-create recovery and design the offline-sale boundary without inventing tax, credit, or payment policy. Do not claim offline sales or whole-platform readiness.
