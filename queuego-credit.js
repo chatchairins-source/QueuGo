@@ -21,20 +21,35 @@
   },
   mount:async function(host,{kind,owner,getToken,base,key}){
   if(!host)return;const panel=document.createElement('section');panel.className='qg-credit-panel';
-  panel.innerHTML='<h3></h3><p data-balance>กำลังตรวจสอบเครดิต...</p><form hidden><label>จำนวนเงิน (20–100,000 บาท)<input name="amount" inputmode="decimal" type="text" maxlength="12" required></label><button type="submit">สร้าง QR เติมเครดิต</button></form><button type="button" data-refresh>รีเฟรชยอดและรายการ</button><button type="button" data-new hidden>รายการใหม่</button><p data-status role="status"></p><img data-qr hidden alt="QR เติมเครดิต" width="240" height="240"><div data-entries></div><small>เครดิตใช้ชำระค่าบริการ QueueGo · ถอนหรือโอนไม่ได้</small>';
+  panel.innerHTML='<h3></h3><p data-balance>กำลังตรวจสอบเครดิต...</p><button type="button" data-add hidden>เติมเงิน</button><form hidden><label>จำนวนเงิน (20–100,000 บาท)<input name="amount" inputmode="decimal" type="text" maxlength="12" required></label><button type="submit">สร้าง QR PromptPay</button></form><button type="button" data-refresh>ตรวจสอบรายการ / รีเฟรชยอด</button><button type="button" data-new hidden>รายการใหม่</button><p data-status role="status"></p><img data-qr hidden alt="QR เติมเครดิต" width="240" height="240"><div data-entries></div><small>เครดิตใช้ชำระค่าบริการ QueueGo · ถอนหรือโอนไม่ได้</small>';
   host.appendChild(panel);panel.querySelector('h3').textContent=kind==='merchant'?'เครดิตร้านค้า':'เครดิต Rider';
   const storageKey='qg-credit-request-v1:'+owner+':'+kind;let busy=false,summary=null;
   const session=()=>{try{const p=JSON.parse(localStorage.getItem(storageKey)||'null');return p?.id&&p?.kind===kind?p:null}catch{return null}};
   const request=(path,body)=>post({getToken,base,key},path,body);
   const current=()=>panel.isConnected;
   const status=s=>{if(current())panel.querySelector('[data-status]').textContent=s};
-  const refresh=async()=>{
+  const refresh=async(verify=false)=>{
    summary=await request('/rest/v1/rpc/queuego_credit_summary',{p_kind:kind,p_topup:session()?.id||null});if(!current())return;
    panel.querySelector('[data-balance]').textContent='ใช้ได้ '+money(summary.available_minor);
-   const pending=session(),topup=(summary.topups||[]).find(t=>t.id===pending?.id),form=panel.querySelector('form');
-   form.hidden=!summary.enabled;form.querySelector("input").disabled=!!pending;form.querySelector('button').textContent=pending?'ตรวจสอบรายการเดิม':'สร้าง QR เติมเครดิต';
+   if(!session()){
+    const restored=(summary.topups||[]).find(t=>['created','pending'].includes(t.status));
+    if(restored)localStorage.setItem(storageKey,JSON.stringify({id:restored.id,kind,amount_minor:restored.amount_minor}));
+   }
+   let pending=session(),topup=(summary.topups||[]).find(t=>t.id===pending?.id);
+   if(verify&&pending&&!['successful','failed','expired'].includes(topup?.status)){
+    await request('/functions/v1/queuego-credit',pending);
+    summary=await request('/rest/v1/rpc/queuego_credit_summary',{p_kind:kind,p_topup:pending.id});if(!current())return;
+    panel.querySelector('[data-balance]').textContent='ใช้ได้ '+money(summary.available_minor);
+    topup=(summary.topups||[]).find(t=>t.id===pending.id);
+   }
+   const form=panel.querySelector('form');
+   panel.querySelector('[data-add]').hidden=!summary.enabled;
+
+   form.hidden=!summary.enabled;form.querySelector("input").disabled=!!pending;form.querySelector('button').textContent=pending?'ตรวจสอบรายการเดิม':'สร้าง QR PromptPay';
    const qr=panel.querySelector('[data-qr]');qr.hidden=true;qr.removeAttribute('src');
    if(topup?.status==='pending'&&/^https:\/\/api\.omise\.co\/charges\//.test(topup.qr_url||'')){qr.src=topup.qr_url;qr.hidden=false;status('รอชำระ '+money(topup.amount_minor)+' · เพิ่มเครดิตอัตโนมัติเมื่อตรวจสอบเงินเข้า')}
+   if(pending&&!topup)status('กำลังตรวจสอบรายการเดิม กรุณากดตรวจสอบรายการ');
+   if(topup?.status==='created')status('รอสร้าง QR · กดตรวจสอบรายการเพื่อลองรายการเดิมอีกครั้ง');
    if(topup?.status==='successful')status('เติมเครดิตสำเร็จ '+money(topup.amount_minor));
    if(['failed','expired'].includes(topup?.status))status('รายการไม่สำเร็จหรือหมดอายุ');
    panel.querySelector('[data-new]').hidden=!['successful','failed','expired'].includes(topup?.status);
@@ -46,9 +61,10 @@
    let p=session();if(!p){const raw=panel.querySelector('input').value.trim();if(!/^\d+(?:\.\d{1,2})?$/.test(raw))throw Error('กรุณากรอกจำนวนเงินไม่เกิน 2 ตำแหน่ง');const [baht,satang='']=raw.split('.'),minor=Number(baht)*100+Number(satang.padEnd(2,'0'));if(!Number.isSafeInteger(minor)||minor<2000||minor>10000000)throw Error('เติมได้ 20–100,000 บาท');p={id:crypto.randomUUID(),kind,amount_minor:minor};localStorage.setItem(storageKey,JSON.stringify(p))}
    const r=await request('/functions/v1/queuego-credit',p);status(r.status==='successful'?'เติมเครดิตสำเร็จ':'กำลังตรวจสอบรายการเดิม');await refresh();
   })};
-  panel.querySelector('[data-refresh]').onclick=()=>act(refresh);
+  panel.querySelector('[data-add]').onclick=()=>{panel.querySelector('form').hidden=false;panel.querySelector('input').focus()};
+  panel.querySelector('[data-refresh]').onclick=()=>act(()=>refresh(true));
   panel.querySelector('[data-new]').onclick=()=>act(async()=>{localStorage.removeItem(storageKey);await refresh()});
   await act(refresh);
-  const timer=setInterval(()=>{if(!current()){clearInterval(timer);return}if(!document.hidden&&session()&&!busy)act(refresh)},10000);
+  const timer=setInterval(()=>{if(!current()){clearInterval(timer);return}if(!document.hidden&&session()&&!busy)act(()=>refresh(true))},10000);
  }};
 })();

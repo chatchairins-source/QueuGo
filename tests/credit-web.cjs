@@ -20,6 +20,15 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  summary={...summary,enabled:false};host.querySelector('[data-refresh]').click();await new Promise(r=>setTimeout(r,20));eq(host.querySelector('form').hidden,true);
  // Provider data is text, never HTML; hostile URLs never become image sources.
  summary={...summary,enabled:true,entries:[{event_type:'<img src=x onerror=alert(1)>',cash_delta:0,promo_delta:0}],topups:[]};host.querySelector('[data-refresh]').click();await new Promise(r=>setTimeout(r,20));eq(host.querySelectorAll('[onerror]').length,0);
+ // Recover server-persisted pending topup after local storage/session restoration.
+ const restored={id:'00000000-0000-4000-8000-000000000999',amount_minor:2000,status:'pending',qr_url:'https://api.omise.co/charges/chrg_real/documents/docu_qr/downloads/qr'};
+ summary={...summary,topups:[restored]};host.querySelector('[data-refresh]').click();await new Promise(r=>setTimeout(r,30));
+ eq(JSON.parse(w.localStorage.getItem('qg-credit-request-v1:u1:merchant')).id,restored.id);
+ eq(host.querySelector('[data-qr]').hidden,false);
+ eq(requests.some(([url,b])=>url.endsWith('/queuego-credit')&&b.id===restored.id&&b.amount_minor===2000),true);
+ const requestCount=requests.length;host.querySelector('[data-refresh]').click();host.querySelector('[data-refresh]').click();await new Promise(r=>setTimeout(r,30));
+ eq(requests.slice(requestCount).filter(([url])=>url.endsWith('/queuego-credit')).length,1);
+ summary={...summary,topups:[{...restored,status:'expired'}]};host.querySelector('[data-refresh]').click();await new Promise(r=>setTimeout(r,30));eq(host.querySelector('[data-new]').hidden,false);eq(host.querySelector('[data-qr]').hidden,true);
  // Merchant and Rider pages must keep the shared credit surface mounted; later UI rewrites must not orphan top-up again.
  const merchant=fs.readFileSync('merchant/index.html','utf8'),rider=fs.readFileSync('rider/index.html','utf8');
  eq(merchant.includes('../queuego-credit.js')&&merchant.includes("kind:'merchant',owner:u.id"),true);
@@ -30,7 +39,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  eq(admin.includes("['money','เติมเครดิตฟรีร้านค้า','admin-credit','']"),true);
  eq(admin.includes("['money','เติมเครดิตฟรีร้านค้า','เพิ่มเครดิต GP ให้ร้านค้าที่อนุมัติแล้ว',\"navigate('admin-credit')\"]"),true);
  eq((admin.match(/navigate\('admin-credit'\)/g)||[]).length>=2,true);
- eq(adminCredit.includes("title.textContent='ให้เครดิตฟรีร้านค้า'")&&adminCredit.includes("'queuego_admin_grant_merchant_credit'"),true);
+ eq(adminCredit.includes("title.textContent='เพิ่มเครดิตให้'")&&adminCredit.includes("'queuego_admin_grant_merchant_credit'"),true);
  const creditMigration=fs.readFileSync('supabase/migrations/20261020234050_restore_credit_backend_admin_merchant_promo_20261021.sql','utf8');
  eq(creditMigration.includes('create function public.queuego_admin_merchant_credit_targets')&&creditMigration.includes('create function public.queuego_admin_grant_merchant_credit'),true);
  eq(creditMigration.includes('revoke all on function public.queuego_admin_grant_merchant_credit(uuid,uuid,bigint,text) from public,anon,service_role')&&creditMigration.includes('grant execute on function public.queuego_admin_grant_merchant_credit(uuid,uuid,bigint,text) to authenticated'),true);
