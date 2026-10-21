@@ -11,7 +11,7 @@ Snapshot date: 2026-10-21 · Main: `6669dc108137f8119c86d4de9709dacba7a301d7`
 - Source branch: `work-pos-complete-next-20261021`
 - Exact HEAD: `0f9af0cbc91af0bf7d964c9c52665ceb4e19cb9a`
 - PR: #568, open at review; successor based on current main `6669dc108137f8119c86d4de9709dacba7a301d7`.
-- Previous HEAD `119c68eb1172967e3542d66a15b02de30b33253f` passed QueueGo RC run `39617058579`. Updated exact-head RC run `39619648922` is **IN PROGRESS**.
+- Previous HEAD `119c68eb1172967e3542d66a15b02de30b33253f` passed QueueGo RC run `39617058579`. Updated exact-head RC run `39619648922` completed **SUCCESS**.
 - Local verification in the current session: focused POS tests pass (`36` cash-shift SQL/contract checks, `73` POS runtime checks, `18` item-sales report checks); full `npm test` completed successfully on updated exact source tree.
 - The update serializes identical actor/shop/request keys before receipt lookup and handles a competing unique-key receipt only when payload matches. Local PGlite validates migration semantics and retry contract; it is not a real simultaneous-connection/Production race certification.
 - Production migration history (read-only Supabase check): installed through `20261021133330_pos_owner_item_sales_report`; `20261021211709_pos_cash_register_movements` is **not installed**.
