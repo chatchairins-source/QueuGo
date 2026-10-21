@@ -14,12 +14,16 @@ function qgTimeout(promise,ms,label){let timer;return Promise.race([Promise.reso
 function qgLoadScript(src,ms=8000){return new Promise((resolve,reject)=>{const s=document.createElement('script');let done=false;const finish=(err)=>{if(done)return;done=true;clearTimeout(timer);s.onload=s.onerror=null;err?reject(err):resolve()};const timer=setTimeout(()=>finish(new Error('โหลดระบบเชื่อมต่อไม่ทันเวลา')),ms);s.src=src;s.async=true;s.onload=()=>finish();s.onerror=()=>finish(new Error('โหลดระบบเชื่อมต่อไม่สำเร็จ'));document.head.appendChild(s)})}
 async function qgEnsureSupabase(){
   if(window.supabase?.createClient)return window.supabase;
-  const sources=['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2','https://unpkg.com/@supabase/supabase-js@2'];
+  const sources=['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js','https://unpkg.com/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js'];
   let last=null;
   for(const src of sources){try{await qgLoadScript(src);if(window.supabase?.createClient)return window.supabase}catch(e){last=e}}
   throw last||new Error('ไม่สามารถโหลดระบบเชื่อมต่อ QueueGo');
 }
-async function qgDatabase(){if(db)return db;const lib=await qgEnsureSupabase();db=lib.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});return db}
+const QG_SESSION_KEY='qg_customer_session_v1';
+function qgCustomerSession(){try{return JSON.parse(localStorage.getItem(QG_SESSION_KEY))}catch(e){return null}}
+function qgSaveCustomerSession(v){try{localStorage.setItem(QG_SESSION_KEY,JSON.stringify(v))}catch(e){}}
+async function qgDatabase(){if(db)return db;const lib=await qgEnsureSupabase();db=lib.createClient(URL,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});return db}
+async function qgRestoreCustomerSession(client){const saved=qgCustomerSession();if(!saved?.accessToken||!saved?.authUserId)return null;const {data,error}=await qgTimeout(client.auth.setSession({access_token:saved.accessToken,refresh_token:saved.refreshToken||''}),10000,'ตรวจสอบการเข้าสู่ระบบไม่สำเร็จ');if(error||!data?.session)return null;const s=data.session;if(s.access_token!==saved.accessToken||s.refresh_token!==saved.refreshToken){qgSaveCustomerSession({...saved,accessToken:s.access_token,refreshToken:s.refresh_token||saved.refreshToken,expiresAt:(s.expires_at||0)*1000})}return s}
 const washer='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M4 7.5h16"/><circle cx="12" cy="14.5" r="4.5"/><circle cx="8" cy="5" r=".65" fill="currentColor" stroke="none"/><circle cx="11" cy="5" r=".65" fill="currentColor" stroke="none"/></svg>';
 let hub=null,service=null,services=[],customer=null,settingsByHub=new Map(),sending=false;
 const pendingKey=()=>customer?.id?'qg_laundry_pending_'+customer.id:null;
@@ -53,7 +57,7 @@ async function boot(){
   el.className='empty';el.textContent='กำลังโหลดร้านซัก...';settingsByHub.clear();
   try{
     const client=await qgTimeout(qgDatabase(),18000,'เชื่อมต่อ QueueGo ไม่สำเร็จ');
-    const {data:{session}}=await qgTimeout(client.auth.getSession(),10000,'ตรวจสอบการเข้าสู่ระบบไม่สำเร็จ');
+    const session=await qgRestoreCustomerSession(client);
     if(!session){location.href='../#login';return}
     const {data:u,error:uerr}=await qgTimeout(client.from('users').select('id,name,phone,metadata,role,status').eq('auth_user_id',session.user.id).maybeSingle(),12000,'โหลดบัญชีลูกค้าไม่สำเร็จ');
     if(uerr||!u||u.role!=='customer'||u.status!=='active'){location.href='../#login';return}
@@ -90,7 +94,7 @@ async function openShop(h){
 }
 document.getElementById('confirm').onclick=async()=>{
   if(sending)return;
-  const client=await qgDatabase();const {data:{session}}=await qgTimeout(client.auth.getSession(),10000,'ตรวจสอบการเข้าสู่ระบบไม่สำเร็จ');if(!session)return location.href='../#login';
+  const client=await qgDatabase();const session=await qgRestoreCustomerSession(client);if(!session)return location.href='../#login';
   if(!hub||!service)return alert('กรุณาเลือกบริการ');
   const m=customer.metadata||{},lat=Number(m.lat??m.latitude),lng=Number(m.lng??m.longitude),addr=String(m.address||m.delivery_address||m.location_address||'').trim();
   if(!Number.isFinite(lat)||!Number.isFinite(lng)||!addr){alert('กรุณาปักพิกัดจัดส่งใน QueueGo ก่อน');location.href='../#profile';return}
