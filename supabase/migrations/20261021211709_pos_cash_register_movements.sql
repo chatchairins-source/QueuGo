@@ -76,6 +76,11 @@ begin
   v_shop:=public.pos_my_shop();
   v_amount:=round(p_amount,2);
   if v_amount<=0 then raise exception 'cash movement amount must be at least 0.01'; end if;
+  -- Serialize the same actor/shop/request key before checking the receipt. This closes
+  -- the missing-row race between simultaneous retries; hash collisions only serialize
+  -- unrelated requests and do not change their data or authorization scope.
+  perform pg_advisory_xact_lock(hashtextextended(
+    v_shop::text||':'||(select auth.uid())::text||':'||p_request::text,0));
   select * into v_event from public.pos_register_cash_events
     where shop_id=v_shop and actor_id=(select auth.uid()) and idempotency_key=p_request for update;
   if found then
@@ -89,10 +94,22 @@ begin
     where shop_id=v_shop and cashier_user_id=(select auth.uid()) and closed_at is null for update;
   if not found then raise exception 'กรุณาเปิดกะก่อนบันทึกเงินเข้า/ออก'; end if;
 
-  insert into public.pos_register_cash_events(shop_id,shift_id,order_id,actor_id,amount,reason,event_type,idempotency_key)
-    values(v_shop,v_shift.id,null,(select auth.uid()),
-      case when p_type='cash_in' then v_amount else -v_amount end,trim(p_reason),p_type,p_request)
-    returning * into v_event;
+  begin
+    insert into public.pos_register_cash_events(shop_id,shift_id,order_id,actor_id,amount,reason,event_type,idempotency_key)
+      values(v_shop,v_shift.id,null,(select auth.uid()),
+        case when p_type='cash_in' then v_amount else -v_amount end,trim(p_reason),p_type,p_request)
+      returning * into v_event;
+  exception when unique_violation then
+    -- A concurrent request with the same idempotency key may win after the pre-check.
+    -- Return its receipt only when the payload matches; never turn a reused key into success.
+    select * into v_event from public.pos_register_cash_events
+      where shop_id=v_shop and actor_id=(select auth.uid()) and idempotency_key=p_request
+      for update;
+    if not found then raise; end if;
+    if v_event.event_type=p_type and abs(v_event.amount)=v_amount and v_event.reason=trim(p_reason)
+    then return to_jsonb(v_event); end if;
+    raise exception 'cash movement request was already used';
+  end;
   return to_jsonb(v_event);
 end $$;
 
