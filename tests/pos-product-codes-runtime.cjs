@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..'),tick=()=>new Promise(r=>setImmediate(r))
 (async()=>{
   const dom=new JSDOM('<div id="app"></div>',{url:'https://queuego.test/merchant/#pos',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
   const product={id:'product-1',name:'ชาไทย',price:35,pos_price:30,available:true,pos_available:true,variants:[]};
-  const optionProduct={id:'product-2',name:'ข้าวไข่เจียว',price:35,pos_price:35,available:true,pos_available:true,variants:[{schema:'queuego.menu-options.v1',key:'portion',name:'ขนาด',type:'single',required:true,options:[{key:'normal',name:'ธรรมด',price_delta:0},{key:'special',name:'พิเศษ',price_delta:20}]},{schema:'queuego.menu-options.v1',key:'toppings',name:'ท็อปปิ้ง',type:'multi',required:false,options:[{key:'egg',name:'ไข่ดาว',price_delta:5}]}]};
+  const optionProduct={id:'product-2',name:'ข้าวไข่เจียว',price:35,pos_price:35,available:true,pos_available:true,variants:[{schema:'queuego.menu-options.v1',key:'portion',name:'ขนาด',type:'single',required:true,options:[{key:'normal',name:'ธรรมด',price_delta:0},{key:'special',name:'พิเศษ',price_delta:20}]},{schema:'queuego.menu-options.v1',key:'toppings',name:'ท็อปปิ้ง',type:'multi',required:true,min:1,max:1,options:[{key:'egg',name:'ไข่ดาว',price_delta:5},{key:'meat',name:'เพิ่มเนื้อ',price_delta:10}]}]};
   const bill={id:'bill-1',shop_id:'shop-1',order_number:'POS-1',order_type:'TAKEAWAY',status:'accepted',kitchen_status:'NEW',payment_status:'UNPAID',total_amount:30,created_at:new Date().toISOString()};
   const calls=[],codes=[];let billExists=false,lookupGate=null;
   w.toast=()=>{};w.qtSessionRead=()=>({authUserId:'owner-1',accessToken:'token'});w.qtGetAccessToken=async()=>'token';w.QT_SUPABASE_CONFIG={URL:'https://test.invalid',KEY:'fixture'};w.crypto.randomUUID=()=>`request-${calls.length}`;w.AbortSignal=AbortSignal;w.confirm=()=>true;
@@ -37,7 +37,9 @@ const root=path.resolve(__dirname,'..'),tick=()=>new Promise(r=>setImmediate(r))
   assert.match(w.document.querySelector('#qg-pos-scan-status').textContent,/เพิ่ม ชาไทย แล้ว/);
   const optionAdd=w.qgPosAdd(optionProduct.id);for(let i=0;i<5;i++)await tick();
   const dialog=w.document.querySelector('.qg-pos-option-overlay');assert.ok(dialog);assert.equal(dialog.querySelectorAll('input[type=radio]').length,2);assert.equal(dialog.querySelector('input[value=special]').checked,false);
-  dialog.querySelector('input[value=special]').checked=true;dialog.querySelector('input[value=egg]').checked=true;w.qgPosOptionFinish(true);await optionAdd;
+  assert.match(dialog.textContent,/เลือกอย่างน้อย 1/);dialog.querySelector('input[value=special]').checked=true;w.qgPosOptionFinish(true);assert.ok(w.document.querySelector('.qg-pos-option-overlay'),'required multi-select must keep the choice dialog open');assert.equal(calls.some(c=>c.q==='rpc/pos_add_product_with_options'),false);
+  dialog.querySelector('input[value=egg]').checked=true;dialog.querySelector('input[value=meat]').checked=true;w.qgPosOptionFinish(true);assert.ok(w.document.querySelector('.qg-pos-option-overlay'),'multi-select max must be enforced before write');assert.equal(calls.some(c=>c.q==='rpc/pos_add_product_with_options'),false);
+  dialog.querySelector('input[value=meat]').checked=false;w.qgPosOptionFinish(true);await optionAdd;
   const optionCall=calls.find(c=>c.q==='rpc/pos_add_product_with_options');assert.equal(JSON.stringify(optionCall.body.p_options),JSON.stringify({portion:'special',toppings:['egg']}));assert.equal(optionCall.body.p_product,optionProduct.id);assert.equal(optionCall.body.p_order,bill.id);
   w.qgPosView('codes');for(let i=0;i<10;i++)await tick();
   assert.match(w.document.querySelector('#app').textContent,/SKU \/ บาร์โค้ด/);
@@ -46,5 +48,5 @@ const root=path.resolve(__dirname,'..'),tick=()=>new Promise(r=>setImmediate(r))
   assert.equal(calls.find(c=>c.q==='rpc/pos_product_code_save').body.p_product,product.id);
   assert.match(w.document.querySelector('#app').textContent,/TEA-MAIN/);
   w.qgPosDisconnect();dom.window.close();
-  console.log(JSON.stringify({checks:11,failures:0,scope:'POS barcode scan through shop lookup into existing idempotent bill flow and manager SKU registry'}));
+  console.log(JSON.stringify({checks:16,failures:0,scope:'POS barcode scan through shop lookup into existing idempotent bill flow, manager SKU registry and required/bounded multi-select validation'}));
 })().catch(e=>{console.error(e);process.exit(1)});

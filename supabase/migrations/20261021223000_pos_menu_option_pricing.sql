@@ -52,6 +52,9 @@ declare
   v_hash text;
   v_group_count integer:=0;
   v_legacy_count integer:=0;
+  v_min_count integer;
+  v_max_count integer;
+  v_selected_count integer;
 begin
   v_actor:=auth.uid();
   if v_actor is null or not public.pos_allowed('receive_order') then
@@ -106,6 +109,15 @@ begin
       elsif v_group->>'type'='multi' then
         v_selected:=coalesce(v_options->v_key,'[]'::jsonb);
         if jsonb_typeof(v_selected)<>'array' or jsonb_array_length(v_selected)>30 then raise exception 'รายการตัวเลือกไม่ถูกต้อง'; end if;
+        v_min_count:=coalesce(nullif(v_group->>'min','')::integer,
+          case when coalesce((v_group->>'required')::boolean,false) then 1 else 0 end);
+        v_max_count:=coalesce(nullif(v_group->>'max','')::integer,jsonb_array_length(v_group->'options'));
+        if v_min_count<0 or v_max_count<v_min_count or v_max_count>jsonb_array_length(v_group->'options') then
+          raise exception 'product option configuration is invalid';
+        end if;
+        v_selected_count:=jsonb_array_length(v_selected);
+        if v_selected_count<v_min_count then raise exception 'กรุณาเลือกอย่างน้อย % รายการใน %',v_min_count,coalesce(v_group->>'name','ตัวเลือกสินค้า'); end if;
+        if v_selected_count>v_max_count then raise exception 'เลือกได้ไม่เกิน % รายการใน %',v_max_count,coalesce(v_group->>'name','ตัวเลือกสินค้า'); end if;
         if (select count(*) from jsonb_array_elements(v_selected))<>(select count(distinct value) from jsonb_array_elements_text(v_selected)) then
           raise exception 'มีตัวเลือกสินค้าซ้ำ';
         end if;
