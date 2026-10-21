@@ -72,11 +72,10 @@ fun QueueGoCreditCard(userId: String, token: String, kind: String) {
     fun money(minor: Long) = "฿" + BigDecimal.valueOf(minor, 2).toPlainString()
     Card(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(if (kind == "merchant") "เครดิตค่าบริการร้านค้า" else "เครดิต Rider", style = MaterialTheme.typography.titleMedium)
+            Text(if (kind == "merchant") "เครดิตร้านค้า" else "เครดิต Rider", style = MaterialTheme.typography.titleMedium)
             val data = summary
             if (data != null) {
-                Text("ใช้ได้ ${money(data.optLong("available_minor"))} · กันไว้ ${money(data.optLong("held_minor"))}")
-                Text("เงินจริง ${money(data.optLong("cash_minor"))} · โปรโมชั่น ${money(data.optLong("promo_minor"))}")
+                Text("ใช้ได้ ${money(data.optLong("available_minor"))}")
             }
             if (data?.optBoolean("enabled") == true) {
                 if (request == null) {
@@ -118,7 +117,7 @@ fun QueueGoCreditCard(userId: String, token: String, kind: String) {
             val entries = data?.optJSONArray("entries")
             for (i in 0 until minOf(entries?.length() ?: 0, 10)) {
                 val e = entries?.optJSONObject(i) ?: continue
-                val labels = mapOf("topup" to "เติมเครดิต", "promo" to "เครดิตโปรโมชั่น", "reserve" to "กันเครดิต", "release" to "คืนยอดกัน", "capture" to "หักค่าบริการ", "reversal" to "คืนค่าบริการ")
+                val labels = mapOf("topup" to "เพิ่มเครดิต", "promo" to "เพิ่มเครดิต", "reserve" to "กันเครดิต", "release" to "คืนยอดกัน", "capture" to "หักค่าบริการ", "reversal" to "คืนค่าบริการ")
                 Text("${labels[e.optString("event_type")] ?: "รายการเครดิต"} · ${money(if (e.optString("event_type") in listOf("reserve", "release")) kotlin.math.abs(e.optLong("held_cash_delta") + e.optLong("held_promo_delta")) else e.optLong("cash_delta") + e.optLong("promo_delta"))}")
             }
             Text("เครดิตใช้ชำระค่าบริการ QueueGo · ถอนหรือโอนไม่ได้", style = MaterialTheme.typography.bodySmall)
