@@ -3621,7 +3621,7 @@ window.qgmRenderRevenue=async function(){
   </nav>
   <div id="qgm-revenue-result" aria-live="polite"><div class="qgm-revenue-loading">กำลังโหลดรายงาน...</div></div>
   <div id="qgm-credit-host" class="qgm-credit-premium"></div>
-  <aside class="qgm-revenue-info"><span class="qgm-revenue-info-icon">i</span><div><b>เครดิตร้านค้าใช้ชำระ GP และค่าบริการในระบบ</b><p>ระบบจะหักค่า GP จากเครดิตร้านโดยอัตโนมัติตามสถานะออเดอร์ รายการเครดิตไม่สามารถถอนหรือโอนได้</p></div></aside>
+  <aside class="qgm-revenue-info"><span class="qgm-revenue-info-icon">i</span><div><b>เครดิตร้านค้าใช้ชำระ GP และค่าบริการในระบบ</b><p>ระบบจะหักค่า GP จากเครดิตร้านโดยอัตโนมัติตามสถานะออเดอร์ เงินสดบันทึกตาม flow จริง ไม่ต้องกดยืนยันการรับเงินเพิ่ม · รายการเครดิตไม่สามารถถอนหรือโอนได้</p></div></aside>
   <button id="qgm-revenue-export" class="qgm-revenue-export" type="button" onclick="qgmExportRevenue(this)">ดาวน์โหลดรายงาน 30 วัน (CSV)</button>
  </div>`,'shop-profile');
  const creditHost=document.getElementById('qgm-credit-host');
