@@ -27,8 +27,8 @@ assert(merchant.includes("grid-template-columns:repeat(3,minmax(0,1fr));gap:6px"
 assert(merchant.includes('qgm-revenue-layout-v4'),'revenue page has dedicated layout layer');
 assert(merchant.includes('qgm-revenue-store'),'current store context is part of the title row');
 assert(merchant.includes('qgm-credit-history-card'),'credit history is a separate card, not inside the balance card');
-assert(merchant.includes('qgm-credit-live-status'),'credit status is separated from credit controls');
+assert(merchant.includes('qgm-credit-live-status')&&merchant.includes('new MutationObserver(syncStatus).observe(status'),'credit status is mirrored outside controls without breaking live refresh');
 assert(merchant.includes("document.body.classList.add('qgm-revenue-page')"),'revenue-only shell spacing is scoped');
-assert(merchant.includes("historyCard.append(historyHead,entries)"),'live entries move into the history section');
+assert(merchant.includes("historyList.className='qgm-credit-history-list'")&&merchant.includes("new MutationObserver(syncHistory).observe(entries,{childList:true})"),'history layout mirrors live entries without moving the component source');
 assert(merchant.includes("qgm-wordmark"),'revenue header includes QueueGo wordmark');
 console.log('merchant revenue premium 28 checks passed');
