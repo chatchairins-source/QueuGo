@@ -1,0 +1,66 @@
+const fs=require('fs'),path=require('path'),assert=require('assert/strict');
+const {PGlite}=require('@electric-sql/pglite');
+const root=path.resolve(__dirname,'..');
+const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021223000_pos_menu_option_pricing.sql'),'utf8');
+const client=fs.readFileSync(path.join(root,'merchant/pos-table-v2.js'),'utf8');
+const groceryMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261012170449_grocery_master_catalog.sql'),'utf8');
+const stockTrigger=groceryMigration.match(/create function public\.qg_grocery_item_stock\(\)[\s\S]*?create trigger grocery_item_stock[^;]*;/)?.[0];
+assert.ok(stockTrigger);assert.match(stockTrigger,/after insert or delete or update of quantity,product_id,order_id/);
+assert.match(migration,/pos_edit_bill\(p_order,p_type,p_table,p_product,1,v_note\)/);
+assert.match(migration,/v_delta:=v_delta\+v_option_delta/);
+assert.match(migration,/payload_hash<>v_hash/);
+(async()=>{
+  const db=new PGlite();
+  const shop='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',actor='10000000-0000-4000-8000-000000000001';
+  await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
+    create table public.shop_profiles(id uuid primary key); create table public.products(id uuid primary key,shop_id uuid,name text,price numeric,pos_price numeric,available boolean,pos_available boolean,variants jsonb,grocery_master_id uuid,grocery_stock_tracking boolean default false,stock integer default 0);
+    create table public.orders(id uuid primary key default gen_random_uuid(),shop_id uuid,sales_channel text,order_type text,table_id uuid,status text default 'pending',subtotal numeric default 0,discount_amount numeric default 0,total_amount numeric default 0,updated_at timestamptz default now());
+    create table public.order_items(id uuid primary key default gen_random_uuid(),order_id uuid references public.orders(id) on delete cascade,product_id uuid,item_name text,description text,quantity integer,unit_price numeric,total_price numeric,created_at timestamptz default now());
+    create table public.grocery_stock_reservations(item_id uuid primary key,order_id uuid not null,product_id uuid not null,quantity integer not null,released boolean not null default false,created_at timestamptz default now(),updated_at timestamptz default now());
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    create function public.pos_my_shop() returns uuid language sql stable as $$ select nullif(current_setting('qg.test.shop',true),'')::uuid $$;
+    create function public.pos_allowed(text) returns boolean language sql stable as $$ select coalesce(current_setting('qg.test.allowed',true),'false')='true' $$;
+    create function public.pos_edit_bill(p_order uuid,p_type text,p_table uuid,p_product uuid,p_quantity integer,p_note text default '') returns uuid language plpgsql security definer as $$ declare o uuid; p public.products%rowtype; price numeric; begin if not public.pos_allowed('receive_order') then raise exception 'receive order permission denied'; end if; if p_order is null then insert into public.orders(shop_id,sales_channel,order_type,table_id) values(public.pos_my_shop(),'POS',p_type,p_table) returning id into o; else o:=p_order; end if; select * into p from public.products where id=p_product and shop_id=public.pos_my_shop() and available and pos_available; if not found then raise exception 'product unavailable'; end if; price:=coalesce(p.pos_price,p.price); insert into public.order_items(order_id,product_id,item_name,description,quantity,unit_price,total_price) values(o,p_product,p.name,nullif(trim(p_note),''),p_quantity,price,p_quantity*price); update public.orders set subtotal=(select coalesce(sum(total_price),0) from public.order_items where order_id=o),total_amount=(select coalesce(sum(total_price),0) from public.order_items where order_id=o) where id=o; return o; end $$;
+    insert into auth.users values('${actor}'); insert into public.shop_profiles values('${shop}'),('${other}');
+    insert into public.products values
+      ('20000000-0000-4000-8000-000000000001','${shop}','ข้าวไข่เจียว',35,35,true,true,'[{"schema":"queuego.menu-options.v1","key":"portion","name":"ขนาด","type":"single","required":true,"options":[{"key":"normal","name":"ธรรมดา","price_delta":0},{"key":"special","name":"พิเศษ","price_delta":20}]},{"schema":"queuego.menu-options.v1","key":"toppings","name":"ท็อปปิ้ง","type":"multi","required":false,"options":[{"key":"egg","name":"ไข่ดาว","price_delta":5},{"key":"meat","name":"เพิ่มเนื้อ","price_delta":10}]}]'),
+      ('20000000-0000-4000-8000-000000000002','${shop}','ชา',25,25,true,true,'["หวานน้อย","หวานปกติ"]'),
+      ('20000000-0000-4000-8000-000000000003','${other}','ร้านอื่น',10,10,true,true,'[]'),
+      ('20000000-0000-4000-8000-000000000004','${shop}','น้ำจิ้ม',10,10,true,true,'[{"schema":"queuego.menu-options.v1","key":"sauce","name":"น้ำจิ้ม","type":"single","required":false,"options":[{"key":"sweet","name":"หวาน","price_delta":0},{"key":"spicy","name":"เผ็ด","price_delta":0}]}]');
+    update public.products set grocery_master_id='40000000-0000-4000-8000-000000000001',grocery_stock_tracking=true,stock=3 where id='20000000-0000-4000-8000-000000000001';`);
+  await db.exec(stockTrigger);
+  await db.exec(migration);
+  const set=async({user=actor,allowed=true,currentShop=shop}={})=>db.query(`select set_config('request.jwt.claim.sub',$1,false),set_config('qg.test.shop',$2,false),set_config('qg.test.allowed',$3,false)`,[user||'',currentShop,String(allowed)]);
+  const scalar=async(sql,args=[]) => (await db.query(sql,args)).rows[0];
+  const request1='30000000-0000-4000-8000-000000000001',product='20000000-0000-4000-8000-000000000001';
+  await set({allowed:false});await assert.rejects(()=>db.query(`select public.pos_add_product_with_options(null,'TAKEAWAY',null,'${product}','', '{"portion":"normal"}'::jsonb,'${request1}')`),/permission denied/);
+  await set({user:null});await assert.rejects(()=>db.query(`select public.pos_add_product_with_options(null,'TAKEAWAY',null,'${product}','', '{}'::jsonb,'${request1}')`),/permission denied/);
+  await set();
+  await db.query(`update public.products set variants=jsonb_set(jsonb_set(jsonb_set(variants,'{1,required}','true'::jsonb),'{1,min}','1'::jsonb),'{1,max}','1'::jsonb) where id=$1`,[product]);
+  await assert.rejects(()=>db.query(`select public.pos_add_product_with_options(null,'TAKEAWAY',null,'${product}','','{"portion":"normal","toppings":[]}'::jsonb,'30000000-0000-4000-8000-000000000010')`),/เลือกอย่างน้อย 1/);
+  await assert.rejects(()=>db.query(`select public.pos_add_product_with_options(null,'TAKEAWAY',null,'${product}','','{"portion":"normal","toppings":["egg","meat"]}'::jsonb,'30000000-0000-4000-8000-000000000011')`),/เลือกได้ไม่เกิน 1/);
+  await db.query(`update public.products set variants=(variants #- '{1,min}' #- '{1,max}') where id=$1`,[product]);
+  await db.query(`update public.products set variants=jsonb_set(variants,'{1,required}','false'::jsonb) where id=$1`,[product]);
+  const first=await scalar(`select public.pos_add_product_with_options(null,'TAKEAWAY',null,'${product}','ไม่เผ็ด','{"portion":"special","toppings":["egg","meat"]}'::jsonb,'${request1}') as item`);
+  assert.equal(Number(first.item.unit_price),70);assert.equal(first.item.description,'ไม่เผ็ด · ขนาด: พิเศษ · ท็อปปิ้ง: ไข่ดาว · ท็อปปิ้ง: เพิ่มเนื้อ');assert.equal((await scalar(`select stock from public.products where id=$1`,[product])).stock,2);
+  const order=first.item.order_id;
+  assert.equal(Number((await scalar(`select subtotal from public.orders where id=$1`,[order])).subtotal),70);
+  const retry=await scalar(`select public.pos_add_product_with_options(null,'TAKEAWAY',null,'${product}','ไม่เผ็ด','{"portion":"special","toppings":["egg","meat"]}'::jsonb,'${request1}') as item`);
+  assert.equal(retry.item.replayed,true);assert.equal((await scalar(`select count(*)::int n from public.order_items where order_id=$1`,[order])).n,1);assert.equal((await scalar(`select stock from public.products where id=$1`,[product])).stock,2);
+  await assert.rejects(()=>db.query(`select public.pos_add_product_with_options(null,'TAKEAWAY',null,'${product}','ไม่เผ็ด','{"portion":"normal"}'::jsonb,'${request1}')`),/different data/);
+  await assert.rejects(()=>db.query(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'${product}','','{}'::jsonb,'30000000-0000-4000-8000-000000000002')`),/เลือก ขนาด/);
+  await assert.rejects(()=>db.query(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'${product}','','{"portion":"bad"}'::jsonb,'30000000-0000-4000-8000-000000000003')`),/ตัวเลือกสินค้าไม่ถูกต้อง/);
+  await assert.rejects(()=>db.query(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'${product}','','{"portion":"normal","toppings":["egg","egg"]}'::jsonb,'30000000-0000-4000-8000-000000000004')`),/ซ้ำ/);
+  await assert.rejects(()=>db.query(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'20000000-0000-4000-8000-000000000003','','{}'::jsonb,'30000000-0000-4000-8000-000000000005')`),/unavailable in this shop/);
+  const second=await scalar(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'${product}','','{"portion":"normal","toppings":[]}'::jsonb,'30000000-0000-4000-8000-000000000006') as item`);
+  assert.equal(Number(second.item.unit_price),35);assert.equal(Number((await scalar(`select subtotal from public.orders where id=$1`,[order])).subtotal),105);assert.equal((await scalar(`select stock from public.products where id=$1`,[product])).stock,1);
+  await db.query(`delete from public.order_items where id=$1`,[second.item.order_item_id]);const removedRetry=await scalar(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'${product}','','{\"portion\":\"normal\",\"toppings\":[]}'::jsonb,'30000000-0000-4000-8000-000000000006') as item`);assert.equal(removedRetry.item.replayed,true);assert.equal(removedRetry.item.order_item_id,null);
+  const legacy=await scalar(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'20000000-0000-4000-8000-000000000002','','{"variant":"หวานน้อย"}'::jsonb,'30000000-0000-4000-8000-000000000007') as item`);
+  assert.equal(legacy.item.description,'ตัวเลือก: หวานน้อย');assert.equal(Number(legacy.item.unit_price),25);
+  await assert.rejects(()=>db.query(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'20000000-0000-4000-8000-000000000002','','{"variant":"ไม่มี"}'::jsonb,'30000000-0000-4000-8000-000000000008')`),/ตัวเลือกสินค้าไม่ถูกต้อง/);
+  const optional=await scalar(`select public.pos_add_product_with_options(null,'TAKEAWAY',null,'20000000-0000-4000-8000-000000000004','','{}'::jsonb,'30000000-0000-4000-8000-000000000012') as item`);assert.equal(Number(optional.item.unit_price),10);
+  const acl=await scalar(`select has_table_privilege('anon','public.pos_option_add_requests','select') anon_read,has_table_privilege('authenticated','public.pos_option_add_requests','select') auth_read,has_function_privilege('anon','public.pos_add_product_with_options(uuid,text,uuid,uuid,text,jsonb,uuid)','execute') anon_exec,has_function_privilege('authenticated','public.pos_add_product_with_options(uuid,text,uuid,uuid,text,jsonb,uuid)','execute') auth_exec`);
+  assert.deepEqual(acl,{anon_read:false,auth_read:false,anon_exec:false,auth_exec:true});
+  await set({currentShop:other});await assert.rejects(()=>db.query(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'${product}','','{"portion":"normal"}'::jsonb,'30000000-0000-4000-8000-000000000009')`),/unavailable in this shop/);
+  await db.close();console.log(JSON.stringify({checks:30,failures:0,scope:'server validated POS option selection including multi-select min/max and optional single choice, price snapshot, order total, legacy variants, replay idempotency, cross-shop/role denial and private request ACL'}));
+})().catch(e=>{console.error(e);process.exit(1)});
