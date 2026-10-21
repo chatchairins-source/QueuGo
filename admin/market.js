@@ -25,8 +25,7 @@ window.addEventListener('qt:realtime-update',()=>{
 window.renderAdminMarket=async()=>{
   if(!admin())return navigate('login');
   layout('จัดการตลาดสด',`<section class="card qg-admin-market">
-    <button class="qg-admin-back" onclick="navigate('admin')">‹ ศูนย์ควบคุม</button>
-    <h2>ตลาดและร้านสมาชิก</h2>
+    <h2 class="qg-admin-section-lead">ตลาดและร้านสมาชิก</h2>
     <details class="qg-market-guide"><summary>ขั้นตอนตรวจและอนุมัติ</summary><ol><li>คำขอเพิ่มตลาด: ตรวจชื่อ ที่อยู่และพิกัด แล้วอนุมัติหรือปฏิเสธพร้อมเหตุผล</li><li>ร้านสมาชิก: ตรวจร้าน แผง/โซน พิกัดและภาพหน้าร้าน แล้วอนุมัติแยกจากคำขอตลาด</li></ol><p>อนุมัติตลาดใหม่แล้ว ร้านผู้ขอจะเข้าคิวตรวจสมาชิก ระบบยังไม่ถือว่าร้านผ่านอนุมัติ</p></details><button type="button" onclick="qgLoadMarketOperations()">รีเฟรชคำขอ</button>
     <div class="row-btns"><button class="btn-secondary" type="button" onclick="qtAdminTab&&navigate('admin')">ตั้งค่า Feature / ราคา อยู่ใน Admin › ตั้งค่าระบบ</button></div>
     <div id="qg-market-admin">กำลังโหลดข้อมูลจริง...</div>
