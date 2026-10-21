@@ -2788,15 +2788,13 @@ window.renderShopOrderModern=function(id){
  qgmStartPrepCountdown();
 };
 
-let qgmProductViewSearch='',qgmProductViewCategory='',qgmProductViewMode='all',qgmProductsPageFetchSeq=0;
+let qgmProductViewMode='all',qgmProductsPageFetchSeq=0;
 function qgmApplyProductView(){
-  const q=qgmProductViewSearch,mode=qgmProductViewMode;
-  document.querySelectorAll('.qgm-product').forEach(el=>{const matchesSearch=!q||el.dataset.search.includes(q),matchesMode=mode==='all'||el.dataset.mode===mode;el.hidden=!(matchesSearch&&matchesMode&&(!qgmProductViewCategory||el.dataset.category===qgmProductViewCategory))});
+  const mode=qgmProductViewMode;
+  document.querySelectorAll('.qgm-product').forEach(el=>{el.hidden=!(mode==='all'||el.dataset.mode===mode)});
   document.querySelectorAll('.qgm-tabs button[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
 }
-window.qgmProductSearch=function(q){qgmProductViewSearch=String(q||'').trim().toLocaleLowerCase('th-TH');qgmApplyProductView()}
-window.qgmProductFilter=function(mode){qgmProductViewMode=['all','on','off'].includes(mode)?mode:'all';qgmApplyProductView()}
-window.qgmProductCategory=function(category){qgmProductViewCategory=String(category||'');qgmApplyProductView()};
+window.qgmProductFilter=function(mode){qgmProductViewMode=['all','on','off'].includes(mode)?mode:'all';qgmApplyProductView()};
 async function qgmRefreshProductsPage(u){
   const pid=profileId(u),owner=String(u?.id||''),seq=++qgmProductsPageFetchSeq;if(!pid||!owner)return;
   try{
@@ -2807,10 +2805,7 @@ async function qgmRefreshProductsPage(u){
     const others=dbGet('qt_products',[]).filter(p=>String(p.shopId)!==owner&&String(p.shopProfileId)!==String(pid)&&String(p.shopId)!==String(pid));
     QT_DB_CACHE.qt_products=others.concat(mapped);qtMarkClean('qt_products');try{qgSaveMerchantCache()}catch(e){}
     if(location.hash==='#shop-grocery-existing')renderShopProductsModern({authoritative:true,legacy:true});
-    if(location.hash==='#shop-products'){
-      const active=document.activeElement,typing=active&&active.matches?.('.qgm-search input')&&String(active.value||'').length>0;
-      if(!typing)renderShopProductsModern({authoritative:true});
-    }
+    if(location.hash==='#shop-products')renderShopProductsModern({authoritative:true});
   }catch(e){console.warn('merchant products authoritative refresh failed',e)}
 }
 const qgmProductToggleInFlight=new Set();
@@ -2833,7 +2828,7 @@ window.qgmToggleProduct=async function(id,available,control){
  }
  try{renderShopProductsModern()}catch(renderErr){console.warn('merchant product post-commit render failed',renderErr)}
 }
-window.renderShopProductsModern=function(options={}){const u=shopUser();if(!u){console.warn('Products render skipped: merchant profile is not hydrated yet');return;}const isGrocery=qgmShopCategory(u)==='grocery',ps=shopProducts(u).filter(p=>(!options.legacy||!p.grocery_master_id)&&(!isGrocery||Number(p.posPrice??p.price??0)>0)),categories=[...new Set(ps.map(p=>String(p.category||'ไม่ระบุหมวด')))].sort((a,b)=>a.localeCompare(b,'th'));if(!categories.includes(qgmProductViewCategory))qgmProductViewCategory='';const addActions=isGrocery?`<div class="qgm-fab qgm-grocery-add-choices"><button type="button" class="qgm-primary" onclick="navigate('shop-product/new')">${svg('plus')} เพิ่มสินค้าเอง</button><button type="button" id="qgm-grocery-catalog-add" class="qgm-primary" onclick="qgmOpenGroceryCatalog()">เพิ่มสินค้าจากแคตตาล็อก</button></div>`:`<div class="qgm-fab"><button type="button" onclick="navigate('shop-catalog')">${svg('plus')} เพิ่มสินค้า</button></div>`;layout('จัดการสินค้า',`<div class="qgm-unified-page qgm-unified-products"><div class="qgm-unified-intro"><b>${isGrocery?'สินค้าในร้าน':'สินค้าและเมนู'}</b><small>${isGrocery?'เพิ่มสินค้าเอง หรือเลือกสินค้าที่จัดหมวดหมู่แล้วจากแคตตาล็อก QueueGo':'เปิด–ปิดขาย แก้ไขราคา และจัดการสต็อก'}</small></div><label class="qgm-search">${svg('search')}<input type="search" value="${esc(qgmProductViewSearch)}" placeholder="ค้นหาสินค้า..." oninput="qgmProductSearch(this.value)"></label>${isGrocery?`<div class="qgm-product-category-control"><label for="qgm-product-category">หมวดหมู่สินค้า</label><select id="qgm-product-category" aria-label="หมวดหมู่สินค้าในร้าน" onchange="qgmProductCategory(this.value)"><option value="">ทุกหมวด</option>${categories.map(c=>`<option value="${esc(c)}" ${c===qgmProductViewCategory?'selected':''}>${esc(c)}</option>`).join('')}</select></div>`:''}<div class="qgm-tabs"><button data-mode="all" onclick="qgmProductFilter('all')">ทั้งหมด</button><button data-mode="on" onclick="qgmProductFilter('on')">เปิดขาย</button><button data-mode="off" onclick="qgmProductFilter('off')">ปิดขาย</button></div>${ps.map(p=>`<div class="qgm-card qgm-product" data-mode="${p.available!==false?'on':'off'}" data-category="${esc(p.category||'ไม่ระบุหมวด')}" data-search="${esc((p.name+' '+(p.category||'')).toLocaleLowerCase('th-TH'))}" onclick="if(event.target.tagName!=='INPUT'&&event.target.tagName!=='SPAN')navigate('shop-product/${p.id}')"><img src="${esc(img(p.image||p.catalog_preview_image||p.image_url))}"><div><b>${esc(p.name)}</b><strong>${Number(p.posPrice??p.price??0).toLocaleString('th-TH')} บาท</strong><small>${p.available!==false?'เปิดขาย':'ปิดขาย'}</small></div><label class="qgm-switch"><input type="checkbox" ${p.available!==false?'checked':''} onchange="qgmToggleProduct('${p.id}',this.checked,this)"><span></span></label></div>`).join('')||'<div class="qgm-empty"><h2>ยังไม่มีสินค้า</h2></div>'}${addActions}</div>`,'shop-products',{back:true});qgmApplyProductView();if(!options.authoritative)qgmRefreshProductsPage(u)};
+window.renderShopProductsModern=function(options={}){const u=shopUser();if(!u){console.warn('Products render skipped: merchant profile is not hydrated yet');return;}const isGrocery=qgmShopCategory(u)==='grocery',ps=shopProducts(u).filter(p=>(!options.legacy||!p.grocery_master_id)&&(!isGrocery||Number(p.posPrice??p.price??0)>0));const addActions=isGrocery?`<div class="qgm-fab qgm-grocery-add-choices"><button type="button" class="qgm-primary" onclick="navigate('shop-product/new')">${svg('plus')} เพิ่มสินค้าเอง</button><button type="button" id="qgm-grocery-catalog-add" class="qgm-primary" onclick="qgmOpenGroceryCatalog()">เพิ่มสินค้าจากแคตตาล็อก</button></div>`:`<div class="qgm-fab"><button type="button" onclick="navigate('shop-catalog')">${svg('plus')} เพิ่มสินค้า</button></div>`;layout('จัดการสินค้า',`<div class="qgm-unified-page qgm-unified-products"><div class="qgm-unified-intro"><b>${isGrocery?'สินค้าในร้าน':'สินค้าและเมนู'}</b><small>${isGrocery?'เพิ่มสินค้าเอง หรือเลือกสินค้าที่จัดหมวดหมู่แล้วจากแคตตาล็อก QueueGo':'เปิด–ปิดขาย แก้ไขราคา และจัดการสต็อก'}</small></div><div class="qgm-tabs"><button data-mode="all" onclick="qgmProductFilter('all')">ทั้งหมด</button><button data-mode="on" onclick="qgmProductFilter('on')">เปิดขาย</button><button data-mode="off" onclick="qgmProductFilter('off')">ปิดขาย</button></div>${ps.map(p=>`<div class="qgm-card qgm-product" data-mode="${p.available!==false?'on':'off'}" onclick="if(event.target.tagName!=='INPUT'&&event.target.tagName!=='SPAN')navigate('shop-product/${p.id}')"><img src="${esc(img(p.image||p.catalog_preview_image||p.image_url))}"><div><b>${esc(p.name)}</b><strong>${Number(p.posPrice??p.price??0).toLocaleString('th-TH')} บาท</strong><small>${p.available!==false?'เปิดขาย':'ปิดขาย'}</small></div><label class="qgm-switch"><input type="checkbox" ${p.available!==false?'checked':''} onchange="qgmToggleProduct('${p.id}',this.checked,this)"><span></span></label></div>`).join('')||'<div class="qgm-empty"><h2>ยังไม่มีสินค้า</h2></div>'}${addActions}</div>`,'shop-products',{back:true});qgmApplyProductView();if(!options.authoritative)qgmRefreshProductsPage(u)};
 
 const qgmFoodMenuCategories=[
  ['เมนูแนะนำ / เมนูขายดี','tag'],
