@@ -2363,7 +2363,7 @@ window.renderShopDashboardModern=function(u){
 
  const main=document.querySelector('.qgm-content');if(!main)return;
  const revenue=document.createElement('button');revenue.className='qgm-revenue-entry';revenue.type='button';revenue.onclick=()=>navigate('shop-revenue');
- revenue.innerHTML='<span>฿</span><span><strong>รายได้ทั้งหมด</strong><small>เลือกวัน ดูยอดขาย เงินสด และ GP ย้อนหลัง</small></span>';
+ revenue.innerHTML='<span>฿</span><span><strong>รายได้ทั้งหมด</strong><small>เลือกวัน ดูยอดขาย เงินสด และ GP ที่หักจากเครดิต</small></span>';
  const stats=main.querySelector('.qgm-stats');(stats||main.firstChild).after(revenue);
  const menu=document.createElement('div');menu.className='qgm-pause-menu';menu.innerHTML='<small>พักรับออเดอร์:</small><button type="button" onclick="qgmPauseShop(30)">30 นาที</button><button type="button" onclick="qgmPauseShop(60)">1 ชั่วโมง</button><button type="button" onclick="qgmPauseShop(1440)">1 วัน</button>';
  main.querySelector('.qgm-home-store')?.after(menu);
@@ -3529,7 +3529,7 @@ window.qgmRenderRevenue=async function(){
  const u=currentUser();if(!u||u.type!=='shop')return navigate('login');
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  qtShopLayout('รายได้ทั้งหมด',`<div class="qt-shop-page-title"><button class="qt-shop-back" onclick="navigate('dashboard')">←</button><h2>รายได้ทั้งหมด</h2></div>
- <p class="qgm-report-status">เงินสดค่าสินค้า: ไรเดอร์จ่ายร้านตอนรับสินค้า แล้วเก็บจากลูกค้าเอง · GP คือค่าบริการร้าน</p>
+ <p class="qgm-report-status">เงินสดค่าสินค้า: ไรเดอร์จ่ายร้านตอนรับสินค้า แล้วเก็บจากลูกค้าเอง · GP คือค่าบริการที่ระบบหักจากเครดิตร้านอัตโนมัติ</p>
  <section class="qgm-report"><label for="qgm-revenue-date"><b>เลือกวันที่</b></label><input id="qgm-revenue-date" class="qgm-report-date" type="date" max="${today}" value="${today}" onchange="qgmLoadRevenue(this.value)">
  <div class="qgm-pause-menu"><button onclick="qgmRevenueOffset(0)">วันนี้</button><button onclick="qgmRevenueOffset(7)">7 วันที่ผ่านมา</button><button onclick="qgmRevenueOffset(30)">30 วันที่ผ่านมา</button></div></section>
  <div id="qgm-revenue-result" aria-live="polite">กำลังโหลดรายงาน...</div>`,'shop-profile');
@@ -3559,7 +3559,7 @@ window.qgmLoadRevenuePeriod=async function(days,end){
   const token=await qtGetAccessToken(),rows=await qtSupabaseTable('rpc/merchant_revenue_days',{method:'POST',accessToken:token,body:{p_from:start.toISOString().slice(0,10),p_to:end}});
   if(!box.isConnected)return;
   const sum=k=>(rows||[]).reduce((n,r)=>n+Number(r[k]||0),0),money=n=>'฿'+n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
-  box.innerHTML='<section class="qgm-report"><h2>รายได้ '+days+' วัน</h2><div class="qgm-report-grid"><div><small>ยอดค่าสินค้า</small><b>'+money(sum('gross_sales'))+'</b></div><div><small>จำนวนออเดอร์</small><b>'+sum('order_count')+'</b></div><div><small>GP</small><b>'+money(sum('gp_due'))+'</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>'+money(sum('cash_received'))+'</b></div></div></section>'+(rows||[]).map(r=>'<section class="qgm-report"><b>'+escapeHtml(r.date_key)+'</b> · '+Number(r.order_count||0)+' ออเดอร์ · '+money(Number(r.gross_sales||0))+'</section>').join('');
+  box.innerHTML='<section class="qgm-report"><h2>รายได้ '+days+' วัน</h2><div class="qgm-report-grid"><div><small>ยอดค่าสินค้า</small><b>'+money(sum('gross_sales'))+'</b></div><div><small>จำนวนออเดอร์</small><b>'+sum('order_count')+'</b></div><div><small>GP ที่หักจากเครดิต</small><b>'+money(sum('gp_credit_deducted'))+'</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>'+money(sum('cash_received'))+'</b></div></div></section>'+(rows||[]).map(r=>'<section class="qgm-report"><b>'+escapeHtml(r.date_key)+'</b> · '+Number(r.order_count||0)+' ออเดอร์ · '+money(Number(r.gross_sales||0))+'</section>').join('');
  }catch(e){box.textContent='โหลดรายได้ไม่สำเร็จ: '+e.message}
 };
 window.qgmLoadRevenue=async function(date){
@@ -3572,12 +3572,13 @@ window.qgmLoadRevenue=async function(date){
   if(document.getElementById('qgm-revenue-date')?.value!==date)return;
   const r=rows?.[0];if(!r)throw Error('ไม่พบรายงาน');
   const money=n=>'฿'+Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const due=Number(r.gp_due||0),sales=Number(r.gross_sales||0),cash=Number(r.cash_received||0);
+  const creditGp=Number(r.gp_credit_deducted||0),legacyGp=Number(r.gp_due||0),sales=Number(r.gross_sales||0),cash=Number(r.cash_received||0);
   box.innerHTML=`<section class="qgm-report"><h2>${escapeHtml(new Date(date+'T12:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}))}</h2>
-    <div class="qgm-report-grid"><div><small>ยอดค่าสินค้าหลังไรเดอร์รับ</small><b>${money(sales)}</b></div><div><small>GP ที่ต้องชำระ</small><b>${money(due)}</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>${money(cash)}</b></div><div><small>ออเดอร์ที่ไรเดอร์รับสินค้า</small><b>${Number(r.order_count||0)}</b></div></div>
-    <p class="qgm-report-status">ประมาณการยอดค่าสินค้าหลังหัก GP: ${money(sales-due)} · สถานะ GP: ${escapeHtml(GP_SETTLEMENT_STATUSES[r.gp_status]||r.gp_status||'รอชำระ')}</p>
+    <div class="qgm-report-grid"><div><small>ยอดค่าสินค้าหลังไรเดอร์รับ</small><b>${money(sales)}</b></div><div><small>GP ที่หักจากเครดิต</small><b>${money(creditGp)}</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>${money(cash)}</b></div><div><small>ออเดอร์ที่ไรเดอร์รับสินค้า</small><b>${Number(r.order_count||0)}</b></div></div>
+    <p class="qgm-report-status">GP หักจากเครดิตร้านแยกจากเงินสดค่าสินค้า · ตรวจรายการหักได้ในประวัติเครดิต</p>
     <small>ยอดเงินสดบันทึกอัตโนมัติตาม flow การรับสินค้าของออเดอร์ ไม่ต้องกดยืนยันการรับเงินเพิ่ม</small>
-    ${due>0&&r.gp_status==='pending'?`<label class="qgm-gp-slip">แนบสลิปและแจ้งโอน<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onchange="qgmSubmitGpSlip('${date}',this)"></label>`:''}
+    ${legacyGp>0?`<p class="qgm-report-status">GP เดิมก่อนระบบเครดิต: ${money(legacyGp)} · สถานะ: ${escapeHtml(GP_SETTLEMENT_STATUSES[r.gp_status]||r.gp_status||'รอชำระ')}</p>`:''}
+    ${legacyGp>0&&r.gp_status==='pending'?`<label class="qgm-gp-slip">แนบสลิปสำหรับ GP เดิม<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onchange="qgmSubmitGpSlip('${date}',this)"></label>`:''}
     </section>`;
  }catch(e){box.innerHTML='<p class="qgm-report qgm-report-error">โหลดรายงานไม่สำเร็จ: '+escapeHtml(e.message||e)+'</p>'}
 };
@@ -3909,8 +3910,8 @@ window.qgmExportRevenue=async function(button){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(end||''))throw Error('กรุณาเลือกวันที่');
   const startDate=new Date(end+'T12:00:00Z');startDate.setUTCDate(startDate.getUTCDate()-29);
   const rows=await qtSupabaseTable('rpc/merchant_revenue_days',{method:'POST',accessToken:token,body:{p_from:startDate.toISOString().slice(0,10),p_to:end}});
-  const csv=['วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP,เงินสดค่าสินค้าที่ร้านได้รับ,สถานะ GP'];
-  for(const x of rows||[])csv.push([x.date_key,x.order_count,x.gross_sales,x.gp_due,x.cash_received,x.gp_status].map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(','));
+  const csv=['วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP ที่หักจากเครดิต,GP เดิมก่อนระบบเครดิต,เงินสดค่าสินค้าที่ร้านได้รับ,สถานะ GP เดิม'];
+  for(const x of rows||[])csv.push([x.date_key,x.order_count,x.gross_sales,x.gp_credit_deducted,x.gp_due,x.cash_received,x.gp_status].map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(','));
   const url=URL.createObjectURL(new Blob(['\ufeff'+csv.join('\r\n')],{type:'text/csv;charset=utf-8'}));
   const a=document.createElement('a');a.href=url;a.download='QueueGo-revenue-'+end+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
  }catch(e){toast('ดาวน์โหลดรายงานไม่สำเร็จ: '+(e.message||e))}
