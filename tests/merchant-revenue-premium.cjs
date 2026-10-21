@@ -19,6 +19,6 @@ assert(merchant.includes("QueueGoCredit.mount(creditHost,{kind:'merchant'"),'rea
 assert(merchant.includes("qgmExportRevenue(this)"),'CSV export must remain available');
 assert(merchant.includes('.qgm-revenue-ranges{grid-template-columns:repeat(4,minmax(0,1fr))'),'approved mobile range controls stay on one row');
 assert(merchant.includes('.qgm-revenue-metrics{grid-template-columns:repeat(4,minmax(0,1fr))'),'approved mobile KPI cards stay on one row');
-assert(merchant.includes('qgm-credit-head')&&merchant.includes('qgm-credit-head-copy').toString(),'credit heading has dedicated non-overlapping layout');
+assert(merchant.includes('qgm-credit-head')&&merchant.includes('qgm-credit-head-copy'),'credit heading has dedicated non-overlapping layout');
 assert(!merchant.includes("settings.textContent='⚙ ตั้งค่าการใช้งาน'"),'no emoji gear in professional credit controls');
 console.log('merchant revenue premium 18 checks passed');
