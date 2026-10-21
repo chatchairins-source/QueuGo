@@ -118,9 +118,28 @@ async function jobs(kind,host,alive){
    const query=table+'?select=id,status,created_at'+(kind&&kind!=='laundry'?'&order_type=eq.'+kind:'')+'&order=created_at.desc,id.desc&limit=101'+after;
    const raw=await qtSupabaseTable(query,{accessToken:token});if(!current())return;
    const rows=(Array.isArray(raw)?raw:[]).slice(0,100);host.dataset.jobHistoryPage=String(history.length+1);host.replaceChildren();
-   const note=document.createElement('p');note.textContent='หน้า '+(history.length+1)+' · สูงสุด 100 รายการต่อหน้า · เปิดรายละเอียดเพื่อดูประวัติและหลักฐาน';host.append(note);
+   const note=document.createElement('p');note.textContent='หน้า '+(history.length+1)+' · สูงสุด 100 รายการต่อหน้า · '+(kind==='laundry'?'เลือกดูรายละเอียดเพื่ออ่านข้อมูลออเดอร์และประวัติสถานะ':'เปิดรายละเอียดเพื่อดูประวัติและหลักฐาน');host.append(note);
    for(const row of rows){const card=document.createElement('article');card.className='card';const title=document.createElement('b');title.textContent=row.id;const line=document.createElement('p');line.textContent=row.status+' · '+new Date(row.created_at).toLocaleString('th-TH');card.append(title,line);
-    if(kind!=='laundry'){const button=document.createElement('button');button.type='button';button.textContent='รายละเอียดและประวัติ';button.onclick=()=>{if(current())qgAdminTrace(row.id)};card.append(button)}host.append(card)
+    if(kind==='laundry'){
+     const button=document.createElement('button');button.type='button';button.textContent='ดูรายละเอียดและประวัติ';const detail=document.createElement('div');detail.className='qg-laundry-admin-detail';detail.hidden=true;let loaded=false,busy=false;
+     button.onclick=async()=>{
+      if(!current()||busy)return;if(loaded){detail.hidden=!detail.hidden;return}busy=true;button.disabled=true;detail.hidden=false;detail.textContent='กำลังโหลดรายละเอียดจากฐานข้อมูล…';
+      try{
+       const [orders,events]=await Promise.all([
+        qtSupabaseTable('laundry_orders?select=id,order_number,status,service_name_snapshot,service_type,pricing_type_snapshot,estimated_quantity,actual_quantity,estimated_kg,actual_kg,estimated_amount,final_amount,estimated_total_amount,final_total_amount,pickup_fee_snapshot,return_fee_snapshot,round_trip_fee_snapshot,delivery_fee_total_snapshot,pickup_address,note,created_at,updated_at&id=eq.'+encodeURIComponent(row.id)+'&limit=1',{accessToken:await qtGetAccessToken()}),
+        qtSupabaseTable('laundry_order_events?select=from_status,to_status,actor_role,note,created_at&laundry_order_id=eq.'+encodeURIComponent(row.id)+'&order=created_at.asc,id.asc&limit=100',{accessToken:await qtGetAccessToken()})
+       ]);
+       if(!current())return;const order=Array.isArray(orders)?orders[0]:null;if(!order)throw Error('ไม่พบออเดอร์หรือบัญชีนี้ไม่มีสิทธิ์อ่าน');detail.replaceChildren();
+       const add=(label,value)=>{if(value==null||value==='')return;const p=document.createElement('p');p.textContent=label+' · '+value;detail.append(p)};
+       const amount=value=>value==null?null:'฿'+Number(value).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+       add('เลขออเดอร์',order.order_number||order.id);add('บริการ',order.service_name_snapshot||order.service_type);add('สถานะ',order.status);add('จำนวนประมาณ',order.estimated_quantity??order.estimated_kg);add('จำนวนจริง',order.actual_quantity??order.actual_kg);add('ค่าบริการประมาณ',amount(order.estimated_amount));add('ค่าบริการจริง',amount(order.final_amount));add('ยอดรวมประมาณ',amount(order.estimated_total_amount));add('ยอดรวมจริง',amount(order.final_total_amount));add('ค่ารับผ้า',amount(order.pickup_fee_snapshot));add('ค่าส่งคืน',amount(order.return_fee_snapshot));add('ค่ารอบไป-กลับ',amount(order.round_trip_fee_snapshot));add('ค่าจัดส่งรวม',amount(order.delivery_fee_total_snapshot));add('ที่อยู่รับผ้า',order.pickup_address);add('หมายเหตุ',order.note);add('สร้างเมื่อ',order.created_at?new Date(order.created_at).toLocaleString('th-TH'):null);add('แก้ไขล่าสุด',order.updated_at?new Date(order.updated_at).toLocaleString('th-TH'):null);
+       const heading=document.createElement('h3');heading.textContent='ประวัติสถานะ';detail.append(heading);const historyRows=Array.isArray(events)?events:[];
+       if(!historyRows.length){const empty=document.createElement('p');empty.textContent='ยังไม่มีประวัติสถานะ';detail.append(empty)}else for(const event of historyRows){const p=document.createElement('p');p.textContent=[event.from_status||'เริ่มรายการ',event.to_status,event.actor_role,event.note,event.created_at?new Date(event.created_at).toLocaleString('th-TH'):null].filter(Boolean).join(' · ');detail.append(p)}
+       loaded=true;button.textContent='ซ่อนรายละเอียดและประวัติ';
+      }catch(error){if(current()){detail.textContent='โหลดรายละเอียดไม่ได้: '+(error.message||error)+' · กดปุ่มเพื่อลองอีกครั้ง';button.textContent='ลองโหลดรายละเอียดอีกครั้ง'}}
+      finally{busy=false;if(button.isConnected)button.disabled=false}
+     };card.append(button,detail)
+    }else{const button=document.createElement('button');button.type='button';button.textContent='รายละเอียดและประวัติ';button.onclick=()=>{if(current())qgAdminTrace(row.id)};card.append(button)}host.append(card)
    }
    if(!rows.length){const p=document.createElement('p');p.textContent='ไม่มีรายการในหมวดนี้';host.append(p)}
    const nav=document.createElement('div');nav.className='row-btns';
