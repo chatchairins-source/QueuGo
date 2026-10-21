@@ -25,6 +25,8 @@ assert.match(marketGuard,/Market Master owns stock tracking for this product/);
 assert.match(marketGuard,/disable generic tracking before assigning Market stock ownership/);
 assert.match(marketGuard,/from public\.market_products where product_id=product/);
 assert.match(marketGuard,/create or replace function public\.qg_inventory_tracking_guard\(\)[\s\S]*?security definer set search_path=public,pg_temp/);
+assert.match(marketGuard,/where p\.id in \(old\.product_id,new\.product_id\)[\s\S]*?order by p\.id for update/);
+assert.match(marketGuard,/before insert or update of product_id,shop_id or delete on public\.market_products/);
 assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
 (async()=>{
   const db=new PGlite();
@@ -121,6 +123,12 @@ assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
   await db.exec(`reset role`);
   await db.exec(`insert into public.products(id,shop_id,name,stock,inventory_stock_tracking) values('${blockedMarket}','${shop}','Generic stock owner',4,true)`);
   await reject(`insert into public.market_products(product_id,shop_id,stock_quantity,pack_size) values('${blockedMarket}','${shop}',10,1)`,/disable generic tracking before assigning Market/);
+  const moveSource='10000000-0000-4000-8000-000000000008',moveTarget='10000000-0000-4000-8000-000000000009';
+  await db.exec(`insert into public.products(id,shop_id,name,stock,inventory_stock_tracking) values('${moveSource}','${shop}','Move source',3,false),('${moveTarget}','${shop}','Move target',3,true);
+    insert into public.market_products(product_id,shop_id,stock_quantity,pack_size) values('${moveSource}','${shop}',3,1)`);
+  await reject(`update public.market_products set product_id='${moveTarget}' where product_id='${moveSource}'`,/disable generic tracking before assigning Market/);
+  await db.exec(`delete from public.market_products where product_id='${moveSource}';update public.products set inventory_stock_tracking=true where id='${moveSource}'`);
+  eq((await scalar(`select inventory_stock_tracking from public.products where id='${moveSource}'`)).inventory_stock_tracking,true);
   // Defense in depth for a pre-existing bad overlap: Market's ledger changes, while generic stock is never decremented.
   await db.exec(`alter table public.products disable trigger qg_inventory_tracking_guard;
     update public.products set inventory_stock_tracking=true where id='${marketProduct}';

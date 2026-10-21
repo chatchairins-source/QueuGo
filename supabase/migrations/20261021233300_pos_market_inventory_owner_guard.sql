@@ -54,19 +54,35 @@ for each row execute function public.qg_inventory_tracking_guard();
 -- item trigger owns stock_quantity and movement rows for these mapped products.
 create function public.qg_market_inventory_owner_guard() returns trigger
 language plpgsql security definer set search_path=public,pg_temp as $$
-declare v_tracking boolean;
+declare v_tracking boolean; v_product_id uuid;
 begin
-  select p.inventory_stock_tracking into v_tracking
-  from public.products p
-  where p.id=new.product_id and p.shop_id=new.shop_id
-  for update;
-  if not found then raise exception 'market product/shop mismatch'; end if;
-  if v_tracking then raise exception 'disable generic tracking before assigning Market stock ownership'; end if;
-  return new;
+  if tg_op='INSERT' then
+    select p.inventory_stock_tracking into v_tracking
+    from public.products p where p.id=new.product_id and p.shop_id=new.shop_id for update;
+    if not found then raise exception 'market product/shop mismatch'; end if;
+    if v_tracking then raise exception 'disable generic tracking before assigning Market stock ownership'; end if;
+    return new;
+  elsif tg_op='UPDATE' then
+    -- Lock both sides in a stable order so re-mapping cannot race a reservation,
+    -- tracking toggle or another map move on either product.
+    for v_product_id in
+      select p.id from public.products p where p.id in (old.product_id,new.product_id)
+      order by p.id for update
+    loop null; end loop;
+    select p.inventory_stock_tracking into v_tracking
+    from public.products p where p.id=new.product_id and p.shop_id=new.shop_id;
+    if not found then raise exception 'market product/shop mismatch'; end if;
+    if v_tracking then raise exception 'disable generic tracking before assigning Market stock ownership'; end if;
+    return new;
+  else
+    -- Serialize unmapping with the generic tracker being enabled on the old product.
+    perform p.id from public.products p where p.id=old.product_id for update;
+    return old;
+  end if;
 end $$;
 
 create trigger qg_market_inventory_owner_guard
-before insert or update of product_id,shop_id on public.market_products
+before insert or update of product_id,shop_id or delete on public.market_products
 for each row execute function public.qg_market_inventory_owner_guard();
 
 -- Keep the existing Market trigger authoritative. Check after locking the product
