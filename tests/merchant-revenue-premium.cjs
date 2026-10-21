@@ -21,4 +21,7 @@ assert(merchant.includes('.qgm-revenue-ranges{grid-template-columns:repeat(4,min
 assert(merchant.includes('.qgm-revenue-metrics{grid-template-columns:repeat(4,minmax(0,1fr))'),'approved mobile KPI cards stay on one row');
 assert(merchant.includes('qgm-credit-head')&&merchant.includes('qgm-credit-head-copy'),'credit heading has dedicated non-overlapping layout');
 assert(!merchant.includes("settings.textContent='⚙ ตั้งค่าการใช้งาน'"),'no emoji gear in professional credit controls');
-console.log('merchant revenue premium 18 checks passed');
+assert(merchant.includes('qgm-credit-head-add'),'top-up control stays in the approved credit header position');
+assert(merchant.includes("historyButton.textContent='ประวัติรายการ'"),'credit actions include a real history shortcut');
+assert(merchant.includes("grid-template-columns:repeat(3,minmax(0,1fr));gap:6px"),'mobile credit actions stay on one compact row');
+console.log('merchant revenue premium 21 checks passed');
