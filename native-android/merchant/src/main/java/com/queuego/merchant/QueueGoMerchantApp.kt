@@ -597,7 +597,6 @@ private fun MerchantShell(
                 "home" -> DashboardScreen(
                     shop = shop,
                     orders = orders,
-                    readiness = readiness,
                     loading = loading,
                     shopOpen = shopOpen,
                     revenue = todayRevenue,
@@ -1197,7 +1196,6 @@ private fun MerchantTopBar(
 private fun DashboardScreen(
     shop: MerchantShop?,
     orders: List<MerchantOrder>,
-    readiness: ShopReadiness?,
     loading: Boolean,
     shopOpen: Boolean,
     revenue: MerchantTodayRevenue,
@@ -1283,31 +1281,6 @@ private fun DashboardScreen(
             }
         }
 
-        if (readiness != null && !readiness.complete) {
-            Spacer(Modifier.height(10.dp))
-            QgCard(Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier
-                            .size(38.dp)
-                            .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("!", color = QgRed, fontWeight = FontWeight.Black)
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("ร้านยังตั้งค่าไม่ครบ", fontWeight = FontWeight.ExtraBold)
-                        Text(
-                            "กรอกข้อมูลร้าน รูป พิกัด และสินค้าให้ครบก่อนส่งตรวจ",
-                            color = QgMuted,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-        }
-
         Text(
             "ภาพรวมวันนี้",
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 14.dp),
@@ -1324,9 +1297,6 @@ private fun DashboardScreen(
             MerchantMetricCard("เงินสดรับ", "฿" + "%.0f".format(revenue.cashReceived), "store", Modifier.weight(1f))
             MerchantMetricCard("GP ที่หักจากเครดิต", "฿" + "%.0f".format(revenue.gpAmount), "orders", Modifier.weight(1f))
         }
-
-        Spacer(Modifier.height(9.dp))
-        MerchantRevenueEntry(onRevenue)
 
         Text(
             "จัดการร้าน",
@@ -1396,31 +1366,6 @@ private fun MerchantPauseButton(
             .padding(horizontal = 9.dp, vertical = 7.dp)
     ) {
         Text(label, color = Color(0xFF447263), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun MerchantRevenueEntry(onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFE4F9ED), RoundedCornerShape(15.dp))
-            .border(1.dp, Color(0xFFC5ECD8), RoundedCornerShape(15.dp))
-            .clickable(onClick = onClick)
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text("฿", color = Color(0xFF174536), fontSize = 25.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text("รายได้ทั้งหมด", color = Color(0xFF174536), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
-            Text(
-                "เลือกวัน ดูยอดขาย เงินสด และ GP ที่หักจากเครดิต",
-                color = Color(0xFF658679),
-                fontSize = 10.sp
-            )
-        }
-        Text("›", color = Color(0xFF658679), fontSize = 20.sp)
     }
 }
 
