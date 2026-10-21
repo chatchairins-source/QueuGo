@@ -39,3 +39,10 @@ Status key: **Source present** = identified implementation; **Staged** = open su
 ## Selection rule
 
 Resume the highest-priority unblocked `NEXT.md` item. For each row, establish the latest implementation owner and source evidence before adding work. Do not interpret `Audit next` as permission to invent business policy; product/security-safe engineering decisions can proceed, while pricing, tax, paid-provider and eligibility policy needs an approved source of truth.
+
+
+## Post-merge receipt — 2026-10-22
+- PR #578 merged at `cc036ee001bf23425d055977f8330e3753749743`. Exact PR RC `39650817495` passed all 12 required stages. The PR stabilizes the existing Admin WebKit route assertion by waiting for the rendered heading, with no runtime UI change.
+- Main push RC `39694314231` passed all stages on the merge SHA, including npm test, Admin WebKit boot/layout, Merchant mobile WebKit, Map Lab gestures, QueueGo Map search and Grocery mobile/tablet rendering. Pages deployment `39694313643` succeeded on the same SHA. Main ref verified at `cc036ee001bf23425d055977f8330e3753749743`.
+- PR #578's change is test stabilization and documentation; Pages success is recorded as deployment evidence, not a claim of end-user UI behavior change. The prior main RC failure on #577 remains recorded as a separate earlier attempt.
+- Production database remains unmodified. POS feature migrations remain unapplied; continue authorized cashier/device acceptance and controlled migration gates. QueueGo/POS are **NOT DONE**.
