@@ -1963,7 +1963,8 @@ button.qt-notif-row:active{transform:scale(.995)}
       system:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1v4H21a1.7 1.7 0 0 0-1.6 1Z"/>',
       bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
       back:'<path d="m15 18-6-6 6-6"/>',
-      next:'<path d="m9 18 6-6-6-6"/>'
+      next:'<path d="m9 18 6-6-6-6"/>',
+      refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-2l2 3M4 16l2 3a7 7 0 0 0 12-2"/>'
     };
     return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(paths[kind]||paths.system)+'</svg>';
   };
@@ -2064,7 +2065,7 @@ function qtSupportBubble(message,me){
 
 function renderShopSupport(){
   const u=currentUser();if(!u||u.type!=='shop'){navigate('login');return}
-  qtShopLayout('ติดต่อแอดมิน',`<div class="qt-shop-page-title"><button class="qt-shop-back" onclick="navigate('shop-profile')">←</button><h2>ติดต่อแอดมิน</h2><button class="qt-support-refresh" onclick="qtSupportRefresh()">↻</button></div>
+  qtShopLayout('ติดต่อแอดมิน',`<div class="qt-shop-page-title"><button class="qt-shop-back" aria-label="ย้อนกลับ" onclick="navigate('shop-profile')">${iconSvg('back')}</button><h2>ติดต่อแอดมิน</h2><button class="qt-support-refresh" aria-label="รีเฟรช" onclick="qtSupportRefresh()">${iconSvg('refresh')}</button></div>
     <p class="qt-support-hint">ส่งคำถามหรือแจ้งปัญหาให้ทีมแอดมิน ข้อความและคำตอบจะอยู่ในหน้านี้</p>
     <section class="qt-support-panel"><div class="qt-support-top"><span>✉</span><div><b>ข้อความถึงแอดมิน</b><small>QueueGo Support</small></div></div><div id="qt-support-messages" class="qt-support-messages"><p>กำลังโหลดข้อความ...</p></div>
       <form class="qt-support-compose" onsubmit="return qtSupportSend(event)"><textarea id="qt-support-input" rows="2" maxlength="2000" required placeholder="พิมพ์ข้อความถึงแอดมิน..."></textarea><button type="submit">ส่งข้อความ</button></form></section>`,'profile');
@@ -2290,8 +2291,8 @@ body.qgm-login .qgm-signup{height:52px;margin:0;border-color:#e7092b;color:#e709
 .qgm-topping-list{display:grid;gap:8px}.qgm-topping-row{display:grid;grid-template-columns:24px minmax(0,1fr) 112px 32px;gap:7px;align-items:center}
 .qgm-topping-row>input[type="checkbox"]{width:19px;height:19px;accent-color:#ed1235}
 .qgm-topping-row>input[type="text"]{height:42px;border:1px solid #dfe3e8;border-radius:11px;padding:0 10px;min-width:0}
-.qgm-option-remove{width:32px;height:32px;border:0;border-radius:10px;background:#fff0f3;color:#d91434;font-size:18px;line-height:1;display:grid;place-items:center}
-.qgm-option-add{width:100%;height:40px;margin-top:9px;border:1px dashed #d8dde4;border-radius:11px;background:#fafbfc;color:#555d67;font-size:11px;font-weight:750}
+.qgm-option-remove{width:32px;height:32px;border:0;border-radius:10px;background:#fff0f3;color:#d91434;display:grid;place-items:center}.qgm-option-remove svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.qgm-option-add{width:100%;height:40px;margin-top:9px;border:1px dashed #d8dde4;border-radius:11px;background:#fafbfc;color:#555d67;font-size:11px;font-weight:750;display:flex;align-items:center;justify-content:center;gap:7px}.qgm-option-add svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .qgm-option-help{margin:0;color:#8a919a;font-size:10px;line-height:1.5}
 @media(max-width:420px){.qgm-portion-row{grid-template-columns:1fr 108px}.qgm-topping-row{grid-template-columns:22px minmax(0,1fr) 100px 30px}.qgm-menu-options{padding:12px}}
 </style>
@@ -2321,8 +2322,10 @@ const svg=(name)=>{const p={
  gallery:'<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="9" r="1.5"/><path d="m5 17 5-5 3 3 2-2 4 4"/>',
  support:'<path d="M4 5h16v12H9l-5 4V5Z"/><path d="M8 10h8M8 13h5"/>',
  camera:'<path d="M4 7h4l2-2h4l2 2h4v12H4Z"/><circle cx="12" cy="13" r="4"/>',
- plus:'<path d="M12 5v14M5 12h14"/>'
+ plus:'<path d="M12 5v14M5 12h14"/>',
+ refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-2l2 3M4 16l2 3a7 7 0 0 0 12-2"/>'
 }[name]||'';return `<svg viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`};
+window.qgmUiIcon=svg;
 
 function shopUser(){const u=currentUser();return u&&u.type==='shop'?u:null}
 function profileId(u){return u&&(u.shopProfileId||QT_SYNC.profileMaps?.shopByUserId?.get(u.id)||null)}
@@ -2962,7 +2965,7 @@ function qgmToppingRowHtml(item){
   '<input type="checkbox" data-topping-enabled aria-label="เปิดใช้ท็อปปิ้ง" '+(item?.enabled?'checked':'')+'>'+
   '<input type="text" data-topping-name maxlength="60" placeholder="ชื่อท็อปปิ้ง" value="'+esc(item?.name||'')+'">'+
   '<label class="qgm-price-input"><span>+</span><input type="number" data-topping-price min="0" max="999999" step="0.01" value="'+(Number.isFinite(price)&&price>=0?price:0)+'"><span>บาท</span></label>'+
-  '<button type="button" class="qgm-option-remove" aria-label="ลบท็อปปิ้ง" onclick="this.closest(\'[data-topping-row]\').remove()">×</button>'+
+  '<button type="button" class="qgm-option-remove" aria-label="ลบท็อปปิ้ง" onclick="this.closest(\'[data-topping-row]\').remove()">'+svg('close')+'</button>'+
  '</div>';
 }
 function qgmRestaurantOptionsHtml(state){
@@ -2970,7 +2973,7 @@ function qgmRestaurantOptionsHtml(state){
   '<div class="qgm-option-group"><div class="qgm-option-group-head"><div><b>ขนาด / ความพิเศษ</b><small>ลูกค้าเลือกได้ 1 ตัวเลือก</small></div><label class="qgm-option-toggle"><input id="qgm-portion-enabled" type="checkbox" '+(state.portionEnabled?'checked':'')+'> เปิดใช้</label></div>'+
    '<div class="qgm-portion-row"><div class="qgm-option-pill">ธรรมดา · ราคาเดิม</div><label class="qgm-price-input"><span>พิเศษ +</span><input id="qgm-special-price" type="number" min="0" max="999999" step="0.01" value="'+state.specialPrice+'"><span>บาท</span></label></div>'+
   '</div>'+
-  '<div class="qgm-option-group"><div class="qgm-option-group-head"><div><b>ท็อปปิ้ง</b><small>ลูกค้าเลือกได้หลายอย่าง</small></div></div><div id="qgm-topping-list" class="qgm-topping-list">'+state.toppings.map(qgmToppingRowHtml).join('')+'</div><button type="button" class="qgm-option-add" onclick="qgmAddToppingRow()">＋ เพิ่มท็อปปิ้งเอง</button></div>'+
+  '<div class="qgm-option-group"><div class="qgm-option-group-head"><div><b>ท็อปปิ้ง</b><small>ลูกค้าเลือกได้หลายอย่าง</small></div></div><div id="qgm-topping-list" class="qgm-topping-list">'+state.toppings.map(qgmToppingRowHtml).join('')+'</div><button type="button" class="qgm-option-add" onclick="qgmAddToppingRow()">'+svg('plus')+'<span>เพิ่มท็อปปิ้งเอง</span></button></div>'+
   '<p class="qgm-option-help">ติ๊กเฉพาะรายการที่ร้านต้องการเปิดขาย ราคาที่กรอกคือราคาเพิ่มจากราคาหลักของเมนู</p></section>';
 }
 window.qgmAddToppingRow=function(){
@@ -3097,7 +3100,7 @@ window.qgmDeleteProduct=async function(id,button){
  finally{qgmProductDeleteBusy=false;if(button&&button.isConnected)button.disabled=false}
 };
 
-window.renderShopPromote=function(){const u=shopUser(),all=dbGet('qt_promotions',[]).filter(p=>String(p.shopId||p.shop_id)===String(u.id)||String(p.shopProfileId||p.shop_id)===String(profileId(u)));layout('โปรโมชั่น',`<div class="qgm-tabs"><button class="active" data-promo="all" onclick="qgmPromoFilter('all')">ทั้งหมด</button><button data-promo="active" onclick="qgmPromoFilter('active')">กำลังใช้งาน</button><button data-promo="pending" onclick="qgmPromoFilter('pending')">รออนุมัติ</button></div><button class="qgm-outline" type="button" onclick="navigate('shop-promote-create')">สร้างโปรโมชั่นใหม่</button>${all.length?all.map(p=>`<section class="qgm-card qgm-info" data-promo-status="${esc(p.status||'pending')}"><b>${esc(p.title||p.category||'โปรโมชั่น')}</b><small style="display:block;color:#8b9098;margin-top:5px">${esc(p.status||'pending')}</small></section>`).join(''):`<div class="qgm-empty"><div class="mega">${svg('megaphone')}</div><h2>ยังไม่มีโปรโมชั่น</h2><p>สร้างโปรโมชั่นเพื่อเพิ่มยอดขาย<br>และดึงดูดลูกค้า</p><button class="qgm-primary" style="max-width:220px" onclick="navigate('shop-promote-create')">＋ สร้างโปรโมชั่น</button></div>`}`,'shop-promote',{back:true})};
+window.renderShopPromote=function(){const u=shopUser(),all=dbGet('qt_promotions',[]).filter(p=>String(p.shopId||p.shop_id)===String(u.id)||String(p.shopProfileId||p.shop_id)===String(profileId(u)));layout('โปรโมชั่น',`<div class="qgm-tabs"><button class="active" data-promo="all" onclick="qgmPromoFilter('all')">ทั้งหมด</button><button data-promo="active" onclick="qgmPromoFilter('active')">กำลังใช้งาน</button><button data-promo="pending" onclick="qgmPromoFilter('pending')">รออนุมัติ</button></div><button class="qgm-outline" type="button" onclick="navigate('shop-promote-create')">สร้างโปรโมชั่นใหม่</button>${all.length?all.map(p=>`<section class="qgm-card qgm-info" data-promo-status="${esc(p.status||'pending')}"><b>${esc(p.title||p.category||'โปรโมชั่น')}</b><small style="display:block;color:#8b9098;margin-top:5px">${esc(p.status||'pending')}</small></section>`).join(''):`<div class="qgm-empty"><div class="mega">${svg('megaphone')}</div><h2>ยังไม่มีโปรโมชั่น</h2><p>สร้างโปรโมชั่นเพื่อเพิ่มยอดขาย<br>และดึงดูดลูกค้า</p><button class="qgm-primary qgm-icon-label" style="max-width:220px" onclick="navigate('shop-promote-create')">${svg('plus')}<span>สร้างโปรโมชั่น</span></button></div>`}`,'shop-promote',{back:true})};
 
 window.renderShopPromoteCreate=function(){layout('สร้างโปรโมชั่น',`<form class="qgm-card qgm-form-card" onsubmit="return qgmSavePromo(event)"><div class="qgm-field"><label>ชื่อ/ประเภทโปรโมชั่น</label><input id="qgm-promo-title" required placeholder="เช่น โปรโมตร้านประจำสัปดาห์"></div><div class="qgm-inline"><div class="qgm-field"><label>งบสูงสุด</label><input id="qgm-promo-budget" type="number" min="0" required></div><div class="qgm-field"><label>จำนวนวัน</label><input id="qgm-promo-days" type="number" min="1" value="7" required></div></div><button class="qgm-primary" type="submit">ส่งคำขอโปรโมชั่น</button></form>`,'shop-promote',{back:true})};
 window.qgmSavePromo=async function(e){e.preventDefault();const u=shopUser(),pid=profileId(u);try{await qtSupabaseTable('promotions',{method:'POST',accessToken:qtAccessToken(),body:{shop_id:pid,shop_name:u.shopName||u.name,category:$('#qgm-promo-title').value.trim(),area:u.address||'',bid_price:0,max_budget:Number($('#qgm-promo-budget').value),period_days:Number($('#qgm-promo-days').value),status:'pending',payment_status:'pending',metadata:{title:$('#qgm-promo-title').value.trim()}}});toast('ส่งคำขอโปรโมชั่นแล้ว');try{navigate('shop-promote')}catch(navErr){console.warn('merchant promo post-commit navigation failed',navErr)}}catch(err){toast('บันทึกโปรโมชั่นไม่สำเร็จ: '+(err.message||err))}return false};
@@ -3249,7 +3252,7 @@ window.renderShopModules=async function(){
   if(typeof window.qtShopLayout!=='function'){toast('ไม่สามารถเปิดหน้าตั้งค่าได้');return;}
   window.qtShopLayout('ตั้งค่า',
     '<div class="qgm-page-title-row">'+
-      '<button type="button" class="qgm-iconbtn" aria-label="กลับ" onclick="navigate(\'dashboard\')">←</button>'+
+      '<button type="button" class="qgm-iconbtn" aria-label="กลับ" onclick="navigate(\'dashboard\')">'+window.qgmUiIcon('back')+'</button>'+
       '<div><h2 style="margin:0">ตั้งค่าร้านค้า</h2><small style="color:#8b9098">จัดการโมดูลและทางลัดการตั้งค่าร้าน</small></div>'+
     '</div>'+
     '<section class="qgm-card qgm-settings-links">'+
@@ -3725,7 +3728,7 @@ window.qgmRenderRevenue=async function(){
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  qtShopLayout('วิเคราะห์ร้านค้า',`<div class="qgm-revenue-modern">
   <header class="qgm-revenue-head">
-   <button class="qt-shop-back" type="button" onclick="navigate('dashboard')" aria-label="กลับ">←</button>
+   <button class="qt-shop-back" type="button" onclick="navigate('dashboard')" aria-label="กลับ">${window.qgmUiIcon('back')}</button>
    <div class="qgm-revenue-title"><h1>วิเคราะห์ร้านค้า</h1><p>รายได้ คำสั่งซื้อ ค่าใช้จ่าย และเครดิตร้านค้า</p></div>
    <div class="qgm-revenue-store" title="ร้านปัจจุบัน"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v10h16V10"/><path d="M3 10l2-6h14l2 6"/><path d="M7 10v3M12 10v3M17 10v3"/></svg><span>${escapeHtml(u.shopName||u.name||'ร้านปัจจุบัน')}</span></div>
   </header>
@@ -3760,7 +3763,7 @@ window.qgmRenderRevenue=async function(){
     const infoText=document.createElement('span');infoText.textContent='เครดิตร้านค้าใช้ชำระ GP และค่าบริการ QueueGo ระบบหัก GP จากเครดิตอัตโนมัติตามสถานะออเดอร์ เงินสดค่าสินค้าบันทึกตาม flow จริง และเครดิตไม่สามารถถอนหรือโอนได้';
     infoPopover.append(infoStatus,infoText);infoWrap.append(infoButton,infoPopover);titleRow.append(title,infoWrap);copy.append(titleRow,balance);
     infoButton.onclick=(event)=>{event.stopPropagation();infoPopover.hidden=!infoPopover.hidden;infoButton.setAttribute('aria-expanded',String(!infoPopover.hidden))};
-    add=document.createElement('button');add.type='button';add.className='qgm-credit-head-add';add.textContent='＋ เติมเครดิต';add.disabled=!!nativeAdd?.hidden;add.onclick=()=>{if(add.disabled)return;if(form){form.hidden=false;form.querySelector('input')?.focus()}};
+    add=document.createElement('button');add.type='button';add.className='qgm-credit-head-add qgm-icon-label';add.innerHTML=window.qgmUiIcon('plus')+'<span>เติมเครดิต</span>';add.disabled=!!nativeAdd?.hidden;add.onclick=()=>{if(add.disabled)return;if(form){form.hidden=false;form.querySelector('input')?.focus()}};
     head.append(add);panel.prepend(head);
    }
    if(form)form.hidden=true;
@@ -4016,7 +4019,7 @@ function qgmCancelGuardStyle(){
  .qgm-cancel-guard-backdrop{position:absolute;inset:0;background:rgba(20,18,19,.56);backdrop-filter:blur(2px)}
  .qgm-cancel-sheet{position:relative;z-index:1;width:min(100%,680px);max-height:min(88dvh,820px);overflow:auto;background:#fff;border-radius:28px 28px 0 0;padding:10px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -22px 60px #0003}
  .qgm-cancel-handle{display:block;width:42px;height:5px;border-radius:9px;background:#ded8da;margin:0 auto 14px}
- .qgm-cancel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.qgm-cancel-head h2{margin:0;color:#111;font-size:21px}.qgm-cancel-head p{margin:4px 0 0;color:#888;font-size:12px}.qgm-cancel-close{width:40px;height:40px;border:0;border-radius:50%;background:#f6f2f3;font-size:18px}
+ .qgm-cancel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.qgm-cancel-head h2{margin:0;color:#111;font-size:21px}.qgm-cancel-head p{margin:4px 0 0;color:#888;font-size:12px}.qgm-cancel-close{width:40px;height:40px;border:0;border-radius:50%;background:#f6f2f3;color:#5c5960;display:grid;place-items:center}.qgm-cancel-close svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
  .qgm-cancel-order{margin-top:14px;padding:13px 14px;border-radius:16px;background:#faf6f7;display:flex;justify-content:space-between;gap:12px}.qgm-cancel-order small{display:block;color:#8b8588;font-size:10px}.qgm-cancel-order b{display:block;margin-top:3px;font-size:14px}.qgm-cancel-order strong{color:var(--qg-red);font-size:15px;white-space:nowrap}
  .qgm-cancel-warning{margin-top:12px;padding:12px 13px;border:1px solid #ffd4dc;border-radius:16px;background:#fff6f8;color:#7b2636;font-size:11px;line-height:1.55}
  .qgm-cancel-title{margin:16px 0 8px;font-size:14px}.qgm-cancel-reasons{display:grid;gap:8px}.qgm-cancel-reason{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e8e2e4;border-radius:14px;background:#fff;font-size:12px}.qgm-cancel-reason:has(input:checked){border-color:#f22b4e;background:#fff6f8}.qgm-cancel-reason input{accent-color:var(--qg-red);width:18px;height:18px}
@@ -4090,7 +4093,7 @@ window.shopCancelOrder=function shopCancelOrder(orderId,button){
  overlay.innerHTML=`<div class="qgm-cancel-guard-backdrop"></div>
  <section class="qgm-cancel-sheet" role="dialog" aria-modal="true" aria-labelledby="qgm-cancel-title">
   <span class="qgm-cancel-handle"></span>
-  <div class="qgm-cancel-head"><div><h2 id="qgm-cancel-title">${accepted?'ยกเลิกออเดอร์':'ปฏิเสธออเดอร์'}</h2><p>ขั้นตอนนี้ต้องยืนยันโดยตั้งใจ</p></div><button type="button" class="qgm-cancel-close" aria-label="ปิด">✕</button></div>
+  <div class="qgm-cancel-head"><div><h2 id="qgm-cancel-title">${accepted?'ยกเลิกออเดอร์':'ปฏิเสธออเดอร์'}</h2><p>ขั้นตอนนี้ต้องยืนยันโดยตั้งใจ</p></div><button type="button" class="qgm-cancel-close" aria-label="ปิด">${svg('close')}</button></div>
   <div class="qgm-cancel-order"><div><small>คำสั่งซื้อ</small><b>${esc(displayOrderNumber(o))}</b></div><strong>${Number(qgmMerchantSalesAmount(o)||0).toLocaleString('th-TH')} บาท</strong></div>
   <div class="qgm-cancel-warning">${accepted?'ร้านรับออเดอร์นี้แล้ว การยกเลิกจะถูกบันทึกและแจ้งลูกค้า'+(o.riderId||o.rider_id?' รวมถึง Rider ที่รับงานแล้ว':'')+' กรุณายกเลิกเฉพาะเมื่อจำเป็นจริง':'หากปฏิเสธ ออเดอร์นี้จะถูกยกเลิกและแจ้งลูกค้าทันที'}</div>
   <h3 class="qgm-cancel-title">เลือกเหตุผล</h3>
@@ -4143,7 +4146,7 @@ window.shopCancelOrder=function shopCancelOrder(orderId,button){
 window.qgmRenderHours=async function(){
  const u=currentUser();if(!u||u.type!=='shop')return navigate('login');
  const days=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'];
- qtShopLayout('เวลาทำการ',`<button class="qt-shop-back" onclick="navigate('shop-profile')">←</button><h2 class="qgm-hours-heading">เวลาทำการและวันหยุด</h2>
+ qtShopLayout('เวลาทำการ',`<button class="qt-shop-back" aria-label="ย้อนกลับ" onclick="navigate('shop-profile')">${window.qgmUiIcon('back')}</button><h2 class="qgm-hours-heading">เวลาทำการและวันหยุด</h2>
  <p class="qgm-hours-intro">เวลาประเทศไทย เมื่อร้านปิดตามตาราง ลูกค้าจะส่งออเดอร์ใหม่ไม่ได้</p>
  <form class="qgm-report" id="qgm-hours-form" onsubmit="return qgmSaveHours(event)">
  <div id="qgm-hours-rows">${days.map((name,n)=>`<div class="qgm-hours-row" data-day="${n}"><b>${name}</b><input type="time" class="open" value="06:00" aria-label="เวลาเปิด ${name}"><input type="time" class="close" value="22:00" aria-label="เวลาปิด ${name}"><label><input type="checkbox" class="closed">หยุด</label></div>`).join('')}</div>
@@ -4248,7 +4251,7 @@ window.qgmExportRevenue=async function(button){
  window.qgOpenTicketPanel=function(orderId=''){
    if(!(rider?S.user:currentUser())){if(!rider)navigate('login');else alert('กรุณาเข้าสู่ระบบ');return}
    document.getElementById('qg-v22-ticket')?.remove();const panel=document.createElement('section');panel.id='qg-v22-ticket';panel.className='qg-v22-overlay';
-   panel.innerHTML='<div class="qg-v22-dialog"><header><b>ติดต่อฝ่ายดูแล</b><button type="button" id="qg-ticket-close" aria-label="ปิด">✕</button></header><p>แจ้งปัญหาและติดตามสถานะจากระบบ</p><form id="qg-ticket-form"><label>ออเดอร์ที่เกี่ยวข้อง (ถ้ามี)<select name="order"><option value="">ไม่ระบุออเดอร์</option></select></label><label>ประเภทปัญหา<select name="category"></select></label><label>รายละเอียด<textarea name="details" minlength="10" maxlength="2000" required placeholder="อธิบายปัญหาอย่างน้อย 10 ตัวอักษร"></textarea></label><label>รูปหลักฐาน (ถ้ามี)<input name="evidence" type="file" accept="image/jpeg,image/png,image/webp"></label><button type="submit">ส่งเรื่อง</button></form><h3>เรื่องที่แจ้งไว้</h3><div id="qg-ticket-list">กำลังโหลด...</div></div>';
+   panel.innerHTML='<div class="qg-v22-dialog"><header><b>ติดต่อฝ่ายดูแล</b><button type="button" id="qg-ticket-close" aria-label="ปิด">'+window.qgmUiIcon('close')+'</button></header><p>แจ้งปัญหาและติดตามสถานะจากระบบ</p><form id="qg-ticket-form"><label>ออเดอร์ที่เกี่ยวข้อง (ถ้ามี)<select name="order"><option value="">ไม่ระบุออเดอร์</option></select></label><label>ประเภทปัญหา<select name="category"></select></label><label>รายละเอียด<textarea name="details" minlength="10" maxlength="2000" required placeholder="อธิบายปัญหาอย่างน้อย 10 ตัวอักษร"></textarea></label><label>รูปหลักฐาน (ถ้ามี)<input name="evidence" type="file" accept="image/jpeg,image/png,image/webp"></label><button type="submit">ส่งเรื่อง</button></form><h3>เรื่องที่แจ้งไว้</h3><div id="qg-ticket-list">กำลังโหลด...</div></div>';
    document.body.appendChild(panel);panel.querySelector('#qg-ticket-close').onclick=()=>panel.remove();panel.onclick=e=>{if(e.target===panel)panel.remove()};
    panel.querySelector('[name=category]').innerHTML=Object.entries(names).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('');
    request('orders?select=id,order_number&order_type=eq.shopping&order=created_at.desc&limit=50').then(rows=>{if(!panel.isConnected)return;const select=panel.querySelector('[name=order]');select.insertAdjacentHTML('beforeend',(rows||[]).map(o=>'<option value="'+escText(o.id)+'">'+escText(displayOrderNumber(o))+'</option>').join(''));if(orderId)select.value=orderId}).catch(e=>{panel.querySelector('#qg-ticket-list').textContent='โหลดออเดอร์ไม่สำเร็จ: '+e.message});
@@ -4259,7 +4262,7 @@ window.qgmExportRevenue=async function(button){
 })();
 </script>
 <style id="qg-v22-ticket-style">
-.qg-v22-overlay{position:fixed;inset:0;z-index:100000;background:#0b24239c;display:grid;place-items:center;padding:16px;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}.qg-v22-dialog{width:min(100%,520px);max-height:92dvh;overflow:auto;background:white;border-radius:20px;padding:18px;color:#193b32;box-shadow:0 22px 60px #0b262842}.qg-v22-dialog header{display:flex;justify-content:space-between;align-items:center;font-size:19px}.qg-v22-dialog header button{border:0;background:#eef6f1;border-radius:10px;padding:8px 12px}.qg-v22-dialog p{line-height:1.5}.qg-v22-dialog form{display:grid;gap:11px}.qg-v22-dialog label{display:grid;gap:5px;font-size:13px;font-weight:650}.qg-v22-dialog select,.qg-v22-dialog textarea,.qg-v22-dialog input{box-sizing:border-box;width:100%;padding:11px;border:1px solid #cee6d9;border-radius:11px;background:#fff;font:inherit;color:#193b32}.qg-v22-dialog textarea{min-height:95px;resize:vertical}.qg-v22-dialog form button{border:0;border-radius:12px;background:#0d9f73;color:white;padding:13px;font-weight:750}.qg-v22-dialog article{border:1px solid #dcebe3;border-radius:12px;padding:11px;margin:8px 0;overflow-wrap:anywhere}.qg-v22-dialog article span{float:right;color:#0b9269}.qg-v22-dialog article small{color:#73887c}.qg-v22-dialog article button{display:block;margin-top:7px;border:0;background:#e5f7ee;color:#087556;border-radius:9px;padding:8px}
+.qg-v22-overlay{position:fixed;inset:0;z-index:100000;background:#17191d8f;display:grid;place-items:center;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Noto Sans Thai",system-ui,sans-serif}.qg-v22-dialog{width:min(100%,520px);max-height:92dvh;overflow:auto;background:#fff;border:1px solid #eceef1;border-radius:22px;padding:18px;color:#20242a;box-shadow:0 22px 60px #17191d2e}.qg-v22-dialog header{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:19px}.qg-v22-dialog header button{width:40px;height:40px;border:0;background:#f4f5f7;color:#5c6169;border-radius:50%;padding:0;display:grid;place-items:center}.qg-v22-dialog header button svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}.qg-v22-dialog p{line-height:1.5;color:#747b85}.qg-v22-dialog form{display:grid;gap:11px}.qg-v22-dialog label{display:grid;gap:5px;font-size:13px;font-weight:650}.qg-v22-dialog select,.qg-v22-dialog textarea,.qg-v22-dialog input{box-sizing:border-box;width:100%;padding:11px;border:1px solid #dfe3e8;border-radius:12px;background:#fff;font:inherit;color:#20242a}.qg-v22-dialog textarea{min-height:95px;resize:vertical}.qg-v22-dialog form button{border:0;border-radius:12px;background:var(--qg-red);color:#fff;padding:13px;font-weight:750}.qg-v22-dialog article{border:1px solid #e7e9ed;border-radius:14px;padding:11px;margin:8px 0;overflow-wrap:anywhere}.qg-v22-dialog article span{float:right;color:#168b58}.qg-v22-dialog article small{color:#818892}.qg-v22-dialog article button{display:block;margin-top:7px;border:0;background:#fff0f3;color:var(--qg-red);border-radius:10px;padding:8px}.qg-v22-icon-label,.qgm-icon-label{display:inline-flex!important;align-items:center;justify-content:center;gap:7px}.qg-v22-icon-label svg,.qgm-icon-label svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 </style>
 
 <script id="qg-v22-merchant-operations">
@@ -4270,7 +4273,7 @@ window.qgmExportRevenue=async function(button){
 
  const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const cash=n=>'฿'+Number(n||0).toLocaleString('th-TH');
- window.qgOpenKitchen=function(){const u=shopUser();if(!qgmKitchenEnabledFor(u)){toast('โหมดครัวใช้สำหรับร้านอาหารและร้านเครื่องดื่ม/คาเฟ่เท่านั้น');return}document.getElementById('qg-v22-kitchen')?.remove();const box=document.createElement('section');box.id='qg-v22-kitchen';box.className='qg-v22-overlay';box.innerHTML='<div class="qg-v22-dialog"><header><b>โหมดครัว</b><button type="button" onclick="document.getElementById(\'qg-v22-kitchen\').remove()">✕</button></header><p>ออเดอร์ปัจจุบันจากฐานข้อมูล</p><button type="button" onclick="qgLoadKitchen()">↻ รีเฟรช</button><div id="qg-v22-kitchen-list">กำลังโหลด...</div></div>';document.body.appendChild(box);qgLoadKitchen()};
+ window.qgOpenKitchen=function(){const u=shopUser();if(!qgmKitchenEnabledFor(u)){toast('โหมดครัวใช้สำหรับร้านอาหารและร้านเครื่องดื่ม/คาเฟ่เท่านั้น');return}document.getElementById('qg-v22-kitchen')?.remove();const box=document.createElement('section');box.id='qg-v22-kitchen';box.className='qg-v22-overlay';box.innerHTML='<div class="qg-v22-dialog"><header><b>โหมดครัว</b><button type="button" aria-label="ปิด" onclick="document.getElementById(\'qg-v22-kitchen\').remove()">'+window.qgmUiIcon('close')+'</button></header><p>ออเดอร์ปัจจุบันจากฐานข้อมูล</p><button type="button" class="qg-v22-icon-label" onclick="qgLoadKitchen()">'+window.qgmUiIcon('refresh')+'<span>รีเฟรช</span></button><div id="qg-v22-kitchen-list">กำลังโหลด...</div></div>';document.body.appendChild(box);qgLoadKitchen()};
  window.qgLoadKitchen=async function(){const el=document.getElementById('qg-v22-kitchen-list');if(!el)return;try{const token=await qtGetAccessToken(),rows=await qtSupabaseTable('rpc/get_my_shop_orders',{method:'POST',accessToken:token,body:{}});if(!el.isConnected)return;const status={pending:'NEW',accepted:'ACCEPTED',searching_rider:'SEARCHING RIDER',rider_assigned:'RIDER ASSIGNED · PREPARE',preparing:'PREPARING',ready:'READY',assigned:'RIDER PICKUP',picked_up:'RIDER PICKUP'};
    el.innerHTML=(rows||[]).filter(o=>status[o.status]).map(o=>'<article><strong>'+displayOrderNumber(o)+'</strong><span>'+status[o.status]+'</span><small>'+new Date(o.created_at).toLocaleTimeString('th-TH')+'</small><p>'+(o.items||[]).map(i=>safe(i.item_name)+' × '+Number(i.quantity)).join(' · ')+'</p><b>'+cash(o.subtotal)+'</b><div>'+(o.status==='pending'?'<button onclick="qgKitchenAction(this,this.dataset.id,\'accepted\')" data-id="'+safe(o.id)+'">รับออเดอร์</button>':o.status==='rider_assigned'?'<button onclick="qgKitchenAction(this,this.dataset.id,\'preparing\')" data-id="'+safe(o.id)+'">เริ่มเตรียม</button>':o.status==='preparing'?'<button onclick="qgKitchenAction(this,this.dataset.id,\'ready\')" data-id="'+safe(o.id)+'">พร้อมให้ไรเดอร์รับ</button>':'')+(o.status==='assigned'?'<small>ไรเดอร์กำลังมารับ</small>':'')+'</div></article>').join('')||'<p>ไม่มีออเดอร์ในครัวขณะนี้</p>';
  }catch(e){el.textContent='โหลดออเดอร์ครัวไม่สำเร็จ: '+e.message}};
@@ -4306,7 +4309,7 @@ window.qgmExportRevenue=async function(button){
  Promise.resolve().then(()=>qgLoadKitchen()).catch(e=>console.warn('merchant kitchen refresh failed',e));
  Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(e=>console.warn('merchant hydrate after kitchen action failed',e));
 };
- window.qgOpenMerchantAnalytics=function(){document.getElementById('qg-v22-analytics')?.remove();const box=document.createElement('section');box.id='qg-v22-analytics';box.className='qg-v22-overlay';box.innerHTML='<div class="qg-v22-dialog"><header><b>วิเคราะห์ร้านค้า</b><button type="button" onclick="document.getElementById(\'qg-v22-analytics\').remove()">✕</button></header><div class="qg-v22-period"><button data-days="1">วันนี้</button><button data-days="7">7 วัน</button><button data-days="30">30 วัน</button></div><div id="qg-v22-analytics-result">กำลังโหลด...</div></div>';document.body.appendChild(box);box.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>qgLoadMerchantAnalytics(Number(b.dataset.days)));qgLoadMerchantAnalytics(1)};
+ window.qgOpenMerchantAnalytics=function(){document.getElementById('qg-v22-analytics')?.remove();const box=document.createElement('section');box.id='qg-v22-analytics';box.className='qg-v22-overlay';box.innerHTML='<div class="qg-v22-dialog"><header><b>วิเคราะห์ร้านค้า</b><button type="button" aria-label="ปิด" onclick="document.getElementById(\'qg-v22-analytics\').remove()">'+window.qgmUiIcon('close')+'</button></header><div class="qg-v22-period"><button data-days="1">วันนี้</button><button data-days="7">7 วัน</button><button data-days="30">30 วัน</button></div><div id="qg-v22-analytics-result">กำลังโหลด...</div></div>';document.body.appendChild(box);box.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>qgLoadMerchantAnalytics(Number(b.dataset.days)));qgLoadMerchantAnalytics(1)};
  window.qgLoadMerchantAnalytics=async function(days){const el=document.getElementById('qg-v22-analytics-result');if(!el)return;el.textContent='กำลังโหลด...';try{const token=await qtGetAccessToken(),r=await qtSupabaseTable('rpc/qg_merchant_analytics',{method:'POST',accessToken:token,body:{p_days:days}});if(!el.isConnected)return;const items=(r.top_items||[]).map(x=>'<p>'+safe(x.name)+' · '+Number(x.quantity)+' ชิ้น</p>').join('');el.innerHTML='<div class="qg-v22-analytics-grid">'+[['ยอดขาย',cash(r.sales)],['จำนวนออเดอร์',r.orders],['มูลค่าเฉลี่ย',cash(r.average_order_value)],['ยกเลิก',r.cancelled+' ('+r.cancellation_rate+'%)'],['เตรียมสินค้าเฉลี่ย',r.avg_prep_minutes===null?'ยังไม่มีข้อมูล':r.avg_prep_minutes+' นาที']].map(([a,b])=>'<div><small>'+a+'</small><b>'+b+'</b></div>').join('')+'</div><h3>เมนูขายดี</h3>'+(items||'<p>ยังไม่มีข้อมูล</p>')}catch(e){el.textContent='โหลดสถิติไม่สำเร็จ: '+e.message}};
  window.renderShopSettlement=function(){qgmRenderRevenue()};
 
