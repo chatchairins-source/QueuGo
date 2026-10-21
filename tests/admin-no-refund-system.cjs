@@ -1,0 +1,13 @@
+const fs=require('fs'),assert=require('assert/strict');
+const index=fs.readFileSync('admin/index.html','utf8'),loader=fs.readFileSync('admin/section-loader.js','utf8');
+const pos=fs.readFileSync('merchant/pos-table-v2.js','utf8'),posSql=fs.readFileSync('QueueGo-POS-Migration.sql','utf8');
+assert(!index.includes('adminApproveRefund'));
+assert(!index.includes('คำขอคืนเงิน'));
+assert(!index.includes('qt_finance_ledger'));
+assert(!index.includes("status==='refunded'"));
+assert(!loader.includes('refundStatus'));
+assert(!loader.includes("'qt-sec-finance':['orders','settlements']"));
+assert(pos.includes('qgPosRefund'));
+assert(pos.includes("rpc('pos_refund_bill'"));
+assert(posSql.includes('create or replace function public.pos_refund_bill'));
+console.log(JSON.stringify({checks:9,failures:0,scope:'Admin refund workflow removed; Merchant POS shop-side cash refund remains'}));

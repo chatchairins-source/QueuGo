@@ -90,7 +90,7 @@ window.qgAdminRealtimeTables=function(){
   'admin-support':[],'admin-gp-rates':['shop_profiles'],
   'admin-market':['market_requests','shop_profiles'],'admin-grocery':['products'],
   'notifications':['notifications'],'qt-sec-audit':['audit_logs'],'qt-sec-promote':['promotions'],
-  'qt-sec-settings':['queuego_platform_rules'],'qt-sec-finance':['orders','settlements']
+  'qt-sec-settings':['queuego_platform_rules']
  };
  return scopes[key]||[];
 };
@@ -119,7 +119,6 @@ window.qgAdminLoadSection=async function(force=false,reason=''){
   const rows=await read('promotions?select=*&order=created_at.desc&limit=100');
   if(valid())QT_DB_CACHE.qt_promotions=(rows||[]).map(x=>Object.assign({},x.metadata||{},{id:x.id,shopId:x.shop_id,shopName:x.shop_name,bidPrice:x.bid_price,status:x.status}));
  },force);
- if(key==='qt-sec-finance')return resource(key,async valid=>{const rows=await read('orders?select=id,order_number,metadata,total_amount,created_at&metadata->>refundStatus=eq.requested&order=created_at.desc&limit=100');if(valid())QT_DB_CACHE.qt_orders=(rows||[]).map(qtOrderFromRow)},force);
  if(key==='qt-sec-settings')return resource(key,()=>qtPullSystemSettings(),force);
  if(key==='notifications')return resource(key,async valid=>{
   const page=Math.max(0,Number(window.QG_ADMIN_NOTIFICATION_PAGE)||0),cursor=window.QG_ADMIN_NOTIFICATION_CURSOR,where=cursor?'&or='+encodeURIComponent('(created_at.lt.'+cursor.at+',and(created_at.eq.'+cursor.at+',id.lt.'+cursor.id+'))'):'';
