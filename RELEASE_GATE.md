@@ -28,7 +28,7 @@ Snapshot date: 2026-10-21 · Main: `643a115129b0bf1d6b05de261baa0aa959310a1b`
 ## POS inventory adjustment audit/history successor
 
 - Source adds `20261021233100_pos_inventory_adjustments.sql`, a manager-only idempotent stock-adjust RPC, immutable adjustment/event history, direct stock-write guard and opening-balance/order-reservation/cancellation events. Merchant tracked products become read-only in the general editor and use the adjustment dialog/history.
-- Verification: `tests/pos-generic-inventory.cjs` 38 PASS; adjustment UI runtime 9 PASS; Merchant product reliability 79 PASS; full `npm test` EXIT 0. Source is staged on the dependent PR #572; hosted exact-head RC is pending.
+- Verification: `tests/pos-generic-inventory.cjs` 38 PASS; adjustment UI runtime 9 PASS; Merchant product reliability 79 PASS; full `npm test` EXIT 0. Exact-source hosted RC [39633575108](https://github.com/chatchairins-source/QueuGo/actions/runs/39633575108) passed on `3ac73c2c1aa9221c392e5cfcaca5afd82653dd15`, including full regression and all Admin/Merchant/Map/Grocery mobile checks.
 - The audit table has RLS enabled and no client table grants. Functions are pinned-search-path SECURITY DEFINER only where required, explicitly revoked from public/anon, and granted to authenticated manager RPC checks. PGlite coverage does not certify live RLS or multi-connection Production contention.
 - Migration is not in Production; no stock was changed in a real shop. Keep #572 stacked until #568 resolves, then rebase onto main and rerun exact-head RC. Authorized schema review, real manager/cashier acceptance, deployment and served behavior remain open.
 
