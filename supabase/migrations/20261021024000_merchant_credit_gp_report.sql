@@ -1,8 +1,19 @@
--- Report Merchant GP that has already been deducted from the unified credit ledger.
--- This is read-only reporting. It does not change balances, holds, feature flags, or legacy settlement data.
+-- Make Merchant revenue report match the unified-credit GP collection model.
+-- Existing gp_due remains legacy/pre-credit outstanding GP only.
+-- gp_credit_deducted is the net GP already captured from Merchant credit, including reversals.
 
-create or replace function public.merchant_credit_gp_days(p_from date,p_to date)
-returns table(date_key date,gp_credit_deducted numeric)
+drop function public.merchant_revenue_days(date,date);
+
+create function public.merchant_revenue_days(p_from date,p_to date)
+returns table(
+  date_key date,
+  order_count bigint,
+  gross_sales numeric,
+  gp_due numeric,
+  gp_credit_deducted numeric,
+  cash_received numeric,
+  gp_status text
+)
 language plpgsql
 security definer
 set search_path=public,pg_temp
@@ -35,7 +46,20 @@ begin
   with days as (
     select generate_series(p_from,p_to,interval '1 day')::date d
   ),
-  ledger as (
+  sales as (
+    select
+      (o.created_at at time zone 'Asia/Bangkok')::date d,
+      count(*) n,
+      sum(o.subtotal) gross,
+      sum(coalesce(o.gp_amount,round(o.subtotal*coalesce(o.gp_rate,10)/100,2)))
+        filter(where not o.credit_gp_required) gp
+    from public.orders o
+    where o.shop_id=v_shop
+      and o.status in ('picked_up','in_progress','completed')
+      and (o.created_at at time zone 'Asia/Bangkok')::date between p_from and p_to
+    group by 1
+  ),
+  credit_gp as (
     select
       (o.created_at at time zone 'Asia/Bangkok')::date d,
       round((-sum(e.cash_delta+e.promo_delta))::numeric/100,2) amount
@@ -48,13 +72,37 @@ begin
       and o.credit_gp_required
       and (o.created_at at time zone 'Asia/Bangkok')::date between p_from and p_to
     group by 1
+  ),
+  cash as (
+    select
+      (r.received_at at time zone 'Asia/Bangkok')::date d,
+      sum(r.amount) amount
+    from public.merchant_cash_receipts r
+    where r.shop_id=v_shop
+      and (r.received_at at time zone 'Asia/Bangkok')::date between p_from and p_to
+    group by 1
   )
-  select days.d,coalesce(ledger.amount,0)::numeric
+  select
+    days.d,
+    coalesce(sales.n,0),
+    coalesce(sales.gross,0),
+    coalesce(sales.gp,0),
+    coalesce(credit_gp.amount,0),
+    coalesce(cash.amount,0),
+    coalesce((
+      select s.status
+      from public.settlements s
+      where s.shop_id=v_shop and s.date_key=days.d
+      order by s.updated_at desc
+      limit 1
+    ),'pending')
   from days
-  left join ledger on ledger.d=days.d
+  left join sales on sales.d=days.d
+  left join credit_gp on credit_gp.d=days.d
+  left join cash on cash.d=days.d
   order by days.d desc;
 end
 $$;
 
-revoke all on function public.merchant_credit_gp_days(date,date) from public,anon,service_role;
-grant execute on function public.merchant_credit_gp_days(date,date) to authenticated;
+revoke all on function public.merchant_revenue_days(date,date) from public,anon;
+grant execute on function public.merchant_revenue_days(date,date) to authenticated;
