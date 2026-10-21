@@ -444,7 +444,7 @@ const QGCustomer=(()=>{
     d.innerHTML=`<form method="dialog" class="qg-chat-report-sheet">
       <header class="qg-chat-report-head">
         <div><small>ความปลอดภัย</small><h3>รายงานแชต</h3></div>
-        <button type="submit" value="cancel" class="qg-chat-report-close" aria-label="ปิด">×</button>
+        <button type="submit" value="cancel" class="qg-chat-report-close" aria-label="ปิด">${ico('close')}</button>
       </header>
       <p class="qg-chat-report-hint">แคปหน้าจอส่วนของแชตที่ต้องการรายงาน แล้วแนบภาพด้านล่าง</p>
       <label class="qg-chat-report-field"><span>เหตุผล</span><select name="reason">
@@ -519,7 +519,7 @@ const QGCustomer=(()=>{
         <div class="qg-customer-chat-title"><span class="qg-customer-chat-brand" aria-label="QueueGo"><span>Queue</span><em>Go</em></span><b>Rider</b><small>ประสานงานออเดอร์ผ่าน QueueGo</small></div>
         <div class="qg-customer-chat-head-actions">
           <button type="button" id="customer-chat-call" class="qg-customer-chat-head-btn qg-voice-launch" aria-label="โทรผ่าน QueueGo">${window.QueueGoVoiceWeb?.phoneIcon?.()||''}</button>
-          <button type="button" id="customer-chat-menu" class="qg-customer-chat-head-btn" aria-label="ตัวเลือกเพิ่มเติม">•••</button>
+          <button type="button" id="customer-chat-menu" class="qg-customer-chat-head-btn" aria-label="ตัวเลือกเพิ่มเติม">${ico('more')}</button>
         </div>
       </header>
       ${completed?`<div class="qg-customer-chat-expiry">หลังจบงานแชทจะปิดและถูกลบอัตโนมัติ · เหลือประมาณ ${chatMinutesLeft(o)} นาที</div>`:''}
