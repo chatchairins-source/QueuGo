@@ -94,12 +94,13 @@ internal fun MerchantRevenueScreen(
                 api.revenueDays(auth, start.toString(), end.toString())
             }.onSuccess { reportRows ->
                 val csv = buildString {
-                    append("วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP ตามออเดอร์,เงินสดค่าสินค้าที่ร้านได้รับ\r\n")
+                    append("วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP ที่หักจากเครดิต,GP เดิมก่อนระบบเครดิต,เงินสดค่าสินค้าที่ร้านได้รับ\r\n")
                     reportRows.forEach { row ->
                         append(csvCell(row.dateKey)).append(',')
                         append(row.orderCount).append(',')
                         append(row.grossSales).append(',')
                         append(row.gpAmount).append(',')
+                        append(row.legacyGpDue).append(',')
                         append(row.cashReceived).append("\r\n")
                     }
                 }
@@ -138,7 +139,7 @@ internal fun MerchantRevenueScreen(
 
         com.queuego.shared.QueueGoCreditCard(auth.user.id, auth.session.accessToken, "merchant")
         Text(
-            "เงินสดค่าสินค้า: ไรเดอร์จ่ายร้านตอนรับสินค้า แล้วเก็บจากลูกค้าเอง · GP คือค่าบริการร้าน",
+            "เงินสดค่าสินค้า: ไรเดอร์จ่ายร้านตอนรับสินค้า แล้วเก็บจากลูกค้าเอง · GP คือค่าบริการที่ระบบหักจากเครดิตร้านอัตโนมัติ",
             color = Color(0xFF607E6E),
             fontSize = 11.sp,
             lineHeight = 16.sp,
@@ -249,7 +250,7 @@ private fun RevenueDailyReport(day: MerchantRevenueDay) {
         RevenueGrid(
             listOf(
                 "ยอดค่าสินค้าหลังไรเดอร์รับ" to money(day.grossSales),
-                "GP ตามออเดอร์" to money(day.gpAmount),
+                "GP ที่หักจากเครดิต" to money(day.gpAmount),
                 "เงินสดค่าสินค้าที่ร้านได้รับ" to money(day.cashReceived),
                 "ออเดอร์ที่ไรเดอร์รับสินค้า" to day.orderCount.toString()
             )
@@ -261,6 +262,15 @@ private fun RevenueDailyReport(day: MerchantRevenueDay) {
             fontSize = 10.sp,
             lineHeight = 15.sp
         )
+        if (day.legacyGpDue > 0.0) {
+            Spacer(Modifier.height(5.dp))
+            Text(
+                "GP เดิมก่อนระบบเครดิต: ${money(day.legacyGpDue)}",
+                color = Color(0xFF9A6B10),
+                fontSize = 10.sp,
+                lineHeight = 15.sp
+            )
+        }
         Spacer(Modifier.height(5.dp))
         Text(
             "ยอดเงินสดบันทึกอัตโนมัติตาม flow การรับสินค้าของออเดอร์ ไม่ต้องกดยืนยันการรับเงินเพิ่ม",
@@ -285,7 +295,7 @@ private fun RevenuePeriodReport(days: Int, rows: List<MerchantRevenueDay>) {
             listOf(
                 "ยอดค่าสินค้า" to money(rows.sumOf { it.grossSales }),
                 "จำนวนออเดอร์" to rows.sumOf { it.orderCount }.toString(),
-                "GP ตามออเดอร์" to money(rows.sumOf { it.gpAmount }),
+                "GP ที่หักจากเครดิต" to money(rows.sumOf { it.gpAmount }),
                 "เงินสดค่าสินค้าที่ร้านได้รับ" to money(rows.sumOf { it.cashReceived })
             )
         )
