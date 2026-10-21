@@ -1,6 +1,10 @@
 -- Item sales for the shop's own POS. This is not a QueueGo GP report.
 begin;
 
+create index if not exists pos_paid_report_lookup_idx
+  on public.orders(shop_id,(coalesce(paid_at,created_at)) desc)
+  where sales_channel='POS' and payment_status='PAID' and status='completed';
+
 create or replace function public.pos_owner_item_sales(p_days integer default 1)
 returns jsonb
 language plpgsql

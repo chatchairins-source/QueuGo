@@ -36,6 +36,7 @@ const css=fs.readFileSync(path.join(root,'merchant/pos-table-v2.css'),'utf8');
   data=(await db.query(`select public.pos_owner_item_sales(0) as report`)).rows[0].report;assert.equal(data.days,1);
   await set(true,other);data=(await db.query(`select public.pos_owner_item_sales(365) as report`)).rows[0].report;assert.equal(data.items.length,1);assert.equal(data.items[0].item_name,'ร้านอื่น');assert.equal(Number(data.items[0].sales),700);
   const grants=(await db.query(`select has_function_privilege('anon','public.pos_owner_item_sales(integer)','execute') anon,has_function_privilege('authenticated','public.pos_owner_item_sales(integer)','execute') auth`)).rows[0];assert.equal(grants.anon,false);assert.equal(grants.auth,true);
+  const index=(await db.query(`select indexdef from pg_indexes where schemaname='public' and indexname='pos_paid_report_lookup_idx'`)).rows[0];assert.match(index.indexdef,/shop_id/);assert.match(index.indexdef,/coalesce\(paid_at, created_at\)/i);
   assert.match(client,/rpc\('pos_owner_item_sales'/);assert.match(client,/qgPosReportCsv/);assert.match(client,/โหลดรายงานไม่สำเร็จ/);assert.match(css,/\.qg-pos-report-table-wrap/);assert.match(css,/@media\(max-width:480px\)/);
   await db.close();console.log(JSON.stringify({checks:18,failures:0,scope:'POS owner-only shop-scoped paid item report, date range, exclusion of refunded and delivery transactions, permissions and report UI'}));
 })().catch(e=>{console.error(e);process.exit(1)});
