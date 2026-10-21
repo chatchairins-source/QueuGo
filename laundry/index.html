@@ -9,21 +9,43 @@
 <script src="../queuego-order-number.js"></script><script>
 const URL='https://pkypiqhlrmzocysgeqew.supabase.co';
 const KEY='sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre';
-let db=null;
-function qgTimeout(promise,ms,label){let timer;return Promise.race([Promise.resolve(promise).finally(()=>clearTimeout(timer)),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label||'หมดเวลารอการเชื่อมต่อ')),ms)})])}
-function qgLoadScript(src,ms=8000){return new Promise((resolve,reject)=>{const s=document.createElement('script');let done=false;const finish=(err)=>{if(done)return;done=true;clearTimeout(timer);s.onload=s.onerror=null;err?reject(err):resolve()};const timer=setTimeout(()=>finish(new Error('โหลดระบบเชื่อมต่อไม่ทันเวลา')),ms);s.src=src;s.async=true;s.onload=()=>finish();s.onerror=()=>finish(new Error('โหลดระบบเชื่อมต่อไม่สำเร็จ'));document.head.appendChild(s)})}
-async function qgEnsureSupabase(){
-  if(window.supabase?.createClient)return window.supabase;
-  const sources=['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js','https://unpkg.com/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js'];
-  let last=null;
-  for(const src of sources){try{await qgLoadScript(src);if(window.supabase?.createClient)return window.supabase}catch(e){last=e}}
-  throw last||new Error('ไม่สามารถโหลดระบบเชื่อมต่อ QueueGo');
-}
 const QG_SESSION_KEY='qg_customer_session_v1';
-function qgCustomerSession(){try{return JSON.parse(localStorage.getItem(QG_SESSION_KEY))}catch(e){return null}}
-function qgSaveCustomerSession(v){try{localStorage.setItem(QG_SESSION_KEY,JSON.stringify(v))}catch(e){}}
-async function qgDatabase(){if(db)return db;const lib=await qgEnsureSupabase();db=lib.createClient(URL,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});return db}
-async function qgRestoreCustomerSession(client){const saved=qgCustomerSession();if(!saved?.accessToken||!saved?.authUserId)return null;const {data,error}=await qgTimeout(client.auth.setSession({access_token:saved.accessToken,refresh_token:saved.refreshToken||''}),10000,'ตรวจสอบการเข้าสู่ระบบไม่สำเร็จ');if(error||!data?.session)return null;const s=data.session;if(s.access_token!==saved.accessToken||s.refresh_token!==saved.refreshToken){qgSaveCustomerSession({...saved,accessToken:s.access_token,refreshToken:s.refresh_token||saved.refreshToken,expiresAt:(s.expires_at||0)*1000})}return s}
+const QG_SESSION={
+  get(){try{return JSON.parse(localStorage.getItem(QG_SESSION_KEY))}catch(e){return null}},
+  set(v){try{localStorage.setItem(QG_SESSION_KEY,JSON.stringify(v))}catch(e){}}
+};
+function qgHeaders(token){const h={apikey:KEY,'Content-Type':'application/json'};if(token)h.Authorization='Bearer '+token;return h}
+async function qgFetch(url,options={},timeout=15000){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+  try{return await fetch(url,{...options,signal:controller.signal})}
+  finally{clearTimeout(timer)}
+}
+async function qgAuth(path,body){
+  const r=await qgFetch(URL+'/auth/v1/'+path,{method:'POST',headers:qgHeaders(),body:JSON.stringify(body)});
+  const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error_description||d.msg||d.message||'AUTH_ERROR');return d
+}
+let refreshing=null;
+async function qgToken(force=false){
+  const s=QG_SESSION.get();if(!s?.accessToken)return '';
+  if(!(force||(s.expiresAt&&s.expiresAt-Date.now()<60000))||!s.refreshToken)return s.accessToken;
+  refreshing=refreshing||(async()=>{try{
+    const d=await qgAuth('token?grant_type=refresh_token',{refresh_token:s.refreshToken});
+    const now=QG_SESSION.get();if(now?.authUserId!==s.authUserId||now?.refreshToken!==s.refreshToken)return '';
+    const next={...s,accessToken:d.access_token,refreshToken:d.refresh_token||s.refreshToken,expiresAt:Date.now()+(d.expires_in||3600)*1000};
+    QG_SESSION.set(next);return next.accessToken
+  }catch(e){return QG_SESSION.get()?.accessToken||''}finally{refreshing=null}})();
+  return refreshing
+}
+async function qgDb(path,options={}){
+  const token=options.token===undefined?await qgToken():options.token;
+  const method=(options.method||'GET').toUpperCase(),headers=qgHeaders(token);
+  if(method!=='GET')headers.Prefer='return=representation';
+  const r=await qgFetch(URL+'/rest/v1/'+path,{method,headers,body:options.body?JSON.stringify(options.body):undefined},options.timeout||15000);
+  const d=await r.json().catch(()=>null);
+  if(!r.ok){const e=new Error((d&&(d.message||d.hint||d.details))||'DB_ERROR_'+r.status);e.status=r.status;throw e}
+  return d
+}
+async function qgRpc(name,body){return qgDb('rpc/'+encodeURIComponent(name),{method:'POST',body})}
 const washer='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M4 7.5h16"/><circle cx="12" cy="14.5" r="4.5"/><circle cx="8" cy="5" r=".65" fill="currentColor" stroke="none"/><circle cx="11" cy="5" r=".65" fill="currentColor" stroke="none"/></svg>';
 let hub=null,service=null,services=[],customer=null,settingsByHub=new Map(),sending=false;
 const pendingKey=()=>customer?.id?'qg_laundry_pending_'+customer.id:null;
@@ -56,20 +78,20 @@ async function boot(){
   const el=document.getElementById('shops');
   el.className='empty';el.textContent='กำลังโหลดร้านซัก...';settingsByHub.clear();
   try{
-    const client=await qgTimeout(qgDatabase(),18000,'เชื่อมต่อ QueueGo ไม่สำเร็จ');
-    const session=await qgRestoreCustomerSession(client);
-    if(!session){location.href='../#login';return}
-    const {data:u,error:uerr}=await qgTimeout(client.from('users').select('id,name,phone,metadata,role,status').eq('auth_user_id',session.user.id).maybeSingle(),12000,'โหลดบัญชีลูกค้าไม่สำเร็จ');
-    if(uerr||!u||u.role!=='customer'||u.status!=='active'){location.href='../#login';return}
+    const session=QG_SESSION.get();
+    if(!session?.authUserId||!session?.accessToken){location.href='../#login';return}
+    const accessToken=await qgToken();
+    if(!accessToken){location.href='../#login';return}
+    const users=await qgDb('users?select=id,name,phone,metadata,role,status&auth_user_id=eq.'+encodeURIComponent(session.authUserId)+'&limit=1',{token:accessToken});
+    const u=Array.isArray(users)?users[0]:null;
+    if(!u||u.role!=='customer'||u.status!=='active'){location.href='../#login';return}
     customer=u;
-    const {data:enabled,error:ferr}=await qgTimeout(client.rpc('queuego_feature_enabled',{p_feature:'laundry',p_at:null}),12000,'โหลดสถานะฝากซักไม่สำเร็จ');
-    if(ferr)throw ferr;
-    if(enabled!==true){el.className='';el.innerHTML='<div class="notice"><b>ฝากซักอยู่ในโหมดปิดทดสอบ</b><br>ระบบจะเปิดใช้งานเมื่อ Admin เปิดบริการ</div>';return}
-    const [{data:h,error:he},{data:st,error:se}]=await qgTimeout(Promise.all([
-      client.from('laundry_hubs').select('id,name,shop_id').eq('active',true),
-      client.from('laundry_shop_settings').select('hub_id,enabled,accepts_pickup,accepts_return,minimum_order,base_pickup_fee,return_fee,round_trip_fee,delivery_fee_mode,currency').eq('enabled',true).eq('accepts_pickup',true).eq('accepts_return',true)
-    ]),15000,'โหลดรายชื่อร้านซักไม่สำเร็จ');
-    if(he||se)throw he||se;
+    const enabled=await qgRpc('queuego_feature_enabled',{p_feature:'laundry',p_at:null});
+    if(enabled!==true){el.className='';el.innerHTML='<div class="notice"><b>ฝากซักยังไม่เปิดใช้งาน</b><br>Admin ยังปิดบริการฝากซักอยู่</div>';return}
+    const [h,st]=await Promise.all([
+      qgDb('laundry_hubs?select=id,name,shop_id&active=eq.true&order=name.asc'),
+      qgDb('laundry_shop_settings?select=hub_id,enabled,accepts_pickup,accepts_return,minimum_order,base_pickup_fee,return_fee,round_trip_fee,delivery_fee_mode,currency&enabled=eq.true&accepts_pickup=eq.true&accepts_return=eq.true')
+    ]);
     (st||[]).forEach(x=>settingsByHub.set(String(x.hub_id),x));
     const hubs=(h||[]).filter(x=>settingsByHub.has(String(x.id)));
     if(!hubs.length){el.className='empty';el.textContent='ยังไม่มีร้านซักเปิดให้บริการ';return}
@@ -77,15 +99,16 @@ async function boot(){
     el.querySelectorAll('.shop').forEach(b=>b.onclick=()=>openShop(hubs.find(x=>String(x.id)===String(b.dataset.id))));
   }catch(e){
     console.error('Laundry boot failed',e);
-    el.className='';el.innerHTML='<div class="notice"><b>โหลดร้านซักไม่สำเร็จ</b><br>กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง<br><button type="button" class="retry" onclick="boot()">ลองโหลดอีกครั้ง</button></div>';
+    const message=String(e?.message||e||'').slice(0,120);
+    el.className='';el.innerHTML='<div class="notice"><b>โหลดร้านซักไม่สำเร็จ</b><br>'+(message?safe(message):'กรุณาลองอีกครั้ง')+'<br><button type="button" class="retry" onclick="boot()">ลองโหลดอีกครั้ง</button></div>';
   }
 }
 async function openShop(h){
   hub=h;service=null;services=[];
   document.getElementById('list').classList.add('hidden');document.getElementById('order').classList.remove('hidden');document.getElementById('shopName').textContent=h.name;
-  const client=await qgDatabase();const {data:s,error}=await qgTimeout(client.from('laundry_services').select('id,code,name,price,pricing_type,description,estimated_minutes').eq('hub_id',h.id).eq('active',true).order('sort_order'),12000,'โหลดบริการของร้านไม่สำเร็จ');
+  let s=[];try{s=await qgDb('laundry_services?select=id,code,name,price,pricing_type,description,estimated_minutes&hub_id=eq.'+encodeURIComponent(h.id)+'&active=eq.true&order=sort_order.asc')}catch(e){console.error('Laundry services failed',e)}
   const box=document.getElementById('services');
-  if(error||!s?.length){box.innerHTML='<div class="notice">ร้านนี้ยังไม่มีบริการที่เปิดขาย</div>';document.getElementById('confirm').disabled=true;return}
+  if(!s?.length){box.innerHTML='<div class="notice">ร้านนี้ยังไม่มีบริการที่เปิดขาย</div>';document.getElementById('confirm').disabled=true;return}
   services=s;service=s[0];document.getElementById('confirm').disabled=false;
   box.innerHTML=s.map((x,i)=>'<label><input type="radio" name="svc" value="'+safe(x.id)+'" '+(i===0?'checked':'')+'><span><b>'+safe(x.name)+'</b><small class="muted" style="display:block">'+safe(x.description||'')+(x.estimated_minutes?' · ประมาณ '+Number(x.estimated_minutes)+' นาที':'')+'</small></span><span>'+feeText(x.price)+(x.pricing_type!=='fixed'?' / '+unitLabel(x.pricing_type):'')+'</span></label>').join('');
   document.querySelectorAll('[name=svc]').forEach(x=>x.onchange=()=>{service=services.find(v=>String(v.id)===String(x.value))||services[0];renderQuantity()});
@@ -94,7 +117,7 @@ async function openShop(h){
 }
 document.getElementById('confirm').onclick=async()=>{
   if(sending)return;
-  const client=await qgDatabase();const session=await qgRestoreCustomerSession(client);if(!session)return location.href='../#login';
+  const session=QG_SESSION.get();if(!session?.authUserId||!await qgToken())return location.href='../#login';
   if(!hub||!service)return alert('กรุณาเลือกบริการ');
   const m=customer.metadata||{},lat=Number(m.lat??m.latitude),lng=Number(m.lng??m.longitude),addr=String(m.address||m.delivery_address||m.location_address||'').trim();
   if(!Number.isFinite(lat)||!Number.isFinite(lng)||!addr){alert('กรุณาปักพิกัดจัดส่งใน QueueGo ก่อน');location.href='../#profile';return}
@@ -102,12 +125,11 @@ document.getElementById('confirm').onclick=async()=>{
   if(!req||req.hub_id!==hub.id||req.service_id!==service.id||String(req.qty??'')!==String(qty??'')){req={request_id:uuid(),hub_id:hub.id,service_id:service.id,qty};localStorage.setItem(key,JSON.stringify(req))}
   sending=true;const btn=document.getElementById('confirm');btn.disabled=true;btn.textContent='กำลังส่งคำขอ...';
   try{
-    const {data,error}=await qgTimeout(client.rpc('queuego_place_laundry_order_v2',{
+    const data=await qgRpc('queuego_place_laundry_order_v2',{
       p_request_id:req.request_id,p_hub_id:hub.id,p_service_id:service.id,
       p_pickup_address:addr,p_pickup_latitude:lat,p_pickup_longitude:lng,
       p_estimated_quantity:qty,p_note:String(document.getElementById('note').value||'').trim().slice(0,500)||null
-    }),15000,'ส่งคำขอฝากซักไม่สำเร็จ');
-    if(error)throw error;
+    });
     localStorage.removeItem(key);
     alert('ส่งคำขอฝากซักแล้ว '+QueueGoOrderNumber.format(data)+' รอร้านกดรับคำขอ');
     location.href='../#orders';
