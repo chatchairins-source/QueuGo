@@ -18,7 +18,7 @@ assert(merchant.includes('.qgm-wordmark-queue{color:#17191d}')&&merchant.include
 assert(customer.includes('class="brand-queue">Queue</span><span class="brand-go">Go</span>'));
 assert(customer.includes('.brand-queue{color:var(--ink)}.brand-go{color:var(--red)}'));
 
-assert(rider.includes('class="qg-brand-pill" aria-label="QueueGo"'));
+assert(rider.includes("qgHeaderWordmark('qg-brand-pill')"));
 assert(rider.includes('.qg-wordmark-queue{color:#17171b}')&&rider.includes('.qg-wordmark-go{color:var(--qg-red)}'));
 assert(rider.includes("qgHeaderWordmark('qg-page-wordmark')")&&!rider.includes('qg-mini-logo'));
 assert(customerFeatures.includes('qg-customer-chat-brand')&&customerFeatureCss.includes('.qg-customer-chat-brand>span{color:#17191d}.qg-customer-chat-brand>em{color:var(--red)'));
