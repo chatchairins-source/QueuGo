@@ -39,8 +39,38 @@ fun QueueGoCreditCard(userId: String, token: String, kind: String) {
         if (value == null) edit.remove(accountKey) else edit.putString(accountKey, value.toString())
         check(edit.commit()) { "บันทึกรายการไม่ได้ กรุณาลองใหม่" }
     }
-    suspend fun refresh() {
-        summary = api.obj(api.rpc("queuego_credit_summary", token, JSONObject().put("p_kind", kind).put("p_topup", request?.optString("id") ?: JSONObject.NULL)))
+    suspend fun refresh(verify: Boolean = false) {
+        suspend fun readSummary() = api.obj(api.rpc("queuego_credit_summary", token, JSONObject().put("p_kind", kind).put("p_topup", request?.optString("id") ?: JSONObject.NULL)))
+        var next = readSummary()
+        if (request == null) {
+            val topups = next.optJSONArray("topups")
+            for (i in 0 until (topups?.length() ?: 0)) {
+                val item = topups?.optJSONObject(i) ?: continue
+                if (item.optString("status") in listOf("created", "pending")) {
+                    val restored = JSONObject().put("id", item.getString("id")).put("kind", kind).put("amount_minor", item.getLong("amount_minor"))
+                    save(restored)
+                    request = restored
+                    break
+                }
+            }
+        }
+        val pending = request
+        val topups = next.optJSONArray("topups")
+        var active: JSONObject? = null
+        for (i in 0 until (topups?.length() ?: 0)) {
+            val item = topups?.optJSONObject(i) ?: continue
+            if (item.optString("id") == pending?.optString("id")) active = item
+        }
+        if (verify && pending != null && active?.optString("status") !in listOf("successful", "failed", "expired")) {
+            api.functionPost("queuego-credit", token, pending)
+            next = readSummary()
+        }
+        summary = next
+        val settled = next.optJSONArray("topups")
+        for (i in 0 until (settled?.length() ?: 0)) {
+            val item = settled?.optJSONObject(i) ?: continue
+            if (item.optString("id") == request?.optString("id") && item.optString("status") in listOf("successful", "failed", "expired")) message = null
+        }
     }
     LaunchedEffect(accountKey, token) {
         try {
@@ -54,9 +84,10 @@ fun QueueGoCreditCard(userId: String, token: String, kind: String) {
     LaunchedEffect(accountKey, token, foreground, request?.optString("id")) {
         while (foreground && request != null) {
             delay(10000)
-            if (!busy) try { refresh() }
+            if (!busy) try { busy = true; refresh(true) }
             catch (e: CancellationException) { throw e }
             catch (_: Exception) { /* Keep the last acknowledged balance during a network gap. */ }
+            finally { busy = false }
         }
     }
     fun runAction(action: suspend () -> Unit) {
@@ -96,12 +127,21 @@ fun QueueGoCreditCard(userId: String, token: String, kind: String) {
                         }
                         refresh()
                     }
-                }) { Text(if (request == null) "สร้าง QR เติมเครดิต" else "ตรวจสอบรายการเดิม") }
+                }) { Text(if (request == null) "สร้าง QR PromptPay" else "ตรวจสอบรายการเดิม") }
                 val topups = data.optJSONArray("topups")
                 var active: JSONObject? = null
                 for (i in 0 until (topups?.length() ?: 0)) {
                     val item = topups?.optJSONObject(i) ?: continue
                     if (item.optString("id") == request?.optString("id")) active = item
+                }
+                active?.let { item ->
+                    Text(when (item.optString("status")) {
+                        "successful" -> "เติมเงินสำเร็จ"
+                        "failed" -> "รายการไม่สำเร็จ"
+                        "expired" -> "รายการหมดอายุ"
+                        "pending" -> "รอชำระเงิน"
+                        else -> "รอสร้าง QR / ตรวจสอบรายการเดิม"
+                    })
                 }
                 val qr = active?.optString("qr_url").orEmpty()
                 if (qr.startsWith("https://api.omise.co/charges/") && active?.optString("status") == "pending") {
@@ -112,7 +152,7 @@ fun QueueGoCreditCard(userId: String, token: String, kind: String) {
                     OutlinedButton(enabled = !busy, onClick = { runAction { save(null); request = null; amount = ""; message = null } }) { Text("รายการใหม่") }
                 }
             } else Text("ระบบเติมเครดิตยังไม่เปิดใช้งาน")
-            OutlinedButton(enabled = !busy, onClick = { runAction { refresh() } }) { Text("รีเฟรชยอดและรายการ") }
+            OutlinedButton(enabled = !busy, onClick = { runAction { refresh(true) } }) { Text("ตรวจสอบรายการ / รีเฟรชยอด") }
             message?.let { Text(it) }
             val entries = data?.optJSONArray("entries")
             for (i in 0 until minOf(entries?.length() ?: 0, 10)) {
