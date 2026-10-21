@@ -80,6 +80,6 @@
 
 window.renderAdminCreditCenter=function(){
  const user=currentUser();if(!user||user.type!=='admin'||user.status!=='approved'){navigate('login');return}
- layout('เครดิต Rider / ร้านค้า','<section class="card"><h2>เครดิต Rider / ร้านค้า</h2><p>เครดิตร้านค้า / Rider และประวัติรายการ · การเปิดเติมเงินจริงขึ้นอยู่กับสถานะระบบและ Release Gate</p><button type="button" onclick="navigate(\'admin-gp-rates\')">ปรับอัตรา GP ร้านค้า</button><div id="qg-credit-admin">กำลังโหลดเครดิต...</div></section>');
+ layout('เครดิต Rider / ร้านค้า','<section class="card"><p>เครดิตร้านค้า / Rider และประวัติรายการ · การเปิดเติมเงินจริงขึ้นอยู่กับสถานะระบบและ Release Gate</p><button type="button" onclick="navigate(\'admin-gp-rates\')">ปรับอัตรา GP ร้านค้า</button><div id="qg-credit-admin">กำลังโหลดเครดิต...</div></section>');
  qgAdminLoadCredit();
 };
