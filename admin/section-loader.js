@@ -62,7 +62,7 @@ window.qgAdminCountRead=async function(path){
 };
 async function summary(valid){
  const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
- const paths={orders:'orders?select=id',shops:'users?select=id&role=eq.shop',riders:'users?select=id&role=eq.rider',customers:'users?select=id&role=eq.customer',pendingShops:'users?select=id&role=eq.shop&status=eq.pending',pendingRiders:'users?select=id&role=eq.rider&status=eq.pending',promotions:'promotions?select=id&status=eq.pending'};
+const paths={orders:'orders?select=id',shops:'users?select=id&role=eq.shop',riders:'users?select=id&role=eq.rider',customers:'users?select=id&role=eq.customer',pendingShops:'shop_profiles?select=id&onboarding_status=eq.pending_approval&archived_at=is.null',pendingRiders:'users?select=id&role=eq.rider&status=eq.pending',promotions:'promotions?select=id&status=eq.pending'};
  const [entries,recentResult]=await Promise.all([
   Promise.all(Object.entries(paths).map(async([k,p])=>[k,await count(p,token)])),
   qtSupabaseTable('orders?select=id,order_number,status,total_amount,created_at,shop_id&order=created_at.desc,id.desc&limit=6',{accessToken:token})
