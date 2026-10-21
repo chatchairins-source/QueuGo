@@ -26,4 +26,5 @@ for(const [file,title] of checks){
 assert(!read('MerchantRevenueScreen.kt').includes('fontSize = 22.sp'),'Merchant revenue title must not remain oversized');
 assert(read('MerchantSupportScreen.kt').includes('MerchantPageTitle("ข้อความถึงแอดมิน"'),'Support must use Merchant page-title component');
 assert(read('MerchantLaundryScreen.kt').includes('MerchantPageTitle("ฝากซัก"'),'Laundry must use Merchant page-title component');
-console.log('native Merchant page title standard 17 checks PASS');
+assert(read('QueueGoMerchantApp.kt').includes('fontSize = MerchantPageTitleSize'),'Merchant Account title must use the shared page-title scale');
+console.log('native Merchant page title standard 18 checks PASS');
