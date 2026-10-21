@@ -1,19 +1,21 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
 (async()=>{
  let actor='a',route='#admin',tab='qt-sec-users',calls=[],directory=0,release,gate;
- const listeners={},cache={};let checks=0;
- const ctx={window:null,location:{get hash(){return route}},qtSessionRead:()=>actor?{role:'admin',authUserId:actor,userId:actor}:null,qtGetAccessToken:async()=>actor,qtSupabaseHeaders:()=>({}),QT_SUPABASE_CONFIG:{URL:'https://isolated.invalid'},QT_DB_CACHE:cache,performance,AbortController,setTimeout,clearTimeout,Date,qtAdminCurrentSection:()=>tab,qtHydrateAdminDirectory:async()=>{directory++;if(gate)await gate},qtRenderAdminRiderPresence:async()=>{},qtPullSystemSettings:async()=>{},qtSupabaseTable:async p=>{calls.push(p);return []},document:{getElementById:()=>null,activeElement:null},toast:()=>{},router:()=>{},QT_ADMIN_SESSION_KEY:'session',fetch:async(u,o)=>{calls.push(o.method+' '+u);if(gate)await gate;return {ok:true,headers:{get:()=> '0-0/17'}}},addEventListener:(name,fn)=>listeners[name]=fn};ctx.window=ctx;
+ const listeners={},cache={};let checks=0,failRecent=false;
+ const ctx={window:null,location:{get hash(){return route}},qtSessionRead:()=>actor?{role:'admin',authUserId:actor,userId:actor}:null,qtGetAccessToken:async()=>actor,qtSupabaseHeaders:()=>({}),QT_SUPABASE_CONFIG:{URL:'https://isolated.invalid'},QT_DB_CACHE:cache,performance,AbortController,setTimeout,clearTimeout,Date,qtAdminCurrentSection:()=>tab,qtHydrateAdminDirectory:async()=>{directory++;if(gate)await gate},qtRenderAdminRiderPresence:async()=>{},qtPullSystemSettings:async()=>{},qtOrderFromRow:r=>({id:r.id,orderNumber:r.order_number,status:r.status,total:Number(r.total_amount),createdAt:Date.parse(r.created_at),shopId:r.shop_id}),qtSupabaseTable:async p=>{calls.push(p);if(p.startsWith('orders?select=id,order_number')){if(failRecent)throw Error('recent orders unavailable');return [{id:'recent-1',order_number:'QG-1',status:'pending',total_amount:120,created_at:'2026-10-20T12:00:00Z',shop_id:'shop-1'}]}return []},document:{getElementById:()=>null,activeElement:null},toast:()=>{},router:()=>{},QT_ADMIN_SESSION_KEY:'session',fetch:async(u,o)=>{calls.push(o.method+' '+u);if(gate)await gate;return {ok:true,headers:{get:()=> '0-0/17'}}},addEventListener:(name,fn)=>listeners[name]=fn};ctx.window=ctx;
  vm.createContext(ctx);vm.runInContext(fs.readFileSync('admin/section-loader.js','utf8'),ctx);
- await Promise.all([ctx.qgAdminLoadSection(),ctx.qgAdminLoadSection()]);assert.equal(calls.length,7);checks++;
+ await Promise.all([ctx.qgAdminLoadSection(),ctx.qgAdminLoadSection()]);assert.equal(calls.filter(p=>String(p).startsWith('HEAD ')).length,7);assert.equal(ctx.QG_ADMIN_RECENT_ORDERS.length,1);assert.equal(ctx.QG_ADMIN_RECENT_ORDERS[0].shopName,'');assert(calls.some(p=>p.includes('orders?select=id,order_number,status,total_amount,created_at,shop_id')&&p.endsWith('limit=6')));checks+=4;
  assert.equal(ctx.QG_ADMIN_SUMMARY.orders,17);checks++;
- assert(calls.every(p=>p.startsWith('HEAD ')));checks++;
- await ctx.qgAdminLoadSection();assert.equal(calls.length,7);checks++;
+ assert.equal(calls.filter(p=>String(p).startsWith('HEAD ')).length,7);checks++;
+ await ctx.qgAdminLoadSection();assert.equal(calls.filter(p=>String(p).startsWith('HEAD ')).length,7);checks++;
+ failRecent=true;ctx.qgAdminClearReadCache();await ctx.qgAdminLoadSection(true);assert.equal(ctx.QG_ADMIN_SUMMARY.orders,17);assert.match(ctx.QG_ADMIN_RECENT_ORDERS_ERROR,/recent orders unavailable/);assert.equal(ctx.QG_ADMIN_RECENT_ORDERS,null);checks+=3;
+ failRecent=false;ctx.qgAdminClearReadCache();await ctx.qgAdminLoadSection(true);assert.equal(ctx.QG_ADMIN_RECENT_ORDERS_ERROR,null);assert.equal(ctx.QG_ADMIN_RECENT_ORDERS.length,1);checks+=2;
  route='#admin-governance';await ctx.qgAdminLoadSection();assert.equal(directory,1);checks++;
  tab='qt-sec-security';await ctx.qgAdminLoadSection();assert.equal(directory,1);checks++;
  await ctx.qgAdminLoadSection(false,'orders:UPDATE');assert.equal(directory,1);checks++;
  await ctx.qgAdminLoadSection(false,'users:UPDATE');assert.equal(directory,2);checks++;
  await ctx.qgAdminLoadSection(true);assert.equal(directory,3);checks++;
- for(const page of ['admin-grocery','admin-market','admin-orders','admin-cash','admin-gp','admin-support']){route='#'+page;await ctx.qgAdminLoadSection();assert.equal(calls.length,7);checks++}
+ const headReadsBeforeSections=calls.filter(p=>String(p).startsWith('HEAD ')).length;for(const page of ['admin-grocery','admin-market','admin-orders','admin-cash','admin-gp','admin-support']){route='#'+page;await ctx.qgAdminLoadSection();assert.equal(calls.filter(p=>String(p).startsWith('HEAD ')).length,headReadsBeforeSections);checks++}
  route='#admin-governance';tab='qt-sec-audit';await ctx.qgAdminLoadSection();assert(calls.at(-1).includes('audit_logs?')&&calls.at(-1).includes('order=created_at.desc,id.desc')&&calls.at(-1).endsWith('limit=101')&&!calls.at(-1).includes('offset='));assert.equal(ctx.QG_ADMIN_AUDIT_PAGE_INFO.page,0);checks+=2;
  ctx.QG_ADMIN_AUDIT_PAGE_INFO={page:0,more:true,last:{at:'2026-10-20T00:00:00.000Z',id:'00000000-0000-4000-8000-000000000010'}};await ctx.qgAdminAuditPage(1);assert.equal(ctx.QG_ADMIN_AUDIT_PAGE,1);assert(decodeURIComponent(calls.at(-1)).includes('created_at.lt.2026-10-20T00:00:00.000Z')&&!calls.at(-1).includes('offset='));checks+=2;
  await ctx.qgAdminAuditPage(-1);assert.equal(ctx.QG_ADMIN_AUDIT_PAGE,0);assert(!calls.at(-1).includes('&or='));checks+=2;
