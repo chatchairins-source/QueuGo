@@ -76,6 +76,9 @@ ok(admin.includes('effective_from'),'scheduled effective time missing');
 // Laundry v2 client + merchant + rider.
 ok(laundry.includes('queuego_place_laundry_order_v2'),'Laundry customer must use idempotent v2 checkout');
 ok(laundry.includes('p_estimated_quantity'),'Laundry estimated quantity missing');
+ok(laundry.includes("qgEnsureSupabase")&&laundry.includes("ลองโหลดอีกครั้ง"),'Laundry customer boot must leave a stuck loading state and offer retry when the client/CDN fails');
+ok(laundry.includes("p_feature:'laundry',p_at:null"),'Laundry feature check must target the current feature-control RPC signature');
+ok(!laundry.includes("rgba(255,255,255,.94)")&&laundry.includes("rgba(0,0,0,.58)"),'Laundry hero must not place a white fade/frame over the banner image');
 ok(laundry.includes('request_id'),'Laundry idempotency request key missing');
 for(const unit of ['per_kg','per_item','per_set','fixed'])ok(merchantLaundry.includes(unit),'Merchant Laundry pricing unit missing '+unit);
 ok(merchantLaundry.includes('queuego_laundry_save_settings'),'Merchant Laundry settings RPC missing');
