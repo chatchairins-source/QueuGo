@@ -6,4 +6,4 @@ assert(!merchant.includes('id="qgm-delivery-readiness"'),'Merchant Home must not
 assert(merchant.includes("['shop-settlement','chart','รายงาน']"),'Merchant Home must keep the Reports menu icon');
 assert(merchant.includes("qgmLoadShopOpen()"),'Merchant Home must keep real open/close state loading');
 assert(merchant.includes("window.qgmSetShopOpen=async function"),'Merchant Home must keep the real shop open/close control');
-console.log('merchant home clean layout 6 checks PASS');
+console.log('merchant home clean layout 5 checks PASS');
