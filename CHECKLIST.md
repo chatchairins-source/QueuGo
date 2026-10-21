@@ -1054,5 +1054,5 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 ### Current continuation checkpoint — PR #574 exact source
 - `qg_inventory_tracking_guard()` now runs SECURITY DEFINER with fixed `search_path` because Production `market_products` is RLS-enabled without authenticated read policies; manager check still uses the caller JWT. Regression now applies migrations in timestamp order and tests an authenticated product update with RLS active.
 - Local focused inventory test: 45 PASS; adjustment UI: 9 PASS; full `npm test`: EXIT 0; `git diff --check`: PASS.
-- Exact PR head `e5f27b2c295fa69b7c0639ef33e96572a2146d6b`; tree `dfc3c7fa4dc1d05c52e6c39e96c0660408d25f80`. Hosted exact-source RC `39641504472` is in progress. RC `39640731144` passed on a superseded source and does not satisfy this gate.
+- Exact PR head `3b2c36d43dec42f8d5db92a9df97253d210027f8`; tree `984ba41b28a95808e8032915b77cb481f5d986dd`. Hosted exact-source RC `39641943374` is pending. earlier runs tested superseded heads and do not satisfy this gate.
 - No Production DDL/data write. Next: wait for exact RC, recheck main/open PRs/reviews/successor, then merge only if exact head remains green. Production activation still requires authorized cashier/device acceptance and controlled migration/readback.
