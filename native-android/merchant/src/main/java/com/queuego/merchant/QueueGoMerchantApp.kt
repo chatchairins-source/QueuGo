@@ -642,10 +642,7 @@ private fun MerchantShell(
                     onLaundry = { screen = "laundry" },
                     onRevenue = { screen = "revenue" },
                     onPromotion = { screen = "promotions" },
-                    onProfile = { screen = "profile" },
-                    onModules = { screen = "modules" },
                     onMedia = { screen = "media" },
-                    onNotifications = { screen = "notifications" },
                     onSupport = { screen = "support" },
                     onMarketStock = { screen = "market-stock" }
                 )
@@ -1034,6 +1031,7 @@ private fun MerchantShell(
                     },
                     onHours = { screen = "hours" },
                     onProducts = { screen = "products" },
+                    onModules = { screen = "modules" },
                     onNotifications = { screen = "notifications" },
                     pushBusy = pushActionBusy,
                     onEnableBackgroundNotifications = {
@@ -1209,10 +1207,7 @@ private fun DashboardScreen(
     onLaundry: () -> Unit,
     onRevenue: () -> Unit,
     onPromotion: () -> Unit,
-    onProfile: () -> Unit,
-    onModules: () -> Unit,
     onMedia: () -> Unit,
-    onNotifications: () -> Unit,
     onSupport: () -> Unit,
     onMarketStock: () -> Unit
 ) {
@@ -1314,13 +1309,7 @@ private fun DashboardScreen(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MerchantMenuTile("โปรโมชั่น", "tag", onPromotion, Modifier.weight(1f))
             MerchantMenuTile("รายงาน", "chart", onRevenue, Modifier.weight(1f))
-            MerchantMenuTile("ข้อมูลร้านค้า", "home", onProfile, Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMenuTile("ตั้งค่า", "gear", onModules, Modifier.weight(1f))
             MerchantMenuTile("คลังรูปภาพ", "gallery", onMedia, Modifier.weight(1f))
-            MerchantMenuTile("การแจ้งเตือน", "bell", onNotifications, Modifier.weight(1f))
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2057,6 +2046,7 @@ private fun MerchantProfileScreen(
     onSetup: () -> Unit,
     onHours: () -> Unit,
     onProducts: () -> Unit,
+    onModules: () -> Unit,
     onNotifications: () -> Unit,
     pushBusy: Boolean,
     onEnableBackgroundNotifications: () -> Unit,
@@ -2150,6 +2140,13 @@ private fun MerchantProfileScreen(
                 subtitle = "ตั้งเวลาเปิด–ปิดและวันหยุดของร้าน",
                 enabled = shop != null,
                 onClick = onHours
+            )
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "gear",
+                title = "ตั้งค่าร้านค้า",
+                subtitle = "โมดูลร้านค้า การตั้งค่าระบบ และทางลัดที่เกี่ยวข้อง",
+                onClick = onModules
             )
             HorizontalDivider(color = Color(0xFFECEEF1))
             MerchantProfileActionRow(
