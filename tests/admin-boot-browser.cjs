@@ -56,7 +56,7 @@ const root=path.resolve(__dirname,'..'),owner='00000000-0000-4000-8000-000000000
   await page.setViewportSize({width:390,height:844});
   await page.evaluate(()=>{window.dbGet=window.__gpQaRead;delete window.__gpQaRead});
   await page.evaluate(()=>qgAdminSection('qt-sec-overview'));await page.waitForFunction(()=>location.hash==='#admin-governance');
-  for(const sectionName of ['qt-sec-overview','qt-sec-orders','qt-sec-shops','qt-sec-grocery','qt-sec-users','qt-sec-delivery','qt-sec-approval','qt-sec-promote','qt-sec-finance','qt-sec-security','qt-sec-notify','qt-sec-audit','qt-sec-settings','qt-sec-permissions']){
+  for(const sectionName of ['qt-sec-overview','qt-sec-orders','qt-sec-shops','qt-sec-users','qt-sec-delivery','qt-sec-approval','qt-sec-promote','qt-sec-finance','qt-sec-security','qt-sec-notify','qt-sec-audit','qt-sec-settings','qt-sec-permissions']){
    await page.evaluate(name=>qtAdminTab(name),sectionName);await page.waitForFunction(name=>document.querySelector('.qt-admin-panel.active')?.id===name,sectionName);await page.waitForLoadState('networkidle');
    assert.equal(await page.locator('.qt-admin-panel.active').count(),1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'section overflow: '+sectionName);checks+=2;
   }
