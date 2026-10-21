@@ -32,7 +32,9 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('.qg-route-badge,.qg-route-badge.show{display:none!important}'),true);
  eq(source.includes('id="route-badge" aria-hidden="true"'),true);
  eq(source.includes('.qg-stage:has(.qg-ready-card) .qg-topbar{display:none}'),false);
- eq(source.includes('<div class="qg-brand-pill">'),false);
+ eq(source.includes('<div class="qg-brand-pill" aria-label="QueueGo"><span class="qg-brand-queue">Queue</span><span class="qg-brand-go">Go</span></div>'),true);
+  eq(source.includes('.qg-brand-queue{color:#17171b}'),true);
+  eq(source.includes('.qg-brand-go{color:var(--qg-red)}'),true);
  eq(source.includes('function qgSetHomeDockHTML'),true);
  eq(source.includes('qg-dock-collapsed'),true);
  eq(source.includes('margin:0 18px 6px auto'),true);
