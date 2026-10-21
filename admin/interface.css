@@ -355,3 +355,136 @@
   .qg-shop-list{margin-top:6px}
 }
 
+/* QueueGo Admin security mobile cleanup v1 */
+.qt-security-role-switch{
+  display:flex;
+  gap:8px;
+  margin:0 0 10px;
+}
+.qt-security-role{
+  flex:1;
+  min-width:0;
+  min-height:42px;
+}
+.qt-security-search-form{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:8px;
+  align-items:center;
+  margin:0 0 10px;
+}
+.qt-security-search-form input{
+  min-width:0;
+  margin:0;
+}
+.qt-security-search-form button{
+  min-height:42px;
+  margin:0;
+  white-space:nowrap;
+}
+.qt-security-user-top{
+  align-items:flex-start;
+}
+.qt-security-user-top>div{
+  min-width:0;
+}
+.qt-security-status{
+  flex:0 0 auto;
+  align-self:flex-start;
+  white-space:nowrap;
+  padding:4px 9px;
+  line-height:1.4;
+}
+.qt-security-user-meta{
+  margin-top:3px;
+}
+.qt-security-actions{
+  align-items:center;
+}
+.qt-security-actions button{
+  min-height:40px;
+}
+.qt-security-pagination{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:8px;
+  align-items:center;
+  margin-top:10px;
+}
+.qt-security-pagination span{
+  text-align:center;
+  font-size:10px;
+  color:var(--muted);
+}
+@media (max-width:560px){
+  #qt-sec-security{
+    padding:12px;
+  }
+  .qt-security-role-switch{
+    gap:6px;
+    margin-bottom:8px;
+  }
+  .qt-security-role{
+    min-height:40px;
+    font-size:12px;
+    border-radius:12px;
+  }
+  .qt-security-search-form{
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:6px;
+    margin-bottom:8px;
+  }
+  .qt-security-search-form input{
+    min-height:42px;
+  }
+  .qt-security-search-form button{
+    min-height:42px;
+    padding:0 11px;
+  }
+  .qt-security-search-form button:nth-of-type(2){
+    grid-column:1/-1;
+    justify-self:end;
+    min-height:34px;
+    padding:0 10px;
+    font-size:10px;
+  }
+  .qt-security-user-card{
+    padding:13px;
+    margin:7px 0;
+  }
+  .qt-security-user-name{
+    font-size:14px;
+    line-height:1.35;
+  }
+  .qt-security-user-meta{
+    font-size:10.5px;
+    line-height:1.4;
+  }
+  .qt-security-status{
+    font-size:9.5px;
+    padding:4px 8px;
+    border-radius:8px;
+  }
+  .qt-security-actions{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+    margin-top:10px;
+  }
+  .qt-security-actions button{
+    width:100%;
+    min-height:40px;
+    margin:0;
+    font-size:11px;
+  }
+  .qt-security-pagination{
+    position:sticky;
+    bottom:calc(68px + env(safe-area-inset-bottom));
+    z-index:2;
+    padding:8px;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:12px;
+  }
+}
+
