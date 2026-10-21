@@ -306,7 +306,7 @@ private fun RevenuePageHeader(
         Column(Modifier.weight(1f)) {
             Text(
                 "วิเคราะห์ร้านค้า",
-                fontSize = 22.sp,
+                fontSize = MerchantPageTitleSize,
                 lineHeight = 26.sp,
                 fontWeight = FontWeight.Black,
                 color = Color(0xFF171A1F)
