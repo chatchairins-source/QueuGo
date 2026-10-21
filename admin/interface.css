@@ -284,3 +284,74 @@
  .qg-admin-menu nav .qg-nav-group{margin-bottom:12px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* QueueGo Admin mobile shop controls v2 — keep shop management dense and readable on iPhone/Safari. */
+.qg-shop-toolbar-search{margin:7px 0 4px}
+.qg-shop-filters{
+  display:flex;
+  flex-wrap:nowrap;
+  gap:6px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:5px 0 8px;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.qg-shop-filters::-webkit-scrollbar{display:none}
+.qg-shop-filters button{
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:max-content!important;
+  max-width:none!important;
+  min-height:38px;
+  padding:0 13px;
+  white-space:nowrap!important;
+  word-break:keep-all!important;
+  overflow-wrap:normal!important;
+  writing-mode:horizontal-tb!important;
+  line-height:1!important;
+  border-radius:999px;
+}
+@media (max-width:560px){
+  .qg-workspace-toolbar{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:end;
+    gap:8px;
+    padding:8px 10px;
+  }
+  .qg-workspace-toolbar label{min-width:0;max-width:none}
+  .qg-workspace-toolbar-label{display:none}
+  .qg-workspace-toolbar select{
+    width:100%;
+    min-height:40px;
+    margin:0;
+  }
+  .qg-workspace-toolbar button{
+    min-height:40px;
+    margin:0;
+    padding:0 12px;
+    white-space:nowrap;
+  }
+  .qt-admin-wrap{gap:8px}
+  .qt-admin-panel{
+    padding:14px 12px;
+    overflow-x:visible;
+  }
+  .qt-admin-panel>h2{margin-bottom:8px}
+  #qg-shop-search{
+    min-height:44px;
+    margin:0 0 5px;
+  }
+  .qg-shop-filters{
+    margin:0 -2px;
+    padding:4px 2px 8px;
+  }
+  .qg-shop-filters button{
+    min-height:38px;
+    padding:0 12px;
+    font-size:10.5px;
+  }
+  .qg-shop-list{margin-top:6px}
+}
+
