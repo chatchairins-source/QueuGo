@@ -251,6 +251,7 @@ body.qgm-app,body.qgm-login{height:auto!important;min-height:100dvh!important;ov
 .qgm-credit-premium .qg-credit-panel:before{content:"";display:block;width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#f2173e,#d90b31);margin-bottom:12px;box-shadow:inset 0 0 0 10px rgba(255,255,255,.13)}
 .qgm-credit-premium .qg-credit-panel h3{margin:-54px 0 0 56px;font-size:18px;line-height:1.2;font-weight:950;color:#181b20}
 .qgm-credit-premium .qg-credit-panel [data-balance]{margin:13px 0 16px;font-size:32px;line-height:1;font-weight:950;letter-spacing:-.7px;color:#14181e}
+.qgm-credit-premium .qg-credit-panel>[data-add]{display:none!important}
 .qgm-credit-premium .qg-credit-panel [data-add]{background:#ec1035;color:#fff;border-color:#ec1035}
 .qgm-credit-premium .qg-credit-panel [data-add]:disabled{background:#f4dce2;color:#a96d7a;border-color:#f0d4db}
 .qgm-credit-premium .qg-credit-panel button{min-height:44px;border-radius:14px;border:1px solid #efcfd7;background:#fff;color:#d80f31;font-weight:850;font-size:11px;padding:9px 13px}
@@ -259,7 +260,8 @@ body.qgm-app,body.qgm-login{height:auto!important;min-height:100dvh!important;ov
 .qgm-credit-premium .qg-credit-panel form input{min-height:46px;border-radius:13px;border-color:#e3e5e8;font-size:16px}
 .qgm-credit-premium .qg-credit-panel [data-status]{margin:13px 0 9px;padding:11px 13px;border-radius:14px;background:#eef6ff;color:#2e5f99;font-size:10.5px;line-height:1.45;font-weight:700}
 .qgm-credit-premium .qg-credit-panel [data-status]:empty{display:none}
-.qgm-credit-premium .qg-credit-panel [data-entries]{margin-top:14px;border-top:1px solid #f0e8ea}
+.qgm-credit-history-head{display:flex;align-items:center;justify-content:space-between;margin:16px 2px 8px}.qgm-credit-history-head b{font-size:15px;font-weight:950}.qgm-credit-history-head span{font-size:9px;color:#9aa0a7;font-weight:800}
+.qgm-credit-premium .qg-credit-panel [data-entries]{margin-top:0;border-top:1px solid #f0e8ea}
 .qgm-credit-premium .qg-credit-panel [data-entries] p{position:relative;margin:0;padding:13px 4px 13px 34px;border-top:0;border-bottom:1px solid #f0e8ea;font-size:11px;line-height:1.45;color:#31363d;font-weight:700}
 .qgm-credit-premium .qg-credit-panel [data-entries] p:before{content:"+";position:absolute;left:1px;top:11px;width:24px;height:24px;border-radius:9px;background:#e9f8ef;color:#0aa35c;display:grid;place-items:center;font-size:17px;font-weight:900}
 .qgm-credit-premium .qg-credit-panel>small{display:block;margin-top:12px;color:#7d858d;font-size:10px;line-height:1.45}
@@ -3628,12 +3630,14 @@ window.qgmRenderRevenue=async function(){
  if(creditHost&&window.QueueGoCredit?.mount){
   Promise.resolve(QueueGoCredit.mount(creditHost,{kind:'merchant',owner:u.id,getToken:qtGetAccessToken,base:QT_SUPABASE_CONFIG.URL,key:QT_SUPABASE_CONFIG.KEY})).then(()=>{
    const panel=creditHost.querySelector('.qg-credit-panel');if(!panel)return;
-   const refresh=panel.querySelector('[data-refresh]'),nativeAdd=panel.querySelector('[data-add]'),newButton=panel.querySelector('[data-new]');
+   const refresh=panel.querySelector('[data-refresh]'),nativeAdd=panel.querySelector('[data-add]'),newButton=panel.querySelector('[data-new]'),form=panel.querySelector('form'),entries=panel.querySelector('[data-entries]');
+   if(form)form.hidden=true;
    const actions=document.createElement('div');actions.className='qgm-credit-proxy-actions';
-   const add=document.createElement('button');add.type='button';add.className='qgm-credit-add-proxy';add.textContent='＋ เติมเครดิต';add.disabled=!!nativeAdd?.hidden;add.onclick=()=>nativeAdd?.click();
+   const add=document.createElement('button');add.type='button';add.className='qgm-credit-add-proxy';add.textContent='＋ เติมเครดิต';add.disabled=!!nativeAdd?.hidden;add.onclick=()=>{if(add.disabled)return;if(form){form.hidden=false;form.querySelector('input')?.focus()}};
    const settings=document.createElement('button');settings.type='button';settings.textContent='⚙ ตั้งค่าการใช้งาน';settings.onclick=()=>navigate('shop-profile');
-   if(refresh)actions.append(refresh);actions.prepend(add);if(newButton&&!newButton.hidden)actions.append(newButton);actions.append(settings);
-   const status=panel.querySelector('[data-status]');panel.insertBefore(actions,status||panel.querySelector('[data-entries]'));
+   if(refresh){refresh.textContent='ตรวจสอบรายการ';actions.append(refresh)}actions.prepend(add);if(newButton)actions.append(newButton);actions.append(settings);
+   const status=panel.querySelector('[data-status]');panel.insertBefore(actions,status||entries);
+   if(entries){const history=document.createElement('div');history.className='qgm-credit-history-head';history.innerHTML='<b>รายการล่าสุด</b><span>เครดิตร้านค้า</span>';panel.insertBefore(history,entries)}
   }).catch(err=>console.warn('merchant credit surface failed',err));
  }
  qgmLoadRevenue(today);
