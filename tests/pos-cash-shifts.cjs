@@ -4,6 +4,7 @@ const root=path.resolve(__dirname,'..');
 const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021125213_pos_cash_register_shifts.sql'),'utf8');
 const aclMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261021130147_pos_cash_shifts_acl_indexes.sql'),'utf8');
 const movementMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261021211709_pos_cash_register_movements.sql'),'utf8');
+assert.match(movementMigration,/pg_advisory_xact_lock\(hashtextextended\([\s\S]*?p_request/);
 (async()=>{
   const db=new PGlite();
   await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
@@ -86,9 +87,10 @@ const movementMigration=fs.readFileSync(path.join(root,'supabase/migrations/2026
   const closedShiftRetry=await scalar(`select public.pos_record_cash_movement('cash_in',30,'เติมเงินทอน','${request}') as event`);
   assert.equal(closedShiftRetry.event.id,cashIn.event.id);
   assert.equal((await scalar(`select count(*)::int n from public.pos_register_cash_events where idempotency_key='${request}'`)).n,1);
+  await db.query(`select public.pos_open_shift(0,'ทดสอบคำขอชนกัน')`);
   await assert.rejects(()=>db.query(`select public.pos_record_cash_movement('cash_out',0,'ไม่ถูกต้อง','33333333-3333-4333-8333-333333333333')`),/invalid cash movement amount/);
   const movementGrants=await scalar(`select has_function_privilege('anon','public.pos_record_cash_movement(text,numeric,text,uuid)','execute') anon,has_function_privilege('authenticated','public.pos_record_cash_movement(text,numeric,text,uuid)','execute') auth`);
   assert.equal(movementGrants.anon,false);assert.equal(movementGrants.auth,true);
   await db.close();
-  console.log(JSON.stringify({checks:35,failures:0,scope:'POS shift authorization, retry-idempotent cash in/out including closed-shift replay, expected till balance, refunds, direct table ACL revocation and indexes in PGlite'}));
+  console.log(JSON.stringify({checks:36,failures:0,scope:'POS shift authorization, serialized request-key retry lock, cash in/out replay, closed-shift replay, expected till balance, refunds, direct table ACL revocation and indexes in PGlite'}));
 })().catch(e=>{console.error(e);process.exit(1)});
