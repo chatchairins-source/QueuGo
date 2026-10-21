@@ -1,7 +1,8 @@
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {PGlite}=require('@electric-sql/pglite');
 const root=path.resolve(__dirname,'..');
-const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021123110_pos_cash_register_shifts.sql'),'utf8');
+const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021125213_pos_cash_register_shifts.sql'),'utf8');
+const aclMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261021125342_pos_cash_shifts_acl_indexes.sql'),'utf8');
 (async()=>{
   const db=new PGlite();
   await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
@@ -59,6 +60,11 @@ const migration=fs.readFileSync(path.join(root,'supabase/migrations/202610211231
   await assert.rejects(()=>db.query(`select public.pos_close_shift(119,'')`),/ไม่พบกะ/);
   await set(actor,true,true);
   assert.equal((await scalar(`select jsonb_array_length(public.pos_register_shift_history(20)) as n`)).n,2);
+  await db.exec(`grant all on public.pos_register_shifts,public.pos_register_cash_events to anon,authenticated`);
+  await db.exec(aclMigration);
+  const acl=await scalar(`select has_table_privilege('anon','public.pos_register_shifts','select') anon_read,has_table_privilege('authenticated','public.pos_register_shifts','select') auth_read,has_table_privilege('authenticated','public.pos_register_shifts','insert') auth_insert`);
+  assert.equal(acl.anon_read,false);assert.equal(acl.auth_read,true);assert.equal(acl.auth_insert,false);
+  assert.equal((await scalar(`select count(*)::int n from pg_indexes where schemaname='public' and indexname in ('pos_register_shifts_cashier_idx','pos_register_cash_events_shop_idx','pos_register_cash_events_actor_idx')`)).n,3);
   await db.close();
-  console.log(JSON.stringify({checks:18,failures:0,scope:'POS shift authorization, open/close retry idempotency, payment retry, cash refund reconciliation and cashier isolation in PGlite'}));
+  console.log(JSON.stringify({checks:22,failures:0,scope:'POS shift authorization, retry idempotency, cash reconciliation, direct table ACL revocation and FK indexes in PGlite'}));
 })().catch(e=>{console.error(e);process.exit(1)});
