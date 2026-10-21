@@ -307,7 +307,7 @@ private fun RevenuePageHeader(
             Text(
                 "วิเคราะห์ร้านค้า",
                 fontSize = MerchantPageTitleSize,
-                lineHeight = 26.sp,
+                lineHeight = 23.sp,
                 fontWeight = FontWeight.Black,
                 color = Color(0xFF171A1F)
             )
