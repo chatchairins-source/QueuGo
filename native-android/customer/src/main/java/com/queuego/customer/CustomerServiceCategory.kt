@@ -143,7 +143,7 @@ internal fun CustomerServiceBanner(
         .aspectRatio(720f / 343f)
         .shadow(8.dp, shape, ambientColor = Color(0x1214181E), spotColor = Color(0x1214181E))
         .clip(shape)
-        .background(Brush.linearGradient(listOf(Color(0xFFEF0B32), Color(0xFF8F071F))))
+        .background(Color(0xFFF3F4F6))
     Box(if (link != null) baseModifier.clickable { onLink(link) } else baseModifier) {
         if (fallbackDrawable != null) Image(
             painterResource(fallbackDrawable),
