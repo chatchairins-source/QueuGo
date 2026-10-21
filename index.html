@@ -652,7 +652,7 @@ function marketSearch(v){
       const status=enabled?(count?'เปิดรับออเดอร์ · '+count+' รายการ':'เปิดร้านแล้ว · ยังไม่มีสินค้าพร้อมขาย'):'ร้านอยู่ในตลาด · ยังไม่เปิดรับ Delivery';
       const image=s.shop_logo||s.shop_cover||'';
       return `<article class="card" style="display:flex;align-items:center;gap:12px;padding:13px;margin:0 0 10px">${photo(image,s.shop_name)}<div class="mc" style="min-width:0"><b>${esc(s.shop_name||'ร้านค้า')}</b><p class="sm" style="margin:4px 0">${esc(status)}</p>${s.description?`<small class="sm">${esc(s.description)}</small>`:''}</div>${count?`<button class="lk" type="button" onclick="marketShowShop('${esc(s.shop_id)}')">ดูสินค้า</button>`:''}</article>`;
-    }).join(''):'<p class="empty">ไม่พบร้านที่ตรงกับคำค้นหา</p>';
+    }).join(''):`<p class="empty">${q?'ไม่พบร้านที่ตรงกับคำค้นหา':'ยังไม่มีร้านที่เปิดให้บริการในตลาดนี้'}</p>`;
   }
   if(!el)return;
   el.innerHTML=filtered.length?filtered.map(p=>`<div class="mi">${photo(p.image,p.name)}<div class="mc"><b>${esc(p.name)}</b><p>${esc(p.shop_name)} · ${esc(MARKET_CATEGORY_LABELS[marketCategoryKey(p.category,p.name)]||'อื่นๆ ในตลาดสด')}</p><div class="pr">${baht(p.price)}${p.unit?' / '+esc(p.unit):''}</div><small class="sm">พร้อมขาย ${Math.floor(Number(p.available_packs||0))} หน่วย</small></div><button class="plus" aria-label="เพิ่ม" onclick="marketAdd('${esc(p.product_id)}')">${ico('plus',19)}</button></div>`).join(''):'<p class="empty">ยังไม่มีสินค้าพร้อมขายในเงื่อนไขนี้</p>';
@@ -1382,8 +1382,15 @@ async function route(background=false){
   customerOrdersLive.sync();
   if(ok)QGCustomer.activateVoice?.();
   const viewKey=(S.get()?.userId||'guest')+':'+pg+'/'+(param||'');
-  if(!background&&viewKey!==lastRouteView){lastRouteView=viewKey;layout('<div class="card" role="status" aria-live="polite">กำลังโหลดข้อมูล…</div>',pg==='order'?'orders':pg==='checkout'?'cart':pg)}
-  try{await V[pg](param,ticket);if(ticket===routeVersion)bind(pg)}
+  const resetScroll=!background&&viewKey!==lastRouteView;
+  if(resetScroll){lastRouteView=viewKey;layout('<div class="card" role="status" aria-live="polite">กำลังโหลดข้อมูล…</div>',pg==='order'?'orders':pg==='checkout'?'cart':pg)}
+  try{
+    await V[pg](param,ticket);
+    if(ticket===routeVersion){
+      bind(pg);
+      if(resetScroll)requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'auto'}));
+    }
+  }
   catch(e){if(ticket!==routeVersion)return;layout(`<div class="card"><b>โหลดข้อมูลไม่สำเร็จ</b><p class="sm" style="margin:6px 0 12px">${esc(e.message)}</p><button class="prim" onclick="shops=null;route()">ลองอีกครั้ง</button></div>`,'')}
 }
 function bind(pg){
