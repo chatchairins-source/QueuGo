@@ -706,7 +706,7 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 
 ## 2026-10-21 POS numeric order quantity compatibility
 - Production read-only schema: `order_items.quantity numeric`; `market_products.stock_quantity numeric`; Market relation is composite FK `(product_id,shop_id) → products(id,shop_id)`. Market and Grocery order-item stock triggers are SECURITY DEFINER.
-- Identified regression fixture mismatch: POS inventory test had modeled item quantity as integer. PR #576 updates to numeric and covers fractional generic rejection plus fractional Market stock movement without generic stock mutation. Exact RC pending; no Production mutation.
+- Identified regression fixture mismatch: POS inventory test had modeled item quantity as integer. PR #576 changed it to numeric and covers fractional generic rejection plus fractional Market stock movement without generic stock mutation. Exact RC `39647073978` passed; merged as `a4f12dd39b751e7e05a2d37b54e47863d477f391`; post-merge RC `39647725266` passed. No Production mutation.
 
 
 ## 2026-10-21 POS numeric quantity compatibility — merged
