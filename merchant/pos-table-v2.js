@@ -184,7 +184,7 @@
     const legacy=variants.filter(x=>typeof x==='string'&&x.trim());
     return legacy.length?[{key:'variant',name:'ตัวเลือกสินค้า',type:'single',required:true,options:legacy.map((name,i)=>({key:name,name,price_delta:0}))}]:[];
   }
-  function posOptionLimits(group){const count=Array.isArray(group?.options)?group.options.length:0,min=group?.min==null||group.min===''?NaN:Number(group.min),max=group?.max==null||group.max===''?NaN:Number(group.max);return{min:Number.isInteger(min)&&min>=0?min:(group?.required===true?1:0),max:Number.isInteger(max)&&max>=0?Math.min(max,count):count}}
+  function posOptionLimits(group){const count=Array.isArray(group?.options)?group.options.length:0;if(group?.type==='single')return{min:group.required===true?1:0,max:1};const min=group?.min==null||group.min===''?NaN:Number(group.min),max=group?.max==null||group.max===''?NaN:Number(group.max);return{min:Number.isInteger(min)&&min>=0?min:(group?.required===true?1:0),max:Number.isInteger(max)&&max>=0?Math.min(max,count):count}}
   function choosePosOptions(product,groups){
     if(pendingOptionResolver)return Promise.resolve(null);
     return new Promise(resolve=>{
@@ -197,7 +197,7 @@
   window.qgPosOptionFinish=approved=>{
     const dialog=document.querySelector('.qg-pos-option-overlay'),resolve=pendingOptionResolver;if(!dialog||!resolve)return;
     let selections=null;
-    if(approved){selections={};for(const field of dialog.querySelectorAll('[data-option-group]')){const key=field.dataset.optionGroup,inputs=[...field.querySelectorAll('input:checked')],radio=field.querySelector('input[type=radio]');if(radio&&!inputs.length){field.querySelector('input')?.focus();return message('กรุณาเลือก '+(field.querySelector('legend')?.textContent||'ตัวเลือกสินค้า'))}if(radio)selections[key]=inputs[0]?.value;else{const min=Number(field.dataset.minSelect||0),max=Number(field.dataset.maxSelect||field.querySelectorAll('input').length);if(inputs.length<min){field.querySelector('input')?.focus();return message('กรุณาเลือกอย่างน้อย '+min+' รายการ')}if(inputs.length>max){field.querySelector('input')?.focus();return message('เลือกได้ไม่เกิน '+max+' รายการ')}selections[key]=inputs.map(input=>input.value)}} }
+    if(approved){selections={};for(const field of dialog.querySelectorAll('[data-option-group]')){const key=field.dataset.optionGroup,inputs=[...field.querySelectorAll('input:checked')],radio=field.querySelector('input[type=radio]'),min=Number(field.dataset.minSelect||0),max=Number(field.dataset.maxSelect||field.querySelectorAll('input').length);if(inputs.length<min){field.querySelector('input')?.focus();return message('กรุณาเลือก '+(radio?'หนึ่งตัวเลือก':'อย่างน้อย '+min+' รายการ')+' '+(field.querySelector('legend')?.textContent||'ตัวเลือกสินค้า'))}if(inputs.length>max){field.querySelector('input')?.focus();return message('เลือกได้ไม่เกิน '+max+' รายการ')}if(radio){if(inputs.length)selections[key]=inputs[0].value}else selections[key]=inputs.map(input=>input.value)} }
     pendingOptionResolver=null;dialog.remove();resolve(selections);
   };
   window.qgPosScanLookup=()=>{

@@ -25,7 +25,8 @@ assert.match(migration,/payload_hash<>v_hash/);
     insert into public.products values
       ('20000000-0000-4000-8000-000000000001','${shop}','ข้าวไข่เจียว',35,35,true,true,'[{"schema":"queuego.menu-options.v1","key":"portion","name":"ขนาด","type":"single","required":true,"options":[{"key":"normal","name":"ธรรมดา","price_delta":0},{"key":"special","name":"พิเศษ","price_delta":20}]},{"schema":"queuego.menu-options.v1","key":"toppings","name":"ท็อปปิ้ง","type":"multi","required":false,"options":[{"key":"egg","name":"ไข่ดาว","price_delta":5},{"key":"meat","name":"เพิ่มเนื้อ","price_delta":10}]}]'),
       ('20000000-0000-4000-8000-000000000002','${shop}','ชา',25,25,true,true,'["หวานน้อย","หวานปกติ"]'),
-      ('20000000-0000-4000-8000-000000000003','${other}','ร้านอื่น',10,10,true,true,'[]');
+      ('20000000-0000-4000-8000-000000000003','${other}','ร้านอื่น',10,10,true,true,'[]'),
+      ('20000000-0000-4000-8000-000000000004','${shop}','น้ำจิ้ม',10,10,true,true,'[{"schema":"queuego.menu-options.v1","key":"sauce","name":"น้ำจิ้ม","type":"single","required":false,"options":[{"key":"sweet","name":"หวาน","price_delta":0},{"key":"spicy","name":"เผ็ด","price_delta":0}]}]');
     update public.products set grocery_master_id='40000000-0000-4000-8000-000000000001',grocery_stock_tracking=true,stock=3 where id='20000000-0000-4000-8000-000000000001';`);
   await db.exec(stockTrigger);
   await db.exec(migration);
@@ -57,8 +58,9 @@ assert.match(migration,/payload_hash<>v_hash/);
   const legacy=await scalar(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'20000000-0000-4000-8000-000000000002','','{"variant":"หวานน้อย"}'::jsonb,'30000000-0000-4000-8000-000000000007') as item`);
   assert.equal(legacy.item.description,'ตัวเลือก: หวานน้อย');assert.equal(Number(legacy.item.unit_price),25);
   await assert.rejects(()=>db.query(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'20000000-0000-4000-8000-000000000002','','{"variant":"ไม่มี"}'::jsonb,'30000000-0000-4000-8000-000000000008')`),/ตัวเลือกสินค้าไม่ถูกต้อง/);
+  const optional=await scalar(`select public.pos_add_product_with_options(null,'TAKEAWAY',null,'20000000-0000-4000-8000-000000000004','','{}'::jsonb,'30000000-0000-4000-8000-000000000012') as item`);assert.equal(Number(optional.item.unit_price),10);
   const acl=await scalar(`select has_table_privilege('anon','public.pos_option_add_requests','select') anon_read,has_table_privilege('authenticated','public.pos_option_add_requests','select') auth_read,has_function_privilege('anon','public.pos_add_product_with_options(uuid,text,uuid,uuid,text,jsonb,uuid)','execute') anon_exec,has_function_privilege('authenticated','public.pos_add_product_with_options(uuid,text,uuid,uuid,text,jsonb,uuid)','execute') auth_exec`);
   assert.deepEqual(acl,{anon_read:false,auth_read:false,anon_exec:false,auth_exec:true});
   await set({currentShop:other});await assert.rejects(()=>db.query(`select public.pos_add_product_with_options('${order}','TAKEAWAY',null,'${product}','','{"portion":"normal"}'::jsonb,'30000000-0000-4000-8000-000000000009')`),/unavailable in this shop/);
-  await db.close();console.log(JSON.stringify({checks:29,failures:0,scope:'server validated POS option selection including multi-select min/max, price snapshot, order total, legacy variants, replay idempotency, cross-shop/role denial and private request ACL'}));
+  await db.close();console.log(JSON.stringify({checks:30,failures:0,scope:'server validated POS option selection including multi-select min/max and optional single choice, price snapshot, order total, legacy variants, replay idempotency, cross-shop/role denial and private request ACL'}));
 })().catch(e=>{console.error(e);process.exit(1)});

@@ -5,6 +5,7 @@ const root=path.resolve(__dirname,'..'),tick=()=>new Promise(r=>setImmediate(r))
   const dom=new JSDOM('<div id="app"></div>',{url:'https://queuego.test/merchant/#pos',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
   const product={id:'product-1',name:'ชาไทย',price:35,pos_price:30,available:true,pos_available:true,variants:[]};
   const optionProduct={id:'product-2',name:'ข้าวไข่เจียว',price:35,pos_price:35,available:true,pos_available:true,variants:[{schema:'queuego.menu-options.v1',key:'portion',name:'ขนาด',type:'single',required:true,options:[{key:'normal',name:'ธรรมด',price_delta:0},{key:'special',name:'พิเศษ',price_delta:20}]},{schema:'queuego.menu-options.v1',key:'toppings',name:'ท็อปปิ้ง',type:'multi',required:true,min:1,max:1,options:[{key:'egg',name:'ไข่ดาว',price_delta:5},{key:'meat',name:'เพิ่มเนื้อ',price_delta:10}]}]};
+  const optionalProduct={id:'product-3',name:'น้ำจิ้ม',price:10,pos_price:10,available:true,pos_available:true,variants:[{schema:'queuego.menu-options.v1',key:'sauce',name:'น้ำจิ้ม',type:'single',required:false,options:[{key:'sweet',name:'หวาน',price_delta:0},{key:'spicy',name:'เผ็ด',price_delta:0}]}]};
   const bill={id:'bill-1',shop_id:'shop-1',order_number:'POS-1',order_type:'TAKEAWAY',status:'accepted',kitchen_status:'NEW',payment_status:'UNPAID',total_amount:30,created_at:new Date().toISOString()};
   const calls=[],codes=[];let billExists=false,lookupGate=null;
   w.toast=()=>{};w.qtSessionRead=()=>({authUserId:'owner-1',accessToken:'token'});w.qtGetAccessToken=async()=>'token';w.QT_SUPABASE_CONFIG={URL:'https://test.invalid',KEY:'fixture'};w.crypto.randomUUID=()=>`request-${calls.length}`;w.AbortSignal=AbortSignal;w.confirm=()=>true;
@@ -13,7 +14,7 @@ const root=path.resolve(__dirname,'..'),tick=()=>new Promise(r=>setImmediate(r))
     calls.push({q,body:opts?.body});
     if(q==='rpc/pos_my_shop')return 'shop-1';if(q==='rpc/pos_is_owner')return true;
     if(q.startsWith('shop_profiles?'))return [{shop_name:'Shop'}];if(q.startsWith('pos_tables?'))return [];
-    if(q.startsWith('products?'))return [product,optionProduct];if(q.startsWith('pos_staff?'))return [];
+    if(q.startsWith('products?'))return [product,optionProduct,optionalProduct];if(q.startsWith('pos_staff?'))return [];
     if(q.startsWith('orders?'))return billExists&&q.includes('sales_channel=eq.POS')?[bill]:[];
     if(q.startsWith('order_items?'))return [];
     if(q==='rpc/pos_product_code_lookup'){if(lookupGate)await lookupGate;return opts.body.p_code==='0001234567890'?{code:'0001234567890',code_type:'barcode',product_id:product.id,name:product.name,price:30,available:true,pos_available:true,variants:product.variants}:null}
@@ -41,6 +42,7 @@ const root=path.resolve(__dirname,'..'),tick=()=>new Promise(r=>setImmediate(r))
   dialog.querySelector('input[value=egg]').checked=true;dialog.querySelector('input[value=meat]').checked=true;w.qgPosOptionFinish(true);assert.ok(w.document.querySelector('.qg-pos-option-overlay'),'multi-select max must be enforced before write');assert.equal(calls.some(c=>c.q==='rpc/pos_add_product_with_options'),false);
   dialog.querySelector('input[value=meat]').checked=false;w.qgPosOptionFinish(true);await optionAdd;
   const optionCall=calls.find(c=>c.q==='rpc/pos_add_product_with_options');assert.equal(JSON.stringify(optionCall.body.p_options),JSON.stringify({portion:'special',toppings:['egg']}));assert.equal(optionCall.body.p_product,optionProduct.id);assert.equal(optionCall.body.p_order,bill.id);
+  const optionalAdd=w.qgPosAdd(optionalProduct.id);for(let i=0;i<5;i++)await tick();const optionalDialog=w.document.querySelector('.qg-pos-option-overlay');assert.ok(optionalDialog);assert.equal(optionalDialog.querySelector('[data-option-group=sauce]').dataset.minSelect,'0');w.qgPosOptionFinish(true);await optionalAdd;const optionalCall=calls.filter(c=>c.q==='rpc/pos_add_product_with_options').at(-1);assert.equal(optionalCall.body.p_product,optionalProduct.id);assert.equal(optionalCall.body.p_options.sauce,undefined);
   w.qgPosView('codes');for(let i=0;i<10;i++)await tick();
   assert.match(w.document.querySelector('#app').textContent,/SKU \/ บาร์โค้ด/);
   w.qgPosCodeSelect(product.id);w.document.querySelector('#qg-pos-code-value').value='tea-main';await w.qgPosCodeSave();
@@ -48,5 +50,5 @@ const root=path.resolve(__dirname,'..'),tick=()=>new Promise(r=>setImmediate(r))
   assert.equal(calls.find(c=>c.q==='rpc/pos_product_code_save').body.p_product,product.id);
   assert.match(w.document.querySelector('#app').textContent,/TEA-MAIN/);
   w.qgPosDisconnect();dom.window.close();
-  console.log(JSON.stringify({checks:16,failures:0,scope:'POS barcode scan through shop lookup into existing idempotent bill flow, manager SKU registry and required/bounded multi-select validation'}));
+  console.log(JSON.stringify({checks:20,failures:0,scope:'POS barcode scan through shop lookup into existing idempotent bill flow, manager SKU registry, required/bounded multi-select validation and optional single-choice behavior'}));
 })().catch(e=>{console.error(e);process.exit(1)});
