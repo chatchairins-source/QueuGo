@@ -931,7 +931,9 @@ private fun MerchantShell(
                 "revenue" -> MerchantRevenueScreen(
                     auth = auth,
                     api = api,
-                    onBack = { screen = "home" }
+                    shopName = shop?.name.orEmpty(),
+                    onBack = { screen = "home" },
+                    onSettings = { screen = "profile" }
                 )
                 "promotions" -> {
                     val activeShop = shop
