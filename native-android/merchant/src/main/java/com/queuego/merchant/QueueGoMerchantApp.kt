@@ -1320,7 +1320,7 @@ private fun DashboardScreen(
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MerchantMetricCard("เงินสดรับ", "฿" + "%.0f".format(revenue.cashReceived), "store", Modifier.weight(1f))
-            MerchantMetricCard("GP ตามออเดอร์", "฿" + "%.0f".format(revenue.gpAmount), "orders", Modifier.weight(1f))
+            MerchantMetricCard("GP ที่หักจากเครดิต", "฿" + "%.0f".format(revenue.gpAmount), "orders", Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(9.dp))
@@ -1413,7 +1413,7 @@ private fun MerchantRevenueEntry(onClick: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text("รายได้ทั้งหมด", color = Color(0xFF174536), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
             Text(
-                "เลือกวัน ดูยอดขาย เงินสด และ GP ย้อนหลัง",
+                "เลือกวัน ดูยอดขาย เงินสด และ GP ที่หักจากเครดิต",
                 color = Color(0xFF658679),
                 fontSize = 10.sp
             )
