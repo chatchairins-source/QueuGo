@@ -1,8 +1,17 @@
 # QueueGo Active Work Checklist
 
-Last governance checkpoint: `WORKFLOW.md` commit `9439569c15f72568b3398a1072f6d2285c8e7ce7`
+Last governance checkpoint: North Star product/release ledger on branch `work-queuego-north-star-governance-20261021` (documentation PR pending)
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
+
+## 2026-10-21 North Star recovery checkpoint
+
+- Current verified `main`: `6669dc108137f8119c86d4de9709dacba7a301d7`.
+- This checkpoint adds `PRODUCT_NORTH_STAR.md`, `FEATURE_GAP_MATRIX.md`, `RELEASE_GATE.md`, and `NEXT.md`; these are the mission, evidence matrix, launch gate and precise continuation pointer. Older snapshots below are historical evidence; fetch current main and the relevant newest successor before resuming.
+- **POS cash in/out shift ledger — source/test IN PROGRESS, release BLOCKED.** Open PR #568; branch `work-pos-complete-next-20261021`; exact HEAD `0f9af0cbc91af0bf7d964c9c52665ceb4e19cb9a`, based on the verified latest main. Prior RC run `39617058579` passed at `119c68e`; updated exact-head RC run `39619648922` completed SUCCESS. Focused POS tests (36/73/18) and full `npm test` passed on the updated tree in this session. Latest change adds transaction-scoped serialization for same-key retries.
+- Production migration read-only check: history currently ends at `20261021133330_pos_owner_item_sales_report`; staged `20261021211709_pos_cash_register_movements` is absent. Do not present cash in/out as live. Review schema/ACL/concurrency and run the relevant release process before activation.
+- Whole-platform status: NOT READY. Authenticated role E2E, current-device acceptance, printer/scanner/drawer validation, Android signing/Closed Testing, and other feature-specific gates remain separate; see `RELEASE_GATE.md`.
+- NEXT: re-fetch main/open PRs and the newest POS descendant; inspect the staged migration against Production grants/RLS and concurrent retry behavior; then finish authorized cashier journey and migration gate. Continue other unblocked product rows by dependency without resetting or duplicating implementations.
 
 ## Dependency order
 
