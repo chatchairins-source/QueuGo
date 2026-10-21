@@ -516,7 +516,7 @@ const QGCustomer=(()=>{
     layout(`<section class="qg-customer-chat-page">
       <header class="qg-customer-chat-head">
         <button class="qg-customer-chat-head-btn" type="button" id="customer-chat-back" aria-label="ย้อนกลับ">${ico('back')}</button>
-        <div class="qg-customer-chat-title"><b>Rider</b><small>ประสานงานออเดอร์ผ่าน QueueGo</small></div>
+        <div class="qg-customer-chat-title"><span class="qg-customer-chat-brand" aria-label="QueueGo"><span>Queue</span><em>Go</em></span><b>Rider</b><small>ประสานงานออเดอร์ผ่าน QueueGo</small></div>
         <div class="qg-customer-chat-head-actions">
           <button type="button" id="customer-chat-call" class="qg-customer-chat-head-btn qg-voice-launch" aria-label="โทรผ่าน QueueGo">${window.QueueGoVoiceWeb?.phoneIcon?.()||''}</button>
           <button type="button" id="customer-chat-menu" class="qg-customer-chat-head-btn" aria-label="ตัวเลือกเพิ่มเติม">•••</button>
