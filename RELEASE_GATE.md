@@ -1,6 +1,6 @@
 # QueueGo Release Gate
 
-Snapshot date: 2026-10-21 · Main: `2d0c6b58a45689585dc7653bd18bcf89dfd1e4c1`
+Snapshot date: 2026-10-21 · Main: `3fdaca496c0670ce675e9170aaa7215a718e53ef`
 
 ## Overall status
 
@@ -41,3 +41,8 @@ An individual feature can be marked `DONE (source/test)` only with its exact com
 - No production migration, provider activation, pricing change, feature-flag activation, public routing cutover or broad data mutation merely because CI is green.
 - Preserve cash-first rules, shop-scoped POS records, existing refund ownership, and fail-closed dispatch/route-bundle limits.
 - Record before/after schema or setting evidence without exposing secrets or personal data.
+
+
+## Inventory quantity schema compatibility follow-up
+- Read-only Production inspection confirms `order_items.quantity` is `numeric`, `market_products.stock_quantity` is `numeric`, and the Market-to-product relationship is the composite FK `(product_id,shop_id) → products(id,shop_id)`. Existing Market/Grocery item stock triggers are SECURITY DEFINER.
+- Prior PGlite inventory fixture used integer quantity, which could not exercise fractional Market items or fractional generic rejection. PR #576 changes fixture to numeric and adds both regression cases. Exact-source CI pending; no Production change.

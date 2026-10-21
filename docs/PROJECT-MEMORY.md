@@ -702,3 +702,8 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - PR #574 merged to main as `2d0c6b58a45689585dc7653bd18bcf89dfd1e4c1` after exact-source QueueGo RC `39643279380` passed all 12 steps. GitHub Pages build/deploy `39643901620` succeeded on the same merge SHA.
 - Browser runtime readback could not be completed because the browser environment disconnected. No Production migration/data write was made. Production migration history ends at `20261021133330`; `products.inventory_stock_tracking` is absent until prerequisite migration 330, so overlap preflight cannot be queried before ordered migration application.
 - NEXT: continue schema/ACL/RLS/trigger-order/forward-recovery review. Keep Production activation blocked on authorized cashier/device acceptance. QueueGo/POS remain NOT DONE.
+
+
+## 2026-10-21 POS numeric order quantity compatibility
+- Production read-only schema: `order_items.quantity numeric`; `market_products.stock_quantity numeric`; Market relation is composite FK `(product_id,shop_id) → products(id,shop_id)`. Market and Grocery order-item stock triggers are SECURITY DEFINER.
+- Identified regression fixture mismatch: POS inventory test had modeled item quantity as integer. PR #576 updates to numeric and covers fractional generic rejection plus fractional Market stock movement without generic stock mutation. Exact RC pending; no Production mutation.

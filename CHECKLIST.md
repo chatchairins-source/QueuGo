@@ -1062,3 +1062,8 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Merge `2d0c6b58a45689585dc7653bd18bcf89dfd1e4c1`; exact RC `39643279380` passed all 12 steps; Pages deployment workflow `39643901620` succeeded. Browser runtime readback unavailable due environment disconnection.
 - Production remains unmodified; latest migration `20261021133330`. The inventory tracking column is absent until prerequisite migration 330, so Market overlap preflight must run only after ordered feature schema installation.
 - QueueGo/POS remain NOT DONE until authorized user flows and Release Gate evidence are complete.
+
+
+## 2026-10-21 POS numeric quantity regression follow-up
+- Production read-only schema shows `order_items.quantity numeric` and `market_products.stock_quantity numeric`; Market mapping uses composite product/shop FK. Existing Market and Grocery item stock triggers are SECURITY DEFINER.
+- PR #576 changes inventory PGlite fixture quantity from integer to numeric; adds fractional generic rejection and fractional Market ledger decrement assertions. Exact QueueGo RC pending; no Production DDL/data write.
