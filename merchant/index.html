@@ -335,15 +335,15 @@ body.qgm-revenue-page .qgm-credit-premium{margin-top:1px}
 body.qgm-revenue-page .qgm-credit-premium .qg-credit-panel{margin:0}
 body.qgm-revenue-page .qgm-credit-premium .qg-credit-panel>[data-status],
 body.qgm-revenue-page .qgm-credit-premium .qg-credit-panel>[data-entries],
-body.qgm-revenue-page .qgm-credit-premium .qg-credit-panel>small{margin-top:0}
+body.qgm-revenue-page .qgm-credit-premium .qg-credit-panel>small{display:none!important}
 .qgm-credit-history-card{overflow:hidden;border:1px solid #eceef1;border-radius:20px;background:#fff;box-shadow:0 7px 22px rgba(27,31,36,.035)}
 .qgm-credit-history-card[hidden]{display:none!important}
 .qgm-credit-history-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px 10px}
 .qgm-credit-history-card-head b{font-size:15px;font-weight:950;color:#191d22}
 .qgm-credit-history-card-head span{font-size:9px;color:#9aa1aa;font-weight:800}
-.qgm-credit-history-card [data-entries]{margin:0!important;border-top:1px solid #eef0f2!important}
-.qgm-credit-history-card [data-entries] p{display:grid;grid-template-columns:34px minmax(0,1fr) auto;grid-template-areas:"icon label amount" "icon date amount";column-gap:10px;row-gap:2px;align-items:center;position:relative;margin:0;padding:12px 16px;border:0;border-bottom:1px solid #eef0f2;color:#252b32;font-size:11px;line-height:1.35}
-.qgm-credit-history-card [data-entries] p:last-child{border-bottom:0}
+.qgm-credit-history-list{margin:0;border-top:1px solid #eef0f2}
+.qgm-credit-history-list p{display:grid;grid-template-columns:34px minmax(0,1fr) auto;grid-template-areas:"icon label amount" "icon date amount";column-gap:10px;row-gap:2px;align-items:center;position:relative;margin:0;padding:12px 16px;border:0;border-bottom:1px solid #eef0f2;color:#252b32;font-size:11px;line-height:1.35}
+.qgm-credit-history-list p:last-child{border-bottom:0}
 .qgm-credit-history-icon{grid-area:icon;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:#eaf8f0;color:#06a65b;font-size:19px;font-weight:950}
 .qgm-credit-history-icon.debit{background:#fff0f3;color:#e31338}
 .qgm-credit-history-label{grid-area:label;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -3730,26 +3730,31 @@ window.qgmRenderRevenue=async function(){
    if(refresh){refresh.textContent='ตรวจสอบรายการ';actions.append(refresh)}actions.append(historyButton,settings);
    const status=panel.querySelector('[data-status]'),statusHost=document.getElementById('qgm-credit-live-status');
    panel.insertBefore(actions,status||entries);
-   if(status&&statusHost)statusHost.append(status);
+   if(status&&statusHost){
+    const statusMirror=document.createElement('p');statusMirror.className='qgm-credit-live-status-text';statusHost.replaceChildren(statusMirror);
+    const syncStatus=()=>{statusMirror.textContent=status.textContent||''};syncStatus();
+    new MutationObserver(syncStatus).observe(status,{childList:true,subtree:true,characterData:true});
+   }
    const historyCard=document.getElementById('qgm-credit-history-card'),footnote=Array.from(panel.children).find(el=>el.tagName==='SMALL');
    if(entries&&historyCard){
     historyCard.hidden=false;
     const historyHead=document.createElement('div');historyHead.className='qgm-credit-history-card-head';historyHead.innerHTML='<b>รายการล่าสุด</b><span>เครดิตร้านค้า</span>';
-    historyCard.append(historyHead,entries);
-    if(footnote){footnote.className='qgm-credit-history-foot';historyCard.append(footnote)}
-    const decorate=()=>{
-     entries.querySelectorAll('p').forEach(row=>{
-      const raw=row.textContent.trim();if(row.dataset.qgmDecorated===raw)return;row.dataset.qgmDecorated=raw;
-      const parts=raw.split(' · ').map(v=>v.trim()),label=parts[0]||'รายการเครดิต',amount=parts[1]||'',date=parts.slice(2).join(' · '),debit=/หัก|กันเครดิต/.test(label)||/^-/.test(amount);
-      row.replaceChildren();
-      const icon=document.createElement('span');icon.className='qgm-credit-history-icon'+(debit?' debit':'');icon.textContent=debit?'%':'+';
-      const name=document.createElement('span');name.className='qgm-credit-history-label';name.textContent=label;
-      const time=document.createElement('span');time.className='qgm-credit-history-date';time.textContent=date;
-      const value=document.createElement('span');value.className='qgm-credit-history-amount'+(debit?' debit':'');value.textContent=amount;
-      row.append(icon,name,time,value);
+    const historyList=document.createElement('div');historyList.className='qgm-credit-history-list';
+    historyCard.append(historyHead,historyList);
+    if(footnote){const historyFoot=document.createElement('div');historyFoot.className='qgm-credit-history-foot';historyFoot.textContent=footnote.textContent;historyCard.append(historyFoot)}
+    const syncHistory=()=>{
+     historyList.replaceChildren();
+     entries.querySelectorAll('p').forEach(source=>{
+      const raw=source.textContent.trim(),parts=raw.split(' · ').map(v=>v.trim()),label=parts[0]||'รายการเครดิต',amount=parts[1]||'',date=parts.slice(2).join(' · '),debit=/หัก|กันเครดิต/.test(label)||/^-/.test(amount);
+      const row=document.createElement('p'),icon=document.createElement('span'),name=document.createElement('span'),time=document.createElement('span'),value=document.createElement('span');
+      icon.className='qgm-credit-history-icon'+(debit?' debit':'');icon.textContent=debit?'%':'+';
+      name.className='qgm-credit-history-label';name.textContent=label;
+      time.className='qgm-credit-history-date';time.textContent=date;
+      value.className='qgm-credit-history-amount'+(debit?' debit':'');value.textContent=amount;
+      row.append(icon,name,time,value);historyList.append(row);
      })
     };
-    decorate();new MutationObserver(decorate).observe(entries,{childList:true});
+    syncHistory();new MutationObserver(syncHistory).observe(entries,{childList:true});
     historyButton.onclick=()=>historyCard.scrollIntoView({behavior:'smooth',block:'start'});
    }
    if(nativeAdd&&add){new MutationObserver(()=>{add.disabled=!!nativeAdd.hidden}).observe(nativeAdd,{attributes:true,attributeFilter:['hidden']})}
