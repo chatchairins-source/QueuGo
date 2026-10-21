@@ -65,7 +65,7 @@ internal fun MerchantModulesScreen(
             ) { Text("กลับ") }
             Spacer(Modifier.width(10.dp))
             Column {
-                Text("ตั้งค่าร้านค้า", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                Text("ตั้งค่าร้านค้า", fontSize = MerchantPageTitleSize, fontWeight = FontWeight.ExtraBold)
                 Text("จัดการโมดูลและทางลัดการตั้งค่าร้าน", color = QgMuted, fontSize = 10.sp)
             }
         }
