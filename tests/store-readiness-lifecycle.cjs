@@ -108,7 +108,7 @@ ok(backup.includes("'shop_profiles'")&&backup.includes("'functions'")&&backup.in
 ok(reconcile.includes('queuego_private.store_lifecycle_pre_reconcile_20261008_1034'),'Pre-reconcile shop snapshot must be tracked');
 
 // Admin cleanup filters required by operations.
-for(const token of ["['ready','พร้อมใช้งาน']","['pending_review','รออนุมัติ']","['incomplete','ข้อมูลไม่ครบ']","['never_opened','ไม่เคยเปิดใช้งาน']","['archived','ถูกลบ / Archived']"])
+for(const token of ["['ready','พร้อมใช้งาน']","['pending_review','รออนุมัติ']","['incomplete','ข้อมูลไม่ครบ']","['never_opened','ไม่เคยเปิดใช้งาน']","['archived','ถูกลบ']"])
   ok(admin.includes(token),'Admin cleanup filter missing '+token);
 
 // Schema/source-of-truth must contain initial lifecycle migration as well as hardening.
