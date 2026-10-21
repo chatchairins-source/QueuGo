@@ -7,7 +7,7 @@ Current snapshot: 2026-10-21 · Authoritative main checked: `6669dc108137f8119c8
 **POS cash in/out shift ledger — staged source/test complete; release blocked.**
 
 - Successor PR #568; branch `work-pos-complete-next-20261021`; exact HEAD `0f9af0cbc91af0bf7d964c9c52665ceb4e19cb9a`.
-- Prior exact RC run `39617058579` passed at `119c68e`; updated exact-head run `39619648922` is in progress. Focused POS tests (36/73/18) and full `npm test` passed on the updated source tree.
+- Prior exact RC run `39617058579` passed at `119c68e`; updated exact-head run `39619648922` completed SUCCESS. Focused POS tests (36/73/18) and full `npm test` passed on the updated source tree.
 - The latest change serializes concurrent retries by actor/shop/request key before receipt lookup; it does not replace the existing unique constraint or POS cash ledger.
 - Cashier shifts, reconciliation, POS refund outflows and owner item reports are already deployed through earlier migrations. The cash-movement migration `20261021211709_pos_cash_register_movements` is absent from Production migration history.
 - Do not implement a duplicate ledger or treat this slice as deployed. Follow `RELEASE_GATE.md` for the migration, UI activation and authenticated acceptance gate.
