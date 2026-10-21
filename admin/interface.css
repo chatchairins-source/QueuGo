@@ -488,3 +488,209 @@
   }
 }
 
+/* QueueGo Admin unified mobile controls v3 — one layout language across all Admin pages. */
+.qg-admin-inline-search{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:8px;
+  align-items:center;
+  margin:0 0 10px;
+}
+.qg-admin-inline-search input{
+  min-width:0;
+  margin:0;
+}
+.qg-admin-inline-search button{
+  min-height:42px;
+  margin:0;
+  white-space:nowrap;
+}
+.qg-admin-tab-strip{
+  display:flex;
+  flex-wrap:nowrap;
+  gap:6px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:3px 0 8px;
+  margin:0 0 4px;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.qg-admin-tab-strip::-webkit-scrollbar{display:none}
+.qg-admin-tab-strip>button,
+.qg-admin-tab-strip .qt-user-category-btn,
+.qg-admin-tab-strip .qt-security-role{
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:max-content!important;
+  max-width:none!important;
+  white-space:nowrap!important;
+  word-break:keep-all!important;
+  overflow-wrap:normal!important;
+  writing-mode:horizontal-tb!important;
+  line-height:1.15;
+}
+.qg-admin-pager{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+  margin-top:10px;
+  padding-top:9px;
+  border-top:1px solid var(--line);
+}
+.qg-admin-pager span{
+  text-align:center;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.4;
+}
+.qg-admin-section-lead{
+  margin:0 0 8px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:600;
+}
+.qg-provider-heading .qt-admin-status,
+.qt-security-status{
+  flex:0 0 auto;
+  width:auto;
+  min-width:0;
+  height:auto;
+  align-self:flex-start;
+  white-space:nowrap;
+}
+.qt-admin-panel>.qg-empty:last-child{margin-bottom:0}
+.qg-admin-support>button:first-child{margin-bottom:10px}
+
+@media (max-width:700px){
+  .qg-page-title{
+    min-height:44px;
+    align-items:center;
+    margin-bottom:9px;
+  }
+  .qg-page-title h1{
+    font-size:22px;
+    line-height:1.25;
+  }
+  .qg-page-back{
+    min-height:34px;
+    padding:4px 0 4px 8px;
+  }
+  .qg-workspace-toolbar{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    gap:7px;
+    padding:8px 9px;
+    border-radius:14px;
+  }
+  .qg-workspace-toolbar label{
+    min-width:0;
+    max-width:none;
+    margin:0;
+  }
+  .qg-workspace-toolbar select{
+    width:100%;
+    min-height:42px;
+    margin:0;
+  }
+  .qg-workspace-toolbar button{
+    width:auto;
+    min-height:42px;
+    margin:0;
+    padding:0 12px;
+    white-space:nowrap;
+  }
+  #qg-admin-refresh-note:empty{display:none}
+  .qt-admin-wrap{gap:8px}
+  .qt-admin-panel{
+    padding:12px;
+    overflow-x:visible;
+    border-radius:14px;
+  }
+  .qg-admin-inline-search{
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:6px;
+    margin-bottom:8px;
+  }
+  .qg-admin-inline-search input{min-height:44px}
+  .qg-admin-inline-search button{
+    min-height:44px;
+    padding:0 11px;
+  }
+  .qg-admin-inline-search .qg-admin-search-clear{
+    grid-column:1/-1;
+    justify-self:end;
+    min-height:34px;
+    padding:0 10px;
+    font-size:10px;
+  }
+  .qg-admin-tab-strip{
+    margin:0 -1px 4px;
+    padding:2px 1px 8px;
+  }
+  .qg-admin-tab-strip>button,
+  .qg-admin-tab-strip .qt-user-category-btn,
+  .qg-admin-tab-strip .qt-security-role{
+    min-height:38px;
+    padding:0 12px;
+    font-size:11px;
+    border-radius:999px;
+  }
+  .qg-shop-list,.qg-user-cards{margin-top:6px}
+  .qg-approval-card,.qg-shop-card,.qg-user-card,.qt-security-user-card{
+    margin:7px 0;
+    padding:12px;
+  }
+  .qg-provider-heading{
+    align-items:flex-start;
+    gap:9px;
+  }
+  .qg-provider-heading>div{
+    flex:1;
+    min-width:0;
+  }
+  .qg-provider-heading b{
+    font-size:13px;
+    line-height:1.35;
+  }
+  .qg-provider-heading small{
+    font-size:10px;
+    line-height:1.4;
+  }
+  .qg-provider-heading .qt-admin-status{
+    font-size:9px;
+    padding:4px 8px;
+  }
+  .qg-user-card>.row-btns,
+  .qg-shop-card>.row-btns,
+  .qg-approval-card>.row-btns{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+    margin-top:9px;
+  }
+  .qg-user-card>.row-btns button,
+  .qg-shop-card>.row-btns button,
+  .qg-approval-card>.row-btns button{
+    width:100%;
+    min-height:40px;
+    margin:0;
+  }
+  .qg-admin-pager{
+    grid-template-columns:auto minmax(0,1fr) auto;
+    gap:6px;
+    margin-top:8px;
+    padding-top:8px;
+  }
+  .qg-admin-pager button{
+    min-height:38px;
+    padding:0 10px;
+    white-space:nowrap;
+  }
+  .qg-admin-pager span{font-size:9px}
+  .card>.row-btns:first-child{margin-top:0}
+  .qg-admin-support>button:first-child{width:auto}
+}
+
