@@ -33,10 +33,10 @@ After each bounded chunk, update this file and `CHECKLIST.md` with exact SHA, lo
 - Production remains unmodified. Migration history ends at `20261021133330`; inventory feature migrations are unapplied. Browser runtime readback was unavailable after environment disconnection.
 
 
-## Active successor: numeric quantity compatibility
-- Read-only Production schema confirms `order_items.quantity numeric`; the PGlite inventory fixture had modeled it as integer, missing fractional-input behavior.
-- PR #576 updates the fixture to numeric and covers rejection of fractional generic inventory quantities plus fractional Market stock decrement without touching `products.stock` or creating generic reservations.
-- Exact hosted RC is pending. No Production data/schema changes. Next: review exact CI and merge only if the focused and full gates pass.
+## Completed successor: numeric quantity compatibility
+- Read-only Production schema confirms `order_items.quantity numeric`; the PGlite inventory fixture previously modeled integer quantity.
+- PR #576 merged to main as `a4f12dd39b751e7e05a2d37b54e47863d477f391`; exact RC `39647073978` passed, with fractional generic rejection and fractional Market ledger coverage. Post-merge RC `39647725266` and Pages deploy `39647725023` also passed.
+- Production remains unmodified. Continue read-only migration/schema recovery review and keep cashier/device acceptance open.
 
 
 ## Latest verified checkpoint
