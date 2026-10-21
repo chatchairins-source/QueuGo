@@ -1,6 +1,6 @@
 # QueueGo Release Gate
 
-Snapshot date: 2026-10-21 · Main: `a4f12dd39b751e7e05a2d37b54e47863d477f391`
+Snapshot date: 2026-10-22 · Main: `cc036ee001bf23425d055977f8330e3753749743`n: `a4f12dd39b751e7e05a2d37b54e47863d477f391`
 
 ## Overall status
 
@@ -52,3 +52,10 @@ An individual feature can be marked `DONE (source/test)` only with its exact com
 - PR #577 exact RC `39648478732` passed and merged at `e70961d5b70fa7f84519fbebf473659603e35132`. Main RC `39649126036` had a first-attempt Admin WebKit title assertion failure at `tests/admin-boot-browser.cjs:69`; rerun of the failed job passed the full workflow. Pages deploy `39649125931` succeeded on the same SHA. Keep the first failure recorded as intermittent test evidence.
 - Read-only Production migration history ends at `20261021133330`. POS inventory migrations `20261021211800`–`20261021233300` and cash movement migration `20261021211709` remain unapplied. Existing Grocery/Market order-item stock triggers remain installed; generic inventory triggers/tables are absent. No Production DDL or data mutation.
 - Release order remains blocked on authorized cashier/device acceptance: apply ordered stack only after acceptance; run Market overlap preflight after tracking-column migration 330; read back ACL/RLS/triggers; then sale/cancel/refund/adjustment regression. No DONE claim.
+
+
+## Post-merge receipt — 2026-10-22
+- PR #578 merged at `cc036ee001bf23425d055977f8330e3753749743`. Exact PR RC `39650817495` passed all 12 required stages. The PR stabilizes the existing Admin WebKit route assertion by waiting for the rendered heading, with no runtime UI change.
+- Main push RC `39694314231` passed all stages on the merge SHA, including npm test, Admin WebKit boot/layout, Merchant mobile WebKit, Map Lab gestures, QueueGo Map search and Grocery mobile/tablet rendering. Pages deployment `39694313643` succeeded on the same SHA. Main ref verified at `cc036ee001bf23425d055977f8330e3753749743`.
+- PR #578's change is test stabilization and documentation; Pages success is recorded as deployment evidence, not a claim of end-user UI behavior change. The prior main RC failure on #577 remains recorded as a separate earlier attempt.
+- Production database remains unmodified. POS feature migrations remain unapplied; continue authorized cashier/device acceptance and controlled migration gates. QueueGo/POS are **NOT DONE**.
