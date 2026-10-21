@@ -27,7 +27,9 @@ const migration=fs.readFileSync(path.join(root,'supabase/migrations/202610211231
   await db.query(`insert into public.orders(id,shop_id,sales_channel,payment_status,bill_status,status,kitchen_status,total_amount)
     values('cccccccc-cccc-4ccc-8ccc-cccccccccccc','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','POS','UNPAID','OPEN','accepted','READY',20)`);
   await assert.rejects(()=>db.query(`select public.pos_take_payment('cccccccc-cccc-4ccc-8ccc-cccccccccccc','cash',25)`),/open a shift|เปิดกะ/);
-  await db.query(`select public.pos_open_shift(100,'เปิดเช้า')`);
+  const firstOpen=await scalar(`select public.pos_open_shift(100,'เปิดเช้า') as shift`);
+  const openRetry=await scalar(`select public.pos_open_shift(100,'เปิดเช้า') as shift`);
+  assert.equal(openRetry.shift.id,firstOpen.shift.id);
   await assert.rejects(()=>db.query(`select public.pos_open_shift(0,'')`),/เปิดกะอยู่/);
   const paid=await scalar(`select public.pos_take_payment('cccccccc-cccc-4ccc-8ccc-cccccccccccc','cash',25) as bill`);
   assert.equal(paid.bill.payment_status,'PAID');
@@ -39,6 +41,8 @@ const migration=fs.readFileSync(path.join(root,'supabase/migrations/202610211231
   assert.equal(Number(closed.shift.counted_cash),119);
   assert.equal(Number(closed.shift.variance),-1);
   assert.equal(closed.shift.open,false);
+  const closeRetry=await scalar(`select public.pos_close_shift(119,'นับคลาดหนึ่งบาท') as shift`);
+  assert.equal(closeRetry.shift.id,closed.shift.id);
   assert.equal((await scalar(`select (public.pos_current_shift()->>'open')::boolean as open`)).open,false);
   await assert.rejects(()=>db.query(`select public.pos_close_shift(0,'')`),/ไม่พบกะ/);
   await db.exec(`insert into public.orders(id,shop_id,sales_channel,payment_status,bill_status,status,kitchen_status,total_amount,payment_method)
@@ -56,5 +60,5 @@ const migration=fs.readFileSync(path.join(root,'supabase/migrations/202610211231
   await set(actor,true,true);
   assert.equal((await scalar(`select jsonb_array_length(public.pos_register_shift_history(20)) as n`)).n,2);
   await db.close();
-  console.log(JSON.stringify({checks:15,failures:0,scope:'POS shift authorization, required open shift, payment retry idempotency, cash reconciliation and cashier isolation in PGlite'}));
+  console.log(JSON.stringify({checks:18,failures:0,scope:'POS shift authorization, open/close retry idempotency, payment retry, cash refund reconciliation and cashier isolation in PGlite'}));
 })().catch(e=>{console.error(e);process.exit(1)});

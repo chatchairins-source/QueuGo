@@ -86,6 +86,13 @@ begin
   v_shop:=public.pos_my_shop();
   select coalesce(s.display_name,'เจ้าของร้าน') into v_name from (select auth.uid() as id) a
     left join public.pos_staff s on s.user_id=a.id and s.shop_id=v_shop and s.active;
+  select * into v_shift from public.pos_register_shifts where shop_id=v_shop
+    and cashier_user_id=(select auth.uid()) and closed_at is null for update;
+  if found then
+    if v_shift.opening_float=round(p_opening_float,2) and v_shift.opening_note=trim(coalesce(p_note,''))
+    then return to_jsonb(v_shift)||jsonb_build_object('open',true); end if;
+    raise exception 'มีการเปิดกะอยู่แล้ว กรุณาปิดกะเดิมก่อน';
+  end if;
   insert into public.pos_register_shifts(shop_id,cashier_user_id,cashier_name,opening_float,opening_note)
     values(v_shop,(select auth.uid()),coalesce(v_name,'เจ้าของร้าน'),round(p_opening_float,2),trim(coalesce(p_note,'')))
     returning * into v_shift;
@@ -102,7 +109,15 @@ begin
   if length(coalesce(p_note,''))>500 then raise exception 'closing note too long'; end if;
   select * into v_shift from public.pos_register_shifts where shop_id=public.pos_my_shop()
     and cashier_user_id=(select auth.uid()) and closed_at is null for update;
-  if not found then raise exception 'ไม่พบกะที่เปิดอยู่'; end if;
+  if not found then
+    select * into v_shift from public.pos_register_shifts where shop_id=public.pos_my_shop()
+      and cashier_user_id=(select auth.uid()) order by opened_at desc limit 1;
+    if found and v_shift.closed_at is not null and v_shift.counted_cash=round(p_counted_cash,2)
+      and v_shift.closing_note=trim(coalesce(p_note,'')) then
+      return to_jsonb(v_shift)||jsonb_build_object('open',false);
+    end if;
+    raise exception 'ไม่พบกะที่เปิดอยู่';
+  end if;
   select round(v_shift.opening_float+
     coalesce((select sum(p.amount) from public.payments p join public.orders o on o.id=p.order_id
       where o.pos_register_shift_id=v_shift.id and o.sales_channel='POS'
