@@ -98,4 +98,4 @@ begin
 end $$;
 
 revoke all on function public.merchant_revenue_days(date,date) from public,anon;
-grant execute on function public.merchant_revenue_days(date,date) to authenticated;
+grant execute on function public.merchant_revenue_days(date,date) to authenticated,service_role;
