@@ -9,10 +9,12 @@ assert(merchant.includes('--qgm-page-title-size:19px'),'Merchant page titles mus
   '.qgm-unified-intro>b,',
   '.qgm-page-title-row h2,',
   '.qgm-revenue-title h1,',
-  '.qt-notif-header h1,',
   '.qgm-media-head h2,',
   '.qgm-hours-heading,',
   '.qt-shop-page-title h2'
 ].forEach(selector=>assert(merchant.includes(selector),selector+' must use the shared Merchant page-title scale'));
 assert(merchant.includes('body.qgm-revenue-page .qgm-revenue-title h1{font-size:var(--qgm-page-title-size)!important}'),'Revenue mobile title must not stay oversized');
-console.log('merchant page title standard 12 checks PASS');
+assert(merchant.includes('qgm-header-brand-right')&&merchant.includes('qgm-wordmark-queue')&&merchant.includes('qgm-wordmark-go'),'Every Merchant secondary header must retain the QueueGo wordmark');
+assert(!merchant.includes('<header class="qt-notif-header">'),'Merchant Notifications must not render a duplicate inner header');
+
+console.log('merchant page title standard + header consistency PASS');
