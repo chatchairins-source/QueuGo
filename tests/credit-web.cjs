@@ -44,5 +44,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  eq(creditMigration.includes('create function public.queuego_admin_merchant_credit_targets')&&creditMigration.includes('create function public.queuego_admin_grant_merchant_credit'),true);
  eq(creditMigration.includes('revoke all on function public.queuego_admin_grant_merchant_credit(uuid,uuid,bigint,text) from public,anon,service_role')&&creditMigration.includes('grant execute on function public.queuego_admin_grant_merchant_credit(uuid,uuid,bigint,text) to authenticated'),true);
  eq(/insert\s+into\s+(?:public\.)?queuego_platform_rules/i.test(creditMigration),false);
+ const gpReportMigration=fs.readFileSync('supabase/migrations/20261021024000_merchant_credit_gp_report.sql','utf8');
+ eq(gpReportMigration.includes('gp_credit_deducted numeric')&&gpReportMigration.includes("e.event_type in ('capture','reversal')")&&gpReportMigration.includes('filter(where not o.credit_gp_required)'),true);
+ eq(merchant.includes('GP ที่หักจากเครดิต')&&merchant.includes('gp_credit_deducted')&&!merchant.includes('<small>GP ที่ต้องชำระ</small>'),true);
  dom.window.close();console.log('Credit Web: '+checks+' checks PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});
