@@ -16,8 +16,9 @@ const qgAdminRideReadRpc=(fn,args={})=>typeof qgAdminRpcRead==='function'?qgAdmi
  window.qgRenderPassengerControls=async()=>{
   const host=document.getElementById('qg-passenger-controls');if(!host||currentUser()?.type!=='admin'||currentUser()?.status!=='approved')return;
   const owner=currentUser().id;
-  host.innerHTML='<section id="qg-ride-config-panel" aria-labelledby="qg-ride-config-title"><h3 id="qg-ride-config-title">รับส่งผู้โดยสาร</h3><p role="status">กำลังอ่านการตั้งค่าจากระบบ…</p></section><section id="qg-ride-license-panel" aria-labelledby="qg-ride-license-title"><h3 id="qg-ride-license-title">ตรวจใบขับขี่สาธารณะ</h3><p role="status">กำลังอ่านรายการจากระบบ…</p></section>';
-  const configPanel=host.querySelector('#qg-ride-config-panel'),licensePanel=host.querySelector('#qg-ride-license-panel');
+  host.innerHTML='<section id="qg-ride-config-panel" aria-labelledby="qg-ride-config-title"><h3 id="qg-ride-config-title">รับส่งผู้โดยสาร</h3><p role="status">กำลังอ่านการตั้งค่าจากระบบ…</p></section><section id="qg-ride-license-panel" aria-labelledby="qg-ride-license-title"><h3 id="qg-ride-license-title">เอกสาร Rider สำหรับ Ride</h3><p>ระบบปัจจุบันยังไม่มีคิวตรวจใบอนุญาตสาธารณะแยกสำหรับ Ride ข้อมูลเอกสารที่ตรวจได้อยู่ในศูนย์ตรวจเอกสาร Rider</p><button type="button" class="btn-secondary" data-open-rider-review>เปิดศูนย์ตรวจเอกสาร Rider</button></section>';
+  const configPanel=host.querySelector('#qg-ride-config-panel');
+  host.querySelector('[data-open-rider-review]').onclick=()=>{if(adminAlive(host,owner))navigate('admin-rider-review')};
   async function loadConfig(){
    if(!adminAlive(host,owner))return;configPanel.innerHTML='<h3 id="qg-ride-config-title">รับส่งผู้โดยสาร</h3><p role="status">กำลังอ่านการตั้งค่าจากระบบ…</p>';
    try{
@@ -42,21 +43,6 @@ const qgAdminRideReadRpc=(fn,args={})=>typeof qgAdminRpcRead==='function'?qgAdmi
     };
    }catch(e){if(!adminAlive(host,owner))return;configPanel.innerHTML='<h3 id="qg-ride-config-title">รับส่งผู้โดยสาร</h3><p role="alert">อ่านการตั้งค่า Ride ไม่สำเร็จ: '+esc(e.message)+'</p><button type="button" class="btn-secondary" data-ride-retry>ลองอีกครั้ง</button>';configPanel.querySelector('[data-ride-retry]').onclick=loadConfig;}
   }
-  async function loadLicenses(){
-   if(!adminAlive(host,owner))return;licensePanel.innerHTML='<h3 id="qg-ride-license-title">ตรวจใบขับขี่สาธารณะ</h3><p role="status">กำลังอ่านรายการจากระบบ…</p>';
-   try{
-    const licenses=await qgAdminRideReadRpc('queuego_admin_public_licenses',{});if(!adminAlive(host,owner))return;
-    if(!Array.isArray(licenses))throw Error('รูปแบบรายการเอกสารไม่ถูกต้อง');
-    licensePanel.innerHTML='<h3 id="qg-ride-license-title">ตรวจใบขับขี่สาธารณะ</h3><p>อนุมัติได้เมื่อมีหลักฐานจาก Rider และวันหมดอายุที่ตรวจแล้ว</p>'+(licenses.length?licenses.map(r=>{const evidence=r.evidence_path?'<button class="btn-secondary" type="button" data-evidence="'+esc(r.evidence_path)+'">ดูหลักฐานใบขับขี่สาธารณะ</button>':'<p>ยังไม่มีหลักฐานใบขับขี่สาธารณะ</p>';const submitted=r.submitted_at?'<small>ส่งเอกสาร '+esc(new Date(r.submitted_at).toLocaleString('th-TH'))+' · '+esc(r.submission_status||'pending')+'</small>':'';return '<form class="qg-public-license" data-rider="'+esc(r.rider_id)+'"><b>'+esc(r.name)+'</b><p>'+(r.approved?'ผ่านการตรวจ':'ยังไม่มีใบขับขี่สาธารณะที่ใช้ได้')+'</p>'+evidence+submitted+'<label>วันหมดอายุ <input name="expiry" type="date" value="'+esc(r.expires_on)+'"></label><label>บันทึกการตรวจ <input name="note" required minlength="3" maxlength="500"></label><button type="submit" class="btn-secondary">บันทึกผลตรวจ</button><p role="status"></p></form>'}).join(''):'<p role="status">ยังไม่มีรายการตรวจใบขับขี่สาธารณะ</p>');
-    licensePanel.querySelectorAll('[data-evidence]').forEach(button=>button.onclick=()=>window.qgAdminOpenEvidence?.(button.dataset.evidence));
-    licensePanel.querySelectorAll('.qg-public-license').forEach(form=>form.onsubmit=async event=>{
-     event.preventDefault();if(!adminAlive(host,owner))return;const button=form.querySelector('button[type="submit"]'),status=form.querySelector('[role=status]');if(button.disabled)return;button.disabled=true;status.textContent='กำลังบันทึกผลตรวจ…';
-     try{await qtSupabaseRpc('queuego_admin_review_public_license',{p_rider_id:form.dataset.rider,p_expires_on:form.elements.namedItem('expiry').value||null,p_note:form.elements.namedItem('note').value});if(adminAlive(host,owner)){status.textContent='บันทึกผลตรวจแล้ว';await loadLicenses();}}
-     catch(e){if(adminAlive(host,owner))status.textContent='บันทึกไม่ได้: '+e.message;}
-     finally{if(button.isConnected)button.disabled=false;}
-    });
-   }catch(e){if(!adminAlive(host,owner))return;licensePanel.innerHTML='<h3 id="qg-ride-license-title">ตรวจใบขับขี่สาธารณะ</h3><p role="alert">ส่วนตรวจใบขับขี่ยังไม่พร้อม: '+esc(e.message)+'</p><button type="button" class="btn-secondary" data-ride-license-retry>ลองอีกครั้ง</button>';licensePanel.querySelector('[data-ride-license-retry]').onclick=loadLicenses;}
-  }
-  await Promise.all([loadConfig(),loadLicenses()]);
+  await loadConfig();
  };
 })();
