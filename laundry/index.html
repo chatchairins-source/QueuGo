@@ -86,7 +86,7 @@ async function boot(){
     const u=Array.isArray(users)?users[0]:null;
     if(!u||u.role!=='customer'||u.status!=='active'){location.href='../#login';return}
     customer=u;
-    const enabled=await qgRpc('queuego_feature_enabled',{p_feature:'laundry',p_at:null});
+    const enabled=await qgRpc('queuego_feature_enabled',{p_feature:'laundry'});
     if(enabled!==true){el.className='';el.innerHTML='<div class="notice"><b>ฝากซักยังไม่เปิดใช้งาน</b><br>Admin ยังปิดบริการฝากซักอยู่</div>';return}
     const [h,st]=await Promise.all([
       qgDb('laundry_hubs?select=id,name,shop_id&active=eq.true&order=name.asc'),
