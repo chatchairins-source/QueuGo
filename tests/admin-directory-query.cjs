@@ -43,7 +43,7 @@ const overviewCalls=calls.filter(x=>x.path.startsWith('rpc/queuego_admin_shop_ov
 assert.equal(overviewCalls.length,1);assert(Array.isArray(overviewCalls[0].options?.body?.p_user_ids));assert(!calls.some(x=>x.path==='rpc/queuego_admin_shop_overview'&&Object.keys(x.options?.body||{}).length===0));checks+=3;
 overviewMissing=false;
 actor='customer';calls=[];await assert.rejects(()=>ctx.qtHydrateAdminDirectory(),/Admin/);assert.equal(calls.length,0);checks+=2;
-assert(html.includes('qgAdminDirectorySearch(this.elements.directorySearch.value)'));checks++;
+assert(html.includes('qgAdminDirectorySearch(this.elements.${name}.value)'));checks++;assert(html.includes('qg-admin-inline-search'));checks++;assert(!html.includes('name="directorySearch"'));checks++;
 assert(!html.includes("qtSupabaseTable('rpc/queuego_admin_shop_overview',{method:'POST',accessToken:token,body:{}})"));checks++;
 const searchIndexSql=fs.readFileSync('supabase/migrations/20261020022140_admin_directory_search_trgm_indexes.sql','utf8');
 for(const index of ['users_name_trgm_idx','users_phone_trgm_idx','shop_profiles_current_name_trgm_idx','shop_profiles_current_phone_trgm_idx']){assert(searchIndexSql.includes(index));checks++}
