@@ -1887,7 +1887,7 @@ async function qgLoadAdminCash(day){
 
  window.renderAdminGpRates=function(load=true){
    if(currentUser()?.type!=='admin')return navigate('login');
-   layout('อัตราค่าบริการร้านค้า','<div class="qg-admin-rates"><section class="qg-gp-hero"><div><span class="qg-gp-eyebrow">ตั้งค่าการเงินร้านค้า</span><h2>อัตราค่าบริการร้านค้า (GP)</h2><p>กำหนดอัตรามาตรฐานของระบบ หรือกำหนดอัตราเฉพาะร้าน อัตราใหม่ใช้กับออเดอร์ใหม่เท่านั้น</p></div><button class="btn-secondary" type="button" onclick="navigate(\'admin-gp\')">กลับไปตรวจยอด GP</button></section><div id="qg-rate-cards" class="qg-gp-rate-list">'+qtGpRateCards()+'</div></div>');
+   layout('อัตราค่าบริการร้านค้า','<div class="qg-admin-rates"><section class="qg-gp-hero"><div><span class="qg-gp-eyebrow">ตั้งค่าการเงินร้านค้า</span><p>กำหนดอัตรามาตรฐานของระบบ หรือกำหนดอัตราเฉพาะร้าน อัตราใหม่ใช้กับออเดอร์ใหม่เท่านั้น</p></div><button class="btn-secondary" type="button" onclick="navigate(\'admin-gp\')">กลับไปตรวจยอด GP</button></section><div id="qg-rate-cards" class="qg-gp-rate-list">'+qtGpRateCards()+'</div></div>');
    if(load)qtPullGpRates().then(()=>{if(location.hash==='#admin-gp-rates')renderAdminGpRates(false)}).catch(e=>toast('โหลดอัตราค่าบริการไม่สำเร็จ'));
 
  };
