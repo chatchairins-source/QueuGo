@@ -71,7 +71,7 @@ internal fun MerchantPromotionScreen(
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) { Text("กลับ") }
             Spacer(Modifier.width(10.dp))
-            Text("โปรโมชั่น", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+            Text("โปรโมชั่น", fontSize = MerchantPageTitleSize, fontWeight = FontWeight.ExtraBold)
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
