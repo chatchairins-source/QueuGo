@@ -310,6 +310,75 @@ body.qgm-app,body.qgm-login{height:auto!important;min-height:100dvh!important;ov
  .qgm-revenue-metric b{font-size:12px}
 }
 </style>
+
+<style id="qgm-revenue-layout-v4">
+/* Revenue page layout: hierarchy first, then visual styling. */
+body.qgm-revenue-page{background:#f7f8fa}
+body.qgm-revenue-page .qgm-top{min-height:52px;padding:calc(8px + env(safe-area-inset-top)) 16px 8px}
+body.qgm-revenue-page .qgm-brand{gap:8px;font-size:19px;font-weight:900}
+body.qgm-revenue-page .qgm-brand-mark{width:28px;height:28px}
+body.qgm-revenue-page .qgm-wordmark{display:inline-flex;align-items:center;letter-spacing:-.35px;color:#17191d}
+body.qgm-revenue-page .qgm-wordmark span{color:inherit}
+body.qgm-revenue-page .qgm-content{padding-top:12px!important;padding-bottom:calc(var(--qg-nav-h) + env(safe-area-inset-bottom) + 34px)!important}
+body.qgm-revenue-page .qgm-revenue-modern{gap:12px}
+body.qgm-revenue-page .qgm-revenue-head{grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;margin:0}
+body.qgm-revenue-page .qgm-revenue-title{min-width:0}
+body.qgm-revenue-page .qgm-revenue-title h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qgm-revenue-store{min-width:0;max-width:160px;height:42px;display:flex;align-items:center;gap:7px;padding:0 12px;border:1px solid #e7e9ed;border-radius:22px;background:#fff;color:#252a31;box-shadow:0 3px 12px rgba(27,31,36,.035);font-size:10.5px;font-weight:850}
+.qgm-revenue-store svg{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8}
+.qgm-revenue-store span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.qgm-revenue-page .qgm-revenue-ranges{margin-top:1px}
+body.qgm-revenue-page .qgm-revenue-result{display:grid;gap:8px}
+body.qgm-revenue-page .qgm-revenue-hero{margin:0}
+body.qgm-revenue-page .qgm-revenue-metrics{margin-top:0}
+body.qgm-revenue-page .qgm-credit-premium{margin-top:1px}
+body.qgm-revenue-page .qgm-credit-premium .qg-credit-panel{margin:0}
+body.qgm-revenue-page .qgm-credit-premium .qg-credit-panel>[data-status],
+body.qgm-revenue-page .qgm-credit-premium .qg-credit-panel>[data-entries],
+body.qgm-revenue-page .qgm-credit-premium .qg-credit-panel>small{display:none!important}
+.qgm-credit-history-card{overflow:hidden;border:1px solid #eceef1;border-radius:20px;background:#fff;box-shadow:0 7px 22px rgba(27,31,36,.035)}
+.qgm-credit-history-card[hidden]{display:none!important}
+.qgm-credit-history-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px 10px}
+.qgm-credit-history-card-head b{font-size:15px;font-weight:950;color:#191d22}
+.qgm-credit-history-card-head span{font-size:9px;color:#9aa1aa;font-weight:800}
+.qgm-credit-history-list{margin:0;border-top:1px solid #eef0f2}
+.qgm-credit-history-list p{display:grid;grid-template-columns:34px minmax(0,1fr) auto;grid-template-areas:"icon label amount" "icon date amount";column-gap:10px;row-gap:2px;align-items:center;position:relative;margin:0;padding:12px 16px;border:0;border-bottom:1px solid #eef0f2;color:#252b32;font-size:11px;line-height:1.35}
+.qgm-credit-history-list p:last-child{border-bottom:0}
+.qgm-credit-history-icon{grid-area:icon;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:#eaf8f0;color:#06a65b;font-size:19px;font-weight:950}
+.qgm-credit-history-icon.debit{background:#fff0f3;color:#e31338}
+.qgm-credit-history-label{grid-area:label;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qgm-credit-history-date{grid-area:date;color:#8b929b;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qgm-credit-history-amount{grid-area:amount;font-weight:900;color:#0aa35c;white-space:nowrap}
+.qgm-credit-history-amount.debit{color:#e31338}
+.qgm-credit-history-foot{padding:10px 16px;color:#8a919a;font-size:9px;line-height:1.45;border-top:1px solid #eef0f2}
+.qgm-revenue-info{margin:0}
+.qgm-revenue-info [data-status]{margin:0 0 4px!important;padding:0!important;background:transparent!important;border:0!important;color:#205f9f!important;font-size:11px!important;font-weight:900!important}
+.qgm-revenue-info [data-status]:empty{display:none}
+.qgm-revenue-info-copy{min-width:0}
+.qgm-revenue-info-copy>p{margin:0}
+.qgm-revenue-export{margin-top:0}
+@media(max-width:520px){
+ body.qgm-revenue-page .qgm-content{padding-left:15px!important;padding-right:15px!important}
+ body.qgm-revenue-page .qgm-revenue-head{grid-template-columns:42px minmax(0,1fr) 118px;gap:8px}
+ .qgm-revenue-store{max-width:118px;height:40px;padding:0 9px;font-size:9px}
+ body.qgm-revenue-page .qgm-revenue-title h1{font-size:21px}
+ body.qgm-revenue-page .qgm-revenue-title p{font-size:9.5px}
+ body.qgm-revenue-page .qgm-revenue-ranges{gap:6px}
+ body.qgm-revenue-page .qgm-revenue-ranges button,
+ body.qgm-revenue-page .qgm-date-pill{min-height:42px}
+}
+@media(max-width:390px){
+ body.qgm-revenue-page .qgm-revenue-head{grid-template-columns:40px minmax(0,1fr)}
+ .qgm-revenue-store{grid-column:2;justify-self:start;max-width:100%;height:36px;margin-top:-2px}
+ body.qgm-revenue-page .qgm-revenue-ranges{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ body.qgm-revenue-page .qgm-revenue-ranges button,
+ body.qgm-revenue-page .qgm-date-pill{min-height:39px;padding:0 3px;font-size:8.4px}
+ body.qgm-revenue-page .qgm-revenue-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ body.qgm-revenue-page .qgm-revenue-metric{padding:9px 6px}
+ body.qgm-revenue-page .qgm-revenue-metric small{font-size:7.3px}
+ body.qgm-revenue-page .qgm-revenue-metric b{font-size:11.5px}
+}
+</style>
 </head>
 <body>
 <div id="app"><main id="qgm-boot-recovery" role="status" style="max-width:520px;margin:48px auto;padding:24px;font-family:system-ui,sans-serif;color:#20242a;background:#fff"><h1 style="font-size:22px">QueueGo ร้านค้า</h1><p>กำลังเปิดหน้าร้านค้า หากรอนานให้กดโหลดใหม่</p><button type="button" onclick="location.reload()" style="padding:12px 20px">โหลดใหม่</button><noscript>กรุณาเปิด JavaScript เพื่อใช้งานร้านค้า</noscript></main></div>
@@ -3629,6 +3698,7 @@ window.qgmRenderRevenue=async function(){
   <header class="qgm-revenue-head">
    <button class="qt-shop-back" type="button" onclick="navigate('dashboard')" aria-label="กลับ">←</button>
    <div class="qgm-revenue-title"><h1>วิเคราะห์ร้านค้า</h1><p>รายได้ คำสั่งซื้อ ค่าใช้จ่าย และเครดิตร้านค้า</p></div>
+   <div class="qgm-revenue-store" title="ร้านปัจจุบัน"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v10h16V10"/><path d="M3 10l2-6h14l2 6"/><path d="M7 10v3M12 10v3M17 10v3"/></svg><span>${escapeHtml(u.shopName||u.name||'ร้านปัจจุบัน')}</span></div>
   </header>
   <nav class="qgm-revenue-ranges" aria-label="ช่วงรายงาน">
    <button type="button" class="active" data-range="0" onclick="qgmRevenueOffset(0)">วันนี้</button>
@@ -3638,9 +3708,12 @@ window.qgmRenderRevenue=async function(){
   </nav>
   <div id="qgm-revenue-result" aria-live="polite"><div class="qgm-revenue-loading">กำลังโหลดรายงาน...</div></div>
   <div id="qgm-credit-host" class="qgm-credit-premium"></div>
-  <aside class="qgm-revenue-info"><span class="qgm-revenue-info-icon">i</span><div><b>เครดิตร้านค้าใช้ชำระ GP และค่าบริการในระบบ</b><p>ระบบจะหักค่า GP จากเครดิตร้านโดยอัตโนมัติตามสถานะออเดอร์ เงินสดบันทึกตาม flow จริง ไม่ต้องกดยืนยันการรับเงินเพิ่ม · รายการเครดิตไม่สามารถถอนหรือโอนได้</p></div></aside>
+  <aside id="qgm-credit-status-card" class="qgm-revenue-info"><span class="qgm-revenue-info-icon">i</span><div class="qgm-revenue-info-copy"><div id="qgm-credit-live-status"></div><b>เครดิตร้านค้าใช้ชำระ GP และค่าบริการในระบบ</b><p>ระบบหักค่า GP จากเครดิตร้านอัตโนมัติตามสถานะออเดอร์ เงินสดค่าสินค้าบันทึกตาม flow จริง ไม่ต้องกดยืนยันการรับเงินเพิ่ม และเครดิตไม่สามารถถอนหรือโอนได้</p></div></aside>
+  <section id="qgm-credit-history-card" class="qgm-credit-history-card" hidden></section>
   <button id="qgm-revenue-export" class="qgm-revenue-export" type="button" onclick="qgmExportRevenue(this)">ดาวน์โหลดรายงาน 30 วัน (CSV)</button>
  </div>`,'shop-profile');
+ document.body.classList.add('qgm-revenue-page');
+ {const brand=document.querySelector('.qgm-brand');if(brand&&!brand.querySelector('.qgm-wordmark'))brand.insertAdjacentHTML('beforeend','<span class="qgm-wordmark">Queue<span>Go</span></span>')}
  const creditHost=document.getElementById('qgm-credit-host');
  if(creditHost&&window.QueueGoCredit?.mount){
   Promise.resolve(QueueGoCredit.mount(creditHost,{kind:'merchant',owner:u.id,getToken:qtGetAccessToken,base:QT_SUPABASE_CONFIG.URL,key:QT_SUPABASE_CONFIG.KEY})).then(()=>{
@@ -3660,8 +3733,35 @@ window.qgmRenderRevenue=async function(){
    const historyButton=document.createElement('button');historyButton.type='button';historyButton.textContent='ประวัติรายการ';historyButton.onclick=()=>entries?.scrollIntoView({behavior:'smooth',block:'start'});
    const settings=document.createElement('button');settings.type='button';settings.textContent='ตั้งค่าการใช้งาน';settings.onclick=()=>navigate('shop-profile');
    if(refresh){refresh.textContent='ตรวจสอบรายการ';actions.append(refresh)}actions.append(historyButton,settings);
-   const status=panel.querySelector('[data-status]');panel.insertBefore(actions,status||entries);
-   if(entries){const history=document.createElement('div');history.className='qgm-credit-history-head';history.innerHTML='<b>รายการล่าสุด</b><span>เครดิตร้านค้า</span>';panel.insertBefore(history,entries)}
+   const status=panel.querySelector('[data-status]'),statusHost=document.getElementById('qgm-credit-live-status');
+   panel.insertBefore(actions,status||entries);
+   if(status&&statusHost){
+    const statusMirror=document.createElement('p');statusMirror.className='qgm-credit-live-status-text';statusHost.replaceChildren(statusMirror);
+    const syncStatus=()=>{statusMirror.textContent=status.textContent||''};syncStatus();
+    new MutationObserver(syncStatus).observe(status,{childList:true,subtree:true,characterData:true});
+   }
+   const historyCard=document.getElementById('qgm-credit-history-card'),footnote=Array.from(panel.children).find(el=>el.tagName==='SMALL');
+   if(entries&&historyCard){
+    historyCard.hidden=false;
+    const historyHead=document.createElement('div');historyHead.className='qgm-credit-history-card-head';historyHead.innerHTML='<b>รายการล่าสุด</b><span>เครดิตร้านค้า</span>';
+    const historyList=document.createElement('div');historyList.className='qgm-credit-history-list';
+    historyCard.append(historyHead,historyList);
+    if(footnote){const historyFoot=document.createElement('div');historyFoot.className='qgm-credit-history-foot';historyFoot.textContent=footnote.textContent;historyCard.append(historyFoot)}
+    const syncHistory=()=>{
+     historyList.replaceChildren();
+     entries.querySelectorAll('p').forEach(source=>{
+      const raw=source.textContent.trim(),parts=raw.split(' · ').map(v=>v.trim()),label=parts[0]||'รายการเครดิต',amount=parts[1]||'',date=parts.slice(2).join(' · '),debit=/หัก|กันเครดิต/.test(label)||/^-/.test(amount);
+      const row=document.createElement('p'),icon=document.createElement('span'),name=document.createElement('span'),time=document.createElement('span'),value=document.createElement('span');
+      icon.className='qgm-credit-history-icon'+(debit?' debit':'');icon.textContent=debit?'%':'+';
+      name.className='qgm-credit-history-label';name.textContent=label;
+      time.className='qgm-credit-history-date';time.textContent=date;
+      value.className='qgm-credit-history-amount'+(debit?' debit':'');value.textContent=amount;
+      row.append(icon,name,time,value);historyList.append(row);
+     })
+    };
+    syncHistory();new MutationObserver(syncHistory).observe(entries,{childList:true});
+    historyButton.onclick=()=>historyCard.scrollIntoView({behavior:'smooth',block:'start'});
+   }
    if(nativeAdd&&add){new MutationObserver(()=>{add.disabled=!!nativeAdd.hidden}).observe(nativeAdd,{attributes:true,attributeFilter:['hidden']})}
   }).catch(err=>console.warn('merchant credit surface failed',err));
  }
