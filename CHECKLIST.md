@@ -988,9 +988,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 
 
 ## 2026-10-21 QueueGo Web design language (PR #566)
-- Status: IN PROGRESS
+- Status: DONE (source/test); IN PROGRESS (Web-first review)
 - Branch: `work-web-ui-design-language-20261021`
-- Checkpoint: `0d012060ff7cc1e962d1122b075e21bb5c81041c`
-- Scope: QueueGo wordmark Queue dark / Go red across Customer, Merchant, Rider and Admin; no business-flow or Production data changes.
-- Evidence: Exact-head predecessor RC `39613489017` failed in `tests/customer-features.cjs` because Customer asset URLs had an accidental `design-language1sign-language1` cache key. Corrected both runtime URLs to `20261021-design-language1` in `0d012060ff7cc1e962d1122b075e21bb5c81041c`.
-- NEXT: verify exact-head QueueGo RC on the corrected commit. If it fails, inspect and fix only the first new failure. If it passes, continue the requested Web-first review and verify served bytes before any Android sync.
+- Verified source HEAD: `29a7a1f9004e25fdd5112e4b791f32f64d0e5345`
+- Scope: QueueGo wordmark Queue dark / Go red across Customer, Merchant, Rider and Admin; no Production data/schema/business-flow changes.
+- Evidence: exact-head QueueGo RC run `39614031789` SUCCESS, all 15 job steps completed, including full regression and mobile WebKit checks. Predecessor failure was an accidental Customer asset cache key `design-language1sign-language1`; corrected in commit `0d012060ff7cc1e962d1122b075e21bb5c81041c`.
+- NEXT: finish Web-first review deployment for PR #566, verify the public served assets match the tested source, then consider Android sync only after Owner can inspect the iPhone/Safari result.
