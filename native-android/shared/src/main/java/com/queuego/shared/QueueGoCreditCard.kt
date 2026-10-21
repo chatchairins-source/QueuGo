@@ -369,7 +369,7 @@ fun QueueGoCreditCard(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    HorizontalDivider(color = Color(0xFFEEF0F2))
+                    Divider(color = Color(0xFFEEF0F2))
                     val entries = data?.optJSONArray("entries")
                     if ((entries?.length() ?: 0) == 0) {
                         Text(
@@ -434,7 +434,7 @@ fun QueueGoCreditCard(
                                 )
                             }
                             if (i < minOf(entries?.length() ?: 0, 10) - 1) {
-                                HorizontalDivider(
+                                Divider(
                                     modifier = Modifier.padding(horizontal = 15.dp),
                                     color = Color(0xFFEEF0F2)
                                 )
