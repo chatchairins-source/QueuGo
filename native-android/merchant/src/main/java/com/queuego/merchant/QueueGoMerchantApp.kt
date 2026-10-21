@@ -2077,7 +2077,7 @@ private fun MerchantProfileScreen(
                 Text(
                     shop?.name ?: auth.user.name,
                     color = Color(0xFF202329),
-                    fontSize = 19.sp,
+                    fontSize = MerchantPageTitleSize,
                     lineHeight = 23.sp,
                     fontWeight = FontWeight.Black,
                     maxLines = 1
