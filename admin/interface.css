@@ -694,3 +694,22 @@
   .qg-admin-support>button:first-child{width:auto}
 }
 
+/* QueueGo Admin mobile action grid polish v1 */
+@media (max-width:700px){
+  .qg-user-card>.row-btns:has(>button:nth-child(3):last-child)>button:last-child,
+  .qg-shop-card>.row-btns:has(>button:nth-child(3):last-child)>button:last-child,
+  .qg-approval-card>.row-btns:has(>button:nth-child(3):last-child)>button:last-child{
+    grid-column:1/-1;
+  }
+  .qg-user-card>.row-btns:has(>button:only-child),
+  .qg-shop-card>.row-btns:has(>button:only-child),
+  .qg-approval-card>.row-btns:has(>button:only-child){
+    grid-template-columns:1fr;
+  }
+  .qg-user-card>.row-btns button,
+  .qg-shop-card>.row-btns button,
+  .qg-approval-card>.row-btns button{
+    text-align:center;
+  }
+}
+
