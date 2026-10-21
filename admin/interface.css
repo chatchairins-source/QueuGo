@@ -247,3 +247,40 @@
  .qt-gp-card-head .qg-gp-chip{margin-top:8px;white-space:normal;text-align:center}
  .qt-gp-ratebox{grid-template-columns:42px minmax(0,1fr) auto 42px}
 }
+
+
+/* Shared workspace scale: applies to every existing Admin route. */
+:root{--admin-title:24px;--admin-section-title:18px;--admin-text:14px;--admin-caption:12px}
+.qg-admin-sidebar{background:#fff;color:var(--ink);border-right:1px solid var(--line);padding-top:24px}
+.qg-admin-sidebar .qg-nav-caption{margin:24px 12px 8px;color:#5d6878;letter-spacing:0}
+.qg-admin-sidebar nav{display:block;flex:1;min-height:0;overscroll-behavior:contain}
+.qg-nav-group{display:grid;gap:3px;margin-bottom:16px}
+.qg-nav-group-title{margin:10px 12px 6px;color:#667085;font-size:var(--admin-caption);font-weight:600}
+.qg-admin-sidebar nav a{min-height:44px;padding:10px 12px;color:#485468;font-size:13px;gap:12px}
+.qg-admin-sidebar nav a:hover{background:#f5f6f9;color:var(--ink)}
+.qg-admin-sidebar nav a.active{background:#fff0f3;color:var(--red-dark);box-shadow:none}
+.qg-sidebar-user{border-color:var(--line);padding-top:14px;background:#fff}
+.qg-sidebar-user button{color:var(--ink);min-width:44px;min-height:44px}
+.qg-admin-menu nav .qg-nav-group a{min-height:44px;font-size:14px}
+.qg-page-title h1{font-size:var(--admin-title);line-height:1.4;letter-spacing:-.3px}
+.qt-main h2{font-size:var(--admin-section-title);line-height:1.5}
+.qt-main h3{font-size:16px;line-height:1.5}
+.qt-main p,.qt-main label,.qt-main table,.qt-main button{font-size:var(--admin-text)}
+.qt-main small,.qt-main th,.qt-main .qg-gp-chip,.qt-main .qg-gp-eyebrow{font-size:var(--admin-caption);line-height:1.6}
+.qt-main button{min-height:44px;white-space:normal;overflow-wrap:anywhere}
+.qt-main input:not([type=checkbox]):not([type=radio]),.qt-main select,.qt-main textarea{font-size:16px;min-height:44px}
+.qt-main input[type=checkbox],.qt-main input[type=radio]{min-height:19px}
+.qt-main .row-btns{flex-wrap:wrap;gap:8px}
+.qt-main .card,.qt-main .qt-admin-panel{border-radius:16px}
+.qg-workspace-toolbar{gap:12px}
+.qg-admin-menu nav .qg-nav-group-title{font-size:12px}
+@media(max-width:700px){
+ :root{--admin-title:22px}
+ .qg-page-title{align-items:flex-start;gap:8px}
+ .qg-page-title>div{min-width:0;overflow-wrap:anywhere}
+ .qg-page-back{flex-shrink:0}
+ .qt-main th,.qt-main td{padding:10px 8px}
+ .qg-admin-menu{padding:16px;max-height:88dvh}
+ .qg-admin-menu nav .qg-nav-group{margin-bottom:12px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}

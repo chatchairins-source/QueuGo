@@ -68,10 +68,24 @@ async function load(page){
    const note=document.createElement('p');note.textContent='จำนวนนี้เป็นสถานะที่บันทึกในระบบ ยังไม่ใช่หลักฐานว่า Push, GPS หรือ worker ทำงานปกติ';host.append(note);
    for(const [key,value]of Object.entries(summary.orders||{})){const line=document.createElement('p');line.textContent=key+' · '+Number(value);host.append(line)}
    const health=document.createElement('section');health.className='card';host.append(health);await notificationHealth(health,alive);
-  }else await jobs(page==='admin-express'?'express':page==='admin-laundry'?'laundry':null,host,alive);
+  }else if(page==='admin-laundry'||page==='admin-express'){
+   const kind=page==='admin-laundry'?'laundry':'express';
+   host.innerHTML='<section class="card" id="qg-service-availability" role="status">กำลังตรวจสถานะเปิดบริการจาก backend…</section><div id="qg-service-jobs"></div>';
+   const availability=host.querySelector('#qg-service-availability');
+   await Promise.all([serviceAvailability(kind,availability,alive),jobs(kind,host.querySelector('#qg-service-jobs'),alive)]);
+  }else await jobs(null,host,alive);
   if(alive())status.textContent='ข้อมูลจากระบบล่าสุด';
  }catch(e){if(alive())status.textContent='ยังโหลดหมวดนี้ไม่ได้: '+e.message+' · ระบบที่ยังไม่เปิดใช้งานต้องผ่าน Release Gate ก่อน';}
  finally{if(refresh?.isConnected)refresh.disabled=false}
+}
+async function serviceAvailability(kind,host,alive){
+ try{
+  const enabled=await qgAdminOpsReadRpc('queuego_feature_enabled',{p_feature:kind});
+  if(!alive()||!host.isConnected)return;
+  if(typeof enabled!=='boolean')throw Error('สถานะบริการไม่ครบ');
+  host.textContent=enabled?'เปิดบริการในระบบแล้ว · การรับงานยังขึ้นกับร้านหรือผู้ให้บริการที่พร้อม':'ปิดบริการในระบบ · ตรวจการเปิดบริการและช่วงเวลาที่ตั้งไว้ในบริการและราคา';
+  host.dataset.state=enabled?'enabled':'disabled';
+ }catch(e){if(alive()&&host.isConnected){host.dataset.state='unknown';host.textContent='ตรวจสถานะเปิดบริการไม่ได้: '+e.message+' · กดรีเฟรชเพื่อลองใหม่';}}
 }
 async function dispatchOverview(host,alive){
  try{const report=await qgAdminOpsReadRpc('qg_admin_dispatch_overview',{p_limit:100});if(!alive()||!host.isConnected)return;

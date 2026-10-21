@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="interface.css?v=20261020-gp-cards">
+<link rel="stylesheet" href="interface.css?v=20261021-unified-workspace">
 <script defer src="forms.js?v=20261005-rebuild"></script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script defer src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
@@ -1297,7 +1297,11 @@ function qgAdminMenuItems(){return [
  ['home','ภาพรวม','admin',''],['shield','ศูนย์อนุมัติ','admin-governance','qt-sec-approval'],['users','ผู้ใช้','admin-governance','qt-sec-users'],['shop','ร้านค้า','admin-governance','qt-sec-shops'],['rider','ไรเดอร์','admin-governance','qt-sec-delivery'],['rider','โปรแกรมไรเดอร์','admin-rider-programs',''],['orders','ออเดอร์','admin-orders',''],['rider','จัดสรรงาน','admin-dispatch',''],['rider','Ride','admin-ride',''],['orders','Express','admin-express',''],['shop','ฝากซัก','admin-laundry',''],['shop','แคตตาล็อก','admin-catalog',''],['money','เติมเครดิตฟรีร้านค้า','admin-credit',''],['money','การเงิน','admin-gp',''],['chart','ราคา / ค่าบริการ','admin-pricing',''],['bell','แบนเนอร์ / ประกาศ','admin-content',''],['users','ช่วยเหลือ','admin-support',''],['settings','ระบบ','admin-system',''],['shield','ประวัติการทำงาน','admin-governance','qt-sec-audit']
 ];}
 
-function qgAdminNavigation(){const hash=location.hash.slice(1),section=sessionStorage.getItem('qt_admin_active_tab');return qgAdminMenuItems().map(([icon,label,page,tab])=>`<a href="#${page}" data-page="${page}" data-section="${tab}" class="${hash===page&&(!tab||section===tab)?'active':''}" ${tab?`onclick="event.preventDefault();qgAdminSection('${tab}')"`:''}>${qgAdminIcon(icon)}<span>${label}</span></a>`).join('');}
+function qgAdminNavigation(){
+ const hash=location.hash.slice(1),section=sessionStorage.getItem('qt_admin_active_tab');
+ const groups=[['ภาพรวมและผู้ให้บริการ',['admin','qt-sec-approval','qt-sec-users','qt-sec-shops','qt-sec-delivery','admin-rider-programs']],['งานและบริการ',['admin-orders','admin-dispatch','admin-ride','admin-express','admin-laundry','admin-catalog']],['การเงินและการดูแลระบบ',['admin-credit','admin-gp','admin-pricing','admin-content','admin-support','admin-system','qt-sec-audit']]];
+ return groups.map(([label,keys])=>`<div class="qg-nav-group"><p class="qg-nav-group-title">${label}</p>${qgAdminMenuItems().filter(([, ,page,tab])=>keys.includes(tab||page)).map(([icon,label,page,tab])=>`<a href="#${page}" data-page="${page}" data-section="${tab}" class="${hash===page&&(!tab||section===tab)?'active':''}" ${tab?`onclick="event.preventDefault();qgAdminSection('${tab}')"`:''}>${qgAdminIcon(icon)}<span>${label}</span></a>`).join('')}</div>`).join('');
+}
 function qgAdminSyncNavigation(){const hash=location.hash.slice(1),section=sessionStorage.getItem('qt_admin_active_tab');document.querySelectorAll('[data-page]').forEach(a=>{const active=hash===a.dataset.page&&(!a.dataset.section||section===a.dataset.section);a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')})}
 function layout(title, content){
  document.title=title+' · QueueGo Admin';const user=currentUser();
@@ -2390,7 +2394,7 @@ async function qgLoadAdminCash(day){
 <script src="admin-service-banners.js?v=20261008-banner1"></script>
 <script src="credit.js?v=20261020-1"></script>
 <script src="passenger-ride.js?v=20261020-1"></script>
-<script src="operations.js?v=20261020-job-history"></script>
+<script src="operations.js?v=unified-20261021-20261020-job-history"></script>
 <script src="rider-programs.js?v=20261020-1"></script>
 <script src="workspace.js?v=20261020-official-preview"></script>
 <script src="section-loader.js?v=20261020-market-counts"></script>

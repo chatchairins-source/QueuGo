@@ -23,7 +23,7 @@ const laundryV2=read('QueueGo-Laundry-v2.sql');
 // Customer top-level service separation.
 for(const label of ['อาหาร','เครื่องดื่ม','ร้านขายของชำ','ฝากซัก','ตลาดสด'])ok(customer.includes('<b>'+label+'</b>'),'missing service '+label);
 ok(customer.includes("go('market')"),'market must be a dedicated route');
-ok(customer.includes("location.href='laundry/'"),'laundry must use dedicated module');
+ok(/location\.href='laundry\/(?:\?[^']*)?'/.test(customer),'laundry must use dedicated module');
 ok(customer.includes("DEDICATED_MARKET_CATS"),'normal search must exclude dedicated market shop categories');
 ok(customer.includes("queuego_place_market_order"),'market checkout RPC missing');
 ok(customer.includes("queuego_add_market_order_shops"),'market add-shop RPC missing');

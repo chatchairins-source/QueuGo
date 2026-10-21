@@ -20,6 +20,7 @@ const root=path.resolve(__dirname,'..'),owner='00000000-0000-4000-8000-000000000
   let data=[];
   if(u.pathname.endsWith('/users'))data=[{id:owner,auth_user_id:owner,role:'admin',name:'Local QA Admin',status:'active',metadata:{},created_at:'2026-10-01T00:00:00Z'}];
   if(u.pathname.endsWith('/system_settings'))data=[{value:{}}];
+  if(u.pathname.endsWith('/rpc/queuego_feature_enabled'))data=true;
   if(u.pathname.endsWith('/rpc/qg_admin_live_counts'))data={shops_open:1,riders_online:1,orders:{pending:1}};
   if(u.pathname.endsWith('/rpc/qg_admin_dispatch_overview'))data={as_of:new Date().toISOString(),offers:[],history:[],bundles:[],limit:100};
   if(u.pathname.endsWith('/rpc/qg_admin_notification_health'))data={as_of:new Date().toISOString(),channels:[{channel:'unified',status:'pending',n:2,due:1,oldest:new Date().toISOString()}]};
@@ -60,6 +61,18 @@ const root=path.resolve(__dirname,'..'),owner='00000000-0000-4000-8000-000000000
    assert.equal(await page.locator('.qt-admin-panel.active').count(),1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'section overflow: '+sectionName);checks+=2;
   }
 
+  for(const width of [320,390,768,1440]){
+   await page.setViewportSize({width,height:900});
+   for(const name of ['admin','admin-orders','admin-credit','admin-laundry','admin-express','admin-catalog','admin-system']){
+    await page.evaluate(name=>{location.hash='#'+name},name);await page.waitForLoadState('networkidle');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'workspace overflow: '+name+' / '+width);checks++;
+    assert.equal(await page.locator('.qg-page-title h1').evaluate(el=>getComputedStyle(el).fontSize),width<=700?'22px':'24px');checks++;
+   }
+   const nav=width>=1024?page.locator('.qg-admin-sidebar nav'):page.locator('#qg-admin-menu nav');
+   assert.equal(await nav.locator('.qg-nav-group').count(),3);checks++;
+   if(width===320){await page.evaluate(()=>document.getElementById('qg-admin-menu').showModal());await page.screenshot({path:'/tmp/queuego-admin-menu-mobile.png'});await page.evaluate(()=>document.getElementById('qg-admin-menu').close())}
+   if(width===1440)await page.screenshot({path:'/tmp/queuego-admin-workspace-desktop.png',fullPage:true});
+  }
  }
  assert.deepEqual(errors,[]);checks++;results.push({mode,shellMs,readyMs,bootRequests:boot.length,boot});await context.close();
  }
