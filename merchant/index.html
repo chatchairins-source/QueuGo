@@ -2528,9 +2528,6 @@ window.renderShopDashboardModern=function(u){
 {
 
  const main=document.querySelector('.qgm-content');if(!main)return;
- const revenue=document.createElement('button');revenue.className='qgm-revenue-entry';revenue.type='button';revenue.onclick=()=>navigate('shop-revenue');
- revenue.innerHTML='<span>฿</span><span><strong>รายได้ทั้งหมด</strong><small>เลือกวัน ดูยอดขาย เงินสด และ GP ที่หักจากเครดิต</small></span>';
- const stats=main.querySelector('.qgm-stats');(stats||main.firstChild).after(revenue);
  const menu=document.createElement('div');menu.className='qgm-pause-menu';menu.innerHTML='<small>พักรับออเดอร์:</small><button type="button" onclick="qgmPauseShop(30)">30 นาที</button><button type="button" onclick="qgmPauseShop(60)">1 ชั่วโมง</button><button type="button" onclick="qgmPauseShop(1440)">1 วัน</button>';
  main.querySelector('.qgm-home-store')?.after(menu);
 }
