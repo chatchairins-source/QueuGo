@@ -1066,7 +1066,7 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 
 ## 2026-10-21 POS numeric quantity regression follow-up
 - Production read-only schema shows `order_items.quantity numeric` and `market_products.stock_quantity numeric`; Market mapping uses composite product/shop FK. Existing Market and Grocery item stock triggers are SECURITY DEFINER.
-- PR #576 changes inventory PGlite fixture quantity from integer to numeric; adds fractional generic rejection and fractional Market ledger decrement assertions. Exact QueueGo RC pending; no Production DDL/data write.
+- PR #576 changed inventory PGlite quantity to numeric and adds fractional generic rejection plus fractional Market ledger decrement assertions. Exact RC `39647073978` passed; merged at `a4f12dd39b751e7e05a2d37b54e47863d477f391`. No Production DDL/data write.
 
 
 ## 2026-10-21 POS numeric quantity compatibility — merged
