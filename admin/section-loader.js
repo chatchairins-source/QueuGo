@@ -38,7 +38,7 @@ const cursorKey=c=>c&&c.at&&c.id?String(c.at)+'|'+String(c.id):'';
 function readScope(){const key=section();if(directory.has(key))return'directory:'+JSON.stringify([window.QG_ADMIN_DIRECTORY_QUERY||'',window.QG_ADMIN_DIRECTORY_CURSOR||'']);if(key==='qt-sec-audit')return key+':'+cursorKey(window.QG_ADMIN_AUDIT_CURSOR);if(key==='notifications')return key+':'+cursorKey(window.QG_ADMIN_NOTIFICATION_CURSOR);return key==='qt-sec-overview'?'admin':key}
 window.addEventListener('hashchange',()=>stopStale());window.addEventListener('qg:admin-section',()=>stopStale());
 const metrics=window.QG_ADMIN_LOAD_METRICS=[];
-function reset(){epoch++;stopStale(true);cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_QUERY='';history.length=0;window.QG_ADMIN_DIRECTORY_PAGE=null;window.QG_ADMIN_AUDIT_PAGE=0;window.QG_ADMIN_NOTIFICATION_PAGE=0;window.QG_ADMIN_AUDIT_CURSOR=null;window.QG_ADMIN_NOTIFICATION_CURSOR=null;auditHistory.length=0;notificationHistory.length=0;window.QG_ADMIN_AUDIT_PAGE_INFO=null;window.QG_ADMIN_NOTIFICATION_PAGE_INFO=null;}
+function reset(){epoch++;stopStale(true);cache.clear();window.qgAdminClearReadCache();actor=identity();window.QG_ADMIN_SUMMARY=null;window.QG_ADMIN_RECENT_ORDERS=null;window.QG_ADMIN_RECENT_ORDERS_ERROR=null;window.QG_ADMIN_DIRECTORY_CURSOR='';window.QG_ADMIN_DIRECTORY_QUERY='';history.length=0;window.QG_ADMIN_DIRECTORY_PAGE=null;window.QG_ADMIN_AUDIT_PAGE=0;window.QG_ADMIN_NOTIFICATION_PAGE=0;window.QG_ADMIN_AUDIT_CURSOR=null;window.QG_ADMIN_NOTIFICATION_CURSOR=null;auditHistory.length=0;notificationHistory.length=0;window.QG_ADMIN_AUDIT_PAGE_INFO=null;window.QG_ADMIN_NOTIFICATION_PAGE_INFO=null;}
 async function resource(key,load,force){
  if(identity()!==actor)reset();if(!actor)return false;
  stopStale();const now=Date.now(),old=cache.get(key);if(old?.promise&&old.scope===readScope())return old.promise.then(changed=>{if(old.dirty&&identity()===actor&&readScope()===old.scope){old.dirty=false;return resource(key,load,true)}return changed});
@@ -63,8 +63,21 @@ window.qgAdminCountRead=async function(path){
 async function summary(valid){
  const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
  const paths={orders:'orders?select=id',shops:'users?select=id&role=eq.shop',riders:'users?select=id&role=eq.rider',customers:'users?select=id&role=eq.customer',pendingShops:'users?select=id&role=eq.shop&status=eq.pending',pendingRiders:'users?select=id&role=eq.rider&status=eq.pending',promotions:'promotions?select=id&status=eq.pending'};
- const entries=await Promise.all(Object.entries(paths).map(async([k,p])=>[k,await count(p,token)]));
- if(valid())window.QG_ADMIN_SUMMARY=Object.fromEntries(entries);
+ const [entries,recentResult]=await Promise.all([
+  Promise.all(Object.entries(paths).map(async([k,p])=>[k,await count(p,token)])),
+  qtSupabaseTable('orders?select=id,order_number,status,total_amount,created_at,shop_id&order=created_at.desc,id.desc&limit=6',{accessToken:token})
+   .then(async rows=>{
+    const orders=Array.isArray(rows)?rows:[],ids=[...new Set(orders.map(x=>x.shop_id).filter(Boolean))];let shops=[];
+    if(ids.length)try{shops=await qtSupabaseTable('shop_profiles?select=id,shop_name&id=in.('+ids.join(',')+')',{accessToken:token})}catch(e){}
+    const names=new Map((Array.isArray(shops)?shops:[]).map(x=>[String(x.id),x.shop_name]));
+    return {orders:orders.map(row=>Object.assign(qtOrderFromRow(row),{shopName:names.get(String(row.shop_id))||''}))};
+   }).catch(error=>({error}))
+ ]);
+ if(valid()){
+  window.QG_ADMIN_SUMMARY=Object.fromEntries(entries);
+  window.QG_ADMIN_RECENT_ORDERS=recentResult.orders||null;
+  window.QG_ADMIN_RECENT_ORDERS_ERROR=recentResult.error?String(recentResult.error.message||recentResult.error):null;
+ }
 }
 async function read(path){return qtSupabaseTable(path,{accessToken:await qtGetAccessToken()})}
 window.qgAdminRealtimeTables=function(){
