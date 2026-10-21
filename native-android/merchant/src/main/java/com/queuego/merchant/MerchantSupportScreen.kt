@@ -94,7 +94,7 @@ private fun MerchantSupportRoom(auth: NativeAuth, onBack: () -> Unit) {
             OutlinedButton(onClick = { if (!busy) back() }) { Text("ย้อนกลับ") }
         }
         Spacer(Modifier.height(12.dp))
-        QgSectionTitle("ข้อความถึงแอดมิน", "QueueGo Support")
+        MerchantPageTitle("ข้อความถึงแอดมิน", "QueueGo Support")
         if (!error.isNullOrBlank()) {
             Spacer(Modifier.height(6.dp))
             Text(error!!, color = QgRed)
