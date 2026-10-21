@@ -45,4 +45,4 @@ An individual feature can be marked `DONE (source/test)` only with its exact com
 
 ## Inventory quantity schema compatibility follow-up
 - Read-only Production inspection confirms `order_items.quantity` is `numeric`, `market_products.stock_quantity` is `numeric`, and the Market-to-product relationship is the composite FK `(product_id,shop_id) → products(id,shop_id)`. Existing Market/Grocery item stock triggers are SECURITY DEFINER.
-- Prior PGlite inventory fixture used integer quantity, which could not exercise fractional Market items or fractional generic rejection. PR #576 changes fixture to numeric and adds both regression cases. Exact-source CI pending; no Production change.
+- Prior PGlite inventory fixture used integer quantity. PR #576 changed it to numeric, added fractional Market and generic rejection cases, and merged at `a4f12dd39b751e7e05a2d37b54e47863d477f391`. Exact-source RC `39647073978` and post-merge RC `39647725266` passed; Pages deploy `39647725023` succeeded. No Production change.
