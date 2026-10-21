@@ -316,9 +316,9 @@ body.qgm-app,body.qgm-login{height:auto!important;min-height:100dvh!important;ov
 body.qgm-revenue-page{background:#f7f8fa}
 body.qgm-revenue-page .qgm-top{min-height:52px;padding:calc(8px + env(safe-area-inset-top)) 16px 8px}
 body.qgm-revenue-page .qgm-brand{gap:8px;font-size:19px;font-weight:900}
-body.qgm-revenue-page .qgm-brand-mark{width:28px;height:28px}
-body.qgm-revenue-page .qgm-wordmark{display:inline-flex;align-items:center;letter-spacing:-.35px;color:#17191d}
-body.qgm-revenue-page .qgm-wordmark span{color:inherit}
+body.qgm-revenue-page .qgm-wordmark{display:inline-flex;align-items:baseline;letter-spacing:-.35px}
+body.qgm-revenue-page .qgm-wordmark-queue{color:#17191d}
+body.qgm-revenue-page .qgm-wordmark-go{color:var(--qg-red)}
 body.qgm-revenue-page .qgm-content{padding-top:12px!important;padding-bottom:calc(var(--qg-nav-h) + env(safe-area-inset-bottom) + 34px)!important}
 body.qgm-revenue-page .qgm-revenue-modern{gap:12px}
 body.qgm-revenue-page .qgm-revenue-head{grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;margin:0}
@@ -1909,12 +1909,7 @@ let qtSalesRange=1;
 <style id="qt-notifications-professional-v12">
 body.qt-notifications-page .qgm-content{padding-bottom:118px}
 .qt-notif-screen{display:grid;gap:16px;max-width:620px;margin:0 auto}
-.qt-notif-header{display:flex;align-items:center;gap:12px;padding:2px 0 4px}
-.qt-notif-back{width:42px;height:42px;flex:none;border:1px solid #e5e7eb;border-radius:14px;background:#fff;color:#222;display:grid;place-items:center;box-shadow:0 3px 12px rgba(16,24,40,.05)}
-.qt-notif-back svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.qt-notif-header-copy{min-width:0}
-.qt-notif-header h1{margin:0;color:#17191d;font-size:24px;line-height:1.18;letter-spacing:-.35px}
-.qt-notif-header p{margin:5px 0 0;color:#8a9099;font-size:12px;line-height:1.45}
+.qt-notif-intro{margin:0;color:#7f8791;font-size:12px;line-height:1.5}
 .qt-notif-sound{width:100%;border:1px solid #f0d8dc;border-radius:18px;background:linear-gradient(135deg,#fff 0%,#fff7f8 100%);padding:13px 14px;display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;text-align:left;color:#202226;box-shadow:0 5px 18px rgba(36,24,27,.04)}
 .qt-notif-sound-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#fff0f3;color:#e51d3d}
 .qt-notif-sound-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
@@ -2047,7 +2042,7 @@ button.qt-notif-row:active{transform:scale(.995)}
 
     qtShopLayout('การแจ้งเตือน',
       '<section class="qt-notif-screen">'+
-        '<header class="qt-notif-header"><button type="button" class="qt-notif-back" aria-label="กลับ" onclick="navigate(\'dashboard\')">'+iconSvg('back')+'</button><div class="qt-notif-header-copy"><h1>การแจ้งเตือน</h1><p>ติดตามออเดอร์ สถานะระบบ และข่าวสารของร้านในที่เดียว</p></div></header>'+
+        '<p class="qt-notif-intro">ติดตามออเดอร์ สถานะระบบ และข่าวสารของร้านในที่เดียว</p>'+
         '<button class="qt-notif-sound" type="button" onclick="qgTestMerchantSound()"><span class="qt-notif-sound-icon">'+iconSvg('bell')+'</span><span><strong>เสียงแจ้งเตือน</strong><small>เปิดเสียงและทดสอบการแจ้งเตือนของร้าน</small></span><span class="qt-notif-sound-action">ทดสอบเสียง</span></button>'+
         '<div class="qt-notif-filter" role="tablist" aria-label="กรองการแจ้งเตือน">'+tabs+'</div>'+
         list+
@@ -2139,12 +2134,13 @@ setInterval(()=>{if(['#shop-profile','#shop-support'].includes(location.hash))qt
 
 
 <style id="qg-merchant-reference-v02">
-:root{--qg-red-dark:#d90d2d;--qg-green:#12a66a;--qg-orange:#f3a51c;
+:root{--qg-red-dark:#b20b29;--qg-green:#12a66a;--qg-orange:#f3a51c;
   --qg-blue:#2c91c8;--qg-nav-h:68px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--qg-bg)}
 body.qgm-app,body.qgm-login{
+  -webkit-text-size-adjust:100%;text-size-adjust:100%;
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Noto Sans Thai","Thonburi",sans-serif;
   color:var(--qg-text);font-size:14px;overflow-x:clip
 }
@@ -2155,7 +2151,6 @@ button{cursor:pointer}.qgm-shell{width:100%;background:var(--qg-bg)}
   position:sticky;top:0;z-index:30;
   display:flex;align-items:center;gap:10px
 }
-.qgm-top.red{background:linear-gradient(135deg,#f01335,#ee0f2e);color:#fff;border:0}
 .qgm-brand{letter-spacing:-.4px}
 .qgm-logo{width:31px;height:31px;border-radius:50%;display:grid;place-items:center;background:#fff;color:var(--qg-red)}
 .qgm-logo svg{width:20px;height:20px}.qgm-spacer{flex:1}
@@ -2222,7 +2217,7 @@ button{cursor:pointer}.qgm-shell{width:100%;background:var(--qg-bg)}
 .qgm-form-card{padding:14px}.qgm-product-head{display:flex;gap:12px;align-items:center;margin-bottom:15px}.qgm-product-head img{width:68px;height:68px;border-radius:12px;object-fit:cover;background:#eee}
 .qgm-field{margin:12px 0}.qgm-field label{display:block;font-size:11px;font-weight:700;margin-bottom:6px}.qgm-field input,.qgm-field select,.qgm-field textarea{width:100%;border:1px solid var(--qg-line);border-radius:11px;padding:11px 12px;background:#fff;outline:0}
 .qgm-inline{display:grid;grid-template-columns:1fr 1fr;gap:9px}.qgm-form-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--qg-line)}
-.qgm-chiprow{display:flex;gap:7px;flex-wrap:wrap}.qgm-chip{border:1px solid var(--qg-line);background:#f6f7f8;border-radius:999px;padding:7px 10px;font-size:10px}
+.qgm-chiprow{display:flex;gap:7px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}.qgm-chiprow::-webkit-scrollbar{display:none}.qgm-chip{flex:0 0 auto;white-space:nowrap;border:1px solid var(--qg-line);background:#f6f7f8;border-radius:999px;padding:7px 10px;font-size:10px}
 .qgm-empty{min-height:56dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:25px}.qgm-empty .mega{width:88px;height:88px;color:var(--qg-red);margin-bottom:12px}
 .qgm-empty h2{font-size:17px;margin:0 0 6px}.qgm-empty p{color:#8b9098;font-size:11px;line-height:1.6;margin:0 0 18px}
 .qgm-profile-cover{overflow:hidden;position:relative;background:#eee}.qgm-profile-cover img{width:100%;height:100%;object-fit:cover}.qgm-camera{position:absolute;right:10px;bottom:10px;width:38px;height:38px;border:0;border-radius:50%;background:#fff;color:#555;display:grid;place-items:center}
@@ -2362,7 +2357,7 @@ function img(v){
   if(/^(https?:|data:image\/|blob:)/i.test(s)) return s;
   return qtShopImageSrc(s);
 }
-function qgmBrand(){return `<span class="qgm-brand-mark"><svg viewBox="0 0 48 48" aria-label="QueueGo" role="img"><circle cx="23" cy="23" r="16" fill="none" stroke="currentColor" stroke-width="8"/><path d="M26 27l12 12" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></span>`}
+function qgmBrand(){return `<span class="qgm-wordmark" aria-label="QueueGo"><span class="qgm-wordmark-queue">Queue</span><span class="qgm-wordmark-go">Go</span></span>`}
 const QGM_ROUTE_RESTORE_TIMEOUT_MS=10000;
 function qgmBoundSessionRestore(promise){return new Promise(resolve=>{let settled=false;const timer=setTimeout(()=>{if(settled)return;settled=true;resolve(null)},QGM_ROUTE_RESTORE_TIMEOUT_MS);Promise.resolve(promise).then(value=>{if(settled)return;settled=true;clearTimeout(timer);resolve(value||null)},err=>{if(settled)return;settled=true;clearTimeout(timer);console.warn('Merchant session restore failed',err);resolve(null)})})}
 async function qgmRequireShopUser(){let u=shopUser();if(u)return u;const s=qtSessionRead();if(!s?.accessToken||s.role!=='shop'||!s.authUserId)return null;try{await qtRestoreOwnUser();u=shopUser();return u||null}catch(e){console.warn('Merchant session restore failed',e);return shopUser()||null}}
@@ -2377,7 +2372,7 @@ function qgmOpenGroceryCatalogReady(u){if(!u){return qgmOpenGroceryCatalogFromSe
 async function qgmRecoverGroceryCatalog(){if(qgmOpenGroceryCatalogFromSession())return true;let u=await qgmBoundSessionRestore(qgmRequireShopUser());if(u&&qgmShopCategory(u)!=='grocery'&&qtSessionRead()?.role==='shop'){try{await qgmBoundSessionRestore(qtRestoreOwnUser({refresh:true}));u=shopUser()||u}catch(e){console.warn('Grocery profile restore failed',e)}}return qgmOpenGroceryCatalogReady(u)}
 window.qgmOpenGroceryCatalog=function(){const u=shopUser();return qgmShopCategory(u)==='grocery'?qgmOpenGroceryCatalogReady(u):(qgmOpenGroceryCatalogFromSession()||qgmRecoverGroceryCatalog())};
 function nav(active){const items=[['dashboard','home','หน้าหลัก'],['shop-orders','orders','คำสั่งซื้อ'],['shop-products','box','สินค้า'],['shop-promote','tag','โปรโมชั่น'],['shop-profile','user','บัญชี']];return `<nav class="qgm-bottom" aria-label="เมนูหลัก">${items.map(([r,i,l])=>`<button type="button" class="${active===r?'active':''}" aria-label="${l}" ${active===r?'aria-current="page"':''} onclick="${r==='shop-products'?'qgmOpenProducts()':`navigate('${r}')`}"><span class="qgm-tab-icon">${svg(i)}</span><span>${l}</span></button>`).join('')}</nav>`}
-function top(title,back=false,red=false){return `<header class="qgm-top">${back?`<button class="qgm-iconbtn qgm-back" type="button" aria-label="กลับ" onclick="navigate('dashboard')">${svg('back')}</button>`:`<div class="qgm-brand">${qgmBrand()}</div>`}<h1 class="${back?'qgm-title':'qgm-spacer'}">${back?esc(title):''}</h1>${back?'<span class="qgm-header-spacer"></span>':`<button class="qgm-iconbtn" type="button" aria-label="การแจ้งเตือน" onclick="navigate('notifications')">${svg('bell')}<span id="qgm-notif-count" ${getNotifications(currentUser()?.id).some(n=>!n.read)?'':'hidden'} style="position:absolute;right:0;top:0;background:#e6002d;color:white;border-radius:8px;font-size:10px;padding:1px 4px">${getNotifications(currentUser()?.id).filter(n=>!n.read).length}</span></button>`}</header>`}
+function top(title,back=false,red=false){return `<header class="qgm-top">${back?`<button class="qgm-iconbtn qgm-back" type="button" aria-label="กลับ" onclick="navigate('dashboard')">${svg('back')}</button>`:`<div class="qgm-brand">${qgmBrand()}</div>`}<h1 class="${back?'qgm-title':'qgm-spacer'}">${back?esc(title):''}</h1>${back?`<div class="qgm-header-brand-right">${qgmBrand()}</div>`:`<button class="qgm-iconbtn" type="button" aria-label="การแจ้งเตือน" onclick="navigate('notifications')">${svg('bell')}<span id="qgm-notif-count" ${getNotifications(currentUser()?.id).some(n=>!n.read)?'':'hidden'} style="position:absolute;right:0;top:0;background:#e6002d;color:white;border-radius:8px;font-size:10px;padding:1px 4px">${getNotifications(currentUser()?.id).filter(n=>!n.read).length}</span></button>`}</header>`}
 function layout(title,body,active,opts={}){document.title=title+' - QueueGo';document.body.className='qgm-app';document.querySelectorAll('body>.qgm-bottom').forEach(n=>n.remove());document.getElementById('app').innerHTML=`<div class="qgm-shell">${top(title,!!opts.back,!!opts.red)}<main class="qgm-content">${body}</main>${nav(active)}</div>`}
 window.qtShopLayout=(title,body,active)=>layout(title,body,active);
 
@@ -3293,7 +3288,7 @@ window.renderShopModules=async function(){
 
 <style id="qg-v04-reference-polish">
 :root{
-  --qg-red:#f20d2f;
+  --qg-red:#e6002d;
   --qg-bg:#f6f7f9;
   --qg-card:#fff;
   --qg-text:#15171a;
@@ -3320,8 +3315,8 @@ body.qgm-app{background:#f8f9fb}
 .qgm-shell{max-width:620px;margin:0 auto;overflow-x:clip}
 .qgm-top{background:#fff!important;color:#17191d!important;border-bottom:1px solid #eef0f2;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;min-height:58px}
 .qgm-brand{display:flex;align-items:center;gap:6px;font-size:21px;font-weight:800;color:#17191d}
-.qgm-brand-mark{width:30px;height:30px;color:#e7092b;display:block}.qgm-brand-mark svg{width:100%;height:100%}.qgm-wordmark span{color:#e7092b}
-.qgm-title{font-size:19px}.qgm-header-spacer{width:40px;flex:none}
+.qgm-wordmark{display:inline-flex;align-items:baseline;letter-spacing:-.45px}.qgm-wordmark-queue{color:#17191d}.qgm-wordmark-go{color:#e7092b}
+.qgm-title{font-size:19px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qgm-header-spacer{width:40px;flex:none}.qgm-header-brand-right{flex:none;display:flex;align-items:center;justify-content:flex-end;font-size:14px;font-weight:850;line-height:1;letter-spacing:-.35px}.qgm-header-brand-right .qgm-wordmark{white-space:nowrap}
 .qgm-content{min-width:0;padding:14px 16px calc(var(--qg-nav-h) + env(safe-area-inset-bottom) + 26px)}
 .qgm-bottom{width:min(100%,620px);left:50%;right:auto;transform:translateX(-50%);height:calc(72px + env(safe-area-inset-bottom));padding:6px 7px env(safe-area-inset-bottom);gap:0}
 .qgm-bottom button{min-width:0;min-height:50px;font-size:10px;gap:2px;color:#8f97a2;border-radius:12px}
@@ -3707,7 +3702,7 @@ window.qgmOpenGpSlip=async function(event,link){
 .qgm-report h2{margin:0 0 10px;font-size:16px}.qgm-report-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.qgm-report-grid div{background:#f4faf6;border-radius:10px;padding:12px}.qgm-report-grid small{display:block;color:#688478;font-size:11px}.qgm-report-grid b{font-size:18px;color:#173c31}
 .qgm-report-date{width:100%;padding:11px;border:1px solid #cce5d7;border-radius:10px;background:#fff;font:inherit}.qgm-report-status{font-size:12px;color:#607e6e}.qgm-report-error{color:#b83045}
 .qgm-order-extra{margin:12px 0}.qgm-order-extra .qgm-outline{width:100%}.qgm-order-extra small{display:block;margin-top:8px;color:#70887b}
-.qgm-pause-menu{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:10px 0}.qgm-pause-menu button{border:1px solid #d6eadf;border-radius:20px;background:#fff;color:#447263;padding:7px 10px;font-size:11px}
+.qgm-pause-menu{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:10px 0}.qgm-pause-menu::-webkit-scrollbar{display:none}.qgm-pause-menu button{flex:0 0 auto;white-space:nowrap;border:1px solid #d6eadf;border-radius:20px;background:#fff;color:#447263;padding:7px 10px;font-size:11px}
 </style>
 <script id="qgm-v15-business">
 (function(){

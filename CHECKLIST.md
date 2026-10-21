@@ -985,3 +985,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Production READ-ONLY: Laundry enabled=true, one active hub. Function signature includes p_at DEFAULT now(); previous main fixes avoid explicit null time. Six inspected Admin dispatch/count/notification/credit RPCs deny anon EXECUTE and allow authenticated (role checks remain server-side). This is not authenticated acceptance evidence.
 - Test-harness repair: merchant-routing still expected removed revenue explanatory copy; current main uses automatic GP-credit copy. Updated the assertion to current text; no Merchant runtime changed.
 - NEXT: full regression, hosted WebKit at320/390/768/1440, exact-head CI, merge then Pages byte verification. Local WebKit archive download truncated/503; hosted CI required. Authenticated real-account read/save/reopen and physical acceptance remain BLOCKED without an authorized Admin browser session. Payment provider, Ride/Express activation and physical release gates remain separate; do not claim whole-system done.
+
+
+## 2026-10-21 QueueGo Web design language (PR #566)
+- Status: DONE (source/test); IN PROGRESS (Web-first review)
+- Branch: `work-web-ui-design-language-20261021`
+- Verified source HEAD: `29a7a1f9004e25fdd5112e4b791f32f64d0e5345`
+- Scope: QueueGo wordmark Queue dark / Go red across Customer, Merchant, Rider and Admin; no Production data/schema/business-flow changes.
+- Evidence: exact-head QueueGo RC run `39614031789` SUCCESS, all 15 job steps completed, including full regression and mobile WebKit checks. Predecessor failure was an accidental Customer asset cache key `design-language1sign-language1`; corrected in commit `0d012060ff7cc1e962d1122b075e21bb5c81041c`.
+- NEXT: finish Web-first review deployment for PR #566, verify the public served assets match the tested source, then consider Android sync only after Owner can inspect the iPhone/Safari result.
