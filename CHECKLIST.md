@@ -988,9 +988,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 
 
 ## 2026-10-21 QueueGo Web design language (PR #566)
-- Status: DONE (source/test); IN PROGRESS (Web-first review)
-- Branch: `work-web-ui-design-language-20261021`
-- Verified source HEAD: `29a7a1f9004e25fdd5112e4b791f32f64d0e5345`
-- Scope: QueueGo wordmark Queue dark / Go red across Customer, Merchant, Rider and Admin; no Production data/schema/business-flow changes.
-- Evidence: exact-head QueueGo RC run `39614031789` SUCCESS, all 15 job steps completed, including full regression and mobile WebKit checks. Predecessor failure was an accidental Customer asset cache key `design-language1sign-language1`; corrected in commit `0d012060ff7cc1e962d1122b075e21bb5c81041c`.
-- NEXT: finish Web-first review deployment for PR #566, verify the public served assets match the tested source, then consider Android sync only after Owner can inspect the iPhone/Safari result.
+- Source/test status: DONE. PR #566 merged to main as `beac57b9c66972fcaeb4253e2c05116c7617b30f`.
+- Branch checkpoint: `29a7a1f9004e25fdd5112e4b791f32f64d0e5345`; exact-head RC `39614031789` SUCCESS, all15 steps completed, including full regression and mobile WebKit.
+- Scope: QueueGo wordmark Queue dark / Go red across Customer, Merchant, Rider and Admin. No Production data, schema or business-flow changes.
+- Web deployment: Pages build/deploy run `39614671640` SUCCESS on merge commit. Main Customer asset blob `f7c4082c0d211a93df003ae3473fac181e6178ce` has the tested singular cache keys; Admin CSS contains the shared wordmark colors.
+- Owner visual acceptance: BLOCKED until Owner opens the deployed site in iPhone Safari; this environment could not read the live Pages response to independently compare served bytes.
+- NEXT: Owner reviews QueueGo in iPhone Safari. After review, record any requested visual corrections; only then decide on Android sync.
