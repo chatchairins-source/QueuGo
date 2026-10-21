@@ -2,7 +2,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {PGlite}=require('@electric-sql/pglite');
 const root=path.resolve(__dirname,'..');
 const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021125213_pos_cash_register_shifts.sql'),'utf8');
-const aclMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261021125342_pos_cash_shifts_acl_indexes.sql'),'utf8');
+const aclMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261021130147_pos_cash_shifts_acl_indexes.sql'),'utf8');
 (async()=>{
   const db=new PGlite();
   await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
