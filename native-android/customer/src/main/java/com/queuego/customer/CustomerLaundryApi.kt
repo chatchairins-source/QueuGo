@@ -68,7 +68,7 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
         val enabledRaw = http.rpc(
             "queuego_feature_enabled",
             auth.session.accessToken,
-            JSONObject().put("p_feature", "laundry").put("p_at", JSONObject.NULL)
+            JSONObject().put("p_feature", "laundry")
         )
         val enabled = when (enabledRaw) {
             is Boolean -> enabledRaw
