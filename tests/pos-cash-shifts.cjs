@@ -1,0 +1,60 @@
+const fs=require('fs'),path=require('path'),assert=require('assert/strict');
+const {PGlite}=require('@electric-sql/pglite');
+const root=path.resolve(__dirname,'..');
+const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021123110_pos_cash_register_shifts.sql'),'utf8');
+(async()=>{
+  const db=new PGlite();
+  await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
+    create table public.shop_profiles(id uuid primary key);
+    create table public.pos_staff(user_id uuid,shop_id uuid,display_name text,active boolean);
+    create table public.orders(id uuid primary key,shop_id uuid,sales_channel text,payment_status text,bill_status text,status text,kitchen_status text,total_amount numeric,payment_method text,cash_tendered numeric,cash_change numeric,paid_at timestamptz,updated_at timestamptz default now(),note text);
+    create table public.payments(order_id uuid,amount numeric,payment_method text,status text,paid_at timestamptz,updated_at timestamptz default now(),note text);
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    create function public.pos_my_shop() returns uuid language sql stable as $$ select nullif(current_setting('qg.test.shop',true),'')::uuid $$;
+    create function public.pos_is_owner() returns boolean language sql stable as $$ select coalesce(current_setting('qg.test.owner',true),'false')='true' $$;
+    create function public.pos_allowed(text) returns boolean language sql stable as $$ select coalesce(current_setting('qg.test.allowed',true),'false')='true' $$;
+    insert into public.shop_profiles values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    insert into auth.users values('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');`);
+  await db.exec(migration);
+  const set=async(actor,allowed=true,owner=false,shop='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')=>db.query(
+    `select set_config('request.jwt.claim.sub',$1,false),set_config('qg.test.shop',$2,false),set_config('qg.test.allowed',$3,false),set_config('qg.test.owner',$4,false)`,
+    [actor,shop,String(allowed),String(owner)]);
+  const scalar=async(sql,args=[]) => (await db.query(sql,args)).rows[0];
+  const actor='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  await set(actor,false);
+  await assert.rejects(()=>db.query(`select public.pos_open_shift(20,'')`),/permission denied/);
+  await set(actor,true,true);
+  await db.query(`insert into public.orders(id,shop_id,sales_channel,payment_status,bill_status,status,kitchen_status,total_amount)
+    values('cccccccc-cccc-4ccc-8ccc-cccccccccccc','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','POS','UNPAID','OPEN','accepted','READY',20)`);
+  await assert.rejects(()=>db.query(`select public.pos_take_payment('cccccccc-cccc-4ccc-8ccc-cccccccccccc','cash',25)`),/open a shift|เปิดกะ/);
+  await db.query(`select public.pos_open_shift(100,'เปิดเช้า')`);
+  await assert.rejects(()=>db.query(`select public.pos_open_shift(0,'')`),/เปิดกะอยู่/);
+  const paid=await scalar(`select public.pos_take_payment('cccccccc-cccc-4ccc-8ccc-cccccccccccc','cash',25) as bill`);
+  assert.equal(paid.bill.payment_status,'PAID');
+  const retry=await scalar(`select public.pos_take_payment('cccccccc-cccc-4ccc-8ccc-cccccccccccc','cash',25) as bill`);
+  assert.equal(retry.bill.pos_register_shift_id,paid.bill.pos_register_shift_id);
+  assert.equal((await scalar(`select count(*)::int as n from public.payments`)).n,1);
+  const closed=await scalar(`select public.pos_close_shift(119,'นับคลาดหนึ่งบาท') as shift`);
+  assert.equal(Number(closed.shift.expected_cash),120);
+  assert.equal(Number(closed.shift.counted_cash),119);
+  assert.equal(Number(closed.shift.variance),-1);
+  assert.equal(closed.shift.open,false);
+  assert.equal((await scalar(`select (public.pos_current_shift()->>'open')::boolean as open`)).open,false);
+  await assert.rejects(()=>db.query(`select public.pos_close_shift(0,'')`),/ไม่พบกะ/);
+  await db.exec(`insert into public.orders(id,shop_id,sales_channel,payment_status,bill_status,status,kitchen_status,total_amount,payment_method)
+    values('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','POS','PAID','CLOSED','completed','SERVED',10,'cash');
+    insert into public.payments(order_id,amount,payment_method,status) values('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',10,'cash','paid')`);
+  await db.query(`select public.pos_open_shift(50,'กะบ่าย')`);
+  await db.query(`select public.pos_refund_bill('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','คืนเงินสดให้ลูกค้า')`);
+  const refundClose=await scalar(`select public.pos_close_shift(40,'') as shift`);
+  assert.equal(Number(refundClose.shift.expected_cash),40);
+  assert.equal((await scalar(`select count(*)::int as n from public.pos_register_cash_events`)).n,1);
+  assert.equal((await scalar(`select status from public.payments where order_id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'`)).status,'refunded');
+  await set('dddddddd-dddd-4ddd-8ddd-dddddddddddd',true,false);
+  assert.equal((await scalar(`select (public.pos_current_shift()->>'open')::boolean as open`)).open,false);
+  await assert.rejects(()=>db.query(`select public.pos_close_shift(119,'')`),/ไม่พบกะ/);
+  await set(actor,true,true);
+  assert.equal((await scalar(`select jsonb_array_length(public.pos_register_shift_history(20)) as n`)).n,2);
+  await db.close();
+  console.log(JSON.stringify({checks:15,failures:0,scope:'POS shift authorization, required open shift, payment retry idempotency, cash reconciliation and cashier isolation in PGlite'}));
+})().catch(e=>{console.error(e);process.exit(1)});
