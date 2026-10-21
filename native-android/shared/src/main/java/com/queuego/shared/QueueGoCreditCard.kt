@@ -1,8 +1,10 @@
 package com.queuego.shared
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -49,6 +51,7 @@ fun QueueGoCreditCard(
     var message by remember(accountKey) { mutableStateOf<String?>(null) }
     var showTopupForm by remember(accountKey) { mutableStateOf(false) }
     var showHistory by remember(accountKey) { mutableStateOf(true) }
+    var showInfo by remember(accountKey) { mutableStateOf(false) }
     suspend fun save(value: JSONObject?) = withContext(Dispatchers.IO) {
         val edit = context.getSharedPreferences("qg-credit-requests-v1", 0).edit()
         if (value == null) edit.remove(accountKey) else edit.putString(accountKey, value.toString())
@@ -153,13 +156,63 @@ fun QueueGoCreditCard(
                     }
                     Spacer(Modifier.width(11.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(
-                            "เครดิตร้านค้า",
-                            fontSize = 17.sp,
-                            lineHeight = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color(0xFF181B20)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "เครดิตร้านค้า",
+                                fontSize = 17.sp,
+                                lineHeight = 20.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFF181B20)
+                            )
+                            Spacer(Modifier.width(3.dp))
+                            Box(
+                                Modifier
+                                    .size(26.dp)
+                                    .clickable { showInfo = !showInfo },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    Modifier
+                                        .size(18.dp)
+                                        .border(1.dp, Color(0xFFD9DDE3), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "i",
+                                        color = Color(0xFF858C95),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showInfo,
+                                    onDismissRequest = { showInfo = false }
+                                ) {
+                                    Column(
+                                        Modifier
+                                            .width(270.dp)
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                                    ) {
+                                        Text(
+                                            if (data?.optBoolean("enabled") == true)
+                                                "ระบบเติมเครดิตพร้อมใช้งาน"
+                                            else
+                                                "ระบบเติมเครดิตยังไม่เปิดใช้งาน",
+                                            color = Color(0xFF242A31),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Black
+                                        )
+                                        Text(
+                                            "เครดิตร้านค้าใช้ชำระ GP และค่าบริการ QueueGo ระบบหัก GP จากเครดิตอัตโนมัติตามสถานะออเดอร์ เงินสดค่าสินค้าบันทึกตาม flow จริง และเครดิตไม่สามารถถอนหรือโอนได้",
+                                            color = Color(0xFF5F6873),
+                                            fontSize = 9.5.sp,
+                                            lineHeight = 14.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         Text(
                             if (data == null) "กำลังโหลด..." else "ใช้ได้ ${money(data.optLong("available_minor"))}",
                             fontSize = 25.sp,
@@ -315,31 +368,6 @@ fun QueueGoCreditCard(
                         lineHeight = 14.sp
                     )
                 }
-            }
-
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFEDF5FF), RoundedCornerShape(18.dp))
-                    .border(1.dp, Color(0xFFD7E8FB), RoundedCornerShape(18.dp))
-                    .padding(14.dp)
-            ) {
-                Text(
-                    if (data?.optBoolean("enabled") == true)
-                        "ระบบเติมเครดิตพร้อมใช้งาน"
-                    else
-                        "ระบบเติมเครดิตยังไม่เปิดใช้งาน",
-                    color = Color(0xFF2463A3),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "เครดิตร้านค้าใช้ชำระ GP และค่าบริการ QueueGo ระบบหัก GP จากเครดิตอัตโนมัติตามสถานะออเดอร์ · ถอนหรือโอนไม่ได้",
-                    color = Color(0xFF58718E),
-                    fontSize = 9.5.sp,
-                    lineHeight = 14.sp
-                )
             }
 
             if (showHistory) {
