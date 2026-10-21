@@ -24,6 +24,7 @@ for(const [file,title] of checks){
  assert(s.includes('MerchantPageTitleSize'),file+' must use shared Merchant title scale');
 }
 assert(!read('MerchantRevenueScreen.kt').includes('fontSize = 22.sp'),'Merchant revenue title must not remain oversized');
+assert(read('MerchantRevenueScreen.kt').includes('fontSize = MerchantPageTitleSize')&&read('MerchantRevenueScreen.kt').includes('lineHeight = 23.sp'),'Merchant report title must match the shared 19sp/23sp page-title rhythm');
 assert(read('MerchantSupportScreen.kt').includes('MerchantPageTitle("ข้อความถึงแอดมิน"'),'Support must use Merchant page-title component');
 assert(read('MerchantLaundryScreen.kt').includes('MerchantPageTitle("ฝากซัก"'),'Laundry must use Merchant page-title component');
 assert(read('QueueGoMerchantApp.kt').includes('fontSize = MerchantPageTitleSize'),'Merchant Account title must use the shared page-title scale');
