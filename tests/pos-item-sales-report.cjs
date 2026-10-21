@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {PGlite}=require('@electric-sql/pglite');
 const root=path.resolve(__dirname,'..');
-const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021135000_pos_item_sales_report.sql'),'utf8');
+const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021133330_pos_owner_item_sales_report.sql'),'utf8');
 const client=fs.readFileSync(path.join(root,'merchant/pos-table-v2.js'),'utf8');
 const css=fs.readFileSync(path.join(root,'merchant/pos-table-v2.css'),'utf8');
 (async()=>{
