@@ -519,7 +519,7 @@ fun MerchantPosScreen(
             OutlinedButton(onClick = onBack, enabled = !busy) { Text(backLabel) }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("QueueGo หน้าร้าน", fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text("QueueGo หน้าร้าน", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
                 Text(
                     snap?.shopName ?: "POS",
                     color = QgMuted,
