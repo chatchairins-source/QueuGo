@@ -46,3 +46,9 @@ An individual feature can be marked `DONE (source/test)` only with its exact com
 ## Inventory quantity schema compatibility follow-up
 - Read-only Production inspection confirms `order_items.quantity` is `numeric`, `market_products.stock_quantity` is `numeric`, and the Market-to-product relationship is the composite FK `(product_id,shop_id) → products(id,shop_id)`. Existing Market/Grocery item stock triggers are SECURITY DEFINER.
 - Prior PGlite inventory fixture used integer quantity. PR #576 changed it to numeric, added fractional Market and generic rejection cases, and merged at `a4f12dd39b751e7e05a2d37b54e47863d477f391`. Exact-source RC `39647073978` and post-merge RC `39647725266` passed; Pages deploy `39647725023` succeeded. No Production change.
+
+
+## POS migration preflight — 2026-10-21
+- PR #577 exact RC `39648478732` passed and merged at `e70961d5b70fa7f84519fbebf473659603e35132`. Main RC `39649126036` had a first-attempt Admin WebKit title assertion failure at `tests/admin-boot-browser.cjs:69`; rerun of the failed job passed the full workflow. Pages deploy `39649125931` succeeded on the same SHA. Keep the first failure recorded as intermittent test evidence.
+- Read-only Production migration history ends at `20261021133330`. POS inventory migrations `20261021211800`–`20261021233300` and cash movement migration `20261021211709` remain unapplied. Existing Grocery/Market order-item stock triggers remain installed; generic inventory triggers/tables are absent. No Production DDL or data mutation.
+- Release order remains blocked on authorized cashier/device acceptance: apply ordered stack only after acceptance; run Market overlap preflight after tracking-column migration 330; read back ACL/RLS/triggers; then sale/cancel/refund/adjustment regression. No DONE claim.
