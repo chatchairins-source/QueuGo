@@ -24,7 +24,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  const merchant=fs.readFileSync('merchant/index.html','utf8'),rider=fs.readFileSync('rider/index.html','utf8');
  eq(merchant.includes('../queuego-credit.js')&&merchant.includes("kind:'merchant',owner:u.id"),true);
  eq(merchant.includes("QueueGoCredit.mountSummary("),false);
- eq(merchant.includes("QueueGoCredit.mountBadge("),false);
+ eq(merchant.includes("QueueGoCredit.mountBadge(badgeHost,{kind:'merchant',owner:u.id"),true);
  eq(rider.includes('../queuego-credit.js')&&rider.includes("kind:'rider',owner:S.user.id"),true);
  const admin=fs.readFileSync('admin/index.html','utf8'),adminCredit=fs.readFileSync('admin/credit.js','utf8');
  eq(admin.includes("['money','เติมเครดิตฟรีร้านค้า','admin-credit','']"),true);
