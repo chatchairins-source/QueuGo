@@ -441,6 +441,12 @@ ok(source.includes('merchant_save_hours')&&source.includes('shop_business_hours?
 ok(merchantHours.includes('อาทิตย์')&&merchantHours.includes('เสาร์')&&merchantHours.includes('วันหยุดหรือเวลาพิเศษ')&&merchantHours.includes('บันทึกเวลาทำการ'),'Merchant native hours must preserve seven-day and special-day web flow');
 ok(source.includes('MerchantProfileSectionTitle("ข้อมูลร้าน")')&&source.includes('MerchantProfileSectionTitle("จัดการร้าน")')&&source.includes('แก้ไขข้อมูลร้าน')&&source.includes('เวลาทำการและวันหยุด'),'Merchant native account must preserve compact grouped web structure');
 const merchantRevenue=read('merchant/src/main/java/com/queuego/merchant/MerchantRevenueScreen.kt');
+const queueGoCreditCard=read('shared/src/main/java/com/queuego/shared/QueueGoCreditCard.kt');
+const riderEarningsCredit=read('rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt');
+ok(queueGoCreditCard.includes('Text("ใช้ได้ ${money(data.optLong("available_minor"))}")')&&!queueGoCreditCard.includes('เงินจริง')&&!queueGoCreditCard.includes('โปรโมชั่น')&&!queueGoCreditCard.includes('· กันไว้'),'Merchant/Rider native credit surface must show one unified usable balance');
+ok(queueGoCreditCard.includes('"topup" to "เพิ่มเครดิต"')&&queueGoCreditCard.includes('"promo" to "เพิ่มเครดิต"'),'Native credit history must not expose paid-vs-admin-credit balance buckets');
+ok(merchantRevenue.includes('QueueGoCreditCard(auth.user.id, auth.session.accessToken, "merchant")')&&riderEarningsCredit.includes('QueueGoCreditCard(auth.user.id, auth.session.accessToken, "rider")'),'Merchant and Rider must reuse the same unified credit component');
+
 ok(source.includes('merchant_revenue_days')&&!source.includes('report_shop_gp'),'Merchant revenue must read reports without the retired GP collection RPC');
 ok(merchantRevenue.includes('7 วันที่ผ่านมา')&&merchantRevenue.includes('30 วันที่ผ่านมา')&&merchantRevenue.includes('ดาวน์โหลดรายงาน 30 วัน (CSV)'),'Merchant native revenue must preserve web period and CSV controls');
 ok(!merchantRevenue.includes('แนบสลิปและแจ้งโอน')&&merchantRevenue.includes('QueueGoCreditCard')&&!fs.existsSync(path.join(root,'merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt')),'Merchant GP collection must use credit only; retired upload implementation must be absent');
