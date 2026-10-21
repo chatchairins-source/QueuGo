@@ -1045,14 +1045,20 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Regression: `tests/pos-generic-inventory.cjs` denies unauthorised direct tracking toggle and tracked-product insertion; focused test passes 40 checks. Full `npm test` EXIT 0; inventory adjustment UI test 9 PASS; `git diff --check` PASS. Exact-source RC `39638917216` passed all 12 steps; PR #573 merged as `ab36bfb9da66d5d4a43a83011e4a50fb08c27213`. Migration has not been applied to Production.
 - NEXT: continue actual schema/trigger compatibility review for the five inventory migrations. Real manager/cashier and physical device acceptance remains blocked; do not apply Production migration or claim POS release readiness.
 
-## 2026-10-21 POS Market stock authority isolation
+## 2026-10-21 POS Market stock authority isolation — merged
 - Read-only Production catalog inspection found `market_item_stock_guard()` decrements `market_products.stock_quantity` and appends `market_stock_movements`; it is the authoritative Market ledger. PR #572 generic reservation skipped only Grocery Master, so a Market-linked `products` row with generic tracking enabled could be double-decremented.
 - Added `20261021233300_pos_market_inventory_owner_guard.sql`: migrate preflight rejects any existing tracked Market overlap; product toggle and Market mapping triggers lock/check `products` so ownership cannot be assigned concurrently; remaps lock both products in stable order and deletes serialize on the old product; generic order-item reservation rechecks Market mapping after row lock and leaves it to the existing Market trigger.
 - `tests/pos-generic-inventory.cjs` simulates the Market item trigger and an inconsistent legacy overlap; asserts Market count changes while `products.stock` remains unchanged and no generic reservation exists. It also covers both rejection directions for future ownership changes. Focused test 47 PASS after adding remap/delete guards; full `npm test` EXIT 0 on the final local tree; `git diff --check` PASS. Exact hosted RC remains pending on the latest branch HEAD.
-- NEXT: PR #574 is open against latest main `ab36bfb9da66d5d4a43a83011e4a50fb08c27213`; rerun exact QueueGo RC after the remap/delete lock fix, review the newest head, then consider merge. Production migration/readback remains gated on cashier acceptance. No Production migration or data write.
+- PR #574 merged as `2d0c6b58a45689585dc7653bd18bcf89dfd1e4c1` after exact QueueGo RC `39643279380` passed all 12 steps. Pages build/deploy `39643901620` succeeded on this merge SHA. Production migrations/data were not changed.
 
-### Current continuation checkpoint — PR #574 exact source
+### Current continuation checkpoint — PR #574 merged
 - `qg_inventory_tracking_guard()` now runs SECURITY DEFINER with fixed `search_path` because Production `market_products` is RLS-enabled without authenticated read policies; manager check still uses the caller JWT. Regression now applies migrations in timestamp order and tests an authenticated product update with RLS active.
-- Local focused inventory test: 47 PASS; adjustment UI: 9 PASS; full `npm test` EXIT 0; `git diff --check`: PASS. Final exact-source hosted RC is pending.
-- Map remap/delete serialization now locks both affected products and serializes unmapping; local exact tree is being finalized for a fresh hosted RC. Earlier runs tested superseded heads and do not satisfy this gate.
-- No Production DDL/data write. Next: wait for exact RC, recheck main/open PRs/reviews/successor, then merge only if exact head remains green. Production activation still requires authorized cashier/device acceptance and controlled migration/readback.
+- Local focused inventory test: 47 PASS; adjustment UI: 9 PASS; full `npm test` EXIT 0; `git diff --check`: PASS. Exact-source hosted RC `39643279380` passed all 12 steps; Pages deploy `39643901620` succeeded on merge SHA.
+- Map remap/delete serialization now locks both affected products and serializes unmapping; Main merge SHA is `2d0c6b58a45689585dc7653bd18bcf89dfd1e4c1`; six POS migrations remain unapplied and production acceptance is open.
+- No Production DDL/data write. Next: continue read-only schema/ACL/RLS/trigger/recovery review before any controlled Production migration. Production activation still requires authorized cashier/device acceptance and controlled migration/readback.
+
+
+## 2026-10-21 POS Market inventory post-merge
+- Merge `2d0c6b58a45689585dc7653bd18bcf89dfd1e4c1`; exact RC `39643279380` passed all 12 steps; Pages deployment workflow `39643901620` succeeded. Browser runtime readback unavailable due environment disconnection.
+- Production remains unmodified; latest migration `20261021133330`. The inventory tracking column is absent until prerequisite migration 330, so Market overlap preflight must run only after ordered feature schema installation.
+- QueueGo/POS remain NOT DONE until authorized user flows and Release Gate evidence are complete.
