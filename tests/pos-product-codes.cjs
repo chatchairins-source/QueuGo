@@ -1,0 +1,53 @@
+const fs=require('fs'),path=require('path'),assert=require('assert/strict');
+const {PGlite}=require('@electric-sql/pglite');
+const root=path.resolve(__dirname,'..');
+const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021211800_pos_product_code_registry.sql'),'utf8');
+const client=fs.readFileSync(path.join(root,'merchant/pos-table-v2.js'),'utf8');
+const html=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
+assert.match(migration,/pg_advisory_xact_lock\(hashtextextended\(v_shop::text\|\|':'\|\|v_code,0\)\)/);
+assert.match(client,/rpc\('pos_product_code_lookup'/);assert.match(client,/pos_create_bill_once/);assert.match(client,/pos_edit_bill/);
+assert.match(client,/state\.scanQueue\.shift\(\)/);assert.match(client,/scanContextCurrent\(context\)/);
+assert.match(html,/pos-table-v2\.js\?v=\d{8}-pos-inventory1/);assert.match(html,/pos-table-v2\.css\?v=\d{8}-pos-inventory1/);
+(async()=>{
+  const db=new PGlite();
+  await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
+    create table public.shop_profiles(id uuid primary key); create table public.products(id uuid primary key,shop_id uuid,name text,price numeric,pos_price numeric,available boolean,pos_available boolean,image text,variants jsonb);
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    create function public.pos_my_shop() returns uuid language sql stable as $$ select nullif(current_setting('qg.test.shop',true),'')::uuid $$;
+    create function public.pos_allowed(text) returns boolean language sql stable as $$ select coalesce(current_setting('qg.test.allowed',true),'false')='true' $$;
+    insert into auth.users values('10000000-0000-4000-8000-000000000001');
+    insert into public.shop_profiles values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+    insert into public.products values
+      ('20000000-0000-4000-8000-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','Tea',35,30,true,true,null,'[]'),
+      ('20000000-0000-4000-8000-000000000002','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','Paused',20,20,true,false,null,'[]'),
+      ('20000000-0000-4000-8000-000000000003','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','Other shop',10,10,true,true,null,'[]');`);
+  await db.exec(migration);
+  const shop='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',actor='10000000-0000-4000-8000-000000000001';
+  const set=async({user=actor,allowed=true,currentShop=shop}={})=>db.query(`select set_config('request.jwt.claim.sub',$1,false),set_config('qg.test.shop',$2,false),set_config('qg.test.allowed',$3,false)`,[user||'',currentShop,String(allowed)]);
+  const scalar=async(sql,args=[]) => (await db.query(sql,args)).rows[0];
+  await set({allowed:false});await assert.rejects(()=>db.query(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','sku','TEA-01')`),/permission denied/);
+  await set({user:null});await assert.rejects(()=>db.query(`select public.pos_product_code_lookup('TEA-01')`),/permission denied/);
+  await set();
+  const saved=await scalar(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','sku',' tea-01 ') as item`);
+  assert.equal(saved.item.code,'TEA-01');
+  const retry=await scalar(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','SKU','TEA-01') as item`);assert.equal(retry.item.id,saved.item.id);
+  const barcode=await scalar(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','barcode','0012345678905') as item`);assert.equal(barcode.item.code,'0012345678905');
+  await assert.rejects(()=>db.query(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','barcode','1234')`),/8 to 14 digits/);
+  await assert.rejects(()=>db.query(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','sku','bad sku')`),/invalid SKU/);
+  await assert.rejects(()=>db.query(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000002','sku','tea-01')`),/already assigned/);
+  await assert.rejects(()=>db.query(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000003','sku','CROSS')`),/not found in this shop/);
+  const lookup=await scalar(`select public.pos_product_code_lookup(' tea-01 ') as item`);assert.equal(lookup.item.product_id,'20000000-0000-4000-8000-000000000001');assert.equal(Number(lookup.item.price),30);
+  assert.equal((await scalar(`select public.pos_product_code_lookup('missing') is null as missing`)).missing,true);
+  const paused=await scalar(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000002','sku','PAUSED') as item`);
+  assert.equal((await scalar(`select (public.pos_product_code_lookup('PAUSED')->>'pos_available')::boolean as available`)).available,false);
+  assert.equal((await scalar(`select jsonb_array_length(public.pos_product_codes_for_shop()) as n`)).n,3);
+  const tableAcl=await scalar(`select has_table_privilege('anon','public.pos_product_codes','select') anon_select,has_table_privilege('authenticated','public.pos_product_codes','select') auth_select,has_table_privilege('authenticated','public.pos_product_codes','insert') auth_insert`);
+  assert.deepEqual(tableAcl,{anon_select:false,auth_select:false,auth_insert:false});
+  const fnAcl=await scalar(`select has_function_privilege('anon','public.pos_product_code_lookup(text)','execute') anon_lookup,has_function_privilege('authenticated','public.pos_product_code_lookup(text)','execute') auth_lookup`);assert.deepEqual(fnAcl,{anon_lookup:false,auth_lookup:true});
+  await set({currentShop:other});assert.equal((await scalar(`select public.pos_product_code_lookup('TEA-01') is null as isolated`)).isolated,true);
+  await assert.rejects(()=>db.query(`select public.pos_product_code_remove('${saved.item.id}')`),/product code not found/);
+  await set();await db.query(`select public.pos_product_code_remove($1)`,[paused.item.id]);
+  assert.equal((await scalar(`select count(*)::int as n from public.pos_product_codes`)).n,2);
+  await db.close();
+  console.log(JSON.stringify({checks:31,failures:0,scope:'POS SKU/barcode validation, shop isolation, retry safety, direct table ACL, guarded RPC grants, lookup availability and removal'}));
+})().catch(e=>{console.error(e);process.exit(1)});

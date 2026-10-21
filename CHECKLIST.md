@@ -1,12 +1,19 @@
 # QueueGo Active Work Checklist
 
-Last governance checkpoint: North Star product/release ledger on branch `work-queuego-north-star-governance-20261021` (documentation PR pending)
+Last governance checkpoint: North Star ledger merged in PR #571; latest verified main `643a115129b0bf1d6b05de261baa0aa959310a1b`
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
+## 2026-10-21 POS scan continuation checkpoint
+
+- **POS SKU/barcode registry and scan-to-bill — source/test complete locally, release BLOCKED.** Branch `queuego-pos-sku-scan` is based on the merged latest main and the current #568 POS successor tree; pre-change HEAD `a0b3109a3f8ae6970f2e865e0760b7e8ddef4e3d`. Verified latest main `643a115129b0bf1d6b05de261baa0aa959310a1b`; checked open PR #570 overlap, POS asset references unaffected.
+- Added shop-unique product code table, guarded manager CRUD/cashier lookup RPCs, scanner UI and queued existing bill flow. Added server-validated menu option selection, price snapshot, total recalc and replay receipt. Migrations `20261021211800_pos_product_code_registry` and `20261021223000_pos_menu_option_pricing` are staged; neither is in Production. The option SQL test executes the existing Grocery Master stock trigger and verifies no double deduction on retry/price update.
+- Verification: POS runtime 73, cash shifts 36, item sales 18, registry SQL/security 31, scan-to-bill UI 11, option pricing/security/replay 27; Security Definer review, source integrity and full `npm test` PASS on local source commit tree. CI pending publication. No Production mutation, cashier acceptance, or physical scanner certification.
+- **NEXT:** publish exact branch and open a dependent PR against #568; local Git push currently cannot authenticate (`could not read Username for https://github.com`), so an authenticated GitHub write path is required. After publishing, run hosted CI; then review migration/security and apply through release gate; authenticated cashier scan→options→bill→kitchen→payment→receipt and physical scanner acceptance. Variant price/snapshot is now source complete. Next inventory audit: generic non-Grocery-Master stock tracking across POS/Delivery; keep Grocery Master on its existing reservation trigger. Keep cash-movement PR #568 acceptance separately open.
+
 ## 2026-10-21 North Star recovery checkpoint
 
-- Current verified `main`: `6669dc108137f8119c86d4de9709dacba7a301d7`.
+- Initial verified `main` at this recovery checkpoint: `6669dc108137f8119c86d4de9709dacba7a301d7` (superseded by merged North Star docs commit `643a115129b0bf1d6b05de261baa0aa959310a1b`).
 - This checkpoint adds `PRODUCT_NORTH_STAR.md`, `FEATURE_GAP_MATRIX.md`, `RELEASE_GATE.md`, and `NEXT.md`; these are the mission, evidence matrix, launch gate and precise continuation pointer. Older snapshots below are historical evidence; fetch current main and the relevant newest successor before resuming.
 - **POS cash in/out shift ledger — source/test IN PROGRESS, release BLOCKED.** Open PR #568; branch `work-pos-complete-next-20261021`; exact HEAD `0f9af0cbc91af0bf7d964c9c52665ceb4e19cb9a`, based on the verified latest main. Prior RC run `39617058579` passed at `119c68e`; updated exact-head RC run `39619648922` completed SUCCESS. Focused POS tests (36/73/18) and full `npm test` passed on the updated tree in this session. Latest change adds transaction-scoped serialization for same-key retries.
 - Production migration read-only check: history currently ends at `20261021133330_pos_owner_item_sales_report`; staged `20261021211709_pos_cash_register_movements` is absent. Do not present cash in/out as live. Review schema/ACL/concurrency and run the relevant release process before activation.
@@ -1003,3 +1010,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Web deployment: Pages build/deploy run `39614671640` SUCCESS on merge commit. Main Customer asset blob `f7c4082c0d211a93df003ae3473fac181e6178ce` has the tested singular cache keys; Admin CSS contains the shared wordmark colors.
 - Owner visual acceptance: BLOCKED until Owner opens the deployed site in iPhone Safari; this environment could not read the live Pages response to independently compare served bytes.
 - NEXT: Owner reviews QueueGo in iPhone Safari. After review, record any requested visual corrections; only then decide on Android sync.
+
+
+## 2026-10-21 QueueGo POS generic inventory continuation
+- Implemented locally on the existing dependent POS successor: opt-in generic inventory tracking and private reservations across shared POS/QR/Delivery order items. Grocery Master products are explicitly excluded to preserve their existing single stock authority. A constraint prevents enabling both tracking owners.
+- Generic product editor marks the field as sellable stock and blocks tracking-mode changes while an open order contains the SKU. POS displays available units and disables a tracked SKU at zero. Order item changes are serialized on the order and product rows; insufficient-stock writes fail transactionally; pre-completion cancel releases once while completed refund remains sold until a separately authorized physical return/restock flow.
+- `tests/pos-generic-inventory.cjs` 22 PASS; POS option 27, SKU SQL 31, scanner 11, cash shifts 36, Merchant product reliability 72; full `npm test` EXIT0. Shopify official inventory-state docs informed the available/committed label. PGlite evidence only; hosted concurrency, live RLS and real register behavior remain unverified.
+- Migration `supabase/migrations/20261021233000_pos_generic_inventory_reservations.sql` is staged, not in Production. No migration applied and no real product/order writes made. Current local branch `queuego-pos-sku-scan-pr`; base main snapshot `643a115129b0bf1d6b05de261baa0aa959310a1b`; base successor PR #568 HEAD `a1592df31c41cbb6bbfdf13e166d977c9bcf901c`. GitHub push lacks authenticated write credentials; no hosted CI/merge/deploy/readback/cashier acceptance.
+- Next: commit scoped inventory source/docs, retry authenticated publication, exact-head CI and deployment gates. Then real concurrent boundary sale/cancel/refund acceptance; next build stock adjustment audit/history and supplier purchase receiving. QueueGo/POS remain NOT DONE.

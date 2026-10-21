@@ -1,24 +1,25 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-21 · Authoritative main checked: `6669dc108137f8119c86d4de9709dacba7a301d7`
+Current snapshot: 2026-10-21 · Authoritative main checked: `643a115129b0bf1d6b05de261baa0aa959310a1b`
 
 ## Active chunk
 
-**POS cash in/out shift ledger — staged source/test complete; release blocked.**
+**POS inventory reservation for generic products — implemented and regression-tested locally; release blocked.**
 
-- Successor PR #568; branch `work-pos-complete-next-20261021`; exact HEAD `0f9af0cbc91af0bf7d964c9c52665ceb4e19cb9a`.
-- Prior exact RC run `39617058579` passed at `119c68e`; updated exact-head run `39619648922` completed SUCCESS. Focused POS tests (36/73/18) and full `npm test` passed on the updated source tree.
-- The latest change serializes concurrent retries by actor/shop/request key before receipt lookup; it does not replace the existing unique constraint or POS cash ledger.
-- Cashier shifts, reconciliation, POS refund outflows and owner item reports are already deployed through earlier migrations. The cash-movement migration `20261021211709_pos_cash_register_movements` is absent from Production migration history.
-- Do not implement a duplicate ledger or treat this slice as deployed. Follow `RELEASE_GATE.md` for the migration, UI activation and authenticated acceptance gate.
+- Local successor branch `queuego-pos-sku-scan-pr` currently descends from current POS cash successor PR #568 (base HEAD `a1592df31c41cbb6bbfdf13e166d977c9bcf901c`) and latest main snapshot `643a115129b0bf1d6b05de261baa0aa959310a1b`. Previous local scan/options commits are `8024fc7` and `338ebc8`; prior status checkpoints `616a29f` and `d3ff496`.
+- New migration `20261021233000_pos_generic_inventory_reservations.sql` adds opt-in generic `inventory_stock_tracking`, a private reservation table and order-item/cancellation triggers. It reserves stock for tracked non-Grocery-Master products through shared `order_items`, rejects overselling, handles line-quantity changes and returns reservations on pre-completion cancel and keeps completed/refunded units consumed until an explicit return workflow exists. Tracking cannot be toggled while an order containing the product remains open. Existing Grocery Master triggers remain the sole stock authority for linked products.
+- Merchant product editor exposes the tracking toggle and names the quantity as sellable stock. POS shows remaining units and disables tracked products at zero. The server reservation remains authoritative across POS, QR and Delivery writes.
+- `tests/pos-generic-inventory.cjs`: 22 PGlite checks PASS, including untracked behavior compatibility, reserve/adjust, insufficient stock rollback, open-order toggle guard, cancellation release, completed refund remains consumed, identity freeze, Grocery Master separation and ledger ACL. POS SKU/options/shift, Merchant product reliability and full `npm test` also PASS on the exact local source tree. This does not certify hosted concurrency, Production RLS, real cashier acceptance or deployment.
+- Shopify's official inventory model distinguishes available, committed and on-hand quantities; QueueGo follows the available/committed boundary for this slice while keeping its current product stock field as sellable units. [Shopify: Understanding inventory states](https://help.shopify.com/en/manual/inventory-and-locations/fundamentals/inventory-states)
+- No migration is in Production. Publishing is blocked because this workspace has no GitHub write credential; PR #568, hosted CI, merge, deployment, Production schema readback and authenticated cashier acceptance remain open. No deploy or real sale is claimed.
 
 ## Then, in dependency order
 
-1. Re-fetch current main, related open PRs and branch descendants; verify whether #568 or a newer POS successor changed. Do not merge/deploy from this snapshot without that check.
-2. Review `20261021211709_pos_cash_register_movements.sql` against actual Production grants, RLS, function ownership, table constraints and concurrent retry behavior. Run Supabase security/performance advisors and an isolated/concurrent transaction test where available. Record the evidence before any migration activation.
-3. Complete authenticated owner/cashier acceptance for opening float → cash sale → cash in/out → refund → close/count/variance → history and retry. Use a dedicated authorized test identity and keep test data out of Production unless specifically permitted through the existing safe test process.
-4. Continue the next highest-priority unblocked POS gap from `FEATURE_GAP_MATRIX.md` only after the shift-ledger release status is accurately recorded. Current likely discovery targets: scanner/modifier end-to-end path, supplier receiving/stock authority, offline recovery, and COGS/tax readiness.
-5. Continue Delivery/Ride/Express/Laundry/Android release gates from `CHECKLIST.md` and newest successors. Physical GPS, real role accounts, provider secrets, tax policy, signing and Play Console remain blocked until available.
+1. Commit this scoped chunk and record exact SHA/tests, then retry publication when an authenticated GitHub write path exists. Do not stack unrelated changes ahead of this dependent successor.
+2. Review and publish the successor against current main/#568; run exact-head CI and review/apply migrations only through the authorized release process. Verify schema, trigger order and ACL read-only after apply.
+3. Complete authenticated cashier acceptance: enable stock tracking on a test SKU, make two concurrent sales at the inventory boundary, edit/cancel/refund and verify available stock; exercise POS, QR and Delivery with real authorized test records.
+4. Continue POS inventory by dependency: stock adjustment audit/history, purchase receiving and supplier records, then COGS/cost history, exchanges, printer/drawer/multi-terminal and offline recovery. Avoid duplicate ledgers for Grocery Master or Market's own inventory authorities.
+5. Continue other platform gaps by dependency without resetting or duplicating implementations. Overall QueueGo and POS remain NOT DONE until all release gates and real user journeys are evidenced.
 
 ## Resume protocol
 
