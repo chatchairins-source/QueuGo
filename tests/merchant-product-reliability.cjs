@@ -15,6 +15,13 @@ ok(merchant.includes("merchant product hydrate after delete failed"),'delete pos
 ok(merchant.includes("Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(refreshErr=>console.warn('merchant product hydrate after save failed'"),'product save must not wait for background hydrate after server commit');
 ok(merchant.includes("Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(refreshErr=>console.warn('merchant product hydrate after delete failed'"),'product delete must not wait for background hydrate after server commit');
 ok(merchant.includes("QT_DB_CACHE.qt_products=qtSanitizeCachedProducts(dbGet('qt_products',[]),u).filter(p=>String(p.id)!==String(row.id)).concat(mapped)"),'confirmed saved product must replace its cached row immediately');
+ok(merchant.includes("p?.inventoryStockTracking?'readonly aria-readonly=\"true\"':''"),'tracked generic stock must not be edited through the general product save form');
+ok(merchant.includes('window.qgmSubmitInventoryAdjustment'),'tracked products must have an explicit stock adjustment flow');
+ok(merchant.includes('if(existingProduct?.inventoryStockTracking)delete body.stock'),'tracked product edits must omit stale stock while preserving other product fields');
+ok(merchant.includes("rpc/pos_inventory_stock_adjust")&&merchant.includes('p_request_key:requestKey'),'manual stock changes must use the idempotent manager RPC');
+ok(merchant.includes('sessionStorage.getItem(storageKey)'),'ambiguous adjustment retries must reuse the original request key');
+ok(merchant.includes('rpc/pos_inventory_adjustment_history')&&merchant.includes("host.dataset.beforeAt=last.created_at"),'stock adjustment history must be shop-authorized and cursor-paginated');
+ok(merchant.includes('สินค้านี้ติดตามสต็อกอยู่ กรุณาใช้เมนูปรับสต็อกเพื่อบันทึกประวัติ'),'product save must reject attempts to bypass stock history');
 ok(merchant.includes("p?.archived_at)continue"),'archived historical products must be skipped from active product management');
 ok(merchant.includes('function qtSanitizeCachedProducts'),'Merchant fast cache must sanitize product ownership and duplicate ids');
 ok(merchant.includes('productsAt:now'),'Merchant product cache must have a short freshness timestamp');

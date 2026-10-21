@@ -25,6 +25,13 @@ Snapshot date: 2026-10-21 · Main: `643a115129b0bf1d6b05de261baa0aa959310a1b`
 - Exact-source-descendant hosted RC [39630180090](https://github.com/chatchairins-source/QueuGo/actions/runs/39630180090) completed **SUCCESS** for full `npm test` and all mobile WebKit checks. RC was triggered using a `work-main-*` push branch because the stacked PR does not target `main`. Three migrations remain unapplied; no Production readback or real cashier sale was completed. Release gate remains BLOCKED.
 - Next POS work: publish and verify exact source, then real authorized cross-channel concurrency/cancel/refund acceptance. Follow with stock adjustment history and purchase receiving/supplier traceability.
 
+## POS inventory adjustment audit/history successor
+
+- Source adds `20261021233100_pos_inventory_adjustments.sql`, a manager-only idempotent stock-adjust RPC, immutable adjustment/event history, direct stock-write guard and opening-balance/order-reservation/cancellation events. Merchant tracked products become read-only in the general editor and use the adjustment dialog/history.
+- Verification: `tests/pos-generic-inventory.cjs` 38 PASS; adjustment UI runtime 9 PASS; Merchant product reliability 79 PASS; full `npm test` EXIT 0. Source is staged on the dependent PR #572; hosted exact-head RC is pending.
+- The audit table has RLS enabled and no client table grants. Functions are pinned-search-path SECURITY DEFINER only where required, explicitly revoked from public/anon, and granted to authenticated manager RPC checks. PGlite coverage does not certify live RLS or multi-connection Production contention.
+- Migration is not in Production; no stock was changed in a real shop. Keep #572 stacked until #568 resolves, then rebase onto main and rerun exact-head RC. Authorized schema review, real manager/cashier acceptance, deployment and served behavior remain open.
+
 ## POS SKU, modifiers and inventory successor
 
 - PR #572, ready for review and mergeable, head `3850595ced53e2717ac0620ee241789b4544740a`, stacked on the open #568 head `a1592df31c41cbb6bbfdf13e166d977c9bcf901c`.
