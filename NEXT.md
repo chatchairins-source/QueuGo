@@ -1,10 +1,10 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-21 · Authoritative main: `ab36bfb9da66d5d4a43a83011e4a50fb08c27213`
+Current snapshot: 2026-10-21 · Authoritative main: `2d0c6b58a45689585dc7653bd18bcf89dfd1e4c1`
 
 ## Active chunk
 
-**POS Market inventory owner isolation — exact-source RC in progress; Production activation remains blocked.**
+**POS inventory release readiness — Market stock ownership fix merged and Pages deployed; Production schema activation remains blocked.**
 
 - PR #568 cash movement source was merged after exact-head QueueGo RC `39622237860` completed all 12 test/browser steps successfully. Merge commit: `c79640e0c896cc81961e8ba2dc69d336a9f519b0`; main now contains the audited cash-in/out UI and RPC source.
 - PR #572 merged to `main` at `6050a51ab7cb06001fb4163b5ff88c890fb4950d` after exact-source RC `39636799778` passed all 12 steps on `7d2ffec2417884dce70805f646dccaa3f388059e`. Merge publishes source only; no Production migration was applied.
@@ -17,7 +17,7 @@ Current snapshot: 2026-10-21 · Authoritative main: `ab36bfb9da66d5d4a43a83011e4
 
 ## Then, in dependency order
 
-1. Complete the final exact-head QueueGo RC; recheck latest main, all relevant open PRs/review comments and successor head before considering merge of PR #574. Six total POS inventory migrations remain unapplied. Do not apply Production schema without authenticated cashier acceptance.
+1. Continue read-only Production schema compatibility and controlled migration plan review. Six POS feature migrations remain unapplied; Production latest is `20261021133330`, and `products.inventory_stock_tracking` is absent, so Market-overlap preflight cannot run until prerequisite schema migration is installed. No Production apply without authorized cashier/device acceptance.
 2. Continue staged schema compatibility review and preserve Market/Grocery stock authorities; keep Production activation blocked until authenticated sale/cancel/refund and manager-adjustment journeys pass with an authorized register/device, then controlled schema release, deployment/readback and regression.
 3. Complete authenticated cashier flows: shift open/float → sale → cash movement/refund → close/count/variance/history; then barcode/options/bill and inventory reservation/adjustment/cancel/refund across POS, QR and Delivery. Use authorized test accounts and avoid fake Production data.
 4. After inventory release dependencies are satisfied, implement supplier directory + purchase order receiving through the same generic inventory adjustment/audit authority; do not duplicate Grocery Master or Market ledgers. Then cost history/COGS, item exchanges, hardware and offline recovery by dependency.
@@ -26,3 +26,8 @@ Current snapshot: 2026-10-21 · Authoritative main: `ab36bfb9da66d5d4a43a83011e4
 ## Resume protocol
 
 After each bounded chunk, update this file and `CHECKLIST.md` with exact SHA, local/hosted tests, deployment/readback evidence, blockers, and one precise next action. A new session must begin from `WORKFLOW.md`, `CHECKLIST.md`, current main and the newest successor.
+
+
+## Latest verified checkpoint
+- Main: `2d0c6b58a45689585dc7653bd18bcf89dfd1e4c1`; PR #574 exact RC `39643279380` PASS; Pages deploy `39643901620` SUCCESS.
+- Production remains unmodified. Migration history ends at `20261021133330`; inventory feature migrations are unapplied. Browser runtime readback was unavailable after environment disconnection.

@@ -696,3 +696,9 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Test `tests/pos-generic-inventory.cjs` simulates Market stock and a legacy overlap. Production RLS is enabled on `market_products` without authenticated SELECT policies, so `qg_inventory_tracking_guard()` is SECURITY DEFINER with fixed search path to see the mapping while the existing `pos_allowed` check reads caller identity. The regression runs migrations in timestamp order and simulates authenticated RLS. Focused inventory 47 PASS, adjustment UI 9 PASS, full `npm test` EXIT 0, diff check PASS.
 - PR #574 source has been strengthened to lock both products in stable order during remap and serialize delete. Focused inventory test 47 PASS; current local full suite is rerunning. Exact-source hosted RC must be rerun for the final head. Previous runs on superseded trees do not count for current release gate. No Production migration/data write.
 - NEXT: finish exact-source RC, then recheck latest main, open PRs, reviews and successor before merge. Continue schema/trigger compatibility review. Do not activate POS stock without authorized cashier acceptance.
+
+
+## 2026-10-21 POS Market inventory post-merge checkpoint
+- PR #574 merged to main as `2d0c6b58a45689585dc7653bd18bcf89dfd1e4c1` after exact-source QueueGo RC `39643279380` passed all 12 steps. GitHub Pages build/deploy `39643901620` succeeded on the same merge SHA.
+- Browser runtime readback could not be completed because the browser environment disconnected. No Production migration/data write was made. Production migration history ends at `20261021133330`; `products.inventory_stock_tracking` is absent until prerequisite migration 330, so overlap preflight cannot be queried before ordered migration application.
+- NEXT: continue schema/ACL/RLS/trigger-order/forward-recovery review. Keep Production activation blocked on authorized cashier/device acceptance. QueueGo/POS remain NOT DONE.
