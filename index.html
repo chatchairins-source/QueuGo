@@ -14,7 +14,7 @@ button,input,textarea{font:inherit}
 svg{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .top{position:sticky;top:0;z-index:300;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid rgba(0,0,0,.05);padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 6px}
 .top>div{max-width:720px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:9px}
-.brand{font-size:18px;font-weight:800;letter-spacing:-.4px;border:0;background:none;color:var(--ink);cursor:pointer}.brand span{color:var(--red)}
+.brand{font-size:18px;font-weight:800;letter-spacing:-.4px;border:0;background:none;cursor:pointer}.brand-queue{color:var(--ink)}.brand-go{color:var(--red)}
 .acts{display:flex;gap:8px}
 .ic{width:42px;height:42px;border:0;border-radius:12px;background:#f3f4f6;color:#24272d;display:grid;place-items:center;cursor:pointer;position:relative}
 .ic svg{width:20px;height:20px}
@@ -973,7 +973,7 @@ function layout(inner,tab){
   window.__customerPickedLocation=window.__checkoutQuote=null;
   const u=S.get(),home=((location.hash.slice(1)||'home').split('/')[0]==='home');
   if(!home&&homeBannerTimer){clearInterval(homeBannerTimer);homeBannerTimer=null}
-  $('root').innerHTML=`<header class="top${home?' qg-home-original-top':''}"><div><button class="brand" onclick="go('home')">Queue<span>Go</span></button>
+  $('root').innerHTML=`<header class="top${home?' qg-home-original-top':''}"><div><button class="brand" onclick="go('home')" aria-label="QueueGo"><span class="brand-queue">Queue</span><span class="brand-go">Go</span></button>
 <div class="acts">${u?`<button class="ic" aria-label="ตะกร้า" onclick="go('cart')">${ico('bag')}${cartN()?`<b class="badge">${cartN()>99?'99+':cartN()}</b>`:''}</button>
 <button class="ic" aria-label="แจ้งเตือน" onclick="go('notifications')">${ico('bell')}<b id="customer-notification-count" hidden></b></button><button class="ic" aria-label="โปรไฟล์" onclick="go('profile')">${ico('user')}</button>`:'<button class="lk" onclick="go(\'login\')">เข้าสู่ระบบ</button>'}</div></div></header>
 <main class="${home?'qg-home-original-main':''}">${inner}</main>${nav(tab)}`;
