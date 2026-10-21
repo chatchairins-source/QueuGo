@@ -88,7 +88,7 @@ internal fun MerchantMarketCatalogScreen(
     Column(Modifier.fillMaxSize().imePadding().padding(horizontal = 12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             OutlinedButton(onClick = { if (selected != null) selected = null else onBack() }, enabled = !saving) { Text("กลับ") }
-            Text("แคตตาล็อกตลาด", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(12.dp))
+            Text("แคตตาล็อกตลาด", fontSize = MerchantPageTitleSize, fontWeight = FontWeight.Bold, modifier = Modifier.padding(12.dp))
         }
         notice?.let { Text(it, color = QgMuted) }
         error?.let {
