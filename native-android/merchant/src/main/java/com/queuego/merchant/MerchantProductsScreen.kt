@@ -79,7 +79,7 @@ internal fun MerchantProductsScreen(
     ) {
         item(key = "products-header") {
             Spacer(Modifier.height(8.dp))
-            Text("สินค้าและเมนู", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+            Text("สินค้าและเมนู", fontSize = MerchantPageTitleSize, fontWeight = FontWeight.ExtraBold)
             Text(
                 "เปิด–ปิดขาย แก้ไขราคา และจัดการสต็อก",
                 color = QgMuted,
