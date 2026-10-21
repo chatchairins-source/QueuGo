@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require('jsdom');
+const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
+(async()=>{let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+ const dom=new JSDOM('<div id="qg-credit-admin"></div>',{url:'https://queuego.invalid',runScripts:'outside-only'}),w=dom.window;let requests=[],lost=true;
+ w.currentUser=()=>({id:id(70),type:'admin',status:'approved'});w.toast=()=>{};
+ w.qtSupabaseRpc=async(name,p)=>{if(name==='queuego_admin_credit_accounts')return [];if(name.includes('_credit_targets'))return [{user_id:id(1),name:'Rider One',shops:'Rider One',promo_minor:0}];requests.push({name,p});if(lost)throw Error('lost reply');return id(999)};
+ w.eval(fs.readFileSync('admin/credit.js','utf8'));await w.qgAdminLoadCredit();await new Promise(r=>setTimeout(r,0));
+ const form=()=>w.document.querySelectorAll('form')[3];let f=form();f.querySelector('select').value=id(1);f.querySelector('input').value='20';f.querySelector('textarea').value='Owner Rider grant';f.dispatchEvent(new w.Event('submit',{cancelable:true}));await new Promise(r=>setTimeout(r,10));
+ eq(requests[0].name,'queuego_admin_grant_rider_credit');eq(f.querySelector('input').disabled,true);
+ await w.qgAdminLoadCredit();lost=false;f=form();f.dispatchEvent(new w.Event('submit',{cancelable:true}));await new Promise(r=>setTimeout(r,10));eq(requests[1],requests[0]);eq(w.localStorage.getItem('qg-admin-rider-credit-v1:'+id(70)),null);
+w.close();console.log('Admin Rider grant UI: '+checks+' checks PASS');})().catch(e=>{console.error(e);process.exitCode=1});
