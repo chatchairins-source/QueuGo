@@ -129,7 +129,8 @@ internal fun CustomerServiceBanner(
     fallbackDrawable: Int?,
     fallbackTitle: String,
     fallbackSubtitle: String,
-    onLink: (String) -> Unit = {}
+    onLink: (String) -> Unit = {},
+    darkScrim: Boolean = false
 ) {
     if (banner?.active == false) return
     val remoteImage = webBannerImage(banner)
@@ -158,17 +159,19 @@ internal fun CustomerServiceBanner(
             cornerRadius = 20.dp,
             showFallback = false
         )
+        val copyColor = if (darkScrim) Color.White else Color(0xFF17191D)
+        val fadeColor = if (darkScrim) Color(0x99000000) else Color(0xF0FFFFFF)
         Column(
             Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xF0FFFFFF))))
-                .padding(start = 18.dp, end = 18.dp, top = 30.dp, bottom = 16.dp)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, fadeColor)))
+                .padding(start = 18.dp, end = 18.dp, top = if (darkScrim) 38.dp else 30.dp, bottom = 16.dp)
         ) {
             if (heading.isNotBlank()) {
                 Text(
                     heading,
-                    color = Color(0xFF17191D),
+                    color = copyColor,
                     fontSize = 20.sp,
                     lineHeight = 23.sp,
                     fontWeight = FontWeight.Bold
@@ -178,7 +181,7 @@ internal fun CustomerServiceBanner(
                 Spacer(Modifier.height(4.dp))
                 Text(
                     subtitle,
-                    color = Color(0xFF17191D),
+                    color = copyColor,
                     fontSize = 12.sp,
                     lineHeight = 18.sp
                 )
