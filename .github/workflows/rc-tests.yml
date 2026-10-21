@@ -39,6 +39,16 @@ jobs:
         run: npx playwright-core install --with-deps webkit
       - name: Verify Admin fast boot and section isolation in mobile WebKit
         run: node tests/admin-boot-browser.cjs
+      - name: Preserve Admin layout evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-admin-layout-evidence
+          path: |
+            /tmp/queuego-admin-*.png
+            /tmp/queuego-admin-metrics.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Run complete Merchant document in mobile WebKit
         run: npm run test:merchant:browser
       - name: Verify Map Lab mobile hit targets, pan, zoom and sheet gestures
