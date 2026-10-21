@@ -921,3 +921,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Release blocker: none in Admin source. External gates remain for provider-backed refund, Credit/Top-up rollout, Ride/Express activation, authenticated/physical-device acceptance and Android/Play release.
 - Status: DONE / SOURCE FROZEN. Do not reopen superseded Admin branches without a reproducible regression/security defect.
 - NEXT: resume Android Customer/Merchant/Rider Google Play Closed Testing Release Gate from newest release Source of Truth.
+
+
+## 2026-10-21 Merchant Home cleanup / unified credit successor
+- Status: IN PROGRESS (publication); source change removes the latest-orders heading, cards and unused Home slice. Orders remain accessible through existing Orders navigation; no order data is deleted.
+- Source: PR525 branch work-web-credit-unified-merchant-rider-20261021, descendant of main60d5fa5a via97ace8fb. Preserves unified Merchant/Rider balance and finance-only Merchant credit access.
+- Evidence: merchant-boot9 and credit-web31 PASS; git diff --check PASS. Full local regression and exact-head CI are required before merge/publication.
+- Native: newest credit PR526 already has no latest-orders Home section; no duplicate Native implementation required.
+- NEXT: finish full regression, exact-head RC/mobile WebKit, merge PR525 and verify successful Pages deployment plus served Merchant HTML. Native credit PR526 retains its separate Android release gate.

@@ -609,3 +609,11 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - PR508 merged44c97c04 after exact RC39420653591 SUCCESS; compact proof image/retake grid and camera normalization now preserve the existing server cap. Runtime normalization/upload scenarios added in5a34149c, actual proof/upload65/0; full regression/hosted successor CI pending.
 - PR507 merged9bb6e436 preserving508/509; Pages39426694695 SUCCESS and actual HTTPS200 Admin hash23471ca18ac32835c0c2e0999846ae54c582142e22720e4b4ba51cfa194b60b9 matches. Postmerge RC39426694586 still running at checkpoint. Admin scope freezes after green; no new features.
 - NEXT: finish exact regression/CI and release receipts without replacing newer descendant work. No physical/runtime/provider/Production/Play acceptance inferred from CI.
+
+
+## 2026-10-21 Merchant Home cleanup / unified credit successor
+- Status: IN PROGRESS (publication); source change removes the latest-orders heading, cards and unused Home slice. Orders remain accessible through existing Orders navigation; no order data is deleted.
+- Source: PR525 branch work-web-credit-unified-merchant-rider-20261021, descendant of main60d5fa5a via97ace8fb. Preserves unified Merchant/Rider balance and finance-only Merchant credit access.
+- Evidence: merchant-boot9 and credit-web31 PASS; git diff --check PASS. Full local regression and exact-head CI are required before merge/publication.
+- Native: newest credit PR526 already has no latest-orders Home section; no duplicate Native implementation required.
+- NEXT: finish full regression, exact-head RC/mobile WebKit, merge PR525 and verify successful Pages deployment plus served Merchant HTML. Native credit PR526 retains its separate Android release gate.
