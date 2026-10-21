@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -69,9 +70,14 @@ internal fun MerchantProductsScreen(
     ) {
         item(key = "products-header") {
             Spacer(Modifier.height(8.dp))
-            Text("สินค้าและเมนู", fontSize = MerchantPageTitleSize, fontWeight = FontWeight.ExtraBold)
             Text(
-                "เปิด–ปิดขาย แก้ไขราคา และจัดการสต็อก",
+                if (shopCategory == "grocery") "สินค้าในร้าน" else "สินค้าและเมนู",
+                fontSize = MerchantPageTitleSize,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                if (shopCategory == "grocery") "เพิ่มสินค้าเอง หรือเลือกจากแคตตาล็อก QueueGo"
+                else "เปิด–ปิดขาย แก้ไขราคา และจัดการสต็อก",
                 color = QgMuted,
                 fontSize = 10.sp,
                 modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
@@ -163,14 +169,27 @@ internal fun MerchantProductsScreen(
         }
     }
     if (hasMasterCatalog) {
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.White).padding(12.dp)) {
-            Button(onClick = onAddManual, enabled = !busy,
+        Column(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+        ) {
+            OutlinedButton(
+                onClick = onAddManual,
+                enabled = !busy,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = QgRed),
+                border = BorderStroke(1.dp, Color(0xFFEDC7CF)),
+                modifier = Modifier.fillMaxWidth().height(44.dp)
+            ) { Text("เพิ่มสินค้าเอง", fontWeight = FontWeight.ExtraBold) }
+            Spacer(Modifier.height(6.dp))
+            Button(
+                onClick = onOpenCatalog,
+                enabled = !busy,
                 colors = ButtonDefaults.buttonColors(containerColor = QgRed),
-                modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("เพิ่มสินค้าเอง", fontWeight = FontWeight.ExtraBold) }
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = onOpenCatalog, enabled = !busy,
-                colors = ButtonDefaults.buttonColors(containerColor = QgRed),
-                modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("เพิ่มสินค้าจากแคตตาล็อก", fontWeight = FontWeight.ExtraBold) }
+                modifier = Modifier.fillMaxWidth().height(44.dp)
+            ) { Text("เพิ่มสินค้าจากแคตตาล็อก", fontWeight = FontWeight.ExtraBold) }
         }
     }
     }
