@@ -24,6 +24,7 @@ assert.match(adjustments,/pg_advisory_xact_lock/);
 assert.match(marketGuard,/Market Master owns stock tracking for this product/);
 assert.match(marketGuard,/disable generic tracking before assigning Market stock ownership/);
 assert.match(marketGuard,/from public\.market_products where product_id=product/);
+assert.match(marketGuard,/create or replace function public\.qg_inventory_tracking_guard\(\)[\s\S]*?security definer set search_path=public,pg_temp/);
 assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
 (async()=>{
   const db=new PGlite();
@@ -46,6 +47,7 @@ assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
     insert into public.products(id,shop_id,name,stock,grocery_master_id) values('${master}','${shop}','Grocery Master',5,'40000000-0000-4000-8000-000000000001');
     insert into public.orders(id,shop_id,status) values('${order(1)}','${other}','pending'),('${order(2)}','${shop}','pending');`);
   await db.exec(migration);
+  await db.exec(adjustments);
   await db.exec(trackingGuard);
   await db.exec(`select set_config('request.jwt.claim.sub','50000000-0000-4000-8000-000000000001',false);select set_config('qg_test.allowed','true',false);select set_config('qg_test.shop','${shop}',false)`);
   await db.exec(groceryCancel+` create trigger qg_test_grocery_cancel after update of status on public.orders for each row execute function public.qg_grocery_cancel_stock();`);
@@ -94,7 +96,6 @@ assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
   const functionAcl=await scalar(`select has_function_privilege('authenticated','public.qg_pos_generic_item_stock()','execute') generic_trigger,has_function_privilege('authenticated','public.qg_pos_generic_cancel_stock()','execute') generic_cancel,has_function_privilege('authenticated','public.qg_grocery_cancel_stock()','execute') grocery_cancel`);
   eq(functionAcl.generic_trigger,false);eq(functionAcl.generic_cancel,false);eq(functionAcl.grocery_cancel,false);
   // Manual stock changes must go through a manager-scoped, idempotent RPC and immutable audit row.
-  await db.exec(adjustments);
   const opening='10000000-0000-4000-8000-000000000003',trackedLater='10000000-0000-4000-8000-000000000004';
   await db.exec(`insert into public.products(id,shop_id,name,stock,inventory_stock_tracking) values('${opening}','${shop}','Opening',4,true),('${trackedLater}','${shop}','Tracked later',7,false);update public.products set inventory_stock_tracking=true where id='${trackedLater}'`);
   eq((await scalar(`select event_type,stock_before,stock_after from public.pos_inventory_adjustments where product_id='${opening}'`)).event_type,'opening_balance');
@@ -112,7 +113,12 @@ assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
       end if; return new; end$$;
     create trigger market_item_stock after insert on public.order_items for each row execute function public.test_market_item_stock();`);
   await db.exec(marketGuard);
+  // Production market_products has RLS enabled with no policies. The trigger must run
+  // with a privileged fixed owner to see this mapping while preserving auth.uid().
+  await db.exec(`alter table public.market_products enable row level security;
+    grant select on public.market_products to authenticated;grant select,update on public.products to authenticated;set role authenticated`);
   await reject(`update public.products set inventory_stock_tracking=true where id='${marketProduct}'`,/Market Master owns stock tracking/);
+  await db.exec(`reset role`);
   await db.exec(`insert into public.products(id,shop_id,name,stock,inventory_stock_tracking) values('${blockedMarket}','${shop}','Generic stock owner',4,true)`);
   await reject(`insert into public.market_products(product_id,shop_id,stock_quantity,pack_size) values('${blockedMarket}','${shop}',10,1)`,/disable generic tracking before assigning Market/);
   // Defense in depth for a pre-existing bad overlap: Market's ledger changes, while generic stock is never decremented.
@@ -145,7 +151,7 @@ assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
   eq((await scalar(`select event_type,delta from public.pos_inventory_adjustments where order_id='${order(6)}' and event_type='cancellation_release'`)).delta,1);
   eq((await scalar(`select stock from public.products where id='${p}'`)).stock,5);
   const history=await db.query(`select public.pos_inventory_adjustment_history($1,40,null,null) result`,[p]);
-  eq(history.rows[0].result.entries.length,3);
+  eq(history.rows[0].result.entries.length,9);
   const auditAcl=await scalar(`select has_table_privilege('authenticated','public.pos_inventory_adjustments','select') auth_read,has_table_privilege('authenticated','public.pos_inventory_adjustments','update') auth_update,has_function_privilege('anon','public.pos_inventory_stock_adjust(uuid,integer,text,text,uuid)','execute') anon_adjust,has_function_privilege('authenticated','public.pos_inventory_stock_adjust(uuid,integer,text,text,uuid)','execute') auth_adjust`);
   eq(auditAcl.auth_read,false);eq(auditAcl.auth_update,false);eq(auditAcl.anon_adjust,false);eq(auditAcl.auth_adjust,true);
   await db.exec(`select set_config('qg_test.allowed','false',false)`);

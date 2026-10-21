@@ -13,7 +13,7 @@ begin
 end $$;
 
 create or replace function public.qg_inventory_tracking_guard() returns trigger
-language plpgsql set search_path=public,pg_temp as $$
+language plpgsql security definer set search_path=public,pg_temp as $$
 begin
   if new.grocery_master_id is not null and new.inventory_stock_tracking then
     raise exception 'Grocery Master owns stock tracking for this product';
