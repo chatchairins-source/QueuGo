@@ -130,7 +130,7 @@ internal fun CustomerServiceBanner(
     fallbackTitle: String,
     fallbackSubtitle: String,
     onLink: (String) -> Unit = {},
-    darkScrim: Boolean = false
+    darkScrim: Boolean = true
 ) {
     if (banner?.active == false) return
     val remoteImage = webBannerImage(banner)
