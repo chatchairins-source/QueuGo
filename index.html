@@ -484,7 +484,7 @@ function qgServiceBannerEntry(key){return serviceBannerConfigCache&&typeof servi
 function qgServiceBannerImage(key,fallback=''){const e=qgServiceBannerEntry(key),src=String(e.image_url||e.image_data||'').trim();return (/^data:image\//.test(src)||/^https?:\/\//i.test(src))?src:fallback}
 function qgServiceBannerLink(value){const link=String(value||'').trim();return link.startsWith('#')||/^https?:\/\//i.test(link)?link:''}
 function qgOpenServiceBanner(link){const safe=qgServiceBannerLink(link);if(safe)qgOpenHomeBanner(safe)}
-const QG_SHOPPING_BANNER_IMAGES=Object.freeze(Object.fromEntries(['shopping','mobile_accessories','computer_it','automotive','fashion_accessories','toys','home_decor'].map(key=>[key,'assets/banners/qg_'+key+'_banner.webp?v=20261013-bright1'])));
+const QG_SHOPPING_BANNER_IMAGES=Object.freeze(Object.fromEntries(['shopping','mobile_accessories','computer_it','automotive','fashion_accessories','toys','home_decor'].map(key=>[key,'assets/banners/qg_'+key+'_banner.webp?v=20261021-buriram1'])));
 function qgServiceBannerMarkup(key,fallback,title,subtitle){
   const e=qgServiceBannerEntry(key);if(e.active===false)return '';
   const src=qgServiceBannerImage(key,fallback||QG_SHOPPING_BANNER_IMAGES[key]||''),heading=String(e.title||title||''),copy=String(e.subtitle||subtitle||''),link=qgServiceBannerLink(e.link||e.link_target||'');
