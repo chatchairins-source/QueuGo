@@ -1073,3 +1073,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Production schema readback confirmed `order_items.quantity numeric`, `market_products.stock_quantity numeric`, composite product/shop FK and SECURITY DEFINER Market/Grocery stock triggers.
 - PR #576 changed the generic inventory PGlite fixture to numeric; fractional generic quantity is rejected while fractional Market quantity affects only the Market ledger. Exact RC `39647073978` passed all 12 steps. Merged to main at `a4f12dd39b751e7e05a2d37b54e47863d477f391`; post-merge main RC `39647725266` passed and Pages deploy `39647725023` succeeded.
 - Production migration/data remain untouched. Latest migration `20261021133330`; inventory tracking column absent until ordered feature migrations. Cashier/device and controlled migration gates remain open; QueueGo/POS NOT DONE.
+
+
+## 2026-10-21 main RC and POS Production preflight
+- PR #577 merged main SHA `e70961d5b70fa7f84519fbebf473659603e35132`; exact PR RC `39648478732` passed. Main RC `39649126036` first failed Admin WebKit assertion at `tests/admin-boot-browser.cjs:69`; retry of exact failed job passed every step. Pages deploy `39649125931` succeeded. First-attempt failure is retained; no source runtime edit was made.
+- Supabase read-only: migration history ends `20261021133330`; POS inventory chain `20261021211800`–`20261021233300` and cash movement migration `20261021211709` are unapplied. Existing Grocery/Market stock triggers remain authoritative. Generic POS tables and triggers are absent. No Production mutation.
+- Activation gate: authorized cashier/device flow, ordered migrations, overlap preflight after 330, post-apply ACL/RLS/trigger readback, then real sale/cancel/refund/adjustment regression. QueueGo/POS NOT DONE.

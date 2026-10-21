@@ -64,9 +64,19 @@ const root=path.resolve(__dirname,'..'),owner='00000000-0000-4000-8000-000000000
   for(const width of [320,390,768,1440]){
    await page.setViewportSize({width,height:900});
    for(const name of ['admin','admin-orders','admin-credit','admin-laundry','admin-express','admin-catalog','admin-system']){
-    await page.evaluate(name=>{location.hash='#'+name},name);await page.waitForLoadState('networkidle');
+    await page.evaluate(name=>{location.hash='#'+name},name);
+    const expectedTitleSize=width<=700?'22px':'24px';
+    await page.waitForFunction(async ({name,expected})=>{
+     if(location.hash!=='#'+name)return false;
+     const h=document.querySelector('.qg-page-title h1');
+     if(!h||!h.isConnected||!h.textContent.trim())return false;
+     const first=getComputedStyle(h).fontSize;
+     await new Promise(requestAnimationFrame);
+     return h.isConnected&&h===document.querySelector('.qg-page-title h1')
+       &&first===expected&&getComputedStyle(h).fontSize===expected;
+    },{name,expected:expectedTitleSize},{timeout:5000});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'workspace overflow: '+name+' / '+width);checks++;
-    assert.equal(await page.locator('.qg-page-title h1').evaluate(el=>getComputedStyle(el).fontSize),width<=700?'22px':'24px');checks++;
+    assert.equal(await page.locator('.qg-page-title h1').evaluate(el=>window.getComputedStyle(el).fontSize),expectedTitleSize,'stable title size: '+name+' / '+width);checks++;
    }
    const nav=width>=1024?page.locator('.qg-admin-sidebar nav'):page.locator('#qg-admin-menu nav');
    assert.equal(await nav.locator('.qg-nav-group').count(),3);checks++;
