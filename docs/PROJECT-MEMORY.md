@@ -706,4 +706,10 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 
 ## 2026-10-21 POS numeric order quantity compatibility
 - Production read-only schema: `order_items.quantity numeric`; `market_products.stock_quantity numeric`; Market relation is composite FK `(product_id,shop_id) → products(id,shop_id)`. Market and Grocery order-item stock triggers are SECURITY DEFINER.
-- Identified regression fixture mismatch: POS inventory test had modeled item quantity as integer. PR #576 updates to numeric and covers fractional generic rejection plus fractional Market stock movement without generic stock mutation. Exact RC pending; no Production mutation.
+- Identified regression fixture mismatch: POS inventory test had modeled item quantity as integer. PR #576 changed it to numeric and covers fractional generic rejection plus fractional Market stock movement without generic stock mutation. Exact RC `39647073978` passed; merged as `a4f12dd39b751e7e05a2d37b54e47863d477f391`; post-merge RC `39647725266` passed. No Production mutation.
+
+
+## 2026-10-21 POS numeric quantity compatibility — merged
+- Production read-only schema confirmed numeric `order_items.quantity` and `market_products.stock_quantity`, composite Market product/shop FK, and SECURITY DEFINER Market/Grocery stock triggers.
+- PR #576 updates the inventory PGlite fixture to numeric; fractional generic stock quantities reject, while Market fractional stock changes only Market's ledger. Exact RC `39647073978` passed all 12 steps; merged to main as `a4f12dd39b751e7e05a2d37b54e47863d477f391`; post-merge main RC `39647725266` passed; Pages deploy `39647725023` succeeded.
+- No Production DDL/data mutation. Production migration history ends at `20261021133330` and `products.inventory_stock_tracking` is absent. NEXT: continue ordered schema/trigger/ACL/recovery review; keep real cashier/device acceptance and controlled migration gates open. QueueGo/POS remain NOT DONE.
