@@ -1,6 +1,6 @@
 # QueueGo Feature Gap Matrix
 
-Reviewed against main `643a115129b0bf1d6b05de261baa0aa959310a1b` and open PRs on 2026-10-21. This is an evidence ledger, not a claim that every capability is complete. `Source present` means code or schema exists; it does not certify a real-user flow.
+Reviewed against main `fbdf63707a5eba1b9bf703891330c7b132e6bb54` and open PRs on 2026-10-22. This is an evidence ledger, not a claim that every capability is complete. `Source present` means code or schema exists; it does not certify a real-user flow.
 
 Status key: **Source present** = identified implementation; **Staged** = open successor not merged/deployed; **Gate open** = requires additional runtime, user, device, security or production evidence; **Audit next** = exact implementation/evidence still needs review.
 
@@ -30,7 +30,7 @@ Status key: **Source present** = identified implementation; **Staged** = open su
 | POS receipts, printer and multiple terminals | Printer queue/receipt paths and source tests exist | Source present; Gate open | Test actual target printers, drawer kick, duplicate print/retry and multi-terminal ownership |
 | POS reports, COGS, profit and tax readiness | Owner-only sales and item sales reports exist; cost/accounting/tax readiness not fully evidenced | Partial; Audit next | Define cost history, margin, discount/refund accounting and get jurisdiction-specific tax review before activation |
 | POS staff, permissions and audit | Staff roles/permissions and shift actor records exist | Source present; Gate open | Verify least-privilege matrix and manager approval for refund, discounts, stock adjustment and cash movements |
-| POS offline, sync, backup and recovery | General backup/restore and transport recovery checks exist; reliable POS offline sale queue not evidenced | Audit next | Design idempotent local outbox, conflict/reconciliation policy and tested restore before claiming offline sale |
+| POS offline, sync, backup and recovery | General backup/restore and transport recovery checks exist; reliable POS offline sale queue not evidenced; PR #580 hardens identity-scoped retry for ambiguous online bill creation | Audit next | Design idempotent local outbox, conflict/reconciliation policy and tested restore before claiming offline sale |
 | POS loyalty, customer and integrations | Existing customer and future integration foundations need focused scope audit | Audit next | Define consented customer lookup/loyalty contract and stable versioned integration boundary |
 | Admin, analytics and operations | Current Admin workspace/control surfaces and scoped readers exist | Source present; Gate open | Real Admin role acceptance, audit/history and service health coverage for every active service |
 | Security, privacy and performance | Source-level RLS/auth-definer/security/performance regressions exist | Source present; Gate open | Continue real cross-shop negative tests, production advisors, mobile profiling and restore/failure drills |
@@ -46,3 +46,9 @@ Resume the highest-priority unblocked `NEXT.md` item. For each row, establish th
 - Main push RC `39694314231` passed all stages on the merge SHA, including npm test, Admin WebKit boot/layout, Merchant mobile WebKit, Map Lab gestures, QueueGo Map search and Grocery mobile/tablet rendering. Pages deployment `39694313643` succeeded on the same SHA. Main ref verified at `cc036ee001bf23425d055977f8330e3753749743`.
 - PR #578's change is test stabilization and documentation; Pages success is recorded as deployment evidence, not a claim of end-user UI behavior change. The prior main RC failure on #577 remains recorded as a separate earlier attempt.
 - Production database remains unmodified. POS feature migrations remain unapplied; continue authorized cashier/device acceptance and controlled migration gates. QueueGo/POS are **NOT DONE**.
+
+
+## POS ambiguous bill session-scope guard — 2026-10-22
+- Read current main `6acd48ef3c130cc1c6b7f4c0958afcc228920414`, no newer POS successor was open. PR #580 guards the ambiguous bill retry with its captured shop and cashier identity; identity mismatch drops the tab-scoped pending request before any order RPC. Regression covers session change after the request is loaded.
+- PR #580 exact RC `39695677982` passed all 12 required stages and merged as `fbdf63707a5eba1b9bf703891330c7b132e6bb54`. Post-merge main RC `39696051611` passed all stages. Pages deployment `39696050699` succeeded on the merge SHA.
+- This recovers an ambiguous online create request safely; it is not an offline sale queue. POS offline sale/outbox/conflict/reconciliation remains unimplemented and unaudited. Production database remains unmodified; cash/inventory migrations and authorized cashier/device acceptance gates remain open. QueueGo/POS are **NOT DONE**.
