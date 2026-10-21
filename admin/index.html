@@ -738,7 +738,7 @@ async function qtHydrateDatabase(opts){
       }catch(e){ console.warn('profile hydrate failed',e); }
       qtMarkClean('qt_users');
     }
-    const orders=await qtSupabaseTable('orders?select=*',{accessToken:token});
+    const orders=await qtSupabaseTable('orders?select=*&order_type=not.in.(DINE_IN,TAKEAWAY)',{accessToken:token});
     const orderItems=await qtSupabaseTable('order_items?select=*',{accessToken:token}).catch(()=>[]);
     const deliveries=await qtSupabaseTable('deliveries?select=*',{accessToken:token}).catch(()=>[]);
     const payments=await qtSupabaseTable('payments?select=*',{accessToken:token}).catch(()=>[]);
@@ -1783,7 +1783,7 @@ window.addEventListener('unhandledrejection',e=>{
       const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('วันที่ไม่ถูกต้อง');
       const from=new Date(date+'T00:00:00+07:00'),to=new Date(from.getTime()+86400000);
-      const orders=await qtSupabaseTable('orders?select=id,shop_id,subtotal,gp_amount,gp_rate,status&created_at=gte.'+encodeURIComponent(from.toISOString())+'&created_at=lt.'+encodeURIComponent(to.toISOString())+'&status=in.(picked_up,in_progress,completed)',{accessToken:token});
+      const orders=await qtSupabaseTable('orders?select=id,shop_id,subtotal,gp_amount,gp_rate,status&order_type=not.in.(DINE_IN,TAKEAWAY)&created_at=gte.'+encodeURIComponent(from.toISOString())+'&created_at=lt.'+encodeURIComponent(to.toISOString())+'&status=in.(picked_up,in_progress,completed)',{accessToken:token});
       if(!alive())return;
       if(!Array.isArray(orders))throw Error('ข้อมูลออเดอร์ไม่ถูกต้อง');
       const shopIds=[...new Set(orders.map(o=>o.shop_id).filter(qtUuidLike))],chunks=[];
@@ -1975,7 +1975,7 @@ async function qgLoadAdminCash(day){
  function qgAdminResetOrderPaging(){window.qgAdminOrderPage=0;window.QG_ADMIN_ORDER_CURSOR=null;qgAdminOrderCursorHistory.length=0}
  window.renderAdminOrderCenter=function(){if(!active())return navigate('login');layout('จัดการออเดอร์','<div class="qg-v22-admin-orders"><div class="qg-order-toolbar"><input id="qg-admin-order-search" type="search" placeholder="ค้นหาเลขออเดอร์ ร้าน หรือลูกค้าในหน้านี้"><button type="button" onclick="qgLoadAdminOrders()">รีเฟรช</button></div><div id="qg-v22-order-filters"></div><div id="qg-v22-order-list">กำลังโหลดจากฐานข้อมูล...</div></div>');qgLoadAdminOrders()};
  window.qgLoadAdminOrders=async function(){if(!active()||currentUser()?.status!=='approved')return;const owner=currentUser().id;if(window.QG_ADMIN_ORDER_OWNER!==owner){window.QG_ADMIN_ORDER_OWNER=owner;window.qgAdminOrderFilter='all';qgAdminResetOrderPaging()}const version=++qgAdminOrderLoadVersion,cursor=window.QG_ADMIN_ORDER_CURSOR;const list=document.getElementById('qg-v22-order-list'),tabs=document.getElementById('qg-v22-order-filters');if(!list)return;const alive=()=>list.isConnected&&currentUser()?.id===owner&&active()&&version===qgAdminOrderLoadVersion;
-   try{const cursorWhere=cursor?.at&&cursor?.id?'&or='+encodeURIComponent('(created_at.lt.'+cursor.at+',and(created_at.eq.'+cursor.at+',id.lt.'+cursor.id+'))'):'';const statusWhere=qgAdminOrderFilter==='all'?'':qgAdminOrderFilter==='_active'?'&status=not.in.(completed,cancelled,no_rider_available)':'&status=eq.'+encodeURIComponent(qgAdminOrderFilter);const raw=await req('orders?select=id,order_number,status,subtotal,delivery_fee,gp_amount,total_amount,customer_id,shop_id,rider_id,created_at&order=created_at.desc,id.desc&limit=101'+cursorWhere+statusWhere);if(!alive())return;const rows=(Array.isArray(raw)?raw:[]).slice(0,100);
+   try{const cursorWhere=cursor?.at&&cursor?.id?'&or='+encodeURIComponent('(created_at.lt.'+cursor.at+',and(created_at.eq.'+cursor.at+',id.lt.'+cursor.id+'))'):'';const statusWhere=qgAdminOrderFilter==='all'?'':qgAdminOrderFilter==='_active'?'&status=not.in.(completed,cancelled,no_rider_available)':'&status=eq.'+encodeURIComponent(qgAdminOrderFilter);const raw=await req('orders?select=id,order_number,status,subtotal,delivery_fee,gp_amount,total_amount,customer_id,shop_id,rider_id,created_at&order_type=not.in.(DINE_IN,TAKEAWAY)&order=created_at.desc,id.desc&limit=101'+cursorWhere+statusWhere);if(!alive())return;const rows=(Array.isArray(raw)?raw:[]).slice(0,100);
      const shopIds=[...new Set(rows.map(o=>o.shop_id).filter(qtUuidLike))],customerIds=[...new Set(rows.map(o=>o.customer_id).filter(qtUuidLike))];
      const [shops,customers]=await Promise.all([shopIds.length?req('shop_profiles?select=id,shop_name&id=in.('+shopIds.join(',')+')&limit=100'):[],customerIds.length?req('users?select=id,name&id=in.('+customerIds.join(',')+')&limit=100'):[]]);if(!alive())return;
      const shopsById=new Map(shops.map(s=>[s.id,s.shop_name])),customersById=new Map(customers.map(c=>[c.id,c.name]));
