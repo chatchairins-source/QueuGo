@@ -9,9 +9,8 @@ Snapshot date: 2026-10-21 · Main: `643a115129b0bf1d6b05de261baa0aa959310a1b`
 ## POS cash in/out slice
 
 - Source branch: `work-pos-complete-next-20261021`
-- Exact HEAD: `0f9af0cbc91af0bf7d964c9c52665ceb4e19cb9a`
-- PR: #568, open at review; successor based on current main `6669dc108137f8119c86d4de9709dacba7a301d7`.
-- Previous HEAD `119c68eb1172967e3542d66a15b02de30b33253f` passed QueueGo RC run `39617058579`. Updated exact-head RC run `39619648922` completed **SUCCESS**.
+- Current PR #568 HEAD: `a1592df31c41cbb6bbfdf13e166d977c9bcf901c`, still open, mergeable, and based on main `643a115129b0bf1d6b05de261baa0aa959310a1b`.
+- The current descendant tree, including PR #572, passed QueueGo RC run [39628421715](https://github.com/chatchairins-source/QueuGo/actions/runs/39628421715) at `7573d543f74e07d188ed704bc2bc8f289feca8db`. Full `npm test`, WebKit installation, Admin and Merchant mobile checks, Map Lab, Map search and Grocery mobile/tablet checks all completed successfully.
 - Local verification in the current session: focused POS tests pass (`36` cash-shift SQL/contract checks, `73` POS runtime checks, `18` item-sales report checks); full `npm test` completed successfully on updated exact source tree.
 - The update serializes identical actor/shop/request keys before receipt lookup and handles a competing unique-key receipt only when payload matches. Local PGlite validates migration semantics and retry contract; it is not a real simultaneous-connection/Production race certification.
 - Production migration history (read-only Supabase check): installed through `20261021133330_pos_owner_item_sales_report`; `20261021211709_pos_cash_register_movements` is **not installed**.
@@ -22,8 +21,8 @@ Snapshot date: 2026-10-21 · Main: `643a115129b0bf1d6b05de261baa0aa959310a1b`
 - Local source adds opt-in stock tracking for generic merchant products, reservations for shared `order_items`, sellable-stock UI, zero-stock POS prevention, pre-completion cancellation return, no automatic restock on completed refunds, open-order toggle protection and a single authority boundary that excludes Grocery Master products.
 - Official Shopify guidance distinguishes available inventory from committed inventory reserved by unfulfilled orders. QueueGo's UI labels the editable count as sellable stock, and its private reservation table records committed quantities. [Shopify: Understanding inventory states](https://help.shopify.com/en/manual/inventory-and-locations/fundamentals/inventory-states)
 - Verification: `tests/pos-generic-inventory.cjs` 22 PASS; POS option/stock interaction 27 PASS; POS barcode 31 + runtime 11 PASS; POS shifts 36 PASS; Merchant product reliability 72 PASS; complete `npm test` exit 0. PGlite is isolated and does not certify hosted concurrent connections, live RLS, Production or a physical register.
-- Published as dependent PR #572, head `3850595ced53e2717ac0620ee241789b4544740a`, based on open #568 head `a1592df31c41cbb6bbfdf13e166d977c9bcf901c`. Its source tree matches local tested commit `1eafe37ed1eb19ec6d017a0ace9219cfe0b85659` (all 15 Git blob SHAs verified). PR is ready for review and mergeable.
-- Hosted RC has not run: `.github/workflows/rc-tests.yml` triggers for PRs targeting `main`, while #572 is stacked on #568. Retarget after #568 merges. Local `npm test` EXIT0; `npm run test:merchant:browser` is blocked because Playwright WebKit is not installed. No Production apply/readback or real cashier sale was completed. Release gate remains BLOCKED.
+- Published as dependent PR #572, current head `7573d543f74e07d188ed704bc2bc8f289feca8db`, based on open #568 head `a1592df31c41cbb6bbfdf13e166d977c9bcf901c`. Source files match locally tested commit `1eafe37ed1eb19ec6d017a0ace9219cfe0b85659`; later commits only update status docs. PR remains stacked, ready for review and mergeable.
+- Exact-source-descendant hosted RC [39628421715](https://github.com/chatchairins-source/QueuGo/actions/runs/39628421715) completed **SUCCESS** for full `npm test` and all mobile WebKit checks. RC was triggered using a `work-main-*` push branch because the stacked PR does not target `main`. Three migrations remain unapplied; no Production readback or real cashier sale was completed. Release gate remains BLOCKED.
 - Next POS work: publish and verify exact source, then real authorized cross-channel concurrency/cancel/refund acceptance. Follow with stock adjustment history and purchase receiving/supplier traceability.
 
 ## POS SKU, modifiers and inventory successor
