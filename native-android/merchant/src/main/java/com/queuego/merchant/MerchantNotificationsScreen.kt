@@ -87,7 +87,7 @@ internal fun MerchantNotificationsScreen(
             Column {
                 Text(
                     "การแจ้งเตือน",
-                    fontSize = 20.sp,
+                    fontSize = MerchantPageTitleSize,
                     lineHeight = 25.sp,
                     fontWeight = FontWeight.ExtraBold
                 )

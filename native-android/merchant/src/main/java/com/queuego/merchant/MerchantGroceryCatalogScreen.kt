@@ -76,7 +76,7 @@ internal fun MerchantGroceryCatalogScreen(
                 ) { Text("กลับ") }
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text("เพิ่มสินค้าจากแคตตาล็อก", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("เพิ่มสินค้าจากแคตตาล็อก", fontSize = MerchantPageTitleSize, fontWeight = FontWeight.ExtraBold)
                     Text(
                         "รูปและข้อมูลกลางมาจาก QueueGo · ร้านกำหนดราคาและช่องทางขายเอง",
                         color = QgMuted,

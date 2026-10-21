@@ -137,7 +137,7 @@ internal fun MerchantShopSetupScreen(
             ) { Text("กลับ") }
             Spacer(Modifier.width(10.dp))
             Column {
-                Text("แก้ไขข้อมูลร้าน", fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.ExtraBold)
+                Text("แก้ไขข้อมูลร้าน", fontSize = MerchantPageTitleSize, lineHeight = 23.sp, fontWeight = FontWeight.ExtraBold)
                 Text("ข้อมูลและตำแหน่งร้าน", color = QgMuted, fontSize = 11.sp)
             }
         }

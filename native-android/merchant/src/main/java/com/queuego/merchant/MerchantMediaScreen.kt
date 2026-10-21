@@ -196,7 +196,7 @@ internal fun MerchantMediaScreen(
                 }
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text("คลังรูปภาพร้าน", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("คลังรูปภาพร้าน", fontSize = MerchantPageTitleSize, fontWeight = FontWeight.ExtraBold)
                     Text("รูปหน้าร้าน โลโก้ และรูปสินค้า", color = QgMuted, fontSize = 10.sp)
                 }
             }
