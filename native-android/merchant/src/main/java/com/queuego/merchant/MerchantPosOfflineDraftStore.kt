@@ -57,9 +57,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         if (!file.exists()) return null
         check(file.length() <= MAX_BYTES) { "ข้อมูลร่าง POS ไม่ถูกต้อง" }
         val draft = decode(JSONObject(file.readText()))
-        check(draft.actorId == scope.actorId && draft.shopId == scope.shopId && draft.deviceId == scope.deviceId) {
-            "ร่าง POS ไม่ตรงกับบัญชี ร้าน หรืออุปกรณ์นี้"
+        check(draft.actorId == scope.actorId && draft.deviceId == scope.deviceId) {
+            "ร่าง POS ไม่ตรงกับบัญชีหรืออุปกรณ์นี้"
         }
+        if (draft.shopId != scope.shopId) return null
         validate(draft)
         return draft
     }
