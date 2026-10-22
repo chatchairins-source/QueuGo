@@ -12,7 +12,7 @@ Object.assign(w,{S:{user:{id:'r'},session:{sessionId:'s'},riderProfile:{id:'rp',
  toast(){},getAccessToken:async()=> 'test-only',refreshData:async()=>{},requestAnimationFrame:f=>f(),qgFollowRiderCamera(){},
  sbTable:async(path,opts)=>{writes++;bodies.push(opts.body);if(fail)throw Error('lost network');if(ack)await ack;return [{id:'rp',metadata:opts.body.metadata}]},
  jobCardHTML:()=>'<article id="active-job">Current work</article>',qgRouteBundleHTML:()=>'',bindJobCardEvents(){},qgBindRouteBundleUI(){},qgLaundryPoolHTML:()=>''});
-w.eval('let riderAvailabilityBusy=false,riderAvailabilityRevision=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;\n'+code);
+w.eval('let riderAvailabilityBusy=false,riderAvailabilityRevision=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;let qgActiveItemPreview={orderId:null};function qgLoadActiveItemPreview(){}function qgResetActiveItemPreview(){qgActiveItemPreview={orderId:null}};\n'+code);
 w.renderHomeDock();eq(w.document.querySelectorAll('[role=switch]').length,1);eq(w.document.querySelectorAll('#go-online,#go-offline,.qg-home-stats').length,0);
 eq(w.document.getElementById('status-switch').getAttribute('aria-checked'),'false');
 let release;ack=new Promise(r=>release=r);const pending=w.toggleOnline();await Promise.resolve();await w.toggleOnline();eq(writes,1);eq(w.S.online,false);eq(w.document.getElementById('status-switch').disabled,true);release();await pending;ack=null;
