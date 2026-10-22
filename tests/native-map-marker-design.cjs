@@ -4,6 +4,8 @@ const read=p=>fs.readFileSync(p,'utf8');
 const riderRes='native-android/rider/src/main/res/drawable/';
 const asset=name=>read(riderRes+name+'.xml');
 const nav=read('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
+const navRes='native-android/rider-navigation-map/src/main/res/drawable/';
+const navAsset=name=>read(navRes+name+'.xml');
 const integration=read('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
 const overlay=read('native-android/rider/src/main/java/com/queuego/rider/RiderReturnService.kt');
 
@@ -14,6 +16,13 @@ assert(asset('qg_rider_current_location')!==asset('qg_marker_pickup'));
 
 assert(nav.includes('org.maplibre.android.maps.MapView'));
 assert(nav.includes('MarkerOptions()')&&nav.includes('PolylineOptions()'));
+assert(nav.includes('GeoJsonSource(')&&nav.includes('SymbolLayer(STOP_SHOP_ICON_LAYER_ID, STOP_SOURCE_ID)'));
+assert(nav.includes('SymbolLayer(STOP_CUSTOMER_ICON_LAYER_ID, STOP_SOURCE_ID)'));
+assert(nav.includes('textField(Expression.get("sequence"))'));
+assert(nav.includes('source.setGeoJson(stopFeatureCollectionJson(stops, activeId))'));
+assert(navAsset('qg_stop_shop').includes('#E6002D'));
+assert(navAsset('qg_stop_customer').includes('#17171B'));
+assert(navAsset('qg_stop_shop')!==navAsset('qg_stop_customer'));
 assert(nav.includes('NavigationRouteStyle.ACTIVE')&&nav.includes('NavigationRouteStyle.FUTURE'));
 assert(nav.includes('RiderNavigationMapRegistry')&&nav.includes('retainAcrossVisibilityLoss()'));
 assert(!/com\.longdo|LongdoMapAndroidSDK|longdo\.map/i.test(nav));

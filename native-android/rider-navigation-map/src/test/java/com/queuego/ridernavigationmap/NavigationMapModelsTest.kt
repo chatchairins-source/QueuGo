@@ -46,6 +46,25 @@ class NavigationMapModelsTest {
         assertEquals(listOf("shop-2", "customer"), state.styledRemainingRoutes().map { it.toStopId })
         assertEquals(NavigationRouteStyle.ACTIVE, state.styledRemainingRoutes().first().style)
     }
+    @Test fun stopMarkerTitlesExposeNumberAndRole() {
+        val shop = NavigationMapStop(
+            id = "shop",
+            sequence = 1,
+            kind = NavigationStopKind.PICKUP,
+            point = NavigationMapPoint(15.0, 103.1),
+            label = "ร้านทดสอบ"
+        )
+        val customer = NavigationMapStop(
+            id = "customer",
+            sequence = 2,
+            kind = NavigationStopKind.DROPOFF,
+            point = NavigationMapPoint(15.01, 103.11),
+            label = "ลูกค้า QT-1234"
+        )
+        assertEquals("จุด 1 · ร้านค้า · ร้านทดสอบ", navigationStopMarkerTitle(shop))
+        assertEquals("จุด 2 · ลูกค้า · ลูกค้า QT-1234", navigationStopMarkerTitle(customer))
+    }
+
     @Test fun demandZonesFailClosedAndDeduplicateByStableIdentity() {
         val state = RiderNavigationMapState(
             demandZones = listOf(
