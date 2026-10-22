@@ -31,8 +31,10 @@ assert(app.includes('val step = if (pickup) 1 else 2') &&
   app.includes('val stepTitle = if (pickup) "ไปรับสินค้าที่ร้าน" else "ส่งสินค้าให้ลูกค้า"'),
   'Active job must expose explicit two-stage pickup/delivery control center');
 assert(app.includes('riderActiveJobEtaLabel(etaSeconds)') &&
-  app.includes('etaSeconds = navigationGuidance.etaSeconds'),
-  'Active job must surface live QueueGo navigation ETA');
+  app.includes('internal fun riderActiveJobEtaSeconds(guidance: NavigationGuidanceState): Double?') &&
+  app.includes('if (guidance.weakGps || guidance.offRoute) null else guidance.etaSeconds') &&
+  app.includes('etaSeconds = riderActiveJobEtaSeconds(navigationGuidance)'),
+  'Active job must surface live QueueGo navigation ETA and suppress unreliable guidance');
 assert(app.includes('var homeItems by remember') &&
   app.includes('api.orderItems(auth, job.id)') &&
   app.includes('Text("รายการสินค้า"'),
