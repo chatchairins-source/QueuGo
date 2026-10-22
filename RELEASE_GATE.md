@@ -1,10 +1,18 @@
 # QueueGo Release Gate
 
-Snapshot date: 2026-10-22 · Main: `635a16d0b9a56f1ac3549b6e4cc36c8347243781`
+Snapshot date: 2026-10-22 · Main: `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`
 
 ## Overall status
 
 **NOT READY for a whole-platform production launch or Play Closed Testing claim.** Current main has working source and automated regressions, but the required real-user journey, physical-device/hardware evidence, Android signing and production cutover receipts are not all present. A green source test or CI run does not pass those gates.
+
+## Latest main receipts and POS offline draft scope — 2026-10-22
+
+- PR #585 design exact RC `39698519445` passed and merged as `d67f8dd8f79bcc991c447376cdd838988c816884`; main RC `39698920070` and Pages deployment `39698919956` succeeded.
+- PR #584 Admin legacy GP/slip removal exact RC `39699366405` passed on `9e9202bf3b688a816eef41cd3fe2eacd0e852562`; merge SHA `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`. Descendant main RC `39699765279` and Pages deployment `39699764713` succeeded. The live GP deduction-from-credit path remains intact.
+- PR #584's regression harness serves the before snapshot from one historical commit, including its loader/runtime files. Admin WebKit coverage passed on both exact PR head and merged main.
+- Next source slice: durable, identity-scoped offline cart drafts only. No disconnected payment, paid order, kitchen dispatch, stock reservation, final receipt, or sale reporting. Server acceptance and cashier review are required after reconnect.
+- Production migrations/data remain unchanged; authorized cashier/device, real-user end-to-end, and controlled migration/readback gates remain open. QueueGo/POS are **NOT READY**.
 
 ## POS cash movement and inventory
 
