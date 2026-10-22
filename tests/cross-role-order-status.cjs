@@ -21,7 +21,11 @@ ok(merchant.includes("s=(['in_progress','delivering','rider_to_customer'].includ
 ok(merchant.includes("if(s==='arrived')return['delivering','Rider ถึงลูกค้าแล้ว']"),'Merchant arrived stays in delivery group');
 ok(merchant.includes("if(['completed','delivered'].includes(s))return['done','จัดส่งสำเร็จ']"),'Merchant success only for completed/delivered');
 ok(/window\.statusFromRow=function\(row\)\{\s*return String\(row\?\.status\|\|''\);\s*\};/.test(rider),'Rider retains authoritative raw status for actions');
-ok(rider.includes("st==='in_progress'&&o.rider_arrived_customer_at?'Rider ถึงลูกค้าแล้ว':'กำลังไปส่ง'"),'Rider shows arrived presentation without mutating state');
+ok(
+  rider.includes("if(o.rider_arrived_customer_at)mainLabel='ส่งมอบสินค้า'") &&
+  rider.includes("else if(qgNavigationStarted(o,'customer'))mainLabel='ถึงลูกค้าแล้ว'"),
+  'Rider keeps authoritative in_progress state while arrival timestamp advances presentation/action'
+);
 ok(admin.includes("qtOrderStatusFromDb(r.status,r.note,r.rider_arrived_customer_at)"),'Admin canonicalizer consumes arrival timestamp');
 ok(admin.includes("if(s==='in_progress')return arrivedCustomerAt||"),'Admin derives arrived from timestamp');
 ok(admin.includes("{key:'searching_rider', label:'กำลังหาไรเดอร์'"),'Admin labels searching_rider');
