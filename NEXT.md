@@ -1,10 +1,22 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-22 · Authoritative main: `513e9b6d5c97c1324c48724848f17857ee7fe554`
+Current snapshot: 2026-10-22 · Authoritative main: `aca988473d9f5132141dc1df379f0028d3ff64a2`
 
-## Active chunk
+## Current verified POS checkpoint — 2026-10-22
 
-**POS Production continuation — Product Code history aligned; generic inventory release is next.**
+**Active chunk: publish and verify the migration-history alignment for the four inventory migrations already applied in Production.**
+
+- Latest main `aca988473d9f5132141dc1df379f0028d3ff64a2`; RC run `39793297082` passed. The only open PR found is Rider-only #623; no open POS PR supersedes this line.
+- Production inventory migrations are applied as `20261022141101` (reservations), `20261022141117` (adjustments), `20261022144627` (manager guard), and `20261022145405` (Market stock-owner guard).
+- Post-apply readback verified the Market mapping trigger, inventory guard triggers, fixed `search_path`, SECURITY DEFINER and no direct function EXECUTE for public/anon/authenticated. Market Master has 8 mapped products and 0 overlap with generic tracked stock. No sale, payment, or stock fixture was created.
+- Security/performance advisory counts remain at the pre-apply baseline (24 existing RLS/no-policy notices and 18 FK-index notices); none were introduced by this trigger-only migration.
+- Full local `npm test` passed on exact main `aca98847`; after timestamp alignment, POS inventory PGlite: 67 PASS, adjustment UI: 9 PASS, source integrity: 99 scripts/90 references PASS, and `git diff --check` PASS. Run exact-head RC for this history-only PR.
+- POS remains **NOT READY**: authenticated cashier/tablet and printer/scanner flows, offline reconciliation, remaining capability areas, Android parity, and final Release Gate evidence are still outstanding.
+
+## Historical checkpoints (superseded where they conflict with the current checkpoint above)
+## Prior active chunk — historical detail superseded by the current checkpoint above
+
+**POS Production continuation — Product Code history aligned; generic inventory release was the recorded next step.**
 
 - PR #619 exact-head RC `39777668898` passed all test and browser stages and merged at `513e9b6d5c97c1324c48724848f17857ee7fe554`. Product Code migration filenames now match Production versions `20261022113556` and `20261022114328`; no runtime files, sale or payment changed.
 - Production Product Code registry is live at migration `20261022113556`; FK indexes are live at `20261022114328`. The table is RLS-enabled, direct anon/authenticated grants are denied, and its four fixed-search-path SECURITY DEFINER RPCs are authenticated-only. Registry is empty; no demo product, sale or payment was inserted.
@@ -21,7 +33,7 @@ Current snapshot: 2026-10-22 · Authoritative main: `513e9b6d5c97c1324c48724848f
 - Production Supabase advisors were read. Security lints include intentionally private tables with RLS/no policies and public/anon SECURITY DEFINER API warnings; review each finding against the intended endpoint policy before activation. Performance lints include unindexed foreign keys. No advisor-based change or database mutation is authorized by these findings alone.
 - PR #572 source adds shop-scoped SKU/barcode, server-authoritative options/prices, opt-in generic inventory reservation across POS/QR/Delivery, manager-only idempotent stock adjustments and private audit history. Grocery Master and Market stock owners remain separate.
 
-## Then, in dependency order
+## Previous dependency notes — superseded by the current checkpoint above
 
 1. Continue read-only Production schema compatibility and controlled migration plan review. Six POS feature migrations remain unapplied; Production latest is `20261021133330`, and `products.inventory_stock_tracking` is absent, so Market-overlap preflight cannot run until prerequisite schema migration is installed. No Production apply without authorized cashier/device acceptance.
 2. Continue staged schema compatibility review and preserve Market/Grocery stock authorities; keep Production activation blocked until authenticated sale/cancel/refund and manager-adjustment journeys pass with an authorized register/device, then controlled schema release, deployment/readback and regression.
