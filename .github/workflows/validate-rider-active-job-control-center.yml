@@ -1,0 +1,41 @@
+name: Validate Rider Active Job Control Center
+
+on:
+  push:
+    branches:
+      - validation-rider-active-job-control-center-20261022
+
+permissions:
+  contents: read
+
+jobs:
+  rider-active-job:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: Prepare Rider Firebase config when available
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:-}" ]; then
+            echo "Firebase config absent; compiling Rider without physical push certification"
+            exit 0
+          fi
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > native-android/rider/google-services.json
+      - name: Rider active control center source contract
+        run: node tests/native-rider-p0-p4.cjs
+      - name: Rider unit tests
+        run: gradle -p native-android :rider:testDebugUnitTest --no-build-cache --stacktrace
+      - name: Rider debug APK
+        run: gradle -p native-android :rider:assembleDebug --no-build-cache --stacktrace
