@@ -21,6 +21,10 @@ begin
     return false;
   end if;
 
+  if v_stage not in ('pickup','delivery') then
+    raise exception 'unsupported proof stage';
+  end if;
+
   select r.id
   into v_rider
   from public.rider_profiles r
@@ -61,7 +65,7 @@ begin
     );
   end if;
 
-  raise exception 'unsupported proof stage';
+  return false;
 end
 $function$;
 
