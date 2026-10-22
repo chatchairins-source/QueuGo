@@ -1,10 +1,10 @@
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {PGlite}=require('@electric-sql/pglite');
 const root=path.resolve(__dirname,'..');
-const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021233000_pos_generic_inventory_reservations.sql'),'utf8');
-const adjustments=fs.readFileSync(path.join(root,'supabase/migrations/20261021233100_pos_inventory_adjustments.sql'),'utf8');
-const trackingGuard=fs.readFileSync(path.join(root,'supabase/migrations/20261021233200_pos_inventory_tracking_manager_guard.sql'),'utf8');
-const marketGuard=fs.readFileSync(path.join(root,'supabase/migrations/20261021233300_pos_market_inventory_owner_guard.sql'),'utf8');
+const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261022141101_pos_generic_inventory_reservations.sql'),'utf8');
+const adjustments=fs.readFileSync(path.join(root,'supabase/migrations/20261022141117_pos_inventory_adjustments.sql'),'utf8');
+const trackingGuard=fs.readFileSync(path.join(root,'supabase/migrations/20261022144627_pos_inventory_tracking_manager_guard.sql'),'utf8');
+const marketGuard=fs.readFileSync(path.join(root,'supabase/migrations/20261022145405_pos_market_inventory_owner_guard.sql'),'utf8');
 const groceryCancel=migration.match(/create or replace function public\.qg_grocery_cancel_stock\(\)[\s\S]*?\$\$;/)?.[0];
 const client=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
 const pos=fs.readFileSync(path.join(root,'merchant/pos-table-v2.js'),'utf8');
