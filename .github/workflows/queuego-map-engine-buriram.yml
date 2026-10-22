@@ -44,20 +44,37 @@ jobs:
           echo '02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf  map-data/thailand.osm.pbf' | sha256sum --check
 
           RELEASE_JSON="$(mktemp)"
-          curl --fail --silent --show-error --location --retry 3 \
+          VECTOR_READY=0
+          if curl --fail --silent --show-error --location --retry 3 \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/rider-buriram-offline-20261016" \
-            --output "${RELEASE_JSON}"
-          ASSET_URL="$(python -c "import json,sys; release=json.load(open(sys.argv[1],encoding='utf-8')); asset=next((a for a in release.get('assets',[]) if a.get('name')=='buriram-shortbread.pmtiles'),None); assert asset and asset.get('url'),'Pinned Buriram vector release asset is missing'; print(asset['url'])" "${RELEASE_JSON}")"
+            --output "${RELEASE_JSON}"; then
+            if ASSET_URL="$(python -c "import json,sys; release=json.load(open(sys.argv[1],encoding='utf-8')); asset=next((a for a in release.get('assets',[]) if a.get('name')=='buriram-shortbread.pmtiles'),None); assert asset and asset.get('url'),'Pinned Buriram vector release asset is missing'; print(asset['url'])" "${RELEASE_JSON}")"; then
+              if curl --fail --location --retry 3 \
+                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                -H "Accept: application/octet-stream" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "${ASSET_URL}" \
+                --output map-data/vector.pmtiles; then
+                VECTOR_READY=1
+              fi
+            fi
+          fi
           rm -f "${RELEASE_JSON}"
-          curl --fail --location --retry 3 \
-            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-            -H "Accept: application/octet-stream" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "${ASSET_URL}" \
-            --output map-data/vector.pmtiles
+
+          if [[ "${VECTOR_READY}" != "1" ]]; then
+            echo "Pinned release transport unavailable; rebuilding the exact published vector recipe."
+            rm -f map-data/vector.pmtiles map-data/buriram-shortbread.pmtiles
+            cp map-data/thailand.osm.pbf map-data/thailand-latest.osm.pbf
+            QG_MAP_DATA_DIR="${PWD}/map-data" \
+            QG_THAILAND_PBF_URL="https://download.geofabrik.de/asia/thailand-261015.osm.pbf" \
+            QG_PLANETILER_MEMORY="5g" \
+              native-android/qa/build-buriram-shortbread-pmtiles.sh
+            mv map-data/buriram-shortbread.pmtiles map-data/vector.pmtiles
+          fi
+
           echo '30699573ed2068d3c7e4393ad477dbe8febf68f453f27ae88437f5c652a3ddfc  map-data/vector.pmtiles' | sha256sum --check
       - name: Build normalized database and actual routing tiles
         run: |
