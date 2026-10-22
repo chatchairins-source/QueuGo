@@ -347,10 +347,10 @@ ok(
   riderApiMemory.includes('readRiderBytesBounded') &&
   riderApiMemory.includes('readRiderBytesBounded(5 * 1024 * 1024, "รูปโปรไฟล์ต้องมีขนาดไม่เกิน 5 MB")') &&
   riderApiMemory.includes('RIDER_EVIDENCE_INPUT_MAX_BYTES = 8 * 1024 * 1024') &&
-  riderApiMemory.includes('readRiderBytesBounded(\n            RIDER_EVIDENCE_INPUT_MAX_BYTES,') &&
+  riderApiMemory.includes('requireRiderStreamBounded(\n            RIDER_EVIDENCE_INPUT_MAX_BYTES,') &&
   riderApiMemory.includes('RIDER_EVIDENCE_UPLOAD_MAX_BYTES = 500 * 1024') &&
   !riderApiMemory.includes('.use { it.readBytes() }'),
-  'Rider profile/evidence source files must be bounded while streaming and evidence must still compress to the 500 KB upload ceiling'
+  'Rider profile bytes must stay bounded and evidence preflight must stream-count without heap-buffering the source before 500 KB compression'
 );
 ok(
   riderApiMemory.includes('readRiderApiResponseBounded(512 * 1024)') &&
