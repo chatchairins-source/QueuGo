@@ -44,6 +44,8 @@ assert(app.includes('RiderJobTool("jobs", processLabel') &&
   app.includes('RiderJobTool("phone", riderActiveJobContactLabel(pickup)') &&
   app.includes('RiderJobTool("support", "แชต"') &&
   app.includes('"phone" -> R.drawable.qg_rider_flow_phone') &&
+  app.includes('api.pickupIssueOrderId(auth, pickupId)') &&
+  app.includes('.onSuccess(::startShopVoice)') &&
   app.includes('startShopVoice(current.activeJob.id)') &&
   app.includes('startCustomerVoice(current.activeJob.id)'),
   'Active job must keep details, direct stage-aware contact and chat immediately reachable');
