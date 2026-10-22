@@ -176,7 +176,7 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
   const acc=navHasNumber(accuracy)?Number(accuracy):null;
   const gpsBearing=navHasNumber(bearing)?navNormalizeBearing(Number(bearing)):null;
   const match=navMatchRoute(route,point,{bearing:gpsBearing,speed:spd,previousProgress:previousRouteProgress});
-  const reliable=match&&match.offRouteMeters<=60?match:null;
+  const reliable=match&&match.offRouteMeters<=30?match:null;
   let routeBearing=reliable?.segmentBearingDegrees??null;
   const remaining=match?Math.max(0,match.geometryDistanceMeters-match.progressMeters):null;
   if(reliable){
@@ -574,7 +574,7 @@ function removeGeoJsonLine(map,id){
 function remainingNavigationRoute(route,point,{bearing=null,speed=null,accuracy=null}={}){
   if(!valid(point?.lat,point?.lng)||!navHasNumber(accuracy)||Number(accuracy)>35)return null;
   const decision=navCameraDecision({...point,bearing,speed,accuracy,route});
-  const match=decision?.routeMatch;if(!match||decision.routeBearingRejected||match.offRouteMeters>12)return null;
+  const match=decision?.routeMatch;if(!match||decision.routeBearingRejected||match.offRouteMeters>25)return null;
   let walked=0;const part=match.part,remaining=[];
   remaining.push([match.snapped.lng,match.snapped.lat]);
   for(let i=0;i<part.length-1;i++){
