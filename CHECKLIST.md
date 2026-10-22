@@ -1,4 +1,4 @@
-Warning: truncated output (original token count: 41825)
+Warning: truncated output (original token count: 41889)
 Total output lines: 1036
 
 # QueueGo Active Work Checklist
@@ -555,8 +555,7 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Status: IN PROGRESS runtime gate. NEXT: integrated exact-head CI must actually execute Customer denied/allowed/draft, Merchant and Rider tile/lifecycle scopes using verified archive; fix first real failure. Public hosting, physical GPS/roads, signing/Play and Production remain BLOCKED separately. No Production mutation/publication.
 
 ### 2026-10-18 strict real-map first actual failure
-- Parent/source `f5fef7dec5fa31cf7eac6798ff0e1b436e…1825 tokens truncated…t and effective food/cafe delay cap. Function follows Supabase security guidance: explicit search_path, PUBLIC/anon/authenticated execute revoked, service_role only.
-- Added isolated PGlite regression to the full npm gate; it checks exact 50.00/55.00/40.00 THB conversion to satang, default rule snapshot, food 5-minute cap, stale revision rejection, role rejection and read-only SQL.
+- Parent/source `f5fef7dec5fa31cf7eac6798ff0e1b436e…1889 tokens truncated…B conversion to satang, default rule snapshot, food 5-minute cap, stale revision rejection, role rejection and read-only SQL.
 - Fixture now mirrors already-existing `orders.rider_delivery_payout` and `merchant_ready_estimate_at` columns used by current migrations. No Production migration was applied from this chat.
 - NEXT: compute generalized incremental route burden from the same 2–5 order matrix/readiness snapshot, feed only that server-derived compensation into the versioned allocator, then test financial + quality rejection and atomic claim locking.
 
@@ -998,4 +997,4 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Android now parses and displays average ticket, cash, discounts, refunds, void count, prior-period change and hourly POS sales from the same existing RPC. The migration file is mirrored from Web main for source history; it is already applied in Production and is not being applied again.
 - Focused source regression: `tests/native-android-source.cjs` 308 PASS; `git diff --check` PASS. Two JVM parser tests were added. Local `npm test` did not reach the suite because its pretest tried to fetch external map assets in this restricted network; local Gradle/wrapper is unavailable, so exact Native CI must run the JVM/build gates.
 - Web deploy is live; direct Merchant route requires a real store login, which is not available in this environment. No authenticated cashier flow or physical-device acceptance is claimed.
-- PR #627 uses a branch name outside the Native Pilot push filter, so its exact-head run cannot start. The same patch is now carried forward on `work-native-pos-report-metrics-20261023`, which matches the existing Native Pilot branch filter; run Native Pilot on this final branch head before merge. Close the inert PR #627 after opening the successor PR. Overall QueueGo POS remains NOT DONE.
+- PR #627 was closed as superseded; PR #628 targets the Native successor from `work-native-pos-report-metrics-20261023`, matching the Native Pilot push filter. First exact-head run `39870247416` reached full regression then failed at `tests/rider-continuous-dispatch.cjs:68`: UTC `current_date` queried a ledger grouped by Bangkok date after the local date rolled over. The test now supplies the Bangkok business date; this changes test range only, not business behavior. The correction pushed as `fd16bdeaed82fd760faba808a5f7f0f2ee0bd864`; wait for its exact-head Native Pilot CI and fix any next actual failure. Overall QueueGo POS remains NOT DONE.
