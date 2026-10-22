@@ -1,4 +1,4 @@
-Warning: truncated output (original token count: 41876)
+Warning: truncated output (original token count: 41896)
 Total output lines: 1036
 
 # QueueGo Active Work Checklist
@@ -555,7 +555,7 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Status: IN PROGRESS runtime gate. NEXT: integrated exact-head CI must actually execute Customer denied/allowed/draft, Merchant and Rider tile/lifecycle scopes using verified archive; fix first real failure. Public hosting, physical GPS/roads, signing/Play and Production remain BLOCKED separately. No Production mutation/publication.
 
 ### 2026-10-18 strict real-map first actual failure
-- Parent/source `f5fef7dec5fa31cf7eac6798ff0e1b436e…1876 tokens truncated…he full npm gate; it checks exact 50.00/55.00/40.00 THB conversion to satang, default rule snapshot, food 5-minute cap, stale revision rejection, role rejection and read-only SQL.
+- Parent/source `f5fef7dec5fa31cf7eac6798ff0e1b436e…1896 tokens truncated…ault rule snapshot, food 5-minute cap, stale revision rejection, role rejection and read-only SQL.
 - Fixture now mirrors already-existing `orders.rider_delivery_payout` and `merchant_ready_estimate_at` columns used by current migrations. No Production migration was applied from this chat.
 - NEXT: compute generalized incremental route burden from the same 2–5 order matrix/readiness snapshot, feed only that server-derived compensation into the versioned allocator, then test financial + quality rejection and atomic claim locking.
 
@@ -997,4 +997,4 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Android now parses and displays average ticket, cash, discounts, refunds, void count, prior-period change and hourly POS sales from the same existing RPC. The migration file is mirrored from Web main for source history; it is already applied in Production and is not being applied again.
 - Focused source regression: `tests/native-android-source.cjs` 308 PASS; `git diff --check` PASS. Two JVM parser tests were added. Local `npm test` did not reach the suite because its pretest tried to fetch external map assets in this restricted network; local Gradle/wrapper is unavailable, so exact Native CI must run the JVM/build gates.
 - Web deploy is live; direct Merchant route requires a real store login, which is not available in this environment. No authenticated cashier flow or physical-device acceptance is claimed.
-- PR #627 was closed as superseded; PR #628 targets the Native successor from `work-native-pos-report-metrics-20261023`, matching the Native Pilot push filter. Exact-head CI exposed a UTC/Bangkok business-date mismatch in rider cash-ledger fixtures; the first fix then revealed the same issue in another regression and an invalid SQL alias. All four affected tests now query the ledger date with `(now() at time zone 'Asia/Bangkok')::date`. This is test-only and does not change business behavior. Native Pilot must pass on the final source head before merge. Overall QueueGo POS remains NOT DONE.
+- PR #627 was closed as superseded; PR #628 targets the Native successor from `work-native-pos-report-metrics-20261023`, matching the Native Pilot push filter. Exact-head CI exposed a UTC/Bangkok date mismatch in rider ledger fixtures; all four affected tests now query the ledger's Bangkok business date. The emulator gate then exposed that `run-as` SIGKILL is denied by Android SELinux (`runas_app` cannot signal appdomain); the harness now uses the emulator adb shell signal path and has a source regression assertion. These fixes are test/harness only and do not change app business behavior. Rerun exact-head Native Pilot before merge. Overall QueueGo POS remains NOT DONE.
