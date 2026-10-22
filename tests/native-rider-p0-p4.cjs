@@ -21,7 +21,15 @@ assert(api.includes('MessageDigest.getInstance("SHA-256")') && api.includes('upl
 assert(api.includes('qg_rider_action_receipts?select=result,kind,payload&request_id=eq.'));
 assert(api.includes('mutationProofExists(auth, "qg_delivery_proofs", job.id, path)'));
 assert(api.includes('mutationProofExists(auth, "qg_pickup_proofs", orderId, path)'));
-assert(app.includes('if (actionBusy || !requireServerNetwork()) return@VerificationScreen'));
+assert(
+  app.includes('if (actionBusy) return@VerificationScreen') &&
+  app.includes('RiderProofSyncScheduler.enqueue(context, syncRequest)') &&
+  app.includes('if (!networkAvailable) {') &&
+  app.includes('if (!requireServerNetwork()) return@VerificationScreen') &&
+  app.indexOf('RiderProofSyncScheduler.enqueue(context, syncRequest)') <
+    app.indexOf('if (!requireServerNetwork()) return@VerificationScreen'),
+  'Verification must durably queue proof before the network gate so offline retry survives'
+);
 assert(!app.includes('showCollection')&&!app.includes('verifyCollection')&&
   app.includes('riderCollectionReady(job.customerCash, photoReady, previewReady)'),
   'Restored delivery proof must return to the single proof screen and revalidate proof/cash before completion');
