@@ -266,7 +266,7 @@ class NavigationCameraPolicyTest {
 
     @Test fun highwaySpeedUsesStrongForwardPerspective() {
         assertEquals(
-            50f,
+            52f,
             navigationTilt(
                 speedMetersPerSecond = 20f,
                 remainingRouteMeters = 2_000.0,
@@ -276,9 +276,9 @@ class NavigationCameraPolicyTest {
         )
     }
 
-    @Test fun approachingDestinationReducesPerspectiveForPrecision() {
+    @Test fun approachingDestinationKeepsNavigationPerspectiveReadable() {
         assertEquals(
-            28f,
+            45f,
             navigationTilt(
                 speedMetersPerSecond = 16f,
                 remainingRouteMeters = 45.0,
@@ -293,6 +293,29 @@ class NavigationCameraPolicyTest {
         assertEquals(30f, smoothNavigationTilt(34f, 24f), 0.001f)
         assertTrue(navigationTiltChangedEnough(34f, 38f))
         assertTrue(!navigationTiltChangedEnough(34f, 34.4f))
+    }
+
+    @Test fun upcomingTurnInsideOneHundredFiftyMetersZoomsIn() {
+        assertEquals(
+            18,
+            navigationZoom(
+                baseZoom = 17,
+                speedMetersPerSecond = 16f,
+                remainingRouteMeters = 2_000.0,
+                accuracyMeters = 4f,
+                nextTurnDistanceMeters = 140.0
+            )
+        )
+        assertEquals(
+            19,
+            navigationZoom(
+                baseZoom = 17,
+                speedMetersPerSecond = 16f,
+                remainingRouteMeters = 2_000.0,
+                accuracyMeters = 4f,
+                nextTurnDistanceMeters = 45.0
+            )
+        )
     }
 
     @Test fun approachingDestinationZoomsInEvenWhenMovingFast() {
