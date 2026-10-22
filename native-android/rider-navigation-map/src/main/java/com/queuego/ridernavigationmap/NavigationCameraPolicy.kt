@@ -442,12 +442,12 @@ internal fun navigationRotationDurationMillis(
     val angleBase: Float
     val angleGain: Float
     when {
-        speed == null -> { minDuration = 420L; maxDuration = 900L; cadenceFactor = 0.90; angleBase = 340f; angleGain = 6.2f }
-        speed >= 18f -> { minDuration = 220L; maxDuration = 460L; cadenceFactor = 0.58; angleBase = 170f; angleGain = 3.7f }
-        speed >= 11f -> { minDuration = 260L; maxDuration = 540L; cadenceFactor = 0.64; angleBase = 200f; angleGain = 4.1f }
-        speed >= 5f -> { minDuration = 310L; maxDuration = 660L; cadenceFactor = 0.72; angleBase = 240f; angleGain = 4.8f }
-        speed >= 2f -> { minDuration = 360L; maxDuration = 760L; cadenceFactor = 0.80; angleBase = 290f; angleGain = 5.4f }
-        else -> { minDuration = 420L; maxDuration = 900L; cadenceFactor = 0.90; angleBase = 340f; angleGain = 6.2f }
+        speed == null -> { minDuration = 650L; maxDuration = 800L; cadenceFactor = 0.90; angleBase = 620f; angleGain = 2.4f }
+        speed >= 18f -> { minDuration = 500L; maxDuration = 620L; cadenceFactor = 0.58; angleBase = 470f; angleGain = 1.6f }
+        speed >= 11f -> { minDuration = 520L; maxDuration = 650L; cadenceFactor = 0.64; angleBase = 490f; angleGain = 1.8f }
+        speed >= 5f -> { minDuration = 540L; maxDuration = 700L; cadenceFactor = 0.72; angleBase = 510f; angleGain = 2.0f }
+        speed >= 2f -> { minDuration = 580L; maxDuration = 760L; cadenceFactor = 0.80; angleBase = 550f; angleGain = 2.2f }
+        else -> { minDuration = 650L; maxDuration = 800L; cadenceFactor = 0.90; angleBase = 620f; angleGain = 2.4f }
     }
     if (currentBearing == null || !currentBearing.isFinite() ||
         targetBearing == null || !targetBearing.isFinite()
