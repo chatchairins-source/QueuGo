@@ -2615,7 +2615,17 @@ window.acceptJob=async function(orderId){
       const optimistic={...cachedOrder,status:'rider_assigned',rider_id:S.riderProfile?.id||cachedOrder.rider_id};
       S.activeOrder=optimistic;
       S.openJobs=(S.openJobs||[]).filter(x=>String(x?.order?.id)!==String(orderId));
-      syncRiderNavigationCameraMode();
+      // Accept means start work immediately. QueueGo navigation becomes active without
+      // asking the rider to press a second "navigate" button.
+      const target=qgRouteTarget(optimistic);
+      if(validRiderCoordinate(target.lat,target.lng)){
+        qgMarkNavigationStarted(optimistic,target.kind);
+        riderRouteOverviewActive=false;
+        syncRiderNavigationCameraMode();
+        qgNavigateInApp(target.lat,target.lng);
+      }else{
+        syncRiderNavigationCameraMode();
+      }
       if(S.activeTab==='home')renderHomeDock();
     }
     toast(cachedOrder?.market_order_id?'รับงานตลาดหลายร้านสำเร็จ':'รับงานสำเร็จ');
