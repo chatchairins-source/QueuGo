@@ -1,6 +1,6 @@
 package com.queuego.ridernavigationmap
 
-internal const val NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS = 8_000L
+const val NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS = 8_000L
 
 enum class NavigationViewMode {
     FOLLOW,
