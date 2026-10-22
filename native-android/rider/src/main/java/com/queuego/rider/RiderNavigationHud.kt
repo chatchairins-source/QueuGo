@@ -86,6 +86,20 @@ internal fun riderNavigationHudInfo(guidance: NavigationGuidanceState): RiderNav
     )
 }
 
+internal fun riderNavigationCustomerNote(
+    note: String?,
+    delivering: Boolean,
+    guidance: NavigationGuidanceState,
+    revealWithinMeters: Double = 300.0
+): String? {
+    if (!delivering || guidance.weakGps || guidance.offRoute) return null
+    val remaining = guidance.distanceRemainingMeters
+        ?.takeIf { it.isFinite() && it >= 0.0 }
+        ?: return null
+    if (remaining > revealWithinMeters.coerceAtLeast(0.0)) return null
+    return cleanRiderOrderNote(note)
+}
+
 internal fun riderRouteDistanceLabel(meters: Double): String {
     val safe = meters.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
     return if (safe < 1_000.0) {
