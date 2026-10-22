@@ -709,7 +709,6 @@ private fun RiderHome(
         return false
     }
     var deliverySuccessJob by remember { mutableStateOf<RiderJob?>(null) }
-    var deliverySuccessRating by remember { mutableStateOf<RiderRatingSummary?>(null) }
     var arrivalGuard by remember { mutableStateOf<RiderArrivalGuardState?>(null) }
     LaunchedEffect(actionMessage) {
         if (actionMessage != null) {
@@ -3251,14 +3250,6 @@ private fun RiderHome(
                 messageNotice?.let { RiderMessageNotice(it, Modifier) }
             }
         }
-        LaunchedEffect(deliverySuccessJob?.id, auth.user.id) {
-            val completed = deliverySuccessJob
-            if (completed == null) {
-                deliverySuccessRating = null
-                return@LaunchedEffect
-            }
-            deliverySuccessRating = runCatching { api.ratingSummary(auth) }.getOrNull()
-        }
         deliverySuccessJob?.let { completed ->
             val afterWorkRecommendation = riderAfterWorkRecommendation(
                 online = snapshot?.online == true,
@@ -3272,7 +3263,6 @@ private fun RiderHome(
                 auth = auth,
                 api = api,
                 job = completed,
-                rating = deliverySuccessRating,
                 recommendation = afterWorkRecommendation,
                 onRecommendation = { item ->
                     when (item.target) {
