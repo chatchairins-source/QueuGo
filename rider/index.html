@@ -539,6 +539,21 @@ function qgConfirmPickupReceived(){return new Promise(resolve=>{
   overlay.innerHTML='<div class="qg-confirm-card" role="dialog" aria-modal="true" aria-labelledby="qg-pickup-confirm-title"><h2 id="qg-pickup-confirm-title">ได้รับอาหารแล้วใช่ไหม?</h2><p>ตรวจว่ารายการครบและเก็บรูปใบเสร็จไว้แล้ว ก่อนเริ่มนำส่งให้ลูกค้า</p><div class="qg-confirm-actions"><button type="button" class="qg-confirm-no">ไม่ กำลังรออยู่</button><button type="button" class="qg-confirm-yes">ใช่ ได้รับแล้ว</button></div></div>';
   const done=value=>{overlay.remove();resolve(value)};overlay.querySelector('.qg-confirm-no').onclick=()=>done(false);overlay.querySelector('.qg-confirm-yes').onclick=()=>done(true);document.body.appendChild(overlay);
 });}
+function qgBindSlideConfirm(root,onComplete){
+  const input=root?.querySelector('input[type=range]');if(!root||!input)return;
+  let busy=false;
+  const sync=()=>root.style.setProperty('--slide-progress',Math.max(0,Math.min(100,Number(input.value)||0))+'%');
+  const reset=()=>{input.value='0';sync();root.classList.remove('is-busy');input.disabled=false;busy=false};
+  input.oninput=sync;sync();
+  input.onchange=async()=>{
+    if(busy)return;
+    const value=Number(input.value)||0;
+    if(value<100){root.style.transition='background .2s ease-out';reset();setTimeout(()=>{root.style.transition=''},220);return;}
+    busy=true;input.disabled=true;root.classList.add('is-busy');
+    try{if(typeof navigator.vibrate==='function')navigator.vibrate(20);await onComplete();}
+    catch(e){reset();throw e;}
+  };
+}
 async function riderFilePreview(inputId,previewId){
   const input=document.getElementById(inputId),img=document.getElementById(previewId);
   if(!input||!input.files[0]) return;
