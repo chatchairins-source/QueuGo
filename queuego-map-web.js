@@ -32,6 +32,34 @@ function ensureQueueGoMapCss(){
       font-size:9px!important;
       line-height:13px!important;
     }
+    .qg-route-badge.qg-maneuver-rich{
+      display:block!important;left:96px!important;right:10px!important;top:calc(7px + var(--safeT))!important;
+      max-width:680px!important;margin-left:auto!important;padding:9px 10px!important;border:1px solid #e9e2e4!important;
+      border-radius:20px!important;background:rgba(255,255,255,.985)!important;color:#211e20!important;
+      box-shadow:0 12px 30px #28171d1f!important;backdrop-filter:blur(18px)!important;
+    }
+    .qg-route-badge.qg-maneuver-rich .qg-nav-main{display:grid;grid-template-columns:54px minmax(0,1fr) auto;gap:9px;align-items:center}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-turn-icon{width:54px;height:54px;border-radius:16px;background:#e6002d;color:#fff;display:grid;place-items:center}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-turn-icon svg{width:34px;height:34px}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-copy{min-width:0}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-copy b{display:block;font-size:18px;line-height:1.05;font-weight:1000}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-copy strong{display:block;margin-top:2px;font-size:13px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-copy small{display:block;margin-top:1px;color:#7d7478;font-size:8px;font-weight:850}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-total{text-align:right;min-width:78px}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-total strong{display:block;font-size:10px;font-weight:1000}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-total small{display:block;margin-top:2px;color:#8d8589;font-size:7px}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-next{display:none;align-items:center;gap:7px;margin-top:7px;padding:6px 8px;border-radius:12px;background:#fff1f4;color:#51494d}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-next.show{display:flex}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-next svg{width:18px;height:18px;flex:none;color:#e6002d}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-next small{margin:0;color:#e6002d;font-size:8px;font-weight:1000}
+    .qg-route-badge.qg-maneuver-rich .qg-nav-next span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;font-weight:850}
+    @media(max-width:460px){
+      .qg-route-badge.qg-maneuver-rich{left:86px!important}
+      .qg-route-badge.qg-maneuver-rich .qg-nav-main{grid-template-columns:48px minmax(0,1fr)}
+      .qg-route-badge.qg-maneuver-rich .qg-nav-turn-icon{width:48px;height:48px}
+      .qg-route-badge.qg-maneuver-rich .qg-nav-total{grid-column:2;text-align:left}
+      .qg-route-badge.qg-maneuver-rich .qg-nav-total small{display:none}
+    }
     .queuego-map-host .maplibregl-ctrl-attrib-button{
       width:18px!important;
       height:18px!important;
@@ -223,6 +251,83 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
     : (smoothedBearing!=null?(navProjectForward(point,smoothedBearing,navFreeDriveLookAheadMeters(spd))||point):point);
   return {center,bearing:cameraBearing,pitch,zoom,routeMatch:match,remainingRouteMeters:remaining,routeBearingRejected:routeBearing!=null&&!routeBearingUsable};
 }
+function navTurnPhrase(code){
+  return ({0:'เลี้ยวซ้าย',1:'เลี้ยวขวา',2:'เบี่ยงซ้าย',3:'เบี่ยงขวา',4:'กลับรถ',5:'ตรงไป',6:'ขึ้นทางด่วน',9:'ถึงจุดหมายแล้ว',11:'ขึ้นเรือ'})[Number(code)]||null;
+}
+function navTurnSvg(code){
+  const common='fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"';
+  const body=({
+    0:'<path d="M13 20V10H6m0 0 4-4M6 10l4 4"/>',
+    1:'<path d="M11 20V10h7m0 0-4-4m4 4-4 4"/>',
+    2:'<path d="M13 20v-6L7 7m0 0 .5 5M7 7l5 .5"/>',
+    3:'<path d="M11 20v-6l6-7m0 0-.5 5M17 7l-5 .5"/>',
+    4:'<path d="M14 20v-9a4 4 0 0 0-8 0v4m0 0-3-3m3 3 3-3"/>',
+    9:'<circle cx="12" cy="8" r="3"/><path d="M12 11v9"/>'
+  })[Number(code)]||'<path d="M12 20V5m0 0-4 4m4-4 4 4"/>';
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" '+common+'>'+body+'</svg>';
+}
+function navDistanceLabel(meters){
+  const n=Math.max(0,Number(meters)||0);
+  return n<1000?Math.round(n/10)*10+' ม.':(n/1000).toFixed(1)+' กม.';
+}
+function navRouteSteps(payload){
+  const route=payload?.routes?.[0],steps=[];
+  for(const leg of Array.isArray(route?.legs)?route.legs:[]){
+    for(const step of Array.isArray(leg?.steps)?leg.steps:[]){
+      steps.push({
+        turnCode:Number.isFinite(Number(step?.vendor_type))?Number(step.vendor_type):7,
+        roadName:String(step?.name||'').trim(),
+        distance:Math.max(0,Number(step?.distance)||0)
+      });
+    }
+  }
+  return {route,steps};
+}
+function navUpcomingSteps(steps,traveled,limit=2){
+  const out=[];let actionAt=0;const used=Math.max(0,Number(traveled)||0);
+  for(let i=0;i<steps.length;i++){
+    const step=steps[i],phrase=navTurnPhrase(step.turnCode);
+    if(i>0&&phrase&&actionAt+15>=used){
+      out.push({step,phrase,distance:Math.max(0,actionAt-used)});
+      if(out.length>=limit)return out;
+    }
+    actionAt+=Math.max(0,Number(step.distance)||0);
+  }
+  if(!out.length)out.push({step:{turnCode:9,roadName:''},phrase:'ถึงจุดหมายแล้ว',distance:0});
+  return out;
+}
+function navEnsureManeuverHud(){
+  const badge=document.getElementById('route-badge');if(!badge)return null;
+  if(!badge.classList?.contains?.('qg-maneuver-rich')){
+    badge.classList?.add?.('qg-maneuver-rich');
+    badge.innerHTML='<div class="qg-nav-main"><div class="qg-nav-turn-icon" id="qg-nav-turn-icon"></div><div class="qg-nav-copy"><b id="qg-nav-turn-distance">—</b><strong id="qg-nav-road">กำลังคำนวณเส้นทาง</strong><small id="qg-nav-turn-label">QueueGo Navigation</small></div><div class="qg-nav-total"><strong id="route-text">—</strong><small>เหลือถึงจุดหมาย</small></div></div><div class="qg-nav-next" id="qg-nav-next"><span id="qg-nav-next-icon"></span><small>ถัดไป</small><span id="qg-nav-next-text"></span></div>';
+  }
+  return badge;
+}
+function navRenderManeuverHud(decision){
+  if(!decision?.routeMatch)return;
+  const payload=window.QueueGoMapService?.getLastRoute?.();
+  const parsed=navRouteSteps(payload),route=parsed.route;
+  if(!route||!parsed.steps.length)return;
+  const badge=navEnsureManeuverHud();if(!badge)return;
+  const serviceDistance=Math.max(0,Number(route.distance)||0),serviceDuration=Math.max(0,Number(route.duration)||Number(route.estimatedDuration)||0);
+  const geom=Math.max(1,Number(decision.routeMatch.geometryDistanceMeters)||1);
+  const progress=Math.max(0,Math.min(geom,Number(decision.routeMatch.progressMeters)||0));
+  const ratio=progress/geom,traveled=serviceDistance*ratio,remaining=serviceDistance-traveled;
+  const upcoming=navUpcomingSteps(parsed.steps,traveled,2),current=upcoming[0],following=upcoming[1];
+  const icon=document.getElementById('qg-nav-turn-icon'),distance=document.getElementById('qg-nav-turn-distance'),road=document.getElementById('qg-nav-road'),label=document.getElementById('qg-nav-turn-label'),total=document.getElementById('route-text'),next=document.getElementById('qg-nav-next'),nextIcon=document.getElementById('qg-nav-next-icon'),nextText=document.getElementById('qg-nav-next-text');
+  if(icon)icon.innerHTML=navTurnSvg(current.step.turnCode);
+  if(distance)distance.textContent=navDistanceLabel(current.distance);
+  if(road)road.textContent=current.step.roadName||current.phrase;
+  if(label)label.textContent=current.phrase;
+  if(total)total.textContent=navDistanceLabel(remaining)+(serviceDuration>0?' • '+Math.max(1,Math.ceil(serviceDuration*(1-ratio)/60))+' นาที':'');
+  const showNext=!!following&&(current.distance<=400||following.distance<=300);
+  if(next)next.classList?.toggle?.('show',showNext);
+  if(showNext){
+    if(nextIcon)nextIcon.innerHTML=navTurnSvg(following.step.turnCode);
+    if(nextText)nextText.textContent=following.phrase+'ใน '+navDistanceLabel(following.distance)+(following.step.roadName?' · '+following.step.roadName:'');
+  }
+}
 function navState(map){
   let state=navigationStates.get(map);
   if(!state){
@@ -337,6 +442,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   const target={...decision,bearing:navHasNumber(puckBearing)?navNormalizeBearing(Number(puckBearing)):decision.bearing,zoom:targetZoom,cameraCenter:riderCenter};
   state.bearing=target.bearing;
   state.lastDecision=target;
+  navRenderManeuverHud(target);
   if(state.gestureActive&&!force)return target;
 
   const previous=state.lastDecisionApplied;
