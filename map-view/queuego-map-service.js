@@ -2,6 +2,7 @@
 (function(root){
   "use strict";
   const endpoint="/map-api/";
+  let lastRouteResponse=null;
   async function call(action,body={},options={}){
     if(!/^[a-z-]+$/.test(action))throw Error("Invalid map action");
     const abort=new AbortController();
@@ -19,11 +20,13 @@
       });
       const value=await response.json();
       if(!response.ok)throw Error(value.message||value.error||"QueueGo Map unavailable");
+      if(action==="route")lastRouteResponse=value;
       return value;
     }finally{
       clearTimeout(timer);
       upstream?.removeEventListener?.("abort",relay);
     }
   }
-  root.QueueGoMapService=Object.freeze({call,endpoint});
+  function getLastRoute(){return lastRouteResponse;}
+  root.QueueGoMapService=Object.freeze({call,endpoint,getLastRoute});
 })(globalThis);
