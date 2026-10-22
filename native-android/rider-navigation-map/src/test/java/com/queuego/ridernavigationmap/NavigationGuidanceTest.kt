@@ -139,7 +139,7 @@ class NavigationGuidanceTest {
         val tracker = NavigationProgressTracker(nowMillis = { 30_000L })
         val fix = NavigationMapFix(
             point = NavigationMapPoint(12.9980, 100.0050),
-            accuracyMeters = 120f
+            accuracyMeters = 40f
         )
         repeat(4) {
             val state = tracker.update(fix, routeLeg(), stop)
