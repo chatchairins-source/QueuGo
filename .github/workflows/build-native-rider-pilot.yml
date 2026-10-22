@@ -50,6 +50,7 @@ on:
       - 'supabase/functions/queuego-push/**'
       - 'supabase/functions/queuego-credit*/**'
       - 'supabase/migrations/*credit*.sql'
+      - 'supabase/migrations/*rider*.sql'
       - 'supabase/migrations/*legacy_gp*.sql'
       - 'supabase/migrations/*passenger_ride*.sql'
       - 'supabase/migrations/*express*.sql'
