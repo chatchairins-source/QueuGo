@@ -82,6 +82,12 @@ ok(!rider.includes("comgooglemaps://?daddr="),'Rider Web must not hand navigatio
 ok(!rider.includes("https://www.google.com/maps/dir/?api=1&destination="),'Rider navigation must not open the Google Maps website');
 ok(rider.includes("rpc/qg_rider_mark_arrival"),'Rider arrival buttons must persist arrival through the authenticated RPC');
 ok(rider.includes('id="details-'),'active-order card must expose order details');
+ok(rider.includes('qg-active-control'),'active-order card must use the step-based control center layout');
+ok(rider.includes('qg-step-number'),'active-order card must expose an explicit step number');
+ok(rider.includes("stepTitle=pickup?'ไปรับสินค้าที่ร้าน':'ส่งสินค้าให้ลูกค้า'"),'active-order card must preserve the two-stage rider workflow');
+ok(rider.includes("cashLabel=pickup?'ยอดที่ต้องชำระร้าน':'ยอดที่ต้องเก็บลูกค้า'"),'active-order card must surface the correct cash responsibility for each stage');
+ok(rider.includes('qg-job-tools-two'),'active-order control center must keep details and chat immediately reachable');
+ok(rider.includes('ประมาณ '+"'"+'+eta+'+"'"+' นาที'),'active-order control center must surface an ETA when coordinates are available');
 ok(rider.includes('id="primary-nav-'),'active-order primary CTA must be navigation after claim');
 ok(rider.includes('function qgNavigateInApp(lat,lng)')&&rider.includes('qgFollowRiderCamera(true,650)'),'Rider primary navigation must remain inside QueueGo Map');
 ok(rider.includes('ยอดที่ต้องชำระให้ร้าน'),'pickup cash page must show cash due to the merchant before handoff');
