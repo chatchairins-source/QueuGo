@@ -67,8 +67,7 @@ begin
       exception when invalid_text_representation or numeric_value_out_of_range then
         raise exception 'invalid claim GPS';
       end;
-      if not isfinite(v_lat) or not isfinite(v_lng)
-         or v_lat not between -90 and 90
+      if v_lat not between -90 and 90
          or v_lng not between -180 and 180 then
         raise exception 'invalid claim GPS';
       end if;
