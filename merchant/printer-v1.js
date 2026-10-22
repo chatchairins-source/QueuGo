@@ -86,7 +86,7 @@
  function mount(shop,name){
    if(shopId!==shop)disconnect();shopId=shop;shopName=name||'ร้านค้า';
    if(document.querySelector('#qg-printer-btn'))return;
-   const b=document.createElement('button');b.id='qg-printer-btn';b.textContent='🖨 เครื่องพิมพ์';b.onclick=open;document.body.append(b);
+   const b=document.createElement('button');b.id='qg-printer-btn';b.type='button';b.setAttribute('aria-label','เครื่องพิมพ์');b.title='เครื่องพิมพ์';b.innerHTML='<span aria-hidden="true">🖨</span><span class="qgp-label">เครื่องพิมพ์</span>';b.onclick=open;document.body.append(b);
  }
  window.qgPrinterMount=mount;window.qgPrinterDisconnect=disconnect;window.qgPrinterOrderChanged=realtime;
 })();
