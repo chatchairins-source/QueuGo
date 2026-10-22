@@ -46,7 +46,7 @@ ok(!accept.includes('updateLocation(')&&accept.includes('actionOnce('),
   'Native accept must not add a second network round-trip before the idempotent claim RPC');
 
 const webAcceptStart=web.indexOf('window.acceptJob=async function(orderId)');
-const webAcceptEnd=web.indexOf('const riderActionInFlight=new Set();',webAcceptStart);
+const webAcceptEnd=web.indexOf('window.advanceOrder=async function(o)',webAcceptStart);
 const webAccept=web.slice(webAcceptStart,webAcceptEnd);
 ok(webAcceptStart>=0&&webAcceptEnd>webAcceptStart,'Web acceptJob source must remain discoverable');
 ok(webAccept.includes('const claimPayload={p_order_id:orderId}')&&
