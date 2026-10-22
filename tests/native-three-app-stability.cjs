@@ -129,8 +129,11 @@ ok(rider.includes('if (mergedSnapshot != currentSnapshot)'),'Rider must not encr
 ok(rider.includes('withContext(kotlinx.coroutines.Dispatchers.IO)')&&rider.includes('saveHomeSnapshot(auth.user.id, mergedSnapshot)'),'Rider snapshot persistence must execute off Main');
 ok(rider.includes('saveActiveTab(auth.user.id, activeTab)')&&rider.includes('Dispatchers.IO'),'Rider encrypted UI-state persistence must execute off Main');
 ok(
-  rider.includes('Text("นำทางด้วย QueueGo"') &&
+  rider.includes('fun startQueueGoNavigation(') &&
+  rider.includes('startQueueGoNavigation(') &&
   !rider.includes('Text("นำทางด้วย Google Maps"') &&
+  !rider.includes('"google.navigation:q="') &&
+  !rider.includes('GOOGLE_MAPS_PACKAGE') &&
   !rider.includes('private fun openNavigation(') &&
   !rider.includes('RiderReturnService.start(context)'),
   'Rider navigation must stay inside QueueGo without an external-map handoff or return-overlay start on Main'
