@@ -17,6 +17,10 @@ declare
   v_stage text := lower(trim(coalesce(p_stage,'')));
   v_path text := trim(coalesce(p_photo_path,''));
 begin
+  if v_stage not in ('pickup','delivery') then
+    raise exception 'unsupported proof stage';
+  end if;
+
   if p_order_id is null or v_path='' then
     return false;
   end if;
