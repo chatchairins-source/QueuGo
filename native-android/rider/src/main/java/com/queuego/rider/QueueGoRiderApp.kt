@@ -3593,6 +3593,9 @@ internal fun riderActiveJobEtaLabel(etaSeconds: Double?): String? {
     return "ประมาณ " + minutes + " นาที"
 }
 
+internal fun riderActiveJobContactLabel(pickup: Boolean): String =
+    if (pickup) "โทรร้าน" else "โทรลูกค้า"
+
 @Composable
 private fun ActiveJobCard(
     job: RiderJob,
@@ -3777,7 +3780,7 @@ private fun ActiveJobCard(
 
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 RiderJobTool("jobs", processLabel, !busy, Modifier.weight(1f), onDetails)
-                RiderJobTool("phone", if (pickup) "โทรร้าน" else "โทรลูกค้า", !busy && networkAvailable, Modifier.weight(1f), onCall)
+                RiderJobTool("phone", riderActiveJobContactLabel(pickup), !busy && networkAvailable, Modifier.weight(1f), onCall)
                 RiderJobTool("support", "แชต", !busy && networkAvailable, Modifier.weight(1f), onChat)
             }
 
