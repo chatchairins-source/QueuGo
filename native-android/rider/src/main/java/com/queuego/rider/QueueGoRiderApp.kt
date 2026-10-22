@@ -821,24 +821,20 @@ private fun RiderHome(
     var detailJob by remember { mutableStateOf<RiderJob?>(null) }
     var pendingPushReference by rememberSaveable(auth.user.id) { mutableStateOf<String?>(null) }
     var homeDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
+    var homeItems by remember { mutableStateOf<List<RiderItem>>(emptyList()) }
     var activeLoadSummary by remember { mutableStateOf<RiderLoadSummary?>(null) }
     LaunchedEffect(snapshot?.activeJob?.id, auth.session.accessToken) {
         homeDetails = null
+        homeItems = emptyList()
         activeLoadSummary = null
         snapshot?.activeJob?.takeUnless { it.isPassenger || it.isExpress }?.let { job ->
-            try {
-                homeDetails = api.verificationDetails(auth, job.id)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // Work controls remain available if metadata fails.
-            }
-            activeLoadSummary = try {
-                api.orderLoadSummary(auth, job.id)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null
+            coroutineScope {
+                val detailsDeferred = async { runCatching { api.verificationDetails(auth, job.id) } }
+                val itemsDeferred = async { runCatching { api.orderItems(auth, job.id) } }
+                val loadDeferred = async { runCatching { api.orderLoadSummary(auth, job.id) } }
+                detailsDeferred.await().onSuccess { homeDetails = it }.onFailure { if (it is CancellationException) throw it }
+                itemsDeferred.await().onSuccess { homeItems = it }.onFailure { if (it is CancellationException) throw it }
+                loadDeferred.await().onSuccess { activeLoadSummary = it }.onFailure { if (it is CancellationException) throw it }
             }
         }
     }
@@ -3028,6 +3024,8 @@ private fun RiderHome(
                                 current.marketPickups.all { it.done }
                             ) activeJob.copy(status = "picked_up") else activeJob,
                             details = homeDetails,
+                            items = homeItems,
+                            etaSeconds = navigationGuidance.etaSeconds,
                             loadSummary = activeLoadSummary,
                             busy = actionBusy,
                             networkAvailable = networkAvailable,
@@ -3581,10 +3579,18 @@ private fun MarketPickupPanel(
     }
 }
 
+internal fun riderActiveJobEtaLabel(etaSeconds: Double?): String? {
+    val seconds = etaSeconds?.takeIf { it.isFinite() && it >= 0.0 && it <= 14_400.0 } ?: return null
+    val minutes = kotlin.math.ceil(seconds / 60.0).toInt().coerceAtLeast(1)
+    return "ประมาณ " + minutes + " นาที"
+}
+
 @Composable
 private fun ActiveJobCard(
     job: RiderJob,
     details: RiderVerificationDetails?,
+    items: List<RiderItem>,
+    etaSeconds: Double?,
     loadSummary: RiderLoadSummary?,
     busy: Boolean,
     networkAvailable: Boolean,
@@ -3656,7 +3662,12 @@ private fun ActiveJobCard(
                 }
                 Column(Modifier.weight(1f)) {
                     Text("$step · $stepTitle", color = QgRed, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                    Text(title, color = QgMuted, fontSize = 9.sp, modifier = Modifier.padding(top = 1.dp))
+                    Text(
+                        listOfNotNull(riderActiveJobEtaLabel(etaSeconds), title).joinToString(" · "),
+                        color = QgMuted,
+                        fontSize = 9.sp,
+                        modifier = Modifier.padding(top = 1.dp)
+                    )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(job.numberLabel, color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
@@ -3683,6 +3694,31 @@ private fun ActiveJobCard(
                         (if (pickup) job.pickupAddress else job.deliveryAddress) ?: "พิกัดยังไม่พร้อม",
                         color = QgMuted, fontSize = 9.sp, maxLines = 2, modifier = Modifier.padding(top = 2.dp)
                     )
+                }
+            }
+
+            if (items.isNotEmpty()) {
+                val itemCount = items.sumOf { it.quantity.coerceAtLeast(1) }
+                Column(
+                    Modifier.fillMaxWidth().padding(top = 8.dp)
+                        .background(Color(0xFFF8F7F8), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 11.dp, vertical = 9.dp)
+                ) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("รายการสินค้า", color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text(itemCount.toString() + " รายการ", color = QgRed, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                    }
+                    items.take(2).forEach { item ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(item.name, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("×" + item.quantity, color = QgMuted, fontSize = 9.sp, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                    if (items.size > 2) Text("+ อีก " + (items.size - 2) + " รายการ", color = QgMuted, fontSize = 8.sp, modifier = Modifier.padding(top = 3.dp))
                 }
             }
 
