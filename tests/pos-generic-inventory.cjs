@@ -81,7 +81,7 @@ assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
   eq((await scalar(`select stock from public.products where id='${p}'`)).stock,5);
   await db.exec(`delete from public.order_items where id='${item(3)}'`);
   eq((await scalar(`select stock from public.products where id='${p}'`)).stock,5);
-  await db.exec(`insert into public.orders values('${order(3)}','${shop}','pending');insert into public.order_items values('${item(5)}','${order(3)}','${p}',2)`);
+  await db.exec(`insert into public.orders(id,shop_id,status) values('${order(3)}','${shop}','pending');insert into public.order_items values('${item(5)}','${order(3)}','${p}',2)`);
   await db.exec(`update public.orders set status='completed' where id='${order(3)}'`);
   await reject(`update public.order_items set quantity=1 where id='${item(5)}'`,/completed inventory item is immutable/);
   await db.exec(`update public.orders set status='cancelled' where id='${order(3)}'`);
