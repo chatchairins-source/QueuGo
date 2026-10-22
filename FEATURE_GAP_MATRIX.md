@@ -1,6 +1,6 @@
 # QueueGo Feature Gap Matrix
 
-Reviewed against main `fbdf63707a5eba1b9bf703891330c7b132e6bb54` and open PRs on 2026-10-22. This is an evidence ledger, not a claim that every capability is complete. `Source present` means code or schema exists; it does not certify a real-user flow.
+Reviewed against main `a71131aa0027b0616260ce6881ef708e99e9e214` and open PRs on 2026-10-22. This is an evidence ledger, not a claim that every capability is complete. `Source present` means code or schema exists; it does not certify a real-user flow.
 
 Status key: **Source present** = identified implementation; **Staged** = open successor not merged/deployed; **Gate open** = requires additional runtime, user, device, security or production evidence; **Audit next** = exact implementation/evidence still needs review.
 
@@ -32,7 +32,7 @@ Status key: **Source present** = identified implementation; **Staged** = open su
 | POS staff, permissions and audit | Staff roles/permissions and shift actor records exist | Source present; Gate open | Verify least-privilege matrix and manager approval for refund, discounts, stock adjustment and cash movements |
 | POS offline, sync, backup and recovery | General backup/restore and transport recovery checks exist; reliable POS offline sale queue not evidenced; PR #580 hardens identity-scoped retry for ambiguous online bill creation | Audit next | Design idempotent local outbox, conflict/reconciliation policy and tested restore before claiming offline sale |
 | POS loyalty, customer and integrations | Existing customer and future integration foundations need focused scope audit | Audit next | Define consented customer lookup/loyalty contract and stable versioned integration boundary |
-| Admin, analytics and operations | Current Admin workspace/control surfaces and scoped readers exist | Source present; Gate open | Real Admin role acceptance, audit/history and service health coverage for every active service |
+| Admin, analytics and operations | Admin workspace/control surfaces and scoped readers exist; main a71131a filters POS DINE_IN/TAKEAWAY bills out of Admin order reads, order-count KPI and GP totals | Source present; Gate open | Exact main RC 39697139447 and Pages 39697139101 pass; verify authenticated Admin totals/readback and service health coverage for every active service |
 | Security, privacy and performance | Source-level RLS/auth-definer/security/performance regressions exist | Source present; Gate open | Continue real cross-shop negative tests, production advisors, mobile profiling and restore/failure drills |
 | Android release and store readiness | Static release-readiness tests and successor PR #520 exist | Staged; Gate open | Exact current native descendant, signed AAB, physical devices and Play Closed Testing evidence |
 
@@ -52,3 +52,9 @@ Resume the highest-priority unblocked `NEXT.md` item. For each row, establish th
 - Read current main `6acd48ef3c130cc1c6b7f4c0958afcc228920414`, no newer POS successor was open. PR #580 guards the ambiguous bill retry with its captured shop and cashier identity; identity mismatch drops the tab-scoped pending request before any order RPC. Regression covers session change after the request is loaded.
 - PR #580 exact RC `39695677982` passed all 12 required stages and merged as `fbdf63707a5eba1b9bf703891330c7b132e6bb54`. Post-merge main RC `39696051611` passed all stages. Pages deployment `39696050699` succeeded on the merge SHA.
 - This recovers an ambiguous online create request safely; it is not an offline sale queue. POS offline sale/outbox/conflict/reconciliation remains unimplemented and unaudited. Production database remains unmodified; cash/inventory migrations and authorized cashier/device acceptance gates remain open. QueueGo/POS are **NOT DONE**.
+
+
+## Latest main successor receipt — 2026-10-22
+- PR #581 merged at `c740e9321ec5e3d1fb2d6acafc382180e7166121` after its exact-head QueueGo RC passed. Its immediate push RC `39696877230` was cancelled when main advanced; the descendant main `a71131aa0027b0616260ce6881ef708e99e9e214` added Admin exclusions for POS DINE_IN/TAKEAWAY orders in Admin order reads, count KPI and GP totals.
+- Successor main RC `39697139447` passed all required stages, and Pages deployment `39697139101` succeeded on the current main SHA. The earlier cancellation is preserved as evidence; no failure was hidden.
+- Current main therefore includes #580's cashier/shop-scoped ambiguous bill retry guard and the Admin POS-order reporting exclusion. Production remains unmodified. POS feature migrations remain unapplied, physical cashier/device acceptance is not claimed, and a durable offline-sale queue remains unimplemented. QueueGo/POS **NOT DONE**.
