@@ -23,6 +23,7 @@ eq(src.includes('qgRiderVoiceCallTarget'),true);
 eq(src.includes("id=\"call-${esc(o.id)}\""),true);
 eq(src.includes("pickup?'โทรร้าน':'โทรลูกค้า'"),true);
 eq(src.includes("ประมาณ '+eta+' นาที"),true);
+eq(src.includes("st==='picked_up'?'เริ่มจัดส่ง':route.label"),true);
 eq(src.includes('ยืนยันส่งสินค้า'),true);
 eq(src.includes('เก็บเงินจากลูกค้าเรียบร้อยแล้ว'),true);
 eq(src.includes('id="qg-pickup-items-ok"'),false);
