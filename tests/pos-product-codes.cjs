@@ -7,6 +7,8 @@ const html=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'merchant/pos-table-v2.css'),'utf8');
 const printer=fs.readFileSync(path.join(root,'merchant/printer-v1.js'),'utf8');
 assert.match(migration,/pg_advisory_xact_lock\(hashtextextended\(v_shop::text\|\|':'\|\|v_code,0\)\)/);
+assert.match(migration,/pos_product_code_save[\s\S]*?insert into public\.audit_logs/);
+assert.match(migration,/pos_product_code_remove[\s\S]*?insert into public\.audit_logs/);
 assert.match(client,/rpc\('pos_product_code_lookup'/);assert.match(client,/pos_create_bill_once/);assert.match(client,/pos_edit_bill/);
 assert.match(client,/state\.scanQueue\.shift\(\)/);assert.match(client,/scanContextCurrent\(context\)/);
 assert.match(html,/pos-table-v2\.js\?v=[^"']+/);assert.match(html,/pos-table-v2\.css\?v=[^"']+/);
@@ -17,6 +19,7 @@ assert.match(printer,/qgp-label/);assert.match(html,/printer-v1\.css\?v=[^"']+/)
   const db=new PGlite();
   await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
     create table public.shop_profiles(id uuid primary key); create table public.products(id uuid primary key,shop_id uuid,name text,price numeric,pos_price numeric,available boolean,pos_available boolean,image text,variants jsonb);
+    create table public.audit_logs(id uuid primary key default gen_random_uuid(),user_id uuid,action text not null,entity_type text not null,entity_id uuid,description text,metadata jsonb not null default '{}'::jsonb,created_at timestamptz not null default now());
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     create function public.pos_my_shop() returns uuid language sql stable as $$ select nullif(current_setting('qg.test.shop',true),'')::uuid $$;
     create function public.pos_allowed(text) returns boolean language sql stable as $$ select coalesce(current_setting('qg.test.allowed',true),'false')='true' $$;
@@ -35,7 +38,9 @@ assert.match(printer,/qgp-label/);assert.match(html,/printer-v1\.css\?v=[^"']+/)
   await set();
   const saved=await scalar(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','sku',' tea-01 ') as item`);
   assert.equal(saved.item.code,'TEA-01');
+  assert.equal((await scalar(`select count(*)::int as n from public.audit_logs where action='pos_product_code_save'`)).n,1);
   const retry=await scalar(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','SKU','TEA-01') as item`);assert.equal(retry.item.id,saved.item.id);
+  assert.equal((await scalar(`select count(*)::int as n from public.audit_logs where action='pos_product_code_save'`)).n,1,'same-code retry does not duplicate audit events');
   const barcode=await scalar(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','barcode','0012345678905') as item`);assert.equal(barcode.item.code,'0012345678905');
   await assert.rejects(()=>db.query(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','barcode','1234')`),/8 to 14 digits/);
   await assert.rejects(()=>db.query(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','sku','bad sku')`),/invalid SKU/);
@@ -52,7 +57,9 @@ assert.match(printer,/qgp-label/);assert.match(html,/printer-v1\.css\?v=[^"']+/)
   await set({currentShop:other});assert.equal((await scalar(`select public.pos_product_code_lookup('TEA-01') is null as isolated`)).isolated,true);
   await assert.rejects(()=>db.query(`select public.pos_product_code_remove('${saved.item.id}')`),/product code not found/);
   await set();await db.query(`select public.pos_product_code_remove($1)`,[paused.item.id]);
+  assert.equal((await scalar(`select count(*)::int as n from public.audit_logs where action='pos_product_code_remove'`)).n,1);
+  assert.equal((await scalar(`select metadata->>'code' as code from public.audit_logs where action='pos_product_code_remove'`)).code,'PAUSED');
   assert.equal((await scalar(`select count(*)::int as n from public.pos_product_codes`)).n,2);
   await db.close();
-  console.log(JSON.stringify({checks:31,failures:0,scope:'POS SKU/barcode validation, shop isolation, retry safety, direct table ACL, guarded RPC grants, lookup availability and removal'}));
+  console.log(JSON.stringify({checks:35,failures:0,scope:'POS SKU/barcode validation, shop isolation, retry safety, CRUD audit, direct table ACL and guarded RPC grants'}));
 })().catch(e=>{console.error(e);process.exit(1)});
