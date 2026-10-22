@@ -98,14 +98,11 @@ internal fun RiderDeliverySuccess(
                                     fontWeight = FontWeight.Black
                                 )
                             }
-                            val rounded = rating.average?.let { kotlin.math.round(it).toInt().coerceIn(0, 5) } ?: 0
                             Text(
-                                buildString {
-                                    repeat(5) { index -> append(if (index < rounded) '★' else '☆') }
-                                },
-                                fontSize = 21.sp,
-                                color = Color(0xFFB87A00),
-                                fontWeight = FontWeight.Black
+                                if (rating.count > 0) rating.count.toString() + " รีวิว" else "ยังไม่มีรีวิว",
+                                fontSize = 10.sp,
+                                color = QgMuted,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
