@@ -7,7 +7,7 @@ const root=path.resolve(__dirname,'..'),owner='00000000-0000-4000-8000-000000000
  let baseline=false;const server=http.createServer((req,res)=>{
   const pathname=new URL(req.url,'http://localhost').pathname;
   const file=path.resolve(root,'.'+pathname+(pathname.endsWith('/')?'index.html':''));if(!file.startsWith(root+path.sep))return res.writeHead(403).end();
-  try{const body=baseline&&pathname==='/admin/'?cp.execFileSync('git',['show','b8b9f9883b50d7da3efbd0d37d1e0080bc4b158e:admin/index.html']):fs.readFileSync(file);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(body)}catch(e){res.writeHead(404).end()}
+  try{const body=baseline?cp.execFileSync('git',['show',`b8b9f9883b50d7da3efbd0d37d1e0080bc4b158e:${pathname.replace(/^\\/+/, '').replace(/\\/$/, '')||'index.html'}`]):fs.readFileSync(file);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(body)}catch(e){res.writeHead(404).end()}
  });await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
  const browser=await webkit.launch();let checks=0;const results=[];
  try{for(const mode of ['before','after']){
