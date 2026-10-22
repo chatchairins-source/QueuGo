@@ -26,15 +26,15 @@ data class NavigationGuidanceState(
 
 class NavigationProgressTracker(
     private val nowMillis: () -> Long = { System.currentTimeMillis() },
-    private val requiredOffRouteSamples: Int = 3,
+    private val requiredOffRouteMillis: Long = 3_000L,
     private val rerouteCooldownMillis: Long = 20_000L,
     private val routeMatcher: NavigationHybridMatcher = NavigationHybridMatcher()
 ) {
-    private var consecutiveOffRouteSamples = 0
+    private var offRouteSinceMillis: Long? = null
     private var lastRerouteAtMillis: Long? = null
 
     fun reset() {
-        consecutiveOffRouteSamples = 0
+        offRouteSinceMillis = null
         lastRerouteAtMillis = null
         routeMatcher.reset()
     }
@@ -45,7 +45,7 @@ class NavigationProgressTracker(
         stop: NavigationMapStop
     ): NavigationGuidanceState {
         if (!fix.point.valid || !stop.point.valid || !leg.segment.renderable) {
-            consecutiveOffRouteSamples = 0
+            offRouteSinceMillis = null
             return NavigationGuidanceState()
         }
 
@@ -68,15 +68,19 @@ class NavigationProgressTracker(
             (accuracy?.toDouble() ?: 15.0) * OFF_ROUTE_ACCURACY_MULTIPLIER
         )
         val offRoute = !weakGps && match.offRouteMeters > offRouteThreshold
-        consecutiveOffRouteSamples = if (offRoute) consecutiveOffRouteSamples + 1 else 0
-
         val now = nowMillis()
+        if (offRoute) {
+            if (offRouteSinceMillis == null) offRouteSinceMillis = now
+        } else {
+            offRouteSinceMillis = null
+        }
         val cooldownSatisfied = lastRerouteAtMillis?.let { now - it >= rerouteCooldownMillis } ?: true
-        val shouldReroute = offRoute &&
-            consecutiveOffRouteSamples >= requiredOffRouteSamples.coerceAtLeast(1) &&
-            cooldownSatisfied
+        val sustainedOffRoute = offRouteSinceMillis?.let { since ->
+            now - since >= requiredOffRouteMillis.coerceAtLeast(0L)
+        } ?: false
+        val shouldReroute = offRoute && sustainedOffRoute && cooldownSatisfied
         if (shouldReroute) {
-            consecutiveOffRouteSamples = 0
+            offRouteSinceMillis = null
             lastRerouteAtMillis = now
         }
 
