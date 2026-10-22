@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.geometry.Offset
@@ -2271,6 +2272,11 @@ private fun RiderHome(
                     snapshot = acceptedSnapshot
                     persistCommittedSnapshot(acceptedSnapshot)
 
+                    // Accept is the start of work. Enter QueueGo follow/navigation mode
+                    // immediately; there is no second navigation action for the rider.
+                    routeOverviewActive = false
+                    recenterSignal += 1
+
                     val updated = runCatching { api.riderSnapshot(auth) }
                         .onFailure { if (it is CancellationException) throw it }
                         .getOrNull()
@@ -3764,18 +3770,6 @@ private fun ActiveJobCard(
                 }
             }
 
-            Button(
-                onClick = onQueueGoNavigate,
-                enabled = !busy && job.navigationTarget != null,
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = QgRed)
-            ) {
-                QgIcon("route", Modifier.size(19.dp), Color.White)
-                Spacer(Modifier.width(7.dp))
-                Text("นำทางด้วย QueueGo", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Black)
-            }
-
             if (pickup && details != null) {
                 RiderPickupGuideBlock(
                     pickupInstructions = details.pickupInstructions,
@@ -4409,31 +4403,91 @@ private fun VerificationScreen(
         }
         Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 10.dp, vertical = 12.dp).widthIn(max = 660.dp).fillMaxWidth()
             .background(Color(0xFAFFFFFF), RoundedCornerShape(18.dp))) {
-            Button(
-                onClick = if (photoReady) onConfirm else onCamera,
-                enabled = !busy && if (photoReady) deliveryReady else true,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
-            ) {
-                if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
-                else Text(
-                    when {
-                        !photoReady && expressMode && pickup -> "ถ่ายรูปพัสดุที่รับ"
-                        !photoReady && expressMode -> "ถ่ายรูปพัสดุที่ส่ง"
-                        !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"
-                        !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"
-                        !photoReady -> "ถ่ายรูปตอนส่ง"
-                        expressMode && pickup -> "ยืนยันรับพัสดุ"
-                        expressMode -> "ส่งพัสดุและจบงาน"
-                        marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
-                        pickup -> "ยืนยันรับสินค้า"
-                        else -> "จบงาน"
-                    },
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+            if (photoReady && !pickup && !marketPickupMode) {
+                RiderSwipeCompleteAction(
+                    enabled = !busy && deliveryReady,
+                    busy = busy,
+                    label = if (expressMode) "สไลด์เพื่อส่งพัสดุและจบงาน" else "สไลด์เพื่อจบงาน",
+                    onComplete = onConfirm
                 )
+            } else {
+                Button(
+                    onClick = if (photoReady) onConfirm else onCamera,
+                    enabled = !busy && if (photoReady) deliveryReady else true,
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
+                ) {
+                    if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
+                    else Text(
+                        when {
+                            !photoReady && expressMode && pickup -> "ถ่ายรูปพัสดุที่รับ"
+                            !photoReady && expressMode -> "ถ่ายรูปพัสดุที่ส่ง"
+                            !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"
+                            !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"
+                            !photoReady -> "ถ่ายรูปตอนส่ง"
+                            expressMode && pickup -> "ยืนยันรับพัสดุ"
+                            marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
+                            pickup -> "ยืนยันรับสินค้า"
+                            else -> "ยืนยัน"
+                        },
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun RiderSwipeCompleteAction(
+    enabled: Boolean,
+    busy: Boolean,
+    label: String,
+    onComplete: () -> Unit
+) {
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().height(58.dp)
+            .background(if (enabled) Color(0xFFFFEEF1) else Color(0xFFF3EFF0), RoundedCornerShape(20.dp))
+            .border(1.dp, Color(0xFFF2CDD5), RoundedCornerShape(20.dp))
+    ) {
+        val density = LocalDensity.current.density
+        val maxTravelDp = (maxWidth - 54.dp).coerceAtLeast(1.dp)
+        var dragDp by remember(enabled) { mutableStateOf(0f) }
+        val completeThreshold = maxTravelDp.value * 0.82f
+        Text(
+            if (busy) "กำลังจบงาน..." else label,
+            modifier = Modifier.align(Alignment.Center),
+            color = if (enabled) Color(0xFF7C4B55) else QgMuted,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black
+        )
+        Box(
+            Modifier.offset(x = dragDp.dp).size(54.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(if (enabled) Color(0xFFF04455) else Color(0xFFD6CDD0))
+                .pointerInput(enabled, busy, maxTravelDp) {
+                    if (!enabled || busy) return@pointerInput
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { change, amount ->
+                            change.consume()
+                            dragDp = (dragDp + amount / density).coerceIn(0f, maxTravelDp.value)
+                        },
+                        onDragEnd = {
+                            if (dragDp >= completeThreshold) {
+                                dragDp = maxTravelDp.value
+                                onComplete()
+                            } else {
+                                dragDp = 0f
+                            }
+                        },
+                        onDragCancel = { dragDp = 0f }
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text("››", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
         }
     }
 }
