@@ -5,6 +5,10 @@ import com.queuego.shared.nativeOrderNumber
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -19,6 +23,9 @@ import java.util.UUID
 import java.security.MessageDigest
 
 private const val RIDER_API_RESPONSE_MAX_BYTES = 12 * 1024 * 1024
+private const val RIDER_EVIDENCE_INPUT_MAX_BYTES = 8 * 1024 * 1024
+private const val RIDER_EVIDENCE_UPLOAD_MAX_BYTES = 500 * 1024
+private const val RIDER_EVIDENCE_MAX_EDGE_PX = 1600
 
 private fun InputStream.readRiderApiResponseBounded(
     limit: Int = RIDER_API_RESPONSE_MAX_BYTES
@@ -49,6 +56,126 @@ private fun InputStream.readRiderBytesBounded(
         output.write(buffer, 0, count)
     }
     return output.toByteArray()
+}
+
+private fun riderEvidenceOrientationMatrix(context: Context, uri: Uri): Matrix =
+    Matrix().apply {
+        val orientation = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                ExifInterface(stream).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL
+                )
+            } ?: ExifInterface.ORIENTATION_NORMAL
+        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+        when (orientation) {
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> setScale(-1f, 1f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> setRotate(180f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> {
+                setRotate(180f)
+                postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                setRotate(90f)
+                postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_ROTATE_90 -> setRotate(90f)
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                setRotate(-90f)
+                postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_ROTATE_270 -> setRotate(-90f)
+        }
+    }
+
+private fun riderEvidenceJpegBytes(context: Context, uri: Uri): ByteArray {
+    val resolver = context.contentResolver
+
+    resolver.openInputStream(uri)?.use {
+        it.readRiderBytesBounded(
+            RIDER_EVIDENCE_INPUT_MAX_BYTES,
+            "รูปหลักฐานต้นฉบับมีขนาดใหญ่เกินกำหนด"
+        )
+    } ?: error("อ่านรูปหลักฐานไม่ได้")
+
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "รูปหลักฐานไม่ถูกต้อง" }
+
+    var sample = 1
+    while (
+        bounds.outWidth / sample > RIDER_EVIDENCE_MAX_EDGE_PX * 2 ||
+        bounds.outHeight / sample > RIDER_EVIDENCE_MAX_EDGE_PX * 2
+    ) sample *= 2
+
+    val decoded = resolver.openInputStream(uri)?.use { stream ->
+        BitmapFactory.decodeStream(
+            stream,
+            null,
+            BitmapFactory.Options().apply {
+                inSampleSize = sample
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+        )
+    } ?: error("ถอดรหัสรูปหลักฐานไม่ได้")
+
+    var working = decoded
+    try {
+        val matrix = riderEvidenceOrientationMatrix(context, uri)
+        if (!matrix.isIdentity) {
+            val oriented = Bitmap.createBitmap(
+                working, 0, 0, working.width, working.height, matrix, true
+            )
+            if (oriented !== working) {
+                working.recycle()
+                working = oriented
+            }
+        }
+
+        val longest = maxOf(working.width, working.height)
+        if (longest > RIDER_EVIDENCE_MAX_EDGE_PX) {
+            val ratio = RIDER_EVIDENCE_MAX_EDGE_PX.toFloat() / longest.toFloat()
+            val scaled = Bitmap.createScaledBitmap(
+                working,
+                (working.width * ratio).toInt().coerceAtLeast(1),
+                (working.height * ratio).toInt().coerceAtLeast(1),
+                true
+            )
+            if (scaled !== working) {
+                working.recycle()
+                working = scaled
+            }
+        }
+
+        var quality = 82
+        while (true) {
+            val output = ByteArrayOutputStream(RIDER_EVIDENCE_UPLOAD_MAX_BYTES)
+            check(working.compress(Bitmap.CompressFormat.JPEG, quality, output)) {
+                "บีบอัดรูปหลักฐานไม่สำเร็จ"
+            }
+            val bytes = output.toByteArray()
+            if (bytes.size <= RIDER_EVIDENCE_UPLOAD_MAX_BYTES) return bytes
+
+            if (quality > 42) {
+                quality -= 8
+                continue
+            }
+
+            val nextWidth = (working.width * 0.82f).toInt()
+            val nextHeight = (working.height * 0.82f).toInt()
+            require(nextWidth >= 640 && nextHeight >= 640) {
+                "ไม่สามารถลดรูปหลักฐานให้ไม่เกิน 500 KB โดยยังอ่านรายละเอียดได้"
+            }
+            val smaller = Bitmap.createScaledBitmap(working, nextWidth, nextHeight, true)
+            if (smaller !== working) {
+                working.recycle()
+                working = smaller
+            }
+            quality = 74
+        }
+    } finally {
+        if (!working.isRecycled) working.recycle()
+    }
 }
 
 internal fun riderNullableText(value: String?): String? =
@@ -2119,10 +2246,11 @@ class QueueGoApi {
     }
 
     private fun uploadEvidence(context: Context, auth: QueueGoAuth, uri: Uri): String {
-        val bytes = context.contentResolver.openInputStream(uri)?.use {
-            it.readRiderBytesBounded(5 * 1024 * 1024, "รูปหลักฐานต้องมีขนาดไม่เกิน 5 MB")
-        } ?: error("อ่านรูปหลักฐานไม่ได้")
+        val bytes = riderEvidenceJpegBytes(context, uri)
         if (bytes.isEmpty()) error("รูปหลักฐานว่าง")
+        check(bytes.size <= RIDER_EVIDENCE_UPLOAD_MAX_BYTES) {
+            "รูปหลักฐานหลังบีบอัดต้องไม่เกิน 500 KB"
+        }
 
         // Same single photo has one immutable storage identity across retries/process death.
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
