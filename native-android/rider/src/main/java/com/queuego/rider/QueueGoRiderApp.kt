@@ -2413,6 +2413,15 @@ private fun RiderHome(
         dismissedRestSessionStart
     )
     val navigationHud = if (activeNavigationWork) riderNavigationHudInfo(navigationGuidance) else null
+    val navigationCustomerNote = if (activeNavigationWork) {
+        riderNavigationCustomerNote(
+            note = mapJob?.note,
+            delivering = mapJob?.isDelivering == true,
+            guidance = navigationGuidance
+        )
+    } else {
+        null
+    }
 
     val customerEtaJob by rememberUpdatedState(snapshot?.activeJob)
     val customerEtaMapJobId by rememberUpdatedState(mapJob?.id)
@@ -2489,7 +2498,11 @@ private fun RiderHome(
     ) {
         val navigationDensity = LocalDensity.current
         val navigationTopInsetPx = with(navigationDensity) {
-            (if (activeNavigationWork) 132.dp else 72.dp).roundToPx()
+            when {
+                activeNavigationWork && navigationCustomerNote != null -> 180.dp.roundToPx()
+                activeNavigationWork -> 132.dp.roundToPx()
+                else -> 72.dp.roundToPx()
+            }
         }
         var navigationBottomInsetPx by remember(navigationDensity) {
             mutableIntStateOf(with(navigationDensity) { 68.dp.roundToPx() })
@@ -2517,6 +2530,7 @@ private fun RiderHome(
             navigationHud?.let { hud ->
                 RiderManeuverBanner(
                     hud = hud,
+                    customerNote = navigationCustomerNote,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(horizontal = 10.dp, vertical = 8.dp)
@@ -2530,7 +2544,11 @@ private fun RiderHome(
                     .align(Alignment.TopStart)
                     .padding(
                         start = 12.dp,
-                        top = if (activeNavigationWork && navigationHud != null) 132.dp else 12.dp
+                        top = when {
+                            activeNavigationWork && navigationCustomerNote != null -> 180.dp
+                            activeNavigationWork && navigationHud != null -> 132.dp
+                            else -> 12.dp
+                        }
                     )
             ) {
                 RiderBlueprintSpeedPill(reliableSpeedKph)
@@ -2542,7 +2560,11 @@ private fun RiderHome(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(
-                        top = if (navigationHud != null) 132.dp else 64.dp,
+                        top = when {
+                            navigationCustomerNote != null -> 180.dp
+                            navigationHud != null -> 132.dp
+                            else -> 64.dp
+                        },
                         end = 10.dp,
                         start = 78.dp
                     ),
@@ -3943,6 +3965,7 @@ private fun RiderJobTool(icon: String, label: String, enabled: Boolean, modifier
 @Composable
 private fun RiderManeuverBanner(
     hud: RiderNavigationHudInfo,
+    customerNote: String? = null,
     modifier: Modifier = Modifier
 ) {
     Crossfade(
@@ -4066,6 +4089,32 @@ private fun RiderManeuverBanner(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF51494D),
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                customerNote?.let { note ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 7.dp)
+                            .background(Color(0xFFFFF7E2), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 9.dp, vertical = 7.dp)
+                    ) {
+                        Text(
+                            "หมายเหตุจากลูกค้า",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF8A5A00)
+                        )
+                        Text(
+                            note,
+                            modifier = Modifier.padding(top = 2.dp),
+                            fontSize = 10.sp,
+                            lineHeight = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4D4030),
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
