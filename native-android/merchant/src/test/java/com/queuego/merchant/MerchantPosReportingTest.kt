@@ -29,7 +29,7 @@ class MerchantPosReportingTest {
 
     @Test fun nullComparisonAndMalformedHourlyRowsAreSafe() {
         val report = parsePosOwnerDashboard(JSONObject("""
-            {"DINE_IN":0,"TAKEAWAY":0,"orders":0,"change_percent":null,
+            {"DINE_IN":0,"TAKEAWAY":0,"orders":2,"change_percent":null,
              "hourly_sales":[{"hour":24,"bills":1,"sales":2},
                              {"hour":8,"bills":-1,"sales":2},
                              {"hour":7,"bills":2,"sales":4},
