@@ -2748,7 +2748,8 @@ window.acceptJob=async function(orderId){
     // pre-claim order read; the atomic claim RPC remains the source of truth / one-rider-wins gate.
     const kind=cachedOrder?.market_order_id?'market_claim':'claim';
     const claimPayload={p_order_id:orderId};
-    if(validRiderCoordinate(S.pos?.lat,S.pos?.lng)){
+    const claimFixAge=Date.now()-Number(S.pos?.timestamp);
+    if(validRiderCoordinate(S.pos?.lat,S.pos?.lng)&&Number.isFinite(claimFixAge)&&claimFixAge>=0&&claimFixAge<=10000){
       claimPayload.p_lat=Number(S.pos.lat);
       claimPayload.p_lng=Number(S.pos.lng);
     }
@@ -2782,7 +2783,8 @@ window.acceptJob=async function(orderId){
 };
 const riderActionInFlight=new Set();
 function qgActionRequestId(kind,payload){
-  const input=(S.user?.id||'rider')+'|'+kind+'|'+JSON.stringify(payload);
+  const stablePayload=(kind==='claim'||kind==='market_claim')?{p_order_id:payload?.p_order_id}:payload;
+  const input=(S.user?.id||'rider')+'|'+kind+'|'+JSON.stringify(stablePayload);
   let h1=0x811c9dc5,h2=0x9e3779b9,h3=0x85ebca6b,h4=0xc2b2ae35;
   for(let i=0;i<input.length;i++){
     const x=input.charCodeAt(i);
