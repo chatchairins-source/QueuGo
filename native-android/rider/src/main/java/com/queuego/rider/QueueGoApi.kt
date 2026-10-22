@@ -536,7 +536,7 @@ class QueueGoApi {
         private const val TIMEOUT = 15000
         private const val RIDER_JOB_FIELDS = "id,order_number,status,fulfillment_vertical,ride_distance_km,ride_duration_minutes,express_distance_km,express_duration_minutes," +
             "express_item_type,express_weight_kg,express_size,express_vehicle_type,express_sender_name,express_sender_phone,express_receiver_name,express_receiver_phone,express_instructions," +
-            "pickup_address,pickup_latitude,pickup_longitude,delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,route_bundle_id,subtotal,total_amount,market_order_id," +
+            "note,pickup_address,pickup_latitude,pickup_longitude,delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,route_bundle_id,subtotal,total_amount,market_order_id," +
             "rider_arrived_shop_at,rider_arrived_customer_at"
     }
 
@@ -2390,7 +2390,8 @@ class QueueGoApi {
         expressSenderPhone = riderNullableText(o.optString("express_sender_phone")),
         expressReceiverName = riderNullableText(o.optString("express_receiver_name")),
         expressReceiverPhone = riderNullableText(o.optString("express_receiver_phone")),
-        expressInstructions = riderNullableText(o.optString("express_instructions"))
+        expressInstructions = riderNullableText(o.optString("express_instructions")),
+        note = cleanRiderOrderNote(riderNullableText(o.optString("note")))
     )
 
     private fun JSONObject.doubleOrNull(name: String): Double? =
