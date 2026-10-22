@@ -20,3 +20,22 @@ begin
 end $migration$;
 -- Existing row lock serializes cancellation with preparation; existing owner
 -- authorization, cash-advance rejection and function ACLs remain authoritative.
+
+-- Enforce the same preparation boundary for a direct shop UPDATE as for the RPC.
+-- POS bills and non-Delivery services retain their separate rules.
+create or replace function public.qg_merchant_delivery_cancel_guard()
+returns trigger language plpgsql security invoker set search_path=public,pg_temp as $$
+begin
+ if new.status='cancelled' and old.status is distinct from 'cancelled'
+    and old.order_type='shopping' and old.sales_channel is distinct from 'POS'
+    and public.get_my_role()='shop'
+    and (old.status not in ('pending','accepted','searching_rider','rider_assigned','assigned')
+      or old.preparing_at is not null or old.ready_at is not null) then
+   raise exception 'cannot cancel after preparation started';
+ end if;
+ return new;
+end $$;
+revoke all on function public.qg_merchant_delivery_cancel_guard() from public,anon,authenticated;
+drop trigger if exists qg_merchant_delivery_cancel_guard on public.orders;
+create trigger qg_merchant_delivery_cancel_guard before update of status on public.orders
+for each row execute function public.qg_merchant_delivery_cancel_guard();

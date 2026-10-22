@@ -771,3 +771,5 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Local focused runtime/SQL tests added. No Production migration/deployment or authenticated live cancellation has been performed at this checkpoint; exact CI and controlled deployment remain required.
 
 - Narrow Web hotfix is based on current main68fdb52d; it carries existing Kitchen rules from PR595 and these fixes. Offline draft source stays in PR595 pending its own release gates.
+
+- Delivery cancellation boundary also runs in an INVOKER row trigger for direct shop UPDATE, because the existing cash-order guard permitted preparing/ready cancellation. It excludes POS and Ride; direct trigger execution is revoked from public/anon/authenticated.
