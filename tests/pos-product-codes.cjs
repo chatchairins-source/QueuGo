@@ -9,10 +9,10 @@ const printer=fs.readFileSync(path.join(root,'merchant/printer-v1.js'),'utf8');
 assert.match(migration,/pg_advisory_xact_lock\(hashtextextended\(v_shop::text\|\|':'\|\|v_code,0\)\)/);
 assert.match(client,/rpc\('pos_product_code_lookup'/);assert.match(client,/pos_create_bill_once/);assert.match(client,/pos_edit_bill/);
 assert.match(client,/state\.scanQueue\.shift\(\)/);assert.match(client,/scanContextCurrent\(context\)/);
-assert.match(html,/pos-table-v2\.js\?v=["']+/);assert.match(html,/pos-table-v2\.css\?v=["']+/);
+assert.match(html,/pos-table-v2\.js\?v=[^"']+/);assert.match(html,/pos-table-v2\.css\?v=[^"']+/);
 assert.match(client,/qg-pos-product-card/);assert.match(client,/qg-pos-product-main/);assert.match(client,/qg-pos-product-card\[data-name\]/);
 assert.match(css,/one product = one coherent card/);assert.match(css,/@media\(max-width:650px\)[\s\S]*\.qg-pos-products\{grid-template-columns:1fr/);
-assert.match(printer,/qgp-label/);assert.match(html,/printer-v1\.css\?v=["']+/);assert.match(html,/printer-v1\.js\?v=["']+/);
+assert.match(printer,/qgp-label/);assert.match(html,/printer-v1\.css\?v=[^"']+/);assert.match(html,/printer-v1\.js\?v=[^"']+/);
 (async()=>{
   const db=new PGlite();
   await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
