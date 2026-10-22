@@ -2316,9 +2316,13 @@ async function qgOpenPickupVerify(o){
       next.onclick=async()=>{
         if(page._proofBusy||!qgProofPageCurrent(page,o))return false;
         const file=page._pickupFile;if(!file){toast('กรุณาถ่ายรูปใบเสร็จก่อน');return false}
-        const received=await qgConfirmPickupReceived();if(!received)return false;
-        page._proofBusy=true;next.disabled=true;input.disabled=true;next.textContent='กำลังบันทึก...';
+        // Lock before opening the confirmation dialog. Two fast taps must never create
+        // two dialogs or start two pickup attempts while the first answer is pending.
+        page._proofBusy=true;next.disabled=true;input.disabled=true;
         try{
+          const received=await qgConfirmPickupReceived();
+          if(!received)return false;
+          next.textContent='กำลังบันทึก...';
           if(!page._pickupPhotoPath)page._pickupPhotoPath=await window.qgUploadEvidence(file);
           if(!qgProofPageCurrent(page,o))return false;
           const ok=await qgPickupWithPhoto(o,file,page._pickupPhotoPath);
