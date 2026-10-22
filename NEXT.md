@@ -1,6 +1,6 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-22 · Authoritative main: `a71131aa0027b0616260ce6881ef708e99e9e214`
+Current snapshot: 2026-10-22 · Authoritative main: `635a16d0b9a56f1ac3549b6e4cc36c8347243781`
 
 ## Active chunk
 
@@ -78,3 +78,13 @@ Continue the controlled POS migration recovery gate; verify authorized cashier/d
 
 ## Next action
 Continue POS controlled migration recovery and authorized device acceptance tracking, then audit the retry/outbox boundary for offline operations without creating any payment or tax policy. Verify Admin's exclusion across orders, dashboard counts and GP after current deployment; keep POS sales reporting and offline queue distinct from platform marketplace metrics.
+
+
+## POS offline recovery discovery — 2026-10-22
+- Current source blocks offline sale writes. Ambiguous online bill creation and cash movement use tab-scoped idempotent retries; #580 added actor/shop protection for bill replay. These are not durable offline sale queues.
+- Reviewed current official Square and Shopify POS offline documentation. Both distinguish pending offline work from server-accepted state and expose permission, risk, limits, recovery, or unsupported-operation boundaries. Research and the recommended QueueGo Phase 1 are in `docs/POS-OFFLINE-RECOVERY.md`.
+- Recommended next implementation: durable, identity-scoped offline cart drafts that require server price/stock/permission validation and cashier review before online submission. Do not mark as paid, send to kitchen, or reserve stock while disconnected. Actual offline completed sales require owner decisions about payment, multi-terminal inventory conflict, limits, shift/accounting, receipts and customer recovery.
+- No Production migration or data change. QueueGo/POS remain **NOT DONE**.
+
+## Next action
+Implement the recommended durable offline draft recovery slice from `docs/POS-OFFLINE-RECOVERY.md`, without accepting offline payment or treating the draft as a completed sale. Preserve the cashier/device and controlled Production migration gates.
