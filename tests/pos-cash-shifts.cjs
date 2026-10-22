@@ -3,7 +3,9 @@ const {PGlite}=require('@electric-sql/pglite');
 const root=path.resolve(__dirname,'..');
 const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021125213_pos_cash_register_shifts.sql'),'utf8');
 const aclMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261021130147_pos_cash_shifts_acl_indexes.sql'),'utf8');
-const movementMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261021211709_pos_cash_register_movements.sql'),'utf8');
+const movementMigrationPath=fs.readdirSync(path.join(root,'supabase/migrations')).filter(name=>name.endsWith('_pos_cash_register_movements.sql')).sort().at(-1);
+assert.ok(movementMigrationPath,'POS cash movement migration exists');
+const movementMigration=fs.readFileSync(path.join(root,'supabase/migrations',movementMigrationPath),'utf8');
 assert.match(movementMigration,/pg_advisory_xact_lock\(hashtextextended\([\s\S]*?p_request/);
 (async()=>{
   const db=new PGlite();

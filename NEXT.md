@@ -1,17 +1,15 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-22 · Authoritative main: `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`
+Current snapshot: 2026-10-22 · Authoritative main: `7572146400f44bf66c96aca5ae5f84264fe4241b`
 
 ## Active chunk
 
-**POS offline recovery Phase 1 — implement durable, identity-scoped cart drafts; Production schema activation and real cashier/device release remain blocked.**
+**POS Production continuation — cash shifts and shop capability authorization deployed; complete the remaining schema and real-device release gates.**
 
-- **Implementation blocker (2026-10-22):** Phase 1 needs an atomic, idempotent server RPC for reviewed multi-line drafts because `pos_edit_bill` is non-idempotent. The required Supabase skill package was unavailable in this runtime (`skills.read` returned “skill package is not available”); no RPC or migration has been authored. Recheck skill availability and read it before schema work. Do not ship a client-only partial draft flow as complete.
-
-- PR #585 offline-recovery design merged to main at `d67f8dd8f79bcc991c447376cdd838988c816884`; its exact-head RC `39698519445` passed, followed by main RC `39698920070` PASS and Pages deployment `39698919956` SUCCESS. The design recommends offline drafts only; no offline completed sale or Production change.
-- PR #584 removed the retired Admin GP/slip workflow while preserving live GP deduction logic. Exact-head RC `39699366405` passed all steps on `9e9202bf3b688a816eef41cd3fe2eacd0e852562`; merge `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`; descendant main RC `39699765279` PASS and Pages deployment `39699764713` SUCCESS.
-- PR #584's Admin WebKit baseline now serves its HTML and runtime assets from the same historical commit. This fixes a test fixture mismatch; browser coverage stayed enabled.
-- Production remains unmodified. Cash and inventory migrations remain unapplied; cashier/device acceptance and real-user journeys are still open. QueueGo/POS remain **NOT DONE**.
+- PR #615 exact-head RC `39764778696` passed, including `npm test`, mobile WebKit, map gestures/search and Grocery mobile/tablet rendering. Main is `7572146400f44bf66c96aca5ae5f84264fe4241b`.
+- Production recorded Kitchen staff capability migration `20261022105255` and cash movement migration `20261022105630_pos_cash_register_movements`. Readback confirmed the four Kitchen role guards, cash-in/out idempotency RPC and authenticated-only access. No POS staff or cash events exist; no order/payment/refund/drawer data was written.
+- Cashier/staff live acceptance and physical register/printer/scanner validation remain open. Product Code/SKU and generic inventory migrations are still absent from Production; inspect schema, ACL/RLS and migration history before release.
+- NEXT: preflight and release the existing Product Code/SKU implementation, then proceed through inventory and remaining POS gates. QueueGo/POS remain **NOT DONE**.
 
 - PR #568 cash movement source was merged after exact-head QueueGo RC `39622237860` completed all 12 test/browser steps successfully. Merge commit: `c79640e0c896cc81961e8ba2dc69d336a9f519b0`; main now contains the audited cash-in/out UI and RPC source.
 - PR #572 merged to `main` at `6050a51ab7cb06001fb4163b5ff88c890fb4950d` after exact-source RC `39636799778` passed all 12 steps on `7d2ffec2417884dce70805f646dccaa3f388059e`. Merge publishes source only; no Production migration was applied.
