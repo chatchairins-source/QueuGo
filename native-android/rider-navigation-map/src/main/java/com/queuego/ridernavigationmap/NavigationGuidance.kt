@@ -2,9 +2,8 @@ package com.queuego.ridernavigationmap
 
 import kotlin.math.max
 
-private const val WEAK_GPS_ACCURACY_METERS = 75f
+private const val WEAK_GPS_ACCURACY_METERS = 35f
 private const val BASE_OFF_ROUTE_THRESHOLD_METERS = 30.0
-private const val OFF_ROUTE_ACCURACY_MULTIPLIER = 1.0
 private const val DEFAULT_ARRIVAL_METERS = 28.0
 private const val ARRIVAL_ACCURACY_MULTIPLIER = 1.4
 private const val MAX_ARRIVAL_METERS = 45.0
@@ -65,10 +64,7 @@ class NavigationProgressTracker(
             ?.takeIf { it.isFinite() && it >= 0.0 }
             ?.let { total -> (total * (1.0 - progressRatio)).coerceAtLeast(0.0) }
 
-        val offRouteThreshold = max(
-            BASE_OFF_ROUTE_THRESHOLD_METERS,
-            (accuracy?.toDouble() ?: 15.0) * OFF_ROUTE_ACCURACY_MULTIPLIER
-        )
+        val offRouteThreshold = BASE_OFF_ROUTE_THRESHOLD_METERS
         val offRoute = !weakGps && match.offRouteMeters > offRouteThreshold
         val now = nowMillis()
         if (offRoute) {
