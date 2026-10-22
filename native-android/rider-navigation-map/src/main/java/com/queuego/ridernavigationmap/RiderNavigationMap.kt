@@ -105,7 +105,7 @@ internal fun navigationRiderDisplayFix(state: RiderNavigationMapState): Navigati
         )
     } else null
     val displayPoint = match
-        ?.takeIf { it.offRouteMeters <= 12.0 }
+        ?.takeIf { it.offRouteMeters <= 25.0 }
         ?.snapped
         ?: rawFix.point
     return rawFix.copy(point = displayPoint)
@@ -311,7 +311,7 @@ private class RiderNavigationMapHolder {
             }
             if (segment.style == NavigationRouteStyle.ACTIVE && accuracy != null &&
                 accuracy.isFinite() && accuracy <= 35f && match != null &&
-                match.offRouteMeters <= 12.0
+                match.offRouteMeters <= 25.0
             ) trimNavigationRouteSegment(segment, match.progressMeters, match.snapped)
             else segment
         }
