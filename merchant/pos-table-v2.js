@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 25856)
-Total output lines: 393
-
 /* QueueGo counter sales — Supabase is the only source of order and payment data. */
 (()=>{
   'use strict';
@@ -203,7 +200,25 @@ Total output lines: 393
   const scanContextCurrent=c=>Boolean(c&&root()==='pos'&&state.view==='counter'&&state.shop===c.shop&&qtSessionRead()?.authUserId===c.actor&&state.mode===c.mode&&state.table===c.table&&state.noTable===c.noTable&&(state.scanAddInProgress||state.selected===c.expectedSelected));
   const scanStatus=s=>{const el=document.getElementById('qg-pos-scan-status');if(el)el.textContent=s};
   function posOptionGroups(product){
-    const variants=Array.isArray(product?.variants)?product.variants:[],groups=variants.filter(g=>g&&g.schema==='queuego.menu-options.v1'&&Array.isArray(g.o…856 tokens truncated…'ตัวเลือกสินค้า'))}if(inputs.length>max){field.querySelector('input')?.focus();return message('เลือกได้ไม่เกิน '+max+' รายการ')}if(radio){if(inputs.length)selections[key]=inputs[0].value}else selections[key]=inputs.map(input=>input.value)} }
+    const variants=Array.isArray(product?.variants)?product.variants:[],groups=variants.filter(g=>g&&g.schema==='queuego.menu-options.v1'&&Array.isArray(g.options));
+    if(groups.length)return groups;
+    const legacy=variants.filter(x=>typeof x==='string'&&x.trim());
+    return legacy.length?[{key:'variant',name:'ตัวเลือกสินค้า',type:'single',required:true,options:legacy.map((name,i)=>({key:name,name,price_delta:0}))}]:[];
+  }
+  function posOptionLimits(group){const count=Array.isArray(group?.options)?group.options.length:0;if(group?.type==='single')return{min:group.required===true?1:0,max:1};const min=group?.min==null||group.min===''?NaN:Number(group.min),max=group?.max==null||group.max===''?NaN:Number(group.max);return{min:Number.isInteger(min)&&min>=0?min:(group?.required===true?1:0),max:Number.isInteger(max)&&max>=0?Math.min(max,count):count}}
+  function choosePosOptions(product,groups){
+    if(pendingOptionResolver)return Promise.resolve(null);
+    return new Promise(resolve=>{
+      pendingOptionResolver=resolve;
+      const groupsHtml=groups.map(g=>{const limits=posOptionLimits(g);return `<fieldset data-option-group="${esc(g.key)}" data-min-select="${limits.min}" data-max-select="${limits.max}"><legend>${esc(g.name)}${limits.min>0?' · เลือกอย่างน้อย '+limits.min:''}${limits.max<g.options.length?' · ไม่เกิน '+limits.max:''}</legend><div>${g.options.map((o,i)=>`<label><input type="${g.type==='multi'?'checkbox':'radio'}" name="qg-pos-option-${esc(g.key)}" value="${esc(o.key)}" ${g.type==='single'&&g.required&&i===0?'checked':''}><span>${esc(o.name)}</span><small>${Number(o.price_delta??o.price??0)?'+ '+money(o.price_delta??o.price):'ราคาเดิม'}</small></label>`).join('')}</div></fieldset>`}).join('');
+      const dialog=document.createElement('section');dialog.className='qg-pos-option-overlay';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','qg-pos-option-title');dialog.innerHTML=`<div class="qg-pos-option-dialog"><header><h2 id="qg-pos-option-title">เลือกตัวเลือก · ${esc(product.name)}</h2><p>ราคาตั้งต้น ${money(product.pos_price??product.price)} · ราคาเพิ่มคำนวณจากข้อมูลร้าน</p></header><div class="qg-pos-option-groups">${groupsHtml}</div><div class="qg-pos-option-actions"><button type="button" onclick="qgPosOptionFinish(false)">ยกเลิก</button><button type="button" class="confirm" onclick="qgPosOptionFinish(true)">เพิ่มลงบิล</button></div></div>`;document.body.append(dialog);
+      dialog.querySelector('input')?.focus();
+    });
+  }
+  window.qgPosOptionFinish=approved=>{
+    const dialog=document.querySelector('.qg-pos-option-overlay'),resolve=pendingOptionResolver;if(!dialog||!resolve)return;
+    let selections=null;
+    if(approved){selections={};for(const field of dialog.querySelectorAll('[data-option-group]')){const key=field.dataset.optionGroup,inputs=[...field.querySelectorAll('input:checked')],radio=field.querySelector('input[type=radio]'),min=Number(field.dataset.minSelect||0),max=Number(field.dataset.maxSelect||field.querySelectorAll('input').length);if(inputs.length<min){field.querySelector('input')?.focus();return message('กรุณาเลือก '+(radio?'หนึ่งตัวเลือก':'อย่างน้อย '+min+' รายการ')+' '+(field.querySelector('legend')?.textContent||'ตัวเลือกสินค้า'))}if(inputs.length>max){field.querySelector('input')?.focus();return message('เลือกได้ไม่เกิน '+max+' รายการ')}if(radio){if(inputs.length)selections[key]=inputs[0].value}else selections[key]=inputs.map(input=>input.value)} }
     pendingOptionResolver=null;dialog.remove();resolve(selections);
   };
   window.qgPosScanLookup=()=>{
