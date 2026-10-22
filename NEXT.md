@@ -1,6 +1,6 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-22 · Authoritative main: `fbdf63707a5eba1b9bf703891330c7b132e6bb54`
+Current snapshot: 2026-10-22 · Authoritative main: `a71131aa0027b0616260ce6881ef708e99e9e214`
 
 ## Active chunk
 
@@ -69,3 +69,12 @@ Continue the POS migration recovery/compatibility review and verify the authoriz
 
 ## Next action
 Continue the controlled POS migration recovery gate; verify authorized cashier/device acceptance status before any Production activation. In parallel, audit the POS online pending-create recovery and design the offline-sale boundary without inventing tax, credit, or payment policy. Do not claim offline sales or whole-platform readiness.
+
+
+## Latest main successor receipt — 2026-10-22
+- PR #581 merged at `c740e9321ec5e3d1fb2d6acafc382180e7166121` after its exact-head QueueGo RC passed. Its immediate push RC `39696877230` was cancelled when main advanced; the descendant main `a71131aa0027b0616260ce6881ef708e99e9e214` added Admin exclusions for POS DINE_IN/TAKEAWAY orders in Admin order reads, count KPI and GP totals.
+- Successor main RC `39697139447` passed all required stages, and Pages deployment `39697139101` succeeded on the current main SHA. The earlier cancellation is preserved as evidence; no failure was hidden.
+- Current main therefore includes #580's cashier/shop-scoped ambiguous bill retry guard and the Admin POS-order reporting exclusion. Production remains unmodified. POS feature migrations remain unapplied, physical cashier/device acceptance is not claimed, and a durable offline-sale queue remains unimplemented. QueueGo/POS **NOT DONE**.
+
+## Next action
+Continue POS controlled migration recovery and authorized device acceptance tracking, then audit the retry/outbox boundary for offline operations without creating any payment or tax policy. Verify Admin's exclusion across orders, dashboard counts and GP after current deployment; keep POS sales reporting and offline queue distinct from platform marketplace metrics.
