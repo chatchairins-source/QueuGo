@@ -1995,7 +1995,7 @@ private fun PosReportsView(
                         report.hourlySales.forEach { hour ->
                             Row(Modifier.fillMaxWidth().padding(vertical = 2.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("%02d:00".format(hour.hour), color = QgMuted, fontSize = 11.sp)
+                                Text(String.format(Locale.US, "%02d:00", hour.hour), color = QgMuted, fontSize = 11.sp)
                                 Text("${hour.bills} บิล", color = QgMuted, fontSize = 11.sp)
                                 Text("฿${money(hour.sales)}", fontSize = 11.sp)
                             }
