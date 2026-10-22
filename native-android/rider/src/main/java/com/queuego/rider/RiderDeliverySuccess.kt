@@ -11,6 +11,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
@@ -24,14 +28,18 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun RiderDeliverySuccess(
+    auth: QueueGoAuth,
+    api: QueueGoApi,
     job: RiderJob,
     recommendation: RiderAfterWorkRecommendation?,
     onRecommendation: (RiderAfterWorkRecommendation) -> Unit,
     onDismiss: () -> Unit
 ) {
     val eventFeedbackView = LocalView.current
+    var ratingSummary by remember(job.id) { mutableStateOf<RiderRatingSummary?>(null) }
     LaunchedEffect(job.id) {
         playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.DELIVERY_SUCCESS)
+        ratingSummary = runCatching { api.ratingSummary(auth) }.getOrNull()
     }
     LaunchedEffect(job.id, recommendation?.key) {
         if (recommendation == null) {
@@ -64,11 +72,44 @@ internal fun RiderDeliverySuccess(
                 Text(job.numberLabel, color = QgMuted, fontSize = 10.sp)
                 Spacer(Modifier.height(9.dp))
                 Text(
-                    "รายได้ค่าส่ง ฿" + riderMoneyNumber(job.deliveryFee ?: 0.0),
+                    "รายได้สุทธิ ฿" + riderMoneyNumber(job.deliveryFee ?: 0.0),
                     color = QgRed,
-                    fontSize = 17.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Black
                 )
+                ratingSummary?.let { rating ->
+                    Spacer(Modifier.height(12.dp))
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E8))
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text("คะแนนจากลูกค้า", fontSize = 10.sp, color = QgMuted, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (rating.average != null) String.format(java.util.Locale.US, "%.2f / 5", rating.average)
+                                    else "ยังไม่มีคะแนน",
+                                    modifier = Modifier.padding(top = 2.dp),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            val rounded = rating.average?.let { kotlin.math.round(it).toInt().coerceIn(0, 5) } ?: 0
+                            Text(
+                                buildString {
+                                    repeat(5) { index -> append(if (index < rounded) '★' else '☆') }
+                                },
+                                fontSize = 21.sp,
+                                color = Color(0xFFB87A00),
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+                }
                 recommendation?.let { item ->
                     Spacer(Modifier.height(14.dp))
                     Card(
