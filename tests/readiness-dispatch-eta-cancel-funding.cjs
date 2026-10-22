@@ -108,7 +108,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  const linked=(await q('select replacement_order_id from qg_private.rider_cancellation_funding where order_id=$1',[id(310)])).rows[0];
  eq(linked.replacement_order_id,id(312));
 
- const ledger=(await q('select qg_rider_cash_ledger(current_date,current_date) l')).rows[0].l;
+ const ledger=(await q("select qg_rider_cash_ledger((now() at time zone 'Asia/Bangkok')::date,(now() at time zone 'Asia/Bangkok')::date) l")).rows[0].l;
  const line=ledger.find(x=>x.order_id===id(310));eq(Number(line.delivery_fee),25);eq(Number(line.platform_cancellation_funding),Number(funding.amount));
  eq(Number(line.platform_cancellation_replacement_target),Number(funding.replacement_target_amount));
  eq(line.platform_replacement_order_id,id(312));
