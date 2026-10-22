@@ -7,10 +7,10 @@ ok(!/deliveryOrders|deliveryItems|qgPosDeliveryAction|pos_delivery_kitchen_actio
 ok(!/QUEUEGO_DELIVERY|GP จาก|r\.GP|r\.DELIVERY/.test(pos),'POS report does not render Delivery or GP');
 ok(pos.includes('&sales_channel=eq.POS&created_at=gte.'),'POS history requests only POS orders');
 ok(!pos.includes('value="DELIVERY"'),'POS history has no Delivery filter');
-ok(merchant.includes('id="qgm-delivery-markup"'),'merchant product editor exposes explicit Delivery markup');
-ok(merchant.includes('delivery_markup_percent:deliveryMarkup'),'merchant saves Delivery markup independently');
+ok(merchant.includes('id="qgm-delivery-markup"'),'merchant product editor displays the shop Delivery markup');
+ok(!merchant.includes('delivery_markup_percent:deliveryMarkup'),'merchant product save does not create per-product Delivery pricing policy');
 ok(!merchant.includes("บันทึกสินค้าแล้ว · Delivery + GP"),'merchant save confirmation does not describe GP as price markup');
-ok(pricing.includes("new.delivery_price:=round(v_store_price*(1+v_markup/100),2)"),'Delivery price derives from storefront price plus merchant markup');
+ok(pricing.includes("new.delivery_price:=round(v_store_price*(1+v_markup/100),2)"),'Delivery price derives from storefront price plus Delivery markup');
 ok(!pricing.includes("effective_gp_rate_at"),'product price trigger no longer reads GP');
 ok(pricing.includes("drop trigger if exists queuego_reprice_products_after_shop_gp_change_trg"),'shop GP changes no longer reprice products');
 const match=merchant.match(/function qgmCanCancelDelivery\(o\)\{[\s\S]*?\n\}/);assert.ok(match);
@@ -40,3 +40,8 @@ eq((await db.query("select has_function_privilege('authenticated','pos_owner_das
 await db.exec("select set_config('test.owner','false',false)");await assert.rejects(()=>db.query('select pos_owner_dashboard(1)'),/owner only/);checks++;
 await db.close();console.log(JSON.stringify({checks,failures:0,scope:'POS-only totals/history/actions and Delivery pre-preparation cancellation boundaries'}));
 })().catch(e=>{console.error(e);process.exit(1)});
+
+const shopPricing=read('supabase/migrations/20261022093000_restore_shop_delivery_markup_default_10.sql');
+ok(shopPricing.includes("'delivery_markup','{\"default_rate\":10}'::jsonb"),'Delivery markup defaults to 10 percent');
+ok(shopPricing.includes('shop_delivery_markup_rates'),'Delivery markup supports shop-level overrides');
+ok(shopPricing.includes('queuego_effective_delivery_markup'),'products use effective shop Delivery markup');
