@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 22185)
+Total output lines: 337
+
 /* QueueGo counter sales — Supabase is the only source of order and payment data. */
 (()=>{
   'use strict';
@@ -13,6 +16,16 @@
   const token=()=>qtGetAccessToken();
   async function request(path,body){const t=await token();if(!t)throw Error('กรุณาเข้าสู่ระบบ');return qtSupabaseTable(path,{method:body===undefined?'GET':'POST',accessToken:t,body});}
   const rpc=(name,body)=>request('rpc/'+name,body);
+  async function readPosProducts(shop){
+    const base='products?select=id,name,price,pos_price,available,pos_available,delivery_available,delivery_price,image,category,variants,stock,';
+    const scope='&shop_id=eq.'+encodeURIComponent(shop)+'&order=name.asc';
+    try{return await request(base+'inventory_stock_tracking,grocery_master_id,grocery_stock_tracking'+scope)}
+    catch(e){
+      if(e?.code!=='42703'||!String(e?.message||'').includes('inventory_stock_tracking'))throw e;
+      const rows=await request(base+'grocery_master_id,grocery_stock_tracking'+scope);
+      return (rows||[]).map(p=>({...p,inventory_stock_tracking:false}));
+    }
+  }
   const active=o=>o.payment_status==='UNPAID'&&o.status!=='cancelled';
   const can=key=>state.owner||(state.staff?.permissions?.[key]===true)||(!(key in (state.staff?.permissions||{}))&&({'receive_order':'WAITER','send_kitchen':'WAITER','serve_order':'WAITER','cook_order':'KITCHEN','ready_order':'KITCHEN','close_bill':'CASHIER'}[key]===state.staff?.staff_role));
   const root=()=>location.hash.replace('#','').split('/')[0];
@@ -34,7 +47,7 @@
     const owner=await rpc('pos_is_owner',{});if(!current())return;
     const [tables,products,orders,staff,deliveryOrders,openBills]=await Promise.all([
       request('pos_tables?select=id,label,active,qr_token&shop_id=eq.'+shop+'&order=label.asc'),
-      request('products?select=id,name,price,pos_price,available,pos_available,delivery_available,delivery_price,image,category,variants,stock,inventory_stock_tracking,grocery_master_id,grocery_stock_tracking&shop_id=eq.'+shop+'&order=name.asc'),
+      readPosProducts(shop),
       request('orders?select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status,payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at&shop_id=eq.'+shop+'&sales_channel=eq.POS&order=created_at.desc&limit=200'),
       request('pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active&shop_id=eq.'+shop),
       request('orders?select=id,order_number,order_type,sales_channel,status,rider_id,shop_id,created_at&shop_id=eq.'+shop+'&or=(sales_channel.eq.QUEUEGO_DELIVERY,and(sales_channel.is.null,order_type.eq.shopping))&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned)&order=created_at.desc&limit=100'),
@@ -94,191 +107,7 @@
 
   function staff(){if(!state.owner&&!can('manage_staff'))return '<p>ไม่มีสิทธิ์จัดการพนักงาน</p>';return `${tabs()}<div id="qg-pos-error" role="alert"></div><section class="qg-pos-panel"><h2>บัญชีพนักงาน</h2><p>พนักงานสมัครด้วยอีเมลของตนเอง แล้วใช้รหัสเชิญที่ร้านออกให้</p><label>หน้าที่พนักงาน<select id="qg-pos-invite-role"><option value="WAITER">พนักงานเสิร์ฟ</option><option value="CASHIER">แคชเชียร์</option><option value="KITCHEN">ครัว</option></select></label><button data-write onclick="qgPosInvite()">สร้างรหัสเชิญ (ใช้ครั้งเดียว ภายใน 24 ชม.)</button><div id="qg-pos-invite"></div><div id="qg-pos-staff-list"></div></section>`}
   function codesView(){if(!can('manage_staff'))return '<p>ไม่มีสิทธิ์จัดการรหัสสินค้า</p>';const p=state.products.find(x=>x.id===state.codeProduct);return `${tabs()}<div id="qg-pos-error" role="alert"></div><section class="qg-pos-panel"><h2>รหัสสินค้า · SKU / บาร์โค้ด</h2><p class="qg-pos-code-help">ผูกรหัสหลายรายการเข้ากับสินค้าในร้าน ระบบใช้รหัสที่สแกนเพื่อเพิ่มสินค้านี้ลงบิลด้วยราคาหน้าร้านปัจจุบัน</p><label for="qg-pos-code-product-search">ค้นหาสินค้าในร้าน</label><input id="qg-pos-code-product-search" type="search" placeholder="พิมพ์ชื่อสินค้า" oninput="qgPosCodeFilter(this.value)"><div id="qg-pos-code-products"></div>${p?`<section class="qg-pos-code-selected"><div><b>${esc(p.name)}</b><small>${money(p.pos_price??p.price)}</small></div><label>ชนิดรหัส<select id="qg-pos-code-type"><option value="barcode">บาร์โค้ด (EAN/UPC 8–14 หลัก)</option><option value="sku">SKU ของร้าน</option></select></label><label>รหัสสินค้า<input id="qg-pos-code-value" maxlength="64" autocomplete="off" autocapitalize="characters" placeholder="สแกนหรือกรอกรหัส"></label><button class="qg-pos-add" data-write onclick="qgPosCodeSave()">บันทึกรหัสให้สินค้านี้</button><button class="qg-pos-code-back" type="button" onclick="qgPosCodeSelect(null)">เลือกสินค้าอื่น</button></section>`:''}<h3 class="qg-pos-code-heading">รหัสที่บันทึกแล้ว</h3><div id="qg-pos-codes-list">${state.codesLoading?'กำลังโหลดรหัสสินค้า...':state.codesLoaded?'':'กำลังโหลดรหัสสินค้า...'}</div></section>`}
-  function reports(){return `${tabs()}<div id="qg-pos-error" role="alert"></div><section class="qg-pos-panel"><h2>ยอดขายและสินค้าขายดี</h2><div class="qg-pos-switch">${[1,7,30].map(n=>`<button class="${state.reportDays===n?'on':''}" aria-pressed="${state.reportDays===n}" onclick="qgPosReport(${n})">${n===1?'วันนี้':n+' วัน'}</button>`).join('')}</div><div id="qg-pos-report" role="region" aria-live="polite">กำลังโหลด...</div></section><h2>บิลที่ชำระแล้ว</h2><div class="qg-pos-bills">${state.orders.filter(o=>o.payment_status==='PAID').map(o=>`<div class="qg-pos-row"><button onclick="qgPosReceipt('${o.id}')">${esc(o.order_number)} · ${esc(o.order_type==='DINE_IN'?tableName(o.table_id):'รับกลับ')} · ${money(o.total_amount)}</button>${can('refund')?`<button onclick="qgPosRefund('${o.id}')">บันทึกคืนเงินจริง</button>`:''}</div>`).join('')||'<p>ยังไม่มีบิล</p>'}</div>`}
-  function shifts(){return `${tabs()}<div id="qg-pos-error" role="alert"></div><section class="qg-pos-panel"><div class="qg-pos-shift-head"><div><p class="qg-pos-eyebrow">เครื่องคิดเงิน</p><h2>กะรับเงินสด</h2></div><button class="qg-pos-shift-reload" onclick="qgPosShiftLoad()" aria-label="โหลดกะใหม่">↻</button></div><div id="qg-pos-shift-content">${state.shiftLoading?'กำลังโหลดข้อมูลกะ...':state.shiftError?`<p role="alert">${esc(state.shiftError)}</p><button class="qg-pos-add" onclick="qgPosShiftLoad()">ลองอีกครั้ง</button>`:'กำลังโหลดข้อมูลกะ...'}</div></section><section class="qg-pos-panel"><h2>วิธีนับยอด</h2><p>ยอดคาดหมาย = เงินตั้งต้น + เงินสดสุทธิจากบิลในกะนี้ ระบบคำนวณจากรายการชำระและรายการคืนเงินจริงใน POS</p><p>ยอดต่างและหมายเหตุจะถูกเก็บในประวัติกะ เพื่อให้ร้านตรวจสอบย้อนหลังได้</p></section>`}
-
-  function tablesView(){
-    const manageable=can('manage_staff');
-    const cards=state.tables.map(t=>{const bill=state.orders.find(o=>active(o)&&o.table_id===t.id);
-      return `<div class="qg-pos-table-card"><button type="button" onclick="qgPosTable('${t.id}')"><b>${esc(t.label)}</b><small>${bill?'มีออเดอร์ · '+esc(bill.order_number):t.active?'ว่าง':'ปิดใช้งาน'}</small></button><button type="button" class="qg-pos-table-qr-main" onclick="qgPosQR('${t.id}')" aria-label="ดู QR Code ${esc(t.label)}">ดู QR Code</button>${manageable?`<button type="button" class="qg-pos-table-edit" onclick="qgPosEditTable('${t.id}')" aria-label="แก้ไข ${esc(t.label)}">แก้ไข</button><button type="button" class="qg-pos-table-delete" onclick="qgPosDeleteTable('${t.id}')" aria-label="ลบ ${esc(t.label)}">ลบโต๊ะ</button>`:''}</div>`;
-    });
-    return `${tabs()}<div id="qg-pos-error" role="alert"></div><h2>โต๊ะ</h2>${manageable?'<button type="button" class="qg-pos-add" data-write onclick="qgPosEditTable()">＋ เพิ่มโต๊ะ</button>':''}<div class="qg-pos-tables qg-pos-table-list">${cards.join('')||'<p>ยังไม่มีโต๊ะที่ตั้งไว้</p>'}</div><button class="qg-pos-add" onclick="qgPosNoTable();qgPosView('counter')">＋ รับออเดอร์แบบไม่ระบุโต๊ะ</button>`;
-  }
-  function billsView(){return `${tabs()}<h2>บิลรอคิดเงิน</h2><div class="qg-pos-bills">${state.orders.filter(o=>active(o)&&['READY','SERVED'].includes(o.kitchen_status)).map(o=>`<button onclick="qgPosOpen('${o.id}')">${esc(o.order_type==='DINE_IN'?tableName(o.table_id):'รับกลับ')} · ${esc(o.order_number)} <b>${money(o.total_amount)}</b></button>`).join('')||'<p>ยังไม่มีบิลรอชำระ</p>'}</div>`}
-  function historyView(){return `${tabs()}<section class="qg-pos-panel"><h2>ประวัติออเดอร์</h2><div class="qg-pos-switch"><input type="date" id="qg-pos-history-date" value="${new Date(Date.now()+7*3600000).toISOString().slice(0,10)}" onchange="qgPosHistory()"><select id="qg-pos-history-type" onchange="qgPosHistory()"><option value="ALL">ทั้งหมด</option><option value="DINE_IN">ทานที่ร้าน</option><option value="TAKEAWAY">รับกลับ</option><option value="DELIVERY">Delivery</option></select></div><div id="qg-pos-history-list">กำลังโหลด...</div></section>`}
-  window.qgPosHistory=async()=>{const el=document.getElementById('qg-pos-history-list');if(!el||!state.owner)return;try{const day=document.getElementById('qg-pos-history-date').value,type=document.getElementById('qg-pos-history-type').value;const start=new Date(day+'T00:00:00+07:00'),end=new Date(start.getTime()+86400000);const rows=await request('orders?select=id,order_number,order_type,sales_channel,status,total_amount,created_at,staff_id&shop_id=eq.'+state.shop+'&created_at=gte.'+encodeURIComponent(start.toISOString())+'&created_at=lt.'+encodeURIComponent(end.toISOString())+'&order=created_at.desc&limit=200');if(!el.isConnected)return;el.innerHTML=rows.filter(o=>type==='ALL'||(type==='DELIVERY'?o.sales_channel==='QUEUEGO_DELIVERY'||o.order_type==='shopping':o.order_type===type)).map(o=>`<div class="qg-pos-row"><span><b>${esc(o.order_number)}</b><small>${esc(o.order_type==='shopping'?'Delivery':o.order_type)} · ${new Date(o.created_at).toLocaleTimeString('th-TH')} · ${esc(o.status)} · ${esc(state.staffRows.find(s=>s.user_id===o.staff_id)?.display_name||'ร้าน')}</small></span><strong>${money(o.total_amount)}</strong></div>`).join('')||'<p>ไม่พบออเดอร์ในวันที่เลือก</p>'}catch(e){message(e)}};
-  window.qgPosNoTable=()=>{if(state.scanBusy)return message('รอสแกนรายการปัจจุบันให้เสร็จก่อน');state.mode='DINE_IN';state.table=null;state.noTable=true;state.selected=null;render()};
-  window.qgPosChangePreview=()=>{const o=selected(),m=document.getElementById('qg-pos-method')?.value,input=document.getElementById('qg-pos-cash'),label=document.getElementById('qg-pos-cash-label'),display=document.getElementById('qg-pos-change');if(!o||!label)return;label.hidden=display.hidden=m!=='cash';if(m==='cash')display.innerHTML='เงินทอน <strong>'+(!input.value?'—':money(Math.max(0,Number(input.value)-Number(o.total_amount))))+'</strong>'};
-  function deliveryView(){return `${tabs()}<section class="qg-pos-panel"><h2>QueueGo Delivery</h2><p>ใช้หน้าร้านต่อได้แม้ยังไม่เปิดรับ Delivery</p><div id="qg-pos-delivery-readiness">กำลังตรวจข้อมูลร้าน...</div></section>`}
-  window.qgPosDelivery=async()=>{const el=document.getElementById('qg-pos-delivery-readiness');if(!el||!state.owner)return;try{const [profiles,hours,open]=await Promise.all([request('shop_profiles?select=shop_name,address,latitude,longitude,status,delivery_enabled,public_open_time,public_close_time&id=eq.'+state.shop),request('shop_business_hours?select=weekday,opens_at,closes_at,is_closed&shop_id=eq.'+state.shop),request('shop_open_states?select=is_open&shop_id=eq.'+state.shop)]);if(!el.isConnected)return;const p=profiles[0]||{},check=[['ข้อมูลร้าน',Boolean(p.shop_name),"shop-setup"],['ที่อยู่และพิกัด',Boolean(p.address&&p.latitude!=null&&p.longitude!=null),'shop-setup'],['เมนูและราคา',state.products.some(x=>x.available&&x.delivery_available!==false&&Number(x.delivery_price??x.price)>=0),'shop-products'],['เวลาเปิดร้าน',hours.some(x=>!x.is_closed&&x.opens_at&&x.closes_at)||Boolean(p.public_open_time&&p.public_close_time),'shop-hours'],['อนุมัติร้าน',p.status==='active','shop-profile']];el.innerHTML=check.map(([label,ok,route])=>`<button class="qg-pos-row" onclick="navigate('${route}')"><span>${ok?'✓':'○'} ${esc(label)}</span><small>${ok?'พร้อมแล้ว':'ตั้งค่า'}</small></button>`).join('')+`<p>${check.every(x=>x[1])?'ข้อมูลพร้อมสำหรับ Delivery':'ตั้งค่ารายการที่ยังไม่ครบก่อนเปิดรับ Delivery'}</p><p>สถานะรับ Delivery: <b>${p.delivery_enabled&&open[0]?.is_open?'เปิด':'ปิด'}</b></p><button class="qg-pos-add" onclick="${!p.delivery_enabled?'qgPosEnableDelivery()':"navigate('dashboard')"}">${!p.delivery_enabled?'เปิด Delivery เมื่อพร้อม':'จัดการสถานะร้าน'}</button>`}catch(e){message(e)}};
-  window.qgPosEnableDelivery=async()=>{if(!state.owner||state.loading)return;busy(true);try{await rpc('pos_enable_delivery',{});await load()}catch(e){message(e)}finally{busy(false)}};
-  function render(){if(root()!=='pos')return;shell('หน้าร้าน',state.view==='counter'?counter():state.view==='tables'?tablesView():state.view==='kitchen'?kitchen():state.view==='bills'?billsView():state.view==='shifts'?shifts():state.view==='codes'?codesView():state.view==='reports'?reports():state.view==='history'?historyView():state.view==='delivery'?deliveryView():staff());if(state.view==='reports')window.qgPosReport(1);if(state.view==='shifts')window.qgPosShiftLoad();if(state.view==='codes'){window.qgPosCodesLoad();window.qgPosCodeFilter(document.getElementById('qg-pos-code-product-search')?.value||'')}if(state.view==='history')window.qgPosHistory();if(state.view==='delivery')window.qgPosDelivery();if(state.view==='staff')staffList()}
-  function staffList(){const el=document.getElementById('qg-pos-staff-list');if(!el)return;el.innerHTML=state.staffRows.map(s=>`<div class="qg-pos-row"><b>${esc(s.display_name)} · ${esc(s.staff_role)} ${s.active?'':'(ปิดสิทธิ์)'}</b><button data-write onclick="qgPosStaffEdit('${s.user_id}')">สิทธิ์</button></div>`).join('')}
-  function subscribe(){
-    if(subscribeTask||!state.shop||document.hidden||!navigator.onLine)return;
-    const epoch=generation,shop=state.shop,actor=qtSessionRead()?.authUserId;
-    const current=()=>epoch===generation&&root()==='pos'&&shop===state.shop&&actor===qtSessionRead()?.authUserId;
-    const task=(async()=>{
-      if(state.channel){const channel=state.channel,client=state.client,accessToken=await token();if(current()&&state.channel===channel&&state.client===client)await client.realtime.setAuth(accessToken);return}
-      if(!window.supabase?.createClient)await new Promise((resolve,reject)=>{
-        const sc=document.createElement('script');let finished=false;
-        const finish=error=>{if(finished)return;finished=true;clearTimeout(timer);sc.onload=sc.onerror=null;if(cancelSdkLoad===cancel)cancelSdkLoad=null;if(error){sc.remove();reject(error)}else resolve()};
-        const cancel=()=>finish(Error('ออกจากหน้าร้านแล้ว'));cancelSdkLoad=cancel;
-        const timer=setTimeout(()=>finish(Error('โหลด Realtime เกินเวลา กรุณาลองใหม่')),10000);
-        sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js';sc.onload=()=>finish();sc.onerror=()=>finish(Error('โหลด Realtime ไม่สำเร็จ กรุณาลองใหม่'));document.head.append(sc);
-      });
-      if(!current())return;
-      const client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
-      await client.realtime.setAuth(await token());
-      if(!current()){await client.removeAllChannels();return}
-      state.client=client;
-      const channel=client.channel('pos-'+shop+'-'+crypto.randomUUID())
-        .on('postgres_changes',{event:'*',schema:'public',table:'orders',filter:'shop_id=eq.'+shop},p=>{if(current()&&state.client===client)changed(p)})
-        .on('postgres_changes',{event:'*',schema:'public',table:'pos_tables',filter:'shop_id=eq.'+shop},()=>{if(current()&&state.client===client)changed()})
-        .on('postgres_changes',{event:'*',schema:'public',table:'pos_staff',filter:'shop_id=eq.'+shop},()=>{if(current()&&state.client===client)changed()});
-      state.channel=channel;
-      channel.subscribe(status=>{if(!current()||state.client!==client)return;if(status==='SUBSCRIBED'){clearTimeout(reconnectTimer);reconnectTimer=null;changed()}else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)){state.channel=null;state.client=null;client.removeChannel(channel);message('การเชื่อมต่อ Realtime ขัดข้อง กำลังเชื่อมต่อใหม่');scheduleReconnect()}});
-    })().catch(e=>{if(current()){message(e);scheduleReconnect()}}).finally(()=>{if(subscribeTask===task)subscribeTask=null});
-    subscribeTask=task;
-  }
-  function scheduleReconnect(){if(reconnectTimer!==null||root()!=='pos'||document.hidden||!navigator.onLine)return;const epoch=generation;reconnectTimer=setTimeout(()=>{reconnectTimer=null;if(epoch===generation&&root()==='pos'&&!document.hidden&&navigator.onLine)window.qgPosReload()},15000)}
-  function disconnect(){generation++;cancelSdkLoad?.();clearTimeout(reconnectTimer);reconnectTimer=null;reloadRequested=false;loadTask=null;subscribeTask=null;if(state.channel)state.client?.removeChannel(state.channel);state.channel=null;state.client=null;state.shop=null;state.selected=null;window.qgPrinterDisconnect?.()}
-  window.qgPosDisconnect=disconnect;
-  window.qgPosRoute=function(){if(root()==='pos-staff-join')return joinView();if(root()==='pos'){if(!qtSessionRead()?.accessToken)return window.renderShopLogin();shell('หน้าร้าน','<p>กำลังโหลดหน้าร้าน...</p>');load().catch(e=>{if(root()!=='pos')return;shell('หน้าร้าน',`<div id="qg-pos-error" role="alert"></div><button onclick="qgPosExit()">กลับ</button>`);message(e)});return}if(qtSessionRead()?.role==='pos_staff'){location.hash='#pos';return}disconnect();return};
-
-
-  window.qtShopDoLogin=async function(e){
-    e.preventDefault();if(window.qgmLoginPending)return false;
-    const value=document.getElementById('qt-shop-login')?.value.trim(),password=document.getElementById('qt-shop-password')?.value;if(!value||!password)return false;
-    const btn=e.submitter||e.currentTarget?.querySelector('[type=submit]');window.qgmLoginPending=true;btn.disabled=true;btn.textContent='กำลังเข้าสู่ระบบ…';
-    try{
-      const email=value.includes('@')?value:qtAuthEmailFromPhone(value),auth=await qtSupabaseAuth('token?grant_type=password',{email,password});
-      const [identity,rows]=await Promise.all([qtLoadOwnMerchantIdentity(auth.access_token,auth.user.id),qtSupabaseTable('pos_staff?select=user_id,shop_id,active&user_id=eq.'+auth.user.id,{accessToken:auth.access_token})]);
-      const profile=identity?.profile||null;
-      if(profile?.role==='admin')throw Error('บัญชีนี้เป็นบัญชี Admin กรุณาเข้าสู่ระบบที่หน้า Admin');
-      if(profile&&['suspended','deleted'].includes(profile.status))throw Error('บัญชีถูกระงับหรือปิดใช้งาน');
-      if(rows?.length){
-        if(!rows[0].active)throw Error('บัญชีพนักงานถูกปิดสิทธิ์');
-        setSession({userId:auth.user.id,authUserId:auth.user.id,accessToken:auth.access_token,refreshToken:auth.refresh_token,expiresAt:auth.expires_at*1000,role:'pos_staff'});location.hash='#pos';window.qtShopRoute();return false;
-      }
-      if(!profile||!identity?.user)throw Error('ไม่พบบัญชีร้านค้าในฐานข้อมูล');const u=identity.user;
-      if(u.type!=='shop')throw Error('บัญชีนี้ยังไม่ได้เข้าร่วมร้านค้า กรุณาใส่รหัสเชิญ');
-      if(!u.shopProfileId)throw Error('ไม่พบข้อมูลร้านค้า กรุณาติดต่อแอดมิน');
-      QT_DB_CACHE.qt_users=[u];if(identity.shop)QT_SYNC.profileMaps={shopById:new Map([[identity.shop.id,u.id]]),shopByUserId:new Map([[u.id,identity.shop.id]])};qtMarkClean('qt_users');setSession({userId:u.id,authUserId:profile.auth_user_id,accessToken:auth.access_token,refreshToken:auth.refresh_token||null,expiresAt:auth.expires_at?Number(auth.expires_at)*1000:qtJwtExpiryMs(auth.access_token),role:profile.role});try{localStorage.removeItem('qg-merchant-fast-v21:'+profile.auth_user_id)}catch(_){}navigate('dashboard');setTimeout(()=>qtBackgroundHydrate({light:false}),0);
-    }catch(err){message(err);return false}
-    finally{window.qgmLoginPending=false;if(btn.isConnected){btn.disabled=false;btn.textContent='เข้าสู่ระบบ'}}return false;
-  };
-  function joinView(){shell('พนักงานหน้าร้าน',`<section class="qg-pos-panel"><h1>เข้าร่วมร้านค้า</h1><p>ใช้บัญชีพนักงานของคุณเองและรหัสเชิญจากเจ้าของร้าน</p><form id="qg-pos-join-form"><label>ชื่อพนักงาน<input name="name" required maxlength="100"></label><label>อีเมล<input name="email" type="email" required autocomplete="email"></label><label>รหัสผ่าน<input name="password" type="password" minlength="8" required autocomplete="new-password"></label><label>รหัสเชิญ<input name="secret" required autocomplete="off"></label><button type="submit">สมัครและเข้าร่วมร้าน</button></form><div id="qg-pos-error" role="alert"></div><button class="quiet" onclick="navigate('login')">กลับไปเข้าสู่ระบบ</button></section>`);document.getElementById('qg-pos-join-form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('button[type=submit]');b.disabled=true;try{const email=f.elements.namedItem('email').value.trim().toLowerCase(),password=f.elements.namedItem('password').value,name=f.elements.namedItem('name').value.trim(),secret=f.elements.namedItem('secret').value.trim();let auth;try{auth=await qtSupabaseAuth('token?grant_type=password',{email,password})}catch(err){auth=await qtSupabaseAuth('signup',{email,password,data:{name,role:'customer'}})}auth=auth.session||auth;if(!auth.access_token){message('สมัครบัญชีแล้ว กรุณายืนยันอีเมล จากนั้นกลับมาใส่ข้อมูลเดิมเพื่อเข้าร่วมร้าน');return}setSession({userId:auth.user.id,authUserId:auth.user.id,accessToken:auth.access_token,refreshToken:auth.refresh_token,expiresAt:auth.expires_at*1000,role:'pos_staff'});await rpc('pos_join_shop',{p_secret:secret,p_display_name:name});location.hash='#pos';window.qtShopRoute()}catch(err){if(qtSessionRead()?.role==='pos_staff')qtSessionClear();message(err)}finally{b.disabled=false}}}
-  window.qgPosExit=()=>{if(qtSessionRead()?.role==='pos_staff'){disconnect();qtSessionClear();location.hash='#login'}else navigate('dashboard')};
-  window.qgPosReload=async()=>{if(root()!=='pos'||state.loading)return;try{await load()}catch(e){message(e);if(!state.channel)scheduleReconnect()}};
-  window.qgPosView=v=>{if(state.scanBusy&&v!=='counter')return message('รอสแกนรายการปัจจุบันให้เสร็จก่อน');state.view=v;render()};window.qgPosMode=m=>{if(state.scanBusy)return message('รอสแกนรายการปัจจุบันให้เสร็จก่อน');state.mode=m;state.selected=null;state.table=null;state.noTable=false;render()};
-  window.qgPosTable=id=>{if(state.scanBusy)return message('รอสแกนรายการปัจจุบันให้เสร็จก่อน');const t=state.tables.find(x=>x.id===id);if(!t)return message('ไม่พบโต๊ะของร้าน');const bill=state.orders.find(o=>o.table_id===id&&active(o));if(!t.active&&!bill)return message('โต๊ะนี้ปิดใช้งานอยู่');if(bill&&!confirm(t.label+' มีบิล '+bill.order_number+' เปิดอยู่\nต้องการเปิดบิลเดิมหรือไม่?'))return;state.mode='DINE_IN';state.table=id;state.noTable=false;state.selected=bill?.id||null;state.view='counter';render()};
-  window.qgPosNewTakeaway=()=>{if(state.scanBusy)return message('รอสแกนรายการปัจจุบันให้เสร็จก่อน');state.mode='TAKEAWAY';state.table=null;state.selected=null;render()};
-  window.qgPosOpen=id=>{if(state.scanBusy)return message('รอสแกนรายการปัจจุบันให้เสร็จก่อน');const o=state.orders.find(x=>x.id===id);if(!o)return;state.mode=o.order_type;state.table=o.table_id;state.noTable=o.order_type==='DINE_IN'&&!o.table_id;state.selected=id;state.view='counter';render()};
-  window.qgPosFilter=q=>document.querySelectorAll('.qg-pos-products button[data-name]').forEach(el=>el.hidden=!el.dataset.name.includes(q.toLowerCase()));
-  const scanContextCurrent=c=>Boolean(c&&root()==='pos'&&state.view==='counter'&&state.shop===c.shop&&qtSessionRead()?.authUserId===c.actor&&state.mode===c.mode&&state.table===c.table&&state.noTable===c.noTable&&(state.scanAddInProgress||state.selected===c.expectedSelected));
-  const scanStatus=s=>{const el=document.getElementById('qg-pos-scan-status');if(el)el.textContent=s};
-  function posOptionGroups(product){
-    const variants=Array.isArray(product?.variants)?product.variants:[],groups=variants.filter(g=>g&&g.schema==='queuego.menu-options.v1'&&Array.isArray(g.options));
-    if(groups.length)return groups;
-    const legacy=variants.filter(x=>typeof x==='string'&&x.trim());
-    return legacy.length?[{key:'variant',name:'ตัวเลือกสินค้า',type:'single',required:true,options:legacy.map((name,i)=>({key:name,name,price_delta:0}))}]:[];
-  }
-  function posOptionLimits(group){const count=Array.isArray(group?.options)?group.options.length:0;if(group?.type==='single')return{min:group.required===true?1:0,max:1};const min=group?.min==null||group.min===''?NaN:Number(group.min),max=group?.max==null||group.max===''?NaN:Number(group.max);return{min:Number.isInteger(min)&&min>=0?min:(group?.required===true?1:0),max:Number.isInteger(max)&&max>=0?Math.min(max,count):count}}
-  function choosePosOptions(product,groups){
-    if(pendingOptionResolver)return Promise.resolve(null);
-    return new Promise(resolve=>{
-      pendingOptionResolver=resolve;
-      const groupsHtml=groups.map(g=>{const limits=posOptionLimits(g);return `<fieldset data-option-group="${esc(g.key)}" data-min-select="${limits.min}" data-max-select="${limits.max}"><legend>${esc(g.name)}${limits.min>0?' · เลือกอย่างน้อย '+limits.min:''}${limits.max<g.options.length?' · ไม่เกิน '+limits.max:''}</legend><div>${g.options.map((o,i)=>`<label><input type="${g.type==='multi'?'checkbox':'radio'}" name="qg-pos-option-${esc(g.key)}" value="${esc(o.key)}" ${g.type==='single'&&g.required&&i===0?'checked':''}><span>${esc(o.name)}</span><small>${Number(o.price_delta??o.price??0)?'+ '+money(o.price_delta??o.price):'ราคาเดิม'}</small></label>`).join('')}</div></fieldset>`}).join('');
-      const dialog=document.createElement('section');dialog.className='qg-pos-option-overlay';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','qg-pos-option-title');dialog.innerHTML=`<div class="qg-pos-option-dialog"><header><h2 id="qg-pos-option-title">เลือกตัวเลือก · ${esc(product.name)}</h2><p>ราคาตั้งต้น ${money(product.pos_price??product.price)} · ราคาเพิ่มคำนวณจากข้อมูลร้าน</p></header><div class="qg-pos-option-groups">${groupsHtml}</div><div class="qg-pos-option-actions"><button type="button" onclick="qgPosOptionFinish(false)">ยกเลิก</button><button type="button" class="confirm" onclick="qgPosOptionFinish(true)">เพิ่มลงบิล</button></div></div>`;document.body.append(dialog);
-      dialog.querySelector('input')?.focus();
-    });
-  }
-  window.qgPosOptionFinish=approved=>{
-    const dialog=document.querySelector('.qg-pos-option-overlay'),resolve=pendingOptionResolver;if(!dialog||!resolve)return;
-    let selections=null;
-    if(approved){selections={};for(const field of dialog.querySelectorAll('[data-option-group]')){const key=field.dataset.optionGroup,inputs=[...field.querySelectorAll('input:checked')],radio=field.querySelector('input[type=radio]'),min=Number(field.dataset.minSelect||0),max=Number(field.dataset.maxSelect||field.querySelectorAll('input').length);if(inputs.length<min){field.querySelector('input')?.focus();return message('กรุณาเลือก '+(radio?'หนึ่งตัวเลือก':'อย่างน้อย '+min+' รายการ')+' '+(field.querySelector('legend')?.textContent||'ตัวเลือกสินค้า'))}if(inputs.length>max){field.querySelector('input')?.focus();return message('เลือกได้ไม่เกิน '+max+' รายการ')}if(radio){if(inputs.length)selections[key]=inputs[0].value}else selections[key]=inputs.map(input=>input.value)} }
-    pendingOptionResolver=null;dialog.remove();resolve(selections);
-  };
-  window.qgPosScanLookup=()=>{
-    const input=document.getElementById('qg-pos-code-input'),code=input?.value?.trim();if(!code)return message('สแกนหรือกรอกรหัสสินค้าก่อน');
-    if(!navigator.onLine)return message('ไม่มีการเชื่อมต่อ รหัสสินค้าจะไม่ถูกเพิ่มจนกว่าจะกลับมาออนไลน์');
-    if(!can('receive_order'))return message('บัญชีนี้ไม่มีสิทธิ์รับออเดอร์');
-    if(state.pendingCreate)return message('มีรายการก่อนหน้ารอการยืนยัน กดตรวจรายการเดิมก่อนสแกนต่อ');
-    if(state.mode==='DINE_IN'&&!state.table&&!state.noTable)return message('เลือกโต๊ะหรือไม่ระบุโต๊ะก่อนสแกน');
-    if(state.scanBusy&&!scanContextCurrent(state.scanContext))return message('บิลหรือบัญชีเปลี่ยนระหว่างสแกน กรุณาตรวจบิลก่อนสแกนต่อ');
-    if(!state.scanBusy)state.scanContext={shop:state.shop,actor:qtSessionRead()?.authUserId,mode:state.mode,table:state.table,noTable:state.noTable,expectedSelected:state.selected};
-    state.scanQueue.push(code);if(input)input.value='';scanStatus(`รับรหัสแล้ว · รอเพิ่ม ${state.scanQueue.length} รายการ`);void drainPosScanQueue();
-  };
-  async function drainPosScanQueue(){
-    if(state.scanBusy)return;state.scanBusy=true;const context=state.scanContext;
-    try{
-      while(state.scanQueue.length){
-        if(!scanContextCurrent(context)){state.scanQueue=[];scanStatus('บริบทบิลเปลี่ยนแล้ว รายการสแกนที่เหลือถูกหยุด');break}
-        while(state.loading&&scanContextCurrent(context))await new Promise(resolve=>setTimeout(resolve,40));
-        if(!scanContextCurrent(context)){state.scanQueue=[];break}
-        const code=state.scanQueue.shift();scanStatus(`กำลังค้นหา ${code}…`);
-        let match;
-        try{match=await rpc('pos_product_code_lookup',{p_code:code})}catch(e){scanStatus(`ค้นหารหัส ${code} ไม่สำเร็จ: ${String(e?.message||e)}`);state.scanQueue=[];break}
-        if(!scanContextCurrent(context)){state.scanQueue=[];break}
-        if(!match){scanStatus(`ไม่พบรหัส ${code} ในร้านนี้`);continue}
-        if(match.available!==true||match.pos_available!==true){scanStatus(`${match.name} ปิดขายหน้าร้านอยู่`);continue}
-        if(!state.products.some(p=>p.id===match.product_id))state.products.push({id:match.product_id,name:match.name,price:match.price,pos_price:match.price,available:match.available,pos_available:match.pos_available,image:match.image||null,variants:match.variants||[]});
-        state.scanAddInProgress=true;let added;try{added=await window.qgPosAdd(match.product_id)}finally{state.scanAddInProgress=false}
-        if(!added){scanStatus(`เพิ่ม ${match.name} ไม่สำเร็จ ตรวจบิลแล้วลองอีกครั้ง`);state.scanQueue=[];break}
-        context.expectedSelected=state.selected;scanStatus(`เพิ่ม ${match.name} แล้ว${state.scanQueue.length?` · รออีก ${state.scanQueue.length} รายการ`:''}`);
-      }
-    }finally{if(state.scanContext===context)state.scanContext=null;state.scanBusy=false}
-  }
-  window.qgPosCodeFilter=q=>{const el=document.getElementById('qg-pos-code-products');if(!el)return;const term=String(q||'').trim().toLowerCase();if(!term){el.innerHTML='<p class="qg-pos-code-empty">พิมพ์ชื่อสินค้าเพื่อเลือกรายการ</p>';return}const rows=state.products.filter(p=>String(p.name||'').toLowerCase().includes(term)).slice(0,25);el.innerHTML=rows.length?`<div class="qg-pos-code-products">${rows.map(p=>`<button type="button" onclick="qgPosCodeSelect('${p.id}')"><b>${esc(p.name)}</b><small>${money(p.pos_price??p.price)}</small></button>`).join('')}</div>`:'<p class="qg-pos-code-empty">ไม่พบสินค้าในร้าน</p>'};
-  window.qgPosCodeSelect=id=>{if(!can('manage_staff'))return message('ไม่มีสิทธิ์จัดการรหัสสินค้า');if(id&&!state.products.some(p=>p.id===id))return message('ไม่พบสินค้าในร้าน');state.codeProduct=id||null;render()};
-  window.qgPosCodesLoad=async()=>{
-    if(!can('manage_staff')||state.codesLoading)return;
-    if(state.codesLoaded){paintPosCodes();return}
-    state.codesLoading=true;const shop=state.shop,actor=qtSessionRead()?.authUserId,epoch=generation;const el=document.getElementById('qg-pos-codes-list');if(el)el.textContent='กำลังโหลดรหัสสินค้า...';
-    try{const rows=await rpc('pos_product_codes_for_shop');if(epoch!==generation||shop!==state.shop||actor!==qtSessionRead()?.authUserId)return;state.codes=Array.isArray(rows)?rows:[];state.codesLoaded=true;paintPosCodes()}
-    catch(e){if(epoch===generation&&shop===state.shop){const target=document.getElementById('qg-pos-codes-list');if(target)target.innerHTML=`<p role="alert">โหลดรหัสสินค้าไม่สำเร็จ: ${esc(e?.message||e)}</p><button type="button" onclick="qgPosCodesLoad()">ลองอีกครั้ง</button>`}}
-    finally{state.codesLoading=false}
-  };
-  function paintPosCodes(){const el=document.getElementById('qg-pos-codes-list');if(!el)return;const rows=state.codes;if(!rows.length){el.innerHTML='<p class="qg-pos-code-empty">ยังไม่มี SKU หรือบาร์โค้ดที่ผูกไว้</p>';return}el.innerHTML=`<div class="qg-pos-code-list">${rows.map(c=>`<article><div><b>${esc(c.product_name)}</b><small>${c.code_type==='barcode'?'บาร์โค้ด':'SKU'} · ${esc(c.code)}</small></div><button type="button" class="qg-pos-code-remove" onclick="qgPosCodeRemove('${c.id}')" aria-label="ลบรหัส ${esc(c.code)}">ลบรหัส</button></article>`).join('')}</div>`}
-  window.qgPosCodeSave=async()=>{if(!can('manage_staff')||state.loading)return message('ไม่มีสิทธิ์จัดการรหัสสินค้า');const code=document.getElementById('qg-pos-code-value')?.value?.trim()||'',type=document.getElementById('qg-pos-code-type')?.value||'',product=state.products.find(p=>p.id===state.codeProduct);if(!product)return message('เลือกสินค้าก่อนบันทึกรหัส');if(!code)return message('กรอกรหัสสินค้าก่อน');if(!navigator.onLine)return message('ไม่มีการเชื่อมต่อ');busy(true);try{await rpc('pos_product_code_save',{p_product:product.id,p_code_type:type,p_code:code});state.codesLoaded=false;await window.qgPosCodesLoad();const input=document.getElementById('qg-pos-code-value');if(input)input.value='';toast('บันทึกรหัสสินค้าแล้ว')}catch(e){message(e)}finally{busy(false)}};
-  window.qgPosCodeRemove=async id=>{if(!can('manage_staff')||state.loading)return message('ไม่มีสิทธิ์จัดการรหัสสินค้า');const row=state.codes.find(c=>c.id===id);if(!row)return message('ไม่พบรหัสสินค้า');if(!confirm(`ลบรหัส ${row.code} ออกจาก ${row.product_name}?`))return;busy(true);try{await rpc('pos_product_code_remove',{p_id:id});state.codesLoaded=false;await window.qgPosCodesLoad();toast('ลบรหัสสินค้าแล้ว')}catch(e){message(e)}finally{busy(false)}};
-  window.qgPosAdd=async(id,encodedNote)=>{
-    if(state.loading)return false;
-    if(!navigator.onLine){message('ไม่มีการเชื่อมต่อ กรุณารอแล้วลองใหม่');return false}
-    if(!can('receive_order')){message('บัญชีนี้ไม่มีสิทธิ์รับออเดอร์');return false}
-    if(state.mode==='DINE_IN'&&!state.table&&!state.noTable){message('เลือกโต๊ะหรือไม่ระบุโต๊ะก่อน');return false}
-    const product=state.products.find(p=>p.id===id);if(!product){message('ไม่พบสินค้าในร้าน');return false}
-    const groups=posOptionGroups(product);let options=null;
-    if(groups.length){options=await choosePosOptions(product,groups);if(!options)return false}
-    const note=encodedNote===undefined?(document.getElementById('qg-pos-note')?.value.trim()||''):decodeURIComponent(encodedNote);
-    if(state.pendingCreate){
-      const same=state.pendingCreate.kind==='options'&&state.pendingCreate.product===id&&state.pendingCreate.note===note&&state.pendingCreate.table===state.table&&state.pendingCreate.type===state.mode&&JSON.stringify(state.pendingCreate.options)===JSON.stringify(options);
-      if(!same){message('มีรายการก่อนหน้าที่ยังไม่ทราบผล กดตรวจรายการเดิมก่อนเพิ่มสินค้า');render();return false}
-    }
-    if(!state.selected&&state.pendingCreate&&(state.pendingCreate.product!==id||state.pendingCreate.note!==note||state.pendingCreate.table!==state.table||state.pendingCreate.type!==state.mode))
-      {message('มีบิลก่อนหน้าที่ยังไม่ทราบผล กดสินค้าเดิมอีกครั้งเพื่อตรวจสอบก่อน');render();return false}
-    busy(true);
-    try{
-      if(groups.length){
-        state.pendingCreate ||= {kind:'options',request:crypto.randomUUID(),product:id,note,options,order:state.selected||null,table:state.table,type:state.mode,shop:state.shop,actor:qtSessionRead()?.authUserId};
-        sessionStorage.setItem(requestStore,JSON.stringify(state.pendingCreate));
-        const pending=state.pendingCreate;
-        const result=await rpc('pos_add_product_with_options',{p_order:pending.order,p_type:pending.type,p_table:pending.type==='DINE_IN'?pending.table:null,p_product:pending.product,p_note:pending.note,p_options:pending.options,p_request:pending.request});
-        state.selected=result.order_id;state.mode=pending.type;state.table=pending.table;state.noTable=pending.type==='DINE_IN'&&!pending.table;state.pendingCreate=null;sessionStorage.removeItem(requestStore);
-      }else if(!state.selected){
-        state.pendingCreate ||= {request:crypto.randomUUID(),product:id,note,table:state.table,type:state.mode,shop:state.shop,actor:qtSessionRead()?.authUserId};
-        sessionStorage.setItem(requestStore,JSON.stringify(state.pendingCreate));
-        state.selected=await rpc('pos_create_bill_once',{p_request:state.pendingCreate.request,p_type:state.mode,p_table:state.mode==='DINE_IN'?state.table:null,p_product:id,p_note:note});
-        state.pendingCreate=null;sessionStorage.removeItem(requestStore);
-      }else state.selected=await rpc('pos_edit_bill',{p_order:state.selected,p_type:state.mode,p_table:state.mode==='DINE_IN'?state.table:null,p_product:id,p_quantity:1,p_note:note});
-      await load();return true;
-    }catch(e){message(e);if(state.pendingCreate)render();return false}finally{busy(false)}
-  };
-  window.qgPosReduce=async(id,encoded)=>{if(state.loading)return;busy(true);try{await rpc('pos_edit_bill',{p_order:state.selected,p_type:state.mode,p_table:state.table,p_product:id,p_quantity:-1,p_note:decodeURIComponent(encoded)});await load()}catch(e){message(e)}finally{busy(false)}};
-  window.qgPosAction=async(action,id)=>{if(state.loading)return;if(!navigator.onLine)return message('ไม่มีการเชื่อมต่อ');const order=id||state.selected;if(!order)return;let reason=null;if(action==='cancel'){reason=prompt('เหตุผลที่ยกเลิกบิล (อย่างน้อย 3 ตัวอักษร)');if(reason===null)return;if(reason.trim().length<3)return message('กรุณาระบุเหตุผลที่ยกเลิก')}busy(true);try{await (action==='cancel'?rpc('pos_cancel_bill',{p_order:order,p_reason:reason.trim()}):rpc('pos_bill_action',{p_order:order,p_action:action,p_method:null}));if(action==='cancel')state.selected=null;await load()}catch(e){await load().catch(()=>{});message(e)}finally{busy(false)}};
-  window.qgPosPay=()=>{const o=selected();if(!o)return;document.querySelector('.qg-pos-pay-overlay')?.remove();const dialog=document.createElement('section');dialog.className='qg-pos-pay-overlay';dialog.innerHTML=`<div class="qg-pos-pay-dialog"><h2>คิดเงิน · ${esc(o.order_number)}</h2><p>ยอดที่ต้องรับ <strong>${money(o.total_amount)}</strong></p><label>วิธีชำระ<select id="qg-pos-method"><option value="cash">เงินสด</option><option value="bank_transfer">โอนเงิน</option><option value="promptpay">พร้อมเพย์</option><option value="card">บัตร</option><option value="other">อื่น ๆ</option></select></label><label id="qg-pos-cash-label">รับเงินสด<input id="qg-pos-cash" type="number" min="0" step="0.01" inputmode="decimal" oninput="qgPosChangePreview()"></label><p id="qg-pos-change">เงินทอน <strong>—</strong></p><div><button onclick="this.closest('.qg-pos-pay-overlay').remove()">กลับ</button><button class="confirm" data-write onclick="qgPosConfirmPay()">ยืนยันรับเงินและปิดบิล</button></div></div>`;document.body.append(dialog);document.getElementById('qg-pos-method').onchange=window.qgPosChangePreview;window.qgPosChangePreview()};
-  window.qgPosConfirmPay=async()=>{const o=selected(),method=document.getElementById('qg-pos-method')?.value;if(!o||!method||state.loading)return;if(!navigator.onLine)return message('ไม่มีการเชื่อมต่อ');busy(true);const btn=document.querySelector('.qg-pos-pay-dialog button.confirm');if(btn)btn.disabled=true;try{const cash=method==='cash'?Number(document.getElementById('qg-pos-cash')?.value):null;if(method==='cash'&&(!document.getElementById('qg-pos-cash')?.value||cash<Number(o.total_amount)))throw Error('ระบุเงินสดที่รับอย่างน้อยเท่ายอดบิล');const paid=await rpc('pos_take_payment',{p_order:o.id,p_method:method,p_cash_received:cash});document.querySelector('.qg-pos-pay-overlay')?.remove();await load();window.qgPosReceipt(paid.id)}catch(e){try{await load();if(state.orders.find(x=>x.id===o.id)?.payment_status==='PAID'){document.querySelector('.qg-pos-pay-overlay')?.remove();window.qgPosReceipt(o.id);return}}catch(_){}message(e);if(btn)btn.disabled=false}finally{busy(false)}};
+  function reports(){return `${tabs()}<div id="qg-pos-error" role="alert"></div><section class="qg-pos-panel"><h2>ยอดขายและสินค้าขายดี</h2><div class="qg-pos-switch">${[1,7,30].map(n=>`<button class="${state.reportDays===n?'on':''}" aria-pressed="${state.reportDays===n}" onclick="qgPosReport(${n})">${n===1?'วันนี้':n+' วัน'}</button>`).join('')}</div><div id="qg-pos-report" role="region" aria-live="polite">กำลังโหลด...</div></section><h2>บิลที่ชำระแล้ว</h2><div class="qg-pos-bills">${state.orders.filter(o=>o.payment_status==='PAID').map(o=>`<div class="qg-pos-row"><button onclick="qgPosReceipt('${o.id}')">${esc(o.order_number)} · ${esc(o.order_type==='DINE_IN'?tableName(o.ta…10185 tokens truncated…alse)}};
   window.qgPosDiscount=async()=>{const o=selected();if(!o)return;const input=prompt('ยอดส่วนลด (บาท)',String(o.discount_amount||0));if(input===null)return;const amount=Number(input);if(!Number.isFinite(amount))return message('ยอดส่วนลดไม่ถูกต้อง');busy(true);try{await rpc('pos_apply_discount',{p_order:o.id,p_amount:amount});await load()}catch(e){message(e)}finally{busy(false)}};
   window.qgPosRefund=async id=>{const reason=prompt('เหตุผลการคืนเงินอย่างน้อย 5 ตัวอักษร','');if(!reason||!confirm('ยืนยันว่าได้คืนเงินจริงให้ลูกค้าแล้ว? ระบบจะบันทึกการคืนเงินนี้'))return;busy(true);try{await rpc('pos_refund_bill',{p_order:id,p_reason:reason});await load()}catch(e){message(e)}finally{busy(false)}};
   window.qgPosChangePrice=async id=>{const p=state.products.find(x=>x.id===id);if(!p)return;const input=prompt('ราคาหน้าร้านของ '+p.name,String(p.pos_price??p.price));if(input===null)return;busy(true);try{await rpc('pos_change_price',{p_product:id,p_price:Number(input)});await load()}catch(e){message(e)}finally{busy(false)}};
