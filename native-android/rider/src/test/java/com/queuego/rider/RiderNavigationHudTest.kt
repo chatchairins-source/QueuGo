@@ -85,4 +85,44 @@ class RiderNavigationHudTest {
         assertEquals("480 ม.", hud.distanceText)
         assertNull(hud.etaText)
     }
+    @Test fun customerNoteAppearsOnlyNearReliableDropoff() {
+        val near = NavigationGuidanceState(distanceRemainingMeters = 280.0)
+        assertEquals(
+            "วางไว้หน้าบ้าน",
+            riderNavigationCustomerNote(
+                note = "__QT_ORDER_STATUS__=x\nวางไว้หน้าบ้าน",
+                delivering = true,
+                guidance = near
+            )
+        )
+        assertNull(
+            riderNavigationCustomerNote(
+                note = "วางไว้หน้าบ้าน",
+                delivering = true,
+                guidance = NavigationGuidanceState(distanceRemainingMeters = 301.0)
+            )
+        )
+        assertNull(
+            riderNavigationCustomerNote(
+                note = "วางไว้หน้าบ้าน",
+                delivering = false,
+                guidance = near
+            )
+        )
+        assertNull(
+            riderNavigationCustomerNote(
+                note = "วางไว้หน้าบ้าน",
+                delivering = true,
+                guidance = near.copy(weakGps = true)
+            )
+        )
+        assertNull(
+            riderNavigationCustomerNote(
+                note = "วางไว้หน้าบ้าน",
+                delivering = true,
+                guidance = near.copy(offRoute = true)
+            )
+        )
+    }
+
 }
