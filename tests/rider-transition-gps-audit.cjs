@@ -43,6 +43,20 @@ const fs=require('fs'),path=require('path'),assert=require('assert'),{PGlite}=re
     path.resolve(__dirname,'../supabase/migrations/20261022153000_rider_transition_semantics_hardening.sql'),
     'utf8'
   );
+  const claimMigration=fs.readFileSync(
+    path.resolve(__dirname,'../supabase/migrations/20261022153500_rider_claim_transition_gps.sql'),
+    'utf8'
+  );
+  ok(!claimMigration.includes('isfinite('),
+    'Rider claim GPS migration must use PostgreSQL-compatible float8 validation');
+  ok(claimMigration.includes('v_lat not between -90 and 90')&&
+     claimMigration.includes('v_lng not between -180 and 180'),
+    'Rider claim GPS migration must reject NaN, infinity and out-of-range coordinates with range checks');
+  ok(claimMigration.indexOf('update public.rider_profiles')<
+     claimMigration.indexOf('public.rider_claim_order(v_order)'),
+    'fresh Rider claim coordinates must be persisted before the order transition audit trigger fires');
+
+
   ok(migration.includes("when 'preparing' then null")&&migration.includes("when 'ready' then null"),
     'merchant preparation states must not impersonate Rider arrival');
   ok(migration.includes("'server_recorded_at', clock_timestamp()"),
