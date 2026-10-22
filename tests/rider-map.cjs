@@ -66,6 +66,12 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('Math.abs(qgRiderBearingDelta(motion,raw))>65'),true);
  eq((source.match(/followNavigationCamera/g)||[]).length,1);
  eq(source.includes('background:#e6002d'),true);
+ eq(source.includes('function qgMapStopMarkerHtml(sequence,kind,completed=false)'),true);
+ eq(source.includes('data-qg-stop-marker="'),true);
+ eq(source.includes("qgMapStopMarkerHtml(1,'shop',false)"),true);
+ eq(source.includes("qgMapStopMarkerHtml(dropSequence,'customer',false)"),true);
+ eq(source.includes("'จุด 1 · ร้านค้า · '"),true);
+ eq(source.includes("' · ลูกค้า · '"),true);
  eq(source.includes("rotationAlignment:'map'"),true);
 
  let now=100000,requests=[],gate=null,serial=0;
