@@ -9,6 +9,8 @@ const S={map:{},pos:{accuracy:5}},cache={map:S.map,dist:1200,time:240,label:'ไ
  {turnCode:0,roadName:'ถนน C',distance:300,duration:60}
 ]};
 const ctx=vm.createContext({S,Number,Math,Array,String,document:{getElementById:id=>els[id]||null},riderRouteCache:cache,esc:v=>String(v)});
+const routeThreshold=source.match(/const RIDER_ROUTE_OFF_ROUTE_METERS=[^;]+;/)?.[0];assert(routeThreshold,'production off-route threshold constant must exist');
+vm.runInContext(routeThreshold,ctx);
 vm.runInContext(source.slice(source.indexOf('function qgFiniteOrNull('),source.indexOf('function qgNavigationCameraShouldRun(')),ctx);
 vm.runInContext(source.slice(source.indexOf('function qgTurnPhrase('),source.indexOf('function qgRiderRouteNeedsReroute(')),ctx);
 const run=s=>vm.runInContext(s,ctx),eq=(a,b)=>{assert.deepEqual(a,b);checks++;};
