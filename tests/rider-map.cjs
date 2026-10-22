@@ -260,7 +260,9 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  const writeGate=deferred();ctx.sbTable=async(path,opts)=>{writes.push({path,opts});if(writes.length===1)await writeGate.promise;return []};
  const burst=run('pushLocation()');await flush();
  for(let i=0;i<20;i++){S.pos={lat:13+i/100,lng:100};run('pushLocation()')}
- eq(writes.length,1);writeGate.resolve();await burst;
+ eq(writes.length,1);writeGate.resolve();await burst;await flush();
+ eq(writes.length,1);eq(timers.size,1);
+ now+=3000;const deferredPush=[...timers.values()][0];timers.clear();deferredPush();await flush();
  eq(writes.length,2);eq(writes[1].opts.body.latitude,13.19);eq(writes[1].path,'rider_profiles?user_id=eq.rider');
 
  console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Rider renderer + QueueGo sole route authority + local route matching/camera + route coalescing/cancellation/timeout/GPS ownership; no external RouteService fallback'}));
