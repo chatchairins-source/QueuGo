@@ -240,6 +240,29 @@ function qgRiderVoiceCallTarget(order,target,label){
 function qgRiderVoiceCall(order,label){
   return qgRiderVoiceCallTarget(order,'customer',label);
 }
+async function qgRiderVoiceCallForStage(order){
+  if(!order?.id)return toast('ไม่พบออเดอร์สำหรับการโทร');
+  const pickup=['rider_assigned','assigned','preparing','ready'].includes(statusFromRow(order));
+  if(!pickup)return qgRiderVoiceCallTarget(order,'customer',order._customer?.name||'ลูกค้า');
+  if(order.market_order_id){
+    const current=(order._marketPickups||[]).find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase()));
+    const pickupId=current?.pickup_id;
+    if(pickupId){
+      try{
+        const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+        const rows=await sbTable('market_order_pickups?select=order_id&id=eq.'+encodeURIComponent(pickupId)+'&limit=1',{token});
+        const childId=Array.isArray(rows)?rows[0]?.order_id:null;
+        if(!childId)throw Error('ไม่พบออเดอร์ของจุดรับนี้');
+        const child={...order,id:childId,_shop:{...(order._shop||{}),shop_name:current.shop_name||order._shop?.shop_name||'ร้านค้า'}};
+        return qgRiderVoiceCallTarget(child,'shop',current.shop_name||'ร้านค้า');
+      }catch(error){
+        toast(error?.message||'ยังระบุร้านของจุดรับนี้ไม่ได้');
+        return;
+      }
+    }
+  }
+  return qgRiderVoiceCallTarget(order,'shop',order._shop?.shop_name||'ร้านค้า');
+}
 
 function esc(v){ return String(v??'').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
 function toast(msg){
@@ -1968,7 +1991,7 @@ function jobCardHTML(o,meta){
 function bindJobCardEvents(o){
  const by=id=>document.getElementById(id),c=by('chat-'+o.id),call=by('call-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id),mapMode=by('map-mode-'+o.id);
  if(c)c.onclick=()=>openChat(o);
- if(call)call.onclick=()=>{const pickup=['rider_assigned','assigned','preparing','ready'].includes(statusFromRow(o));qgRiderVoiceCallTarget(o,pickup?'shop':'customer',pickup?(o._shop?.shop_name||'ร้านค้า'):(o._customer?.name||'ลูกค้า'))};
+ if(call)call.onclick=()=>qgRiderVoiceCallForStage(o);
  if(mapMode)mapMode.onclick=()=>riderRouteOverviewActive?recenterMap():overviewRoute();
  if(a){
    a.onclick=()=>acceptJob(o.id);
