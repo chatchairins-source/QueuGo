@@ -8,6 +8,8 @@ Snapshot date: 2026-10-22 · Main: `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`
 
 ## Latest main receipts and POS offline draft scope — 2026-10-22
 
+- **Implementation blocker:** Safe draft submission requires a new atomic/idempotent Postgres RPC. The required Supabase skill could not be loaded in the current runtime, so schema/RPC implementation is deferred until the skill is available and reviewed. No migration was written or applied. This is an agent environment limitation, not a Production authorization or user policy decision.
+
 - PR #585 design exact RC `39698519445` passed and merged as `d67f8dd8f79bcc991c447376cdd838988c816884`; main RC `39698920070` and Pages deployment `39698919956` succeeded.
 - PR #584 Admin legacy GP/slip removal exact RC `39699366405` passed on `9e9202bf3b688a816eef41cd3fe2eacd0e852562`; merge SHA `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`. Descendant main RC `39699765279` and Pages deployment `39699764713` succeeded. The live GP deduction-from-credit path remains intact.
 - PR #584's regression harness serves the before snapshot from one historical commit, including its loader/runtime files. Admin WebKit coverage passed on both exact PR head and merged main.
