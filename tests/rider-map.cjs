@@ -36,7 +36,9 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("qgHeaderWordmark('qg-brand-pill')"),true);
  eq(source.includes("qgHeaderWordmark('qg-flow-wordmark')"),true);
  eq(source.includes("qgHeaderWordmark('qg-chat-wordmark')"),true);
- eq((source.match(/qgHeaderWordmark\('qg-mini-word'\)/g)||[]).length>=2,true);
+ eq((source.match(/qgHeaderWordmark\('qg-mini-word'\)/g)||[]).length,0);
+ eq(source.includes("<h1>รายได้</h1>${qgHeaderWordmark('qg-mini-word')}"),false);
+ eq(source.includes("<h1>โปรไฟล์</h1>${qgHeaderWordmark('qg-mini-word')}"),false);
  eq(source.includes('.qg-wordmark-queue{color:#17171b}'),true);
  eq(source.includes('.qg-wordmark-go{color:var(--qg-red)}'),true);
  eq(source.includes('function qgSetHomeDockHTML'),true);
