@@ -1,15 +1,15 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-22 · Authoritative main: `7572146400f44bf66c96aca5ae5f84264fe4241b`
+Current snapshot: 2026-10-22 · Authoritative main: `4d93ad0f6540aa9f1b27c070cc8340a447f9f913`
 
 ## Active chunk
 
-**POS Production continuation — cash shifts and shop capability authorization deployed; complete the remaining schema and real-device release gates.**
+**POS Production continuation — capability, cash movements, SKU/barcode, inventory and live release validation.**
 
-- PR #615 exact-head RC `39764778696` passed, including `npm test`, mobile WebKit, map gestures/search and Grocery mobile/tablet rendering. Main is `7572146400f44bf66c96aca5ae5f84264fe4241b`.
-- Production recorded Kitchen staff capability migration `20261022105255` and cash movement migration `20261022105630_pos_cash_register_movements`. Readback confirmed the four Kitchen role guards, cash-in/out idempotency RPC and authenticated-only access. No POS staff or cash events exist; no order/payment/refund/drawer data was written.
-- Cashier/staff live acceptance and physical register/printer/scanner validation remain open. Product Code/SKU and generic inventory migrations are still absent from Production; inspect schema, ACL/RLS and migration history before release.
-- NEXT: preflight and release the existing Product Code/SKU implementation, then proceed through inventory and remaining POS gates. QueueGo/POS remain **NOT DONE**.
+- Main is `4d93ad0f6540aa9f1b27c070cc8340a447f9f913`; PR #615 and #616 are merged. Kitchen role capability and cash movement schema/RPCs are recorded in Production at versions `20261022105255` and `20261022105630`.
+- Product Code/SKU registry table and RPCs are absent from Production. The product columns match the existing migration; current migration also adds privileged CRUD audit events. Production `audit_logs` is owned by postgres with RLS enabled but not forced, so guarded SECURITY DEFINER operations can write the audit row atomically.
+- Local Product Code SQL/UI tests and full `npm test` pass. Production migration remains unapplied pending exact-head CI and release/readback. No real barcode sales, staff, order or payment was written.
+- NEXT: complete the existing SKU/barcode RPC release, reconcile its migration filename to the Production ledger, then proceed to inventory/reports and authenticated cashier/device gates. QueueGo/POS remain **NOT DONE**.
 
 - PR #568 cash movement source was merged after exact-head QueueGo RC `39622237860` completed all 12 test/browser steps successfully. Merge commit: `c79640e0c896cc81961e8ba2dc69d336a9f519b0`; main now contains the audited cash-in/out UI and RPC source.
 - PR #572 merged to `main` at `6050a51ab7cb06001fb4163b5ff88c890fb4950d` after exact-source RC `39636799778` passed all 12 steps on `7d2ffec2417884dce70805f646dccaa3f388059e`. Merge publishes source only; no Production migration was applied.

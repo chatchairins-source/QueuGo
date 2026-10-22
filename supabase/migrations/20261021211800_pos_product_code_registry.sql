@@ -83,6 +83,10 @@ begin
   insert into public.pos_product_codes(shop_id,product_id,code_type,code,created_by)
     values(v_shop,p_product,v_type,v_code,(select auth.uid()))
     returning id into v_id;
+  insert into public.audit_logs(user_id,action,entity_type,entity_id,description,metadata)
+    values((select auth.uid()),'pos_product_code_save','pos_product_codes',v_id,
+      'POS product code assigned',jsonb_build_object(
+        'shop_id',v_shop,'product_id',p_product,'code_type',v_type,'code',v_code));
   return jsonb_build_object('id',v_id,'product_id',p_product,'code_type',v_type,'code',v_code);
 exception when unique_violation then
   select * into v_existing from public.pos_product_codes where shop_id=v_shop and code=v_code;
@@ -100,15 +104,20 @@ language plpgsql
 security definer
 set search_path=public,pg_temp
 as $function$
-declare v_shop uuid;
+declare v_shop uuid; v_code public.pos_product_codes%rowtype;
 begin
   if (select auth.uid()) is null or not public.pos_allowed('manage_staff') then
     raise exception 'product code management permission denied';
   end if;
   v_shop:=public.pos_my_shop();
   if v_shop is null then raise exception 'POS access denied'; end if;
-  delete from public.pos_product_codes where id=p_id and shop_id=v_shop;
+  select * into v_code from public.pos_product_codes where id=p_id and shop_id=v_shop for update;
   if not found then raise exception 'product code not found'; end if;
+  delete from public.pos_product_codes where id=v_code.id;
+  insert into public.audit_logs(user_id,action,entity_type,entity_id,description,metadata)
+    values((select auth.uid()),'pos_product_code_remove','pos_product_codes',v_code.id,
+      'POS product code removed',jsonb_build_object(
+        'shop_id',v_shop,'product_id',v_code.product_id,'code_type',v_code.code_type,'code',v_code.code));
   return true;
 end
 $function$;
