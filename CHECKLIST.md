@@ -4,6 +4,22 @@ Last governance checkpoint: `WORKFLOW.md` commit `9439569c15f72568b3398a1072f6d2
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
+## Active Rider benchmark successor — 2026-10-22
+- Status: IN PROGRESS
+- Parent PR: #620 `work-rider-auto-start-swipe-complete-20261022 @ f64ad6b2c85e04a2c6016c452753d264c4b6cee3`
+- Branch: `work-rider-grab-benchmark-20261022`
+- Code checkpoint: `fde439e8122d7ec4d2b6fa3c3b3763cf07c6f537`
+- Completed in source:
+  - Web + Native off-route threshold aligned to >30 m sustained for 3 seconds before reroute.
+  - Native guidance exposes current + following maneuver; Rider HUD promoted to top glanceable maneuver banner with 150 ms crossfade.
+  - Native success summary shows real job income and data-backed customer rating; no fabricated rating.
+  - Web merchant pickup uses durable compressed receipt proof, restores local proof, then requires explicit received-food confirmation.
+  - Web delivery proof is durable and routes to full-screen cash collection with 100% slide confirmation before complete RPC.
+  - Web success summary labels net Rider income and loads rating best-effort without blocking completion.
+- Test/build evidence: NOT YET RUN on this successor; do not mark DONE.
+- Release blockers after source gate: physical Android device ANR/OOM/battery + real GPS/road navigation acceptance remain required.
+- NEXT: create successor PR against #620 head, run exact-head CI/build/tests, fix only first failure, then continue remaining navigation benchmark gaps.
+
 ## Dependency order
 
 ### 0. Work continuity / anti-repeat process
