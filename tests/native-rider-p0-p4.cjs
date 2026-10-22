@@ -31,8 +31,9 @@ assert(app.includes('val step = if (pickup) 1 else 2') &&
   app.includes('val stepTitle = if (pickup) "ไปรับสินค้าที่ร้าน" else "ส่งสินค้าให้ลูกค้า"'),
   'Active job must expose explicit two-stage pickup/delivery control center');
 assert(app.includes('riderActiveJobEtaLabel(etaSeconds)') &&
-  app.includes('etaSeconds = navigationGuidance.etaSeconds'),
-  'Active job must surface live QueueGo navigation ETA');
+  app.includes('riderActiveJobEtaSeconds(navigationGuidance)') &&
+  app.includes('if (guidance.weakGps || guidance.offRoute) null else guidance.etaSeconds'),
+  'Active job must surface live QueueGo navigation ETA only when guidance is reliable');
 assert(app.includes('var homeItems by remember') &&
   app.includes('api.orderItems(auth, job.id)') &&
   app.includes('Text("รายการสินค้า"'),
@@ -40,8 +41,12 @@ assert(app.includes('var homeItems by remember') &&
 assert(app.includes('val cashLabel = if (pickup) "ยอดที่ต้องชำระร้าน" else "ยอดที่ต้องเก็บลูกค้า"'),
   'Active job must surface stage-specific cash responsibility');
 assert(app.includes('RiderJobTool("jobs", processLabel') &&
-  app.includes('RiderJobTool("support", "แชต"'),
-  'Active job must keep details and chat immediately reachable');
+  app.includes('RiderJobTool("phone", riderActiveJobContactLabel(pickup)') &&
+  app.includes('RiderJobTool("support", "แชต"') &&
+  app.includes('"phone" -> R.drawable.qg_rider_flow_phone') &&
+  app.includes('startShopVoice(current.activeJob.id)') &&
+  app.includes('startCustomerVoice(current.activeJob.id)'),
+  'Active job must keep details, direct stage-aware contact and chat immediately reachable');
 assert(app.includes('Text("นำทางด้วย QueueGo"') && !app.includes('นำทางด้วย Google Maps'),
   'Active food delivery job must keep navigation inside QueueGo');
 assert(app.includes('pushStore.saveHomeSnapshot(auth.user.id, value, durable = true)') &&
