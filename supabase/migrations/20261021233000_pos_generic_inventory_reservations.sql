@@ -20,6 +20,9 @@ create index pos_inventory_reservations_open_order
   on public.pos_inventory_reservations(order_id,product_id,item_id) where not released;
 create index pos_inventory_reservations_product
   on public.pos_inventory_reservations(product_id) where not released;
+-- Released reservation history is retained, so keep a non-partial FK index too.
+create index pos_inventory_reservations_product_fk_idx
+  on public.pos_inventory_reservations(product_id);
 alter table public.pos_inventory_reservations enable row level security;
 revoke all on public.pos_inventory_reservations from public,anon,authenticated;
 

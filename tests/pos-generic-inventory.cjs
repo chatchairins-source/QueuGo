@@ -103,6 +103,8 @@ assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
   eq((await scalar(`select stock from public.products where id='${master}'`)).stock,3);
   eq((await scalar(`select count(*)::int n from public.grocery_stock_reservations where item_id in ('${item(14)}','${item(15)}') and released`)).n,2);
   await reject(`update public.products set inventory_stock_tracking=true where id='${master}'`,/Grocery Master owns/);
+  const reservationFkIndex=await scalar(`select indexdef from pg_indexes where schemaname='public' and tablename='pos_inventory_reservations' and indexname='pos_inventory_reservations_product_fk_idx'`);
+  assert.match(reservationFkIndex.indexdef,/\(product_id\)/);assert.doesNotMatch(reservationFkIndex.indexdef,/ where /i);checks++;
   const acl=(await scalar(`select has_table_privilege('authenticated','public.pos_inventory_reservations','select') auth_read,has_table_privilege('anon','public.pos_inventory_reservations','select') anon_read`));
   eq(acl.auth_read,false);eq(acl.anon_read,false);
   const functionAcl=await scalar(`select has_function_privilege('authenticated','public.qg_pos_generic_item_stock()','execute') generic_trigger,has_function_privilege('authenticated','public.qg_pos_generic_cancel_stock()','execute') generic_cancel,has_function_privilege('authenticated','public.qg_grocery_cancel_stock()','execute') grocery_cancel`);
