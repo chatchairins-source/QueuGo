@@ -124,7 +124,8 @@ data class PosSnapshot(
     val bills: List<PosBill>,
     val linesByOrder: Map<String, List<PosLine>>,
     val deliveryOrders: List<PosDeliveryOrder>,
-    val deliveryLinesByOrder: Map<String, List<PosLine>>
+    val deliveryLinesByOrder: Map<String, List<PosLine>>,
+    val shopCategory: String = ""
 )
 
 class PosAccessDeniedException(message: String) : IllegalStateException(message)
@@ -200,11 +201,13 @@ class MerchantPosApi(
             "pos_is_owner"
         )
         val profileRaw = http.array(http.get(
-            "shop_profiles?select=shop_name&id=eq." + http.enc(shopId) + "&limit=1",
+            "shop_profiles?select=shop_name,public_category,metadata&id=eq." + http.enc(shopId) + "&limit=1",
             auth.session.accessToken
         ))
-        val shopName = profileRaw.optJSONObject(0)?.optString("shop_name")
-            ?.takeIf { it.isNotBlank() } ?: "ร้านค้า"
+        val profile = profileRaw.optJSONObject(0)
+        val shopName = profile?.optString("shop_name")?.takeIf { it.isNotBlank() } ?: "ร้านค้า"
+        val shopCategory = profile?.optString("public_category")?.takeIf { it.isNotBlank() }
+            ?: profile?.optJSONObject("metadata")?.optString("category")?.orEmpty()
 
         val tablesRaw = http.array(http.get(
             "pos_tables?select=id,label,active,qr_token&shop_id=eq." + http.enc(shopId) + "&order=label.asc",
@@ -346,7 +349,8 @@ class MerchantPosApi(
             bills = bills,
             linesByOrder = parseLines(itemsRaw),
             deliveryOrders = deliveryOrders,
-            deliveryLinesByOrder = parseLines(deliveryItemsRaw)
+            deliveryLinesByOrder = parseLines(deliveryItemsRaw),
+            shopCategory = shopCategory.trim().lowercase()
         )
     }
 

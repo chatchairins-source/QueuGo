@@ -732,6 +732,11 @@ fun MerchantPosScreen(
     val snap = snapshot
     val openBills = snap?.bills?.filter { it.open }.orEmpty()
     val selectedBill = openBills.firstOrNull { it.id == selectedBillId }
+    val kitchenEnabled = snap?.shopCategory == "food" || snap?.shopCategory == "cafe"
+
+    LaunchedEffect(snap?.shopCategory) {
+        if (!kitchenEnabled && view == "kitchen") view = "counter"
+    }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(
@@ -830,6 +835,7 @@ fun MerchantPosScreen(
         PosTabs(
             current = view,
             owner = snap.owner,
+            kitchenEnabled = kitchenEnabled,
             onSelect = {
                 view = it
                 message = null
@@ -849,7 +855,8 @@ fun MerchantPosScreen(
                     busy = busy,
                     pendingCreate = pendingPosRequestId != null,
                     canReceive = can("receive_order") || !networkValidated,
-                    canSendKitchen = can("send_kitchen"),
+                    kitchenEnabled = kitchenEnabled,
+                    canSendKitchen = kitchenEnabled && can("send_kitchen"),
                     canServe = can("serve_order"),
                     canDiscount = can("discount"),
                     canCancel = can("cancel_bill"),
@@ -963,7 +970,7 @@ fun MerchantPosScreen(
                     }
                 )
 
-                "kitchen" -> PosKitchenView(
+                "kitchen" -> if (kitchenEnabled) PosKitchenView(
                     snapshot = snap,
                     busy = busy,
                     can = ::can,
@@ -980,7 +987,8 @@ fun MerchantPosScreen(
                 )
 
                 "bills" -> PosBillsView(
-                    bills = openBills.filter { it.kitchenStatus in setOf("READY", "SERVED") },
+                    bills = openBills.filter { !kitchenEnabled || it.kitchenStatus in setOf("READY", "SERVED") },
+                    showKitchenStatus = kitchenEnabled,
                     selected = selectedBill,
                     paymentMethod = paymentMethod,
                     paymentMethodMenu = paymentMethodMenu,
@@ -1476,11 +1484,11 @@ private fun PosOfflineDraftPanel(
 }
 
 @Composable
-private fun PosTabs(current: String, owner: Boolean, onSelect: (String) -> Unit) {
+private fun PosTabs(current: String, owner: Boolean, kitchenEnabled: Boolean, onSelect: (String) -> Unit) {
     val tabs = buildList {
         add("counter" to "＋ รับออเดอร์")
         add("tables" to "โต๊ะ")
-        add("kitchen" to "ครัว")
+        if (kitchenEnabled) add("kitchen" to "ครัว")
         add("bills" to "คิดเงิน")
         add("printer" to "เครื่องพิมพ์")
         if (owner) {
@@ -1523,6 +1531,7 @@ private fun PosCounterView(
     busy: Boolean,
     pendingCreate: Boolean,
     canReceive: Boolean,
+    kitchenEnabled: Boolean,
     canSendKitchen: Boolean,
     canServe: Boolean,
     canDiscount: Boolean,
@@ -1606,7 +1615,7 @@ private fun PosCounterView(
         OutlinedTextField(
             note,
             onNote,
-            label = { Text("หมายเหตุสำหรับครัว (ถ้ามี)") },
+            label = { Text(if (kitchenEnabled) "หมายเหตุสำหรับครัว (ถ้ามี)" else "หมายเหตุรายการ (ถ้ามี)") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(12.dp))
@@ -1652,7 +1661,7 @@ private fun PosCounterView(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(selectedBill.number, fontWeight = FontWeight.Black, fontSize = 18.sp)
                         Spacer(Modifier.weight(1f))
-                        QgStatusPill(selectedBill.kitchenStatus)
+                        if (kitchenEnabled) QgStatusPill(selectedBill.kitchenStatus)
                     }
                     Spacer(Modifier.height(6.dp))
                     lines.forEach { line ->
@@ -1689,7 +1698,7 @@ private fun PosCounterView(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            when (selectedBill.kitchenStatus) {
+            if (kitchenEnabled) when (selectedBill.kitchenStatus) {
                 "NEW" -> if (canSendKitchen) {
                     Button(
                         onClick = { onBillAction("send", "ส่งเข้าครัว") },
@@ -1711,7 +1720,7 @@ private fun PosCounterView(
                         Text("ส่วนลด")
                     }
                 }
-                if (canClose && selectedBill.kitchenStatus in setOf("READY", "SERVED")) {
+                if (canClose && (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED"))) {
                     Button(onClick = onPay, enabled = !busy, modifier = Modifier.weight(1f)) {
                         Text("คิดเงิน")
                     }
@@ -1925,6 +1934,7 @@ private fun PosKitchenView(
 @Composable
 private fun PosBillsView(
     bills: List<PosBill>,
+    showKitchenStatus: Boolean,
     selected: PosBill?,
     paymentMethod: String,
     paymentMethodMenu: Boolean,
@@ -1949,7 +1959,7 @@ private fun PosBillsView(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(bill.number, fontWeight = FontWeight.Black)
-                        Text(bill.kitchenStatus, color = QgMuted, fontSize = 11.sp)
+                        if (showKitchenStatus) Text(bill.kitchenStatus, color = QgMuted, fontSize = 11.sp)
                     }
                     Text("฿" + money(bill.total), color = QgRed, fontWeight = FontWeight.Black)
                 }
