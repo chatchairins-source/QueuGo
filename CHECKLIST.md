@@ -1,8 +1,15 @@
 # QueueGo Active Work Checklist
 
-Last governance checkpoint: 2026-10-22; latest verified main `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`
+Last governance checkpoint: 2026-10-22; latest verified main `7572146400f44bf66c96aca5ae5f84264fe4241b`
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
+
+## Current Production POS checkpoint — 2026-10-22
+
+- PR #615 exact-head RC `39764778696` passed and merged as `7572146400f44bf66c96aca5ae5f84264fe4241b`.
+- Production migration versions `20261022105255` (Kitchen staff capability) and `20261022105630` (POS cash movement) are applied and read back. No POS staff or cash events exist; no fake orders or payments were created.
+- Product Code/SKU, generic inventory and subsequent POS features remain under release gates. Live cashier/device, printer, scanner, and Android parity are not certified. QueueGo/POS remain **NOT DONE**.
+
 
 ## 2026-10-22 current head and next slice
 
