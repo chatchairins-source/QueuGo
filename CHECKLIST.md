@@ -6,19 +6,25 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
 ## Active Rider benchmark successor — 2026-10-22
 - Status: IN PROGRESS
+- PR: #623 `work-rider-grab-benchmark-20261022`
 - Parent PR: #620 `work-rider-auto-start-swipe-complete-20261022 @ f64ad6b2c85e04a2c6016c452753d264c4b6cee3`
-- Branch: `work-rider-grab-benchmark-20261022`
-- Code checkpoint: `fde439e8122d7ec4d2b6fa3c3b3763cf07c6f537`
+- Code checkpoint: `834504cbec80be0371cb1ed425c540d9497dac64`
 - Completed in source:
-  - Web + Native off-route threshold aligned to >30 m sustained for 3 seconds before reroute.
-  - Native guidance exposes current + following maneuver; Rider HUD promoted to top glanceable maneuver banner with 150 ms crossfade.
-  - Native success summary shows real job income and data-backed customer rating; no fabricated rating.
-  - Web merchant pickup uses durable compressed receipt proof, restores local proof, then requires explicit received-food confirmation.
-  - Web delivery proof is durable and routes to full-screen cash collection with 100% slide confirmation before complete RPC.
-  - Web success summary labels net Rider income and loads rating best-effort without blocking completion.
-- Test/build evidence: NOT YET RUN on this successor; do not mark DONE.
-- Release blockers after source gate: physical Android device ANR/OOM/battery + real GPS/road navigation acceptance remain required.
-- NEXT: create successor PR against #620 head, run exact-head CI/build/tests, fix only first failure, then continue remaining navigation benchmark gaps.
+  - Web + Native off-route detection uses >30 m sustained for 3 seconds; route display snap is bounded to 25 m.
+  - MapLibre route authority remains QueueGo /map-api; no legacy/fallback renderer was added.
+  - Native + Web expose current/next maneuver guidance including U-turn behavior; Native uses 150 ms HUD crossfade.
+  - Navigation camera includes low-speed bearing guard, turn-proximity zoom, speed-aware rotation and 8-second pan-to-follow recovery.
+  - Merchant receipt proof is durable/compressed to about 500 KB, restored after interruption, and food pickup requires explicit received-food confirmation.
+  - Web delivery proof routes to full-screen cash collection and a 100% slide confirmation before completion.
+  - Completion summary uses actual Rider payout and data-backed rating; no fabricated rating.
+  - Customer order note is carried into Native navigation and shown on Native/Web only within 300 m of reliable customer dropoff guidance.
+- Test/build evidence:
+  - Source regression contracts were updated for maneuver, customer-note, receipt/cash, snap/follow and camera behavior.
+  - Exact-head CI/build has not run automatically on PR #623 because its base is the #620 successor branch; do not mark source DONE yet.
+- Release blockers after source gate:
+  - Physical Android device ANR/OOM/battery certification.
+  - Real Buriram GPS/road navigation acceptance.
+- NEXT: audit current arrival/pickup/delivery server mutations for idempotency, server timestamp and rider coordinates; reuse existing RPCs/events and change only proven gaps. Then run the first available exact-head gate and fix only its first failure.
 
 ## Dependency order
 
