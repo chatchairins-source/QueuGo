@@ -25,7 +25,7 @@ class RiderActiveJobControlCenterTest {
     fun etaIsHiddenWhenNavigationEvidenceIsUnreliable() {
         assertEquals(
             300.0,
-            riderActiveJobEtaSeconds(NavigationGuidanceState(etaSeconds = 300.0)),
+            riderActiveJobEtaSeconds(NavigationGuidanceState(etaSeconds = 300.0)) ?: -1.0,
             0.0
         )
         assertNull(riderActiveJobEtaSeconds(NavigationGuidanceState(etaSeconds = 300.0, weakGps = true)))
