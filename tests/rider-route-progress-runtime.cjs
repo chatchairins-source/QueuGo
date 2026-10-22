@@ -1,5 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('rider/index.html','utf8');let checks=0;
+const offRouteMatch=source.match(/const RIDER_ROUTE_OFF_ROUTE_METERS=(\d+(?:\.\d+)?);/);assert.ok(offRouteMatch,'Rider off-route threshold must remain discoverable');
+const RIDER_ROUTE_OFF_ROUTE_METERS=Number(offRouteMatch[1]);
 const classSet=new Set(),makeEl=()=>({textContent:'',innerHTML:'',classList:{toggle:(name,on)=>on?classSet.add(name):classSet.delete(name)}});
 const noteClasses=new Set(),noteEl={textContent:'',innerHTML:'',classList:{toggle:(name,on)=>on?noteClasses.add(name):noteClasses.delete(name)}};
 const els={'route-text':makeEl(),'route-badge':makeEl(),'route-maneuver-distance':makeEl(),'route-road':makeEl(),'route-next':makeEl(),'route-turn-icon':makeEl(),'route-customer-note':noteEl};
@@ -8,7 +10,7 @@ const S={map:{},pos:{accuracy:5}},cache={map:S.map,dist:1200,time:240,label:'ไ
  {turnCode:1,roadName:'ถนน B',distance:400,duration:80},
  {turnCode:0,roadName:'ถนน C',distance:300,duration:60}
 ]};
-const ctx=vm.createContext({S,Number,Math,Array,String,document:{getElementById:id=>els[id]||null},riderRouteCache:cache,esc:v=>String(v)});
+const ctx=vm.createContext({S,Number,Math,Array,String,RIDER_ROUTE_OFF_ROUTE_METERS,document:{getElementById:id=>els[id]||null},riderRouteCache:cache,esc:v=>String(v)});
 vm.runInContext(source.slice(source.indexOf('function qgFiniteOrNull('),source.indexOf('function qgNavigationCameraShouldRun(')),ctx);
 vm.runInContext(source.slice(source.indexOf('function qgTurnPhrase('),source.indexOf('function qgRiderRouteNeedsReroute(')),ctx);
 const run=s=>vm.runInContext(s,ctx),eq=(a,b)=>{assert.deepEqual(a,b);checks++;};
