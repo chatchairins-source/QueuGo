@@ -99,3 +99,9 @@ An individual feature can be marked `DONE (source/test)` only with its exact com
 - Production remains unchanged by these PRs. Read-only inspection on 2026-10-22 confirms migration history through `20261022005520`, no `products.inventory_stock_tracking`, and no `pos_add_product_with_options` or `pos_submit_offline_draft` RPC.
 - Offline drafts are not completed sales: they do not create a bill, take payment, send kitchen work or reserve stock while disconnected. Both app implementations require online cashier review and server validation before creating a bill.
 - **Release status:** offline draft is DONE (source/test) for these exact heads, but NOT LIVE. Keep the feature code out of Production until authorized cashier/device acceptance is recorded, the ordered migrations are applied with ACL/RLS readback, and the authenticated online submit/retry/cancel/refund flow is verified. No Production migration or test record has been created.
+
+
+## 2026-10-22 latest Kitchen/context deployment
+- Web PR598 is LIVE: merge15e7bd07, exact Web CI39740434026/39740439972 and main RC39742257368 succeeded; Pages39742256442 succeeded and served index/POS bytes matched source.
+- Food/Cafe retain storefront Kitchen; Grocery/Market have none. POS has no Delivery queries/actions/report GP. Delivery cancellation remains separate and pre-preparation only. Three bounded Production migrations applied with guard/ACL/trigger readback; filenames aligned in PR599.
+- PR595 offline successor reconciled with main42e81f57 without restoring Delivery/GP into POS. Its option-pricing/draft-submit migrations remain separate from deployed hotfix. Prior source-only status describes offline work, not Kitchen hotfix. No offline deployment or physical acceptance claimed here.
