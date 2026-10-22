@@ -2,6 +2,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {PGlite}=require('@electric-sql/pglite');
 const root=path.resolve(__dirname,'..');
 const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021211800_pos_product_code_registry.sql'),'utf8');
+const fkIndexMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261022115000_pos_product_code_fk_indexes.sql'),'utf8');
 const client=fs.readFileSync(path.join(root,'merchant/pos-table-v2.js'),'utf8');
 const html=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'merchant/pos-table-v2.css'),'utf8');
@@ -29,8 +30,8 @@ assert.match(printer,/qgp-label/);assert.match(html,/printer-v1\.css\?v=[^"']+/)
       ('20000000-0000-4000-8000-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','Tea',35,30,true,true,null,'[]'),
       ('20000000-0000-4000-8000-000000000002','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','Paused',20,20,true,false,null,'[]'),
       ('20000000-0000-4000-8000-000000000003','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','Other shop',10,10,true,true,null,'[]');`);
-  await db.exec(migration);
-  const shop='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',actor='10000000-0000-4000-8000-000000000001';
+  await db.exec(migration);\n  await db.exec(fkIndexMigration);
+  const fkIndexes=(await db.query(`select indexname from pg_indexes where schemaname='public' and tablename='pos_product_codes' and indexname in ('pos_product_codes_product_id_idx','pos_product_codes_created_by_idx') order by indexname`)).rows.map(r=>r.indexname);\n  assert.deepEqual(fkIndexes,['pos_product_codes_created_by_idx','pos_product_codes_product_id_idx']);\n  const shop='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',actor='10000000-0000-4000-8000-000000000001';
   const set=async({user=actor,allowed=true,currentShop=shop}={})=>db.query(`select set_config('request.jwt.claim.sub',$1,false),set_config('qg.test.shop',$2,false),set_config('qg.test.allowed',$3,false)`,[user||'',currentShop,String(allowed)]);
   const scalar=async(sql,args=[]) => (await db.query(sql,args)).rows[0];
   await set({allowed:false});await assert.rejects(()=>db.query(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','sku','TEA-01')`),/permission denied/);
