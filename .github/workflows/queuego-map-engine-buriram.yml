@@ -50,15 +50,7 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/rider-buriram-offline-20261016" \
             --output "${RELEASE_JSON}"
-          ASSET_URL="$(python - "${RELEASE_JSON}" <<'PY'
-import json,sys
-release=json.load(open(sys.argv[1],encoding='utf-8'))
-asset=next((a for a in release.get('assets',[]) if a.get('name')=='buriram-shortbread.pmtiles'),None)
-if not asset or not asset.get('url'):
-    raise SystemExit('Pinned Buriram vector release asset is missing')
-print(asset['url'])
-PY
-          )"
+          ASSET_URL="$(python -c "import json,sys; release=json.load(open(sys.argv[1],encoding='utf-8')); asset=next((a for a in release.get('assets',[]) if a.get('name')=='buriram-shortbread.pmtiles'),None); assert asset and asset.get('url'),'Pinned Buriram vector release asset is missing'; print(asset['url'])" "${RELEASE_JSON}")"
           rm -f "${RELEASE_JSON}"
           curl --fail --location --retry 3 \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
