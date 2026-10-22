@@ -58,6 +58,20 @@ private fun InputStream.readRiderBytesBounded(
     return output.toByteArray()
 }
 
+private fun InputStream.requireRiderStreamBounded(
+    limit: Int,
+    tooLargeMessage: String
+) {
+    var total = 0L
+    val buffer = ByteArray(16 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        total += count.toLong()
+        require(total <= limit.toLong()) { tooLargeMessage }
+    }
+}
+
 private fun riderEvidenceOrientationMatrix(context: Context, uri: Uri): Matrix =
     Matrix().apply {
         val orientation = runCatching {
@@ -92,7 +106,7 @@ private fun riderEvidenceJpegBytes(context: Context, uri: Uri): ByteArray {
     val resolver = context.contentResolver
 
     resolver.openInputStream(uri)?.use {
-        it.readRiderBytesBounded(
+        it.requireRiderStreamBounded(
             RIDER_EVIDENCE_INPUT_MAX_BYTES,
             "รูปหลักฐานต้นฉบับมีขนาดใหญ่เกินกำหนด"
         )
