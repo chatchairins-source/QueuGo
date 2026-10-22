@@ -1,8 +1,8 @@
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {PGlite}=require('@electric-sql/pglite');
 const root=path.resolve(__dirname,'..');
-const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261022032233_pos_menu_option_pricing.sql'),'utf8');
-const offlineMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261022032237_pos_offline_draft_submission.sql'),'utf8');
+const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261022080039_pos_menu_option_pricing.sql'),'utf8');
+const offlineMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261022080048_pos_offline_draft_submission.sql'),'utf8');
 const client=fs.readFileSync(path.join(root,'merchant/pos-table-v2.js'),'utf8');
 const groceryMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261012170449_grocery_master_catalog.sql'),'utf8');
 const stockTrigger=groceryMigration.match(/create function public\.qg_grocery_item_stock\(\)[\s\S]*?create trigger grocery_item_stock[^;]*;/)?.[0];

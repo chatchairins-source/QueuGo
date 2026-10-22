@@ -105,3 +105,8 @@ An individual feature can be marked `DONE (source/test)` only with its exact com
 - Web PR598 is LIVE: merge15e7bd07, exact Web CI39740434026/39740439972 and main RC39742257368 succeeded; Pages39742256442 succeeded and served index/POS bytes matched source.
 - Food/Cafe retain storefront Kitchen; Grocery/Market have none. POS has no Delivery queries/actions/report GP. Delivery cancellation remains separate and pre-preparation only. Three bounded Production migrations applied with guard/ACL/trigger readback; filenames aligned in PR599.
 - PR595 offline successor reconciled with main42e81f57 without restoring Delivery/GP into POS. Its option-pricing/draft-submit migrations remain separate from deployed hotfix. Prior source-only status describes offline work, not Kitchen hotfix. No offline deployment or physical acceptance claimed here.
+
+
+## 2026-10-22 offline backend rollout update
+- Web offline successor0aed635c passed hosted RC39743999528 and full local regression. Pricing/draft tests46 also passed against actual Production pos_edit_bill in isolation.
+- Applied only option-pricing and draft-submit migrations20261022080039/20261022080048, with ACL/RLS readback. No real or mock sale created. The earlier unapplied-backend checkpoint is superseded for these two migrations. Web final-head filename alignment and publication still pending at this checkpoint.

@@ -794,3 +794,9 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 ## 2026-10-22 offline successor reconciliation
 - PR595 source reconciled with deployed main42e81f57, including actual Production migration filenames. Retains POS-only queries/history/reports and category-only Kitchen; no Delivery setup/actions or GP restored. Offline cache uses the reduced POS-only snapshot. Both offline and separation runtime checks pass.
 - Offline draft remains distinct from a completed offline sale and is pending its own migration/deployment gates. Live Kitchen/separation hotfix is already deployed via PR598.
+
+
+## 2026-10-22 offline backend deployment
+- Exact Web successor0aed635c passed hosted RC39743999528; full local regression passed. Additional isolated pricing/draft tests46 passed using actual Production pos_edit_bill definition, preserving real bill identity/edit-state guards.
+- Authorized live rollout: applied pos_menu_option_pricing20261022080039 then pos_offline_draft_submission20261022080048. Repository migration filenames aligned to actual versions; SQL unchanged. Both RPCs require authenticated POS receive_order/shop permission, receipts have RLS and no direct client grants, anonymous function execution denied. Readback: existing POS bills5, both receipt tables0; no fake sale/payment/cancellation created.
+- Backend ready; Web publication and authenticated cashier acceptance remain separate receipts. Existing Kitchen/POS/Delivery separation stays live.
