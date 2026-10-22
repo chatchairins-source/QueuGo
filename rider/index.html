@@ -1347,6 +1347,19 @@ function qgRemoveOverlay(o){
 function qgMarker(loc,html,title){
   return window.QueueGoMapWeb?.marker(S.map,{lat:Number(loc?.lat),lng:Number(loc?.lon),title:title||'',html})||null;
 }
+function qgMapStopMarkerHtml(sequence,kind,completed=false){
+  const n=Math.max(1,Number(sequence)||1),isShop=kind==='shop';
+  const icon=isShop
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16l-1.4-4H5.4L4 9Z"/><path d="M5 9v10h14V9M9 19v-5h6v5"/><path d="M4 9c0 1.4 1 2.5 2.3 2.5S8.7 10.4 8.7 9c0 1.4 1 2.5 2.3 2.5s2.3-1.1 2.3-2.5c0 1.4 1 2.5 2.3 2.5S18 10.4 18 9"/></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c.7-4.1 3-6.2 6.5-6.2s5.8 2.1 6.5 6.2"/></svg>';
+  const iconColor=completed?'#8b8f98':(isShop?'#e6002d':'#17171b');
+  const border=completed?'#aab0b8':'#ffffff';
+  return '<div data-qg-stop-marker="'+(isShop?'shop':'customer')+'" style="position:relative;width:46px;height:52px;filter:drop-shadow(0 5px 8px #0004)">'
+    +'<div style="position:absolute;left:4px;top:2px;width:38px;height:38px;border-radius:15px;background:#fff;border:3px solid '+border+';box-shadow:0 0 0 2px '+iconColor+';display:grid;place-items:center;color:'+iconColor+'">'
+    +'<span style="position:absolute;left:-8px;top:-8px;min-width:22px;height:22px;padding:0 4px;border-radius:999px;background:'+iconColor+';color:#fff;border:2px solid #fff;display:grid;place-items:center;font:900 11px/1 system-ui">'+n+'</span>'
+    +'<span style="width:22px;height:22px;display:grid;place-items:center"><span style="display:none">'+(isShop?'ร้านค้า':'ลูกค้า')+'</span>'+icon.replace('<svg ','<svg style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round" ')+'</span>'
+    +'</div><div style="position:absolute;left:18px;top:39px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:9px solid '+iconColor+'"></div></div>';
+}
 function placeJobMarkers(){
   if(!S.map||!window.QueueGoMapWeb)return;
   (S.jobMarkers||[]).forEach(qgRemoveOverlay);S.jobMarkers=[];
@@ -1359,21 +1372,26 @@ function placeJobMarkers(){
     drawActiveRoute();return;
   }
   const list=S.activeOrder?(S.activeOrder.route_bundle_id&&S.bundleOrders.length?S.bundleOrders:[S.activeOrder]):S.openJobs.map(x=>x.order);
-  list.forEach(o=>{
+  const bundleMode=!!(S.activeOrder?.route_bundle_id&&S.bundleOrders.length);
+  const bundlePickupCount=bundleMode?list.length:0;
+  list.forEach((o,orderIndex)=>{
     const pickups=o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.filter(x=>x.status!=='CANCELLED'):[];
     if(pickups.length){
       pickups.forEach((x,i)=>{
         const lat=Number(x.latitude),lng=Number(x.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
-        const done=x.status==='PICKED_UP',size=done?16:20;
-        const m=qgMarker({lat,lon:lng},'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+(done?'#94a3b8':'#16a34a')+';border:3px solid #fff;box-shadow:0 2px 8px #0004;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:900">'+(i+1)+'</div>','จุดรับ '+(i+1)+' · '+(x.shop_name||'ร้านค้า'));
+        const done=x.status==='PICKED_UP',sequence=Number(x.pickup_sequence)||i+1;
+        const m=qgMarker({lat,lon:lng},qgMapStopMarkerHtml(sequence,'shop',done),'จุด '+sequence+' · ร้านค้า · '+(x.shop_name||'ร้านค้า'));
         if(m)S.jobMarkers.push(m);
       });
     }else{
       const plat=Number(o.pickup_latitude),plng=Number(o.pickup_longitude);
-      if(Number.isFinite(plat)&&Number.isFinite(plng)){const m=qgMarker({lat:plat,lon:plng},'<div style="width:20px;height:20px;border-radius:50%;background:#16a34a;border:3px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดรับ · '+(o.pickup_address||'ร้านค้า'));if(m)S.jobMarkers.push(m)}
+      const pickupSequence=bundleMode?(Number(o.route_bundle_sequence)||orderIndex+1):1;
+      if(Number.isFinite(plat)&&Number.isFinite(plng)){const m=qgMarker({lat:plat,lon:plng},qgMapStopMarkerHtml(pickupSequence,'shop',false),'จุด '+pickupSequence+' · ร้านค้า · '+(o._shop?.shop_name||o._bundleShopName||o.pickup_address||'ร้านค้า'));if(m)S.jobMarkers.push(m)}
     }
     const dlat=Number(o.delivery_latitude),dlng=Number(o.delivery_longitude);
-    if(Number.isFinite(dlat)&&Number.isFinite(dlng)){const m=qgMarker({lat:dlat,lon:dlng},'<div style="width:20px;height:20px;border-radius:50%;background:#e6002d;border:3px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดส่ง · '+(o.delivery_address||'บ้านลูกค้า'));if(m)S.jobMarkers.push(m)}
+    const marketDropSequence=pickups.length?Math.max(...pickups.map((x,i)=>Number(x.pickup_sequence)||i+1))+1:2;
+    const dropSequence=bundleMode?bundlePickupCount+(Number(o._bundleDropRank)||orderIndex+1):marketDropSequence;
+    if(Number.isFinite(dlat)&&Number.isFinite(dlng)){const m=qgMarker({lat:dlat,lon:dlng},qgMapStopMarkerHtml(dropSequence,'customer',false),'จุด '+dropSequence+' · ลูกค้า · '+(o._customer?.name||o.delivery_address||'บ้านลูกค้า'));if(m)S.jobMarkers.push(m)}
   });
   drawActiveRoute();
 }
