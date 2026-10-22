@@ -97,7 +97,7 @@
     if(loadTask||state.loading){reloadRequested=true;return}
     window.qgPosReload();
   }
-  function tabs(){return `<nav class="qg-pos-tabs">${[['counter','＋ รับออเดอร์'],['tables','โต๊ะ'],['kitchen','ครัว'],['bills','คิดเงิน'],['shifts','กะเงินสด'],['codes','รหัสสินค้า'],['reports','ยอดขาย'],['history','ประวัติ'],['delivery','Delivery'],['staff','พนักงาน']].filter(x=>(x[0]!=='kitchen'||kitchenEnabled())&&(state.owner||(['shifts'].includes(x[0])&&can('close_bill'))||(['codes','staff'].includes(x[0])&&can('manage_staff'))||!['reports','history','delivery','staff','shifts','codes'].includes(x[0])).map(([key,label])=>`<button type="button" class="${state.view===key?'current':''}" onclick="qgPosView('${key}')">${label}</button>`).join('')}</nav>`}
+  function tabs(){return `<nav class="qg-pos-tabs">${[['counter','＋ รับออเดอร์'],['tables','โต๊ะ'],['kitchen','ครัว'],['bills','คิดเงิน'],['shifts','กะเงินสด'],['codes','รหัสสินค้า'],['reports','ยอดขาย'],['history','ประวัติ'],['delivery','Delivery'],['staff','พนักงาน']].filter(x=>(x[0]!=='kitchen'||kitchenEnabled())&&(state.owner||(['shifts'].includes(x[0])&&can('close_bill'))||(['codes','staff'].includes(x[0])&&can('manage_staff'))||!['reports','history','delivery','staff','shifts','codes'].includes(x[0]))).map(([key,label])=>`<button type="button" class="${state.view===key?'current':''}" onclick="qgPosView('${key}')">${label}</button>`).join('')}</nav>`}
   function offlineDraftView(){
     const d=state.activeDraft;
     if(d){
