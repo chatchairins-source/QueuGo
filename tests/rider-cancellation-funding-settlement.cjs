@@ -88,7 +88,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  assert(settledAfter[0].settled_at);checks++;
 
  await as(101);
- ledger=(await q('select qg_rider_cash_ledger(current_date,current_date) l')).rows[0].l;
+ ledger=(await q("select qg_rider_cash_ledger((now() at time zone 'Asia/Bangkok')::date,(now() at time zone 'Asia/Bangkok')::date) l")).rows[0].l;
  row=ledger.find(x=>x.order_id===id(900));
  eq(row.platform_cancellation_funding_cash,5);
  eq(row.platform_cancellation_funding_status,'settled');
