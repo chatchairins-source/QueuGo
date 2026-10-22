@@ -1956,7 +1956,7 @@ function jobCardHTML(o,meta){
  const cash=Number(rawCash),hasCash=Number.isFinite(cash);
  const cashLabel=pickup?'ยอดที่ต้องชำระร้าน':'ยอดที่ต้องเก็บลูกค้า';
  const stageStatus=st==='in_progress'&&o.rider_arrived_customer_at?'ถึงลูกค้าแล้ว':(pickup&&o.rider_arrived_shop_at?'ถึงร้านแล้ว':null);
- let mainLabel=route.label,mainDisabled=false;
+ let mainLabel=st==='picked_up'?'เริ่มจัดส่ง':route.label,mainDisabled=false;
  if(!o.market_order_id&&pickup){
    if(o.rider_arrived_shop_at){mainLabel=st==='ready'?'ตรวจสอบรายการ':'ถึงร้านแล้ว ✓';mainDisabled=st!=='ready'}
    else if(qgNavigationStarted(o,'shop'))mainLabel='ถึงร้านแล้ว';
