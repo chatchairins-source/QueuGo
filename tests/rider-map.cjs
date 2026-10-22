@@ -28,7 +28,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  const inAppNavFn=source.slice(source.indexOf('function qgNavigateInApp('),source.indexOf('/* order status'));
  eq(inAppNavFn.includes('qgLaunchGoogleNavigation('),false);
  eq(inAppNavFn.includes("toast('เริ่มนำทางด้วย QueueGo')"),true);
- eq(source.includes('RIDER_ROUTE_REROUTE_HITS=3'),true);
+ eq(source.includes('RIDER_ROUTE_OFF_ROUTE_METERS=30'),true);
+ eq(source.includes('RIDER_ROUTE_REROUTE_SUSTAIN_MS=3000'),true);
  eq(source.includes('RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000'),true);
  eq(source.includes('function qgRiderRouteNeedsReroute('),true);
  eq(source.includes("const directionConflict=decision?.routeBearingRejected===true"),true);
