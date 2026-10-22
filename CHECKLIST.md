@@ -1,8 +1,15 @@
 # QueueGo Active Work Checklist
 
-Last governance checkpoint: North Star ledger merged in PR #571; latest verified main `643a115129b0bf1d6b05de261baa0aa959310a1b`
+Last governance checkpoint: 2026-10-22; latest verified main `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
+
+## 2026-10-22 current head and next slice
+
+- Current main `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`: PR #584 merged after exact-head RC `39699366405` passed on `9e9202bf3b688a816eef41cd3fe2eacd0e852562`. Main RC `39699765279` and Pages deployment `39699764713` passed on the merge SHA.
+- PR #585 POS offline recovery design merged at `d67f8dd8f79bcc991c447376cdd838988c816884`; exact RC `39698519445`, main RC `39698920070`, and Pages deployment `39698919956` all passed.
+- Active next action: implement Phase 1 durable local cart drafts only. Cover scope isolation, reload/reopen, account switch, duplicate tabs, changed price/availability, and idempotent online submission. Do not create offline completed sales or touch Production schema/data.
+- Release blockers remain: authorized cashier/device acceptance, full authenticated real-user journeys, Production migration approval/apply/readback, and deployed runtime acceptance. QueueGo/POS remain **NOT DONE**.
 
 ## 2026-10-21 POS scan continuation checkpoint
 
