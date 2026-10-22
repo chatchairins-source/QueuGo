@@ -13,6 +13,16 @@
   const token=()=>qtGetAccessToken();
   async function request(path,body){const t=await token();if(!t)throw Error('กรุณาเข้าสู่ระบบ');return qtSupabaseTable(path,{method:body===undefined?'GET':'POST',accessToken:t,body});}
   const rpc=(name,body)=>request('rpc/'+name,body);
+  async function readPosProducts(shop){
+    const base='products?select=id,name,price,pos_price,available,pos_available,delivery_available,delivery_price,image,category,variants,stock,';
+    const scope='&shop_id=eq.'+encodeURIComponent(shop)+'&order=name.asc';
+    try{return await request(base+'inventory_stock_tracking,grocery_master_id,grocery_stock_tracking'+scope)}
+    catch(e){
+      if(e?.code!=='42703'||!String(e?.message||'').includes('inventory_stock_tracking'))throw e;
+      const rows=await request(base+'grocery_master_id,grocery_stock_tracking'+scope);
+      return (rows||[]).map(p=>({...p,inventory_stock_tracking:false}));
+    }
+  }
   const active=o=>o.payment_status==='UNPAID'&&o.status!=='cancelled';
   const can=key=>state.owner||(state.staff?.permissions?.[key]===true)||(!(key in (state.staff?.permissions||{}))&&({'receive_order':'WAITER','send_kitchen':'WAITER','serve_order':'WAITER','cook_order':'KITCHEN','ready_order':'KITCHEN','close_bill':'CASHIER'}[key]===state.staff?.staff_role));
   const root=()=>location.hash.replace('#','').split('/')[0];
@@ -34,7 +44,7 @@
     const owner=await rpc('pos_is_owner',{});if(!current())return;
     const [tables,products,orders,staff,deliveryOrders,openBills]=await Promise.all([
       request('pos_tables?select=id,label,active,qr_token&shop_id=eq.'+shop+'&order=label.asc'),
-      request('products?select=id,name,price,pos_price,available,pos_available,delivery_available,delivery_price,image,category,variants,stock,inventory_stock_tracking,grocery_master_id,grocery_stock_tracking&shop_id=eq.'+shop+'&order=name.asc'),
+      readPosProducts(shop),
       request('orders?select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status,payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at&shop_id=eq.'+shop+'&sales_channel=eq.POS&order=created_at.desc&limit=200'),
       request('pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active&shop_id=eq.'+shop),
       request('orders?select=id,order_number,order_type,sales_channel,status,rider_id,shop_id,created_at&shop_id=eq.'+shop+'&or=(sales_channel.eq.QUEUEGO_DELIVERY,and(sales_channel.is.null,order_type.eq.shopping))&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned)&order=created_at.desc&limit=100'),
