@@ -4,27 +4,35 @@ Last governance checkpoint: `WORKFLOW.md` commit `9439569c15f72568b3398a1072f6d2
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
-## Active Rider benchmark successor — 2026-10-22
+## Active Rider benchmark successor — 2026-10-23
 - Status: IN PROGRESS
-- PR: #623 `work-rider-grab-benchmark-20261022`
+- PR: #625 `work-native-rider-grab-benchmark-20261022`
 - Parent PR: #620 `work-rider-auto-start-swipe-complete-20261022 @ f64ad6b2c85e04a2c6016c452753d264c4b6cee3`
-- Code checkpoint: `834504cbec80be0371cb1ed425c540d9497dac64`
+- Implementation checkpoint before this ledger update: `6e0deb5408dbdadcdb6e35035baf892be0214c4d`
 - Completed in source:
-  - Web + Native off-route detection uses >30 m sustained for 3 seconds; route display snap is bounded to 25 m.
-  - MapLibre route authority remains QueueGo /map-api; no legacy/fallback renderer was added.
+  - QueueGo MapLibre + `/map-api` remain the sole Rider map/route authority; no Longdo/Google/public-routing fallback was added.
+  - Web + Native off-route detection uses >30 m sustained for 3 seconds; route display/bearing snap is bounded to 25 m.
   - Native + Web expose current/next maneuver guidance including U-turn behavior; Native uses 150 ms HUD crossfade.
   - Navigation camera includes low-speed bearing guard, turn-proximity zoom, speed-aware rotation and 8-second pan-to-follow recovery.
-  - Merchant receipt proof is durable/compressed to about 500 KB, restored after interruption, and food pickup requires explicit received-food confirmation.
-  - Web delivery proof routes to full-screen cash collection and a 100% slide confirmation before completion.
+  - Merchant receipt proof is durable/compressed to <=500 KB, restored after interruption, and food pickup requires explicit received-food confirmation.
+  - Web delivery proof routes to full-screen cash collection and 100% slide confirmation before completion.
   - Completion summary uses actual Rider payout and data-backed rating; no fabricated rating.
-  - Customer order note is carried into Native navigation and shown on Native/Web only within 300 m of reliable customer dropoff guidance.
-- Test/build evidence:
-  - Source regression contracts were updated for maneuver, customer-note, receipt/cash, snap/follow and camera behavior.
-  - Exact-head CI/build has not run automatically on PR #623 because its base is the #620 successor branch; do not mark source DONE yet.
+  - Customer order note is shown only near reliable customer dropoff guidance.
+  - Active-job Rider location heartbeat is separated from dispatch lease: 3 s normally and 1 s within 200 m of the current QueueGo stop.
+  - Rider accept, arrival, pickup and completion transition audit paths preserve idempotent server mutations and action-specific GPS/server timestamps.
+  - Scoped proof recovery RPC keeps proof tables server-only while allowing ambiguous mutation recovery for the assigned Rider.
+  - CI Rider migration/test path filters now trigger Native Pilot and Map regression gates.
+  - Native stale 3-sample reroute test was aligned to the 3-second policy; shared 8-second auto-follow constant is public across modules.
+  - Map CI release-asset transport has a deterministic fallback: rebuild the published Planetiler 0.10.2 / Buriram-bounds recipe from the pinned Thailand PBF and still require the published PMTiles SHA-256.
+- Current verification:
+  - Full JS/SQL regression reached PASS before the map asset transport step on prior exact heads.
+  - Native full QueueGo regression reached PASS on `f02bd4e3`; first Native failures there were the stale reroute unit test and module visibility, both corrected afterward.
+  - Exact-head Map + Native gates must both pass on one successor SHA before source/build is marked DONE.
 - Release blockers after source gate:
   - Physical Android device ANR/OOM/battery certification.
   - Real Buriram GPS/road navigation acceptance.
-- NEXT: audit current arrival/pickup/delivery server mutations for idempotency, server timestamp and rider coordinates; reuse existing RPCs/events and change only proven gaps. Then run the first available exact-head gate and fix only its first failure.
+  - Speed-limit UI remains intentionally hidden until the route service exposes provenance-backed OSM `maxspeed`; road-class estimates must never be rendered as a legal speed-limit sign.
+- NEXT: run both exact-head gates on the same successor SHA; fix only the first failure of that SHA. When green, expose provenance-backed OSM maxspeed route intervals to Web/Native and keep the sign hidden when explicit source data is absent.
 
 ## Dependency order
 
