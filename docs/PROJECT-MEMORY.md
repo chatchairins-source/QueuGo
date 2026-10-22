@@ -746,3 +746,12 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Reviewed current official Square and Shopify POS offline documentation. Both distinguish pending offline work from server-accepted state and expose permission, risk, limits, recovery, or unsupported-operation boundaries. Research and the recommended QueueGo Phase 1 are in `docs/POS-OFFLINE-RECOVERY.md`.
 - Recommended next implementation: durable, identity-scoped offline cart drafts that require server price/stock/permission validation and cashier review before online submission. Do not mark as paid, send to kitchen, or reserve stock while disconnected. Actual offline completed sales require owner decisions about payment, multi-terminal inventory conflict, limits, shift/accounting, receipts and customer recovery.
 - No Production migration or data change. QueueGo/POS remain **NOT DONE**.
+
+
+## 2026-10-22 verified continuation checkpoint: Admin cleanup and POS offline recovery
+- Current main is `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`.
+- PR #585 documents POS offline recovery. Exact RC `39698519445`, main RC `39698920070`, and Pages deploy `39698919956` passed; merge `d67f8dd8f79bcc991c447376cdd838988c816884`.
+- PR #584 removes the retired Admin GP/slip workflow and its loader while preserving GP deduction business logic. Exact RC `39699366405` passed on `9e9202bf3b688a816eef41cd3fe2eacd0e852562`; merge `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`; descendant main RC `39699765279` and Pages deploy `39699764713` passed.
+- The #584 Admin WebKit failure was a test fixture defect: legacy HTML was served with current section-loader/runtime assets. The harness now serves each baseline path from one commit; exact PR and main browser checks pass.
+- Next: implement durable, shop/actor/device-scoped offline cart drafts. Keep the UI state explicitly Not submitted; after reconnect require current identity, permissions, shift, product/options, price, availability and stock validation plus cashier conflict review. No payment, kitchen, stock reservation, final receipt, or sale report while offline.
+- Production migrations/data and real cashier/device acceptance remain gated. QueueGo/POS are NOT DONE.
