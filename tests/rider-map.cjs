@@ -239,6 +239,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  const watches=[],cleared=[];let renders=0;
  ctx.navigator.geolocation={watchPosition:(ok,error)=>{watches.push({ok,error});return watches.length-1},clearWatch:id=>cleared.push(id)};
  ctx.toast=()=>{};ctx.placeRiderMarker=()=>renders++;ctx.updateRiderSpeedUI=()=>{};ctx.renderHomeDock=()=>{};ctx.pushLocation=()=>{};S.online=false;
+ vm.runInContext(source.slice(source.indexOf('function qgArrivalDistanceKm('),source.indexOf('async function qgMarkArrival(')),ctx);
  vm.runInContext(source.slice(source.indexOf('let riderLocationWrite='),source.indexOf('let riderRefreshTask=')),ctx);
  vm.runInContext(source.slice(source.indexOf('function startGeolocation()'),source.indexOf('function recenterMap()')),ctx);
  run('startGeolocation();startGeolocation()');
