@@ -13,11 +13,30 @@ eq(src.includes('ตรวจสอบรายการ'),true);
 eq(src.includes('ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า'),true);
 eq(src.includes('ชำระเงินให้ร้านเรียบร้อยแล้ว'),true);
 eq(src.includes('ตรวจสอบและส่งมอบสินค้า'),true);
+eq(src.includes('qg-active-control'),true);
+eq(src.includes('qg-active-step'),true);
+eq(src.includes('qg-step-number'),true);
+eq(src.includes('ยอดที่ต้องชำระร้าน'),true);
+eq(src.includes('ยอดที่ต้องเก็บลูกค้า'),true);
+eq(src.includes('รายละเอียด/รายการ'),true);
+eq(src.includes('qgRiderVoiceCallTarget'),true);
+eq(src.includes("id=\"call-${esc(o.id)}\""),true);
+eq(src.includes("pickup?'โทรร้าน':'โทรลูกค้า'"),true);
+eq(src.includes("ประมาณ '+eta+' นาที"),true);
 eq(src.includes('ยืนยันส่งสินค้า'),true);
 eq(src.includes('เก็บเงินจากลูกค้าเรียบร้อยแล้ว'),true);
 eq(src.includes('id="qg-pickup-items-ok"'),false);
 eq(src.includes('id="qg-delivery-handed"'),false);
 eq(src.includes('ไม่มีปุ่มยืนยันเงินแยก'),false);
+eq(src.includes('function qgActiveItemPreviewHTML(o)'),true);
+eq(src.includes('function qgLoadActiveItemPreview(o)'),true);
+eq(src.includes('function qgActiveRouteEtaMinutes(o,fallbackKm)'),true);
+eq(src.includes('qgActiveItemPreviewHTML(o)'),true);
+eq(src.includes('qgRiderVoiceCallTarget(o,pickup?\'shop\':\'customer\''),true);
+const activeRouteStart=src.indexOf('function drawActiveRoute(){');
+const activeEtaRefresh=src.indexOf("if(!isOfferPreview&&S.activeTab==='home')renderHomeDock();");
+eq(activeRouteStart>=0,true);eq(activeEtaRefresh>activeRouteStart,true);
+
 function boot(){
  let stored=null;const events=[],calls=[];
  const ctx=vm.createContext({Date,JSON,Map,Set,Number,String,Array,Promise,Error,encodeURIComponent,AbortSignal,
