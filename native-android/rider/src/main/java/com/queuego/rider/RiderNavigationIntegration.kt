@@ -389,12 +389,22 @@ internal fun QueueGoRiderNavigationMap(
             }
         }
     }
-    val activeStopId = stops
-        .filter { !it.completed }
+    val activeStop = stops
+        .filter { !it.completed && it.point.valid }
         .minByOrNull { it.sequence }
-        ?.id
+    val activeStopId = activeStop?.id
 
-    LaunchedEffect(activeStopId) {
+    LaunchedEffect(
+        stateKey,
+        activeStopId,
+        activeStop?.point?.latitude,
+        activeStop?.point?.longitude
+    ) {
+        RiderNavigationDispatchReadiness.bindTarget(
+            userId = stateKey,
+            latitude = activeStop?.point?.latitude,
+            longitude = activeStop?.point?.longitude
+        )
         val next = viewModeController.onActiveStopChanged()
         viewModeState = next
         if (next.mode != NavigationViewMode.OVERVIEW) {
