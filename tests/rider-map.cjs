@@ -12,7 +12,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(activeRouteFn.includes("if(isOfferPreview&&!riderRouteCache)focusRiderNavigation"),true);
  eq(activeRouteFn.includes('followNavigationCamera?.(map,pos,riderRouteGeometry'),false);
  eq(source.includes('Route rendering owns geometry only. GPS Follow is the single camera writer.'),true);
- eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}'),true);
+ eq(source.includes('function qgNavigationCameraHasWork(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}'),true);
+ eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.online||qgNavigationCameraHasWork())}'),true);
  eq(source.includes('syncRiderNavigationCameraMode();'),true);
  eq(source.includes('data-qg-rider-puck="true"'),true);
  eq(source.includes("'route': '<svg class=\"ico\""),true);
@@ -27,7 +28,9 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("service.call('route'"),true);
  const inAppNavFn=source.slice(source.indexOf('function qgNavigateInApp('),source.indexOf('/* order status'));
  eq(inAppNavFn.includes('qgLaunchGoogleNavigation('),false);
- eq(inAppNavFn.includes("toast('เริ่มนำทางด้วย QueueGo')"),true);
+ eq(inAppNavFn.includes('focusRiderNavigation(S.map,S.pos,target)'),true);
+ eq(inAppNavFn.includes('drawActiveRoute()'),true);
+ eq(inAppNavFn.includes('qgFollowRiderCamera(true,650)'),true);
  eq(source.includes('RIDER_ROUTE_REROUTE_HITS=3'),true);
  eq(source.includes('RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000'),true);
  eq(source.includes('function qgRiderRouteNeedsReroute('),true);
