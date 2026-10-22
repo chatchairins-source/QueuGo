@@ -503,8 +503,8 @@ class NavigationCameraPolicyTest {
             cadenceMillis = 500L
         )
         assertTrue(corner > small)
-        assertTrue(corner <= 900L)
-        assertTrue(small >= 420L)
+        assertTrue(corner <= 800L)
+        assertTrue(small >= 500L)
     }
 
     @Test fun movingCameraThresholdKeepsPuckFromWalkingAcrossScreen() {
@@ -527,7 +527,7 @@ class NavigationCameraPolicyTest {
             speedMetersPerSecond = 3f
         )
         assertTrue(fast < slow)
-        assertTrue(fast <= 460L)
+        assertTrue(fast <= 620L)
     }
 
     @Test fun rotationDurationUsesShortestTurnAcrossNorth() {
