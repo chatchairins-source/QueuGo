@@ -3026,7 +3026,7 @@ private fun RiderHome(
                             ) activeJob.copy(status = "picked_up") else activeJob,
                             details = homeDetails,
                             items = homeItems,
-                            etaSeconds = navigationGuidance.etaSeconds,
+                            etaSeconds = riderActiveJobEtaSeconds(navigationGuidance),
                             loadSummary = activeLoadSummary,
                             busy = actionBusy,
                             networkAvailable = networkAvailable,
@@ -3586,6 +3586,9 @@ private fun MarketPickupPanel(
         }
     }
 }
+
+internal fun riderActiveJobEtaSeconds(guidance: NavigationGuidanceState): Double? =
+    if (guidance.weakGps || guidance.offRoute) null else guidance.etaSeconds
 
 internal fun riderActiveJobEtaLabel(etaSeconds: Double?): String? {
     val seconds = etaSeconds?.takeIf { it.isFinite() && it >= 0.0 && it <= 14_400.0 } ?: return null
