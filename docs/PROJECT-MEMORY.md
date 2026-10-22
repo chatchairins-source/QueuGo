@@ -762,3 +762,11 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Source inspection found `pos_edit_bill` appends lines without idempotency. Safe multi-line offline draft submission needs one atomic server RPC with a stable draft payload/request ID and authoritative price/option validation; the existing options RPC is idempotent per line but does not make multiple calls atomic.
 - The required Supabase skill package was unavailable through `skills.read` in this runtime. No Postgres migration/RPC was written or applied. Recheck and read the skill before editing database source. Continue safe UI/store work only if it does not claim successful submission.
 - Offline draft design and owner business-policy gates remain in `docs/POS-OFFLINE-RECOVERY.md`. QueueGo/POS remain NOT DONE.
+
+
+## 2026-10-22 POS Kitchen shop-category gate
+
+- Web POS reads `shop_profiles.public_category` (metadata fallback). The Kitchen screen and kitchen note/actions are available only to `food` and `cafe`; Grocery, Market and other categories show bills for direct checkout instead. Unknown/offline category state fails closed and hides Kitchen.
+- Android Merchant uses the same category rule. Both clients keep the existing order, payment, cashier permission and cash-shift flow.
+- Additive source migration guards kitchen transitions by shop category and permits payment without READY/SERVED only for non-kitchen categories, with existing status validation, shift association, payment ledger and function ACLs retained. PGlite behavior covers retail direct checkout and restaurant kitchen gating.
+- This is source/CI work only. Do not apply the migration to Production until the POS release gate, authorized cashier acceptance and real device flow pass; Production schema/data remain unchanged.
