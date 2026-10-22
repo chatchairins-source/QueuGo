@@ -2210,7 +2210,12 @@ class QueueGoApi {
     }
 
     private fun actionOnce(auth: QueueGoAuth, kind: String, payload: JSONObject): Any {
-        val seed = auth.user.id + "|" + kind + "|" + payload.toString()
+        val idempotencyPayload = if (kind == "claim" || kind == "market_claim") {
+            JSONObject().put("p_order_id", payload.optString("p_order_id"))
+        } else {
+            payload
+        }
+        val seed = auth.user.id + "|" + kind + "|" + idempotencyPayload.toString()
         val requestId = UUID.nameUUIDFromBytes(seed.toByteArray(StandardCharsets.UTF_8)).toString()
         val body = JSONObject()
             .put("p_request_id", requestId)
