@@ -27,6 +27,23 @@ assert(!app.includes('showCollection')&&!app.includes('verifyCollection')&&
   'Restored delivery proof must return to the single proof screen and revalidate proof/cash before completion');
 assert(runtime.includes('RiderProofPersistenceTest#') && runtime.includes('"force-stop", "com.queuego.rider"'));
 assert(runtime.includes('verify_proof_process_recovery()'));
+assert(app.includes('val step = if (pickup) 1 else 2') &&
+  app.includes('val stepTitle = if (pickup) "ไปรับสินค้าที่ร้าน" else "ส่งสินค้าให้ลูกค้า"'),
+  'Active job must expose explicit two-stage pickup/delivery control center');
+assert(app.includes('riderActiveJobEtaLabel(etaSeconds)') &&
+  app.includes('etaSeconds = navigationGuidance.etaSeconds'),
+  'Active job must surface live QueueGo navigation ETA');
+assert(app.includes('var homeItems by remember') &&
+  app.includes('api.orderItems(auth, job.id)') &&
+  app.includes('Text("รายการสินค้า"'),
+  'Active job must surface a compact real order-item summary');
+assert(app.includes('val cashLabel = if (pickup) "ยอดที่ต้องชำระร้าน" else "ยอดที่ต้องเก็บลูกค้า"'),
+  'Active job must surface stage-specific cash responsibility');
+assert(app.includes('RiderJobTool("jobs", processLabel') &&
+  app.includes('RiderJobTool("support", "แชต"'),
+  'Active job must keep details and chat immediately reachable');
+assert(app.includes('Text("นำทางด้วย QueueGo"') && !app.includes('นำทางด้วย Google Maps'),
+  'Active food delivery job must keep navigation inside QueueGo');
 assert(app.includes('pushStore.saveHomeSnapshot(auth.user.id, value, durable = true)') &&
   app.includes('kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)'),
   'Acknowledged mutations must persist encrypted snapshots off the main thread before navigation');
