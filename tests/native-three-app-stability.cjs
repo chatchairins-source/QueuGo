@@ -569,6 +569,11 @@ ok(
   launchQa.includes('"cold_relaunch": "PASS"'),
   'Three-role process-death evidence must fail closed on package crash and record cold relaunch'
 );
+ok(
+  launchQa.includes('adb + ["shell", "kill", "-9", str(pid)]') &&
+  !launchQa.includes('"run-as", pkg, "kill", "-9"'),
+  'Android process-death fallback must use the emulator shell signal path, not SELinux-blocked run-as signaling'
+);
 
 const customerCheckoutRecovery=read('customer/src/main/java/com/queuego/customer/CustomerCheckoutRecovery.kt');
 const customerMarketScreen=read('customer/src/main/java/com/queuego/customer/QueueGoMarketScreen.kt');
