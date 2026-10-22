@@ -11,6 +11,9 @@ const migration = fs.readFileSync(path.join(root, 'supabase/migrations', migrati
 
 const policy = web.match(/const kitchenEnabled=\(\)=>[^;]+;/)?.[0];
 assert.ok(policy, 'Web exposes the canonical kitchen category policy');
+assert.match(web, /const allowedStaffRoles=\(\)=>kitchenEnabled\(\)\?\['WAITER','CASHIER','KITCHEN'\]:\['WAITER','CASHIER'\]/, 'Kitchen role is only offered to food and cafe shops');
+assert.match(web, /if\(!allowedStaffRoles\(\)\.includes\(role\)\)return message\('ประเภทร้านนี้ไม่มีตำแหน่งพนักงานครัว'\)/, 'tampered Kitchen invite selection is rejected before RPC');
+assert.match(web, /const roles=allowedStaffRoles\(\),role=prompt\('หน้าที่ '\+roles\.join\(' \/ '\)/, 'staff role editor offers only the shop capability roles');
 const allowsKitchen = category => new Function('state', `${policy};return kitchenEnabled();`)({ shopCategory: category });
 for (const category of ['food', 'cafe']) assert.equal(allowsKitchen(category), true, `${category} keeps Kitchen`);
 for (const category of ['grocery', 'market', '', null]) assert.equal(allowsKitchen(category), false, `${category} hides Kitchen`);
