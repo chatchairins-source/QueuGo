@@ -3,8 +3,7 @@
 <meta name="queuego-web-build" content="rider-20261019-ready1">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="../queuego-map-web.js?v=20261019-places1"></script>
-<script src="../map-view/queuego-map-service.js?v=20261017-1"></script>
+<script src="../queuego-map-web.js?v=20261020-lane1"></script>
 
 
 <link rel="stylesheet" href="../queuego-rider-settings.css?v=20261019-1">
@@ -37,7 +36,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-auth-card{align-self:center;width:min(430px,calc(100% - 34px));margin:auto;padding:28px;border-radius:30px;background:#fff;box-shadow:var(--qg-shadow)}.qg-auth-card-head h2{font-size:29px;margin:0}.qg-auth-card-head p{font-size:12px;color:var(--qg-muted);margin:6px 0 20px}.qg-field{display:block;margin:13px 0}.qg-field span{display:block;margin:0 0 7px;font-size:11px;font-weight:850}.qg-field input,.rider-panel input,.rider-panel select,.qg-support-dialog input,.qg-support-dialog select,.qg-support-dialog textarea{width:100%;height:50px;border:1px solid #e6dfe2;border-radius:15px;background:#fff;padding:0 14px;outline:none;color:var(--qg-ink)}.qg-field input:focus,.rider-panel input:focus,.rider-panel select:focus,.qg-support-dialog input:focus,.qg-support-dialog select:focus,.qg-support-dialog textarea:focus{border-color:#e6002d88;box-shadow:0 0 0 4px #e6002d0c}.qg-auth-card .qg-btn{width:100%;margin-top:10px}.qg-form-error{display:none;color:#b4233d;background:#fff0f3;padding:10px 12px;border-radius:12px;font-size:11px}.qg-form-error.show{display:block}.qg-version{display:block;text-align:center;margin-top:16px;color:#a29ba0;font-size:9px}
 
 /* REGISTRATION + PENDING */
-.qg-register{min-height:100dvh;background:#fffafa;padding:calc(14px + var(--safeT)) 14px calc(24px + var(--safeB));overflow:auto}.qg-page-head{max-width:820px;margin:0 auto 16px;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:10px}.qg-page-head h1{margin:0;font-size:24px}.qg-page-head p{margin:3px 0 0;color:var(--qg-muted);font-size:11px}.qg-mini-logo{width:42px;height:42px;border-radius:13px;background:var(--qg-red);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:1000}
+.qg-register{min-height:100dvh;background:#fffafa;padding:calc(14px + var(--safeT)) 14px calc(24px + var(--safeB));overflow:auto}.qg-page-head{max-width:820px;margin:0 auto 16px;display:grid;grid-template-columns:44px minmax(0,1fr) 74px;align-items:center;gap:10px}.qg-page-head h1{margin:0;font-size:24px}.qg-page-head p{margin:3px 0 0;color:var(--qg-muted);font-size:11px}.qg-page-wordmark{justify-self:end;font-size:11px;font-weight:950;letter-spacing:-.2px;white-space:nowrap}
 .qg-register-card{max-width:820px;margin:auto;background:#fff;border:1px solid var(--qg-line);border-radius:28px;padding:18px;box-shadow:0 10px 34px #4c16220b}.rider-steps{display:grid;grid-template-columns:auto 1fr auto 1fr auto 1fr auto;align-items:start;margin:4px 0 22px}.rider-step{text-align:center;color:#aaa0a5;font-size:9px}.rider-step b{width:28px;height:28px;margin:auto auto 5px;border-radius:50%;background:#f3edef;display:grid;place-items:center}.rider-step.active{color:var(--qg-red);font-weight:900}.rider-step.active b,.rider-step.done b{background:var(--qg-red);color:#fff}.rider-steps>i{height:2px;background:#eee7e9;margin-top:13px}
 .rider-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.rider-panel{padding:18px;border:1px solid var(--qg-line);border-radius:20px;background:#fff}.rider-panel label{display:block;font-size:11px;font-weight:800;margin:10px 0}.rider-panel label>input,.rider-panel label>select{margin-top:6px}.req{color:var(--qg-red)}.rider-face-upload{text-align:center}.rider-file-input{display:none!important}.rider-doc-preview{display:block;width:min(100%,280px);max-height:220px;object-fit:cover;border-radius:16px;margin:10px auto}.qg-file-name{font-size:10px;color:var(--qg-muted);margin:8px 0}.rider-upload-item{padding:12px;border:1px dashed #ddcfd4;border-radius:16px;margin:9px 0}.rider-upload-item label{margin-top:0}.rider-file-btn{width:100%;min-height:42px;font-size:12px}.qg-check{display:flex!important;gap:10px;align-items:flex-start}.qg-check input{width:20px!important;height:20px!important;flex:none;margin:0!important}.qg-note{padding:12px;border-radius:14px;background:#fff2f4;font-size:11px;line-height:1.55}.qg-register-actions{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:16px}
 .qg-pending{min-height:100dvh;display:grid;place-items:center;padding:20px;background:linear-gradient(160deg,#fff,#fff1f4)}.qg-pending-card{width:min(430px,100%);background:#fff;border-radius:28px;padding:30px;text-align:center;box-shadow:var(--qg-shadow)}.qg-pending-mark{width:62px;height:62px;border-radius:20px;background:var(--qg-red);color:#fff;display:grid;place-items:center;margin:auto;font-weight:1000;font-size:34px}.qg-status-badge{display:inline-block;margin-top:16px;padding:8px 12px;border-radius:999px;background:#fff0f3;color:var(--qg-red);font-size:11px;font-weight:900}.qg-pending-card h1{margin:16px 0 5px}.qg-pending-card p{font-size:12px;line-height:1.6;color:var(--qg-muted)}.qg-pending-card .qg-btn{width:100%;margin-top:16px}
@@ -45,20 +44,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 /* RIDER V5 — STRICT REBUILD. No legacy draggable sheet or fallback renderer. */
 /* RIDER V5 COMPACT DENSITY — more information per viewport while keeping primary touch targets practical. */
 .qg-stage{position:relative;width:100%;height:100dvh;min-height:100dvh;overflow:hidden;background:#f6f5f6}.qg-map{position:absolute;inset:0;background:#ece9e7}
-.qg-topbar{position:absolute;z-index:800;top:calc(7px + var(--safeT));left:10px;right:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;pointer-events:none}.qg-speed-pill,.qg-online-pill{pointer-events:auto;min-height:44px;border:1px solid #eee7e9;background:rgba(255,255,255,.97);backdrop-filter:blur(18px);box-shadow:0 10px 30px #2a18201c;border-radius:18px;display:flex;align-items:center}.qg-speed-pill{padding:4px 12px;gap:6px;min-width:78px;justify-content:center}.qg-speed-pill b{font-size:22px;line-height:1;font-weight:1000;color:#211e20;font-variant-numeric:tabular-nums}.qg-speed-pill span{font-size:8px;font-weight:900;color:#8d8589}.qg-online-pill{padding:4px 5px 4px 10px;gap:6px}.qg-online-pill>i{width:8px;height:8px;border-radius:50%;background:#b7b2b4}.qg-online-pill.on>i{background:#18b968}.qg-online-pill>span{font-size:10px;font-weight:900;color:#756e72}.qg-online-switch{width:43px;height:29px;border:0;border-radius:999px;background:#d9d5d7;position:relative;padding:0}.qg-online-switch:after{content:"";position:absolute;width:23px;height:23px;left:3px;top:3px;border-radius:50%;background:#fff;box-shadow:0 2px 7px #0002;transition:.18s}.qg-online-pill.on .qg-online-switch{background:#1fbe70}.qg-online-pill.on .qg-online-switch:after{transform:translateX(14px)}
-.qg-route-badge{display:none;position:absolute;z-index:720;top:calc(60px + var(--safeT));left:10px;max-width:min(76vw,350px);padding:8px 10px;border-radius:17px;background:#171519;color:#fff;box-shadow:0 12px 28px #0003;align-items:center;gap:9px}.qg-route-badge.show{display:flex}.qg-route-icon{width:34px;height:34px;border-radius:11px;background:var(--qg-red);display:grid;place-items:center}.qg-route-icon .ico{width:19px}.qg-route-badge strong{display:block;font-size:12px}.qg-route-badge small{display:block;margin-top:2px;color:#cfc9cc;font-size:8px}.qg-map-tools{position:absolute;z-index:720;right:10px;top:calc(64px + var(--safeT));display:flex;flex-direction:column;gap:8px}.qg-map .maplibregl-ctrl-top-left{top:calc(112px + var(--safeT));left:2px}.qg-map .maplibregl-ctrl-compass{width:40px;height:40px}.qg-map-button{width:44px;height:44px;border:1px solid #eee5e8;border-radius:50%;background:rgba(255,255,255,.97);box-shadow:0 10px 28px #28171d21;color:var(--qg-red);display:grid;place-items:center}.qg-map-button .ico{width:23px;height:23px}
+.qg-topbar{position:absolute;z-index:800;top:calc(7px + var(--safeT));left:10px;right:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;pointer-events:none}.qg-brand-pill{pointer-events:auto;min-height:44px;padding:0 13px;border:1px solid #eee7e9;background:rgba(255,255,255,.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 10px 30px #2a18201c;border-radius:18px;display:flex;align-items:center;font-size:17px;font-weight:900;letter-spacing:-.45px}.qg-wordmark-queue{color:#17171b}.qg-wordmark-go{color:var(--qg-red)}.qg-speed-pill,.qg-online-pill{pointer-events:auto;min-height:44px;border:1px solid #eee7e9;background:rgba(255,255,255,.97);backdrop-filter:blur(18px);box-shadow:0 10px 30px #2a18201c;border-radius:18px;display:flex;align-items:center}.qg-speed-pill{padding:4px 12px;gap:6px;min-width:78px;justify-content:center}.qg-speed-pill b{font-size:22px;line-height:1;font-weight:1000;color:#211e20;font-variant-numeric:tabular-nums}.qg-speed-pill span{font-size:8px;font-weight:900;color:#8d8589}.qg-online-pill{padding:4px 5px 4px 10px;gap:6px}.qg-online-pill>i{width:8px;height:8px;border-radius:50%;background:#b7b2b4}.qg-online-pill.on>i{background:#18b968}.qg-online-pill>span{font-size:10px;font-weight:900;color:#756e72}.qg-online-switch{width:43px;height:29px;border:0;border-radius:999px;background:#d9d5d7;position:relative;padding:0}.qg-online-switch:after{content:"";position:absolute;width:23px;height:23px;left:3px;top:3px;border-radius:50%;background:#fff;box-shadow:0 2px 7px #0002;transition:.18s}.qg-online-pill.on .qg-online-switch{background:#1fbe70}.qg-online-pill.on .qg-online-switch:after{transform:translateX(14px)}
+/* Route status stays in the DOM for routing state/telemetry, but no floating black card is shown over the map. */
+.qg-route-badge,.qg-route-badge.show{display:none!important}.qg-route-icon{width:34px;height:34px;border-radius:11px;background:var(--qg-red);display:grid;place-items:center}.qg-route-icon .ico{width:19px}.qg-route-badge strong{display:block;font-size:12px}.qg-route-badge small{display:block;margin-top:2px;color:#cfc9cc;font-size:8px}.qg-map-tools{position:absolute;z-index:720;right:10px;top:calc(64px + var(--safeT));display:flex;flex-direction:column;gap:8px}.qg-map .maplibregl-ctrl-top-left{top:calc(112px + var(--safeT));left:2px}.qg-map .maplibregl-ctrl-compass{width:40px;height:40px}.qg-map-button{width:44px;height:44px;border:1px solid #eee5e8;border-radius:50%;background:rgba(255,255,255,.97);box-shadow:0 10px 28px #28171d21;color:var(--qg-red);display:grid;place-items:center}.qg-map-button .ico{width:23px;height:23px}
 .qg-home-dock{position:absolute;z-index:760;left:8px;right:8px;bottom:calc(68px + var(--safeB));max-height:calc(100dvh - 132px - var(--safeT) - var(--safeB));overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:transparent;scrollbar-width:none}.qg-home-dock::-webkit-scrollbar{display:none}.qg-dock-toggle{display:flex;width:58px;height:30px;margin:0 18px 6px auto;border:1px solid #eee5e8;border-radius:999px;background:rgba(255,255,255,.98);box-shadow:0 8px 24px #28171d1c;align-items:center;justify-content:center;color:var(--qg-red);font-size:18px;font-weight:1000}.qg-home-dock.qg-dock-collapsed{max-height:36px!important;overflow:hidden}.qg-home-dock.qg-dock-collapsed .qg-dock-content{display:none}.qg-home-card,.qg-offer-card,.qg-active-card{background:rgba(255,255,255,.985);border:1px solid #eee5e8;border-radius:21px;box-shadow:0 16px 36px rgba(51,22,31,.13);padding:12px}.qg-home-title{display:flex;align-items:flex-start;gap:9px}.qg-home-icon{width:44px;height:44px;border-radius:14px;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;flex:none}.qg-home-icon .ico{width:24px;height:24px}.qg-home-title h2{margin:1px 0 2px;font-size:18px;line-height:1.18}.qg-home-title p{margin:0;color:#81797d;font-size:10px;line-height:1.45}.qg-home-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}.qg-home-stats>div{padding:8px 6px;border-radius:15px;background:#faf6f7;text-align:center}.qg-home-stats span{display:block;color:#8a8387;font-size:8px}.qg-home-stats b{display:block;margin-top:3px;font-size:13px}.qg-home-card>.qg-btn{width:100%;margin-top:8px;min-height:46px}.qg-home-tip{margin-top:7px;padding:8px 10px;border-radius:14px;background:#fff4f6;color:#7b6870;font-size:9px;line-height:1.45}
-.qg-offer-head,.qg-active-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.qg-active-head-actions{display:flex;align-items:flex-start;gap:6px}.qg-card-map-mode{min-width:62px;height:42px;padding:4px 8px;border:1px solid #eee5e8;border-radius:14px;background:#fff;color:var(--qg-red);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:8px;font-weight:900;line-height:1}.qg-card-map-mode .ico{width:19px;height:19px}.qg-card-map-mode.follow{background:#fff0f3}.qg-offer-head h2,.qg-active-head h2{margin:2px 0 0;font-size:24px;letter-spacing:-.6px}.qg-offer-badge,.qg-income-badge{flex:none;padding:6px 9px;border-radius:13px;background:#fff0f3;color:var(--qg-red);font-size:13px;font-weight:1000}.qg-job-row{display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f1ebed}.qg-job-row:last-of-type{border-bottom:0}.qg-job-row>span,.qg-job-row>.qg-shop-logo{width:42px;height:42px;border-radius:14px;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;object-fit:cover}.qg-job-row small{display:block;color:#8d8589;font-size:8px}.qg-job-row b{display:block;margin-top:2px;font-size:12px;line-height:1.35}.qg-job-row em{font-style:normal;color:#8a8387;font-size:9px;white-space:nowrap}.qg-shop-logo-fallback{font-weight:1000;font-size:18px}.qg-offer-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}.qg-offer-metrics>div{padding:7px 6px;border-radius:14px;background:#faf7f8;text-align:center}.qg-offer-metrics span{display:block;color:#8d8589;font-size:8px}.qg-offer-metrics b{display:block;margin-top:3px;font-size:12px}.qg-dual-actions{display:grid;grid-template-columns:1fr 1.25fr;gap:7px;margin-top:8px}.qg-active-status{margin-top:7px;padding:8px 9px;border-radius:14px;background:#fff6f8}.qg-active-status small{display:block;color:#8c8286;font-size:8px}.qg-active-status b{display:block;margin-top:3px;font-size:12px;line-height:1.4}.qg-customer-note{margin-top:6px;padding:8px 9px;border-radius:14px;background:#fff9ea}.qg-customer-note small{display:block;color:#8d8589;font-size:8px}.qg-customer-note b{display:block;margin-top:3px;font-size:11px;line-height:1.45}.qg-job-tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px}.qg-job-tool{height:46px;border:1px solid #ede5e8;border-radius:15px;background:#fff;color:#282427;display:flex;align-items:center;justify-content:center;gap:6px;font-size:9px;font-weight:850}.qg-job-tool .ico{width:18px;height:18px}.qg-main-action{width:100%;margin-top:7px;min-height:46px}
+.qg-offer-head,.qg-active-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.qg-active-head-actions{display:flex;align-items:flex-start;gap:6px}.qg-card-map-mode{min-width:62px;height:42px;padding:4px 8px;border:1px solid #eee5e8;border-radius:14px;background:#fff;color:var(--qg-red);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:8px;font-weight:900;line-height:1}.qg-card-map-mode .ico{width:19px;height:19px}.qg-card-map-mode.follow{background:#fff0f3}.qg-offer-head h2,.qg-active-head h2{margin:2px 0 0;font-size:24px;letter-spacing:-.6px}.qg-offer-badge,.qg-income-badge{flex:none;padding:6px 9px;border-radius:13px;background:#fff0f3;color:var(--qg-red);font-size:13px;font-weight:1000}.qg-job-row{display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f1ebed}.qg-job-row:last-of-type{border-bottom:0}.qg-job-row>span,.qg-job-row>.qg-shop-logo{width:42px;height:42px;border-radius:14px;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;object-fit:cover}.qg-job-row small{display:block;color:#8d8589;font-size:8px}.qg-job-row b{display:block;margin-top:2px;font-size:12px;line-height:1.35}.qg-job-row em{font-style:normal;color:#8a8387;font-size:9px;white-space:nowrap}.qg-shop-logo-fallback{font-weight:1000;font-size:18px}.qg-offer-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}.qg-offer-metrics>div{padding:7px 6px;border-radius:14px;background:#faf7f8;text-align:center}.qg-offer-metrics span{display:block;color:#8d8589;font-size:8px}.qg-offer-metrics b{display:block;margin-top:3px;font-size:12px}.qg-dual-actions{display:grid;grid-template-columns:1fr 1.25fr;gap:7px;margin-top:8px}.qg-active-status{margin-top:7px;padding:8px 9px;border-radius:14px;background:#fff6f8}.qg-active-status small{display:block;color:#8c8286;font-size:8px}.qg-active-status b{display:block;margin-top:3px;font-size:12px;line-height:1.4}.qg-customer-note{margin-top:6px;padding:8px 9px;border-radius:14px;background:#fff9ea}.qg-customer-note small{display:block;color:#8d8589;font-size:8px}.qg-customer-note b{display:block;margin-top:3px;font-size:11px;line-height:1.45}.qg-job-tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px}.qg-job-tool{height:46px;border:1px solid #ede5e8;border-radius:15px;background:#fff;color:#282427;display:flex;align-items:center;justify-content:center;gap:6px;font-size:9px;font-weight:850}.qg-job-tool .ico{width:18px;height:18px}.qg-main-action{width:100%;margin-top:7px;min-height:52px}
+.qg-active-control{padding:12px 12px 13px}.qg-active-step{display:flex;align-items:center;gap:10px}.qg-step-number{width:38px;height:38px;border-radius:50%;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;font-size:17px;font-weight:1000;flex:none}.qg-step-copy{min-width:0;flex:1}.qg-step-copy b{display:block;color:var(--qg-red);font-size:15px;line-height:1.25}.qg-step-copy small{display:block;margin-top:3px;color:#8b8387;font-size:9px}.qg-active-destination{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:center;margin-top:10px;padding-top:9px;border-top:1px solid #f0eaec}.qg-active-destination>.qg-shop-logo{width:44px;height:44px}.qg-active-destination small{display:block;color:#8d8589;font-size:8px}.qg-active-destination b{display:block;margin-top:2px;font-size:13px}.qg-active-destination p{margin:3px 0 0;color:#777177;font-size:9px;line-height:1.35}.qg-active-cash{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:9px 11px;border-radius:14px;background:#fff6f8}.qg-active-cash small,.qg-active-cash span{display:block}.qg-active-cash small{color:#8d8589;font-size:8px}.qg-active-cash span{margin-top:2px;font-size:9px;font-weight:850}.qg-active-cash b{color:var(--qg-red);font-size:21px}.qg-active-items{margin-top:8px;padding:9px 11px;border-radius:14px;background:#faf7f8}.qg-active-items-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.qg-active-items-head small{color:#8d8589;font-size:8px;font-weight:850}.qg-active-items-head b{color:var(--qg-red);font-size:9px}.qg-active-item-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:5px}.qg-active-item-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:850}.qg-active-item-row em{font-style:normal;color:#8d8589;font-size:9px;flex:none}.qg-active-items-more{display:block;margin-top:4px;color:#8d8589;font-size:8px}.qg-job-tools-two{grid-template-columns:1fr 1fr}
 .qg-bottom-nav{position:absolute;z-index:900;left:8px;right:8px;bottom:calc(6px + var(--safeB));height:58px;padding:4px;border:1px solid #eee6e8;border-radius:20px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);box-shadow:0 12px 34px #33192320;display:grid;grid-template-columns:repeat(4,1fr)}.qg-nav-item{position:relative;border:0;border-radius:16px;background:transparent;color:#8d878b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:8px;font-weight:850}.qg-nav-item .ico{width:19px;height:19px}.qg-nav-item.active{background:#fff0f3;color:var(--qg-red)}.qg-nav-badge{position:absolute;top:2px;left:calc(50% + 6px);display:none;min-width:15px;height:15px;padding:0 4px;border-radius:999px;background:#ff3b30;color:#fff;font-size:8px;line-height:15px;font-style:normal}
-.qg-panel{position:absolute;z-index:840;inset:0;padding:calc(15px + var(--safeT)) 14px calc(78px + var(--safeB));overflow:auto;background:#f8f7f8;display:none;-webkit-overflow-scrolling:touch}.qg-panel.show{display:block}.qg-panel-head{max-width:720px;margin:0 auto 14px;display:grid;grid-template-columns:44px 1fr 64px;align-items:center;gap:8px}.qg-panel-head h1{text-align:center;margin:0;font-size:26px}.qg-mini-word{font-size:9px;color:var(--qg-red);font-weight:1000;text-align:right}
+.qg-panel{position:absolute;z-index:840;inset:0;padding:calc(15px + var(--safeT)) 14px calc(78px + var(--safeB));overflow:auto;background:#f8f7f8;display:none;-webkit-overflow-scrolling:touch}.qg-panel.show{display:block}.qg-panel-head{max-width:720px;margin:0 auto 14px;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:8px}.qg-panel-head h1{text-align:center;margin:0;font-size:26px}.qg-mini-word{font-size:9px;font-weight:950;text-align:right;white-space:nowrap;letter-spacing:-.2px}
 .qg-earn-shell{max-width:720px;margin:auto}.qg-period{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#fff;border:1px solid #eee6e8;border-radius:18px;padding:5px}.qg-period button{height:44px;border:0;border-radius:14px;background:transparent;color:#8b8488;font-weight:900}.qg-period button.active{background:var(--qg-red);color:#fff}.qg-loading-card{padding:28px 16px;text-align:center;color:#8a8387}.qg-earn-summary{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.qg-stat{padding:16px;border-radius:20px;background:#fff;border:1px solid #eee6e8}.qg-stat span{display:block;color:#8a8387;font-size:9px}.qg-stat b{display:block;margin-top:6px;font-size:21px}.qg-stat-red b{color:var(--qg-red)}.qg-stat-green{background:#f2fbf6}.qg-stat-blue{background:#f3f8ff}.qg-stat-amber{background:#fff9ef}.qg-ledger{margin-top:12px}.qg-cash-card,.qg-recent{padding:15px;border:1px solid #eee6e8;border-radius:22px;background:#fff;margin-bottom:10px}.qg-cash-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.qg-cash-grid>div{padding:11px;border-radius:14px;background:#faf7f8}.qg-cash-grid span{display:block;color:#8d8589;font-size:8px}.qg-cash-grid b{display:block;margin-top:4px;font-size:14px}.qg-recent article{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #f0eaec}.qg-recent article:last-child{border-bottom:0}.qg-recent small,.qg-recent span{color:#8a8387;font-size:8px}
 /* RIDER PROFILE COMPACT GROUPED V1 */
 .qg-profile-card{display:grid;grid-template-columns:58px minmax(0,1fr) auto;align-items:center;gap:11px;padding:12px;border:1px solid #eee6e8;border-radius:18px;background:#fff;color:#211e20;box-shadow:none}.qg-profile-avatar{width:58px;height:58px;border-radius:18px;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;font-size:22px;font-weight:1000}.qg-profile-copy{min-width:0}.qg-profile-card h2{margin:0;font-size:19px;line-height:1.2}.qg-profile-card p{margin:3px 0 0;font-size:10px;color:#8a8387;overflow-wrap:anywhere}.qg-profile-card span{display:inline-flex;margin-top:5px;padding:4px 7px;border-radius:999px;background:#f7f3f4;color:#746a6e;font-size:8.5px;font-weight:800}.qg-profile-status{min-width:42px;text-align:center!important;background:#eef8f2!important;color:#15955a!important}.qg-profile-status.off{background:#f2f2f3!important;color:#85878c!important}.qg-settings{margin-top:10px;display:grid;gap:10px}.qg-setting-section{display:grid;gap:5px}.qg-setting-section>h2{margin:0 2px;color:#898287;font-size:9px;font-weight:900;letter-spacing:.2px}.qg-setting-group{overflow:hidden;border:1px solid #eee6e8;border-radius:16px;background:#fff}.qg-setting{width:100%;min-height:52px;border:0;border-bottom:1px solid #f0eaec;border-radius:0;background:#fff;padding:9px 10px;display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:9px;text-align:left;color:#211e20}.qg-setting:last-child{border-bottom:0}.qg-setting-icon{width:34px;height:34px;border-radius:11px;background:#f7f4f5;color:#777177;display:grid;place-items:center}.qg-setting-icon.qg-green{background:#edf9f2;color:#14a35c}.qg-setting b{display:block;font-size:12px}.qg-setting small{display:block;margin-top:2px;color:#8a8387;font-size:8.5px;line-height:1.35}.qg-setting em{font-style:normal;padding:4px 7px;border-radius:999px;background:#f2f2f3;color:#777b80;font-size:8.5px;font-weight:900}.qg-setting em.on{background:#edf9f2;color:#14a35c}.qg-setting strong{color:#b4adb1;font-size:21px;line-height:1}.qg-setting.danger .qg-setting-icon{background:#fff0f3;color:var(--qg-red)}.qg-setting.danger b{color:var(--qg-red)}@media(max-width:360px){.qg-profile-card{grid-template-columns:52px minmax(0,1fr) auto;padding:10px}.qg-profile-avatar{width:52px;height:52px;border-radius:16px}.qg-profile-card h2{font-size:17px}.qg-setting{padding:8px 9px}.qg-setting b{font-size:11.5px}}
 .qg-inbox{position:absolute;z-index:850;inset:0;padding:calc(18px + var(--safeT)) 14px calc(78px + var(--safeB));overflow:auto;background:#f8f7f8}.qg-inbox h2{max-width:720px;margin:0 auto 15px;font-size:27px}.qg-inbox-item{display:block;width:min(100%,720px);margin:0 auto 8px;padding:13px;border:1px solid #eee6e8;border-radius:18px;background:#fff;text-align:left}.qg-inbox-item strong{display:block;font-size:13px}.qg-inbox-item small{display:block;margin-top:4px;color:#8a8387;font-size:9px}.qg-inbox-empty{max-width:720px;margin:30px auto;text-align:center;color:#8a8387}
 .qg-chat-page{position:fixed;z-index:20000;inset:0;height:100dvh;max-height:100dvh;min-height:0;overflow:hidden;background:#f8f7f8;display:flex;flex-direction:column}.qg-chat-head{flex:0 0 auto;min-height:64px;padding:calc(8px + var(--safeT)) 12px 8px;display:grid;grid-template-columns:44px 1fr auto;align-items:center;background:#fff;border-bottom:1px solid #eee6e8}.qg-chat-head>div{text-align:center}.qg-chat-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px}.qg-chat-head-actions .qg-icon-btn{width:40px;height:40px}.qg-chat-head b{display:block;font-size:15px}.qg-chat-head small{display:block;color:#8a8387;font-size:8px}.qg-chat-box{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;gap:8px}.qg-chat-msg,.chat-bubble{max-width:78%;padding:10px 12px;border-radius:16px;background:#fff;color:#211e20;font-size:12px;line-height:1.45;overflow-wrap:anywhere}.qg-chat-msg.me,.chat-bubble.mine{align-self:flex-end;background:#ffe8ee}.chat-bubble.theirs{align-self:flex-start}.chat-time{margin-top:4px;color:#8a8387;font-size:8px;line-height:1;text-align:right}.chat-image{display:block;max-width:min(260px,70vw);max-height:320px;border-radius:12px;object-fit:cover}.empty-note{padding:8px 2px;color:#8a8387;font-size:11px;line-height:1.4}.quick-wrap{flex:0 0 auto;padding:7px 10px 6px;background:#fff;border-top:1px solid #f0eaec;overflow:hidden}.quick-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;color:#6f686c;font-size:9.5px;font-weight:900}.quick-manage{flex:0 0 auto;border:0;border-radius:999px;background:#f2eff0;color:#211e20;padding:5px 9px;font:inherit;font-size:9.5px;font-weight:900}.quick-list{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;padding:0 10px 2px 0;scroll-padding-inline:10px}.quick-list::-webkit-scrollbar{display:none}.quick-chip{flex:0 0 auto;max-width:min(56vw,260px);border:0;border-radius:999px;background:#f1eff0;color:#2b2729;padding:7px 10px;font:inherit;font-size:10px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.quick-chip:active{background:#e7e2e4}.qg-rider-chat-open .toast{top:calc(76px + var(--safeT));bottom:auto;transform:translate(-50%,-10px)}.qg-rider-chat-open .toast.show{transform:translate(-50%,0)}.qg-chat-compose{flex:0 0 auto;display:grid;grid-template-columns:44px minmax(0,1fr) 48px;gap:7px;padding:9px 10px calc(9px + var(--safeB));background:#fff;border-top:1px solid #eee6e8}.qg-chat-compose input{min-width:0;height:46px;border:1px solid #e6dde0;border-radius:14px;padding:0 12px;outline:0;font:inherit;font-size:12px;background:#fff;color:#211e20}.qg-chat-compose button{height:46px;border:0;border-radius:14px;background:#fff0f3;color:var(--qg-red);font-weight:1000;display:grid;place-items:center}.qg-chat-compose button[type="submit"]{font-size:19px}.qg-chat-compose .photo-btn .ico{width:20px;height:20px}
 .qg-order-details-overlay{position:fixed;inset:0;z-index:19500;display:flex;align-items:flex-end;justify-content:center}.qg-order-details-backdrop{position:absolute;inset:0;background:#17131988}.qg-order-details-sheet{position:relative;z-index:1;width:min(100%,680px);max-height:78dvh;overflow:auto;background:#fff;border-radius:26px 26px 0 0;padding:14px 15px calc(18px + var(--safeB))}.qg-order-details-sheet header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid #eee6e8}.qg-order-details-sheet header b{font-size:18px}.qg-order-details-sheet header small{display:block;color:#8a8387;font-size:8px}.qg-order-details-sheet header button{width:40px;height:40px;border:0;border-radius:50%;background:#fff0f3;color:var(--qg-red)}.qg-order-detail-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}.qg-order-detail-meta>div{padding:11px;border-radius:14px;background:#faf7f8}.qg-order-detail-meta small{display:block;color:#8a8387;font-size:8px}.qg-order-detail-meta b{display:block;margin-top:3px;font-size:11px}.qg-order-detail-count,.qg-order-detail-total{display:flex;align-items:center;justify-content:space-between;margin-top:12px}.qg-order-detail-items{margin-top:7px;border:1px solid #eee6e8;border-radius:17px;padding:0 12px}.qg-order-detail-items article{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0eaec}.qg-order-detail-items article:last-child{border-bottom:0}
-.qg-rider-flow-page{position:fixed;z-index:18500;inset:0;background:#f8f7f8;display:flex;flex-direction:column;overflow:hidden}.qg-flow-head{position:relative;z-index:3;flex:0 0 auto;min-height:56px;padding:calc(5px + var(--safeT)) 10px 5px;background:#fff;border-bottom:1px solid #eee6e8;display:grid;grid-template-columns:44px 1fr 44px;align-items:center}.qg-flow-head>button{width:44px;height:44px;border:0;border-radius:50%;background:#fff0f3;color:#e23a4c;display:grid;place-items:center}.qg-flow-head>div{text-align:center}.qg-flow-head b{display:block;font-size:15px}.qg-flow-head small{display:block;color:#8a8387;font-size:8px}.qg-flow-body{width:100%;max-width:680px;min-height:0;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:auto;padding:9px 10px calc(92px + var(--safeB))}.qg-pickup-banner,.qg-flow-hero{padding:12px 13px;border:1px solid #eee6e8;border-radius:18px;background:#fff;color:#252124;margin-bottom:10px;box-shadow:none}.qg-pickup-banner span,.qg-flow-hero span{display:inline-flex;padding:4px 7px;border-radius:999px;background:#fff0f3;color:#e23a4c;font-size:8px;font-weight:900;opacity:1}.qg-pickup-banner h1,.qg-flow-hero h1{margin:7px 0 3px;font-size:18px}.qg-pickup-banner p,.qg-flow-hero p{margin:0;color:#81797d;font-size:9.5px;opacity:1}.qg-flow-card,.qg-proof-box,.qg-flow-address,.qg-flow-note,.qg-flow-cash,.qg-flow-customer{margin-top:6px;padding:9px 10px;border:1px solid #eee6e8;border-radius:18px;background:#fff}.qg-flow-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.qg-flow-card-head b{font-size:14px}.qg-flow-card-head span{font-size:8px;color:var(--qg-red);font-weight:900}.qg-pickup-shop,.qg-pickup-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0eaec}.qg-pickup-shop>.qg-shop-logo{width:40px;height:40px;min-width:40px;max-width:40px;flex:0 0 40px;border-radius:12px;object-fit:cover;overflow:hidden;background:#fff0f3;color:var(--qg-red)}.qg-pickup-shop>img.qg-shop-logo{display:block}.qg-pickup-shop>.qg-shop-logo-fallback{display:grid;place-items:center}.qg-pickup-meta>*:last-child{border-bottom:0}.qg-pickup-shop>div:nth-child(2),.qg-pickup-row>div:nth-child(2){min-width:0;flex:1}.qg-pickup-shop small,.qg-pickup-row small{display:block;color:#8a8387;font-size:8px}.qg-pickup-shop b,.qg-pickup-row b{display:block;margin-top:2px;font-size:11px}.qg-contact-actions{display:flex;gap:6px}.qg-contact-actions a,.qg-contact-actions button{width:44px;height:44px;border:0;border-radius:50%;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;text-decoration:none}.qg-flow-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0eaec}.qg-flow-item:last-child{border-bottom:0}.qg-flow-item-image{width:46px;height:46px;border-radius:11px;object-fit:cover;background:#f2eff0}.qg-flow-item-copy{min-width:0;flex:1}.qg-flow-item b{display:block;font-size:11px}.qg-flow-item small,.qg-flow-item span{display:block;margin-top:3px;color:#8a8387;font-size:8px}.qg-flow-item strong{font-size:11px;white-space:nowrap}.qg-flow-total{display:flex;justify-content:space-between;border-top:1px solid #eee6e8;padding-top:8px;margin-top:3px}.qg-flow-total b{color:var(--qg-red);font-size:17px}.qg-proof-pick{position:relative;margin-top:6px;min-height:72px;border:2px dashed #d8cdd1;border-radius:15px;display:grid;place-items:center;align-content:center;text-align:center;padding:9px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.qg-proof-pick:active{transform:scale(.995);background:#fff7f9}.qg-proof-pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;z-index:3;cursor:pointer}.qg-proof-plus{font-size:22px;line-height:1;color:var(--qg-red)}.qg-proof-pick b{font-size:11px}.qg-proof-pick small{margin-top:2px;color:#8a8387;font-size:7.5px}.qg-proof-box>img{display:block;width:100%;height:116px;object-fit:cover;border-radius:13px;margin-top:8px}.qg-proof-box>img[hidden]{display:none}.qg-proof-single.has-proof{position:relative;display:block}.qg-proof-single.has-proof>.qg-flow-card-head{display:flex}.qg-proof-single.has-proof>img{display:block;width:100%;height:min(34vh,250px);min-height:180px;margin-top:8px;object-fit:cover;border-radius:15px}.qg-proof-single.has-proof>.qg-proof-pick{position:absolute;right:18px;bottom:14px;width:auto;height:38px;min-height:38px;margin:0;padding:0 13px;border:1px solid #eadde1;border-radius:999px;background:rgba(255,255,255,.96);box-shadow:0 5px 16px rgba(28,20,23,.14);display:flex;align-items:center;justify-content:center}.qg-proof-single.has-proof>.qg-proof-pick .qg-proof-plus,.qg-proof-single.has-proof>.qg-proof-pick small{display:none}.qg-proof-single.has-proof>.qg-proof-pick b{font-size:0}.qg-proof-single.has-proof>.qg-proof-pick b:after{content:"ถ่ายใหม่";font-size:10px;color:#2d282a;font-weight:900}@media(max-width:360px){.qg-proof-single.has-proof>img{height:min(31vh,215px);min-height:160px}}.qg-flow-action{width:100%;margin-top:8px;min-height:46px}.qg-flow-address{display:grid;grid-template-columns:28px 1fr;gap:7px}.qg-flow-address small,.qg-flow-note small,.qg-flow-cash small{display:block;color:#8a8387;font-size:8px}.qg-flow-address b,.qg-flow-note b{display:block;margin-top:3px;font-size:11px;line-height:1.45}.qg-flow-cash{background:#fff3f6}.qg-flow-cash b{display:block;margin:2px 0;color:var(--qg-red);font-size:20px}.qg-flow-cash span{font-size:8px;color:#7d7276}.qg-slide-action{--slide-progress:0%;position:relative;height:56px;margin-top:8px;border:1px solid #eadde1;border-radius:20px;overflow:hidden;background:linear-gradient(90deg,var(--qg-red) 0 var(--slide-progress),#f4eff1 var(--slide-progress) 100%);box-shadow:inset 0 0 0 1px #fff;transition:background .15s}.qg-slide-action.is-disabled{background:#f4f1f2;opacity:.72}.qg-slide-action.is-busy{--slide-progress:100%}.qg-slide-action-label{position:absolute;inset:0;display:grid;place-items:center;padding-left:54px;padding-right:12px;font-size:12px;font-weight:1000;color:#2b2729;pointer-events:none;z-index:1}.qg-slide-action:not(.is-disabled) .qg-slide-action-label{color:#fff;text-shadow:0 1px 2px #8b0a2638}.qg-slide-action input[type=range]{position:absolute;inset:0;z-index:2;width:100%;height:100%;margin:0;appearance:none;-webkit-appearance:none;background:transparent;outline:0;touch-action:none;cursor:grab}.qg-slide-action input[type=range]:active{cursor:grabbing}.qg-slide-action input[type=range]:disabled{cursor:not-allowed}.qg-slide-action input[type=range]::-webkit-slider-runnable-track{height:56px;background:transparent}.qg-slide-action input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:48px;height:48px;margin-top:4px;border:0;border-radius:17px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e6002d' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m8 5 7 7-7 7'/%3E%3C/svg%3E") center/22px no-repeat;box-shadow:0 5px 16px #3b18233a}.qg-slide-action input[type=range]::-moz-range-track{height:56px;background:transparent;border:0}.qg-slide-action input[type=range]::-moz-range-thumb{width:48px;height:48px;border:0;border-radius:17px;background:#fff;box-shadow:0 5px 16px #3b18233a}.qg-slide-caption{display:block;margin-top:5px;text-align:center;color:#81797d;font-size:8px;line-height:1.45}.qg-flow-customer{display:flex;justify-content:space-between;align-items:center}.qg-flow-customer small{color:#8a8387;font-size:8px}.qg-flow-customer h2{margin:2px 0 0;font-size:16px}
-@media(max-height:760px){.qg-flow-head{min-height:52px}.qg-flow-body{padding-top:7px}.qg-pickup-banner,.qg-flow-hero{padding:9px 11px;margin-bottom:6px}.qg-pickup-banner h1,.qg-flow-hero h1{font-size:18px}.qg-flow-card,.qg-proof-box,.qg-flow-address,.qg-flow-note,.qg-flow-cash,.qg-flow-customer{margin-top:5px;padding:8px 9px}.qg-flow-item{padding:6px 0}.qg-flow-item-image{width:42px;height:42px}.qg-proof-pick{min-height:66px}.qg-proof-box>img{height:102px}.qg-proof-single.has-proof>img,.qg-proof-single.has-proof>.qg-proof-pick{height:108px}.qg-slide-action{height:52px}.qg-slide-action input[type=range]::-webkit-slider-runnable-track,.qg-slide-action input[type=range]::-moz-range-track{height:52px}.qg-home-card,.qg-offer-card,.qg-active-card{padding:10px}.qg-home-stats{margin-top:7px}.qg-job-row{padding:6px 0}.qg-job-tools{margin-top:6px}.qg-bottom-nav{height:54px}}
+.qg-rider-flow-page{position:fixed;z-index:18500;inset:0;background:#f8f7f8;display:flex;flex-direction:column;overflow:hidden}.qg-flow-head{position:relative;z-index:3;flex:0 0 auto;min-height:56px;padding:calc(5px + var(--safeT)) 10px 5px;background:#fff;border-bottom:1px solid #eee6e8;display:grid;grid-template-columns:44px 1fr 44px;align-items:center}.qg-flow-head>button{width:44px;height:44px;border:0;border-radius:50%;background:#fff0f3;color:#e23a4c;display:grid;place-items:center}.qg-flow-head>div{text-align:center}.qg-flow-wordmark,.qg-chat-wordmark{display:block;margin-bottom:2px;font-size:8.5px;font-weight:950;line-height:1;letter-spacing:-.2px;white-space:nowrap}.qg-flow-head b{display:block;font-size:15px}.qg-flow-head small{display:block;color:#8a8387;font-size:8px}.qg-flow-body{width:100%;max-width:680px;min-height:0;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:auto;padding:9px 10px calc(92px + var(--safeB))}.qg-pickup-banner,.qg-flow-hero{padding:12px 13px;border:1px solid #eee6e8;border-radius:18px;background:#fff;color:#252124;margin-bottom:10px;box-shadow:none}.qg-pickup-banner span,.qg-flow-hero span{display:inline-flex;padding:4px 7px;border-radius:999px;background:#fff0f3;color:#e23a4c;font-size:8px;font-weight:900;opacity:1}.qg-pickup-banner h1,.qg-flow-hero h1{margin:7px 0 3px;font-size:18px}.qg-pickup-banner p,.qg-flow-hero p{margin:0;color:#81797d;font-size:9.5px;opacity:1}.qg-flow-card,.qg-proof-box,.qg-flow-address,.qg-flow-note,.qg-flow-cash,.qg-flow-customer{margin-top:6px;padding:9px 10px;border:1px solid #eee6e8;border-radius:18px;background:#fff}.qg-flow-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.qg-flow-card-head b{font-size:14px}.qg-flow-card-head span{font-size:8px;color:var(--qg-red);font-weight:900}.qg-pickup-shop,.qg-pickup-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0eaec}.qg-pickup-shop>.qg-shop-logo{width:40px;height:40px;min-width:40px;max-width:40px;flex:0 0 40px;border-radius:12px;object-fit:cover;overflow:hidden;background:#fff0f3;color:var(--qg-red)}.qg-pickup-shop>img.qg-shop-logo{display:block}.qg-pickup-shop>.qg-shop-logo-fallback{display:grid;place-items:center}.qg-pickup-meta>*:last-child{border-bottom:0}.qg-pickup-shop>div:nth-child(2),.qg-pickup-row>div:nth-child(2){min-width:0;flex:1}.qg-pickup-shop small,.qg-pickup-row small{display:block;color:#8a8387;font-size:8px}.qg-pickup-shop b,.qg-pickup-row b{display:block;margin-top:2px;font-size:11px}.qg-contact-actions{display:flex;gap:6px}.qg-contact-actions a,.qg-contact-actions button{width:44px;height:44px;border:0;border-radius:50%;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;text-decoration:none}.qg-flow-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0eaec}.qg-flow-item:last-child{border-bottom:0}.qg-flow-item-image{width:46px;height:46px;border-radius:11px;object-fit:cover;background:#f2eff0}.qg-flow-item-copy{min-width:0;flex:1}.qg-flow-item b{display:block;font-size:11px}.qg-flow-item small,.qg-flow-item span{display:block;margin-top:3px;color:#8a8387;font-size:8px}.qg-flow-item strong{font-size:11px;white-space:nowrap}.qg-flow-total{display:flex;justify-content:space-between;border-top:1px solid #eee6e8;padding-top:8px;margin-top:3px}.qg-flow-total b{color:var(--qg-red);font-size:17px}.qg-proof-pick{position:relative;margin-top:6px;min-height:72px;border:2px dashed #d8cdd1;border-radius:15px;display:grid;place-items:center;align-content:center;text-align:center;padding:9px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.qg-proof-pick:active{transform:scale(.995);background:#fff7f9}.qg-proof-pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;z-index:3;cursor:pointer}.qg-proof-plus{font-size:22px;line-height:1;color:var(--qg-red)}.qg-proof-pick b{font-size:11px}.qg-proof-pick small{margin-top:2px;color:#8a8387;font-size:7.5px}.qg-proof-box>img{display:block;width:100%;height:116px;object-fit:cover;border-radius:13px;margin-top:8px}.qg-proof-box>img[hidden]{display:none}.qg-proof-single.has-proof{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch}.qg-proof-single.has-proof>.qg-flow-card-head{display:flex;grid-column:1/-1}.qg-proof-single.has-proof>img{display:block;width:100%;height:124px;min-height:0;margin-top:8px;object-fit:cover;border-radius:15px}.qg-proof-single.has-proof>.qg-proof-pick{position:relative;inset:auto;width:100%;height:124px;min-height:124px;margin-top:8px;padding:0 12px;border:1px dashed #e2d7db;border-radius:15px;background:#fff8fa;box-shadow:none;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px}.qg-proof-single.has-proof>.qg-proof-pick .qg-proof-plus{display:block;font-size:20px}.qg-proof-single.has-proof>.qg-proof-pick small{display:none}.qg-proof-single.has-proof>.qg-proof-pick b{font-size:0}.qg-proof-single.has-proof>.qg-proof-pick b:after{content:"ถ่ายใหม่";font-size:10px;color:#2d282a;font-weight:900}@media(max-width:360px){.qg-proof-single.has-proof>img,.qg-proof-single.has-proof>.qg-proof-pick{height:108px;min-height:108px}}.qg-flow-action{width:100%;margin-top:8px;min-height:46px}.qg-flow-address{display:grid;grid-template-columns:28px 1fr;gap:7px}.qg-flow-address small,.qg-flow-note small,.qg-flow-cash small{display:block;color:#8a8387;font-size:8px}.qg-flow-address b,.qg-flow-note b{display:block;margin-top:3px;font-size:11px;line-height:1.45}.qg-flow-cash{background:#fff3f6}.qg-flow-cash b{display:block;margin:2px 0;color:var(--qg-red);font-size:20px}.qg-flow-cash span{font-size:8px;color:#7d7276}.qg-slide-action{--slide-progress:0%;position:relative;height:56px;margin-top:8px;border:1px solid #eadde1;border-radius:20px;overflow:hidden;background:linear-gradient(90deg,var(--qg-red) 0 var(--slide-progress),#f4eff1 var(--slide-progress) 100%);box-shadow:inset 0 0 0 1px #fff;transition:background .15s}.qg-slide-action.is-disabled{background:#f4f1f2;opacity:.72}.qg-slide-action.is-busy{--slide-progress:100%}.qg-slide-action-label{position:absolute;inset:0;display:grid;place-items:center;padding-left:54px;padding-right:12px;font-size:12px;font-weight:1000;color:#2b2729;pointer-events:none;z-index:1}.qg-slide-action:not(.is-disabled) .qg-slide-action-label{color:#fff;text-shadow:0 1px 2px #8b0a2638}.qg-slide-action input[type=range]{position:absolute;inset:0;z-index:2;width:100%;height:100%;margin:0;appearance:none;-webkit-appearance:none;background:transparent;outline:0;touch-action:none;cursor:grab}.qg-slide-action input[type=range]:active{cursor:grabbing}.qg-slide-action input[type=range]:disabled{cursor:not-allowed}.qg-slide-action input[type=range]::-webkit-slider-runnable-track{height:56px;background:transparent}.qg-slide-action input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:48px;height:48px;margin-top:4px;border:0;border-radius:17px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e6002d' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m8 5 7 7-7 7'/%3E%3C/svg%3E") center/22px no-repeat;box-shadow:0 5px 16px #3b18233a}.qg-slide-action input[type=range]::-moz-range-track{height:56px;background:transparent;border:0}.qg-slide-action input[type=range]::-moz-range-thumb{width:48px;height:48px;border:0;border-radius:17px;background:#fff;box-shadow:0 5px 16px #3b18233a}.qg-slide-caption{display:block;margin-top:5px;text-align:center;color:#81797d;font-size:8px;line-height:1.45}.qg-flow-customer{display:flex;justify-content:space-between;align-items:center}.qg-flow-customer small{color:#8a8387;font-size:8px}.qg-flow-customer h2{margin:2px 0 0;font-size:16px}
+@media(max-height:760px){.qg-flow-head{min-height:52px}.qg-flow-body{padding-top:7px}.qg-pickup-banner,.qg-flow-hero{padding:9px 11px;margin-bottom:6px}.qg-pickup-banner h1,.qg-flow-hero h1{font-size:18px}.qg-flow-card,.qg-proof-box,.qg-flow-address,.qg-flow-note,.qg-flow-cash,.qg-flow-customer{margin-top:5px;padding:8px 9px}.qg-flow-item{padding:6px 0}.qg-flow-item-image{width:42px;height:42px}.qg-proof-pick{min-height:66px}.qg-proof-box>img{height:102px}.qg-proof-single.has-proof>img,.qg-proof-single.has-proof>.qg-proof-pick{height:104px;min-height:104px}.qg-slide-action{height:52px}.qg-slide-action input[type=range]::-webkit-slider-runnable-track,.qg-slide-action input[type=range]::-moz-range-track{height:52px}.qg-home-card,.qg-offer-card,.qg-active-card{padding:10px}.qg-home-stats{margin-top:7px}.qg-job-row{padding:6px 0}.qg-job-tools{margin-top:6px}.qg-bottom-nav{height:54px}}
 .qg-arrival-guard{position:fixed;z-index:22000;inset:0;display:flex;align-items:flex-end;justify-content:center}.qg-arrival-backdrop{position:absolute;inset:0;background:#16121788}.qg-arrival-floatback{position:absolute;z-index:2;left:18px;top:calc(18px + var(--safeT));width:44px;height:44px;border:0;border-radius:50%;background:#fff}.qg-arrival-sheet{position:relative;z-index:1;width:min(100%,680px);background:#fff;border-radius:26px 26px 0 0;padding:20px 17px calc(20px + var(--safeB))}.qg-arrival-handle{display:block;width:40px;height:5px;border-radius:999px;background:#ded8da;margin:0 auto 16px}.qg-arrival-alert{width:66px;height:66px;border-radius:22px;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;margin:auto;font-size:34px;font-weight:1000}.qg-arrival-sheet h2{text-align:center;margin:13px 0 6px;font-size:22px}.qg-arrival-sheet p{text-align:center;color:#81797d;font-size:11px;line-height:1.5}.qg-arrival-distance{margin:13px 0;padding:11px;border-radius:15px;background:#fff3f6;display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:8px}.qg-arrival-distance small{font-size:9px;color:#786f73}.qg-arrival-distance b{color:var(--qg-red)}
 .qg-support-overlay{position:fixed;z-index:23000;inset:0;background:#17131988;display:grid;place-items:center;padding:14px}.qg-support-dialog{width:min(100%,620px);max-height:90dvh;overflow:auto;background:#fff;border-radius:24px;padding:16px}.qg-support-dialog header{display:flex;justify-content:space-between;align-items:center}.qg-support-dialog header button{width:38px;height:38px;border:0;border-radius:50%;background:#fff0f3;color:var(--qg-red)}.qg-support-dialog form{display:grid;gap:9px}.qg-support-dialog label{font-size:10px;font-weight:850}.qg-support-dialog select,.qg-support-dialog textarea,.qg-support-dialog input{width:100%;margin-top:4px;border:1px solid #e6dde0;border-radius:13px;padding:10px;background:#fff}.qg-support-dialog form>button{height:48px;border:0;border-radius:14px;background:var(--qg-red);color:#fff;font-weight:900}.qg-report-evidence{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px;margin:10px 0}.qg-report-evidence button{min-height:38px;border:0;border-radius:12px;background:#f2eff0;color:#211e20;padding:0 11px;font-weight:850}.qg-report-evidence small{min-width:0;color:#8a8387;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qg-report-evidence small.has-file{color:#168b58}
 .qg-message{position:fixed;z-index:99999;left:14px;right:14px;top:calc(12px + var(--safeT));max-width:520px;margin:auto;padding:11px;border-radius:16px;background:#171519;color:#fff;display:none;align-items:center;gap:10px;box-shadow:0 12px 30px #0004}.qg-message.show{display:flex}.qg-message i{color:#ff4766}.qg-message b{display:block;font-size:11px}.qg-message small{display:block;color:#d7d1d4;font-size:8px}.qg-bundle-card,.qg-mp,.qg-laundry-card,.qg-laundry-active,.qg-laundry-invite{margin-top:9px;padding:12px;border:1px solid #eee6e8;border-radius:17px;background:#fff}.qg-bundle-head,.qg-mp-head,.qg-mp-top,.qg-mp-total{display:flex;justify-content:space-between;gap:8px}.qg-bundle-head small,.qg-mp-head small,.qg-mp-row small{color:#8a8387;font-size:8px}.qg-bundle-order,.qg-bundle-offer,.qg-mp-row{padding:9px 0;border-bottom:1px solid #f0eaec}.qg-bundle-order:last-child,.qg-bundle-offer:last-child,.qg-mp-row:last-child{border-bottom:0}.qg-bundle-card button,.qg-mp-btn{border:0;border-radius:12px;background:#fff0f3;color:var(--qg-red);padding:8px 10px;font-weight:900}.qg-mp-btn{width:100%;margin-top:7px}.qg-mp-btn:disabled{opacity:.5}
@@ -69,7 +70,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-ready-card>i{width:10px;height:10px;flex:none;border-radius:50%;background:#a2a2a7}.qg-ready-card.on>i{background:#12a651}
 .qg-ready-card>div{flex:1;min-width:0}.qg-ready-card h2{font-size:20px;line-height:1.4;margin:0;font-weight:700}.qg-ready-card p{font-size:13px;line-height:1.5;margin:4px 0 0;color:#77777f}
 .qg-ready-card .qg-online-switch{width:54px;height:34px;flex:none;min-height:34px}.qg-ready-card .qg-online-switch:after{width:28px;height:28px}.qg-ready-card.on .qg-online-switch{background:var(--qg-red)}.qg-ready-card.on .qg-online-switch:after{transform:translateX(20px)}.qg-online-switch:disabled{opacity:.5}.qg-online-switch:focus-visible{outline:3px solid #e6002d66;outline-offset:4px}
-.qg-stage:has(.qg-ready-card) .qg-topbar{display:none}.qg-stage:has(.qg-ready-card) #overview{display:none}
+.qg-stage:has(.qg-ready-card) #overview{display:none}
 .qg-setting-section>h2{font-size:14px;margin:20px 8px 10px;color:#6f6f78}.qg-setting-group{border:0;border-radius:20px}.qg-setting{min-height:64px;padding:14px 16px;gap:12px}.qg-setting b{font-size:15px;font-weight:600}.qg-setting small{font-size:12px;line-height:1.5}.qg-setting-icon{background:transparent;width:26px;height:26px}.qg-setting em{font-size:12px}.qg-profile-card{border:0;padding:18px;border-radius:22px}.qg-profile-card p{font-size:13px}.qg-profile-card span{font-size:11px}
 @media(max-width:360px){.qg-ready-card{padding:18px 14px;gap:10px}.qg-ready-card h2{font-size:17px}.qg-ready-card p{font-size:12px}}
 </style>
@@ -227,12 +228,17 @@ function qgRiderVoiceActivate(){
   if(controller&&S.user&&readSession()?.sessionId)controller.startIncomingWatch();
   return controller;
 }
-function qgRiderVoiceCall(order,label){
+function qgRiderVoiceCallTarget(order,target,label){
   if(!order?.id)return toast('ไม่พบออเดอร์สำหรับการโทร');
+  if(!['shop','customer'].includes(target))return toast('ปลายทางสายโทรไม่ถูกต้อง');
   if(['completed','cancelled','no_rider_available'].includes(String(order.status||'').toLowerCase()))return toast('ออเดอร์นี้จบแล้ว ไม่สามารถโทรผ่าน QueueGo ได้');
   const controller=qgRiderVoiceActivate();
   if(!controller)return toast('ระบบโทรผ่าน QueueGo ยังไม่พร้อม');
-  controller.start(order.id,'customer',label||order._customer?.name||'ลูกค้า').catch(error=>toast(error?.message||'โทรผ่าน QueueGo ไม่สำเร็จ'));
+  const fallback=target==='shop'?(order._shop?.shop_name||'ร้านค้า'):(order._customer?.name||'ลูกค้า');
+  controller.start(order.id,target,label||fallback).catch(error=>toast(error?.message||'โทรผ่าน QueueGo ไม่สำเร็จ'));
+}
+function qgRiderVoiceCall(order,label){
+  return qgRiderVoiceCallTarget(order,'customer',label);
 }
 
 function esc(v){ return String(v??'').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
@@ -275,15 +281,13 @@ function qgNavigateInApp(lat,lng){
   const target={lat:Number(lat),lng:Number(lng)};
   if(!validRiderCoordinate(target.lat,target.lng)){toast('พิกัดปลายทางยังไม่พร้อม');return false}
   if(!S.map||!S.pos||!validRiderCoordinate(S.pos.lat,S.pos.lng)){
-    toast('QueueGo Navigation ยังรอตำแหน่ง GPS');
+    toast('แผนที่ QueueGo หรือ GPS ยังไม่พร้อม');
     return false;
   }
   riderRouteOverviewActive=false;
-  qgSyncCardMapMode();
-  window.QueueGoMapWeb?.setNavigationMode?.(S.map,true);
-  qgFollowRiderCamera(true,520);
+  focusRiderNavigation(S.map,S.pos,target);
   drawActiveRoute();
-  toast('เริ่มนำทางด้วย QueueGo');
+  qgFollowRiderCamera(true,650);
   return true;
 }
 
@@ -623,7 +627,7 @@ function renderRiderRegistration(){
       <header class="qg-page-head">
         <button type="button" class="qg-icon-btn" id="rr-back-login" aria-label="ย้อนกลับ">${QTICON.back}</button>
         <div><h1>สมัครเป็นไรเดอร์</h1><p>กรอกข้อมูลให้ครบเพื่อส่งให้ Admin ตรวจสอบ</p></div>
-        <span class="qg-mini-logo">Q</span>
+        ${qgHeaderWordmark('qg-page-wordmark')}
       </header>
       <div id="qg-register-wizard" class="qg-register-card">
         <div class="rider-steps">
@@ -759,33 +763,10 @@ async function doLogout(){
 }
 
 /* ---------- MAIN STAGE ---------- */
-// Idle Home uses normal map mode; existing job context owns navigation camera.
+const LONGDO_API_KEY='347649ca13f49db0d8a599ae35f8de2b';
+// Ready/online Home follows the Rider heading while staying flat.
+// Active work keeps the full perspective navigation camera.
 const RIDER_CAMERA_SMOOTHNESS_TEST_MODE=false;
-async function qgRequestRiderRoute(from,to,signal){
-  if(!validRiderCoordinate(from?.lat,from?.lng)||!validRiderCoordinate(to?.lat,to?.lng))throw Error('invalid QueueGo route coordinates');
-  const service=window.QueueGoMapService;
-  if(!service?.call)throw Error('QueueGo routing unavailable');
-  const value=await service.call('route',{
-    points:[
-      {lat:Number(from.lat),lon:Number(from.lng)},
-      {lat:Number(to.lat),lon:Number(to.lng)}
-    ],
-    profile:'rider_delivery',
-    preference:'fastest'
-  },{timeout:12000,signal});
-  const route=value?.routes?.[0];
-  const geometry=route?.geometry||{};
-  const parts=geometry.type==='LineString'?[geometry.coordinates]:geometry.type==='MultiLineString'?geometry.coordinates:[];
-  const routes=[];
-  for(const coords of parts){
-    const line=(coords||[]).filter(x=>Array.isArray(x)&&validRiderCoordinate(x[1],x[0])).map(x=>[Number(x[0]),Number(x[1])]);
-    if(line.length>1)routes.push(line);
-  }
-  if(!routes.length)throw Error('QueueGo route unavailable');
-  const dist=Number(route.distance)||0;
-  const time=Number(route.duration)||Number(route.estimatedDuration)||0;
-  return {routes,dist,time,routeId:String(route.route_id||'')};
-}
 const RIDER_ROUTE_OFF_ROUTE_METERS=60;
 const RIDER_ROUTE_REROUTE_HITS=3;
 const RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000;
@@ -863,7 +844,8 @@ function disposeRiderMap(){
 }
 function validRiderCoordinate(lat,lon){return lat!==null&&lat!==undefined&&lat!==''&&lon!==null&&lon!==undefined&&lon!==''&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lon))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180}
 function qgFiniteOrNull(value){return value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null)}
-function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}
+function qgNavigationCameraHasWork(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}
+function qgNavigationCameraShouldRun(){return !!(S.online||qgNavigationCameraHasWork())}
 function qgNavigationCameraFollowEnabled(){return RIDER_CAMERA_SMOOTHNESS_TEST_MODE||qgNavigationCameraShouldRun()}
 function qgRiderCameraBottomInset(){
   const map=document.getElementById('map'),dock=document.getElementById('home-dock'),nav=document.querySelector?.('.qg-bottom-nav')||null;
@@ -878,7 +860,8 @@ function qgRiderCameraBottomInset(){
 function qgFollowRiderCamera(force=false,duration=420){
   if(!S.map||!S.pos||!qgNavigationCameraFollowEnabled()||riderRouteOverviewActive)return null;
   return window.QueueGoMapWeb?.followNavigationCamera?.(S.map,S.pos,riderRouteGeometry,{
-    force,duration,baseZoom:17,bottomInset:qgRiderCameraBottomInset(),puckBearing:qgSmoothedRiderPuckHeading(S.pos)
+    force,duration,baseZoom:17,bottomInset:qgRiderCameraBottomInset(),puckBearing:qgSmoothedRiderPuckHeading(S.pos),
+    headingOnly:!qgNavigationCameraHasWork()
   })||null;
 }
 function qgNormalizeRiderBearing(value){
@@ -953,7 +936,7 @@ function syncRiderNavigationCameraMode(force=false){
 
 function initMap(){
   const Q=window.QueueGoMapWeb,host=document.getElementById('map');
-  if(!Q||typeof maplibregl==='undefined'||!host){S.map=null;if(host)host.innerHTML='<div class="qg-map-fallback">QueueGo Map โหลดไม่ได้ในขณะนี้<br><small>รับงานและเปิดนำทางภายนอกได้ตามปกติ</small></div>';return}
+  if(!Q||typeof maplibregl==='undefined'||!host){S.map=null;if(host)host.innerHTML='<div class="qg-map-fallback">QueueGo Map โหลดไม่ได้ในขณะนี้<br><small>กรุณารอให้แผนที่ QueueGo พร้อมก่อนเริ่มนำทาง</small></div>';return}
   try{Q.destroy(riderMapInstance)}catch(_){}
   S.map=riderMapInstance=Q.create(host,{lat:13.7563,lng:100.5018,zoom:13,navigation:true});
   riderNavigationCameraActive=!qgNavigationCameraFollowEnabled();
@@ -1039,7 +1022,7 @@ function qgSyncCardMapMode(){
   btn.setAttribute('aria-label',riderRouteOverviewActive?'กลับไปติดตาม Rider':'ดูภาพรวมเส้นทาง');
 }
 function recenterMap(){
-  if(!S.map){toast('แผนที่ยังไม่พร้อม เปิดนำทางภายนอกจากงานได้');return}
+  if(!S.map){toast('แผนที่ QueueGo ยังไม่พร้อม');return}
   if(!S.pos){ toast('ยังไม่ได้ตำแหน่ง GPS'); return; }
   riderRouteOverviewActive=false;qgSyncCardMapMode();
   const Q=window.QueueGoMapWeb;
@@ -1278,7 +1261,7 @@ async function readRiderSnapshot(){
   const current=()=>S.user?.id===userId&&S.riderProfile?.id===profileId&&S.session?.sessionId===sessionId&&S.online===online;
   try{
     const token=await getAccessToken();if(!current())return;if(!token)throw Error('Session unavailable');
-    const mine=await sbTable('orders?select=*&or=(order_type.eq.shopping,fulfillment_vertical.eq.express,fulfillment_vertical.eq.ride)&rider_id=eq.'+encodeURIComponent(profileId)+'&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)&order=created_at.desc&limit=1',{token});if(!current())return;
+    const mine=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)&order=created_at.desc&limit=1',{token});if(!current())return;
     let activeOrder=Array.isArray(mine)&&mine[0]?mine[0]:null;let openJobs=[];
     if(!activeOrder&&online&&S.riderProfile?.metadata?.online===true&&S.riderProfile.metadata.available!==true){
       const metadata={...S.riderProfile.metadata,available:true};
@@ -1318,7 +1301,7 @@ async function readRiderSnapshot(){
     if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;
     syncRiderNavigationCameraMode();
     window.qgCheckNewJobs?.(previousOpenJobIds,openJobs.map(x=>x.order));if(S.activeTab==='home')renderHomeDock();placeJobMarkers();
-    const hist=await sbTable('orders?select=*&or=(order_type.eq.shopping,fulfillment_vertical.eq.express,fulfillment_vertical.eq.ride)&rider_id=eq.'+encodeURIComponent(profileId)+'&status=eq.completed&order=updated_at.desc&limit=200',{token});if(!current())return;
+    const hist=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=eq.completed&order=updated_at.desc&limit=200',{token});if(!current())return;
     S.history=Array.isArray(hist)?hist:[];
     try{const k=qgRiderHistoryKey(),history=S.history.slice(0,100);if(k){const json=JSON.stringify({at:Date.now(),history});if(json.length<800000)localStorage.setItem(k,json)}}catch(e){}
     if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox();qgWatchCompletedChat();
@@ -1389,8 +1372,19 @@ function drawLaundryRoute(){
   const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');if(badge)badge.style.display='block';if(txt)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
   request.task=(async()=>{
     try{
-      const {routes,dist,time,routeId}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
+      const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(pos.lng)+'&flat='+encodeURIComponent(pos.lat)+'&tlon='+encodeURIComponent(lng)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
+      const res=await fetch(url,{signal:controller.signal});if(!res.ok)throw Error('route unavailable');const geo=await res.json();
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
+      let dist=0,time=0;const routes=[];
+      for(const feature of geo.features||[]){
+        const p=feature.properties||{};dist+=Number(p.distance)||0;time+=Number(p.interval)||0;
+        const g=feature.geometry||{},parts=g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:[];
+        for(const coords of parts){
+          const line=(coords||[]).filter(x=>validRiderCoordinate(x[1],x[0])).map(x=>[Number(x[0]),Number(x[1])]);
+          if(line.length>1)routes.push(line);
+        }
+      }
+      if(!routes.length)throw Error('route unavailable');
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{
         // Screen-pixel strokes stay legible at navigation tilt; both layers share
@@ -1401,8 +1395,9 @@ function drawLaundryRoute(){
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
+      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),dist,time,label};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
+
     }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
   })();riderRouteRequest=request;return request.task;
@@ -1459,8 +1454,19 @@ function drawActiveRoute(){
   if(isOfferPreview&&!riderRouteCache)focusRiderNavigation(map,pos,{lat:Number(lat),lng:Number(lon)});
   request.task=(async()=>{
     try{
-      const {routes,dist,time,routeId}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lon)},controller.signal);
+      const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(pos.lng)+'&flat='+encodeURIComponent(pos.lat)+'&tlon='+encodeURIComponent(lon)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
+      const res=await fetch(url,{signal:controller.signal});if(!res.ok)throw Error('route unavailable');const geo=await res.json();
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
+      let dist=0,time=0;const routes=[];
+      for(const feature of geo.features||[]){
+        const properties=feature.properties||{};dist+=Number(properties.distance)||0;time+=Number(properties.interval)||0;
+        const geometry=feature.geometry||{},parts=geometry.type==='LineString'?[geometry.coordinates]:geometry.type==='MultiLineString'?geometry.coordinates:[];
+        for(const coords of parts){
+          const line=(coords||[]).filter(x=>validRiderCoordinate(x[1],x[0])).map(x=>[Number(x[0]),Number(x[1])]);
+          if(line.length>1)routes.push(line);
+        }
+      }
+      if(!routes.length)throw Error('route unavailable');
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{
         // Screen-pixel strokes stay legible at navigation tilt; both layers share
@@ -1471,8 +1477,9 @@ function drawActiveRoute(){
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
+      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),dist,time,label};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
+      if(!isOfferPreview&&S.activeTab==='home')renderHomeDock();
     }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
   })();riderRouteRequest=request;return request.task;
@@ -1643,7 +1650,7 @@ function stopPolling(){
   }
 })();
 
-window.qgDeferredBoot=boot;
+boot();
 
 /* QueueGo Rider — non-blocking new job notification */
 (function(){
@@ -1672,6 +1679,7 @@ function qgShortOrder(o){return QueueGoOrderNumber.format(o);}
 
 const QTICON={'home': '<svg class="ico" viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7v8a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19Z"/><path d="M9 20v-6h6v6"/></svg>', 'jobs': '<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M8 11h8M8 15h5"/></svg>', 'chat': '<svg class="ico" viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-9l-5 3v-3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>', 'earn': '<svg class="ico" viewBox="0 0 24 24"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2"/></svg>', 'user': '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>', 'phone': '<svg class="ico" viewBox="0 0 24 24"><path d="M7.2 3.5 10 7.7 8.4 9.3c1.3 2.7 3.4 4.8 6.1 6.1l1.6-1.6 4.2 2.8-.8 3.1c-.2.8-.9 1.3-1.7 1.3C10 20.6 3.4 14 3 6.2c0-.8.5-1.5 1.3-1.7Z"/></svg>', 'loc': '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>', 'route': '<svg class="ico" viewBox="0 0 24 24"><path d="M5 19c0-3 2-5 5-5h4c3 0 5-2 5-5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="7" r="2"/><path d="m15.5 9.5 3.5-2.5-3.5-2.5"/></svg>', 'arrow': '<svg class="ico" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>', 'back': '<svg class="ico" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>'};
 let qgUnread=0,qgLastMsg=null,qgMsgTimer=null;
+function qgHeaderWordmark(className='qg-header-wordmark'){return `<span class="${className}" aria-label="QueueGo"><span class="qg-wordmark-queue">Queue</span><span class="qg-wordmark-go">Go</span></span>`}
 function qgNavHTML(){
   return `<nav class="qg-bottom-nav" aria-label="เมนูไรเดอร์">
     <button class="qg-nav-item active" data-tab="home">${QTICON.home}<span>หน้าแรก</span></button>
@@ -1682,7 +1690,7 @@ function qgNavHTML(){
 }
 function renderStage(){
   stopPolling();disposeRiderMap();
-  document.getElementById('app').innerHTML=`<div class="stage qg-stage"><div id="map" class="qg-map"></div><header class="qg-topbar"><div class="qg-speed-pill" aria-label="ความเร็วปัจจุบัน"><b id="qg-speed-value">—</b><span>กม./ชม.</span></div></header><div class="qg-route-badge" id="route-badge"><div class="qg-route-icon">${QTICON.loc}</div><div><strong id="route-text">กำลังคำนวณเส้นทาง</strong><small>อัปเดตตามตำแหน่งของคุณ</small></div></div><div class="qg-map-tools"><button class="qg-map-button" id="recenter" aria-label="กลับไปยังตำแหน่งปัจจุบัน">${QTICON.loc}</button><button class="qg-map-button" id="overview" aria-label="ดูเส้นทางทั้งหมด">${QTICON.route}</button></div><main class="qg-home-dock" id="home-dock"></main><section class="qg-panel" id="panel-earn"></section><section class="qg-panel" id="panel-profile"></section>${qgNavHTML()}</div><div class="qg-message" id="qg-message"><i>●</i><div><b>ข้อความใหม่</b><small id="qg-message-text"></small></div></div>`;
+  document.getElementById('app').innerHTML=`<div class="stage qg-stage"><div id="map" class="qg-map"></div><header class="qg-topbar">${qgHeaderWordmark('qg-brand-pill')}<div class="qg-speed-pill" aria-label="ความเร็วปัจจุบัน"><b id="qg-speed-value">—</b><span>กม./ชม.</span></div></header><div class="qg-route-badge" id="route-badge" aria-hidden="true"><div class="qg-route-icon">${QTICON.loc}</div><div><strong id="route-text">กำลังคำนวณเส้นทาง</strong><small>อัปเดตตามตำแหน่งของคุณ</small></div></div><div class="qg-map-tools"><button class="qg-map-button" id="recenter" aria-label="กลับไปยังตำแหน่งปัจจุบัน">${QTICON.loc}</button><button class="qg-map-button" id="overview" aria-label="ดูเส้นทางทั้งหมด">${QTICON.route}</button></div><main class="qg-home-dock" id="home-dock"></main><section class="qg-panel" id="panel-earn"></section><section class="qg-panel" id="panel-profile"></section>${qgNavHTML()}</div><div class="qg-message" id="qg-message"><i>●</i><div><b>ข้อความใหม่</b><small id="qg-message-text"></small></div></div>`;
   document.getElementById('recenter').onclick=recenterMap;document.getElementById('overview').onclick=overviewRoute;document.querySelectorAll('.qg-nav-item').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));initMap();updateStatusUI();updateRiderSpeedUI();renderHomeDock();startGeolocation();refreshData();startPolling();qgStartMessageWatch();qgRiderVoiceActivate();
 }
 function switchTab(tab){
@@ -1810,11 +1818,57 @@ function qgSetHomeDockHTML(dock,html,collapsible=true){
    '<div class="qg-dock-content">'+html+'</div>';
  qgApplyHomeDockCollapse(dock,collapsible);
 }
+let qgActiveItemPreview={orderId:null,userId:null,sessionId:null,items:[],loaded:false,task:null};
+function qgResetActiveItemPreview(){
+ qgActiveItemPreview={orderId:null,userId:null,sessionId:null,items:[],loaded:false,task:null};
+}
+function qgActiveItemPreviewHTML(o){
+ const cache=qgActiveItemPreview;
+ if(!o?.id||cache.orderId!==String(o.id)||!cache.loaded||!cache.items.length)return '';
+ const count=cache.items.reduce((n,it)=>n+Math.max(1,Number(it.quantity)||1),0);
+ const rows=cache.items.slice(0,2).map(it=>`<div class="qg-active-item-row"><span>${esc(it.item_name||'รายการ')}</span><em>× ${Math.max(1,Number(it.quantity)||1).toLocaleString('th-TH')}</em></div>`).join('');
+ const more=cache.items.length>2?`<small class="qg-active-items-more">+ อีก ${cache.items.length-2} รายการ</small>`:'';
+ return `<div class="qg-active-items"><div class="qg-active-items-head"><small>รายการสินค้า</small><b>${count.toLocaleString('th-TH')} รายการ</b></div>${rows}${more}</div>`;
+}
+function qgLoadActiveItemPreview(o){
+ if(!o?.id||!S.user?.id||!S.session?.sessionId||document.hidden||!navigator.onLine)return;
+ const orderId=String(o.id),userId=String(S.user.id),sessionId=String(S.session.sessionId);
+ const cache=qgActiveItemPreview;
+ if(cache.orderId===orderId&&cache.userId===userId&&cache.sessionId===sessionId&&(cache.loaded||cache.task))return;
+ qgActiveItemPreview={orderId,userId,sessionId,items:[],loaded:false,task:null};
+ const actor=()=>S.user?.id===userId&&S.session?.sessionId===sessionId&&String(S.activeOrder?.id||'')===orderId;
+ const task=(async()=>{
+   try{
+     const token=await getAccessToken();if(!actor()||!token)return;
+     const rows=await sbTable('order_items?select=item_name,quantity&order_id=eq.'+encodeURIComponent(orderId)+'&order=created_at.asc&limit=20',{token});
+     if(!actor())return;
+     qgActiveItemPreview.items=Array.isArray(rows)?rows:[];
+     qgActiveItemPreview.loaded=true;
+     if(S.activeTab==='home')renderHomeDock();
+   }catch(e){
+     if(actor())qgActiveItemPreview.loaded=true;
+   }finally{
+     if(qgActiveItemPreview.task===task)qgActiveItemPreview.task=null;
+   }
+ })();
+ qgActiveItemPreview.task=task;
+}
+function qgActiveRouteEtaMinutes(o,fallbackKm){
+ const cache=riderRouteCache;
+ if(cache&&cache.map===S.map&&Number(cache.time)>0){
+   try{
+     const parts=JSON.parse(cache.scope||'[]');
+     if(parts[2]==='active'&&String(parts[4]||'')===String(o?.id||''))return Math.max(1,Math.ceil(Number(cache.time)/60));
+   }catch(_){}
+ }
+ return Number.isFinite(fallbackKm)?Math.max(1,Math.ceil(fallbackKm/25*60)):null;
+}
 function renderHomeDock(){
  const dock=document.getElementById('home-dock');if(!dock)return;
  if(!S.activeOrder)riderRouteOverviewActive=false;
  if(S.laundryJob&&!S.activeOrder){qgSetHomeDockHTML(dock,`<section class="qg-home-card">${qgLaundryActiveHTML()}</section>`,true);placeJobMarkers();return}
- if(S.activeOrder){qgSetHomeDockHTML(dock,jobCardHTML(S.activeOrder)+qgRouteBundleHTML(),true);bindJobCardEvents(S.activeOrder);qgBindRouteBundleUI();if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);return}
+ if(S.activeOrder){qgLoadActiveItemPreview(S.activeOrder);qgSetHomeDockHTML(dock,jobCardHTML(S.activeOrder)+qgRouteBundleHTML(),true);bindJobCardEvents(S.activeOrder);qgBindRouteBundleUI();if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);return}
+ if(qgActiveItemPreview.orderId)qgResetActiveItemPreview();
  if(!S.online||!S.openJobs.length){
    qgSetHomeDockHTML(dock,`<section class="qg-ready-card ${S.online?'on':''}" id="status-pill"><i aria-hidden="true"></i><div><h2>${S.online?'พร้อมรับงานแล้ว':'ยังไม่พร้อมรับงาน'}</h2><p>${S.online?'คุณจะได้รับงานในพื้นที่ใกล้เคียง':'เปิดเพื่อเริ่มรับงาน'}</p></div><button type="button" role="switch" aria-label="พร้อมรับงาน" aria-checked="${S.online}" class="qg-online-switch" id="status-switch"></button></section>`,false);
    document.getElementById('status-switch').onclick=toggleOnline;updateStatusUI();return;
@@ -1871,9 +1925,13 @@ async function qgPrimaryAction(o){
 function jobCardHTML(o,meta){
  const st=statusFromRow(o),active=!!S.activeOrder&&String(S.activeOrder.id)===String(o.id),shop=o._shop||{},cust=o._customer||{},fee=riderEarning(o),km=meta?.km??(S.pos?haversineKm(S.pos.lat,S.pos.lng,o.pickup_latitude,o.pickup_longitude):NaN),delivery=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude),code=qgShortOrder(o),logo=shop.public_logo&&/^https?:\/\//i.test(String(shop.public_logo))?`<img class="qg-shop-logo" src="${esc(shop.public_logo)}" alt="">`:`<span class="qg-shop-logo qg-shop-logo-fallback">${esc((shop.shop_name||'Q').slice(0,1))}</span>`;
  if(!active)return `<article class="qg-offer-card"><div class="qg-offer-head"><div><span class="qg-kicker">งานใหม่ใกล้คุณ</span><h2>${esc(code)}</h2></div><span class="qg-offer-badge">฿${Number(fee||0).toLocaleString('th-TH')}</span></div><div class="qg-job-row">${logo}<div><small>รับที่ร้าน</small><b>${esc(shop.shop_name||o.pickup_address||'ร้านค้า')}</b></div><em>รับสินค้า</em></div><div class="qg-job-row"><span>${QTICON.loc}</span><div><small>ส่งให้ลูกค้า</small><b>${esc(o.delivery_address||cust.name||'จุดส่งสินค้า')}</b></div><em>ส่งสินค้า</em></div><div class="qg-offer-metrics"><div><span>ระยะทาง</span><b>${Number.isFinite(km)?km.toFixed(1):'-'} กม.</b></div><div><span>เวลาประมาณ</span><b>${Number.isFinite(delivery)?Math.max(1,Math.ceil(delivery/25*60)):'-'} นาที</b></div><div><span>รายได้</span><b class="qg-red">฿${Number(fee||0).toLocaleString('th-TH')}</b></div></div><div class="qg-dual-actions"><button class="qg-btn qg-btn-secondary" id="decline-${esc(o.id)}">ปฏิเสธ</button><button class="qg-btn qg-btn-primary" id="accept-${esc(o.id)}">รับงาน</button></div></article>`;
- const pickup=['rider_assigned','assigned','preparing','ready'].includes(st),title=st==='ready'?'ร้านเตรียมสินค้าแล้ว':st==='preparing'?'ร้านกำลังเตรียมสินค้า':pickup?'กำลังไปรับสินค้า':st==='picked_up'?'รับสินค้าแล้ว':st==='in_progress'&&o.rider_arrived_customer_at?'Rider ถึงลูกค้าแล้ว':'กำลังไปส่ง',address=pickup?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า'),note=qgCleanOrderNote(o.note),route=qgRouteTarget(o);
- const processLabel=o.market_order_id&&pickup?'รับของตามจุด':st==='ready'?'ตรวจสอบรายการ':st==='in_progress'?'กำลังนำส่ง':st==='picked_up'?'เริ่มจัดส่ง':pickup?'รอร้าน':'รออัปเดต';
- const processEnabled=(!o.market_order_id&&st==='ready');
+ const pickup=['rider_assigned','assigned','preparing','ready'].includes(st),route=qgRouteTarget(o),address=pickup?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า'),note=qgCleanOrderNote(o.note);
+ const step=pickup?1:2,stepTitle=pickup?'ไปรับสินค้าที่ร้าน':'ส่งสินค้าให้ลูกค้า';
+ const routeKm=S.pos&&Number.isFinite(route.lat)&&Number.isFinite(route.lng)?haversineKm(S.pos.lat,S.pos.lng,route.lat,route.lng):NaN;
+ const eta=qgActiveRouteEtaMinutes(o,routeKm);
+ const rawCash=pickup?(o.shop_cash??o.subtotal):(o.customer_cash??o.total_amount??o.total);
+ const cash=Number(rawCash),hasCash=Number.isFinite(cash);
+ const cashLabel=pickup?'ยอดที่ต้องชำระร้าน':'ยอดที่ต้องเก็บลูกค้า';
  let mainLabel=route.label,mainDisabled=false;
  if(!o.market_order_id&&pickup){
    if(o.rider_arrived_shop_at){mainLabel=st==='ready'?'ตรวจสอบรายการ':'ถึงร้านแล้ว ✓';mainDisabled=st!=='ready'}
@@ -1883,11 +1941,33 @@ function jobCardHTML(o,meta){
    else if(qgNavigationStarted(o,'customer'))mainLabel='ถึงลูกค้าแล้ว';
  }
  const mapModeIcon=riderRouteOverviewActive?QTICON.loc:QTICON.route,mapModeLabel=riderRouteOverviewActive?'ไปที่':'ภาพรวม';
- return `<article class="qg-active-card"><div class="qg-active-head"><div><span class="qg-kicker">${esc(title)}</span><h2>${esc(code)}</h2></div><div class="qg-active-head-actions"><span class="qg-income-badge">฿${Number(fee||0).toLocaleString('th-TH')}</span><button type="button" class="qg-card-map-mode ${riderRouteOverviewActive?'follow':''}" id="map-mode-${esc(o.id)}">${mapModeIcon}<span>${mapModeLabel}</span></button></div></div><div class="qg-job-row">${logo}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div><div class="qg-job-row"><span>${QTICON.user}</span><div><small>ลูกค้า</small><b>${esc(cust.name||'ลูกค้า')}</b></div></div><div class="qg-active-status"><small>${pickup?'จุดรับสินค้า':'ที่อยู่จัดส่ง'}</small><b>${esc(address)}</b></div>${note?`<div class="qg-customer-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></div>`:''}<div class="qg-job-tools"><button class="qg-job-tool" id="next-${esc(o.id)}" ${processEnabled?'':'disabled'}>${QTICON.jobs}<span>${esc(processLabel)}</span></button><button class="qg-job-tool" id="details-${esc(o.id)}">${QTICON.jobs}<span>รายการ</span></button><button class="qg-job-tool" id="chat-${esc(o.id)}">${QTICON.chat}<span>แชต</span></button></div><button class="qg-btn qg-btn-primary qg-main-action" id="primary-nav-${esc(o.id)}" ${mainDisabled?'disabled':''}>${QTICON.loc}<span>${esc(mainLabel)}</span></button></article>`;
+ const personName=pickup?(shop.shop_name||'ร้านค้า'):(cust.name||'ลูกค้า');
+ const personLabel=pickup?'ร้านค้า':'ลูกค้า';
+ return `<article class="qg-active-card qg-active-control">
+   <div class="qg-active-step">
+     <span class="qg-step-number">${step}</span>
+     <div class="qg-step-copy"><b>${step} · ${esc(stepTitle)}</b><small>${eta?'ประมาณ '+eta+' นาที':'กำลังคำนวณเวลา'} · ${esc(code)}</small></div>
+     <button type="button" class="qg-card-map-mode ${riderRouteOverviewActive?'follow':''}" id="map-mode-${esc(o.id)}">${mapModeIcon}<span>${mapModeLabel}</span></button>
+   </div>
+   <div class="qg-active-destination">
+     ${pickup?logo:`<span class="qg-shop-logo qg-shop-logo-fallback">${QTICON.user}</span>`}
+     <div><small>${personLabel}</small><b>${esc(personName)}</b><p>${esc(address)}</p></div>
+   </div>
+   ${qgActiveItemPreviewHTML(o)}
+   ${hasCash?`<div class="qg-active-cash"><div><small>${cashLabel}</small><span>เงินสด</span></div><b>฿${cash.toLocaleString('th-TH')}</b></div>`:''}
+   ${note?`<div class="qg-customer-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></div>`:''}
+   <div class="qg-job-tools">
+     <button class="qg-job-tool" id="details-${esc(o.id)}">${QTICON.jobs}<span>รายละเอียด/รายการ</span></button>
+     <button class="qg-job-tool" id="call-${esc(o.id)}">${QTICON.phone}<span>${pickup?'โทรร้าน':'โทรลูกค้า'}</span></button>
+     <button class="qg-job-tool" id="chat-${esc(o.id)}">${QTICON.chat}<span>แชต</span></button>
+   </div>
+   <button class="qg-btn qg-btn-primary qg-main-action" id="primary-nav-${esc(o.id)}" ${mainDisabled?'disabled':''}>${QTICON.loc}<span>${esc(mainLabel||'ทำรายการต่อ')}</span></button>
+ </article>`;
 }
 function bindJobCardEvents(o){
- const by=id=>document.getElementById(id),c=by('chat-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id),mapMode=by('map-mode-'+o.id);
+ const by=id=>document.getElementById(id),c=by('chat-'+o.id),call=by('call-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id),mapMode=by('map-mode-'+o.id);
  if(c)c.onclick=()=>openChat(o);
+ if(call)call.onclick=()=>{const pickup=['rider_assigned','assigned','preparing','ready'].includes(statusFromRow(o));qgRiderVoiceCallTarget(o,pickup?'shop':'customer',pickup?(o._shop?.shop_name||'ร้านค้า'):(o._customer?.name||'ลูกค้า'))};
  if(mapMode)mapMode.onclick=()=>riderRouteOverviewActive?recenterMap():overviewRoute();
  if(a){
    a.onclick=()=>acceptJob(o.id);
@@ -2034,7 +2114,7 @@ async function qgOpenPickupVerify(o){
   if(qgResumeProofPage('qg-pickup-verify',o))return true;
   const page=document.createElement('section');page.id='qg-pickup-verify';page.className='qg-rider-flow-page qg-rider-flow-compact';
   page._proofScope=qgProofPageScope(o);page._proofOpenedAt=Date.now();
-  page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>รับสินค้าที่ร้าน</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายการ...</div></main>`;
+  page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div>${qgHeaderWordmark('qg-flow-wordmark')}<b>รับสินค้าที่ร้าน</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายการ...</div></main>`;
   document.body.appendChild(page);
   const back=page.querySelector('header button');
   back.onclick=()=>{if(!page._proofBusy)page.hidden=true};
@@ -2125,7 +2205,7 @@ async function qgOpenDeliveryConfirm(o){
   const page=document.createElement('section');page.id='qg-delivery-confirm';page.className='qg-rider-flow-page qg-rider-flow-compact';
   page._proofScope=qgProofPageScope(o);page._proofOpenedAt=Date.now();
   const cust=o._customer||{},shop=o._shop||{},note=qgCleanOrderNote(o.note),cash=Number(o.market_order_id?o._marketTripTotal:o.total_amount||0),tel=qgTelHref(cust.phone);
-  page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>ส่งสินค้า</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายละเอียด...</div></main>`;
+  page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div>${qgHeaderWordmark('qg-flow-wordmark')}<b>ส่งสินค้า</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายละเอียด...</div></main>`;
   document.body.appendChild(page);
   const back=page.querySelector('header>button:first-child');
   back.onclick=()=>{if(!page._proofBusy)page.hidden=true};
@@ -2295,7 +2375,7 @@ function renderProfilePanel(){
   const p=document.getElementById('panel-profile');if(!p)return;
   const name=S.user?.name||'Rider',phone=S.user?.phone||'',plate=S.riderProfile?.vehicle_plate||'';
   const type=String(S.riderProfile?.vehicle_type||'motorcycle'),vehicleLabel={motorcycle:'รถจักรยานยนต์',car:'รถยนต์',bicycle:'จักรยาน',saleng:'รถซาเล้ง'}[type]||type;
-  p.innerHTML=`<div class="qg-panel-head"><span></span><h1>โปรไฟล์</h1><span class="qg-mini-word">QueueGo</span></div>
+  p.innerHTML=`<div class="qg-panel-head"><span></span><h1>โปรไฟล์</h1></div>
     <section class="qg-profile-card">
       <div class="qg-profile-avatar">${esc(name.slice(0,1).toUpperCase())}</div>
       <div class="qg-profile-copy"><h2>${esc(name)}</h2><p>${esc(phone||'-')}</p><span>${esc(vehicleLabel)}${plate?' · '+esc(plate):' · QueueGo Rider'}</span></div>
@@ -2375,7 +2455,7 @@ function qgChatGateScreen(o,state){
   const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
   const screen=document.createElement('section');screen.id='chat-screen';screen.className='qg-chat-page show';document.getElementById('app').appendChild(screen);
   const blocked=state?.blockedByMe||state?.blockedMe;
-  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${blocked?'แชตถูกจำกัด':'กติกาการแชต'}</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><div style="padding:18px;max-width:620px;margin:auto;width:100%">${blocked?`<section class="qg-support-dialog"><h2>แชตถูกจำกัด</h2><p>${state.blockedByMe?'คุณบล็อกลูกค้าคนนี้ไว้':'คู่สนทนาได้บล็อกการแชตไว้'} การบล็อกแชตไม่ยกเลิกหน้าที่ในการส่งออเดอร์</p>${state.blockedByMe?'<button type="button" id="qg-chat-unblock">ปลดบล็อกและเปิดแชต</button>':''}</section>`:`<section class="qg-support-dialog"><h2>ก่อนเริ่มแชต</h2><p>ใช้แชตเพื่อประสานงานออเดอร์เท่านั้น ห้ามคุกคาม สแปม หลอกลวง ส่งเนื้อหาไม่เหมาะสม หรือเผยแพร่ข้อมูลส่วนบุคคลที่ไม่จำเป็น</p><p><a href="${esc(QueueGoUGC.guidelinesUrl())}" target="_blank" rel="noopener">อ่านกติกาชุมชน QueueGo</a></p><button type="button" id="qg-chat-accept-terms">ยอมรับกติกาและเปิดแชต</button></section>`}</div>`;
+  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div>${qgHeaderWordmark('qg-chat-wordmark')}<b>${blocked?'แชตถูกจำกัด':'กติกาการแชต'}</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><div style="padding:18px;max-width:620px;margin:auto;width:100%">${blocked?`<section class="qg-support-dialog"><h2>แชตถูกจำกัด</h2><p>${state.blockedByMe?'คุณบล็อกลูกค้าคนนี้ไว้':'คู่สนทนาได้บล็อกการแชตไว้'} การบล็อกแชตไม่ยกเลิกหน้าที่ในการส่งออเดอร์</p>${state.blockedByMe?'<button type="button" id="qg-chat-unblock">ปลดบล็อกและเปิดแชต</button>':''}</section>`:`<section class="qg-support-dialog"><h2>ก่อนเริ่มแชต</h2><p>ใช้แชตเพื่อประสานงานออเดอร์เท่านั้น ห้ามคุกคาม สแปม หลอกลวง ส่งเนื้อหาไม่เหมาะสม หรือเผยแพร่ข้อมูลส่วนบุคคลที่ไม่จำเป็น</p><p><a href="${esc(QueueGoUGC.guidelinesUrl())}" target="_blank" rel="noopener">อ่านกติกาชุมชน QueueGo</a></p><button type="button" id="qg-chat-accept-terms">ยอมรับกติกาและเปิดแชต</button></section>`}</div>`;
   screen.querySelector('#chat-back').onclick=closeChat;
   const accept=screen.querySelector('#qg-chat-accept-terms');if(accept)accept.onclick=async()=>{accept.disabled=true;try{await QueueGoUGC.accept();screen.remove();if(stage)stage.style.display='block';S.chatOrder=null;await openChat(o)}catch(e){toast(e.message||'ยอมรับกติกาไม่สำเร็จ');accept.disabled=false}};
   const unblock=screen.querySelector('#qg-chat-unblock');if(unblock)unblock.onclick=async()=>{unblock.disabled=true;try{await QueueGoUGC.unblock(o.id);screen.remove();if(stage)stage.style.display='block';S.chatOrder=null;await openChat(o)}catch(e){toast(e.message||'ปลดบล็อกไม่สำเร็จ');unblock.disabled=false}};
@@ -2415,7 +2495,7 @@ async function openChat(o){
   const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
   const screen=document.createElement('section');screen.id='chat-screen';screen.className='qg-chat-page show';document.getElementById('app').appendChild(screen);
   const cust=o._customer||{};
-  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${esc(cust.name||'ลูกค้า')}</b><small>${esc(qgShortOrder(o))}</small></div><div class="qg-chat-head-actions">${!['completed','cancelled','no_rider_available'].includes(String(o.status||'').toLowerCase())?`<button type="button" class="qg-icon-btn" id="chat-call" aria-label="โทรหาลูกค้าผ่าน QueueGo">${QTICON.phone}</button>`:''}<button type="button" class="qg-icon-btn" id="chat-safety" aria-label="ความปลอดภัยแชต">⋯</button></div></header>
+  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div>${qgHeaderWordmark('qg-chat-wordmark')}<b>${esc(cust.name||'ลูกค้า')}</b><small>${esc(qgShortOrder(o))}</small></div><div class="qg-chat-head-actions">${!['completed','cancelled','no_rider_available'].includes(String(o.status||'').toLowerCase())?`<button type="button" class="qg-icon-btn" id="chat-call" aria-label="โทรหาลูกค้าผ่าน QueueGo">${QTICON.phone}</button>`:''}<button type="button" class="qg-icon-btn" id="chat-safety" aria-label="ความปลอดภัยแชต">⋯</button></div></header>
     ${o.status==='completed'?'<div style="padding:7px 12px;text-align:center;font-size:10px;color:#8a8387;background:#fff8f9">หลังจบงานแชทจะปิดและถูกลบอัตโนมัติ · เหลือประมาณ '+riderChatMinutesLeft(o)+' นาที</div>':''}
     <div class="qg-chat-box" id="chat-box"><div class="qg-loading">กำลังโหลดข้อความ...</div></div>
     ${quickMessagesHTML()}
@@ -2567,9 +2647,6 @@ window.advanceOrder=async function(o){
 
 
 </script>
-<script src="rider-express.js?v=20261018-web2"></script>
-<script src="rider-ride.js?v=20261018-web1"></script>
-<script>window.qgDeferredBoot?.();</script>
 <script id="qg-rider-inbox">
 (function(){
  const key=()=>S.user?.id?'qg-rider-history:'+S.user.id:null;
@@ -2632,12 +2709,36 @@ window.advanceOrder=async function(o){
  const request=async(path,method='GET',body=null)=>{const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบ');return sbTable(path,{method,token,body})};
  const authSub=t=>{try{return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub}catch(_){return null}};
  const names={missing_item:'สินค้าไม่ครบ',wrong_item:'สินค้าไม่ตรง',damaged_food:'อาหารเสียหาย',rider:'ปัญหาไรเดอร์',merchant:'ปัญหาร้านค้า',payment:'การชำระเงิน',cash:'เงินสด',gp:'GP',other:'อื่น ๆ'};
+ function qgEvidenceDataUrlBlob(data){
+   const value=String(data||''),comma=value.indexOf(',');if(comma<0)throw Error('แปลงรูปหลักฐานไม่สำเร็จ');
+   const header=value.slice(0,comma),mime=(header.match(/^data:([^;]+)/i)||[])[1]||'image/jpeg';
+   const raw=atob(value.slice(comma+1)),bytes=new Uint8Array(raw.length);
+   for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+   return new Blob([bytes],{type:mime});
+ }
+ async function qgPrepareEvidenceImage(file){
+   if(!file)return null;
+   const type=String(file.type||'').toLowerCase(),name=String(file.name||'');
+   const supported=['image/jpeg','image/png','image/webp'].includes(type);
+   if(supported&&file.size<=5*1024*1024)return {blob:file,type,ext:type==='image/png'?'png':type==='image/webp'?'webp':'jpg'};
+   const imageLike=type.startsWith('image/')||/\.(?:jpe?g|png|webp|heic|heif)$/i.test(name);
+   if(!imageLike)throw Error('ไฟล์นี้ไม่ใช่รูปภาพ');
+   if(file.size>30*1024*1024)throw Error('รูปมีขนาดใหญ่เกิน 30 MB กรุณาถ่ายใหม่');
+   let blob=null;
+   for(const [maxSize,quality] of [[1800,.82],[1400,.72],[1100,.64]]){
+     try{blob=qgEvidenceDataUrlBlob(await compressRiderImage(file,maxSize,quality))}catch(e){blob=null}
+     if(blob&&blob.size<=5*1024*1024)break;
+   }
+   if(!blob)throw Error('ไม่สามารถแปลงรูปจากกล้องได้ กรุณาถ่ายใหม่');
+   if(blob.size>5*1024*1024)throw Error('รูปยังใหญ่เกิน 5 MB หลังปรับขนาด กรุณาถ่ายใหม่');
+   return {blob,type:'image/jpeg',ext:'jpg'};
+ }
  async function upload(file){
    if(!file)return null;
-   if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error('หลักฐานต้องเป็น JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB');
+   const prepared=await qgPrepareEvidenceImage(file);
    const token=await getAccessToken(),uid=authSub(token);if(!uid)throw Error('เซสชันไม่ถูกต้อง');
-   const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type],path=uid+'/'+crypto.randomUUID()+'.'+ext;
-   const response=await fetch(SB.URL+'/storage/v1/object/qg-evidence/'+path,{method:'POST',headers:{apikey:SB.KEY,Authorization:'Bearer '+token,'Content-Type':file.type,'x-upsert':'false'},body:file});
+   const path=uid+'/'+crypto.randomUUID()+'.'+prepared.ext;
+   const response=await fetch(SB.URL+'/storage/v1/object/qg-evidence/'+path,{method:'POST',headers:{apikey:SB.KEY,Authorization:'Bearer '+token,'Content-Type':prepared.type,'x-upsert':'false'},body:prepared.blob});
    if(!response.ok){const data=await response.json().catch(()=>({}));throw Error(data.message||'อัปโหลดหลักฐานไม่สำเร็จ')}
    return path;
  }
@@ -2659,7 +2760,7 @@ window.advanceOrder=async function(o){
    panel.querySelector('#qg-ticket-close').onclick=()=>panel.remove();
    panel.onclick=e=>{if(e.target===panel)panel.remove()};
    panel.querySelector('[name=category]').innerHTML=Object.entries(names).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('');
-   request('orders?select=id,order_number&or=(order_type.eq.shopping,fulfillment_vertical.eq.express,fulfillment_vertical.eq.ride)&order=created_at.desc&limit=50').then(rows=>{
+   request('orders?select=id,order_number&order_type=eq.shopping&order=created_at.desc&limit=50').then(rows=>{
      if(!panel.isConnected)return;
      const select=panel.querySelector('[name=order]');
      select.insertAdjacentHTML('beforeend',(rows||[]).map(o=>'<option value="'+escText(o.id)+'">'+escText(qgShortOrder(o))+'</option>').join(''));
@@ -2691,7 +2792,7 @@ window.advanceOrder=async function(o){
 (function(){
 window.qgRenderEarnings=function(){
    const panel=document.getElementById('panel-earn');if(!panel)return;
-   panel.innerHTML=`<div class="qg-panel-head"><button class="qg-icon-btn" id="qg-earn-back">${QTICON.back}</button><h1>รายได้</h1><span></span></div>
+   panel.innerHTML=`<div class="qg-panel-head"><button class="qg-icon-btn" id="qg-earn-back">${QTICON.back}</button><h1>รายได้</h1></div>
      <section class="qg-earn-shell">
        <div class="qg-period"><button data-days="1" class="active">วันนี้</button><button data-days="7">7 วัน</button><button data-days="30">30 วัน</button></div>
        <div id="qg-period-summary" class="qg-loading-card">กำลังโหลดสรุปงาน...</div>
@@ -2702,7 +2803,7 @@ window.qgRenderEarnings=function(){
      panel.querySelectorAll('[data-days]').forEach(x=>x.classList.toggle('active',x===b));
      const days=Number(b.dataset.days);qgLoadRiderPeriod(days);qgLoadRiderLedger(days);
    });
-   {const creditShell=panel.querySelector('.qg-earn-shell');if(creditShell&&window.QueueGoCredit?.mount&&S?.user?.id){const creditHost=document.createElement('div');creditShell.prepend(creditHost);Promise.resolve(QueueGoCredit.mount(creditHost,{kind:'rider',owner:S.user.id,getToken:getAccessToken,base:SB.URL,key:SB.KEY})).catch(err=>console.warn('rider credit surface failed',err))}}
+   {const creditShell=panel.querySelector('.qg-earn-shell');if(creditShell&&window.QueueGoCredit?.mountInline&&S?.user?.id){const creditHost=document.createElement('div');creditShell.prepend(creditHost);Promise.resolve(QueueGoCredit.mountInline(creditHost,{kind:'rider',owner:S.user.id,getToken:getAccessToken,base:SB.URL,key:SB.KEY})).catch(err=>console.warn('rider credit surface failed',err))}}
     qgLoadRiderPeriod(1);qgLoadRiderLedger(1);
  };
  const day=d=>{const x=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return x.year+'-'+x.month+'-'+x.day};
