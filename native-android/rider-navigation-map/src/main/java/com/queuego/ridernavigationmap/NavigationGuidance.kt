@@ -20,6 +20,8 @@ data class NavigationGuidanceState(
     val etaSeconds: Double? = null,
     val nextInstruction: NavigationRouteInstruction? = null,
     val distanceToInstructionMeters: Double? = null,
+    val followingInstruction: NavigationRouteInstruction? = null,
+    val distanceToFollowingInstructionMeters: Double? = null,
     val arrived: Boolean = false,
     val shouldReroute: Boolean = false
 )
@@ -84,7 +86,9 @@ class NavigationProgressTracker(
             lastRerouteAtMillis = now
         }
 
-        val next = navigationNextInstruction(leg, traveledServiceMeters)
+        val upcoming = navigationUpcomingInstructions(leg, traveledServiceMeters)
+        val next = upcoming.getOrNull(0)
+        val following = upcoming.getOrNull(1)
         val directToStop = navigationHaversineMeters(fix.point, stop.point)
         val arrivalThreshold = max(
             DEFAULT_ARRIVAL_METERS,
@@ -107,8 +111,10 @@ class NavigationProgressTracker(
             progressMeters = traveledServiceMeters,
             distanceRemainingMeters = remaining,
             etaSeconds = eta,
-            nextInstruction = next.first,
-            distanceToInstructionMeters = next.second,
+            nextInstruction = next?.first,
+            distanceToInstructionMeters = next?.second,
+            followingInstruction = following?.first,
+            distanceToFollowingInstructionMeters = following?.second,
             arrived = arrived,
             shouldReroute = shouldReroute
         )
@@ -119,26 +125,42 @@ internal fun navigationNextInstruction(
     leg: NavigationRouteLeg,
     traveledMeters: Double
 ): Pair<NavigationRouteInstruction?, Double?> {
+    val next = navigationUpcomingInstructions(leg, traveledMeters).firstOrNull()
+    return next?.let { it.first to it.second } ?: (null to null)
+}
+
+internal fun navigationUpcomingInstructions(
+    leg: NavigationRouteLeg,
+    traveledMeters: Double,
+    limit: Int = 2
+): List<Pair<NavigationRouteInstruction, Double>> {
+    val wanted = limit.coerceIn(1, 4)
     var actionAt = 0.0
     val traveled = traveledMeters.coerceAtLeast(0.0)
+    val upcoming = ArrayList<Pair<NavigationRouteInstruction, Double>>(wanted)
     for (index in leg.instructions.indices) {
         val instruction = leg.instructions[index]
-        if (index > 0 &&
+        if (
+            index > 0 &&
             navigationTurnPhrase(instruction.turnCode) != null &&
             actionAt + 15.0 >= traveled
         ) {
-            return instruction to (actionAt - traveled).coerceAtLeast(0.0)
+            upcoming += instruction to (actionAt - traveled).coerceAtLeast(0.0)
+            if (upcoming.size >= wanted) return upcoming
         }
         actionAt += instruction.sectionDistanceMeters.coerceAtLeast(0.0)
     }
-    val arrival = NavigationRouteInstruction(
-        sequence = leg.instructions.size,
-        turnCode = 9,
-        roadName = "",
-        sectionDistanceMeters = 0.0,
-        sectionDurationSeconds = 0.0
-    )
-    return arrival to (leg.distanceMeters - traveled).coerceAtLeast(0.0)
+    if (upcoming.isEmpty()) {
+        val arrival = NavigationRouteInstruction(
+            sequence = leg.instructions.size,
+            turnCode = 9,
+            roadName = "",
+            sectionDistanceMeters = 0.0,
+            sectionDurationSeconds = 0.0
+        )
+        upcoming += arrival to (leg.distanceMeters - traveled).coerceAtLeast(0.0)
+    }
+    return upcoming
 }
 
 fun navigationTurnPhrase(turnCode: Int): String? = when (turnCode) {
