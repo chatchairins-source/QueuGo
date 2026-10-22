@@ -3,6 +3,8 @@ package com.queuego.rider
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 
 import android.Manifest
 import android.content.Context
@@ -2483,7 +2485,9 @@ private fun RiderHome(
             .background(QgRiderBg)
     ) {
         val navigationDensity = LocalDensity.current
-        val navigationTopInsetPx = with(navigationDensity) { 72.dp.roundToPx() }
+        val navigationTopInsetPx = with(navigationDensity) {
+            (if (activeNavigationWork) 132.dp else 72.dp).roundToPx()
+        }
         var navigationBottomInsetPx by remember(navigationDensity) {
             mutableIntStateOf(with(navigationDensity) { 68.dp.roundToPx() })
         }
@@ -2506,53 +2510,42 @@ private fun RiderHome(
             onGuidance = { navigationGuidance = it }
         )
 
+        if (activeNavigationWork) {
+            navigationHud?.let { hud ->
+                RiderManeuverBanner(
+                    hud = hud,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                )
+            }
+        }
+
         if (snapshot?.online == true || activeNavigationWork) {
-            Box(Modifier.align(Alignment.TopStart).padding(12.dp)) {
+            Box(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .padding(
+                        start = 12.dp,
+                        top = if (activeNavigationWork && navigationHud != null) 132.dp else 12.dp
+                    )
+            ) {
                 RiderBlueprintSpeedPill(reliableSpeedKph)
             }
         }
 
-        if (activeNavigationWork && (navigationHud != null || restReminderDue || unexpectedStopDue)) {
+        if (activeNavigationWork && (restReminderDue || unexpectedStopDue)) {
             Column(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 64.dp, start = 10.dp),
+                    .align(Alignment.TopEnd)
+                    .padding(
+                        top = if (navigationHud != null) 132.dp else 64.dp,
+                        end = 10.dp,
+                        start = 78.dp
+                    ),
+                horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                navigationHud?.let { hud ->
-                    Card(
-                        modifier = Modifier.widthIn(max = 250.dp),
-                        shape = RoundedCornerShape(17.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9E2E4)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-                    ) {
-                        Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp)) {
-                            Text("จุดถัดไป", fontSize = 8.sp, color = QgMuted, fontWeight = FontWeight.Bold)
-                            Row(
-                                Modifier.padding(top = 2.dp),
-                                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(hud.distanceText, fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color(0xFF211E20))
-                                hud.etaText?.let { eta ->
-                                    Text("•", color = QgMuted, fontSize = 10.sp)
-                                    Text(eta, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF5F5559))
-                                }
-                            }
-                            hud.instructionText?.let { instruction ->
-                                Text(
-                                    instruction,
-                                    fontSize = 9.sp,
-                                    lineHeight = 12.sp,
-                                    color = Color(0xFF5F5559),
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                            }
-                        }
-                    }
-                }
                 if (restReminderDue) {
                     Card(
                         modifier = Modifier.widthIn(max = 250.dp),
@@ -3939,6 +3932,203 @@ private fun RiderJobTool(icon: String, label: String, enabled: Boolean, modifier
         )
         Spacer(Modifier.width(6.dp))
         Text(label, color = if (enabled) Color(0xFF282427) else QgMuted, fontSize = RIDER_TOOL_TEXT_SP.sp, fontWeight = FontWeight.ExtraBold)
+    }
+}
+
+@Composable
+private fun RiderManeuverBanner(
+    hud: RiderNavigationHudInfo,
+    modifier: Modifier = Modifier
+) {
+    Crossfade(
+        targetState = hud,
+        animationSpec = tween(durationMillis = 150),
+        modifier = modifier
+    ) { current ->
+        Card(
+            modifier = Modifier.fillMaxWidth().widthIn(max = 680.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8E2E4)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        Modifier
+                            .size(58.dp)
+                            .clip(RoundedCornerShape(17.dp))
+                            .background(QgRed),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        RiderTurnManeuverIcon(
+                            turnCode = current.maneuverTurnCode,
+                            modifier = Modifier.size(36.dp),
+                            color = Color.White
+                        )
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                current.maneuverDistanceText ?: current.distanceText,
+                                fontSize = 20.sp,
+                                lineHeight = 22.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFF171416)
+                            )
+                            current.etaText?.let { eta ->
+                                Text(
+                                    eta,
+                                    fontSize = 10.sp,
+                                    lineHeight = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = QgMuted
+                                )
+                            }
+                        }
+                        Text(
+                            current.maneuverRoadName ?: current.maneuverText ?: "ไปตามเส้นทาง",
+                            modifier = Modifier.padding(top = 2.dp),
+                            fontSize = 14.sp,
+                            lineHeight = 17.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF272225),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        current.maneuverText?.let { maneuver ->
+                            if (current.maneuverRoadName != null) {
+                                Text(
+                                    maneuver,
+                                    modifier = Modifier.padding(top = 1.dp),
+                                    fontSize = 9.sp,
+                                    lineHeight = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = QgMuted
+                                )
+                            }
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            current.distanceText,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF4E464A)
+                        )
+                        Text(
+                            "เหลือถึงจุดหมาย",
+                            fontSize = 7.sp,
+                            color = QgMuted,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                current.followingInstructionText?.let { following ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 7.dp)
+                            .background(Color(0xFFFFF1F4), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 9.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        RiderTurnManeuverIcon(
+                            turnCode = current.followingTurnCode,
+                            modifier = Modifier.size(19.dp),
+                            color = QgRed
+                        )
+                        Text(
+                            "ถัดไป",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black,
+                            color = QgRed
+                        )
+                        Text(
+                            following,
+                            modifier = Modifier.weight(1f),
+                            fontSize = 9.sp,
+                            lineHeight = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF51494D),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RiderTurnManeuverIcon(
+    turnCode: Int?,
+    modifier: Modifier = Modifier,
+    color: Color
+) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val stroke = (size.minDimension * 0.12f).coerceAtLeast(3f)
+        val cx = w * 0.5f
+        val bottom = h * 0.86f
+        val top = h * 0.18f
+        val left = w * 0.18f
+        val right = w * 0.82f
+        fun line(x1: Float, y1: Float, x2: Float, y2: Float) {
+            drawLine(color = color, start = Offset(x1, y1), end = Offset(x2, y2), strokeWidth = stroke)
+        }
+        fun arrowUp(x: Float, y: Float) {
+            line(x, y, x - w * 0.16f, y + h * 0.18f)
+            line(x, y, x + w * 0.16f, y + h * 0.18f)
+        }
+        when (turnCode) {
+            0 -> {
+                line(cx, bottom, cx, h * 0.46f); line(cx, h * 0.46f, left, h * 0.46f)
+                line(left, h * 0.46f, left + w * 0.17f, h * 0.29f)
+                line(left, h * 0.46f, left + w * 0.17f, h * 0.63f)
+            }
+            1 -> {
+                line(cx, bottom, cx, h * 0.46f); line(cx, h * 0.46f, right, h * 0.46f)
+                line(right, h * 0.46f, right - w * 0.17f, h * 0.29f)
+                line(right, h * 0.46f, right - w * 0.17f, h * 0.63f)
+            }
+            2 -> {
+                line(cx, bottom, cx, h * 0.55f); line(cx, h * 0.55f, left, top)
+                line(left, top, left + w * 0.05f, top + h * 0.23f)
+                line(left, top, left + w * 0.22f, top + h * 0.05f)
+            }
+            3 -> {
+                line(cx, bottom, cx, h * 0.55f); line(cx, h * 0.55f, right, top)
+                line(right, top, right - w * 0.05f, top + h * 0.23f)
+                line(right, top, right - w * 0.22f, top + h * 0.05f)
+            }
+            4 -> {
+                line(cx, bottom, cx, h * 0.42f)
+                line(cx, h * 0.42f, left + w * 0.16f, h * 0.42f)
+                line(left + w * 0.16f, h * 0.42f, left + w * 0.16f, h * 0.68f)
+                line(left + w * 0.16f, h * 0.68f, left, h * 0.56f)
+                line(left + w * 0.16f, h * 0.68f, left + w * 0.32f, h * 0.56f)
+            }
+            9 -> {
+                drawCircle(color = color, radius = size.minDimension * 0.16f, center = Offset(cx, h * 0.42f))
+                line(cx, h * 0.58f, cx, bottom)
+            }
+            else -> {
+                line(cx, bottom, cx, top)
+                arrowUp(cx, top)
+            }
+        }
     }
 }
 
