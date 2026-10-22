@@ -363,6 +363,22 @@ class MerchantPosApi(
             type, tableId, productId, 1, note.trim()))
     }
 
+    suspend fun submitOfflineDraft(auth: NativeAuth, draft: PosOfflineDraft): String {
+        requireNoPendingEdit(auth)
+        require(draft.actorId == auth.session.authUserId) { "บัญชีที่ใช้งานไม่ตรงกับร่าง POS" }
+        require(draft.items.all { it.requestIds.size == it.quantity }) { "กรุณาบันทึก request ID ของร่างก่อนส่ง" }
+        val items = JSONArray().apply {
+            draft.items.forEach { item ->
+                put(JSONObject().put("product_id", item.productId).put("quantity", item.quantity)
+                    .put("options", JSONObject()).put("request_ids", JSONArray(item.requestIds)))
+            }
+        }
+        val raw = http.rpc("pos_submit_offline_draft", auth.session.accessToken,
+            JSONObject().put("p_request", draft.requestId).put("p_type", draft.type)
+                .put("p_table", draft.tableId ?: JSONObject.NULL).put("p_items", items))
+        return merchantPosReplayOrderId(raw, null)
+    }
+
     suspend fun reduceProduct(
         auth: NativeAuth,
         billId: String,
