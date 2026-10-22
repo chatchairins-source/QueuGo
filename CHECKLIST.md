@@ -1,16 +1,16 @@
 # QueueGo Active Work Checklist
 
-Last governance checkpoint: 2026-10-22; latest verified main `bc8bdc173a8b798e84dee09833b76caf8b546614`
+Last governance checkpoint: 2026-10-22; latest verified main `aca988473d9f5132141dc1df379f0028d3ff64a2`
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
 ## Current Production POS checkpoint — 2026-10-22
 
-- Current main is `4d93ad0f6540aa9f1b27c070cc8340a447f9f913`. Product Code/SKU audit hardening is in progress against the existing source migration; no Production schema change has been applied for this feature.
-
-- PR #615 exact-head RC `39764778696` passed and merged as `7572146400f44bf66c96aca5ae5f84264fe4241b`.
-- Production migration versions `20261022105255` (Kitchen staff capability) and `20261022105630` (POS cash movement) are applied and read back. No POS staff or cash events exist; no fake orders or payments were created.
-- Product Code/SKU, generic inventory and subsequent POS features remain under release gates. Live cashier/device, printer, scanner, and Android parity are not certified. QueueGo/POS remain **NOT DONE**.
+- Verified main: `aca988473d9f5132141dc1df379f0028d3ff64a2`; QueueGo RC `39793297082` SUCCESS. Open PR #623 is Rider-only; no POS successor PR is open.
+- Production versions `20261022141101`, `20261022141117`, `20261022144627`, `20261022145405` contain the generic reservation, adjustment, manager permission and Market owner guards. Readback confirms trigger definitions and fixed-search-path SECURITY DEFINER functions with direct EXECUTE revoked. Market mapping count 8; generic-stock overlap 0.
+- Full local `npm test` passed on `aca98847`; POS inventory 67 PASS; adjustment UI 9 PASS. No synthetic Production sales, payments or stock rows were created.
+- Source filenames and the inventory fixture now use Production versions exactly; focused migration/UI/source-integrity checks pass. NEXT: publish this history alignment, pass exact-head RC, merge, and verify the remote history still has exactly one copy of each migration. Then continue the next unblocked POS task.
+- Release gates still open: real authenticated cashier/device flow, live kitchen/QR/staff journeys, offline reconnect, Android parity, hardware and final Release Gate. QueueGo/POS remain **NOT DONE**.
 
 
 ## 2026-10-22 current head and next slice

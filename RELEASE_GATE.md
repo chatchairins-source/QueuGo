@@ -1,14 +1,14 @@
 # QueueGo Release Gate
 
-Snapshot date: 2026-10-22 · Main: `bc8bdc173a8b798e84dee09833b76caf8b546614`
+Snapshot date: 2026-10-22 · Main: `aca988473d9f5132141dc1df379f0028d3ff64a2`
 
-## Current POS continuation
+## Current POS continuation — 2026-10-22
 
-- Product Code/SKU is deployed from PR #617 at Production version `20261022113556`; its FK indexes from PR #618 are deployed at `20261022114328`. Post-deploy readback found zero registry rows; no fake catalog items or transactions were created.
-- Verified table RLS is enabled, direct anon/authenticated table grants are denied, and all four existing-source RPCs have fixed search paths, SECURITY DEFINER, authenticated EXECUTE and anon denial. Lookup references storefront `pos_price/price`, with no GP or Delivery markup dependency. Save/remove write atomic audit events.
-- PR #617 exact QueueGo RC `39769241578` and PR #618 exact QueueGo RC `39772099278` both passed all test/browser stages and merged at `30865060c4238ecbaf2b2ece83a108caeab3b454` and `bc8bdc173a8b798e84dee09833b76caf8b546614`.
-- Production performance advisor no longer reports the Product Code foreign keys as unindexed; unused-index notices reflect a currently empty table.
-- POS remains **NOT READY** for shop use: generic inventory and recipe/BOM, full live cashier/physical device journeys, and other release gates remain open.
+- Main `aca988473d9f5132141dc1df379f0028d3ff64a2`; main RC `39793297082` SUCCESS.
+- Production inventory chain is installed at `20261022141101`, `20261022141117`, `20261022144627`, `20261022145405`. Readback confirms Market owner trigger and generic tracking guard; functions use fixed `search_path`, SECURITY DEFINER and no direct EXECUTE grants. 8 Market mappings, 0 generic-stock overlaps; no commerce test data written.
+- Full local `npm test` passed on `aca98847`. Supabase advisory counts match pre-migration baseline (24 RLS/no-policy notices, 18 FK-index notices).
+- Open gates: authenticated cashier/staff RLS journey, phone/tablet/scanner/printer behavior, offline/reconnect E2E, Android parity and remaining POS Definition of Done. POS is **NOT READY**.
+
 ## Overall status
 
 **NOT READY for a whole-platform production launch or Play Closed Testing claim.** Current main has working source and automated regressions, but the required real-user journey, physical-device/hardware evidence, Android signing and production cutover receipts are not all present. A green source test or CI run does not pass those gates.
