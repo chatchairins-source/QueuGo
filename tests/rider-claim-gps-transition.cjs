@@ -6,6 +6,10 @@ const migration=fs.readFileSync(
   path.resolve(__dirname,'../supabase/migrations/20261022153500_rider_claim_transition_gps.sql'),
   'utf8'
 );
+const retryMigration=fs.readFileSync(
+  path.resolve(__dirname,'../supabase/migrations/20261022155000_rider_claim_retry_stable_idempotency.sql'),
+  'utf8'
+);
 const nativeApi=fs.readFileSync(
   path.resolve(__dirname,'../native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt'),
   'utf8'
@@ -31,6 +35,10 @@ ok(migration.indexOf("update public.rider_profiles")<
 ok(migration.includes("qg_rider_action_receipts")&&
    migration.includes("request id already in use"),
   'existing action receipt idempotency must remain intact');
+ok(retryMigration.includes("(v_existing.payload - 'p_lat' - 'p_lng') <> (p_payload - 'p_lat' - 'p_lng')")&&
+   retryMigration.indexOf("return v_existing.result")<
+   retryMigration.indexOf("perform public.qg_require_live_rider_offer(v_order)"),
+  'claim receipt replay must ignore only GPS differences and return before re-checking a consumed offer');
 
 const acceptStart=nativeApi.indexOf('suspend fun acceptOffer(');
 const acceptEnd=nativeApi.indexOf('suspend fun liveOfferExpiry(',acceptStart);
@@ -44,16 +52,26 @@ ok(accept.includes('.put("p_lat", fix.point.latitude)')&&
   'Native claim payload must include current Rider coordinates');
 ok(!accept.includes('updateLocation(')&&accept.includes('actionOnce('),
   'Native accept must not add a second network round-trip before the idempotent claim RPC');
+const nativeActionStart=nativeApi.indexOf('private fun actionOnce(');
+const nativeActionEnd=nativeApi.indexOf('private fun readMutationOrder(',nativeActionStart);
+const nativeAction=nativeApi.slice(nativeActionStart,nativeActionEnd);
+ok(nativeAction.includes('if (kind == "claim" || kind == "market_claim")')&&
+   nativeAction.includes('JSONObject().put("p_order_id", payload.optString("p_order_id"))'),
+  'Native claim idempotency key must exclude mutable GPS fields');
 
 const webAcceptStart=web.indexOf('window.acceptJob=async function(orderId)');
 const webAcceptEnd=web.indexOf('window.advanceOrder=async function(o)',webAcceptStart);
 const webAccept=web.slice(webAcceptStart,webAcceptEnd);
 ok(webAcceptStart>=0&&webAcceptEnd>webAcceptStart,'Web acceptJob source must remain discoverable');
 ok(webAccept.includes('const claimPayload={p_order_id:orderId}')&&
+   webAccept.includes('const claimFixAge=Date.now()-Number(S.pos?.timestamp)')&&
+   webAccept.includes('claimFixAge<=10000')&&
    webAccept.includes('validRiderCoordinate(S.pos?.lat,S.pos?.lng)')&&
    webAccept.includes('claimPayload.p_lat=Number(S.pos.lat)')&&
    webAccept.includes('claimPayload.p_lng=Number(S.pos.lng)'),
-  'Web claim payload must attach current QueueGo Rider coordinates when available');
+  'Web claim payload must attach only a fresh QueueGo Rider coordinate fix');
+ok(webAccept.includes("(kind==='claim'||kind==='market_claim')?{p_order_id:payload?.p_order_id}:payload"),
+  'Web claim idempotency key must exclude mutable GPS fields');
 ok(webAccept.includes('qgRiderActionOnce(kind,claimPayload,token)'),
   'Web accept must preserve the existing idempotent action receipt path');
 
