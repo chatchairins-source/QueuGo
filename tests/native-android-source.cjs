@@ -411,7 +411,16 @@ ok(!source.includes('longdo.map.key')&&!source.includes('longdo.map.apikeychecke
 const customerManifest=read('customer/src/main/AndroidManifest.xml');
 ok(customerManifest.includes('queuego.map.service.base_url')&&customerManifest.includes('${queuegoMapServiceBaseUrl}')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer QueueGo Map picker must declare map service config and location permission');
 const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
-ok(riderNavigationLocationService.includes('LocationServices.getFusedLocationProviderClient')&&riderNavigationLocationService.includes('NavigationMapFix(')&&riderMap.includes('stopMarkers += activeMap.addMarker(')&&riderMap.includes('riderMarker = activeMap.addMarker('),'native Rider QueueGo Map must use Android fused GPS and render rider/job markers');
+ok(
+  riderNavigationLocationService.includes('LocationServices.getFusedLocationProviderClient') &&
+  riderNavigationLocationService.includes('NavigationMapFix(') &&
+  riderMap.includes('riderMarker = activeMap.addMarker(') &&
+  riderMap.includes('GeoJsonSource(') &&
+  riderMap.includes('SymbolLayer(STOP_SHOP_ICON_LAYER_ID, STOP_SOURCE_ID)') &&
+  riderMap.includes('SymbolLayer(STOP_CUSTOMER_ICON_LAYER_ID, STOP_SOURCE_ID)') &&
+  riderMap.includes('source.setGeoJson(stopFeatureCollectionJson(stops, activeId))'),
+  'native Rider QueueGo Map must use Android fused GPS and render rider plus numbered shop/customer stop layers'
+);
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
