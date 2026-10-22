@@ -18,7 +18,7 @@ INSERT INTO users VALUES('${id(1)}','${id(2)}','shop','active'),('${id(3)}','${i
 INSERT INTO shop_profiles VALUES('${id(7)}','${id(1)}'),('${id(8)}','${id(3)}');
 SELECT set_config('test.uid','${id(2)}',false),set_config('test.shop','${id(7)}',false),set_config('test.permissions','receive_order,cook_order,ready_order',false);`);
 await db.exec(fs.readFileSync(path.resolve(__dirname,'../QueueGo-Unified-Delivery-Kitchen-Migration.sql'),'utf8'));
-await db.exec(fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261022070502_merchant_cancel_before_preparation.sql'),'utf8'));
+await db.exec(fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261022073806_merchant_cancel_before_preparation.sql'),'utf8'));
 let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
 async function reject(q,p){try{await db.query(q);assert.fail('unexpected success')}catch(e){assert.match(e.message,p);checks++}}
 async function seed(n,shop=7,channel='QUEUEGO_DELIVERY'){await db.exec(`INSERT INTO orders(id,shop_id,customer_id,status,note,sales_channel,order_type) VALUES('${id(n)}','${id(shop)}','${id(5)}','pending','customer note',${channel===null?'NULL':"'"+channel+"'"},'shopping')`)}
@@ -54,6 +54,6 @@ for(const [n,status] of [[29,'preparing'],[30,'ready']]){await seed(n);await db.
 await reject(`UPDATE orders SET status='cancelled' WHERE id='${id(28)}'`,/preparation started/);
 await reject(`UPDATE orders SET status='cancelled' WHERE id='${id(29)}'`,/preparation started/);
 await seed(31);await db.exec(`UPDATE orders SET status='assigned',rider_id='${id(9)}' WHERE id='${id(31)}'`);eq((await db.query(`SELECT merchant_order_action('${id(31)}','cancel','valid reason') result`)).rows[0].result,'cancelled');
-await db.exec(fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261022070502_merchant_cancel_before_preparation.sql'),'utf8'));
+await db.exec(fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261022073806_merchant_cancel_before_preparation.sql'),'utf8'));
 eq((await db.query(`SELECT has_function_privilege('authenticated','qg_merchant_delivery_cancel_guard()','EXECUTE') allowed`)).rows[0].allowed,false);
 console.log(JSON.stringify({checks,failures:0,scope:'isolated synthetic SQL; production RLS and simultaneous clients not certified'}));await db.close();})().catch(e=>{console.error(e);process.exit(1)});

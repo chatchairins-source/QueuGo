@@ -773,3 +773,12 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Narrow Web hotfix is based on current main68fdb52d; it carries existing Kitchen rules from PR595 and these fixes. Offline draft source stays in PR595 pending its own release gates.
 
 - Delivery cancellation boundary also runs in an INVOKER row trigger for direct shop UPDATE, because the existing cash-order guard permitted preparing/ready cancellation. It excludes POS and Ride; direct trigger execution is revoked from public/anon/authenticated.
+
+
+## 2026-10-22 POS context hotfix deployment receipt
+- PR598 merged as 15e7bd0726458a189df5fc85fc6827541ebccb9b; exact head4311be71 passed both hosted Web CI runs39740434026/39740439972. Pages39742256442 succeeded.
+- Served merchant index blob84dfce7ac3f84e6804444f376a43c493015bf299 and POS script bloba326dd1c79e47e85023c14e4bb237c662b2a1446 match source.
+- Food/Cafe retain storefront Kitchen; Grocery/Market no Kitchen. POS excludes Delivery and GP reports.
+- Production applied kitchen/report/cancellation migrations at versions20261022073639/20261022073650/20261022073806. Repository filenames aligned with actual migration history to prevent duplicate future application.
+- Cancellation retains Rider-assigned eligibility only before preparation/ready timestamps. Existing private transition ACL and public cashier/dashboard ACL preserved; direct merchant cancellation guard trigger verified. No business records mutated for verification.
+- Android PR596 remains a separate build gate; no new APK acceptance claim. Offline PR595 must incorporate current main before release so older mixed POS/Delivery code does not return.

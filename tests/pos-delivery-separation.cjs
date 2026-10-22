@@ -27,7 +27,7 @@ await db.exec(`create role anon;create role authenticated;
  ('00000000-0000-4000-8000-000000000001',null,'shopping','PAID','completed',800,now()),
  ('00000000-0000-4000-8000-000000000001','POS','TAKEAWAY','UNPAID','pending',700,now()),
  ('00000000-0000-4000-8000-000000000002','POS','TAKEAWAY','PAID','completed',600,now());`);
-await db.exec(read('supabase/migrations/20261022070454_pos_report_context_separation.sql'));
+await db.exec(read('supabase/migrations/20261022073650_pos_report_context_separation.sql'));
 eq((await db.query('select pos_owner_dashboard(1) result')).rows[0].result,{DINE_IN:100,TAKEAWAY:50,orders:2},'Delivery, unpaid and foreign-shop orders excluded from totals and bill count');
 eq((await db.query("select has_function_privilege('anon','pos_owner_dashboard(integer)','execute') allowed")).rows[0].allowed,false,'anonymous access remains denied');
 eq((await db.query("select has_function_privilege('authenticated','pos_owner_dashboard(integer)','execute') allowed")).rows[0].allowed,true,'cashier API ACL preserved');
