@@ -68,9 +68,9 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('background:#e6002d'),true);
  eq(source.includes('function qgMapStopMarkerHtml(sequence,kind,completed=false)'),true);
  eq(source.includes('data-qg-stop-marker="'),true);
- eq(source.includes("qgMapStopMarkerHtml(1,'shop',false)"),true);
+ eq(source.includes("qgMapStopMarkerHtml(pickupSequence,'shop',false)"),true);
  eq(source.includes("qgMapStopMarkerHtml(dropSequence,'customer',false)"),true);
- eq(source.includes("'จุด 1 · ร้านค้า · '"),true);
+ eq(source.includes("'จุด '+pickupSequence+' · ร้านค้า · '"),true);
  eq(source.includes("' · ลูกค้า · '"),true);
  eq(source.includes('const bundleMode=!!(S.activeOrder?.route_bundle_id&&S.bundleOrders.length)'),true);
  eq(source.includes('const bundlePickupCount=bundleMode?list.length:0'),true);
