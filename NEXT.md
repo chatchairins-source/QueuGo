@@ -1,10 +1,15 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-22 · Authoritative main: `635a16d0b9a56f1ac3549b6e4cc36c8347243781`
+Current snapshot: 2026-10-22 · Authoritative main: `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`
 
 ## Active chunk
 
-**POS inventory release readiness — Market stock ownership fix merged and Pages deployed; Production schema activation remains blocked.**
+**POS offline recovery Phase 1 — implement durable, identity-scoped cart drafts; Production schema activation and real cashier/device release remain blocked.**
+
+- PR #585 offline-recovery design merged to main at `d67f8dd8f79bcc991c447376cdd838988c816884`; its exact-head RC `39698519445` passed, followed by main RC `39698920070` PASS and Pages deployment `39698919956` SUCCESS. The design recommends offline drafts only; no offline completed sale or Production change.
+- PR #584 removed the retired Admin GP/slip workflow while preserving live GP deduction logic. Exact-head RC `39699366405` passed all steps on `9e9202bf3b688a816eef41cd3fe2eacd0e852562`; merge `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`; descendant main RC `39699765279` PASS and Pages deployment `39699764713` SUCCESS.
+- PR #584's Admin WebKit baseline now serves its HTML and runtime assets from the same historical commit. This fixes a test fixture mismatch; browser coverage stayed enabled.
+- Production remains unmodified. Cash and inventory migrations remain unapplied; cashier/device acceptance and real-user journeys are still open. QueueGo/POS remain **NOT DONE**.
 
 - PR #568 cash movement source was merged after exact-head QueueGo RC `39622237860` completed all 12 test/browser steps successfully. Merge commit: `c79640e0c896cc81961e8ba2dc69d336a9f519b0`; main now contains the audited cash-in/out UI and RPC source.
 - PR #572 merged to `main` at `6050a51ab7cb06001fb4163b5ff88c890fb4950d` after exact-source RC `39636799778` passed all 12 steps on `7d2ffec2417884dce70805f646dccaa3f388059e`. Merge publishes source only; no Production migration was applied.
@@ -68,7 +73,7 @@ Continue the POS migration recovery/compatibility review and verify the authoriz
 - This recovers an ambiguous online create request safely; it is not an offline sale queue. POS offline sale/outbox/conflict/reconciliation remains unimplemented and unaudited. Production database remains unmodified; cash/inventory migrations and authorized cashier/device acceptance gates remain open. QueueGo/POS are **NOT DONE**.
 
 ## Next action
-Continue the controlled POS migration recovery gate; verify authorized cashier/device acceptance status before any Production activation. In parallel, audit the POS online pending-create recovery and design the offline-sale boundary without inventing tax, credit, or payment policy. Do not claim offline sales or whole-platform readiness.
+Implement the durable offline cart draft slice specified in `docs/POS-OFFLINE-RECOVERY.md`: cache only minimum catalog/cart data, persist drafts scoped to shop + actor + device, label them Not submitted, and require explicit cashier review plus server revalidation before online submission. Add reload/account-switch/duplicate-tab/price-change tests. Do not accept payment, dispatch kitchen, reserve inventory, or report a sale while disconnected. Keep the Production migration and physical cashier/device gates open.
 
 
 ## Latest main successor receipt — 2026-10-22
