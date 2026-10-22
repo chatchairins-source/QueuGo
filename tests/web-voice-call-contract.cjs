@@ -43,7 +43,10 @@ assert.match(customer,/startVoiceCall\(id,'rider'/,'Customer chat must call the 
 
 assert.match(rider,/queuego-voice-web\.js\?v=20261012-voice2/,'Rider web must load the shared voice client');
 assert.match(rider,/QueueGoVoiceWeb\.create/,'Rider must initialize shared voice controller');
-assert.match(rider,/controller\.start\(order\.id,'customer'/,'Rider must call only the order customer');
+assert.match(rider,/if\(!\['shop','customer'\]\.includes\(target\)\)/,'Rider voice helper must restrict active-job targets to shop or customer');
+assert.match(rider,/controller\.start\(order\.id,target,label\|\|fallback\)/,'Rider voice helper must call only the scoped order target');
+assert.match(rider,/qgRiderVoiceCallTarget\(order,'customer'/,'Rider delivery must target the current order customer');
+assert.match(rider,/qgRiderVoiceCallTarget\(child,'shop'/,'Rider Market pickup must target the exact current child-order shop');
 assert.match(rider,/id="chat-call"/,'Rider chat must expose a QueueGo call action');
 assert.match(rider,/id="qg-delivery-call"/,'Rider delivery flow must expose a QueueGo call action');
 
