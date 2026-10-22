@@ -1,6 +1,12 @@
 # QueueGo Release Gate
 
-Snapshot date: 2026-10-22 · Main: `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`
+Snapshot date: 2026-10-22 · Main: `7572146400f44bf66c96aca5ae5f84264fe4241b`
+
+## Current POS continuation
+
+- PR #615 passed exact-head RC `39764778696` and merged as `7572146400f44bf66c96aca5ae5f84264fe4241b`.
+- Production recorded and verified Kitchen capability migration `20261022105255` and POS cash movement migration `20261022105630_pos_cash_register_movements`. Cash-event rows remain zero; no sale, payment, refund or drawer event was generated.
+- POS remains **NOT READY** for shop use: no live cashier/device journey has passed, and Product Code/SKU and generic inventory migrations remain unapplied.
 
 ## Overall status
 
