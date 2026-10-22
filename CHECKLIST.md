@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 41896)
-Total output lines: 1036
-
 # QueueGo Active Work Checklist
 
 Last governance checkpoint: `WORKFLOW.md` commit `9439569c15f72568b3398a1072f6d2285c8e7ce7`
@@ -555,7 +552,46 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Status: IN PROGRESS runtime gate. NEXT: integrated exact-head CI must actually execute Customer denied/allowed/draft, Merchant and Rider tile/lifecycle scopes using verified archive; fix first real failure. Public hosting, physical GPS/roads, signing/Play and Production remain BLOCKED separately. No Production mutation/publication.
 
 ### 2026-10-18 strict real-map first actual failure
-- Parent/source `f5fef7dec5fa31cf7eac6798ff0e1b436e…1896 tokens truncated…ault rule snapshot, food 5-minute cap, stale revision rejection, role rejection and read-only SQL.
+- Parent/source `f5fef7dec5fa31cf7eac6798ff0e1b436e8ff35a`, PR434; Native3367 / Actions39106411488 map-display job117613098748: actual Kotlin/instrumentation compile PASS, real archive host/device provisioning PASS, runtime FAIL at `GPS action missing before permission request`.
+- Evidence: artifact12129185048 `customer-location/denied/picker.xml` contains Android permissioncontroller dialog and DENY/WHILE USING THE APP controls, with no app GPS control while dialog owns screen. CustomerLocationPicker already automatically calls requestGps after mapReady +150ms. Previous harness incorrectly required an explicit app GPS tap first; real offline rendering exposed that obsolete assumption.
+- Bounded fix changes capture harness only: with real/configured map wait for actual automatic Android permission dialog; without configured map retain explicit GPS action. Actual deny, pixels, pan, resume, draft/process and all later scopes remain required. App source, permission behavior and release guard unchanged.
+- PASS: actual extracted provision/permission harness8 tests (includes observed permission-dialog shape, missing dialog rejection and explicit no-runtime path), stability106, Native source273, Python syntax, whitespace.
+- Status: IN PROGRESS exact-head runtime. NEXT: publish strict descendant and inspect first actual runtime failure/new exact-head map result; do not label denied/allowed/draft/Merchant/Rider runtime complete before evidence. No Production/public hosting/signing/physical certification.
+
+
+### 2026-10-18 strict real-map second actual failure — foreground lifecycle evidence
+- Exact parent `538cd8d09e26d139c270fad0f1a850387a311972`, Native run3368 / Actions39106933295, map-display job117614776109: Customer real-map scopes and Merchant allowed/denied progressed; Rider phone-denied PASS, Rider phone-allowed instrumentation PASS with injected GPS camera verified, then harness failed at obsolete `starts >= 3 && stops >= 3`.
+- Artifact12129191548 proves the actual lifecycle: phone-allowed logged 8 Activity CREATED/RESUMED stress cycles while the foreground location service stayed alive, then one stop/start across `scenario.recreate()`, and final cleanup — exactly 2 starts / 2 stops. Denied scope logged 0/0. Requiring 3 restarts incorrectly treated foreground-service survival as failure.
+- Fix: capture gate now requires >=8 Activity stress cycles, >=2 starts for permitted scope, and balanced start/stop cleanup; denied scope requires 0/0. Added isolated regression cases for recreate restart, cleanup imbalance and denied permission. App/service behavior is unchanged.
+- Status: source fix checkpoint ready; exact-head Native CI required. NEXT: run real-map gate again and fix the next first actual runtime failure only. Physical road/GPS acceptance, public HTTPS hosting, signing/Play and Production remain separate BLOCKED gates.
+
+
+### 2026-10-18 strict real-map third actual failure — deterministic final FGS cleanup
+- Exact `f9bd7e9c` Native3369 / Actions39107754467: 7/8 jobs SUCCESS; only map-display job117617178719 failed. Artifact12129575823 phone-allowed proves 8 lifecycle stress cycles, 2 foreground location starts and 1 stop: first stop/start occurred at Activity recreate, but the test ended while the restarted service was intentionally still alive.
+- The harness correctly requires balanced cleanup, so the fix is in instrumentation rather than weakening the gate. `RiderMapRuntimeTest` now explicitly calls `RiderNavigationLocationService.stop(targetContext)` after ActivityScenario closes and waits 750 ms for service onDestroy/log evidence.
+- This is test-only cleanup; Rider production lifecycle/service behavior is unchanged. Expected exact-head evidence is 2 starts / 2 stops for allowed and 0 / 0 for denied, with all existing tile/camera/crash checks retained.
+- NEXT: exact descendant CI must make map-display green. Public HTTPS hosting, physical GPS/real-road acceptance, signing/Play and Production remain separate BLOCKED gates.
+
+
+### 2026-10-18 strict real-map fourth actual failure — post-subscription GPS handshake
+- Exact `8450cce9` Native3374 map-display reached the large-allowed scope and failed GPS camera assertion: expected 103.1300059 / 15.0088319, actual camera remained at the persisted/fallback 103.0994795 / 14.9918756. This proves the prior phone-allowed scope was not sufficient because its injected point intentionally matched the fallback camera.
+- Root cause is a CI timing race: emulator `geo fix` was injected before Rider instrumentation/location subscription started, while the production fresh-location request requires a post-start measurement; large-allowed exposed the missing fresh callback.
+- Fix keeps production location policy unchanged. Allowed map instrumentation now runs concurrently, waits for the real `foreground_updates_started` log, injects the requested GPS fix three times after subscription, and the Android test independently waits up to 30s until `RiderNavigationLocationStore` contains that exact fix before recenter/camera assertions.
+- Added source regression ensuring the map capture no longer pre-injects GPS before instrumentation. Existing lifecycle, camera continuity, tile, crash and explicit FGS cleanup gates remain intact.
+- NEXT: exact-head map CI; require phone-allowed and large-allowed to log `injected_gps_store_verified` + `injected_gps_camera_verified`. Public HTTPS hosting and physical road/GPS acceptance remain separate BLOCKED release gates.
+
+### 2026-10-18 Route Bundle Phase 2 versioned financial allocation checkpoint
+- Base: strict descendant of real-map HEAD `f9bd7e9c83399d596d85f1f7252514a7ca7976d0`; live claim/cap remains unchanged at 2 and no Production mutation is allowed.
+- Implemented pure read-only policy `stack-savings-group-weighted-v1` using integer satang: candidate available saving is split by the existing group percentage; the existing group's share is weighted by current committed fees with floor + largest-remainder allocation and immutable Order-ID tie-break.
+- Existing Rider locked payouts are preserved exactly; candidate Rider payout is the passed incremental compensation; no Rider/platform bonus is created. If proposed customer collections cannot fund all preserved payouts, simulation returns ineligible with explicit funding gap instead of inventing subsidy.
+- Local isolated test: 19/0 checks PASS for pair parity, 4-order weighted 445/333/222 satang allocation, deterministic remainder, funding-gap rejection, positive-savings guard and unrepresentable money/rule rejection.
+- NEXT: bind this policy to authoritative read-only route/readiness evidence and existing pair cost oracle, then add 2–5 order financial/quality conservation tests. Do not raise live cap or mutate claims until atomic concurrent-claim gate passes.
+
+
+### 2026-10-18 authoritative Route Bundle financial snapshot
+- Added service-role-only STABLE `queuego_route_bundle_stack_financial_input` on top of the existing exact-revision/full-active-set/committed-next reader. It reads current customer fee, preserved Rider payout, Merchant readiness and shop category in the same PostgreSQL statement snapshot; caller-supplied money is not accepted.
+- Financial rule snapshot is versioned with `stack-savings-group-weighted-v1` and returns satang/km, pickup/dropoff/minute costs, detour limit and effective food/cafe delay cap. Function follows Supabase security guidance: explicit search_path, PUBLIC/anon/authenticated execute revoked, service_role only.
+- Added isolated PGlite regression to the full npm gate; it checks exact 50.00/55.00/40.00 THB conversion to satang, default rule snapshot, food 5-minute cap, stale revision rejection, role rejection and read-only SQL.
 - Fixture now mirrors already-existing `orders.rider_delivery_payout` and `merchant_ready_estimate_at` columns used by current migrations. No Production migration was applied from this chat.
 - NEXT: compute generalized incremental route burden from the same 2–5 order matrix/readiness snapshot, feed only that server-derived compensation into the versioned allocator, then test financial + quality rejection and atomic claim locking.
 
