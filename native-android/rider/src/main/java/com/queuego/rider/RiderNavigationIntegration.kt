@@ -555,7 +555,8 @@ internal fun QueueGoRiderNavigationMap(
                     rider = latestBaseState.rider,
                     followRider = latestBaseState.followRider,
                     viewMode = latestBaseState.viewMode,
-                    viewportInsets = latestBaseState.viewportInsets
+                    viewportInsets = latestBaseState.viewportInsets,
+                    nextTurnDistanceMeters = result.guidance.distanceToInstructionMeters
                 ))
                 renderedState = if (
                     result.routeError != null &&
