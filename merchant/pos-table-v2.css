@@ -181,3 +181,29 @@
  .qg-pos-table-card .qg-pos-table-edit,.qg-pos-table-card .qg-pos-table-delete{min-width:0;padding:0 6px}
  .qg-pos-table-card .qg-pos-table-qr-main{min-height:40px}
 }
+
+
+/* Mobile counter density pass: products first, controls compact. */
+@media(max-width:650px){
+ .qg-pos-panel{border:0;background:transparent;padding:0;margin:8px 0;box-shadow:none}
+ .qg-pos-switch{padding:3px;border-radius:12px;background:#f0f1f3}
+ .qg-pos-switch button{min-height:40px;padding:7px 10px}
+ .qg-pos-draft-start{width:100%;min-height:44px!important;margin:8px 0!important;padding:9px 12px!important;border-radius:11px!important;background:#fff7f8!important;color:#d20b32!important;border:1px solid #f1d8dd!important}
+ .qg-pos-panel>.qg-pos-add:not(.qg-pos-draft-start){min-height:42px;padding:8px 12px;margin:2px 0 8px}
+ .qg-pos-scan{padding:10px 0;margin:8px 0;border:0;border-top:1px solid #eceef2;border-bottom:1px solid #eceef2;border-radius:0;background:transparent}
+ .qg-pos-scan label{font-size:14px}
+ .qg-pos-scan-row{grid-template-columns:minmax(0,1fr) 104px}
+ .qg-pos-scan-row input{min-height:42px}
+ .qg-pos-scan-row button{min-height:42px;padding:7px 9px;font-size:13px}
+ .qg-pos-grid{gap:8px}
+ .qg-pos-grid>section{border:0;padding:0;background:transparent}
+ .qg-pos-grid>section>h2{font-size:16px;margin:10px 0 8px}
+ #qg-pos-search{min-height:42px;margin-bottom:8px}
+ .qg-pos-products{gap:7px;padding:0}
+ .qg-pos-product-card{border-radius:12px}
+ .qg-pos-products .qg-pos-product-main{min-height:76px;padding:8px}
+ .qg-pos-product-main img,.qg-pos-products .qg-pos-product-main img,.qg-pos-product-image-placeholder{width:62px;height:60px;flex-basis:62px}
+ .qg-pos-product-copy b{font-size:13px;line-height:1.3}
+ .qg-pos-product-copy small{font-size:13px;margin-top:4px}
+ .qg-pos-grid>section:nth-child(2){margin-top:4px;padding:12px;border:1px solid #eceef2;background:#fff;border-radius:13px}
+}
