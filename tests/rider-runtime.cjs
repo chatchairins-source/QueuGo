@@ -28,6 +28,15 @@ eq(src.includes('เก็บเงินจากลูกค้าเรีย
 eq(src.includes('id="qg-pickup-items-ok"'),false);
 eq(src.includes('id="qg-delivery-handed"'),false);
 eq(src.includes('ไม่มีปุ่มยืนยันเงินแยก'),false);
+eq(src.includes('function qgActiveItemPreviewHTML(o)'),true);
+eq(src.includes('function qgLoadActiveItemPreview(o)'),true);
+eq(src.includes('function qgActiveRouteEtaMinutes(o,fallbackKm)'),true);
+eq(src.includes('qgActiveItemPreviewHTML(o)'),true);
+eq(src.includes('qgRiderVoiceCallTarget(o,pickup?\'shop\':\'customer\''),true);
+const activeRouteStart=src.indexOf('function drawActiveRoute(){');
+const activeEtaRefresh=src.indexOf("if(!isOfferPreview&&S.activeTab==='home')renderHomeDock();");
+eq(activeRouteStart>=0,true);eq(activeEtaRefresh>activeRouteStart,true);
+
 function boot(){
  let stored=null;const events=[],calls=[];
  const ctx=vm.createContext({Date,JSON,Map,Set,Number,String,Array,Promise,Error,encodeURIComponent,AbortSignal,
