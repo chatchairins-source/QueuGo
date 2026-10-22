@@ -1042,3 +1042,29 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Readiness: environment_ready=true, live_key_configured=false, webhook_signing_configured=false, live_intake_enabled=false. Both existing credit feature flags remain false. BLOCKED: OMISE_SECRET_KEY (LIVE), OMISE_WEBHOOK_SECRET, QUEUEGO_CREDIT_LIVE_ENABLED, provider LIVE PromptPay and webhook signing configuration. No secrets fabricated, no charges or money seeded.
 - Native scope: strict descendant of current credit021caf67 (PR526), preserving its passed Native run39520235790. Sync shared Merchant/Rider client only: server pending UUID restoration, provider recheck through original queuego-credit endpoint, authoritative summary, explicit terminal statuses, same one-balance display. Public Web remains on main; no old Web snapshot published from Native branch.
 - Evidence: native source282 and Edge82 PASS. NEXT: exact Native full regression/three-app build; signed bank webhook and actual Owner payment/persistence acceptance remain blocked by provider settings above. Do not claim LIVE DONE.
+
+
+### Rider Grab-benchmark navigation / pickup / payment completion (2026-10-22)
+- Status: IN PROGRESS
+- Active PR: #623
+- Branch: `work-rider-grab-benchmark-20261022`
+- Current checkpoint HEAD: `0ada1dfd049ad05562e90b00f041c2401ce0713f`
+- Successor base: PR #620 / `f64ad6b2c85e04a2c6016c452753d264c4b6cee3`
+- Completed source checkpoints:
+  - off-route requires >30 m sustained for 3 seconds on Native and Web;
+  - display road snap capped at 25 m; beyond that use real Rider position/bearing;
+  - Android current + following maneuver HUD, U-turn guidance and 150 ms crossfade;
+  - Android/Web merchant receipt proof is durable and explicit “ได้รับอาหารแล้วใช่ไหม?” confirmation gates pickup;
+  - Web proof compression target <=500 KB with IndexedDB recovery;
+  - Android/Web full-swipe completion requires 100%, haptic feedback and 200 ms bounce-back when incomplete;
+  - completion summary uses authoritative Rider payout and real rating summary only;
+  - Android and Web pan now resume navigation follow after 8 seconds idle; return animation is <=500 ms.
+- Source tests added/updated:
+  - `NavigationGuidanceTest.kt`
+  - `NavigationViewModeTest.kt`
+  - `RiderNavigationHudTest.kt`
+  - `tests/native-rider-delivery-success-parity.cjs`
+  - `tests/queuego-map-web-camera.cjs`
+- Evidence status: source assertions committed; exact-head CI has not yet run for this successor.
+- Release blockers: physical Android road/GPS test, ANR/OOM/battery evidence, Production/public runtime gate remain mandatory before launch-ready claim.
+- NEXT: finish Web current/next maneuver HUD using QueueGo route `legs[].steps`, then run exact-head source/CI gates; fix only the first failure before any further release claim.
