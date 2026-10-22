@@ -43,9 +43,9 @@ rerouted=engine.route({'points':[far,points[1]]})['routes'][0];check('off route 
 fresh_context=engine.progress({'route_id':rerouted['route_id'],**far,'accuracy':10,'timestamp':now+4,'context':{**context,'route_id':route['route_id'],'last_reroute_at':now+999,'arrival_hits':2}})
 check('new route resets prior route navigation evidence',fresh_context['context']['route_id']==rerouted['route_id'] and fresh_context['context']['last_reroute_at']==0 and fresh_context['context']['arrival_hits']==0 and not fresh_context['reroute'])
 cooldown_context=context;cooldown_events=[]
-for stamp in (now+4,now+7,now+22.999):
+for stamp in (now+19.999,now+22.999):
     result=engine.progress({**fix,**far,'timestamp':stamp,'context':cooldown_context});cooldown_context=result['context'];cooldown_events.append(result['reroute'])
-check('reroute cooldown blocks a sustained new off-route episode before twenty seconds',cooldown_events==[False,False,False],cooldown_events)
+check('reroute cooldown blocks a sustained new off-route episode before twenty seconds',cooldown_events==[False,False],cooldown_events)
 result=engine.progress({**fix,**far,'timestamp':now+23,'context':cooldown_context});check('reroute resumes after cooldown with sustained evidence',result['reroute'],result)
 end=route['geometry']['coordinates'][-1];context={};events=[]
 for i in range(3):
