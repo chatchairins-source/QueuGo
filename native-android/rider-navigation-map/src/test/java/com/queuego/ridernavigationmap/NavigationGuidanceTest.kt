@@ -56,7 +56,7 @@ class NavigationGuidanceTest {
         assertFalse(state.shouldReroute)
     }
 
-    @Test fun rerouteNeedsThreeReliableOffRouteSamplesAndTwentySecondCooldown() {
+    @Test fun rerouteNeedsThreeSecondsContinuouslyOffRouteAndTwentySecondCooldown() {
         var now = 20_000L
         val tracker = NavigationProgressTracker(nowMillis = { now })
         val fix = NavigationMapFix(
@@ -65,26 +65,28 @@ class NavigationGuidanceTest {
             speedMetersPerSecond = 6f
         )
         val first = tracker.update(fix, routeLeg(), stop)
-        val second = tracker.update(fix, routeLeg(), stop)
-        val third = tracker.update(fix, routeLeg(), stop)
         assertTrue(first.offRoute)
         assertFalse(first.shouldReroute)
-        assertFalse(second.shouldReroute)
-        assertTrue(third.shouldReroute)
 
-        now += 2_000L
-        val fourth = tracker.update(fix, routeLeg(), stop)
-        val fifth = tracker.update(fix, routeLeg(), stop)
-        assertFalse(fourth.shouldReroute)
-        assertFalse(fifth.shouldReroute)
+        now = 22_999L
+        val almost = tracker.update(fix, routeLeg(), stop)
+        assertFalse(almost.shouldReroute)
 
-        now += 20_000L
-        val sixth = tracker.update(fix, routeLeg(), stop)
-        val seventh = tracker.update(fix, routeLeg(), stop)
-        // Off-route evidence remained continuous during cooldown, so the third reliable sample
-        // after the reset may reroute as soon as the 20-second cooldown has elapsed.
-        assertTrue(sixth.shouldReroute)
-        assertFalse(seventh.shouldReroute)
+        now = 23_000L
+        val sustained = tracker.update(fix, routeLeg(), stop)
+        assertTrue(sustained.shouldReroute)
+
+        now = 24_000L
+        val cooldownStart = tracker.update(fix, routeLeg(), stop)
+        assertFalse(cooldownStart.shouldReroute)
+
+        now = 27_000L
+        val sustainedDuringCooldown = tracker.update(fix, routeLeg(), stop)
+        assertFalse(sustainedDuringCooldown.shouldReroute)
+
+        now = 43_000L
+        val cooldownElapsed = tracker.update(fix, routeLeg(), stop)
+        assertTrue(cooldownElapsed.shouldReroute)
     }
 
     @Test fun authoritativeProgressUsesHybridContinuityAtOverlappingRouteGeometry() {
@@ -164,6 +166,7 @@ class NavigationGuidanceTest {
     @Test fun turnPhrasesStayThaiAndDeterministic() {
         assertEquals("เลี้ยวซ้าย", navigationTurnPhrase(0))
         assertEquals("เลี้ยวขวา", navigationTurnPhrase(1))
+        assertEquals("กลับรถ", navigationTurnPhrase(4))
         assertEquals("ถึงจุดหมายแล้ว", navigationTurnPhrase(9))
         assertEquals(null, navigationTurnPhrase(99))
     }
