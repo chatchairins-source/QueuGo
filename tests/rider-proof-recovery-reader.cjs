@@ -130,6 +130,12 @@ const fs=require('fs'),path=require('path'),assert=require('assert'),{PGlite}=re
     'proof recovery must require exact immutable photo path'
   );
 
+  await assert.rejects(
+    db.query(`SELECT public.qg_rider_proof_committed('${order}','other','proof-pickup.jpg')`),
+    /unsupported proof stage/
+  );
+  checks++;
+
   await db.exec(`
     RESET ROLE;
     SELECT set_config('request.jwt.claim.sub','${authB}',false);
@@ -140,12 +146,6 @@ const fs=require('fs'),path=require('path'),assert=require('assert'),{PGlite}=re
     false,
     'different Rider must never recover another Rider proof'
   );
-
-  await assert.rejects(
-    db.query(`SELECT public.qg_rider_proof_committed('${order}','other','proof-pickup.jpg')`),
-    /unsupported proof stage/
-  );
-  checks++;
 
   await db.exec('RESET ROLE');
   const grants=(await db.query(`
