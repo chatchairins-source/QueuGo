@@ -14,6 +14,7 @@ class MerchantPosPendingStoreTest {
     @Test fun acknowledgementAcceptsRealUuidShapesAndRejectsWrongOrMalformedResults() {
         val id = UUID.randomUUID().toString()
         for (raw in listOf(id, JSONObject().put("pos_edit_bill_once", id),
+            JSONObject().put("order_id", id),
             JSONArray().put(JSONObject().put("pos_create_bill_once", id)))) {
             assertEquals(id, merchantPosReplayOrderId(raw, id))
         }
