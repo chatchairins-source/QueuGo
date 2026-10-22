@@ -162,3 +162,22 @@
  .qg-pos-products .qg-pos-price-edit{min-width:50px;padding:0 4px;font-size:11px}
  .qg-pos-actions{background:rgba(255,255,255,.97);border-color:#eceef2}
 }
+
+
+/* Mobile tables: readable cards with compact secondary actions */
+.qg-pos-table-card{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"table edit delete" "table qr qr";min-height:112px}
+.qg-pos-table-card>button:first-child{padding:16px;display:flex;flex-direction:column;justify-content:center}
+.qg-pos-table-card b{font-size:18px;line-height:1.25;overflow-wrap:normal;word-break:normal}
+.qg-pos-table-card small{font-size:13px;line-height:1.35;overflow-wrap:normal;word-break:normal}
+.qg-pos-table-card .qg-pos-table-edit,.qg-pos-table-card .qg-pos-table-delete{min-width:64px;padding:0 10px;border:0;border-left:1px solid #eceef1;background:#fff;color:#6b7280;font-size:12px;font-weight:700}
+.qg-pos-table-card .qg-pos-table-delete{grid-area:delete;color:#a84b5b;background:#fff}
+.qg-pos-table-card .qg-pos-table-qr-main{grid-area:qr;min-height:42px;background:#fff7f8;color:#d20b32;border:0;border-top:1px solid #f3dfe3;font-size:13px;font-weight:800}
+@media(max-width:650px){
+ .qg-pos-table-list{grid-template-columns:1fr!important;gap:10px}
+ .qg-pos-table-card{width:100%;grid-template-columns:minmax(0,1fr) 62px 62px;grid-template-areas:"table edit delete" "qr qr qr";min-height:0}
+ .qg-pos-table-card>button:first-child{min-height:76px;padding:13px 14px}
+ .qg-pos-table-card b{font-size:17px;white-space:normal}
+ .qg-pos-table-card small{font-size:12px}
+ .qg-pos-table-card .qg-pos-table-edit,.qg-pos-table-card .qg-pos-table-delete{min-width:0;padding:0 6px}
+ .qg-pos-table-card .qg-pos-table-qr-main{min-height:40px}
+}
