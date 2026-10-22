@@ -2200,7 +2200,7 @@ async function qgOpenPickupVerify(o){
       if(!page.isConnected)return;
       back.onclick=()=>{if(!page._proofBusy)page.hidden=true};
       page.querySelector('.qg-flow-body').innerHTML=`
-        <section class="qg-pickup-banner"><span>รับสินค้าที่ร้าน</span><h1>ตรวจสอบรายการและถ่ายรูป</h1><p>เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว</p></section>
+        <section class="qg-pickup-banner"><span>รับสินค้าที่ร้าน</span><h1>ตรวจสอบรายการและถ่ายรูปใบเสร็จ</h1><p>เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปใบเสร็จให้เห็นรายการและยอดรวมชัดเจน</p></section>
         <section class="qg-flow-card qg-pickup-meta">
           <div class="qg-pickup-shop">${shopLogo?`<img class="qg-shop-logo" src="${esc(shopLogo)}" alt="">`:`<div class="qg-shop-logo qg-shop-logo-fallback">${esc((shop.shop_name||'Q').slice(0,1))}</div>`}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div>
           <div class="qg-pickup-row"><span>${QTICON.jobs}</span><div><small>รหัสออเดอร์</small><b>${esc(qgShortOrder(o))}</b></div></div>
@@ -2209,36 +2209,51 @@ async function qgOpenPickupVerify(o){
         ${itemsSection}
         ${note?`<section class="qg-flow-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></section>`:''}
         <section class="qg-flow-cash"><small>ยอดที่ต้องชำระให้ร้าน</small><b>฿${shopCash.toLocaleString('th-TH')}</b><span>เงินสด · ชำระเงินให้ร้านเรียบร้อยแล้วจึงกดรับสินค้า</span></section>
-        <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนรับสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-pickup-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปสินค้าที่รับ"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปสินค้าที่รับ</b><small>ให้เห็นสินค้าที่ตรวจรับจากร้านชัดเจน</small></label><img id="qg-pickup-preview" hidden alt="รูปตอนรับสินค้า"></section>
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-photo-next" disabled hidden>ยืนยันรับสินค้า</button>
-        <small class="qg-slide-caption">ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า</small>`;
+        <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปใบเสร็จจากร้าน</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-pickup-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปใบเสร็จ"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปใบเสร็จ</b><small>ให้เห็นรายการสินค้าและยอดรวมบนใบเสร็จชัดเจน</small></label><img id="qg-pickup-preview" hidden alt="รูปใบเสร็จจากร้าน"></section>
+        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-photo-next" disabled hidden>ร้านเตรียมเสร็จแล้ว</button>
+        <small class="qg-slide-caption">ต้องมีรูปใบเสร็จที่บันทึกในเครื่องก่อนยืนยันรับสินค้า</small>`;
       const input=page.querySelector('#qg-pickup-photo'),preview=page.querySelector('#qg-pickup-preview'),next=page.querySelector('#qg-pickup-photo-next');
-      input.onchange=()=>{
+      input.onchange=async()=>{
         if(page._proofBusy)return;
-        const file=input.files?.[0],proofBox=input.closest('.qg-proof-single');
+        const source=input.files?.[0],proofBox=input.closest('.qg-proof-single');
         // Cancelling the native camera must retain the previously selected proof.
-        if(!file)return;
-        page._pickupFile=file;page._pickupPhotoPath=null;
-        if(page._pickupProofUrl)URL.revokeObjectURL(page._pickupProofUrl);
-        page._pickupProofUrl=URL.createObjectURL(file);preview.src=page._pickupProofUrl;preview.hidden=false;
-        proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
+        if(!source)return;
+        page._proofBusy=true;input.disabled=true;next.disabled=true;
+        try{
+          const saved=await qgPersistProofFile('pickup',o,source);
+          page._pickupFile=saved.file;page._pickupPhotoPath=null;
+          if(page._pickupProofUrl)URL.revokeObjectURL(page._pickupProofUrl);
+          page._pickupProofUrl=URL.createObjectURL(saved.file);preview.src=page._pickupProofUrl;preview.hidden=false;
+          proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
+        }catch(e){input.value='';toast(e.message||'บันทึกรูปใบเสร็จไม่สำเร็จ')}
+        finally{page._proofBusy=false;input.disabled=false}
       };
       next.onclick=async()=>{
         if(page._proofBusy||!qgProofPageCurrent(page,o))return false;
-        const file=page._pickupFile;if(!file){toast('กรุณาถ่ายรูปหลักฐานก่อน');return false}
+        const file=page._pickupFile;if(!file){toast('กรุณาถ่ายรูปใบเสร็จก่อน');return false}
+        const received=await qgConfirmPickupReceived();if(!received)return false;
         page._proofBusy=true;next.disabled=true;input.disabled=true;next.textContent='กำลังบันทึก...';
         try{
           if(!page._pickupPhotoPath)page._pickupPhotoPath=await window.qgUploadEvidence(file);
           if(!qgProofPageCurrent(page,o))return false;
           const ok=await qgPickupWithPhoto(o,file,page._pickupPhotoPath);
-          if(ok){qgCloseRiderFlowPage('qg-pickup-verify');return true}
+          if(ok){
+            await qgClearProofFile('pickup',o);
+            if(page._pickupProofUrl)URL.revokeObjectURL(page._pickupProofUrl);
+            qgCloseRiderFlowPage('qg-pickup-verify');return true
+          }
           return false;
         }catch(e){toast('รับสินค้าไม่สำเร็จ: '+(e.message||e));return false}
         finally{
           page._proofBusy=false;
-          if(page.isConnected){next.disabled=false;input.disabled=false;next.textContent='รับสินค้าแล้ว'}
+          if(page.isConnected){next.disabled=false;input.disabled=false;next.textContent='ร้านเตรียมเสร็จแล้ว'}
         }
       };
+      void qgRestoreProofFile('pickup',o).then(restored=>{
+        if(!restored||!page.isConnected||page._pickupFile)return;
+        page._pickupFile=restored.file;preview.src=restored.data;preview.hidden=false;
+        input.closest('.qg-proof-single')?.classList.add('has-proof');next.disabled=false;next.hidden=false;
+      });
     };
 
     renderPickupPage();
