@@ -112,6 +112,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -821,24 +822,20 @@ private fun RiderHome(
     var detailJob by remember { mutableStateOf<RiderJob?>(null) }
     var pendingPushReference by rememberSaveable(auth.user.id) { mutableStateOf<String?>(null) }
     var homeDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
+    var homeItems by remember { mutableStateOf<List<RiderItem>>(emptyList()) }
     var activeLoadSummary by remember { mutableStateOf<RiderLoadSummary?>(null) }
     LaunchedEffect(snapshot?.activeJob?.id, auth.session.accessToken) {
         homeDetails = null
+        homeItems = emptyList()
         activeLoadSummary = null
         snapshot?.activeJob?.takeUnless { it.isPassenger || it.isExpress }?.let { job ->
-            try {
-                homeDetails = api.verificationDetails(auth, job.id)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // Work controls remain available if metadata fails.
-            }
-            activeLoadSummary = try {
-                api.orderLoadSummary(auth, job.id)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null
+            coroutineScope {
+                val detailsDeferred = async { runCatching { api.verificationDetails(auth, job.id) } }
+                val itemsDeferred = async { runCatching { api.orderItems(auth, job.id) } }
+                val loadDeferred = async { runCatching { api.orderLoadSummary(auth, job.id) } }
+                detailsDeferred.await().onSuccess { homeDetails = it }.onFailure { if (it is CancellationException) throw it }
+                itemsDeferred.await().onSuccess { homeItems = it }.onFailure { if (it is CancellationException) throw it }
+                loadDeferred.await().onSuccess { activeLoadSummary = it }.onFailure { if (it is CancellationException) throw it }
             }
         }
     }
@@ -3028,6 +3025,8 @@ private fun RiderHome(
                                 current.marketPickups.all { it.done }
                             ) activeJob.copy(status = "picked_up") else activeJob,
                             details = homeDetails,
+                            items = homeItems,
+                            etaSeconds = navigationGuidance.etaSeconds,
                             loadSummary = activeLoadSummary,
                             busy = actionBusy,
                             networkAvailable = networkAvailable,
@@ -3581,10 +3580,18 @@ private fun MarketPickupPanel(
     }
 }
 
+internal fun riderActiveJobEtaLabel(etaSeconds: Double?): String? {
+    val seconds = etaSeconds?.takeIf { it.isFinite() && it >= 0.0 && it <= 14_400.0 } ?: return null
+    val minutes = kotlin.math.ceil(seconds / 60.0).toInt().coerceAtLeast(1)
+    return "ประมาณ " + minutes + " นาที"
+}
+
 @Composable
 private fun ActiveJobCard(
     job: RiderJob,
     details: RiderVerificationDetails?,
+    items: List<RiderItem>,
+    etaSeconds: Double?,
     loadSummary: RiderLoadSummary?,
     busy: Boolean,
     networkAvailable: Boolean,
@@ -3600,22 +3607,26 @@ private fun ActiveJobCard(
     onPickupIssue: () -> Unit
 ) {
     val pickup = job.status in setOf("rider_assigned", "assigned", "preparing", "ready")
+    val step = if (pickup) 1 else 2
+    val stepTitle = if (pickup) "ไปรับสินค้าที่ร้าน" else "ส่งสินค้าให้ลูกค้า"
     val title = when {
         job.status == "ready" -> "ร้านเตรียมสินค้าแล้ว"
         job.status == "preparing" -> "ร้านกำลังเตรียมสินค้า"
         pickup -> "กำลังไปรับสินค้า"
         job.status == "picked_up" -> "รับสินค้าแล้ว"
-        job.customerArrived -> "Rider ถึงลูกค้าแล้ว"
+        job.customerArrived -> "ถึงลูกค้าแล้ว"
         else -> "กำลังไปส่ง"
     }
     val processLabel = when {
         job.marketOrderId != null && pickup -> "รับของตามจุด"
-        job.status == "ready" -> "ตรวจสอบรายการ"
-        job.status == "in_progress" -> "กำลังนำส่ง"
+        job.status == "ready" -> "รายการสินค้า"
+        job.status == "in_progress" -> "รายละเอียด"
         job.status == "picked_up" -> "เริ่มจัดส่ง"
-        pickup -> "รอร้าน"
-        else -> "รออัปเดต"
+        pickup -> "รายละเอียด"
+        else -> "รายละเอียด"
     }
+    val cashAmount = if (pickup) job.shopCash else job.customerCash
+    val cashLabel = if (pickup) "ยอดที่ต้องชำระร้าน" else "ยอดที่ต้องเก็บลูกค้า"
     val primaryRequiresNetwork = when {
         pickup && !job.shopArrived -> true
         job.status == "picked_up" -> true
@@ -3628,36 +3639,109 @@ private fun ActiveJobCard(
         job.status == "picked_up" -> "เริ่มจัดส่ง"
         job.status == "in_progress" && job.customerArrived -> "ส่งมอบสินค้า"
         job.status == "in_progress" -> "ถึงลูกค้าแล้ว"
-        else -> "อัปเดตงาน"
+        else -> "ทำรายการต่อ"
     }
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp),
+
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFEFDFD)),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))) {
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))
+    ) {
         Column(Modifier.padding(if (LocalConfiguration.current.screenHeightDp <= 760) 10.dp else 12.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    Modifier.size(38.dp).background(QgRedSoft, androidx.compose.foundation.shape.CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(step.toString(), color = QgRed, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                }
                 Column(Modifier.weight(1f)) {
-                    Text(title, color = QgRed, fontWeight = FontWeight.Black, fontSize = 11.sp)
-                    Text(job.numberLabel, fontWeight = FontWeight.Black, fontSize = 24.sp)
+                    Text("$step · $stepTitle", color = QgRed, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        listOfNotNull(riderActiveJobEtaLabel(etaSeconds), title).joinToString(" · "),
+                        color = QgMuted,
+                        fontSize = 9.sp,
+                        modifier = Modifier.padding(top = 1.dp)
+                    )
                 }
-                Box(Modifier.clip(RoundedCornerShape(13.dp)).background(QgRedSoft).padding(horizontal = 9.dp, vertical = 6.dp)) {
-                    Text(riderMoneyBaht(job.deliveryFee), color = QgRed, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(job.numberLabel, color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    Text(riderMoneyBaht(job.deliveryFee), color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Black)
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                QgRemoteImage(details?.shopLogo, Modifier.size(42.dp), fallback = details?.shopName?.take(1) ?: "Q", cornerRadius = 14.dp)
-                Column { Text("ร้านค้า", color = QgMuted, fontSize = 8.sp); Text(details?.shopName ?: "ร้านค้า", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+
+            Row(
+                Modifier.fillMaxWidth().padding(top = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                if (pickup) {
+                    QgRemoteImage(details?.shopLogo, Modifier.size(44.dp), fallback = details?.shopName?.take(1) ?: "Q", cornerRadius = 14.dp)
+                } else {
+                    Box(Modifier.size(44.dp).background(QgRedSoft, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                        QgIcon("user", Modifier.size(22.dp), QgRed)
+                    }
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(if (pickup) "ร้านค้า" else "ลูกค้า", color = QgMuted, fontSize = 8.sp)
+                    Text(if (pickup) details?.shopName ?: "ร้านค้า" else details?.customerName ?: "ลูกค้า", fontWeight = FontWeight.Black, fontSize = 13.sp)
+                    Text(
+                        (if (pickup) job.pickupAddress else job.deliveryAddress) ?: "พิกัดยังไม่พร้อม",
+                        color = QgMuted, fontSize = 9.sp, maxLines = 2, modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
-            RiderJobPlaceRow("user", "ลูกค้า", details?.customerName ?: "ลูกค้า")
-            Column(Modifier.fillMaxWidth().padding(top = 7.dp).background(Color(0xFFFFF6F8), RoundedCornerShape(14.dp)).padding(horizontal = 9.dp, vertical = 8.dp)) {
-                Text(if (pickup) "จุดรับสินค้า" else "ที่อยู่จัดส่ง", fontSize = 8.sp, color = QgMuted)
-                Text((if (pickup) job.pickupAddress else job.deliveryAddress) ?: "พิกัดยังไม่พร้อม", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+            if (items.isNotEmpty()) {
+                val itemCount = items.sumOf { it.quantity.coerceAtLeast(1) }
+                Column(
+                    Modifier.fillMaxWidth().padding(top = 8.dp)
+                        .background(Color(0xFFF8F7F8), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 11.dp, vertical = 9.dp)
+                ) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("รายการสินค้า", color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text(itemCount.toString() + " รายการ", color = QgRed, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                    }
+                    items.take(2).forEach { item ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(item.name, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("×" + item.quantity, color = QgMuted, fontSize = 9.sp, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                    if (items.size > 2) Text("+ อีก " + (items.size - 2) + " รายการ", color = QgMuted, fontSize = 8.sp, modifier = Modifier.padding(top = 3.dp))
+                }
             }
+
+            cashAmount?.let {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp).background(Color(0xFFFFF6F8), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 11.dp, vertical = 9.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(cashLabel, color = QgMuted, fontSize = 8.sp)
+                        Text("เงินสด", color = Color(0xFF4C4548), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(riderMoneyBaht(it), color = QgRed, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                }
+            }
+
             Button(
                 onClick = onQueueGoNavigate,
                 enabled = !busy && job.navigationTarget != null,
-                modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = QgRed)
             ) {
@@ -3665,6 +3749,7 @@ private fun ActiveJobCard(
                 Spacer(Modifier.width(7.dp))
                 Text("นำทางด้วย QueueGo", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Black)
             }
+
             if (pickup && details != null) {
                 RiderPickupGuideBlock(
                     pickupInstructions = details.pickupInstructions,
@@ -3674,22 +3759,25 @@ private fun ActiveJobCard(
                 )
             }
             if (pickup) RiderLoadSummaryBlock(loadSummary)
+
             details?.note?.let { note ->
                 Column(Modifier.fillMaxWidth().padding(top = 6.dp).background(Color(0xFFFFF9EA), RoundedCornerShape(14.dp)).padding(10.dp)) {
                     Text("หมายเหตุจากลูกค้า", color = QgMuted, fontSize = 8.sp)
                     Text(note, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(top = 7.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RiderJobTool("jobs", processLabel, !busy && job.marketOrderId == null && job.status == "ready", Modifier.weight(1f), onPickupVerify)
-                RiderJobTool("jobs", "รายการ", !busy, Modifier.weight(1f), onDetails)
+
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                RiderJobTool("jobs", processLabel, !busy, Modifier.weight(1f), onDetails)
                 RiderJobTool("support", "แชต", !busy && networkAvailable, Modifier.weight(1f), onChat)
             }
+
             if (pickup) {
-                OutlinedButton(onClick = onPickupIssue, enabled = !busy && networkAvailable,
-                    modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_SECONDARY_ACTION_MIN_HEIGHT_DP.dp)) {
-                    Text("ปัญหาที่จุดรับ", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp)
-                }
+                OutlinedButton(
+                    onClick = onPickupIssue,
+                    enabled = !busy && networkAvailable,
+                    modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_SECONDARY_ACTION_MIN_HEIGHT_DP.dp)
+                ) { Text("ปัญหาที่จุดรับ", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp) }
             }
             if (!pickup && job.status == "in_progress" && job.customerArrived) {
                 OutlinedButton(
@@ -3701,6 +3789,7 @@ private fun ActiveJobCard(
                     Text("ลูกค้าติดต่อไม่ได้ / ส่งไม่สำเร็จ", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Bold)
                 }
             }
+
             Button(
                 onClick = {
                     when {
@@ -3714,8 +3803,9 @@ private fun ActiveJobCard(
                 enabled = !busy &&
                     !(pickup && job.shopArrived && job.status != "ready" && job.marketOrderId == null) &&
                     (!primaryRequiresNetwork || networkAvailable),
-                modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp), shape = RoundedCornerShape(18.dp),
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
             ) {
                 QgIcon("location", Modifier.size(22.dp), Color.White)
                 Spacer(Modifier.width(9.dp))
