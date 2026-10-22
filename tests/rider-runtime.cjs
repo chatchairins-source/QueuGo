@@ -34,6 +34,8 @@ eq(src.includes('const RIDER_ROUTE_REROUTE_SUSTAIN_MS=3000;'),true);
 eq(src.includes('function qgUpdateManeuverHud('),true);
 eq(src.includes('id="route-maneuver-distance"'),true);
 eq(src.includes('id="route-next"'),true);
+eq(src.includes('id="route-customer-note"'),true);
+eq(src.includes('หมายเหตุจากลูกค้า'),true);
 eq(src.includes('id="qg-pickup-items-ok"'),false);
 eq(src.includes('id="qg-delivery-handed"'),false);
 eq(src.includes('ไม่มีปุ่มยืนยันเงินแยก'),false);
