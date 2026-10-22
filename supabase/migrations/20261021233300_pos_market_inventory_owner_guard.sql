@@ -85,6 +85,27 @@ create trigger qg_market_inventory_owner_guard
 before insert or update of product_id,shop_id or delete on public.market_products
 for each row execute function public.qg_market_inventory_owner_guard();
 
+-- Keep Market's existing Delivery refund stock behavior, but do not silently
+-- restock completed POS refunds without an explicit physical-return workflow.
+create or replace function public.market_restore_cancelled_order() returns trigger
+language plpgsql security definer set search_path=public,pg_temp as $$
+declare v_item record;v_row public.market_products%rowtype;v_amount numeric;
+begin
+  if new.status<>'cancelled' or old.status='cancelled' then return new; end if;
+  if old.status='completed' and new.order_type in ('DINE_IN','TAKEAWAY') then return new; end if;
+  for v_item in select i.product_id,i.id,i.quantity from public.order_items i
+    join public.market_products m on m.product_id=i.product_id where i.order_id=new.id loop
+    select * into v_row from public.market_products where product_id=v_item.product_id for update;
+    v_amount:=v_item.quantity*v_row.pack_size;
+    update public.market_products set stock_quantity=stock_quantity+v_amount,updated_at=now() where product_id=v_item.product_id;
+    insert into public.market_stock_movements(product_id,shop_id,type,quantity,before_quantity,after_quantity,cost_price,reference_type,reference_id,actor_id)
+      values(v_item.product_id,v_row.shop_id,'cancel',v_amount,v_row.stock_quantity,v_row.stock_quantity+v_amount,v_row.cost_price,'order_item',v_item.id,auth.uid());
+  end loop;
+  return new;
+end $$;
+
+revoke all on function public.market_restore_cancelled_order() from public,anon,authenticated;
+
 -- Keep the existing Market trigger authoritative. Check after locking the product
 -- row so a concurrent Market mapping cannot race and decrement products.stock too.
 create or replace function public.qg_pos_generic_item_stock() returns trigger
