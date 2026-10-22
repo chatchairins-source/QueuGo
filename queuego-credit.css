@@ -3,3 +3,11 @@
 .qg-credit-summary{width:100%;display:grid;grid-template-columns:48px minmax(0,1fr) 20px;align-items:center;gap:12px;text-align:left;background:linear-gradient(135deg,#effcf6,#f8fffb);border:1px solid #bfead5;border-radius:18px;padding:15px 16px;margin:12px 0;color:#164f3c;font:inherit;box-sizing:border-box}.qg-credit-summary-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#dff7eb;font-size:24px;font-weight:800}.qg-credit-summary-copy{display:grid;gap:3px;min-width:0}.qg-credit-summary-copy strong{font-size:16px}.qg-credit-summary-copy b{font-size:19px;color:#123f31}.qg-credit-summary-copy small{color:#638174;white-space:normal;line-height:1.35}.qg-credit-summary-arrow{font-size:30px;line-height:1;color:#4f8b74}.qgm-home-credit{margin:0}
 
 .qgm-header-credit{display:inline-flex;align-items:center}.qg-credit-badge{min-height:34px;padding:7px 10px;border:1px solid #cfe8dc;border-radius:999px;background:#f2fbf6;color:#1d6049;font:inherit;font-size:12px;font-weight:800;white-space:nowrap}.qg-credit-badge:active{transform:translateY(1px)}
+
+.qg-credit-panel-rider{padding:12px 14px;margin:0 0 10px;border-radius:16px}
+.qg-credit-panel-rider h3{margin:0 0 5px;font-size:15px}
+.qg-credit-panel-rider [data-balance]{margin:0;font-size:20px;font-weight:900}
+.qg-credit-panel-rider [data-refresh]{min-height:34px;padding:6px 11px;margin:8px 0 0;border-radius:10px;font-size:12px}
+.qg-credit-panel-rider [data-status]{margin:7px 0 0;font-size:11px;line-height:1.35}
+.qg-credit-panel-rider>small{display:block;margin-top:6px;font-size:10px;line-height:1.35}
+.qg-credit-panel-rider [data-entries]{margin-top:4px}

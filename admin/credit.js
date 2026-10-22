@@ -35,7 +35,12 @@
     const rows=await qgAdminCreditReadRpc(rider?'queuego_admin_rider_credit_targets':'queuego_admin_merchant_credit_targets',{p_query:search.value.trim()});
     if(!alive()||pending||generation!==searching)return;
     target.replaceChildren(new Option('เลือก'+subject,''));
-    for(const row of rows)target.append(new Option(row.shops+' · '+row.name+' · เครดิตฟรีคงเหลือ '+money(row.promo_minor),row.user_id));
+    for(const row of rows){
+     const label=rider
+      ? row.name+' · เครดิตใช้ได้ '+money(row.available_minor)+' · '+(row.last_sign_in_at?'เข้าใช้ล่าสุด '+new Date(row.last_sign_in_at).toLocaleDateString('th-TH'):'ยังไม่เคยเข้าใช้')+' · ID '+String(row.user_id).slice(-6)
+      : row.shops+' · '+row.name+' · เครดิตฟรีคงเหลือ '+money(row.promo_minor);
+     target.append(new Option(label,row.user_id));
+    }
     status.textContent=rows.length?'พบ '+rows.length+' บัญชี'+subject+(rows.length===50?' · ค้นหาชื่อให้เฉพาะเจาะจงเพื่อดูร้านอื่น':''):'ไม่พบบัญชี'+subject+'ที่ยังใช้งานอยู่';
    }catch(err){if(alive())status.textContent=err.message||'โหลดร้านค้าไม่สำเร็จ'}finally{if(alive()&&!pending&&generation===searching)find.disabled=false}
   }
@@ -47,7 +52,7 @@
      const value=amount.value.trim(),why=reason.value.trim();
      if(!/^(?:0|[1-9][0-9]{0,5})(?:[.][0-9]{1,2})?$/.test(value))throw Error('กรอกจำนวนบาท ทศนิยมไม่เกิน 2 ตำแหน่ง');
      const parts=value.split('.'),minor=Number(parts[0])*100+Number((parts[1]||'').padEnd(2,'0'));
-     if(!uuid.test(target.value)||minor<1||minor>10000000)throw Error('เลือกร้านค้าและจำนวน 0.01–100,000 บาท');
+     if(!uuid.test(target.value)||minor<1||minor>10000000)throw Error('เลือก'+subject+'และจำนวน 0.01–100,000 บาท');
      if(why.length<5||why.length>500)throw Error('กรอกเหตุผล 5–500 ตัวอักษร');
      const request={request:crypto.randomUUID(),user:target.value,minor,reason:why,label:target.selectedOptions[0].textContent};
      // Persist BEFORE RPC. A lost reply must retry this UUID, never invent another grant.

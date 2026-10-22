@@ -20,9 +20,9 @@
    catch(e){if(button.isConnected){button.textContent='เครดิต --';button.title='ยังโหลดเครดิตไม่ได้'}}
   },
   mount:async function(host,{kind,owner,getToken,base,key}){
-  if(!host)return;const panel=document.createElement('section');panel.className='qg-credit-panel';
-  panel.innerHTML='<h3></h3><p data-balance>กำลังตรวจสอบเครดิต...</p><button type="button" data-add hidden>เติมเงิน</button><form hidden><label>จำนวนเงิน (20–100,000 บาท)<input name="amount" inputmode="decimal" type="text" maxlength="12" required></label><button type="submit">สร้าง QR PromptPay</button></form><button type="button" data-refresh>ตรวจสอบรายการ / รีเฟรชยอด</button><button type="button" data-new hidden>รายการใหม่</button><p data-status role="status"></p><img data-qr hidden alt="QR เติมเครดิต" width="240" height="240"><div data-entries></div><small>เครดิตใช้ชำระค่าบริการ QueueGo · ถอนหรือโอนไม่ได้</small>';
-  host.appendChild(panel);panel.querySelector('h3').textContent=kind==='merchant'?'เครดิตร้านค้า':'เครดิต Rider';
+  if(!host)return;const panel=document.createElement('section');panel.className='qg-credit-panel'+(kind==='rider'?' qg-credit-panel-rider':'');
+  panel.innerHTML='<h3></h3><p data-balance>กำลังตรวจสอบเครดิต...</p><button type="button" data-add hidden>เติมเงิน</button><form hidden><label>จำนวนเงิน (20–100,000 บาท)<input name="amount" inputmode="decimal" type="text" maxlength="12" required></label><button type="submit">สร้าง QR PromptPay</button></form><button type="button" data-refresh></button><button type="button" data-new hidden>รายการใหม่</button><p data-status role="status"></p><img data-qr hidden alt="QR เติมเครดิต" width="240" height="240"><div data-entries></div><small>เครดิตใช้ชำระค่าบริการ QueueGo · ถอนหรือโอนไม่ได้</small>';
+  host.appendChild(panel);panel.querySelector('h3').textContent=kind==='merchant'?'เครดิตร้านค้า':'เครดิต Rider';panel.querySelector('[data-refresh]').textContent=kind==='rider'?'รีเฟรชยอด':'ตรวจสอบรายการ / รีเฟรชยอด';
   const storageKey='qg-credit-request-v1:'+owner+':'+kind;let busy=false,summary=null;
   const session=()=>{try{const p=JSON.parse(localStorage.getItem(storageKey)||'null');return p?.id&&p?.kind===kind?p:null}catch{return null}};
   const request=(path,body)=>post({getToken,base,key},path,body);
@@ -53,7 +53,7 @@
    if(topup?.status==='successful')status('เติมเครดิตสำเร็จ '+money(topup.amount_minor));
    if(['failed','expired'].includes(topup?.status))status('รายการไม่สำเร็จหรือหมดอายุ');
    panel.querySelector('[data-new]').hidden=!['successful','failed','expired'].includes(topup?.status);
-   if(!summary.enabled)status('ระบบเติมเครดิตยังไม่เปิดใช้งาน');
+   if(!summary.enabled)status(kind==='rider'?'PromptPay ยังไม่เปิดใช้งาน':'ระบบเติมเครดิตยังไม่เปิดใช้งาน');
    const list=panel.querySelector('[data-entries]');list.replaceChildren();for(const e of (summary.entries||[]).slice(0,20)){const row=document.createElement('p');row.textContent=(labels[e.event_type]||'รายการเครดิต')+' · '+money(['reserve','release'].includes(e.event_type)?Math.abs(Number(e.held_cash_delta)+Number(e.held_promo_delta)):Number(e.cash_delta)+Number(e.promo_delta))+' · '+new Date(e.created_at).toLocaleString('th-TH');list.appendChild(row)}
   };
   const act=async fn=>{if(busy)return;busy=true;panel.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn()}catch(e){status(e.message||'ยังยืนยันรายการไม่ได้ กรุณาตรวจรายการเดิมอีกครั้ง')}finally{busy=false;if(current())panel.querySelectorAll('button').forEach(b=>b.disabled=false)}};
