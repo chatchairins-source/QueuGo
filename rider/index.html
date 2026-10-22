@@ -920,7 +920,7 @@ function qgUpdateManeuverHud(cache,remaining,length){
   if(iconEl)iconEl.innerHTML=qgTurnSvg(next?.step?.turnCode);
   if(nextEl){const show=!!following&&((next?.distance??Infinity)<=400||(following?.distance??Infinity)<=300);nextEl.classList.toggle('show',show);nextEl.innerHTML=show?'<b>ถัดไป</b>'+esc(following.phrase+'ใน '+qgRouteDistanceText(following.distance)+(following.step?.roadName?' · '+following.step.roadName:'')):''}
   if(noteEl){
-    const serviceRemaining=total*ratio,note=qgCleanOrderNote(cache.customerNote),showNote=!!note&&serviceRemaining<=300;
+    const serviceRemaining=total*ratio,note=String(cache.customerNote||'').trim(),showNote=!!note&&serviceRemaining<=300;
     noteEl.classList.toggle('show',showNote);badge.classList.toggle('has-customer-note',showNote);
     noteEl.innerHTML=showNote?'<b>หมายเหตุจากลูกค้า</b><span>'+esc(note)+'</span>':'';
   }
