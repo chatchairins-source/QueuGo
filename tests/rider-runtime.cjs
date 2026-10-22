@@ -142,3 +142,5 @@ function boot(){
  z.sbTable=async(path)=>{if(path.startsWith('notifications?'))return [];throw Error('network')};await b.run('refreshData()');eq(z.S.openJobs[0].order.id,'job-0');eq(b.events.filter(e=>e==='error').length,1);z.S.online=false;z.sbTable=async()=>[];await b.run('refreshData()');eq(z.S.openJobs.length,0);
  console.log(JSON.stringify({checks,failures:0,scope:'isolated Rider refresh ownership, coalescing, batched detail reads and token rotation; real Auth/RLS/network not certified'}));
 })().catch(e=>{console.error(e);process.exit(1)});
+
+// Rider active control-center exact-source CI gate.
