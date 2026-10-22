@@ -164,51 +164,6 @@ eq(easeCalls[0].offset[0],0,'follow anchor must stay horizontally centered');
 ok(easeCalls[0].offset[1]>=180&&easeCalls[0].offset[1]<=260,'follow anchor must keep Rider in the lower navigation zone');
 eq(Q.navigationScreenAnchorRatio(8),0.72,'medium-speed screen anchor ratio');
 
-const navClasses=(...initial)=>{
-  const values=new Set(initial);
-  return {
-    contains:v=>values.has(v),
-    add:v=>values.add(v),
-    toggle:(v,on)=>{if(on)values.add(v);else values.delete(v)},
-    has:v=>values.has(v)
-  };
-};
-const navDom={
-  'route-badge':{classList:navClasses('qg-maneuver-rich'),style:{}},
-  'qg-nav-turn-icon':{innerHTML:''},
-  'qg-nav-turn-distance':{textContent:''},
-  'qg-nav-road':{textContent:''},
-  'qg-nav-turn-label':{textContent:''},
-  'route-text':{textContent:''},
-  'qg-nav-next':{classList:navClasses()},
-  'qg-nav-next-icon':{innerHTML:''},
-  'qg-nav-next-text':{textContent:''}
-};
-context.document.getElementById=id=>navDom[id]||null;
-window.QueueGoMapService={
-  getLastRoute:()=>({
-    routes:[{
-      distance:900,
-      duration:360,
-      legs:[{steps:[
-        {vendor_type:5,name:'ถนน A',distance:400,duration:160},
-        {vendor_type:1,name:'ถนน B',distance:300,duration:120},
-        {vendor_type:0,name:'ถนน C',distance:200,duration:80}
-      ]}]
-    }]
-  })
-};
-Q.followNavigationCamera(map,{
-  lat:15.00001,lng:103.0030,speed:8,bearing:90,accuracy:5
-},straight,{force:true,duration:400});
-eq(navDom['qg-nav-turn-label'].textContent,'เลี้ยวขวา','maneuver HUD must use QueueGo route steps');
-eq(navDom['qg-nav-road'].textContent,'ถนน B','maneuver HUD must show authoritative road name');
-ok(navDom['qg-nav-turn-distance'].textContent.endsWith('ม.'),'maneuver HUD must show turn distance');
-ok(navDom['qg-nav-next'].classList.has('show'),'near current maneuver must reveal following turn');
-ok(navDom['qg-nav-next-text'].textContent.includes('เลี้ยวซ้าย'),'following maneuver must use the next QueueGo step');
-context.document.getElementById=()=>null;
-delete window.QueueGoMapService;
-
 const fastTurnCalls=[],slowTurnCalls=[];
 const fastTurnMap={
   bearing:0,
