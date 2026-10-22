@@ -118,7 +118,8 @@ ok(riderHome.includes('shop = offerShopDisplay')&&
 ok(riderApi.includes('suspend fun offerShopDisplay(')&&riderApi.includes('/rest/v1/orders?select=shop_id&id=eq.')&&
    riderApi.includes('/rest/v1/shop_profiles?select=shop_name,public_logo&id=eq.'),
    'Rider offer identity must come from the authenticated Production order/shop profile path, not mock data');
-ok(riderHome.includes('Text("นำทางด้วย QueueGo"')&&
+ok(riderHome.includes('fun startQueueGoNavigation(')&&
+   riderHome.includes('startQueueGoNavigation(')&&
    !riderHome.includes('นำทางด้วย Google Maps')&&
    !riderHome.includes('GOOGLE_MAPS_PACKAGE')&&
    !riderHome.includes('"google.navigation:q="'),
