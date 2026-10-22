@@ -1052,9 +1052,9 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 
 ### Rider Grab-benchmark navigation / pickup / payment completion (2026-10-22)
 - Status: IN PROGRESS
-- Active PR: #623
-- Branch: `work-rider-grab-benchmark-20261022`
-- Current checkpoint HEAD: `0ada1dfd049ad05562e90b00f041c2401ce0713f`
+- Predecessor PR: #623
+- Active branch: `work-native-rider-grab-benchmark-20261022`
+- Current checkpoint HEAD: `3f9a4d55baf43bd1123866f7d1b8556da37805ae`
 - Successor base: PR #620 / `f64ad6b2c85e04a2c6016c452753d264c4b6cee3`
 - Completed source checkpoints:
   - off-route requires >30 m sustained for 3 seconds on Native and Web;
@@ -1065,12 +1065,13 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
   - Android/Web full-swipe completion requires 100%, haptic feedback and 200 ms bounce-back when incomplete;
   - completion summary uses authoritative Rider payout and real rating summary only;
   - Android and Web pan now resume navigation follow after 8 seconds idle; return animation is <=500 ms.
+- Map Engine off-route policy now also uses >30 m sustained for 3 seconds and rejects navigation decisions above 35 m GPS accuracy.
 - Source tests added/updated:
   - `NavigationGuidanceTest.kt`
   - `NavigationViewModeTest.kt`
   - `RiderNavigationHudTest.kt`
   - `tests/native-rider-delivery-success-parity.cjs`
   - `tests/queuego-map-web-camera.cjs`
-- Evidence status: source assertions committed; exact-head CI has not yet run for this successor.
+- Evidence status: source assertions committed; this `work-native-*` successor exists specifically to run exact-head Native Pilot CI.
 - Release blockers: physical Android road/GPS test, ANR/OOM/battery evidence, Production/public runtime gate remain mandatory before launch-ready claim.
 - NEXT: finish Web current/next maneuver HUD using QueueGo route `legs[].steps`, then run exact-head source/CI gates; fix only the first failure before any further release claim.
