@@ -1792,8 +1792,25 @@ private fun RiderHome(
                     actionMessage = "กรุณาถ่ายรูปหลักฐานก่อน"
                     return@VerificationScreen
                 }
-                if (actionBusy || !requireServerNetwork()) return@VerificationScreen
+                if (actionBusy) return@VerificationScreen
                 val location = lastKnownLocation(context)
+                val syncRequest = RiderProofSyncRequest(
+                    userId = auth.user.id,
+                    workId = job.id,
+                    mode = verifyMode ?: return@VerificationScreen,
+                    photoUri = uri.toString(),
+                    marketPickupId = verifyMarketPickup?.pickupId,
+                    marketOrderId = job.marketOrderId,
+                    marketPickupAmount = verifyMarketPickup?.shopAmount,
+                    latitude = location?.first,
+                    longitude = location?.second
+                )
+                RiderProofSyncScheduler.enqueue(context, syncRequest)
+                if (!networkAvailable) {
+                    actionMessage = "บันทึกรูปแล้ว · จะซิงก์อัตโนมัติเมื่อมีอินเทอร์เน็ต"
+                    return@VerificationScreen
+                }
+                if (!requireServerNetwork()) return@VerificationScreen
                 actionBusy = true
                 actionMessage = null
                 scope.launch {
@@ -1842,6 +1859,7 @@ private fun RiderHome(
                         }
                     }
                     result.onSuccess { mutationResult ->
+                        RiderProofSyncScheduler.cancel(context, syncRequest)
                         val completedMode = verifyMode
                         val completedMarketPickupId = verifyMarketPickup?.pickupId
 
