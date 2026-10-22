@@ -1076,6 +1076,7 @@ function startGeolocation(){
   if(!navigator.geolocation){ toast('อุปกรณ์นี้ไม่รองรับ GPS'); return; }
   if(S.watchId!==null&&S.watchId!==undefined)navigator.geolocation.clearWatch(S.watchId);
   const epoch=++riderLocationEpoch,session=S.session,userId=S.user?.id;
+  resetRiderLocationPushSchedule();
   const current=()=>epoch===riderLocationEpoch&&riderSessionMatches(session)&&S.user?.id===userId;
   S.watchId = navigator.geolocation.watchPosition(pos=>{
     if(!current()||!validRiderCoordinate(pos.coords.latitude,pos.coords.longitude))return;
@@ -1222,18 +1223,51 @@ async function toggleOnline(){
   }catch(e){if(current())toast('เปลี่ยนสถานะไม่สำเร็จ: '+e.message);}
   finally{riderAvailabilityBusy=false;if(current()){updateStatusUI();renderHomeDock();}}
 }
-let riderLocationWrite=null,riderLocationQueued=false;
+let riderLocationWrite=null,riderLocationQueued=false,riderLocationLastPushAt=0,riderLocationDeferredTimer=null,riderLocationDeferredAt=0;
+function qgRiderLocationPushIntervalMs(distanceKm){
+  const km=Number(distanceKm);
+  return Number.isFinite(km)&&km>=0&&km<=.2?1000:3000;
+}
+function qgRiderLocationTargetDistanceKm(){
+  const o=S.activeOrder;if(!o||!S.pos)return NaN;
+  const st=statusFromRow(o),target=['picked_up','in_progress'].includes(st)?'customer':'shop';
+  return qgArrivalDistanceKm(o,target);
+}
+function resetRiderLocationPushSchedule(){
+  riderLocationQueued=false;riderLocationLastPushAt=0;riderLocationDeferredAt=0;
+  if(riderLocationDeferredTimer){clearTimeout(riderLocationDeferredTimer);riderLocationDeferredTimer=null}
+}
+function qgScheduleRiderLocationPush(waitMs){
+  const delayMs=Math.max(0,Math.ceil(Number(waitMs)||0)),due=Date.now()+delayMs;
+  if(riderLocationDeferredTimer&&riderLocationDeferredAt<=due+20)return;
+  if(riderLocationDeferredTimer)clearTimeout(riderLocationDeferredTimer);
+  riderLocationDeferredAt=due;
+  riderLocationDeferredTimer=setTimeout(()=>{
+    riderLocationDeferredTimer=null;riderLocationDeferredAt=0;
+    if(riderLocationQueued){riderLocationQueued=false;void pushLocation()}
+  },delayMs);
+}
 function pushLocation(){
   if(!S.pos||!S.riderProfile||!S.user||!S.online||!navigator.onLine)return Promise.resolve();
+  const interval=qgRiderLocationPushIntervalMs(qgRiderLocationTargetDistanceKm()),now=Date.now();
+  const wait=riderLocationLastPushAt?interval-(now-riderLocationLastPushAt):0;
+  if(wait>0){riderLocationQueued=true;qgScheduleRiderLocationPush(wait);return riderLocationWrite||Promise.resolve()}
   if(riderLocationWrite){riderLocationQueued=true;return riderLocationWrite}
+  riderLocationQueued=false;
+  const session=S.session,userId=S.user.id,profileId=S.riderProfile.id,pos={...S.pos},epoch=riderLocationEpoch;
+  const current=()=>riderSessionMatches(session)&&S.user?.id===userId&&S.riderProfile?.id===profileId&&S.online&&epoch===riderLocationEpoch;
   const task=(async()=>{
-    do{
-      riderLocationQueued=false;
-      const session=S.session,userId=S.user.id,profileId=S.riderProfile.id,pos={...S.pos},epoch=riderLocationEpoch;
-      const current=()=>riderSessionMatches(session)&&S.user?.id===userId&&S.riderProfile?.id===profileId&&S.online&&epoch===riderLocationEpoch;
-      try{const token=await getAccessToken();if(current())await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(userId),{method:'PATCH',token,body:{latitude:pos.lat,longitude:pos.lng}})}catch(e){}
-    }while(riderLocationQueued&&S.user&&S.pos&&S.riderProfile&&S.online&&navigator.onLine)
-  })().finally(()=>{if(riderLocationWrite===task)riderLocationWrite=null});
+    try{
+      const token=await getAccessToken();
+      if(current()){
+        await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(userId),{method:'PATCH',token,body:{latitude:pos.lat,longitude:pos.lng}});
+        if(current())riderLocationLastPushAt=Date.now();
+      }
+    }catch(e){}
+  })().finally(()=>{
+    if(riderLocationWrite===task)riderLocationWrite=null;
+    if(riderLocationQueued){riderLocationQueued=false;void pushLocation()}
+  });
   riderLocationWrite=task;return task;
 }
 let riderRefreshTask=null,riderRefreshQueued=false;
