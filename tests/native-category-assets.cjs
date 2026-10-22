@@ -30,4 +30,8 @@ for(const key of ['shopping', 'mobile_accessories', 'computer_it', 'automotive',
 const bannerUi=fs.readFileSync(path.join(root,"native-android/customer/src/main/java/com/queuego/customer/CustomerServiceCategory.kt"),"utf8").split("internal fun CustomerServiceBanner(")[1];
 assert.ok(bannerUi.includes("Color(0xF0FFFFFF)"),"soft light banner text wash");
 assert.ok(!bannerUi.includes("Color(0xAD000000)"),"owner forbids dark banner strip");
-assert.ok(bannerUi.includes("color = Color(0xFF17191D)"),"readable dark text on light wash");
+assert.ok(
+  bannerUi.includes("val copyColor = if (darkScrim) Color.White else Color(0xFF17191D)") &&
+  bannerUi.includes("color = copyColor"),
+  "readable dark text on light wash"
+);
