@@ -207,3 +207,11 @@
  .qg-pos-product-copy small{font-size:13px;margin-top:4px}
  .qg-pos-grid>section:nth-child(2){margin-top:4px;padding:12px;border:1px solid #eceef2;background:#fff;border-radius:13px}
 }
+
+
+/* Mobile POS navigation: compact rail, no oversized active pill. */
+@media(max-width:650px){
+ .qg-pos-tabs{gap:2px;padding:5px 10px 7px;background:rgba(247,248,250,.97)}
+ .qg-pos-tabs button{min-height:36px;padding:7px 10px;border:0;border-radius:9px;font-size:12px;font-weight:700;color:#737b86}
+ .qg-pos-tabs button.current{background:#fff;color:#d20b32;border:0;box-shadow:inset 0 -2px 0 #ed163d}
+}
