@@ -112,9 +112,9 @@ internal fun navigationCameraDecision(
     val routeBearingUsable = routeBearing != null && !routeBearingOpposesMotion
 
     val desiredBearing = when {
-        followPuckBearing && gpsBearing != null && speed != null && speed >= 0.83f -> gpsBearing
-        routeBearingUsable -> routeBearing
         speed == null || speed < 0.83f -> previousBearingDegrees
+        followPuckBearing && gpsBearing != null -> gpsBearing
+        routeBearingUsable -> routeBearing
         else -> gpsBearing ?: previousBearingDegrees
     }
     val smoothedBearing = smoothNavigationBearing(
@@ -130,7 +130,8 @@ internal fun navigationCameraDecision(
         baseZoom = state.followZoom,
         speedMetersPerSecond = speed,
         remainingRouteMeters = remaining,
-        accuracyMeters = fix.accuracyMeters
+        accuracyMeters = fix.accuracyMeters,
+        nextTurnDistanceMeters = state.nextTurnDistanceMeters
     )
     val tilt = if (state.perspectiveCameraEnabled && reliableRouteMatch == null) {
         navigationFreeDriveTilt(
@@ -184,11 +185,14 @@ internal fun navigationZoom(
     baseZoom: Int,
     speedMetersPerSecond: Float?,
     remainingRouteMeters: Double?,
-    accuracyMeters: Float?
+    accuracyMeters: Float?,
+    nextTurnDistanceMeters: Double? = null
 ): Int {
     val base = baseZoom.coerceIn(14, 20)
     var target = when {
         remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 19
+        nextTurnDistanceMeters != null && nextTurnDistanceMeters <= 60.0 -> 19
+        nextTurnDistanceMeters != null && nextTurnDistanceMeters <= 150.0 -> 18
         remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 18
         speedMetersPerSecond == null -> base
         speedMetersPerSecond >= 18f -> 15
@@ -209,17 +213,17 @@ internal fun navigationTilt(
     accuracyMeters: Float?
 ): Float {
     val target = when {
-        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 80f -> 24f
-        remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 28f
-        remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 34f
-        speedMetersPerSecond == null -> 38f
-        speedMetersPerSecond >= 18f -> 50f
-        speedMetersPerSecond >= 11f -> 48f
-        speedMetersPerSecond >= 5f -> 44f
-        speedMetersPerSecond >= 2f -> 40f
-        else -> 34f
+        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 35f -> 38f
+        remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 45f
+        remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 46f
+        speedMetersPerSecond == null -> 45f
+        speedMetersPerSecond >= 18f -> 52f
+        speedMetersPerSecond >= 11f -> 50f
+        speedMetersPerSecond >= 5f -> 48f
+        speedMetersPerSecond >= 2f -> 46f
+        else -> 45f
     }
-    return target.coerceIn(0f, 50f)
+    return target.coerceIn(0f, 55f)
 }
 
 internal fun navigationFreeDriveTilt(
@@ -227,15 +231,15 @@ internal fun navigationFreeDriveTilt(
     accuracyMeters: Float?
 ): Float {
     val target = when {
-        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 80f -> 28f
-        speedMetersPerSecond == null -> 44f
-        speedMetersPerSecond >= 18f -> 50f
-        speedMetersPerSecond >= 11f -> 50f
-        speedMetersPerSecond >= 5f -> 48f
-        speedMetersPerSecond >= 2f -> 44f
-        else -> 40f
+        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 35f -> 38f
+        speedMetersPerSecond == null -> 45f
+        speedMetersPerSecond >= 18f -> 52f
+        speedMetersPerSecond >= 11f -> 51f
+        speedMetersPerSecond >= 5f -> 49f
+        speedMetersPerSecond >= 2f -> 47f
+        else -> 45f
     }
-    return target.coerceIn(0f, 50f)
+    return target.coerceIn(0f, 55f)
 }
 
 internal fun smoothNavigationTilt(
@@ -244,14 +248,14 @@ internal fun smoothNavigationTilt(
     maxStepDegrees: Float = 4f
 ): Float {
     val safePrevious = previous.takeIf { it.isFinite() } ?: 0f
-    val safeTarget = target.takeIf { it.isFinite() }?.coerceIn(0f, 50f) ?: safePrevious
+    val safeTarget = target.takeIf { it.isFinite() }?.coerceIn(0f, 55f) ?: safePrevious
     val delta = safeTarget - safePrevious
     val maxStep = maxStepDegrees.coerceIn(0.5f, 12f)
     return when {
         abs(delta) <= maxStep -> safeTarget
         delta > 0f -> safePrevious + maxStep
         else -> safePrevious - maxStep
-    }.coerceIn(0f, 50f)
+    }.coerceIn(0f, 55f)
 }
 
 internal fun navigationTiltChangedEnough(
