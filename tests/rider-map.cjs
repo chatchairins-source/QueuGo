@@ -238,6 +238,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  const watches=[],cleared=[];let renders=0;
  ctx.navigator.geolocation={watchPosition:(ok,error)=>{watches.push({ok,error});return watches.length-1},clearWatch:id=>cleared.push(id)};
  ctx.toast=()=>{};ctx.placeRiderMarker=()=>renders++;ctx.updateRiderSpeedUI=()=>{};ctx.renderHomeDock=()=>{};ctx.pushLocation=()=>{};S.online=false;
+ vm.runInContext(source.slice(source.indexOf('let riderLocationWrite='),source.indexOf('let riderRefreshTask=')),ctx);
  vm.runInContext(source.slice(source.indexOf('function startGeolocation()'),source.indexOf('function recenterMap()')),ctx);
  run('startGeolocation();startGeolocation()');
  eq(cleared[0],0);
@@ -248,7 +249,6 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(S.pos,null);eq(S.map,null);eq(destroyed.at(-1),map);
 
  // Position uploads use the captured account and coalesce a GPS burst to the latest position.
- vm.runInContext(source.slice(source.indexOf('let riderLocationWrite='),source.indexOf('let riderRefreshTask=')),ctx);
  S.user={id:'rider'};S.session=session;S.riderProfile={id:'profile'};S.pos={lat:13,lng:100};S.online=true;
  const writes=[];let tokenGate=deferred();ctx.getAccessToken=()=>tokenGate.promise;
  ctx.sbTable=async(path,opts)=>{writes.push({path,opts});return []};
