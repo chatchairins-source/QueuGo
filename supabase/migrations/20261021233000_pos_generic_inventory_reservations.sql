@@ -137,7 +137,7 @@ declare r record;
 begin
   if new.status not in ('cancelled','no_rider_available') or old.status in ('cancelled','no_rider_available') then return new; end if;
   for r in select * from public.grocery_stock_reservations where order_id=new.id and not released order by product_id,item_id for update loop
-    if old.status<>'completed' then
+    if old.status<>'completed' or new.order_type not in ('DINE_IN','TAKEAWAY') then
       update public.products set stock=stock+r.quantity where id=r.product_id;
     end if;
     update public.grocery_stock_reservations set released=true,updated_at=now() where item_id=r.item_id;

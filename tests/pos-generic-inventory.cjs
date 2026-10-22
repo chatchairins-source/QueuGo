@@ -41,7 +41,7 @@ assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
     create function public.pos_my_shop() returns uuid language sql stable as $$select nullif(current_setting('qg_test.shop',true),'')::uuid$$;
     create table public.pos_staff(user_id uuid,shop_id uuid,display_name text,active boolean default true);
     create table public.products(id uuid primary key,shop_id uuid not null,name text,available boolean not null default true,stock integer not null default 0,grocery_master_id uuid,grocery_stock_tracking boolean not null default false);
-    create table public.orders(id uuid primary key,shop_id uuid not null,status text not null default 'pending');
+    create table public.orders(id uuid primary key,shop_id uuid not null,status text not null default 'pending',order_type text not null default 'shopping');
     create table public.order_items(id uuid primary key,order_id uuid not null references public.orders(id),product_id uuid not null references public.products(id),quantity numeric not null);
     create table public.market_products(product_id uuid primary key,shop_id uuid not null,stock_quantity numeric not null,pack_size numeric not null default 1);
     create table public.grocery_stock_reservations(item_id uuid primary key,order_id uuid not null,product_id uuid not null,quantity integer not null,released boolean not null default false,updated_at timestamptz not null default now());
@@ -92,8 +92,16 @@ assert.ok(groceryCancel);assert.match(groceryCancel,/old\.status<>'completed'/);
   await db.exec(`insert into public.orders(id,shop_id,status) values('${order(4)}','${shop}','pending'),('${order(5)}','${shop}','completed');insert into public.grocery_stock_reservations(item_id,order_id,product_id,quantity) values('${item(7)}','${order(4)}','${master}',2),('${item(8)}','${order(5)}','${master}',1);update public.products set stock=3 where id='${master}';update public.orders set status='cancelled' where id='${order(4)}'`);
   eq((await scalar(`select stock from public.products where id='${master}'`)).stock,5);
   await db.exec(`update public.products set stock=4 where id='${master}';update public.orders set status='cancelled' where id='${order(5)}'`);
-  eq((await scalar(`select stock from public.products where id='${master}'`)).stock,4);
+  // Delivery retains its existing completed-refund restoration behavior.
+  eq((await scalar(`select stock from public.products where id='${master}'`)).stock,5);
   eq((await scalar(`select released from public.grocery_stock_reservations where item_id='${item(8)}'`)).released,true);
+  await db.exec(`insert into public.orders(id,shop_id,status,order_type) values('${order(9)}','${shop}','completed','DINE_IN'),('${order(10)}','${shop}','completed','TAKEAWAY');
+    insert into public.grocery_stock_reservations(item_id,order_id,product_id,quantity) values('${item(14)}','${order(9)}','${master}',1),('${item(15)}','${order(10)}','${master}',1);
+    update public.products set stock=4 where id='${master}';update public.orders set status='cancelled' where id='${order(9)}';
+    update public.products set stock=3 where id='${master}';update public.orders set status='cancelled' where id='${order(10)}'`);
+  // POS completed refunds do not silently restock Dine-in or Takeaway stock.
+  eq((await scalar(`select stock from public.products where id='${master}'`)).stock,3);
+  eq((await scalar(`select count(*)::int n from public.grocery_stock_reservations where item_id in ('${item(14)}','${item(15)}') and released`)).n,2);
   await reject(`update public.products set inventory_stock_tracking=true where id='${master}'`,/Grocery Master owns/);
   const acl=(await scalar(`select has_table_privilege('authenticated','public.pos_inventory_reservations','select') auth_read,has_table_privilege('anon','public.pos_inventory_reservations','select') anon_read`));
   eq(acl.auth_read,false);eq(acl.anon_read,false);
