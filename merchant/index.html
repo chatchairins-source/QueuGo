@@ -795,7 +795,7 @@ function qtOrderToRow(o){
   return {id:qtUuidLike(o.id)?o.id:undefined,order_number:String(o.orderNumber||o.orderNo||o.id||uid()),customer_id:o.customerId||null,shop_id:o.shopProfileId||null,technician_id:null,rider_id:o.riderProfileId||null,order_type:'shopping',status:qtOrderStatusToDb(o.status),subtotal:Number(o.subtotal||0),delivery_fee:Number(o.deliveryFee||0),total_amount:Number(o.total||o.totalAmount||0),pickup_address:o.pickupAddress??pickup.address??null,pickup_latitude:o.pickupLat??pickup.lat??null,pickup_longitude:o.pickupLng??pickup.lng??null,delivery_address:o.deliveryAddress??delivery.address??null,delivery_latitude:o.deliveryLat??delivery.lat??null,delivery_longitude:o.deliveryLng??delivery.lng??null,note:(`__QT_ORDER_STATUS__=${o.status}\n`+(o.cancelReason?`__QT_CANCEL_REASON__=${String(o.cancelReason).replace(/\n/g,' ')}\n`:'')+(o.note||'')).trim()||null,created_at:qtIso(o.createdAt),updated_at:qtIso(Date.now())};
 }
 function qtOrderFromRow(r){
-  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),gpAmount:r.gp_amount==null?null:Number(r.gp_amount),gpRate:r.gp_rate==null?null:Number(r.gp_rate),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',cancelReason:(r.note||'').match(/__QT_CANCEL_REASON__=([^\n]+)/)?.[1]||'',preparingAt:r.preparing_at?new Date(r.preparing_at).getTime():null,riderAssignedAt:r.rider_assigned_at?new Date(r.rider_assigned_at).getTime():null,riderArrivedShopAt:r.rider_arrived_shop_at||null,riderArrivedCustomerAt:r.rider_arrived_customer_at||null,createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
+  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),gpAmount:r.gp_amount==null?null:Number(r.gp_amount),gpRate:r.gp_rate==null?null:Number(r.gp_rate),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',cancelReason:(r.note||'').match(/__QT_CANCEL_REASON__=([^\n]+)/)?.[1]||'',readyAt:r.ready_at?new Date(r.ready_at).getTime():null,preparingAt:r.preparing_at?new Date(r.preparing_at).getTime():null,riderAssignedAt:r.rider_assigned_at?new Date(r.rider_assigned_at).getTime():null,riderArrivedShopAt:r.rider_arrived_shop_at||null,riderArrivedCustomerAt:r.rider_arrived_customer_at||null,createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
 }
 
 
@@ -2708,11 +2708,16 @@ window.qgmSaveOrderEditor=async function(button){
  }finally{if(button?.isConnected)button.disabled=false}
 };
 
+function qgmCanCancelDelivery(o){
+ const status=String(o?.status||'');
+ return ['pending_shop','pending','shop_accepted','accepted','searching_rider','rider_to_shop','rider_assigned','assigned'].includes(status)
+   && o?.preparingAt==null && o?.preparing_at==null && o?.readyAt==null && o?.ready_at==null;
+}
 window.renderShopOrderModern=function(id){
  const u=shopUser(),o=shopOrders(u).find(x=>String(x.id)===String(id));
  if(!o)return navigate('shop-orders');
  const st=window.qgmOrderStatus(o),subtotal=qgmMerchantSalesAmount(o),items=o.items||[],created=new Date(o.createdAt||Date.now()).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
- const canCancel=['shop_accepted','rider_to_shop','accepted'].includes(o.status);
+ const canCancel=qgmCanCancelDelivery(o);
  const primary=o.status==='pending_shop'
    ?`<button class="qgm-od-primary" onclick="updateOrderStatus('${o.id}','shop_accepted',this)">รับออเดอร์</button><button class="qgm-od-secondary" onclick="shopCancelOrder('${o.id}',this)">ปฏิเสธออเดอร์</button>`
    :o.status==='rider_to_shop'
@@ -4145,6 +4150,7 @@ window.shopCancelOrder=function shopCancelOrder(orderId,button){
  const u=typeof shopUser==='function'?shopUser():currentUser();
  const o=(typeof window.shopOrders==='function'?window.shopOrders(u):[]).find(x=>String(x.id)===String(orderId));
  if(!o){toast('ไม่พบออเดอร์ กรุณารีเฟรชอีกครั้ง');return}
+ if(!qgmCanCancelDelivery(o)){toast('ยกเลิกได้ก่อนเริ่มเตรียมสินค้าเท่านั้น');return}
  const statusKey=String(o.status||'');
  const accepted=!['pending_shop','pending'].includes(statusKey);
  const overlay=document.createElement('section');
@@ -4392,7 +4398,7 @@ window.qgmExportRevenue=async function(button){
 <script src="../queuego-push.js?v=20261007-native1"></script>
 <script>QueueGoPush.configure({role:'shop',getAccessToken:()=>qtGetAccessToken()});</script>
 <link rel="stylesheet" href="pos-table-v2.css?v=20261022-pos-schema-fallback1">
-<script defer src="pos-table-v2.js?v=20261022-pos-schema-fallback1"></script>
+<script defer src="pos-table-v2.js?v=20261022-pos-separation1"></script>
 <link rel="stylesheet" href="market.css?v=20261019-market-grocery-parity1">
 <script defer src="market.js?v=20261019-market-grocery-parity1"></script>
 <script defer src="market-catalog.js?v=20261019-market-clean1"></script>
