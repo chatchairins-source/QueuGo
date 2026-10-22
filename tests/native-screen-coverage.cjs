@@ -118,10 +118,14 @@ ok(riderHome.includes('shop = offerShopDisplay')&&
 ok(riderApi.includes('suspend fun offerShopDisplay(')&&riderApi.includes('/rest/v1/orders?select=shop_id&id=eq.')&&
    riderApi.includes('/rest/v1/shop_profiles?select=shop_name,public_logo&id=eq.'),
    'Rider offer identity must come from the authenticated Production order/shop profile path, not mock data');
-ok(riderHome.includes('Text("นำทางด้วย QueueGo"')&&
+ok(riderHome.includes('fun startQueueGoNavigation(')&&
+   riderHome.includes('// Accept is the start of work. Enter QueueGo follow/navigation mode')&&
+   riderHome.includes('routeOverviewActive = false')&&
+   riderHome.includes('recenterSignal += 1')&&
+   !riderHome.includes('Text("นำทางด้วย QueueGo"')&&
    !riderHome.includes('นำทางด้วย Google Maps')&&
    !riderHome.includes('GOOGLE_MAPS_PACKAGE')&&
    !riderHome.includes('"google.navigation:q="'),
-   'Rider navigation must remain inside QueueGo without a Google Maps button or external handoff');
+   'Rider accept must auto-start QueueGo navigation without a redundant nav button or Google Maps handoff');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Native Customer/Merchant/Rider source-surface coverage; visual parity remains OPEN'}));
