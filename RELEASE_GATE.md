@@ -1,8 +1,10 @@
 # QueueGo Release Gate
 
-Snapshot date: 2026-10-22 · Main: `7572146400f44bf66c96aca5ae5f84264fe4241b`
+Snapshot date: 2026-10-22 · Main: `4d93ad0f6540aa9f1b27c070cc8340a447f9f913`
 
 ## Current POS continuation
+
+- Product Code/SKU registry source is under audit hardening before deployment. The Production table/RPC names are absent; the existing audit_logs table supports server-side atomic audit from its SECURITY DEFINER RPCs. Local focused and full tests pass; Production DDL not yet applied.
 
 - PR #615 passed exact-head RC `39764778696` and merged as `7572146400f44bf66c96aca5ae5f84264fe4241b`.
 - Production recorded and verified Kitchen capability migration `20261022105255` and POS cash movement migration `20261022105630_pos_cash_register_movements`. Cash-event rows remain zero; no sale, payment, refund or drawer event was generated.
