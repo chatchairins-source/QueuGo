@@ -140,3 +140,25 @@
  .qg-pos-actions{position:sticky;bottom:8px;z-index:20;padding:8px;margin:8px -2px 0;border:1px solid var(--qg-pos-line);border-radius:14px;background:rgba(255,255,255,.95);backdrop-filter:blur(12px)}
  .qg-pos-receipt-overlay{padding:8px}
 }
+
+
+/* QueueGo POS light professional correction — no black primary surfaces */
+.qg-pos{--qg-pos-ink:#20242a;--qg-pos-soft:#f7f8fa;--qg-pos-line:#e8ebef;--qg-pos-red:#ed163d}
+.qg-pos-tabs button{background:transparent;color:#6b7280}
+.qg-pos-tabs button.current{background:#fff;color:var(--qg-pos-red);box-shadow:0 1px 5px rgba(32,36,42,.08);border:1px solid #f0d5da}
+.qg-pos-scan-row button,.qg-pos-add{background:var(--qg-pos-red);color:#fff}
+.qg-pos-actions button,.qg-pos-panel>button,.qg-pos-kitchen button,.qg-pos-receipt button{background:var(--qg-pos-red);color:#fff}
+.qg-pos-actions button.quiet,.qg-pos-panel>button.quiet{background:#f4f5f7;color:#505762}
+.qg-pos-switch button.on{background:#fff;color:var(--qg-pos-red);box-shadow:0 1px 5px rgba(32,36,42,.08)}
+.qg-pos-product-card{background:#fff}
+.qg-pos-products .qg-pos-price-edit{background:#fff;color:#7a818b;border-left:1px solid var(--qg-pos-line)}
+.qg-pos-total b{color:var(--qg-pos-red)}
+.qg-pos-tables button.selected{border-color:#f0b4c0;background:#fff7f8;color:var(--qg-pos-red)}
+@media(max-width:650px){
+ .qg-pos{padding-left:10px;padding-right:10px}
+ .qg-pos-panel,.qg-pos-grid>section,.qg-pos-scan{box-shadow:none}
+ .qg-pos-grid>section{border-color:#eceef2}
+ .qg-pos-product-card{grid-template-columns:minmax(0,1fr) 50px}
+ .qg-pos-products .qg-pos-price-edit{min-width:50px;padding:0 4px;font-size:11px}
+ .qg-pos-actions{background:rgba(255,255,255,.97);border-color:#eceef2}
+}
