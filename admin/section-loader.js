@@ -73,7 +73,7 @@ window.qgAdminRealtimeTables=function(){
  if(directory.has(key))return ['users','shop_profiles','rider_profiles','technician_profiles'];
  const scopes={
   'admin-orders':['orders','deliveries','payments','market_orders','market_order_pickups','laundry_orders'],
-  'admin-gp':['settlements','orders'],'admin-cash':['orders','payments','settlements'],
+  'admin-cash':['orders','payments','settlements'],
   'admin-support':[],'admin-gp-rates':['shop_profiles'],
   'admin-market':['market_requests','shop_profiles'],'admin-grocery':['products'],
   'notifications':['notifications'],'qt-sec-audit':['audit_logs'],'qt-sec-promote':['promotions'],
@@ -113,10 +113,10 @@ window.qgAdminLoadSection=async function(force=false,reason=''){
   if(valid()){QT_DB_CACHE.qt_notifications=visible.map(n=>({id:n.id,userId:n.user_id,title:n.title,message:n.message,body:n.message,type:n.type,referenceId:n.reference_id||null,read:n.is_read,createdAt:new Date(n.created_at).getTime()}));window.QG_ADMIN_NOTIFICATION_PAGE_INFO={page,more:(rows||[]).length>100,last:last?{at:last.created_at,id:last.id}:null,canPrev:notificationHistory.length>0}}
  },force);
  if(force||reason){
-  const loaders={'admin-orders':()=>qgLoadAdminOrders(),'admin-gp':()=>qgLoadAdminGp(),'admin-cash':()=>qgLoadAdminCash(undefined),'admin-market':()=>qgLoadMarketOperations(),'admin-gp-rates':()=>qtPullGpRates()};
+  const loaders={'admin-orders':()=>qgLoadAdminOrders(),'admin-cash':()=>qgLoadAdminCash(undefined),'admin-market':()=>qgLoadMarketOperations(),'admin-gp-rates':()=>qtPullGpRates()};
   if(loaders[key])await resource(key,loaders[key],force||!!reason);
  }
- // Orders, GP, cash, catalog and support have their own bounded loaders. Never hydrate unrelated tables here.
+ // Orders, cash, catalog and support have their own bounded loaders. Never hydrate unrelated tables here.
  return false;
 };
 let rendering=false;const ensures=new Map();
