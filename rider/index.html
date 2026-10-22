@@ -1397,7 +1397,7 @@ function drawLaundryRoute(){
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
       riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),dist,time,label};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
-      if(!isOfferPreview&&S.activeTab==='home')renderHomeDock();
+
     }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
   })();riderRouteRequest=request;return request.task;
@@ -1479,6 +1479,7 @@ function drawActiveRoute(){
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
       riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),dist,time,label};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
+      if(!isOfferPreview&&S.activeTab==='home')renderHomeDock();
     }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
   })();riderRouteRequest=request;return request.task;
