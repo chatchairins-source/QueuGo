@@ -1372,20 +1372,25 @@ function placeJobMarkers(){
     drawActiveRoute();return;
   }
   const list=S.activeOrder?(S.activeOrder.route_bundle_id&&S.bundleOrders.length?S.bundleOrders:[S.activeOrder]):S.openJobs.map(x=>x.order);
-  list.forEach(o=>{
+  const bundleMode=!!(S.activeOrder?.route_bundle_id&&S.bundleOrders.length);
+  const bundlePickupCount=bundleMode?list.length:0;
+  list.forEach((o,orderIndex)=>{
     const pickups=o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.filter(x=>x.status!=='CANCELLED'):[];
     if(pickups.length){
       pickups.forEach((x,i)=>{
         const lat=Number(x.latitude),lng=Number(x.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
-        const done=x.status==='PICKED_UP',sequence=i+1;
+        const done=x.status==='PICKED_UP',sequence=Number(x.pickup_sequence)||i+1;
         const m=qgMarker({lat,lon:lng},qgMapStopMarkerHtml(sequence,'shop',done),'จุด '+sequence+' · ร้านค้า · '+(x.shop_name||'ร้านค้า'));
         if(m)S.jobMarkers.push(m);
       });
     }else{
       const plat=Number(o.pickup_latitude),plng=Number(o.pickup_longitude);
-      if(Number.isFinite(plat)&&Number.isFinite(plng)){const m=qgMarker({lat:plat,lon:plng},qgMapStopMarkerHtml(1,'shop',false),'จุด 1 · ร้านค้า · '+(o._shop?.shop_name||o.pickup_address||'ร้านค้า'));if(m)S.jobMarkers.push(m)}
+      const pickupSequence=bundleMode?(Number(o.route_bundle_sequence)||orderIndex+1):1;
+      if(Number.isFinite(plat)&&Number.isFinite(plng)){const m=qgMarker({lat:plat,lon:plng},qgMapStopMarkerHtml(pickupSequence,'shop',false),'จุด '+pickupSequence+' · ร้านค้า · '+(o._shop?.shop_name||o._bundleShopName||o.pickup_address||'ร้านค้า'));if(m)S.jobMarkers.push(m)}
     }
-    const dlat=Number(o.delivery_latitude),dlng=Number(o.delivery_longitude),dropSequence=pickups.length?pickups.length+1:2;
+    const dlat=Number(o.delivery_latitude),dlng=Number(o.delivery_longitude);
+    const marketDropSequence=pickups.length?Math.max(...pickups.map((x,i)=>Number(x.pickup_sequence)||i+1))+1:2;
+    const dropSequence=bundleMode?bundlePickupCount+(Number(o._bundleDropRank)||orderIndex+1):marketDropSequence;
     if(Number.isFinite(dlat)&&Number.isFinite(dlng)){const m=qgMarker({lat:dlat,lon:dlng},qgMapStopMarkerHtml(dropSequence,'customer',false),'จุด '+dropSequence+' · ลูกค้า · '+(o._customer?.name||o.delivery_address||'บ้านลูกค้า'));if(m)S.jobMarkers.push(m)}
   });
   drawActiveRoute();
