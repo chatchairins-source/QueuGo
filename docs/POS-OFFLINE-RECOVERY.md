@@ -5,7 +5,7 @@ Status: recommended Phase 1 scope; no offline finalized sale is implemented or a
 
 ## Current QueueGo behavior
 
-- `merchant/pos-table-v2.js` displays an offline warning and refuses to send bill, scan, and kitchen writes without connectivity.
+- `merchant/pos-table-v2.js` displays an offline warning; barcode lookup, payment, kitchen actions, and delivery actions explicitly require connectivity. Bill create/edit calls can still attempt their normal RPC path, but a new create persists one stable request ID in `sessionStorage` before the call and leaves it for online retry if the response is ambiguous. This is recovery for an attempted online request, not an accepted offline sale.
 - An ambiguous online bill-creation request is kept in `sessionStorage` with a stable request ID. PR #580 added shop and cashier identity checks before replay. This recovers a response timeout; it is not a durable offline outbox and does not provide a full offline catalog.
 - Cash movement has its own session-scoped idempotent retry. It also requires connectivity before submitting.
 - Closing the tab can lose those tab-scoped pending requests. No offline sale queue, cross-terminal stock conflict process, or disconnected payment acceptance has been evidenced.
