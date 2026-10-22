@@ -141,13 +141,15 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(label.textContent,'ไปร้าน • 1.2 กม. • 4 นาที');
  eq(timers.size,0);
 
- // A nearby parallel/opposite route must not suppress reroute evidence.
- run('riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0');
+ // A nearby parallel/opposite route must sustain reroute evidence for three seconds.
+ run('riderRouteOffRouteSince=0;riderRouteLastRerouteAt=0');
  S.pos={lat:13.7,lng:100,accuracy:5,speed:6,bearing:180};
  eq(run('qgRiderRouteNeedsReroute(S.pos,riderRouteCache.scope,S.map)'),false);
+ now+=2999;
  eq(run('qgRiderRouteNeedsReroute(S.pos,riderRouteCache.scope,S.map)'),false);
+ now+=1;
  eq(run('qgRiderRouteNeedsReroute(S.pos,riderRouteCache.scope,S.map)'),true);
- run('riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0');
+ run('riderRouteOffRouteSince=0;riderRouteLastRerouteAt=0');
  S.pos={lat:13,lng:100,accuracy:5,speed:6,bearing:90};
 
  for(let i=0;i<20;i++)await run('drawActiveRoute()');
@@ -157,11 +159,12 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(routeRemoves.length,0);
 
  // A stable QueueGo route must survive time/movement and reroute only after
- // three consecutive accurate off-route fixes.
+ // three continuous seconds of accurate off-route evidence.
  S.pos={lat:13.5,lng:100,accuracy:5};
- await run('drawActiveRoute()');await run('drawActiveRoute()');
- eq(requests.length,1);
  await run('drawActiveRoute()');
+ now+=2999;await run('drawActiveRoute()');
+ eq(requests.length,1);
+ now+=1;await run('drawActiveRoute()');
  eq(requests.length,2);
  eq(routeRemoves.length,2);
 
