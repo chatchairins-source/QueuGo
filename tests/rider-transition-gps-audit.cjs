@@ -40,7 +40,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert'),{PGlite}=re
   `);
 
   const migration=fs.readFileSync(
-    path.resolve(__dirname,'../supabase/migrations/20261022153000_rider_transition_semantics_hardening.sql'),
+    path.resolve(__dirname,'../supabase/migrations/20261022151911_rider_transition_semantics_hardening.sql'),
     'utf8'
   );
   const claimMigration=fs.readFileSync(
