@@ -77,8 +77,46 @@ data class PosStaff(
 data class PosOwnerDashboard(
     val dineIn: Double,
     val takeaway: Double,
-    val orders: Int
+    val orders: Int,
+    val averageTicket: Double = 0.0,
+    val cashSales: Double = 0.0,
+    val discounts: Double = 0.0,
+    val refunds: Double = 0.0,
+    val voids: Int = 0,
+    val previousPeriodSales: Double = 0.0,
+    val changePercent: Double? = null,
+    val hourlySales: List<PosHourlySale> = emptyList()
 )
+
+data class PosHourlySale(val hour: Int, val bills: Int, val sales: Double)
+
+internal fun parsePosOwnerDashboard(o: JSONObject): PosOwnerDashboard {
+    val hourly = o.optJSONArray("hourly_sales") ?: JSONArray()
+    val hourlyRows = buildList {
+        for (i in 0 until hourly.length()) {
+            val row = hourly.optJSONObject(i) ?: continue
+            val hour = row.optInt("hour", -1)
+            val bills = row.optInt("bills", -1)
+            val sales = row.optDouble("sales", -1.0)
+            if (hour in 0..23 && bills >= 0 && sales.isFinite() && sales >= 0.0) {
+                add(PosHourlySale(hour, bills, sales))
+            }
+        }
+    }.distinctBy { it.hour }.sortedBy { it.hour }
+    return PosOwnerDashboard(
+        dineIn = o.optDouble("DINE_IN", 0.0).coerceAtLeast(0.0),
+        takeaway = o.optDouble("TAKEAWAY", 0.0).coerceAtLeast(0.0),
+        orders = o.optInt("orders", 0).coerceAtLeast(0),
+        averageTicket = o.optDouble("average_ticket", 0.0).coerceAtLeast(0.0),
+        cashSales = o.optDouble("cash_sales", 0.0).coerceAtLeast(0.0),
+        discounts = o.optDouble("discounts", 0.0).coerceAtLeast(0.0),
+        refunds = o.optDouble("refunds", 0.0).coerceAtLeast(0.0),
+        voids = o.optInt("voids", 0).coerceAtLeast(0),
+        previousPeriodSales = o.optDouble("previous_period_sales", 0.0).coerceAtLeast(0.0),
+        changePercent = if (o.isNull("change_percent")) null else o.optDouble("change_percent").takeIf { it.isFinite() },
+        hourlySales = hourlyRows
+    )
+}
 
 data class PosHistoryRow(
     val id: String,
@@ -483,12 +521,7 @@ class MerchantPosApi(
             auth.session.accessToken,
             JSONObject().put("p_days", days)
         )
-        val o = objectValue(raw)
-        return PosOwnerDashboard(
-            dineIn = o.optDouble("DINE_IN", 0.0),
-            takeaway = o.optDouble("TAKEAWAY", 0.0),
-            orders = o.optInt("orders", 0)
-        )
+        return parsePosOwnerDashboard(objectValue(raw))
     }
 
     suspend fun history(
