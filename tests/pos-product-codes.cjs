@@ -30,8 +30,11 @@ assert.match(printer,/qgp-label/);assert.match(html,/printer-v1\.css\?v=[^"']+/)
       ('20000000-0000-4000-8000-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','Tea',35,30,true,true,null,'[]'),
       ('20000000-0000-4000-8000-000000000002','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','Paused',20,20,true,false,null,'[]'),
       ('20000000-0000-4000-8000-000000000003','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','Other shop',10,10,true,true,null,'[]');`);
-  await db.exec(migration);\n  await db.exec(fkIndexMigration);
-  const fkIndexes=(await db.query(`select indexname from pg_indexes where schemaname='public' and tablename='pos_product_codes' and indexname in ('pos_product_codes_product_id_idx','pos_product_codes_created_by_idx') order by indexname`)).rows.map(r=>r.indexname);\n  assert.deepEqual(fkIndexes,['pos_product_codes_created_by_idx','pos_product_codes_product_id_idx']);\n  const shop='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',actor='10000000-0000-4000-8000-000000000001';
+  await db.exec(migration);
+  await db.exec(fkIndexMigration);
+  const fkIndexes=(await db.query(`select indexname from pg_indexes where schemaname='public' and tablename='pos_product_codes' and indexname in ('pos_product_codes_product_id_idx','pos_product_codes_created_by_idx') order by indexname`)).rows.map(r=>r.indexname);
+  assert.deepEqual(fkIndexes,['pos_product_codes_created_by_idx','pos_product_codes_product_id_idx']);
+  const shop='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',actor='10000000-0000-4000-8000-000000000001';
   const set=async({user=actor,allowed=true,currentShop=shop}={})=>db.query(`select set_config('request.jwt.claim.sub',$1,false),set_config('qg.test.shop',$2,false),set_config('qg.test.allowed',$3,false)`,[user||'',currentShop,String(allowed)]);
   const scalar=async(sql,args=[]) => (await db.query(sql,args)).rows[0];
   await set({allowed:false});await assert.rejects(()=>db.query(`select public.pos_product_code_save('20000000-0000-4000-8000-000000000001','sku','TEA-01')`),/permission denied/);
@@ -62,5 +65,5 @@ assert.match(printer,/qgp-label/);assert.match(html,/printer-v1\.css\?v=[^"']+/)
   assert.equal((await scalar(`select metadata->>'code' as code from public.audit_logs where action='pos_product_code_remove'`)).code,'PAUSED');
   assert.equal((await scalar(`select count(*)::int as n from public.pos_product_codes`)).n,2);
   await db.close();
-  console.log(JSON.stringify({checks:35,failures:0,scope:'POS SKU/barcode validation, shop isolation, retry safety, CRUD audit, direct table ACL and guarded RPC grants'}));
+  console.log(JSON.stringify({checks:38,failures:0,scope:'POS SKU/barcode validation, shop isolation, retry safety, CRUD audit, FK indexes and guarded RPC grants'}));
 })().catch(e=>{console.error(e);process.exit(1)});
