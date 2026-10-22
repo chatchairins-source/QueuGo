@@ -1,16 +1,16 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-22 · Authoritative main: `4d93ad0f6540aa9f1b27c070cc8340a447f9f913`
+Current snapshot: 2026-10-22 · Authoritative main: `bc8bdc173a8b798e84dee09833b76caf8b546614`
 
 ## Active chunk
 
-**POS Production continuation — capability, cash movements, SKU/barcode, inventory and live release validation.**
+**POS Production continuation — Product Code released; inventory and release gates next.**
 
-- Main is `4d93ad0f6540aa9f1b27c070cc8340a447f9f913`; PR #615 and #616 are merged. Kitchen role capability and cash movement schema/RPCs are recorded in Production at versions `20261022105255` and `20261022105630`.
-- Product Code/SKU registry table and RPCs are absent from Production. The product columns match the existing migration; current migration also adds privileged CRUD audit events. Production `audit_logs` is owned by postgres with RLS enabled but not forced, so guarded SECURITY DEFINER operations can write the audit row atomically.
-- Local Product Code SQL/UI tests and full `npm test` pass. Production migration remains unapplied pending exact-head CI and release/readback. No real barcode sales, staff, order or payment was written.
-- NEXT: complete the existing SKU/barcode RPC release, reconcile its migration filename to the Production ledger, then proceed to inventory/reports and authenticated cashier/device gates. QueueGo/POS remain **NOT DONE**.
-
+- Main is `bc8bdc173a8b798e84dee09833b76caf8b546614`; PR #617 exact RC `39769241578` passed and merged as `30865060c4238ecbaf2b2ece83a108caeab3b454`. PR #618 exact RC `39772099278` passed and merged as `bc8bdc173a8b798e84dee09833b76caf8b546614`.
+- Production Product Code registry is live at migration `20261022113556`; FK indexes are live at `20261022114328`. The table is RLS-enabled, direct anon/authenticated grants are denied, and its four fixed-search-path SECURITY DEFINER RPCs are authenticated-only. Registry is empty; no demo product, sale or payment was inserted.
+- Lookup uses storefront `coalesce(pos_price, price)` and does not reference GP or Delivery markup. Save/remove audit events are atomic, with idempotent same-code retry.
+- Production advisor confirmed the two FK indexes cover the new foreign keys. The unused-index notice is expected while this shop-scoped registry is empty. Generic inventory reservation/adjustment migrations remain absent.
+- NEXT: continue the remaining POS inventory, capability, cashier/device, offline/reconnect, and cross-shop security gates from current main. QueueGo/POS remain **NOT DONE**.
 - PR #568 cash movement source was merged after exact-head QueueGo RC `39622237860` completed all 12 test/browser steps successfully. Merge commit: `c79640e0c896cc81961e8ba2dc69d336a9f519b0`; main now contains the audited cash-in/out UI and RPC source.
 - PR #572 merged to `main` at `6050a51ab7cb06001fb4163b5ff88c890fb4950d` after exact-source RC `39636799778` passed all 12 steps on `7d2ffec2417884dce70805f646dccaa3f388059e`. Merge publishes source only; no Production migration was applied.
 - PR #573 manager guard merged to `main` at `ab36bfb9da66d5d4a43a83011e4a50fb08c27213`; exact-source RC `39638917216` passed all 12 steps on PR head `7d2bc0d0c14cce0f3a64eb8d71e068d92b260ff0`. Source tree guard requires existing server-side `pos_allowed('manage_staff')` to enable tracking on insert or toggle it. Focused PGlite 40 checks and full local `npm test` pass.

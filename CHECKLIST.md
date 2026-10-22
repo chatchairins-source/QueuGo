@@ -1,6 +1,6 @@
 # QueueGo Active Work Checklist
 
-Last governance checkpoint: 2026-10-22; latest verified main `4d93ad0f6540aa9f1b27c070cc8340a447f9f913`
+Last governance checkpoint: 2026-10-22; latest verified main `bc8bdc173a8b798e84dee09833b76caf8b546614`
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
@@ -1122,3 +1122,10 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Reviewed current official Square and Shopify POS offline documentation. Both distinguish pending offline work from server-accepted state and expose permission, risk, limits, recovery, or unsupported-operation boundaries. Research and the recommended QueueGo Phase 1 are in `docs/POS-OFFLINE-RECOVERY.md`.
 - Recommended next implementation: durable, identity-scoped offline cart drafts that require server price/stock/permission validation and cashier review before online submission. Do not mark as paid, send to kitchen, or reserve stock while disconnected. Actual offline completed sales require owner decisions about payment, multi-terminal inventory conflict, limits, shift/accounting, receipts and customer recovery.
 - No Production migration or data change. QueueGo/POS remain **NOT DONE**.
+
+
+## 2026-10-22 POS Product Code Production receipt
+- Main: `bc8bdc173a8b798e84dee09833b76caf8b546614`. PR #617 exact RC `39769241578` PASS, merge `30865060c4238ecbaf2b2ece83a108caeab3b454`; Production migration `20261022113556`.
+- PR #618 exact RC `39772099278` PASS, merge `bc8bdc173a8b798e84dee09833b76caf8b546614`; Production FK index migration `20261022114328`.
+- Readback: registry empty, RLS on, direct anon/authenticated table access denied, four guarded authenticated-only RPCs, POS storefront price lookup, audit writes in save/remove. Product Code FK lints resolved; no sample transactions created.
+- Still open: generic inventory chain, authorized cashier/device end-to-end and remaining POS Release Gate. POS is NOT DONE.

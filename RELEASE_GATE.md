@@ -1,15 +1,14 @@
 # QueueGo Release Gate
 
-Snapshot date: 2026-10-22 · Main: `4d93ad0f6540aa9f1b27c070cc8340a447f9f913`
+Snapshot date: 2026-10-22 · Main: `bc8bdc173a8b798e84dee09833b76caf8b546614`
 
 ## Current POS continuation
 
-- Product Code/SKU registry source is under audit hardening before deployment. The Production table/RPC names are absent; the existing audit_logs table supports server-side atomic audit from its SECURITY DEFINER RPCs. Local focused and full tests pass; Production DDL not yet applied.
-
-- PR #615 passed exact-head RC `39764778696` and merged as `7572146400f44bf66c96aca5ae5f84264fe4241b`.
-- Production recorded and verified Kitchen capability migration `20261022105255` and POS cash movement migration `20261022105630_pos_cash_register_movements`. Cash-event rows remain zero; no sale, payment, refund or drawer event was generated.
-- POS remains **NOT READY** for shop use: no live cashier/device journey has passed, and Product Code/SKU and generic inventory migrations remain unapplied.
-
+- Product Code/SKU is deployed from PR #617 at Production version `20261022113556`; its FK indexes from PR #618 are deployed at `20261022114328`. Post-deploy readback found zero registry rows; no fake catalog items or transactions were created.
+- Verified table RLS is enabled, direct anon/authenticated table grants are denied, and all four existing-source RPCs have fixed search paths, SECURITY DEFINER, authenticated EXECUTE and anon denial. Lookup references storefront `pos_price/price`, with no GP or Delivery markup dependency. Save/remove write atomic audit events.
+- PR #617 exact QueueGo RC `39769241578` and PR #618 exact QueueGo RC `39772099278` both passed all test/browser stages and merged at `30865060c4238ecbaf2b2ece83a108caeab3b454` and `bc8bdc173a8b798e84dee09833b76caf8b546614`.
+- Production performance advisor no longer reports the Product Code foreign keys as unindexed; unused-index notices reflect a currently empty table.
+- POS remains **NOT READY** for shop use: generic inventory and recipe/BOM, full live cashier/physical device journeys, and other release gates remain open.
 ## Overall status
 
 **NOT READY for a whole-platform production launch or Play Closed Testing claim.** Current main has working source and automated regressions, but the required real-user journey, physical-device/hardware evidence, Android signing and production cutover receipts are not all present. A green source test or CI run does not pass those gates.
