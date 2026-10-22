@@ -755,3 +755,10 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - The #584 Admin WebKit failure was a test fixture defect: legacy HTML was served with current section-loader/runtime assets. The harness now serves each baseline path from one commit; exact PR and main browser checks pass.
 - Next: implement durable, shop/actor/device-scoped offline cart drafts. Keep the UI state explicitly Not submitted; after reconnect require current identity, permissions, shift, product/options, price, availability and stock validation plus cashier conflict review. No payment, kitchen, stock reservation, final receipt, or sale report while offline.
 - Production migrations/data and real cashier/device acceptance remain gated. QueueGo/POS are NOT DONE.
+
+
+## 2026-10-22 POS offline draft implementation checkpoint
+- Current exact main remains `44094f6500f9a5075e3c781992e66aa3263e1f5c`; main RC `39700482606` and Pages deploy `39700482101` passed.
+- Source inspection found `pos_edit_bill` appends lines without idempotency. Safe multi-line offline draft submission needs one atomic server RPC with a stable draft payload/request ID and authoritative price/option validation; the existing options RPC is idempotent per line but does not make multiple calls atomic.
+- The required Supabase skill package was unavailable through `skills.read` in this runtime. No Postgres migration/RPC was written or applied. Recheck and read the skill before editing database source. Continue safe UI/store work only if it does not claim successful submission.
+- Offline draft design and owner business-policy gates remain in `docs/POS-OFFLINE-RECOVERY.md`. QueueGo/POS remain NOT DONE.
