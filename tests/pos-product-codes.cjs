@@ -4,10 +4,15 @@ const root=path.resolve(__dirname,'..');
 const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261021211800_pos_product_code_registry.sql'),'utf8');
 const client=fs.readFileSync(path.join(root,'merchant/pos-table-v2.js'),'utf8');
 const html=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
+const css=fs.readFileSync(path.join(root,'merchant/pos-table-v2.css'),'utf8');
+const printer=fs.readFileSync(path.join(root,'merchant/printer-v1.js'),'utf8');
 assert.match(migration,/pg_advisory_xact_lock\(hashtextextended\(v_shop::text\|\|':'\|\|v_code,0\)\)/);
 assert.match(client,/rpc\('pos_product_code_lookup'/);assert.match(client,/pos_create_bill_once/);assert.match(client,/pos_edit_bill/);
 assert.match(client,/state\.scanQueue\.shift\(\)/);assert.match(client,/scanContextCurrent\(context\)/);
-assert.match(html,/pos-table-v2\.js\?v=\d{8}-pos-offline-separation1/);assert.match(html,/pos-table-v2\.css\?v=\d{8}-pos-offline-separation1/);
+assert.match(html,/pos-table-v2\.js\?v=20261022-pos-mobile1/);assert.match(html,/pos-table-v2\.css\?v=20261022-pos-mobile1/);
+assert.match(client,/qg-pos-product-card/);assert.match(client,/qg-pos-product-main/);assert.match(client,/qg-pos-product-card\[data-name\]/);
+assert.match(css,/one product = one coherent card/);assert.match(css,/@media\(max-width:650px\)[\s\S]*\.qg-pos-products\{grid-template-columns:1fr/);
+assert.match(printer,/qgp-label/);assert.match(html,/printer-v1\.css\?v=20261022-pos-mobile1/);assert.match(html,/printer-v1\.js\?v=20261022-pos-mobile1/);
 (async()=>{
   const db=new PGlite();
   await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
