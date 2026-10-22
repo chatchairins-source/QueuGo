@@ -762,3 +762,12 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Source inspection found `pos_edit_bill` appends lines without idempotency. Safe multi-line offline draft submission needs one atomic server RPC with a stable draft payload/request ID and authoritative price/option validation; the existing options RPC is idempotent per line but does not make multiple calls atomic.
 - The required Supabase skill package was unavailable through `skills.read` in this runtime. No Postgres migration/RPC was written or applied. Recheck and read the skill before editing database source. Continue safe UI/store work only if it does not claim successful submission.
 - Offline draft design and owner business-policy gates remain in `docs/POS-OFFLINE-RECOVERY.md`. QueueGo/POS remain NOT DONE.
+
+
+## 2026-10-22 POS / Delivery separation and cancellation correction
+- Owner reiterates POS storefront and Delivery are separate. Remove Delivery queries/actions/Kitchen tickets, setup tab, GP/Delivery report cards and history filter from POS. Retain food/cafe-only POS kitchen and non-food direct payment from existing PR595. Delivery continues in its existing Merchant order screen.
+- Read-only Production audit: 5 POS bills, 0 nonzero GP/rate, 0 credit-GP-required bills, 0 GP credit holds. The existing order-shape CHECK enforces POS delivery_fee/gp_rate/gp_amount=0 and no rider/customer; no financial data rewrite is needed. Root misleading report: pos_owner_dashboard includes Delivery GP and bill count. Forward migration scopes that API to paid/completed POS DINE_IN/TAKEAWAY only.
+- Separate Delivery policy: merchant may cancel after rider accepts only before preparation. UI guards canonical/legacy status aliases and preparation/ready timestamps. Forward migration patches the existing row-locked transition, preserves Market Trip/audit/notification/cash guards/ACLs, accepts legacy assigned only without preparation/ready timestamps, and rejects preparing/ready. No POS cancellation rule is changed.
+- Local focused runtime/SQL tests added. No Production migration/deployment or authenticated live cancellation has been performed at this checkpoint; exact CI and controlled deployment remain required.
+
+- Narrow Web hotfix is based on current main68fdb52d; it carries existing Kitchen rules from PR595 and these fixes. Offline draft source stays in PR595 pending its own release gates.

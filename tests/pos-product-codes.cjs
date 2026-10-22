@@ -7,7 +7,7 @@ const html=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
 assert.match(migration,/pg_advisory_xact_lock\(hashtextextended\(v_shop::text\|\|':'\|\|v_code,0\)\)/);
 assert.match(client,/rpc\('pos_product_code_lookup'/);assert.match(client,/pos_create_bill_once/);assert.match(client,/pos_edit_bill/);
 assert.match(client,/state\.scanQueue\.shift\(\)/);assert.match(client,/scanContextCurrent\(context\)/);
-assert.match(html,/pos-table-v2\.js\?v=\d{8}-pos-schema-fallback1/);assert.match(html,/pos-table-v2\.css\?v=\d{8}-pos-schema-fallback1/);
+assert.match(html,/pos-table-v2\.js\?v=\d{8}-pos-separation1/);assert.match(html,/pos-table-v2\.css\?v=\d{8}-pos-schema-fallback1/);
 (async()=>{
   const db=new PGlite();
   await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key);
