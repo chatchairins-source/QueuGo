@@ -1574,7 +1574,7 @@ private fun MerchantOrderDetail(
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { cancelOpen = true },
-                    enabled = !busy,
+                    enabled = !busy && merchantDeliveryCanCancel(order.status, order.preparingAt, order.readyAt),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("ปฏิเสธออเดอร์") }
             }
@@ -1585,7 +1585,7 @@ private fun MerchantOrderDetail(
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { cancelOpen = true },
-                    enabled = !busy,
+                    enabled = !busy && merchantDeliveryCanCancel(order.status, order.preparingAt, order.readyAt),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("ยกเลิกออเดอร์") }
             }
@@ -1601,6 +1601,12 @@ private fun MerchantOrderDetail(
                 }
                 Spacer(Modifier.height(8.dp))
                 MerchantReadyEstimateControls(order, busy, onAdjustReady)
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { cancelOpen = true },
+                    enabled = !busy && merchantDeliveryCanCancel(order.status, order.preparingAt, order.readyAt),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("ยกเลิกออเดอร์") }
             }
             "rider_assigned", "assigned" -> {
                 Button(
@@ -1619,7 +1625,7 @@ private fun MerchantOrderDetail(
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { cancelOpen = true },
-                    enabled = !busy,
+                    enabled = !busy && merchantDeliveryCanCancel(order.status, order.preparingAt, order.readyAt),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("ยกเลิกออเดอร์") }
             }
@@ -1909,9 +1915,9 @@ private fun MerchantCancelGuard(
     var otherReason by remember(order.id) { mutableStateOf("") }
     var acknowledged by remember(order.id) { mutableStateOf(false) }
     var slide by remember(order.id) { mutableStateOf(0f) }
-    val cancellable = order.status in setOf("pending", "accepted", "rider_assigned", "assigned")
+    val cancellable = merchantDeliveryCanCancel(order.status, order.preparingAt, order.readyAt)
     val accepted = order.status != "pending"
-    LaunchedEffect(order.status) {
+    LaunchedEffect(order.status, order.preparingAt, order.readyAt) {
         if (!cancellable) onDismiss()
     }
     val reason = when {

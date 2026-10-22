@@ -428,8 +428,8 @@ ok(source.includes('pos_my_shop')&&source.includes('pos_create_bill_once')&&sour
 ok(source.includes('pos_cancel_bill')&&source.includes('pos_apply_discount')&&source.includes('pos_refund_bill')&&source.includes('pos_change_price'),'Merchant native POS must preserve cancel discount refund and price RPCs');
 ok(source.includes('pos_create_role_invite')&&source.includes('pos_set_staff_role')&&source.includes('pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active'),'Merchant native POS must preserve Production staff roles and invite management');
 ok(source.includes('pos_save_table')&&source.includes('pos_delete_table')&&source.includes('qg_table_rotate_qr'),'Merchant native POS must preserve table and QR management');
-ok(source.includes('pos_owner_dashboard')&&source.includes('pos_delivery_kitchen_action')&&source.includes('pos_enable_delivery'),'Merchant native POS must preserve reports and Delivery integration');
-ok(source.includes('PosTabs(')&&source.includes('"reports" to "ยอดขาย"')&&source.includes('"history" to "ประวัติ"')&&source.includes('"delivery" to "Delivery"')&&source.includes('"staff" to "พนักงาน"'),'Merchant native POS must preserve Production counter tables kitchen bills reports history Delivery and staff tabs');
+ok(source.includes('pos_owner_dashboard'),'Merchant native POS must preserve storefront reports');
+ok(source.includes('PosTabs(')&&source.includes('"reports" to "ยอดขาย"')&&source.includes('"history" to "ประวัติ"')&&source.includes('"staff" to "พนักงาน"'),'Merchant native POS must preserve Production counter tables kitchen bills reports history and staff tabs');
 ok(source.includes('shop_profiles?select=shop_name,public_category,metadata')&&source.includes('shopCategory = shopCategory?.trim()?.lowercase().orEmpty()'),'Merchant native POS must read the authoritative shop category before enabling Kitchen');
 ok(source.includes('if (kitchenEnabled) add("kitchen" to "ครัว")')&&source.includes('canSendKitchen = kitchenEnabled && can("send_kitchen")'),'Merchant native POS must hide Kitchen and its actions for non-food merchants');
 ok(source.includes('bills = openBills.filter { !kitchenEnabled || it.kitchenStatus in setOf("READY", "SERVED") }')&&source.includes('if (canClose && (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED")))'),'Merchant native POS must allow direct checkout without a Kitchen status for non-food merchants');
@@ -574,7 +574,7 @@ ok(specialTracking.includes('api.trip(auth, trip.id)')&&specialTracking.includes
 ok(specialTracking.includes('d.actualQuantity')&&specialTracking.includes('d.pickupFee')&&specialTracking.includes('d.returnFee')&&specialTracking.includes('งานนี้ถูกยกเลิก'),'Laundry details must preserve snapshot pricing/quantity/fees and explicit cancellation');
 ok(marketApi.includes('qg_customer_cancel_market_order')&&specialTracking.includes('ยกเลิก Market Trip')&&specialTracking.includes('current.multiShopFee')&&specialTracking.includes('onTrackChild(child.id)'),'Market Trip must preserve current Web cancellation/tracking actions and server fee snapshots');
 ok(source.includes('if (authRequested == false) {\n        QueueGoTheme {\n        GuestCustomerShell('),'Customer guest screens must use the existing Production-red QueueGoTheme');
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
+
 ok(/queuego_(?:set_laundry_rider_mode|laundry_rider_|claim_laundry_job)/.test(riderApi)&&riderApi.includes('queuego_laundry_rider_state'),'Rider Native must load and mutate Production Laundry jobs through authoritative RPCs');
 ok(riderApp.includes('RiderLaundryActiveCard(')&&riderApp.includes('RiderLaundryPoolCard(')&&!riderApp.includes('riderLaundryNavigationTarget')&&!riderMap.includes('RiderLaundryJob'),'Rider Native must render Production Laundry work while navigation hands off to Google Maps without a duplicate in-app route engine');
 ok(!nativeRealtimeSubscriptions.includes('laundry_rider_'),'Rider must not subscribe to shop-managed Laundry dispatch');
@@ -588,3 +588,10 @@ ok(riderNavigationIntegration.includes('bundleOrders: List<RiderBundleOrder>')&&
    riderNavigationIntegration.includes('val offset = pickups.size')&&
    riderNavigationIntegration.includes('sequence = offset + index + 1'),
    'Rider Native QueueGo navigation must render every live Route Bundle stop with stable pickup-then-drop numbering');
+
+const posOnlyApi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt'),posOnlyUi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
+ok(!/PosDelivery|deliveryOrders|pos_delivery_kitchen_action|pos_enable_delivery|QUEUEGO_DELIVERY/.test(posOnlyApi+posOnlyUi),'Native POS must not read, render or mutate Delivery orders');
+ok(!/GP หน้าร้าน|GP Delivery|report\.gp|report\.delivery|optDouble\("GP"/.test(posOnlyApi+posOnlyUi),'Native POS must not render Delivery GP or include its totals');
+ok(posOnlyApi.includes('&sales_channel=eq.POS&created_at=gte.'),'Native POS history must be scoped to POS at the server');
+
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));

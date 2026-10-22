@@ -64,6 +64,10 @@ data class MerchantRevenueDay(
     val legacyGpDue: Double = 0.0
 )
 
+internal fun merchantDeliveryCanCancel(status: String, preparingAt: String?, readyAt: String?): Boolean =
+    status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "assigned") &&
+        preparingAt == null && readyAt == null
+
 data class MerchantOrder(
     val id: String,
     val number: String,

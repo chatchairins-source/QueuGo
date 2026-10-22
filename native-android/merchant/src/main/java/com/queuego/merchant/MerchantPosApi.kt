@@ -74,19 +74,9 @@ data class PosStaff(
     )
 }
 
-data class PosDeliveryOrder(
-    val id: String,
-    val number: String,
-    val status: String,
-    val riderId: String?,
-    val createdAt: String?
-)
-
 data class PosOwnerDashboard(
     val dineIn: Double,
     val takeaway: Double,
-    val delivery: Double,
-    val gp: Double,
     val orders: Int
 )
 
@@ -101,18 +91,6 @@ data class PosHistoryRow(
     val staffId: String?
 )
 
-data class PosDeliveryReadiness(
-    val shopName: Boolean,
-    val location: Boolean,
-    val menu: Boolean,
-    val hours: Boolean,
-    val approved: Boolean,
-    val deliveryEnabled: Boolean,
-    val shopOpen: Boolean
-) {
-    val complete: Boolean get() = shopName && location && menu && hours && approved
-}
-
 data class PosSnapshot(
     val shopId: String,
     val shopName: String,
@@ -123,8 +101,6 @@ data class PosSnapshot(
     val tables: List<PosTable>,
     val bills: List<PosBill>,
     val linesByOrder: Map<String, List<PosLine>>,
-    val deliveryOrders: List<PosDeliveryOrder>,
-    val deliveryLinesByOrder: Map<String, List<PosLine>>,
     val shopCategory: String = ""
 )
 
@@ -247,28 +223,12 @@ class MerchantPosApi(
                 "&shop_id=eq." + http.enc(shopId),
             auth.session.accessToken
         ))
-        val deliveryRaw = http.array(http.get(
-            "orders?select=id,order_number,order_type,sales_channel,status,rider_id,shop_id,created_at" +
-                "&shop_id=eq." + http.enc(shopId) +
-                "&or=(sales_channel.eq.QUEUEGO_DELIVERY,and(sales_channel.is.null,order_type.eq.shopping))" +
-                "&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned)" +
-                "&order=created_at.desc&limit=100",
-            auth.session.accessToken
-        ))
-
         val billIds = idsOf(mergedBillsRaw)
-        val deliveryIds = idsOf(deliveryRaw)
         val itemsRaw = if (billIds.isEmpty()) JSONArray() else http.array(http.get(
             "order_items?select=order_id,product_id,item_name,description,quantity,total_price,pos_kitchen_status,pos_batch" +
                 "&order_id=in.(" + billIds.joinToString(",") + ")&order=created_at.asc",
             auth.session.accessToken
         ))
-        val deliveryItemsRaw = if (deliveryIds.isEmpty()) JSONArray() else http.array(http.get(
-            "order_items?select=order_id,product_id,item_name,description,quantity,total_price,pos_kitchen_status,pos_batch" +
-                "&order_id=in.(" + deliveryIds.joinToString(",") + ")&order=created_at.asc",
-            auth.session.accessToken
-        ))
-
         val staff = parseStaff(staffRaw)
         val currentStaff = staff.firstOrNull { it.userId == auth.session.authUserId }
         if (!owner && currentStaff?.active != true) {
@@ -322,22 +282,6 @@ class MerchantPosApi(
                 add(parseBill(r, id))
             }
         }
-        val deliveryOrders = buildList {
-            for (i in 0 until deliveryRaw.length()) {
-                val r = deliveryRaw.optJSONObject(i) ?: continue
-                val id = r.optString("id")
-                if (id.isBlank()) continue
-                add(
-                    PosDeliveryOrder(
-                        id = id,
-                        number = orderNumber(r.optString("order_number"), id),
-                        status = r.optString("status").ifBlank { "pending" },
-                        riderId = nullableString(r, "rider_id"),
-                        createdAt = nullableString(r, "created_at")
-                    )
-                )
-            }
-        }
         return PosSnapshot(
             shopId = shopId,
             shopName = shopName,
@@ -348,8 +292,6 @@ class MerchantPosApi(
             tables = tables,
             bills = bills,
             linesByOrder = parseLines(itemsRaw),
-            deliveryOrders = deliveryOrders,
-            deliveryLinesByOrder = parseLines(deliveryItemsRaw),
             shopCategory = shopCategory?.trim()?.lowercase().orEmpty()
         )
     }
@@ -545,8 +487,6 @@ class MerchantPosApi(
         return PosOwnerDashboard(
             dineIn = o.optDouble("DINE_IN", 0.0),
             takeaway = o.optDouble("TAKEAWAY", 0.0),
-            delivery = o.optDouble("DELIVERY", 0.0),
-            gp = o.optDouble("GP", 0.0),
             orders = o.optInt("orders", 0)
         )
     }
@@ -561,7 +501,7 @@ class MerchantPosApi(
         val rows = http.array(http.get(
             "orders?select=id,order_number,order_type,sales_channel,status,total_amount,created_at,staff_id" +
                 "&shop_id=eq." + http.enc(shopId) +
-                "&created_at=gte." + http.enc(startIso) +
+                "&sales_channel=eq.POS&created_at=gte." + http.enc(startIso) +
                 "&created_at=lt." + http.enc(endIso) +
                 "&order=created_at.desc&limit=200",
             auth.session.accessToken
@@ -573,7 +513,6 @@ class MerchantPosApi(
                 val sales = nullableString(r, "sales_channel")
                 val include = when (type) {
                     "ALL" -> true
-                    "DELIVERY" -> sales == "QUEUEGO_DELIVERY" || rowType == "shopping"
                     else -> rowType == type
                 }
                 if (!include) continue
@@ -593,64 +532,6 @@ class MerchantPosApi(
                 )
             }
         }
-    }
-
-    suspend fun deliveryAction(auth: NativeAuth, orderId: String, action: String) {
-        require(action in setOf("accepted", "preparing", "ready")) { "สถานะ Delivery ไม่ถูกต้อง" }
-        http.rpc(
-            "pos_delivery_kitchen_action",
-            auth.session.accessToken,
-            JSONObject().put("p_order", orderId).put("p_action", action)
-        )
-    }
-
-    suspend fun deliveryReadiness(auth: NativeAuth, snapshot: PosSnapshot): PosDeliveryReadiness {
-        val profile = http.array(http.get(
-            "shop_profiles?select=shop_name,address,latitude,longitude,status,delivery_enabled,public_open_time,public_close_time" +
-                "&id=eq." + http.enc(snapshot.shopId) + "&limit=1",
-            auth.session.accessToken
-        )).optJSONObject(0) ?: JSONObject()
-        val hours = http.array(http.get(
-            "shop_business_hours?select=weekday,opens_at,closes_at,is_closed&shop_id=eq." + http.enc(snapshot.shopId),
-            auth.session.accessToken
-        ))
-        val open = http.array(http.get(
-            "shop_open_states?select=is_open&shop_id=eq." + http.enc(snapshot.shopId) + "&limit=1",
-            auth.session.accessToken
-        )).optJSONObject(0)
-        val menu = snapshot.products.any {
-            it.available && it.deliveryAvailable && (it.deliveryPrice ?: it.price) >= 0.0
-        }
-        var businessHours = false
-        for (i in 0 until hours.length()) {
-            val row = hours.optJSONObject(i) ?: continue
-            if (!row.optBoolean("is_closed", false) &&
-                nullableString(row, "opens_at") != null &&
-                nullableString(row, "closes_at") != null
-            ) {
-                businessHours = true
-                break
-            }
-        }
-        if (!businessHours) {
-            businessHours = nullableString(profile, "public_open_time") != null &&
-                nullableString(profile, "public_close_time") != null
-        }
-        return PosDeliveryReadiness(
-            shopName = profile.optString("shop_name").isNotBlank(),
-            location = profile.optString("address").isNotBlank() &&
-                profile.has("latitude") && !profile.isNull("latitude") &&
-                profile.has("longitude") && !profile.isNull("longitude"),
-            menu = menu,
-            hours = businessHours,
-            approved = profile.optString("status") == "active",
-            deliveryEnabled = profile.optBoolean("delivery_enabled", false),
-            shopOpen = open?.optBoolean("is_open", true) ?: true
-        )
-    }
-
-    suspend fun enableDelivery(auth: NativeAuth) {
-        http.rpc("pos_enable_delivery", auth.session.accessToken, JSONObject())
     }
 
     private fun idsOf(rows: JSONArray): List<String> = buildList {

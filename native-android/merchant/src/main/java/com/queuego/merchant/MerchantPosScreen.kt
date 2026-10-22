@@ -203,7 +203,6 @@ fun MerchantPosScreen(
     var historyTypeMenu by remember { mutableStateOf(false) }
     var history by remember { mutableStateOf<List<PosHistoryRow>>(emptyList()) }
 
-    var deliveryReadiness by remember { mutableStateOf<PosDeliveryReadiness?>(null) }
 
     var inviteRole by rememberSaveable { mutableStateOf("WAITER") }
     var inviteRoleMenu by remember { mutableStateOf(false) }
@@ -720,15 +719,6 @@ fun MerchantPosScreen(
         }
     }
 
-    LaunchedEffect(view, snapshot?.shopId) {
-        val snap = snapshot
-        if (view == "delivery" && snap?.owner == true) {
-            deliveryReadiness = runCatching { api.deliveryReadiness(auth, snap) }
-                .onFailure { message = it.message ?: "ตรวจความพร้อม Delivery ไม่สำเร็จ" }
-                .getOrNull()
-        }
-    }
-
     val snap = snapshot
     val openBills = snap?.bills?.filter { it.open }.orEmpty()
     val selectedBill = openBills.firstOrNull { it.id == selectedBillId }
@@ -978,11 +968,6 @@ fun MerchantPosScreen(
                         runMutation(label + "แล้ว", bill.id) {
                             api.billAction(auth, bill.id, action)
                         }
-                    },
-                    onDeliveryAction = { order, action, label ->
-                        runMutation(label + "แล้ว", null) {
-                            api.deliveryAction(auth, order.id, action)
-                        }
                     }
                 )
 
@@ -1059,24 +1044,6 @@ fun MerchantPosScreen(
                     onType = {
                         historyType = it
                         historyTypeMenu = false
-                    }
-                )
-
-                "delivery" -> PosDeliveryView(
-                    readiness = deliveryReadiness,
-                    busy = busy,
-                    onEnable = {
-                        runMutation("เปิด Delivery แล้ว", null) {
-                            api.enableDelivery(auth)
-                        }
-                        scope.launch {
-                            val current = snapshot
-                            if (current != null) {
-                                deliveryReadiness = runCatching {
-                                    api.deliveryReadiness(auth, current)
-                                }.getOrNull()
-                            }
-                        }
                     }
                 )
 
@@ -1160,7 +1127,7 @@ fun MerchantPosScreen(
                     onCycleRole = { staff ->
                         val next = when (staff.role) {
                             "WAITER" -> "CASHIER"
-                            "CASHIER" -> "KITCHEN"
+                            "CASHIER" -> if (kitchenEnabled) "KITCHEN" else "WAITER"
                             else -> "WAITER"
                         }
                         runMutation("เปลี่ยนหน้าที่พนักงานแล้ว", null) {
@@ -1494,7 +1461,6 @@ private fun PosTabs(current: String, owner: Boolean, kitchenEnabled: Boolean, on
         if (owner) {
             add("reports" to "ยอดขาย")
             add("history" to "ประวัติ")
-            add("delivery" to "Delivery")
             add("staff" to "พนักงาน")
         }
     }
@@ -1835,49 +1801,14 @@ private fun PosKitchenView(
     snapshot: PosSnapshot,
     busy: Boolean,
     can: (String) -> Boolean,
-    onPosAction: (PosBill, String, String) -> Unit,
-    onDeliveryAction: (PosDeliveryOrder, String, String) -> Unit
+    onPosAction: (PosBill, String, String) -> Unit
 ) {
     val posBills = snapshot.bills.filter {
         it.open && it.kitchenStatus !in setOf("NEW", "SERVED")
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("คิวครัว", "QueueGo Delivery และออเดอร์หน้าร้านอยู่ในคิวเดียวกัน")
+        QgSectionTitle("คิวครัวหน้าร้าน", "เฉพาะบิล POS ของร้านอาหารและคาเฟ่")
         Spacer(Modifier.height(10.dp))
-
-        snapshot.deliveryOrders.forEach { order ->
-            val lines = snapshot.deliveryLinesByOrder[order.id].orEmpty()
-            QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Column {
-                    Row {
-                        Text("QueueGo Delivery", color = QgRed, fontWeight = FontWeight.Black)
-                        Spacer(Modifier.weight(1f))
-                        QgStatusPill(deliveryStatusLabel(order.status))
-                    }
-                    Text(order.number, fontWeight = FontWeight.ExtraBold)
-                    lines.forEach { line ->
-                        Text(line.name + " × " + line.quantity, fontSize = 12.sp)
-                    }
-                    val action = when {
-                        order.status == "pending" && can("receive_order") ->
-                            Triple("accepted", "รับออเดอร์", true)
-                        order.status == "rider_assigned" && order.riderId != null && can("cook_order") ->
-                            Triple("preparing", "เริ่มเตรียม", true)
-                        order.status == "preparing" && order.riderId != null && can("ready_order") ->
-                            Triple("ready", "พร้อมให้ไรเดอร์รับ", true)
-                        else -> null
-                    }
-                    if (action != null) {
-                        Spacer(Modifier.height(7.dp))
-                        Button(
-                            onClick = { onDeliveryAction(order, action.first, action.second) },
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(action.second, fontWeight = FontWeight.Bold) }
-                    }
-                }
-            }
-        }
 
         posBills.forEach { bill ->
             val all = snapshot.linesByOrder[bill.id].orEmpty()
@@ -1924,7 +1855,7 @@ private fun PosKitchenView(
             }
         }
 
-        if (snapshot.deliveryOrders.isEmpty() && posBills.isEmpty()) {
+        if (posBills.isEmpty()) {
             QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์เข้าครัว", color = QgMuted) }
         }
         Spacer(Modifier.height(28.dp))
@@ -2044,11 +1975,8 @@ private fun PosReportsView(
                 Column {
                     PosReportLine("ทานที่ร้าน", report.dineIn)
                     PosReportLine("รับกลับ", report.takeaway)
-                    PosReportLine("Delivery", report.delivery)
                     HorizontalDivider()
-                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway + report.delivery, true)
-                    PosReportLine("GP หน้าร้าน", 0.0)
-                    PosReportLine("GP Delivery", report.gp)
+                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)
                     Text("จำนวนบิล " + report.orders, color = QgMuted, fontSize = 11.sp)
                 }
             }
@@ -2111,7 +2039,6 @@ private fun PosHistoryView(
                     when (type) {
                         "DINE_IN" -> "ทานที่ร้าน"
                         "TAKEAWAY" -> "รับกลับ"
-                        "DELIVERY" -> "Delivery"
                         else -> "ทั้งหมด"
                     }
                 )
@@ -2121,7 +2048,6 @@ private fun PosHistoryView(
                     "ALL" to "ทั้งหมด",
                     "DINE_IN" to "ทานที่ร้าน",
                     "TAKEAWAY" to "รับกลับ",
-                    "DELIVERY" to "Delivery"
                 ).forEach { (key, label) ->
                     DropdownMenuItem(text = { Text(label) }, onClick = { onType(key) })
                 }
@@ -2153,52 +2079,6 @@ private fun PosHistoryView(
 }
 
 @Composable
-private fun PosDeliveryView(
-    readiness: PosDeliveryReadiness?,
-    busy: Boolean,
-    onEnable: () -> Unit
-) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("QueueGo Delivery", "ใช้หน้าร้านต่อได้แม้ยังไม่เปิดรับ Delivery")
-        Spacer(Modifier.height(10.dp))
-        if (readiness == null) {
-            CircularProgressIndicator()
-        } else {
-            QgCard(Modifier.fillMaxWidth()) {
-                Column {
-                    PosReadinessLine("ข้อมูลร้าน", readiness.shopName)
-                    PosReadinessLine("ที่อยู่และพิกัด", readiness.location)
-                    PosReadinessLine("เมนูและราคา", readiness.menu)
-                    PosReadinessLine("เวลาเปิดร้าน", readiness.hours)
-                    PosReadinessLine("อนุมัติร้าน", readiness.approved)
-                    HorizontalDivider()
-                    Text(
-                        if (readiness.complete) "ข้อมูลพร้อมสำหรับ Delivery"
-                        else "ตั้งค่ารายการที่ยังไม่ครบก่อนเปิดรับ Delivery",
-                        color = if (readiness.complete) QgGreen else QgRed,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "สถานะรับ Delivery: " +
-                            if (readiness.deliveryEnabled && readiness.shopOpen) "เปิด" else "ปิด",
-                        fontSize = 12.sp
-                    )
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            if (!readiness.deliveryEnabled) {
-                Button(
-                    onClick = onEnable,
-                    enabled = readiness.complete && !busy,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("เปิด Delivery เมื่อพร้อม", fontWeight = FontWeight.Bold) }
-            }
-        }
-        Spacer(Modifier.height(28.dp))
-    }
-}
-
-@Composable
 private fun PosStaffView(
     snapshot: PosSnapshot,
     inviteRole: String,
@@ -2219,7 +2099,7 @@ private fun PosStaffView(
                 Text(posRoles.firstOrNull { it.first == inviteRole }?.second ?: inviteRole)
             }
             DropdownMenu(inviteRoleMenu, { onInviteMenu(false) }) {
-                posRoles.forEach { (key, label) ->
+                posRoles.filter { it.first != "KITCHEN" || snapshot.shopCategory in setOf("food", "cafe") }.forEach { (key, label) ->
                     DropdownMenuItem(text = { Text(label) }, onClick = { onInviteRole(key) })
                 }
             }
@@ -2309,19 +2189,7 @@ private fun PosReadinessLine(label: String, ready: Boolean) {
     }
 }
 
-private fun deliveryStatusLabel(status: String): String = when (status) {
-    "pending" -> "ออเดอร์ใหม่"
-    "accepted" -> "รอค้นหาไรเดอร์"
-    "searching_rider" -> "กำลังหาไรเดอร์"
-    "rider_assigned" -> "ไรเดอร์รับงานแล้ว"
-    "preparing" -> "กำลังเตรียม"
-    "ready" -> "พร้อมให้ไรเดอร์รับ"
-    "assigned" -> "รอไรเดอร์"
-    else -> status
-}
-
 private fun historyTypeLabel(row: PosHistoryRow): String = when {
-    row.salesChannel == "QUEUEGO_DELIVERY" || row.type == "shopping" -> "Delivery"
     row.type == "DINE_IN" -> "ทานที่ร้าน"
     row.type == "TAKEAWAY" -> "รับกลับ"
     else -> row.type
