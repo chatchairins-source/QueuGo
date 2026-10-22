@@ -12,3 +12,10 @@
  #qg-printer-btn{right:10px;bottom:calc(82px + env(safe-area-inset-bottom));width:46px;height:46px;min-width:46px;min-height:46px;padding:0;border-radius:50%}
  #qg-printer-btn .qgp-label{display:none}
 }
+
+
+/* Keep printer available without a heavy floating black control. */
+#qg-printer-btn{background:#fff;color:#d20b32;border:1px solid #efd7dc;box-shadow:0 5px 16px rgba(32,36,42,.10)}
+@media(max-width:650px){
+ #qg-printer-btn{right:12px;bottom:calc(18px + env(safe-area-inset-bottom));width:42px;height:42px;min-width:42px;min-height:42px;opacity:.92}
+}
