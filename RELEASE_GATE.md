@@ -88,3 +88,25 @@ An individual feature can be marked `DONE (source/test)` only with its exact com
 - Reviewed current official Square and Shopify POS offline documentation. Both distinguish pending offline work from server-accepted state and expose permission, risk, limits, recovery, or unsupported-operation boundaries. Research and the recommended QueueGo Phase 1 are in `docs/POS-OFFLINE-RECOVERY.md`.
 - Recommended next implementation: durable, identity-scoped offline cart drafts that require server price/stock/permission validation and cashier review before online submission. Do not mark as paid, send to kitchen, or reserve stock while disconnected. Actual offline completed sales require owner decisions about payment, multi-terminal inventory conflict, limits, shift/accounting, receipts and customer recovery.
 - No Production migration or data change. QueueGo/POS remain **NOT DONE**.
+
+
+## POS source and release status — 2026-10-22
+
+- Current main at review time: `68fdb52d09bcafc19c602ac5694aecda36b1b29d`. The earlier snapshot at the top of this file predates the POS offline implementation.
+- POS schema-fallback fix for the live Safari error shipped in PR #594, merge `04df99bb672e66f68ff7715ad1c31603723c482f`; Pages assets were verified live.
+- Web offline cart draft source is PR #595, head `f229752fcf825d7164ab11155409d98ca5fbb2f5`; exact-head Web CI run [39724725075](https://github.com/chatchairins-source/QueuGo/actions/runs/39724725075) passed `npm test`, Merchant mobile WebKit and Grocery mobile/tablet rendering.
+- Native Merchant offline cart draft source is PR #596, head `70a91c6935f4ed48e6a2033e3bcbc2ad1a7cd571`, based on Native successor `ff5faaacc289920ca80aa49ed0aa41fac51ca22b`. Exact-head Native CI run [39724962557](https://github.com/chatchairins-source/QueuGo/actions/runs/39724962557) passed full regression, Kotlin unit tests, three APK builds, package checks and Android launch/lifecycle capture. APK and launch-evidence artifacts are attached to the run.
+- Production remains unchanged by these PRs. Read-only inspection on 2026-10-22 confirms migration history through `20261022005520`, no `products.inventory_stock_tracking`, and no `pos_add_product_with_options` or `pos_submit_offline_draft` RPC.
+- Offline drafts are not completed sales: they do not create a bill, take payment, send kitchen work or reserve stock while disconnected. Both app implementations require online cashier review and server validation before creating a bill.
+- **Release status:** offline draft is DONE (source/test) for these exact heads, but NOT LIVE. Keep the feature code out of Production until authorized cashier/device acceptance is recorded, the ordered migrations are applied with ACL/RLS readback, and the authenticated online submit/retry/cancel/refund flow is verified. No Production migration or test record has been created.
+
+
+## 2026-10-22 latest Kitchen/context deployment
+- Web PR598 is LIVE: merge15e7bd07, exact Web CI39740434026/39740439972 and main RC39742257368 succeeded; Pages39742256442 succeeded and served index/POS bytes matched source.
+- Food/Cafe retain storefront Kitchen; Grocery/Market have none. POS has no Delivery queries/actions/report GP. Delivery cancellation remains separate and pre-preparation only. Three bounded Production migrations applied with guard/ACL/trigger readback; filenames aligned in PR599.
+- PR595 offline successor reconciled with main42e81f57 without restoring Delivery/GP into POS. Its option-pricing/draft-submit migrations remain separate from deployed hotfix. Prior source-only status describes offline work, not Kitchen hotfix. No offline deployment or physical acceptance claimed here.
+
+
+## 2026-10-22 offline backend rollout update
+- Web offline successor0aed635c passed hosted RC39743999528 and full local regression. Pricing/draft tests46 also passed against actual Production pos_edit_bill in isolation.
+- Applied only option-pricing and draft-submit migrations20261022080039/20261022080048, with ACL/RLS readback. No real or mock sale created. The earlier unapplied-backend checkpoint is superseded for these two migrations. Web final-head filename alignment and publication still pending at this checkpoint.

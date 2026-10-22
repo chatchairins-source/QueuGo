@@ -764,6 +764,13 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Offline draft design and owner business-policy gates remain in `docs/POS-OFFLINE-RECOVERY.md`. QueueGo/POS remain NOT DONE.
 
 
+## 2026-10-22 POS Kitchen shop-category gate
+
+- Web POS reads `shop_profiles.public_category` (metadata fallback). The Kitchen screen and kitchen note/actions are available only to `food` and `cafe`; Grocery, Market and other categories show bills for direct checkout instead. Unknown/offline category state fails closed and hides Kitchen.
+- Android Merchant uses the same category rule. Both clients keep the existing order, payment, cashier permission and cash-shift flow.
+- Additive source migration guards kitchen transitions by shop category and permits payment without READY/SERVED only for non-kitchen categories, with existing status validation, shift association, payment ledger and function ACLs retained. PGlite behavior covers retail direct checkout and restaurant kitchen gating.
+- This is source/CI work only. Do not apply the migration to Production until the POS release gate, authorized cashier acceptance and real device flow pass; Production schema/data remain unchanged.
+
 ## 2026-10-22 POS / Delivery separation and cancellation correction
 - Owner reiterates POS storefront and Delivery are separate. Remove Delivery queries/actions/Kitchen tickets, setup tab, GP/Delivery report cards and history filter from POS. Retain food/cafe-only POS kitchen and non-food direct payment from existing PR595. Delivery continues in its existing Merchant order screen.
 - Read-only Production audit: 5 POS bills, 0 nonzero GP/rate, 0 credit-GP-required bills, 0 GP credit holds. The existing order-shape CHECK enforces POS delivery_fee/gp_rate/gp_amount=0 and no rider/customer; no financial data rewrite is needed. Root misleading report: pos_owner_dashboard includes Delivery GP and bill count. Forward migration scopes that API to paid/completed POS DINE_IN/TAKEAWAY only.
@@ -782,3 +789,14 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Production applied kitchen/report/cancellation migrations at versions20261022073639/20261022073650/20261022073806. Repository filenames aligned with actual migration history to prevent duplicate future application.
 - Cancellation retains Rider-assigned eligibility only before preparation/ready timestamps. Existing private transition ACL and public cashier/dashboard ACL preserved; direct merchant cancellation guard trigger verified. No business records mutated for verification.
 - Android PR596 remains a separate build gate; no new APK acceptance claim. Offline PR595 must incorporate current main before release so older mixed POS/Delivery code does not return.
+
+
+## 2026-10-22 offline successor reconciliation
+- PR595 source reconciled with deployed main42e81f57, including actual Production migration filenames. Retains POS-only queries/history/reports and category-only Kitchen; no Delivery setup/actions or GP restored. Offline cache uses the reduced POS-only snapshot. Both offline and separation runtime checks pass.
+- Offline draft remains distinct from a completed offline sale and is pending its own migration/deployment gates. Live Kitchen/separation hotfix is already deployed via PR598.
+
+
+## 2026-10-22 offline backend deployment
+- Exact Web successor0aed635c passed hosted RC39743999528; full local regression passed. Additional isolated pricing/draft tests46 passed using actual Production pos_edit_bill definition, preserving real bill identity/edit-state guards.
+- Authorized live rollout: applied pos_menu_option_pricing20261022080039 then pos_offline_draft_submission20261022080048. Repository migration filenames aligned to actual versions; SQL unchanged. Both RPCs require authenticated POS receive_order/shop permission, receipts have RLS and no direct client grants, anonymous function execution denied. Readback: existing POS bills5, both receipt tables0; no fake sale/payment/cancellation created.
+- Backend ready; Web publication and authenticated cashier acceptance remain separate receipts. Existing Kitchen/POS/Delivery separation stays live.
