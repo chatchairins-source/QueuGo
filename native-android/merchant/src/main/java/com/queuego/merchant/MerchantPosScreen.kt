@@ -1978,7 +1978,29 @@ private fun PosReportsView(
                     PosReportLine("รับกลับ", report.takeaway)
                     HorizontalDivider()
                     PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)
-                    Text("จำนวนบิล " + report.orders, color = QgMuted, fontSize = 11.sp)
+                    Text("จำนวนบิล ${report.orders}", color = QgMuted, fontSize = 11.sp)
+                    PosReportLine("เฉลี่ยต่อบิล", report.averageTicket)
+                    PosReportLine("รับเงินสด", report.cashSales)
+                    PosReportLine("ส่วนลด", report.discounts)
+                    PosReportLine("คืนเงิน", report.refunds)
+                    Text("ยกเลิกบิล ${report.voids}", color = QgMuted, fontSize = 11.sp)
+                    report.changePercent?.let { change ->
+                        val sign = if (change > 0) "+" else ""
+                        Text("เทียบช่วงก่อน $sign${change}% · ฿${money(report.previousPeriodSales)}",
+                            color = QgMuted, fontSize = 11.sp)
+                    }
+                    if (report.hourlySales.isNotEmpty()) {
+                        HorizontalDivider(Modifier.padding(vertical = 5.dp))
+                        Text("ยอดขายรายชั่วโมง", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        report.hourlySales.forEach { hour ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("%02d:00".format(hour.hour), color = QgMuted, fontSize = 11.sp)
+                                Text("${hour.bills} บิล", color = QgMuted, fontSize = 11.sp)
+                                Text("฿${money(hour.sales)}", fontSize = 11.sp)
+                            }
+                        }
+                    }
                 }
             }
         }
