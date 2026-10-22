@@ -1897,10 +1897,19 @@ class QueueGoApi {
         }
 
     suspend fun acceptOffer(auth: QueueGoAuth, job: RiderJob) = withContext(Dispatchers.IO) {
+        val payload = JSONObject().put("p_order_id", job.id)
+        RiderNavigationLocationStore.fix.value?.let { fix ->
+            val ageMillis = (SystemClock.elapsedRealtimeNanos() - fix.elapsedRealtimeNanos) / 1_000_000L
+            if (fix.point.valid && ageMillis in 0L..10_000L) {
+                payload
+                    .put("p_lat", fix.point.latitude)
+                    .put("p_lng", fix.point.longitude)
+            }
+        }
         actionOnce(
             auth,
             if (job.marketOrderId != null) "market_claim" else "claim",
-            JSONObject().put("p_order_id", job.id)
+            payload
         )
     }
 
