@@ -80,7 +80,11 @@ ok(rider.includes("const QG_ARRIVAL_GUARD_KM = 0.2;"),'arrival warning threshold
 ok(!rider.includes("google.navigation:"),'Web Rider navigation must not hand route authority to Google Navigation');
 ok(!rider.includes("comgooglemaps://"),'Web Rider navigation must not hand route authority to the Google Maps iOS scheme');
 ok(!rider.includes("https://www.google.com/maps/dir/?api=1&destination="),'Web Rider navigation must not fall back to the Google Maps website');
-ok(rider.includes("function qgNavigateInApp(lat,lng)")&&rider.includes("เริ่มนำทางด้วย QueueGo"),'Web Rider navigation must stay inside QueueGo');
+ok(rider.includes("function qgNavigateInApp(lat,lng)")&&
+  rider.includes("focusRiderNavigation(S.map,S.pos,target)")&&
+  rider.includes("drawActiveRoute()")&&
+  rider.includes("qgFollowRiderCamera(true,650)"),
+  'Web Rider navigation must stay inside QueueGo');
 ok(rider.includes("rpc/qg_rider_mark_arrival"),'Rider arrival buttons must persist arrival through the authenticated RPC');
 ok(rider.includes('id="details-'),'active-order card must expose order details');
 ok(rider.includes('id="primary-nav-'),'active-order primary CTA must be navigation after claim');
