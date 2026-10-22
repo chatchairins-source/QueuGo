@@ -3033,7 +3033,19 @@ private fun RiderHome(
                             onDetails = { detailJob = current.activeJob },
                             onCall = {
                                 if (current.activeJob.status in setOf("rider_assigned", "assigned", "preparing", "ready")) {
-                                    startShopVoice(current.activeJob.id)
+                                    val pickupId = current.marketPickups.firstOrNull { !it.done }?.pickupId
+                                    if (current.activeJob.marketOrderId != null && pickupId != null) {
+                                        scope.launch {
+                                            runCatching { api.pickupIssueOrderId(auth, pickupId) }
+                                                .onSuccess(::startShopVoice)
+                                                .onFailure {
+                                                    if (it is CancellationException) throw it
+                                                    actionMessage = it.message ?: "ยังระบุร้านของจุดรับนี้ไม่ได้"
+                                                }
+                                        }
+                                    } else {
+                                        startShopVoice(current.activeJob.id)
+                                    }
                                 } else {
                                     startCustomerVoice(current.activeJob.id)
                                 }
