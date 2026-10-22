@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 25856)
+Total output lines: 393
+
 /* QueueGo counter sales — Supabase is the only source of order and payment data. */
 (()=>{
   'use strict';
@@ -26,6 +29,7 @@
   const active=o=>o.payment_status==='UNPAID'&&o.status!=='cancelled';
   const can=key=>state.owner||(state.staff?.permissions?.[key]===true)||(!(key in (state.staff?.permissions||{}))&&({'receive_order':'WAITER','send_kitchen':'WAITER','serve_order':'WAITER','cook_order':'KITCHEN','ready_order':'KITCHEN','close_bill':'CASHIER'}[key]===state.staff?.staff_role));
   const kitchenEnabled=()=>['food','cafe'].includes(String(state.shopCategory||'').trim().toLowerCase());
+  const allowedStaffRoles=()=>kitchenEnabled()?['WAITER','CASHIER','KITCHEN']:['WAITER','CASHIER'];
   const root=()=>location.hash.replace('#','').split('/')[0];
   const selected=()=>state.orders.find(x=>x.id===state.selected);
   function linesFor(orderId){const grouped=new Map();for(const i of state.items.filter(x=>x.order_id===orderId)){const key=[i.product_id,i.description,i.unit_price,i.pos_batch,i.pos_kitchen_status].join('|');const old=grouped.get(key);if(old){old.quantity+=Number(i.quantity);old.total_price+=Number(i.total_price)}else grouped.set(key,{...i,quantity:Number(i.quantity),total_price:Number(i.total_price)})}return [...grouped.values()]};
@@ -199,25 +203,7 @@
   const scanContextCurrent=c=>Boolean(c&&root()==='pos'&&state.view==='counter'&&state.shop===c.shop&&qtSessionRead()?.authUserId===c.actor&&state.mode===c.mode&&state.table===c.table&&state.noTable===c.noTable&&(state.scanAddInProgress||state.selected===c.expectedSelected));
   const scanStatus=s=>{const el=document.getElementById('qg-pos-scan-status');if(el)el.textContent=s};
   function posOptionGroups(product){
-    const variants=Array.isArray(product?.variants)?product.variants:[],groups=variants.filter(g=>g&&g.schema==='queuego.menu-options.v1'&&Array.isArray(g.options));
-    if(groups.length)return groups;
-    const legacy=variants.filter(x=>typeof x==='string'&&x.trim());
-    return legacy.length?[{key:'variant',name:'ตัวเลือกสินค้า',type:'single',required:true,options:legacy.map((name,i)=>({key:name,name,price_delta:0}))}]:[];
-  }
-  function posOptionLimits(group){const count=Array.isArray(group?.options)?group.options.length:0;if(group?.type==='single')return{min:group.required===true?1:0,max:1};const min=group?.min==null||group.min===''?NaN:Number(group.min),max=group?.max==null||group.max===''?NaN:Number(group.max);return{min:Number.isInteger(min)&&min>=0?min:(group?.required===true?1:0),max:Number.isInteger(max)&&max>=0?Math.min(max,count):count}}
-  function choosePosOptions(product,groups){
-    if(pendingOptionResolver)return Promise.resolve(null);
-    return new Promise(resolve=>{
-      pendingOptionResolver=resolve;
-      const groupsHtml=groups.map(g=>{const limits=posOptionLimits(g);return `<fieldset data-option-group="${esc(g.key)}" data-min-select="${limits.min}" data-max-select="${limits.max}"><legend>${esc(g.name)}${limits.min>0?' · เลือกอย่างน้อย '+limits.min:''}${limits.max<g.options.length?' · ไม่เกิน '+limits.max:''}</legend><div>${g.options.map((o,i)=>`<label><input type="${g.type==='multi'?'checkbox':'radio'}" name="qg-pos-option-${esc(g.key)}" value="${esc(o.key)}" ${g.type==='single'&&g.required&&i===0?'checked':''}><span>${esc(o.name)}</span><small>${Number(o.price_delta??o.price??0)?'+ '+money(o.price_delta??o.price):'ราคาเดิม'}</small></label>`).join('')}</div></fieldset>`}).join('');
-      const dialog=document.createElement('section');dialog.className='qg-pos-option-overlay';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','qg-pos-option-title');dialog.innerHTML=`<div class="qg-pos-option-dialog"><header><h2 id="qg-pos-option-title">เลือกตัวเลือก · ${esc(product.name)}</h2><p>ราคาตั้งต้น ${money(product.pos_price??product.price)} · ราคาเพิ่มคำนวณจากข้อมูลร้าน</p></header><div class="qg-pos-option-groups">${groupsHtml}</div><div class="qg-pos-option-actions"><button type="button" onclick="qgPosOptionFinish(false)">ยกเลิก</button><button type="button" class="confirm" onclick="qgPosOptionFinish(true)">เพิ่มลงบิล</button></div></div>`;document.body.append(dialog);
-      dialog.querySelector('input')?.focus();
-    });
-  }
-  window.qgPosOptionFinish=approved=>{
-    const dialog=document.querySelector('.qg-pos-option-overlay'),resolve=pendingOptionResolver;if(!dialog||!resolve)return;
-    let selections=null;
-    if(approved){selections={};for(const field of dialog.querySelectorAll('[data-option-group]')){const key=field.dataset.optionGroup,inputs=[...field.querySelectorAll('input:checked')],radio=field.querySelector('input[type=radio]'),min=Number(field.dataset.minSelect||0),max=Number(field.dataset.maxSelect||field.querySelectorAll('input').length);if(inputs.length<min){field.querySelector('input')?.focus();return message('กรุณาเลือก '+(radio?'หนึ่งตัวเลือก':'อย่างน้อย '+min+' รายการ')+' '+(field.querySelector('legend')?.textContent||'ตัวเลือกสินค้า'))}if(inputs.length>max){field.querySelector('input')?.focus();return message('เลือกได้ไม่เกิน '+max+' รายการ')}if(radio){if(inputs.length)selections[key]=inputs[0].value}else selections[key]=inputs.map(input=>input.value)} }
+    const variants=Array.isArray(product?.variants)?product.variants:[],groups=variants.filter(g=>g&&g.schema==='queuego.menu-options.v1'&&Array.isArray(g.o…856 tokens truncated…'ตัวเลือกสินค้า'))}if(inputs.length>max){field.querySelector('input')?.focus();return message('เลือกได้ไม่เกิน '+max+' รายการ')}if(radio){if(inputs.length)selections[key]=inputs[0].value}else selections[key]=inputs.map(input=>input.value)} }
     pendingOptionResolver=null;dialog.remove();resolve(selections);
   };
   window.qgPosScanLookup=()=>{
@@ -384,8 +370,8 @@
     dialog.querySelector('input[name=label]').focus();
   };
   window.qgPosDeleteTable=async id=>{if(!can('manage_staff')||state.loading)return message('บัญชีนี้ไม่มีสิทธิ์ลบโต๊ะ');const t=state.tables.find(x=>x.id===id);if(!t)return message('ไม่พบโต๊ะของร้าน');if(state.orders.some(o=>o.table_id===id))return message('โต๊ะนี้มีประวัติออเดอร์แล้ว ลบไม่ได้ กรุณาแก้ไขโต๊ะแล้วปิดใช้งานแทน');if(!confirm('ยืนยันลบ '+t.label+'? การลบโต๊ะที่ยังไม่มีประวัติออเดอร์จะย้อนกลับไม่ได้'))return;busy(true);try{await rpc('pos_delete_table',{p_id:id});if(state.table===id){state.table=null;state.selected=null}await load();toast('ลบ '+t.label+' แล้ว')}catch(e){message(e)}finally{busy(false)}};
-  window.qgPosInvite=async()=>{if(!can('manage_staff'))return;const bytes=crypto.getRandomValues(new Uint8Array(32));const secret=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');try{const role=document.getElementById('qg-pos-invite-role')?.value||'WAITER';await rpc('pos_create_role_invite',{p_secret:secret,p_staff_role:role});document.getElementById('qg-pos-invite').textContent='รหัสเชิญ: '+secret+' (คัดลอกส่งให้พนักงาน เก็บไว้ตอนนี้เท่านั้น)'}catch(e){message(e)}};
-  window.qgPosStaffEdit=async id=>{if(!can('manage_staff'))return;try{const s=state.staffRows.find(row=>row.user_id===id);if(!s)return message('ไม่พบพนักงานในร้านนี้ กรุณาโหลดข้อมูลใหม่');const role=prompt('หน้าที่ WAITER / CASHIER / KITCHEN',s.staff_role);if(!role)return;const active=confirm('เปิดใช้งานบัญชี '+s.display_name+'?');await rpc('pos_set_staff_role',{p_user:id,p_role:role.trim().toUpperCase(),p_active:active});await load()}catch(e){message(e)}};
+  window.qgPosInvite=async()=>{if(!can('manage_staff'))return;const role=document.getElementById('qg-pos-invite-role')?.value||'WAITER';if(!allowedStaffRoles().includes(role))return message('ประเภทร้านนี้ไม่มีตำแหน่งพนักงานครัว');const bytes=crypto.getRandomValues(new Uint8Array(32));const secret=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');try{await rpc('pos_create_role_invite',{p_secret:secret,p_staff_role:role});document.getElementById('qg-pos-invite').textContent='รหัสเชิญ: '+secret+' (คัดลอกส่งให้พนักงาน เก็บไว้ตอนนี้เท่านั้น)'}catch(e){message(e)}};
+  window.qgPosStaffEdit=async id=>{if(!can('manage_staff'))return;try{const s=state.staffRows.find(row=>row.user_id===id);if(!s)return message('ไม่พบพนักงานในร้านนี้ กรุณาโหลดข้อมูลใหม่');const roles=allowedStaffRoles(),role=prompt('หน้าที่ '+roles.join(' / '),s.staff_role);if(!role)return;const normalizedRole=role.trim().toUpperCase();if(!roles.includes(normalizedRole))return message('ประเภทร้านนี้ไม่มีตำแหน่งพนักงานครัว');const active=confirm('เปิดใช้งานบัญชี '+s.display_name+'?');await rpc('pos_set_staff_role',{p_user:id,p_role:normalizedRole,p_active:active});await load()}catch(e){message(e)}};
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&root()==='pos')window.qgPosReload()});
   window.addEventListener('online',()=>{if(root()==='pos')window.qgPosReload()});
   window.addEventListener('offline',()=>{if(root()==='pos')render()});
