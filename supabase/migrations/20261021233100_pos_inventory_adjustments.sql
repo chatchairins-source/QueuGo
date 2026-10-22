@@ -22,6 +22,9 @@ create table public.pos_inventory_adjustments (
 );
 create index pos_inventory_adjustments_product_history
   on public.pos_inventory_adjustments(shop_id,product_id,created_at desc,id desc);
+-- Keep auth.users deletion / actor SET NULL from scanning the immutable audit ledger.
+create index pos_inventory_adjustments_actor_user_id_idx
+  on public.pos_inventory_adjustments(actor_user_id);
 alter table public.pos_inventory_adjustments enable row level security;
 revoke all on table public.pos_inventory_adjustments from public,anon,authenticated;
 
