@@ -228,12 +228,17 @@ function qgRiderVoiceActivate(){
   if(controller&&S.user&&readSession()?.sessionId)controller.startIncomingWatch();
   return controller;
 }
-function qgRiderVoiceCall(order,label){
+function qgRiderVoiceCallTarget(order,target,label){
   if(!order?.id)return toast('ไม่พบออเดอร์สำหรับการโทร');
+  if(!['shop','customer'].includes(target))return toast('ปลายทางสายโทรไม่ถูกต้อง');
   if(['completed','cancelled','no_rider_available'].includes(String(order.status||'').toLowerCase()))return toast('ออเดอร์นี้จบแล้ว ไม่สามารถโทรผ่าน QueueGo ได้');
   const controller=qgRiderVoiceActivate();
   if(!controller)return toast('ระบบโทรผ่าน QueueGo ยังไม่พร้อม');
-  controller.start(order.id,'customer',label||order._customer?.name||'ลูกค้า').catch(error=>toast(error?.message||'โทรผ่าน QueueGo ไม่สำเร็จ'));
+  const fallback=target==='shop'?(order._shop?.shop_name||'ร้านค้า'):(order._customer?.name||'ลูกค้า');
+  controller.start(order.id,target,label||fallback).catch(error=>toast(error?.message||'โทรผ่าน QueueGo ไม่สำเร็จ'));
+}
+function qgRiderVoiceCall(order,label){
+  return qgRiderVoiceCallTarget(order,'customer',label);
 }
 
 function esc(v){ return String(v??'').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
@@ -1902,16 +1907,18 @@ function jobCardHTML(o,meta){
    </div>
    ${hasCash?`<div class="qg-active-cash"><div><small>${cashLabel}</small><span>เงินสด</span></div><b>฿${cash.toLocaleString('th-TH')}</b></div>`:''}
    ${note?`<div class="qg-customer-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></div>`:''}
-   <div class="qg-job-tools qg-job-tools-two">
+   <div class="qg-job-tools">
      <button class="qg-job-tool" id="details-${esc(o.id)}">${QTICON.jobs}<span>รายละเอียด/รายการ</span></button>
+     <button class="qg-job-tool" id="call-${esc(o.id)}">${QTICON.phone}<span>${pickup?'โทรร้าน':'โทรลูกค้า'}</span></button>
      <button class="qg-job-tool" id="chat-${esc(o.id)}">${QTICON.chat}<span>แชต</span></button>
    </div>
    <button class="qg-btn qg-btn-primary qg-main-action" id="primary-nav-${esc(o.id)}" ${mainDisabled?'disabled':''}>${QTICON.loc}<span>${esc(mainLabel||'ทำรายการต่อ')}</span></button>
  </article>`;
 }
 function bindJobCardEvents(o){
- const by=id=>document.getElementById(id),c=by('chat-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id),mapMode=by('map-mode-'+o.id);
+ const by=id=>document.getElementById(id),c=by('chat-'+o.id),call=by('call-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id),mapMode=by('map-mode-'+o.id);
  if(c)c.onclick=()=>openChat(o);
+ if(call)call.onclick=()=>{const pickup=['rider_assigned','assigned','preparing','ready'].includes(statusFromRow(o));qgRiderVoiceCallTarget(o,pickup?'shop':'customer',pickup?(o._shop?.shop_name||'ร้านค้า'):(o._customer?.name||'ลูกค้า'))};
  if(mapMode)mapMode.onclick=()=>riderRouteOverviewActive?recenterMap():overviewRoute();
  if(a){
    a.onclick=()=>acceptJob(o.id);
