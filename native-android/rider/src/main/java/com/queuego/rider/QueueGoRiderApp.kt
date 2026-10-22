@@ -3269,6 +3269,8 @@ private fun RiderHome(
                 originLongitude = completed.deliveryLng
             )
             RiderDeliverySuccess(
+                auth = auth,
+                api = api,
                 job = completed,
                 rating = deliverySuccessRating,
                 recommendation = afterWorkRecommendation,
