@@ -2747,7 +2747,12 @@ window.acceptJob=async function(orderId){
     // The offer already came from the server-authoritative delivery pool. Avoid a second
     // pre-claim order read; the atomic claim RPC remains the source of truth / one-rider-wins gate.
     const kind=cachedOrder?.market_order_id?'market_claim':'claim';
-    await qgRiderActionOnce(kind,{p_order_id:orderId},token);
+    const claimPayload={p_order_id:orderId};
+    if(validRiderCoordinate(S.pos?.lat,S.pos?.lng)){
+      claimPayload.p_lat=Number(S.pos.lat);
+      claimPayload.p_lng=Number(S.pos.lng);
+    }
+    await qgRiderActionOnce(kind,claimPayload,token);
     if(cachedOrder){
       const optimistic={...cachedOrder,status:'rider_assigned',rider_id:S.riderProfile?.id||cachedOrder.rider_id};
       S.activeOrder=optimistic;
