@@ -2723,7 +2723,7 @@ window.qgRenderEarnings=function(){
      panel.querySelectorAll('[data-days]').forEach(x=>x.classList.toggle('active',x===b));
      const days=Number(b.dataset.days);qgLoadRiderPeriod(days);qgLoadRiderLedger(days);
    });
-   {const creditShell=panel.querySelector('.qg-earn-shell');if(creditShell&&window.QueueGoCredit?.mount&&S?.user?.id){const creditHost=document.createElement('div');creditShell.prepend(creditHost);Promise.resolve(QueueGoCredit.mount(creditHost,{kind:'rider',owner:S.user.id,getToken:getAccessToken,base:SB.URL,key:SB.KEY})).catch(err=>console.warn('rider credit surface failed',err))}}
+   {const creditShell=panel.querySelector('.qg-earn-shell');if(creditShell&&window.QueueGoCredit?.mountInline&&S?.user?.id){const creditHost=document.createElement('div');creditShell.prepend(creditHost);Promise.resolve(QueueGoCredit.mountInline(creditHost,{kind:'rider',owner:S.user.id,getToken:getAccessToken,base:SB.URL,key:SB.KEY})).catch(err=>console.warn('rider credit surface failed',err))}}
     qgLoadRiderPeriod(1);qgLoadRiderLedger(1);
  };
  const day=d=>{const x=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return x.year+'-'+x.month+'-'+x.day};
