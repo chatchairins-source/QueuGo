@@ -19,4 +19,10 @@ class RiderActiveJobControlCenterTest {
         assertNull(riderActiveJobEtaLabel(-1.0))
         assertNull(riderActiveJobEtaLabel(14_401.0))
     }
+
+    @Test
+    fun contactLabelFollowsCurrentLeg() {
+        assertEquals("โทรร้าน", riderActiveJobContactLabel(true))
+        assertEquals("โทรลูกค้า", riderActiveJobContactLabel(false))
+    }
 }
