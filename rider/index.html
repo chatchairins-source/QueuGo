@@ -816,12 +816,12 @@ async function qgRequestRiderRoute(from,to,signal){
   return {routes,dist,time,routeId:String(route.route_id||'')};
 }
 const RIDER_ROUTE_OFF_ROUTE_METERS=30;
-const RIDER_ROUTE_REROUTE_HITS=3;
+const RIDER_ROUTE_REROUTE_SUSTAIN_MS=3000;
 const RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000;
-let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteHits=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderPuckHeadingFix=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
+let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteSince=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderPuckHeadingFix=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
 function clearRiderRoute(){
   riderRouteRequest?.controller.abort();riderRouteRequest=null;riderRouteCache=null;riderRouteGeometry=[];
-  riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0;
+  riderRouteOffRouteSince=0;riderRouteLastRerouteAt=0;
   (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
   const badge=document.getElementById('route-badge');if(badge)badge.style.display='none';
 }
@@ -871,15 +871,15 @@ function qgRiderRouteNeedsReroute(pos,scope,map){
   const speed=qgFiniteOrNull(pos?.speed);
   const directionConflict=decision?.routeBearingRejected===true&&(speed===null||speed>=2);
   if(offRoute<=RIDER_ROUTE_OFF_ROUTE_METERS&&!directionConflict){
-    riderRouteOffRouteHits=0;
+    riderRouteOffRouteSince=0;
     return false;
   }
-  riderRouteOffRouteHits+=1;
-  if(riderRouteOffRouteHits<RIDER_ROUTE_REROUTE_HITS)return false;
   const now=Date.now();
+  if(!riderRouteOffRouteSince){riderRouteOffRouteSince=now;return false;}
+  if(now-riderRouteOffRouteSince<RIDER_ROUTE_REROUTE_SUSTAIN_MS)return false;
   if(riderRouteLastRerouteAt&&now-riderRouteLastRerouteAt<RIDER_ROUTE_REROUTE_COOLDOWN_MS)return false;
   riderRouteLastRerouteAt=now;
-  riderRouteOffRouteHits=0;
+  riderRouteOffRouteSince=0;
   return true;
 }
 function disposeRiderMap(){
@@ -1430,7 +1430,7 @@ function drawLaundryRoute(){
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
+      riderRouteOffRouteSince=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
@@ -1500,7 +1500,7 @@ function drawActiveRoute(){
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
+      riderRouteOffRouteSince=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
       if(!isOfferPreview&&S.activeTab==='home')renderHomeDock();
     }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
