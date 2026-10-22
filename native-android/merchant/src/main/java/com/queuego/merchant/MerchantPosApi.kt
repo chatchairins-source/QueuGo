@@ -350,7 +350,7 @@ class MerchantPosApi(
             linesByOrder = parseLines(itemsRaw),
             deliveryOrders = deliveryOrders,
             deliveryLinesByOrder = parseLines(deliveryItemsRaw),
-            shopCategory = shopCategory.trim().lowercase()
+            shopCategory = shopCategory?.trim()?.lowercase().orEmpty()
         )
     }
 
