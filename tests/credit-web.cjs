@@ -7,7 +7,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  w.eval(fs.readFileSync('queuego-credit.js','utf8'));
  const host=w.document.getElementById('host');await w.QueueGoCredit.mount(host,{kind:'merchant',owner:'u1',getToken:async()=>'token',base:'https://backend.invalid',key:'publishable'});
  eq(host.textContent.includes('ใช้ได้ ฿1,113.00'),true);eq(host.textContent.includes('เงินจริง'),false);eq(host.textContent.includes('โปรโมชั่น'),false);eq(host.textContent.includes('กันไว้'),false);eq(host.querySelector('form').hidden,false);
- const riderHost=w.document.createElement('div');w.document.body.appendChild(riderHost);await w.QueueGoCredit.mount(riderHost,{kind:'rider',owner:'r1',getToken:async()=>'token',base:'https://backend.invalid',key:'publishable'});eq(riderHost.querySelector('.qg-credit-panel-rider')!==null,true);eq(riderHost.querySelector('[data-refresh]').textContent,'รีเฟรชยอด');
+ const riderHost=w.document.createElement('div');w.document.body.appendChild(riderHost);await w.QueueGoCredit.mountInline(riderHost,{kind:'rider',owner:'r1',getToken:async()=>'token',base:'https://backend.invalid',key:'publishable'});eq(riderHost.querySelector('.qg-credit-inline')!==null,true);eq(riderHost.textContent.includes('เครดิต'),true);eq(riderHost.textContent.includes('฿1,113.00'),true);eq(riderHost.querySelector('[data-check]').textContent,'เช็กยอด');
  const compact=w.document.createElement('div');w.document.body.appendChild(compact);let opened=0;await w.QueueGoCredit.mountSummary(compact,{kind:'merchant',owner:'u1',getToken:async()=>'token',base:'https://backend.invalid',key:'publishable',onOpen:()=>opened++});
  eq(compact.textContent.includes('เครดิตร้านค้า'),true);eq(compact.textContent.includes('ใช้ได้ ฿1,113.00'),true);eq(compact.textContent.includes('เงินจริง'),false);eq(compact.textContent.includes('เครดิตฟรี'),false);eq(compact.textContent.includes('กันไว้'),false);compact.querySelector('.qg-credit-summary').click();eq(opened,1);
  const badge=w.document.createElement('span');w.document.body.appendChild(badge);await w.QueueGoCredit.mountBadge(badge,{kind:'merchant',owner:'u1',getToken:async()=>'token',base:'https://backend.invalid',key:'publishable',onOpen:()=>opened++});eq(badge.textContent.includes('เครดิต ฿1,113.00'),true);badge.querySelector('.qg-credit-badge').click();eq(opened,2);
@@ -35,7 +35,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require
  eq(merchant.includes('../queuego-credit.js')&&merchant.includes("kind:'merchant',owner:u.id"),true);
  eq(merchant.includes("QueueGoCredit.mountSummary("),false);
  eq(merchant.includes("QueueGoCredit.mountBadge(badgeHost,{kind:'merchant',owner:u.id"),true);
- eq(rider.includes('../queuego-credit.js')&&rider.includes("kind:'rider',owner:S.user.id"),true);
+ eq(rider.includes('../queuego-credit.js')&&rider.includes("QueueGoCredit.mountInline(")&&rider.includes("kind:'rider',owner:S.user.id"),true);
  const admin=fs.readFileSync('admin/index.html','utf8'),adminCredit=fs.readFileSync('admin/credit.js','utf8');
  eq(admin.includes("['money','เติมเครดิตฟรีร้านค้า','admin-credit','']"),true);
  eq(admin.includes("['money','เติมเครดิตฟรีร้านค้า','เพิ่มเครดิต GP ให้ร้านค้าที่อนุมัติแล้ว',\"navigate('admin-credit')\"]"),true);
