@@ -12,6 +12,7 @@ const ctx=vm.createContext({S,Number,Math,Date,
  qgSmoothedRiderPuckHeading:()=>90,document:{getElementById:()=>null}
 });
 vm.runInContext(source.slice(source.indexOf('function qgFiniteOrNull('),source.indexOf('function qgNavigationCameraShouldRun(')),ctx);
+vm.runInContext(source.slice(source.indexOf('let riderLocationWrite='),source.indexOf('let riderRefreshTask=')),ctx);
 vm.runInContext(source.slice(source.indexOf('function startGeolocation('),source.indexOf('function qgSyncCardMapMode(')),ctx);
 vm.runInContext('startGeolocation()',ctx);
 const fix=t=>({timestamp:t,coords:{latitude:15,longitude:103.0001,heading:90,speed:10,accuracy:5}});
