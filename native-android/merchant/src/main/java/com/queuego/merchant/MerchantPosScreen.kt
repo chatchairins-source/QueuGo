@@ -328,8 +328,9 @@ fun MerchantPosScreen(
                     }
                 }.getOrNull()
                 if (cached != null) {
-                    snapshot = PosSnapshot(cached.shopId, cached.shopName, false, null, emptyList(),
-                        cached.products, cached.tables, emptyList(), emptyMap(), emptyList(), emptyMap())
+                    snapshot = PosSnapshot(shopId = cached.shopId, shopName = cached.shopName, owner = false,
+                        currentStaff = null, staff = emptyList(), products = cached.products,
+                        tables = cached.tables, bills = emptyList(), linesByOrder = emptyMap())
                     snapshotActorId = auth.session.authUserId
                     offlineCatalogOnly = true
                     selectedBillId = null
