@@ -11,3 +11,9 @@
 .qg-credit-panel-rider [data-status]{margin:7px 0 0;font-size:11px;line-height:1.35}
 .qg-credit-panel-rider>small{display:block;margin-top:6px;font-size:10px;line-height:1.35}
 .qg-credit-panel-rider [data-entries]{margin-top:4px}
+
+.qg-credit-inline{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label action" "balance action";align-items:center;column-gap:12px;row-gap:1px;padding:10px 12px;margin:0 0 10px;background:#fff;border:1px solid #eee4e7;border-radius:16px;box-sizing:border-box}
+.qg-credit-inline-label{grid-area:label;color:#7d7478;font-size:10px;font-weight:800}
+.qg-credit-inline strong{grid-area:balance;font-size:19px;line-height:1.15;color:#211e20}
+.qg-credit-inline button{grid-area:action;min-height:34px;padding:6px 11px;border:1px solid #e8ccd4;border-radius:10px;background:#fff;color:#c20d31;font:inherit;font-size:12px;font-weight:850}
+.qg-credit-inline button:disabled{opacity:.55}

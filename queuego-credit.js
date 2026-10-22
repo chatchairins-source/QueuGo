@@ -19,6 +19,13 @@
    try{const summary=await post({getToken,base,key},'/rest/v1/rpc/queuego_credit_summary',{p_kind:kind,p_topup:null});if(!button.isConnected)return;button.textContent='เครดิต '+money(summary.available_minor);button.title='ยอดเครดิตที่ใช้ได้ '+money(summary.available_minor)}
    catch(e){if(button.isConnected){button.textContent='เครดิต --';button.title='ยังโหลดเครดิตไม่ได้'}}
   },
+  mountInline:async function(host,{kind,owner,getToken,base,key}){
+   if(!host||!owner)return;const row=document.createElement('section');row.className='qg-credit-inline';
+   row.innerHTML='<span class="qg-credit-inline-label">เครดิต</span><strong data-balance>--</strong><button type="button" data-check>เช็กยอด</button>';host.replaceChildren(row);
+   const button=row.querySelector('[data-check]'),balance=row.querySelector('[data-balance]');
+   const load=async()=>{button.disabled=true;const old=button.textContent;button.textContent='กำลังเช็ก';try{const summary=await post({getToken,base,key},'/rest/v1/rpc/queuego_credit_summary',{p_kind:kind,p_topup:null});if(!row.isConnected)return;balance.textContent=money(summary.available_minor)}catch(e){if(row.isConnected)balance.textContent='--'}finally{if(row.isConnected){button.disabled=false;button.textContent=old}}};
+   button.onclick=load;await load();
+  },
   mount:async function(host,{kind,owner,getToken,base,key}){
   if(!host)return;const panel=document.createElement('section');panel.className='qg-credit-panel'+(kind==='rider'?' qg-credit-panel-rider':'');
   panel.innerHTML='<h3></h3><p data-balance>กำลังตรวจสอบเครดิต...</p><button type="button" data-add hidden>เติมเงิน</button><form hidden><label>จำนวนเงิน (20–100,000 บาท)<input name="amount" inputmode="decimal" type="text" maxlength="12" required></label><button type="submit">สร้าง QR PromptPay</button></form><button type="button" data-refresh></button><button type="button" data-new hidden>รายการใหม่</button><p data-status role="status"></p><img data-qr hidden alt="QR เติมเครดิต" width="240" height="240"><div data-entries></div><small>เครดิตใช้ชำระค่าบริการ QueueGo · ถอนหรือโอนไม่ได้</small>';
