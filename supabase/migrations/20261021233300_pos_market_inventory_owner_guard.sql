@@ -88,7 +88,7 @@ for each row execute function public.qg_market_inventory_owner_guard();
 -- Keep Market's existing Delivery refund stock behavior, but do not silently
 -- restock completed POS refunds without an explicit physical-return workflow.
 create or replace function public.market_restore_cancelled_order() returns trigger
-language plpgsql security definer set search_path=public,pg_temp as $
+language plpgsql security definer set search_path=public,pg_temp as $$
 declare v_item record;v_row public.market_products%rowtype;v_amount numeric;
 begin
   if new.status<>'cancelled' or old.status='cancelled' then return new; end if;
@@ -102,7 +102,7 @@ begin
       values(v_item.product_id,v_row.shop_id,'cancel',v_amount,v_row.stock_quantity,v_row.stock_quantity+v_amount,v_row.cost_price,'order_item',v_item.id,auth.uid());
   end loop;
   return new;
-end $;
+end $$;
 
 revoke all on function public.market_restore_cancelled_order() from public,anon,authenticated;
 
