@@ -3026,11 +3026,18 @@ private fun RiderHome(
                             ) activeJob.copy(status = "picked_up") else activeJob,
                             details = homeDetails,
                             items = homeItems,
-                            etaSeconds = navigationGuidance.etaSeconds,
+                            etaSeconds = riderActiveJobEtaSeconds(navigationGuidance),
                             loadSummary = activeLoadSummary,
                             busy = actionBusy,
                             networkAvailable = networkAvailable,
                             onDetails = { detailJob = current.activeJob },
+                            onCall = {
+                                if (current.activeJob.status in setOf("rider_assigned", "assigned", "preparing", "ready")) {
+                                    startShopVoice(current.activeJob.id)
+                                } else {
+                                    startCustomerVoice(current.activeJob.id)
+                                }
+                            },
                             onChat = { chatJob = current.activeJob },
                             onQueueGoNavigate = {
                                 startQueueGoNavigation()
@@ -3580,11 +3587,17 @@ private fun MarketPickupPanel(
     }
 }
 
+internal fun riderActiveJobEtaSeconds(guidance: NavigationGuidanceState): Double? =
+    if (guidance.weakGps || guidance.offRoute) null else guidance.etaSeconds
+
 internal fun riderActiveJobEtaLabel(etaSeconds: Double?): String? {
     val seconds = etaSeconds?.takeIf { it.isFinite() && it >= 0.0 && it <= 14_400.0 } ?: return null
     val minutes = kotlin.math.ceil(seconds / 60.0).toInt().coerceAtLeast(1)
     return "ประมาณ " + minutes + " นาที"
 }
+
+internal fun riderActiveJobContactLabel(pickup: Boolean): String =
+    if (pickup) "โทรร้าน" else "โทรลูกค้า"
 
 @Composable
 private fun ActiveJobCard(
@@ -3596,6 +3609,7 @@ private fun ActiveJobCard(
     busy: Boolean,
     networkAvailable: Boolean,
     onDetails: () -> Unit,
+    onCall: () -> Unit,
     onChat: () -> Unit,
     onQueueGoNavigate: () -> Unit,
     onArriveShop: () -> Unit,
@@ -3769,6 +3783,7 @@ private fun ActiveJobCard(
 
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 RiderJobTool("jobs", processLabel, !busy, Modifier.weight(1f), onDetails)
+                RiderJobTool("phone", riderActiveJobContactLabel(pickup), !busy && networkAvailable, Modifier.weight(1f), onCall)
                 RiderJobTool("support", "แชต", !busy && networkAvailable, Modifier.weight(1f), onChat)
             }
 
@@ -3904,8 +3919,18 @@ private fun RiderJobTool(icon: String, label: String, enabled: Boolean, modifier
         .background(Color.White).border(1.dp, Color(0xFFEDE5E8), RoundedCornerShape(15.dp))
         .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-        Icon(painterResource(if (icon == "support") R.drawable.qg_rider_nav_chat else R.drawable.qg_rider_flow_jobs),
-            contentDescription = null, modifier = Modifier.size(18.dp), tint = if (enabled) Color(0xFF282427) else QgMuted)
+        Icon(
+            painterResource(
+                when (icon) {
+                    "support" -> R.drawable.qg_rider_nav_chat
+                    "phone" -> R.drawable.qg_rider_flow_phone
+                    else -> R.drawable.qg_rider_flow_jobs
+                }
+            ),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = if (enabled) Color(0xFF282427) else QgMuted
+        )
         Spacer(Modifier.width(6.dp))
         Text(label, color = if (enabled) Color(0xFF282427) else QgMuted, fontSize = RIDER_TOOL_TEXT_SP.sp, fontWeight = FontWeight.ExtraBold)
     }
