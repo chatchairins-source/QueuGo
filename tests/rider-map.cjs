@@ -95,6 +95,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  });
  vm.runInContext(source.slice(source.indexOf('const RIDER_CAMERA_SMOOTHNESS_TEST_MODE='),source.indexOf('function initMap()')),ctx);
  vm.runInContext(source.slice(source.indexOf('function qgCleanOrderNote('),source.indexOf('async function qgOpenOrderDetails(')),ctx);
+ vm.runInContext(source.slice(source.indexOf('function qgArrivalDistanceKm('),source.indexOf('async function qgMarkArrival(')),ctx);
  vm.runInContext(source.slice(source.indexOf('function qgRemoveOverlay('),source.indexOf('/* ---------- sheet')),ctx);
  const bearingCtx=vm.createContext({
   Math,Number,
