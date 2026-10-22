@@ -4,7 +4,7 @@ on:
     branches: ['work-map-roadgraph-buriram-*', 'work-native-release-unified-*', 'work-native-route-bundle-*']
     paths: ['CHECKLIST.md', 'docs/PROJECT-MEMORY.md', 'queuego-map-engine/**', 'data/maps/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-places-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', 'tests/map-staging-*', 'supabase/functions/queuego-route-bundle-matrix/**', 'supabase/migrations/*route_bundle*.sql', 'tests/route-bundle-*', '.github/workflows/queuego-map-engine-buriram.yml']
   pull_request:
-    paths: ['queuego-map-engine/**', 'data/maps/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-places-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', '.github/workflows/queuego-map-engine-buriram.yml']
+    paths: ['queuego-map-engine/**', 'data/maps/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-places-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', 'tests/rider-*', 'supabase/migrations/*rider*.sql', '.github/workflows/queuego-map-engine-buriram.yml']
   workflow_dispatch:
 permissions:
   contents: read
