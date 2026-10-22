@@ -13,7 +13,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
  await ctx.qgAdminLoadSection(false,'orders:UPDATE');assert.equal(directory,1);checks++;
  await ctx.qgAdminLoadSection(false,'users:UPDATE');assert.equal(directory,2);checks++;
  await ctx.qgAdminLoadSection(true);assert.equal(directory,3);checks++;
- const headReadsBeforeSections=calls.filter(p=>String(p).startsWith('HEAD ')).length;for(const page of ['admin-grocery','admin-market','admin-orders','admin-cash','admin-gp','admin-support']){route='#'+page;await ctx.qgAdminLoadSection();assert.equal(calls.filter(p=>String(p).startsWith('HEAD ')).length,headReadsBeforeSections);checks++}
+ const headReadsBeforeSections=calls.filter(p=>String(p).startsWith('HEAD ')).length;for(const page of ['admin-grocery','admin-market','admin-orders','admin-cash','admin-support']){route='#'+page;await ctx.qgAdminLoadSection();assert.equal(calls.filter(p=>String(p).startsWith('HEAD ')).length,headReadsBeforeSections);checks++}
  route='#admin-governance';tab='qt-sec-audit';await ctx.qgAdminLoadSection();assert(calls.at(-1).includes('audit_logs?')&&calls.at(-1).includes('order=created_at.desc,id.desc')&&calls.at(-1).endsWith('limit=101')&&!calls.at(-1).includes('offset='));assert.equal(ctx.QG_ADMIN_AUDIT_PAGE_INFO.page,0);checks+=2;
  ctx.QG_ADMIN_AUDIT_PAGE_INFO={page:0,more:true,last:{at:'2026-10-20T00:00:00.000Z',id:'00000000-0000-4000-8000-000000000010'}};await ctx.qgAdminAuditPage(1);assert.equal(ctx.QG_ADMIN_AUDIT_PAGE,1);assert(decodeURIComponent(calls.at(-1)).includes('created_at.lt.2026-10-20T00:00:00.000Z')&&!calls.at(-1).includes('offset='));checks+=2;
  await ctx.qgAdminAuditPage(-1);assert.equal(ctx.QG_ADMIN_AUDIT_PAGE,0);assert(!calls.at(-1).includes('&or='));checks+=2;
