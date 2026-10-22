@@ -97,6 +97,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-cash-confirm-slide{margin:0;min-height:62px;border-radius:999px;background:linear-gradient(90deg,#f04455 0 var(--slide-progress),#f4eff1 var(--slide-progress) 100%)}
 .qg-cash-confirm-dock>small{display:block;margin-top:10px;text-align:center;color:#9b9598;font-size:9px;font-weight:750}
 @media(max-height:700px){.qg-cash-confirm-main{padding-top:34px}.qg-cash-visual{margin-bottom:22px}.qg-cash-confirm-amount{font-size:48px}}
+.qg-confirm-overlay{position:fixed;z-index:19050;inset:0;background:rgba(20,18,19,.34);display:grid;place-items:center;padding:18px;animation:qgConfirmFade .15s ease-out both}
+.qg-confirm-card{width:min(100%,430px);padding:18px;border-radius:24px;background:#fff;box-shadow:0 22px 64px rgba(20,18,19,.22);animation:qgConfirmPop .15s ease-out both}
+.qg-confirm-card h2{margin:0;font-size:20px;line-height:1.25}.qg-confirm-card p{margin:7px 0 0;color:#81797d;font-size:11px;line-height:1.55}
+.qg-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}.qg-confirm-actions button{min-height:50px;border:0;border-radius:16px;font-weight:900}.qg-confirm-no{background:#f3f0f1;color:#3e383b}.qg-confirm-yes{background:#159947;color:#fff}
+@keyframes qgConfirmFade{from{opacity:0}to{opacity:1}}@keyframes qgConfirmPop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
 </style>
 <link rel="stylesheet" href="../queuego-credit.css">
 <script src="../queuego-credit.js"></script>
@@ -505,6 +510,35 @@ function riderDraftOpen(){return new Promise((resolve,reject)=>{const r=indexedD
 async function saveRiderDraftFile(id,data,name){try{const db=await riderDraftOpen();await new Promise((res,rej)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').put({data,name,at:Date.now()},id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});db.close();}catch(e){console.warn('draft save failed',e);}}
 async function loadRiderDraftFile(id){try{const db=await riderDraftOpen();const v=await new Promise((res,rej)=>{const tx=db.transaction('files','readonly');const r=tx.objectStore('files').get(id);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error);});db.close();return v;}catch(e){return null;}}
 async function clearRiderDraft(){try{const db=await riderDraftOpen();await new Promise((res,rej)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').clear();tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});db.close();}catch(e){}}
+async function deleteRiderDraftFile(id){try{const db=await riderDraftOpen();await new Promise((res,rej)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});db.close();}catch(e){console.warn('draft delete failed',e);}}
+function qgProofDraftKey(kind,o){return 'proof:'+String(kind||'evidence')+':'+String(o?.id||o?.market_order_id||'unknown');}
+function qgCanvasBlob(canvas,quality){return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('บีบอัดรูปไม่สำเร็จ')),'image/jpeg',quality));}
+async function qgLoadImageFile(file){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),im=new Image();im.onload=()=>{URL.revokeObjectURL(url);resolve(im)};im.onerror=()=>{URL.revokeObjectURL(url);reject(Error('อ่านรูปไม่สำเร็จ'))};im.src=url;});}
+async function qgPrepareProofFile(file,maxBytes=500*1024){
+  if(!file||!String(file.type||'').startsWith('image/'))throw Error('กรุณาใช้ไฟล์รูปภาพ');
+  const im=await qgLoadImageFile(file);
+  let scale=Math.min(1,1600/Math.max(im.naturalWidth||im.width,im.naturalHeight||im.height));
+  let last=null;
+  for(let resize=0;resize<4;resize++){
+    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round((im.naturalWidth||im.width)*scale));canvas.height=Math.max(1,Math.round((im.naturalHeight||im.height)*scale));
+    const ctx=canvas.getContext('2d',{alpha:false});ctx.drawImage(im,0,0,canvas.width,canvas.height);
+    for(const quality of [0.82,0.72,0.62,0.52]){
+      const blob=await qgCanvasBlob(canvas,quality);last=blob;if(blob.size<=maxBytes)return new File([blob],(file.name||'queuego-proof').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+    }
+    scale*=0.82;
+  }
+  if(last&&last.size<=maxBytes*1.08)return new File([last],(file.name||'queuego-proof').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+  throw Error('รูปยังใหญ่เกิน 500 KB กรุณาถ่ายใหม่ให้ใกล้ขึ้น');
+}
+async function qgPersistProofFile(kind,o,file){const prepared=await qgPrepareProofFile(file);const data=await readFileAsDataURL(prepared);await saveRiderDraftFile(qgProofDraftKey(kind,o),data,prepared.name||'queuego-proof.jpg');return {file:prepared,data};}
+async function qgRestoreProofFile(kind,o){const draft=await loadRiderDraftFile(qgProofDraftKey(kind,o));if(!draft?.data)return null;try{const response=await fetch(draft.data),blob=await response.blob();return {file:new File([blob],draft.name||'queuego-proof.jpg',{type:blob.type||'image/jpeg',lastModified:draft.at||Date.now()}),data:draft.data};}catch(e){return null;}}
+async function qgClearProofFile(kind,o){await deleteRiderDraftFile(qgProofDraftKey(kind,o));}
+function qgConfirmPickupReceived(){return new Promise(resolve=>{
+  document.getElementById('qg-pickup-confirm-overlay')?.remove();
+  const overlay=document.createElement('section');overlay.id='qg-pickup-confirm-overlay';overlay.className='qg-confirm-overlay';
+  overlay.innerHTML='<div class="qg-confirm-card" role="dialog" aria-modal="true" aria-labelledby="qg-pickup-confirm-title"><h2 id="qg-pickup-confirm-title">ได้รับอาหารแล้วใช่ไหม?</h2><p>ตรวจว่ารายการครบและเก็บรูปใบเสร็จไว้แล้ว ก่อนเริ่มนำส่งให้ลูกค้า</p><div class="qg-confirm-actions"><button type="button" class="qg-confirm-no">ไม่ กำลังรออยู่</button><button type="button" class="qg-confirm-yes">ใช่ ได้รับแล้ว</button></div></div>';
+  const done=value=>{overlay.remove();resolve(value)};overlay.querySelector('.qg-confirm-no').onclick=()=>done(false);overlay.querySelector('.qg-confirm-yes').onclick=()=>done(true);document.body.appendChild(overlay);
+});}
 async function riderFilePreview(inputId,previewId){
   const input=document.getElementById(inputId),img=document.getElementById(previewId);
   if(!input||!input.files[0]) return;
