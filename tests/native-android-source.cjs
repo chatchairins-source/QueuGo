@@ -48,6 +48,9 @@ for(const p of [
   'merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantNotificationsScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantProductModel.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantCatalogScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt',
@@ -419,6 +422,9 @@ ok(source.includes('pos_save_table')&&source.includes('pos_delete_table')&&sourc
 ok(source.includes('pos_owner_dashboard')&&source.includes('pos_delivery_kitchen_action')&&source.includes('pos_enable_delivery'),'Merchant native POS must preserve reports and Delivery integration');
 ok(source.includes('PosTabs(')&&source.includes('"reports" to "ยอดขาย"')&&source.includes('"history" to "ประวัติ"')&&source.includes('"delivery" to "Delivery"')&&source.includes('"staff" to "พนักงาน"'),'Merchant native POS must preserve Production counter tables kitchen bills reports history Delivery and staff tabs');
 ok(source.includes('pendingPosRequestId')&&source.includes('ตรวจบิลเดิม')&&source.includes('requestId = requestId'),'Merchant native POS must preserve idempotent new-bill recovery after uncertain network results');
+ok(source.includes('pos_submit_offline_draft')&&source.includes('put("request_ids", JSONArray(item.requestIds))')&&source.includes('item.copy(requestIds = if'),'Merchant offline draft submission must use one atomic server request with stable per-unit retry IDs');
+ok(source.includes('offlineDraftStore.saveCatalog')&&source.includes('offlineDraftStore.loadCatalog')&&source.includes('offlineCatalogOnly = true'),'Merchant POS must restore a device-local catalog after offline relaunch without restoring bills or permissions');
+ok(source.includes('NET_CAPABILITY_VALIDATED')&&source.includes('ยังไม่ได้สร้างบิลหรือรับชำระเงิน')&&source.includes('ไม่ชำระเงิน และไม่ส่งเข้าครัว'),'Merchant offline POS must label the local draft and avoid offline bill/payment/kitchen writes');
 ok(source.includes('NativeRealtimeSubscription("orders", "shop_id=eq.$shopId")')&&source.includes('repeatOnLifecycle(Lifecycle.State.STARTED)')&&source.includes('delay(5_000L)'),'Merchant native POS must refresh Production orders from Realtime with polling fallback');
 ok(source.includes('table-order.html#scan/')&&merchantGradle.includes('com.google.zxing:core:3.5.3'),'Merchant native POS must render Production table QR links without a WebView');
 ok(source.includes('MerchantPrintBridge')&&source.includes('HttpsURLConnection')&&source.includes('Android อนุญาตเฉพาะ HTTPS Print Bridge'),'Merchant native printer must use HTTPS Print Bridge instead of unsupported Web Bluetooth or USB');
