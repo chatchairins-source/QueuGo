@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animate
 
 import android.Manifest
 import android.content.Context
@@ -17,6 +18,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
 import com.queuego.shared.QueueGoTheme
 import com.queuego.shared.QueueGoVoiceCallOverlay
 import com.queuego.shared.NativeVoiceCallController
@@ -4603,7 +4605,7 @@ private fun VerificationScreen(
                 RiderSwipeCompleteAction(
                     enabled = !busy && deliveryReady,
                     busy = busy,
-                    label = if (expressMode) "สไลด์เพื่อส่งพัสดุและจบงาน" else "สไลด์เพื่อจบงาน",
+                    label = if (expressMode) "สไลด์เพื่อยืนยันรับเงินและจบงาน" else "สไลด์เพื่อยืนยันรับเงินและจบงาน",
                     onComplete = onConfirm
                 )
             } else {
@@ -4707,9 +4709,21 @@ private fun RiderSwipeCompleteAction(
         val density = LocalDensity.current.density
         val maxTravelDp = (maxWidth - 54.dp).coerceAtLeast(1.dp)
         var dragDp by remember(enabled) { mutableStateOf(0f) }
-        val completeThreshold = maxTravelDp.value * 0.82f
+        val scope = rememberCoroutineScope()
+        val hapticView = LocalView.current
+        val completeThreshold = (maxTravelDp.value - 0.5f).coerceAtLeast(0f)
+        fun springBack() {
+            val start = dragDp
+            scope.launch {
+                animate(
+                    initialValue = start,
+                    targetValue = 0f,
+                    animationSpec = tween(durationMillis = 200)
+                ) { value, _ -> dragDp = value }
+            }
+        }
         Text(
-            if (busy) "กำลังจบงาน..." else label,
+            if (busy) "กำลังยืนยัน..." else label,
             modifier = Modifier.align(Alignment.Center),
             color = if (enabled) Color(0xFF7C4B55) else QgMuted,
             fontSize = 11.sp,
@@ -4729,12 +4743,13 @@ private fun RiderSwipeCompleteAction(
                         onDragEnd = {
                             if (dragDp >= completeThreshold) {
                                 dragDp = maxTravelDp.value
+                                hapticView.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                 onComplete()
                             } else {
-                                dragDp = 0f
+                                springBack()
                             }
                         },
-                        onDragCancel = { dragDp = 0f }
+                        onDragCancel = { springBack() }
                     )
                 },
             contentAlignment = Alignment.Center
