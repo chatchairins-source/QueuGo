@@ -9,6 +9,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -22,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.queuego.ridernavigationmap.CachingNavigationRouteProvider
 import com.queuego.ridernavigationmap.QueueGoNavigationRouteClient
 import com.queuego.ridernavigationmap.NavigationMapCamera
+import com.queuego.ridernavigationmap.NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS
 import com.queuego.ridernavigationmap.NavigationMapFix
 import com.queuego.ridernavigationmap.NavigationGuidanceState
 import com.queuego.ridernavigationmap.NavigationMapPoint
@@ -268,6 +270,7 @@ internal fun QueueGoRiderNavigationMap(
     var persistenceHydrated by remember(stateKey) { mutableStateOf(false) }
     var pendingCameraPersistence by remember(stateKey) { mutableStateOf<DoubleArray?>(null) }
     var pendingViewModePersistence by remember(stateKey) { mutableStateOf<String?>(null) }
+    var userGestureEpoch by remember(stateKey) { mutableIntStateOf(0) }
 
     LaunchedEffect(stateKey) {
         val restored = withContext(Dispatchers.IO) {
@@ -344,6 +347,20 @@ internal fun QueueGoRiderNavigationMap(
         // the view mode until the Rider explicitly recenters or availability/work changes.
         if (navigationActive || online || RIDER_CAMERA_SMOOTHNESS_TEST_MODE) {
             viewModeState = viewModeController.onRecenter()
+            pendingViewModePersistence = NavigationViewMode.FOLLOW.name
+        }
+    }
+
+    LaunchedEffect(navigationActive, userGestureEpoch, viewModeState.mode) {
+        if (!navigationActive || viewModeState.mode != NavigationViewMode.FREE_PAN) return@LaunchedEffect
+        val expectedEpoch = userGestureEpoch
+        delay(NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS)
+        if (
+            navigationActive &&
+            userGestureEpoch == expectedEpoch &&
+            viewModeState.mode == NavigationViewMode.FREE_PAN
+        ) {
+            viewModeState = viewModeController.onIdleTimeout(navigationActive = true)
             pendingViewModePersistence = NavigationViewMode.FOLLOW.name
         }
     }
@@ -599,6 +616,7 @@ internal fun QueueGoRiderNavigationMap(
             if (riderFix?.point?.valid == true) {
                 viewModeState = viewModeController.onUserGesture()
                 pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
+                userGestureEpoch += 1
             } else {
                 // A startup gesture before the first live GPS fix must not strand the
                 // Rider in FREE_PAN. Keep FOLLOW ownership until a real fix exists.
