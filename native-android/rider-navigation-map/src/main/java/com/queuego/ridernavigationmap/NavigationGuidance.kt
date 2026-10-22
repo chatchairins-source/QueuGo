@@ -3,8 +3,8 @@ package com.queuego.ridernavigationmap
 import kotlin.math.max
 
 private const val WEAK_GPS_ACCURACY_METERS = 75f
-private const val BASE_OFF_ROUTE_THRESHOLD_METERS = 55.0
-private const val OFF_ROUTE_ACCURACY_MULTIPLIER = 1.8
+private const val BASE_OFF_ROUTE_THRESHOLD_METERS = 30.0
+private const val OFF_ROUTE_ACCURACY_MULTIPLIER = 1.0
 private const val DEFAULT_ARRIVAL_METERS = 28.0
 private const val ARRIVAL_ACCURACY_MULTIPLIER = 1.4
 private const val MAX_ARRIVAL_METERS = 45.0
