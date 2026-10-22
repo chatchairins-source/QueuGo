@@ -40,12 +40,33 @@ internal object RiderNavigationDispatchReadiness {
         val orderId: String?, val ready: Boolean,
         val targetLatitude: Double? = null, val targetLongitude: Double? = null
     )
+    internal data class LocationTarget(
+        val userId: String,
+        val latitude: Double,
+        val longitude: Double
+    )
+
     @Volatile private var binding: Binding? = null
+    @Volatile private var locationTarget: LocationTarget? = null
     private val mutex = Mutex()
     private val locationMutex = Mutex()
 
     fun bind(next: Binding) { binding = next }
-    fun clear(userId: String) { if (binding?.userId == userId) binding = null }
+
+    fun bindTarget(userId: String, latitude: Double?, longitude: Double?) {
+        val lat = latitude?.takeIf { it.isFinite() && it in -90.0..90.0 }
+        val lng = longitude?.takeIf { it.isFinite() && it in -180.0..180.0 }
+        locationTarget = if (lat != null && lng != null) {
+            LocationTarget(userId, lat, lng)
+        } else {
+            locationTarget?.takeUnless { it.userId == userId }
+        }
+    }
+
+    fun clear(userId: String) {
+        if (binding?.userId == userId) binding = null
+        if (locationTarget?.userId == userId) locationTarget = null
+    }
 
     suspend fun syncForeground(context: Context, api: QueueGoApi, auth: QueueGoAuth) = mutex.withLock {
         val bound = binding ?: return@withLock
@@ -78,8 +99,14 @@ internal object RiderNavigationDispatchReadiness {
             bound.orderId == null
         ) return@withLock 3_000L
         api.updateLocation(auth, lat, lng)
+        val target = locationTarget?.takeIf { it.userId == auth.user.id }
         riderNavigationLocationPushIntervalMs(
-            riderNavigationDistanceMeters(lat, lng, bound.targetLatitude, bound.targetLongitude)
+            riderNavigationDistanceMeters(
+                lat,
+                lng,
+                target?.latitude ?: bound.targetLatitude,
+                target?.longitude ?: bound.targetLongitude
+            )
         )
     }
 
