@@ -62,7 +62,7 @@ window.qgAdminCountRead=async function(path){
 };
 async function summary(valid){
  const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
- const paths={orders:'orders?select=id',shops:'users?select=id&role=eq.shop',riders:'users?select=id&role=eq.rider',customers:'users?select=id&role=eq.customer',pendingShops:'shop_profiles?select=id&onboarding_status=eq.pending_approval&archived_at=is.null',pendingRiders:'users?select=id&role=eq.rider&status=eq.pending',promotions:'promotions?select=id&status=eq.pending'};
+ const paths={orders:'orders?select=id&order_type=not.in.(DINE_IN,TAKEAWAY)',shops:'users?select=id&role=eq.shop',riders:'users?select=id&role=eq.rider',customers:'users?select=id&role=eq.customer',pendingShops:'shop_profiles?select=id&onboarding_status=eq.pending_approval&archived_at=is.null',pendingRiders:'users?select=id&role=eq.rider&status=eq.pending',promotions:'promotions?select=id&status=eq.pending'};
  const entries=await Promise.all(Object.entries(paths).map(async([k,p])=>[k,await count(p,token)]));
  if(valid())window.QG_ADMIN_SUMMARY=Object.fromEntries(entries);
 }
