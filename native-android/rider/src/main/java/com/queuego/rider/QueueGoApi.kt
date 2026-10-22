@@ -2249,9 +2249,22 @@ class QueueGoApi {
         requestArray("GET", "/rest/v1/orders?select=id,status,rider_arrived_shop_at,rider_arrived_customer_at&id=eq." +
             enc(orderId) + "&limit=1", auth.session.accessToken).optJSONObject(0)
 
-    private fun mutationProofExists(auth: QueueGoAuth, table: String, orderId: String, path: String): Boolean =
-        requestArray("GET", "/rest/v1/$table?select=order_id&order_id=eq." + enc(orderId) +
-            "&photo_path=eq." + enc(path) + "&limit=1", auth.session.accessToken).length() == 1
+    private fun mutationProofExists(auth: QueueGoAuth, table: String, orderId: String, path: String): Boolean {
+        val stage = when (table) {
+            "qg_pickup_proofs" -> "pickup"
+            "qg_delivery_proofs" -> "delivery"
+            else -> return false
+        }
+        val result = rpc(
+            "qg_rider_proof_committed",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_order_id", orderId)
+                .put("p_stage", stage)
+                .put("p_photo_path", path)
+        )
+        return result as? Boolean ?: result.toString().toBooleanStrictOrNull() ?: false
+    }
 
     private fun uploadedEvidenceMatches(auth: QueueGoAuth, path: String, bytes: ByteArray): Boolean {
         val connection = URL(BASE_URL + "/storage/v1/object/authenticated/qg-evidence/" + path)
