@@ -1932,6 +1932,7 @@ function jobCardHTML(o,meta){
  const rawCash=pickup?(o.shop_cash??o.subtotal):(o.customer_cash??o.total_amount??o.total);
  const cash=Number(rawCash),hasCash=Number.isFinite(cash);
  const cashLabel=pickup?'ยอดที่ต้องชำระร้าน':'ยอดที่ต้องเก็บลูกค้า';
+ const stageStatus=st==='in_progress'&&o.rider_arrived_customer_at?'ถึงลูกค้าแล้ว':(pickup&&o.rider_arrived_shop_at?'ถึงร้านแล้ว':null);
  let mainLabel=route.label,mainDisabled=false;
  if(!o.market_order_id&&pickup){
    if(o.rider_arrived_shop_at){mainLabel=st==='ready'?'ตรวจสอบรายการ':'ถึงร้านแล้ว ✓';mainDisabled=st!=='ready'}
@@ -1946,7 +1947,7 @@ function jobCardHTML(o,meta){
  return `<article class="qg-active-card qg-active-control">
    <div class="qg-active-step">
      <span class="qg-step-number">${step}</span>
-     <div class="qg-step-copy"><b>${step} · ${esc(stepTitle)}</b><small>${eta?'ประมาณ '+eta+' นาที':'กำลังคำนวณเวลา'} · ${esc(code)}</small></div>
+     <div class="qg-step-copy"><b>${step} · ${esc(stepTitle)}</b><small>${stageStatus?esc(stageStatus)+' · ':''}${eta?'ประมาณ '+eta+' นาที':'กำลังคำนวณเวลา'} · ${esc(code)}</small></div>
      <button type="button" class="qg-card-map-mode ${riderRouteOverviewActive?'follow':''}" id="map-mode-${esc(o.id)}">${mapModeIcon}<span>${mapModeLabel}</span></button>
    </div>
    <div class="qg-active-destination">
