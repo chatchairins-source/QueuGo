@@ -58,8 +58,17 @@ assert(app.includes('RiderJobTool("jobs", processLabel') &&
   app.includes('startShopVoice(current.activeJob.id)') &&
   app.includes('startCustomerVoice(current.activeJob.id)'),
   'Active job must keep details, exact stage-aware contact and chat immediately reachable');
-assert(app.includes('Text("นำทางด้วย QueueGo"') && !app.includes('นำทางด้วย Google Maps'),
-  'Active food delivery job must keep navigation inside QueueGo');
+assert(
+  app.includes('fun startQueueGoNavigation(') &&
+  app.includes('// Accept is the start of work. Enter QueueGo follow/navigation mode') &&
+  app.includes('routeOverviewActive = false') &&
+  app.includes('recenterSignal += 1') &&
+  !app.includes('Text("นำทางด้วย QueueGo"') &&
+  !app.includes('นำทางด้วย Google Maps') &&
+  !app.includes('"google.navigation:q="') &&
+  !app.includes('GOOGLE_MAPS_PACKAGE'),
+  'Active food delivery must auto-start inside QueueGo without a redundant navigation button or external-map handoff'
+);
 assert(app.includes('pushStore.saveHomeSnapshot(auth.user.id, value, durable = true)') &&
   app.includes('kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)'),
   'Acknowledged mutations must persist encrypted snapshots off the main thread before navigation');
