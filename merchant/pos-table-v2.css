@@ -215,3 +215,39 @@
  .qg-pos-tabs button{min-height:36px;padding:7px 10px;border:0;border-radius:9px;font-size:12px;font-weight:700;color:#737b86}
  .qg-pos-tabs button.current{background:#fff;color:#d20b32;border:0;box-shadow:inset 0 -2px 0 #ed163d}
 }
+
+
+/* POS checkout / cash shift / reports / history — same light compact language */
+.qg-pos-pay-overlay{background:rgba(32,36,42,.28);backdrop-filter:blur(3px)}
+.qg-pos-pay-dialog{border:1px solid #e8ebef;box-shadow:0 18px 50px rgba(32,36,42,.16)}
+.qg-pos-pay-dialog button{background:#f4f5f7;color:#505762}
+.qg-pos-pay-dialog button.confirm{background:#ed163d;color:#fff}
+.qg-pos-shift-reload{background:#fff7f8;color:#d20b32;border:1px solid #f1d8dd}
+.qg-pos-shift-status{background:#fafbfc;border:1px solid #eceef2}
+.qg-pos-shift-kpis>div,.qg-pos-shift-history article{background:#fff;border-color:#eceef2}
+.qg-pos-report-totals>div{background:#fff;border-color:#eceef2}
+.qg-pos-report-totals b,.qg-pos-report-table td:last-child{color:#d20b32}
+.qg-pos-report-table-wrap{background:#fff;border-color:#eceef2}
+.qg-pos-report-table th{background:#fafbfc}
+.qg-pos-row{background:#fff;border:1px solid #eceef2}
+@media(max-width:650px){
+ .qg-pos-pay-overlay{align-items:end;padding:0}
+ .qg-pos-pay-dialog{width:100%;border-radius:18px 18px 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -10px 35px rgba(32,36,42,.12)}
+ .qg-pos-pay-dialog h2{font-size:18px;margin-bottom:10px}
+ .qg-pos-pay-dialog p{font-size:15px;margin:9px 0}
+ .qg-pos-pay-dialog label{margin:10px 0}
+ .qg-pos-pay-dialog input,.qg-pos-pay-dialog select{min-height:44px}
+ .qg-pos-pay-dialog button{min-height:43px}
+ .qg-pos-shift-head h2{margin-bottom:10px;font-size:17px}
+ .qg-pos-shift-reload{width:38px;height:38px;font-size:19px}
+ .qg-pos-shift-status{padding:10px}
+ .qg-pos-shift-kpis{gap:7px;margin:9px 0}
+ .qg-pos-shift-kpis>div{padding:9px}
+ .qg-pos-shift-history article{padding:10px}
+ .qg-pos-report-totals{gap:7px}
+ .qg-pos-report-totals>div{padding:9px;font-size:12px}
+ .qg-pos-report-table-wrap{border-left:0;border-right:0;border-radius:0;margin-left:-10px;margin-right:-10px}
+ .qg-pos-report-table th,.qg-pos-report-table td{padding:9px 8px}
+ .qg-pos-bills{grid-template-columns:1fr;gap:7px}
+ .qg-pos-bills button,.qg-pos-row{padding:10px;border-radius:10px}
+}
