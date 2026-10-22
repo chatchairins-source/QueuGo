@@ -4357,6 +4357,7 @@ private fun VerificationScreen(
     val pickup = mode == "pickup" || mode == "expressPickup"
     val marketPickupMode = mode == "marketPickup"
     var previewQuality by remember(photoUri) { mutableStateOf<RiderEvidenceQuality?>(null) }
+    var showPickupConfirmation by remember(mode, job.id, photoUri) { mutableStateOf(false) }
     val previewReady = previewQuality?.acceptable == true
     val photoReady = photoUri != null
     val deliveryReady = if (expressMode) {
@@ -4390,9 +4391,9 @@ private fun VerificationScreen(
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(Modifier.padding(horizontal = 11.dp, vertical = if (shortScreen) 9.dp else 12.dp)) {
                         Text(when { expressMode && pickup -> "รับพัสดุที่จุดรับ"; expressMode -> "ส่งพัสดุที่จุดส่ง"; pickup || marketPickupMode -> "รับสินค้าที่ร้าน"; else -> "ส่งสินค้าให้ลูกค้า" }, fontSize = 9.sp, color = QgMuted)
-                        Text(when { expressMode && pickup -> "ตรวจพัสดุและถ่ายรูป"; expressMode -> "ถ่ายรูปก่อนส่งมอบ"; marketPickupMode -> "ตรวจจุดรับและถ่ายรูป"; pickup -> "ตรวจสอบรายการและถ่ายรูป"; else -> "ตรวจสอบและส่งมอบสินค้า" },
+                        Text(when { expressMode && pickup -> "ตรวจพัสดุและถ่ายรูป"; expressMode -> "ถ่ายรูปก่อนส่งมอบ"; marketPickupMode -> "ตรวจจุดรับและถ่ายรูป"; pickup -> "ตรวจรายการและถ่ายใบเสร็จ"; else -> "ตรวจสอบและส่งมอบสินค้า" },
                             fontSize = if (shortScreen) 18.sp else 20.sp, fontWeight = FontWeight.Bold)
-                        Text(if (expressMode) "ใช้รูปหลักฐานหนึ่งรูปต่อจุด ห้ามข้ามขั้นตอน" else if (pickup || marketPickupMode) "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว" else "ตรวจรายการและถ่ายรูปหลักฐานในหน้าเดียว", fontSize = 9.sp, color = QgMuted)
+                        Text(if (expressMode) "ใช้รูปหลักฐานหนึ่งรูปต่อจุด ห้ามข้ามขั้นตอน" else if (pickup) "เช็กรายการและยอดรวมให้ตรง แล้วถ่ายใบเสร็จให้ชัดก่อนรับอาหาร" else if (marketPickupMode) "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว" else "ตรวจรายการและถ่ายรูปหลักฐานในหน้าเดียว", fontSize = 9.sp, color = QgMuted)
                     }
                 }
                 if (pickup && details != null) {
@@ -4540,7 +4541,9 @@ private fun VerificationScreen(
                                 "ให้เห็นพัสดุที่รับและจุดรับในเฟรมเดียว ภาพต้องชัด"
                             } else if (expressMode) {
                                 "ให้เห็นพัสดุและจุดส่งในเฟรมเดียว ภาพต้องชัด"
-                            } else if (pickup || marketPickupMode) {
+                            } else if (pickup) {
+                                "ถ่ายใบเสร็จให้เห็นรายการสินค้า จำนวน และยอดรวมครบในเฟรมเดียว ภาพต้องชัด อ่านยอดได้"
+                            } else if (marketPickupMode) {
                                 "ให้เห็นสินค้าทั้งหมดในเฟรมเดียว ภาพต้องชัด และอย่าบังสินค้า"
                             } else {
                                 "ให้เห็นสินค้าและจุดส่งในเฟรมเดียว ภาพต้องชัด และไม่จำเป็นต้องถ่ายหน้าลูกค้า"
@@ -4556,7 +4559,7 @@ private fun VerificationScreen(
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                         Column(Modifier.padding(10.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(when { expressMode && pickup -> "รูปตอนรับพัสดุ"; expressMode -> "รูปตอนส่งพัสดุ"; pickup || marketPickupMode -> "รูปตอนรับสินค้า"; else -> "รูปตอนส่งสินค้า" }, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(when { expressMode && pickup -> "รูปตอนรับพัสดุ"; expressMode -> "รูปตอนส่งพัสดุ"; pickup -> "รูปใบเสร็จ"; marketPickupMode -> "รูปตอนรับสินค้า"; else -> "รูปตอนส่งสินค้า" }, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 Text("จำเป็น", fontSize = 8.sp, color = QgMuted)
                             }
                             Box(Modifier.fillMaxWidth().padding(top = 8.dp).height(if (shortScreen) 108.dp else (screenHeight * .31f).coerceIn(160f, 215f).dp)
@@ -4584,7 +4587,7 @@ private fun VerificationScreen(
                 Text(
                     if (expressMode && pickup) "ถ่ายรูปพัสดุก่อนยืนยันรับ"
                     else if (expressMode) "ถ่ายรูปที่จุดส่งและเก็บค่าส่งก่อนจบงาน"
-                    else if (pickup || marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า"
+                    else if (pickup) "ต้องมีรูปใบเสร็จที่บันทึกแล้วก่อนยืนยันรับอาหาร" else if (marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า"
                     else "ถ่ายรูปหลักฐาน ตรวจยอดเงิน แล้วกดจบงานครั้งเดียว",
                     fontSize = 8.sp,
                     color = QgMuted,
@@ -4603,11 +4606,18 @@ private fun VerificationScreen(
                 )
             } else {
                 Button(
-                    onClick = if (photoReady) onConfirm else onCamera,
+                    onClick = when {
+                        !photoReady -> onCamera
+                        pickup && !expressMode && !marketPickupMode -> ({ showPickupConfirmation = true })
+                        else -> onConfirm
+                    },
                     enabled = !busy && if (photoReady) deliveryReady else true,
                     modifier = Modifier.fillMaxWidth().height(54.dp),
                     shape = RoundedCornerShape(18.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = if (pickup && !expressMode && !marketPickupMode && photoReady) Color(0xFF159947) else Color(0xFFF04455),
+                        disabledContainerColor = Color(0xFFDAD4D6)
+                    )
                 ) {
                     if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
                     else Text(
@@ -4615,16 +4625,65 @@ private fun VerificationScreen(
                             !photoReady && expressMode && pickup -> "ถ่ายรูปพัสดุที่รับ"
                             !photoReady && expressMode -> "ถ่ายรูปพัสดุที่ส่ง"
                             !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"
-                            !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"
+                            !photoReady && pickup -> "ถ่ายรูปใบเสร็จ"
                             !photoReady -> "ถ่ายรูปตอนส่ง"
                             expressMode && pickup -> "ยืนยันรับพัสดุ"
                             marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
-                            pickup -> "ยืนยันรับสินค้า"
+                            pickup -> "ร้านเตรียมเสร็จแล้ว"
                             else -> "ยืนยัน"
                         },
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+        }
+
+        if (showPickupConfirmation) {
+            Dialog(
+                onDismissRequest = { if (!busy) showPickupConfirmation = false },
+                properties = DialogProperties(dismissOnBackPress = !busy, dismissOnClickOutside = !busy)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().widthIn(max = 430.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(Modifier.padding(18.dp)) {
+                        Text(
+                            "ได้รับอาหารแล้วใช่ไหม?",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF211E20)
+                        )
+                        Text(
+                            "ตรวจว่ารายการครบและเก็บรูปใบเสร็จไว้แล้ว ก่อนเริ่มนำส่งให้ลูกค้า",
+                            modifier = Modifier.padding(top = 6.dp),
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
+                            color = QgMuted
+                        )
+                        Button(
+                            onClick = {
+                                showPickupConfirmation = false
+                                onConfirm()
+                            },
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth().height(52.dp).padding(top = 14.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF159947))
+                        ) {
+                            Text("ใช่ ได้รับแล้ว", fontWeight = FontWeight.Black)
+                        }
+                        OutlinedButton(
+                            onClick = { showPickupConfirmation = false },
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth().height(50.dp).padding(top = 8.dp),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text("ไม่ กำลังรออยู่", fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
