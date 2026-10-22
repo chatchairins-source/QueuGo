@@ -65,7 +65,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await query("insert into payments(order_id,status,amount,paid_at) select id,'paid',total_amount,now() from orders where id in ($1,$2)",[id(30),id(31)]);
  // The ledger groups by Bangkok business date. Use that same date in the test
  // range so a UTC runner after 17:00 does not query yesterday's empty ledger.
- const businessDate=(await query("select (now() at time zone 'Asia/Bangkok')::date day")).rows[0].day;
+ const businessDate=(await query("select (now() at time zone 'Asia/Bangkok')::date as business_date")).rows[0].business_date;
  const ledger=(await query('select qg_rider_cash_ledger($1::date,$1::date) rows',[businessDate])).rows[0].rows;
  const aCash=ledger.find(r=>r.order_id===id(30)),bCash=ledger.find(r=>r.order_id===id(31));
  eq(aCash.cash_paid_merchant,100);eq(bCash.cash_paid_merchant,100);eq(aCash.delivery_fee,25);eq(bCash.delivery_fee,q.rider_extra_fee);
