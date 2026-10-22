@@ -36,7 +36,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await assert.rejects(q("select qg_admin_rider_cancellation_funding_queue('reserved')"),/admin required/);checks++;
  await assert.rejects(q("select qg_admin_settle_rider_cancellation_funding($1,'BANK-001',null)",[id(800)]),/admin required/);checks++;
 
- let ledger=(await q('select qg_rider_cash_ledger(current_date,current_date) l')).rows[0].l;
+ let ledger=(await q("select qg_rider_cash_ledger((now() at time zone 'Asia/Bangkok')::date,(now() at time zone 'Asia/Bangkok')::date) l")).rows[0].l;
  let row=ledger.find(x=>x.order_id===id(900));
  eq(row.platform_cancellation_funding,5);
  eq(row.platform_cancellation_funding_cash,0);
