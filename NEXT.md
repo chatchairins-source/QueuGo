@@ -1,16 +1,17 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-22 · Authoritative main: `bc8bdc173a8b798e84dee09833b76caf8b546614`
+Current snapshot: 2026-10-22 · Authoritative main: `513e9b6d5c97c1324c48724848f17857ee7fe554`
 
 ## Active chunk
 
-**POS Production continuation — Product Code released; inventory and release gates next.**
+**POS Production continuation — Product Code history aligned; generic inventory release is next.**
 
-- Main is `bc8bdc173a8b798e84dee09833b76caf8b546614`; PR #617 exact RC `39769241578` passed and merged as `30865060c4238ecbaf2b2ece83a108caeab3b454`. PR #618 exact RC `39772099278` passed and merged as `bc8bdc173a8b798e84dee09833b76caf8b546614`.
+- PR #619 exact-head RC `39777668898` passed all test and browser stages and merged at `513e9b6d5c97c1324c48724848f17857ee7fe554`. Product Code migration filenames now match Production versions `20261022113556` and `20261022114328`; no runtime files, sale or payment changed.
 - Production Product Code registry is live at migration `20261022113556`; FK indexes are live at `20261022114328`. The table is RLS-enabled, direct anon/authenticated grants are denied, and its four fixed-search-path SECURITY DEFINER RPCs are authenticated-only. Registry is empty; no demo product, sale or payment was inserted.
 - Lookup uses storefront `coalesce(pos_price, price)` and does not reference GP or Delivery markup. Save/remove audit events are atomic, with idempotent same-code retry.
 - Production advisor confirmed the two FK indexes cover the new foreign keys. The unused-index notice is expected while this shop-scoped registry is empty. Generic inventory reservation/adjustment migrations remain absent.
-- NEXT: continue the remaining POS inventory, capability, cashier/device, offline/reconnect, and cross-shop security gates from current main. QueueGo/POS remain **NOT DONE**.
+- Production `products.stock` is `integer`; existing Grocery and Market stock triggers remain authoritative. `pos_inventory_reservations`, `pos_inventory_adjustments`, and their RPCs are absent. Do not deploy the generic inventory chain until the actor foreign-key child index, ordered trigger/ACL review and release checks are complete.
+- NEXT: finish the adjustment-ledger actor FK index regression, run exact-head RC, then review and deploy the ordered generic inventory stack with Production readback. POS remains **NOT READY** pending authenticated cashier/device, offline recovery and release gates.
 - PR #568 cash movement source was merged after exact-head QueueGo RC `39622237860` completed all 12 test/browser steps successfully. Merge commit: `c79640e0c896cc81961e8ba2dc69d336a9f519b0`; main now contains the audited cash-in/out UI and RPC source.
 - PR #572 merged to `main` at `6050a51ab7cb06001fb4163b5ff88c890fb4950d` after exact-source RC `39636799778` passed all 12 steps on `7d2ffec2417884dce70805f646dccaa3f388059e`. Merge publishes source only; no Production migration was applied.
 - PR #573 manager guard merged to `main` at `ab36bfb9da66d5d4a43a83011e4a50fb08c27213`; exact-source RC `39638917216` passed all 12 steps on PR head `7d2bc0d0c14cce0f3a64eb8d71e068d92b260ff0`. Source tree guard requires existing server-side `pos_allowed('manage_staff')` to enable tracking on insert or toggle it. Focused PGlite 40 checks and full local `npm test` pass.
