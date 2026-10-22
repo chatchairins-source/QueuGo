@@ -6,6 +6,8 @@ Current snapshot: 2026-10-22 · Authoritative main: `aeedb1df2ef4654ee68ed26b25b
 
 **POS offline recovery Phase 1 — implement durable, identity-scoped cart drafts; Production schema activation and real cashier/device release remain blocked.**
 
+- **Implementation blocker (2026-10-22):** Phase 1 needs an atomic, idempotent server RPC for reviewed multi-line drafts because `pos_edit_bill` is non-idempotent. The required Supabase skill package was unavailable in this runtime (`skills.read` returned “skill package is not available”); no RPC or migration has been authored. Recheck skill availability and read it before schema work. Do not ship a client-only partial draft flow as complete.
+
 - PR #585 offline-recovery design merged to main at `d67f8dd8f79bcc991c447376cdd838988c816884`; its exact-head RC `39698519445` passed, followed by main RC `39698920070` PASS and Pages deployment `39698919956` SUCCESS. The design recommends offline drafts only; no offline completed sale or Production change.
 - PR #584 removed the retired Admin GP/slip workflow while preserving live GP deduction logic. Exact-head RC `39699366405` passed all steps on `9e9202bf3b688a816eef41cd3fe2eacd0e852562`; merge `aeedb1df2ef4654ee68ed26b25b4f34a01e441de`; descendant main RC `39699765279` PASS and Pages deployment `39699764713` SUCCESS.
 - PR #584's Admin WebKit baseline now serves its HTML and runtime assets from the same historical commit. This fixes a test fixture mismatch; browser coverage stayed enabled.
