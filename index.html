@@ -1015,7 +1015,7 @@ V.home=async(_,ticket=routeVersion)=>{
   const homeSlides=qgHomeBannerSlides(bannerConfig);
   const normal=list.filter(s=>{
     const category=String(s.public_category||'').toLowerCase();
-    return category!=='grocery'&&category!=='shopping'&&!DEDICATED_MARKET_CATS.has(category);
+    return category!=='grocery'&&category!=='shopping'&&category!=='laundry'&&!DEDICATED_MARKET_CATS.has(category);
   });
   layout(`<div class="loc" onclick="go('map')" style="cursor:pointer"><div class="pin">${ico('pin')}</div><div><small>ส่งไปที่</small><b>${esc(currentPos?.address||'เลือกที่อยู่จัดส่ง')}</b></div></div>
 <div class="srch" onclick="go('search')">${ico('search')}<span>ค้นหาร้านค้าจากทุกหมวด</span></div>
