@@ -47,6 +47,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('.qg-brand-pill{grid-column:1;justify-self:start;pointer-events:none'),true);
  eq(source.includes('.qg-route-badge,.qg-route-badge.show{display:none!important}'),true);
  eq(source.includes('grid-template-columns:1fr auto 1fr'),true);
+ eq(source.includes('.qg-map-tools{top:calc(166px + var(--safeT))}'),false);
  eq(mapServiceSource.includes('QG_MAP_SERVICE_BASE_URL'),true);
  eq(mapServiceSource.includes('queuego-map-service-base'),true);
  eq(mapServiceSource.includes('github\\.io'),true);
