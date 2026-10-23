@@ -208,8 +208,8 @@
   let point=selectedInitial?{lat:initial.lat,lng:initial.lng}:null,revision=0;
   const title=which==='pickup'?'เลือกจุดรับ':'เลือกจุดหมาย';
   const subtitle=which==='pickup'
-    ?'เลื่อนแผนที่เพื่อเลือกตำแหน่งจุดรับของคุณ'
-    :'เลื่อนแผนที่เพื่อเลือกตำแหน่งจุดส่งของคุณ';
+    ?'แตะตำแหน่งบนแผนที่เพื่อปักจุดรับของคุณ'
+    :'แตะตำแหน่งบนแผนที่เพื่อปักจุดส่งของคุณ';
   const addressLabel=which==='pickup'?'ที่อยู่จุดรับ':'ที่อยู่จุดส่ง';
   layout(
    '<div style="margin:2px 0 18px;padding:0 2px">'+
