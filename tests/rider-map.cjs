@@ -51,8 +51,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('id="go-offline"'),false);
  eq((source.match(/id="status-switch"/g)||[]).length,1);
  eq(source.includes('function qgAvailabilitySwitchHTML()'),true);
- eq(source.includes('<header class="qg-topbar"><div class="qg-speed-pill"'),true);
- eq(source.includes("qgHeaderWordmark('qg-brand-pill')}</header>"),true);
+ eq(source.includes('<header class="qg-topbar"><div class="qg-speed-pill"'),false);
+ eq(source.includes('<header class="qg-topbar">${qgHeaderWordmark(\'qg-brand-pill\')}</header>'),true);\n eq(source.includes('<div class="qg-map-tools"><div class="qg-speed-pill"'),true);\n eq(source.includes('.qg-map .maplibregl-ctrl-top-right'),true);\n eq(source.includes('.qg-map .maplibregl-ctrl-top-left'),false);
  eq(source.includes("document.getElementById('status-switch').onclick=toggleOnline;updateStatusUI();return;"),true);
  eq(source.includes("label.textContent=S.online?'ออนไลน์':'ออฟไลน์'"),true);
  eq(source.includes('.qg-route-badge,.qg-route-badge.show{display:none!important}'),true);
