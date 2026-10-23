@@ -50,7 +50,7 @@ const washer='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 let hub=null,service=null,services=[],customer=null,settingsByHub=new Map(),sending=false;
 const pendingKey=()=>customer?.id?'qg_laundry_pending_'+customer.id:null;
 function safe(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function publicPhotoUrl(v){const src=String(v||'').trim();return /^https:\/\/[^"'<>\\s]+$/i.test(src)?src:''}
+function publicPhotoUrl(v){const src=String(v||'').trim();try{return new URL(src).protocol==='https:'?src:''}catch(e){return ''}}
 function uuid(){return crypto.randomUUID()}
 function feeText(n){const v=Number(n||0);return v.toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2})+' บาท'}
 function unitLabel(t){return ({per_kg:'กก.',per_item:'ชิ้น',per_set:'ชุด',fixed:'เหมาจ่าย'})[t]||''}
