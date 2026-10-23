@@ -19,8 +19,9 @@ Status: **BLOCKED — no signed AAB produced or uploaded.**
   passwords or secret-value file is committed to this repository.
 - Installed all four signing values into this repository's GitHub Actions secrets;
   the settings list and readiness job `120207460634` confirm their presence.
-  The existing workflow stopped on missing backend inputs before cryptographic
-  validation, so CI key-content validation is still pending.
+  Exact source `e824e7cd` readiness run `39890564617`, job `120209043257`,
+  passed keystore password/alias/private-key import and Firebase client checks.
+  The CI certificate fingerprint matches the public certificate above.
 - The existing certification, backend/backup and physical evidence gates remain
   open. Creating the key is not release certification or Play publication.
 
@@ -64,9 +65,10 @@ mock application screenshots were supplied.
 
 ## Remaining release blockers and exact next action
 
-1. Run independent Firebase and keystore content checks after the readiness
-   workflow update. All four signing secrets are installed; do not regenerate
-   the key or put credentials in repository, public assets or chat.
+1. Signing/Firebase content validation is complete in run `39890564617`.
+   PR #637 merged as `a5300b90`; all four signing secrets are installed.
+   Do not regenerate the key or expose credentials. The overall readiness run
+   correctly fails on the three missing backend/backup inputs listed above.
 2. Observe this package's maximum Play versionCode and choose the next release
    metadata. The current development fallback is not approved release metadata.
 3. Satisfy the existing release evidence and backup prerequisites; reconcile the
@@ -88,3 +90,11 @@ References: [preflight attempt 2](https://github.com/chatchairins-source/QueuGo/
 [Google signing](https://developer.android.com/studio/publish/app-signing),
 [Play store setup](https://support.google.com/googleplay/android-developer/answer/9859152),
 [graphic requirements](https://support.google.com/googleplay/android-developer/answer/9866151).
+
+## Verified signing receipt
+
+[Exact-source readiness run](https://github.com/chatchairins-source/QueuGo/actions/runs/39890564617)
+validates Firebase clients for all three packages and the Merchant upload key.
+Storage validation is skipped because service-role access is absent. Required
+secret presence still fails for the three backend/backup inputs; cleanup passes.
+This is signing readiness evidence, not physical certification or release PASS.

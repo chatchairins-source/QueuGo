@@ -1971,3 +1971,8 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - All four generated Merchant signing inputs are installed in GitHub Actions. Readiness job120207460634 confirms signing/Firebase presence; only service-role, DB URL and backup passphrase are absent. No secret values committed.
 - Readiness previously skipped key/Firebase validation after backend presence failure. Conditional independent checks now run when their own inputs exist, while required-presence failure and certified release guards remain blocking. Exact hosted content validation pending.
 - Continue Native210158aa (explicit branch fetch; default fetch refspec only updates main). No signed AAB, physical PASS or Play upload claimed; keep existing dirty worktrees untouched.
+
+
+## 2026-10-23 Merchant signing exact-source CI verified
+- PR637 sourcee824e7cd readiness39890564617/job120209043257: Firebase3 clients PASS; keystore store password/alias/private-key import PASS; public SHA256341d7767b68f4f151714bf13bfed79b9cb69181f2f8c1336a52939038181b994 matches saved key. Mergea5300b90 preserves all Native POS work.
+- Overall readiness correctly FAILS: QG_SUPABASE_SERVICE_ROLE_KEY, QG_SUPABASE_DB_URL, QG_BACKUP_PASSPHRASE absent. Storage skipped, cleanup PASS. No release bypass, signed AAB, device evidence or Play upload. Continue existing certification/backup and real Merchant acceptance gates; never regenerate the installed key.
