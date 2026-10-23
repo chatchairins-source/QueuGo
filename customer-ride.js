@@ -189,7 +189,6 @@
    html+='</section>';
   }
   if(p||!current&&quote)html+='<button class="prim" data-action="request" '+(busy?'disabled':'')+'>'+(p?'ตรวจผลคำขอเดิม / ลองอีกครั้ง':'เรียกรถ')+'</button>';
-  if(!current&&!p)html+=rows.filter(terminal).slice(0,5).map(o=>'<p><a href="#ride/'+esc(o.id)+'">'+esc(QueueGoOrderNumber.format(o))+' · '+rideMoney(o.fare)+'</a></p>').join('');
   layout(html,'orders');
   document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>action(button.dataset.action));
   const quick=$('ride-use-current');if(quick)quick.onclick=quickCurrentPickup;

@@ -11,7 +11,7 @@ let checks=0;const eq=(a,b,m)=>{assert.equal(a,b,m);checks++};
 
 eq(index.includes('map.on("click",selectTap)'),true,'customer location picker must select directly on map tap');
 eq(index.includes('map.on("moveend",syncCenter)'),false,'moving map must not silently move the selected pin');
-eq(index.includes('customer-ride.js?v=20261023-ridefix1'),true,'customer Ride asset must be cache-busted');
+eq(index.includes('customer-ride.js?v=20261023-ridefix2'),true,'customer Ride asset must be cache-busted');
 
 eq(customer.includes("if(o?.status==='in_progress'&&o?.arrived_dropoff_at)return 'ถึงจุดหมายแล้ว'"),true,'customer Ride status must derive arrived dropoff');
 eq(customer.includes("function renderActiveRideMap(o)"),true,'customer Ride must render active live map');
@@ -21,6 +21,7 @@ eq(customer.includes("อัปเดตประมาณทุก 5 วิน�
 eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดรับของคุณ"),true,'Ride pickup picker must instruct direct tap');
 eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดส่งของคุณ"),true,'Ride destination picker must instruct direct tap');
 eq(customer.includes('id="ride-select-center"'),false,'Ride picker must not expose the legacy center-selection control');
+eq(customer.includes("rows.filter(terminal).slice(0,5)"),false,'Ride request screen must not render completed trip history links');
 
 eq(rider.includes("id=\"primary-nav-"),false,'Passenger Ride must not restore manual navigation CTA');
 eq(rider.includes("id=\"primary-action-"),true,'Passenger Ride must use the shared stage-action CTA');
