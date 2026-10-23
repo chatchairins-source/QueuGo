@@ -1,8 +1,18 @@
 # QueueGo Feature Gap Matrix
 
-Reviewed against main `5a860ea3e0a26841eca5666a158b034c78b897d9` and relevant open PRs on 2026-10-23. Recent exact-head and descendant main RC plus Pages receipts are recorded in `NEXT.md`, `RELEASE_GATE.md`, and `CHECKLIST.md`. This is an evidence ledger, not a claim that every capability is complete. `Source present` means code or schema exists; it does not certify a real-user flow.
+## Current verified POS checkpoint — 2026-10-23
 
-Latest POS UI evidence: PR #630 table service/payment state labels are deployed and byte-verified. The next Web source chunk adds category filtering over existing `products.category` (`69a7d35a` local checkpoint; exact hosted RC pending), then requires parity on Native successor `7e058b61`. These UI changes do not close the POS authenticated/device Release Gate.
+- Web POS category filters remain deployed and byte-verified from `be33b8318967ad6105222efa8305fec8005a5335` (PR #631). Exact RC `39878988663`, main RC `39879361494`, Pages `39879361545` succeeded. This checkpoint changes documentation only.
+- Native PR #633 exact `d98ecdbf423e34b41e4fde3062d7b0d5db6750f0` passed both requested runs `39881729771` and `39881729809`; merged only into Native successor at `0a9c17dd774f59781de0565e9fa313da5ee955b8`.
+- Native PR #635 fixes Android cached null-category conversion and tests null/named/literal-null/legacy catalogs on Android itself. Exact source `639bedea25710988c5f446ba6c16d1c0d3072a7d` passed Native Pilot `39882985832`: regression, Kotlin/unit tests, APK/16 KB checks and emulator instrumentation. Log confirms `QUEUEGO_MERCHANT_POS_CATALOG_PASS`. Merge `1f71c351b88d635de810fccb8e82bc447de37390` has the identical tested tree; Native successor documentation head is `382a746ad9176a03c4b7beafdfd1dbc2dad8b9ce`.
+- Full clean local source-equivalent regression passed at `4b2c56c0` (map asset-fetch pretest skipped; existing assets reused); source contracts 313 and migration mirror PASS. Hosted CI included full setup. Emulator evidence artifact `12471178946`, SHA-256 `7d794e8f91cdfbdc90e0dea4b5ca7eae913f3f0522360c61808c816d78fbddb8`.
+- Existing dirty POS/Native worktrees were preserved. No Production schema/data or authenticated sale changed. BLOCKED (release): authorized owner/cashier/staff journeys, physical phone/tablet/scanner/printer/drawer, and real-register offline/reconnect/retry evidence. Emulator success is not physical-device acceptance. Overall POS remains **NOT DONE**.
+- **NEXT:** complete the authorized real cashier/device Release Gate and record evidence on these same successors. Do not restart from an older checkout or merge the divergent Native code into Web main.
+
+
+Reviewed against Web main `be33b8318967ad6105222efa8305fec8005a5335`, Native successor `7e058b616e669634a8b58916184f7e551c82b1c3`, and open POS PR #633 on 2026-10-23. Recent RC, deploy and Native CI evidence is recorded in `NEXT.md`, `RELEASE_GATE.md`, and `CHECKLIST.md`. This is an evidence ledger, not a claim that every capability is complete. `Source present` means code or schema exists; it does not certify a real-user flow.
+
+Latest POS UI evidence: PR #630 table service/payment state labels and PR #631 category filters are deployed and byte-verified. Native category/search parity is in PR #633 on successor `7e058b61`; source checks pass and hosted Android gates are running. These UI changes do not close the POS authenticated/device Release Gate.
 
 Status key: **Source present** = identified implementation; **Staged** = open successor not merged/deployed; **Gate open** = requires additional runtime, user, device, security or production evidence; **Audit next** = exact implementation/evidence still needs review.
 

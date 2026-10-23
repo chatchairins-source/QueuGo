@@ -2,26 +2,28 @@
 
 ## Rider Web benchmark reconcile onto latest main — 2026-10-23
 - Status: IN PROGRESS
-- Branch: `fix/rider-web-benchmark-main-reconcile-20261023`
-- Latest reconciled main: `be33b8318967ad6105222efa8305fec8005a5335`
-- Rider Web commit: `f58517aa8c0e1ca0998ecaf0873ade00824de773`
-- QueueGo Map Web commit: `df39c420618347089c21185a2ed46c73130fc715`
-- Scope: reconcile PR #625 Rider Web runtime onto latest main without touching POS; remove deployed Rider Longdo residue; restore 30 m / 3 s reroute, 25 m snap, current+next maneuver HUD, 8 s post-pan follow recovery, durable proof and cash slide completion; preserve current QueueGo text wordmark.
-- Static reconcile checks: no Longdo token/runtime string in Rider/QueueGo Map files; benchmark markers present.
-- Release status: NOT DONE. Exact-head CI and Pages deployment still required; physical road/GPS evidence remains BLOCKED.
-- NEXT: pass exact-head RC on the reconciled branch, merge PR #629 into current main, then verify Pages/public Rider bytes. Physical road/GPS evidence remains a separate release gate.
+- PR: #629 `fix/rider-web-benchmark-main-reconcile-20261023`
+- Latest reconciled main: `612c9a200b162053d4d8c03dd4d563ea43d2a69a`
+- Rider Web source before this merge: `cd5b6a95cc4005ed37c6cf2ce21221372d3dcbe0`
+- Scope: preserve current main/POS while publishing the Rider benchmark runtime: QueueGo Map-only navigation with no Longdo; immediate missed/passed-turn reroute on reliable moving evidence; generic >30 m off-route sustained 3 s; 25 m snap; current/next maneuver HUD; 8 s pan-to-follow recovery; durable proof/cash slide; action GPS.
+- Speed-limit parity: Web accepts only provenance-backed `source:"osm:maxspeed"` route intervals and shows the red-ring legal-speed sign only for the current geometry interval. Inferred road-class values, invalid intervals and missing explicit data remain hidden.
+- Evidence before this merge: Web RC progressed through route/map/proof regressions; isolated harness dependencies were corrected through `cd5b6a95cc4005ed37c6cf2ce21221372d3dcbe0`. A fresh exact-head RC is required after this merge.
+- Release status: NOT DONE. Exact-head RC, merge to main, Pages/public-byte verification and physical road/GPS acceptance remain separate gates.
+- NEXT: run exact-head RC on the reconciled SHA; fix only its first failure. When green, merge #629 into current main and verify deployed Rider bytes. Never claim physical road/GPS/ANR/OOM/battery PASS without real-device evidence.
 
-Last governance checkpoint: 2026-10-23; latest verified main `5a860ea3e0a26841eca5666a158b034c78b897d9`
+
+Last governance checkpoint: 2026-10-23; latest verified main `be33b8318967ad6105222efa8305fec8005a5335`
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
 ## Current verified POS checkpoint — 2026-10-23
 
-- Latest Web main: `5a860ea3e0a26841eca5666a158b034c78b897d9`. No open Web POS PR supersedes it. Latest Native Merchant POS successor checked: `feat/native-merchant-pos-offline-20261022` at `7e058b616e669634a8b58916184f7e551c82b1c3`; Native metrics PR #628 is merged to that successor, not Web main.
-- Web PR #630 merged at `5a860ea3e0a26841eca5666a158b034c78b897d9`. Exact-head RC `39877737147` and post-merge main RC `39878103940` passed all steps. GitHub Pages deployment `39878103646` succeeded. Production `/merchant/index.html` and `/merchant/pos-table-v2.js` were fetched with cache-busting query and byte-matched the deployed source; the new table state labels are present.
-- Current bounded Web chunk: product category filters on the existing `products.category` field, combined with text search; no schema or Production data change. Branch `work-pos-next-20261023`, source commit `69a7d35a166acbe5157ea80911acca63c61fd32f`. Focused `pos-runtime.cjs` = 88 checks PASS; full local `npm test` exit 0; JS syntax and `git diff --check` pass. Exact-head hosted RC and deploy pending.
-- Release evidence is still incomplete: authenticated cashier/device journeys, physical hardware, online/offline recovery acceptance, and Native parity for the new category filter have not been certified. Overall QueueGo POS remains **NOT DONE**.
-- **NEXT:** publish the exact category-filter source, pass exact-head RC, merge and verify Web Production bytes. Then port the same category/search behavior to the latest Native successor and run Native regression/APK/lifecycle gate. Continue remaining POS gaps and Release Gate; do not treat this UI slice as whole-product completion.
+- Web POS category filters remain deployed and byte-verified from `be33b8318967ad6105222efa8305fec8005a5335` (PR #631). Exact RC `39878988663`, main RC `39879361494`, Pages `39879361545` succeeded. This checkpoint changes documentation only.
+- Native PR #633 exact `d98ecdbf423e34b41e4fde3062d7b0d5db6750f0` passed both requested runs `39881729771` and `39881729809`; merged only into Native successor at `0a9c17dd774f59781de0565e9fa313da5ee955b8`.
+- Native PR #635 fixes Android cached null-category conversion and tests null/named/literal-null/legacy catalogs on Android itself. Exact source `639bedea25710988c5f446ba6c16d1c0d3072a7d` passed Native Pilot `39882985832`: regression, Kotlin/unit tests, APK/16 KB checks and emulator instrumentation. Log confirms `QUEUEGO_MERCHANT_POS_CATALOG_PASS`. Merge `1f71c351b88d635de810fccb8e82bc447de37390` has the identical tested tree; Native successor documentation head is `382a746ad9176a03c4b7beafdfd1dbc2dad8b9ce`.
+- Full clean local source-equivalent regression passed at `4b2c56c0` (map asset-fetch pretest skipped; existing assets reused); source contracts 313 and migration mirror PASS. Hosted CI included full setup. Emulator evidence artifact `12471178946`, SHA-256 `7d794e8f91cdfbdc90e0dea4b5ca7eae913f3f0522360c61808c816d78fbddb8`.
+- Existing dirty POS/Native worktrees were preserved. No Production schema/data or authenticated sale changed. BLOCKED (release): authorized owner/cashier/staff journeys, physical phone/tablet/scanner/printer/drawer, and real-register offline/reconnect/retry evidence. Emulator success is not physical-device acceptance. Overall POS remains **NOT DONE**.
+- **NEXT:** complete the authorized real cashier/device Release Gate and record evidence on these same successors. Do not restart from an older checkout or merge the divergent Native code into Web main.
 
 ## 2026-10-22 current head and next slice
 
