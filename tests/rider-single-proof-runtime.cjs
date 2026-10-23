@@ -7,7 +7,7 @@ let checks=0;const eq=(a,b,m)=>{assert.deepEqual(a,b,m);checks++;};
   let uploads=0,mutations=0,clears=0,failNext=true;
   const paths=[];const order={id:'order-'+mode,status:mode==='pickup'?'ready':'in_progress',subtotal:100,total_amount:125,_shop:{shop_name:'Isolated Merchant'},_customer:{name:'Isolated Customer'}};
   Object.assign(w,{S:{user:{id:'rider-a'},session:{authUserId:'auth-a',sessionId:'session-a'},pos:{lat:15,lng:103}},
-   riderActionInFlight:new Set(),QTICON:{back:'',loc:'',jobs:'',user:'',phone:'',chat:''},esc:v=>String(v??''),statusFromRow:o=>o.status,
+   riderActionInFlight:new Set(),QTICON:{back:'',loc:'',jobs:'',user:'',phone:'',chat:''},qgHeaderWordmark:()=>'',esc:v=>String(v??''),statusFromRow:o=>o.status,
    qgShortOrder:o=>o.id,qgCleanOrderNote:()=>'',riderEarning:()=>25,toast(){},getAccessToken:async()=> 'isolated-token',
    qgRiderRefreshAfterCommit:async()=>{},qgRiderVoiceCall(){},openChat(){},
    qgPersistProofFile:async(kind,o,file)=>({file,data:'data:image/jpeg;base64,AA'}),
