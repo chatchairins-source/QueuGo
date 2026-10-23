@@ -32,15 +32,21 @@ assert(app.includes('riderPickupCommittedStatus(mutationResult)')&&
   !app.includes('openNavigation(context, nextStop)'),
   'Pickup photo success must preserve the committed order through stale reads and remain in QueueGo navigation');
 
-assert(!app.includes('RiderSlideComplete('),
-  'Delivery must never reintroduce slide-to-complete');
+assert(app.includes('RiderSwipeCompleteAction(')&&
+  app.includes('if (photoReady && !pickup && !marketPickupMode)')&&
+  app.includes('onComplete = onConfirm'),
+  'Proof-ready delivery must use the cash-gated swipe confirmation before completion');
 assert(!app.includes('RiderCollectionScreen(')&&!app.includes('showCollection')&&!app.includes('verifyCollection'),
-  'Delivery must remain one proof screen with no second collection stage');
-assert(app.includes('onClick = if (photoReady) onConfirm else onCamera'),
-  'Proof-ready delivery must submit through the existing completeWithPhoto path directly');
-assert(app.includes('else -> "จบงาน"'),
-  'Delivery must expose one simple complete button after proof');
+  'Delivery must not restore the retired duplicate collection screen');
+assert(app.includes('RiderProofSyncRequest(')&&
+  app.includes('RiderProofSyncScheduler.enqueue(context, syncRequest)')&&
+  app.includes('else -> api.completeWithPhoto('),
+  'Delivery confirmation must durably queue proof before reusing the existing completeWithPhoto server mutation');
+assert(app.includes('tween(durationMillis = 200)')&&
+  app.includes('HapticFeedbackConstants.CONFIRM')&&
+  app.includes('onComplete()'),
+  'Swipe confirmation must spring back in 200 ms when incomplete and haptically commit at the end');
 assert(app.includes('riderCollectionReady(job.customerCash, photoReady, previewReady)'),
-  'The one completion action must still require readable proof and authoritative finite cash');
+  'The completion swipe must require readable proof and authoritative finite cash');
 
 console.log('Native Rider cash breakdown and one-proof one-completion parity contracts: PASS');

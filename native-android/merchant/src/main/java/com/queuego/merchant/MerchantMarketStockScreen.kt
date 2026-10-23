@@ -162,7 +162,7 @@ internal fun MerchantMarketStockScreen(
             ) { Text("หน้าหลัก") }
             Spacer(Modifier.width(10.dp))
             Column {
-                Text("สินค้าและสต๊อกตลาด", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                Text("สินค้าและสต๊อกตลาด", fontSize = MerchantPageTitleSize, fontWeight = FontWeight.ExtraBold)
                 Text(
                     "ขายผ่าน QueueGo Delivery · ราคาขายและสต๊อกยืนยันจากฐานข้อมูล",
                     color = QgMuted,

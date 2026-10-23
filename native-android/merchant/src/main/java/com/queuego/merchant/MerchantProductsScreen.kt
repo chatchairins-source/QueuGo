@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,7 +17,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,11 +24,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,21 +50,14 @@ internal fun MerchantProductsScreen(
     onAddManual: () -> Unit,
     onOpenCatalog: () -> Unit
 ) {
-    var query by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf("all") }
-    var category by remember { mutableStateOf("") }
     val hasMasterCatalog = shopCategory == "grocery" || merchantMarketStockPermitted(shopCategory)
     val pricedProducts = merchantPricedProducts(products, shopCategory == "grocery")
-    val categories = pricedProducts.map { it.category }.filter { it.isNotBlank() }.distinct().sorted()
-    val cleanQuery = query.trim().lowercase()
-    val rows = remember(pricedProducts, cleanQuery, mode, category) {
+    val rows = remember(pricedProducts, mode) {
         pricedProducts.filter { product ->
-            (category.isBlank() || product.category == category) &&
-            (mode == "all" ||
+            mode == "all" ||
                 (mode == "on" && product.available) ||
-                (mode == "off" && !product.available)) &&
-                (cleanQuery.isBlank() ||
-                    (product.name + " " + product.category).lowercase().contains(cleanQuery))
+                (mode == "off" && !product.available)
         }
     }
 
@@ -79,41 +70,20 @@ internal fun MerchantProductsScreen(
     ) {
         item(key = "products-header") {
             Spacer(Modifier.height(8.dp))
-            Text("สินค้าและเมนู", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
             Text(
-                "เปิด–ปิดขาย แก้ไขราคา และจัดการสต็อก",
+                if (shopCategory == "grocery") "สินค้าในร้าน" else "สินค้าและเมนู",
+                fontSize = MerchantPageTitleSize,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                if (shopCategory == "grocery") "เพิ่มสินค้าเอง หรือเลือกจากแคตตาล็อก QueueGo"
+                else "เปิด–ปิดขาย แก้ไขราคา และจัดการสต็อก",
                 color = QgMuted,
                 fontSize = 10.sp,
                 modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
             )
 
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .height(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color.White)
-                    .border(1.dp, QgLine, RoundedCornerShape(14.dp))
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                QgIcon("search", Modifier.size(19.dp), Color(0xFF555B63))
-                Spacer(Modifier.width(8.dp))
-                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                    if (query.isBlank()) Text("ค้นหาสินค้า...", color = Color(0xFF9A9EA5), fontSize = 12.sp)
-                    BasicTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        singleLine = true,
-                        cursorBrush = SolidColor(QgRed),
-                        textStyle = TextStyle(fontSize = 12.sp, color = Color(0xFF202329)),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-
-            if (shopCategory == "grocery") MerchantCategorySelect(categories, category, !busy) { category = it }
-            Spacer(Modifier.height(9.dp))
+            Spacer(Modifier.height(2.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 MerchantProductFilter("ทั้งหมด", "all", mode) { mode = it }
                 MerchantProductFilter("เปิดขาย", "on", mode) { mode = it }
@@ -133,7 +103,7 @@ internal fun MerchantProductsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        if (products.isEmpty()) "ยังไม่มีสินค้า" else "ไม่พบสินค้าที่ค้นหา",
+                        if (products.isEmpty()) "ยังไม่มีสินค้า" else "ไม่มีสินค้าในสถานะนี้",
                         fontWeight = FontWeight.ExtraBold
                     )
                 }
@@ -199,14 +169,27 @@ internal fun MerchantProductsScreen(
         }
     }
     if (hasMasterCatalog) {
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.White).padding(12.dp)) {
-            Button(onClick = onAddManual, enabled = !busy,
+        Column(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+        ) {
+            OutlinedButton(
+                onClick = onAddManual,
+                enabled = !busy,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = QgRed),
+                border = BorderStroke(1.dp, Color(0xFFEDC7CF)),
+                modifier = Modifier.fillMaxWidth().height(44.dp)
+            ) { Text("เพิ่มสินค้าเอง", fontWeight = FontWeight.ExtraBold) }
+            Spacer(Modifier.height(6.dp))
+            Button(
+                onClick = onOpenCatalog,
+                enabled = !busy,
                 colors = ButtonDefaults.buttonColors(containerColor = QgRed),
-                modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("เพิ่มสินค้าเอง", fontWeight = FontWeight.ExtraBold) }
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = onOpenCatalog, enabled = !busy,
-                colors = ButtonDefaults.buttonColors(containerColor = QgRed),
-                modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("เพิ่มสินค้าจากแคตตาล็อก", fontWeight = FontWeight.ExtraBold) }
+                modifier = Modifier.fillMaxWidth().height(44.dp)
+            ) { Text("เพิ่มสินค้าจากแคตตาล็อก", fontWeight = FontWeight.ExtraBold) }
         }
     }
     }

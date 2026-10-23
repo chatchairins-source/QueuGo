@@ -6,7 +6,7 @@ const workflow=read('.github/workflows/build-native-release.yml');
 
 ok(/workflow_dispatch:/.test(workflow),'certified release must be manual only');
 ok(!/\n\s*push:/.test(workflow),'certified release must never run from push');
-ok(workflow.includes('refs/heads/queuego-native-android-v1'),'release must be restricted to Native Source of Truth branch');
+ok(workflow.includes('refs/heads/work-native-route-bundle-play-release-20261021'),'release must be restricted to Native Source of Truth branch');
 ok(workflow.includes('actions: read'),'release must have Actions read permission for certification evidence');
 ok(workflow.includes('certification_run_id'),'release must require an external certification run');
 ok(workflow.includes('map_service_base_url'),'release must require an explicit QueueGo Map service base URL');

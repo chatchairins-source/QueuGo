@@ -79,7 +79,7 @@ internal fun MerchantCatalogScreen(
                     market -> "จัดการสินค้า"
                     else -> "เพิ่มสินค้าจากคลังสินค้า"
                 },
-                fontSize = 20.sp,
+                fontSize = MerchantPageTitleSize,
                 fontWeight = FontWeight.ExtraBold
             )
         }

@@ -210,10 +210,13 @@ class NavigationRouteCoordinator(
 
         if (!advancedEnough && !nearArrivalAdvance) return current
 
+        val snappedAtMonotonicProgress = match.snapped.takeIf {
+            match.progressMeters + 0.5 >= monotonicProgress
+        }
         val trimmed = trimNavigationRouteSegment(
             segment = leg.segment,
             progressMeters = monotonicProgress,
-            snappedPoint = match.snapped
+            snappedPoint = snappedAtMonotonicProgress
         )
         visibleProgressMeters = monotonicProgress
         visibleActiveSegment = trimmed

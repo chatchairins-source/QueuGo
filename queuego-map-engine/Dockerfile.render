@@ -1,0 +1,62 @@
+# Render-only public QueueGo Map runtime. Keeps the existing candidate Dockerfile untouched.
+FROM python:3.12-slim-bookworm AS builder
+WORKDIR /build
+RUN apt-get update && apt-get install -y --no-install-recommends libexpat1 && rm -rf /var/lib/apt/lists/*
+
+COPY ops/maps/requirements.txt /build/ops/maps/requirements.txt
+RUN pip install --no-cache-dir -r /build/ops/maps/requirements.txt
+
+COPY queuego-map-engine/schema.sql /build/queuego-map-engine/schema.sql
+COPY ops/maps/extract_region.py ops/maps/normalize_osm.py ops/maps/build_engine_graph.py ops/maps/offline_package.py /build/ops/maps/
+
+RUN mkdir -p /build/map-data && python - <<'PY'
+import hashlib,urllib.request
+from pathlib import Path
+items=[
+ ('https://download.geofabrik.de/asia/thailand-latest.osm.pbf','/build/map-data/thailand.osm.pbf',None),
+ ('https://github.com/chatchairins-source/QueuGo/releases/download/rider-buriram-offline-20261016/buriram-shortbread.pmtiles','/build/map-data/vector.pmtiles','30699573ed2068d3c7e4393ad477dbe8febf68f453f27ae88437f5c652a3ddfc')
+]
+for url,target,expected in items:
+    path=Path(target)
+    request=urllib.request.Request(url,headers={'User-Agent':'QueueGo-Map-Builder/1.0'})
+    with urllib.request.urlopen(request,timeout=180) as source,path.open('wb') as out:
+        while chunk:=source.read(1024*1024): out.write(chunk)
+    h=hashlib.sha256(path.read_bytes()).hexdigest()
+    if expected and h!=expected: raise SystemExit(f'checksum mismatch for {path.name}: {h}')
+    print(path.name,h,path.stat().st_size)
+PY
+
+RUN python /build/ops/maps/extract_region.py /build/map-data/thailand.osm.pbf /build/map-data/buriram.osm.pbf
+RUN python /build/ops/maps/normalize_osm.py /build/map-data/buriram.osm.pbf /build/map-data/roads.sqlite --schema /build/queuego-map-engine/schema.sql
+RUN python /build/ops/maps/build_engine_graph.py valhalla /build/map-data/buriram.osm.pbf /build/map-data/valhalla --admin-pbf /build/map-data/thailand.osm.pbf
+RUN python /build/ops/maps/offline_package.py build --database /build/map-data/roads.sqlite --graph /build/map-data/valhalla --vector /build/map-data/vector.pmtiles --destination /build/map-data/buriram-map-render --version buriram-map-render-20261023
+RUN mkdir -p /data && \
+    PACKAGE_SHA="$(cut -d' ' -f1 /build/map-data/buriram-map-render.tar.gz.sha256)" && \
+    python /build/ops/maps/offline_package.py install --archive /build/map-data/buriram-map-render.tar.gz --sha256 "$PACKAGE_SHA" --store /data && \
+    python /build/ops/maps/offline_package.py activate --store /data --version buriram-map-render-20261023
+
+FROM python:3.12-slim-bookworm
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends libexpat1 && rm -rf /var/lib/apt/lists/*
+
+COPY ops/maps/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+COPY ops/maps/offline_package.py ops/maps/fetch_web_assets.py ops/maps/web-assets.json /app/ops/maps/
+RUN python /app/ops/maps/fetch_web_assets.py /app/map-assets
+
+COPY queuego-map-engine/core.py queuego-map-engine/server.py queuego-map-engine/start_installed.py /app/queuego-map-engine/
+COPY map-view/ /app/public/map-view/
+COPY --from=builder /data /data
+
+RUN useradd --uid 10001 --create-home queuego && chown -R queuego:queuego /data /app
+USER 10001
+
+ENV HOST=0.0.0.0
+ENV PORT=10000
+ENV QUEUEGO_MAP_ALLOWED_ORIGINS=https://chatchairins-source.github.io
+
+EXPOSE 10000
+HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('PORT','10000')+'/map-api/health',timeout=3)"
+
+ENTRYPOINT ["python","/app/queuego-map-engine/start_installed.py","--store","/data","--web-root","/app/public","--assets-root","/app/map-assets"]

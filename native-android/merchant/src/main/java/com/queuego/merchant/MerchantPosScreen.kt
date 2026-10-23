@@ -3,6 +3,8 @@ package com.queuego.merchant
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -109,6 +111,7 @@ fun MerchantPosScreen(
 ) {
     val context = LocalContext.current
     val api = remember { MerchantPosApi(MerchantPosPendingStore(context.noBackupFilesDir.resolve("queuego-pos-edit-pending"))) }
+    val offlineDraftStore = remember { MerchantPosOfflineDraftStore(context.noBackupFilesDir.resolve("queuego-pos-offline-drafts")) }
     val realtime = remember { NativeOrderRealtime() }
     val refreshMutex = remember { Mutex() }
     val printQueue = remember { NativePrintQueue() }
@@ -118,6 +121,7 @@ fun MerchantPosScreen(
     val printBridge = remember { MerchantPrintBridge() }
 
     var snapshot by remember { mutableStateOf<PosSnapshot?>(null) }
+    var snapshotActorId by remember { mutableStateOf<String?>(null) }
     var snapshotLoading by remember { mutableStateOf(true) }
     var selectedBillId by rememberSaveable { mutableStateOf<String?>(null) }
     var view by rememberSaveable { mutableStateOf("counter") }
@@ -130,6 +134,12 @@ fun MerchantPosScreen(
     var message by remember { mutableStateOf<String?>(null) }
     var pendingEdit by remember { mutableStateOf<PosEditIntent?>(null) }
     var pendingEditError by remember { mutableStateOf<String?>(null) }
+    var offlineDraft by remember { mutableStateOf<PosOfflineDraft?>(null) }
+    var draftDeviceId by remember { mutableStateOf<String?>(null) }
+    var offlineCatalogOnly by remember { mutableStateOf(false) }
+    var networkValidated by remember { mutableStateOf(false) }
+    var confirmDraftSubmit by remember { mutableStateOf(false) }
+    var confirmDraftDiscard by remember { mutableStateOf(false) }
 
     LaunchedEffect(auth.session.authUserId, busy) {
         if (!busy) {
@@ -139,6 +149,24 @@ fun MerchantPosScreen(
             } catch (failure: Exception) {
                 pendingEditError = failure.message ?: "อ่านรายการ POS ค้างไม่สำเร็จ"
             }
+        }
+    }
+
+    LaunchedEffect(auth.session.authUserId, offlineDraftStore) {
+        snapshot = null
+        snapshotActorId = null
+        offlineCatalogOnly = false
+        selectedBillId = null
+        offlineDraft = null
+        draftDeviceId = null
+        try {
+            val device = withContext(Dispatchers.IO) { offlineDraftStore.deviceId() }
+            draftDeviceId = device
+            offlineDraft = withContext(Dispatchers.IO) {
+                offlineDraftStore.loadForActor(auth.session.authUserId, device)
+            }
+        } catch (failure: Exception) {
+            message = failure.message ?: "อ่านร่าง POS ไม่สำเร็จ"
         }
     }
 
@@ -175,7 +203,6 @@ fun MerchantPosScreen(
     var historyTypeMenu by remember { mutableStateOf(false) }
     var history by remember { mutableStateOf<List<PosHistoryRow>>(emptyList()) }
 
-    var deliveryReadiness by remember { mutableStateOf<PosDeliveryReadiness?>(null) }
 
     var inviteRole by rememberSaveable { mutableStateOf("WAITER") }
     var inviteRoleMenu by remember { mutableStateOf(false) }
@@ -257,10 +284,29 @@ fun MerchantPosScreen(
     }
 
     suspend fun refreshSnapshot(select: String? = selectedBillId) = refreshMutex.withLock {
+        networkValidated = posNetworkValidated(context)
         if (snapshot == null) snapshotLoading = true
         try {
             val fresh = api.snapshot(auth)
             snapshot = fresh
+            snapshotActorId = auth.session.authUserId
+            offlineCatalogOnly = false
+            draftDeviceId?.let { device -> runCatching {
+                withContext(Dispatchers.IO) {
+                    offlineDraftStore.saveCatalog(PosOfflineCatalog(auth.session.authUserId, fresh.shopId,
+                        device, fresh.shopName, System.currentTimeMillis(), fresh.products, fresh.tables))
+                }
+            } }
+            val device = draftDeviceId
+            if (device != null) {
+                val savedDraft = withContext(Dispatchers.IO) {
+                    offlineDraftStore.load(PosOfflineDraftScope(auth.session.authUserId, fresh.shopId, device))
+                }
+                offlineDraft = savedDraft?.takeIf { it.shopId == fresh.shopId }
+                if (savedDraft != null && savedDraft.shopId != fresh.shopId) {
+                    message = "ร่าง POS อยู่คนละร้านกับบัญชีปัจจุบัน จึงยังเปิดหรือส่งไม่ได้"
+                }
+            }
             selectedBillId = select?.takeIf { id -> fresh.bills.any { it.id == id && it.open } }
             if (selectedBillId == null && mode == "DINE_IN" && tableId != null) {
                 selectedBillId = fresh.bills.firstOrNull { it.open && it.tableId == tableId }?.id
@@ -272,9 +318,33 @@ fun MerchantPosScreen(
             if (failure is PosAccessDeniedException ||
                 (failure is QueueGoHttpException && failure.statusCode in setOf(401, 403))) {
                 snapshot = null
+                snapshotActorId = null
+                offlineCatalogOnly = false
                 qrTable = null
+            } else if (snapshot == null && draftDeviceId != null) {
+                val cached = runCatching {
+                    withContext(Dispatchers.IO) {
+                        offlineDraftStore.loadCatalog(auth.session.authUserId, draftDeviceId!!)
+                    }
+                }.getOrNull()
+                if (cached != null) {
+                    snapshot = PosSnapshot(shopId = cached.shopId, shopName = cached.shopName, owner = false,
+                        currentStaff = null, staff = emptyList(), products = cached.products,
+                        tables = cached.tables, bills = emptyList(), linesByOrder = emptyMap())
+                    snapshotActorId = auth.session.authUserId
+                    offlineCatalogOnly = true
+                    selectedBillId = null
+                    offlineDraft = runCatching {
+                        withContext(Dispatchers.IO) {
+                            offlineDraftStore.load(PosOfflineDraftScope(auth.session.authUserId, cached.shopId, draftDeviceId!!))
+                        }
+                    }.getOrNull()
+                    message = "ออฟไลน์ · ใช้แคตตาล็อกที่บันทึกไว้สร้างร่างเท่านั้น · ยังไม่สร้างบิลหรือรับเงิน"
+                } else message = failure.message ?: "โหลด POS ไม่สำเร็จ"
+            } else {
+                networkValidated = posNetworkValidated(context)
+                message = failure.message ?: "โหลด POS ไม่สำเร็จ"
             }
-            message = failure.message ?: "โหลด POS ไม่สำเร็จ"
         } finally {
             snapshotLoading = false
         }
@@ -313,12 +383,65 @@ fun MerchantPosScreen(
 
     fun addPosProduct(product: PosProduct) {
         if (busy) return
-        if (!can("receive_order")) {
+        val online = posNetworkValidated(context)
+        if (online && !can("receive_order")) {
             message = "บัญชีนี้ไม่มีสิทธิ์รับออเดอร์"
             return
         }
         if (mode == "DINE_IN" && tableId == null && !noTable) {
             message = "เลือกโต๊ะหรือไม่ระบุโต๊ะก่อน"
+            return
+        }
+
+        if (!online) {
+            val snap = snapshot
+            val device = draftDeviceId
+            if (snap == null || snapshotActorId != auth.session.authUserId || device == null) {
+                message = "ออฟไลน์: โหลด POS ออนไลน์หนึ่งครั้งก่อน จึงจะบันทึกร่างสินค้าได้"
+                return
+            }
+            if (selectedBillId != null) {
+                message = "ออกจากบิลจริงก่อนเพิ่มสินค้าในร่างออฟไลน์"
+                return
+            }
+            val scopeKey = PosOfflineDraftScope(auth.session.authUserId, snap.shopId, device)
+            scope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        val existing = offlineDraftStore.load(scopeKey)
+                        if (existing?.items?.any { it.requestIds.isNotEmpty() } == true) {
+                            error("ร่างนี้เคยส่งแล้วและยังไม่ทราบผล กรุณาออนไลน์เพื่อตรวจด้วยรหัสเดิมก่อนแก้ไข")
+                        }
+                        val targetType = mode
+                        val targetTable = if (targetType == "DINE_IN") tableId else null
+                        if (existing != null && (existing.type != targetType || existing.tableId != targetTable)) {
+                            error("ร่างเดิมใช้ประเภทบิลหรือโต๊ะอื่น กรุณาส่งหรือลบร่างเดิมก่อน")
+                        }
+                        val draft = existing ?: PosOfflineDraft(
+                            UUID.randomUUID().toString(), UUID.randomUUID().toString(),
+                            auth.session.authUserId, snap.shopId, device, targetType, targetTable,
+                            System.currentTimeMillis(), emptyList()
+                        )
+                        val current = draft.items.toMutableList()
+                        val index = current.indexOfFirst { it.productId == product.id }
+                        if (index >= 0) current[index] = current[index].copy(quantity = current[index].quantity + 1,
+                            requestIds = emptyList())
+                        else current.add(PosOfflineDraftItem(product.id, product.name,
+                            product.price, 1))
+                        offlineDraftStore.save(draft.copy(items = current))
+                    }
+                    offlineDraft = withContext(Dispatchers.IO) {
+                        offlineDraftStore.load(scopeKey)
+                    }
+                    message = "เก็บสินค้าไว้ในร่างออฟไลน์แล้ว · ยังไม่ได้สร้างบิลหรือรับชำระเงิน"
+                } catch (failure: Exception) {
+                    message = failure.message ?: "บันทึกร่างออฟไลน์ไม่สำเร็จ"
+                }
+            }
+            return
+        }
+        if (offlineDraft != null) {
+            message = "ส่งหรือลบร่างออฟไลน์ก่อนเพิ่มสินค้าในบิลจริง"
             return
         }
 
@@ -401,8 +524,107 @@ fun MerchantPosScreen(
         addPosProduct(product)
     }
 
-    LaunchedEffect(auth.session.accessToken) {
-        refreshSnapshot()
+    fun submitDraftAfterReview() {
+        val draft = offlineDraft ?: return
+        val snap = snapshot
+        val device = draftDeviceId
+        if (!posNetworkValidated(context)) {
+            networkValidated = false
+            message = "ต้องเชื่อมต่ออินเทอร์เน็ตก่อนส่งร่าง"
+            return
+        }
+        if (busy || offlineCatalogOnly || snap == null || snapshotActorId != auth.session.authUserId || device == null || selectedBillId != null ||
+            draft.actorId != auth.session.authUserId || draft.shopId != snap.shopId || draft.deviceId != device) {
+            message = "ตรวจบัญชี ร้าน และสถานะบิลก่อนส่งร่าง"
+            return
+        }
+        if (!can("receive_order")) {
+            message = "บัญชีนี้ไม่มีสิทธิ์รับออเดอร์"
+            return
+        }
+        if (pendingEdit != null || pendingEditError != null) {
+            message = "ตรวจรายการ POS ค้างก่อนส่งร่าง"
+            return
+        }
+        val products = draft.items.map { item -> snap.products.firstOrNull { it.id == item.productId } }
+        if (products.any { it == null || !it.available }) {
+            message = "มีสินค้าที่ไม่พร้อมขายในขณะนี้ กรุณาออนไลน์และตรวจร่างอีกครั้ง"
+            return
+        }
+        if (draft.type == "DINE_IN" && draft.tableId != null && snap.tables.none { it.id == draft.tableId && it.active }) {
+            message = "โต๊ะในร่างนี้ปิดใช้งานแล้ว กรุณาตรวจร่างอีกครั้ง"
+            return
+        }
+        confirmDraftSubmit = true
+    }
+
+    fun commitReviewedDraft() {
+        if (busy) return
+        if (!posNetworkValidated(context)) {
+            networkValidated = false
+            confirmDraftSubmit = false
+            message = "การเชื่อมต่อหายไป · เก็บร่างไว้และส่งซ้ำได้เมื่อออนไลน์"
+            return
+        }
+        val draft = offlineDraft ?: return
+        val snap = snapshot ?: return
+        val device = draftDeviceId ?: return
+        val scopeKey = PosOfflineDraftScope(auth.session.authUserId, snap.shopId, device)
+        confirmDraftSubmit = false
+        busy = true
+        scope.launch {
+            try {
+                val prepared = draft.copy(items = draft.items.map { item ->
+                    item.copy(requestIds = if (item.requestIds.size == item.quantity) item.requestIds
+                    else List(item.quantity) { UUID.randomUUID().toString() })
+                })
+                withContext(Dispatchers.IO) { offlineDraftStore.save(prepared) }
+                offlineDraft = prepared
+                val orderId = api.submitOfflineDraft(auth, prepared)
+                selectedBillId = orderId
+                withContext(Dispatchers.IO) { offlineDraftStore.remove(scopeKey, prepared.id) }
+                offlineDraft = null
+                message = "ส่งร่างเป็นบิลจริงแล้ว · ยังไม่รับชำระเงิน"
+                refreshSnapshot(orderId)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                // Keep the same draft and request IDs after a timeout; server replay is atomic.
+                if (failure is QueueGoHttpException && failure.statusCode in 400..499) {
+                    val rejected = draft.copy(items = draft.items.map { it.copy(requestIds = emptyList()) })
+                    runCatching { withContext(Dispatchers.IO) { offlineDraftStore.save(rejected) } }
+                        .onSuccess { offlineDraft = rejected }
+                    message = (failure.message ?: "เซิร์ฟเวอร์ปฏิเสธร่าง") + " · ไม่มีบิลถูกสร้าง แก้ร่างแล้วลองใหม่ได้"
+                } else {
+                    message = (failure.message ?: "ส่งร่างไม่สำเร็จ") + " · เก็บร่างและรหัสเดิมไว้ให้ลองใหม่"
+                }
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun discardOfflineDraft() {
+        val draft = offlineDraft ?: return
+        if (draft.items.any { it.requestIds.isNotEmpty() }) {
+            message = "ร่างนี้เคยส่งแล้วและยังไม่ทราบผล กรุณาออนไลน์เพื่อตรวจด้วยรหัสเดิมก่อนลบ"
+            return
+        }
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    offlineDraftStore.remove(PosOfflineDraftScope(draft.actorId, draft.shopId, draft.deviceId), draft.id)
+                }
+                offlineDraft = null
+                message = "ลบร่างบนอุปกรณ์แล้ว · ไม่มีบิลหรือการชำระเงินถูกสร้าง"
+            } catch (failure: Exception) {
+                message = failure.message ?: "ลบร่างไม่สำเร็จ"
+            }
+        }
+    }
+
+    LaunchedEffect(auth.session.accessToken, draftDeviceId) {
+        if (draftDeviceId != null) refreshSnapshot()
     }
 
     LaunchedEffect(auth.session.accessToken, snapshot?.shopId, lifecycle) {
@@ -498,18 +720,14 @@ fun MerchantPosScreen(
         }
     }
 
-    LaunchedEffect(view, snapshot?.shopId) {
-        val snap = snapshot
-        if (view == "delivery" && snap?.owner == true) {
-            deliveryReadiness = runCatching { api.deliveryReadiness(auth, snap) }
-                .onFailure { message = it.message ?: "ตรวจความพร้อม Delivery ไม่สำเร็จ" }
-                .getOrNull()
-        }
-    }
-
     val snap = snapshot
     val openBills = snap?.bills?.filter { it.open }.orEmpty()
     val selectedBill = openBills.firstOrNull { it.id == selectedBillId }
+    val kitchenEnabled = snap?.shopCategory == "food" || snap?.shopCategory == "cafe"
+
+    LaunchedEffect(snap?.shopCategory) {
+        if (!kitchenEnabled && view == "kitchen") view = "counter"
+    }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(
@@ -519,7 +737,7 @@ fun MerchantPosScreen(
             OutlinedButton(onClick = onBack, enabled = !busy) { Text(backLabel) }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("QueueGo หน้าร้าน", fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text("QueueGo หน้าร้าน", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
                 Text(
                     snap?.shopName ?: "POS",
                     color = QgMuted,
@@ -575,6 +793,17 @@ fun MerchantPosScreen(
             }
         }
 
+        if (offlineDraft != null) {
+            PosOfflineDraftPanel(
+                draft = offlineDraft!!,
+                snapshot = snap,
+                online = networkValidated,
+                enabled = !busy && selectedBillId == null && pendingEdit == null && pendingEditError == null && can("receive_order"),
+                onSubmit = ::submitDraftAfterReview,
+                onDiscard = { confirmDraftDiscard = true }
+            )
+        }
+
         if (snap == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (snapshotLoading) {
@@ -597,6 +826,7 @@ fun MerchantPosScreen(
         PosTabs(
             current = view,
             owner = snap.owner,
+            kitchenEnabled = kitchenEnabled,
             onSelect = {
                 view = it
                 message = null
@@ -615,8 +845,9 @@ fun MerchantPosScreen(
                     search = search,
                     busy = busy,
                     pendingCreate = pendingPosRequestId != null,
-                    canReceive = can("receive_order"),
-                    canSendKitchen = can("send_kitchen"),
+                    canReceive = can("receive_order") || !networkValidated,
+                    kitchenEnabled = kitchenEnabled,
+                    canSendKitchen = kitchenEnabled && can("send_kitchen"),
                     canServe = can("serve_order"),
                     canDiscount = can("discount"),
                     canCancel = can("cancel_bill"),
@@ -730,7 +961,7 @@ fun MerchantPosScreen(
                     }
                 )
 
-                "kitchen" -> PosKitchenView(
+                "kitchen" -> if (kitchenEnabled) PosKitchenView(
                     snapshot = snap,
                     busy = busy,
                     can = ::can,
@@ -738,16 +969,12 @@ fun MerchantPosScreen(
                         runMutation(label + "แล้ว", bill.id) {
                             api.billAction(auth, bill.id, action)
                         }
-                    },
-                    onDeliveryAction = { order, action, label ->
-                        runMutation(label + "แล้ว", null) {
-                            api.deliveryAction(auth, order.id, action)
-                        }
                     }
                 )
 
                 "bills" -> PosBillsView(
-                    bills = openBills.filter { it.kitchenStatus in setOf("READY", "SERVED") },
+                    bills = openBills.filter { !kitchenEnabled || it.kitchenStatus in setOf("READY", "SERVED") },
+                    showKitchenStatus = kitchenEnabled,
                     selected = selectedBill,
                     paymentMethod = paymentMethod,
                     paymentMethodMenu = paymentMethodMenu,
@@ -818,24 +1045,6 @@ fun MerchantPosScreen(
                     onType = {
                         historyType = it
                         historyTypeMenu = false
-                    }
-                )
-
-                "delivery" -> PosDeliveryView(
-                    readiness = deliveryReadiness,
-                    busy = busy,
-                    onEnable = {
-                        runMutation("เปิด Delivery แล้ว", null) {
-                            api.enableDelivery(auth)
-                        }
-                        scope.launch {
-                            val current = snapshot
-                            if (current != null) {
-                                deliveryReadiness = runCatching {
-                                    api.deliveryReadiness(auth, current)
-                                }.getOrNull()
-                            }
-                        }
                     }
                 )
 
@@ -919,7 +1128,7 @@ fun MerchantPosScreen(
                     onCycleRole = { staff ->
                         val next = when (staff.role) {
                             "WAITER" -> "CASHIER"
-                            "CASHIER" -> "KITCHEN"
+                            "CASHIER" -> if (kitchenEnabled) "KITCHEN" else "WAITER"
                             else -> "WAITER"
                         }
                         runMutation("เปลี่ยนหน้าที่พนักงานแล้ว", null) {
@@ -1161,20 +1370,98 @@ fun MerchantPosScreen(
             }
         )
     }
+
+    if (confirmDraftSubmit && offlineDraft != null && snap != null) {
+        val draft = offlineDraft!!
+        val products = draft.items.mapNotNull { item ->
+            snap.products.firstOrNull { it.id == item.productId }?.let { item to it }
+        }
+        val changed = products.filter { (item, product) ->
+            item.nameSnapshot != product.name || kotlin.math.abs(item.priceSnapshot - product.price) >= 0.005
+        }
+        val total = products.sumOf { (item, product) -> product.price * item.quantity }
+        AlertDialog(
+            onDismissRequest = { if (!busy) confirmDraftSubmit = false },
+            title = { Text("ตรวจร่างก่อนสร้างบิล") },
+            text = {
+                Column {
+                    Text("ส่งรายการไปตรวจสอบราคาและสิทธิ์บนเซิร์ฟเวอร์หรือไม่? จะสร้างบิลจริงเท่านั้น ยังไม่ชำระเงินและไม่ส่งเข้าครัว")
+                    Spacer(Modifier.height(8.dp))
+                    Text("ยอดจากราคาปัจจุบัน: ฿${money(total)}", fontWeight = FontWeight.Bold)
+                    changed.forEach { (item, product) ->
+                        Text("${item.nameSnapshot} → ${product.name} · ฿${money(item.priceSnapshot)} → ฿${money(product.price)}", fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = !busy, onClick = ::commitReviewedDraft) { Text("ส่งเป็นบิลจริง") }
+            },
+            dismissButton = {
+                TextButton(enabled = !busy, onClick = { confirmDraftSubmit = false }) { Text("กลับไปตรวจร่าง") }
+            }
+        )
+    }
+
+    if (confirmDraftDiscard && offlineDraft != null) {
+        AlertDialog(
+            onDismissRequest = { confirmDraftDiscard = false },
+            title = { Text("ลบร่าง POS บนอุปกรณ์นี้?") },
+            text = { Text("ร่างนี้ยังไม่ใช่บิลและยังไม่มีการรับชำระเงิน") },
+            confirmButton = {
+                TextButton(onClick = { confirmDraftDiscard = false; discardOfflineDraft() }) { Text("ลบร่าง") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDraftDiscard = false }) { Text("กลับ") } }
+        )
+    }
 }
 
 @Composable
-private fun PosTabs(current: String, owner: Boolean, onSelect: (String) -> Unit) {
+private fun PosOfflineDraftPanel(
+    draft: PosOfflineDraft,
+    snapshot: PosSnapshot?,
+    online: Boolean,
+    enabled: Boolean,
+    onSubmit: () -> Unit,
+    onDiscard: () -> Unit
+) {
+    val currentProducts = draft.items.map { item -> item to snapshot?.products?.firstOrNull { it.id == item.productId } }
+    val pending = draft.items.any { it.requestIds.isNotEmpty() }
+    val changes = currentProducts.count { (item, product) ->
+        product != null && (item.nameSnapshot != product.name || kotlin.math.abs(item.priceSnapshot - product.price) >= 0.005)
+    }
+    QgCard(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text("ร่างตะกร้าบนอุปกรณ์นี้", fontWeight = FontWeight.Black)
+            Text(if (online) "ออนไลน์ · ตรวจสินค้าและราคาปัจจุบันก่อนส่ง" else "ออฟไลน์ · ยังไม่สร้างบิล ไม่ชำระเงิน และไม่ส่งเข้าครัว",
+                color = if (online) QgGreen else QgRed, fontSize = 12.sp)
+            draft.items.take(4).forEach { item ->
+                val product = snapshot?.products?.firstOrNull { it.id == item.productId }
+                Text("${item.nameSnapshot} × ${item.quantity}" +
+                    if (product != null && (item.nameSnapshot != product.name || kotlin.math.abs(item.priceSnapshot - product.price) >= 0.005))
+                        " · ปัจจุบัน ${product.name} ฿${money(product.price)}" else " · ฿${money(item.priceSnapshot)}",
+                    fontSize = 12.sp)
+            }
+            if (draft.items.size > 4) Text("และอีก ${draft.items.size - 4} รายการ", color = QgMuted, fontSize = 11.sp)
+            if (changes > 0) Text("มี ${changes} รายการที่ชื่อหรือราคาเปลี่ยน · ตรวจทานก่อนส่ง", color = QgRed, fontSize = 11.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(enabled = enabled && online && snapshot != null, onClick = onSubmit) { Text("ตรวจและส่งเมื่อออนไลน์") }
+                OutlinedButton(enabled = !pending, onClick = onDiscard) { Text(if (pending) "ตรวจผลก่อนลบ" else "ลบร่าง") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PosTabs(current: String, owner: Boolean, kitchenEnabled: Boolean, onSelect: (String) -> Unit) {
     val tabs = buildList {
         add("counter" to "＋ รับออเดอร์")
         add("tables" to "โต๊ะ")
-        add("kitchen" to "ครัว")
+        if (kitchenEnabled) add("kitchen" to "ครัว")
         add("bills" to "คิดเงิน")
         add("printer" to "เครื่องพิมพ์")
         if (owner) {
             add("reports" to "ยอดขาย")
             add("history" to "ประวัติ")
-            add("delivery" to "Delivery")
             add("staff" to "พนักงาน")
         }
     }
@@ -1211,6 +1498,7 @@ private fun PosCounterView(
     busy: Boolean,
     pendingCreate: Boolean,
     canReceive: Boolean,
+    kitchenEnabled: Boolean,
     canSendKitchen: Boolean,
     canServe: Boolean,
     canDiscount: Boolean,
@@ -1294,7 +1582,7 @@ private fun PosCounterView(
         OutlinedTextField(
             note,
             onNote,
-            label = { Text("หมายเหตุสำหรับครัว (ถ้ามี)") },
+            label = { Text(if (kitchenEnabled) "หมายเหตุสำหรับครัว (ถ้ามี)" else "หมายเหตุรายการ (ถ้ามี)") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(12.dp))
@@ -1340,7 +1628,7 @@ private fun PosCounterView(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(selectedBill.number, fontWeight = FontWeight.Black, fontSize = 18.sp)
                         Spacer(Modifier.weight(1f))
-                        QgStatusPill(selectedBill.kitchenStatus)
+                        if (kitchenEnabled) QgStatusPill(selectedBill.kitchenStatus)
                     }
                     Spacer(Modifier.height(6.dp))
                     lines.forEach { line ->
@@ -1377,7 +1665,7 @@ private fun PosCounterView(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            when (selectedBill.kitchenStatus) {
+            if (kitchenEnabled) when (selectedBill.kitchenStatus) {
                 "NEW" -> if (canSendKitchen) {
                     Button(
                         onClick = { onBillAction("send", "ส่งเข้าครัว") },
@@ -1399,7 +1687,7 @@ private fun PosCounterView(
                         Text("ส่วนลด")
                     }
                 }
-                if (canClose && selectedBill.kitchenStatus in setOf("READY", "SERVED")) {
+                if (canClose && (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED"))) {
                     Button(onClick = onPay, enabled = !busy, modifier = Modifier.weight(1f)) {
                         Text("คิดเงิน")
                     }
@@ -1514,49 +1802,14 @@ private fun PosKitchenView(
     snapshot: PosSnapshot,
     busy: Boolean,
     can: (String) -> Boolean,
-    onPosAction: (PosBill, String, String) -> Unit,
-    onDeliveryAction: (PosDeliveryOrder, String, String) -> Unit
+    onPosAction: (PosBill, String, String) -> Unit
 ) {
     val posBills = snapshot.bills.filter {
         it.open && it.kitchenStatus !in setOf("NEW", "SERVED")
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("คิวครัว", "QueueGo Delivery และออเดอร์หน้าร้านอยู่ในคิวเดียวกัน")
+        QgSectionTitle("คิวครัวหน้าร้าน", "เฉพาะบิล POS ของร้านอาหารและคาเฟ่")
         Spacer(Modifier.height(10.dp))
-
-        snapshot.deliveryOrders.forEach { order ->
-            val lines = snapshot.deliveryLinesByOrder[order.id].orEmpty()
-            QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Column {
-                    Row {
-                        Text("QueueGo Delivery", color = QgRed, fontWeight = FontWeight.Black)
-                        Spacer(Modifier.weight(1f))
-                        QgStatusPill(deliveryStatusLabel(order.status))
-                    }
-                    Text(order.number, fontWeight = FontWeight.ExtraBold)
-                    lines.forEach { line ->
-                        Text(line.name + " × " + line.quantity, fontSize = 12.sp)
-                    }
-                    val action = when {
-                        order.status == "pending" && can("receive_order") ->
-                            Triple("accepted", "รับออเดอร์", true)
-                        order.status == "rider_assigned" && order.riderId != null && can("cook_order") ->
-                            Triple("preparing", "เริ่มเตรียม", true)
-                        order.status == "preparing" && order.riderId != null && can("ready_order") ->
-                            Triple("ready", "พร้อมให้ไรเดอร์รับ", true)
-                        else -> null
-                    }
-                    if (action != null) {
-                        Spacer(Modifier.height(7.dp))
-                        Button(
-                            onClick = { onDeliveryAction(order, action.first, action.second) },
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(action.second, fontWeight = FontWeight.Bold) }
-                    }
-                }
-            }
-        }
 
         posBills.forEach { bill ->
             val all = snapshot.linesByOrder[bill.id].orEmpty()
@@ -1603,7 +1856,7 @@ private fun PosKitchenView(
             }
         }
 
-        if (snapshot.deliveryOrders.isEmpty() && posBills.isEmpty()) {
+        if (posBills.isEmpty()) {
             QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์เข้าครัว", color = QgMuted) }
         }
         Spacer(Modifier.height(28.dp))
@@ -1613,6 +1866,7 @@ private fun PosKitchenView(
 @Composable
 private fun PosBillsView(
     bills: List<PosBill>,
+    showKitchenStatus: Boolean,
     selected: PosBill?,
     paymentMethod: String,
     paymentMethodMenu: Boolean,
@@ -1637,7 +1891,7 @@ private fun PosBillsView(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(bill.number, fontWeight = FontWeight.Black)
-                        Text(bill.kitchenStatus, color = QgMuted, fontSize = 11.sp)
+                        if (showKitchenStatus) Text(bill.kitchenStatus, color = QgMuted, fontSize = 11.sp)
                     }
                     Text("฿" + money(bill.total), color = QgRed, fontWeight = FontWeight.Black)
                 }
@@ -1722,11 +1976,8 @@ private fun PosReportsView(
                 Column {
                     PosReportLine("ทานที่ร้าน", report.dineIn)
                     PosReportLine("รับกลับ", report.takeaway)
-                    PosReportLine("Delivery", report.delivery)
                     HorizontalDivider()
-                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway + report.delivery, true)
-                    PosReportLine("GP หน้าร้าน", 0.0)
-                    PosReportLine("GP Delivery", report.gp)
+                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)
                     Text("จำนวนบิล " + report.orders, color = QgMuted, fontSize = 11.sp)
                 }
             }
@@ -1789,7 +2040,6 @@ private fun PosHistoryView(
                     when (type) {
                         "DINE_IN" -> "ทานที่ร้าน"
                         "TAKEAWAY" -> "รับกลับ"
-                        "DELIVERY" -> "Delivery"
                         else -> "ทั้งหมด"
                     }
                 )
@@ -1799,7 +2049,6 @@ private fun PosHistoryView(
                     "ALL" to "ทั้งหมด",
                     "DINE_IN" to "ทานที่ร้าน",
                     "TAKEAWAY" to "รับกลับ",
-                    "DELIVERY" to "Delivery"
                 ).forEach { (key, label) ->
                     DropdownMenuItem(text = { Text(label) }, onClick = { onType(key) })
                 }
@@ -1831,52 +2080,6 @@ private fun PosHistoryView(
 }
 
 @Composable
-private fun PosDeliveryView(
-    readiness: PosDeliveryReadiness?,
-    busy: Boolean,
-    onEnable: () -> Unit
-) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("QueueGo Delivery", "ใช้หน้าร้านต่อได้แม้ยังไม่เปิดรับ Delivery")
-        Spacer(Modifier.height(10.dp))
-        if (readiness == null) {
-            CircularProgressIndicator()
-        } else {
-            QgCard(Modifier.fillMaxWidth()) {
-                Column {
-                    PosReadinessLine("ข้อมูลร้าน", readiness.shopName)
-                    PosReadinessLine("ที่อยู่และพิกัด", readiness.location)
-                    PosReadinessLine("เมนูและราคา", readiness.menu)
-                    PosReadinessLine("เวลาเปิดร้าน", readiness.hours)
-                    PosReadinessLine("อนุมัติร้าน", readiness.approved)
-                    HorizontalDivider()
-                    Text(
-                        if (readiness.complete) "ข้อมูลพร้อมสำหรับ Delivery"
-                        else "ตั้งค่ารายการที่ยังไม่ครบก่อนเปิดรับ Delivery",
-                        color = if (readiness.complete) QgGreen else QgRed,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "สถานะรับ Delivery: " +
-                            if (readiness.deliveryEnabled && readiness.shopOpen) "เปิด" else "ปิด",
-                        fontSize = 12.sp
-                    )
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            if (!readiness.deliveryEnabled) {
-                Button(
-                    onClick = onEnable,
-                    enabled = readiness.complete && !busy,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("เปิด Delivery เมื่อพร้อม", fontWeight = FontWeight.Bold) }
-            }
-        }
-        Spacer(Modifier.height(28.dp))
-    }
-}
-
-@Composable
 private fun PosStaffView(
     snapshot: PosSnapshot,
     inviteRole: String,
@@ -1897,7 +2100,7 @@ private fun PosStaffView(
                 Text(posRoles.firstOrNull { it.first == inviteRole }?.second ?: inviteRole)
             }
             DropdownMenu(inviteRoleMenu, { onInviteMenu(false) }) {
-                posRoles.forEach { (key, label) ->
+                posRoles.filter { it.first != "KITCHEN" || snapshot.shopCategory in setOf("food", "cafe") }.forEach { (key, label) ->
                     DropdownMenuItem(text = { Text(label) }, onClick = { onInviteRole(key) })
                 }
             }
@@ -1987,19 +2190,7 @@ private fun PosReadinessLine(label: String, ready: Boolean) {
     }
 }
 
-private fun deliveryStatusLabel(status: String): String = when (status) {
-    "pending" -> "ออเดอร์ใหม่"
-    "accepted" -> "รอค้นหาไรเดอร์"
-    "searching_rider" -> "กำลังหาไรเดอร์"
-    "rider_assigned" -> "ไรเดอร์รับงานแล้ว"
-    "preparing" -> "กำลังเตรียม"
-    "ready" -> "พร้อมให้ไรเดอร์รับ"
-    "assigned" -> "รอไรเดอร์"
-    else -> status
-}
-
 private fun historyTypeLabel(row: PosHistoryRow): String = when {
-    row.salesChannel == "QUEUEGO_DELIVERY" || row.type == "shopping" -> "Delivery"
     row.type == "DINE_IN" -> "ทานที่ร้าน"
     row.type == "TAKEAWAY" -> "รับกลับ"
     else -> row.type
@@ -2025,3 +2216,11 @@ private fun createQrBitmap(value: String): Bitmap? = runCatching {
 
 private fun money(value: Double): String =
     String.format(Locale.US, "%,.2f", value.coerceAtLeast(0.0))
+
+private fun posNetworkValidated(context: Context): Boolean = try {
+    val manager = context.getSystemService(ConnectivityManager::class.java) ?: return false
+    val network = manager.activeNetwork ?: return false
+    val capabilities = manager.getNetworkCapabilities(network) ?: return false
+    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+} catch (_: Exception) { false }

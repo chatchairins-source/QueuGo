@@ -66,6 +66,7 @@ data class RiderNavigationMapState(
     val followZoom: Int = 17,
     val viewMode: NavigationViewMode = NavigationViewMode.FOLLOW,
     val viewportInsets: NavigationViewportInsets = NavigationViewportInsets(),
+    val nextTurnDistanceMeters: Double? = null,
     // UI command identity, retained until the existing renderer can accept it.
     val recenterRequest: Int = 0
 )

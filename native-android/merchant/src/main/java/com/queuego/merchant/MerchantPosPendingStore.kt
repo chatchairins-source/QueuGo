@@ -89,7 +89,7 @@ class MerchantPosPendingStore(private val root: File) {
 internal fun merchantPosReplayOrderId(raw: Any, expectedBillId: String?): String {
     fun value(item: Any?): String? = when (item) {
         is String -> item.trim().trim('"')
-        is JSONObject -> listOf("id", "pos_create_bill_once", "pos_edit_bill_once")
+        is JSONObject -> listOf("id", "order_id", "pos_create_bill_once", "pos_edit_bill_once")
             .firstNotNullOfOrNull { key -> (item.opt(key) as? String)?.takeIf { it.isNotBlank() } }
         is JSONArray -> value(item.opt(0))
         else -> null

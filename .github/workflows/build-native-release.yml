@@ -75,8 +75,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$GITHUB_REF" != "refs/heads/queuego-native-android-v1" ]; then
-            echo "::error::Certified release may run only from queuego-native-android-v1"
+          if [ "$GITHUB_REF" != "refs/heads/work-native-route-bundle-play-release-20261021" ]; then
+            echo "::error::Certified release may run only from work-native-route-bundle-play-release-20261021"
             exit 1
           fi
 
@@ -172,7 +172,7 @@ jobs:
             echo "::error::Certification run must come from the trusted Native certification workflow"
             exit 1
           fi
-          if [ "$run_event" != "workflow_dispatch" ] || [ "$run_branch" != "queuego-native-android-v1" ]; then
+          if [ "$run_event" != "workflow_dispatch" ] || [ "$run_branch" != "work-native-route-bundle-play-release-20261021" ]; then
             echo "::error::Certification run must be manually dispatched from Native Source of Truth"
             exit 1
           fi
@@ -231,7 +231,7 @@ jobs:
           pilot_conclusion="$(jq -r '.conclusion // empty' <<<"$pilot_meta")"
           if [ "$pilot_head" != "$GITHUB_SHA" ] || \
              [ "$pilot_path" != ".github/workflows/build-native-rider-pilot.yml" ] || \
-             [ "$pilot_branch" != "queuego-native-android-v1" ] || \
+             [ "$pilot_branch" != "work-native-route-bundle-play-release-20261021" ] || \
              [ "$pilot_event" != "push" ] || \
              [ "$pilot_conclusion" != "success" ]; then
             echo "::error::Certification references an invalid Native Pilot CI run"
@@ -248,7 +248,7 @@ jobs:
           backup_conclusion="$(jq -r '.conclusion // empty' <<<"$backup_meta")"
           if [ "$backup_head" != "$GITHUB_SHA" ] || \
              [ "$backup_path" != ".github/workflows/backup-restore-drill.yml" ] || \
-             [ "$backup_branch" != "queuego-native-android-v1" ] || \
+             [ "$backup_branch" != "work-native-route-bundle-play-release-20261021" ] || \
              [ "$backup_event" != "workflow_dispatch" ] || \
              [ "$backup_conclusion" != "success" ]; then
             echo "::error::Certification references an invalid Backup Restore Drill run"

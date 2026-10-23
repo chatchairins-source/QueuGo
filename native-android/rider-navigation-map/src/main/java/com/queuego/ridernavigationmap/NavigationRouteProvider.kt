@@ -8,11 +8,21 @@ data class NavigationRouteInstruction(
     val sectionDurationSeconds: Double
 )
 
+data class NavigationSpeedLimitInterval(
+    val startGeometryMeters: Double,
+    val endGeometryMeters: Double,
+    val maxspeedKph: Double,
+    val maxspeedRaw: String,
+    val source: String,
+    val osmWayId: Long? = null
+)
+
 data class NavigationRouteLeg(
     val segment: NavigationRouteSegment,
     val distanceMeters: Double,
     val durationSeconds: Double?,
-    val instructions: List<NavigationRouteInstruction> = emptyList()
+    val instructions: List<NavigationRouteInstruction> = emptyList(),
+    val speedLimitIntervals: List<NavigationSpeedLimitInterval> = emptyList()
 )
 
 interface NavigationRouteProvider {

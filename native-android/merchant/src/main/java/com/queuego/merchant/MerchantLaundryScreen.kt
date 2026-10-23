@@ -83,7 +83,7 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
 
     val current = state
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("ฝากซัก", "ร้านจัดพนักงานรับ–ส่งเอง · GP 10% ของยอดรวม")
+        MerchantPageTitle("ฝากซัก", "ร้านจัดพนักงานรับ–ส่งเอง · GP 10% ของยอดรวม")
         val visibleMessage = loadError ?: message
         if (!visibleMessage.isNullOrBlank()) {
             Spacer(Modifier.height(8.dp))

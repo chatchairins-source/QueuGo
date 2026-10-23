@@ -8,7 +8,7 @@ const bucketConfig=JSON.parse(read('native-android/qa/release-evidence-storage.j
 
 ok(/workflow_dispatch:/.test(cert),'release certification must be manual only');
 ok(!/\n\s*push:/.test(cert),'release certification must never run from push');
-ok(cert.includes('refs/heads/queuego-native-android-v1'),'certification must be restricted to Native Source of Truth');
+ok(cert.includes('refs/heads/work-native-route-bundle-play-release-20261021'),'certification must be restricted to Native Source of Truth');
 ok(cert.includes('actions: read'),'certification must have read-only Actions permission for exact-HEAD CI attestation');
 ok(cert.includes('Require successful exact-HEAD Native Pilot CI'),'certification must require automated Native Pilot CI attestation');
 ok(cert.includes('.github/workflows/build-native-rider-pilot.yml')&&cert.includes('.event == "push"')&&cert.includes('.conclusion == "success"'),'certification must pin the successful main-branch Native Pilot workflow identity');
@@ -24,7 +24,7 @@ ok(Array.isArray(bucketConfig.allowed_mime_types)&&bucketConfig.allowed_mime_typ
 ok(bucketConfig.provisioning_mode==='SUPABASE_STORAGE_API_OR_DASHBOARD_ONLY'&&bucketConfig.storage_schema_sql_mutation_forbidden===true,'Release evidence bucket provisioning must not mutate the Supabase storage schema through SQL');
 ok(Array.isArray(bucketConfig.runtime_verification)&&bucketConfig.runtime_verification.includes('.github/workflows/native-release-certification.yml')&&bucketConfig.runtime_verification.includes('.github/workflows/release-secret-readiness.yml'),'Bucket source mirror must retain runtime verification in certification and readiness workflows');
 ok(!fs.existsSync('supabase/migrations/20261010133000_native_release_evidence_bucket.sql'),'Unsafe direct storage-schema migration must stay retired');
-ok(cert.includes('vars.QG_SUPABASE_URL'),'certification must source the Supabase project URL from Actions variables');
+ok(!cert.includes('vars.QG_SUPABASE_URL'),'certification must not depend on a redundant Actions variable for the public Supabase origin');
 ok(cert.includes('https://pkypiqhlrmzocysgeqew.supabase.co'),'certification must pin the QueueGo Production Supabase origin');
 ok(cert.includes('/storage/v1/bucket/$QG_EVIDENCE_BUCKET'),'certification must verify the evidence bucket metadata before download');
 ok(cert.includes('Release evidence bucket must remain private'),'certification must reject a public evidence bucket');
@@ -64,7 +64,7 @@ ok(cert.includes('if: always()')&&cert.includes('queuego-release.keystore')&&cer
 
 ok(release.includes('run_path')&&release.includes('.github/workflows/native-release-certification.yml'),'final release must pin certification workflow identity');
 ok(release.includes('run_event')&&release.includes('workflow_dispatch'),'final release must require manual certification dispatch');
-ok(release.includes('run_branch')&&release.includes('queuego-native-android-v1'),'final release must require certification from Native Source of Truth');
+ok(release.includes('run_branch')&&release.includes('work-native-route-bundle-play-release-20261021'),'final release must require certification from Native Source of Truth');
 ok(release.includes('certified-release-metadata.json'),'final release must require certification metadata');
 ok(release.includes('Certification metadata mismatch'),'final release must fail closed when certified metadata differs');
 ok(release.includes('Certification signing fingerprint does not match release input'),'final release must bind the certified signing identity');

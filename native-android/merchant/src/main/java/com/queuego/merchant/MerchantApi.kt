@@ -60,8 +60,13 @@ data class MerchantRevenueDay(
     val orderCount: Int,
     val grossSales: Double,
     val gpAmount: Double,
-    val cashReceived: Double
+    val cashReceived: Double,
+    val legacyGpDue: Double = 0.0
 )
+
+internal fun merchantDeliveryCanCancel(status: String, preparingAt: String?, readyAt: String?): Boolean =
+    status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "assigned") &&
+        preparingAt == null && readyAt == null
 
 data class MerchantOrder(
     val id: String,
@@ -563,8 +568,9 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                         dateKey = r.optString("date_key"),
                         orderCount = r.optInt("order_count", 0),
                         grossSales = r.optDouble("gross_sales", 0.0),
-                        gpAmount = r.optDouble("gp_due", 0.0),
-                        cashReceived = r.optDouble("cash_received", 0.0)
+                        gpAmount = r.optDouble("gp_credit_deducted", 0.0),
+                        cashReceived = r.optDouble("cash_received", 0.0),
+                        legacyGpDue = r.optDouble("gp_due", 0.0)
                     )
                 )
             }
@@ -582,7 +588,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         return MerchantTodayRevenue(
             r.optInt("order_count", 0),
             r.optDouble("gross_sales", 0.0),
-            r.optDouble("gp_due", 0.0),
+            r.optDouble("gp_credit_deducted", 0.0),
             r.optDouble("cash_received", 0.0)
         )
     }

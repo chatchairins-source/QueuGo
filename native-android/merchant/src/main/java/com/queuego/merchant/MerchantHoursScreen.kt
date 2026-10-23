@@ -94,7 +94,7 @@ internal fun MerchantHoursScreen(
             Column {
                 Text(
                     "เวลาทำการและวันหยุด",
-                    fontSize = 20.sp,
+                    fontSize = MerchantPageTitleSize,
                     lineHeight = 26.sp,
                     fontWeight = FontWeight.ExtraBold
                 )

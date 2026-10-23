@@ -19,7 +19,8 @@ android {
         versionCode = providers.environmentVariable("QG_RIDER_VERSION_CODE").orNull?.toInt() ?: 5
         versionName = providers.environmentVariable("QG_NATIVE_VERSION_NAME").orNull ?: "0.4.1-rider-map"
         manifestPlaceholders["queuegoMapServiceBaseUrl"] =
-            providers.environmentVariable("QG_MAP_SERVICE_BASE_URL").orNull ?: ""
+            providers.environmentVariable("QG_MAP_SERVICE_BASE_URL").orNull
+                ?.takeIf { it.isNotBlank() } ?: "https://queuego-map-buriram.onrender.com"
     }
 
     buildFeatures { compose = true }
@@ -42,6 +43,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:35.0.0"))
     implementation("com.google.firebase:firebase-messaging")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
     implementation(project(":shared"))
     implementation(project(":rider-navigation-map"))
     implementation("com.google.android.gms:play-services-location:21.3.0")

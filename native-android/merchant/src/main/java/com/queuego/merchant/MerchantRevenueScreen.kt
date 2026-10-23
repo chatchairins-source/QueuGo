@@ -1,5 +1,6 @@
 package com.queuego.merchant
 
+import android.app.DatePickerDialog
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -7,47 +8,59 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
+import com.queuego.shared.QueueGoCreditCard
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+private val RevenueSurface = Color(0xFFF7F8FA)
+private val RevenueCardBorder = Color(0xFFE9EBEF)
+private val RevenueRed = Color(0xFFF10F3A)
+private val RevenueGreen = Color(0xFF12A65B)
+private val RevenueOrange = Color(0xFFF27A20)
+
 @Composable
 internal fun MerchantRevenueScreen(
     auth: NativeAuth,
     api: MerchantApi,
-    onBack: () -> Unit
+    shopName: String,
+    onBack: () -> Unit,
+    onSettings: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val today = remember { LocalDate.now(ZoneId.of("Asia/Bangkok")) }
     var selectedDate by remember { mutableStateOf(today.toString()) }
     var rangeDays by remember { mutableStateOf(1) }
+    var rangeMode by remember { mutableStateOf("today") }
     var rows by remember { mutableStateOf<List<MerchantRevenueDay>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
     var csvPayload by remember { mutableStateOf<String?>(null) }
 
-    suspend fun load(days: Int, endDate: String) {
+    suspend fun load(days: Int, endDate: String, mode: String) {
         loading = true
         message = null
         runCatching {
@@ -58,13 +71,14 @@ internal fun MerchantRevenueScreen(
         }.onSuccess {
             rows = it
             rangeDays = days
+            rangeMode = mode
         }.onFailure {
             message = it.message ?: "โหลดรายได้ไม่สำเร็จ"
         }
         loading = false
     }
 
-    LaunchedEffect(Unit) { load(1, selectedDate) }
+    LaunchedEffect(Unit) { load(1, selectedDate, "today") }
 
     val csvLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv")
@@ -94,12 +108,13 @@ internal fun MerchantRevenueScreen(
                 api.revenueDays(auth, start.toString(), end.toString())
             }.onSuccess { reportRows ->
                 val csv = buildString {
-                    append("วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP ตามออเดอร์,เงินสดค่าสินค้าที่ร้านได้รับ\r\n")
+                    append("วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP ที่หักจากเครดิต,GP เดิมก่อนระบบเครดิต,เงินสดค่าสินค้าที่ร้านได้รับ\r\n")
                     reportRows.forEach { row ->
                         append(csvCell(row.dateKey)).append(',')
                         append(row.orderCount).append(',')
                         append(row.grossSales).append(',')
                         append(row.gpAmount).append(',')
+                        append(row.legacyGpDue).append(',')
                         append(row.cashReceived).append("\r\n")
                     }
                 }
@@ -112,229 +127,440 @@ internal fun MerchantRevenueScreen(
         }
     }
 
+    val totalOrders = rows.sumOf { it.orderCount }
+    val totalSales = rows.sumOf { it.grossSales }
+    val totalGp = rows.sumOf { it.gpAmount }
+    val totalCash = rows.sumOf { it.cashReceived }
+    val totalLegacyGp = rows.sumOf { it.legacyGpDue }
+
     Column(
         Modifier
             .fillMaxSize()
+            .background(RevenueSurface)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = 14.dp)
     ) {
-        Row(
-            Modifier.padding(top = 6.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedButton(
-                onClick = onBack,
-                modifier = Modifier.height(38.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)
-            ) { Text("กลับ") }
-            Spacer(Modifier.width(10.dp))
-            Text(
-                "รายได้ทั้งหมด",
-                fontSize = 20.sp,
-                lineHeight = 26.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-        }
-
-        com.queuego.shared.QueueGoCreditCard(auth.user.id, auth.session.accessToken, "merchant")
-        Text(
-            "เงินสดค่าสินค้า: ไรเดอร์จ่ายร้านตอนรับสินค้า แล้วเก็บจากลูกค้าเอง · GP คือค่าบริการร้าน",
-            color = Color(0xFF607E6E),
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp)
+        RevenuePageHeader(
+            shopName = shopName,
+            onBack = onBack
         )
 
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp)
-                .background(Color.White, RoundedCornerShape(16.dp))
-                .border(1.dp, Color(0xFFE5EEE8), RoundedCornerShape(16.dp))
-                .padding(12.dp)
-        ) {
-            Text("เลือกวันที่", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
-            Spacer(Modifier.height(7.dp))
-            OutlinedTextField(
-                value = selectedDate,
-                onValueChange = { selectedDate = it.take(10) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("YYYY-MM-DD") }
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RevenueQuickButton("วันนี้") {
-                    selectedDate = today.toString()
-                    scope.launch { load(1, today.toString()) }
-                }
-                RevenueQuickButton("7 วันที่ผ่านมา") {
-                    selectedDate = today.toString()
-                    scope.launch { load(7, today.toString()) }
-                }
-                RevenueQuickButton("30 วันที่ผ่านมา") {
-                    selectedDate = today.toString()
-                    scope.launch { load(30, today.toString()) }
-                }
+        Spacer(Modifier.height(12.dp))
+        RevenueRangeRow(
+            selected = rangeMode,
+            onToday = {
+                selectedDate = today.toString()
+                scope.launch { load(1, today.toString(), "today") }
+            },
+            onSevenDays = {
+                selectedDate = today.toString()
+                scope.launch { load(7, today.toString(), "7") }
+            },
+            onThirtyDays = {
+                selectedDate = today.toString()
+                scope.launch { load(30, today.toString(), "30") }
+            },
+            onDate = {
+                val current = runCatching { LocalDate.parse(selectedDate) }.getOrDefault(today)
+                DatePickerDialog(
+                    context,
+                    { _, year, month, day ->
+                        val picked = LocalDate.of(year, month + 1, day)
+                        if (!picked.isAfter(today)) {
+                            selectedDate = picked.toString()
+                            scope.launch { load(1, picked.toString(), "custom") }
+                        }
+                    },
+                    current.year,
+                    current.monthValue - 1,
+                    current.dayOfMonth
+                ).apply {
+                    datePicker.maxDate = System.currentTimeMillis()
+                }.show()
             }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = { scope.launch { load(1, selectedDate) } },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("โหลดวันที่เลือก") }
-            OutlinedButton(
-                onClick = { exportThirtyDays() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("ดาวน์โหลดรายงาน 30 วัน (CSV)") }
-        }
+        )
 
-        if (!message.isNullOrBlank()) {
-            Text(
-                message!!,
-                color = if (message!!.contains("แล้ว")) Color(0xFF0A9660) else QgRed,
-                fontSize = 11.sp,
-                lineHeight = 16.sp,
-                modifier = Modifier.padding(horizontal = 2.dp, vertical = 10.dp)
-            )
-        }
+        Spacer(Modifier.height(12.dp))
 
         when {
-            loading -> Box(
-                Modifier.fillMaxWidth().height(150.dp),
+            loading && rows.isEmpty() -> Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(220.dp),
                 contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
-
-            rows.isEmpty() -> RevenueReportCard {
-                Text("ไม่พบรายงาน", color = QgMuted)
+            ) {
+                CircularProgressIndicator(color = RevenueRed)
             }
 
-            rangeDays == 1 -> {
-                val day = rows.firstOrNull()
-                if (day != null) {
-                    RevenueDailyReport(day)
-
-                }
+            else -> {
+                RevenueHeroCard(
+                    cash = totalCash,
+                    caption = revenueRangeCaption(rangeMode, selectedDate, rangeDays)
+                )
+                Spacer(Modifier.height(8.dp))
+                RevenueMetricRow(
+                    orderCount = totalOrders,
+                    grossSales = totalSales,
+                    gp = totalGp,
+                    cash = totalCash
+                )
             }
-
-            else -> RevenuePeriodReport(rangeDays, rows)
         }
 
-        Spacer(Modifier.height(28.dp))
-    }
-}
+        if (loading && rows.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp,
+                    color = RevenueRed
+                )
+            }
+        }
 
-@Composable
-private fun RevenueQuickButton(label: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .background(Color.White, RoundedCornerShape(20.dp))
-            .border(1.dp, Color(0xFFD6EADF), RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp)
-    ) {
-        Text(label, color = Color(0xFF447263), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun RevenueDailyReport(day: MerchantRevenueDay) {
-    RevenueReportCard {
-        Text(
-            thaiRevenueDate(day.dateKey),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF173C31)
-        )
-        Spacer(Modifier.height(10.dp))
-        RevenueGrid(
-            listOf(
-                "ยอดค่าสินค้าหลังไรเดอร์รับ" to money(day.grossSales),
-                "GP ตามออเดอร์" to money(day.gpAmount),
-                "เงินสดค่าสินค้าที่ร้านได้รับ" to money(day.cashReceived),
-                "ออเดอร์ที่ไรเดอร์รับสินค้า" to day.orderCount.toString()
-            )
-        )
-        Spacer(Modifier.height(10.dp))
-        Text(
-            "หักค่าบริการผ่านเครดิตอัตโนมัติ · ตรวจรายการหักในประวัติเครดิต",
-            color = Color(0xFF607E6E),
-            fontSize = 10.sp,
-            lineHeight = 15.sp
-        )
-        Spacer(Modifier.height(5.dp))
-        Text(
-            "ยอดเงินสดบันทึกอัตโนมัติตาม flow การรับสินค้าของออเดอร์ ไม่ต้องกดยืนยันการรับเงินเพิ่ม",
-            color = QgMuted,
-            fontSize = 9.sp,
-            lineHeight = 14.sp
-        )
-    }
-}
-
-@Composable
-private fun RevenuePeriodReport(days: Int, rows: List<MerchantRevenueDay>) {
-    RevenueReportCard {
-        Text(
-            "รายได้ $days วัน",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF173C31)
-        )
-        Spacer(Modifier.height(10.dp))
-        RevenueGrid(
-            listOf(
-                "ยอดค่าสินค้า" to money(rows.sumOf { it.grossSales }),
-                "จำนวนออเดอร์" to rows.sumOf { it.orderCount }.toString(),
-                "GP ตามออเดอร์" to money(rows.sumOf { it.gpAmount }),
-                "เงินสดค่าสินค้าที่ร้านได้รับ" to money(rows.sumOf { it.cashReceived })
-            )
-        )
-    }
-    rows.forEach { row ->
-        RevenueReportCard {
-            Text(row.dateKey, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+        if (totalLegacyGp > 0.0) {
+            Spacer(Modifier.height(8.dp))
             Text(
-                "${row.orderCount} ออเดอร์ · ${money(row.grossSales)}",
-                color = QgMuted,
-                fontSize = 10.sp
+                "GP เดิมก่อนระบบเครดิต: ${money(totalLegacyGp)}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFFFF7E8), RoundedCornerShape(14.dp))
+                    .border(1.dp, Color(0xFFF2DEB8), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 13.dp, vertical = 10.dp),
+                color = Color(0xFF8A5E0D),
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        QueueGoCreditCard(
+            userId = auth.user.id,
+            token = auth.session.accessToken,
+            kind = "merchant",
+            onSettings = onSettings
+        )
+
+        if (!message.isNullOrBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                message!!,
+                color = if (message!!.contains("แล้ว")) RevenueGreen else QgRed,
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White, RoundedCornerShape(14.dp))
+                    .border(1.dp, RevenueCardBorder, RoundedCornerShape(14.dp))
+                    .padding(12.dp)
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton(
+            onClick = { exportThirtyDays() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Text(
+                "ดาวน์โหลดรายงาน 30 วัน (CSV)",
+                color = RevenueRed,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 11.sp
+            )
+        }
+
+        Spacer(Modifier.height(30.dp))
+    }
+}
+
+@Composable
+private fun RevenuePageHeader(
+    shopName: String,
+    onBack: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+                .border(1.dp, RevenueCardBorder, CircleShape)
+                .clickable(onClick = onBack),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("←", fontSize = 24.sp, color = Color(0xFF20242A))
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                "วิเคราะห์ร้านค้า",
+                fontSize = MerchantPageTitleSize,
+                lineHeight = 23.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFF171A1F)
+            )
+            Text(
+                "รายได้ คำสั่งซื้อ ค่าใช้จ่าย และเครดิตร้านค้า",
+                fontSize = 9.5.sp,
+                lineHeight = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF8A919B)
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Row(
+            Modifier
+                .widthIn(max = 126.dp)
+                .height(40.dp)
+                .background(Color.White, RoundedCornerShape(22.dp))
+                .border(1.dp, RevenueCardBorder, RoundedCornerShape(22.dp))
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            QgIcon("store", Modifier.size(16.dp), Color(0xFF2A2E34))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                shopName.ifBlank { "ร้านปัจจุบัน" },
+                modifier = Modifier.weight(1f, fill = false),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF2A2E34)
             )
         }
     }
 }
 
 @Composable
-private fun RevenueReportCard(content: @Composable ColumnScope.() -> Unit) {
+private fun RevenueRangeRow(
+    selected: String,
+    onToday: () -> Unit,
+    onSevenDays: () -> Unit,
+    onThirtyDays: () -> Unit,
+    onDate: () -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        RevenueRangeButton(
+            label = "วันนี้",
+            active = selected == "today",
+            onClick = onToday,
+            modifier = Modifier.weight(1f)
+        )
+        RevenueRangeButton(
+            label = "7 วันที่ผ่านมา",
+            active = selected == "7",
+            onClick = onSevenDays,
+            modifier = Modifier.weight(1f)
+        )
+        RevenueRangeButton(
+            label = "30 วันที่ผ่านมา",
+            active = selected == "30",
+            onClick = onThirtyDays,
+            modifier = Modifier.weight(1f)
+        )
+        RevenueRangeButton(
+            label = "เลือกวันที่",
+            active = selected == "custom",
+            onClick = onDate,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun RevenueRangeButton(
+    label: String,
+    active: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier
+            .height(44.dp)
+            .background(
+                if (active) RevenueRed else Color.White,
+                RoundedCornerShape(23.dp)
+            )
+            .border(
+                1.dp,
+                if (active) RevenueRed else RevenueCardBorder,
+                RoundedCornerShape(23.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            label,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            fontSize = 8.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = if (active) Color.White else Color(0xFF242930)
+        )
+    }
+}
+
+@Composable
+private fun RevenueHeroCard(cash: Double, caption: String) {
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(top = 10.dp)
-            .background(Color.White, RoundedCornerShape(14.dp))
-            .border(1.dp, Color(0xFFE5EEE8), RoundedCornerShape(14.dp))
-            .padding(12.dp),
-        content = content
-    )
+            .background(RevenueRed, RoundedCornerShape(22.dp))
+            .padding(horizontal = 18.dp, vertical = 18.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(30.dp)
+                    .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon("store", Modifier.size(17.dp), Color.White)
+            }
+            Spacer(Modifier.width(9.dp))
+            Text(
+                "เงินสดค่าสินค้าที่ร้านได้รับ",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            money(cash),
+            fontSize = 35.sp,
+            lineHeight = 39.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            caption,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFFFD8E0)
+        )
+    }
 }
 
 @Composable
-private fun RevenueGrid(items: List<Pair<String, String>>) {
-    items.chunked(2).forEach { row ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            row.forEach { (label, value) ->
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .background(Color(0xFFF4FAF6), RoundedCornerShape(10.dp))
-                        .padding(10.dp)
-                ) {
-                    Text(label, color = Color(0xFF688478), fontSize = 9.sp, lineHeight = 12.sp)
-                    Spacer(Modifier.height(3.dp))
-                    Text(value, color = Color(0xFF173C31), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
-                }
-            }
-            if (row.size == 1) Spacer(Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(8.dp))
+private fun RevenueMetricRow(
+    orderCount: Int,
+    grossSales: Double,
+    gp: Double,
+    cash: Double
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        RevenueMetricCard(
+            "คำสั่งซื้อทั้งหมด",
+            orderCount.toString(),
+            "orders",
+            RevenueRed,
+            Color(0xFFFFEFF2),
+            Modifier.weight(1f)
+        )
+        RevenueMetricCard(
+            "ยอดขายรวม",
+            money(grossSales),
+            "bag",
+            RevenueOrange,
+            Color(0xFFFFF3E8),
+            Modifier.weight(1f)
+        )
+        RevenueMetricCard(
+            "GP ที่หักจากเครดิต",
+            money(gp),
+            "orders",
+            Color(0xFFFF5B2E),
+            Color(0xFFFFF1EC),
+            Modifier.weight(1f)
+        )
+        RevenueMetricCard(
+            "เงินสดที่ได้รับ",
+            money(cash),
+            "store",
+            RevenueGreen,
+            Color(0xFFECF8F1),
+            Modifier.weight(1f)
+        )
     }
+}
+
+@Composable
+private fun RevenueMetricCard(
+    label: String,
+    value: String,
+    icon: String,
+    iconColor: Color,
+    iconBackground: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier
+            .heightIn(min = 126.dp)
+            .background(Color.White, RoundedCornerShape(17.dp))
+            .border(1.dp, RevenueCardBorder, RoundedCornerShape(17.dp))
+            .padding(horizontal = 8.dp, vertical = 10.dp)
+    ) {
+        Box(
+            Modifier
+                .size(29.dp)
+                .background(iconBackground, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            QgIcon(icon, Modifier.size(16.dp), iconColor)
+        }
+        Spacer(Modifier.height(9.dp))
+        Text(
+            label,
+            minLines = 2,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = Color(0xFF858C96),
+            fontSize = 7.5.sp,
+            lineHeight = 10.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            value,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = Color(0xFF171B20),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Black
+        )
+    }
+}
+
+private fun revenueRangeCaption(
+    mode: String,
+    selectedDate: String,
+    rangeDays: Int
+): String = when (mode) {
+    "today" -> thaiRevenueDate(selectedDate) + " · บันทึกอัตโนมัติตามออเดอร์จริง"
+    "custom" -> thaiRevenueDate(selectedDate) + " · วันที่เลือก"
+    else -> "$rangeDays วันที่ผ่านมา · ถึง " + thaiRevenueDate(selectedDate)
 }
 
 private fun money(value: Double): String =
@@ -342,7 +568,7 @@ private fun money(value: Double): String =
 
 private fun thaiRevenueDate(date: String): String = runCatching {
     LocalDate.parse(date).format(
-        DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("th", "TH"))
+        DateTimeFormatter.ofPattern("d MMM yyyy", Locale("th", "TH"))
     )
 }.getOrDefault(date)
 

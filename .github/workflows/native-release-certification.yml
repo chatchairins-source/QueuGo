@@ -65,7 +65,7 @@ jobs:
       QG_MERCHANT_PLAY_MAX_VERSION_CODE: ${{ inputs.merchant_play_max_version_code }}
       QG_RIDER_PLAY_MAX_VERSION_CODE: ${{ inputs.rider_play_max_version_code }}
       QG_ANDROID_SIGNING_CERT_SHA256: ${{ inputs.signing_certificate_sha256 }}
-      QG_SUPABASE_URL: ${{ vars.QG_SUPABASE_URL }}
+      QG_SUPABASE_URL: https://pkypiqhlrmzocysgeqew.supabase.co
       QG_EVIDENCE_BUCKET: queuego-native-release-evidence
 
     steps:
@@ -75,8 +75,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$GITHUB_REF" != "refs/heads/queuego-native-android-v1" ]; then
-            echo "::error::Release certification may run only from queuego-native-android-v1"
+          if [ "$GITHUB_REF" != "refs/heads/work-native-route-bundle-play-release-20261021" ]; then
+            echo "::error::Release certification may run only from work-native-route-bundle-play-release-20261021"
             exit 1
           fi
 
@@ -86,11 +86,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=queuego-native-android-v1&status=success&per_page=100")"
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=work-native-route-bundle-play-release-20261021&status=success&per_page=100")"
           pilot_run_id="$(jq -r --arg sha "$GITHUB_SHA" '
             [.workflow_runs[]
               | select(.head_sha == $sha)
-              | select(.head_branch == "queuego-native-android-v1")
+              | select(.head_branch == "work-native-route-bundle-play-release-20261021")
               | select(.path == ".github/workflows/build-native-rider-pilot.yml")
               | select(.event == "push")
               | select(.conclusion == "success")]
@@ -110,11 +110,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=queuego-native-android-v1&status=success&per_page=100")"
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=work-native-route-bundle-play-release-20261021&status=success&per_page=100")"
           backup_run_id="$(jq -r --arg sha "$GITHUB_SHA" '
             [.workflow_runs[]
               | select(.head_sha == $sha)
-              | select(.head_branch == "queuego-native-android-v1")
+              | select(.head_branch == "work-native-route-bundle-play-release-20261021")
               | select(.path == ".github/workflows/backup-restore-drill.yml")
               | select(.event == "workflow_dispatch")
               | select(.conclusion == "success")]

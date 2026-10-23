@@ -597,7 +597,6 @@ private fun MerchantShell(
                 "home" -> DashboardScreen(
                     shop = shop,
                     orders = orders,
-                    readiness = readiness,
                     loading = loading,
                     shopOpen = shopOpen,
                     revenue = todayRevenue,
@@ -643,10 +642,7 @@ private fun MerchantShell(
                     onLaundry = { screen = "laundry" },
                     onRevenue = { screen = "revenue" },
                     onPromotion = { screen = "promotions" },
-                    onProfile = { screen = "profile" },
-                    onModules = { screen = "modules" },
                     onMedia = { screen = "media" },
-                    onNotifications = { screen = "notifications" },
                     onSupport = { screen = "support" },
                     onMarketStock = { screen = "market-stock" }
                 )
@@ -931,7 +927,9 @@ private fun MerchantShell(
                 "revenue" -> MerchantRevenueScreen(
                     auth = auth,
                     api = api,
-                    onBack = { screen = "home" }
+                    shopName = shop?.name.orEmpty(),
+                    onBack = { screen = "home" },
+                    onSettings = { screen = "profile" }
                 )
                 "promotions" -> {
                     val activeShop = shop
@@ -1033,6 +1031,7 @@ private fun MerchantShell(
                     },
                     onHours = { screen = "hours" },
                     onProducts = { screen = "products" },
+                    onModules = { screen = "modules" },
                     onNotifications = { screen = "notifications" },
                     pushBusy = pushActionBusy,
                     onEnableBackgroundNotifications = {
@@ -1195,7 +1194,6 @@ private fun MerchantTopBar(
 private fun DashboardScreen(
     shop: MerchantShop?,
     orders: List<MerchantOrder>,
-    readiness: ShopReadiness?,
     loading: Boolean,
     shopOpen: Boolean,
     revenue: MerchantTodayRevenue,
@@ -1209,10 +1207,7 @@ private fun DashboardScreen(
     onLaundry: () -> Unit,
     onRevenue: () -> Unit,
     onPromotion: () -> Unit,
-    onProfile: () -> Unit,
-    onModules: () -> Unit,
     onMedia: () -> Unit,
-    onNotifications: () -> Unit,
     onSupport: () -> Unit,
     onMarketStock: () -> Unit
 ) {
@@ -1281,31 +1276,6 @@ private fun DashboardScreen(
             }
         }
 
-        if (readiness != null && !readiness.complete) {
-            Spacer(Modifier.height(10.dp))
-            QgCard(Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier
-                            .size(38.dp)
-                            .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("!", color = QgRed, fontWeight = FontWeight.Black)
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("ร้านยังตั้งค่าไม่ครบ", fontWeight = FontWeight.ExtraBold)
-                        Text(
-                            "กรอกข้อมูลร้าน รูป พิกัด และสินค้าให้ครบก่อนส่งตรวจ",
-                            color = QgMuted,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-        }
-
         Text(
             "ภาพรวมวันนี้",
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 14.dp),
@@ -1320,11 +1290,8 @@ private fun DashboardScreen(
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MerchantMetricCard("เงินสดรับ", "฿" + "%.0f".format(revenue.cashReceived), "store", Modifier.weight(1f))
-            MerchantMetricCard("GP ตามออเดอร์", "฿" + "%.0f".format(revenue.gpAmount), "orders", Modifier.weight(1f))
+            MerchantMetricCard("GP ที่หักจากเครดิต", "฿" + "%.0f".format(revenue.gpAmount), "orders", Modifier.weight(1f))
         }
-
-        Spacer(Modifier.height(9.dp))
-        MerchantRevenueEntry(onRevenue)
 
         Text(
             "จัดการร้าน",
@@ -1342,13 +1309,7 @@ private fun DashboardScreen(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MerchantMenuTile("โปรโมชั่น", "tag", onPromotion, Modifier.weight(1f))
             MerchantMenuTile("รายงาน", "chart", onRevenue, Modifier.weight(1f))
-            MerchantMenuTile("ข้อมูลร้านค้า", "home", onProfile, Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMenuTile("ตั้งค่า", "gear", onModules, Modifier.weight(1f))
             MerchantMenuTile("คลังรูปภาพ", "gallery", onMedia, Modifier.weight(1f))
-            MerchantMenuTile("การแจ้งเตือน", "bell", onNotifications, Modifier.weight(1f))
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1394,31 +1355,6 @@ private fun MerchantPauseButton(
             .padding(horizontal = 9.dp, vertical = 7.dp)
     ) {
         Text(label, color = Color(0xFF447263), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun MerchantRevenueEntry(onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFE4F9ED), RoundedCornerShape(15.dp))
-            .border(1.dp, Color(0xFFC5ECD8), RoundedCornerShape(15.dp))
-            .clickable(onClick = onClick)
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text("฿", color = Color(0xFF174536), fontSize = 25.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text("รายได้ทั้งหมด", color = Color(0xFF174536), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
-            Text(
-                "เลือกวัน ดูยอดขาย เงินสด และ GP ย้อนหลัง",
-                color = Color(0xFF658679),
-                fontSize = 10.sp
-            )
-        }
-        Text("›", color = Color(0xFF658679), fontSize = 20.sp)
     }
 }
 
@@ -1638,7 +1574,7 @@ private fun MerchantOrderDetail(
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { cancelOpen = true },
-                    enabled = !busy,
+                    enabled = !busy && merchantDeliveryCanCancel(order.status, order.preparingAt, order.readyAt),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("ปฏิเสธออเดอร์") }
             }
@@ -1649,7 +1585,7 @@ private fun MerchantOrderDetail(
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { cancelOpen = true },
-                    enabled = !busy,
+                    enabled = !busy && merchantDeliveryCanCancel(order.status, order.preparingAt, order.readyAt),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("ยกเลิกออเดอร์") }
             }
@@ -1665,6 +1601,12 @@ private fun MerchantOrderDetail(
                 }
                 Spacer(Modifier.height(8.dp))
                 MerchantReadyEstimateControls(order, busy, onAdjustReady)
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { cancelOpen = true },
+                    enabled = !busy && merchantDeliveryCanCancel(order.status, order.preparingAt, order.readyAt),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("ยกเลิกออเดอร์") }
             }
             "rider_assigned", "assigned" -> {
                 Button(
@@ -1683,7 +1625,7 @@ private fun MerchantOrderDetail(
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { cancelOpen = true },
-                    enabled = !busy,
+                    enabled = !busy && merchantDeliveryCanCancel(order.status, order.preparingAt, order.readyAt),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("ยกเลิกออเดอร์") }
             }
@@ -1973,9 +1915,9 @@ private fun MerchantCancelGuard(
     var otherReason by remember(order.id) { mutableStateOf("") }
     var acknowledged by remember(order.id) { mutableStateOf(false) }
     var slide by remember(order.id) { mutableStateOf(0f) }
-    val cancellable = order.status in setOf("pending", "accepted", "rider_assigned", "assigned")
+    val cancellable = merchantDeliveryCanCancel(order.status, order.preparingAt, order.readyAt)
     val accepted = order.status != "pending"
-    LaunchedEffect(order.status) {
+    LaunchedEffect(order.status, order.preparingAt, order.readyAt) {
         if (!cancellable) onDismiss()
     }
     val reason = when {
@@ -2110,6 +2052,7 @@ private fun MerchantProfileScreen(
     onSetup: () -> Unit,
     onHours: () -> Unit,
     onProducts: () -> Unit,
+    onModules: () -> Unit,
     onNotifications: () -> Unit,
     pushBusy: Boolean,
     onEnableBackgroundNotifications: () -> Unit,
@@ -2140,7 +2083,7 @@ private fun MerchantProfileScreen(
                 Text(
                     shop?.name ?: auth.user.name,
                     color = Color(0xFF202329),
-                    fontSize = 19.sp,
+                    fontSize = MerchantPageTitleSize,
                     lineHeight = 23.sp,
                     fontWeight = FontWeight.Black,
                     maxLines = 1
@@ -2203,6 +2146,13 @@ private fun MerchantProfileScreen(
                 subtitle = "ตั้งเวลาเปิด–ปิดและวันหยุดของร้าน",
                 enabled = shop != null,
                 onClick = onHours
+            )
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "gear",
+                title = "ตั้งค่าร้านค้า",
+                subtitle = "โมดูลร้านค้า การตั้งค่าระบบ และทางลัดที่เกี่ยวข้อง",
+                onClick = onModules
             )
             HorizontalDivider(color = Color(0xFFECEEF1))
             MerchantProfileActionRow(

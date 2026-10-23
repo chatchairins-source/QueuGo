@@ -27,6 +27,13 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
+import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.sources.GeoJsonSource
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.math.hypot
 
 private const val RIDER_MARKER_DEFAULT_ANIMATION_MS = 1_050L
@@ -35,10 +42,31 @@ private const val RIDER_MARKER_MAX_ANIMATION_MS = 1_200L
 private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 1.05
 private const val RIDER_MARKER_TELEPORT_METERS = 120.0
 private const val CAMERA_BEARING_MIN_DELTA_DEGREES = 0.75f
-private const val CAMERA_ANIMATION_MS = 480
+private const val CAMERA_ANIMATION_FALLBACK_MS = 560L
 private const val CAMERA_OVERVIEW_ANIMATION_MS = 380
 private const val DEFAULT_LONGITUDE = 101.0
 private const val DEFAULT_LATITUDE = 15.0
+private const val STOP_SOURCE_ID = "qg-rider-stops"
+private const val STOP_ACTIVE_HALO_LAYER_ID = "qg-rider-stops-active-halo"
+private const val STOP_SHOP_BODY_LAYER_ID = "qg-rider-stops-shop-body"
+private const val STOP_CUSTOMER_BODY_LAYER_ID = "qg-rider-stops-customer-body"
+private const val STOP_SHOP_ICON_LAYER_ID = "qg-rider-stops-shop-icon"
+private const val STOP_CUSTOMER_ICON_LAYER_ID = "qg-rider-stops-customer-icon"
+private const val STOP_SHOP_NUMBER_LAYER_ID = "qg-rider-stops-shop-number"
+private const val STOP_CUSTOMER_NUMBER_LAYER_ID = "qg-rider-stops-customer-number"
+private const val STOP_SHOP_IMAGE_ID = "qg-stop-shop"
+private const val STOP_CUSTOMER_IMAGE_ID = "qg-stop-customer"
+
+internal fun navigationStopMarkerTitle(stop: NavigationMapStop): String = buildString {
+    append("จุด ")
+    append(stop.sequence)
+    append(" · ")
+    append(if (stop.kind == NavigationStopKind.PICKUP) "ร้านค้า" else "ลูกค้า")
+    if (stop.label.isNotBlank()) {
+        append(" · ")
+        append(stop.label)
+    }
+}
 
 internal fun riderMarkerMoveThresholdMeters(speedMetersPerSecond: Float?): Double = when {
     speedMetersPerSecond == null -> 1.0
@@ -105,7 +133,7 @@ internal fun navigationRiderDisplayFix(state: RiderNavigationMapState): Navigati
         )
     } else null
     val displayPoint = match
-        ?.takeIf { it.offRouteMeters <= 12.0 }
+        ?.takeIf { it.offRouteMeters <= 25.0 }
         ?.snapped
         ?: rawFix.point
     return rawFix.copy(point = displayPoint)
@@ -130,6 +158,8 @@ private class RiderNavigationMapHolder {
     private val routeLines = mutableListOf<Polyline>()
     private val activeHeadLines = mutableListOf<Polyline>()
     private val stopMarkers = mutableListOf<Marker>()
+    private var stopSource: GeoJsonSource? = null
+    private var stopStyleInitialized = false
     private val demandMarkers = mutableListOf<Marker>()
     private var renderPassCount = 0
     private var routeLayerRebuildCount = 0
@@ -311,7 +341,7 @@ private class RiderNavigationMapHolder {
             }
             if (segment.style == NavigationRouteStyle.ACTIVE && accuracy != null &&
                 accuracy.isFinite() && accuracy <= 35f && match != null &&
-                match.offRouteMeters <= 12.0
+                match.offRouteMeters <= 25.0
             ) trimNavigationRouteSegment(segment, match.progressMeters, match.snapped)
             else segment
         }
@@ -409,6 +439,145 @@ private class RiderNavigationMapHolder {
         }
     }
 
+    private fun stopFeatureCollectionJson(
+        stops: List<NavigationMapStop>,
+        activeId: String?
+    ): String {
+        val features = JSONArray()
+        stops.forEach { stop ->
+            val properties = JSONObject()
+                .put("sequence", stop.sequence.toString())
+                .put("kind", if (stop.kind == NavigationStopKind.PICKUP) "shop" else "customer")
+                .put("active", stop.id == activeId)
+                .put("label", stop.label)
+            val coordinates = JSONArray()
+                .put(stop.point.longitude)
+                .put(stop.point.latitude)
+            val geometry = JSONObject()
+                .put("type", "Point")
+                .put("coordinates", coordinates)
+            features.put(
+                JSONObject()
+                    .put("type", "Feature")
+                    .put("geometry", geometry)
+                    .put("properties", properties)
+            )
+        }
+        return JSONObject()
+            .put("type", "FeatureCollection")
+            .put("features", features)
+            .toString()
+    }
+
+    private fun ensureStopStyle(activeMap: MapLibreMap): GeoJsonSource? {
+        if (stopStyleInitialized) stopSource?.let { return it }
+        val style = activeMap.style ?: return null
+        val context = view?.context ?: return null
+        val source = GeoJsonSource(
+            STOP_SOURCE_ID,
+            """{"type":"FeatureCollection","features":[]}"""
+        )
+        style.addSource(source)
+
+        context.getDrawable(R.drawable.qg_stop_shop)?.let { drawable ->
+            style.addImage(STOP_SHOP_IMAGE_ID, drawable)
+        }
+        context.getDrawable(R.drawable.qg_stop_customer)?.let { drawable ->
+            style.addImage(STOP_CUSTOMER_IMAGE_ID, drawable)
+        }
+
+        val shopFilter = Expression.eq(Expression.get("kind"), Expression.literal("shop"))
+        val customerFilter = Expression.eq(Expression.get("kind"), Expression.literal("customer"))
+        val activeFilter = Expression.eq(Expression.get("active"), Expression.literal(true))
+
+        style.addLayer(
+            CircleLayer(STOP_ACTIVE_HALO_LAYER_ID, STOP_SOURCE_ID).apply {
+                setFilter(activeFilter)
+                setProperties(
+                    PropertyFactory.circleRadius(28f),
+                    PropertyFactory.circleColor(android.graphics.Color.TRANSPARENT),
+                    PropertyFactory.circleStrokeColor(android.graphics.Color.rgb(230, 0, 45)),
+                    PropertyFactory.circleStrokeWidth(2.5f)
+                )
+            }
+        )
+        style.addLayer(
+            CircleLayer(STOP_SHOP_BODY_LAYER_ID, STOP_SOURCE_ID).apply {
+                setFilter(shopFilter)
+                setProperties(
+                    PropertyFactory.circleRadius(23f),
+                    PropertyFactory.circleColor(android.graphics.Color.WHITE),
+                    PropertyFactory.circleStrokeColor(android.graphics.Color.rgb(230, 0, 45)),
+                    PropertyFactory.circleStrokeWidth(3f)
+                )
+            }
+        )
+        style.addLayer(
+            CircleLayer(STOP_CUSTOMER_BODY_LAYER_ID, STOP_SOURCE_ID).apply {
+                setFilter(customerFilter)
+                setProperties(
+                    PropertyFactory.circleRadius(23f),
+                    PropertyFactory.circleColor(android.graphics.Color.WHITE),
+                    PropertyFactory.circleStrokeColor(android.graphics.Color.rgb(23, 23, 27)),
+                    PropertyFactory.circleStrokeWidth(3f)
+                )
+            }
+        )
+        style.addLayer(
+            SymbolLayer(STOP_SHOP_ICON_LAYER_ID, STOP_SOURCE_ID).apply {
+                setFilter(shopFilter)
+                setProperties(
+                    PropertyFactory.iconImage(STOP_SHOP_IMAGE_ID),
+                    PropertyFactory.iconSize(0.74f),
+                    PropertyFactory.iconTranslate(arrayOf(0f, 7f)),
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.iconIgnorePlacement(true)
+                )
+            }
+        )
+        style.addLayer(
+            SymbolLayer(STOP_CUSTOMER_ICON_LAYER_ID, STOP_SOURCE_ID).apply {
+                setFilter(customerFilter)
+                setProperties(
+                    PropertyFactory.iconImage(STOP_CUSTOMER_IMAGE_ID),
+                    PropertyFactory.iconSize(0.74f),
+                    PropertyFactory.iconTranslate(arrayOf(0f, 7f)),
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.iconIgnorePlacement(true)
+                )
+            }
+        )
+        style.addLayer(
+            SymbolLayer(STOP_SHOP_NUMBER_LAYER_ID, STOP_SOURCE_ID).apply {
+                setFilter(shopFilter)
+                setProperties(
+                    PropertyFactory.textField(Expression.get("sequence")),
+                    PropertyFactory.textSize(12f),
+                    PropertyFactory.textColor(android.graphics.Color.rgb(230, 0, 45)),
+                    PropertyFactory.textTranslate(arrayOf(0f, -13f)),
+                    PropertyFactory.textAllowOverlap(true),
+                    PropertyFactory.textIgnorePlacement(true)
+                )
+            }
+        )
+        style.addLayer(
+            SymbolLayer(STOP_CUSTOMER_NUMBER_LAYER_ID, STOP_SOURCE_ID).apply {
+                setFilter(customerFilter)
+                setProperties(
+                    PropertyFactory.textField(Expression.get("sequence")),
+                    PropertyFactory.textSize(12f),
+                    PropertyFactory.textColor(android.graphics.Color.rgb(23, 23, 27)),
+                    PropertyFactory.textTranslate(arrayOf(0f, -13f)),
+                    PropertyFactory.textAllowOverlap(true),
+                    PropertyFactory.textIgnorePlacement(true)
+                )
+            }
+        )
+        stopStyleInitialized = true
+        stopSource = source
+        return source
+    }
+
     private fun renderStops(
         activeMap: MapLibreMap,
         state: RiderNavigationMapState,
@@ -420,23 +589,8 @@ private class RiderNavigationMapHolder {
         if (!force && signature == lastStopSignature) return
         stopMarkers.toList().forEach { marker -> runCatching { activeMap.removeMarker(marker) } }
         stopMarkers.clear()
-        stops.forEach { stop ->
-            stopMarkers += activeMap.addMarker(
-                MarkerOptions()
-                    .position(LatLng(stop.point.latitude, stop.point.longitude))
-                    .title(
-                        buildString {
-                            append(stop.sequence)
-                            append(" · ")
-                            append(if (stop.kind == NavigationStopKind.PICKUP) "รับ" else "ส่ง")
-                            if (stop.label.isNotBlank()) {
-                                append(" · ")
-                                append(stop.label)
-                            }
-                        }
-                    )
-            )
-        }
+        val source = ensureStopStyle(activeMap) ?: return
+        source.setGeoJson(stopFeatureCollectionJson(stops, activeId))
         stopMutationCount += 1
         lastStopSignature = signature
     }
@@ -561,6 +715,13 @@ private class RiderNavigationMapHolder {
         if (!force && !explicitRecenter && !pointChanged && !bearingChanged && !tiltChanged) return
 
         val targetBearing = decision.bearingDegrees ?: renderedBearing
+        val cameraAnimationMs = navigationRotationDurationMillis(
+            currentBearing = renderedBearing,
+            targetBearing = targetBearing,
+            cadenceMillis = null,
+            fallbackMillis = CAMERA_ANIMATION_FALLBACK_MS,
+            speedMetersPerSecond = state.rider?.speedMetersPerSecond
+        ).toInt()
         activeMap.animateCamera(
             CameraUpdateFactory.newCameraPosition(
                 CameraPosition.Builder()
@@ -570,7 +731,7 @@ private class RiderNavigationMapHolder {
                     .tilt(decision.tiltDegrees.toDouble())
                     .build()
             ),
-            CAMERA_ANIMATION_MS
+            cameraAnimationMs
         )
         if (explicitRecenter) lastAppliedRecenterRequest = state.recenterRequest
         lastCameraPoint = decision.center
@@ -614,6 +775,8 @@ private class RiderNavigationMapHolder {
         routeLines.clear()
         activeHeadLines.clear()
         stopMarkers.clear()
+        stopSource = null
+        stopStyleInitialized = false
         demandMarkers.clear()
         riderMarker = null
         map = null

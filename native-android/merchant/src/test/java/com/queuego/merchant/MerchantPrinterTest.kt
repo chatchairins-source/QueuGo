@@ -11,7 +11,7 @@ class MerchantPrinterTest {
         mapOf(bill.id to listOf(
             PosLine("p1", "ข้าวผัด", "ไม่เผ็ด", 1, 50.0, batch = 1),
             PosLine("p2", "น้ำ", null, 2, 40.0, batch = 2)
-        )), emptyList(), emptyMap()
+        ))
     )
     @Test fun kitchenTicketKeepsQueuedBatchSeparateFromLaterAdditions() {
         val snap = snapshot()

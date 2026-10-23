@@ -28,6 +28,10 @@ async function verifyWebhookSignature(req,raw,secret){
   return false;
  }catch{return false}
 }
+export function creditReadiness(env){
+ let signingReady=false;try{signingReady=base64Bytes(env.get('OMISE_WEBHOOK_SECRET')).length>=16}catch{}
+ return {environment_ready:!!env.get('SUPABASE_URL')&&!!env.get('SUPABASE_SERVICE_ROLE_KEY'),live_key_configured:isLiveOmiseSecret(env.get('OMISE_SECRET_KEY')),webhook_signing_configured:signingReady,live_intake_enabled:env.get('QUEUEGO_CREDIT_LIVE_ENABLED')==='true'};
+}
 export function createCreditHandler(env,fetcher=fetch,webhook=false){
  return async req=>{
   const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,content-type,x-client-info','Access-Control-Allow-Methods':'POST,OPTIONS','Cache-Control':'no-store'};

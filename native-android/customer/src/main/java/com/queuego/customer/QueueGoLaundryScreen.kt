@@ -184,7 +184,8 @@ fun LaundryNativeScreen(
                 banner = null,
                 fallbackDrawable = R.drawable.qg_laundry_banner,
                 fallbackTitle = "ฝากซัก",
-                fallbackSubtitle = "เลือกร้านและบริการ ร้านยืนยันก่อน แล้ว Rider ไปรับผ้าถึงที่และส่งคืนเมื่อเสร็จ"
+                fallbackSubtitle = "เลือกร้านและบริการ ร้านยืนยันก่อน แล้ว Rider ไปรับผ้าถึงที่และส่งคืนเมื่อเสร็จ",
+                darkScrim = true
             )
             Spacer(Modifier.height(18.dp))
         }
@@ -202,7 +203,15 @@ fun LaundryNativeScreen(
         }
         Spacer(Modifier.height(14.dp))
         when {
-            loading -> CircularProgressIndicator()
+            loading -> Row(
+                Modifier.fillMaxWidth().padding(vertical = 28.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(9.dp))
+                Text("กำลังโหลดร้านซัก...", color = QgMuted)
+            }
             catalogFailed -> OutlinedButton(onClick = { catalogReload++ }) { Text("ลองโหลดร้านอีกครั้ง") }
             catalog?.featureEnabled == false -> QgCard(Modifier.fillMaxWidth()) {
                 Column {
