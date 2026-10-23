@@ -1,3 +1,13 @@
+## 2026-10-23 Owner-requested Rider recovery to 22 October 18:00 Asia/Bangkok
+
+- Owner explicitly requests restoring Rider Web and Android files from approximately 2026-10-22 18:00 Asia/Bangkok (11:00 UTC). This supersedes the earlier prohibition on restoring older Rider files for this bounded recovery only. No branch reset/revert; recovery is a new descendant of `59051ddfb89a03b7d34e3b5b94f80c62919f9e6a`.
+- Reference: `7572146400f44bf66c96aca5ae5f84264fe4241b`, latest commit on the respective source line before the requested cutoff. Web main reference time is 17:51:58; Native source-line reference time is 15:02:14. These are source history snapshots, not proof of the APK installed or Pages deployed at that hour.
+- Recovered rider/index.html and queuego-map-web.js from that reference. The only runtime integration differences are current QueueGo route adapter/service URL and a cache/build token; no Longdo route fallback is restored. Recovery test harness is adapted to the real QueueGo route contract.
+- Validation: restored camera suite 73 PASS; route/GPS ownership/coalescing/cancellation/timeout suite 132 PASS. A survey of 135 current npm test commands found 4 recovery-related failures: rider-runtime, rider-single-proof-runtime, rider-route-progress-runtime, rider-missed-turn-reroute. Eight additional local failures were missing sparse-checkout inputs, not certified source regressions. Full current RC is NOT green.
+- Important compatibility evidence: recovery intentionally predates durable proof worker and newer maneuver/missed-turn runtime. Do not weaken current regression tests or mark them passed to permit release.
+- STATUS: IN PROGRESS (source recovery prepared); BLOCKED (release) on compatible full regression, exact-head hosted Android build and physical acceptance. No Production database writes, public deployment or APK installation performed.
+- NEXT: inspect recovery diff, resolve compatibility against this explicit timestamp without redesigning Rider, run exact-head Web RC / Native Pilot, then deploy/build only on green evidence. Preserve both reference and pre-recovery checkpoints.
+
 # QueueGo Active Work Checklist
 
 Last governance checkpoint: 2026-10-23; latest verified main `9eb3dac112ab0003c5b36dd844c3abbcff1decac`

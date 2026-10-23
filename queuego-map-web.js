@@ -95,6 +95,7 @@ function navMatchRoute(route,point,{bearing=null,speed=null,previousProgress=nul
   const spd=navHasNumber(speed)&&Number(speed)>=0?Number(speed):null;
   const travelBearing=spd!=null&&spd>=2&&navHasNumber(bearing)?navNormalizeBearing(Number(bearing)):null;
   const priorProgress=navHasNumber(previousProgress)?Number(previousProgress):null;
+  const forwardAllowance=priorProgress==null?null:(spd==null?120:Math.max(80,spd*12+60));
   for(const [partIndex,part] of navRouteParts(route).entries()){
     let walked=0,total=0;
     const lengths=[];
@@ -105,13 +106,19 @@ function navMatchRoute(route,point,{bearing=null,speed=null,previousProgress=nul
       const progress=walked+leg*p.fraction;
       const segmentBearing=navBearing(part[i],part[i+1]);
       const headingDelta=travelBearing==null?null:Math.abs(navShortestDelta(travelBearing,segmentBearing));
+      // While moving, an opposite-direction segment is almost always the other
+      // carriageway or a future U-turn leg. Give it an effectively disqualifying
+      // penalty when a same-direction candidate exists, but keep it as a diagnostic
+      // fallback so the camera can explicitly reject the route bearing.
+      const directionPenalty=headingDelta!=null&&headingDelta>105?10000:0;
       const headingPenalty=headingDelta==null?0:
-        headingDelta<=35?headingDelta*.08:
-        headingDelta<=75?2.8+(headingDelta-35)*.35:
-        16.8+(headingDelta-75)*1.4;
-      const backtrack=priorProgress==null?0:Math.max(0,priorProgress-progress-35);
-      const continuityPenalty=backtrack*2.5;
-      const score=p.distance+headingPenalty+continuityPenalty;
+        headingDelta<=30?headingDelta*.05:
+        headingDelta<=60?1.5+(headingDelta-30)*.25:
+        9+(headingDelta-60)*.9;
+      const backtrack=priorProgress==null?0:Math.max(0,priorProgress-progress-20);
+      const forwardJump=forwardAllowance==null?0:Math.max(0,progress-priorProgress-forwardAllowance);
+      const continuityPenalty=backtrack*3.2+forwardJump*1.35;
+      const score=p.distance+directionPenalty+headingPenalty+continuityPenalty;
       if(!best||score<best.score){
         best={part,partIndex,snapped:p.point,offRouteMeters:p.distance,progressMeters:progress,geometryDistanceMeters:total,segmentBearingDegrees:segmentBearing,headingDeltaDegrees:headingDelta,score};
       }
@@ -170,13 +177,21 @@ function navRotationDuration(currentBearing,targetBearing,cadenceMs,fallback=420
   const angleDuration=Math.max(profile.min,Math.min(profile.max,Math.round(profile.base+angle*profile.gain)));
   return Math.max(profile.min,Math.min(profile.max,Math.max(cadenceDuration,angleDuration)));
 }
+function navSpeedAwareZoom(speed,baseZoom=17){
+  const base=Math.max(14,Math.min(20,Number(baseZoom)||17));
+  if(!navHasNumber(speed)||Number(speed)<0)return base;
+  const spd=Math.max(0,Math.min(25,Number(speed)));
+  if(spd<=.8)return Math.max(base,18.4);
+  const dynamic=18.4-Math.min(3.4,spd*.14);
+  return Math.round(Math.max(15,Math.min(18.4,dynamic))*10)/10;
+}
 function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=[],previousBearing=null,previousRouteProgress=null,baseZoom=17}={}){
   if(!valid(lat,lng))return null;
   const point={lat:Number(lat),lng:Number(lng)},spd=navHasNumber(speed)&&Number(speed)>=0?Number(speed):null;
   const acc=navHasNumber(accuracy)?Number(accuracy):null;
   const gpsBearing=navHasNumber(bearing)?navNormalizeBearing(Number(bearing)):null;
   const match=navMatchRoute(route,point,{bearing:gpsBearing,speed:spd,previousProgress:previousRouteProgress});
-  const reliable=match&&match.offRouteMeters<=25?match:null;
+  const reliable=match&&match.offRouteMeters<=60?match:null;
   let routeBearing=reliable?.segmentBearingDegrees??null;
   const remaining=match?Math.max(0,match.geometryDistanceMeters-match.progressMeters):null;
   if(reliable){
@@ -205,9 +220,12 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
   const smoothing=spd==null?.30:spd>=18?.68:spd>=11?.62:spd>=5?.52:spd>=2?.38:.24;
   const smoothedBearing=navSmoothBearing(previousBearing,desiredBearing,smoothing);
   const cameraBearing=smoothedBearing??0;
-  let zoom=remaining!=null&&remaining<=60?19:remaining!=null&&remaining<=180?18:spd==null?baseZoom:spd>=18?15:spd>=11?16:spd>=5?17:spd<=1.5?Math.max(baseZoom,18):baseZoom;
-  if(acc!=null&&acc>60)zoom=Math.max(14,zoom-1);
-  zoom=Math.max(14,Math.min(20,zoom));
+  let zoom=remaining!=null&&remaining<=60?19:
+    remaining!=null&&remaining<=180?18:
+    remaining!=null?(spd==null?baseZoom:spd>=18?15:spd>=11?16:spd>=5?17:spd<=1.5?Math.max(baseZoom,18):baseZoom):
+    navSpeedAwareZoom(spd,baseZoom);
+  if(acc!=null&&acc>60)zoom=Math.max(14,zoom-.7);
+  zoom=Math.round(Math.max(14,Math.min(20,zoom))*10)/10;
   const freeDrive=!reliable;
   const pitch=Math.max(0,Math.min(55,
     acc!=null&&acc>80?(freeDrive?28:24):
@@ -228,7 +246,7 @@ function navState(map){
   if(!state){
     state={
       follow:true,navigationActive:true,bearing:null,lastFix:null,lastRoute:[],baseZoom:17,lastDecision:null,lastAppliedAt:0,
-      manualZoom:null,manualZoomUntil:0,reanchorTimer:null,followResumeTimer:null,gestureActive:false,lastBottomInset:0
+      manualZoom:null,manualZoomUntil:0,reanchorTimer:null,gestureActive:false,lastBottomInset:0,headingOnly:false
     };
     navigationStates.set(map,state);
   }
@@ -238,33 +256,11 @@ function setNavigationFollow(map,enabled=true){
   if(!map)return false;
   const state=navState(map);
   state.follow=!!enabled;
-  if(state.reanchorTimer){clearTimeout(state.reanchorTimer);state.reanchorTimer=null}
-  if(state.followResumeTimer){clearTimeout(state.followResumeTimer);state.followResumeTimer=null}
-  if(!state.follow)state.gestureActive=false;
-  return state.follow;
-}
-function suspendNavigationFollowForPan(map){
-  const state=navState(map);
-  if(state.followResumeTimer){clearTimeout(state.followResumeTimer);state.followResumeTimer=null}
-  state.follow=false;
-  state.gestureActive=true;
-}
-function resumeNavigationFollowAfterPan(map,delayMs=8000){
-  const state=navState(map);
-  if(state.followResumeTimer)clearTimeout(state.followResumeTimer);
-  state.followResumeTimer=setTimeout(()=>{
-    state.followResumeTimer=null;
-    if(!state.navigationActive||!state.lastFix)return;
-    state.follow=true;
+  if(!state.follow){
     state.gestureActive=false;
-    followNavigationCamera(map,state.lastFix,state.lastRoute,{
-      force:true,
-      duration:480,
-      baseZoom:state.baseZoom,
-      preserveZoom:false,
-      bottomInset:state.lastBottomInset
-    });
-  },Math.max(0,Number(delayMs)||8000));
+    if(state.reanchorTimer){clearTimeout(state.reanchorTimer);state.reanchorTimer=null}
+  }
+  return state.follow;
 }
 function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   if(!map)return false;
@@ -272,7 +268,6 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   state.navigationActive=active;
   state.gestureActive=false;
   if(state.reanchorTimer){clearTimeout(state.reanchorTimer);state.reanchorTimer=null}
-  if(state.followResumeTimer){clearTimeout(state.followResumeTimer);state.followResumeTimer=null}
   state.manualZoom=null;
   state.manualZoomUntil=0;
   if(active){
@@ -284,6 +279,7 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
     return true;
   }
   state.follow=false;
+  state.headingOnly=false;
   state.bearing=0;
   state.lastDecision=null;
   state.lastDecisionApplied=null;
@@ -297,7 +293,7 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   try{map.easeTo(camera)}catch(_){return false}
   return false;
 }
-function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false,bottomInset=null,puckBearing=null}={}){
+function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,baseZoom=17,preserveZoom=false,bottomInset=null,puckBearing=null,headingOnly=false}={}){
   if(!map)return null;
   const state=navState(map);
   const normalizedRoute=Array.isArray(route)?route:[];
@@ -306,6 +302,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
   state.lastFix={...fix};
   state.lastRoute=normalizedRoute;
   state.baseZoom=baseZoom;
+  state.headingOnly=!!headingOnly;
   if(navHasNumber(bottomInset)&&Number(bottomInset)>=0)state.lastBottomInset=Number(bottomInset);
   if(force){
     state.follow=true;
@@ -334,7 +331,7 @@ function followNavigationCamera(map,fix={},route=[],{force=false,duration=420,ba
     ? {lat:Number(fix.lat),lng:Number(fix.lng)}
     : decision.center);
   const speed=navHasNumber(fix?.speed)&&Number(fix.speed)>=0?Number(fix.speed):null;
-  const target={...decision,bearing:navHasNumber(puckBearing)?navNormalizeBearing(Number(puckBearing)):decision.bearing,zoom:targetZoom,cameraCenter:riderCenter};
+  const target={...decision,bearing:navHasNumber(puckBearing)?navNormalizeBearing(Number(puckBearing)):decision.bearing,pitch:headingOnly?0:decision.pitch,zoom:targetZoom,cameraCenter:riderCenter};
   state.bearing=target.bearing;
   state.lastDecision=target;
   if(state.gestureActive&&!force)return target;
@@ -395,7 +392,8 @@ function reanchorNavigationAfterGesture(map){
       duration:650,
       baseZoom:state.baseZoom,
       preserveZoom:true,
-      bottomInset:state.lastBottomInset
+      bottomInset:state.lastBottomInset,
+      headingOnly:state.headingOnly
     });
   },110);
   return true;
@@ -449,7 +447,7 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
         state.gestureActive=true;
         return;
       }
-      suspendNavigationFollowForPan(map);
+      setNavigationFollow(map,false);
     };
     const keepGesture=e=>{
       if(!e?.originalEvent)return;
@@ -469,18 +467,7 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
       }
       if(state.follow)reanchorNavigationAfterGesture(map);
     };
-    const endPan=e=>{
-      if(!e?.originalEvent)return;
-      const state=navState(map);
-      if(!state.lastFix){
-        state.gestureActive=false;
-        state.follow=true;
-        return;
-      }
-      if(!state.follow)resumeNavigationFollowAfterPan(map,8000);
-    };
     try{map.on('dragstart',beginGesture)}catch(_){}
-    try{map.on('dragend',endPan)}catch(_){}
     for(const event of ['zoomstart','rotatestart','pitchstart'])try{map.on(event,keepGesture)}catch(_){}
     for(const event of ['zoomend','rotateend','pitchend'])try{map.on(event,endGesture)}catch(_){}
   }else{
@@ -608,7 +595,7 @@ function removeGeoJsonLine(map,id){
 function remainingNavigationRoute(route,point,{bearing=null,speed=null,accuracy=null}={}){
   if(!valid(point?.lat,point?.lng)||!navHasNumber(accuracy)||Number(accuracy)>35)return null;
   const decision=navCameraDecision({...point,bearing,speed,accuracy,route});
-  const match=decision?.routeMatch;if(!match||decision.routeBearingRejected||match.offRouteMeters>25)return null;
+  const match=decision?.routeMatch;if(!match||decision.routeBearingRejected||match.offRouteMeters>12)return null;
   let walked=0;const part=match.part,remaining=[];
   remaining.push([match.snapped.lng,match.snapped.lat]);
   for(let i=0;i<part.length-1;i++){
