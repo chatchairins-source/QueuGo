@@ -8,7 +8,7 @@ let checks=0;const eq=(a,b,m)=>{assert.deepEqual(a,b,m);checks++;};
   const paths=[];const order={id:'order-'+mode,status:mode==='pickup'?'ready':'in_progress',subtotal:100,total_amount:125,_shop:{shop_name:'Isolated Merchant'},_customer:{name:'Isolated Customer'}};
   Object.assign(w,{S:{user:{id:'rider-a'},session:{authUserId:'auth-a',sessionId:'session-a'},pos:{lat:15,lng:103}},
    riderActionInFlight:new Set(),QTICON:{back:'',loc:'',jobs:'',user:'',phone:'',chat:''},qgHeaderWordmark:()=>'',esc:v=>String(v??''),statusFromRow:o=>o.status,
-   qgShortOrder:o=>o.id,qgCleanOrderNote:()=>'',riderEarning:()=>25,qgHeaderWordmark:(className='qg-header-wordmark')=>`<span class="${className}" aria-label="QueueGo"><span class="qg-wordmark-queue">Queue</span><span class="qg-wordmark-go">Go</span></span>`,toast(){},getAccessToken:async()=> 'isolated-token',
+   qgShortOrder:o=>o.id,qgCleanOrderNote:()=>'',riderEarning:()=>25,toast(){},getAccessToken:async()=> 'isolated-token',
    qgRiderRefreshAfterCommit:async()=>{},qgRiderVoiceCall(){},openChat(){},
    qgPersistProofFile:async(kind,o,file)=>({file,data:'data:image/jpeg;base64,AA'}),
    qgRestoreProofFile:async()=>null,
