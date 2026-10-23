@@ -26,7 +26,7 @@ const laundryDirectoryMigration=read('supabase/migrations/20261023191000_custome
 for(const label of ['อาหาร','เครื่องดื่ม','ร้านขายของชำ','ฝากซัก','ตลาดสด'])ok(customer.includes('<b>'+label+'</b>'),'missing service '+label);
 ok(customer.includes("go('market')"),'market must be a dedicated route');
 ok(/location\.href='laundry\/(?:\?[^']*)?'/.test(customer),'laundry must use dedicated module');
-ok(customer.includes("category!=='laundry'"),'Laundry shops must not appear in Customer Home nearby-store list');
+ok(customer.includes("return category==='food'||category==='cafe';"),'Customer Home nearby-store list must show food and cafe shops only');
 ok(laundry.includes("qgRpc('queuego_laundry_customer_catalog',{})"),'Laundry customer directory must use authoritative catalog RPC');
 ok(!laundry.includes("qgDb('laundry_hubs?select=id,name,shop_id"),'Laundry customer directory must not read raw Laundry hubs');
 ok(laundry.includes("safe(x.shop_name||x.name)"),'Laundry directory must render registered shop identity from catalog');
