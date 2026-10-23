@@ -57,6 +57,7 @@ create or replace function qg_private.guard_rider_work_choice()
 returns trigger language plpgsql security definer set search_path='' as $$
 begin
  if new.rider_id is not null and new.rider_id is distinct from old.rider_id then
+  if new.fulfillment_vertical is distinct from old.fulfillment_vertical then raise exception 'service cannot change during assignment' using errcode='42501'; end if;
   perform 1 from public.rider_profiles where id=new.rider_id for update;
   if not qg_private.rider_work_allows(new.rider_id,new.id) then raise exception 'rider has not selected this service' using errcode='42501'; end if;
   if new.route_bundle_id is not null and not exists(select 1 from qg_private.rider_dispatch_preferences where rider_id=new.rider_id and bundle_enabled) then raise exception 'rider has disabled bundled jobs' using errcode='42501'; end if;

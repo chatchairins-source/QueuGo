@@ -45,6 +45,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
  await rejects(()=>db.exec("update orders set rider_id='00000000-0000-0000-0000-000000000001' where fulfillment_vertical='grocery'"));
  await db.exec("update orders set rider_id=null where fulfillment_vertical='food'");
  await rejects(()=>db.exec("update orders set rider_id='00000000-0000-0000-0000-000000000001',route_bundle_id='20000000-0000-0000-0000-000000000001' where fulfillment_vertical='food'"));
+ await rejects(()=>db.exec("update orders set rider_id='00000000-0000-0000-0000-000000000001',fulfillment_vertical='ride' where fulfillment_vertical='food'"));
  await save({auto_accept:false,bundle_enabled:true,services:['food']});await db.exec("update orders set rider_id='00000000-0000-0000-0000-000000000001',route_bundle_id='20000000-0000-0000-0000-000000000001' where fulfillment_vertical='food'");checks++;
  await db.exec("set test.actor='00000000-0000-0000-0000-000000000002'");p=await read();eq(p.auto_accept,false);eq(p.capabilities.ride,true);eq(p.bundle_enabled,false);
  await save({auto_accept:false,bundle_enabled:false,services:['ride']});eq((await read()).services,['ride']);
