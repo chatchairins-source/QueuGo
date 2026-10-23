@@ -31,7 +31,7 @@ ok(customerLaundry.includes("V.laundry=async function(id,ticket)"),'Laundry must
 ok(customerLaundry.includes("qgLoadCustomerLaundryCatalog()")&&customerLaundry.includes("queuego_laundry_customer_catalog"),'Laundry storefront must use the authoritative catalog RPC');
 ok(customerLaundry.includes("eligible.map(shopCard).join('')"),'Laundry directory must reuse the same shop cards as food and cafe');
 ok(customerLaundry.includes("V.laundry=async function(id,ticket)")&&customerLaundry.includes("class=\"cover\"")&&customerLaundry.includes("class=\"intro\""),'Laundry detail must reuse the shared shop cover and introduction layout');
-ok(customerLaundry.includes("class=\"mi\"")&&customerLaundry.includes("qg-laundry-service"),'Laundry detail must show Laundry-specific services in the shared menu layout');
+ok(customerLaundry.includes("class=\"mi qg-laundry-service\"")&&customerLaundry.includes("qg-laundry-service"),'Laundry detail must show Laundry-specific services in the shared menu layout');
 ok(customerLaundry.includes("queuego_place_laundry_order_v2"),'Laundry checkout must keep using the Laundry order RPC');
 ok(customerLaundry.includes("renderLaundryQuantity")&&customerLaundry.includes("addEventListener('input',renderLaundryQuote)"),'Laundry quantity entry must update the quote without recreating the input');
 ok(customer.includes("DEDICATED_MARKET_CATS"),'normal search must exclude dedicated market shop categories');
