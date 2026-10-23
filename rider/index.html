@@ -887,7 +887,7 @@ function clearRiderRoute(){
   riderRouteRequest?.controller.abort();riderRouteRequest=null;riderRouteCache=null;riderRouteGeometry=[];
   riderRouteOffRouteSince=0;riderRouteLastRerouteAt=0;
   (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
-  const badge=document.getElementById('route-badge');if(badge)badge.style.display='none';const speedSign=document.getElementById('qg-speed-limit-sign');if(speedSign){speedSign.classList.remove('show');speedSign.textContent='';speedSign.setAttribute?.('aria-hidden','true')}
+  const badge=document.getElementById('route-badge');if(badge)badge.style.display='none';const speedSign=document.getElementById('qg-speed-limit-sign');if(speedSign){speedSign.classList?.remove?.('show');speedSign.textContent='';speedSign.setAttribute?.('aria-hidden','true')}
 }
 function qgRenderRiderRemainingRoute(position){
   if(!riderRouteCache||riderRouteCache.map!==S.map||!riderRouteGeometry.length)return;
