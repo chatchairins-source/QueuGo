@@ -1982,3 +1982,8 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Corrected stale CHECKLIST signing state: all four inputs installed and CI39890564617 content validation PASS; overall readiness still FAILS for backend3. No repeat key generation.
 - Public privacy/deletion/client asset HTTP200 and byte equality with Web9eb3dac1 verified; hashes in docs/merchant-play-public-url-verification-20261023.json. No actual login/deletion/Production mutation. Refreshed existing Store asset pack; no AAB or mock screenshots.
 - NEXT remains secure backend/backup prerequisites plus real Merchant/cashier/device/reviewer acceptance and certified-current-source build. No app source changed or physical/release PASS invented.
+
+
+## 2026-10-23 Merchant certified-lineage reconciliation
+- PR641 draft targets certified release; merge67a16ffd retains current Merchant tree1c538ec5 and both original histories, with no application delta. Native Pilot39892548703 IN PROGRESS; local source313/workflow57/negative release guard PASS. Native successor advanced with expected-head lease; no force/reset.
+- Production read-only: ACTIVE_HEALTHY, private evidence bucket0 objects. Tools do not expose service-role key/DB password; missing backend3 and real physical acceptance cannot be invented. NEXT: inspect exact67 CI first failure, reconcile newest role sources before final three-app release, securely configure backend/backup and collect trusted physical evidence.

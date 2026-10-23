@@ -6,6 +6,9 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
 ## Merchant Play preparation — 2026-10-23
 
+- IN PROGRESS (release lineage): draft PR #641 targets the existing certified release branch. Merge source `67a16ffd369c3cdebd7a80457281d2bf9b6ce8a6` preserves the exact Merchant tree (no app-source overwrite) while retaining both histories. Native Pilot `39892548703` is running; source313, workflow57 and negative release guard PASS. Do not merge/publish as certified before required gates pass.
+- Read-only Production check: project ACTIVE_HEALTHY; release evidence bucket exists, is private and contains zero objects. Connected tools can query the project but cannot provide service-role secret or DB password. Existing backend3 and real-device evidence remain concrete external blockers. No Production data or access changed.
+
 - DONE (signing prerequisite): PR #637 source `e824e7cd`, merged `a5300b90`. Exact readiness run `39890564617` / job `120209043257` passes Firebase configuration for all three packages and validates the installed keystore store password, alias and private-key password. Certificate SHA-256 `341d7767b68f4f151714bf13bfed79b9cb69181f2f8c1336a52939038181b994` matches the saved private backup. All four signing secrets are installed; never regenerate the key.
 - Owner confirms first Merchant upload; proposed versionName `1.0.0`, versionCode `1` is based on owner attestation. Console readback remains open.
 - DONE (public URL retrieval): privacy, account-deletion page and deletion client script return HTTP 200 and match Web main `9eb3dac112ab0003c5b36dd844c3abbcff1decac` byte-for-byte. Evidence: `docs/merchant-play-public-url-verification-20261023.json`. This does not certify authenticated account deletion.
