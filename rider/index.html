@@ -1590,13 +1590,15 @@ function drawActiveRoute(){
     return String(cur?.pickup_id||cur?.pickup_sequence||'')===targetKey;
   };
   if(riderRouteRequest?.scope===scope&&riderRouteRequest.map===map)return riderRouteRequest.task;
+  if(riderRouteRetryScope!==scope){riderRouteRetryScope=null;riderRouteRetryAfter=0}
+  if(riderRouteRetryScope===scope&&Date.now()<riderRouteRetryAfter)return Promise.resolve();
   if(riderRouteCache?.scope!==scope||riderRouteCache?.map!==map)clearRiderRoute();
   if(riderRouteCache&&!qgRiderRouteNeedsReroute(pos,scope,map))return Promise.resolve();
   if(document.hidden||!navigator.onLine)return Promise.resolve();
   const controller=new AbortController(),request={scope,map,controller};
   const timer=setTimeout(()=>controller.abort(),12000);
   const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');
-  if(badge)badge.style.display='block';if(txt&&!riderRouteCache)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
+  if(badge)badge.style.display='flex';if(txt&&!riderRouteCache)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
   // Offer preview may frame Rider + pickup once. Active navigation stays camera-locked
   // to the Rider; repeated route refreshes must never yank the viewport into fitBounds.
   if(isOfferPreview&&!riderRouteCache)focusRiderNavigation(map,pos,{lat:Number(lat),lng:Number(lon)});
@@ -1614,10 +1616,17 @@ function drawActiveRoute(){
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteSince=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label,instructions,customerNote};
+      riderRouteOffRouteSince=0;riderRouteRetryScope=null;riderRouteRetryAfter=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label,instructions,customerNote};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
       if(!isOfferPreview&&S.activeTab==='home')renderHomeDock();
-    }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
+    }catch(e){
+      if(riderRouteRequest===request&&current()){
+        riderRouteRetryScope=scope;riderRouteRetryAfter=Date.now()+15000;
+        if(badge&&!riderRouteCache)badge.style.display='none';
+        if(txt)txt.textContent=label+' • Route Server ยังไม่พร้อม';
+        if(Date.now()-riderRouteErrorToastAt>30000){riderRouteErrorToastAt=Date.now();try{toast('QueueGo Navigation ยังเชื่อมต่อ Route Server ไม่ได้')}catch(_){}}
+      }
+    }
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
   })();riderRouteRequest=request;return request.task;
 }
