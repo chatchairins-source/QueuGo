@@ -2022,7 +2022,7 @@ function renderHomeDock(){
    document.getElementById('status-switch').onclick=toggleOnline;updateStatusUI();return;
  }
  if(!S.openJobs.length){
-   qgSetHomeDockHTML(dock,`<section class="qg-home-card qg-ready-status-card"><div class="qg-home-status-row"><div class="qg-home-title"><span class="qg-home-icon">${QTICON.home}</span><div><h2>พร้อมรับงาน</h2><p>${S.pos?'กำลังค้นหางานใกล้คุณ':'กำลังรอตำแหน่ง GPS'}</p></div></div>${qgAvailabilitySwitchHTML()}</div></section>${qgLaundryPoolHTML()}`,true);
+   qgSetHomeDockHTML(dock,`<section class="qg-home-card qg-ready-status-card"><div class="qg-home-status-row"><div class="qg-home-title"><div><h2>พร้อมรับงาน</h2><p>${S.pos?'กำลังค้นหางานใกล้คุณ':'กำลังรอตำแหน่ง GPS'}</p></div></div>${qgAvailabilitySwitchHTML()}</div></section>${qgLaundryPoolHTML()}`,true);
    document.getElementById('status-switch').onclick=toggleOnline;updateStatusUI();return;
  }
  const shown=S.openJobs.slice(0,1);qgSetHomeDockHTML(dock,shown.map(x=>jobCardHTML(x.order,x)).join('')+qgLaundryPoolHTML(),false);shown.forEach(x=>bindJobCardEvents(x.order));
