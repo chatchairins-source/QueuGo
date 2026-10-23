@@ -2,7 +2,7 @@
 
 - Stream: display each registered Laundry shop's real profile cover, falling back to its profile logo. The catalog returns shop identities, so the page fetches only the approved profile photo fields for catalog shop IDs under the authenticated session.
 - ROOT CAUSE: publicPhotoUrl used a regex character class containing a doubled backslash before s, which rejects the letter s and therefore filtered Supabase Storage URLs such as shop cover/logo URLs. Confirmed in committed laundry/index.html at branch HEAD c4d5db0208dafc4f661451a4b794541cdaeefea4.
-- IN PROGRESS (source/test): URL validation now uses the browser URL parser and accepts only HTTPS URLs; regression tests execute the helper against a Supabase Storage URL containing s and reject HTTP. Source commit c4d5db0208dafc4f661451a4b794541cdaeefea4; test commit 494a7b98bab1482eaf97d717128d4f66d2a66543.
+- IN PROGRESS (source/test): URL validation now uses the browser URL parser and accepts only HTTPS URLs; regression tests execute the helper against a Supabase Storage URL containing s and reject HTTP. Source commit c4d5db0208dafc4f661451a4b794541cdaeefea4; test commits 494a7b98bab1482eaf97d717128d4f66d2a66543 and f790813249ee1dbddfac498ed2a4de5bb756278f (correct helper boundary to locate newline).
 - NEXT: open a PR from this branch, verify exact-head targeted/full CI and required review/gates, then merge only when the repository gates permit and verify GitHub Pages and Render deployments.
 
 ## 2026-10-23 Customer Laundry registered directory + Render release
