@@ -105,7 +105,7 @@
       '<div class="qg-pickup-row"><span>'+QTICON.loc+'</span><div><small>จุดหมาย</small><b>'+esc(o.delivery_address||'จุดหมาย')+'</b></div></div></div>'+
       (st==='in_progress'?'<div class="qg-flow-cash"><small>เก็บเงินสดค่าโดยสาร</small><b>฿'+cash.toLocaleString('th-TH')+'</b><span>กดจบเที่ยวแล้วระบบจะถามยืนยันอีกครั้ง</span></div>':'')+
       '<div class="qg-job-tools"><button class="qg-job-tool" id="chat-'+esc(o.id)+'">'+QTICON.chat+'<span>ติดต่อผู้โดยสาร</span></button></div>'+
-      '<button class="qg-btn qg-btn-primary qg-main-action '+(st==='in_progress'&&nearDrop?'qg-ride-complete-ready':'')+'" id="primary-action-'+esc(o.id)+'" '+(disabled?'disabled':'')+'>'+QTICON.loc+'<span>'+esc(label)+'</span></button></article>';
+      '<button class="qg-btn qg-btn-primary qg-main-action" id="primary-action-'+esc(o.id)+'" '+(disabled?'disabled':'')+'>'+QTICON.loc+'<span>'+esc(label)+'</span></button></article>';
   }
 
   jobCardHTML=function(o,meta){
