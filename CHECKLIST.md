@@ -2,11 +2,11 @@
 
 - Stream: display each registered Laundry shop's real profile cover, falling back to its profile logo. The catalog returns shop identities, so the page fetches only the profile photo fields for catalog shop IDs under the authenticated session.
 - ROOT CAUSE: publicPhotoUrl used a regex character class containing a doubled backslash before s, rejecting the letter s and filtering Supabase Storage URLs. Fixed with browser URL parsing and HTTPS-only validation.
-- DONE (source/test): PR #688 merged as badd6f1c3645a7a456ca08fcea2b212d84fdbe29. Exact-head RC run 39961728447 SUCCESS on 823284b3a4b91d72db334e702e4a514126b5b087; npm test and mobile WebKit checks passed. Regression covers the real Supabase Storage URL pattern and HTTP rejection. No schema or Production data changes.
-- DONE (Pages): GitHub Pages run 39962437420 SUCCESS on merge badd6f1c3645a7a456ca08fcea2b212d84fdbe29.
-- IN PROGRESS (post-merge RC): push run 39962437631 on merge badd6f1c3645a7a456ca08fcea2b212d84fdbe29; npm test passed, currently still in the WebKit installation step with no reported failure.
-- BLOCKED (Render release): queuego-web is configured for main with autoDeploy enabled, but no deploy for badd6f1c3645a7a456ca08fcea2b212d84fdbe29 exists; latest LIVE deploy still serves 000c9fdd29a7a17ce182425835d69a47873d2268. Manual trigger requires an explicitly selected workspace. Render listed one workspace: My Workspace (tea-dbdejavavr4c739q33l0); trigger was rejected with “no workspace selected,” so no deployment started.
-- NEXT: owner must select My Workspace in the Render connector; then trigger a deploy for queuego-web, verify it reaches LIVE on badd6f1c3645a7a456ca08fcea2b212d84fdbe29, and confirm the deployed Laundry page reads the registered photos. Keep post-merge RC run status in view.
+- DONE (source/test): PR #688 merged as badd6f1c3645a7a456ca08fcea2b212d84fdbe29. Exact-head QueueGo RC run 39961728447 SUCCESS on 823284b3a4b91d72db334e702e4a514126b5b087; npm test and mobile WebKit checks passed. Regression covers a Supabase Storage HTTPS URL and HTTP rejection. No schema or Production data changes.
+- DONE (GitHub Pages): merge deployment run 39962437420 SUCCESS on badd6f1c3645a7a456ca08fcea2b212d84fdbe29. Follow-up Pages run 39963884315 also SUCCESS on checklist-only commit 2128c26ddf72cda510d06eab2948e0d4ce6487d6.
+- IN PROGRESS (main RC): run 39963885677 on 2128c26ddf72cda510d06eab2948e0d4ce6487d6; no failure reported. The earlier post-merge RC run 39962437631 was cancelled after the checklist update queued the newer main run.
+- BLOCKED (Render): owner chose to stop at GitHub Pages. No Render deploy was started; Render is outside this request's release scope.
+- NEXT: verify the shop photo appears in the customer's Laundry page on the owner's browser/device. Do not claim visual acceptance from CI alone.
 
 
 ## 2026-10-23 Customer Laundry registered directory + Render release
