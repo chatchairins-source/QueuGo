@@ -1,8 +1,16 @@
 # QueueGo Active Work Checklist
 
-Last governance checkpoint: 2026-10-23; latest verified main `be33b8318967ad6105222efa8305fec8005a5335`
+Last governance checkpoint: 2026-10-23; latest verified main `9eb3dac112ab0003c5b36dd844c3abbcff1decac`
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
+
+## Current verified Rider Web checkpoint — 2026-10-23
+
+- Current Web main: `9eb3dac112ab0003c5b36dd844c3abbcff1decac`, merged from successor PR #636 (`fix/rider-web-benchmark-main-reconcile-v3-20261023`, exact head `e36b2a49f6877d18212b98caa14511dfe52a62f5`). PR #629 and #632 are superseded and closed; do not merge or restart from them.
+- Exact-head QueueGo RC `39890314962` passed before merge. GitHub Pages deployment `39891035608` passed on merge SHA `9eb3dac112ab0003c5b36dd844c3abbcff1decac`. Post-merge main RC `39891036067` has already passed `npm test`; remaining browser checks were still running when this checkpoint was written.
+- Rider Web keeps QueueGo Map-only route authority, 30 m / 3 s generic off-route policy, immediate missed-turn reroute guard, 25 m route snap, maneuver HUD, 8 s post-pan follow recovery, durable pickup/delivery proof, cash confirmation, and Ride/Express modules. No Longdo/legacy route fallback is permitted.
+- Release status remains **BLOCKED** only for evidence that CI cannot certify: physical Rider road/GPS behavior and related device runtime acceptance. Do not claim physical-device PASS from Web/CI evidence.
+- **NEXT:** finish/read back post-merge main RC `39891036067`; if green, retain `9eb3dac1…` as the deployed Rider Web baseline. Any later Rider change must branch from current main and preserve this successor instead of reviving #629/#632.
 
 ## Current verified POS checkpoint — 2026-10-23
 
