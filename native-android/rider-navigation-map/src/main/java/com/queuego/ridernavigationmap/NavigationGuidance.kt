@@ -89,7 +89,8 @@ class NavigationProgressTracker(
             movingSpeed >= MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND &&
             nextRequiresCourseChange &&
             nextDistanceMeters <= PASSED_MANEUVER_DISTANCE_TOLERANCE_METERS &&
-            match.offRouteMeters >= PASSED_MANEUVER_MIN_OFF_ROUTE_METERS
+            match.offRouteMeters >= PASSED_MANEUVER_MIN_OFF_ROUTE_METERS &&
+            match.offRouteMeters <= BASE_OFF_ROUTE_THRESHOLD_METERS
         val missedManeuver = passedManeuver || (
             offRoute &&
                 movingSpeed >= MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND &&
