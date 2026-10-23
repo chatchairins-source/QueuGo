@@ -40,7 +40,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('พร้อมรับงานแล้ว'),false);
  eq((source.match(/id="status-switch"/g)||[]).length,1);
  eq(source.includes("label.textContent=S.online?'พร้อมรับงาน':'พักรับงาน'"),true);
- eq(source.includes("qgHeaderWordmark('qg-brand-pill')"),false);
+ eq(source.includes("qgHeaderWordmark('qg-brand-pill')"),true);
+ eq(source.includes('opacity:.62'),true);
  eq(source.includes('.qg-route-badge,.qg-route-badge.show{display:none!important}'),true);
  eq(source.includes('<header class="qg-topbar"><div class="qg-speed-pill"'),true);
  eq(source.includes('id="status-label">${S.online?\'พร้อมรับงาน\':\'พักรับงาน\'}'),true);
