@@ -6,6 +6,8 @@ private const val WEAK_GPS_ACCURACY_METERS = 35f
 private const val BASE_OFF_ROUTE_THRESHOLD_METERS = 30.0
 private const val MISSED_MANEUVER_WINDOW_METERS = 90.0
 private const val MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND = 2.0f
+private const val PASSED_MANEUVER_MIN_OFF_ROUTE_METERS = 8.0
+private const val PASSED_MANEUVER_MAX_ACCURACY_METERS = 20f
 private const val MISSED_MANEUVER_REROUTE_COOLDOWN_MILLIS = 3_000L
 private const val DEFAULT_ARRIVAL_METERS = 28.0
 private const val ARRIVAL_ACCURACY_MULTIPLIER = 1.4
@@ -80,10 +82,19 @@ class NavigationProgressTracker(
         val movingSpeed = fix.speedMetersPerSecond
             ?.takeIf { it.isFinite() && it >= 0f }
             ?: 0f
-        val missedManeuver = offRoute &&
+        val nextDistanceMeters = next?.second ?: Double.POSITIVE_INFINITY
+        val passedManeuver = !weakGps &&
+            (accuracy == null || accuracy <= PASSED_MANEUVER_MAX_ACCURACY_METERS) &&
             movingSpeed >= MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND &&
             nextRequiresCourseChange &&
-            (next?.second ?: Double.POSITIVE_INFINITY) <= MISSED_MANEUVER_WINDOW_METERS
+            nextDistanceMeters <= 0.0 &&
+            match.offRouteMeters >= PASSED_MANEUVER_MIN_OFF_ROUTE_METERS
+        val missedManeuver = passedManeuver || (
+            offRoute &&
+                movingSpeed >= MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND &&
+                nextRequiresCourseChange &&
+                nextDistanceMeters <= MISSED_MANEUVER_WINDOW_METERS
+            )
 
         val now = nowMillis()
         if (offRoute) {
