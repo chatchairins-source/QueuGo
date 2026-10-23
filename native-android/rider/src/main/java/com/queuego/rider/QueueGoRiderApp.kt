@@ -3,6 +3,9 @@ package com.queuego.rider
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animate
 
 import android.Manifest
 import android.content.Context
@@ -15,6 +18,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
 import com.queuego.shared.QueueGoTheme
 import com.queuego.shared.QueueGoVoiceCallOverlay
 import com.queuego.shared.NativeVoiceCallController
@@ -40,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.geometry.Offset
@@ -1786,8 +1791,25 @@ private fun RiderHome(
                     actionMessage = "กรุณาถ่ายรูปหลักฐานก่อน"
                     return@VerificationScreen
                 }
-                if (actionBusy || !requireServerNetwork()) return@VerificationScreen
+                if (actionBusy) return@VerificationScreen
                 val location = lastKnownLocation(context)
+                val syncRequest = RiderProofSyncRequest(
+                    userId = auth.user.id,
+                    workId = job.id,
+                    mode = verifyMode ?: return@VerificationScreen,
+                    photoUri = uri.toString(),
+                    marketPickupId = verifyMarketPickup?.pickupId,
+                    marketOrderId = job.marketOrderId,
+                    marketPickupAmount = verifyMarketPickup?.shopAmount,
+                    latitude = location?.first,
+                    longitude = location?.second
+                )
+                RiderProofSyncScheduler.enqueue(context, syncRequest)
+                if (!networkAvailable) {
+                    actionMessage = "บันทึกรูปแล้ว · จะซิงก์อัตโนมัติเมื่อมีอินเทอร์เน็ต"
+                    return@VerificationScreen
+                }
+                if (!requireServerNetwork()) return@VerificationScreen
                 actionBusy = true
                 actionMessage = null
                 scope.launch {
@@ -1836,6 +1858,7 @@ private fun RiderHome(
                         }
                     }
                     result.onSuccess { mutationResult ->
+                        RiderProofSyncScheduler.cancel(context, syncRequest)
                         val completedMode = verifyMode
                         val completedMarketPickupId = verifyMarketPickup?.pickupId
 
@@ -2270,6 +2293,11 @@ private fun RiderHome(
                     )
                     snapshot = acceptedSnapshot
                     persistCommittedSnapshot(acceptedSnapshot)
+
+                    // Accept is the start of work. Enter QueueGo follow/navigation mode
+                    // immediately; there is no second navigation action for the rider.
+                    routeOverviewActive = false
+                    recenterSignal += 1
 
                     val updated = runCatching { api.riderSnapshot(auth) }
                         .onFailure { if (it is CancellationException) throw it }
@@ -3033,7 +3061,19 @@ private fun RiderHome(
                             onDetails = { detailJob = current.activeJob },
                             onCall = {
                                 if (current.activeJob.status in setOf("rider_assigned", "assigned", "preparing", "ready")) {
-                                    startShopVoice(current.activeJob.id)
+                                    val pickupId = current.marketPickups.firstOrNull { !it.done }?.pickupId
+                                    if (current.activeJob.marketOrderId != null && pickupId != null) {
+                                        scope.launch {
+                                            runCatching { api.pickupIssueOrderId(auth, pickupId) }
+                                                .onSuccess(::startShopVoice)
+                                                .onFailure {
+                                                    if (it is CancellationException) throw it
+                                                    actionMessage = it.message ?: "ยังระบุร้านของจุดรับนี้ไม่ได้"
+                                                }
+                                        }
+                                    } else {
+                                        startShopVoice(current.activeJob.id)
+                                    }
                                 } else {
                                     startCustomerVoice(current.activeJob.id)
                                 }
@@ -3248,6 +3288,8 @@ private fun RiderHome(
                 originLongitude = completed.deliveryLng
             )
             RiderDeliverySuccess(
+                auth = auth,
+                api = api,
                 job = completed,
                 recommendation = afterWorkRecommendation,
                 onRecommendation = { item ->
@@ -3752,18 +3794,6 @@ private fun ActiveJobCard(
                 }
             }
 
-            Button(
-                onClick = onQueueGoNavigate,
-                enabled = !busy && job.navigationTarget != null,
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = QgRed)
-            ) {
-                QgIcon("route", Modifier.size(19.dp), Color.White)
-                Spacer(Modifier.width(7.dp))
-                Text("นำทางด้วย QueueGo", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Black)
-            }
-
             if (pickup && details != null) {
                 RiderPickupGuideBlock(
                     pickupInstructions = details.pickupInstructions,
@@ -4160,6 +4190,7 @@ private fun VerificationScreen(
     val pickup = mode == "pickup" || mode == "expressPickup"
     val marketPickupMode = mode == "marketPickup"
     var previewQuality by remember(photoUri) { mutableStateOf<RiderEvidenceQuality?>(null) }
+    var showPickupConfirmation by remember(mode, job.id, photoUri) { mutableStateOf(false) }
     val previewReady = previewQuality?.acceptable == true
     val photoReady = photoUri != null
     val deliveryReady = if (expressMode) {
@@ -4193,9 +4224,9 @@ private fun VerificationScreen(
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(Modifier.padding(horizontal = 11.dp, vertical = if (shortScreen) 9.dp else 12.dp)) {
                         Text(when { expressMode && pickup -> "รับพัสดุที่จุดรับ"; expressMode -> "ส่งพัสดุที่จุดส่ง"; pickup || marketPickupMode -> "รับสินค้าที่ร้าน"; else -> "ส่งสินค้าให้ลูกค้า" }, fontSize = 9.sp, color = QgMuted)
-                        Text(when { expressMode && pickup -> "ตรวจพัสดุและถ่ายรูป"; expressMode -> "ถ่ายรูปก่อนส่งมอบ"; marketPickupMode -> "ตรวจจุดรับและถ่ายรูป"; pickup -> "ตรวจสอบรายการและถ่ายรูป"; else -> "ตรวจสอบและส่งมอบสินค้า" },
+                        Text(when { expressMode && pickup -> "ตรวจพัสดุและถ่ายรูป"; expressMode -> "ถ่ายรูปก่อนส่งมอบ"; marketPickupMode -> "ตรวจจุดรับและถ่ายรูป"; pickup -> "ตรวจรายการและถ่ายใบเสร็จ"; else -> "ตรวจสอบและส่งมอบสินค้า" },
                             fontSize = if (shortScreen) 18.sp else 20.sp, fontWeight = FontWeight.Bold)
-                        Text(if (expressMode) "ใช้รูปหลักฐานหนึ่งรูปต่อจุด ห้ามข้ามขั้นตอน" else if (pickup || marketPickupMode) "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว" else "ตรวจรายการและถ่ายรูปหลักฐานในหน้าเดียว", fontSize = 9.sp, color = QgMuted)
+                        Text(if (expressMode) "ใช้รูปหลักฐานหนึ่งรูปต่อจุด ห้ามข้ามขั้นตอน" else if (pickup) "เช็กรายการและยอดรวมให้ตรง แล้วถ่ายใบเสร็จให้ชัดก่อนรับอาหาร" else if (marketPickupMode) "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว" else "ตรวจรายการและถ่ายรูปหลักฐานในหน้าเดียว", fontSize = 9.sp, color = QgMuted)
                     }
                 }
                 if (pickup && details != null) {
@@ -4343,7 +4374,9 @@ private fun VerificationScreen(
                                 "ให้เห็นพัสดุที่รับและจุดรับในเฟรมเดียว ภาพต้องชัด"
                             } else if (expressMode) {
                                 "ให้เห็นพัสดุและจุดส่งในเฟรมเดียว ภาพต้องชัด"
-                            } else if (pickup || marketPickupMode) {
+                            } else if (pickup) {
+                                "ถ่ายใบเสร็จให้เห็นรายการสินค้า จำนวน และยอดรวมครบในเฟรมเดียว ภาพต้องชัด อ่านยอดได้"
+                            } else if (marketPickupMode) {
                                 "ให้เห็นสินค้าทั้งหมดในเฟรมเดียว ภาพต้องชัด และอย่าบังสินค้า"
                             } else {
                                 "ให้เห็นสินค้าและจุดส่งในเฟรมเดียว ภาพต้องชัด และไม่จำเป็นต้องถ่ายหน้าลูกค้า"
@@ -4359,7 +4392,7 @@ private fun VerificationScreen(
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                         Column(Modifier.padding(10.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(when { expressMode && pickup -> "รูปตอนรับพัสดุ"; expressMode -> "รูปตอนส่งพัสดุ"; pickup || marketPickupMode -> "รูปตอนรับสินค้า"; else -> "รูปตอนส่งสินค้า" }, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(when { expressMode && pickup -> "รูปตอนรับพัสดุ"; expressMode -> "รูปตอนส่งพัสดุ"; pickup -> "รูปใบเสร็จ"; marketPickupMode -> "รูปตอนรับสินค้า"; else -> "รูปตอนส่งสินค้า" }, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 Text("จำเป็น", fontSize = 8.sp, color = QgMuted)
                             }
                             Box(Modifier.fillMaxWidth().padding(top = 8.dp).height(if (shortScreen) 108.dp else (screenHeight * .31f).coerceIn(160f, 215f).dp)
@@ -4387,7 +4420,7 @@ private fun VerificationScreen(
                 Text(
                     if (expressMode && pickup) "ถ่ายรูปพัสดุก่อนยืนยันรับ"
                     else if (expressMode) "ถ่ายรูปที่จุดส่งและเก็บค่าส่งก่อนจบงาน"
-                    else if (pickup || marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า"
+                    else if (pickup) "ต้องมีรูปใบเสร็จที่บันทึกแล้วก่อนยืนยันรับอาหาร" else if (marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า"
                     else "ถ่ายรูปหลักฐาน ตรวจยอดเงิน แล้วกดจบงานครั้งเดียว",
                     fontSize = 8.sp,
                     color = QgMuted,
@@ -4397,31 +4430,160 @@ private fun VerificationScreen(
         }
         Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 10.dp, vertical = 12.dp).widthIn(max = 660.dp).fillMaxWidth()
             .background(Color(0xFAFFFFFF), RoundedCornerShape(18.dp))) {
-            Button(
-                onClick = if (photoReady) onConfirm else onCamera,
-                enabled = !busy && if (photoReady) deliveryReady else true,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
-            ) {
-                if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
-                else Text(
-                    when {
-                        !photoReady && expressMode && pickup -> "ถ่ายรูปพัสดุที่รับ"
-                        !photoReady && expressMode -> "ถ่ายรูปพัสดุที่ส่ง"
-                        !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"
-                        !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"
-                        !photoReady -> "ถ่ายรูปตอนส่ง"
-                        expressMode && pickup -> "ยืนยันรับพัสดุ"
-                        expressMode -> "ส่งพัสดุและจบงาน"
-                        marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
-                        pickup -> "ยืนยันรับสินค้า"
-                        else -> "จบงาน"
-                    },
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+            if (photoReady && !pickup && !marketPickupMode) {
+                RiderSwipeCompleteAction(
+                    enabled = !busy && deliveryReady,
+                    busy = busy,
+                    label = if (expressMode) "สไลด์เพื่อยืนยันรับเงินและจบงาน" else "สไลด์เพื่อยืนยันรับเงินและจบงาน",
+                    onComplete = onConfirm
                 )
+            } else {
+                Button(
+                    onClick = when {
+                        !photoReady -> onCamera
+                        pickup && !expressMode && !marketPickupMode -> ({ showPickupConfirmation = true })
+                        else -> onConfirm
+                    },
+                    enabled = !busy && if (photoReady) deliveryReady else true,
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = if (pickup && !expressMode && !marketPickupMode && photoReady) Color(0xFF159947) else Color(0xFFF04455),
+                        disabledContainerColor = Color(0xFFDAD4D6)
+                    )
+                ) {
+                    if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
+                    else Text(
+                        when {
+                            !photoReady && expressMode && pickup -> "ถ่ายรูปพัสดุที่รับ"
+                            !photoReady && expressMode -> "ถ่ายรูปพัสดุที่ส่ง"
+                            !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"
+                            !photoReady && pickup -> "ถ่ายรูปใบเสร็จ"
+                            !photoReady -> "ถ่ายรูปตอนส่ง"
+                            expressMode && pickup -> "ยืนยันรับพัสดุ"
+                            marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
+                            pickup -> "ร้านเตรียมเสร็จแล้ว"
+                            else -> "ยืนยัน"
+                        },
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+        }
+
+        if (showPickupConfirmation) {
+            Dialog(
+                onDismissRequest = { if (!busy) showPickupConfirmation = false },
+                properties = DialogProperties(dismissOnBackPress = !busy, dismissOnClickOutside = !busy)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().widthIn(max = 430.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(Modifier.padding(18.dp)) {
+                        Text(
+                            "ได้รับอาหารแล้วใช่ไหม?",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF211E20)
+                        )
+                        Text(
+                            "ตรวจว่ารายการครบและเก็บรูปใบเสร็จไว้แล้ว ก่อนเริ่มนำส่งให้ลูกค้า",
+                            modifier = Modifier.padding(top = 6.dp),
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
+                            color = QgMuted
+                        )
+                        Button(
+                            onClick = {
+                                showPickupConfirmation = false
+                                onConfirm()
+                            },
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth().height(52.dp).padding(top = 14.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF159947))
+                        ) {
+                            Text("ใช่ ได้รับแล้ว", fontWeight = FontWeight.Black)
+                        }
+                        OutlinedButton(
+                            onClick = { showPickupConfirmation = false },
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth().height(50.dp).padding(top = 8.dp),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text("ไม่ กำลังรออยู่", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RiderSwipeCompleteAction(
+    enabled: Boolean,
+    busy: Boolean,
+    label: String,
+    onComplete: () -> Unit
+) {
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().height(58.dp)
+            .background(if (enabled) Color(0xFFFFEEF1) else Color(0xFFF3EFF0), RoundedCornerShape(20.dp))
+            .border(1.dp, Color(0xFFF2CDD5), RoundedCornerShape(20.dp))
+    ) {
+        val density = LocalDensity.current.density
+        val maxTravelDp = (maxWidth - 54.dp).coerceAtLeast(1.dp)
+        var dragDp by remember(enabled) { mutableStateOf(0f) }
+        val scope = rememberCoroutineScope()
+        val hapticView = LocalView.current
+        val completeThreshold = (maxTravelDp.value - 0.5f).coerceAtLeast(0f)
+        fun springBack() {
+            val start = dragDp
+            scope.launch {
+                animate(
+                    initialValue = start,
+                    targetValue = 0f,
+                    animationSpec = tween(durationMillis = 200)
+                ) { value, _ -> dragDp = value }
+            }
+        }
+        Text(
+            if (busy) "กำลังยืนยัน..." else label,
+            modifier = Modifier.align(Alignment.Center),
+            color = if (enabled) Color(0xFF7C4B55) else QgMuted,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black
+        )
+        Box(
+            Modifier.offset(x = dragDp.dp).size(54.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(if (enabled) Color(0xFFF04455) else Color(0xFFD6CDD0))
+                .pointerInput(enabled, busy, maxTravelDp) {
+                    if (!enabled || busy) return@pointerInput
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { change, amount ->
+                            change.consume()
+                            dragDp = (dragDp + amount / density).coerceIn(0f, maxTravelDp.value)
+                        },
+                        onDragEnd = {
+                            if (dragDp >= completeThreshold) {
+                                dragDp = maxTravelDp.value
+                                hapticView.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                onComplete()
+                            } else {
+                                springBack()
+                            }
+                        },
+                        onDragCancel = { springBack() }
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text("››", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
         }
     }
 }
