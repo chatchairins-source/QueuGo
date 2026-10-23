@@ -1,3 +1,12 @@
+## 2026-10-23 Rider switches and right-side map HUD
+
+- Owner requires current Rider Web successor only: replace work-preference square checkboxes with switches; toggling must save immediately so no “บันทึกการรับงาน” button remains; keep Rider speed and compass on the right side of the map.
+- DONE (source/test): PR #670 source `273924008e934b13938481d8bdd85a758ae22991`, branch `rider-switch-right-hud-20261023`. Existing work-preference inputs remain server-authoritative checkboxes semantically but render as QueueGo switches; each change autosaves through the existing `qg_rider_work_preferences` RPC, temporarily locks inputs during acknowledgement, restores the last acknowledged state on failure, and preserves the at-least-one-service rule. No Production preference writes were created for QA.
+- DONE (map presentation): speed readout moved from the top-left header into the existing right-side map tool stack; MapLibre navigation compass moved from top-left to top-right. Route geometry, numbered stops, GPS follow, camera, marker, dispatch and feature-gate logic are unchanged.
+- DONE (gate/merge): exact source RC run `39924716374` SUCCESS, including npm regression, WebKit/Admin/Merchant, Map mobile and Grocery render gates. PR #670 merged as `0175359263ed4a237977f3539f6e0e8aece39407`; source and merge tree are identical `a8e668621a1a9285933aee4f31f2743e1f00a0c3`.
+- DONE (deployment): GitHub Pages run `39925077934` SUCCESS on merge `01753592`. Render web deploy `dep-dbdhm6vb9u1s739occg0` is LIVE on the same merge. Build identifier `rider-20261023-switchhud1`.
+- NEXT: owner-device visual acceptance on Rider Profile and Home map. Do not claim physical-device PASS until checked on the actual phone. Retain this successor; do not restore older Rider files.
+
 ## 2026-10-23 Rider Web work preferences
 
 - Owner requests Rider choice of accepting bundles, automatic/manual acceptance and service types, including visible Passenger Ride. Continue from latest Web main `6df56209021a0a47fce1928861a63472a00d3f6b`; numbered map stops stay intact.
