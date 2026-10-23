@@ -18,7 +18,10 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("'route': '<svg class=\"ico\""),true);
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
- eq(source.includes('queuego-map-web.js?v=20261023-maponly1'),true);
+ eq(source.includes('queuego-map-web.js?v=20261023-switchhud1'),true);
+ eq(source.includes('queuego-rider-settings.css?v=20261023-switchhud1'),true);
+ eq(source.includes('work-preferences.js?v=20261023-switchhud1'),true);
+ eq(source.includes('<meta name="queuego-web-build" content="rider-20261023-switchhud1">'),true);
  eq(source.includes('queuego-map-service.js?v=20261023-render1'),true);
  eq(source.includes('<meta name="queuego-map-service-base" content="https://queuego-map-buriram.onrender.com">'),true);
  eq(source.includes('api.longdo.com/RouteService/geojson/route'),false);
@@ -51,8 +54,11 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('id="go-offline"'),false);
  eq((source.match(/id="status-switch"/g)||[]).length,1);
  eq(source.includes('function qgAvailabilitySwitchHTML()'),true);
- eq(source.includes('<header class="qg-topbar"><div class="qg-speed-pill"'),true);
- eq(source.includes("qgHeaderWordmark('qg-brand-pill')}</header>"),true);
+ eq(source.includes('<header class="qg-topbar"><div class="qg-speed-pill"'),false);
+ eq(source.includes('<header class="qg-topbar">${qgHeaderWordmark(\'qg-brand-pill\')}</header>'),true);
+ eq(source.includes('<div class="qg-map-tools"><div class="qg-speed-pill"'),true);
+ eq(source.includes('.qg-map .maplibregl-ctrl-top-right'),true);
+ eq(source.includes('.qg-map .maplibregl-ctrl-top-left'),false);
  eq(source.includes("document.getElementById('status-switch').onclick=toggleOnline;updateStatusUI();return;"),true);
  eq(source.includes("label.textContent=S.online?'ออนไลน์':'ออฟไลน์'"),true);
  eq(source.includes('.qg-route-badge,.qg-route-badge.show{display:none!important}'),true);

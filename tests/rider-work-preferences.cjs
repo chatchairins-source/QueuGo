@@ -1,4 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require('jsdom'),{PGlite}=require('@electric-sql/pglite');
+const settingsCss=fs.readFileSync('queuego-rider-settings.css','utf8');
 (async()=>{
  let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
  const dom=new JSDOM('<section id="settings"></section>',{url:'https://queuego.test/rider/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
@@ -10,15 +11,17 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
  vm.runInContext('const S=window.S;'+fs.readFileSync('rider/work-preferences.js','utf8'),dom.getInternalVMContext());
  const host=w.document.querySelector('#settings');await w.QueueGoRiderWork.mount(host);
  eq(host.textContent.includes('รับงานอัตโนมัติ'),true);eq(host.textContent.includes('รับงานพ่วง'),true);eq(host.textContent.includes('รับส่งผู้โดยสาร'),true);eq(host.querySelector('[value=ride]').disabled,true);eq(host.querySelector('[name=auto_accept]').checked,false);
+ eq(host.textContent.includes('บันทึกการรับงาน'),false);eq(host.querySelector('button[type=submit]'),null);eq(typeof host.querySelector('form').onchange,'function');
+ eq(settingsCss.includes('.qg-work-choice input[type=checkbox]{-webkit-appearance:none;appearance:none;width:52px;height:32px'),true);eq(settingsCss.includes('.qg-work-choice input[type=checkbox]:checked{background:#e6002d'),true);eq(settingsCss.includes('transform:translateX(20px)'),true);
  await w.QueueGoRiderWork.maybeAccept();eq(claims,0);
- host.querySelector('[name=auto_accept]').checked=true;host.querySelector('[name=bundle_enabled]').checked=true;
- await host.querySelector('form').onsubmit({preventDefault(){}});eq(stored.auto_accept,true);eq(stored.bundle_enabled,true);
+ let auto=host.querySelector('[name=auto_accept]');auto.checked=true;await host.querySelector('form').onchange({target:auto});eq(stored.auto_accept,true);
+ let bundle=host.querySelector('[name=bundle_enabled]');bundle.checked=true;await host.querySelector('form').onchange({target:bundle});eq(stored.bundle_enabled,true);
  await w.QueueGoRiderWork.maybeAccept();await w.QueueGoRiderWork.maybeAccept();eq(claims,1);
  w.S.openJobs=[{order:{id:'express',fulfillment_vertical:'express',_offerExpiresAt:new Date(Date.now()+30000).toISOString()}}];await w.QueueGoRiderWork.maybeAccept();eq(claims,1);
  w.S.openJobs=[{order:{id:'expired',fulfillment_vertical:'food',_offerExpiresAt:new Date(Date.now()-100).toISOString()}}];await w.QueueGoRiderWork.maybeAccept();eq(claims,1);
  w.S.online=false;await w.QueueGoRiderWork.maybeAccept();eq(claims,1);
  w.S.user={id:'other'};stored={...prefs};await w.QueueGoRiderWork.mount(host);eq(host.querySelector('[name=auto_accept]').checked,false);
- writeFailure=true;host.querySelector('[name=auto_accept]').checked=true;await host.querySelector('form').onsubmit({preventDefault(){}});eq(host.textContent.includes('ยังยืนยันการบันทึกไม่ได้'),true);
+ writeFailure=true;auto=host.querySelector('[name=auto_accept]');auto.checked=true;await host.querySelector('form').onchange({target:auto});eq(host.textContent.includes('บันทึกไม่สำเร็จ'),true);eq(host.querySelector('[name=auto_accept]').checked,false);
  dom.window.close();
  const db=new PGlite();
  await db.exec(`create role anon;create role authenticated;create role service_role;create schema qg_private;
