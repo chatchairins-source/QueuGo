@@ -18,8 +18,12 @@ for(const [rpc,kind] of Object.entries({
 ok(rider.includes('<script src="reliability.js?v=20261023-laundryfix1"></script>'),'Rider page must actually load the durable reliability layer');
 ok(rider.indexOf('<script src="reliability.js?v=20261023-laundryfix1"></script>')<rider.indexOf('<script>boot();</script>'),'durable reliability layer must load before Rider boot');
 ok(rider.indexOf('<script src="reliability.js?v=20261023-laundryfix1"></script>')<rider.indexOf('<script id="qg-rider-order-actions">'),'durable wrapper must exist before order-action UI can be used');
+ok(reliability.includes("['mode','invite-accept','invite-reject'].includes(laundry)"),'stale snapshot must not lock Laundry mode or invite decisions');
+ok(reliability.includes("pending||S.snapshotStale&&staleSensitive(target)"),'click guard must only block stale-sensitive controls while snapshot is stale');
 ok(reliability.includes('[data-laundry-mutation]'),'pending recovery must lock Laundry action controls');
 ok((rider.match(/data-laundry-mutation/g)||[]).length>=4,'Laundry UI controls must opt into recovery lock');
+ok(rider.includes('button[data-accept="1"]{background:#e6002d;color:#fff}'),'Laundry accept button must be visibly actionable in QueueGo red');
+ok(rider.includes('button[data-accept="0"]{background:#fff;color:#e6002d}'),'Laundry reject button must remain a clear secondary action');
 ok(rider.includes("qgLaundryMutationInFlight"),'Laundry actions must ignore rapid duplicate taps');
 ok(rider.includes("qgLaundryRefreshAfterCommit"),'Laundry post-commit refresh must be non-fatal');
 ok(!rider.includes("await sbTable('rpc/queuego_claim_laundry_job'"),'Laundry claim must not bypass durable action wrapper');
