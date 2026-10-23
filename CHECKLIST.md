@@ -1,8 +1,17 @@
 # QueueGo Active Work Checklist
 
-Last governance checkpoint: 2026-10-23; latest verified main `be33b8318967ad6105222efa8305fec8005a5335`
+Last governance checkpoint: 2026-10-23; latest verified main `9eb3dac112ab0003c5b36dd844c3abbcff1decac`
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
+
+## Rider Web benchmark release checkpoint — 2026-10-23
+
+- Web successor PR #636 merged to `main` at `9eb3dac112ab0003c5b36dd844c3abbcff1decac`; tested PR head `e36b2a49f6877d18212b98caa14511dfe52a62f5`.
+- Exact-head QueueGo RC run `39890314962`: SUCCESS. Post-merge main RC run `39891036067`: SUCCESS. Pages deployment `39891035608`: SUCCESS.
+- Runtime scope preserved: QueueGo Map-only route authority, normal off-route policy 30 m sustained 3 s, immediate reroute after a missed commanded turn with anti-storm/GPS-quality guards, 25 m route snap behavior, maneuver HUD, durable pickup/delivery proof, cash-confirm flow, and Rider Ride/Express modules.
+- Superseded Web PRs #629 and #632 are closed and must not be resumed or merged.
+- Source/test/deploy status: DONE for this Web release slice. Physical road/GPS navigation acceptance remains BLOCKED and must not be inferred from CI.
+- **NEXT:** perform/record physical Rider road/GPS acceptance on the deployed Web runtime. No further Rider Web source changes unless that acceptance finds a reproducible regression; do not reintroduce Longdo or legacy external-navigation ownership.
 
 ## Current verified POS checkpoint — 2026-10-23
 
