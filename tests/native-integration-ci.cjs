@@ -36,6 +36,8 @@ for (const ref of ['work-native-route-bundle-matrix-phase2-20261018', 'work-nati
 const mapWorkflow=fs.readFileSync('.github/workflows/queuego-map-engine-buriram.yml','utf8');
 assert.ok(mapWorkflow.includes("'work-native-route-bundle-*'"),'Route Bundle successors require the existing Map Engine gate'); checks++;
 console.log(JSON.stringify({checks,failures:0,scope:'all integrated successor gates, publication excluded'}));
+assert.equal(selected('publish-rider-road-test','work-native-route-bundle-play-release-20261021'),true,'current release successor must publish the exact tested Rider road-test artifact'); checks++;
+console.log(JSON.stringify({checks,failures:0,scope:'road-test publication is enabled only on the current release successor push'}));
 
 for(const ref of ['work-native-route-bundle-financial-sim-20261018','work-native-route-bundle-future']){
  assert.equal(selected('route-bundle-stack-races',ref),true); checks++;
