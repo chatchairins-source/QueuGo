@@ -3,10 +3,10 @@
 - Stream: display each registered Laundry shop's real profile cover, falling back to its profile logo. The catalog returns shop identities, so the page fetches only the profile photo fields for catalog shop IDs under the authenticated session.
 - ROOT CAUSE: publicPhotoUrl used a regex character class containing a doubled backslash before s, rejecting the letter s and filtering Supabase Storage URLs. Fixed with browser URL parsing and HTTPS-only validation.
 - DONE (source/test): PR #688 merged as badd6f1c3645a7a456ca08fcea2b212d84fdbe29. Exact-head QueueGo RC run 39961728447 SUCCESS on 823284b3a4b91d72db334e702e4a514126b5b087; npm test and mobile WebKit checks passed. Regression covers a Supabase Storage HTTPS URL and HTTP rejection. No schema or Production data changes.
-- DONE (GitHub Pages): merge deployment run 39962437420 SUCCESS on badd6f1c3645a7a456ca08fcea2b212d84fdbe29. Follow-up Pages run 39963884315 also SUCCESS on checklist-only commit 2128c26ddf72cda510d06eab2948e0d4ce6487d6.
-- IN PROGRESS (main RC): run 39963885677 on 2128c26ddf72cda510d06eab2948e0d4ce6487d6; no failure reported. The earlier post-merge RC run 39962437631 was cancelled after the checklist update queued the newer main run.
-- BLOCKED (Render): owner chose to stop at GitHub Pages. No Render deploy was started; Render is outside this request's release scope.
-- NEXT: verify the shop photo appears in the customer's Laundry page on the owner's browser/device. Do not claim visual acceptance from CI alone.
+- DONE (GitHub Pages): run 39964233648 SUCCESS for main commit ecc0b8044e19dcc5af7d7b7eaaccb32ac769b6f5.
+- DONE (Render): after the owner delegated workspace choice, selected the sole available workspace My Workspace (tea-dbdejavavr4c739q33l0). Deploy dep-dbdmbenavr4c73aj2f4g reached LIVE on the same main commit ecc0b8044e19dcc5af7d7b7eaaccb32ac769b6f5 at https://queuego-web.onrender.com.
+- IN PROGRESS (main RC): run 39964233691 on ecc0b8044e19dcc5af7d7b7eaaccb32ac769b6f5. Exact PR-head CI is already SUCCESS; no failure reported on this main run.
+- NEXT: owner visual acceptance on a signed-in browser/device: open the Laundry shop list and confirm a registered shop photo appears. Do not claim visual acceptance from CI/deploy status alone.
 
 
 ## 2026-10-23 Customer Laundry registered directory + Render release
