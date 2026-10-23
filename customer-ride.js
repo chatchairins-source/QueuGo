@@ -8,7 +8,7 @@
  const rpc=(name,body={})=>db('rpc/'+name,{method:'POST',body});
  const pending=()=>{const raw=localStorage.getItem(key());if(!raw)return null;const p=JSON.parse(raw);if(!/^[0-9a-f-]{36}$/i.test(p.p_request_id)||!/^[0-9a-f-]{36}$/i.test(p.p_quote_id))throw Error('คำขอเดิมอ่านไม่ได้ กรุณาติดต่อฝ่ายช่วยเหลือ');return p};
  const same=u=>actor()===u&&onRide();
- const status=o=>({searching_rider:'กำลังหาคนขับ',rider_assigned:'คนขับกำลังไปจุดรับ',in_progress:'กำลังเดินทาง',completed:'จบการเดินทางแล้ว',cancelled:'ยกเลิกแล้ว',no_rider_available:'ยังไม่มีคนขับพร้อมรับเที่ยว'})[o.status]||o.status;
+ const status=o=>o?.status==='rider_assigned'&&o?.arrived_pickup_at?'คนขับถึงจุดรับแล้ว':o?.status==='in_progress'&&o?.arrived_dropoff_at?'ถึงจุดหมายแล้ว':({searching_rider:'กำลังหาคนขับ',rider_assigned:'คนขับกำลังไปจุดรับ',in_progress:'กำลังเดินทาง',completed:'จบการเดินทางแล้ว',cancelled:'ยกเลิกแล้ว',no_rider_available:'ยังไม่มีคนขับพร้อมรับเที่ยว'})[o?.status]||o?.status;
  function clearPreview(){
   if(!previewMap)return;
   try{previewMap.remove?.()}catch{}
