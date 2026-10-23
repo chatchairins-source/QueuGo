@@ -100,17 +100,18 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
   const run=s=>vm.runInContext(s,ctx);
 
   const first=run('initLocationPicker("map",13,100,onChange)');
-  eq(h.created,1);eq(h.changes,1);eq(h.events.has('moveend'),true);
+  eq(h.created,1);eq(h.changes,1);eq(h.events.has('click'),true);eq(h.events.has('moveend'),false);
+  h.events.get('click')({lngLat:{lat:13.5,lng:100.5}});eq(h.changes,2);
   first.locate();first.destroy();first.destroy();
   const before=h.moves;
   gpsSuccess({coords:{latitude:14,longitude:101}});
   gpsError({code:3});
-  eq(h.moves,before);eq(h.changes,1);eq(h.events.size,0);eq(h.removed,1);
+  eq(h.moves,before);eq(h.changes,2);eq(h.events.size,0);eq(h.removed,1);
 
   const next=run('initLocationPicker("other",14,101,onChange)');
   eq(h.created,2);eq(next.map===first.map,false);eq(next.map.container.id,'other');
   next.locate();gpsSuccess({coords:{latitude:15,longitude:102}});
-  eq(h.changes,3);eq(h.moves,1);
+  eq(h.changes,4);eq(h.moves,1);
   next.destroy();eq(h.events.size,0);eq(h.removed,2);
   eq(await run('qtReverseGeocodeCustomer(13,100)'),'Road');
   dom.window.close();
