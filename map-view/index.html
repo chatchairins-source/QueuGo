@@ -814,19 +814,24 @@
       const direct=coordinateSearch(query);
       if(direct.length){state.lastSearchProvider="coordinates";return direct}
       try{
-        const local=await window.QueueGoMapWeb?.searchPlaceCatalog(query,{center:map.getCenter(),limit:20});
-        if(local?.length){state.lastSearchProvider="queuego-catalog";return local.map(p=>({...p,lon:String(p.lng),lat:String(p.lat),display_name:[p.name,...Object.values(p.address||{})].join(", "),provider:"queuego-catalog"}))}
-      }catch(_){}
-      const providers=[["nominatim",geocodeNominatim],["photon",geocodePhoton],["overpass",geocodeOverpass]];
-      let lastError=null;
-      for(const [name,fn] of providers){
-        try{
-          const rows=await fn(query);
-          if(rows&&rows.length){state.lastSearchProvider=name;return rows}
-        }catch(e){lastError=e;console.warn("QueueGo Map search provider failed",name,e)}
-      }
+        const shared=await window.QueueGoMapWeb?.search(query,{center:map.getCenter(),limit:20});
+        if(shared?.length){
+          state.lastSearchProvider=shared[0].provider||"queuego-search";
+          return shared.map(r=>({
+            ...r,
+            name:r.name||String(r.label||r.display_name||"").split(",")[0]||"สถานที่",
+            lat:String(r.lat),
+            lon:String(r.lng??r.lon),
+            display_name:r.display_name||r.label||r.name||"",
+            provider:r.provider||"queuego-search"
+          }));
+        }
+      }catch(e){console.warn("QueueGo shared search failed",e)}
+      try{
+        const rows=await geocodeOverpass(query);
+        if(rows&&rows.length){state.lastSearchProvider="overpass";return rows}
+      }catch(e){console.warn("QueueGo Map search provider failed","overpass",e);throw e}
       state.lastSearchProvider=null;
-      if(lastError)throw lastError;
       return [];
     }
     async function engineReverse(lat,lon){
