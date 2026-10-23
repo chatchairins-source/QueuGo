@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('rider/index.html','utf8'),label={textContent:'initial'};let checks=0;
 const S={map:{},pos:{accuracy:5}},cache={map:S.map,dist:1200,time:240,label:'ไปร้าน'};
-const ctx=vm.createContext({S,Number,Math,document:{getElementById:()=>label},riderRouteCache:cache});
+const ctx=vm.createContext({S,Number,Math,document:{getElementById:()=>label},riderRouteCache:cache,RIDER_ROUTE_OFF_ROUTE_METERS:30});
 vm.runInContext(source.slice(source.indexOf('function qgFiniteOrNull('),source.indexOf('function qgNavigationCameraShouldRun(')),ctx);
 vm.runInContext(source.slice(source.indexOf('function qgUpdateRiderRouteProgress('),source.indexOf('function qgRiderRouteNeedsReroute(')),ctx);
 const run=s=>vm.runInContext(s,ctx),eq=(a,b)=>{assert.deepEqual(a,b);checks++;};
