@@ -1,5 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
 const source=fs.readFileSync(path.resolve(__dirname,'../rider/index.html'),'utf8');
+const mapServiceSource=fs.readFileSync(path.resolve(__dirname,'../map-view/queuego-map-service.js'),'utf8');
 let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve}};const flush=async()=>{for(let i=0;i<12;i++)await Promise.resolve()};
 (async()=>{
  eq(source.includes('new longdo.Map'),false);
@@ -19,7 +20,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
  eq(source.includes('queuego-map-web.js?v=20261019-places1'),true);
- eq(source.includes('queuego-map-service.js?v=20261017-1'),true);
+ eq(source.includes('queuego-map-service.js?v=20261023-runtime1'),true);
  eq(source.includes('api.longdo.com/RouteService/geojson/route'),false);
  eq(source.includes('google.navigation:'),false);
  eq(source.includes('comgooglemaps://'),false);
@@ -35,12 +36,21 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("const directionConflict=decision?.routeBearingRejected===true"),true);
  eq(source.includes('maximumAge:0'),true);
  eq(source.includes('class="qg-speed-pill"'),true);
- eq(source.includes('class="qg-top-actions"'),true);
+ eq(source.includes('class="qg-top-actions"'),false);
+ eq(source.includes('qg-availability-control'),false);
  eq(source.includes('qg-ready-card'),false);
  eq(source.includes('พร้อมรับงานแล้ว'),false);
  eq((source.match(/id="status-switch"/g)||[]).length,1);
+ eq(source.includes("document.getElementById('status-switch').onclick=toggleOnline"),true);
  eq(source.includes("label.textContent=S.online?'พร้อม':'พัก'"),true);
  eq(source.includes('<div class="qg-brand-pill">'),false);
+ eq(source.includes('.qg-brand-pill{grid-column:1;justify-self:start;pointer-events:none'),true);
+ eq(source.includes('.qg-route-badge,.qg-route-badge.show{display:none!important}'),true);
+ eq(source.includes('grid-template-columns:1fr auto 1fr'),true);
+ eq(mapServiceSource.includes('QG_MAP_SERVICE_BASE_URL'),true);
+ eq(mapServiceSource.includes('queuego-map-service-base'),true);
+ eq(mapServiceSource.includes('github\\.io'),true);
+ eq(mapServiceSource.includes('QueueGo Map runtime is not configured for GitHub Pages'),true);
  eq(source.includes('function qgSetHomeDockHTML'),true);
  eq(source.includes('qg-dock-collapsed'),true);
  eq(source.includes('margin:0 18px 6px auto'),true);
@@ -223,18 +233,24 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(S.routeOverlays.length,0);
  eq(badge.style.display,'none');
 
- // Failed routing is explicitly an error, never a fabricated straight-line route.
+ // Failed routing is explicit, hidden from the driving HUD and never fabricated.
  S.activeOrder={id:'new',status:'assigned',pickup_latitude:14,pickup_longitude:101};
  ctx.window.QueueGoMapService.call=async()=>({routes:[]});
  await run('drawActiveRoute()');
- eq(label.textContent.includes('โหลดเส้นทางไม่สำเร็จ'),true);
+ eq(label.textContent.includes('Route Server ยังไม่พร้อม'),true);
+ eq(badge.style.display,'none');
  eq(S.routeOverlays.length,0);
 
- // Provider timeout releases the request so the next attempt can recover.
+ // Backoff prevents an unavailable static/runtime endpoint from flashing "calculating" every GPS fix.
+ eq(run('riderRouteRetryAfter>Date.now()'),true);
+
+ // Provider timeout releases the request so the next attempt can recover after bounded backoff.
+ now+=15000;
  ctx.window.QueueGoMapService.call=async(_action,_body,{signal})=>new Promise((_r,reject)=>signal.addEventListener('abort',()=>reject(Error('timeout')),{once:true}));
  const timeout=run('drawActiveRoute()');for(const fn of [...timers.values()])fn();await timeout;
  eq(timers.size,0);
  ctx.window.QueueGoMapService.call=async()=>routeResponse;
+ now+=15000;
  await run('drawActiveRoute()');
  eq(S.routeOverlays.length,2);
 
