@@ -13,7 +13,7 @@ let checks=0;const eq=(a,b,m)=>{assert.deepEqual(a,b,m);checks++;};
    qgPersistProofFile:async(kind,o,file)=>({file,data:'data:image/jpeg;base64,AA'}),
    qgRestoreProofFile:async()=>null,
    qgClearProofFile:async()=>{clears++},
-   qgConfirmPickupReceived:async()=>true,
+   qgConfirmPickupReceived:async()=>{throw Error('redundant pickup confirmation must not run')},
    qgBindSlideConfirm:(root,onComplete)=>{
     const input=root?.querySelector('input[type=range]');if(!input)return;
     let busy=false;

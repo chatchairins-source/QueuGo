@@ -23,8 +23,8 @@ ok(merchant.includes("if(['completed','delivered'].includes(s))return['done','�
 ok(/window\.statusFromRow=function\(row\)\{\s*return String\(row\?\.status\|\|''\);\s*\};/.test(rider),'Rider retains authoritative raw status for actions');
 ok(
   rider.includes("if(o.rider_arrived_customer_at)mainLabel='ส่งมอบสินค้า'") &&
-  rider.includes("else if(qgNavigationStarted(o,'customer'))mainLabel='ถึงลูกค้าแล้ว'"),
-  'Rider keeps authoritative in_progress state while arrival timestamp advances presentation/action'
+  rider.includes("else mainLabel='ถึงลูกค้าแล้ว'"),
+  'Rider keeps authoritative in_progress state while arrival timestamp advances directly to the arrival action'
 );
 ok(admin.includes("qtOrderStatusFromDb(r.status,r.note,r.rider_arrived_customer_at)"),'Admin canonicalizer consumes arrival timestamp');
 ok(admin.includes("if(s==='in_progress')return arrivedCustomerAt||"),'Admin derives arrived from timestamp');

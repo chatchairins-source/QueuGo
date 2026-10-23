@@ -88,10 +88,14 @@ ok(rider.includes("stepTitle=pickup?'ไปรับสินค้าที่�
 ok(rider.includes("cashLabel=pickup?'ยอดที่ต้องชำระร้าน':'ยอดที่ต้องเก็บลูกค้า'"),'active-order card must surface the correct cash responsibility for each stage');
 ok(rider.includes('qg-job-tools')&&rider.includes('id="chat-'),'active-order control center must keep details and chat immediately reachable');
 ok(rider.includes('ประมาณ '+"'"+'+eta+'+"'"+' นาที'),'active-order control center must surface an ETA when coordinates are available');
-ok(rider.includes('id="primary-nav-'),'active-order primary CTA must be navigation after claim');
-ok(rider.includes('function qgNavigateInApp(lat,lng)')&&rider.includes('qgFollowRiderCamera(true,650)'),'Rider primary navigation must remain inside QueueGo Map');
+ok(!rider.includes('id="primary-nav-'),'active-order card must not expose a manual navigation CTA');
+ok(rider.includes('id="primary-action-'),'active-order card must expose the current stage action only');
+ok(rider.includes("else mainLabel='ถึงร้านแล้ว';")&&rider.includes("else mainLabel='ถึงลูกค้าแล้ว';"),'active-order primary action must move directly to arrival actions because QueueGo route guidance is automatic');
+ok(rider.includes("return qgConfirmStageArrival(o,'shop');")&&rider.includes("return qgConfirmStageArrival(o,'customer');"),'arrival actions must not depend on a local manual-navigation flag');
+ok(rider.includes('function qgNavigateInApp(lat,lng)')&&rider.includes('qgFollowRiderCamera(true,650)'),'QueueGo automatic navigation camera must remain available internally');
 ok(rider.includes('ยอดที่ต้องชำระให้ร้าน'),'pickup cash page must show cash due to the merchant before handoff');
 ok(rider.includes('ยอดที่ต้องเก็บจากลูกค้า'),'completion cash page must show customer cash before completion');
+ok(!rider.includes('function qgConfirmPickupReceived()')&&!rider.includes('ได้รับอาหารแล้วใช่ไหม?'),'redundant pickup received yes/no confirmation must be physically removed');
 ok(!rider.includes('id="qg-pickup-confirm-btn"'),'legacy pickup tap confirmation must stay removed');
 ok(!rider.includes('id="qg-delivery-complete-btn"'),'legacy delivery tap completion must stay removed');
 ok(!rider.includes("qgOpenOrderChecklist("),'obsolete legacy order-check page must stay removed');

@@ -11,7 +11,10 @@ eq(src.includes("if(Array.isArray(rows)&&rows.some(x=>x?.order_id))await refresh
 eq(src.includes('async function qgOpenCashConfirm(o,proofPage)'),true);
 eq(src.includes('ตรวจสอบรายการ'),true);
 eq(src.includes('รูปใบเสร็จจากร้าน'),true);
-eq(src.includes('function qgConfirmPickupReceived()'),true);
+eq(src.includes('function qgConfirmPickupReceived()'),false);
+eq(src.includes('ได้รับอาหารแล้วใช่ไหม?'),false);
+eq(src.includes('id="primary-nav-'),false);
+eq(src.includes('id="primary-action-'),true);
 eq(src.includes("qgPersistProofFile('pickup',o,source)"),true);
 eq(src.includes('ชำระเงินให้ร้านเรียบร้อยแล้ว'),true);
 eq(src.includes('ตรวจสอบและส่งมอบสินค้า'),true);
