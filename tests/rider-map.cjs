@@ -19,7 +19,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
  eq(source.includes('queuego-map-web.js?v=20261019-places1'),true);
- eq(source.includes('queuego-map-service.js?v=20261017-1'),true);
+ eq(source.includes('queuego-map-service.js?v=20261023-render1'),true);
+ eq(source.includes('<meta name="queuego-map-service-base" content="https://queuego-map-buriram.onrender.com">'),true);
  eq(source.includes('api.longdo.com/RouteService/geojson/route'),false);
  eq(source.includes('google.navigation:'),false);
  eq(source.includes('comgooglemaps://'),false);
@@ -40,9 +41,13 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('qg-ready-card'),false);
  eq(source.includes('พร้อมรับงานแล้ว'),true);
  eq(source.includes('พร้อมรับงานเมื่อคุณพร้อม'),true);
- eq(source.includes('id="go-online"'),true);
- eq(source.includes('id="go-offline"'),true);
+ eq(source.includes('id="go-online"'),false);
+ eq(source.includes('id="go-offline"'),false);
  eq((source.match(/id="status-switch"/g)||[]).length,1);
+ eq(source.includes('function qgAvailabilitySwitchHTML()'),true);
+ eq(source.includes('<header class="qg-topbar"><div class="qg-speed-pill"'),true);
+ eq(source.includes("qgHeaderWordmark('qg-brand-pill')}</header>"),true);
+ eq(source.includes("document.getElementById('status-switch').onclick=toggleOnline;updateStatusUI();return;"),true);
  eq(source.includes("label.textContent=S.online?'ออนไลน์':'ออฟไลน์'"),true);
  eq(source.includes('.qg-route-badge,.qg-route-badge.show{display:none!important}'),true);
  eq(source.includes('<div class="qg-brand-pill">'),false);
