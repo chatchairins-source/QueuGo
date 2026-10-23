@@ -7,6 +7,7 @@ const admin=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{
 });
 const allowed=new Set([
   'https://chatchairins-source.github.io',
+  'https://queuego-web.onrender.com',
   'https://localhost',
   'http://localhost',
   'capacitor://localhost'
