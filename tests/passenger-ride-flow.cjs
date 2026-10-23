@@ -1,0 +1,37 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const index=fs.readFileSync('index.html','utf8');
+const customer=fs.readFileSync('customer-ride.js','utf8');
+const riderIndex=fs.readFileSync('rider/index.html','utf8');
+const rider=fs.readFileSync('rider/rider-ride.js','utf8');
+const sql=fs.readFileSync('supabase/migrations/20261023161000_ride_integer_fare_and_completion.sql','utf8');
+let checks=0;const eq=(a,b,m)=>{assert.equal(a,b,m);checks++};
+
+eq(index.includes('map.on("click",selectTap)'),true,'customer location picker must select directly on map tap');
+eq(index.includes('map.on("moveend",syncCenter)'),false,'moving map must not silently move the selected pin');
+eq(index.includes('customer-ride.js?v=20261023-ridefix1'),true,'customer Ride asset must be cache-busted');
+
+eq(customer.includes("if(o?.status==='in_progress'&&o?.arrived_dropoff_at)return 'ถึงจุดหมายแล้ว'"),true,'customer Ride status must derive arrived dropoff');
+eq(customer.includes("function renderActiveRideMap(o)"),true,'customer Ride must render active live map');
+eq(customer.includes("o.rider_latitude"),true,'customer Ride live map must consume rider latitude');
+eq(customer.includes("o.rider_longitude"),true,'customer Ride live map must consume rider longitude');
+eq(customer.includes("อัปเดตประมาณทุก 5 วินาที"),true,'customer must be told rider location refresh cadence');
+eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดรับของคุณ"),true,'Ride pickup picker must instruct direct tap');
+eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดส่งของคุณ"),true,'Ride destination picker must instruct direct tap');
+
+eq(rider.includes("id=\"primary-nav-"),false,'Passenger Ride must not restore manual navigation CTA');
+eq(rider.includes("id=\"primary-action-"),true,'Passenger Ride must use the shared stage-action CTA');
+eq(rider.includes('qgOpenCashConfirmPage'),false,'Passenger Ride must not call missing cash-confirm helper');
+eq(rider.includes('function qgOpenRideCompleteConfirm(o)'),true,'Passenger Ride must show explicit finish confirmation');
+eq(rider.includes('ยืนยันจบเที่ยว?'),true,'finish confirmation copy must be visible');
+eq(rider.includes("if(st==='in_progress')return qgOpenRideCompleteConfirm(o)"),true,'in-progress Ride must confirm before completion');
+eq(rider.includes("return window.qgRideAction(o,'arrive_pickup'"),true,'Ride pickup arrival must not depend on a manual navigation flag');
+eq(riderIndex.includes('rider-ride.js?v=20261023-ridefix1'),true,'Rider Ride asset must be cache-busted');
+eq(riderIndex.includes('rider-20261023-ridefix1'),true,'Rider web build marker must identify Ride fix');
+
+eq(sql.includes("return round(greatest((c->>'minimum_fare')::numeric,fare),0);"),true,'new Ride fares must be whole baht');
+eq(sql.includes("elsif v_action='complete' and o.status='in_progress' then"),true,'Ride completion must be allowed directly from in_progress');
+eq(sql.includes("and o.rider_arrived_customer_at is not null"),false,'Ride completion must not require prior dropoff arrival timestamp');
+eq(sql.includes("rider_arrived_customer_at=coalesce(rider_arrived_customer_at,now())"),true,'completion must backfill arrival timestamp when needed');
+eq(sql.includes("payment_method='cash'"),true,'cash payment record remains authoritative');
+
+console.log(JSON.stringify({checks,failures:0,scope:'Passenger Ride whole-baht fare, direct pin, live rider map, no manual nav gate and guarded completion'}));
