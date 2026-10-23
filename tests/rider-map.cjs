@@ -240,7 +240,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(S.routeOverlays.length,0);
 
  // Backoff prevents an unavailable static/runtime endpoint from flashing "calculating" every GPS fix.
- eq(run('riderRouteRetryAfter>now'),true);
+ eq(run('riderRouteRetryAfter>Date.now()'),true);
 
  // Provider timeout releases the request so the next attempt can recover after bounded backoff.
  now+=15000;
