@@ -1,3 +1,12 @@
+## 2026-10-23 Current owner scope: map only; recovery cancelled
+
+- Latest owner instruction: ไม่ต้องกู้แล้วปรับแค่เรื่องแผนที่. Do not continue whole-file/module timestamp recovery. Native recovery PR #658 is closed without merge. Initial recovery snapshots are historical references only.
+- Web #657 had already merged at `2baf1a512eac574d3ca3095c581cc8f7589aaf43` before cancellation. The map-only successor removes its unintended UI/presentation changes by preserving the pre-recovery current UI from `59051ddfb89a03b7d34e3b5b94f80c62919f9e6a` in a new forward commit; no reset/revert.
+- Evidence-backed map issue: Web qgNavigationCameraShouldRun excluded online Riders without a job, so live GPS updates could leave the map unfollowed and the puck near an edge. Online now retains the same perspective/heading follow as active navigation. Web speed zoom now interpolates continuously between the existing speed tiers; auto-pan recovery, 25m snap, sole QueueGo route service and current proof/cash/auth flow remain.
+- Native source stays on current successor 2c7a63de, with only three map files changed: enable perspective when online without a job; align camera road-snap radius with puck/pipeline 25m; compile the already hosted QueueGo route URL when CI supplies no nonblank override. Current Rider app UI, HUD, order/API/proof modules and map engine algorithms are preserved; no historical module restoration.
+- Focused validation: standalone navigation module contracts PASS; Native source 307 PASS. Full local regression and exact-head Native Pilot build/emulator evidence are NEXT. No installed APK or physical-road PASS claimed.
+- NEXT: exact-head Native Pilot on the map-only successor; merge only after successful validation.
+
 # QueueGo Active Work Checklist
 
 Last governance checkpoint: `WORKFLOW.md` commit `9439569c15f72568b3398a1072f6d2285c8e7ce7`

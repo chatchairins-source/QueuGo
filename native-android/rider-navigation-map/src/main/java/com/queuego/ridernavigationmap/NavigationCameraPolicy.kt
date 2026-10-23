@@ -6,7 +6,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val ROUTE_BEARING_MAX_OFF_ROUTE_METERS = 30.0
+private const val ROUTE_BEARING_MAX_OFF_ROUTE_METERS = 25.0
 
 data class NavigationCameraDecision(
     val center: NavigationMapPoint,

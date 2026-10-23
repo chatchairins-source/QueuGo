@@ -333,7 +333,7 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
     val navigationActive = stops.any { !it.completed && it.point.valid }
-    val perspectiveCameraEnabled = navigationActive || RIDER_CAMERA_SMOOTHNESS_TEST_MODE
+    val perspectiveCameraEnabled = navigationActive || online || RIDER_CAMERA_SMOOTHNESS_TEST_MODE
     val followRider = riderNavigationAutoFollow(
         navigationActive = navigationActive,
         viewMode = viewModeState.mode,
