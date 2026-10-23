@@ -11,7 +11,7 @@ let checks=0;const eq=(a,b,m)=>{assert.equal(a,b,m);checks++};
 
 eq(index.includes('map.on("click",selectTap)'),true,'customer location picker must select directly on map tap');
 eq(index.includes('map.on("moveend",syncCenter)'),false,'moving map must not silently move the selected pin');
-eq(index.includes('customer-ride.js?v=20261023-ridefix2'),true,'customer Ride asset must be cache-busted');
+eq(index.includes('customer-ride.js?v=20261023-ridefix3'),true,'customer Ride asset must be cache-busted');
 
 eq(customer.includes("if(o?.status==='in_progress'&&o?.arrived_dropoff_at)return 'ถึงจุดหมายแล้ว'"),true,'customer Ride status must derive arrived dropoff');
 eq(customer.includes("function renderActiveRideMap(o)"),true,'customer Ride must render active live map');
@@ -22,6 +22,12 @@ eq(customer.includes("แตะตำแหน่งบนแผนที่เ�
 eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดส่งของคุณ"),true,'Ride destination picker must instruct direct tap');
 eq(customer.includes('id="ride-select-center"'),false,'Ride picker must not expose the legacy center-selection control');
 eq(customer.includes("rows.filter(terminal).slice(0,5)"),false,'Ride request screen must not render completed trip history links');
+eq(customer.includes("beforeKey===rideSnapshotKey(current)&&updateActiveRideMap(current)"),true,'5s polling must reuse the mounted live map when only Rider coordinates change');
+eq(customer.includes("previewMap.getContainer&&previewMap.getContainer()!==host"),true,'live-map reuse must fail closed if its DOM host was replaced');
+eq(customer.includes("function rideStopMarkerElement(text,color)"),true,'Ride maps must use elevated stop-pin elements');
+eq(customer.includes("z-index:60"),true,'pickup/dropoff stop pins must render above Rider/cluster markers');
+eq(customer.includes("anchor:stop?'bottom':'center'"),true,'pickup/dropoff pins must rise above their coordinate rather than sit as flat dots');
+eq(customer.includes("el.style.zIndex='10'"),true,'nearby Rider clusters must remain below pickup/dropoff stop pins');
 
 eq(rider.includes("id=\"primary-nav-"),false,'Passenger Ride must not restore manual navigation CTA');
 eq(rider.includes("id=\"primary-action-"),true,'Passenger Ride must use the shared stage-action CTA');
