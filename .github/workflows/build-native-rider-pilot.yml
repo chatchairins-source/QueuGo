@@ -490,8 +490,8 @@ jobs:
 
 
   publish-rider-road-test:
-    if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' && github.event_name == 'push' }}
-    needs: [native-pilot, map-display-only, navigation-map-runtime, maplibre-osm-runtime, continuous-dispatch-races, passenger-ride-races, credit-races]
+    if: ${{ github.ref == 'refs/heads/work-native-route-bundle-play-release-20261021' && github.event_name == 'push' }}
+    needs: [native-pilot, map-display-only, navigation-map-runtime, maplibre-osm-runtime, continuous-dispatch-races, passenger-ride-races, credit-races, route-bundle-stack-races, express-races]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -513,7 +513,7 @@ jobs:
           cp "${rider_apks[0]}" "$asset"
           unzip -t "$asset" >/dev/null
           sha256sum "$asset" > SHA256SUMS.txt
-          printf 'Source HEAD: %s\nPilot run: %s\nAll seven automated gates passed. Physical road test remains pending. Test APK only.\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > SOURCE.txt
+          printf 'Source HEAD: %s\nPilot run: %s\nAll required Native automated gates passed. Physical road test remains pending. Test APK only.\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > SOURCE.txt
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$asset" SHA256SUMS.txt SOURCE.txt --clobber
           else
