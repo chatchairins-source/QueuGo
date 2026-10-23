@@ -4,6 +4,7 @@ const customer=fs.readFileSync('customer-ride.js','utf8');
 const riderIndex=fs.readFileSync('rider/index.html','utf8');
 const rider=fs.readFileSync('rider/rider-ride.js','utf8');
 const sql=fs.readFileSync('supabase/migrations/20261023161000_ride_integer_fare_and_completion.sql','utf8');
+const guardSql=fs.readFileSync('supabase/migrations/20261023092028_ride_unrestricted_completion_guard.sql','utf8');
 let checks=0;const eq=(a,b,m)=>{assert.equal(a,b,m);checks++};
 
 eq(index.includes('map.on("click",selectTap)'),true,'customer location picker must select directly on map tap');
@@ -33,5 +34,7 @@ eq(sql.includes("elsif v_action='complete' and o.status='in_progress' then"),tru
 eq(sql.includes("and o.rider_arrived_customer_at is not null"),false,'Ride completion must not require prior dropoff arrival timestamp');
 eq(sql.includes("rider_arrived_customer_at=coalesce(rider_arrived_customer_at,now())"),true,'completion must backfill arrival timestamp when needed');
 eq(sql.includes("payment_method='cash'"),true,'cash payment record remains authoritative');
+eq(guardSql.includes("or (old.status='in_progress' and new.status='completed')"),true,'Ride transition guard must allow in-progress completion without arrival gate');
+eq(guardSql.includes("old.status='in_progress' and new.status='completed' and old.rider_arrived_customer_at is not null"),false,'Ride transition guard must not restore dropoff proximity prerequisite');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Passenger Ride whole-baht fare, direct pin, live rider map, no manual nav gate and guarded completion'}));
