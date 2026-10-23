@@ -117,3 +117,9 @@ An individual feature can be marked `DONE (source/test)` only with its exact com
 ## 2026-10-22 offline backend rollout update
 - Web offline successor0aed635c passed hosted RC39743999528 and full local regression. Pricing/draft tests46 also passed against actual Production pos_edit_bill in isolation.
 - Applied only option-pricing and draft-submit migrations20261022080039/20261022080048, with ACL/RLS readback. No real or mock sale created. The earlier unapplied-backend checkpoint is superseded for these two migrations. Web final-head filename alignment and publication still pending at this checkpoint.
+
+
+## POS Web release receipt — 2026-10-23
+- PR #630 table availability, kitchen and payment-waiting labels merged to Web main `5a860ea3e0a26841eca5666a158b034c78b897d9`. Exact PR RC `39877737147`, post-merge RC `39878103940`, and Pages build/deploy `39878103646` succeeded. Cache-busted Production `/merchant/index.html` and `/merchant/pos-table-v2.js` matched source SHA-256 exactly; database/schema unchanged.
+- Next Web chunk is category filters using existing product category data; local focused POS runtime 88 PASS and full `npm test` EXIT 0 on source `69a7d35a166acbe5157ea80911acca63c61fd32f`; exact hosted RC/deploy pending. Native parity is required after Web stability.
+- This is a bounded UI release only. Authenticated cashier journeys, device/hardware verification, whole POS E2E and full Definition of Done remain open. QueueGo POS is **NOT DONE**.

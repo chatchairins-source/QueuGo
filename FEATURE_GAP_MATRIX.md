@@ -1,6 +1,8 @@
 # QueueGo Feature Gap Matrix
 
-Reviewed against main `aeedb1df2ef4654ee68ed26b25b4f34a01e441de` and open PRs on 2026-10-22. Recent exact-head and descendant main RC plus Pages receipts are recorded in `NEXT.md`, `RELEASE_GATE.md`, and `CHECKLIST.md`. This is an evidence ledger, not a claim that every capability is complete. `Source present` means code or schema exists; it does not certify a real-user flow.
+Reviewed against main `5a860ea3e0a26841eca5666a158b034c78b897d9` and relevant open PRs on 2026-10-23. Recent exact-head and descendant main RC plus Pages receipts are recorded in `NEXT.md`, `RELEASE_GATE.md`, and `CHECKLIST.md`. This is an evidence ledger, not a claim that every capability is complete. `Source present` means code or schema exists; it does not certify a real-user flow.
+
+Latest POS UI evidence: PR #630 table service/payment state labels are deployed and byte-verified. The next Web source chunk adds category filtering over existing `products.category` (`69a7d35a` local checkpoint; exact hosted RC pending), then requires parity on Native successor `7e058b61`. These UI changes do not close the POS authenticated/device Release Gate.
 
 Status key: **Source present** = identified implementation; **Staged** = open successor not merged/deployed; **Gate open** = requires additional runtime, user, device, security or production evidence; **Audit next** = exact implementation/evidence still needs review.
 
