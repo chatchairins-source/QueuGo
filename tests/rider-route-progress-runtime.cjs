@@ -13,7 +13,7 @@ const S={map:{},pos:{accuracy:5}},cache={map:S.map,dist:1200,time:240,label:'ไ
 ],speedLimits:[{start:0,end:500,kph:50,raw:'50',source:'osm:maxspeed',osmWayId:101}]};
 const ctx=vm.createContext({S,Number,Math,Array,String,RIDER_ROUTE_OFF_ROUTE_METERS,document:{getElementById:id=>els[id]||null},riderRouteCache:cache,esc:v=>String(v)});
 vm.runInContext(source.slice(source.indexOf('function qgFiniteOrNull('),source.indexOf('function qgNavigationCameraShouldRun(')),ctx);
-vm.runInContext(source.slice(source.indexOf('function qgTurnPhrase('),source.indexOf('function qgRiderRouteNeedsReroute(')),ctx);
+vm.runInContext(source.slice(source.indexOf('function qgNormalizeRiderSpeedLimits('),source.indexOf('function qgRiderRouteNeedsReroute(')),ctx);
 const run=s=>vm.runInContext(s,ctx),eq=(a,b)=>{assert.deepEqual(a,b);checks++;};
 ctx.decision={routeMatch:{geometryDistanceMeters:1200,offRouteMeters:2},remainingRouteMeters:800,routeBearingRejected:false};
 eq(run('qgUpdateRiderRouteProgress(decision)'),true);
