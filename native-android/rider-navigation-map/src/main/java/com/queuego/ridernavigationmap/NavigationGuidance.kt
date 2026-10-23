@@ -111,7 +111,7 @@ class NavigationProgressTracker(
         val sustainedOffRoute = offRouteSinceMillis?.let { since ->
             now - since >= requiredOffRouteMillis.coerceAtLeast(0L)
         } ?: false
-        val shouldReroute = offRoute && cooldownSatisfied && (missedManeuver || sustainedOffRoute)
+        val shouldReroute = cooldownSatisfied && (passedManeuver || (offRoute && (missedManeuver || sustainedOffRoute)))
         if (shouldReroute) {
             offRouteSinceMillis = null
             lastRerouteAtMillis = now
