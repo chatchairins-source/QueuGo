@@ -42,6 +42,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:35.0.0"))
     implementation("com.google.firebase:firebase-messaging")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
     implementation(project(":shared"))
     implementation(project(":rider-navigation-map"))
     implementation("com.google.android.gms:play-services-location:21.3.0")

@@ -9,11 +9,12 @@ assert(!app.includes('GOOGLE_MAPS_PACKAGE')&&!app.includes('"google.navigation:q
   'Rider workflow must not contain a Google Maps launcher path');
 assert(!app.includes('RiderReturnService.start(context)'),
   'QueueGo-only navigation must not start the external-map return overlay');
-assert(app.includes('Text("นำทางด้วย QueueGo"')&&
-  app.includes('fun startQueueGoNavigation')&&
-  app.includes('onQueueGoNavigate = {')&&
-  app.includes('startQueueGoNavigation()'),
-  'Normal active-job card must keep QueueGo navigation as the only navigation action');
+assert(app.includes('fun startQueueGoNavigation')&&
+  app.includes('// Accept is the start of work. Enter QueueGo follow/navigation mode')&&
+  app.includes('routeOverviewActive = false')&&
+  app.includes('recenterSignal += 1')&&
+  !app.includes('Text("นำทางด้วย QueueGo"'),
+  'Normal active-job flow must auto-start QueueGo navigation without a redundant navigation action');
 assert(app.includes('pickupCommittedStatus == "picked_up"')&&
   app.includes('api.startDelivery(auth, job.copy(status = "picked_up"))'),
   'Legacy picked_up pickup results must still advance to delivery before QueueGo navigation continues');

@@ -111,7 +111,7 @@ class NavigationRouteCoordinatorTest {
         assertNotNull(second.guidance.distanceRemainingMeters)
     }
 
-    @Test fun threeReliableOffRouteSamplesRerouteOnlyActiveLeg() = runBlocking {
+    @Test fun threeSecondsContinuouslyOffRouteReroutesOnlyActiveLeg() = runBlocking {
         var now = 20_000L
         val provider = FakeRouteProvider()
         val coordinator = NavigationRouteCoordinator(provider, nowMillis = { now })
@@ -129,13 +129,13 @@ class NavigationRouteCoordinatorTest {
         assertTrue(firstOff.guidance.offRoute)
         assertFalse(firstOff.rerouted)
 
-        now += 500L
+        now += 2_999L
         val secondOff = coordinator.synchronize(offRouteState)
         assertEquals(1, provider.calls.size)
         assertTrue(secondOff.guidance.offRoute)
         assertFalse(secondOff.rerouted)
 
-        now += 500L
+        now += 1L
         val rerouted = coordinator.synchronize(offRouteState)
         assertEquals(2, provider.calls.size)
         assertTrue(rerouted.rerouted)

@@ -40,6 +40,33 @@ class NavigationSignalPipelineTest {
     }
 
     @Test
+    fun routeSnapUsesTwentyFiveMeterHardBoundary() {
+        val near = NavigationSignalPipeline().update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.00018, 100.0040),
+                bearingDegrees = 90f,
+                accuracyMeters = 8f,
+                speedMetersPerSecond = 7f,
+                elapsedRealtimeNanos = 1_000_000_000L
+            ),
+            route
+        )
+        assertTrue(kotlin.math.abs(near.displayFix!!.point.latitude - 13.0000) < 0.00001)
+
+        val outside = NavigationSignalPipeline().update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.00030, 100.0040),
+                bearingDegrees = 90f,
+                accuracyMeters = 8f,
+                speedMetersPerSecond = 7f,
+                elapsedRealtimeNanos = 1_000_000_000L
+            ),
+            route
+        )
+        assertTrue(kotlin.math.abs(outside.displayFix!!.point.latitude - 13.00030) < 0.00001)
+    }
+
+    @Test
     fun displayAdapterPreservesAuthoritativeStopsRoutesAndActiveStop() {
         val pipeline = NavigationSignalPipeline()
         val raw = NavigationMapFix(
