@@ -7,9 +7,10 @@
 - Rider Web source before this merge: `cd5b6a95cc4005ed37c6cf2ce21221372d3dcbe0`
 - Scope: preserve current main/POS while publishing the Rider benchmark runtime: QueueGo Map-only navigation with no Longdo; immediate missed/passed-turn reroute on reliable moving evidence; generic >30 m off-route sustained 3 s; 25 m snap; current/next maneuver HUD; 8 s pan-to-follow recovery; durable proof/cash slide; action GPS.
 - Speed-limit parity: Web accepts only provenance-backed `source:"osm:maxspeed"` route intervals and shows the red-ring legal-speed sign only for the current geometry interval. Inferred road-class values, invalid intervals and missing explicit data remain hidden.
-- Evidence before this merge: Web RC progressed through route/map/proof regressions; isolated harness dependencies were corrected through `cd5b6a95cc4005ed37c6cf2ce21221372d3dcbe0`. A fresh exact-head RC is required after this merge.
-- Release status: NOT DONE. Exact-head RC, merge to main, Pages/public-byte verification and physical road/GPS acceptance remain separate gates.
-- NEXT: run exact-head RC on the reconciled SHA; fix only its first failure. When green, merge #629 into current main and verify deployed Rider bytes. Never claim physical road/GPS/ANR/OOM/battery PASS without real-device evidence.
+- Android benchmark successor PR #625 exact source `53599436194e9dd6eca1d41551732a7ce5a635d0` passed Native Pilot `39884888618` and Map Engine `39884895416`, including immediate missed/passed-turn reroute before the generic 30 m threshold, monotonic visible-route trimming and generic sustained off-route behavior; merged to Native successor as `f84757c6e69c7c2bca0326791e293e026f2d48c3`.
+- Web evidence: predecessor RC failures were isolated harness drift and corrected through `cd5b6a95cc4005ed37c6cf2ce21221372d3dcbe0`; `tests/rider-map.cjs` now includes the explicit speed-limit HUD stub required by the current runtime. RC `39885193622` on reconciled SHA `593ae4869a35db101046469019373a183ff97e47` remained in `npm test` without a reported first failure long beyond normal runtime, so this checkpoint intentionally supersedes it to force a fresh exact-head RC rather than merging from an indeterminate gate.
+- Release status: NOT DONE. Fresh exact-head Web RC, merge to main, Pages/public-byte verification and physical road/GPS acceptance remain separate gates.
+- NEXT: use the fresh exact-head RC from this checkpoint; fix only its first failure. When green, merge #629 into current main and verify deployed Rider bytes. Never claim physical road/GPS/ANR/OOM/battery PASS without real-device evidence.
 
 
 Last governance checkpoint: 2026-10-23; latest verified main `be33b8318967ad6105222efa8305fec8005a5335`
