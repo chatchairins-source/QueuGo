@@ -1,3 +1,16 @@
+## 2026-10-23 Embedded map search separation + Merchant catalog action
+
+- Owner requested that search UI no longer consume the small embedded QueueGo Maps canvas and that unusable search controls be removed/fixed across roles.
+- DONE (source): shared `QueueGoMapWeb.create()` no longer creates a place-search overlay by default; place labels/selection remain available while search is a separate UI concern.
+- DONE (Merchant): Shop Setup search now sits above the embedded map, uses the working `QueueGoMapWeb.search()` engine, and selecting a result recenters/pins QueueGo Maps. The embedded map itself has no search overlay. GPS/manual pan remain intact.
+- DONE (Customer): Delivery-location picker now has a separate search field/result list above the map; selecting a result pins/recenters the QueueGo map. The embedded map has no search overlay.
+- DONE (Merchant menu): the real menu/product search remains functional; `เพิ่มเมนูใหม่` / `เพิ่มสินค้าใหม่เข้าร้าน` moved directly below search as a compact 40px action instead of an oversized full-width bottom button.
+- SEARCH ENGINE: QueueGo-owned catalog remains first, with existing open-map providers as fallback. Google Places is intentionally not enabled or faked: current Google Places policy requires Places results displayed on a map to be shown on a Google Map, so Google POI results must not be copied/pinned onto QueueGo/OSM maps. An official integration would need a policy-compliant separate Google surface or a qualifying end-user-address flow.
+- TESTS: regression assertions added for shared no-overlay default, Customer/Merchant external search separation, functional Merchant catalog search, and compact add action.
+- PR #692 exact source before this checkpoint: `e09dba52c656773645cc962d9e7982b0f3e3d40c`. RC run `39968925538`: `npm test` SUCCESS; GitHub runner remained in WebKit installation without reporting a code failure.
+- No Production data/order/auth mutation.
+- NEXT: exact-head RC must complete Merchant mobile WebKit, Map Lab, QueueGo Map search and Grocery browser gates; then merge latest successor and deploy the proven main commit to Render.
+
 ## 2026-10-23 Merchant shopping subcategory compact mobile picker
 
 - Owner screenshot shows Shopping subcategory choices occupying excessive vertical space on Merchant Account/Edit Shop mobile.
