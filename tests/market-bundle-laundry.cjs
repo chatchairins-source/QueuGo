@@ -30,6 +30,11 @@ ok(customer.includes("return category==='food'||category==='cafe';"),'Customer H
 ok(laundry.includes("qgRpc('queuego_laundry_customer_catalog',{})"),'Laundry customer directory must use authoritative catalog RPC');
 ok(!laundry.includes("qgDb('laundry_hubs?select=id,name,shop_id"),'Laundry customer directory must not read raw Laundry hubs');
 ok(laundry.includes("safe(x.shop_name||x.name)"),'Laundry directory must render registered shop identity from catalog');
+ok(laundry.includes("shop_profiles?select=id,public_logo,public_cover"),'Laundry directory must read registered shop photos from active shop profiles');
+ok(laundry.includes("const src=photo.cover||photo.logo"),'Laundry directory must show the shop cover, falling back to its logo');
+ok(laundry.includes('class="shop-photo"')&&laundry.includes('alt="\'+safe(x.shop_name||x.name)+\'"'),'Laundry directory photo must be an accessible real shop image');
+ok(laundry.includes("dataset.fallback"),'Laundry directory must fall back from a broken cover to the shop logo');
+ok(!laundry.includes('class="washer"'),'Laundry directory must not replace registered shop photos with a washer icon');
 ok(customer.includes("DEDICATED_MARKET_CATS"),'normal search must exclude dedicated market shop categories');
 ok(customer.includes("queuego_place_market_order"),'market checkout RPC missing');
 ok(customer.includes("queuego_add_market_order_shops"),'market add-shop RPC missing');
