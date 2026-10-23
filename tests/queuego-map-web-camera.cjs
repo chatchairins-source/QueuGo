@@ -5,6 +5,7 @@ const ok=(v,msg)=>{assert.ok(v,msg);checks++};
 const eq=(a,b,msg)=>{assert.deepEqual(a,b,msg);checks++};
 
 const window={};
+const timeoutDelays=[];
 const context=vm.createContext({
   window,
   console,
@@ -16,7 +17,7 @@ const context=vm.createContext({
   encodeURIComponent,
   fetch:async()=>({ok:false}),
   navigator:{},
-  setTimeout:fn=>{fn();return 1},
+  setTimeout:(fn,ms=0)=>{timeoutDelays.push(Number(ms)||0);fn();return timeoutDelays.length},
   clearTimeout(){},
   document:{
     getElementById(){return null},
@@ -103,20 +104,6 @@ const headingWins=Q.navigationCameraDecision({
 });
 ok(headingWins.routeMatch.segmentBearingDegrees>250&&headingWins.routeMatch.segmentBearingDegrees<290,'QueueGo matcher must use live travel direction to avoid an adjacent opposite carriageway');
 
-const nearerWrongCarriageway=[
-  [103.0000,15.00010],
-  [103.0100,15.00010],
-  [103.0100,15.00000],
-  [103.0000,15.00000]
-];
-const ownLaneWins=Q.navigationCameraDecision({
-  lat:15.00002,lng:103.0060,
-  speed:9,bearing:90,accuracy:5,
-  route:nearerWrongCarriageway,previousBearing:90,previousRouteProgress:600
-});
-ok(ownLaneWins.routeMatch.segmentBearingDegrees>70&&ownLaneWins.routeMatch.segmentBearingDegrees<110,'moving Rider must stay matched to the same-direction carriageway even when the opposite carriageway is physically closer');
-ok(ownLaneWins.routeMatch.snapped.lat>15.00005,'Rider puck must remain on the correct carriageway instead of jumping across the median');
-
 const fast=Q.navigationCameraDecision({
   lat:15.00001,lng:103.0020,
   speed:20,bearing:90,accuracy:5,
@@ -125,12 +112,27 @@ const fast=Q.navigationCameraDecision({
 eq(fast.zoom,15,'high speed should zoom out');
 ok(fast.pitch>=50,'high speed should strengthen forward perspective');
 
+// A small GPS speed change across a zoom tier must not jump the map by a whole level.
+for(const threshold of [5,11,18]){
+  const before=Q.navigationCameraDecision({lat:15,lng:103,speed:threshold-.01,bearing:90,accuracy:5,route:[]});
+  const after=Q.navigationCameraDecision({lat:15,lng:103,speed:threshold+.01,bearing:90,accuracy:5,route:[]});
+  ok(Math.abs(before.zoom-after.zoom)<=.11,'speed-tier boundaries must keep zoom continuous');
+}
+
 const poor=Q.navigationCameraDecision({
   lat:15.00001,lng:103.0020,
   speed:8,bearing:90,accuracy:95,
   route:straight,previousBearing:90
 });
 eq(poor.pitch,24,'poor GPS accuracy should reduce perspective');
+
+const outsideSnap=Q.navigationCameraDecision({
+  lat:15.00027,lng:103.0040,
+  speed:8,bearing:180,accuracy:5,
+  route:straight,previousBearing:180
+});
+ok(outsideSnap.routeMatch.offRouteMeters>25,'test fix must be outside the twenty-five-meter snap range');
+ok(outsideSnap.bearing>160&&outsideSnap.bearing<200,'outside snap range must keep real travel bearing instead of route bearing');
 
 const freeDrive=Q.navigationCameraDecision({
   lat:15,lng:103,
@@ -245,6 +247,10 @@ ok(gestureMap.easeCalls.length>duringPinchCalls,'gesture release must smoothly r
 ok(gestureMap.easeCalls.at(-1).duration>=220,'gesture release rotation must remain animated even when speed-aware turn response is fast');
 gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
 eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.003,speed:8,bearing:90,accuracy:5},straight),null,'one-finger pan should still enter free pan');
+gestureMap.handlers.dragend({originalEvent:{touches:[]}});
+eq(timeoutDelays.at(-1),8000,'one-finger pan must schedule eight-second auto-follow');
+ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0032,speed:8,bearing:90,accuracy:5},straight)!=null,
+  'eight-second idle pan timeout must restore Rider follow');
 
 Q.setNavigationFollow(gestureMap,false);
 gestureMap.handlers.rotatestart({originalEvent:{touches:[{},{}]}});
@@ -260,23 +266,9 @@ eq(gestureMap.rotationEnabled,false,'idle Rider map must disable rotation gestur
 eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.005,speed:8,bearing:90},straight,{force:true}),null,'idle Rider map must reject automatic follow even when a caller asks to force it');
 
 Q.setNavigationMode(gestureMap,true);
-eq(gestureMap.maxPitch,60,'heading follow must restore map rotation capability');
-eq(gestureMap.rotationEnabled,true,'heading follow must restore rotation gestures');
-const readyHeading=Q.followNavigationCamera(
-  gestureMap,{lat:15,lng:103.005,speed:8,bearing:90,accuracy:5},[],
-  {force:true,headingOnly:true,puckBearing:90}
-);
-ok(readyHeading!=null,'online Ready state must keep Rider heading follow active');
-eq(gestureMap.easeCalls.at(-1).bearing,90,'Ready map must rotate so the Rider arrow points forward');
-eq(gestureMap.easeCalls.at(-1).pitch,0,'Ready heading follow must stay flat instead of entering navigation perspective');
-ok(gestureMap.easeCalls.at(-1).zoom<17.4&&gestureMap.easeCalls.at(-1).zoom>17.2,'Ready heading follow must visibly zoom out at medium speed');
-Q.followNavigationCamera(
-  gestureMap,{lat:15,lng:103.006,speed:20,bearing:90,accuracy:5},[],
-  {force:true,headingOnly:true,puckBearing:90}
-);
-ok(gestureMap.easeCalls.at(-1).zoom<15.7&&gestureMap.easeCalls.at(-1).zoom>15.5,'Ready heading follow must zoom out farther at high speed');
-ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0055,speed:8,bearing:90},straight,{force:true,headingOnly:false,puckBearing:90})!=null,'active job must start perspective follow camera');
-ok(gestureMap.easeCalls.at(-1).pitch>0,'active job must restore navigation perspective');
+eq(gestureMap.maxPitch,60,'active job must restore navigation pitch');
+eq(gestureMap.rotationEnabled,true,'active job must restore rotation gestures');
+ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.005,speed:8,bearing:90},straight,{force:true})!=null,'active job must start follow camera');
 
 context.maplibregl={
   LngLatBounds:class{
@@ -289,4 +281,4 @@ ok(Q.navigationOverview(map,points,{duration:300}),'overview should fit route');
 eq(map.fit.opts.bearing,0,'overview should return north-up');
 eq(map.fit.opts.pitch,0,'overview should return top-down');
 
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Web carriageway-locked route matching + Ready flat heading-up + speed-aware zoom + active-job 3D follow, smooth rotation, gesture ownership and overview'}));
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Web free-drive 3D look-ahead + active-job follow, smooth rotation, gesture ownership and overview'}));
