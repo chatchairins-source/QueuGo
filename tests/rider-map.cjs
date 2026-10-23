@@ -21,7 +21,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('queuego-map-web.js?v=20261023-switchhud1'),true);
  eq(source.includes('queuego-rider-settings.css?v=20261023-switchhud1'),true);
  eq(source.includes('work-preferences.js?v=20261023-switchhud1'),true);
- eq(source.includes('<meta name="queuego-web-build" content="rider-20261023-flowtrim1">'),true);
+ eq(source.includes('<meta name="queuego-web-build" content="rider-20261023-ridefix1">'),true);
  eq(source.includes('queuego-map-service.js?v=20261023-render1'),true);
  eq(source.includes('<meta name="queuego-map-service-base" content="https://queuego-map-buriram.onrender.com">'),true);
  eq(source.includes('api.longdo.com/RouteService/geojson/route'),false);
