@@ -494,7 +494,7 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
   }else{
     try{map.touchZoomRotate.disableRotation()}catch(_){}
   }
-  try{map.addControl(new maplibregl.NavigationControl({showCompass:!!navigation,showZoom:false,visualizePitch:!!navigation}),'top-left')}catch(_){}
+  try{map.addControl(new maplibregl.NavigationControl({showCompass:!!navigation,showZoom:false,visualizePitch:!!navigation}),'top-right')}catch(_){}
   try{map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right')}catch(_){}
   attachPlaces(map,{searchControl:interactive&&!navigation});
   return map;
