@@ -9,7 +9,6 @@
  const pending=()=>{const raw=localStorage.getItem(key());if(!raw)return null;const p=JSON.parse(raw);if(!/^[0-9a-f-]{36}$/i.test(p.p_request_id)||!/^[0-9a-f-]{36}$/i.test(p.p_quote_id))throw Error('คำขอเดิมอ่านไม่ได้ กรุณาติดต่อฝ่ายช่วยเหลือ');return p};
  const same=u=>actor()===u&&onRide();
  const status=o=>({searching_rider:'กำลังหาคนขับ',rider_assigned:'คนขับกำลังไปจุดรับ',in_progress:'กำลังเดินทาง',completed:'จบการเดินทางแล้ว',cancelled:'ยกเลิกแล้ว',no_rider_available:'ยังไม่มีคนขับพร้อมรับเที่ยว'})[o.status]||o.status;
- const rideBaht=n=>'฿'+Math.round(Number(n)||0).toLocaleString('th-TH',{maximumFractionDigits:0});
  function clearPreview(){
   if(!previewMap)return;
   try{previewMap.remove?.()}catch{}
@@ -154,7 +153,7 @@
   let html='<div class="pt"><button class="back" onclick="go(\'home\')">'+ico('back')+'</button><div><h1>บริการเรียกรถ</h1><p class="sm" style="margin:3px 0 0">รับส่งผู้โดยสารด้วย QueueGo</p></div></div>';
   if(error)html+='<p role="alert" style="margin:0 0 10px">'+esc(error)+'</p>';
   if(current){
-   html+='<section class="card"><h2>'+esc(QueueGoOrderNumber.format(current))+'</h2><b>'+esc(status(current))+'</b><div id="ride-live-map" class="mapbox" style="height:280px;border-radius:16px;overflow:hidden;margin:12px 0 6px;background:#eef1f4"></div><p id="ride-live-status" class="sm" style="margin:0 0 12px;color:#777d86">กำลังโหลดตำแหน่งล่าสุดจากคนขับ</p><p>จุดรับ: '+esc(current.pickup_address)+'</p><p>จุดหมาย: '+esc(current.delivery_address)+'</p><p>ค่าโดยสารเงินสด <b>'+rideBaht(current.fare)+'</b></p><p>คนขับ: '+esc(current.rider_name||'กำลังหา')+'</p><p>เส้นทางที่ประเมิน '+Number(current.distance_km).toLocaleString('th-TH')+' กม. · เวลาวิ่งประมาณ '+Math.ceil(current.duration_minutes)+' นาที ไม่รวมเวลารอคนขับ</p>';
+   html+='<section class="card"><h2>'+esc(QueueGoOrderNumber.format(current))+'</h2><b>'+esc(status(current))+'</b><div id="ride-live-map" class="mapbox" style="height:280px;border-radius:16px;overflow:hidden;margin:12px 0 6px;background:#eef1f4"></div><p id="ride-live-status" class="sm" style="margin:0 0 12px;color:#777d86">กำลังโหลดตำแหน่งล่าสุดจากคนขับ</p><p>จุดรับ: '+esc(current.pickup_address)+'</p><p>จุดหมาย: '+esc(current.delivery_address)+'</p><p>ค่าโดยสารเงินสด <b>'+baht(current.fare)+'</b></p><p>คนขับ: '+esc(current.rider_name||'กำลังหา')+'</p><p>เส้นทางที่ประเมิน '+Number(current.distance_km).toLocaleString('th-TH')+' กม. · เวลาวิ่งประมาณ '+Math.ceil(current.duration_minutes)+' นาที ไม่รวมเวลารอคนขับ</p>';
    if(!terminal(current)&&current.rider_id)html+='<button class="lk" onclick="go(\'order-chat/'+esc(current.id)+'\')">ติดต่อคนขับ</button>';
    if(current.status==='searching_rider'&&!current.rider_id&&!p)html+='<button class="lk" data-action="cancel" '+(busy?'disabled':'')+'>ยกเลิกการเรียกรถ</button>';
    if(terminal(current)&&!p)html+='<button class="prim" data-action="new">เรียกรถเที่ยวใหม่</button>';
@@ -170,12 +169,12 @@
    html+=rideLocationButton('pickup','จุดรับ',pickup?.address,'#1677ff');
    html+=rideLocationButton('destination','จุดหมาย',destination?.address,'#e6002d');
    if(!pickup&&!p&&config.enabled)html+='<button type="button" id="ride-use-current" style="width:100%;padding:10px 12px;border:1px solid #cfd9e6;border-radius:12px;background:#f7faff;color:#2e6db4;font-weight:800;margin-bottom:10px">ใช้ตำแหน่งปัจจุบันเป็นจุดรับ</button>';
-   if(quote)html+='<div style="padding:12px;border-radius:14px;background:#f7f8fa;margin-top:4px"><div style="display:flex;justify-content:space-between;align-items:end"><span>ค่าโดยสารเงินสด</span><b style="font-size:24px">'+rideBaht(quote.fare)+'</b></div><p class="sm" style="margin:5px 0 0">ระยะทาง '+Number(quote.distance_km).toLocaleString('th-TH',{maximumFractionDigits:1})+' กม. · เวลาวิ่งประมาณ '+Math.ceil(quote.duration_minutes)+' นาที</p></div>';
+   if(quote)html+='<div style="padding:12px;border-radius:14px;background:#f7f8fa;margin-top:4px"><div style="display:flex;justify-content:space-between;align-items:end"><span>ค่าโดยสารเงินสด</span><b style="font-size:24px">'+baht(quote.fare)+'</b></div><p class="sm" style="margin:5px 0 0">ระยะทาง '+Number(quote.distance_km).toLocaleString('th-TH',{maximumFractionDigits:1})+' กม. · เวลาวิ่งประมาณ '+Math.ceil(quote.duration_minutes)+' นาที</p></div>';
    else if(!p)html+='<button class="prim" data-action="quote" '+(busy||!config.enabled||!pickup||!destination?'disabled':'')+' style="margin-top:4px">'+(busy?'กำลังตรวจสอบ…':'ดูค่าโดยสาร')+'</button>';
    html+='</section>';
   }
   if(p||!current&&quote)html+='<button class="prim" data-action="request" '+(busy?'disabled':'')+'>'+(p?'ตรวจผลคำขอเดิม / ลองอีกครั้ง':'เรียกรถ')+'</button>';
-  if(!current&&!p)html+=rows.filter(terminal).slice(0,5).map(o=>'<p><a href="#ride/'+esc(o.id)+'">'+esc(QueueGoOrderNumber.format(o))+' · '+rideBaht(o.fare)+'</a></p>').join('');
+  if(!current&&!p)html+=rows.filter(terminal).slice(0,5).map(o=>'<p><a href="#ride/'+esc(o.id)+'">'+esc(QueueGoOrderNumber.format(o))+' · '+baht(o.fare)+'</a></p>').join('');
   layout(html,'orders');
   document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>action(button.dataset.action));
   const quick=$('ride-use-current');if(quick)quick.onclick=quickCurrentPickup;
