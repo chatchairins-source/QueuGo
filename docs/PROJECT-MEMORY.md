@@ -1,3 +1,14 @@
+## 2026-10-23 Map-only release checkpoint
+
+- Owner cancelled timestamp recovery and requests map changes only. Native restoration PR #658 is closed and must not be merged. Preserve current Rider UI; do not restart recovery.
+- DONE (Web source/test/deployment): PR #659 source `f67f9a8638a391ecbdb6a6b9a7c0fe6fe32318f6`, merged `fe994fa0a7d0f93bc1d2e596285a3e9a06cbc43f`. Exact RC `39913291906` and `39913298092` SUCCESS; post-merge RC `39913807469` SUCCESS; Pages `39913807159` SUCCESS. Merge tree exactly equals the tested source tree.
+- Public byte readback PASS: Rider build `rider-20261023-maponly1`; HTML SHA256 `39b7451dca46b4e37aa2842eff698f92bf3b0e10f2a05d5f506d29d0d7231312`; map JS SHA256 `0dcc1ea42b0a57def3ab83493bd46135306201e58cbf7f95c1f883276c427633`. Live URL: https://chatchairins-source.github.io/QueuGo/rider/?v=20261023-maponly1 . Both responses match committed bytes. All Rider CSS/non-map UI functions match pre-recovery current UI `59051ddf`; only online map follow and continuous speed zoom differ functionally from that UI baseline.
+- DONE (Native source/test/build/emulator): PR #660 source `c0b2865e4c91a3b4a8ac7b02501d37cb0b360137`, merged `0981133bb384ce82adf727d9bcf2cd011f102e5f`. Exact Native Pilot `39913297922` SUCCESS: full regression, JVM/unit tests, three APK builds, 16KB/no-WebView checks and emulator launch/map/service lifecycle. Merge tree exactly equals the tested source tree. Separate map-display/navigation-map/maplibre runtime jobs were skipped on this source branch; do not relabel them passed. Read any new post-merge integrated results before further release certification.
+- Native production scope is three map files only: online perspective, 25m camera/puck snap alignment, existing hosted QueueGo route URL default. Rider App UI/HUD/orders/API/proof/cash/auth unchanged. Web route provider returned HTTP200 with real road geometry (44 points, 1649m); no Production order or database writes.
+- Exact Native build artifact `12483773589` (`queuego-native-pilot-apks`), SHA256 `0fadcf0ee7ec643f2437970e260fe68bdfa6ceceb92be239bb70458ba9ad5d8b`, belongs to source `c0b2865e`. This is CI build evidence, not installation on the owner's phone.
+- BLOCKED (physical acceptance): real GPS/road smoothness, battery/foreground-background behavior and owner-device installation are not certified by CI/emulator. No physical-device PASS claimed.
+- NEXT: retain these successors; read post-merge integrated map gates; address only evidence-backed map defects from actual device testing. Do not change cards/switches/branding/tabs or restore whole files.
+
 ## 2026-10-23 Current owner scope: map only; recovery cancelled
 
 - Latest owner instruction: ไม่ต้องกู้แล้วปรับแค่เรื่องแผนที่. Do not continue whole-file/module timestamp recovery. Native recovery PR #658 is closed without merge. Initial recovery snapshots are historical references only.
