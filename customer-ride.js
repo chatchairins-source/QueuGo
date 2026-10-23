@@ -219,7 +219,7 @@
    '<section class="card" style="padding:14px 14px 16px;border-radius:24px;box-shadow:0 12px 32px rgba(24,32,48,.06);border:1px solid #eceef2;background:#fff">'+
     '<div style="position:relative">'+
      '<div id="ride-location-map" class="mapbox" style="height:330px;border-radius:20px;overflow:hidden;background:#eef1f4;box-shadow:inset 0 0 0 1px rgba(17,24,39,.03)"></div>'+
-     '<button type="button" id="ride-select-center" style="position:absolute;right:12px;bottom:12px;min-height:42px;padding:0 14px;border:1px solid #e0e3e8;border-radius:999px;background:rgba(255,255,255,.96);color:#343941;font-weight:800;box-shadow:0 5px 18px rgba(17,24,39,.12)">เลือกตรงกลาง</button>'+
+
     '</div>'+
     '<button type="button" id="ride-gps" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;margin-top:14px;padding:12px;border:1px solid #e4e7ec;border-radius:17px;background:#fff;color:#ef233c">'+
      '<span style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff0f2;color:#ef233c;flex:none">'+ico('pin',20)+'</span>'+
@@ -246,9 +246,6 @@
    }
   },{selectInitial:!!(saved||auto)});
   $('ride-gps').onclick=()=>picker?.locate();
-  $('ride-select-center').onclick=()=>{
-   if(!picker?.selectCenter?.())$('ride-location-error').textContent='ยังอ่านจุดกึ่งกลางแผนที่ไม่ได้ กรุณาลองเลื่อนแผนที่อีกครั้ง';
-  };
   $('ride-back').onclick=()=>{picker?.destroy();picker=null;render()};
   if(which==='pickup'&&!saved){
    // Saved/current QueueGo location becomes the initial selected point immediately.
