@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
 <script src="../queuego-map-web.js?v=20261019-places1"></script>
-<script src="../map-view/queuego-map-service.js?v=20261017-1"></script>
+<script src="../map-view/queuego-map-service.js?v=20261023-runtime1"></script>
 
 
 <link rel="stylesheet" href="../queuego-rider-settings.css?v=20261019-1">
@@ -874,7 +874,7 @@ const RIDER_ROUTE_REROUTE_SUSTAIN_MS=3000;
 const RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000;
 const RIDER_ROUTE_MISSED_TURN_MIN_OFF_ROUTE_METERS=8;
 const RIDER_ROUTE_IMMEDIATE_REROUTE_COOLDOWN_MS=3000;
-let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteSince=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderPuckHeadingFix=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
+let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteSince=0,riderRouteLastRerouteAt=0,riderRouteRetryScope=null,riderRouteRetryAfter=0,riderRouteErrorToastAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderPuckHeadingFix=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
 function clearRiderRoute(){
   riderRouteRequest?.controller.abort();riderRouteRequest=null;riderRouteCache=null;riderRouteGeometry=[];
   riderRouteOffRouteSince=0;riderRouteLastRerouteAt=0;
@@ -1515,11 +1515,13 @@ function drawLaundryRoute(){
   const scope=JSON.stringify([userId,session?.sessionId,'laundry',j.job_id,j.job_status,Number(lat),Number(lng)]);
   const current=()=>S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&String(S.laundryJob?.job_id)===String(j.job_id)&&String(S.laundryJob?.job_status)===String(j.job_status);
   if(riderRouteRequest?.scope===scope&&riderRouteRequest.map===map)return riderRouteRequest.task;
+  if(riderRouteRetryScope!==scope){riderRouteRetryScope=null;riderRouteRetryAfter=0}
+  if(riderRouteRetryScope===scope&&Date.now()<riderRouteRetryAfter)return Promise.resolve();
   if(riderRouteCache?.scope!==scope||riderRouteCache?.map!==map)clearRiderRoute();
   if(riderRouteCache&&!qgRiderRouteNeedsReroute(pos,scope,map))return Promise.resolve();
   if(document.hidden||!navigator.onLine)return Promise.resolve();
   const controller=new AbortController(),request={scope,map,controller},timer=setTimeout(()=>controller.abort(),12000);
-  const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');if(badge)badge.style.display='block';if(txt)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
+  const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');if(badge)badge.style.display='flex';if(txt)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
   request.task=(async()=>{
     try{
       const {routes,dist,time,routeId,instructions}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
@@ -1534,9 +1536,16 @@ function drawLaundryRoute(){
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteSince=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label,instructions};
+      riderRouteOffRouteSince=0;riderRouteRetryScope=null;riderRouteRetryAfter=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label,instructions};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
-    }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
+    }catch(e){
+      if(current()){
+        riderRouteRetryScope=scope;riderRouteRetryAfter=Date.now()+15000;
+        if(badge)badge.style.display='none';
+        if(txt)txt.textContent=label+' • Route Server ยังไม่พร้อม';
+        if(Date.now()-riderRouteErrorToastAt>30000){riderRouteErrorToastAt=Date.now();try{toast('QueueGo Navigation ยังเชื่อมต่อ Route Server ไม่ได้')}catch(_){}}
+      }
+    }
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
   })();riderRouteRequest=request;return request.task;
 }
