@@ -761,10 +761,11 @@ def verify_three_role_system_kill_recovery():
 
         # ActivityManager kill is asynchronous and on some AOSP emulator builds a
         # WebView/renderer binding can keep the debuggable app process alive even
-        # after HOME + COMPLETE trim. Poll first. If it is still alive, deliver
-        # SIGKILL as the app UID via run-as. This models abrupt LMK/process death
-        # without force-stop semantics, so the subsequent start still exercises
-        # ordinary cold recreation rather than Android's stopped-package state.
+        # after HOME + COMPLETE trim. Poll first. If it is still alive, use the
+        # emulator's adb shell domain to deliver SIGKILL. `run-as` cannot signal
+        # another app process under Android SELinux (`runas_app` -> `sigkill`
+        # is denied), so it is not a valid fallback for process-death testing.
+        # This remains an abrupt process death without force-stop semantics.
         kill_mode = "am-kill"
         kill_deadline = time.time() + 5
         remaining = package_pids_optional(pkg)
@@ -772,15 +773,15 @@ def verify_three_role_system_kill_recovery():
             time.sleep(0.25)
             remaining = package_pids_optional(pkg)
         if remaining:
-            kill_mode = "run-as-sigkill"
+            kill_mode = "adb-shell-sigkill"
             for pid in remaining:
                 killed = subprocess.run(
-                    adb + ["shell", "run-as", pkg, "kill", "-9", str(pid)],
+                    adb + ["shell", "kill", "-9", str(pid)],
                     capture_output=True,
                     text=True,
                     timeout=15,
                 )
-                kill_attempts.append({"mode": "run-as-sigkill", "pid": pid, "returncode": killed.returncode,
+                kill_attempts.append({"mode": "adb-shell-sigkill", "pid": pid, "returncode": killed.returncode,
                                       "stdout": killed.stdout, "stderr": killed.stderr})
             kill_deadline = time.time() + 5
             observed = package_pids_optional(pkg)
