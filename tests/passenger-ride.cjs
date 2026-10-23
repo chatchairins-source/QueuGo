@@ -172,7 +172,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await as(170);await reject('select queuego_admin_configure_ride(true,$1::jsonb)',[JSON.stringify({base_fare:20,included_km:0,per_km:10,minimum_fare:20,platform_fee_percent:5})],/credit integration/);
  await q('select queuego_admin_configure_ride(false,$1::jsonb)',[JSON.stringify({base_fare:20,included_km:0,per_km:10,minimum_fare:20,platform_fee_percent:0})]);
  eq((await q("select value from queuego_platform_rules where rule_key='feature.ride' order by effective_from desc limit 1")).rows[0].value,false);
- await as(102);const ledger=(await q('select qg_rider_cash_ledger(current_date,current_date) l')).rows[0].l;
+ await as(102);const ledger=(await q("select qg_rider_cash_ledger((now() at time zone 'Asia/Bangkok')::date,(now() at time zone 'Asia/Bangkok')::date) l")).rows[0].l;
  eq(ledger.find(o=>o.order_id===id(80)).cash_collected_customer,50);eq(ledger.find(o=>o.order_id===id(80)).cash_paid_merchant,0);
  await db.close();console.log('Passenger Ride: '+checks+' checks PASS');
 })().catch(e=>{console.error(e.message,e.detail||'');process.exitCode=1});

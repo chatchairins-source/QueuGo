@@ -181,7 +181,7 @@ jobs:
       - name: Tracking coordinate and terminal-state unit tests
         run: gradle -p native-android :shared:testDebugUnitTest :merchant:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest --no-build-cache --stacktrace
       - name: Build three native APKs
-        run: gradle -p native-android :customer:assembleDebug :merchant:assembleDebug :rider:assembleDebug :rider:assembleDebugAndroidTest --no-build-cache --stacktrace
+        run: gradle -p native-android :customer:assembleDebug :merchant:assembleDebug :merchant:assembleDebugAndroidTest :rider:assembleDebug :rider:assembleDebugAndroidTest --no-build-cache --stacktrace
       - name: Verify Android 16 KB page-size packaging
         run: |
           python3 native-android/qa/verify-16kb-page-size.py \

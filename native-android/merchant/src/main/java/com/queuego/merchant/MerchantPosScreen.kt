@@ -130,6 +130,7 @@ fun MerchantPosScreen(
     var noTable by rememberSaveable { mutableStateOf(false) }
     var note by rememberSaveable { mutableStateOf("") }
     var search by rememberSaveable { mutableStateOf("") }
+    var productCategory by rememberSaveable { mutableStateOf("all") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var pendingEdit by remember { mutableStateOf<PosEditIntent?>(null) }
@@ -159,6 +160,7 @@ fun MerchantPosScreen(
         selectedBillId = null
         offlineDraft = null
         draftDeviceId = null
+        productCategory = "all"
         try {
             val device = withContext(Dispatchers.IO) { offlineDraftStore.deviceId() }
             draftDeviceId = device
@@ -843,6 +845,7 @@ fun MerchantPosScreen(
                     noTable = noTable,
                     note = note,
                     search = search,
+                    categoryKey = productCategory,
                     busy = busy,
                     pendingCreate = pendingPosRequestId != null,
                     canReceive = can("receive_order") || !networkValidated,
@@ -875,6 +878,7 @@ fun MerchantPosScreen(
                     },
                     onNote = { note = it.take(500) },
                     onSearch = { search = it },
+                    onCategory = { productCategory = it },
                     onProduct = ::addPosProduct,
                     onRetryPending = ::retryPendingPosCreate,
                     onReduce = { line ->
@@ -1495,6 +1499,7 @@ private fun PosCounterView(
     noTable: Boolean,
     note: String,
     search: String,
+    categoryKey: String,
     busy: Boolean,
     pendingCreate: Boolean,
     canReceive: Boolean,
@@ -1510,6 +1515,7 @@ private fun PosCounterView(
     onNoTable: () -> Unit,
     onNote: (String) -> Unit,
     onSearch: (String) -> Unit,
+    onCategory: (String) -> Unit,
     onProduct: (PosProduct) -> Unit,
     onRetryPending: () -> Unit,
     onReduce: (PosLine) -> Unit,
@@ -1522,6 +1528,10 @@ private fun PosCounterView(
 ) {
     val openBills = snapshot.bills.filter { it.open }
     val lines = selectedBill?.let { snapshot.linesByOrder[it.id].orEmpty() }.orEmpty()
+    val categories = posProductCategories(snapshot.products)
+    LaunchedEffect(categories, categoryKey) {
+        if (categoryKey != "all" && categories.none { it.key == categoryKey }) onCategory("all")
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         if (pendingCreate) {
             Surface(
@@ -1578,6 +1588,16 @@ private fun PosCounterView(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(Modifier.height(6.dp))
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            PosCategoryChip("ทั้งหมด", categoryKey == "all") { onCategory("all") }
+            categories.forEach { category ->
+                PosCategoryChip(category.label, category.key == categoryKey) { onCategory(category.key) }
+            }
+        }
         Spacer(Modifier.height(7.dp))
         OutlinedTextField(
             note,
@@ -1589,9 +1609,7 @@ private fun PosCounterView(
 
         QgSectionTitle("เมนูสินค้า", if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล" else selectedBill.number)
         Spacer(Modifier.height(8.dp))
-        val products = snapshot.products.filter {
-            search.isBlank() || it.name.contains(search.trim(), ignoreCase = true)
-        }
+        val products = filterPosProducts(snapshot.products, search, categoryKey)
         products.chunked(2).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { product ->
@@ -1978,7 +1996,29 @@ private fun PosReportsView(
                     PosReportLine("รับกลับ", report.takeaway)
                     HorizontalDivider()
                     PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)
-                    Text("จำนวนบิล " + report.orders, color = QgMuted, fontSize = 11.sp)
+                    Text("จำนวนบิล ${report.orders}", color = QgMuted, fontSize = 11.sp)
+                    PosReportLine("เฉลี่ยต่อบิล", report.averageTicket)
+                    PosReportLine("รับเงินสด", report.cashSales)
+                    PosReportLine("ส่วนลด", report.discounts)
+                    PosReportLine("คืนเงิน", report.refunds)
+                    Text("ยกเลิกบิล ${report.voids}", color = QgMuted, fontSize = 11.sp)
+                    report.changePercent?.let { change ->
+                        val sign = if (change > 0) "+" else ""
+                        Text("เทียบช่วงก่อน $sign${change}% · ฿${money(report.previousPeriodSales)}",
+                            color = QgMuted, fontSize = 11.sp)
+                    }
+                    if (report.hourlySales.isNotEmpty()) {
+                        HorizontalDivider(Modifier.padding(vertical = 5.dp))
+                        Text("ยอดขายรายชั่วโมง", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        report.hourlySales.forEach { hour ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(String.format(Locale.US, "%02d:00", hour.hour), color = QgMuted, fontSize = 11.sp)
+                                Text("${hour.bills} บิล", color = QgMuted, fontSize = 11.sp)
+                                Text("฿${money(hour.sales)}", fontSize = 11.sp)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2169,6 +2209,27 @@ private fun PosChoiceButton(
         Button(onClick = onClick, modifier = modifier) { Text(label, fontSize = 11.sp) }
     } else {
         OutlinedButton(onClick = onClick, modifier = modifier) { Text(label, fontSize = 11.sp) }
+    }
+}
+
+@Composable
+private fun PosCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(50.dp)
+    if (selected) {
+        Button(
+            onClick = onClick,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFFFF3F5),
+                contentColor = QgRed
+            ),
+            elevation = null
+        ) { Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp)
+        ) { Text(label, fontSize = 11.sp, color = QgMuted) }
     }
 }
 

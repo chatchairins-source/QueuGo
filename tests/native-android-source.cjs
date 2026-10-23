@@ -49,6 +49,7 @@ for(const p of [
   'merchant/src/main/java/com/queuego/merchant/MerchantNotificationsScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantProductModel.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantPosCategories.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt',
@@ -429,9 +430,16 @@ ok(source.includes('pos_cancel_bill')&&source.includes('pos_apply_discount')&&so
 ok(source.includes('pos_create_role_invite')&&source.includes('pos_set_staff_role')&&source.includes('pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active'),'Merchant native POS must preserve Production staff roles and invite management');
 ok(source.includes('pos_save_table')&&source.includes('pos_delete_table')&&source.includes('qg_table_rotate_qr'),'Merchant native POS must preserve table and QR management');
 ok(source.includes('pos_owner_dashboard'),'Merchant native POS must preserve storefront reports');
+ok(source.includes('average_ticket')&&source.includes('cash_sales')&&source.includes('discounts')&&source.includes('refunds')&&source.includes('hourly_sales')&&source.includes('previous_period_sales'),'Native Merchant POS must consume the shared POS-only report metrics');
 ok(source.includes('PosTabs(')&&source.includes('"reports" to "ยอดขาย"')&&source.includes('"history" to "ประวัติ"')&&source.includes('"staff" to "พนักงาน"'),'Merchant native POS must preserve Production counter tables kitchen bills reports history and staff tabs');
 ok(source.includes('shop_profiles?select=shop_name,public_category,metadata')&&source.includes('shopCategory = shopCategory?.trim()?.lowercase().orEmpty()'),'Merchant native POS must read the authoritative shop category before enabling Kitchen');
 ok(source.includes('if (kitchenEnabled) add("kitchen" to "ครัว")')&&source.includes('canSendKitchen = kitchenEnabled && can("send_kitchen")'),'Merchant native POS must hide Kitchen and its actions for non-food merchants');
+const posApi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt'),posOffline=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt'),posUi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
+const posCategories=read('merchant/src/main/java/com/queuego/merchant/MerchantPosCategories.kt');
+ok(posApi.includes('pos_price,delivery_price,image,category,available')&&posApi.includes('category = nullableString(r, "category")')&&posApi.includes('r.optDouble("pos_price")'),'Native POS must load category while retaining storefront price as its sale price');
+ok(posUi.includes('PosCategoryChip("ทั้งหมด"')&&posUi.includes('filterPosProducts(snapshot.products, search, categoryKey)'),'Native POS category chips must combine with product search and filter the existing catalog');
+ok(posCategories.includes('matchesCategory')&&posCategories.includes('matchesQuery')&&posCategories.includes('posProductCategories'),'Native POS catalog filtering must combine category selection and text search deterministically');
+ok(posOffline.includes('.put("category", p.category ?: JSONObject.NULL)')&&posOffline.includes('if (p.isNull("category")) null else p.optString("category").takeIf { it.isNotBlank() }'),'Native offline catalog must retain category labels and guard Android JSON null coercion for old or uncategorised catalogs');
 ok(source.includes('bills = openBills.filter { !kitchenEnabled || it.kitchenStatus in setOf("READY", "SERVED") }')&&source.includes('if (canClose && (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED")))'),'Merchant native POS must allow direct checkout without a Kitchen status for non-food merchants');
 ok(source.includes('pendingPosRequestId')&&source.includes('ตรวจบิลเดิม')&&source.includes('requestId = requestId'),'Merchant native POS must preserve idempotent new-bill recovery after uncertain network results');
 ok(source.includes('pos_submit_offline_draft')&&source.includes('put("request_ids", JSONArray(item.requestIds))')&&source.includes('item.copy(requestIds = if'),'Merchant offline draft submission must use one atomic server request with stable per-unit retry IDs');

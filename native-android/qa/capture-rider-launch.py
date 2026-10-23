@@ -761,10 +761,11 @@ def verify_three_role_system_kill_recovery():
 
         # ActivityManager kill is asynchronous and on some AOSP emulator builds a
         # WebView/renderer binding can keep the debuggable app process alive even
-        # after HOME + COMPLETE trim. Poll first. If it is still alive, deliver
-        # SIGKILL as the app UID via run-as. This models abrupt LMK/process death
-        # without force-stop semantics, so the subsequent start still exercises
-        # ordinary cold recreation rather than Android's stopped-package state.
+        # after HOME + COMPLETE trim. Poll first. If it is still alive, use the
+        # emulator's adb shell domain to deliver SIGKILL. `run-as` cannot signal
+        # another app process under Android SELinux (`runas_app` -> `sigkill`
+        # is denied), so it is not a valid fallback for process-death testing.
+        # This remains an abrupt process death without force-stop semantics.
         kill_mode = "am-kill"
         kill_deadline = time.time() + 5
         remaining = package_pids_optional(pkg)
@@ -772,15 +773,15 @@ def verify_three_role_system_kill_recovery():
             time.sleep(0.25)
             remaining = package_pids_optional(pkg)
         if remaining:
-            kill_mode = "run-as-sigkill"
+            kill_mode = "adb-shell-sigkill"
             for pid in remaining:
                 killed = subprocess.run(
-                    adb + ["shell", "run-as", pkg, "kill", "-9", str(pid)],
+                    adb + ["shell", "kill", "-9", str(pid)],
                     capture_output=True,
                     text=True,
                     timeout=15,
                 )
-                kill_attempts.append({"mode": "run-as-sigkill", "pid": pid, "returncode": killed.returncode,
+                kill_attempts.append({"mode": "adb-shell-sigkill", "pid": pid, "returncode": killed.returncode,
                                       "stdout": killed.stdout, "stderr": killed.stderr})
             kill_deadline = time.time() + 5
             observed = package_pids_optional(pkg)
@@ -1110,6 +1111,21 @@ def verify_navigation_location_foreground_runtime():
 
 
 
+def verify_merchant_pos_catalog_runtime():
+    """Validate offline POS category decoding on Android, without a login or server call."""
+    merchant_apk = repo / "native-android/merchant/build/outputs/apk/debug/merchant-debug.apk"
+    test_apk = repo / "native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk"
+    run(adb + ["install", "-r", str(merchant_apk)])
+    run(adb + ["install", "-r", str(test_apk)])
+    result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
+                       "com.queuego.merchant.MerchantPosCatalogRuntimeTest",
+                       "com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner"],
+                 capture_output=True, text=True, timeout=90)
+    (output / "merchant-pos-catalog-instrumentation.txt").write_text(result.stdout + result.stderr)
+    assert "OK (1 test)" in result.stdout, "Android POS catalog null/legacy recovery failed"
+    print("QUEUEGO_MERCHANT_POS_CATALOG_PASS; emulator only, no authenticated sale or hardware acceptance")
+
+
 def verify_merchant_shop_map_runtime():
     """Exercise the real Merchant QueueGo map picker with a real map source."""
     if not queuego_map_runtime_configured():
@@ -1377,6 +1393,7 @@ with (output / "emulator.log").open("w") as log:
             }
             (output / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
             print("Actual Rider unauthenticated launch PASS; Home visual / E2E / physical FCM remain unverified")
+            verify_merchant_pos_catalog_runtime()
             capture_role_viewports()
             verify_three_role_system_kill_recovery()
             verify_real_home_map_runtime()

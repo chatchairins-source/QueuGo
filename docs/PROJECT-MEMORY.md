@@ -1951,3 +1951,39 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Continue PR596 exact bdf99bfa; Native Pilot39731712694 SUCCESS after nullable shop-category compile fix. Web hotfix PR598 is the matching storefront/Delivery backend policy source.
 - Remove Delivery reads/DTOs/Kitchen cards/actions/setup tab/history filter and GP/Delivery report rows from native POS. Food/Cafe keep POS Kitchen; Grocery/Market have no Kitchen tab/actions/staff role option. POS history reads sales_channel=POS; totals use storefront dine-in/takeaway only. Existing Delivery screens/APIs remain.
 - Separate Delivery cancellation predicate allows pending/accepted/searching/rider-assigned/legacy-assigned only when preparation and ready timestamps are null; confirmation closes on state/timing changes. New JVM tests cover Rider acceptance, started/terminal states and stale timestamps. No APK release or Production data mutation in this source checkpoint; exact-head Native full CI required.
+
+## Native POS offline category decoder — 2026-10-23
+- Continue PR #633 from exact `d98ecdbf423e34b41e4fde3062d7b0d5db6750f0` on Native base `7e058b616e669634a8b58916184f7e551c82b1c3`; never replace this with Web main or the dirty older POS checkout.
+- Android JSONObject coerces explicit JSON null to the text `null`. Cached category decoding must check `isNull` before `optString`; literal category text `null` remains valid. The Android instrumentation regression uses app cache files only and tests null, named and legacy missing fields. JVM-only success is insufficient for this behavior.
+- Reuse the existing accelerated Native Pilot emulator and evidence upload for the POS catalog test. No Production rows, schema, login or payment are involved. Physical/authenticated POS Release Gate remains open.
+
+## Native POS verified successor — 2026-10-23
+- PR #633 merged at `0a9c17dd` after exact `d98ecdbf` passed both Native runs. PR #635 merged at `1f71c351b88d635de810fccb8e82bc447de37390` after exact source `639bedea` passed Native Pilot `39882985832`, including Android cached-category instrumentation (`QUEUEGO_MERCHANT_POS_CATALOG_PASS`).
+- Real Android null/named/literal-null/legacy decoding is now source/test verified. No authenticated or physical cashier/device/hardware acceptance is implied. POS remains NOT DONE; NEXT is the real cashier/device Release Gate evidence, preserving the same Native successor and all existing dirty worktrees.
+
+## Merchant Play handoff — 2026-10-23
+- Preparing the current Merchant/POS app for Google Play does not authorize fabricating upload-key identity or release acceptance. Fresh secret readiness `39744773027` attempt 2 confirms Firebase config present but all four upload-signing inputs and three backend/backup certification inputs absent. Signed AAB packaging remains blocked by those inputs and the existing evidence guard.
+- Store copy, icon, feature graphic, readiness report and concrete Console/build handoff are packaged separately, explicitly without an AAB. See `docs/MERCHANT-PLAY-HANDOFF-20261023.md`. NEXT: secure signing inputs, observed Play version history and real Merchant/device acceptance, then the existing certified pipeline; preserve the newest Merchant successor and all dirty worktrees.
+- Owner subsequently confirmed Merchant has never been uploaded to Play. A new RSA-3072 Merchant upload key was generated and both passwords/private-key import verified. Public certificate SHA-256 `341d7767b68f4f151714bf13bfed79b9cb69181f2f8c1336a52939038181b994`; private backup is outside git. Proposed first release `1.0.0` / code `1`. The signed-in GitHub add-secret form is ready, with no secret values entered; next is the browser-required action-time confirmation for CI signing-key access and then fresh preflight. Remaining release guards are unchanged.
+
+
+## 2026-10-23 Merchant signing installed / independent readiness
+- All four generated Merchant signing inputs are installed in GitHub Actions. Readiness job120207460634 confirms signing/Firebase presence; only service-role, DB URL and backup passphrase are absent. No secret values committed.
+- Readiness previously skipped key/Firebase validation after backend presence failure. Conditional independent checks now run when their own inputs exist, while required-presence failure and certified release guards remain blocking. Exact hosted content validation pending.
+- Continue Native210158aa (explicit branch fetch; default fetch refspec only updates main). No signed AAB, physical PASS or Play upload claimed; keep existing dirty worktrees untouched.
+
+
+## 2026-10-23 Merchant signing exact-source CI verified
+- PR637 sourcee824e7cd readiness39890564617/job120209043257: Firebase3 clients PASS; keystore store password/alias/private-key import PASS; public SHA256341d7767b68f4f151714bf13bfed79b9cb69181f2f8c1336a52939038181b994 matches saved key. Mergea5300b90 preserves all Native POS work.
+- Overall readiness correctly FAILS: QG_SUPABASE_SERVICE_ROLE_KEY, QG_SUPABASE_DB_URL, QG_BACKUP_PASSPHRASE absent. Storage skipped, cleanup PASS. No release bypass, signed AAB, device evidence or Play upload. Continue existing certification/backup and real Merchant acceptance gates; never regenerate the installed key.
+
+
+## 2026-10-23 Merchant Store package/public URL reconciliation
+- Corrected stale CHECKLIST signing state: all four inputs installed and CI39890564617 content validation PASS; overall readiness still FAILS for backend3. No repeat key generation.
+- Public privacy/deletion/client asset HTTP200 and byte equality with Web9eb3dac1 verified; hashes in docs/merchant-play-public-url-verification-20261023.json. No actual login/deletion/Production mutation. Refreshed existing Store asset pack; no AAB or mock screenshots.
+- NEXT remains secure backend/backup prerequisites plus real Merchant/cashier/device/reviewer acceptance and certified-current-source build. No app source changed or physical/release PASS invented.
+
+
+## 2026-10-23 Merchant certified-lineage reconciliation
+- PR641 draft targets certified release; merge67a16ffd retains current Merchant tree1c538ec5 and both original histories, with no application delta. Native Pilot39892548703 IN PROGRESS; local source313/workflow57/negative release guard PASS. Native successor advanced with expected-head lease; no force/reset.
+- Production read-only: ACTIVE_HEALTHY, private evidence bucket0 objects. Tools do not expose service-role key/DB password; missing backend3 and real physical acceptance cannot be invented. NEXT: inspect exact67 CI first failure, reconcile newest role sources before final three-app release, securely configure backend/backup and collect trusted physical evidence.

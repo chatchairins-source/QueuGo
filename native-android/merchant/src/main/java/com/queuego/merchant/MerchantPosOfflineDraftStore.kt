@@ -101,6 +101,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             .put("products", JSONArray().apply { catalog.products.forEach { p ->
                 put(JSONObject().put("id", p.id).put("name", p.name.take(200)).put("price", p.price)
                     .put("image", p.image ?: JSONObject.NULL).put("available", p.available)
+                    .put("category", p.category ?: JSONObject.NULL)
                     .put("delivery_available", p.deliveryAvailable)
                     .put("delivery_price", p.deliveryPrice ?: JSONObject.NULL))
             } })
@@ -127,7 +128,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             val p = array.getJSONObject(i)
             PosProduct(p.getString("id"), p.getString("name"), p.getDouble("price"),
                 if (p.isNull("image")) null else p.getString("image"), p.getBoolean("available"),
-                p.optBoolean("delivery_available", true), if (p.isNull("delivery_price")) null else p.getDouble("delivery_price"))
+                p.optBoolean("delivery_available", true), if (p.isNull("delivery_price")) null else p.getDouble("delivery_price"),
+                if (p.isNull("category")) null else p.optString("category").takeIf { it.isNotBlank() })
         } }
         val tables = json.getJSONArray("tables").let { array -> (0 until array.length()).map { i ->
             val t = array.getJSONObject(i)

@@ -1,0 +1,55 @@
+name: Native Merchant POS category parity
+
+on:
+  push:
+    branches: [work-native-pos-category-20261023]
+    paths:
+      - 'native-android/merchant/**'
+      - 'tests/native-android-source.cjs'
+      - 'tests/native-backend-migration-sync.cjs'
+      - '.github/workflows/native-pos-category-20261023.yml'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-pos-category-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  merchant-pos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: Install Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - name: Full regression and Native Merchant contracts
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          node tests/native-android-source.cjs
+          node tests/native-backend-migration-sync.cjs
+      - name: Compile, test, and build Merchant POS
+        working-directory: native-android
+        run: gradle :merchant:compileDebugKotlin :merchant:testDebugUnitTest :merchant:assembleDebug --no-daemon --stacktrace
+      - name: Verify Merchant APK package alignment
+        run: python3 native-android/qa/verify-16kb-page-size.py native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-merchant-pos-category-${{ github.sha }}
+          path: native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
+          if-no-files-found: error
