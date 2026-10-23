@@ -1,3 +1,14 @@
+## 2026-10-23 Embedded map search separation + Merchant catalog action — reconciled successor
+
+- Owner requested search UI be separated from small embedded QueueGo Maps and that search controls must either work or be removed.
+- DONE: shared `QueueGoMapWeb.create()` defaults to no search overlay. Customer and Merchant location pickers render search outside the map, use the real QueueGo search engine, and send selected coordinates back into QueueGo Maps for pin/recenter. GPS/manual map selection remain intact.
+- DONE: Merchant menu/product search remains functional; the add-menu/add-product action is directly below search as a compact 40px action instead of an oversized full-width button at the bottom.
+- GOOGLE NOTE: Google Places POI results are not copied onto QueueGo/OSM maps because current Google Places policy requires Places results displayed on a map to be shown on a Google Map. QueueGo search continues with QueueGo-owned catalog plus open-map providers.
+- TESTED PREDECESSOR: PR #692 exact HEAD `7a36490584b9f6eeec4f2d7e892f0e24bc069b0c`, RC `39969847191` SUCCESS: npm regression, Merchant mobile WebKit, Admin mobile, Map Lab, QueueGo Map search, Grocery mobile/tablet.
+- RECONCILED: while #692 CI ran, main advanced to `d621dfe12cfc220035d73a805453b1fe3c014ee5` with shared Laundry storefront work touching `index.html`. This successor starts from that commit, preserves Laundry changes, reuses byte-identical tested Merchant/map/test blobs, and reapplies only the Customer location-search patch onto the latest `index.html`.
+- No Production data/order/auth mutation.
+- NEXT: exact-head RC on this reconciled successor, then merge, Pages/Render deploy, and owner-device visual acceptance. Do not claim physical-device PASS before owner observation.
+
 ## 2026-10-23 Merchant shopping subcategory compact mobile picker
 
 - Owner screenshot shows Shopping subcategory choices occupying excessive vertical space on Merchant Account/Edit Shop mobile.
