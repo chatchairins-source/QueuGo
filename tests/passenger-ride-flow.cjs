@@ -4,6 +4,7 @@ const customer=fs.readFileSync('customer-ride.js','utf8');
 const riderIndex=fs.readFileSync('rider/index.html','utf8');
 const rider=fs.readFileSync('rider/rider-ride.js','utf8');
 const sql=fs.readFileSync('supabase/migrations/20261023161000_ride_integer_fare_and_completion.sql','utf8');
+const reconcile=fs.readFileSync('supabase/migrations/20261023163000_ride_completion_guard_whole_baht_reconcile.sql','utf8');
 let checks=0;const eq=(a,b,m)=>{assert.equal(a,b,m);checks++};
 
 eq(index.includes('map.on("click",selectTap)'),true,'customer location picker must select directly on map tap');
@@ -17,6 +18,7 @@ eq(customer.includes("o.rider_longitude"),true,'customer Ride live map must cons
 eq(customer.includes("อัปเดตประมาณทุก 5 วินาที"),true,'customer must be told rider location refresh cadence');
 eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดรับของคุณ"),true,'Ride pickup picker must instruct direct tap');
 eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดส่งของคุณ"),true,'Ride destination picker must instruct direct tap');
+eq(customer.includes('id="ride-select-center"'),false,'Ride picker must not expose legacy center-selection button');
 
 eq(rider.includes("id=\"primary-nav-"),false,'Passenger Ride must not restore manual navigation CTA');
 eq(rider.includes("id=\"primary-action-"),true,'Passenger Ride must use the shared stage-action CTA');
@@ -33,5 +35,9 @@ eq(sql.includes("elsif v_action='complete' and o.status='in_progress' then"),tru
 eq(sql.includes("and o.rider_arrived_customer_at is not null"),false,'Ride completion must not require prior dropoff arrival timestamp');
 eq(sql.includes("rider_arrived_customer_at=coalesce(rider_arrived_customer_at,now())"),true,'completion must backfill arrival timestamp when needed');
 eq(sql.includes("payment_method='cash'"),true,'cash payment record remains authoritative');
+eq(reconcile.includes("or (old.status='in_progress' and new.status='completed')"),true,'order guard must allow Ride completion without a prior dropoff flag');
+eq(reconcile.includes("old.status='in_progress' and new.status='completed' and old.rider_arrived_customer_at is not null"),false,'old dropoff/geofence completion gate must stay removed');
+eq(reconcile.includes("new.total_amount=round(old.total_amount,0)"),true,'active legacy Ride normalization must be narrowly limited to whole-baht rounding');
+eq(reconcile.includes("'ride_fare_normalized'"),true,'active fare normalization must leave an audit record');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Passenger Ride whole-baht fare, direct pin, live rider map, no manual nav gate and guarded completion'}));
