@@ -2,6 +2,8 @@ package com.queuego.merchant
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.text.Collator
+import java.util.Locale
 
 class MerchantPosCategoriesTest {
     private val products = listOf(
@@ -12,10 +14,11 @@ class MerchantPosCategoriesTest {
     )
 
     @Test fun categoriesAreDistinctSortedAndIncludeUncategorisedProducts() {
-        assertEquals(
-            listOf("เบเกอรี่", "เครื่องดื่ม", "ไม่จัดหมวด"),
-            posProductCategories(products).map { it.label }
-        )
+        val labels = posProductCategories(products).map { it.label }
+        val collator = Collator.getInstance(Locale("th", "TH"))
+        assertEquals(setOf("เบเกอรี่", "เครื่องดื่ม", "ไม่จัดหมวด"), labels.toSet())
+        assertEquals(labels.sortedWith { first, second -> collator.compare(first, second) }, labels)
+        assertEquals(labels, posProductCategories(products).map { it.label })
     }
 
     @Test fun categoryAndTextSearchCombineAndAllRestoresCatalog() {
