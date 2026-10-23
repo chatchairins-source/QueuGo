@@ -27,6 +27,8 @@ for (const name of fs.readdirSync(root)) {
   if (fs.lstatSync(path.join(root,name)).isFile() && !['package.json','package-lock.json'].includes(name)) copy(name);
 }
 for (const directory of directories) if (fs.existsSync(path.join(root,directory))) copy(directory);
+copy('android-build/branding');
+for (const name of fs.readdirSync(path.join(root,'docs'))) if (name.endsWith('.html')) copy(path.join('docs',name));
 for (const page of ['index.html','merchant/index.html','rider/index.html','admin/index.html','table-order.html']) {
   if (!fs.existsSync(path.join(output,page))) throw new Error('Missing entry point: '+page);
 }
