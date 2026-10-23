@@ -685,26 +685,32 @@ function addPlaceSearchControl(map,{onSelect=null}={}){
   const control={
     onAdd(){
       host=document.createElement('div');host.className='maplibregl-ctrl';
-      host.style.cssText='background:#fff;border-radius:12px;padding:6px;max-width:min(300px,75vw);box-shadow:0 2px 8px #0002';
+      host.style.cssText='background:#fff;border-radius:12px;padding:6px;max-width:min(320px,78vw);box-shadow:0 2px 8px #0002';
       const row=document.createElement('div');row.style.cssText='display:flex;gap:4px';
       input=document.createElement('input');input.type='search';input.placeholder='ค้นหาร้านหรือสถานที่';input.setAttribute('aria-label','ค้นหาร้านหรือสถานที่');
-      input.style.cssText='font-size:16px;min-width:0;width:190px;border:1px solid #ddd;border-radius:8px;padding:8px';
+      input.style.cssText='font-size:16px;min-width:0;width:200px;border:1px solid #ddd;border-radius:8px;padding:8px';
       const button=document.createElement('button');button.type='button';button.textContent='ค้นหา';button.style.cssText='border:0;background:#e6002d;color:white;border-radius:8px;padding:8px';
-      list=document.createElement('div');list.style.cssText='max-height:210px;overflow-y:auto';
+      list=document.createElement('div');list.style.cssText='max-height:240px;overflow-y:auto';
       const run=async()=>{
         const ticket=++serial,q=input.value.trim();list.replaceChildren();if(q.length<2)return;
-        const status=document.createElement('small');status.textContent='กำลังค้นหาสถานที่…';list.append(status);
+        const status=document.createElement('small');status.textContent='กำลังค้นหาสถานที่…';status.style.cssText='display:block;padding:8px;color:#6b7280';list.append(status);
         try{
-          const rows=await searchPlaceCatalog(q,{limit:6,center:map.getCenter?.()});
+          const rows=await search(q,{limit:8,center:map.getCenter?.()});
           if(disposed||ticket!==serial)return;list.replaceChildren();
-          if(!rows.length){status.textContent='ไม่พบในข้อมูลพื้นที่นี้ ลองชื่ออื่น';list.append(status)}
+          if(!rows.length){status.textContent='ไม่พบสถานที่ ลองชื่อร้าน ถนน หมู่บ้าน หรือตำบล';list.append(status);return}
           for(const p of rows){
-            const item=document.createElement('button');item.type='button';item.textContent=p.name;
-            item.style.cssText='display:block;width:100%;text-align:left;border:0;border-top:1px solid #eee;background:white;padding:10px;font-size:14px';
-            item.onclick=()=>{serial++;list.replaceChildren();input.value=p.name;map.flyTo({center:[p.lng,p.lat],zoom:17,duration:400});onSelect?.(p)};
+            const item=document.createElement('button'),title=document.createElement('b'),detail=document.createElement('small');
+            item.type='button';item.style.cssText='display:block;width:100%;text-align:left;border:0;border-top:1px solid #eee;background:white;padding:9px 10px;font-size:14px';
+            title.textContent=p.name||String(p.label||'').split(',')[0]||'สถานที่';title.style.cssText='display:block;font-size:13px';
+            detail.textContent=p.label||p.display_name||'';detail.style.cssText='display:block;margin-top:2px;color:#737982;font-size:10px;line-height:1.35';
+            item.append(title,detail);
+            item.onclick=()=>{
+              serial++;list.replaceChildren();input.value=title.textContent;
+              map.flyTo({center:[Number(p.lng),Number(p.lat)],zoom:17,duration:400});onSelect?.(p);
+            };
             list.append(item);
           }
-        }catch(_){if(!disposed&&ticket===serial)status.textContent='โหลดข้อมูลสถานที่ไม่ได้ กรุณาลองอีกครั้ง'}
+        }catch(_){if(!disposed&&ticket===serial){status.textContent='โหลดข้อมูลสถานที่ไม่ได้ กรุณาลองอีกครั้ง';list.replaceChildren(status)}}
       };
       button.onclick=run;
       input.addEventListener('input',()=>{serial++;list.replaceChildren()});
@@ -759,16 +765,36 @@ function attachPlaces(map,{onSelect=null,searchControl=false}={}){
   map.__qgPlaces={dispose,control};return map.__qgPlaces;
 }
 
-async function search(term){
+async function search(term,{limit=8,center=null}={}){
   const q=String(term||'').trim();if(!q)return[];
-  try{const local=await searchPlaceCatalog(q,{limit:8});if(local.length)return local.map(p=>({...p,label:placeResult(p).display_name}))}catch(_){}
+  const take=Math.max(1,Math.min(20,Number(limit)||8));
   try{
-    const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=th&q='+encodeURIComponent(q),{
-      headers:{'Accept':'application/json'}
-    });
+    const local=await searchPlaceCatalog(q,{limit:take,center});
+    if(local.length)return local.map(p=>({...p,name:p.name,label:placeResult(p).display_name,provider:'queuego-catalog'}));
+  }catch(_){}
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit='+take+'&countrycodes=th&accept-language=th,en&q='+encodeURIComponent(q);
+    const r=await fetch(url,{headers:{'Accept':'application/json','Accept-Language':'th,en'}});
+    if(r.ok){
+      const rows=await r.json();
+      const normalized=(Array.isArray(rows)?rows:[]).map(x=>{
+        const lat=Number(x.lat),lng=Number(x.lon),label=String(x.display_name||'').trim();
+        return {lat,lng,name:String(x.name||label.split(',')[0]||'สถานที่').trim(),label,display_name:label,provider:'nominatim',source:'OpenStreetMap',place_id:x.place_id?String(x.place_id):null};
+      }).filter(x=>valid(x.lat,x.lng));
+      if(normalized.length)return normalized.slice(0,take);
+    }
+  }catch(_){}
+  try{
+    const bias=center&&valid(center.lat,center.lng)?'&lat='+encodeURIComponent(center.lat)+'&lon='+encodeURIComponent(center.lng):'';
+    const r=await fetch('https://photon.komoot.io/api/?limit='+take+bias+'&q='+encodeURIComponent(q),{headers:{'Accept':'application/json'}});
     if(!r.ok)return[];
-    const rows=await r.json();
-    return (Array.isArray(rows)?rows:[]).map(x=>({lat:Number(x.lat),lng:Number(x.lon),label:String(x.display_name||'')})).filter(x=>valid(x.lat,x.lng));
+    const data=await r.json();
+    return (Array.isArray(data?.features)?data.features:[]).map(x=>{
+      const coords=x?.geometry?.coordinates||[],p=x?.properties||{},lng=Number(coords[0]),lat=Number(coords[1]);
+      const name=String(p.name||p.street||p.city||p.district||'สถานที่').trim();
+      const label=[name,p.street,p.city,p.district,p.state,p.country].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
+      return {lat,lng,name,label,display_name:label,provider:'photon',source:'OpenStreetMap',place_id:p.osm_id?String(p.osm_type||'osm')+':'+String(p.osm_id):null};
+    }).filter(x=>valid(x.lat,x.lng)).slice(0,take);
   }catch(_){return[]}
 }
 async function reverse(lat,lng){
