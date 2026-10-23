@@ -70,6 +70,11 @@ ok(!merchant.includes("qgmProductViewCategory")&&!merchant.includes('qgm-product
 ok(merchant.includes("qgmProductViewMode")&&merchant.includes("qgmProductFilter"),'availability status filters must remain after simplifying product management');
 ok(merchant.includes("onclick=\"navigate('shop-product/new')\""),'Grocery primary add action must open the manual product editor');
 ok(merchant.includes("onclick=\"qgmOpenGroceryCatalog()\""),'Grocery QueueGo catalog must open through the direct catalog action');
+ok(merchant.includes("window.qgmCatalogSearch=function(value)")&&merchant.includes('oninput="qgmCatalogSearch(this.value)"'),'Merchant catalog search field must actively filter the loaded shop catalog');
+ok(merchant.includes('<div class="qgm-catalog-actions"><button id="qgm-catalog-add" class="qgm-outline qgm-catalog-add-compact"'),'Merchant add-menu action must sit directly under catalog search as a compact action');
+ok(merchant.includes('.qgm-catalog-add-compact{width:auto!important')&&merchant.includes('min-height:40px!important'),'Merchant add-menu action must not expand into the previous oversized full-width button');
+ok(merchant.includes("qgmSearchShopLocation")&&merchant.includes("QueueGoMapWeb?.search?.(query)"),'Merchant shop location search must use the QueueGo Map search engine outside the embedded map');
+ok(merchant.includes("id=\"qgs-location-search\"")&&merchant.includes("id=\"qgs-map\""),'Merchant shop location search and map must remain separate UI surfaces');
 ok(merchant.includes("qgmOpenGroceryCatalogFromSession"),'Grocery catalog must support a valid Merchant session without waiting for hydrated profile state');
 ok(merchant.includes("page==='shop-grocery-catalog'&&!u&&qgmHasRestorableShopSession()"),'cold Grocery catalog route must bypass the full-screen identity restore gate');
 const grocery=fs.readFileSync(path.join(root,'merchant/grocery-catalog.js'),'utf8');
