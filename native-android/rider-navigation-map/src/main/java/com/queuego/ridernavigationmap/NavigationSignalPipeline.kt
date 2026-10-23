@@ -238,8 +238,11 @@ class NavigationSignalPipeline(
     }
 
     private fun snapThresholdMeters(fix: NavigationMapFix): Double {
-        val accuracy = fix.accuracyMeters?.takeIf { it.isFinite() && it >= 0f }
-        return if (accuracy != null && accuracy <= 35f) 25.0 else 0.0
+        val accuracy = fix.accuracyMeters
+            ?.takeIf { it.isFinite() && it >= 0f }
+            ?.toDouble()
+            ?: 15.0
+        return max(35.0, accuracy * 1.6).coerceAtMost(75.0)
     }
 
     private fun puckState(

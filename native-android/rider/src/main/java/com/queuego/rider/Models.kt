@@ -117,8 +117,7 @@ data class RiderJob(
     val expressSenderPhone: String? = null,
     val expressReceiverName: String? = null,
     val expressReceiverPhone: String? = null,
-    val expressInstructions: String? = null,
-    val note: String? = null
+    val expressInstructions: String? = null
 ) {
     val isPassenger: Boolean get() = fulfillmentVertical == "ride"
     val isExpress: Boolean get() = fulfillmentVertical == "express"

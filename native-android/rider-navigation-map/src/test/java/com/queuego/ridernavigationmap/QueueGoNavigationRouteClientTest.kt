@@ -29,29 +29,6 @@ class QueueGoNavigationRouteClientTest {
         assertEquals("ถนนทดสอบ", leg.instructions.first().roadName)
     }
 
-    @Test fun parserKeepsOnlyExplicitOsmSpeedLimits() {
-        val raw =
-            """{"code":"Ok","routes":[{"distance":1200,"duration":180,"geometry":{"type":"LineString","coordinates":[[100.0,13.0],[100.01,13.0]]},"maxspeed_intervals":[{"start_geometry_m":0,"end_geometry_m":400,"maxspeed_kph":50,"maxspeed_raw":"50","source":"osm:maxspeed","osm_way_id":101},{"start_geometry_m":400,"end_geometry_m":800,"maxspeed_kph":60,"maxspeed_raw":"60","source":"queuego:road_class_estimate_v1","osm_way_id":202},{"start_geometry_m":800,"end_geometry_m":700,"maxspeed_kph":40,"maxspeed_raw":"40","source":"osm:maxspeed"}],"legs":[]}]}"""
-        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
-            .parseQueueGoRoute(raw, stop, "leg-1")
-
-        assertEquals(1, leg.speedLimitIntervals.size)
-        val limit = leg.speedLimitIntervals.single()
-        assertEquals(0.0, limit.startGeometryMeters, 0.001)
-        assertEquals(400.0, limit.endGeometryMeters, 0.001)
-        assertEquals(50.0, limit.maxspeedKph, 0.001)
-        assertEquals("50", limit.maxspeedRaw)
-        assertEquals("osm:maxspeed", limit.source)
-        assertEquals(101L, limit.osmWayId)
-    }
-
-    @Test fun missingSpeedLimitIntervalsStayBackwardCompatible() {
-        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
-            .parseQueueGoRoute(routeJson, stop, "leg-1")
-
-        assertEquals(emptyList<NavigationSpeedLimitInterval>(), leg.speedLimitIntervals)
-    }
-
     @Test fun missingDurationKeepsGeometryWithoutInventingEta() {
         val raw =
             """{"code":"Ok","routes":[{"distance":100,"geometry":{"type":"LineString","coordinates":[[100.0,13.0],[100.01,13.0]]},"legs":[]}]}"""

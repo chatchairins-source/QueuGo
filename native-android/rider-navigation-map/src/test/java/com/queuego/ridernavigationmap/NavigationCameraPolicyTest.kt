@@ -266,7 +266,7 @@ class NavigationCameraPolicyTest {
 
     @Test fun highwaySpeedUsesStrongForwardPerspective() {
         assertEquals(
-            52f,
+            50f,
             navigationTilt(
                 speedMetersPerSecond = 20f,
                 remainingRouteMeters = 2_000.0,
@@ -276,9 +276,9 @@ class NavigationCameraPolicyTest {
         )
     }
 
-    @Test fun approachingDestinationKeepsNavigationPerspectiveReadable() {
+    @Test fun approachingDestinationReducesPerspectiveForPrecision() {
         assertEquals(
-            45f,
+            28f,
             navigationTilt(
                 speedMetersPerSecond = 16f,
                 remainingRouteMeters = 45.0,
@@ -293,29 +293,6 @@ class NavigationCameraPolicyTest {
         assertEquals(30f, smoothNavigationTilt(34f, 24f), 0.001f)
         assertTrue(navigationTiltChangedEnough(34f, 38f))
         assertTrue(!navigationTiltChangedEnough(34f, 34.4f))
-    }
-
-    @Test fun upcomingTurnInsideOneHundredFiftyMetersZoomsIn() {
-        assertEquals(
-            18,
-            navigationZoom(
-                baseZoom = 17,
-                speedMetersPerSecond = 16f,
-                remainingRouteMeters = 2_000.0,
-                accuracyMeters = 4f,
-                nextTurnDistanceMeters = 140.0
-            )
-        )
-        assertEquals(
-            19,
-            navigationZoom(
-                baseZoom = 17,
-                speedMetersPerSecond = 16f,
-                remainingRouteMeters = 2_000.0,
-                accuracyMeters = 4f,
-                nextTurnDistanceMeters = 45.0
-            )
-        )
     }
 
     @Test fun approachingDestinationZoomsInEvenWhenMovingFast() {
@@ -503,8 +480,8 @@ class NavigationCameraPolicyTest {
             cadenceMillis = 500L
         )
         assertTrue(corner > small)
-        assertTrue(corner <= 800L)
-        assertTrue(small >= 500L)
+        assertTrue(corner <= 900L)
+        assertTrue(small >= 420L)
     }
 
     @Test fun movingCameraThresholdKeepsPuckFromWalkingAcrossScreen() {
@@ -527,7 +504,7 @@ class NavigationCameraPolicyTest {
             speedMetersPerSecond = 3f
         )
         assertTrue(fast < slow)
-        assertTrue(fast <= 620L)
+        assertTrue(fast <= 460L)
     }
 
     @Test fun rotationDurationUsesShortestTurnAcrossNorth() {

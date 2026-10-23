@@ -5,10 +5,6 @@ import com.queuego.shared.nativeOrderNumber
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
-import android.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -23,9 +19,6 @@ import java.util.UUID
 import java.security.MessageDigest
 
 private const val RIDER_API_RESPONSE_MAX_BYTES = 12 * 1024 * 1024
-private const val RIDER_EVIDENCE_INPUT_MAX_BYTES = 8 * 1024 * 1024
-private const val RIDER_EVIDENCE_UPLOAD_MAX_BYTES = 500 * 1024
-private const val RIDER_EVIDENCE_MAX_EDGE_PX = 1600
 
 private fun InputStream.readRiderApiResponseBounded(
     limit: Int = RIDER_API_RESPONSE_MAX_BYTES
@@ -56,140 +49,6 @@ private fun InputStream.readRiderBytesBounded(
         output.write(buffer, 0, count)
     }
     return output.toByteArray()
-}
-
-private fun InputStream.requireRiderStreamBounded(
-    limit: Int,
-    tooLargeMessage: String
-) {
-    var total = 0L
-    val buffer = ByteArray(16 * 1024)
-    while (true) {
-        val count = read(buffer)
-        if (count < 0) break
-        total += count.toLong()
-        require(total <= limit.toLong()) { tooLargeMessage }
-    }
-}
-
-private fun riderEvidenceOrientationMatrix(context: Context, uri: Uri): Matrix =
-    Matrix().apply {
-        val orientation = runCatching {
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                ExifInterface(stream).getAttributeInt(
-                    ExifInterface.TAG_ORIENTATION,
-                    ExifInterface.ORIENTATION_NORMAL
-                )
-            } ?: ExifInterface.ORIENTATION_NORMAL
-        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
-        when (orientation) {
-            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> setScale(-1f, 1f)
-            ExifInterface.ORIENTATION_ROTATE_180 -> setRotate(180f)
-            ExifInterface.ORIENTATION_FLIP_VERTICAL -> {
-                setRotate(180f)
-                postScale(-1f, 1f)
-            }
-            ExifInterface.ORIENTATION_TRANSPOSE -> {
-                setRotate(90f)
-                postScale(-1f, 1f)
-            }
-            ExifInterface.ORIENTATION_ROTATE_90 -> setRotate(90f)
-            ExifInterface.ORIENTATION_TRANSVERSE -> {
-                setRotate(-90f)
-                postScale(-1f, 1f)
-            }
-            ExifInterface.ORIENTATION_ROTATE_270 -> setRotate(-90f)
-        }
-    }
-
-private fun riderEvidenceJpegBytes(context: Context, uri: Uri): ByteArray {
-    val resolver = context.contentResolver
-
-    resolver.openInputStream(uri)?.use {
-        it.requireRiderStreamBounded(
-            RIDER_EVIDENCE_INPUT_MAX_BYTES,
-            "รูปหลักฐานต้นฉบับมีขนาดใหญ่เกินกำหนด"
-        )
-    } ?: error("อ่านรูปหลักฐานไม่ได้")
-
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "รูปหลักฐานไม่ถูกต้อง" }
-
-    var sample = 1
-    while (
-        bounds.outWidth / sample > RIDER_EVIDENCE_MAX_EDGE_PX * 2 ||
-        bounds.outHeight / sample > RIDER_EVIDENCE_MAX_EDGE_PX * 2
-    ) sample *= 2
-
-    val decoded = resolver.openInputStream(uri)?.use { stream ->
-        BitmapFactory.decodeStream(
-            stream,
-            null,
-            BitmapFactory.Options().apply {
-                inSampleSize = sample
-                inPreferredConfig = Bitmap.Config.ARGB_8888
-            }
-        )
-    } ?: error("ถอดรหัสรูปหลักฐานไม่ได้")
-
-    var working = decoded
-    try {
-        val matrix = riderEvidenceOrientationMatrix(context, uri)
-        if (!matrix.isIdentity) {
-            val oriented = Bitmap.createBitmap(
-                working, 0, 0, working.width, working.height, matrix, true
-            )
-            if (oriented !== working) {
-                working.recycle()
-                working = oriented
-            }
-        }
-
-        val longest = maxOf(working.width, working.height)
-        if (longest > RIDER_EVIDENCE_MAX_EDGE_PX) {
-            val ratio = RIDER_EVIDENCE_MAX_EDGE_PX.toFloat() / longest.toFloat()
-            val scaled = Bitmap.createScaledBitmap(
-                working,
-                (working.width * ratio).toInt().coerceAtLeast(1),
-                (working.height * ratio).toInt().coerceAtLeast(1),
-                true
-            )
-            if (scaled !== working) {
-                working.recycle()
-                working = scaled
-            }
-        }
-
-        var quality = 82
-        while (true) {
-            val output = ByteArrayOutputStream(RIDER_EVIDENCE_UPLOAD_MAX_BYTES)
-            check(working.compress(Bitmap.CompressFormat.JPEG, quality, output)) {
-                "บีบอัดรูปหลักฐานไม่สำเร็จ"
-            }
-            val bytes = output.toByteArray()
-            if (bytes.size <= RIDER_EVIDENCE_UPLOAD_MAX_BYTES) return bytes
-
-            if (quality > 42) {
-                quality -= 8
-                continue
-            }
-
-            val nextWidth = (working.width * 0.82f).toInt()
-            val nextHeight = (working.height * 0.82f).toInt()
-            require(nextWidth >= 640 && nextHeight >= 640) {
-                "ไม่สามารถลดรูปหลักฐานให้ไม่เกิน 500 KB โดยยังอ่านรายละเอียดได้"
-            }
-            val smaller = Bitmap.createScaledBitmap(working, nextWidth, nextHeight, true)
-            if (smaller !== working) {
-                working.recycle()
-                working = smaller
-            }
-            quality = 74
-        }
-    } finally {
-        if (!working.isRecycled) working.recycle()
-    }
 }
 
 internal fun riderNullableText(value: String?): String? =
@@ -677,7 +536,7 @@ class QueueGoApi {
         private const val TIMEOUT = 15000
         private const val RIDER_JOB_FIELDS = "id,order_number,status,fulfillment_vertical,ride_distance_km,ride_duration_minutes,express_distance_km,express_duration_minutes," +
             "express_item_type,express_weight_kg,express_size,express_vehicle_type,express_sender_name,express_sender_phone,express_receiver_name,express_receiver_phone,express_instructions," +
-            "note,pickup_address,pickup_latitude,pickup_longitude,delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,route_bundle_id,subtotal,total_amount,market_order_id," +
+            "pickup_address,pickup_latitude,pickup_longitude,delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,route_bundle_id,subtotal,total_amount,market_order_id," +
             "rider_arrived_shop_at,rider_arrived_customer_at"
     }
 
@@ -1911,19 +1770,10 @@ class QueueGoApi {
         }
 
     suspend fun acceptOffer(auth: QueueGoAuth, job: RiderJob) = withContext(Dispatchers.IO) {
-        val payload = JSONObject().put("p_order_id", job.id)
-        RiderNavigationLocationStore.fix.value?.let { fix ->
-            val ageMillis = (SystemClock.elapsedRealtimeNanos() - fix.elapsedRealtimeNanos) / 1_000_000L
-            if (fix.point.valid && ageMillis in 0L..10_000L) {
-                payload
-                    .put("p_lat", fix.point.latitude)
-                    .put("p_lng", fix.point.longitude)
-            }
-        }
         actionOnce(
             auth,
             if (job.marketOrderId != null) "market_claim" else "claim",
-            payload
+            JSONObject().put("p_order_id", job.id)
         )
     }
 
@@ -2224,12 +2074,7 @@ class QueueGoApi {
     }
 
     private fun actionOnce(auth: QueueGoAuth, kind: String, payload: JSONObject): Any {
-        val idempotencyPayload = if (kind == "claim" || kind == "market_claim") {
-            JSONObject().put("p_order_id", payload.optString("p_order_id"))
-        } else {
-            payload
-        }
-        val seed = auth.user.id + "|" + kind + "|" + idempotencyPayload.toString()
+        val seed = auth.user.id + "|" + kind + "|" + payload.toString()
         val requestId = UUID.nameUUIDFromBytes(seed.toByteArray(StandardCharsets.UTF_8)).toString()
         val body = JSONObject()
             .put("p_request_id", requestId)
@@ -2249,22 +2094,9 @@ class QueueGoApi {
         requestArray("GET", "/rest/v1/orders?select=id,status,rider_arrived_shop_at,rider_arrived_customer_at&id=eq." +
             enc(orderId) + "&limit=1", auth.session.accessToken).optJSONObject(0)
 
-    private fun mutationProofExists(auth: QueueGoAuth, table: String, orderId: String, path: String): Boolean {
-        val stage = when (table) {
-            "qg_pickup_proofs" -> "pickup"
-            "qg_delivery_proofs" -> "delivery"
-            else -> return false
-        }
-        val result = rpc(
-            "qg_rider_proof_committed",
-            auth.session.accessToken,
-            JSONObject()
-                .put("p_order_id", orderId)
-                .put("p_stage", stage)
-                .put("p_photo_path", path)
-        )
-        return result as? Boolean ?: result.toString().toBooleanStrictOrNull() ?: false
-    }
+    private fun mutationProofExists(auth: QueueGoAuth, table: String, orderId: String, path: String): Boolean =
+        requestArray("GET", "/rest/v1/$table?select=order_id&order_id=eq." + enc(orderId) +
+            "&photo_path=eq." + enc(path) + "&limit=1", auth.session.accessToken).length() == 1
 
     private fun uploadedEvidenceMatches(auth: QueueGoAuth, path: String, bytes: ByteArray): Boolean {
         val connection = URL(BASE_URL + "/storage/v1/object/authenticated/qg-evidence/" + path)
@@ -2287,11 +2119,10 @@ class QueueGoApi {
     }
 
     private fun uploadEvidence(context: Context, auth: QueueGoAuth, uri: Uri): String {
-        val bytes = riderEvidenceJpegBytes(context, uri)
+        val bytes = context.contentResolver.openInputStream(uri)?.use {
+            it.readRiderBytesBounded(5 * 1024 * 1024, "รูปหลักฐานต้องมีขนาดไม่เกิน 5 MB")
+        } ?: error("อ่านรูปหลักฐานไม่ได้")
         if (bytes.isEmpty()) error("รูปหลักฐานว่าง")
-        check(bytes.size <= RIDER_EVIDENCE_UPLOAD_MAX_BYTES) {
-            "รูปหลักฐานหลังบีบอัดต้องไม่เกิน 500 KB"
-        }
 
         // Same single photo has one immutable storage identity across retries/process death.
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
@@ -2559,8 +2390,7 @@ class QueueGoApi {
         expressSenderPhone = riderNullableText(o.optString("express_sender_phone")),
         expressReceiverName = riderNullableText(o.optString("express_receiver_name")),
         expressReceiverPhone = riderNullableText(o.optString("express_receiver_phone")),
-        expressInstructions = riderNullableText(o.optString("express_instructions")),
-        note = cleanRiderOrderNote(riderNullableText(o.optString("note")))
+        expressInstructions = riderNullableText(o.optString("express_instructions"))
     )
 
     private fun JSONObject.doubleOrNull(name: String): Double? =

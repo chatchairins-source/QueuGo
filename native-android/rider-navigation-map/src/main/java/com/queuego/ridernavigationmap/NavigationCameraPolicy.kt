@@ -6,7 +6,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val ROUTE_BEARING_MAX_OFF_ROUTE_METERS = 30.0
+private const val ROUTE_BEARING_MAX_OFF_ROUTE_METERS = 60.0
 
 data class NavigationCameraDecision(
     val center: NavigationMapPoint,
@@ -112,9 +112,9 @@ internal fun navigationCameraDecision(
     val routeBearingUsable = routeBearing != null && !routeBearingOpposesMotion
 
     val desiredBearing = when {
-        speed == null || speed < 0.83f -> previousBearingDegrees
-        followPuckBearing && gpsBearing != null -> gpsBearing
+        followPuckBearing && gpsBearing != null && speed != null && speed >= 0.83f -> gpsBearing
         routeBearingUsable -> routeBearing
+        speed == null || speed < 0.83f -> previousBearingDegrees
         else -> gpsBearing ?: previousBearingDegrees
     }
     val smoothedBearing = smoothNavigationBearing(
@@ -130,8 +130,7 @@ internal fun navigationCameraDecision(
         baseZoom = state.followZoom,
         speedMetersPerSecond = speed,
         remainingRouteMeters = remaining,
-        accuracyMeters = fix.accuracyMeters,
-        nextTurnDistanceMeters = state.nextTurnDistanceMeters
+        accuracyMeters = fix.accuracyMeters
     )
     val tilt = if (state.perspectiveCameraEnabled && reliableRouteMatch == null) {
         navigationFreeDriveTilt(
@@ -185,14 +184,11 @@ internal fun navigationZoom(
     baseZoom: Int,
     speedMetersPerSecond: Float?,
     remainingRouteMeters: Double?,
-    accuracyMeters: Float?,
-    nextTurnDistanceMeters: Double? = null
+    accuracyMeters: Float?
 ): Int {
     val base = baseZoom.coerceIn(14, 20)
     var target = when {
         remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 19
-        nextTurnDistanceMeters != null && nextTurnDistanceMeters <= 60.0 -> 19
-        nextTurnDistanceMeters != null && nextTurnDistanceMeters <= 150.0 -> 18
         remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 18
         speedMetersPerSecond == null -> base
         speedMetersPerSecond >= 18f -> 15
@@ -213,17 +209,17 @@ internal fun navigationTilt(
     accuracyMeters: Float?
 ): Float {
     val target = when {
-        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 35f -> 38f
-        remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 45f
-        remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 46f
-        speedMetersPerSecond == null -> 45f
-        speedMetersPerSecond >= 18f -> 52f
-        speedMetersPerSecond >= 11f -> 50f
-        speedMetersPerSecond >= 5f -> 48f
-        speedMetersPerSecond >= 2f -> 46f
-        else -> 45f
+        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 80f -> 24f
+        remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 28f
+        remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 34f
+        speedMetersPerSecond == null -> 38f
+        speedMetersPerSecond >= 18f -> 50f
+        speedMetersPerSecond >= 11f -> 48f
+        speedMetersPerSecond >= 5f -> 44f
+        speedMetersPerSecond >= 2f -> 40f
+        else -> 34f
     }
-    return target.coerceIn(0f, 55f)
+    return target.coerceIn(0f, 50f)
 }
 
 internal fun navigationFreeDriveTilt(
@@ -231,15 +227,15 @@ internal fun navigationFreeDriveTilt(
     accuracyMeters: Float?
 ): Float {
     val target = when {
-        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 35f -> 38f
-        speedMetersPerSecond == null -> 45f
-        speedMetersPerSecond >= 18f -> 52f
-        speedMetersPerSecond >= 11f -> 51f
-        speedMetersPerSecond >= 5f -> 49f
-        speedMetersPerSecond >= 2f -> 47f
-        else -> 45f
+        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 80f -> 28f
+        speedMetersPerSecond == null -> 44f
+        speedMetersPerSecond >= 18f -> 50f
+        speedMetersPerSecond >= 11f -> 50f
+        speedMetersPerSecond >= 5f -> 48f
+        speedMetersPerSecond >= 2f -> 44f
+        else -> 40f
     }
-    return target.coerceIn(0f, 55f)
+    return target.coerceIn(0f, 50f)
 }
 
 internal fun smoothNavigationTilt(
@@ -248,14 +244,14 @@ internal fun smoothNavigationTilt(
     maxStepDegrees: Float = 4f
 ): Float {
     val safePrevious = previous.takeIf { it.isFinite() } ?: 0f
-    val safeTarget = target.takeIf { it.isFinite() }?.coerceIn(0f, 55f) ?: safePrevious
+    val safeTarget = target.takeIf { it.isFinite() }?.coerceIn(0f, 50f) ?: safePrevious
     val delta = safeTarget - safePrevious
     val maxStep = maxStepDegrees.coerceIn(0.5f, 12f)
     return when {
         abs(delta) <= maxStep -> safeTarget
         delta > 0f -> safePrevious + maxStep
         else -> safePrevious - maxStep
-    }.coerceIn(0f, 55f)
+    }.coerceIn(0f, 50f)
 }
 
 internal fun navigationTiltChangedEnough(
@@ -442,12 +438,12 @@ internal fun navigationRotationDurationMillis(
     val angleBase: Float
     val angleGain: Float
     when {
-        speed == null -> { minDuration = 650L; maxDuration = 800L; cadenceFactor = 0.90; angleBase = 620f; angleGain = 2.4f }
-        speed >= 18f -> { minDuration = 500L; maxDuration = 620L; cadenceFactor = 0.58; angleBase = 470f; angleGain = 1.6f }
-        speed >= 11f -> { minDuration = 520L; maxDuration = 650L; cadenceFactor = 0.64; angleBase = 490f; angleGain = 1.8f }
-        speed >= 5f -> { minDuration = 540L; maxDuration = 700L; cadenceFactor = 0.72; angleBase = 510f; angleGain = 2.0f }
-        speed >= 2f -> { minDuration = 580L; maxDuration = 760L; cadenceFactor = 0.80; angleBase = 550f; angleGain = 2.2f }
-        else -> { minDuration = 650L; maxDuration = 800L; cadenceFactor = 0.90; angleBase = 620f; angleGain = 2.4f }
+        speed == null -> { minDuration = 420L; maxDuration = 900L; cadenceFactor = 0.90; angleBase = 340f; angleGain = 6.2f }
+        speed >= 18f -> { minDuration = 220L; maxDuration = 460L; cadenceFactor = 0.58; angleBase = 170f; angleGain = 3.7f }
+        speed >= 11f -> { minDuration = 260L; maxDuration = 540L; cadenceFactor = 0.64; angleBase = 200f; angleGain = 4.1f }
+        speed >= 5f -> { minDuration = 310L; maxDuration = 660L; cadenceFactor = 0.72; angleBase = 240f; angleGain = 4.8f }
+        speed >= 2f -> { minDuration = 360L; maxDuration = 760L; cadenceFactor = 0.80; angleBase = 290f; angleGain = 5.4f }
+        else -> { minDuration = 420L; maxDuration = 900L; cadenceFactor = 0.90; angleBase = 340f; angleGain = 6.2f }
     }
     if (currentBearing == null || !currentBearing.isFinite() ||
         targetBearing == null || !targetBearing.isFinite()

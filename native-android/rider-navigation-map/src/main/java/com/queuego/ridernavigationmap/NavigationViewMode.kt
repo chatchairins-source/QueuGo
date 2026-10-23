@@ -1,7 +1,5 @@
 package com.queuego.ridernavigationmap
 
-const val NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS = 8_000L
-
 enum class NavigationViewMode {
     FOLLOW,
     OVERVIEW,
@@ -32,13 +30,6 @@ class NavigationViewModeController(
 
     fun onOverview(): NavigationViewModeState {
         state = stateFor(NavigationViewMode.OVERVIEW)
-        return state
-    }
-
-    fun onIdleTimeout(navigationActive: Boolean): NavigationViewModeState {
-        if (navigationActive && state.mode == NavigationViewMode.FREE_PAN) {
-            state = stateFor(NavigationViewMode.FOLLOW)
-        }
         return state
     }
 

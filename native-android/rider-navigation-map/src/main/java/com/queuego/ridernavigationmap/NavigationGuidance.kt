@@ -2,14 +2,9 @@ package com.queuego.ridernavigationmap
 
 import kotlin.math.max
 
-private const val WEAK_GPS_ACCURACY_METERS = 35f
-private const val BASE_OFF_ROUTE_THRESHOLD_METERS = 30.0
-private const val MISSED_MANEUVER_WINDOW_METERS = 90.0
-private const val MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND = 2.0f
-private const val PASSED_MANEUVER_MIN_OFF_ROUTE_METERS = 8.0
-private const val PASSED_MANEUVER_DISTANCE_TOLERANCE_METERS = 18.0
-private const val PASSED_MANEUVER_MAX_ACCURACY_METERS = 20f
-private const val MISSED_MANEUVER_REROUTE_COOLDOWN_MILLIS = 3_000L
+private const val WEAK_GPS_ACCURACY_METERS = 75f
+private const val BASE_OFF_ROUTE_THRESHOLD_METERS = 55.0
+private const val OFF_ROUTE_ACCURACY_MULTIPLIER = 1.8
 private const val DEFAULT_ARRIVAL_METERS = 28.0
 private const val ARRIVAL_ACCURACY_MULTIPLIER = 1.4
 private const val MAX_ARRIVAL_METERS = 45.0
@@ -23,26 +18,23 @@ data class NavigationGuidanceState(
     val progressMeters: Double? = null,
     val distanceRemainingMeters: Double? = null,
     val etaSeconds: Double? = null,
-    val speedLimitKph: Double? = null,
     val nextInstruction: NavigationRouteInstruction? = null,
     val distanceToInstructionMeters: Double? = null,
-    val followingInstruction: NavigationRouteInstruction? = null,
-    val distanceToFollowingInstructionMeters: Double? = null,
     val arrived: Boolean = false,
     val shouldReroute: Boolean = false
 )
 
 class NavigationProgressTracker(
     private val nowMillis: () -> Long = { System.currentTimeMillis() },
-    private val requiredOffRouteMillis: Long = 3_000L,
+    private val requiredOffRouteSamples: Int = 3,
     private val rerouteCooldownMillis: Long = 20_000L,
     private val routeMatcher: NavigationHybridMatcher = NavigationHybridMatcher()
 ) {
-    private var offRouteSinceMillis: Long? = null
+    private var consecutiveOffRouteSamples = 0
     private var lastRerouteAtMillis: Long? = null
 
     fun reset() {
-        offRouteSinceMillis = null
+        consecutiveOffRouteSamples = 0
         lastRerouteAtMillis = null
         routeMatcher.reset()
     }
@@ -53,7 +45,7 @@ class NavigationProgressTracker(
         stop: NavigationMapStop
     ): NavigationGuidanceState {
         if (!fix.point.valid || !stop.point.valid || !leg.segment.renderable) {
-            offRouteSinceMillis = null
+            consecutiveOffRouteSamples = 0
             return NavigationGuidanceState()
         }
 
@@ -71,72 +63,24 @@ class NavigationProgressTracker(
             ?.takeIf { it.isFinite() && it >= 0.0 }
             ?.let { total -> (total * (1.0 - progressRatio)).coerceAtLeast(0.0) }
 
-        val upcoming = navigationUpcomingInstructions(leg, traveledServiceMeters)
-        val next = upcoming.getOrNull(0)
-        val following = upcoming.getOrNull(1)
-
-        val offRouteThreshold = BASE_OFF_ROUTE_THRESHOLD_METERS
+        val offRouteThreshold = max(
+            BASE_OFF_ROUTE_THRESHOLD_METERS,
+            (accuracy?.toDouble() ?: 15.0) * OFF_ROUTE_ACCURACY_MULTIPLIER
+        )
         val offRoute = !weakGps && match.offRouteMeters > offRouteThreshold
-        val currentSpeedLimitKph = if (!weakGps && !offRoute) {
-            leg.speedLimitIntervals.firstOrNull { interval ->
-                interval.source == "osm:maxspeed" &&
-                    interval.startGeometryMeters.isFinite() &&
-                    interval.endGeometryMeters.isFinite() &&
-                    interval.endGeometryMeters > interval.startGeometryMeters &&
-                    interval.maxspeedKph.isFinite() &&
-                    interval.maxspeedKph in 0.000001..160.0 &&
-                    match.progressMeters >= interval.startGeometryMeters &&
-                    match.progressMeters < interval.endGeometryMeters
-            }?.maxspeedKph
-        } else {
-            null
-        }
-        val nextTurnCode = next?.first?.turnCode
-        val nextRequiresCourseChange = nextTurnCode != null &&
-            nextTurnCode != 5 &&
-            nextTurnCode != 9
-        val movingSpeed = fix.speedMetersPerSecond
-            ?.takeIf { it.isFinite() && it >= 0f }
-            ?: 0f
-        val nextDistanceMeters = next?.second ?: Double.POSITIVE_INFINITY
-        val passedManeuver = !weakGps &&
-            (accuracy == null || accuracy <= PASSED_MANEUVER_MAX_ACCURACY_METERS) &&
-            movingSpeed >= MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND &&
-            nextRequiresCourseChange &&
-            nextDistanceMeters <= PASSED_MANEUVER_DISTANCE_TOLERANCE_METERS &&
-            match.offRouteMeters >= PASSED_MANEUVER_MIN_OFF_ROUTE_METERS &&
-            match.offRouteMeters <= BASE_OFF_ROUTE_THRESHOLD_METERS
-        // A real missed turn can move beyond the generic 30 m fence on the first fix.
-        // Allow that immediate reroute only when the hybrid matcher has usable heading
-        // evidence; position-only drift/jitter keeps the normal sustained 30 m / 3 s gate.
-        val missedManeuver = passedManeuver || (
-            offRoute &&
-                hybridMatch.headingDeltaDegrees != null &&
-                movingSpeed >= MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND &&
-                nextRequiresCourseChange &&
-                nextDistanceMeters <= MISSED_MANEUVER_WINDOW_METERS
-            )
+        consecutiveOffRouteSamples = if (offRoute) consecutiveOffRouteSamples + 1 else 0
 
         val now = nowMillis()
-        if (offRoute) {
-            if (offRouteSinceMillis == null) offRouteSinceMillis = now
-        } else {
-            offRouteSinceMillis = null
-        }
-        val requiredCooldown = if (missedManeuver) {
-            MISSED_MANEUVER_REROUTE_COOLDOWN_MILLIS
-        } else {
-            rerouteCooldownMillis
-        }
-        val cooldownSatisfied = lastRerouteAtMillis?.let { now - it >= requiredCooldown } ?: true
-        val sustainedOffRoute = offRouteSinceMillis?.let { since ->
-            now - since >= requiredOffRouteMillis.coerceAtLeast(0L)
-        } ?: false
-        val shouldReroute = cooldownSatisfied && (passedManeuver || (offRoute && (missedManeuver || sustainedOffRoute)))
+        val cooldownSatisfied = lastRerouteAtMillis?.let { now - it >= rerouteCooldownMillis } ?: true
+        val shouldReroute = offRoute &&
+            consecutiveOffRouteSamples >= requiredOffRouteSamples.coerceAtLeast(1) &&
+            cooldownSatisfied
         if (shouldReroute) {
-            offRouteSinceMillis = null
+            consecutiveOffRouteSamples = 0
             lastRerouteAtMillis = now
         }
+
+        val next = navigationNextInstruction(leg, traveledServiceMeters)
         val directToStop = navigationHaversineMeters(fix.point, stop.point)
         val arrivalThreshold = max(
             DEFAULT_ARRIVAL_METERS,
@@ -159,11 +103,8 @@ class NavigationProgressTracker(
             progressMeters = traveledServiceMeters,
             distanceRemainingMeters = remaining,
             etaSeconds = eta,
-            speedLimitKph = currentSpeedLimitKph,
-            nextInstruction = next?.first,
-            distanceToInstructionMeters = next?.second,
-            followingInstruction = following?.first,
-            distanceToFollowingInstructionMeters = following?.second,
+            nextInstruction = next.first,
+            distanceToInstructionMeters = next.second,
             arrived = arrived,
             shouldReroute = shouldReroute
         )
@@ -174,42 +115,26 @@ internal fun navigationNextInstruction(
     leg: NavigationRouteLeg,
     traveledMeters: Double
 ): Pair<NavigationRouteInstruction?, Double?> {
-    val next = navigationUpcomingInstructions(leg, traveledMeters).firstOrNull()
-    return next?.let { it.first to it.second } ?: (null to null)
-}
-
-internal fun navigationUpcomingInstructions(
-    leg: NavigationRouteLeg,
-    traveledMeters: Double,
-    limit: Int = 2
-): List<Pair<NavigationRouteInstruction, Double>> {
-    val wanted = limit.coerceIn(1, 4)
     var actionAt = 0.0
     val traveled = traveledMeters.coerceAtLeast(0.0)
-    val upcoming = ArrayList<Pair<NavigationRouteInstruction, Double>>(wanted)
     for (index in leg.instructions.indices) {
         val instruction = leg.instructions[index]
-        if (
-            index > 0 &&
+        if (index > 0 &&
             navigationTurnPhrase(instruction.turnCode) != null &&
             actionAt + 15.0 >= traveled
         ) {
-            upcoming += instruction to (actionAt - traveled).coerceAtLeast(0.0)
-            if (upcoming.size >= wanted) return upcoming
+            return instruction to (actionAt - traveled).coerceAtLeast(0.0)
         }
         actionAt += instruction.sectionDistanceMeters.coerceAtLeast(0.0)
     }
-    if (upcoming.isEmpty()) {
-        val arrival = NavigationRouteInstruction(
-            sequence = leg.instructions.size,
-            turnCode = 9,
-            roadName = "",
-            sectionDistanceMeters = 0.0,
-            sectionDurationSeconds = 0.0
-        )
-        upcoming += arrival to (leg.distanceMeters - traveled).coerceAtLeast(0.0)
-    }
-    return upcoming
+    val arrival = NavigationRouteInstruction(
+        sequence = leg.instructions.size,
+        turnCode = 9,
+        roadName = "",
+        sectionDistanceMeters = 0.0,
+        sectionDurationSeconds = 0.0
+    )
+    return arrival to (leg.distanceMeters - traveled).coerceAtLeast(0.0)
 }
 
 fun navigationTurnPhrase(turnCode: Int): String? = when (turnCode) {
@@ -217,7 +142,6 @@ fun navigationTurnPhrase(turnCode: Int): String? = when (turnCode) {
     1 -> "เลี้ยวขวา"
     2 -> "เบี่ยงซ้าย"
     3 -> "เบี่ยงขวา"
-    4 -> "กลับรถ"
     5 -> "ตรงไป"
     6 -> "ขึ้นทางด่วน"
     9 -> "ถึงจุดหมายแล้ว"

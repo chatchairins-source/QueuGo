@@ -9,7 +9,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -23,7 +22,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.queuego.ridernavigationmap.CachingNavigationRouteProvider
 import com.queuego.ridernavigationmap.QueueGoNavigationRouteClient
 import com.queuego.ridernavigationmap.NavigationMapCamera
-import com.queuego.ridernavigationmap.NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS
 import com.queuego.ridernavigationmap.NavigationMapFix
 import com.queuego.ridernavigationmap.NavigationGuidanceState
 import com.queuego.ridernavigationmap.NavigationMapPoint
@@ -270,7 +268,6 @@ internal fun QueueGoRiderNavigationMap(
     var persistenceHydrated by remember(stateKey) { mutableStateOf(false) }
     var pendingCameraPersistence by remember(stateKey) { mutableStateOf<DoubleArray?>(null) }
     var pendingViewModePersistence by remember(stateKey) { mutableStateOf<String?>(null) }
-    var userGestureEpoch by remember(stateKey) { mutableIntStateOf(0) }
 
     LaunchedEffect(stateKey) {
         val restored = withContext(Dispatchers.IO) {
@@ -351,20 +348,6 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
 
-    LaunchedEffect(navigationActive, userGestureEpoch, viewModeState.mode) {
-        if (!navigationActive || viewModeState.mode != NavigationViewMode.FREE_PAN) return@LaunchedEffect
-        val expectedEpoch = userGestureEpoch
-        delay(NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS)
-        if (
-            navigationActive &&
-            userGestureEpoch == expectedEpoch &&
-            viewModeState.mode == NavigationViewMode.FREE_PAN
-        ) {
-            viewModeState = viewModeController.onIdleTimeout(navigationActive = true)
-            pendingViewModePersistence = NavigationViewMode.FOLLOW.name
-        }
-    }
-
     DisposableEffect(lifecycle, navigationActive, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -389,22 +372,12 @@ internal fun QueueGoRiderNavigationMap(
             }
         }
     }
-    val activeStop = stops
-        .filter { !it.completed && it.point.valid }
+    val activeStopId = stops
+        .filter { !it.completed }
         .minByOrNull { it.sequence }
-    val activeStopId = activeStop?.id
+        ?.id
 
-    LaunchedEffect(
-        stateKey,
-        activeStopId,
-        activeStop?.point?.latitude,
-        activeStop?.point?.longitude
-    ) {
-        RiderNavigationDispatchReadiness.bindTarget(
-            userId = stateKey,
-            latitude = activeStop?.point?.latitude,
-            longitude = activeStop?.point?.longitude
-        )
+    LaunchedEffect(activeStopId) {
         val next = viewModeController.onActiveStopChanged()
         viewModeState = next
         if (next.mode != NavigationViewMode.OVERVIEW) {
@@ -565,8 +538,7 @@ internal fun QueueGoRiderNavigationMap(
                     rider = latestBaseState.rider,
                     followRider = latestBaseState.followRider,
                     viewMode = latestBaseState.viewMode,
-                    viewportInsets = latestBaseState.viewportInsets,
-                    nextTurnDistanceMeters = result.guidance.distanceToInstructionMeters
+                    viewportInsets = latestBaseState.viewportInsets
                 ))
                 renderedState = if (
                     result.routeError != null &&
@@ -627,7 +599,6 @@ internal fun QueueGoRiderNavigationMap(
             if (riderFix?.point?.valid == true) {
                 viewModeState = viewModeController.onUserGesture()
                 pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
-                userGestureEpoch += 1
             } else {
                 // A startup gesture before the first live GPS fix must not strand the
                 // Rider in FREE_PAN. Keep FOLLOW ownership until a real fix exists.

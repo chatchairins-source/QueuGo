@@ -20,7 +20,6 @@ import java.util.concurrent.TimeUnit
 private const val QUEUEGO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024
 private const val QUEUEGO_ROUTE_MAX_POINTS = 12_000
 private const val QUEUEGO_ROUTE_MAX_STEPS = 2_048
-private const val QUEUEGO_ROUTE_MAX_SPEED_LIMIT_INTERVALS = 4_096
 private val QUEUEGO_JSON = "application/json; charset=utf-8".toMediaType()
 
 private fun InputStream.readQueueGoRouteResponseBounded(): String {
@@ -193,34 +192,6 @@ class QueueGoNavigationRouteClient(
             ?: route.optDouble("estimatedDuration", Double.NaN)
                 .takeIf { it.isFinite() && it >= 0.0 }
 
-        val speedLimitIntervals = mutableListOf<NavigationSpeedLimitInterval>()
-        route.optJSONArray("maxspeed_intervals")?.let { intervals ->
-            require(intervals.length() <= QUEUEGO_ROUTE_MAX_SPEED_LIMIT_INTERVALS) {
-                "QueueGo route has too many speed-limit intervals"
-            }
-            for (index in 0 until intervals.length()) {
-                val interval = intervals.optJSONObject(index) ?: continue
-                if (interval.optString("source") != "osm:maxspeed") continue
-                val start = interval.optDouble("start_geometry_m", Double.NaN)
-                val end = interval.optDouble("end_geometry_m", Double.NaN)
-                val kph = interval.optDouble("maxspeed_kph", Double.NaN)
-                val raw = interval.optString("maxspeed_raw").trim()
-                if (!start.isFinite() || !end.isFinite() || end <= start || start < 0.0) continue
-                if (!kph.isFinite() || kph <= 0.0 || kph > 160.0 || raw.isEmpty()) continue
-                val wayId = if (interval.has("osm_way_id") && !interval.isNull("osm_way_id")) {
-                    interval.optLong("osm_way_id").takeIf { it > 0L }
-                } else null
-                speedLimitIntervals += NavigationSpeedLimitInterval(
-                    startGeometryMeters = start,
-                    endGeometryMeters = end,
-                    maxspeedKph = kph,
-                    maxspeedRaw = raw,
-                    source = "osm:maxspeed",
-                    osmWayId = wayId
-                )
-            }
-        }
-
         return NavigationRouteLeg(
             segment = NavigationRouteSegment(
                 id = segmentId,
@@ -229,8 +200,7 @@ class QueueGoNavigationRouteClient(
             ),
             distanceMeters = distance,
             durationSeconds = duration,
-            instructions = instructions,
-            speedLimitIntervals = speedLimitIntervals
+            instructions = instructions
         )
     }
 

@@ -1,3 +1,13 @@
+## 2026-10-23 Owner-requested Rider recovery to 22 October 18:00 Asia/Bangkok
+
+- Owner explicitly requests restoring Rider Web and Android files from approximately 2026-10-22 18:00 Asia/Bangkok (11:00 UTC). This supersedes the earlier prohibition on restoring older Rider files for this bounded recovery only. No branch reset/revert; recovery is a new descendant of `2c7a63de17e489a54e38be5c28ed4504c12b98ea`.
+- Reference: `db9bffdf0e77b2fdfc7b9321187e187e7c658d3b`, latest commit on the respective source line before the requested cutoff. Web main reference time is 17:51:58; Native source-line reference time is 15:02:14. These are source history snapshots, not proof of the APK installed or Pages deployed at that hour.
+- Recovered native-android/rider, rider-navigation-map and rider-maplibre-osm to exact reference contents, including removal of files introduced later. Merchant, Customer, shared, backend and hosted map service are preserved from current successor.
+- Validation: git diff reference -- the three recovered module paths is empty: exact source recovery verified. No local Gradle or Android SDK available; compile/emulator/physical testing is not certified.
+- Important compatibility evidence: recovery intentionally predates durable proof worker and newer maneuver/missed-turn runtime. Do not weaken current regression tests or mark them passed to permit release.
+- STATUS: IN PROGRESS (source recovery prepared); BLOCKED (release) on compatible full regression, exact-head hosted Android build and physical acceptance. No Production database writes, public deployment or APK installation performed.
+- NEXT: inspect recovery diff, resolve compatibility against this explicit timestamp without redesigning Rider, run exact-head Web RC / Native Pilot, then deploy/build only on green evidence. Preserve both reference and pre-recovery checkpoints.
+
 # QueueGo Active Work Checklist
 
 Last governance checkpoint: `WORKFLOW.md` commit `9439569c15f72568b3398a1072f6d2285c8e7ce7`

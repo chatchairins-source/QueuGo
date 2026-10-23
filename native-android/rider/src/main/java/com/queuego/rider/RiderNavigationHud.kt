@@ -9,13 +9,7 @@ import kotlin.math.roundToInt
 internal data class RiderNavigationHudInfo(
     val distanceText: String,
     val etaText: String?,
-    val instructionText: String?,
-    val maneuverDistanceText: String? = null,
-    val maneuverText: String? = null,
-    val maneuverRoadName: String? = null,
-    val maneuverTurnCode: Int? = null,
-    val followingInstructionText: String? = null,
-    val followingTurnCode: Int? = null
+    val instructionText: String?
 )
 
 internal fun riderNavigationHudInfo(guidance: NavigationGuidanceState): RiderNavigationHudInfo? {
@@ -24,10 +18,7 @@ internal fun riderNavigationHudInfo(guidance: NavigationGuidanceState): RiderNav
         return RiderNavigationHudInfo(
             distanceText = "ถึงจุดหมาย",
             etaText = null,
-            instructionText = "ถึงจุดถัดไปแล้ว",
-            maneuverDistanceText = "0 ม.",
-            maneuverText = "ถึงจุดหมายแล้ว",
-            maneuverTurnCode = 9
+            instructionText = "ถึงจุดถัดไปแล้ว"
         )
     }
 
@@ -38,74 +29,25 @@ internal fun riderNavigationHudInfo(guidance: NavigationGuidanceState): RiderNav
         ?.takeIf { it.isFinite() && it >= 0.0 }
         ?.let(::riderEtaLabel)
 
-    val next = guidance.nextInstruction
-    val nextPhrase = next?.let { navigationTurnPhrase(it.turnCode) }
-    val nextDistanceMeters = guidance.distanceToInstructionMeters
-        ?.takeIf { it.isFinite() && it >= 0.0 }
-    val nextDistance = nextDistanceMeters?.let(::riderRouteDistanceLabel)
-    val nextRoad = next?.roadName?.trim()?.takeIf { it.isNotEmpty() }
-    val instruction = nextPhrase?.let { phrase ->
-        buildString {
-            append(phrase)
-            if (nextDistance != null) append("ใน ").append(nextDistance)
-            if (nextRoad != null) append(" · ").append(nextRoad)
-        }
-    }
-
-    val following = guidance.followingInstruction
-    val followingDistanceMeters = guidance.distanceToFollowingInstructionMeters
-        ?.takeIf { it.isFinite() && it >= 0.0 }
-    val showFollowing = following != null && (
-        (nextDistanceMeters != null && nextDistanceMeters <= 400.0) ||
-            (followingDistanceMeters != null && followingDistanceMeters <= 300.0)
-        )
-    val followingText = if (showFollowing) {
-        navigationTurnPhrase(following!!.turnCode)?.let { phrase ->
+    val instruction = guidance.nextInstruction?.let { next ->
+        navigationTurnPhrase(next.turnCode)?.let { phrase ->
+            val distance = guidance.distanceToInstructionMeters
+                ?.takeIf { it.isFinite() && it >= 0.0 }
+                ?.let(::riderRouteDistanceLabel)
+            val road = next.roadName.trim().takeIf { it.isNotEmpty() }
             buildString {
                 append(phrase)
-                followingDistanceMeters?.let {
-                    append("ใน ").append(riderRouteDistanceLabel(it))
-                }
-                following.roadName.trim().takeIf { it.isNotEmpty() }?.let {
-                    append(" · ").append(it)
-                }
+                if (distance != null) append("ใน ").append(distance)
+                if (road != null) append(" · ").append(road)
             }
         }
-    } else null
+    }
 
     return RiderNavigationHudInfo(
         distanceText = riderRouteDistanceLabel(remaining),
         etaText = eta,
-        instructionText = instruction,
-        maneuverDistanceText = nextDistance,
-        maneuverText = nextPhrase,
-        maneuverRoadName = nextRoad,
-        maneuverTurnCode = next?.turnCode,
-        followingInstructionText = followingText,
-        followingTurnCode = if (showFollowing) following?.turnCode else null
+        instructionText = instruction
     )
-}
-
-internal fun riderNavigationSpeedLimitKph(guidance: NavigationGuidanceState): Int? {
-    if (guidance.weakGps || guidance.offRoute) return null
-    val kph = guidance.speedLimitKph
-        ?.takeIf { it.isFinite() && it > 0.0 && it <= 160.0 }
-        ?: return null
-    return kph.roundToInt().coerceIn(1, 160)
-}
-
-internal fun riderNavigationCustomerNote(
-    note: String?,
-    delivering: Boolean,
-    guidance: NavigationGuidanceState,
-    revealWithinMeters: Double = 300.0
-): String? {
-    if (!delivering || guidance.weakGps || guidance.offRoute) return null
-    val remaining = guidance.distanceRemainingMeters
-        ?.takeIf { it.isFinite() && it >= 0.0 }
-        ?: return null
-    if (remaining > revealWithinMeters.coerceAtLeast(0.0)) return null
-    return cleanRiderOrderNote(note)
 }
 
 internal fun riderRouteDistanceLabel(meters: Double): String {

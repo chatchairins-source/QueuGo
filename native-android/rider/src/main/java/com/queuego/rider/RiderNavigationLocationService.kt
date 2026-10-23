@@ -138,7 +138,6 @@ class RiderNavigationLocationService : Service() {
 
     private val dispatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var dispatchHeartbeat: Job? = null
-    private var locationHeartbeat: Job? = null
     private var callback: LocationCallback? = null
     private var lastAccepted: Location? = null
     private var lastResolvedBearing: Float? = null
@@ -178,34 +177,6 @@ class RiderNavigationLocationService : Service() {
 
         startLocationUpdates()
         requestFreshLocation()
-        if (locationHeartbeat == null && locationUpdatesStarted) {
-            locationHeartbeat = dispatchScope.launch {
-                val api = QueueGoApi()
-                while (isActive) {
-                    val nextDelay = try {
-                        withTimeout(2_500L) {
-                            val fix = RiderNavigationLocationStore.fix.value
-                            RiderNavigationDispatchReadiness.syncLocation(
-                                applicationContext,
-                                api,
-                                fix?.elapsedRealtimeNanos,
-                                fix?.point?.latitude,
-                                fix?.point?.longitude
-                            )
-                        }
-                    } catch (error: TimeoutCancellationException) {
-                        3_000L
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (error: Exception) {
-                        Log.w("QueueGoNavLocation", "location_heartbeat_unavailable")
-                        3_000L
-                    }
-                    delay(nextDelay.coerceIn(1_000L, 3_000L))
-                }
-            }
-        }
-
         if (dispatchHeartbeat == null && locationUpdatesStarted) {
             dispatchHeartbeat = dispatchScope.launch {
                 val api = QueueGoApi()
