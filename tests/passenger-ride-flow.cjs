@@ -5,6 +5,7 @@ const riderIndex=fs.readFileSync('rider/index.html','utf8');
 const rider=fs.readFileSync('rider/rider-ride.js','utf8');
 const sql=fs.readFileSync('supabase/migrations/20261023161000_ride_integer_fare_and_completion.sql','utf8');
 const guardSql=fs.readFileSync('supabase/migrations/20261023092028_ride_unrestricted_completion_guard.sql','utf8');
+const normalizeSql=fs.readFileSync('supabase/migrations/20261023163500_ride_active_whole_baht_normalization.sql','utf8');
 let checks=0;const eq=(a,b,m)=>{assert.equal(a,b,m);checks++};
 
 eq(index.includes('map.on("click",selectTap)'),true,'customer location picker must select directly on map tap');
@@ -18,6 +19,7 @@ eq(customer.includes("o.rider_longitude"),true,'customer Ride live map must cons
 eq(customer.includes("อัปเดตประมาณทุก 5 วินาที"),true,'customer must be told rider location refresh cadence');
 eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดรับของคุณ"),true,'Ride pickup picker must instruct direct tap');
 eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดส่งของคุณ"),true,'Ride destination picker must instruct direct tap');
+eq(customer.includes('id="ride-select-center"'),false,'Ride picker must not expose the legacy center-selection control');
 
 eq(rider.includes("id=\"primary-nav-"),false,'Passenger Ride must not restore manual navigation CTA');
 eq(rider.includes("id=\"primary-action-"),true,'Passenger Ride must use the shared stage-action CTA');
@@ -36,5 +38,8 @@ eq(sql.includes("rider_arrived_customer_at=coalesce(rider_arrived_customer_at,no
 eq(sql.includes("payment_method='cash'"),true,'cash payment record remains authoritative');
 eq(guardSql.includes("or (old.status='in_progress' and new.status='completed')"),true,'Ride transition guard must allow in-progress completion without arrival gate');
 eq(guardSql.includes("old.status='in_progress' and new.status='completed' and old.rider_arrived_customer_at is not null"),false,'Ride transition guard must not restore dropoff proximity prerequisite');
+eq(normalizeSql.includes("new.total_amount=round(old.total_amount,0)"),true,'legacy active Ride normalization must only round to whole baht');
+eq(normalizeSql.includes("'ride_fare_normalized'"),true,'fare normalization must leave an audit trail');
+eq(normalizeSql.includes("new.amount=round(old.amount,0)"),true,'cash payment normalization must stay locked to whole-baht rounding');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Passenger Ride whole-baht fare, direct pin, live rider map, no manual nav gate and guarded completion'}));
