@@ -84,7 +84,7 @@ ok(laundry.includes('queuego_place_laundry_order_v2'),'Laundry customer must use
 ok(laundry.includes('p_estimated_quantity'),'Laundry estimated quantity missing');
 ok(laundry.includes("async function qgDb")&&laundry.includes("qg_customer_session_v1")&&laundry.includes("ลองโหลดอีกครั้ง"),'Laundry customer boot must use the same direct REST session as Customer and recover from load failure');
 ok(!laundry.includes("qgEnsureSupabase")&&!laundry.includes("qgRestoreCustomerSession"),'Laundry customer must not depend on a separate Supabase SDK/session bootstrap');
-ok(laundry.includes("p_feature:'laundry'")&&!laundry.includes("p_feature:'laundry',p_at:null"),'Laundry feature check must omit p_at so queuego_feature_enabled uses its current-time default');
+ok(laundry.includes("qgRpc('queuego_laundry_customer_catalog',{})"),'Laundry customer boot must use catalog RPC, which owns the current-time feature gate');
 ok(!laundry.includes("rgba(255,255,255,.94)")&&laundry.includes("rgba(0,0,0,.58)"),'Laundry hero must not place a white fade/frame over the banner image');
 ok(laundry.includes('request_id'),'Laundry idempotency request key missing');
 for(const unit of ['per_kg','per_item','per_set','fixed'])ok(merchantLaundry.includes(unit),'Merchant Laundry pricing unit missing '+unit);
