@@ -4,6 +4,9 @@ import kotlin.math.max
 
 private const val WEAK_GPS_ACCURACY_METERS = 35f
 private const val BASE_OFF_ROUTE_THRESHOLD_METERS = 30.0
+private const val MISSED_MANEUVER_WINDOW_METERS = 90.0
+private const val MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND = 2.0f
+private const val MISSED_MANEUVER_REROUTE_COOLDOWN_MILLIS = 3_000L
 private const val DEFAULT_ARRIVAL_METERS = 28.0
 private const val ARRIVAL_ACCURACY_MULTIPLIER = 1.4
 private const val MAX_ARRIVAL_METERS = 45.0
@@ -64,27 +67,44 @@ class NavigationProgressTracker(
             ?.takeIf { it.isFinite() && it >= 0.0 }
             ?.let { total -> (total * (1.0 - progressRatio)).coerceAtLeast(0.0) }
 
+        val upcoming = navigationUpcomingInstructions(leg, traveledServiceMeters)
+        val next = upcoming.getOrNull(0)
+        val following = upcoming.getOrNull(1)
+
         val offRouteThreshold = BASE_OFF_ROUTE_THRESHOLD_METERS
         val offRoute = !weakGps && match.offRouteMeters > offRouteThreshold
+        val nextTurnCode = next?.first?.turnCode
+        val nextRequiresCourseChange = nextTurnCode != null &&
+            nextTurnCode != 5 &&
+            nextTurnCode != 9
+        val movingSpeed = fix.speedMetersPerSecond
+            ?.takeIf { it.isFinite() && it >= 0f }
+            ?: 0f
+        val missedManeuver = offRoute &&
+            movingSpeed >= MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND &&
+            nextRequiresCourseChange &&
+            (next?.second ?: Double.POSITIVE_INFINITY) <= MISSED_MANEUVER_WINDOW_METERS
+
         val now = nowMillis()
         if (offRoute) {
             if (offRouteSinceMillis == null) offRouteSinceMillis = now
         } else {
             offRouteSinceMillis = null
         }
-        val cooldownSatisfied = lastRerouteAtMillis?.let { now - it >= rerouteCooldownMillis } ?: true
+        val requiredCooldown = if (missedManeuver) {
+            MISSED_MANEUVER_REROUTE_COOLDOWN_MILLIS
+        } else {
+            rerouteCooldownMillis
+        }
+        val cooldownSatisfied = lastRerouteAtMillis?.let { now - it >= requiredCooldown } ?: true
         val sustainedOffRoute = offRouteSinceMillis?.let { since ->
             now - since >= requiredOffRouteMillis.coerceAtLeast(0L)
         } ?: false
-        val shouldReroute = offRoute && sustainedOffRoute && cooldownSatisfied
+        val shouldReroute = offRoute && cooldownSatisfied && (missedManeuver || sustainedOffRoute)
         if (shouldReroute) {
             offRouteSinceMillis = null
             lastRerouteAtMillis = now
         }
-
-        val upcoming = navigationUpcomingInstructions(leg, traveledServiceMeters)
-        val next = upcoming.getOrNull(0)
-        val following = upcoming.getOrNull(1)
         val directToStop = navigationHaversineMeters(fix.point, stop.point)
         val arrivalThreshold = max(
             DEFAULT_ARRIVAL_METERS,
