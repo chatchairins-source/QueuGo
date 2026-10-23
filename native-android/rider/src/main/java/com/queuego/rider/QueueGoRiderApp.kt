@@ -2430,6 +2430,7 @@ private fun RiderHome(
         dismissedRestSessionStart
     )
     val navigationHud = if (activeNavigationWork) riderNavigationHudInfo(navigationGuidance) else null
+    val navigationSpeedLimitKph = if (activeNavigationWork) riderNavigationSpeedLimitKph(navigationGuidance) else null
     val navigationCustomerNote = if (activeNavigationWork) {
         riderNavigationCustomerNote(
             note = mapJob?.note,
@@ -2568,7 +2569,13 @@ private fun RiderHome(
                         }
                     )
             ) {
-                RiderBlueprintSpeedPill(reliableSpeedKph)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    navigationSpeedLimitKph?.let { RiderSpeedLimitSign(it) }
+                    RiderBlueprintSpeedPill(reliableSpeedKph)
+                }
             }
         }
 
@@ -4200,6 +4207,28 @@ private fun RiderTurnManeuverIcon(
                 arrowUp(cx, top)
             }
         }
+    }
+}
+
+@Composable
+private fun RiderSpeedLimitSign(speedLimitKph: Int) {
+    val shape = androidx.compose.foundation.shape.CircleShape
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .background(Color.White, shape)
+            .border(5.dp, QgRed, shape)
+            .semantics {
+                contentDescription = "จำกัดความเร็ว $speedLimitKph กิโลเมตรต่อชั่วโมง"
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            speedLimitKph.coerceIn(1, 160).toString(),
+            color = Color(0xFF161214),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Black
+        )
     }
 }
 

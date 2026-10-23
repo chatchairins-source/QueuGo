@@ -3,6 +3,7 @@ package com.queuego.ridernavigationmap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -242,6 +243,54 @@ class NavigationGuidanceTest {
 
         assertTrue(repeatedEndpoint.progressMeters!! >= late.progressMeters!! - 35.0)
         assertTrue(repeatedEndpoint.distanceRemainingMeters!! < 20.0)
+    }
+
+    @Test fun speedLimitUsesOnlyExplicitOsmIntervalOnReliableRouteProgress() {
+        val leg = routeLeg().copy(
+            speedLimitIntervals = listOf(
+                NavigationSpeedLimitInterval(
+                    startGeometryMeters = 0.0,
+                    endGeometryMeters = 2_000.0,
+                    maxspeedKph = 80.0,
+                    maxspeedRaw = "80",
+                    source = "queuego:road_class_estimate_v1",
+                    osmWayId = 88L
+                ),
+                NavigationSpeedLimitInterval(
+                    startGeometryMeters = 0.0,
+                    endGeometryMeters = 1_100.0,
+                    maxspeedKph = 50.0,
+                    maxspeedRaw = "50",
+                    source = "osm:maxspeed",
+                    osmWayId = 101L
+                )
+            )
+        )
+        val tracker = NavigationProgressTracker(nowMillis = { 30_000L })
+        val onRoute = tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.0050),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 7f
+            ),
+            leg,
+            stop
+        )
+        assertEquals(50.0, onRoute.speedLimitKph!!, 0.001)
+
+        val offRoute = tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(12.9980, 100.0050),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 7f
+            ),
+            leg,
+            stop
+        )
+        assertTrue(offRoute.offRoute)
+        assertNull(offRoute.speedLimitKph)
     }
 
     @Test fun weakGpsNeverTriggersReroute() {

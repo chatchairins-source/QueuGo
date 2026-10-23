@@ -23,6 +23,7 @@ data class NavigationGuidanceState(
     val progressMeters: Double? = null,
     val distanceRemainingMeters: Double? = null,
     val etaSeconds: Double? = null,
+    val speedLimitKph: Double? = null,
     val nextInstruction: NavigationRouteInstruction? = null,
     val distanceToInstructionMeters: Double? = null,
     val followingInstruction: NavigationRouteInstruction? = null,
@@ -76,6 +77,20 @@ class NavigationProgressTracker(
 
         val offRouteThreshold = BASE_OFF_ROUTE_THRESHOLD_METERS
         val offRoute = !weakGps && match.offRouteMeters > offRouteThreshold
+        val currentSpeedLimitKph = if (!weakGps && !offRoute) {
+            leg.speedLimitIntervals.firstOrNull { interval ->
+                interval.source == "osm:maxspeed" &&
+                    interval.startGeometryMeters.isFinite() &&
+                    interval.endGeometryMeters.isFinite() &&
+                    interval.endGeometryMeters > interval.startGeometryMeters &&
+                    interval.maxspeedKph.isFinite() &&
+                    interval.maxspeedKph in 0.000001..160.0 &&
+                    match.progressMeters >= interval.startGeometryMeters &&
+                    match.progressMeters < interval.endGeometryMeters
+            }?.maxspeedKph
+        } else {
+            null
+        }
         val nextTurnCode = next?.first?.turnCode
         val nextRequiresCourseChange = nextTurnCode != null &&
             nextTurnCode != 5 &&
@@ -144,6 +159,7 @@ class NavigationProgressTracker(
             progressMeters = traveledServiceMeters,
             distanceRemainingMeters = remaining,
             etaSeconds = eta,
+            speedLimitKph = currentSpeedLimitKph,
             nextInstruction = next?.first,
             distanceToInstructionMeters = next?.second,
             followingInstruction = following?.first,

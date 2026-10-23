@@ -85,6 +85,26 @@ class RiderNavigationHudTest {
         assertEquals("480 ม.", hud.distanceText)
         assertNull(hud.etaText)
     }
+    @Test fun speedLimitSignValueRequiresReliableExplicitGuidance() {
+        assertEquals(
+            50,
+            riderNavigationSpeedLimitKph(
+                NavigationGuidanceState(speedLimitKph = 50.0)
+            )
+        )
+        assertNull(
+            riderNavigationSpeedLimitKph(
+                NavigationGuidanceState(speedLimitKph = 50.0, weakGps = true)
+            )
+        )
+        assertNull(
+            riderNavigationSpeedLimitKph(
+                NavigationGuidanceState(speedLimitKph = 50.0, offRoute = true)
+            )
+        )
+        assertNull(riderNavigationSpeedLimitKph(NavigationGuidanceState()))
+    }
+
     @Test fun customerNoteAppearsOnlyNearReliableDropoff() {
         val near = NavigationGuidanceState(distanceRemainingMeters = 280.0)
         assertEquals(

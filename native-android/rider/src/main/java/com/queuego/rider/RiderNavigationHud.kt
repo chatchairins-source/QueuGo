@@ -86,6 +86,14 @@ internal fun riderNavigationHudInfo(guidance: NavigationGuidanceState): RiderNav
     )
 }
 
+internal fun riderNavigationSpeedLimitKph(guidance: NavigationGuidanceState): Int? {
+    if (guidance.weakGps || guidance.offRoute) return null
+    val kph = guidance.speedLimitKph
+        ?.takeIf { it.isFinite() && it > 0.0 && it <= 160.0 }
+        ?: return null
+    return kph.roundToInt().coerceIn(1, 160)
+}
+
 internal fun riderNavigationCustomerNote(
     note: String?,
     delivering: Boolean,

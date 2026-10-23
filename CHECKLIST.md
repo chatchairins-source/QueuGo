@@ -23,16 +23,17 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
   - Scoped proof recovery RPC keeps proof tables server-only while allowing ambiguous mutation recovery for the assigned Rider.
   - CI Rider migration/test path filters now trigger Native Pilot and Map regression gates.
   - Native stale 3-sample reroute test was aligned to the 3-second policy; shared 8-second auto-follow constant is public across modules.
+  - Missed/passed maneuver handling reroutes immediately on reliable moving evidence, including the 8–30 m post-turn window, while generic drift keeps the sustained 30 m / 3 s gate.
+  - QueueGo route responses expose only provenance-backed explicit OSM `maxspeed` intervals; Native parsing rejects inferred road-class values, and the Native HUD now renders a legal-speed sign only on a reliable matching interval.
   - Map CI release-asset transport has a deterministic fallback: rebuild the published Planetiler 0.10.2 / Buriram-bounds recipe from the pinned Thailand PBF and still require the published PMTiles SHA-256.
 - Current verification:
   - Full JS/SQL regression reached PASS before the map asset transport step on prior exact heads.
   - Native full QueueGo regression reached PASS on `f02bd4e3`; first Native failures there were the stale reroute unit test and module visibility, both corrected afterward.
-  - Exact-head Map + Native gates must both pass on one successor SHA before source/build is marked DONE.
+  - Exact-head Map Engine run `39883581231` and Native Pilot run `39883577181` both PASSED on `3c25e3036e57b36614a47a536072a49a76a7ea1a`, unlocking the explicit-speed-limit HUD chunk. The new HUD successor must pass the same exact-head gates again before this newer source is marked DONE.
 - Release blockers after source gate:
   - Physical Android device ANR/OOM/battery certification.
   - Real Buriram GPS/road navigation acceptance.
-  - Speed-limit UI remains intentionally hidden until the route service exposes provenance-backed OSM `maxspeed`; road-class estimates must never be rendered as a legal speed-limit sign.
-- NEXT: run both exact-head gates on the same successor SHA; fix only the first failure of that SHA. When green, expose provenance-backed OSM maxspeed route intervals to Web/Native and keep the sign hidden when explicit source data is absent.
+- NEXT: run Map + Native exact-head gates on the new Native speed-limit HUD successor and fix only the first failure. In parallel, finish PR #629 Web explicit-only speed-limit RC; the sign must stay hidden whenever `osm:maxspeed` is absent. Physical road/GPS/ANR/OOM/battery acceptance remains a release gate.
 
 ## Dependency order
 
