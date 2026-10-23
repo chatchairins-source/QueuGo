@@ -129,7 +129,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             PosProduct(p.getString("id"), p.getString("name"), p.getDouble("price"),
                 if (p.isNull("image")) null else p.getString("image"), p.getBoolean("available"),
                 p.optBoolean("delivery_available", true), if (p.isNull("delivery_price")) null else p.getDouble("delivery_price"),
-                p.optString("category").takeIf { it.isNotBlank() })
+                if (p.isNull("category")) null else p.optString("category").takeIf { it.isNotBlank() })
         } }
         val tables = json.getJSONArray("tables").let { array -> (0 until array.length()).map { i ->
             val t = array.getJSONObject(i)
