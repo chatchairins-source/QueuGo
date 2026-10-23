@@ -35,12 +35,15 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("const directionConflict=decision?.routeBearingRejected===true"),true);
  eq(source.includes('maximumAge:0'),true);
  eq(source.includes('class="qg-speed-pill"'),true);
- eq(source.includes('class="qg-top-actions"'),true);
+ eq(source.includes('class="qg-top-actions"'),false);
  eq(source.includes('qg-ready-card'),false);
  eq(source.includes('พร้อมรับงานแล้ว'),false);
  eq((source.match(/id="status-switch"/g)||[]).length,1);
- eq(source.includes("label.textContent=S.online?'พร้อม':'พัก'"),true);
- eq(source.includes('<div class="qg-brand-pill">'),false);
+ eq(source.includes("label.textContent=S.online?'พร้อมรับงาน':'พักรับงาน'"),true);
+ eq(source.includes("qgHeaderWordmark('qg-brand-pill')"),false);
+ eq(source.includes('.qg-route-badge,.qg-route-badge.show{display:none!important}'),true);
+ eq(source.includes('<header class="qg-topbar"><div class="qg-speed-pill"'),true);
+ eq(source.includes('id="status-label">${S.online?\'พร้อมรับงาน\':\'พักรับงาน\'}'),true);
  eq(source.includes('function qgSetHomeDockHTML'),true);
  eq(source.includes('qg-dock-collapsed'),true);
  eq(source.includes('margin:0 18px 6px auto'),true);
