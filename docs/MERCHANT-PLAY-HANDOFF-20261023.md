@@ -17,10 +17,10 @@ Status: **BLOCKED — no signed AAB produced or uploaded.**
 - The private backup `QueueGo-Merchant-Upload-Key-Backup-20261023.zip` is saved
   separately from the store asset pack. No private key, base64 keystore,
   passwords or secret-value file is committed to this repository.
-- GitHub Actions Secrets settings are reachable in the signed-in browser;
-  the add-secret form is ready. Installation of the four signing values is
-  pending the browser tool's required action-time confirmation for granting
-  CI use of a new signing key. No secret has been entered or submitted yet.
+- Installed all four signing values into this repository's GitHub Actions secrets;
+  the settings list and readiness job `120207460634` confirm their presence.
+  The existing workflow stopped on missing backend inputs before cryptographic
+  validation, so CI key-content validation is still pending.
 - The existing certification, backend/backup and physical evidence gates remain
   open. Creating the key is not release certification or Play publication.
 
@@ -33,21 +33,21 @@ cached-category instrumentation. This handoff does not change application code.
 
 ## Fresh prerequisite evidence
 
-Release Secret Readiness run `39744773027` was retried as attempt **2** on
-2026-10-23. Job `120196712327` failed at `Check required secret presence`.
+Release Secret Readiness run `39744773027` was retried as a fresh attempt on
+2026-10-23. Job `120207460634` failed at `Check required secret presence`.
 This is a current secret-presence check on the existing release workflow,
 not exact-current-Merchant certification and not a build of an older app.
 
 - `QG_FIREBASE_GOOGLE_SERVICES_JSON_B64`: present. Content validation was skipped
   after the earlier presence failure, so full Firebase readiness is not claimed.
-- Missing signing inputs: `QG_ANDROID_KEYSTORE_B64`,
+- Present signing inputs: `QG_ANDROID_KEYSTORE_B64`,
   `QG_ANDROID_STORE_PASSWORD`, `QG_ANDROID_KEY_ALIAS`, `QG_ANDROID_KEY_PASSWORD`.
 - Missing existing certification inputs: `QG_SUPABASE_SERVICE_ROLE_KEY`,
   `QG_SUPABASE_DB_URL`, `QG_BACKUP_PASSPHRASE`.
 - Local release verifier reports `QG_NATIVE_RELEASE_EVIDENCE absent; physical
   and Play gates remain OPEN`.
-- No upload key/certificate history or maximum Play versionCode was available;
-  no replacement key, release version or certification PASS was invented.
+- Owner confirms no previous Merchant upload. Proposed first metadata is
+  `1.0.0` / `1`; Console readback and certification PASS remain unverified.
 
 ## Prepared deliverable
 
@@ -64,9 +64,9 @@ mock application screenshots were supplied.
 
 ## Remaining release blockers and exact next action
 
-1. Add the existing upload keystore and four signing values through the secure
-   GitHub Actions Secrets UI. Check Play App Signing history before considering
-   any new key; do not put credentials in repository, public assets or chat.
+1. Run independent Firebase and keystore content checks after the readiness
+   workflow update. All four signing secrets are installed; do not regenerate
+   the key or put credentials in repository, public assets or chat.
 2. Observe this package's maximum Play versionCode and choose the next release
    metadata. The current development fallback is not approved release metadata.
 3. Satisfy the existing release evidence and backup prerequisites; reconcile the
