@@ -15,6 +15,7 @@ assert(merchant.includes('.qgm-shopping-subcategory-grid input[type=checkbox]')&
 assert(!merchant.includes('@media(max-width:430px){.qgm-shopping-subcategory-grid{grid-template-columns:1fr}}'),'Merchant shopping subcategories must not expand to one oversized row per item on phones');
 const catalogSource=merchant.slice(merchant.indexOf('window.renderShopCatalog=function'),merchant.indexOf('function qgmDeliveryPriceFromStore'));
 assert(catalogSource.includes('oninput="qgmCatalogSearch(this.value)"'),'Merchant menu/product search must remain wired to the real catalog filter');
+assert(merchant.includes("!qgmCatalogQuery||(p.name+' '+qgmCatalogCategoryOf(p)).toLocaleLowerCase('th-TH').includes(qgmCatalogQuery)"),'Merchant menu/product search must actually filter loaded product names/categories');
 assert(catalogSource.indexOf('id="qgm-catalog-add"')>catalogSource.indexOf('class="qgm-search"')&&catalogSource.indexOf('id="qgm-catalog-add"')<catalogSource.indexOf('id="qgm-catalog-title"'),'Merchant add-menu action must sit directly below search before the product/menu section');
 assert(merchant.includes('.qgm-catalog-add-compact{width:auto!important;min-height:40px!important'),'Merchant add-menu action must remain compact instead of a full-width oversized primary button');
-console.log('merchant home clean layout 11 checks PASS');
+console.log('merchant home clean layout 12 checks PASS');
