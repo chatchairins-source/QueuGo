@@ -1246,3 +1246,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - PR #618 exact RC `39772099278` PASS, merge `bc8bdc173a8b798e84dee09833b76caf8b546614`; Production FK index migration `20261022114328`.
 - Readback: registry empty, RLS on, direct anon/authenticated table access denied, four guarded authenticated-only RPCs, POS storefront price lookup, audit writes in save/remove. Product Code FK lints resolved; no sample transactions created.
 - Still open: generic inventory chain, authorized cashier/device end-to-end and remaining POS Release Gate. POS is NOT DONE.
+
+
+## 2026-10-23 Laundry photo cache follow-up
+- Owner tested on iPhone and still saw only the empty photo frame after #688. Read-only Production edge logs at 2026-10-23 13:20 UTC show the Laundry catalog RPC returning HTTP 200 (478-byte response), but no subsequent `shop_profiles?select=id,public_logo,public_cover...` request. Current Production has an active registered Laundry shop with both photo fields populated; both public Storage image URLs return HTTP 200 image/jpeg. This confirms the browser was serving the prior Laundry HTML from cache rather than executing the photo-fetch code.
+- Cause: the standalone page URL kept the same `?v=20261023-dir1` cache key across the photo-code deployment. Bump all Customer Home Laundry links to `?v=20261023-dir2` so navigation fetches the current HTML; regression asserts the cache key.
+- No Production data/schema changes. NEXT: exact-head RC for the bounded cache-bust change, merge, verify Pages serves `dir2` and the current photo-fetch code, then owner re-tests via Customer Home.
