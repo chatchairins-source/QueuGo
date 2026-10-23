@@ -1,16 +1,15 @@
 # QueueGo Active Work Checklist
 
-Last governance checkpoint: 2026-10-23; latest verified main `5a860ea3e0a26841eca5666a158b034c78b897d9`
+Last governance checkpoint: 2026-10-23; latest verified main `be33b8318967ad6105222efa8305fec8005a5335`
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
-## Current verified POS checkpoint — 2026-10-23
+## Current verified POS checkpoint — 2026-10-23 (continued)
 
-- Latest Web main: `5a860ea3e0a26841eca5666a158b034c78b897d9`. No open Web POS PR supersedes it. Latest Native Merchant POS successor checked: `feat/native-merchant-pos-offline-20261022` at `7e058b616e669634a8b58916184f7e551c82b1c3`; Native metrics PR #628 is merged to that successor, not Web main.
-- Web PR #630 merged at `5a860ea3e0a26841eca5666a158b034c78b897d9`. Exact-head RC `39877737147` and post-merge main RC `39878103940` passed all steps. GitHub Pages deployment `39878103646` succeeded. Production `/merchant/index.html` and `/merchant/pos-table-v2.js` were fetched with cache-busting query and byte-matched the deployed source; the new table state labels are present.
-- Current bounded Web chunk: product category filters on the existing `products.category` field, combined with text search; no schema or Production data change. Branch `work-pos-next-20261023`, source commit `69a7d35a166acbe5157ea80911acca63c61fd32f`. Focused `pos-runtime.cjs` = 88 checks PASS; full local `npm test` exit 0; JS syntax and `git diff --check` pass. Exact-head hosted RC and deploy pending.
-- Release evidence is still incomplete: authenticated cashier/device journeys, physical hardware, online/offline recovery acceptance, and Native parity for the new category filter have not been certified. Overall QueueGo POS remains **NOT DONE**.
-- **NEXT:** publish the exact category-filter source, pass exact-head RC, merge and verify Web Production bytes. Then port the same category/search behavior to the latest Native successor and run Native regression/APK/lifecycle gate. Continue remaining POS gaps and Release Gate; do not treat this UI slice as whole-product completion.
+- Latest Web main fetched directly: `be33b8318967ad6105222efa8305fec8005a5335`. PR #631 category filtering merged; exact RC `39878988663`, main RC `39879361494`, Pages deployment `39879361545` succeeded. Production merchant HTML/POS JS/CSS cache-busted SHA-256 match source; no schema/data change.
+- Latest Native successor remains `feat/native-merchant-pos-offline-20261022` at `7e058b616e669634a8b58916184f7e551c82b1c3`. PR #633 head `ee0bb89c18442e47101ffdca05717e85a360cc8e`, targeting that successor only. Source contract 313 PASS; backend migration sync PASS; full local regression EXIT 0 with unrelated asset-fetch pretest skipped.
+- Native runs `39880496173` and `39880496200` are in progress at full regression; Kotlin/APK and lifecycle evidence pending. No Production schema/data change. Overall POS remains **NOT DONE**.
+- **NEXT:** finish and resolve exact-head Native CI; merge #633 only into its Native successor if green. Then continue the highest-priority unblocked POS gate while retaining authenticated cashier, device, hardware, offline recovery and whole-product evidence gates.
 
 ## 2026-10-22 current head and next slice
 

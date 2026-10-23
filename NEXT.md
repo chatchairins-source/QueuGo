@@ -1,17 +1,17 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-23 · Authoritative main: `5a860ea3e0a26841eca5666a158b034c78b897d9`
+Current snapshot: 2026-10-23 · Authoritative main: `be33b8318967ad6105222efa8305fec8005a5335`
 
-## Current verified POS checkpoint — 2026-10-23
+## Current verified POS checkpoint — 2026-10-23 (continued)
 
-**Active chunk: product category filtering in Web POS, then Native successor parity.**
+**Active chunk: Native Merchant category parity on the latest Native successor.**
 
-- Web main is `5a860ea3e0a26841eca5666a158b034c78b897d9`; PR #630 table status enhancement is merged, post-merge RC passed (`39878103940`), Pages deployment succeeded (`39878103646`), and deployed POS index/script bytes were read back and matched main.
-- No open Web POS PR superseded main during this recovery. Native successor is `feat/native-merchant-pos-offline-20261022` at `7e058b616e669634a8b58916184f7e551c82b1c3`; #628 metrics parity is already on that Native branch.
-- Web category filter uses existing `products.category` and preserves combined text filtering. Source commit `69a7d35a166acbe5157ea80911acca63c61fd32f` on `work-pos-next-20261023`. Focused POS runtime 88 checks PASS and full local `npm test` EXIT 0. Exact-head hosted RC/Pages for this active chunk are pending; no Production schema or data change was made.
-- POS remains **NOT READY**. Category filter Native parity, authenticated role/device journeys, physical scanner/printer/cash drawer checks, and whole-product end-to-end Release Gate are still outstanding.
+- Web main is `be33b8318967ad6105222efa8305fec8005a5335`; PR #631 category filtering is merged. Exact PR RC `39878988663`, post-merge main RC `39879361494`, and Pages deploy `39879361545` succeeded. Cache-busted Production merchant HTML, POS JS and CSS SHA-256 match source; no schema/data change.
+- Native successor is `feat/native-merchant-pos-offline-20261022` at `7e058b616e669634a8b58916184f7e551c82b1c3`. PR #633 head `ee0bb89c18442e47101ffdca05717e85a360cc8e` adds category/search parity while retaining `pos_price`, saves labels in the offline catalog, and tolerates older catalog snapshots. Source contract 313 PASS; migration sync and full local regression pass (`npm run test --ignore-scripts`, skipping unrelated asset-fetch pretest).
+- Hosted Native runs `39880496173` (focused category/APK gate) and `39880496200` (Native pilot and Android lifecycle capture) are in progress at full regression. Kotlin compile, unit tests, APK packaging and device evidence are not certified yet. No Production schema/data change.
+- Overall POS remains **NOT DONE**; authenticated cashier/device journeys, hardware checks and the full end-to-end Release Gate remain open.
 
-**NEXT:** publish this exact Web source and run exact-head CI; fix any failure, then merge, deploy and verify production asset hashes. After Web is stable, implement the category filter on the newest Native successor and rerun native unit, package, APK and lifecycle checks. Continue with the remaining POS gaps; never call the overall POS done until the full Release Gate passes.
+**NEXT:** monitor both exact-head Native runs to completion; fix and rerun any failure. If both pass, merge #633 into its Native successor only and verify the new successor head. Then continue the next unblocked POS Release Gate gap; do not merge the divergent Native line into Web main.
 
 ## Historical checkpoints (superseded where they conflict with the current checkpoint above)
 ## Prior active chunk — historical detail superseded by the current checkpoint above

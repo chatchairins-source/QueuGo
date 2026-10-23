@@ -123,3 +123,9 @@ An individual feature can be marked `DONE (source/test)` only with its exact com
 - PR #630 table availability, kitchen and payment-waiting labels merged to Web main `5a860ea3e0a26841eca5666a158b034c78b897d9`. Exact PR RC `39877737147`, post-merge RC `39878103940`, and Pages build/deploy `39878103646` succeeded. Cache-busted Production `/merchant/index.html` and `/merchant/pos-table-v2.js` matched source SHA-256 exactly; database/schema unchanged.
 - Next Web chunk is category filters using existing product category data; local focused POS runtime 88 PASS and full `npm test` EXIT 0 on source `69a7d35a166acbe5157ea80911acca63c61fd32f`; exact hosted RC/deploy pending. Native parity is required after Web stability.
 - This is a bounded UI release only. Authenticated cashier journeys, device/hardware verification, whole POS E2E and full Definition of Done remain open. QueueGo POS is **NOT DONE**.
+
+
+## POS category parity continuation — 2026-10-23
+- Web PR #631 is merged at main `be33b8318967ad6105222efa8305fec8005a5335`; exact PR RC `39878988663`, descendant main RC `39879361494`, Pages deployment `39879361545` succeeded. Cache-busted Production merchant HTML, POS JS and CSS hashes match source.
+- Native PR #633 (`ee0bb89c18442e47101ffdca05717e85a360cc8e`) targets only successor `feat/native-merchant-pos-offline-20261022` (`7e058b616e669634a8b58916184f7e551c82b1c3`). Static source checks: 313 PASS; backend migration sync and full local regression pass. Hosted runs `39880496173` and `39880496200` remain in progress; no Kotlin/APK/device acceptance is claimed yet.
+- No Production database mutation. Overall POS remains **NOT DONE** pending Native gate, authenticated cashier journeys, device/hardware testing and remaining Release Gate items.

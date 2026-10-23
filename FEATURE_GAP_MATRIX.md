@@ -1,8 +1,8 @@
 # QueueGo Feature Gap Matrix
 
-Reviewed against main `5a860ea3e0a26841eca5666a158b034c78b897d9` and relevant open PRs on 2026-10-23. Recent exact-head and descendant main RC plus Pages receipts are recorded in `NEXT.md`, `RELEASE_GATE.md`, and `CHECKLIST.md`. This is an evidence ledger, not a claim that every capability is complete. `Source present` means code or schema exists; it does not certify a real-user flow.
+Reviewed against Web main `be33b8318967ad6105222efa8305fec8005a5335`, Native successor `7e058b616e669634a8b58916184f7e551c82b1c3`, and open POS PR #633 on 2026-10-23. Recent RC, deploy and Native CI evidence is recorded in `NEXT.md`, `RELEASE_GATE.md`, and `CHECKLIST.md`. This is an evidence ledger, not a claim that every capability is complete. `Source present` means code or schema exists; it does not certify a real-user flow.
 
-Latest POS UI evidence: PR #630 table service/payment state labels are deployed and byte-verified. The next Web source chunk adds category filtering over existing `products.category` (`69a7d35a` local checkpoint; exact hosted RC pending), then requires parity on Native successor `7e058b61`. These UI changes do not close the POS authenticated/device Release Gate.
+Latest POS UI evidence: PR #630 table service/payment state labels and PR #631 category filters are deployed and byte-verified. Native category/search parity is in PR #633 on successor `7e058b61`; source checks pass and hosted Android gates are running. These UI changes do not close the POS authenticated/device Release Gate.
 
 Status key: **Source present** = identified implementation; **Staged** = open successor not merged/deployed; **Gate open** = requires additional runtime, user, device, security or production evidence; **Audit next** = exact implementation/evidence still needs review.
 
