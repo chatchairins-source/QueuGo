@@ -1960,3 +1960,7 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## Native POS verified successor — 2026-10-23
 - PR #633 merged at `0a9c17dd` after exact `d98ecdbf` passed both Native runs. PR #635 merged at `1f71c351b88d635de810fccb8e82bc447de37390` after exact source `639bedea` passed Native Pilot `39882985832`, including Android cached-category instrumentation (`QUEUEGO_MERCHANT_POS_CATALOG_PASS`).
 - Real Android null/named/literal-null/legacy decoding is now source/test verified. No authenticated or physical cashier/device/hardware acceptance is implied. POS remains NOT DONE; NEXT is the real cashier/device Release Gate evidence, preserving the same Native successor and all existing dirty worktrees.
+
+## Merchant Play handoff — 2026-10-23
+- Preparing the current Merchant/POS app for Google Play does not authorize fabricating upload-key identity or release acceptance. Fresh secret readiness `39744773027` attempt 2 confirms Firebase config present but all four upload-signing inputs and three backend/backup certification inputs absent. Signed AAB packaging remains blocked by those inputs and the existing evidence guard.
+- Store copy, icon, feature graphic, readiness report and concrete Console/build handoff are packaged separately, explicitly without an AAB. See `docs/MERCHANT-PLAY-HANDOFF-20261023.md`. NEXT: secure signing inputs, observed Play version history and real Merchant/device acceptance, then the existing certified pipeline; preserve the newest Merchant successor and all dirty worktrees.

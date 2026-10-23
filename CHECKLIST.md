@@ -4,6 +4,13 @@ Last governance checkpoint: `WORKFLOW.md` commit `9439569c15f72568b3398a1072f6d2
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
+## Merchant Play preparation — 2026-10-23
+
+- IN PROGRESS (handoff) / BLOCKED (signed AAB): current Merchant Native source is `382a746ad9176a03c4b7beafdfd1dbc2dad8b9ce`; runtime source `639bedea` passed Native Pilot `39882985832`. Application code and signing/release guards are unchanged.
+- Prepared and validated the Merchant store-text/graphics/readiness ZIP. It contains no AAB and explicitly remains not upload-ready. Detailed evidence and handoff: `docs/MERCHANT-PLAY-HANDOFF-20261023.md`.
+- Fresh release-secret preflight `39744773027`, attempt 2, job `120196712327`: Firebase config present; all four signing inputs and the three existing backend/backup certification inputs are absent. Content/signing validation was skipped after the presence failure. Local release evidence is absent. No credentials, test records or release PASS were manufactured.
+- NEXT: provide existing upload-key inputs securely, observe Merchant Play version history, close authorized real-account/device and existing certification evidence, then use the existing certified workflow to produce and verify the signed AAB. Do not bypass the release guard or build stale Merchant code. POS/Play release remain NOT DONE.
+
 ## Native POS category recovery — 2026-10-23
 
 - DONE (source/test): PR #633 exact `d98ecdbf423e34b41e4fde3062d7b0d5db6750f0` passed `39881729771` and `39881729809`; merged into the Native successor at `0a9c17dd774f59781de0565e9fa313da5ee955b8`.
