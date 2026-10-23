@@ -31,7 +31,7 @@ ok(laundry.includes("qgRpc('queuego_laundry_customer_catalog',{})"),'Laundry cus
 ok(!laundry.includes("qgDb('laundry_hubs?select=id,name,shop_id"),'Laundry customer directory must not read raw Laundry hubs');
 ok(laundry.includes("safe(x.shop_name||x.name)"),'Laundry directory must render registered shop identity from catalog');
 ok(laundry.includes("shop_profiles?select=id,public_logo,public_cover"),'Laundry directory must read registered shop photos from active shop profiles');
-const photoUrlStart=laundry.indexOf('function publicPhotoUrl('),photoUrlEnd=laundry.indexOf('\\nfunction uuid()',photoUrlStart);
+const photoUrlStart=laundry.indexOf('function publicPhotoUrl('),photoUrlEnd=laundry.indexOf(String.fromCharCode(10)+'function uuid()',photoUrlStart);
 const publicPhotoUrl=new Function(laundry.slice(photoUrlStart,photoUrlEnd)+';return publicPhotoUrl')();
 const supabasePhoto='https://pkypiqhlrmzocysgeqew.supabase.co/storage/v1/object/public/shop-photos/logo.jpg';
 ok(publicPhotoUrl(supabasePhoto)===supabasePhoto,'Laundry photo validator must accept Supabase Storage HTTPS URLs containing s');
