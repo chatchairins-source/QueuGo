@@ -2769,8 +2769,10 @@ function qgStartMessageWatch(){
   stopRiderChatWatch();window.qgMessagePoll=setInterval(()=>refreshRiderChat(true),4000);
 }
 
-boot();
-</script><script id="qg-rider-order-actions">
+</script>
+<script src="reliability.js?v=20261023-laundryfix1"></script>
+<script>boot();</script>
+<script id="qg-rider-order-actions">
 /* Cash order transitions use server transactions so the merchant receipt and COD payment stay consistent. */
 window.statusFromRow=function(row){
   return String(row?.status||'');
