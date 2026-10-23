@@ -19,7 +19,8 @@ data class PosProduct(
     val image: String?,
     val available: Boolean,
     val deliveryAvailable: Boolean = true,
-    val deliveryPrice: Double? = null
+    val deliveryPrice: Double? = null,
+    val category: String? = null
 )
 
 data class PosTable(
@@ -228,7 +229,7 @@ class MerchantPosApi(
             auth.session.accessToken
         ))
         val productsRaw = http.array(http.get(
-            "products?select=id,name,price,pos_price,delivery_price,image,available,pos_available,delivery_available" +
+            "products?select=id,name,price,pos_price,delivery_price,image,category,available,pos_available,delivery_available" +
                 "&shop_id=eq." + http.enc(shopId) + "&order=name.asc",
             auth.session.accessToken
         ))
@@ -294,7 +295,8 @@ class MerchantPosApi(
                         } else true,
                         deliveryPrice = if (r.has("delivery_price") && !r.isNull("delivery_price")) {
                             r.optDouble("delivery_price")
-                        } else null
+                        } else null,
+                        category = nullableString(r, "category")
                     )
                 )
             }

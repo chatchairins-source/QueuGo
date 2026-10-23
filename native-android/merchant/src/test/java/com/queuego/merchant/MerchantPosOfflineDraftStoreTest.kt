@@ -78,7 +78,7 @@ class MerchantPosOfflineDraftStoreTest {
             val device = UUID.randomUUID().toString()
             val productId = UUID.randomUUID().toString()
             val catalog = PosOfflineCatalog(actor, shop, device, "ร้านทดสอบ", 456L,
-                listOf(PosProduct(productId, "ชาไทย", 45.0, null, true)),
+                listOf(PosProduct(productId, "ชาไทย", 45.0, null, true, category = "เครื่องดื่ม")),
                 listOf(PosTable(UUID.randomUUID().toString(), "A1", true)))
             val store = MerchantPosOfflineDraftStore(root)
             store.saveCatalog(catalog)
