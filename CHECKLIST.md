@@ -1,3 +1,11 @@
+## 2026-10-23 Merchant shopping subcategory compact mobile picker
+
+- Owner screenshot shows Shopping subcategory choices occupying excessive vertical space on Merchant Account/Edit Shop mobile.
+- ROOT CAUSE: Merchant CSS forced `.qgm-shopping-subcategory-grid` to one column below 430px, while the checkbox itself inherited generic form-input sizing because only `accent-color` was overridden. This produced oversized checkbox controls and one tall full-width row per subcategory.
+- IN PROGRESS: source commit `cb7e8db2c532493b8df7030244052973468b1788` keeps a two-column mobile grid, ~46px label touch targets and explicitly constrains native checkbox controls to 18px without changing stored shopping subcategory values or save behavior. Regression assertions are in `tests/merchant-home-clean-layout.cjs`.
+- CI evidence on PR #689 run `39962632928`: dependency install and full `npm test` SUCCESS; GitHub runner remained unusually long in the existing WebKit installation step without a reported failure. No runtime/Production data mutation.
+- NEXT: obtain exact-head full RC including Merchant mobile WebKit; merge only after the relevant gate succeeds, then deploy the proven main descendant to Render and require owner-device visual acceptance before claiming physical mobile PASS.
+
 ## 2026-10-23 Customer Laundry shop photos
 
 - Stream: display each registered Laundry shop's real profile cover, falling back to its profile logo. The catalog returns shop identities, so the page fetches only the approved profile photo fields for catalog shop IDs under the authenticated session.
