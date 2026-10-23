@@ -490,7 +490,7 @@ jobs:
 
 
   publish-rider-road-test:
-    if: ${{ (github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-route-bundle-')) && github.event_name == 'push' }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-route-bundle-') && github.event_name == 'push' }}
     needs: [native-pilot, map-display-only, navigation-map-runtime, maplibre-osm-runtime, continuous-dispatch-races, passenger-ride-races, credit-races, route-bundle-stack-races, express-races]
     runs-on: ubuntu-latest
     timeout-minutes: 10
