@@ -1252,3 +1252,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Owner tested on iPhone and still saw only the empty photo frame after #688. Read-only Production edge logs at 2026-10-23 13:20 UTC show the Laundry catalog RPC returning HTTP 200 (478-byte response), but no subsequent `shop_profiles?select=id,public_logo,public_cover...` request. Current Production has an active registered Laundry shop with both photo fields populated; both public Storage image URLs return HTTP 200 image/jpeg. This confirms the browser was serving the prior Laundry HTML from cache rather than executing the photo-fetch code.
 - Cause: the standalone page URL kept the same `?v=20261023-dir1` cache key across the photo-code deployment. Bump all Customer Home Laundry links to `?v=20261023-dir2` so navigation fetches the current HTML; regression asserts the cache key.
 - No Production data/schema changes. NEXT: exact-head RC for the bounded cache-bust change, merge, verify Pages serves `dir2` and the current photo-fetch code, then owner re-tests via Customer Home.
+
+
+## 2026-10-23 Customer Laundry shared storefront
+- Owner screenshot confirms Laundry listing still uses a standalone layout with a blank image frame; owner asked it to follow the same shop pattern as food/cafe and vary only the inside menu.
+- Implementation: route Laundry listing and shop detail through the Customer SPA; render the directory with shared `shopCard` and use the same profile cover/header on detail, while Laundry services and order submission remain Laundry-specific and use `queuego_laundry_customer_catalog` / `queuego_place_laundry_order_v2`.
+- No Production schema/data changes. NEXT: exact-head RC; merge and deploy Pages; verify the live Customer route/layout and owner-device view.
