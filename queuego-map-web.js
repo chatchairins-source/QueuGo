@@ -419,7 +419,7 @@ function navigationOverview(map,points,{padding=64,maxZoom=16,duration=450}={}){
   }catch(_){return false}
 }
 
-function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=true,navigation=false}={}){
+function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=true,navigation=false,searchControl=interactive&&!navigation}={}){
   if(!host||typeof window.maplibregl==='undefined') return null;
   ensureQueueGoMapCss();
   host.classList.add('queuego-map-host');
@@ -496,7 +496,7 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
   }
   try{map.addControl(new maplibregl.NavigationControl({showCompass:!!navigation,showZoom:false,visualizePitch:!!navigation}),'top-right')}catch(_){}
   try{map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right')}catch(_){}
-  attachPlaces(map,{searchControl:interactive&&!navigation});
+  attachPlaces(map,{searchControl:!!searchControl});
   return map;
 }
 function markerElement(color='#e6002d',html=''){
