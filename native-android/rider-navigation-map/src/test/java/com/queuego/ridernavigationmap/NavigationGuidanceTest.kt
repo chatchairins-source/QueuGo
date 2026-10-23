@@ -122,6 +122,39 @@ class NavigationGuidanceTest {
         assertTrue(missedTurn.shouldReroute)
     }
 
+    @Test fun passedTurnReroutesBeforeGenericThirtyMeterThreshold() {
+        var now = 55_000L
+        val tracker = NavigationProgressTracker(nowMillis = { now })
+
+        val approaching = tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.0096),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f
+            ),
+            routeLeg(),
+            stop
+        )
+        assertFalse(approaching.shouldReroute)
+
+        now += 1_000L
+        val justPastTurn = tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.01015),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f
+            ),
+            routeLeg(),
+            stop
+        )
+        assertTrue(justPastTurn.offRouteMeters!! >= 8.0)
+        assertTrue(justPastTurn.offRouteMeters!! < 30.0)
+        assertFalse(justPastTurn.offRoute)
+        assertTrue(justPastTurn.shouldReroute)
+    }
+
     @Test fun stoppedNearMissedTurnStillUsesNormalOffRouteDebounce() {
         var now = 60_000L
         val tracker = NavigationProgressTracker(nowMillis = { now })
