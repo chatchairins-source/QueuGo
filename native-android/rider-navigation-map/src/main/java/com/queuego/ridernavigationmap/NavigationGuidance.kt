@@ -91,12 +91,10 @@ class NavigationProgressTracker(
             nextDistanceMeters <= PASSED_MANEUVER_DISTANCE_TOLERANCE_METERS &&
             match.offRouteMeters >= PASSED_MANEUVER_MIN_OFF_ROUTE_METERS &&
             match.offRouteMeters <= BASE_OFF_ROUTE_THRESHOLD_METERS
-        val missedManeuver = passedManeuver || (
-            offRoute &&
-                movingSpeed >= MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND &&
-                nextRequiresCourseChange &&
-                nextDistanceMeters <= MISSED_MANEUVER_WINDOW_METERS
-            )
+        // Immediate reroute is reserved for a near-route missed maneuver. Once the
+        // Rider is beyond the generic off-route threshold, require the normal sustained
+        // 30 m / 3 s evidence so a GPS jump near an instruction cannot force a reroute.
+        val missedManeuver = passedManeuver
 
         val now = nowMillis()
         if (offRoute) {
