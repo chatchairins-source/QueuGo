@@ -56,6 +56,7 @@ begin
       join public.laundry_shop_settings st on st.hub_id=h.id
       where h.active=true
         and s.status='active'
+        and lower(coalesce(s.public_category,''))='laundry'
         and st.enabled=true
         and st.accepts_pickup=true
         and st.accepts_return=true

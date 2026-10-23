@@ -86,16 +86,18 @@ async function boot(){
     const u=Array.isArray(users)?users[0]:null;
     if(!u||u.role!=='customer'||u.status!=='active'){location.href='../#login';return}
     customer=u;
-    const enabled=await qgRpc('queuego_feature_enabled',{p_feature:'laundry'});
-    if(enabled!==true){el.className='';el.innerHTML='<div class="notice"><b>ฝากซักยังไม่เปิดใช้งาน</b><br>Admin ยังปิดบริการฝากซักอยู่</div>';return}
-    const [h,st]=await Promise.all([
-      qgDb('laundry_hubs?select=id,name,shop_id&active=eq.true&order=name.asc'),
-      qgDb('laundry_shop_settings?select=hub_id,enabled,accepts_pickup,accepts_return,minimum_order,base_pickup_fee,return_fee,round_trip_fee,delivery_fee_mode,currency&enabled=eq.true&accepts_pickup=eq.true&accepts_return=eq.true')
-    ]);
-    (st||[]).forEach(x=>settingsByHub.set(String(x.hub_id),x));
-    const hubs=(h||[]).filter(x=>settingsByHub.has(String(x.id)));
-    if(!hubs.length){el.className='empty';el.textContent='ยังไม่มีร้านซักเปิดให้บริการ';return}
-    el.className='';el.innerHTML=hubs.map(x=>'<button type="button" class="card shop" data-id="'+safe(x.id)+'" style="width:100%;border:0;text-align:left"><div class="washer">'+washer+'</div><div><div class="name">'+safe(x.name)+'</div><div class="muted">Rider รับผ้าและส่งคืนถึงที่</div></div><div class="arrow">›</div></button>').join('');
+    const catalog=await qgRpc('queuego_laundry_customer_catalog',{});
+    if(catalog?.enabled!==true){el.className='';el.innerHTML='<div class="notice"><b>ฝากซักยังไม่เปิดใช้งาน</b><br>Admin ยังปิดบริการฝากซักอยู่</div>';return}
+    const hubs=Array.isArray(catalog?.hubs)?catalog.hubs:[];
+    hubs.forEach(x=>settingsByHub.set(String(x.id),{
+      minimum_order:Number(x.settings?.minimum_order||0),
+      base_pickup_fee:Number(x.settings?.pickup_fee||0),
+      return_fee:Number(x.settings?.return_fee||0),
+      round_trip_fee:Number(x.settings?.round_trip_fee||0),
+      delivery_fee_mode:x.settings?.delivery_fee_mode||'separate'
+    }));
+    if(!hubs.length){el.className='empty';el.textContent='ยังไม่มีร้านฝากซักเปิดให้บริการ';return}
+    el.className='';el.innerHTML=hubs.map(x=>'<button type="button" class="card shop" data-id="'+safe(x.id)+'" style="width:100%;border:0;text-align:left"><div class="washer">'+washer+'</div><div><div class="name">'+safe(x.shop_name||x.name)+'</div><div class="muted">'+safe(x.address||'Rider รับผ้าและส่งคืนถึงที่')+'</div></div><div class="arrow">›</div></button>').join('');
     el.querySelectorAll('.shop').forEach(b=>b.onclick=()=>openShop(hubs.find(x=>String(x.id)===String(b.dataset.id))));
   }catch(e){
     console.error('Laundry boot failed',e);
@@ -105,10 +107,10 @@ async function boot(){
 }
 async function openShop(h){
   hub=h;service=null;services=[];
-  document.getElementById('list').classList.add('hidden');document.getElementById('order').classList.remove('hidden');document.getElementById('shopName').textContent=h.name;
-  let s=[];try{s=await qgDb('laundry_services?select=id,code,name,price,pricing_type,description,estimated_minutes&hub_id=eq.'+encodeURIComponent(h.id)+'&active=eq.true&order=sort_order.asc')}catch(e){console.error('Laundry services failed',e)}
+  document.getElementById('list').classList.add('hidden');document.getElementById('order').classList.remove('hidden');document.getElementById('shopName').textContent=h.shop_name||h.name;
+  const s=Array.isArray(h.services)?h.services:[];
   const box=document.getElementById('services');
-  if(!s?.length){box.innerHTML='<div class="notice">ร้านนี้ยังไม่มีบริการที่เปิดขาย</div>';document.getElementById('confirm').disabled=true;return}
+  if(!s.length){box.innerHTML='<div class="notice">ร้านนี้ยังไม่มีบริการที่เปิดขาย</div>';document.getElementById('confirm').disabled=true;return}
   services=s;service=s[0];document.getElementById('confirm').disabled=false;
   box.innerHTML=s.map((x,i)=>'<label><input type="radio" name="svc" value="'+safe(x.id)+'" '+(i===0?'checked':'')+'><span><b>'+safe(x.name)+'</b><small class="muted" style="display:block">'+safe(x.description||'')+(x.estimated_minutes?' · ประมาณ '+Number(x.estimated_minutes)+' นาที':'')+'</small></span><span>'+feeText(x.price)+(x.pricing_type!=='fixed'?' / '+unitLabel(x.pricing_type):'')+'</span></label>').join('');
   document.querySelectorAll('[name=svc]').forEach(x=>x.onchange=()=>{service=services.find(v=>String(v.id)===String(x.value))||services[0];renderQuantity()});

@@ -19,11 +19,17 @@ const bundleBase=fs.existsSync(path.resolve(__dirname,'../QueueGo-Route-Bundle-v
 const bundleFair=fs.existsSync(path.resolve(__dirname,'../QueueGo-Route-Bundle-Fair-Savings.sql'))?read('QueueGo-Route-Bundle-Fair-Savings.sql'):'';
 const bundle=bundleBase+'\n'+bundleFair;
 const laundryV2=read('QueueGo-Laundry-v2.sql');
+const laundryCatalog=read('QueueGo-Laundry-Customer-Catalog.sql');
+const laundryDirectoryMigration=read('supabase/migrations/20261023191000_customer_laundry_registered_shop_directory.sql');
 
 // Customer top-level service separation.
 for(const label of ['อาหาร','เครื่องดื่ม','ร้านขายของชำ','ฝากซัก','ตลาดสด'])ok(customer.includes('<b>'+label+'</b>'),'missing service '+label);
 ok(customer.includes("go('market')"),'market must be a dedicated route');
 ok(/location\.href='laundry\/(?:\?[^']*)?'/.test(customer),'laundry must use dedicated module');
+ok(customer.includes("category!=='laundry'"),'Laundry shops must not appear in Customer Home nearby-store list');
+ok(laundry.includes("qgRpc('queuego_laundry_customer_catalog',{})"),'Laundry customer directory must use authoritative catalog RPC');
+ok(!laundry.includes("qgDb('laundry_hubs?select=id,name,shop_id"),'Laundry customer directory must not read raw Laundry hubs');
+ok(laundry.includes("safe(x.shop_name||x.name)"),'Laundry directory must render registered shop identity from catalog');
 ok(customer.includes("DEDICATED_MARKET_CATS"),'normal search must exclude dedicated market shop categories');
 ok(customer.includes("queuego_place_market_order"),'market checkout RPC missing');
 ok(customer.includes("queuego_add_market_order_shops"),'market add-shop RPC missing');
@@ -78,7 +84,7 @@ ok(laundry.includes('queuego_place_laundry_order_v2'),'Laundry customer must use
 ok(laundry.includes('p_estimated_quantity'),'Laundry estimated quantity missing');
 ok(laundry.includes("async function qgDb")&&laundry.includes("qg_customer_session_v1")&&laundry.includes("ลองโหลดอีกครั้ง"),'Laundry customer boot must use the same direct REST session as Customer and recover from load failure');
 ok(!laundry.includes("qgEnsureSupabase")&&!laundry.includes("qgRestoreCustomerSession"),'Laundry customer must not depend on a separate Supabase SDK/session bootstrap');
-ok(laundry.includes("p_feature:'laundry'")&&!laundry.includes("p_feature:'laundry',p_at:null"),'Laundry feature check must omit p_at so queuego_feature_enabled uses its current-time default');
+ok(laundry.includes("qgRpc('queuego_laundry_customer_catalog',{})"),'Laundry customer boot must use catalog RPC, which owns the current-time feature gate');
 ok(!laundry.includes("rgba(255,255,255,.94)")&&laundry.includes("rgba(0,0,0,.58)"),'Laundry hero must not place a white fade/frame over the banner image');
 ok(laundry.includes('request_id'),'Laundry idempotency request key missing');
 for(const unit of ['per_kg','per_item','per_set','fixed'])ok(merchantLaundry.includes(unit),'Merchant Laundry pricing unit missing '+unit);
@@ -96,5 +102,8 @@ ok(customerLaundry.includes('laundry_order_events'),'Customer Laundry timeline m
 for(const col of ['unit_price_snapshot','pickup_fee_snapshot','return_fee_snapshot','delivery_fee_total_snapshot','request_key'])ok(laundryV2.includes(col),'Laundry snapshot field missing '+col);
 ok(laundryV2.includes("case when j.leg='pickup' then o.pickup_address else s.address end"),'Laundry pickup route origin must be customer for pickup');
 ok(laundryV2.includes("case when j.leg='pickup' then s.address else o.pickup_address end"),'Laundry pickup route destination must be shop for pickup');
+ok(laundryCatalog.includes("lower(coalesce(s.public_category,''))='laundry'"),'Customer Laundry catalog must only expose registered Laundry shops');
+ok(laundryDirectoryMigration.includes("set enabled=true"),'Laundry directory reconciliation must repair qualifying registered shops left disabled');
+ok(laundryDirectoryMigration.includes("hr.active=true"),'Laundry directory repair must require an accepted active Rider');
 
 console.log(JSON.stringify({checks,failures:0,scope:'static integration contracts for QueueGo Market, Route Bundle and Laundry; no production order mutation'}));
