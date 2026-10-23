@@ -874,12 +874,18 @@ function initLocationPicker(containerId,lat,lng,onChange,options={}){
     const p=e?.lngLat;
     if(!disposed&&p&&qgIsValidCoordinate(p.lat,p.lng,true))setPoint(p.lat,p.lng,true);
   };
-  window.QueueGoMapWeb?.attachPlaces?.(map,{onSelect:selectPlace,searchControl:true});
+  window.QueueGoMapWeb?.attachPlaces?.(map,{onSelect:selectPlace,searchControl:false});
   map.on("load",()=>{if(disposed)return;if(hasInitial&&selectInitial)setPoint(viewLat,viewLng,true)});
   map.on("click",selectTap);
   return {
     map,
     selectCenter:syncCenter,
+    choose(lat,lng){
+      if(disposed||!qgIsValidCoordinate(lat,lng,true))return false;
+      setPoint(Number(lat),Number(lng),true);
+      map.easeTo({center:[Number(lng),Number(lat)],zoom:16,duration:500});
+      return true;
+    },
     destroy(){
       if(disposed)return;disposed=true;
       try{map.off("click",selectTap)}catch{}
@@ -915,6 +921,11 @@ async function openCustomerLocationPicker(){
     '<div><h1 style="margin:0;font-size:30px;line-height:1.12;font-weight:900;color:#111827">เลือกที่อยู่จัดส่ง</h1><p style="margin:6px 0 0;color:#8a9099;font-size:15px;font-weight:600">เลือกตำแหน่งบน QueueGo Map หรือใช้ GPS ปัจจุบัน</p></div>'+
    '</div>'+
    '<section class="card" style="padding:14px 14px 16px;border-radius:24px;border:1px solid #eceef2;background:#fff;box-shadow:0 12px 32px rgba(24,32,48,.06)">'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-bottom:9px">'+
+     '<input id="customer-location-search" type="search" autocomplete="off" placeholder="ค้นหาถนน หมู่บ้าน ตำบล หรือสถานที่" aria-label="ค้นหาสถานที่" style="min-width:0;min-height:44px;border:1px solid #dfe3e8;border-radius:13px;background:#fff;padding:0 12px;font:inherit;font-size:15px;outline:none">'+
+     '<button id="customer-location-search-button" type="button" style="min-height:44px;border:0;border-radius:13px;background:#ef233c;color:#fff;padding:0 15px;font-weight:850">ค้นหา</button>'+
+    '</div>'+
+    '<div id="customer-location-search-results" hidden style="display:grid;gap:5px;max-height:190px;overflow:auto;margin:-1px 0 9px;padding:5px;border:1px solid #e4e7ec;border-radius:13px;background:#fff"></div>'+
     '<div style="position:relative">'+
      '<div id="customer-location-map" class="mapbox" style="height:330px;border-radius:20px;overflow:hidden;background:#eef1f4"></div>'+
      '<button type="button" id="customer-select-center" style="position:absolute;right:12px;bottom:12px;min-height:42px;padding:0 14px;border:1px solid #e0e3e8;border-radius:999px;background:rgba(255,255,255,.96);color:#343941;font-weight:800;box-shadow:0 5px 18px rgba(17,24,39,.12)">เลือกตรงกลาง</button>'+
@@ -945,6 +956,40 @@ async function openCustomerLocationPicker(){
   $('customer-select-center').onclick=()=>{
     if(!customerLocationPicker?.selectCenter?.())toast('ยังอ่านจุดกึ่งกลางแผนที่ไม่ได้ กรุณาลองเลื่อนแผนที่อีกครั้ง');
   };
+  const locationSearchInput=$('customer-location-search'),locationSearchButton=$('customer-location-search-button'),locationSearchResults=$('customer-location-search-results');
+  const runLocationSearch=async()=>{
+    const query=String(locationSearchInput?.value||'').trim();
+    if(!locationSearchResults)return;
+    if(query.length<2){locationSearchResults.hidden=true;locationSearchResults.replaceChildren();locationSearchInput?.focus();return}
+    locationSearchResults.hidden=false;
+    locationSearchResults.innerHTML='<div style="padding:9px 10px;color:#858c96;font-size:13px">กำลังค้นหาสถานที่…</div>';
+    if(locationSearchButton)locationSearchButton.disabled=true;
+    try{
+      const rows=(await window.QueueGoMapWeb?.search?.(query)||[]).slice(0,8);
+      locationSearchResults.replaceChildren();
+      if(!rows.length){locationSearchResults.innerHTML='<div style="padding:9px 10px;color:#858c96;font-size:13px">ไม่พบสถานที่ ลองชื่อถนน หมู่บ้าน ตำบล หรืออำเภอ</div>';return}
+      rows.forEach(row=>{
+        const lat=Number(row.lat),lng=Number(row.lng??row.lon);
+        if(!qgIsValidCoordinate(lat,lng,true))return;
+        const button=document.createElement('button');button.type='button';
+        button.style.cssText='display:block;width:100%;border:0;border-radius:10px;background:#fff;padding:9px 10px;text-align:left;color:#1d2025';
+        const title=document.createElement('b');title.style.cssText='display:block;font-size:14px';title.textContent=String(row.name||row.label||row.display_name||'สถานที่').split(',')[0];
+        const detail=document.createElement('small');detail.style.cssText='display:block;margin-top:2px;color:#8b929b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';detail.textContent=String(row.label||row.display_name||'');
+        button.append(title,detail);button.onclick=()=>{
+          if(!customerLocationPicker?.choose?.(lat,lng))return toast('QueueGo Map ยังไม่พร้อม');
+          if(locationSearchInput)locationSearchInput.value=title.textContent;
+          locationSearchResults.hidden=true;locationSearchResults.replaceChildren();
+          toast('ปักพิกัดจากผลค้นหาแล้ว');
+        };
+        locationSearchResults.append(button);
+      });
+    }catch(err){
+      console.warn('Customer location search failed',err);
+      locationSearchResults.innerHTML='<div style="padding:9px 10px;color:#858c96;font-size:13px">ค้นหาสถานที่ไม่สำเร็จ กรุณาลองใหม่</div>';
+    }finally{if(locationSearchButton?.isConnected)locationSearchButton.disabled=false}
+  };
+  if(locationSearchButton)locationSearchButton.onclick=runLocationSearch;
+  if(locationSearchInput)locationSearchInput.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();runLocationSearch()}};
   const picker=customerLocationPicker;
   setTimeout(()=>{
     if(customerLocationPicker!==picker)return;
