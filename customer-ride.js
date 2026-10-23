@@ -1,6 +1,6 @@
 /* Passenger flow shares existing auth, Orders, targeted dispatch, location picker and cash. */
 (()=>{
- let owner='',pickup=null,destination=null,quote=null,rows=[],selected=null,busy=false,error='',picker=null,previewMap=null,timer=null,config={},supply={nearby_count:0,clusters:[]},supplyAt=0;
+ let owner='',pickup=null,destination=null,quote=null,rows=[],selected=null,busy=false,error='',picker=null,previewMap=null,previewMode='',activeRideId='',activeRideMarkers={pickup:null,dropoff:null,rider:null},timer=null,config={},supply={nearby_count:0,clusters:[]},supplyAt=0;
  const terminal=o=>!o||['completed','cancelled','no_rider_available'].includes(o.status);
  const key=()=> 'qg_customer_ride_pending_v1:'+S.get()?.userId;
  const actor=()=>S.get()?.userId||'';
@@ -15,6 +15,8 @@
  };
  const rideMoney=v=>'฿'+Number(v||0).toLocaleString('th-TH',{minimumFractionDigits:Number.isInteger(Number(v||0))?0:2,maximumFractionDigits:2});
  function clearPreview(){
+  activeRideMarkers={pickup:null,dropoff:null,rider:null};
+  activeRideId='';previewMode='';
   if(!previewMap)return;
   try{previewMap.remove?.()}catch{}
   previewMap=null;
@@ -43,9 +45,57 @@
   const active=rows.find(o=>!terminal(o));if(active)selected=active.id;
   const p=pending();if(p){const committed=rows.find(o=>o.id===p.p_request_id)||(await read(p.p_request_id))[0];if(!same(u))return;if(committed){selected=committed.id;rows=[committed,...rows.filter(o=>o.id!==committed.id)];localStorage.removeItem(key());}}
  }
- function schedule(){clearTimeout(timer);if(document.hidden||!onRide())return;timer=setTimeout(async()=>{if(!busy&&!picker){try{await refresh();if(!rows.some(o=>!terminal(o))&&pickup)await refreshSupply();if(onRide()&&(pending()||rows.some(o=>!terminal(o))||pickup))render()}catch(e){error=e.message;if(onRide())render()}}schedule()},5000)}
+ const rideSnapshotKey=o=>o?[o.id,o.status,o.rider_id||'',o.rider_name||'',o.arrived_pickup_at||'',o.arrived_dropoff_at||'',o.fare,o.pickup_address||'',o.delivery_address||'',o.distance_km,o.duration_minutes].join('|'):'';
+ function updateRideTrackingText(o){
+  const el=$('ride-live-status');if(!el||!o?.rider_id||terminal(o))return;
+  el.textContent=qgIsValidCoordinate(o.rider_latitude,o.rider_longitude,true)?'ตำแหน่งคนขับล่าสุด · อัปเดตประมาณทุก 5 วินาที':'กำลังรอตำแหน่งล่าสุดจากคนขับ';
+ }
+ function schedule(){clearTimeout(timer);if(document.hidden||!onRide())return;timer=setTimeout(async()=>{if(!busy&&!picker){try{
+   const before=rows.find(o=>o.id===selected),beforeKey=rideSnapshotKey(before);
+   await refresh();
+   if(!rows.some(o=>!terminal(o))&&pickup)await refreshSupply();
+   if(onRide()&&(pending()||rows.some(o=>!terminal(o))||pickup)){
+    const current=rows.find(o=>o.id===selected);
+    if(current&&beforeKey&&beforeKey===rideSnapshotKey(current)&&updateActiveRideMap(current)){updateRideTrackingText(current)}
+    else render();
+   }
+  }catch(e){error=e.message;if(onRide())render()}}schedule()},5000)}
  function rideLocationButton(kind,label,value,color){
   return '<button type="button" data-action="'+kind+'" class="qg-ride-location" '+(busy||pending()||!config.enabled?'disabled':'')+' style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:13px 12px;border:1px solid #e6e7ea;border-radius:14px;background:#fff;color:#17181a;margin:0 0 9px"><span aria-hidden="true" style="width:12px;height:12px;border-radius:50%;background:'+color+';box-shadow:0 0 0 4px '+color+'1f;flex:none"></span><span style="min-width:0;flex:1"><small style="display:block;color:#777d86;font-weight:700;margin-bottom:3px">'+label+'</small><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(value||'เลือกบนแผนที่')+'</b></span><span aria-hidden="true" style="font-size:22px;color:#9aa0a8">›</span></button>';
+ }
+ function rideStopMarkerElement(text,color){
+  const el=document.createElement('div');
+  el.style.cssText='width:42px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;z-index:60;filter:drop-shadow(0 4px 8px rgba(0,0,0,.24))';
+  el.innerHTML='<div style="min-width:36px;height:36px;padding:0 7px;border-radius:18px;background:'+color+';border:3px solid #fff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:1000;line-height:1;white-space:nowrap">'+text+'</div><div style="width:12px;height:12px;margin-top:-7px;background:'+color+';border-right:3px solid #fff;border-bottom:3px solid #fff;transform:rotate(45deg)"></div>';
+  return el;
+ }
+ function riderLiveMarkerElement(){
+  const el=document.createElement('div');
+  el.style.zIndex='20';
+  el.innerHTML='<div style="width:42px;height:42px;border-radius:50%;background:#fff;border:3px solid #e6002d;box-shadow:0 4px 14px #0003;display:flex;align-items:center;justify-content:center;color:#e6002d">'+ico('car',20)+'</div>';
+  el.setAttribute('aria-label','ตำแหน่งคนขับ');
+  return el;
+ }
+ function setActiveRideMarker(kind,lat,lng,label,color){
+  const current=activeRideMarkers[kind],valid=qgIsValidCoordinate(lat,lng,true);
+  if(!valid){try{current?.remove?.()}catch{}activeRideMarkers[kind]=null;return null}
+  const point=[Number(lng),Number(lat)];
+  if(current){current.setLngLat(point);return point}
+  const stop=kind!=='rider',el=stop?rideStopMarkerElement(label,color):riderLiveMarkerElement();
+  el.setAttribute('aria-label',kind==='pickup'?'จุดรับ':kind==='dropoff'?'จุดหมาย':'ตำแหน่งคนขับ');
+  activeRideMarkers[kind]=new maplibregl.Marker({element:el,anchor:stop?'bottom':'center'}).setLngLat(point).addTo(previewMap);
+  return point;
+ }
+ function updateActiveRideMap(o){
+  const host=$('ride-live-map');
+  if(!o||previewMode!=='active'||activeRideId!==String(o.id||'')||!previewMap||!host)return false;
+  try{
+   if(previewMap.getContainer&&previewMap.getContainer()!==host)return false;
+   setActiveRideMarker('pickup',o.pickup_latitude,o.pickup_longitude,'รับ','#1677ff');
+   setActiveRideMarker('dropoff',o.delivery_latitude,o.delivery_longitude,'ส่ง','#e6002d');
+   setActiveRideMarker('rider',o.rider_latitude,o.rider_longitude,'','#e6002d');
+   return true;
+  }catch{return false}
  }
  function renderActiveRideMap(o){
   clearPreview();
@@ -59,28 +109,21 @@
    addPoint(o.rider_latitude,o.rider_longitude);
    const center=points[2]||points[0]||points[1]||[101,15];
    previewMap=new maplibregl.Map({container:host,style:qgQueueGoPickerStyle(),center,zoom:points.length?15:6,minZoom:5,maxZoom:19,attributionControl:false,dragRotate:false,pitchWithRotate:false});
+   previewMode='active';activeRideId=String(o.id||'');
    previewMap.touchZoomRotate.disableRotation();
    previewMap.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),'top-left');
    previewMap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
    const bounds=new maplibregl.LngLatBounds();
-   const marker=(lat,lng,label,color,html)=>{
-    if(!qgIsValidCoordinate(lat,lng,true))return;
-    const el=document.createElement('div');
-    if(html)el.innerHTML=html;
-    else{el.style.width='22px';el.style.height='22px';el.style.borderRadius='50%';el.style.background=color;el.style.border='4px solid #fff';el.style.boxShadow='0 3px 12px rgba(0,0,0,.28)'}
-    el.setAttribute('aria-label',label);
-    new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([Number(lng),Number(lat)]).addTo(previewMap);
-    bounds.extend([Number(lng),Number(lat)]);
-   };
-   marker(o.pickup_latitude,o.pickup_longitude,'จุดรับ','#1677ff');
-   marker(o.delivery_latitude,o.delivery_longitude,'จุดหมาย','#e6002d');
-   marker(o.rider_latitude,o.rider_longitude,'ตำแหน่งคนขับ','#111',
-    '<div style="width:42px;height:42px;border-radius:50%;background:#fff;border:3px solid #e6002d;box-shadow:0 4px 14px #0003;display:flex;align-items:center;justify-content:center;color:#e6002d">'+ico('car',20)+'</div>');
+   for(const point of [
+    setActiveRideMarker('pickup',o.pickup_latitude,o.pickup_longitude,'รับ','#1677ff'),
+    setActiveRideMarker('dropoff',o.delivery_latitude,o.delivery_longitude,'ส่ง','#e6002d'),
+    setActiveRideMarker('rider',o.rider_latitude,o.rider_longitude,'','#e6002d')
+   ])if(point)bounds.extend(point);
    previewMap.once('load',()=>{
-    if(!previewMap||bounds.isEmpty())return;
+    if(!previewMap||previewMode!=='active'||activeRideId!==String(o.id||'')||bounds.isEmpty())return;
     const ne=bounds.getNorthEast(),sw=bounds.getSouthWest();
     if(Math.abs(ne.lat-sw.lat)<0.00001&&Math.abs(ne.lng-sw.lng)<0.00001)previewMap.easeTo({center:[sw.lng,sw.lat],zoom:16,duration:0});
-    else previewMap.fitBounds(bounds,{padding:54,maxZoom:16,duration:0});
+    else previewMap.fitBounds(bounds,{padding:64,maxZoom:16,duration:0});
    });
   }catch{clearPreview()}
  }
@@ -105,22 +148,26 @@
     dragRotate:false,
     pitchWithRotate:false
    });
+   previewMode='route';
    previewMap.touchZoomRotate.disableRotation();
    previewMap.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),'top-left');
    previewMap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
 
    const bounds=new maplibregl.LngLatBounds();
-   const addMarker=(lat,lng,color,title,html)=>{
+   const addMarker=(lat,lng,color,title,html,stopLabel='')=>{
     if(!qgIsValidCoordinate(lat,lng,true))return;
-    const el=document.createElement('div');
-    if(html)el.innerHTML=html;
-    else {
-     el.style.width='24px';el.style.height='24px';el.style.borderRadius='50%';
-     el.style.background=color;el.style.border='4px solid #fff';
-     el.style.boxShadow='0 3px 12px rgba(0,0,0,.28)';
+    const el=stopLabel?rideStopMarkerElement(stopLabel,color):document.createElement('div');
+    if(!stopLabel){
+     if(html)el.innerHTML=html;
+     else {
+      el.style.width='24px';el.style.height='24px';el.style.borderRadius='50%';
+      el.style.background=color;el.style.border='4px solid #fff';
+      el.style.boxShadow='0 3px 12px rgba(0,0,0,.28)';
+     }
+     el.style.zIndex='10';
     }
     el.setAttribute('aria-label',title||'ตำแหน่ง');
-    new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([Number(lng),Number(lat)]).addTo(previewMap);
+    new maplibregl.Marker({element:el,anchor:stopLabel?'bottom':'center'}).setLngLat([Number(lng),Number(lat)]).addTo(previewMap);
     bounds.extend([Number(lng),Number(lat)]);
    };
 
@@ -130,8 +177,8 @@
     const html='<div style="min-width:36px;height:36px;padding:0 8px;border-radius:18px;background:#fff;border:2px solid #e6002d;box-shadow:0 3px 12px #0003;display:flex;align-items:center;justify-content:center;gap:3px;color:#e6002d;font-weight:900;font-size:12px">'+ico('car',16)+'<span>'+count+'</span></div>';
     addMarker(cluster.latitude,cluster.longitude,'#e6002d','Rider พร้อมรับงานโดยประมาณ',html);
    }
-   if(pickup)addMarker(pickup.lat,pickup.lng,'#1677ff','จุดรับ');
-   if(destination)addMarker(destination.lat,destination.lng,'#e6002d','จุดหมาย');
+   if(pickup)addMarker(pickup.lat,pickup.lng,'#1677ff','จุดรับ',null,'รับ');
+   if(destination)addMarker(destination.lat,destination.lng,'#e6002d','จุดหมาย',null,'ส่ง');
 
    previewMap.once('load',()=>{
     if(!previewMap)return;
@@ -167,7 +214,7 @@
     ?(qgIsValidCoordinate(current.rider_latitude,current.rider_longitude,true)?'ตำแหน่งคนขับล่าสุด · อัปเดตประมาณทุก 5 วินาที':'กำลังรอตำแหน่งล่าสุดจากคนขับ')
     :'';
    html+='<div id="ride-live-map" class="mapbox" style="height:300px;border-radius:20px;overflow:hidden;margin:0 0 12px;background:#eef1f4"></div>'+
-    (tracking?'<p class="sm" style="margin:0 2px 10px;color:#6f7680">'+esc(tracking)+'</p>':'')+
+    (tracking?'<p id="ride-live-status" class="sm" style="margin:0 2px 10px;color:#6f7680">'+esc(tracking)+'</p>':'')+
     '<section class="card"><h2>'+esc(QueueGoOrderNumber.format(current))+'</h2><b>'+esc(status(current))+'</b><p>จุดรับ: '+esc(current.pickup_address)+'</p><p>จุดหมาย: '+esc(current.delivery_address)+'</p><p>ค่าโดยสารเงินสด <b>'+rideMoney(current.fare)+'</b></p><p>คนขับ: '+esc(current.rider_name||'กำลังหา')+'</p><p>เส้นทางที่ประเมิน '+Number(current.distance_km).toLocaleString('th-TH')+' กม. · เวลาวิ่งประมาณ '+Math.ceil(current.duration_minutes)+' นาที ไม่รวมเวลารอคนขับ</p>';
    if(!terminal(current)&&current.rider_id)html+='<button class="lk" onclick="go(\'order-chat/'+esc(current.id)+'\')">ติดต่อคนขับ</button>';
    if(current.status==='searching_rider'&&!current.rider_id&&!p)html+='<button class="lk" data-action="cancel" '+(busy?'disabled':'')+'>ยกเลิกการเรียกรถ</button>';
