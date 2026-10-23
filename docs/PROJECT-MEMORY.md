@@ -1951,8 +1951,12 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Continue PR596 exact bdf99bfa; Native Pilot39731712694 SUCCESS after nullable shop-category compile fix. Web hotfix PR598 is the matching storefront/Delivery backend policy source.
 - Remove Delivery reads/DTOs/Kitchen cards/actions/setup tab/history filter and GP/Delivery report rows from native POS. Food/Cafe keep POS Kitchen; Grocery/Market have no Kitchen tab/actions/staff role option. POS history reads sales_channel=POS; totals use storefront dine-in/takeaway only. Existing Delivery screens/APIs remain.
 - Separate Delivery cancellation predicate allows pending/accepted/searching/rider-assigned/legacy-assigned only when preparation and ready timestamps are null; confirmation closes on state/timing changes. New JVM tests cover Rider acceptance, started/terminal states and stale timestamps. No APK release or Production data mutation in this source checkpoint; exact-head Native full CI required.
-# Native POS offline category decoder — 2026-10-23
+
+## Native POS offline category decoder — 2026-10-23
 - Continue PR #633 from exact `d98ecdbf423e34b41e4fde3062d7b0d5db6750f0` on Native base `7e058b616e669634a8b58916184f7e551c82b1c3`; never replace this with Web main or the dirty older POS checkout.
 - Android JSONObject coerces explicit JSON null to the text `null`. Cached category decoding must check `isNull` before `optString`; literal category text `null` remains valid. The Android instrumentation regression uses app cache files only and tests null, named and legacy missing fields. JVM-only success is insufficient for this behavior.
 - Reuse the existing accelerated Native Pilot emulator and evidence upload for the POS catalog test. No Production rows, schema, login or payment are involved. Physical/authenticated POS Release Gate remains open.
 
+## Native POS verified successor — 2026-10-23
+- PR #633 merged at `0a9c17dd` after exact `d98ecdbf` passed both Native runs. PR #635 merged at `1f71c351b88d635de810fccb8e82bc447de37390` after exact source `639bedea` passed Native Pilot `39882985832`, including Android cached-category instrumentation (`QUEUEGO_MERCHANT_POS_CATALOG_PASS`).
+- Real Android null/named/literal-null/legacy decoding is now source/test verified. No authenticated or physical cashier/device/hardware acceptance is implied. POS remains NOT DONE; NEXT is the real cashier/device Release Gate evidence, preserving the same Native successor and all existing dirty worktrees.

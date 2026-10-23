@@ -6,11 +6,12 @@ This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
 ## Native POS category recovery — 2026-10-23
 
-- Current POS source parent is PR #633 `d98ecdbf423e34b41e4fde3062d7b0d5db6750f0`, descending from Native successor `7e058b616e669634a8b58916184f7e551c82b1c3`. Web main `be33b8318967ad6105222efa8305fec8005a5335` is separate. Existing dirty worktrees were inspected and left untouched.
-- Exact Merchant POS run `39881729771` succeeded, including Kotlin/unit/APK and 16 KB checks. Exact Native Pilot `39881729809` passed regression/unit/build/package and is still capturing emulator lifecycle evidence at this checkpoint.
-- IN PROGRESS: guard explicit JSON null before category string conversion. Android's JSONObject converts its null sentinel to the string `null`; the JVM org.json library used by unit tests behaves differently. Add a real Android instrumentation test for null, named, literal `null`, and pre-category catalog snapshots, using only disposable local files.
-- Source contracts 313 PASS, backend mirror PASS, Python syntax and diff checks PASS. Full local regression reached the release evidence bundler, which requires a clean committed checkout; rerun after committing. No authenticated, physical-device, hardware or Production acceptance claimed.
-- NEXT: run regression from this clean committed successor; finish exact #633 CI, then publish and pass the new Android catalog instrumentation gate before merging into the Native POS successor. Overall POS remains NOT DONE.
+- DONE (source/test): PR #633 exact `d98ecdbf423e34b41e4fde3062d7b0d5db6750f0` passed `39881729771` and `39881729809`; merged into the Native successor at `0a9c17dd774f59781de0565e9fa313da5ee955b8`.
+- DONE (source/test): PR #635 exact `639bedea25710988c5f446ba6c16d1c0d3072a7d` passed Native Pilot `39882985832`, including full regression, all-role Kotlin/unit/APK/16 KB checks and actual Android catalog instrumentation. Log marker: `QUEUEGO_MERCHANT_POS_CATALOG_PASS`. Merged into `feat/native-merchant-pos-offline-20261022` at `1f71c351b88d635de810fccb8e82bc447de37390`. The merged source tree equals tested tree `5d9df17d7fcb994e05aeafa8ba025aac9e6af21e`.
+- Android cached catalog now preserves uncategorised products, named categories and a literal category named `null`; pre-category cache files remain readable. The instrumentation uses disposable app-cache files with no authenticated session or server writes.
+- Full clean local regression EXIT 0 on source-equivalent `4b2c56c0` (asset-fetch pretest skipped; existing map assets reused); source contracts 313 and backend mirror PASS. Hosted CI performs the full dependency/asset setup. Evidence artifact `12471178946`, SHA-256 `7d794e8f91cdfbdc90e0dea4b5ca7eae913f3f0522360c61808c816d78fbddb8`.
+- BLOCKED (release): authenticated owner/cashier/staff sale, permissions and reconnect/retry journeys; physical phone/tablet/scanner/printer/drawer acceptance. No physical-device PASS or signed public release is claimed. Existing dirty POS and Native worktrees were inspected and preserved. Web main remains separate; no Production schema/data mutation. Overall POS is NOT DONE.
+- NEXT: obtain the authorized real cashier/device evidence for the POS Release Gate, test offline reopen/reconnect and duplicate prevention on that register, and record receipts. Resume from this Native successor; do not replace it with Web main or an older worktree.
 
 ## Dependency order
 
