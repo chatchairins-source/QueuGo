@@ -1,4 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require('jsdom'),{PGlite}=require('@electric-sql/pglite');
+const settingsCss=fs.readFileSync('queuego-rider-settings.css','utf8');
 (async()=>{
  let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
  const dom=new JSDOM('<section id="settings"></section>',{url:'https://queuego.test/rider/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
@@ -10,6 +11,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
  vm.runInContext('const S=window.S;'+fs.readFileSync('rider/work-preferences.js','utf8'),dom.getInternalVMContext());
  const host=w.document.querySelector('#settings');await w.QueueGoRiderWork.mount(host);
  eq(host.textContent.includes('รับงานอัตโนมัติ'),true);eq(host.textContent.includes('รับงานพ่วง'),true);eq(host.textContent.includes('รับส่งผู้โดยสาร'),true);eq(host.querySelector('[value=ride]').disabled,true);eq(host.querySelector('[name=auto_accept]').checked,false);
+ eq(settingsCss.includes('.qg-work-choice input[type=checkbox]{-webkit-appearance:none;appearance:none;width:52px;height:32px'),true);eq(settingsCss.includes('.qg-work-choice input[type=checkbox]:checked{background:#e6002d'),true);eq(settingsCss.includes('transform:translateX(20px)'),true);
  await w.QueueGoRiderWork.maybeAccept();eq(claims,0);
  host.querySelector('[name=auto_accept]').checked=true;host.querySelector('[name=bundle_enabled]').checked=true;
  await host.querySelector('form').onsubmit({preventDefault(){}});eq(stored.auto_accept,true);eq(stored.bundle_enabled,true);
