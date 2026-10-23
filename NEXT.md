@@ -1,17 +1,17 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-22 · Authoritative main: `aca988473d9f5132141dc1df379f0028d3ff64a2`
+Current snapshot: 2026-10-23 · Authoritative main: `5a860ea3e0a26841eca5666a158b034c78b897d9`
 
-## Current verified POS checkpoint — 2026-10-22
+## Current verified POS checkpoint — 2026-10-23
 
-**Active chunk: publish and verify the migration-history alignment for the four inventory migrations already applied in Production.**
+**Active chunk: product category filtering in Web POS, then Native successor parity.**
 
-- Latest main `aca988473d9f5132141dc1df379f0028d3ff64a2`; RC run `39793297082` passed. The only open PR found is Rider-only #623; no open POS PR supersedes this line.
-- Production inventory migrations are applied as `20261022141101` (reservations), `20261022141117` (adjustments), `20261022144627` (manager guard), and `20261022145405` (Market stock-owner guard).
-- Post-apply readback verified the Market mapping trigger, inventory guard triggers, fixed `search_path`, SECURITY DEFINER and no direct function EXECUTE for public/anon/authenticated. Market Master has 8 mapped products and 0 overlap with generic tracked stock. No sale, payment, or stock fixture was created.
-- Security/performance advisory counts remain at the pre-apply baseline (24 existing RLS/no-policy notices and 18 FK-index notices); none were introduced by this trigger-only migration.
-- Full local `npm test` passed on exact main `aca98847`; after timestamp alignment, POS inventory PGlite: 67 PASS, adjustment UI: 9 PASS, source integrity: 99 scripts/90 references PASS, and `git diff --check` PASS. Run exact-head RC for this history-only PR.
-- POS remains **NOT READY**: authenticated cashier/tablet and printer/scanner flows, offline reconciliation, remaining capability areas, Android parity, and final Release Gate evidence are still outstanding.
+- Web main is `5a860ea3e0a26841eca5666a158b034c78b897d9`; PR #630 table status enhancement is merged, post-merge RC passed (`39878103940`), Pages deployment succeeded (`39878103646`), and deployed POS index/script bytes were read back and matched main.
+- No open Web POS PR superseded main during this recovery. Native successor is `feat/native-merchant-pos-offline-20261022` at `7e058b616e669634a8b58916184f7e551c82b1c3`; #628 metrics parity is already on that Native branch.
+- Web category filter uses existing `products.category` and preserves combined text filtering. Source commit `69a7d35a166acbe5157ea80911acca63c61fd32f` on `work-pos-next-20261023`. Focused POS runtime 88 checks PASS and full local `npm test` EXIT 0. Exact-head hosted RC/Pages for this active chunk are pending; no Production schema or data change was made.
+- POS remains **NOT READY**. Category filter Native parity, authenticated role/device journeys, physical scanner/printer/cash drawer checks, and whole-product end-to-end Release Gate are still outstanding.
+
+**NEXT:** publish this exact Web source and run exact-head CI; fix any failure, then merge, deploy and verify production asset hashes. After Web is stable, implement the category filter on the newest Native successor and rerun native unit, package, APK and lifecycle checks. Continue with the remaining POS gaps; never call the overall POS done until the full Release Gate passes.
 
 ## Historical checkpoints (superseded where they conflict with the current checkpoint above)
 ## Prior active chunk — historical detail superseded by the current checkpoint above
