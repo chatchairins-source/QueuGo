@@ -19,15 +19,14 @@ assert.equal(t.run("customerOrderNumber({id:'abc-def-1234'})"),'QT-----');checks
 const r=boot('rider/index.html');await Promise.resolve();r.run("readSession=()=>S.session;qgRiderMutation=(path,opts)=>sbTable(path,opts);S.user={id:'fixture'};S.riderProfile={id:'rider'};S.session={authUserId:'auth',sessionId:'session',accessToken:'fixture'};S.activeTab='home';S.online=false;window.calls=[];getAccessToken=async()=>'fixture';sbTable=async(path,opts)=>{calls.push({path,opts});return path.includes('status=in.')?[{id:'order',status:'rider_assigned',pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}]:[]};placeJobMarkers=()=>{};");await r.run('refreshData()');
 assert.equal(r.run('S.activeOrder.status'),'rider_assigned');
 assert(r.run("calls[0].path.includes('rider_assigned,preparing,ready')"));
-assert(r.run("jobCardHTML(S.activeOrder).includes('นำทาง')"));
+assert(r.run("jobCardHTML(S.activeOrder).includes('ถึงร้านแล้ว')"));
+assert(r.run("jobCardHTML(S.activeOrder).includes('นำทาง')===false"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('1 · ไปรับสินค้าที่ร้าน')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('รายละเอียด/รายการ')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'picked_up',customer_cash:130}).includes('2 · ส่งสินค้าให้ลูกค้า')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('นำทางไปลูกค้า')"));
-r.run("qgMarkNavigationStarted({...S.activeOrder,status:'in_progress'},'customer')");
 assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('ถึงลูกค้าแล้ว')"));
-r.run("qgClearNavigationStarted({...S.activeOrder,status:'in_progress'},'customer')");
-assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('type=\"range\"')===false"));checks+=9;
+assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('นำทางไปลูกค้า')===false"));
+assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('type=\"range\"')===false"));checks+=10;
 
 // READY cannot bypass the pickup-photo screen; only PICKED_UP can issue the delivery transition directly.
 r.run("calls=[];window.pickupOpen=0;qgOpenPickupVerify=async()=>{pickupOpen++;return true};sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
