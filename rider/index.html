@@ -68,6 +68,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-message{position:fixed;z-index:99999;left:14px;right:14px;top:calc(12px + var(--safeT));max-width:520px;margin:auto;padding:11px;border-radius:16px;background:#171519;color:#fff;display:none;align-items:center;gap:10px;box-shadow:0 12px 30px #0004}.qg-message.show{display:flex}.qg-message i{color:#ff4766}.qg-message b{display:block;font-size:11px}.qg-message small{display:block;color:#d7d1d4;font-size:8px}.qg-bundle-card,.qg-mp,.qg-laundry-card,.qg-laundry-active,.qg-laundry-invite{margin-top:9px;padding:12px;border:1px solid #eee6e8;border-radius:17px;background:#fff}.qg-bundle-head,.qg-mp-head,.qg-mp-top,.qg-mp-total{display:flex;justify-content:space-between;gap:8px}.qg-bundle-head small,.qg-mp-head small,.qg-mp-row small{color:#8a8387;font-size:8px}.qg-bundle-order,.qg-bundle-offer,.qg-mp-row{padding:9px 0;border-bottom:1px solid #f0eaec}.qg-bundle-order:last-child,.qg-bundle-offer:last-child,.qg-mp-row:last-child{border-bottom:0}.qg-bundle-card button,.qg-mp-btn{border:0;border-radius:12px;background:#fff0f3;color:var(--qg-red);padding:8px 10px;font-weight:900}.qg-mp-btn{width:100%;margin-top:7px}.qg-mp-btn:disabled{opacity:.5}
 @media(max-width:800px){.qg-auth{grid-template-columns:1fr}.qg-auth-brand{display:none}.qg-auth-card{margin:calc(24px + var(--safeT)) auto}.rider-grid{grid-template-columns:1fr}.qg-register-card{border-radius:22px}}@media(min-width:760px){.qg-home-dock{left:50%;right:auto;width:min(660px,calc(100% - 28px));transform:translateX(-50%)}.qg-topbar{left:50%;right:auto;width:min(720px,calc(100% - 28px));transform:translateX(-50%)}}
 
+.qg-laundry-invite{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 26px 0;padding:14px 16px;border:1px solid #eee6e8;border-radius:18px;background:#fff}
+.qg-laundry-invite>div:first-child{min-width:0;flex:1}.qg-laundry-invite b{display:block;font-size:15px}.qg-laundry-invite small{display:block;margin-top:3px;color:#81797d;font-size:11px}
+.qg-laundry-invite>div:last-child{display:flex;gap:8px;flex:none}.qg-laundry-invite button{min-height:42px;padding:0 16px;border-radius:999px;border:1px solid #e6002d;font-weight:900;touch-action:manipulation}
+.qg-laundry-invite button[data-accept="1"]{background:#e6002d;color:#fff}.qg-laundry-invite button[data-accept="0"]{background:#fff;color:#e6002d}
+.qg-laundry-invite button:disabled{opacity:.48}
+@media(max-width:520px){.qg-laundry-invite{align-items:flex-start;flex-direction:column}.qg-laundry-invite>div:last-child{width:100%}.qg-laundry-invite button{flex:1}}
+
 .qg-setting-section>h2{font-size:14px;margin:20px 8px 10px;color:#6f6f78}.qg-setting-group{border:0;border-radius:20px}.qg-setting{min-height:64px;padding:14px 16px;gap:12px}.qg-setting b{font-size:15px;font-weight:600}.qg-setting small{font-size:12px;line-height:1.5}.qg-setting-icon{background:transparent;width:26px;height:26px}.qg-setting em{font-size:12px}.qg-profile-card{border:0;padding:18px;border-radius:22px}.qg-profile-card p{font-size:13px}.qg-profile-card span{font-size:11px}
 </style>
 
@@ -2877,6 +2884,7 @@ window.advanceOrder=async function(o){
 
 
 </script>
+<script src="reliability.js?v=20261023-laundryinvite1"></script>
 <script src="rider-express.js?v=20261018-web2"></script>
 <script src="rider-ride.js?v=20261023-ridefix1"></script>
 <script>window.qgDeferredBoot?.();</script>
