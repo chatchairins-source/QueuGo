@@ -8,6 +8,8 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
  eq(sharedMap.includes("new maplibregl.AttributionControl({compact:true})"),true);
  eq(sharedMap.includes("font:9px/13px"),true);
  eq(sharedMap.includes("width:18px!important"),true);
+ eq(sharedMap.includes("searchControl=false"),true);
+ eq(sharedMap.includes("attachPlaces(map,{searchControl:!!searchControl})"),true);
 
  function queueGoHarness(document){
   let success,error,created=0,removed=0,moves=0,changes=0;
@@ -81,6 +83,8 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
  // Customer location picker: QueueGo MapLibre only.
  {
   const source=fs.readFileSync(root+'/index.html','utf8');
+  eq(source.includes('id="customer-location-search"'),true);
+  eq(source.includes('window.QueueGoMapWeb?.attachPlaces?.(map,{onSelect:selectPlace,searchControl:false})'),true);
   const dom=new JSDOM('<div id="map"></div><div id="other"></div>');
   const document=dom.window.document;
   const h=queueGoHarness(document);
@@ -120,6 +124,8 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
  // Merchant location picker now shares QueueGo MapLibre lifecycle.
  {
   const source=fs.readFileSync(root+'/merchant/index.html','utf8');
+  eq(source.includes('id="qgs-location-search"'),true);
+  eq(source.includes("Q.create(host,{lat:viewLat,lng:viewLng,zoom:hasInitial?15:6,searchControl:false})"),true);
   const dom=new JSDOM('<div id="map"></div><div id="other"></div>');
   const document=dom.window.document;
   const h=queueGoHarness(document);
