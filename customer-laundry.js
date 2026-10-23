@@ -64,7 +64,7 @@ V.laundry=async function(id,ticket){
   }
   const shop=eligible.find(function(s){return String(s.id)===String(id)});
   if(!shop){
-    layout('<div class="pt"><button class="back" onclick="go(\\'laundry\\')">'+ico('back')+'</button><h1>ฝากซัก</h1></div><section class="card"><p class="empty">ไม่พบร้านฝากซักที่เปิดให้บริการ</p></section>','home');
+    layout('<div class="pt"><button class="back" onclick="go(\'laundry\')">'+ico('back')+'</button><h1>ฝากซัก</h1></div><section class="card"><p class="empty">ไม่พบร้านฝากซักที่เปิดให้บริการ</p></section>','home');
     return;
   }
   const hub=shop.laundryHub,services=Array.isArray(hub.services)?hub.services:[];
@@ -73,7 +73,7 @@ V.laundry=async function(id,ticket){
   const delivery=qgLaundryDelivery(hub.settings||{});
   const cover=shop.public_cover||shop.public_logo||'';
   const coverHtml=cover?'<img src="'+esc(cover)+'" alt="" onerror="this.remove()">':'';
-  const header='<div class="cover">'+coverHtml+'<div class="ca"><button class="ic" onclick="go(\\'laundry\\')" aria-label="กลับ">'+ico('back')+'</button><button class="ic" onclick="shareShop(\\''+esc(shop.id)+'\\')" aria-label="แชร์ร้าน">↗</button></div></div>'+
+  const header='<div class="cover">'+coverHtml+'<div class="ca"><button class="ic" onclick="go(\'laundry\')" aria-label="กลับ">'+ico('back')+'</button><button class="ic" onclick="shareShop(\''+esc(shop.id)+'\')" aria-label="แชร์ร้าน">↗</button></div></div>'+
     '<div class="intro"><h1>'+esc(shop.shop_name||'ร้านฝากซัก')+'</h1><p><span>ร้านฝากซัก</span>'+(shop.address?'<span>'+esc(shop.address)+'</span>':'')+'</p><span class="pill '+(shop.open?'':'off')+'">'+(shop.open?'เปิดอยู่':'ปิดอยู่')+'</span></div>';
   const serviceRows=services.map(function(s,i){
     const checked=i===0?' checked':'';
