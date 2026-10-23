@@ -289,5 +289,30 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(writes.length,1);writeGate.resolve();await burst;
  eq(writes.length,2);eq(writes[1].opts.body.latitude,13.19);eq(writes[1].path,'rider_profiles?user_id=eq.rider');
 
+ // Replay the actual stop-marker lifecycle, including an offer before acceptance.
+ const {JSDOM}=require('jsdom'),stopDom=new JSDOM('<!doctype html>');
+ const drawn=[],stopState={map:{},jobMarkers:[],openJobs:[],bundleOrders:[]};let removed=0;
+ const stopCtx=vm.createContext({S:stopState,Number,String,window:{QueueGoMapWeb:{
+   marker(_map,options){const node=stopDom.window.document.createElement('div');node.innerHTML=options.html;const marker={options,node,getElement:()=>node,remove(){removed++}};drawn.push(marker);return marker}
+ }},qgRemoveOverlay:marker=>marker.remove(),drawActiveRoute:()=>{}});
+ vm.runInContext(source.slice(source.indexOf('function qgMarker('),source.indexOf('function drawLaundryRoute(')),stopCtx);
+ const stopOrder={id:'stop-order',pickup_latitude:15,pickup_longitude:103,delivery_latitude:15.01,delivery_longitude:103.01};
+ function replayStops(){drawn.length=0;vm.runInContext('placeJobMarkers()',stopCtx);return drawn.map(m=>m.node.querySelector('.qg-stop-pin'))}
+ stopState.openJobs=[{order:stopOrder}];let pins=replayStops();
+ eq(pins.map(p=>p.dataset.stopNumber),['1','2']);eq(pins.map(p=>p.dataset.stopKind),['shop','customer']);
+ eq(pins.map(p=>p.textContent),['1จุด 1 · รับ','2จุด 2 · ส่ง']);
+ eq(pins.every(p=>p.querySelector('svg')),true);eq(drawn.every(m=>m.options.anchor==='bottom'&&m.options.pitchAlignment==='viewport'&&m.node.style.zIndex==='3'),true);
+ stopState.activeOrder=stopOrder;pins=replayStops();eq(removed,2);eq(pins.length,2);
+ stopState.activeOrder={...stopOrder,market_order_id:'market',_marketPickups:[
+   {latitude:15,longitude:103,shop_name:'A',status:'PICKED_UP'},
+   {latitude:15.001,longitude:103.001,shop_name:'cancelled',status:'CANCELLED'},
+   {latitude:15.002,longitude:103.002,shop_name:'B',status:'PENDING'}
+ ]};pins=replayStops();eq(pins.map(p=>p.dataset.stopNumber),['1','2','3']);eq(pins.map(p=>p.dataset.stopKind),['shop','shop','customer']);eq(pins[0].innerHTML.includes('#64748b'),true);
+ stopState.activeOrder={...stopOrder,route_bundle_id:'bundle'};stopState.bundleOrders=[stopOrder,{...stopOrder,id:'second'}];pins=replayStops();eq(pins.map(p=>p.dataset.stopNumber),['1','2','3','4']);
+ stopState.activeOrder=null;stopState.laundryJob={leg:'pickup',from_latitude:15,from_longitude:103,to_latitude:15.01,to_longitude:103.01};pins=replayStops();eq(pins.map(p=>p.dataset.stopKind),['customer','shop']);eq(pins.map(p=>p.dataset.stopNumber),['1','2']);
+ stopState.laundryJob.leg='return';pins=replayStops();eq(pins.map(p=>p.dataset.stopKind),['shop','customer']);
+ stopState.laundryJob=null;stopState.openJobs=[{order:{...stopOrder,pickup_latitude:null}}];pins=replayStops();eq(pins.map(p=>p.dataset.stopNumber),['2']);eq(drawn[0].options.lat,15.01);
+ stopDom.window.close();
+
  console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Rider renderer + QueueGo sole route authority + local route matching/camera + route coalescing/cancellation/timeout/GPS ownership; no external RouteService fallback'}));
 })().catch(e=>{console.error(e);process.exit(1)});

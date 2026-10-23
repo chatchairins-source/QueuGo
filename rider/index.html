@@ -1,6 +1,6 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#e6002d">
 <title>QueueGo Rider</title>
-<meta name="queuego-web-build" content="rider-20261023-maponly1">
+<meta name="queuego-web-build" content="rider-20261023-stops1">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
 <script src="../queuego-map-web.js?v=20261023-maponly1"></script>
@@ -1474,35 +1474,45 @@ function qgRemoveOverlay(o){
   try{o.remove?.()}catch(_){}
 }
 function qgMarker(loc,html,title){
-  return window.QueueGoMapWeb?.marker(S.map,{lat:Number(loc?.lat),lng:Number(loc?.lon),title:title||'',html})||null;
+  const marker=window.QueueGoMapWeb?.marker(S.map,{lat:Number(loc?.lat),lng:Number(loc?.lon),title:title||'',html,anchor:'bottom',rotationAlignment:'viewport',pitchAlignment:'viewport'})||null;
+  if(marker?.getElement)marker.getElement().style.zIndex='3';
+  return marker;
+}
+function qgStopMarkerHtml(number,kind,done=false){
+  const pickup=kind==='shop',color=done?'#64748b':pickup?'#15803d':'#e6002d';
+  const icon=pickup?'<path d="M3 10h18l-2-6H5l-2 6Z"/><path d="M4 10v10h16V10M9 20v-6h6v6M3 10c0 4 5 4 5 0 0 4 4 4 4 0 0 4 4 4 4 0 0 4 5 4 5 0"/>':'<circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>';
+  const label='จุด '+number+' · '+(pickup?'รับ':'ส่ง');
+  return '<div class="qg-stop-pin" data-stop-number="'+number+'" data-stop-kind="'+kind+'" style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:72px;pointer-events:none">'
+    +'<div style="position:relative;width:44px;height:44px;border:3px solid #fff;border-radius:50%;background:'+color+';box-shadow:0 2px 8px #0005;display:grid;place-items:center;box-sizing:border-box">'
+    +'<svg aria-hidden="true" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+icon+'</svg>'
+    +'<span class="qg-stop-number" style="position:absolute;right:-10px;top:-10px;min-width:25px;height:25px;padding:0 3px;box-sizing:border-box;border:2px solid '+color+';border-radius:13px;background:#fff;color:'+color+';font:bold 16px/21px system-ui;text-align:center">'+number+'</span></div>'
+    +'<span style="padding:2px 6px;border-radius:7px;background:#fff;color:#171519;box-shadow:0 1px 5px #0003;font:700 12px/18px system-ui;white-space:nowrap">'+label+'</span></div>';
 }
 function placeJobMarkers(){
   if(!S.map||!window.QueueGoMapWeb)return;
   (S.jobMarkers||[]).forEach(qgRemoveOverlay);S.jobMarkers=[];
+  const addStop=(lat,lng,number,kind,title,done=false)=>{
+    if(lat===null||lat===undefined||lat===''||lng===null||lng===undefined||lng==='')return;
+    if(!Number.isFinite(Number(lat))||!Number.isFinite(Number(lng)))return;
+    const m=qgMarker({lat:Number(lat),lon:Number(lng)},qgStopMarkerHtml(number,kind,done),'จุด '+number+' · '+title);
+    if(m)S.jobMarkers.push(m);
+  };
   if(S.laundryJob&&!S.activeOrder){
-    const j=S.laundryJob;
-    [[j.from_latitude,j.from_longitude,'#16a34a','จุดรับ · '+(j.from_address||'')],[j.to_latitude,j.to_longitude,'#e6002d','ปลายทาง · '+(j.to_address||'')]].forEach(x=>{
-      const lat=Number(x[0]),lng=Number(x[1]);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
-      const m=qgMarker({lat,lon:lng},'<div style="width:20px;height:20px;border-radius:50%;background:'+x[2]+';border:3px solid #fff;box-shadow:0 2px 8px #0004"></div>',x[3]);if(m)S.jobMarkers.push(m);
-    });
+    const j=S.laundryJob,fromShop=j.leg!=='pickup';
+    addStop(j.from_latitude,j.from_longitude,1,fromShop?'shop':'customer','จุดรับ · '+(j.from_address||''));
+    addStop(j.to_latitude,j.to_longitude,2,fromShop?'customer':'shop','จุดส่ง · '+(j.to_address||''));
     drawActiveRoute();return;
   }
   const list=S.activeOrder?(S.activeOrder.route_bundle_id&&S.bundleOrders.length?S.bundleOrders:[S.activeOrder]):S.openJobs.map(x=>x.order);
+  let stopNumber=1;
   list.forEach(o=>{
-    const pickups=o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.filter(x=>x.status!=='CANCELLED'):[];
+    const pickups=o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.filter(x=>String(x.status).toUpperCase()!=='CANCELLED'):[];
     if(pickups.length){
-      pickups.forEach((x,i)=>{
-        const lat=Number(x.latitude),lng=Number(x.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
-        const done=x.status==='PICKED_UP',size=done?16:20;
-        const m=qgMarker({lat,lon:lng},'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+(done?'#94a3b8':'#16a34a')+';border:3px solid #fff;box-shadow:0 2px 8px #0004;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:900">'+(i+1)+'</div>','จุดรับ '+(i+1)+' · '+(x.shop_name||'ร้านค้า'));
-        if(m)S.jobMarkers.push(m);
-      });
+      pickups.forEach(x=>addStop(x.latitude,x.longitude,stopNumber++,'shop','รับจาก '+(x.shop_name||'ร้านค้า'),x.status==='PICKED_UP'));
     }else{
-      const plat=Number(o.pickup_latitude),plng=Number(o.pickup_longitude);
-      if(Number.isFinite(plat)&&Number.isFinite(plng)){const m=qgMarker({lat:plat,lon:plng},'<div style="width:20px;height:20px;border-radius:50%;background:#16a34a;border:3px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดรับ · '+(o.pickup_address||'ร้านค้า'));if(m)S.jobMarkers.push(m)}
+      addStop(o.pickup_latitude,o.pickup_longitude,stopNumber++,'shop','รับจาก '+(o._shop?.shop_name||o.pickup_address||'ร้านค้า'));
     }
-    const dlat=Number(o.delivery_latitude),dlng=Number(o.delivery_longitude);
-    if(Number.isFinite(dlat)&&Number.isFinite(dlng)){const m=qgMarker({lat:dlat,lon:dlng},'<div style="width:20px;height:20px;border-radius:50%;background:#e6002d;border:3px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดส่ง · '+(o.delivery_address||'บ้านลูกค้า'));if(m)S.jobMarkers.push(m)}
+    addStop(o.delivery_latitude,o.delivery_longitude,stopNumber++,'customer','ส่งให้ '+(o._customer?.name||o.delivery_address||'ลูกค้า'));
   });
   drawActiveRoute();
 }
