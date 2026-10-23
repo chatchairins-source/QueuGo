@@ -1,3 +1,11 @@
+## 2026-10-23 Rider numbered map stop correction
+
+- Owner screenshot shows a green pickup dot and red delivery dot without point1/2. Evidence-backed cause on latest main `79412b43`: `placeJobMarkers` constructs plain20px circles for ordinary jobs and Laundry; Market has tiny pickup digits only, no customer number. This is marker rendering, not route-service failure.
+- IN PROGRESS (source/test): replace only stop-marker presentation with readable numbered badges, shop/customer SVGs and point/action labels. Ordinary offer/active jobs show1 pickup,2 delivery; Market numbers remaining non-cancelled pickups then delivery; bundle numbers continue; Laundry icons follow pickup/return direction. Completed market pickups keep their number and use a muted color. Viewport alignment keeps labels upright in tilted maps, and stop markers stay above route/puck layers. Existing route authority, camera, cards/switches and order flow remain unchanged.
+- Focused actual-function DOM/lifecycle replay:161 Rider map checks PASS,29 route-render checks PASS. Covers offer before acceptance, active refresh cleanup, multi-pickup/cancelled/done, multi-order numbering, both Laundry directions, icons/labels and null-coordinate rejection. Full regression and exact-head hosted RC/public deployment still NEXT.
+- Native successor already contains navigationStopMarkerTitle point1 shop/point2 customer tests; this reported screenshot is Web. No APK or unrelated Native changes in this correction.
+- NEXT: pass full regression and exact-head RC; deploy both existing GitHub Pages and Render Web; read back the Rider HTML/build identifier on both origins. No real Production order or notification created for QA.
+
 ## 2026-10-23 QueueGo Render deployment
 
 - DONE (Web source/test/public hosting): PR #662 source `6a17ee721c425ec4095935c649fbac111c8a5429`, merge `6e21b1668829d2819bfcd05c2d0002b6d32681b9`. Dependency-free `node ops/build-render-static.cjs` publishes 98 browser assets to `dist-render`; all 79 static HTML asset references resolve. Full local `npm test` PASS. Public readback of all 98 assets matches committed source bytes. Customer `/`, Merchant `/merchant/`, Rider `/rider/`, Admin `/admin/`, table ordering, privacy/account deletion pages and Rider install icon return HTTP200. Operational paths return404. UI is unchanged.
