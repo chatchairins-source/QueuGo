@@ -986,7 +986,7 @@ const nav=t=>`<nav class="nav ${((location.hash.slice(1)||'home').split('/')[0]=
   `<a href="#${k}" class="${t===k?'on':''}"><div class="ni">${ico(i)}${k==='cart'&&cartN()?`<b class="badge" style="top:-5px;right:-8px">${cartN()}</b>`:''}</div>${l}</a>`).join('')}</nav>`;
 const go=h=>{location.hash=h};
 function openPublicShop(id,category){
-  if(String(category||'').toLowerCase()==='laundry'){location.href='laundry/?v=20261023-dir1';return}
+  if(String(category||'').toLowerCase()==='laundry'){location.href='laundry/?v=20261023-dir2';return}
   go('shop/'+id);
 }
 const shopCard=s=>`<div class="sc" onclick="openPublicShop('${esc(s.id)}','${esc(s.public_category||'')}')">${photo(s.public_logo||s.public_cover,s.shop_name)}
@@ -1024,7 +1024,7 @@ ${qgHomeBannerMarkup(homeSlides)}
 <button class="cat" onclick="go('food')"><i>${ico('utensils',25)}</i><b>อาหาร</b></button>
 <button class="cat" onclick="go('cafe')"><i>${ico('drink',25)}</i><b>เครื่องดื่ม</b></button>
 <button class="cat" onclick="go('grocery')"><i>${ico('bottle',25)}</i><b>ร้านขายของชำ</b></button>
-<button class="cat" onclick="location.href='laundry/?v=20261023-dir1'"><i>${ico('grid',25)}</i><b>ฝากซัก</b></button>
+<button class="cat" onclick="location.href='laundry/?v=20261023-dir2'"><i>${ico('grid',25)}</i><b>ฝากซัก</b></button>
 <button class="cat" onclick="go('market')"><i>${ico('basket',25)}</i><b>ตลาดสด</b></button>
 <button class="cat" onclick="go('ride')"><i>${ico('car',25)}</i><b>บริการเรียกรถ</b></button>
 <button class="cat" onclick="go('shopping')"><i>${ico('shopping',25)}</i><b>ช้อปปิ้ง</b></button>
@@ -1178,7 +1178,7 @@ async function shareShop(id){const url=(window.Capacitor?.isNativePlatform?.()?'
 V.shop=async(id,ticket=routeVersion)=>{
   const s=(await loadShops()).find(x=>String(x.id)===String(id));
   if(!s)return layout('<p class="empty">ไม่พบร้านค้า</p>','home');
-  if(String(s.public_category||'').toLowerCase()==='laundry'){location.href='laundry/?v=20261023-dir1';return}
+  if(String(s.public_category||'').toLowerCase()==='laundry'){location.href='laundry/?v=20261023-dir2';return}
   if(DEDICATED_MARKET_CATS.has(String(s.public_category||'').toLowerCase()))return go('market');
   if(s.public_category==='grocery')return qgRenderCustomerGroceryShop(s,ticket);
   const [menu,ratings,favorites]=await Promise.all([loadMenu(id),QGCustomer.reviews(id),QGCustomer.loadFavorites()]);if(ticket!==routeVersion)return;

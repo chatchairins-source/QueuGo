@@ -40,6 +40,7 @@ ok(laundry.includes("const src=photo.cover||photo.logo"),'Laundry directory must
 ok(laundry.includes('class="shop-photo"')&&laundry.includes('alt="\'+safe(x.shop_name||x.name)+\'"'),'Laundry directory photo must be an accessible real shop image');
 ok(laundry.includes("dataset.fallback"),'Laundry directory must fall back from a broken cover to the shop logo');
 ok(!laundry.includes('class="washer"'),'Laundry directory must not replace registered shop photos with a washer icon');
+ok(customer.includes("20261023-dir2"),'Laundry directory navigation must bump its cache key when the standalone page changes');
 ok(customer.includes("DEDICATED_MARKET_CATS"),'normal search must exclude dedicated market shop categories');
 ok(customer.includes("queuego_place_market_order"),'market checkout RPC missing');
 ok(customer.includes("queuego_add_market_order_shops"),'market add-shop RPC missing');
