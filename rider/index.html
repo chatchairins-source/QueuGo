@@ -879,6 +879,8 @@ async function qgRequestRiderRoute(from,to,signal){
 const RIDER_ROUTE_OFF_ROUTE_METERS=30;
 const RIDER_ROUTE_REROUTE_SUSTAIN_MS=3000;
 const RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000;
+const RIDER_ROUTE_MISSED_TURN_MIN_OFF_ROUTE_METERS=8;
+const RIDER_ROUTE_IMMEDIATE_REROUTE_COOLDOWN_MS=3000;
 let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteSince=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderPuckHeadingFix=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
 function clearRiderRoute(){
   riderRouteRequest?.controller.abort();riderRouteRequest=null;riderRouteCache=null;riderRouteGeometry=[];
@@ -947,6 +949,19 @@ function qgUpdateRiderRouteProgress(decision){
   qgUpdateManeuverHud(cache,remaining,length);
   return true;
 }
+function qgRiderMissedTurnNeedsImmediateReroute(decision,speed,accuracy){
+  const cache=riderRouteCache,match=decision?.routeMatch;
+  if(!cache||!match)return false;
+  if(accuracy!==null&&accuracy>20)return false;
+  if(speed===null||speed<2.5)return false;
+  const offRoute=qgFiniteOrNull(match.offRouteMeters),remaining=qgFiniteOrNull(decision.remainingRouteMeters),length=qgFiniteOrNull(match.geometryDistanceMeters),total=qgFiniteOrNull(cache.dist);
+  if(offRoute===null||offRoute<RIDER_ROUTE_MISSED_TURN_MIN_OFF_ROUTE_METERS||remaining===null||length===null||length<=0||total===null||total<=0)return false;
+  const ratio=Math.max(0,Math.min(1,remaining/length)),traveled=total*(1-ratio);
+  const current=qgUpcomingManeuvers(cache.instructions,traveled,total)[0]||null;
+  const code=Number(current?.step?.turnCode),passedAction=!!current&&current.distance<=0&&[0,1,2,3,4,6,11].includes(code);
+  const directionMiss=decision.routeBearingRejected===true;
+  return passedAction||directionMiss;
+}
 function qgRiderRouteNeedsReroute(pos,scope,map){
   if(!riderRouteCache||riderRouteCache.scope!==scope||riderRouteCache.map!==map||!riderRouteGeometry.length)return true;
   const accuracy=qgFiniteOrNull(pos?.accuracy);
@@ -960,11 +975,17 @@ function qgRiderRouteNeedsReroute(pos,scope,map){
   if(!Number.isFinite(offRoute))return false;
   const speed=qgFiniteOrNull(pos?.speed);
   const directionConflict=decision?.routeBearingRejected===true&&(speed===null||speed>=2);
+  const now=Date.now();
+  if(qgRiderMissedTurnNeedsImmediateReroute(decision,speed,accuracy)){
+    if(riderRouteLastRerouteAt&&now-riderRouteLastRerouteAt<RIDER_ROUTE_IMMEDIATE_REROUTE_COOLDOWN_MS)return false;
+    riderRouteLastRerouteAt=now;
+    riderRouteOffRouteSince=0;
+    return true;
+  }
   if(offRoute<=RIDER_ROUTE_OFF_ROUTE_METERS&&!directionConflict){
     riderRouteOffRouteSince=0;
     return false;
   }
-  const now=Date.now();
   if(!riderRouteOffRouteSince){riderRouteOffRouteSince=now;return false;}
   if(now-riderRouteOffRouteSince<RIDER_ROUTE_REROUTE_SUSTAIN_MS)return false;
   if(riderRouteLastRerouteAt&&now-riderRouteLastRerouteAt<RIDER_ROUTE_REROUTE_COOLDOWN_MS)return false;
