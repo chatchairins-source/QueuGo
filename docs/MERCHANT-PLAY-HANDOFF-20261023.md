@@ -76,8 +76,8 @@ mock application screenshots were supplied.
    replacing newer code. Preserve the shared signing implementation and gates.
 4. Supply authorized Merchant/cashier/staff and real-device/hardware evidence,
    plus current real app screenshots, a dedicated reviewer account and an actual
-   support email. Public privacy/deletion URL retrieval remains unverified in
-   this session. Final Console declarations remain open.
+   support email. Public privacy/deletion pages and the deletion client asset return HTTP 200
+   and match Web main `9eb3dac1`; authenticated deletion remains unverified. Final Console declarations remain open.
 5. Run the existing certified workflow, validate the signed AAB and fingerprint,
    and then upload to the selected Play track. No Play upload occurred here.
 
@@ -98,3 +98,11 @@ validates Firebase clients for all three packages and the Merchant upload key.
 Storage validation is skipped because service-role access is absent. Required
 secret presence still fails for the three backend/backup inputs; cleanup passes.
 This is signing readiness evidence, not physical certification or release PASS.
+
+## Public policy URL retrieval
+
+`docs/merchant-play-public-url-verification-20261023.json` records HTTP 200,
+SHA-256 and byte equality against Web main `9eb3dac1` for privacy, deletion
+and the referenced account-deletion client script. No login, account mutation
+or actual deletion was performed. Contact/reviewer/physical evidence remains
+OPEN. The store asset pack is refreshed; it still contains no AAB.

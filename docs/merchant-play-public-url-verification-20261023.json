@@ -1,0 +1,32 @@
+{
+  "checked_date_utc": "2026-10-23",
+  "web_main_sha": "9eb3dac112ab0003c5b36dd844c3abbcff1decac",
+  "checks": [
+    {
+      "path": "docs/privacy.html",
+      "url": "https://chatchairins-source.github.io/QueuGo/docs/privacy.html",
+      "http_status": 200,
+      "bytes": 10695,
+      "sha256": "478d90215d260e70908c8ed747cb22d9010db0aae8f9bd2db4fa071c9c686298",
+      "matches_current_web_main": true
+    },
+    {
+      "path": "docs/account-deletion.html",
+      "url": "https://chatchairins-source.github.io/QueuGo/docs/account-deletion.html",
+      "http_status": 200,
+      "bytes": 6127,
+      "sha256": "b7fc57bbdb87b90dc0de3f74e7ddb01c35b0f3fdcf1b2131062e7ec45130c302",
+      "matches_current_web_main": true
+    },
+    {
+      "path": "account-deletion.js",
+      "url": "https://chatchairins-source.github.io/QueuGo/account-deletion.js",
+      "http_status": 200,
+      "bytes": 3094,
+      "sha256": "ad7eb4b86819470bea21a839a264b3d5fc672899cedf0e3b5d862f80eb8f8ce0",
+      "matches_current_web_main": true
+    }
+  ],
+  "scope": "Public static pages and deletion client asset only; no login or account deletion executed",
+  "authenticated_deletion_acceptance": "OPEN"
+}

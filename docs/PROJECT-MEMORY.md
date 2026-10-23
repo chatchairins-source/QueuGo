@@ -1976,3 +1976,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## 2026-10-23 Merchant signing exact-source CI verified
 - PR637 sourcee824e7cd readiness39890564617/job120209043257: Firebase3 clients PASS; keystore store password/alias/private-key import PASS; public SHA256341d7767b68f4f151714bf13bfed79b9cb69181f2f8c1336a52939038181b994 matches saved key. Mergea5300b90 preserves all Native POS work.
 - Overall readiness correctly FAILS: QG_SUPABASE_SERVICE_ROLE_KEY, QG_SUPABASE_DB_URL, QG_BACKUP_PASSPHRASE absent. Storage skipped, cleanup PASS. No release bypass, signed AAB, device evidence or Play upload. Continue existing certification/backup and real Merchant acceptance gates; never regenerate the installed key.
+
+
+## 2026-10-23 Merchant Store package/public URL reconciliation
+- Corrected stale CHECKLIST signing state: all four inputs installed and CI39890564617 content validation PASS; overall readiness still FAILS for backend3. No repeat key generation.
+- Public privacy/deletion/client asset HTTP200 and byte equality with Web9eb3dac1 verified; hashes in docs/merchant-play-public-url-verification-20261023.json. No actual login/deletion/Production mutation. Refreshed existing Store asset pack; no AAB or mock screenshots.
+- NEXT remains secure backend/backup prerequisites plus real Merchant/cashier/device/reviewer acceptance and certified-current-source build. No app source changed or physical/release PASS invented.
