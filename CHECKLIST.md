@@ -1,3 +1,13 @@
+## 2026-10-23 Customer Laundry registered directory + Render release
+
+- Owner reported that Customer Laundry still showed the legacy QueueGo Laundry Hub and required registered Laundry shops only, while Laundry shops must stay off Customer Home.
+- ROOT CAUSE (source): the old Customer Laundry page read raw Laundry hubs/settings, while Customer Home did not exclude public_category='laundry'. PR #685 replaced that client-side discovery with the authenticated `queuego_laundry_customer_catalog()` authority, restricted the catalog to active registered Laundry shops with enabled settings, active service and accepted active Rider, reconciled qualifying disabled shops, and excluded Laundry shops from Home.
+- DONE (source/test): PR #685 source HEAD `28dfa3d77b99c61d8c6df5460164c0c6d86a9bb7`; exact-head RC run `39951223902` SUCCESS. Merged to main as `e74f384ce32ccd0cfb993ac74bdf48c729906901`. Post-merge RC push run `39951714290` SUCCESS and GitHub Pages run `39951713397` SUCCESS.
+- ROOT CAUSE (Render stale Production): `queuego-web` is configured for branch `main` with autoDeploy enabled, but no Render deploy was created for commits after `000ac0ba3c04bce23900cc6fc67f5df14e6305c9`; Production therefore remained on the pre-#685 bundle even though GitHub main/Pages were newer.
+- DONE (Render deployment): forced the missed release path only after confirming Render had not auto-created a deploy. Deploy `dep-dbdli7e7bikc73e1vsu0` built commit `e74f384ce32ccd0cfb993ac74bdf48c729906901` and reached LIVE. The Render packaging script includes `laundry/`; committed Laundry HTML uses `queuego_laundry_customer_catalog`, no longer performs the old raw `laundry_hubs?select=id,name,shop_id` read, and Customer route cache-bust is `20261023-dir1`.
+- No mock/demo/fake Production data was created. No Production order/payment/auth mutation was used for this release validation.
+- NEXT: owner-device browser acceptance only: open Customer Home and confirm Laundry shops are absent from the nearby-store list, then open ฝากซัก and confirm only the actually registered Laundry shop(s) appear. Do not claim physical-device/browser acceptance until that observation is provided. Future Laundry edits must retain `e74f384c` or a proven descendant and must not restore the legacy raw-hub directory.
+
 ## 2026-10-23 Rider automatic route + simplified pickup flow
 
 - Owner requires continuation from newest Rider Web successor only. Remove the manual navigation CTA in the normal shop/customer active-order flow because QueueGo route guidance starts automatically after claim. Remove the redundant “ได้รับอาหารแล้วใช่ไหม?” yes/no confirmation after the required pickup receipt photo.
