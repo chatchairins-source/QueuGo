@@ -1,3 +1,10 @@
+## 2026-10-23 Customer Laundry shop photos
+
+- Stream: display each registered Laundry shop's real profile cover, falling back to its profile logo. The catalog returns shop identities, so the page fetches only the approved profile photo fields for catalog shop IDs under the authenticated session.
+- ROOT CAUSE: publicPhotoUrl used a regex character class containing a doubled backslash before s, which rejects the letter s and therefore filtered Supabase Storage URLs such as shop cover/logo URLs. Confirmed in committed laundry/index.html at branch HEAD c4d5db0208dafc4f661451a4b794541cdaeefea4.
+- IN PROGRESS (source): URL validation now uses the browser URL parser and accepts only HTTPS URLs. Commit: c4d5db0208dafc4f661451a4b794541cdaeefea4.
+- NEXT: add an executable regression assertion for a Supabase Storage HTTPS URL and a non-HTTPS rejection, run the targeted and full CI gates, then open PR and verify the public deployments.
+
 ## 2026-10-23 Customer Laundry registered directory + Render release
 
 - Owner reported that Customer Laundry still showed the legacy QueueGo Laundry Hub and required registered Laundry shops only, while Laundry shops must stay off Customer Home.
