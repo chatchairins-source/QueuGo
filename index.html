@@ -833,7 +833,7 @@ function qgQueueGoPickerStyle(){
 function initLocationPicker(containerId,lat,lng,onChange,options={}){
   const host=document.getElementById(containerId),hasInitial=qgIsValidCoordinate(lat,lng,true);
   const viewLat=hasInitial?Number(lat):15,viewLng=hasInitial?Number(lng):101;
-  const selectInitial=options.selectInitial!==false;
+  const selectInitial=options.selectInitial!==false,tapToSelect=options.tapToSelect===true;
   if(!host||typeof maplibregl==="undefined"){
     toast("QueueGo Map ยังไม่พร้อม กรุณาลองใหม่");
     return {map:null,destroy(){},locate(){toast("QueueGo Map ยังไม่พร้อม กรุณาลองใหม่")},selectCenter(){return false}};
@@ -870,15 +870,18 @@ function initLocationPicker(containerId,lat,lng,onChange,options={}){
     return p&&qgIsValidCoordinate(p.lat,p.lng,true)?setPoint(p.lat,p.lng,true):false;
   };
   const selectPlace=p=>{if(!disposed)setPoint(p.lat,p.lng,true)};
+  const selectTap=e=>{if(!disposed&&e?.lngLat)setPoint(e.lngLat.lat,e.lngLat.lng,true)};
   window.QueueGoMapWeb?.attachPlaces?.(map,{onSelect:selectPlace,searchControl:true});
   map.on("load",()=>{if(disposed)return;if(hasInitial&&selectInitial)setPoint(viewLat,viewLng,true)});
-  map.on("moveend",syncCenter);
+  if(tapToSelect){map.on("click",selectTap);try{map.getCanvas().style.cursor='crosshair'}catch{}}
+  else map.on("moveend",syncCenter);
   return {
     map,
     selectCenter:syncCenter,
     destroy(){
       if(disposed)return;disposed=true;
       try{map.off("moveend",syncCenter)}catch{}
+      try{map.off("click",selectTap)}catch{}
       try{marker?.remove()}catch{}
       try{map.remove()}catch{}
       if(customerPickerMap===map)customerPickerMap=null;
