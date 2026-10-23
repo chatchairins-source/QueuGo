@@ -36,6 +36,53 @@ def decode_shape(shape):
         latitude+=values[0];longitude+=values[1];result.append([longitude/1e6,latitude/1e6])
     return result
 
+def explicit_osm_maxspeed(tags):
+    """Return a legal-speed value only when OSM supplies an explicit numeric maxspeed."""
+    if not isinstance(tags,dict):return None
+    raw=tags.get('maxspeed')
+    if not isinstance(raw,str):return None
+    text=raw.strip()
+    if not text:return None
+    lower=text.lower()
+    try:
+        cleaned=lower.replace('km/h','').replace('kph','').replace('mph','').strip()
+        value=float(cleaned)*(1.609344 if 'mph' in lower else 1.0)
+    except ValueError:
+        return None
+    if not 0<value<=160:return None
+    return {'raw':text,'kph':value,'source':'osm:maxspeed'}
+
+
+def route_maxspeed_intervals(coordinates,trace_edges,way_tags):
+    """Map explicit OSM maxspeed tags onto routed geometry; never expose road-class estimates."""
+    if not isinstance(coordinates,list) or len(coordinates)<2:return []
+    cumulative=[0.0]
+    for a,b in zip(coordinates,coordinates[1:]):cumulative.append(cumulative[-1]+haversine(a,b))
+    intervals=[]
+    for edge in trace_edges:
+        way_id=edge.get('way_id')
+        limit=explicit_osm_maxspeed(way_tags.get(way_id,{}))
+        if not limit:continue
+        try:
+            begin=int(edge.get('_route_begin_shape_index',edge.get('begin_shape_index',0)))
+            end=int(edge.get('_route_end_shape_index',edge.get('end_shape_index',begin)))
+        except (TypeError,ValueError):
+            continue
+        lo=max(0,min(begin,end));hi=min(len(cumulative)-1,max(begin,end))
+        if hi<=lo:continue
+        start=cumulative[lo];finish=cumulative[hi]
+        if finish-start<=0.5:continue
+        intervals.append({
+            'start_geometry_m':start,
+            'end_geometry_m':finish,
+            'maxspeed_kph':limit['kph'],
+            'maxspeed_raw':limit['raw'],
+            'source':limit['source'],
+            'osm_way_id':way_id
+        })
+    return intervals
+
+
 
 def projection(point,line,heading=None):
     best=None;progress=0.0;total=0.0
@@ -205,25 +252,29 @@ class Engine:
                     begin=min(max(0,int(record.get('begin_shape_index',0))),len(points)-1)
                     end=min(max(0,int(record.get('end_shape_index',begin))),len(points)-1)
                     record['_begin_point']=points[begin];record['_end_point']=points[end]
+                    record['_route_begin_shape_index']=begin+offset;record['_route_end_shape_index']=end+offset
                     trace_edges.append(record)
         self._enforce_runtime_turn_restrictions(trace_edges)
         signal_count=sum(bool(e.get('end_node',{}).get('traffic_signal')) for e in trace_edges)
         rough_m=sum(e.get('length',0)*1000 for e in trace_edges if e.get('surface') in ('dirt','gravel','impassable') or e.get('unpaved'))
         base=float(trip['summary']['time']);distance=float(trip['summary']['length'])*1000
         ways=list(dict.fromkeys(e['way_id'] for e in trace_edges if e.get('way_id')))
-        # These are explicit planning penalties, not measured historical traffic or a safety guarantee.
-        estimated=base+signal_count*EXPECTED_SIGNAL_DELAY_SECONDS
-        route={'distance':distance,'duration':base,'estimatedDuration':estimated,'geometry':{'type':'LineString','coordinates':coordinates},'legs':legs,'profile':profile,'signalCount':signal_count,'restrictionCount':0,'osm_way_ids':ways,'osm_edge_ids':[e['id'] for e in trace_edges if 'id' in e],'cost_components':{'engine_seconds':base,'signal_expected_delay_seconds':signal_count*EXPECTED_SIGNAL_DELAY_SECONDS,'rough_surface_metres':rough_m,'reliability_penalty_seconds':rough_m/10,'historical_samples':0},'data':self.metadata()}
-        if self.quarantined_ways.intersection(ways):raise ValueError('Route touches an unresolved, disconnected-member, or direction-conflicting source turn rule; member ways are quarantined until verified')
-        # Enforce known hard exclusions on the actual traversed way IDs. Never invent a detour.
+        way_tags={}
         if ways:
             with self.db() as db:
                 rows=db.execute('SELECT id,tags FROM ways WHERE id IN ('+','.join('?' for _ in ways)+')',ways).fetchall()
-            for row in rows:
-                tags=json.loads(row['tags']);access=tags.get('motorcycle') if PROFILES[profile]=='motorcycle' else tags.get('motorcar')
-                access=access or tags.get('motor_vehicle') or tags.get('vehicle') or tags.get('access')
-                if tags.get('highway')=='construction' or access in ('no','private'):raise ValueError('Engine candidate uses a known closed/inaccessible way')
-                if any('conditional' in key for key in tags):raise ValueError('Conditional road rule requires a supported time-aware package')
+            way_tags={row['id']:json.loads(row['tags']) for row in rows}
+        maxspeed_intervals=route_maxspeed_intervals(coordinates,trace_edges,way_tags)
+        # These are explicit planning penalties, not measured historical traffic or a safety guarantee.
+        estimated=base+signal_count*EXPECTED_SIGNAL_DELAY_SECONDS
+        route={'distance':distance,'duration':base,'estimatedDuration':estimated,'geometry':{'type':'LineString','coordinates':coordinates},'legs':legs,'profile':profile,'signalCount':signal_count,'restrictionCount':0,'osm_way_ids':ways,'osm_edge_ids':[e['id'] for e in trace_edges if 'id' in e],'maxspeed_intervals':maxspeed_intervals,'cost_components':{'engine_seconds':base,'signal_expected_delay_seconds':signal_count*EXPECTED_SIGNAL_DELAY_SECONDS,'rough_surface_metres':rough_m,'reliability_penalty_seconds':rough_m/10,'historical_samples':0},'data':self.metadata()}
+        if self.quarantined_ways.intersection(ways):raise ValueError('Route touches an unresolved, disconnected-member, or direction-conflicting source turn rule; member ways are quarantined until verified')
+        # Enforce known hard exclusions on the actual traversed way IDs. Never invent a detour.
+        for tags in way_tags.values():
+            access=tags.get('motorcycle') if PROFILES[profile]=='motorcycle' else tags.get('motorcar')
+            access=access or tags.get('motor_vehicle') or tags.get('vehicle') or tags.get('access')
+            if tags.get('highway')=='construction' or access in ('no','private'):raise ValueError('Engine candidate uses a known closed/inaccessible way')
+            if any('conditional' in key for key in tags):raise ValueError('Conditional road rule requires a supported time-aware package')
         return self._remember(route) if remember else route
     def route(self,body,alternatives=False):
         points=self.points(body);profile,costing=self.profile(body)
