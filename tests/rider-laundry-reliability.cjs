@@ -15,6 +15,9 @@ for(const [rpc,kind] of Object.entries({
   ok(rider.includes("qgRiderMutation('"+rpc+"'"),rpc+' UI must use qgRiderMutation');
 }
 
+ok(rider.includes('<script src="reliability.js?v=20261023-laundryfix1"></script>'),'Rider page must actually load the durable reliability layer');
+ok(rider.indexOf('<script src="reliability.js?v=20261023-laundryfix1"></script>')<rider.indexOf('<script>boot();</script>'),'durable reliability layer must load before Rider boot');
+ok(rider.indexOf('<script src="reliability.js?v=20261023-laundryfix1"></script>')<rider.indexOf('<script id="qg-rider-order-actions">'),'durable wrapper must exist before order-action UI can be used');
 ok(reliability.includes('[data-laundry-mutation]'),'pending recovery must lock Laundry action controls');
 ok((rider.match(/data-laundry-mutation/g)||[]).length>=4,'Laundry UI controls must opt into recovery lock');
 ok(rider.includes("qgLaundryMutationInFlight"),'Laundry actions must ignore rapid duplicate taps');
