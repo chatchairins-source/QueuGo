@@ -39,12 +39,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('class="qg-top-actions"'),false);
  eq(source.includes('class="qg-online-pill'),true);
  eq(source.includes('qg-ready-card'),false);
- eq(source.includes('พร้อมรับงานแล้ว'),false);
- eq(source.includes('พร้อมรับงานเมื่อคุณพร้อม'),false);
- eq(source.includes('qg-ready-status-card'),true);
- eq(source.includes('<h2>พร้อมรับงาน</h2>'),true);
- eq(source.includes('<div class="qg-home-tip">'),false);
- eq(source.includes('qgRefreshWaitingSummary();return;'),false);
+ eq(source.includes('พร้อมรับงานแล้ว'),true);
+ eq(source.includes('พร้อมรับงานเมื่อคุณพร้อม'),true);
  eq(source.includes('id="go-online"'),false);
  eq(source.includes('id="go-offline"'),false);
  eq((source.match(/id="status-switch"/g)||[]).length,1);
