@@ -18,21 +18,24 @@ async function load(force=false){
  readTask=task;try{return await task}finally{if(readTask===task)readTask=null}
 }
 function render(host,p,error=''){
- host.innerHTML='<h2>รูปแบบและประเภทงาน</h2><div class="qg-setting-group"><div role="status" data-work-status style="padding:12px 16px">'+esc(error||'เลือกงานที่ต้องการรับ การรับงานพ่วงให้ยืนยันรายได้ก่อนทุกครั้ง')+'</div><form data-work-form style="padding:0 16px 16px"><label class="qg-work-choice"><span><b>รับงานอัตโนมัติ</b><small>รับงานประเภทที่เลือกขณะออนไลน์และเปิดหน้านี้</small></span><input type="checkbox" name="auto_accept" '+(p?.auto_accept?'checked':'')+'></label><label class="qg-work-choice"><span><b>รับงานพ่วง</b><small>'+(p?.capabilities.bundle?'แสดงงานพ่วงให้เลือก พร้อมรายได้และระยะทางเพิ่ม':'บันทึกความต้องการไว้ได้ · บริการงานพ่วงยังไม่เปิดใช้งาน')+'</small></span><input type="checkbox" name="bundle_enabled" '+(p?.bundle_enabled?'checked':'')+'></label><fieldset style="border:0;padding:8px 0;margin:0"><legend>ประเภทบริการที่รับ</legend>'+Object.entries(labels).map(([value,label])=>{const available=!!p?.capabilities[value];return '<label class="qg-work-choice"><span><b>'+label+'</b><small>'+(available?'เลือกเปิดหรือปิดรับงานได้':value==='ride'?'ยังไม่ได้รับสิทธิ์รับส่งผู้โดยสาร กรุณาติดต่อทีมงาน':'บริการนี้ยังไม่เปิดใช้งาน')+'</small></span><input type="checkbox" name="service" value="'+value+'" '+(p?.services?.includes(value)?'checked ':'')+(!available?'disabled':'')+'></label>'}).join('')+'</fieldset><button type="submit" class="qg-btn qg-btn-primary" '+(!p?'disabled':'')+'>บันทึกการรับงาน</button></form></div>';
+ host.innerHTML='<h2>รูปแบบและประเภทงาน</h2><div class="qg-setting-group"><div role="status" data-work-status style="padding:12px 16px">'+esc(error||'เลือกงานที่ต้องการรับ การรับงานพ่วงให้ยืนยันรายได้ก่อนทุกครั้ง')+'</div><form data-work-form style="padding:0 16px 16px"><label class="qg-work-choice"><span><b>รับงานอัตโนมัติ</b><small>รับงานประเภทที่เลือกขณะออนไลน์และเปิดหน้านี้</small></span><input type="checkbox" name="auto_accept" '+(p?.auto_accept?'checked':'')+'></label><label class="qg-work-choice"><span><b>รับงานพ่วง</b><small>'+(p?.capabilities.bundle?'แสดงงานพ่วงให้เลือก พร้อมรายได้และระยะทางเพิ่ม':'บันทึกความต้องการไว้ได้ · บริการงานพ่วงยังไม่เปิดใช้งาน')+'</small></span><input type="checkbox" name="bundle_enabled" '+(p?.bundle_enabled?'checked':'')+'></label><fieldset style="border:0;padding:8px 0;margin:0"><legend>ประเภทบริการที่รับ</legend>'+Object.entries(labels).map(([value,label])=>{const available=!!p?.capabilities[value];return '<label class="qg-work-choice"><span><b>'+label+'</b><small>'+(available?'เลือกเปิดหรือปิดรับงานได้':value==='ride'?'ยังไม่ได้รับสิทธิ์รับส่งผู้โดยสาร กรุณาติดต่อทีมงาน':'บริการนี้ยังไม่เปิดใช้งาน')+'</small></span><input type="checkbox" name="service" value="'+value+'" '+(p?.services?.includes(value)?'checked ':'')+(!available?'disabled':'')+'></label>'}).join('')+'</fieldset></form></div>';
  const form=host.querySelector('form');if(!p){form.querySelectorAll('input').forEach(x=>x.disabled=true);return}
- form.onsubmit=async e=>{
-  e.preventDefault();if(busy)return;const key=current();if(!key)return;
+ form.onchange=async e=>{
+  if(!e?.target?.matches?.('input[type=checkbox]')||e.target.disabled||busy)return;
+  const key=current();if(!key)return;
   const desired={auto_accept:form.elements.auto_accept.checked,bundle_enabled:form.elements.bundle_enabled.checked,services:[...form.querySelectorAll('[name=service]:checked:not(:disabled)')].map(x=>x.value)};
-  if(!desired.services.length){host.querySelector('[data-work-status]').textContent='เลือกบริการอย่างน้อยหนึ่งประเภท หรือปิดออนไลน์เพื่อพักรับงาน';return}
-  busy=true;form.querySelectorAll('input,button').forEach(x=>x.disabled=true);
+  if(!desired.services.length){render(host,snapshot||p,'ต้องเปิดรับบริการอย่างน้อยหนึ่งประเภท หากต้องการพักรับงานให้ปิดสถานะออนไลน์');return}
+  const previous=snapshot||p;
+  busy=true;form.querySelectorAll('input').forEach(x=>x.disabled=true);
+  host.querySelector('[data-work-status]').textContent='กำลังบันทึก…';
   try{
-   const token=await getAccessToken();if(identity()!==key||!token)return;
+   const token=await getAccessToken();if(identity()!==key||!token)throw Error('session changed');
    let ack;
    try{ack=parse(await sbRpc('qg_rider_work_preferences',{p_preferences:desired},token))}
    catch(error){const read=parse(await sbRpc('qg_rider_work_preferences',{},token));if(!matches(read,desired))throw error;ack=read}
    if(identity()!==key)return;if(!matches(ack,desired))throw Error('ยังยืนยันการบันทึกไม่ได้');
-   snapshot=ack;readAt=Date.now();render(host,ack,'บันทึกการรับงานแล้ว');S.bundleCandidates=[];toast('บันทึกการรับงานแล้ว');refreshData();
-  }catch(_){if(identity()===key){snapshot=null;render(host,null,'ยังยืนยันการบันทึกไม่ได้ กรุณาเปิดโปรไฟล์ใหม่เพื่อตรวจสอบ')}}
+   snapshot=ack;readAt=Date.now();render(host,ack,'บันทึกแล้ว');S.bundleCandidates=[];refreshData();
+  }catch(_){if(identity()===key){snapshot=previous;render(host,previous,'บันทึกไม่สำเร็จ ระบบคืนค่าเดิมแล้ว')}}
   finally{busy=false}
  };
 }
