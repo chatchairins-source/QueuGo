@@ -89,6 +89,82 @@ class NavigationGuidanceTest {
         assertTrue(cooldownElapsed.shouldReroute)
     }
 
+    @Test fun missedTurnReroutesImmediatelyOnFirstReliableMovingFix() {
+        var now = 50_000L
+        val tracker = NavigationProgressTracker(nowMillis = { now })
+
+        val approaching = tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.0096),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f
+            ),
+            routeLeg(),
+            stop
+        )
+        assertFalse(approaching.offRoute)
+        assertFalse(approaching.shouldReroute)
+        assertTrue((approaching.distanceToInstructionMeters ?: Double.MAX_VALUE) <= 90.0)
+
+        now += 1_000L
+        val missedTurn = tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.01055),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f
+            ),
+            routeLeg(),
+            stop
+        )
+        assertTrue(missedTurn.offRoute)
+        assertTrue(missedTurn.shouldReroute)
+    }
+
+    @Test fun stoppedNearMissedTurnStillUsesNormalOffRouteDebounce() {
+        var now = 60_000L
+        val tracker = NavigationProgressTracker(nowMillis = { now })
+
+        tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.0096),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f
+            ),
+            routeLeg(),
+            stop
+        )
+
+        now += 1_000L
+        val stopped = tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.01055),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 0f
+            ),
+            routeLeg(),
+            stop
+        )
+        assertTrue(stopped.offRoute)
+        assertFalse(stopped.shouldReroute)
+
+        now += 3_000L
+        val sustained = tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.01055),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 0f
+            ),
+            routeLeg(),
+            stop
+        )
+        assertTrue(sustained.shouldReroute)
+    }
+
     @Test fun authoritativeProgressUsesHybridContinuityAtOverlappingRouteGeometry() {
         val loop = NavigationRouteLeg(
             segment = NavigationRouteSegment(
