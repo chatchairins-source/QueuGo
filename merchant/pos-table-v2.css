@@ -275,3 +275,14 @@
  .qg-pos-draft-lines{gap:5px;margin-top:8px}
  .qg-pos-draft-lines article{padding:8px}
 }
+
+/* Table state stays readable in both the counter and table-management views. */
+.qg-pos .qg-pos-table-status{display:inline-block;width:max-content;max-width:100%;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:750;line-height:1.35}
+.qg-pos .qg-pos-table-status-available{background:#edf8f1;color:#227447}
+.qg-pos .qg-pos-table-status-disabled{background:#f1f2f4;color:#747c86}
+.qg-pos .qg-pos-table-status-occupied{background:#f1f3f6;color:#535d69}
+.qg-pos .qg-pos-table-status-new{background:#fff5e7;color:#8a5700}
+.qg-pos .qg-pos-table-status-preparing{background:#fff3df;color:#875500}
+.qg-pos .qg-pos-table-status-ready{background:#edf5ff;color:#315f9b}
+.qg-pos .qg-pos-table-status-payment{background:#fff0f2;color:#b51a35}
+.qg-pos-counter-table .qg-pos-table-status{margin-top:6px}
