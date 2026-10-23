@@ -14,6 +14,22 @@ with engine.db() as db:
     points=[dict(db.execute('SELECT latitude AS lat,longitude AS lon FROM nodes WHERE id=?',(i,)).fetchone()) for i in ids]
 routes=engine.route({'points':points[:2],'profile':'motorcycle'},True)['routes'];route=routes[0]
 check('real A to B',route['distance']>1000,{'nodes':ids[:2],'distance_m':route['distance']})
+with engine.db() as db:
+    explicit_speed_count=db.execute("SELECT count(*) FROM segments WHERE speed_source='osm:maxspeed'").fetchone()[0]
+    estimated_speed_count=db.execute("SELECT count(*) FROM segments WHERE speed_source!='osm:maxspeed'").fetchone()[0]
+check('installed graph retains explicit OSM maxspeed provenance',explicit_speed_count>0,explicit_speed_count)
+check('installed graph keeps road-class estimates separate',estimated_speed_count>0,estimated_speed_count)
+check(
+    'route speed-limit intervals are explicit OSM only',
+    all(
+        item.get('source')=='osm:maxspeed' and
+        isinstance(item.get('maxspeed_raw'),str) and item.get('maxspeed_raw') and
+        float(item.get('maxspeed_kph',0))>0 and
+        float(item.get('end_geometry_m',0))>float(item.get('start_geometry_m',0))
+        for item in route.get('maxspeed_intervals',[])
+    ),
+    route.get('maxspeed_intervals',[])
+)
 check('alternatives',len(routes)>=2,len(routes))
 for preference in ('shortest','fewer_signals','reliable'):
     result=engine.route({'points':points[:2],'preference':preference},True)
