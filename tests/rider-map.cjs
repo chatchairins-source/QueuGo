@@ -19,7 +19,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes('moveMarkerSmooth||window.QueueGoMapWeb.moveMarker'),true);
  eq(source.includes('${QTICON.route}'),true);
  eq(source.includes('queuego-map-web.js?v=20261019-places1'),true);
- eq(source.includes('queuego-map-service.js?v=20261017-1'),true);
+ eq(source.includes('queuego-map-service.js?v=20261023-render1'),true);
+ eq(source.includes('<meta name="queuego-map-service-base" content="https://queuego-map-buriram.onrender.com">'),true);
  eq(source.includes('api.longdo.com/RouteService/geojson/route'),false);
  eq(source.includes('google.navigation:'),false);
  eq(source.includes('comgooglemaps://'),false);
