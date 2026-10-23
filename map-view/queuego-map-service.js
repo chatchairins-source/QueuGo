@@ -1,8 +1,11 @@
 /* Shared QueueGo map API. Same origin by default; no public routing fallback. */
 (function(root){
   "use strict";
-  const endpoint="/map-api/";
+  const configuredBase=String(root.QG_MAP_SERVICE_BASE_URL||root.document?.querySelector?.('meta[name="queuego-map-service-base"]')?.content||'').trim().replace(/\/+$/,'');
+  const endpoint=(configuredBase||'')+"/map-api/";
+  const staticPagesHost=!configuredBase&&/\.github\.io$/i.test(String(root.location?.hostname||''));
   async function call(action,body={},options={}){
+    if(staticPagesHost)throw Error("QueueGo Map runtime is not configured for GitHub Pages");
     if(!/^[a-z-]+$/.test(action))throw Error("Invalid map action");
     const abort=new AbortController();
     const upstream=options.signal||null;
