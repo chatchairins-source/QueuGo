@@ -35,7 +35,7 @@ private const val RIDER_MARKER_MAX_ANIMATION_MS = 1_200L
 private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 1.05
 private const val RIDER_MARKER_TELEPORT_METERS = 120.0
 private const val CAMERA_BEARING_MIN_DELTA_DEGREES = 0.75f
-private const val CAMERA_ANIMATION_MS = 480
+private const val CAMERA_ANIMATION_FALLBACK_MS = 560L
 private const val CAMERA_OVERVIEW_ANIMATION_MS = 380
 private const val DEFAULT_LONGITUDE = 101.0
 private const val DEFAULT_LATITUDE = 15.0
@@ -105,7 +105,7 @@ internal fun navigationRiderDisplayFix(state: RiderNavigationMapState): Navigati
         )
     } else null
     val displayPoint = match
-        ?.takeIf { it.offRouteMeters <= 12.0 }
+        ?.takeIf { it.offRouteMeters <= 25.0 }
         ?.snapped
         ?: rawFix.point
     return rawFix.copy(point = displayPoint)
@@ -311,7 +311,7 @@ private class RiderNavigationMapHolder {
             }
             if (segment.style == NavigationRouteStyle.ACTIVE && accuracy != null &&
                 accuracy.isFinite() && accuracy <= 35f && match != null &&
-                match.offRouteMeters <= 12.0
+                match.offRouteMeters <= 25.0
             ) trimNavigationRouteSegment(segment, match.progressMeters, match.snapped)
             else segment
         }
@@ -561,6 +561,13 @@ private class RiderNavigationMapHolder {
         if (!force && !explicitRecenter && !pointChanged && !bearingChanged && !tiltChanged) return
 
         val targetBearing = decision.bearingDegrees ?: renderedBearing
+        val cameraAnimationMs = navigationRotationDurationMillis(
+            currentBearing = renderedBearing,
+            targetBearing = targetBearing,
+            cadenceMillis = null,
+            fallbackMillis = CAMERA_ANIMATION_FALLBACK_MS,
+            speedMetersPerSecond = state.rider?.speedMetersPerSecond
+        ).toInt()
         activeMap.animateCamera(
             CameraUpdateFactory.newCameraPosition(
                 CameraPosition.Builder()
@@ -570,7 +577,7 @@ private class RiderNavigationMapHolder {
                     .tilt(decision.tiltDegrees.toDouble())
                     .build()
             ),
-            CAMERA_ANIMATION_MS
+            cameraAnimationMs
         )
         if (explicitRecenter) lastAppliedRecenterRequest = state.recenterRequest
         lastCameraPoint = decision.center
