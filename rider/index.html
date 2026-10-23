@@ -1,6 +1,6 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#e6002d">
 <title>QueueGo Rider</title>
-<meta name="queuego-web-build" content="rider-20261023-stops1">
+<meta name="queuego-web-build" content="rider-20261023-workprefs1">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
 <script src="../queuego-map-web.js?v=20261023-maponly1"></script>
@@ -8,8 +8,9 @@
 <script src="../map-view/queuego-map-service.js?v=20261023-render1"></script>
 
 
-<link rel="stylesheet" href="../queuego-rider-settings.css?v=20261019-1">
+<link rel="stylesheet" href="../queuego-rider-settings.css?v=20261023-workprefs1">
 <script src="../queuego-rider-settings.js?v=20261019-1"></script>
+<script defer src="work-preferences.js?v=20261023-workprefs1"></script>
 <style id="queuego-rider-ui">
 :root{
   --qg-red:#e6002d;--qg-red-dark:#b20b29;--qg-red-soft:#fff0f3;--qg-ink:#17171b;--qg-muted:#77747b;
@@ -1453,6 +1454,7 @@ async function readRiderSnapshot(){
     if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;
     syncRiderNavigationCameraMode();
     window.qgCheckNewJobs?.(previousOpenJobIds,openJobs.map(x=>x.order));if(S.activeTab==='home')renderHomeDock();placeJobMarkers();
+    window.QueueGoRiderWork?.maybeAccept().catch(()=>{});
     const hist=await sbTable('orders?select=*&or=(order_type.eq.shopping,fulfillment_vertical.eq.express,fulfillment_vertical.eq.ride)&rider_id=eq.'+encodeURIComponent(profileId)+'&status=eq.completed&order=updated_at.desc&limit=200',{token});if(!current())return;
     S.history=Array.isArray(hist)?hist:[];
     try{const k=qgRiderHistoryKey(),history=S.history.slice(0,100);if(k){const json=JSON.stringify({at:Date.now(),history});if(json.length<800000)localStorage.setItem(k,json)}}catch(e){}
@@ -2597,6 +2599,7 @@ function renderProfilePanel(){
       <span class="qg-profile-status ${S.online?'':'off'}">${S.online?'ออนไลน์':'ออฟไลน์'}</span>
     </section>
     <section class="qg-settings">
+      <section class="qg-setting-section" id="qg-work-preferences"></section>
       <section class="qg-setting-section">
         <h2>การรับงาน</h2>
         <div class="qg-setting-group">
@@ -2628,6 +2631,7 @@ function renderProfilePanel(){
         </div>
       </section>
     </section>`;
+  window.QueueGoRiderWork?.mount(document.getElementById('qg-work-preferences'));
   document.getElementById('qg-status-setting').onclick=()=>switchTab('home');
   document.getElementById('qg-destination-setting').onclick=()=>{
     if(!window.QueueGoRiderSettings){toast('โหลดการตั้งค่าไม่ได้ กรุณาลองใหม่');return}
