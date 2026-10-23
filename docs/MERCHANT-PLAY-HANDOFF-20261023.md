@@ -4,6 +4,26 @@
 
 Status: **BLOCKED — no signed AAB produced or uploaded.**
 
+### First-upload decision and generated key — 2026-10-23
+
+- Owner confirmed that `com.queuego.merchant` has never been uploaded to Play
+  Console. Prepare a first release; proposed metadata is `1.0.0`, versionCode
+  `1`, with the no-previous-upload basis recorded as owner attestation.
+- Generated one new Merchant upload key, RSA 3072 / SHA256withRSA, alias
+  `queuego-merchant-upload`; private-key access and both generated passwords
+  were verified by a keystore import. Certificate valid through 2054-03-10.
+- Public signing certificate SHA-256:
+  `341d7767b68f4f151714bf13bfed79b9cb69181f2f8c1336a52939038181b994`.
+- The private backup `QueueGo-Merchant-Upload-Key-Backup-20261023.zip` is saved
+  separately from the store asset pack. No private key, base64 keystore,
+  passwords or secret-value file is committed to this repository.
+- GitHub Actions Secrets settings are reachable in the signed-in browser;
+  the add-secret form is ready. Installation of the four signing values is
+  pending the browser tool's required action-time confirmation for granting
+  CI use of a new signing key. No secret has been entered or submitted yet.
+- The existing certification, backend/backup and physical evidence gates remain
+  open. Creating the key is not release certification or Play publication.
+
 The Merchant app is `com.queuego.merchant`, with POS. Its current Native
 successor is `feat/native-merchant-pos-offline-20261022` at
 `382a746ad9176a03c4b7beafdfd1dbc2dad8b9ce`. Runtime source
