@@ -35,6 +35,29 @@
     }finally{riderActionInFlight.delete(o.id)}
   };
 
+  function qgOpenRideCompleteConfirm(o){
+    document.getElementById('qg-ride-complete-confirm')?.remove();
+    const cash=Number(o?.total_amount||0);
+    const overlay=document.createElement('section');
+    overlay.id='qg-ride-complete-confirm';
+    overlay.className='qg-confirm-overlay';
+    overlay.innerHTML='<div class="qg-confirm-card" role="dialog" aria-modal="true" aria-labelledby="qg-ride-complete-title">'+
+      '<h2 id="qg-ride-complete-title">ยืนยันจบเที่ยว?</h2>'+
+      '<p>ตรวจสอบว่าผู้โดยสารถึงจุดหมายและเก็บเงินสด <b>฿'+cash.toLocaleString('th-TH')+'</b> แล้ว การยืนยันจะจบเที่ยวทันที</p>'+
+      '<div class="qg-confirm-actions"><button type="button" class="qg-confirm-no">ยังไม่จบ</button><button type="button" class="qg-confirm-yes">ยืนยันจบเที่ยว</button></div></div>';
+    const cancel=overlay.querySelector('.qg-confirm-no'),confirm=overlay.querySelector('.qg-confirm-yes');
+    cancel.onclick=()=>overlay.remove();
+    confirm.onclick=async()=>{
+      if(confirm.disabled)return;
+      confirm.disabled=true;cancel.disabled=true;confirm.textContent='กำลังจบเที่ยว...';
+      const ok=await window.qgRideAction(o,'complete','จบเที่ยวแล้ว');
+      if(ok)overlay.remove();
+      else{confirm.disabled=false;cancel.disabled=false;confirm.textContent='ยืนยันจบเที่ยว'}
+    };
+    document.body.appendChild(overlay);
+    return true;
+  }
+
   qgRouteTarget=function(o){
     if(window.qgIsPassengerRide(o)){
       const pickup=statusFromRow(o)==='rider_assigned';
@@ -56,21 +79,21 @@
         '<div class="qg-dual-actions"><button class="qg-btn qg-btn-secondary" id="decline-'+esc(o.id)+'">ปฏิเสธ</button><button class="qg-btn qg-btn-primary" id="accept-'+esc(o.id)+'">รับเที่ยว</button></div></article>';
     }
     const atPickup=!!o.rider_arrived_shop_at,atDrop=!!o.rider_arrived_customer_at,cash=Number(o.total_amount||0);
-    let title='เที่ยวโดยสาร',label='นำทาง',disabled=false;
+    let title='เที่ยวโดยสาร',label='ทำรายการต่อ',disabled=false;
     if(st==='rider_assigned'){
       title=atPickup?'ถึงจุดรับผู้โดยสารแล้ว':'กำลังไปรับผู้โดยสาร';
-      label=atPickup?'ผู้โดยสารขึ้นรถแล้ว · เริ่มเดินทาง':qgNavigationStarted(o,'ridePickup')?'ถึงจุดรับแล้ว':'นำทางไปจุดรับผู้โดยสาร';
+      label=atPickup?'ผู้โดยสารขึ้นรถแล้ว · เริ่มเดินทาง':'ถึงจุดรับแล้ว';
     }else if(st==='in_progress'){
       title=atDrop?'ถึงจุดหมายแล้ว':'กำลังเดินทาง';
-      label=atDrop?'จบเที่ยว · เก็บเงินสด ฿'+cash.toLocaleString('th-TH'):qgNavigationStarted(o,'rideDropoff')?'ถึงจุดหมายแล้ว':'นำทางไปจุดหมาย';
+      label='จบเที่ยว · เก็บเงินสด ฿'+cash.toLocaleString('th-TH');
     }else disabled=true;
     return '<article class="qg-active-card"><div class="qg-active-head"><div><span class="qg-kicker">'+esc(title)+'</span><h2>'+esc(code)+'</h2></div><span class="qg-income-badge">฿'+Number(fee||0).toLocaleString('th-TH')+'</span></div>'+
       '<div class="qg-flow-card"><div class="qg-pickup-row"><span>'+QTICON.user+'</span><div><small>ผู้โดยสาร</small><b>'+esc(cust.name||'ผู้โดยสาร')+'</b></div></div>'+
       '<div class="qg-pickup-row"><span>'+QTICON.loc+'</span><div><small>จุดรับ</small><b>'+esc(o.pickup_address||'จุดรับผู้โดยสาร')+'</b></div></div>'+
       '<div class="qg-pickup-row"><span>'+QTICON.loc+'</span><div><small>จุดหมาย</small><b>'+esc(o.delivery_address||'จุดหมาย')+'</b></div></div></div>'+
-      (atDrop?'<div class="qg-flow-cash"><small>เก็บเงินสดค่าโดยสาร</small><b>฿'+cash.toLocaleString('th-TH')+'</b><span>เก็บเงินตามยอดนี้ก่อนจบเที่ยว</span></div>':'')+
+      (st==='in_progress'?'<div class="qg-flow-cash"><small>เก็บเงินสดค่าโดยสาร</small><b>฿'+cash.toLocaleString('th-TH')+'</b><span>กดจบเที่ยวแล้วระบบจะถามยืนยันอีกครั้ง</span></div>':'')+
       '<div class="qg-job-tools"><button class="qg-job-tool" id="chat-'+esc(o.id)+'">'+QTICON.chat+'<span>ติดต่อผู้โดยสาร</span></button></div>'+
-      '<button class="qg-btn qg-btn-primary qg-main-action" id="primary-nav-'+esc(o.id)+'" '+(disabled?'disabled':'')+'>'+QTICON.loc+'<span>'+esc(label)+'</span></button></article>';
+      '<button class="qg-btn qg-btn-primary qg-main-action" id="primary-action-'+esc(o.id)+'" '+(disabled?'disabled':'')+'>'+QTICON.loc+'<span>'+esc(label)+'</span></button></article>';
   }
 
   jobCardHTML=function(o,meta){
@@ -83,22 +106,9 @@
     const st=statusFromRow(o);
     if(st==='rider_assigned'){
       if(o.rider_arrived_shop_at)return window.qgRideAction(o,'start','เริ่มเดินทางแล้ว');
-      if(qgNavigationStarted(o,'ridePickup'))return window.qgRideAction(o,'arrive_pickup','ถึงจุดรับผู้โดยสารแล้ว');
-      return qgPrimaryNavigate(o);
+      return window.qgRideAction(o,'arrive_pickup','ถึงจุดรับผู้โดยสารแล้ว');
     }
-    if(st==='in_progress'){
-      if(o.rider_arrived_customer_at){
-        const cash=Number(o.total_amount||0);
-        qgOpenCashConfirmPage({
-          o,mode:'customer',amount:cash,
-          onBack:()=>{},
-          onConfirm:()=>window.qgRideAction(o,'complete','จบเที่ยวแล้ว')
-        });
-        return true;
-      }
-      if(qgNavigationStarted(o,'rideDropoff'))return window.qgRideAction(o,'arrive_dropoff','ถึงจุดหมายแล้ว');
-      return qgPrimaryNavigate(o);
-    }
+    if(st==='in_progress')return qgOpenRideCompleteConfirm(o);
     return false;
   };
 })();
