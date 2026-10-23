@@ -35,22 +35,34 @@
     }finally{riderActionInFlight.delete(o.id)}
   };
 
+  function qgRideDropoffDistanceMeters(o){
+    const lat=Number(S.pos?.lat),lng=Number(S.pos?.lng),dlat=Number(o?.delivery_latitude),dlng=Number(o?.delivery_longitude);
+    if(![lat,lng,dlat,dlng].every(Number.isFinite))return NaN;
+    return haversineKm(lat,lng,dlat,dlng)*1000;
+  }
+
+  async function qgCompleteRideNow(o){
+    return window.qgRideAction(o,'complete','จบเที่ยวแล้ว');
+  }
+
   function qgOpenRideCompleteConfirm(o){
     document.getElementById('qg-ride-complete-confirm')?.remove();
+    const meters=qgRideDropoffDistanceMeters(o);
+    if(!Number.isFinite(meters)||meters<=100)return qgCompleteRideNow(o);
     const cash=Number(o?.total_amount||0);
     const overlay=document.createElement('section');
     overlay.id='qg-ride-complete-confirm';
     overlay.className='qg-confirm-overlay';
     overlay.innerHTML='<div class="qg-confirm-card" role="dialog" aria-modal="true" aria-labelledby="qg-ride-complete-title">'+
-      '<h2 id="qg-ride-complete-title">ยืนยันจบเที่ยว?</h2>'+
-      '<p>ตรวจสอบว่าผู้โดยสารถึงจุดหมายและเก็บเงินสด <b>฿'+cash.toLocaleString('th-TH')+'</b> แล้ว การยืนยันจะจบเที่ยวทันที</p>'+
+      '<h2 id="qg-ride-complete-title">ยังห่างจากจุดส่ง '+Math.round(meters).toLocaleString('th-TH')+' เมตร</h2>'+
+      '<p>คุณอยู่ห่างจากจุดส่งเกิน 100 เมตร หากผู้โดยสารขอลงตรงนี้และเก็บเงินสด <b>฿'+cash.toLocaleString('th-TH')+'</b> แล้ว สามารถยืนยันจบเที่ยวได้</p>'+
       '<div class="qg-confirm-actions"><button type="button" class="qg-confirm-no">ยังไม่จบ</button><button type="button" class="qg-confirm-yes">ยืนยันจบเที่ยว</button></div></div>';
     const cancel=overlay.querySelector('.qg-confirm-no'),confirm=overlay.querySelector('.qg-confirm-yes');
     cancel.onclick=()=>overlay.remove();
     confirm.onclick=async()=>{
       if(confirm.disabled)return;
       confirm.disabled=true;cancel.disabled=true;confirm.textContent='กำลังจบเที่ยว...';
-      const ok=await window.qgRideAction(o,'complete','จบเที่ยวแล้ว');
+      const ok=await qgCompleteRideNow(o);
       if(ok)overlay.remove();
       else{confirm.disabled=false;cancel.disabled=false;confirm.textContent='ยืนยันจบเที่ยว'}
     };
@@ -78,7 +90,7 @@
         '<div class="qg-offer-metrics"><div><span>ระยะไปจุดรับ</span><b>'+(Number.isFinite(km)?km.toFixed(1):'-')+' กม.</b></div><div><span>เวลาประมาณ</span><b>'+(Number.isFinite(mins)?Math.ceil(mins):'-')+' นาที</b></div><div><span>รายได้</span><b class="qg-red">฿'+Number(fee||0).toLocaleString('th-TH')+'</b></div></div>'+
         '<div class="qg-dual-actions"><button class="qg-btn qg-btn-secondary" id="decline-'+esc(o.id)+'">ปฏิเสธ</button><button class="qg-btn qg-btn-primary" id="accept-'+esc(o.id)+'">รับเที่ยว</button></div></article>';
     }
-    const atPickup=!!o.rider_arrived_shop_at,atDrop=!!o.rider_arrived_customer_at,cash=Number(o.total_amount||0);
+    const atPickup=!!o.rider_arrived_shop_at,atDrop=!!o.rider_arrived_customer_at,cash=Number(o.total_amount||0),dropMeters=qgRideDropoffDistanceMeters(o),nearDrop=Number.isFinite(dropMeters)&&dropMeters<=100;
     let title='เที่ยวโดยสาร',label='ทำรายการต่อ',disabled=false;
     if(st==='rider_assigned'){
       title=atPickup?'ถึงจุดรับผู้โดยสารแล้ว':'กำลังไปรับผู้โดยสาร';

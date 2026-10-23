@@ -5,6 +5,8 @@ const riderIndex=fs.readFileSync('rider/index.html','utf8');
 const rider=fs.readFileSync('rider/rider-ride.js','utf8');
 const sql=fs.readFileSync('supabase/migrations/20261023161000_ride_integer_fare_and_completion.sql','utf8');
 const guardSql=fs.readFileSync('supabase/migrations/20261023092028_ride_unrestricted_completion_guard.sql','utf8');
+const normalizeSql=fs.readFileSync('supabase/migrations/20261023163500_ride_active_whole_baht_normalization.sql','utf8');
+const finishSql=fs.readFileSync('supabase/migrations/20261023165000_ride_complete_cash_after_order.sql','utf8');
 let checks=0;const eq=(a,b,m)=>{assert.equal(a,b,m);checks++};
 
 eq(index.includes('map.on("click",selectTap)'),true,'customer location picker must select directly on map tap');
@@ -18,16 +20,21 @@ eq(customer.includes("o.rider_longitude"),true,'customer Ride live map must cons
 eq(customer.includes("อัปเดตประมาณทุก 5 วินาที"),true,'customer must be told rider location refresh cadence');
 eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดรับของคุณ"),true,'Ride pickup picker must instruct direct tap');
 eq(customer.includes("แตะตำแหน่งบนแผนที่เพื่อปักจุดส่งของคุณ"),true,'Ride destination picker must instruct direct tap');
+eq(customer.includes('id="ride-select-center"'),false,'Ride picker must not expose the legacy center-selection control');
 
 eq(rider.includes("id=\"primary-nav-"),false,'Passenger Ride must not restore manual navigation CTA');
 eq(rider.includes("id=\"primary-action-"),true,'Passenger Ride must use the shared stage-action CTA');
 eq(rider.includes('qgOpenCashConfirmPage'),false,'Passenger Ride must not call missing cash-confirm helper');
-eq(rider.includes('function qgOpenRideCompleteConfirm(o)'),true,'Passenger Ride must show explicit finish confirmation');
-eq(rider.includes('ยืนยันจบเที่ยว?'),true,'finish confirmation copy must be visible');
-eq(rider.includes("if(st==='in_progress')return qgOpenRideCompleteConfirm(o)"),true,'in-progress Ride must confirm before completion');
+eq(rider.includes('function qgOpenRideCompleteConfirm(o)'),true,'Passenger Ride must own finish guard');
+eq(rider.includes('if(!Number.isFinite(meters)||meters<=100)return qgCompleteRideNow(o);'),true,'Passenger Ride must finish directly when within 100m');
+eq(rider.includes('คุณอยู่ห่างจากจุดส่งเกิน 100 เมตร'),true,'Passenger Ride must warn only when beyond 100m');
+eq(rider.includes('qg-confirm-yes">ยืนยันจบเที่ยว</button>'),true,'far-dropoff warning must keep explicit finish confirmation');
+eq(rider.includes("if(st==='in_progress')return qgOpenRideCompleteConfirm(o)"),true,'in-progress Ride must pass through the 100m guard');
 eq(rider.includes("return window.qgRideAction(o,'arrive_pickup'"),true,'Ride pickup arrival must not depend on a manual navigation flag');
 eq(riderIndex.includes('rider-ride.js?v=20261023-ridefix1'),true,'Rider Ride asset must be cache-busted');
 eq(riderIndex.includes('rider-20261023-ridefix1'),true,'Rider web build marker must identify Ride fix');
+eq(riderIndex.includes('.qg-confirm-yes{background:#e6002d;color:#fff}'),true,'Ride confirmation must use QueueGo red');
+eq(riderIndex.includes('qg-ride-complete-ready'),false,'Ride finish CTA must not use special green styling');
 
 eq(sql.includes("return round(greatest((c->>'minimum_fare')::numeric,fare),0);"),true,'new Ride fares must be whole baht');
 eq(sql.includes("elsif v_action='complete' and o.status='in_progress' then"),true,'Ride completion must be allowed directly from in_progress');
@@ -36,5 +43,12 @@ eq(sql.includes("rider_arrived_customer_at=coalesce(rider_arrived_customer_at,no
 eq(sql.includes("payment_method='cash'"),true,'cash payment record remains authoritative');
 eq(guardSql.includes("or (old.status='in_progress' and new.status='completed')"),true,'Ride transition guard must allow in-progress completion without arrival gate');
 eq(guardSql.includes("old.status='in_progress' and new.status='completed' and old.rider_arrived_customer_at is not null"),false,'Ride transition guard must not restore dropoff proximity prerequisite');
+eq(normalizeSql.includes("new.total_amount=round(old.total_amount,0)"),true,'legacy active Ride normalization must only round to whole baht');
+eq(normalizeSql.includes("'ride_fare_normalized'"),true,'fare normalization must leave an audit trail');
+eq(normalizeSql.includes("new.amount=round(old.amount,0)"),true,'cash payment normalization must stay locked to whole-baht rounding');
+const orderCompletePos=finishSql.indexOf("set status='completed'");
+const paymentPaidPos=finishSql.indexOf("update public.payments");
+eq(orderCompletePos>=0&&paymentPaidPos>orderCompletePos,true,'Ride completion must complete the order before settling cash so the cash guard allows paid');
+eq(finishSql.includes("elsif v_action='complete' and o.status='in_progress' then"),true,'Ride finish transaction must remain available from in_progress');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Passenger Ride whole-baht fare, direct pin, live rider map, no manual nav gate and guarded completion'}));
