@@ -46,9 +46,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 /* RIDER V5 COMPACT DENSITY — more information per viewport while keeping primary touch targets practical. */
 .qg-stage{position:relative;width:100%;height:100dvh;min-height:100dvh;overflow:hidden;background:#f6f5f6}.qg-map{position:absolute;inset:0;background:#ece9e7}
 .qg-topbar{position:absolute;z-index:800;top:calc(7px + var(--safeT));left:10px;right:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;pointer-events:none}.qg-speed-pill,.qg-online-pill{pointer-events:auto;min-height:44px;border:1px solid #eee7e9;background:rgba(255,255,255,.97);backdrop-filter:blur(18px);box-shadow:0 10px 30px #2a18201c;border-radius:18px;display:flex;align-items:center}.qg-speed-pill{padding:4px 12px;gap:6px;min-width:78px;justify-content:center}.qg-speed-pill b{font-size:22px;line-height:1;font-weight:1000;color:#211e20;font-variant-numeric:tabular-nums}.qg-speed-pill span{font-size:8px;font-weight:900;color:#8d8589}.qg-online-pill{padding:4px 5px 4px 10px;gap:6px}.qg-online-pill>i{width:8px;height:8px;border-radius:50%;background:#b7b2b4}.qg-online-pill.on>i{background:#18b968}.qg-online-pill>span{font-size:10px;font-weight:900;color:#756e72}.qg-online-switch{width:43px;height:29px;border:0;border-radius:999px;background:#d9d5d7;position:relative;padding:0}.qg-online-switch:after{content:"";position:absolute;width:23px;height:23px;left:3px;top:3px;border-radius:50%;background:#fff;box-shadow:0 2px 7px #0002;transition:.18s}.qg-online-pill.on .qg-online-switch{background:#1fbe70}.qg-online-pill.on .qg-online-switch:after{transform:translateX(14px)}
-.qg-route-badge{display:none;position:absolute;z-index:720;top:calc(60px + var(--safeT));left:10px;max-width:min(76vw,350px);padding:8px 10px;border-radius:17px;background:#171519;color:#fff;box-shadow:0 12px 28px #0003;align-items:center;gap:9px}.qg-route-badge.show{display:flex}.qg-route-icon{width:34px;height:34px;border-radius:11px;background:var(--qg-red);display:grid;place-items:center}.qg-route-icon .ico{width:19px}.qg-route-badge strong{display:block;font-size:12px}.qg-route-badge small{display:block;margin-top:2px;color:#cfc9cc;font-size:8px}.qg-map-tools{position:absolute;z-index:720;right:10px;top:calc(64px + var(--safeT));display:flex;flex-direction:column;gap:8px}.qg-map .maplibregl-ctrl-top-left{top:calc(112px + var(--safeT));left:2px}.qg-map .maplibregl-ctrl-compass{width:40px;height:40px}.qg-map-button{width:44px;height:44px;border:1px solid #eee5e8;border-radius:50%;background:rgba(255,255,255,.97);box-shadow:0 10px 28px #28171d21;color:var(--qg-red);display:grid;place-items:center}.qg-map-button .ico{width:23px;height:23px}
+.qg-route-badge{display:none;position:absolute;z-index:760;top:calc(7px + var(--safeT));left:10px;right:10px;width:auto;max-width:680px;margin:auto;padding:10px;border:1px solid #e8e2e4;border-radius:20px;background:rgba(255,255,255,.98);color:#1f1b1d;box-shadow:0 12px 30px #29182020;align-items:center;gap:10px;backdrop-filter:blur(18px)}.qg-route-badge.show{display:flex}.qg-route-icon{width:56px;height:56px;flex:0 0 56px;border-radius:17px;background:var(--qg-red);color:#fff;display:grid;place-items:center}.qg-route-icon svg{width:34px;height:34px;stroke:currentColor}.qg-route-copy{min-width:0;flex:1}.qg-route-main{display:flex;align-items:baseline;gap:8px}.qg-route-main strong{font-size:20px;line-height:1;font-variant-numeric:tabular-nums}.qg-route-road{display:block;margin-top:3px;font-size:14px;font-weight:1000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qg-route-summary{display:block;margin-top:2px;color:#777074;font-size:8px;font-weight:850}.qg-route-next{display:none;margin-top:6px;padding:5px 7px;border-radius:10px;background:#fff0f3;color:#5e5055;font-size:8.5px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qg-route-next.show{display:block}.qg-route-next b{color:var(--qg-red);margin-right:5px}.qg-route-customer-note{display:none;margin-top:6px;padding:6px 8px;border-radius:10px;background:#fff7e2;color:#4d4030}.qg-route-customer-note.show{display:block}.qg-route-customer-note b{display:block;color:#8a5a00;font-size:8px}.qg-route-customer-note span{display:block;margin-top:2px;font-size:9.5px;font-weight:850;line-height:1.35;white-space:normal}.qg-stage:has(.qg-route-badge.has-customer-note) .qg-topbar,.qg-stage:has(.qg-route-badge.has-customer-note) .qg-map-tools{top:calc(166px + var(--safeT))}.qg-stage:has(.qg-route-badge.show) .qg-topbar{top:calc(118px + var(--safeT))}.qg-map-tools{position:absolute;z-index:720;right:10px;top:calc(64px + var(--safeT));display:flex;flex-direction:column;gap:8px}.qg-stage:has(.qg-route-badge.show) .qg-map-tools{top:calc(118px + var(--safeT))}.qg-map .maplibregl-ctrl-top-left{top:calc(112px + var(--safeT));left:2px}.qg-map .maplibregl-ctrl-compass{width:40px;height:40px}.qg-map-button{width:44px;height:44px;border:1px solid #eee5e8;border-radius:50%;background:rgba(255,255,255,.97);box-shadow:0 10px 28px #28171d21;color:var(--qg-red);display:grid;place-items:center}.qg-map-button .ico{width:23px;height:23px}
 .qg-home-dock{position:absolute;z-index:760;left:8px;right:8px;bottom:calc(68px + var(--safeB));max-height:calc(100dvh - 132px - var(--safeT) - var(--safeB));overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:transparent;scrollbar-width:none}.qg-home-dock::-webkit-scrollbar{display:none}.qg-dock-toggle{display:flex;width:58px;height:30px;margin:0 18px 6px auto;border:1px solid #eee5e8;border-radius:999px;background:rgba(255,255,255,.98);box-shadow:0 8px 24px #28171d1c;align-items:center;justify-content:center;color:var(--qg-red);font-size:18px;font-weight:1000}.qg-home-dock.qg-dock-collapsed{max-height:36px!important;overflow:hidden}.qg-home-dock.qg-dock-collapsed .qg-dock-content{display:none}.qg-home-card,.qg-offer-card,.qg-active-card{background:rgba(255,255,255,.985);border:1px solid #eee5e8;border-radius:21px;box-shadow:0 16px 36px rgba(51,22,31,.13);padding:12px}.qg-home-title{display:flex;align-items:flex-start;gap:9px}.qg-home-icon{width:44px;height:44px;border-radius:14px;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;flex:none}.qg-home-icon .ico{width:24px;height:24px}.qg-home-title h2{margin:1px 0 2px;font-size:18px;line-height:1.18}.qg-home-title p{margin:0;color:#81797d;font-size:10px;line-height:1.45}.qg-home-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}.qg-home-stats>div{padding:8px 6px;border-radius:15px;background:#faf6f7;text-align:center}.qg-home-stats span{display:block;color:#8a8387;font-size:8px}.qg-home-stats b{display:block;margin-top:3px;font-size:13px}.qg-home-card>.qg-btn{width:100%;margin-top:8px;min-height:46px}.qg-home-tip{margin-top:7px;padding:8px 10px;border-radius:14px;background:#fff4f6;color:#7b6870;font-size:9px;line-height:1.45}
 .qg-offer-head,.qg-active-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.qg-active-head-actions{display:flex;align-items:flex-start;gap:6px}.qg-card-map-mode{min-width:62px;height:42px;padding:4px 8px;border:1px solid #eee5e8;border-radius:14px;background:#fff;color:var(--qg-red);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:8px;font-weight:900;line-height:1}.qg-card-map-mode .ico{width:19px;height:19px}.qg-card-map-mode.follow{background:#fff0f3}.qg-offer-head h2,.qg-active-head h2{margin:2px 0 0;font-size:24px;letter-spacing:-.6px}.qg-offer-badge,.qg-income-badge{flex:none;padding:6px 9px;border-radius:13px;background:#fff0f3;color:var(--qg-red);font-size:13px;font-weight:1000}.qg-job-row{display:grid;grid-template-columns:42px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f1ebed}.qg-job-row:last-of-type{border-bottom:0}.qg-job-row>span,.qg-job-row>.qg-shop-logo{width:42px;height:42px;border-radius:14px;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;object-fit:cover}.qg-job-row small{display:block;color:#8d8589;font-size:8px}.qg-job-row b{display:block;margin-top:2px;font-size:12px;line-height:1.35}.qg-job-row em{font-style:normal;color:#8a8387;font-size:9px;white-space:nowrap}.qg-shop-logo-fallback{font-weight:1000;font-size:18px}.qg-offer-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}.qg-offer-metrics>div{padding:7px 6px;border-radius:14px;background:#faf7f8;text-align:center}.qg-offer-metrics span{display:block;color:#8d8589;font-size:8px}.qg-offer-metrics b{display:block;margin-top:3px;font-size:12px}.qg-dual-actions{display:grid;grid-template-columns:1fr 1.25fr;gap:7px;margin-top:8px}.qg-active-status{margin-top:7px;padding:8px 9px;border-radius:14px;background:#fff6f8}.qg-active-status small{display:block;color:#8c8286;font-size:8px}.qg-active-status b{display:block;margin-top:3px;font-size:12px;line-height:1.4}.qg-customer-note{margin-top:6px;padding:8px 9px;border-radius:14px;background:#fff9ea}.qg-customer-note small{display:block;color:#8d8589;font-size:8px}.qg-customer-note b{display:block;margin-top:3px;font-size:11px;line-height:1.45}.qg-job-tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px}.qg-job-tool{height:46px;border:1px solid #ede5e8;border-radius:15px;background:#fff;color:#282427;display:flex;align-items:center;justify-content:center;gap:6px;font-size:9px;font-weight:850}.qg-job-tool .ico{width:18px;height:18px}.qg-main-action{width:100%;margin-top:7px;min-height:46px}
+.qg-active-control{padding:12px 12px 13px}.qg-active-control .qg-main-action{min-height:52px}.qg-active-step{display:flex;align-items:center;gap:10px}.qg-step-number{width:38px;height:38px;border-radius:50%;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;font-size:17px;font-weight:1000;flex:none}.qg-step-copy{min-width:0;flex:1}.qg-step-copy b{display:block;color:var(--qg-red);font-size:15px;line-height:1.25}.qg-step-copy small{display:block;margin-top:3px;color:#8b8387;font-size:9px}.qg-active-destination{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:center;margin-top:10px;padding-top:9px;border-top:1px solid #f0eaec}.qg-active-destination>.qg-shop-logo{width:44px;height:44px}.qg-active-destination small{display:block;color:#8d8589;font-size:8px}.qg-active-destination b{display:block;margin-top:2px;font-size:13px}.qg-active-destination p{margin:3px 0 0;color:#777177;font-size:9px;line-height:1.35}.qg-active-cash{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:9px 11px;border-radius:14px;background:#fff6f8}.qg-active-cash small,.qg-active-cash span{display:block}.qg-active-cash small{color:#8d8589;font-size:8px}.qg-active-cash span{margin-top:2px;font-size:9px;font-weight:850}.qg-active-cash b{color:var(--qg-red);font-size:21px}.qg-active-items{margin-top:8px;padding:9px 11px;border-radius:14px;background:#faf7f8}.qg-active-items-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.qg-active-items-head small{color:#8d8589;font-size:8px;font-weight:850}.qg-active-items-head b{color:var(--qg-red);font-size:9px}.qg-active-item-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:5px}.qg-active-item-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:850}.qg-active-item-row em{font-style:normal;color:#8d8589;font-size:9px;flex:none}.qg-active-items-more{display:block;margin-top:4px;color:#8d8589;font-size:8px}
 .qg-bottom-nav{position:absolute;z-index:900;left:8px;right:8px;bottom:calc(6px + var(--safeB));height:58px;padding:4px;border:1px solid #eee6e8;border-radius:20px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);box-shadow:0 12px 34px #33192320;display:grid;grid-template-columns:repeat(4,1fr)}.qg-nav-item{position:relative;border:0;border-radius:16px;background:transparent;color:#8d878b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:8px;font-weight:850}.qg-nav-item .ico{width:19px;height:19px}.qg-nav-item.active{background:#fff0f3;color:var(--qg-red)}.qg-nav-badge{position:absolute;top:2px;left:calc(50% + 6px);display:none;min-width:15px;height:15px;padding:0 4px;border-radius:999px;background:#ff3b30;color:#fff;font-size:8px;line-height:15px;font-style:normal}
 .qg-panel{position:absolute;z-index:840;inset:0;padding:calc(15px + var(--safeT)) 14px calc(78px + var(--safeB));overflow:auto;background:#f8f7f8;display:none;-webkit-overflow-scrolling:touch}.qg-panel.show{display:block}.qg-panel-head{max-width:720px;margin:0 auto 14px;display:grid;grid-template-columns:44px 1fr 64px;align-items:center;gap:8px}.qg-panel-head h1{text-align:center;margin:0;font-size:26px}.qg-mini-word{font-size:9px;color:var(--qg-red);font-weight:1000;text-align:right}
 .qg-earn-shell{max-width:720px;margin:auto}.qg-period{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#fff;border:1px solid #eee6e8;border-radius:18px;padding:5px}.qg-period button{height:44px;border:0;border-radius:14px;background:transparent;color:#8b8488;font-weight:900}.qg-period button.active{background:var(--qg-red);color:#fff}.qg-loading-card{padding:28px 16px;text-align:center;color:#8a8387}.qg-earn-summary{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.qg-stat{padding:16px;border-radius:20px;background:#fff;border:1px solid #eee6e8}.qg-stat span{display:block;color:#8a8387;font-size:9px}.qg-stat b{display:block;margin-top:6px;font-size:21px}.qg-stat-red b{color:var(--qg-red)}.qg-stat-green{background:#f2fbf6}.qg-stat-blue{background:#f3f8ff}.qg-stat-amber{background:#fff9ef}.qg-ledger{margin-top:12px}.qg-cash-card,.qg-recent{padding:15px;border:1px solid #eee6e8;border-radius:22px;background:#fff;margin-bottom:10px}.qg-cash-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.qg-cash-grid>div{padding:11px;border-radius:14px;background:#faf7f8}.qg-cash-grid span{display:block;color:#8d8589;font-size:8px}.qg-cash-grid b{display:block;margin-top:4px;font-size:14px}.qg-recent article{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #f0eaec}.qg-recent article:last-child{border-bottom:0}.qg-recent small,.qg-recent span{color:#8a8387;font-size:8px}
@@ -96,6 +97,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-cash-confirm-slide{margin:0;min-height:62px;border-radius:999px;background:linear-gradient(90deg,#f04455 0 var(--slide-progress),#f4eff1 var(--slide-progress) 100%)}
 .qg-cash-confirm-dock>small{display:block;margin-top:10px;text-align:center;color:#9b9598;font-size:9px;font-weight:750}
 @media(max-height:700px){.qg-cash-confirm-main{padding-top:34px}.qg-cash-visual{margin-bottom:22px}.qg-cash-confirm-amount{font-size:48px}}
+.qg-confirm-overlay{position:fixed;z-index:19050;inset:0;background:rgba(20,18,19,.34);display:grid;place-items:center;padding:18px;animation:qgConfirmFade .15s ease-out both}
+.qg-confirm-card{width:min(100%,430px);padding:18px;border-radius:24px;background:#fff;box-shadow:0 22px 64px rgba(20,18,19,.22);animation:qgConfirmPop .15s ease-out both}
+.qg-confirm-card h2{margin:0;font-size:20px;line-height:1.25}.qg-confirm-card p{margin:7px 0 0;color:#81797d;font-size:11px;line-height:1.55}
+.qg-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}.qg-confirm-actions button{min-height:50px;border:0;border-radius:16px;font-weight:900}.qg-confirm-no{background:#f3f0f1;color:#3e383b}.qg-confirm-yes{background:#159947;color:#fff}
+@keyframes qgConfirmFade{from{opacity:0}to{opacity:1}}@keyframes qgConfirmPop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
 </style>
 <link rel="stylesheet" href="../queuego-credit.css">
 <script src="../queuego-credit.js"></script>
@@ -227,12 +233,40 @@ function qgRiderVoiceActivate(){
   if(controller&&S.user&&readSession()?.sessionId)controller.startIncomingWatch();
   return controller;
 }
-function qgRiderVoiceCall(order,label){
+function qgRiderVoiceCallTarget(order,target,label){
   if(!order?.id)return toast('ไม่พบออเดอร์สำหรับการโทร');
+  if(!['shop','customer'].includes(target))return toast('ปลายทางสายโทรไม่ถูกต้อง');
   if(['completed','cancelled','no_rider_available'].includes(String(order.status||'').toLowerCase()))return toast('ออเดอร์นี้จบแล้ว ไม่สามารถโทรผ่าน QueueGo ได้');
   const controller=qgRiderVoiceActivate();
   if(!controller)return toast('ระบบโทรผ่าน QueueGo ยังไม่พร้อม');
-  controller.start(order.id,'customer',label||order._customer?.name||'ลูกค้า').catch(error=>toast(error?.message||'โทรผ่าน QueueGo ไม่สำเร็จ'));
+  const fallback=target==='shop'?(order._shop?.shop_name||'ร้านค้า'):(order._customer?.name||'ลูกค้า');
+  controller.start(order.id,target,label||fallback).catch(error=>toast(error?.message||'โทรผ่าน QueueGo ไม่สำเร็จ'));
+}
+function qgRiderVoiceCall(order,label){
+  return qgRiderVoiceCallTarget(order,'customer',label);
+}
+async function qgRiderVoiceCallForStage(order){
+  if(!order?.id)return toast('ไม่พบออเดอร์สำหรับการโทร');
+  const pickup=['rider_assigned','assigned','preparing','ready'].includes(statusFromRow(order));
+  if(!pickup)return qgRiderVoiceCallTarget(order,'customer',order._customer?.name||'ลูกค้า');
+  if(order.market_order_id){
+    const current=(order._marketPickups||[]).find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase()));
+    const pickupId=current?.pickup_id;
+    if(pickupId){
+      try{
+        const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+        const rows=await sbTable('market_order_pickups?select=order_id&id=eq.'+encodeURIComponent(pickupId)+'&limit=1',{token});
+        const childId=Array.isArray(rows)?rows[0]?.order_id:null;
+        if(!childId)throw Error('ไม่พบออเดอร์ของจุดรับนี้');
+        const child={...order,id:childId,_shop:{...(order._shop||{}),shop_name:current.shop_name||order._shop?.shop_name||'ร้านค้า'}};
+        return qgRiderVoiceCallTarget(child,'shop',current.shop_name||'ร้านค้า');
+      }catch(error){
+        toast(error?.message||'ยังระบุร้านของจุดรับนี้ไม่ได้');
+        return;
+      }
+    }
+  }
+  return qgRiderVoiceCallTarget(order,'shop',order._shop?.shop_name||'ร้านค้า');
 }
 
 function esc(v){ return String(v??'').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
@@ -476,6 +510,50 @@ function riderDraftOpen(){return new Promise((resolve,reject)=>{const r=indexedD
 async function saveRiderDraftFile(id,data,name){try{const db=await riderDraftOpen();await new Promise((res,rej)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').put({data,name,at:Date.now()},id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});db.close();}catch(e){console.warn('draft save failed',e);}}
 async function loadRiderDraftFile(id){try{const db=await riderDraftOpen();const v=await new Promise((res,rej)=>{const tx=db.transaction('files','readonly');const r=tx.objectStore('files').get(id);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error);});db.close();return v;}catch(e){return null;}}
 async function clearRiderDraft(){try{const db=await riderDraftOpen();await new Promise((res,rej)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').clear();tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});db.close();}catch(e){}}
+async function deleteRiderDraftFile(id){try{const db=await riderDraftOpen();await new Promise((res,rej)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});db.close();}catch(e){console.warn('draft delete failed',e);}}
+function qgProofDraftKey(kind,o){return 'proof:'+String(kind||'evidence')+':'+String(o?.id||o?.market_order_id||'unknown');}
+function qgCanvasBlob(canvas,quality){return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('บีบอัดรูปไม่สำเร็จ')),'image/jpeg',quality));}
+async function qgLoadImageFile(file){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),im=new Image();im.onload=()=>{URL.revokeObjectURL(url);resolve(im)};im.onerror=()=>{URL.revokeObjectURL(url);reject(Error('อ่านรูปไม่สำเร็จ'))};im.src=url;});}
+async function qgPrepareProofFile(file,maxBytes=500*1024){
+  if(!file||!String(file.type||'').startsWith('image/'))throw Error('กรุณาใช้ไฟล์รูปภาพ');
+  const im=await qgLoadImageFile(file);
+  let scale=Math.min(1,1600/Math.max(im.naturalWidth||im.width,im.naturalHeight||im.height));
+  let last=null;
+  for(let resize=0;resize<4;resize++){
+    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round((im.naturalWidth||im.width)*scale));canvas.height=Math.max(1,Math.round((im.naturalHeight||im.height)*scale));
+    const ctx=canvas.getContext('2d',{alpha:false});ctx.drawImage(im,0,0,canvas.width,canvas.height);
+    for(const quality of [0.82,0.72,0.62,0.52]){
+      const blob=await qgCanvasBlob(canvas,quality);last=blob;if(blob.size<=maxBytes)return new File([blob],(file.name||'queuego-proof').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+    }
+    scale*=0.82;
+  }
+  if(last&&last.size<=maxBytes*1.08)return new File([last],(file.name||'queuego-proof').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+  throw Error('รูปยังใหญ่เกิน 500 KB กรุณาถ่ายใหม่ให้ใกล้ขึ้น');
+}
+async function qgPersistProofFile(kind,o,file){const prepared=await qgPrepareProofFile(file);const data=await readFileAsDataURL(prepared);await saveRiderDraftFile(qgProofDraftKey(kind,o),data,prepared.name||'queuego-proof.jpg');return {file:prepared,data};}
+async function qgRestoreProofFile(kind,o){const draft=await loadRiderDraftFile(qgProofDraftKey(kind,o));if(!draft?.data)return null;try{const response=await fetch(draft.data),blob=await response.blob();return {file:new File([blob],draft.name||'queuego-proof.jpg',{type:blob.type||'image/jpeg',lastModified:draft.at||Date.now()}),data:draft.data};}catch(e){return null;}}
+async function qgClearProofFile(kind,o){await deleteRiderDraftFile(qgProofDraftKey(kind,o));}
+function qgConfirmPickupReceived(){return new Promise(resolve=>{
+  document.getElementById('qg-pickup-confirm-overlay')?.remove();
+  const overlay=document.createElement('section');overlay.id='qg-pickup-confirm-overlay';overlay.className='qg-confirm-overlay';
+  overlay.innerHTML='<div class="qg-confirm-card" role="dialog" aria-modal="true" aria-labelledby="qg-pickup-confirm-title"><h2 id="qg-pickup-confirm-title">ได้รับอาหารแล้วใช่ไหม?</h2><p>ตรวจว่ารายการครบและเก็บรูปใบเสร็จไว้แล้ว ก่อนเริ่มนำส่งให้ลูกค้า</p><div class="qg-confirm-actions"><button type="button" class="qg-confirm-no">ไม่ กำลังรออยู่</button><button type="button" class="qg-confirm-yes">ใช่ ได้รับแล้ว</button></div></div>';
+  const done=value=>{overlay.remove();resolve(value)};overlay.querySelector('.qg-confirm-no').onclick=()=>done(false);overlay.querySelector('.qg-confirm-yes').onclick=()=>done(true);document.body.appendChild(overlay);
+});}
+function qgBindSlideConfirm(root,onComplete){
+  const input=root?.querySelector('input[type=range]');if(!root||!input)return;
+  let busy=false;
+  const sync=()=>root.style.setProperty('--slide-progress',Math.max(0,Math.min(100,Number(input.value)||0))+'%');
+  const reset=()=>{input.value='0';sync();root.classList.remove('is-busy');input.disabled=false;busy=false};
+  input.oninput=sync;sync();
+  input.onchange=async()=>{
+    if(busy)return;
+    const value=Number(input.value)||0;
+    if(value<100){root.style.transition='background .2s ease-out';reset();setTimeout(()=>{root.style.transition=''},220);return;}
+    busy=true;input.disabled=true;root.classList.add('is-busy');
+    try{if(typeof navigator.vibrate==='function')navigator.vibrate(20);await onComplete();}
+    catch(e){console.warn('slide confirm failed',e);reset();}
+  };
+}
 async function riderFilePreview(inputId,previewId){
   const input=document.getElementById(inputId),img=document.getElementById(previewId);
   if(!input||!input.files[0]) return;
@@ -784,15 +862,21 @@ async function qgRequestRiderRoute(from,to,signal){
   if(!routes.length)throw Error('QueueGo route unavailable');
   const dist=Number(route.distance)||0;
   const time=Number(route.duration)||Number(route.estimatedDuration)||0;
-  return {routes,dist,time,routeId:String(route.route_id||'')};
+  const instructions=[];
+  for(const leg of Array.isArray(route.legs)?route.legs:[]){
+    for(const step of Array.isArray(leg?.steps)?leg.steps:[]){
+      instructions.push({turnCode:Number.isFinite(Number(step?.vendor_type))?Number(step.vendor_type):7,roadName:String(step?.name||'').trim(),distance:Math.max(0,Number(step?.distance)||0),duration:Math.max(0,Number(step?.duration)||0)});
+    }
+  }
+  return {routes,dist,time,routeId:String(route.route_id||''),instructions};
 }
-const RIDER_ROUTE_OFF_ROUTE_METERS=60;
-const RIDER_ROUTE_REROUTE_HITS=3;
+const RIDER_ROUTE_OFF_ROUTE_METERS=30;
+const RIDER_ROUTE_REROUTE_SUSTAIN_MS=3000;
 const RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000;
-let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteHits=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderPuckHeadingFix=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
+let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null,riderRouteGeometry=[],riderRouteOffRouteSince=0,riderRouteLastRerouteAt=0,riderNavigationCameraActive=false,riderPuckHeading=null,riderPuckHeadingFix=null,riderGpsCadenceMs=1000,riderLastGpsFixAt=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;
 function clearRiderRoute(){
   riderRouteRequest?.controller.abort();riderRouteRequest=null;riderRouteCache=null;riderRouteGeometry=[];
-  riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0;
+  riderRouteOffRouteSince=0;riderRouteLastRerouteAt=0;
   (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
   const badge=document.getElementById('route-badge');if(badge)badge.style.display='none';
 }
@@ -813,12 +897,40 @@ function qgRenderRiderRemainingRoute(position){
     window.QueueGoMapWeb.addGeoJsonLine(S.map,id,line,{color:'#e6002d',width:12,arrows:true});
   });
 }
+function qgTurnPhrase(code){return ({0:'เลี้ยวซ้าย',1:'เลี้ยวขวา',2:'เบี่ยงซ้าย',3:'เบี่ยงขวา',4:'กลับรถ',5:'ตรงไป',6:'ขึ้นทางด่วน',9:'ถึงจุดหมายแล้ว',11:'ขึ้นเรือ'})[Number(code)]||null}
+function qgTurnSvg(code){
+  const common='viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"';
+  const n=Number(code),path=n===0?'<path d="M14 20v-7H6m0 0 4-4m-4 4 4 4"/>':n===1?'<path d="M10 20v-7h8m0 0-4-4m4 4-4 4"/>':n===2?'<path d="M14 20v-5l-7-7m0 0 .5 5m-.5-5 5 .5"/>':n===3?'<path d="M10 20v-5l7-7m0 0-.5 5m.5-5-5 .5"/>':n===4?'<path d="M15 20v-8a5 5 0 0 0-10 0v2m0 0 3-3m-3 3-3-3"/>':n===9?'<path d="M12 21v-7"/><circle cx="12" cy="8" r="3"/>':'<path d="M12 21V4m0 0-4 4m4-4 4 4"/>';
+  return '<svg '+common+'>'+path+'</svg>';
+}
+function qgUpcomingManeuvers(instructions,traveled,totalDistance){
+  const list=Array.isArray(instructions)?instructions:[],out=[];let actionAt=0;
+  for(let i=0;i<list.length;i++){const step=list[i],phrase=qgTurnPhrase(step.turnCode);if(i>0&&phrase&&actionAt+15>=traveled){out.push({step,distance:Math.max(0,actionAt-traveled),phrase});if(out.length>=2)break}actionAt+=Math.max(0,Number(step.distance)||0)}
+  if(!out.length)out.push({step:{turnCode:9,roadName:''},distance:Math.max(0,Number(totalDistance||0)-traveled),phrase:'ถึงจุดหมายแล้ว'});
+  return out;
+}
+function qgRouteDistanceText(meters){const m=Math.max(0,Number(meters)||0);return m<1000?Math.round(m/10)*10+' ม.':(m/1000).toFixed(1)+' กม.'}
+function qgUpdateManeuverHud(cache,remaining,length){
+  const badge=document.getElementById('route-badge');if(!badge||!cache)return;
+  const total=Math.max(0,Number(cache.dist)||0),ratio=length>0?Math.max(0,Math.min(1,remaining/length)):1,traveled=total*(1-ratio);
+  const upcoming=qgUpcomingManeuvers(cache.instructions,traveled,total),next=upcoming[0],following=upcoming[1];
+  const distanceEl=document.getElementById('route-maneuver-distance'),roadEl=document.getElementById('route-road'),nextEl=document.getElementById('route-next'),iconEl=document.getElementById('route-turn-icon'),noteEl=document.getElementById('route-customer-note');
+  if(distanceEl)distanceEl.textContent=qgRouteDistanceText(next?.distance||0);
+  if(roadEl)roadEl.textContent=next?.step?.roadName||next?.phrase||cache.label||'ไปตามเส้นทาง';
+  if(iconEl)iconEl.innerHTML=qgTurnSvg(next?.step?.turnCode);
+  if(nextEl){const show=!!following&&((next?.distance??Infinity)<=400||(following?.distance??Infinity)<=300);nextEl.classList.toggle('show',show);nextEl.innerHTML=show?'<b>ถัดไป</b>'+esc(following.phrase+'ใน '+qgRouteDistanceText(following.distance)+(following.step?.roadName?' · '+following.step.roadName:'')):''}
+  if(noteEl){
+    const serviceRemaining=total*ratio,note=String(cache.customerNote||'').trim(),showNote=!!note&&serviceRemaining<=300;
+    noteEl.classList.toggle('show',showNote);badge.classList.toggle('has-customer-note',showNote);
+    noteEl.innerHTML=showNote?'<b>หมายเหตุจากลูกค้า</b><span>'+esc(note)+'</span>':'';
+  }
+}
 function qgUpdateRiderRouteProgress(decision){
   const cache=riderRouteCache,match=decision?.routeMatch;
   if(!cache||cache.map!==S.map||!match||decision.routeBearingRejected)return false;
   const remaining=qgFiniteOrNull(decision.remainingRouteMeters),length=qgFiniteOrNull(match.geometryDistanceMeters);
   const offRoute=qgFiniteOrNull(match.offRouteMeters),accuracy=qgFiniteOrNull(S.pos?.accuracy);
-  if(remaining===null||length===null||length<=0||offRoute===null||offRoute>60||(accuracy!==null&&accuracy>50))return false;
+  if(remaining===null||length===null||length<=0||offRoute===null||offRoute>RIDER_ROUTE_OFF_ROUTE_METERS||(accuracy!==null&&accuracy>35))return false;
   const totalDistance=qgFiniteOrNull(cache.dist),totalTime=qgFiniteOrNull(cache.time);
   if(totalDistance===null||totalDistance<=0||!cache.label)return false;
   const ratio=Math.max(0,Math.min(1,remaining/length)),meters=totalDistance*ratio;
@@ -826,12 +938,13 @@ function qgUpdateRiderRouteProgress(decision){
   const distance=meters<1000?Math.round(meters/10)*10+' ม.':(meters/1000).toFixed(1)+' กม.';
   const eta=totalTime!==null&&totalTime>0?' • ประมาณ '+Math.max(1,Math.ceil(totalTime*ratio/60))+' นาที':'';
   txt.textContent=cache.label+' • '+distance+eta;
+  qgUpdateManeuverHud(cache,remaining,length);
   return true;
 }
 function qgRiderRouteNeedsReroute(pos,scope,map){
   if(!riderRouteCache||riderRouteCache.scope!==scope||riderRouteCache.map!==map||!riderRouteGeometry.length)return true;
   const accuracy=qgFiniteOrNull(pos?.accuracy);
-  if(accuracy!==null&&accuracy>50)return false;
+  if(accuracy!==null&&accuracy>35)return false;
   const decision=window.QueueGoMapWeb?.navigationCameraDecision?.({
     lat:Number(pos.lat),lng:Number(pos.lng),
     speed:qgFiniteOrNull(pos.speed),bearing:qgFiniteOrNull(pos.bearing),accuracy,
@@ -842,15 +955,15 @@ function qgRiderRouteNeedsReroute(pos,scope,map){
   const speed=qgFiniteOrNull(pos?.speed);
   const directionConflict=decision?.routeBearingRejected===true&&(speed===null||speed>=2);
   if(offRoute<=RIDER_ROUTE_OFF_ROUTE_METERS&&!directionConflict){
-    riderRouteOffRouteHits=0;
+    riderRouteOffRouteSince=0;
     return false;
   }
-  riderRouteOffRouteHits+=1;
-  if(riderRouteOffRouteHits<RIDER_ROUTE_REROUTE_HITS)return false;
   const now=Date.now();
+  if(!riderRouteOffRouteSince){riderRouteOffRouteSince=now;return false;}
+  if(now-riderRouteOffRouteSince<RIDER_ROUTE_REROUTE_SUSTAIN_MS)return false;
   if(riderRouteLastRerouteAt&&now-riderRouteLastRerouteAt<RIDER_ROUTE_REROUTE_COOLDOWN_MS)return false;
   riderRouteLastRerouteAt=now;
-  riderRouteOffRouteHits=0;
+  riderRouteOffRouteSince=0;
   return true;
 }
 function disposeRiderMap(){
@@ -1389,7 +1502,7 @@ function drawLaundryRoute(){
   const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');if(badge)badge.style.display='block';if(txt)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
   request.task=(async()=>{
     try{
-      const {routes,dist,time,routeId}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
+      const {routes,dist,time,routeId,instructions}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{
@@ -1401,7 +1514,7 @@ function drawLaundryRoute(){
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
+      riderRouteOffRouteSince=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label,instructions};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
@@ -1425,6 +1538,7 @@ function drawActiveRoute(){
   const lat=useMarketPickup?nextPickup.latitude:(useNormalPickup?order.pickup_latitude:order.delivery_latitude);
   const lon=useMarketPickup?nextPickup.longitude:(useNormalPickup?order.pickup_longitude:order.delivery_longitude);
   const targetKey=useMarketPickup?String(nextPickup.pickup_id||nextPickup.pickup_sequence):(useNormalPickup?'shop':'customer');
+  const customerNote=!useMarketPickup&&!useNormalPickup?qgCleanOrderNote(order.note):'';
   const label=useMarketPickup?'ไปร้าน '+Number(nextPickup.pickup_sequence||1)+' · '+String(nextPickup.shop_name||'ร้านค้า'):(useNormalPickup?'ไปร้าน':'ไปหาลูกค้า');
   if(!validRiderCoordinate(pos.lat,pos.lng)||!validRiderCoordinate(lat,lon)){clearRiderRoute();return Promise.resolve()}
   const scope=JSON.stringify([userId,session?.sessionId,isOfferPreview?'offer':'active',order.market_order_id||order.route_bundle_id||order.id,order.id,targetKey,Number(lat),Number(lon)]);
@@ -1459,7 +1573,7 @@ function drawActiveRoute(){
   if(isOfferPreview&&!riderRouteCache)focusRiderNavigation(map,pos,{lat:Number(lat),lng:Number(lon)});
   request.task=(async()=>{
     try{
-      const {routes,dist,time,routeId}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lon)},controller.signal);
+      const {routes,dist,time,routeId,instructions}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lon)},controller.signal);
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{
@@ -1471,8 +1585,9 @@ function drawActiveRoute(){
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteHits=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label};
+      riderRouteOffRouteSince=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label,instructions,customerNote};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
+      if(!isOfferPreview&&S.activeTab==='home')renderHomeDock();
     }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
   })();riderRouteRequest=request;return request.task;
@@ -1682,7 +1797,7 @@ function qgNavHTML(){
 }
 function renderStage(){
   stopPolling();disposeRiderMap();
-  document.getElementById('app').innerHTML=`<div class="stage qg-stage"><div id="map" class="qg-map"></div><header class="qg-topbar"><div class="qg-speed-pill" aria-label="ความเร็วปัจจุบัน"><b id="qg-speed-value">—</b><span>กม./ชม.</span></div></header><div class="qg-route-badge" id="route-badge"><div class="qg-route-icon">${QTICON.loc}</div><div><strong id="route-text">กำลังคำนวณเส้นทาง</strong><small>อัปเดตตามตำแหน่งของคุณ</small></div></div><div class="qg-map-tools"><button class="qg-map-button" id="recenter" aria-label="กลับไปยังตำแหน่งปัจจุบัน">${QTICON.loc}</button><button class="qg-map-button" id="overview" aria-label="ดูเส้นทางทั้งหมด">${QTICON.route}</button></div><main class="qg-home-dock" id="home-dock"></main><section class="qg-panel" id="panel-earn"></section><section class="qg-panel" id="panel-profile"></section>${qgNavHTML()}</div><div class="qg-message" id="qg-message"><i>●</i><div><b>ข้อความใหม่</b><small id="qg-message-text"></small></div></div>`;
+  document.getElementById('app').innerHTML=`<div class="stage qg-stage"><div id="map" class="qg-map"></div><header class="qg-topbar"><div class="qg-speed-pill" aria-label="ความเร็วปัจจุบัน"><b id="qg-speed-value">—</b><span>กม./ชม.</span></div></header><div class="qg-route-badge" id="route-badge"><div class="qg-route-icon" id="route-turn-icon">${qgTurnSvg(5)}</div><div class="qg-route-copy"><div class="qg-route-main"><strong id="route-maneuver-distance">--</strong></div><span class="qg-route-road" id="route-road">กำลังคำนวณเส้นทาง</span><small class="qg-route-summary" id="route-text">อัปเดตตามตำแหน่งของคุณ</small><div class="qg-route-next" id="route-next"></div><div class="qg-route-customer-note" id="route-customer-note"></div></div></div><div class="qg-map-tools"><button class="qg-map-button" id="recenter" aria-label="กลับไปยังตำแหน่งปัจจุบัน">${QTICON.loc}</button><button class="qg-map-button" id="overview" aria-label="ดูเส้นทางทั้งหมด">${QTICON.route}</button></div><main class="qg-home-dock" id="home-dock"></main><section class="qg-panel" id="panel-earn"></section><section class="qg-panel" id="panel-profile"></section>${qgNavHTML()}</div><div class="qg-message" id="qg-message"><i>●</i><div><b>ข้อความใหม่</b><small id="qg-message-text"></small></div></div>`;
   document.getElementById('recenter').onclick=recenterMap;document.getElementById('overview').onclick=overviewRoute;document.querySelectorAll('.qg-nav-item').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));initMap();updateStatusUI();updateRiderSpeedUI();renderHomeDock();startGeolocation();refreshData();startPolling();qgStartMessageWatch();qgRiderVoiceActivate();
 }
 function switchTab(tab){
@@ -1810,11 +1925,70 @@ function qgSetHomeDockHTML(dock,html,collapsible=true){
    '<div class="qg-dock-content">'+html+'</div>';
  qgApplyHomeDockCollapse(dock,collapsible);
 }
+let qgActiveItemPreview={scope:null,orderId:null,userId:null,sessionId:null,items:[],loaded:false,task:null};
+function qgActiveItemPreviewScope(o){
+ const pickup=o?.market_order_id?(o._marketPickups||[]).find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase())):null;
+ return String(o?.id||'')+':'+String(pickup?.pickup_id||'order');
+}
+function qgResetActiveItemPreview(){
+ qgActiveItemPreview={scope:null,orderId:null,userId:null,sessionId:null,items:[],loaded:false,task:null};
+}
+function qgActiveItemPreviewHTML(o){
+ const cache=qgActiveItemPreview,scope=qgActiveItemPreviewScope(o);
+ if(!o?.id||cache.scope!==scope||!cache.loaded||!cache.items.length)return '';
+ const count=cache.items.reduce((n,it)=>n+Math.max(1,Number(it.quantity)||1),0);
+ const rows=cache.items.slice(0,2).map(it=>`<div class="qg-active-item-row"><span>${esc(it.item_name||'รายการ')}</span><em>× ${Math.max(1,Number(it.quantity)||1).toLocaleString('th-TH')}</em></div>`).join('');
+ const more=cache.items.length>2?`<small class="qg-active-items-more">+ อีก ${cache.items.length-2} รายการ</small>`:'';
+ return `<div class="qg-active-items"><div class="qg-active-items-head"><small>รายการสินค้า</small><b>${count.toLocaleString('th-TH')} รายการ</b></div>${rows}${more}</div>`;
+}
+function qgLoadActiveItemPreview(o){
+ if(!o?.id||!S.user?.id||!S.session?.sessionId||document.hidden||!navigator.onLine)return;
+ const scope=qgActiveItemPreviewScope(o),orderId=String(o.id),userId=String(S.user.id),sessionId=String(S.session.sessionId);
+ const cache=qgActiveItemPreview;
+ if(cache.scope===scope&&cache.userId===userId&&cache.sessionId===sessionId&&(cache.loaded||cache.task))return;
+ qgActiveItemPreview={scope,orderId,userId,sessionId,items:[],loaded:false,task:null};
+ const actor=()=>S.user?.id===userId&&S.session?.sessionId===sessionId&&String(S.activeOrder?.id||'')===orderId&&qgActiveItemPreviewScope(S.activeOrder)===scope;
+ const task=(async()=>{
+   try{
+     const token=await getAccessToken();if(!actor()||!token)return;
+     let itemOrderId=orderId;
+     if(o.market_order_id){
+       const pickup=(o._marketPickups||[]).find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase()));
+       if(pickup?.pickup_id){
+         const pickupRows=await sbTable('market_order_pickups?select=order_id&id=eq.'+encodeURIComponent(pickup.pickup_id)+'&limit=1',{token});
+         if(!actor())return;
+         itemOrderId=String(Array.isArray(pickupRows)?pickupRows[0]?.order_id||orderId:orderId);
+       }
+     }
+     const rows=await sbTable('order_items?select=item_name,quantity&order_id=eq.'+encodeURIComponent(itemOrderId)+'&order=created_at.asc&limit=20',{token});
+     if(!actor())return;
+     qgActiveItemPreview.items=Array.isArray(rows)?rows:[];
+     qgActiveItemPreview.loaded=true;
+     if(S.activeTab==='home')renderHomeDock();
+   }catch(e){
+     if(actor())qgActiveItemPreview.loaded=true;
+   }finally{
+     if(qgActiveItemPreview.task===task)qgActiveItemPreview.task=null;
+   }
+ })();
+ qgActiveItemPreview.task=task;
+}
+function qgActiveRouteEtaMinutes(o,fallbackKm){
+ const cache=riderRouteCache;
+ if(cache&&cache.map===S.map&&Number(cache.time)>0){
+   try{
+     const parts=JSON.parse(cache.scope||'[]');
+     if(parts[2]==='active'&&String(parts[4]||'')===String(o?.id||''))return Math.max(1,Math.ceil(Number(cache.time)/60));
+   }catch(_){}
+ }
+ return Number.isFinite(fallbackKm)?Math.max(1,Math.ceil(fallbackKm/25*60)):null;
+}
 function renderHomeDock(){
  const dock=document.getElementById('home-dock');if(!dock)return;
  if(!S.activeOrder)riderRouteOverviewActive=false;
  if(S.laundryJob&&!S.activeOrder){qgSetHomeDockHTML(dock,`<section class="qg-home-card">${qgLaundryActiveHTML()}</section>`,true);placeJobMarkers();return}
- if(S.activeOrder){qgSetHomeDockHTML(dock,jobCardHTML(S.activeOrder)+qgRouteBundleHTML(),true);bindJobCardEvents(S.activeOrder);qgBindRouteBundleUI();if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);return}
+ if(S.activeOrder){qgLoadActiveItemPreview(S.activeOrder);qgSetHomeDockHTML(dock,jobCardHTML(S.activeOrder)+qgRouteBundleHTML(),true);bindJobCardEvents(S.activeOrder);qgBindRouteBundleUI();if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);return}
+ if(qgActiveItemPreview.orderId)qgResetActiveItemPreview();
  if(!S.online||!S.openJobs.length){
    qgSetHomeDockHTML(dock,`<section class="qg-ready-card ${S.online?'on':''}" id="status-pill"><i aria-hidden="true"></i><div><h2>${S.online?'พร้อมรับงานแล้ว':'ยังไม่พร้อมรับงาน'}</h2><p>${S.online?'คุณจะได้รับงานในพื้นที่ใกล้เคียง':'เปิดเพื่อเริ่มรับงาน'}</p></div><button type="button" role="switch" aria-label="พร้อมรับงาน" aria-checked="${S.online}" class="qg-online-switch" id="status-switch"></button></section>`,false);
    document.getElementById('status-switch').onclick=toggleOnline;updateStatusUI();return;
@@ -1871,10 +2045,15 @@ async function qgPrimaryAction(o){
 function jobCardHTML(o,meta){
  const st=statusFromRow(o),active=!!S.activeOrder&&String(S.activeOrder.id)===String(o.id),shop=o._shop||{},cust=o._customer||{},fee=riderEarning(o),km=meta?.km??(S.pos?haversineKm(S.pos.lat,S.pos.lng,o.pickup_latitude,o.pickup_longitude):NaN),delivery=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude),code=qgShortOrder(o),logo=shop.public_logo&&/^https?:\/\//i.test(String(shop.public_logo))?`<img class="qg-shop-logo" src="${esc(shop.public_logo)}" alt="">`:`<span class="qg-shop-logo qg-shop-logo-fallback">${esc((shop.shop_name||'Q').slice(0,1))}</span>`;
  if(!active)return `<article class="qg-offer-card"><div class="qg-offer-head"><div><span class="qg-kicker">งานใหม่ใกล้คุณ</span><h2>${esc(code)}</h2></div><span class="qg-offer-badge">฿${Number(fee||0).toLocaleString('th-TH')}</span></div><div class="qg-job-row">${logo}<div><small>รับที่ร้าน</small><b>${esc(shop.shop_name||o.pickup_address||'ร้านค้า')}</b></div><em>รับสินค้า</em></div><div class="qg-job-row"><span>${QTICON.loc}</span><div><small>ส่งให้ลูกค้า</small><b>${esc(o.delivery_address||cust.name||'จุดส่งสินค้า')}</b></div><em>ส่งสินค้า</em></div><div class="qg-offer-metrics"><div><span>ระยะทาง</span><b>${Number.isFinite(km)?km.toFixed(1):'-'} กม.</b></div><div><span>เวลาประมาณ</span><b>${Number.isFinite(delivery)?Math.max(1,Math.ceil(delivery/25*60)):'-'} นาที</b></div><div><span>รายได้</span><b class="qg-red">฿${Number(fee||0).toLocaleString('th-TH')}</b></div></div><div class="qg-dual-actions"><button class="qg-btn qg-btn-secondary" id="decline-${esc(o.id)}">ปฏิเสธ</button><button class="qg-btn qg-btn-primary" id="accept-${esc(o.id)}">รับงาน</button></div></article>`;
- const pickup=['rider_assigned','assigned','preparing','ready'].includes(st),title=st==='ready'?'ร้านเตรียมสินค้าแล้ว':st==='preparing'?'ร้านกำลังเตรียมสินค้า':pickup?'กำลังไปรับสินค้า':st==='picked_up'?'รับสินค้าแล้ว':st==='in_progress'&&o.rider_arrived_customer_at?'Rider ถึงลูกค้าแล้ว':'กำลังไปส่ง',address=pickup?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า'),note=qgCleanOrderNote(o.note),route=qgRouteTarget(o);
- const processLabel=o.market_order_id&&pickup?'รับของตามจุด':st==='ready'?'ตรวจสอบรายการ':st==='in_progress'?'กำลังนำส่ง':st==='picked_up'?'เริ่มจัดส่ง':pickup?'รอร้าน':'รออัปเดต';
- const processEnabled=(!o.market_order_id&&st==='ready');
- let mainLabel=route.label,mainDisabled=false;
+ const pickup=['rider_assigned','assigned','preparing','ready'].includes(st),route=qgRouteTarget(o),address=pickup?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า'),note=qgCleanOrderNote(o.note);
+ const step=pickup?1:2,stepTitle=pickup?'ไปรับสินค้าที่ร้าน':'ส่งสินค้าให้ลูกค้า';
+ const routeKm=S.pos&&Number.isFinite(route.lat)&&Number.isFinite(route.lng)?haversineKm(S.pos.lat,S.pos.lng,route.lat,route.lng):NaN;
+ const eta=qgActiveRouteEtaMinutes(o,routeKm);
+ const rawCash=pickup?(o.shop_cash??o.subtotal):(o.customer_cash??o.total_amount??o.total);
+ const cash=Number(rawCash),hasCash=Number.isFinite(cash);
+ const cashLabel=pickup?'ยอดที่ต้องชำระร้าน':'ยอดที่ต้องเก็บลูกค้า';
+ const stageStatus=st==='in_progress'&&o.rider_arrived_customer_at?'ถึงลูกค้าแล้ว':(pickup&&o.rider_arrived_shop_at?'ถึงร้านแล้ว':null);
+ let mainLabel=st==='picked_up'?'เริ่มจัดส่ง':route.label,mainDisabled=false;
  if(!o.market_order_id&&pickup){
    if(o.rider_arrived_shop_at){mainLabel=st==='ready'?'ตรวจสอบรายการ':'ถึงร้านแล้ว ✓';mainDisabled=st!=='ready'}
    else if(qgNavigationStarted(o,'shop'))mainLabel='ถึงร้านแล้ว';
@@ -1883,11 +2062,33 @@ function jobCardHTML(o,meta){
    else if(qgNavigationStarted(o,'customer'))mainLabel='ถึงลูกค้าแล้ว';
  }
  const mapModeIcon=riderRouteOverviewActive?QTICON.loc:QTICON.route,mapModeLabel=riderRouteOverviewActive?'ไปที่':'ภาพรวม';
- return `<article class="qg-active-card"><div class="qg-active-head"><div><span class="qg-kicker">${esc(title)}</span><h2>${esc(code)}</h2></div><div class="qg-active-head-actions"><span class="qg-income-badge">฿${Number(fee||0).toLocaleString('th-TH')}</span><button type="button" class="qg-card-map-mode ${riderRouteOverviewActive?'follow':''}" id="map-mode-${esc(o.id)}">${mapModeIcon}<span>${mapModeLabel}</span></button></div></div><div class="qg-job-row">${logo}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div><div class="qg-job-row"><span>${QTICON.user}</span><div><small>ลูกค้า</small><b>${esc(cust.name||'ลูกค้า')}</b></div></div><div class="qg-active-status"><small>${pickup?'จุดรับสินค้า':'ที่อยู่จัดส่ง'}</small><b>${esc(address)}</b></div>${note?`<div class="qg-customer-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></div>`:''}<div class="qg-job-tools"><button class="qg-job-tool" id="next-${esc(o.id)}" ${processEnabled?'':'disabled'}>${QTICON.jobs}<span>${esc(processLabel)}</span></button><button class="qg-job-tool" id="details-${esc(o.id)}">${QTICON.jobs}<span>รายการ</span></button><button class="qg-job-tool" id="chat-${esc(o.id)}">${QTICON.chat}<span>แชต</span></button></div><button class="qg-btn qg-btn-primary qg-main-action" id="primary-nav-${esc(o.id)}" ${mainDisabled?'disabled':''}>${QTICON.loc}<span>${esc(mainLabel)}</span></button></article>`;
+ const personName=pickup?(shop.shop_name||'ร้านค้า'):(cust.name||'ลูกค้า');
+ const personLabel=pickup?'ร้านค้า':'ลูกค้า';
+ return `<article class="qg-active-card qg-active-control">
+   <div class="qg-active-step">
+     <span class="qg-step-number">${step}</span>
+     <div class="qg-step-copy"><b>${step} · ${esc(stepTitle)}</b><small>${stageStatus?esc(stageStatus)+' · ':''}${eta?'ประมาณ '+eta+' นาที':'กำลังคำนวณเวลา'} · ${esc(code)}</small></div>
+     <button type="button" class="qg-card-map-mode ${riderRouteOverviewActive?'follow':''}" id="map-mode-${esc(o.id)}">${mapModeIcon}<span>${mapModeLabel}</span></button>
+   </div>
+   <div class="qg-active-destination">
+     ${pickup?logo:`<span class="qg-shop-logo qg-shop-logo-fallback">${QTICON.user}</span>`}
+     <div><small>${personLabel}</small><b>${esc(personName)}</b><p>${esc(address)}</p></div>
+   </div>
+   ${qgActiveItemPreviewHTML(o)}
+   ${hasCash?`<div class="qg-active-cash"><div><small>${cashLabel}</small><span>เงินสด</span></div><b>฿${cash.toLocaleString('th-TH')}</b></div>`:''}
+   ${note?`<div class="qg-customer-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></div>`:''}
+   <div class="qg-job-tools">
+     <button class="qg-job-tool" id="details-${esc(o.id)}">${QTICON.jobs}<span>รายละเอียด/รายการ</span></button>
+     <button class="qg-job-tool" id="call-${esc(o.id)}">${QTICON.phone}<span>${pickup?'โทรร้าน':'โทรลูกค้า'}</span></button>
+     <button class="qg-job-tool" id="chat-${esc(o.id)}">${QTICON.chat}<span>แชต</span></button>
+   </div>
+   <button class="qg-btn qg-btn-primary qg-main-action" id="primary-nav-${esc(o.id)}" ${mainDisabled?'disabled':''}>${QTICON.loc}<span>${esc(mainLabel||'ทำรายการต่อ')}</span></button>
+ </article>`;
 }
 function bindJobCardEvents(o){
- const by=id=>document.getElementById(id),c=by('chat-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id),mapMode=by('map-mode-'+o.id);
+ const by=id=>document.getElementById(id),c=by('chat-'+o.id),call=by('call-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id),mapMode=by('map-mode-'+o.id);
  if(c)c.onclick=()=>openChat(o);
+ if(call)call.onclick=()=>qgRiderVoiceCallForStage(o);
  if(mapMode)mapMode.onclick=()=>riderRouteOverviewActive?recenterMap():overviewRoute();
  if(a){
    a.onclick=()=>acceptJob(o.id);
@@ -2050,7 +2251,7 @@ async function qgOpenPickupVerify(o){
       if(!page.isConnected)return;
       back.onclick=()=>{if(!page._proofBusy)page.hidden=true};
       page.querySelector('.qg-flow-body').innerHTML=`
-        <section class="qg-pickup-banner"><span>รับสินค้าที่ร้าน</span><h1>ตรวจสอบรายการและถ่ายรูป</h1><p>เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว</p></section>
+        <section class="qg-pickup-banner"><span>รับสินค้าที่ร้าน</span><h1>ตรวจสอบรายการและถ่ายรูปใบเสร็จ</h1><p>เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปใบเสร็จให้เห็นรายการและยอดรวมชัดเจน</p></section>
         <section class="qg-flow-card qg-pickup-meta">
           <div class="qg-pickup-shop">${shopLogo?`<img class="qg-shop-logo" src="${esc(shopLogo)}" alt="">`:`<div class="qg-shop-logo qg-shop-logo-fallback">${esc((shop.shop_name||'Q').slice(0,1))}</div>`}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div>
           <div class="qg-pickup-row"><span>${QTICON.jobs}</span><div><small>รหัสออเดอร์</small><b>${esc(qgShortOrder(o))}</b></div></div>
@@ -2059,36 +2260,51 @@ async function qgOpenPickupVerify(o){
         ${itemsSection}
         ${note?`<section class="qg-flow-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></section>`:''}
         <section class="qg-flow-cash"><small>ยอดที่ต้องชำระให้ร้าน</small><b>฿${shopCash.toLocaleString('th-TH')}</b><span>เงินสด · ชำระเงินให้ร้านเรียบร้อยแล้วจึงกดรับสินค้า</span></section>
-        <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนรับสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-pickup-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปสินค้าที่รับ"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปสินค้าที่รับ</b><small>ให้เห็นสินค้าที่ตรวจรับจากร้านชัดเจน</small></label><img id="qg-pickup-preview" hidden alt="รูปตอนรับสินค้า"></section>
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-photo-next" disabled hidden>ยืนยันรับสินค้า</button>
-        <small class="qg-slide-caption">ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า</small>`;
+        <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปใบเสร็จจากร้าน</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-pickup-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปใบเสร็จ"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปใบเสร็จ</b><small>ให้เห็นรายการสินค้าและยอดรวมบนใบเสร็จชัดเจน</small></label><img id="qg-pickup-preview" hidden alt="รูปใบเสร็จจากร้าน"></section>
+        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-photo-next" disabled hidden>ร้านเตรียมเสร็จแล้ว</button>
+        <small class="qg-slide-caption">ต้องมีรูปใบเสร็จที่บันทึกในเครื่องก่อนยืนยันรับสินค้า</small>`;
       const input=page.querySelector('#qg-pickup-photo'),preview=page.querySelector('#qg-pickup-preview'),next=page.querySelector('#qg-pickup-photo-next');
-      input.onchange=()=>{
+      input.onchange=async()=>{
         if(page._proofBusy)return;
-        const file=input.files?.[0],proofBox=input.closest('.qg-proof-single');
+        const source=input.files?.[0],proofBox=input.closest('.qg-proof-single');
         // Cancelling the native camera must retain the previously selected proof.
-        if(!file)return;
-        page._pickupFile=file;page._pickupPhotoPath=null;
-        if(page._pickupProofUrl)URL.revokeObjectURL(page._pickupProofUrl);
-        page._pickupProofUrl=URL.createObjectURL(file);preview.src=page._pickupProofUrl;preview.hidden=false;
-        proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
+        if(!source)return;
+        page._proofBusy=true;input.disabled=true;next.disabled=true;
+        try{
+          const saved=await qgPersistProofFile('pickup',o,source);
+          page._pickupFile=saved.file;page._pickupPhotoPath=null;
+          if(page._pickupProofUrl)URL.revokeObjectURL(page._pickupProofUrl);
+          page._pickupProofUrl=URL.createObjectURL(saved.file);preview.src=page._pickupProofUrl;preview.hidden=false;
+          proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
+        }catch(e){input.value='';toast(e.message||'บันทึกรูปใบเสร็จไม่สำเร็จ')}
+        finally{page._proofBusy=false;input.disabled=false}
       };
       next.onclick=async()=>{
         if(page._proofBusy||!qgProofPageCurrent(page,o))return false;
-        const file=page._pickupFile;if(!file){toast('กรุณาถ่ายรูปหลักฐานก่อน');return false}
+        const file=page._pickupFile;if(!file){toast('กรุณาถ่ายรูปใบเสร็จก่อน');return false}
+        const received=await qgConfirmPickupReceived();if(!received)return false;
         page._proofBusy=true;next.disabled=true;input.disabled=true;next.textContent='กำลังบันทึก...';
         try{
           if(!page._pickupPhotoPath)page._pickupPhotoPath=await window.qgUploadEvidence(file);
           if(!qgProofPageCurrent(page,o))return false;
           const ok=await qgPickupWithPhoto(o,file,page._pickupPhotoPath);
-          if(ok){qgCloseRiderFlowPage('qg-pickup-verify');return true}
+          if(ok){
+            await qgClearProofFile('pickup',o);
+            if(page._pickupProofUrl)URL.revokeObjectURL(page._pickupProofUrl);
+            qgCloseRiderFlowPage('qg-pickup-verify');return true
+          }
           return false;
         }catch(e){toast('รับสินค้าไม่สำเร็จ: '+(e.message||e));return false}
         finally{
           page._proofBusy=false;
-          if(page.isConnected){next.disabled=false;input.disabled=false;next.textContent='รับสินค้าแล้ว'}
+          if(page.isConnected){next.disabled=false;input.disabled=false;next.textContent='ร้านเตรียมเสร็จแล้ว'}
         }
       };
+      void qgRestoreProofFile('pickup',o).then(restored=>{
+        if(!restored||!page.isConnected||page._pickupFile)return;
+        page._pickupFile=restored.file;preview.src=restored.data;preview.hidden=false;
+        input.closest('.qg-proof-single')?.classList.add('has-proof');next.disabled=false;next.hidden=false;
+      });
     };
 
     renderPickupPage();
@@ -2116,8 +2332,47 @@ async function qgCompleteWithPhoto(o,file,preparedPhotoPath=null){
 function qgShowDeliverySuccess(o){
   document.getElementById('qg-delivery-success')?.remove();
   const box=document.createElement('section');box.id='qg-delivery-success';box.className='qg-flow-success';
-  box.innerHTML=`<div class="qg-flow-success-card"><div class="qg-flow-success-check">✓</div><h2>จัดส่งสำเร็จ</h2><p>${esc(qgShortOrder(o))}</p><b>รายได้ค่าส่ง ฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}</b><button type="button" class="qg-btn qg-btn-primary">รับทราบ</button></div>`;
-  document.body.appendChild(box);box.querySelector('button').onclick=()=>box.remove();setTimeout(()=>box.remove(),4500);
+  box.innerHTML=`<div class="qg-flow-success-card"><div class="qg-flow-success-check">✓</div><h2>จัดส่งสำเร็จ</h2><p>${esc(qgShortOrder(o))}</p><b>รายได้สุทธิ ฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}</b><div id="qg-delivery-success-rating" hidden></div><button type="button" class="qg-btn qg-btn-primary">รับทราบ</button></div>`;
+  document.body.appendChild(box);box.querySelector('button').onclick=()=>box.remove();setTimeout(()=>box.remove(),6500);
+  void (async()=>{
+    try{
+      const token=await getAccessToken();if(!token||!box.isConnected)return;
+      const raw=await sbTable('rpc/qg_rider_rating_summary',{method:'POST',token,body:{}});
+      const row=Array.isArray(raw)?raw[0]:raw;
+      const average=Number(row?.average),count=Math.max(0,Number(row?.count)||0),rating=box.querySelector('#qg-delivery-success-rating');
+      if(rating&&Number.isFinite(average)&&count>0){
+        rating.hidden=false;
+        rating.innerHTML='<small>คะแนนจากลูกค้า</small><strong>'+average.toFixed(1)+' / 5</strong><span>'+count.toLocaleString('th-TH')+' รีวิว</span>';
+      }
+    }catch(e){console.warn('delivery success rating unavailable',e)}
+  })();
+}
+async function qgOpenCashConfirm(o,proofPage){
+  document.getElementById('qg-cash-confirm')?.remove();
+  let file=proofPage?._deliveryFile;
+  if(!file){const restored=await qgRestoreProofFile('delivery',o);if(restored){file=restored.file;if(proofPage)proofPage._deliveryFile=file}}
+  if(!file){toast('กรุณาถ่ายรูปหลักฐานก่อน');return false}
+  const rawCash=Number(o?.market_order_id?o?._marketTripTotal:o?.total_amount||0),cash=Number.isFinite(rawCash)&&rawCash>=0?rawCash:0;
+  const page=document.createElement('section');page.id='qg-cash-confirm';page.className='qg-rider-flow-page qg-cash-confirm-page';
+  page.innerHTML=`<header class="qg-flow-head qg-cash-confirm-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>เก็บเงินจากลูกค้า</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-cash-confirm-main"><div class="qg-cash-visual"><span>฿</span></div><p class="qg-cash-confirm-kicker">ยอดที่ต้องเก็บ</p><div class="qg-cash-confirm-amount">฿${cash.toLocaleString('th-TH')}</div><p class="qg-cash-confirm-note">ตรวจสอบว่าได้รับเงินสดครบตามยอดแล้ว จากนั้นสไลด์เพื่อยืนยันและจบงาน</p></main><div class="qg-cash-confirm-dock"><div class="qg-cash-confirm-total"><b>เงินสด</b><span><em>ยอดสุทธิ</em><strong>฿${cash.toLocaleString('th-TH')}</strong></span></div><div class="qg-slide-action qg-cash-confirm-slide"><div class="qg-slide-action-label">สไลด์เพื่อยืนยันว่าเก็บเงินแล้ว</div><input type="range" min="0" max="100" value="0" step="1" aria-label="สไลด์เพื่อยืนยันว่าเก็บเงินแล้ว"></div><small>ปล่อยก่อนสุดจะยกเลิกการยืนยัน</small></div>`;
+  document.body.appendChild(page);
+  page.querySelector('header button').onclick=()=>{if(!proofPage?._proofBusy)page.remove()};
+  const slide=page.querySelector('.qg-cash-confirm-slide');
+  qgBindSlideConfirm(slide,async()=>{
+    if(!proofPage||proofPage._proofBusy)throw Error('กำลังบันทึกงาน');
+    proofPage._proofBusy=true;
+    try{
+      if(!proofPage._deliveryPhotoPath)proofPage._deliveryPhotoPath=await window.qgUploadEvidence(file);
+      if(!qgProofPageCurrent(proofPage,o))throw Error('งานนี้เปลี่ยนสถานะแล้ว');
+      await qgCompleteWithPhoto(o,file,proofPage._deliveryPhotoPath);
+      await qgClearProofFile('delivery',o);
+      if(proofPage._deliveryProofUrl)URL.revokeObjectURL(proofPage._deliveryProofUrl);
+      page.remove();qgCloseRiderFlowPage('qg-delivery-confirm');qgShowDeliverySuccess(o);
+      void qgRiderRefreshAfterCommit('rider delivery photo refresh failed');
+    }catch(e){toast('จบงานไม่สำเร็จ: '+(e.message||e));throw e}
+    finally{proofPage._proofBusy=false}
+  });
+  return true;
 }
 async function qgOpenDeliveryConfirm(o){
   if(!o||statusFromRow(o)!=='in_progress')return false;
@@ -2147,37 +2402,35 @@ async function qgOpenDeliveryConfirm(o){
         ${itemsSection}
         <section class="qg-flow-cash"><small>ยอดที่ต้องเก็บจากลูกค้า</small><b>฿${cash.toLocaleString('th-TH')}</b><span>เงินสด · เก็บเงินจากลูกค้าเรียบร้อยแล้วจึงกดจบงาน</span></section>
         <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนส่งสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-delivery-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปตอนส่งสินค้า"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปตอนส่ง</b><small>ให้เห็นสินค้าและจุดส่งชัดเจน ไม่ต้องถ่ายหน้าลูกค้า</small></label><img id="qg-delivery-preview" hidden alt="รูปตอนส่งสินค้า"></section>
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-delivery-photo-next" disabled hidden>ยืนยันส่งสินค้าและจบงาน</button>
-        <small class="qg-slide-caption">ตรวจรายการให้ครบและถ่ายรูปหลักฐานก่อนยืนยันส่ง</small>`;
+        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-delivery-photo-next" disabled hidden>ตรวจยอดและเก็บเงิน</button>
+        <small class="qg-slide-caption">ถ่ายรูปหลักฐานก่อน แล้วตรวจยอดเงินในหน้าถัดไป</small>`;
       page.querySelector('#qg-delivery-chat').onclick=()=>{if(!page._proofBusy){page.hidden=true;openChat(o)}};page.querySelector('#qg-delivery-call').onclick=()=>qgRiderVoiceCall(o,cust.name||'ลูกค้า');
       const input=page.querySelector('#qg-delivery-photo'),preview=page.querySelector('#qg-delivery-preview'),next=page.querySelector('#qg-delivery-photo-next');
-      input.onchange=()=>{
+      input.onchange=async()=>{
         if(page._proofBusy)return;
-        const file=input.files?.[0],proofBox=input.closest('.qg-proof-single');
+        const source=input.files?.[0],proofBox=input.closest('.qg-proof-single');
         // Cancelling the native camera must retain the previously selected proof.
-        if(!file)return;
-        page._deliveryFile=file;page._deliveryPhotoPath=null;
-        if(page._deliveryProofUrl)URL.revokeObjectURL(page._deliveryProofUrl);
-        page._deliveryProofUrl=URL.createObjectURL(file);preview.src=page._deliveryProofUrl;preview.hidden=false;
-        proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
+        if(!source)return;
+        page._proofBusy=true;input.disabled=true;next.disabled=true;
+        try{
+          const saved=await qgPersistProofFile('delivery',o,source);
+          page._deliveryFile=saved.file;page._deliveryPhotoPath=null;
+          if(page._deliveryProofUrl)URL.revokeObjectURL(page._deliveryProofUrl);
+          page._deliveryProofUrl=URL.createObjectURL(saved.file);preview.src=page._deliveryProofUrl;preview.hidden=false;
+          proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
+        }catch(e){input.value='';toast(e.message||'บันทึกรูปหลักฐานไม่สำเร็จ')}
+        finally{page._proofBusy=false;input.disabled=false}
       };
       next.onclick=async()=>{
         if(page._proofBusy||!qgProofPageCurrent(page,o))return false;
-        const file=page._deliveryFile;if(!file){toast('กรุณาถ่ายรูปหลักฐานก่อน');return false}
-        page._proofBusy=true;next.disabled=true;input.disabled=true;next.textContent='กำลังบันทึก...';
-        try{
-          if(!page._deliveryPhotoPath)page._deliveryPhotoPath=await window.qgUploadEvidence(file);
-          if(!qgProofPageCurrent(page,o))return false;
-          await qgCompleteWithPhoto(o,file,page._deliveryPhotoPath);
-          qgCloseRiderFlowPage('qg-delivery-confirm');qgShowDeliverySuccess(o);
-          void qgRiderRefreshAfterCommit('rider delivery photo refresh failed');
-          return true;
-        }catch(e){toast('จบงานไม่สำเร็จ: '+(e.message||e));return false}
-        finally{
-          page._proofBusy=false;
-          if(page.isConnected){next.disabled=false;input.disabled=false;next.textContent='ยืนยันส่งสินค้าและจบงาน'}
-        }
+        if(!page._deliveryFile){toast('กรุณาถ่ายรูปหลักฐานก่อน');return false}
+        return qgOpenCashConfirm(o,page);
       };
+      void qgRestoreProofFile('delivery',o).then(restored=>{
+        if(!restored||!page.isConnected||page._deliveryFile)return;
+        page._deliveryFile=restored.file;preview.src=restored.data;preview.hidden=false;
+        input.closest('.qg-proof-single')?.classList.add('has-proof');next.disabled=false;next.hidden=false;
+      });
     };
 
     renderDeliveryPage();
@@ -2494,12 +2747,28 @@ window.acceptJob=async function(orderId){
     // The offer already came from the server-authoritative delivery pool. Avoid a second
     // pre-claim order read; the atomic claim RPC remains the source of truth / one-rider-wins gate.
     const kind=cachedOrder?.market_order_id?'market_claim':'claim';
-    await qgRiderActionOnce(kind,{p_order_id:orderId},token);
+    const claimPayload={p_order_id:orderId};
+    const claimFixAge=Date.now()-Number(S.pos?.timestamp);
+    if(validRiderCoordinate(S.pos?.lat,S.pos?.lng)&&Number.isFinite(claimFixAge)&&claimFixAge>=0&&claimFixAge<=10000){
+      claimPayload.p_lat=Number(S.pos.lat);
+      claimPayload.p_lng=Number(S.pos.lng);
+    }
+    await qgRiderActionOnce(kind,claimPayload,token);
     if(cachedOrder){
       const optimistic={...cachedOrder,status:'rider_assigned',rider_id:S.riderProfile?.id||cachedOrder.rider_id};
       S.activeOrder=optimistic;
       S.openJobs=(S.openJobs||[]).filter(x=>String(x?.order?.id)!==String(orderId));
-      syncRiderNavigationCameraMode();
+      // Accept means start work immediately. QueueGo navigation becomes active without
+      // asking the rider to press a second "navigate" button.
+      const target=qgRouteTarget(optimistic);
+      if(validRiderCoordinate(target.lat,target.lng)){
+        qgMarkNavigationStarted(optimistic,target.kind);
+        riderRouteOverviewActive=false;
+        syncRiderNavigationCameraMode();
+        qgNavigateInApp(target.lat,target.lng);
+      }else{
+        syncRiderNavigationCameraMode();
+      }
       if(S.activeTab==='home')renderHomeDock();
     }
     toast(cachedOrder?.market_order_id?'รับงานตลาดหลายร้านสำเร็จ':'รับงานสำเร็จ');
@@ -2514,7 +2783,8 @@ window.acceptJob=async function(orderId){
 };
 const riderActionInFlight=new Set();
 function qgActionRequestId(kind,payload){
-  const input=(S.user?.id||'rider')+'|'+kind+'|'+JSON.stringify(payload);
+  const stablePayload=(kind==='claim'||kind==='market_claim')?{p_order_id:payload?.p_order_id}:payload;
+  const input=(S.user?.id||'rider')+'|'+kind+'|'+JSON.stringify(stablePayload);
   let h1=0x811c9dc5,h2=0x9e3779b9,h3=0x85ebca6b,h4=0xc2b2ae35;
   for(let i=0;i<input.length;i++){
     const x=input.charCodeAt(i);

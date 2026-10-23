@@ -5,6 +5,7 @@ const ok=(v,msg)=>{assert.ok(v,msg);checks++};
 const eq=(a,b,msg)=>{assert.deepEqual(a,b,msg);checks++};
 
 const window={};
+const timeoutDelays=[];
 const context=vm.createContext({
   window,
   console,
@@ -16,7 +17,7 @@ const context=vm.createContext({
   encodeURIComponent,
   fetch:async()=>({ok:false}),
   navigator:{},
-  setTimeout:fn=>{fn();return 1},
+  setTimeout:(fn,ms=0)=>{timeoutDelays.push(Number(ms)||0);fn();return timeoutDelays.length},
   clearTimeout(){},
   document:{
     getElementById(){return null},
@@ -117,6 +118,14 @@ const poor=Q.navigationCameraDecision({
   route:straight,previousBearing:90
 });
 eq(poor.pitch,24,'poor GPS accuracy should reduce perspective');
+
+const outsideSnap=Q.navigationCameraDecision({
+  lat:15.00027,lng:103.0040,
+  speed:8,bearing:180,accuracy:5,
+  route:straight,previousBearing:180
+});
+ok(outsideSnap.routeMatch.offRouteMeters>25,'test fix must be outside the twenty-five-meter snap range');
+ok(outsideSnap.bearing>160&&outsideSnap.bearing<200,'outside snap range must keep real travel bearing instead of route bearing');
 
 const freeDrive=Q.navigationCameraDecision({
   lat:15,lng:103,
@@ -231,6 +240,10 @@ ok(gestureMap.easeCalls.length>duringPinchCalls,'gesture release must smoothly r
 ok(gestureMap.easeCalls.at(-1).duration>=220,'gesture release rotation must remain animated even when speed-aware turn response is fast');
 gestureMap.handlers.dragstart({originalEvent:{touches:[{}]}});
 eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.003,speed:8,bearing:90,accuracy:5},straight),null,'one-finger pan should still enter free pan');
+gestureMap.handlers.dragend({originalEvent:{touches:[]}});
+eq(timeoutDelays.at(-1),8000,'one-finger pan must schedule eight-second auto-follow');
+ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0032,speed:8,bearing:90,accuracy:5},straight)!=null,
+  'eight-second idle pan timeout must restore Rider follow');
 
 Q.setNavigationFollow(gestureMap,false);
 gestureMap.handlers.rotatestart({originalEvent:{touches:[{},{}]}});

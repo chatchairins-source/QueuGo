@@ -21,7 +21,15 @@ assert(api.includes('MessageDigest.getInstance("SHA-256")') && api.includes('upl
 assert(api.includes('qg_rider_action_receipts?select=result,kind,payload&request_id=eq.'));
 assert(api.includes('mutationProofExists(auth, "qg_delivery_proofs", job.id, path)'));
 assert(api.includes('mutationProofExists(auth, "qg_pickup_proofs", orderId, path)'));
-assert(app.includes('if (actionBusy || !requireServerNetwork()) return@VerificationScreen'));
+assert(
+  app.includes('if (actionBusy) return@VerificationScreen') &&
+  app.includes('RiderProofSyncScheduler.enqueue(context, syncRequest)') &&
+  app.includes('if (!networkAvailable) {') &&
+  app.includes('if (!requireServerNetwork()) return@VerificationScreen') &&
+  app.indexOf('RiderProofSyncScheduler.enqueue(context, syncRequest)') <
+    app.indexOf('if (!requireServerNetwork()) return@VerificationScreen'),
+  'Verification must durably queue proof before the network gate so offline retry survives'
+);
 assert(!app.includes('showCollection')&&!app.includes('verifyCollection')&&
   app.includes('riderCollectionReady(job.customerCash, photoReady, previewReady)'),
   'Restored delivery proof must return to the single proof screen and revalidate proof/cash before completion');
@@ -42,10 +50,25 @@ assert(app.includes('var homeItems by remember') &&
 assert(app.includes('val cashLabel = if (pickup) "ยอดที่ต้องชำระร้าน" else "ยอดที่ต้องเก็บลูกค้า"'),
   'Active job must surface stage-specific cash responsibility');
 assert(app.includes('RiderJobTool("jobs", processLabel') &&
-  app.includes('RiderJobTool("support", "แชต"'),
-  'Active job must keep details and chat immediately reachable');
-assert(app.includes('Text("นำทางด้วย QueueGo"') && !app.includes('นำทางด้วย Google Maps'),
-  'Active food delivery job must keep navigation inside QueueGo');
+  app.includes('RiderJobTool("phone", riderActiveJobContactLabel(pickup)') &&
+  app.includes('RiderJobTool("support", "แชต"') &&
+  app.includes('"phone" -> R.drawable.qg_rider_flow_phone') &&
+  app.includes('api.pickupIssueOrderId(auth, pickupId)') &&
+  app.includes('.onSuccess(::startShopVoice)') &&
+  app.includes('startShopVoice(current.activeJob.id)') &&
+  app.includes('startCustomerVoice(current.activeJob.id)'),
+  'Active job must keep details, exact stage-aware contact and chat immediately reachable');
+assert(
+  app.includes('fun startQueueGoNavigation(') &&
+  app.includes('// Accept is the start of work. Enter QueueGo follow/navigation mode') &&
+  app.includes('routeOverviewActive = false') &&
+  app.includes('recenterSignal += 1') &&
+  !app.includes('Text("นำทางด้วย QueueGo"') &&
+  !app.includes('นำทางด้วย Google Maps') &&
+  !app.includes('"google.navigation:q="') &&
+  !app.includes('GOOGLE_MAPS_PACKAGE'),
+  'Active food delivery must auto-start inside QueueGo without a redundant navigation button or external-map handoff'
+);
 assert(app.includes('pushStore.saveHomeSnapshot(auth.user.id, value, durable = true)') &&
   app.includes('kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)'),
   'Acknowledged mutations must persist encrypted snapshots off the main thread before navigation');

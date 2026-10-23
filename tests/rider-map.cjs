@@ -28,7 +28,8 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  const inAppNavFn=source.slice(source.indexOf('function qgNavigateInApp('),source.indexOf('/* order status'));
  eq(inAppNavFn.includes('qgLaunchGoogleNavigation('),false);
  eq(inAppNavFn.includes("toast('เริ่มนำทางด้วย QueueGo')"),true);
- eq(source.includes('RIDER_ROUTE_REROUTE_HITS=3'),true);
+ eq(source.includes('RIDER_ROUTE_OFF_ROUTE_METERS=30'),true);
+ eq(source.includes('RIDER_ROUTE_REROUTE_SUSTAIN_MS=3000'),true);
  eq(source.includes('RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000'),true);
  eq(source.includes('function qgRiderRouteNeedsReroute('),true);
  eq(source.includes("const directionConflict=decision?.routeBearingRejected===true"),true);
@@ -94,6 +95,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
   setTimeout:f=>{timers.set(++serial,f);return serial},clearTimeout:id=>timers.delete(id)
  });
  vm.runInContext(source.slice(source.indexOf('const RIDER_CAMERA_SMOOTHNESS_TEST_MODE='),source.indexOf('function initMap()')),ctx);
+ vm.runInContext(source.slice(source.indexOf('function qgCleanOrderNote('),source.indexOf('async function qgOpenOrderDetails(')),ctx);
  vm.runInContext(source.slice(source.indexOf('function qgRemoveOverlay('),source.indexOf('/* ---------- sheet')),ctx);
  const bearingCtx=vm.createContext({
   Math,Number,
@@ -142,12 +144,14 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(timers.size,0);
 
  // A nearby parallel/opposite route must not suppress reroute evidence.
- run('riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0');
+ run('riderRouteOffRouteSince=0;riderRouteLastRerouteAt=0');
  S.pos={lat:13.7,lng:100,accuracy:5,speed:6,bearing:180};
  eq(run('qgRiderRouteNeedsReroute(S.pos,riderRouteCache.scope,S.map)'),false);
+ now+=2999;
  eq(run('qgRiderRouteNeedsReroute(S.pos,riderRouteCache.scope,S.map)'),false);
+ now+=1;
  eq(run('qgRiderRouteNeedsReroute(S.pos,riderRouteCache.scope,S.map)'),true);
- run('riderRouteOffRouteHits=0;riderRouteLastRerouteAt=0');
+ run('riderRouteOffRouteSince=0;riderRouteLastRerouteAt=0');
  S.pos={lat:13,lng:100,accuracy:5,speed:6,bearing:90};
 
  for(let i=0;i<20;i++)await run('drawActiveRoute()');
@@ -157,10 +161,14 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(routeRemoves.length,0);
 
  // A stable QueueGo route must survive time/movement and reroute only after
- // three consecutive accurate off-route fixes.
+ // an accurate off-route condition is sustained for three seconds.
  S.pos={lat:13.5,lng:100,accuracy:5};
- await run('drawActiveRoute()');await run('drawActiveRoute()');
+ await run('drawActiveRoute()');
  eq(requests.length,1);
+ now+=2999;
+ await run('drawActiveRoute()');
+ eq(requests.length,1);
+ now+=1;
  await run('drawActiveRoute()');
  eq(requests.length,2);
  eq(routeRemoves.length,2);

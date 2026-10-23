@@ -176,7 +176,7 @@ function navCameraDecision({lat,lng,speed=null,bearing=null,accuracy=null,route=
   const acc=navHasNumber(accuracy)?Number(accuracy):null;
   const gpsBearing=navHasNumber(bearing)?navNormalizeBearing(Number(bearing)):null;
   const match=navMatchRoute(route,point,{bearing:gpsBearing,speed:spd,previousProgress:previousRouteProgress});
-  const reliable=match&&match.offRouteMeters<=60?match:null;
+  const reliable=match&&match.offRouteMeters<=25?match:null;
   let routeBearing=reliable?.segmentBearingDegrees??null;
   const remaining=match?Math.max(0,match.geometryDistanceMeters-match.progressMeters):null;
   if(reliable){
@@ -228,7 +228,7 @@ function navState(map){
   if(!state){
     state={
       follow:true,navigationActive:true,bearing:null,lastFix:null,lastRoute:[],baseZoom:17,lastDecision:null,lastAppliedAt:0,
-      manualZoom:null,manualZoomUntil:0,reanchorTimer:null,gestureActive:false,lastBottomInset:0
+      manualZoom:null,manualZoomUntil:0,reanchorTimer:null,followResumeTimer:null,gestureActive:false,lastBottomInset:0
     };
     navigationStates.set(map,state);
   }
@@ -238,11 +238,33 @@ function setNavigationFollow(map,enabled=true){
   if(!map)return false;
   const state=navState(map);
   state.follow=!!enabled;
-  if(!state.follow){
-    state.gestureActive=false;
-    if(state.reanchorTimer){clearTimeout(state.reanchorTimer);state.reanchorTimer=null}
-  }
+  if(state.reanchorTimer){clearTimeout(state.reanchorTimer);state.reanchorTimer=null}
+  if(state.followResumeTimer){clearTimeout(state.followResumeTimer);state.followResumeTimer=null}
+  if(!state.follow)state.gestureActive=false;
   return state.follow;
+}
+function suspendNavigationFollowForPan(map){
+  const state=navState(map);
+  if(state.followResumeTimer){clearTimeout(state.followResumeTimer);state.followResumeTimer=null}
+  state.follow=false;
+  state.gestureActive=true;
+}
+function resumeNavigationFollowAfterPan(map,delayMs=8000){
+  const state=navState(map);
+  if(state.followResumeTimer)clearTimeout(state.followResumeTimer);
+  state.followResumeTimer=setTimeout(()=>{
+    state.followResumeTimer=null;
+    if(!state.navigationActive||!state.lastFix)return;
+    state.follow=true;
+    state.gestureActive=false;
+    followNavigationCamera(map,state.lastFix,state.lastRoute,{
+      force:true,
+      duration:480,
+      baseZoom:state.baseZoom,
+      preserveZoom:false,
+      bottomInset:state.lastBottomInset
+    });
+  },Math.max(0,Number(delayMs)||8000));
 }
 function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   if(!map)return false;
@@ -250,6 +272,7 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   state.navigationActive=active;
   state.gestureActive=false;
   if(state.reanchorTimer){clearTimeout(state.reanchorTimer);state.reanchorTimer=null}
+  if(state.followResumeTimer){clearTimeout(state.followResumeTimer);state.followResumeTimer=null}
   state.manualZoom=null;
   state.manualZoomUntil=0;
   if(active){
@@ -426,7 +449,7 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
         state.gestureActive=true;
         return;
       }
-      setNavigationFollow(map,false);
+      suspendNavigationFollowForPan(map);
     };
     const keepGesture=e=>{
       if(!e?.originalEvent)return;
@@ -446,7 +469,18 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
       }
       if(state.follow)reanchorNavigationAfterGesture(map);
     };
+    const endPan=e=>{
+      if(!e?.originalEvent)return;
+      const state=navState(map);
+      if(!state.lastFix){
+        state.gestureActive=false;
+        state.follow=true;
+        return;
+      }
+      if(!state.follow)resumeNavigationFollowAfterPan(map,8000);
+    };
     try{map.on('dragstart',beginGesture)}catch(_){}
+    try{map.on('dragend',endPan)}catch(_){}
     for(const event of ['zoomstart','rotatestart','pitchstart'])try{map.on(event,keepGesture)}catch(_){}
     for(const event of ['zoomend','rotateend','pitchend'])try{map.on(event,endGesture)}catch(_){}
   }else{
@@ -574,7 +608,7 @@ function removeGeoJsonLine(map,id){
 function remainingNavigationRoute(route,point,{bearing=null,speed=null,accuracy=null}={}){
   if(!valid(point?.lat,point?.lng)||!navHasNumber(accuracy)||Number(accuracy)>35)return null;
   const decision=navCameraDecision({...point,bearing,speed,accuracy,route});
-  const match=decision?.routeMatch;if(!match||decision.routeBearingRejected||match.offRouteMeters>12)return null;
+  const match=decision?.routeMatch;if(!match||decision.routeBearingRejected||match.offRouteMeters>25)return null;
   let walked=0;const part=match.part,remaining=[];
   remaining.push([match.snapped.lng,match.snapped.lat]);
   for(let i=0;i<part.length-1;i++){

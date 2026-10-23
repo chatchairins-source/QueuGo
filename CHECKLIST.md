@@ -4,6 +4,37 @@ Last governance checkpoint: `WORKFLOW.md` commit `9439569c15f72568b3398a1072f6d2
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
+## Active Rider benchmark successor — 2026-10-23
+- Status: IN PROGRESS
+- PR: #625 `work-native-rider-grab-benchmark-20261022`
+- Parent PR: #620 `work-rider-auto-start-swipe-complete-20261022 @ f64ad6b2c85e04a2c6016c452753d264c4b6cee3`
+- Implementation checkpoint before this ledger update: `6e0deb5408dbdadcdb6e35035baf892be0214c4d`
+- Completed in source:
+  - QueueGo MapLibre + `/map-api` remain the sole Rider map/route authority; no Longdo/Google/public-routing fallback was added.
+  - Web + Native off-route detection uses >30 m sustained for 3 seconds; route display/bearing snap is bounded to 25 m.
+  - Native + Web expose current/next maneuver guidance including U-turn behavior; Native uses 150 ms HUD crossfade.
+  - Navigation camera includes low-speed bearing guard, turn-proximity zoom, speed-aware rotation and 8-second pan-to-follow recovery.
+  - Merchant receipt proof is durable/compressed to <=500 KB, restored after interruption, and food pickup requires explicit received-food confirmation.
+  - Web delivery proof routes to full-screen cash collection and 100% slide confirmation before completion.
+  - Completion summary uses actual Rider payout and data-backed rating; no fabricated rating.
+  - Customer order note is shown only near reliable customer dropoff guidance.
+  - Active-job Rider location heartbeat is separated from dispatch lease: 3 s normally and 1 s within 200 m of the current QueueGo stop.
+  - Rider accept, arrival, pickup and completion transition audit paths preserve idempotent server mutations and action-specific GPS/server timestamps.
+  - Scoped proof recovery RPC keeps proof tables server-only while allowing ambiguous mutation recovery for the assigned Rider.
+  - CI Rider migration/test path filters now trigger Native Pilot and Map regression gates.
+  - Native stale 3-sample reroute test was aligned to the 3-second policy; shared 8-second auto-follow constant is public across modules.
+  - Missed/passed maneuver handling reroutes immediately on reliable moving evidence, including the 8–30 m post-turn window, while generic drift keeps the sustained 30 m / 3 s gate.
+  - QueueGo route responses expose only provenance-backed explicit OSM `maxspeed` intervals; Native parsing rejects inferred road-class values, and the Native HUD now renders a legal-speed sign only on a reliable matching interval.
+  - Map CI release-asset transport has a deterministic fallback: rebuild the published Planetiler 0.10.2 / Buriram-bounds recipe from the pinned Thailand PBF and still require the published PMTiles SHA-256.
+- Current verification:
+  - Full JS/SQL regression reached PASS before the map asset transport step on prior exact heads.
+  - Native full QueueGo regression reached PASS on `f02bd4e3`; first Native failures there were the stale reroute unit test and module visibility, both corrected afterward.
+  - Exact-head Map Engine run `39883581231` and Native Pilot run `39883577181` both PASSED on `3c25e3036e57b36614a47a536072a49a76a7ea1a`, unlocking the explicit-speed-limit HUD chunk. The new HUD successor must pass the same exact-head gates again before this newer source is marked DONE.
+- Release blockers after source gate:
+  - Physical Android device ANR/OOM/battery certification.
+  - Real Buriram GPS/road navigation acceptance.
+- NEXT: run Map + Native exact-head gates on the new Native speed-limit HUD successor and fix only the first failure. In parallel, finish PR #629 Web explicit-only speed-limit RC; the sign must stay hidden whenever `osm:maxspeed` is absent. Physical road/GPS/ANR/OOM/battery acceptance remains a release gate.
+
 ## Dependency order
 
 ### 0. Work continuity / anti-repeat process
@@ -1026,3 +1057,30 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Readiness: environment_ready=true, live_key_configured=false, webhook_signing_configured=false, live_intake_enabled=false. Both existing credit feature flags remain false. BLOCKED: OMISE_SECRET_KEY (LIVE), OMISE_WEBHOOK_SECRET, QUEUEGO_CREDIT_LIVE_ENABLED, provider LIVE PromptPay and webhook signing configuration. No secrets fabricated, no charges or money seeded.
 - Native scope: strict descendant of current credit021caf67 (PR526), preserving its passed Native run39520235790. Sync shared Merchant/Rider client only: server pending UUID restoration, provider recheck through original queuego-credit endpoint, authoritative summary, explicit terminal statuses, same one-balance display. Public Web remains on main; no old Web snapshot published from Native branch.
 - Evidence: native source282 and Edge82 PASS. NEXT: exact Native full regression/three-app build; signed bank webhook and actual Owner payment/persistence acceptance remain blocked by provider settings above. Do not claim LIVE DONE.
+
+
+### Rider Grab-benchmark navigation / pickup / payment completion (2026-10-22)
+- Status: IN PROGRESS
+- Predecessor PR: #623
+- Active branch: `work-native-rider-grab-benchmark-20261022`
+- Current checkpoint HEAD: `3f9a4d55baf43bd1123866f7d1b8556da37805ae`
+- Successor base: PR #620 / `f64ad6b2c85e04a2c6016c452753d264c4b6cee3`
+- Completed source checkpoints:
+  - off-route requires >30 m sustained for 3 seconds on Native and Web;
+  - display road snap capped at 25 m; beyond that use real Rider position/bearing;
+  - Android current + following maneuver HUD, U-turn guidance and 150 ms crossfade;
+  - Android/Web merchant receipt proof is durable and explicit “ได้รับอาหารแล้วใช่ไหม?” confirmation gates pickup;
+  - Web proof compression target <=500 KB with IndexedDB recovery;
+  - Android/Web full-swipe completion requires 100%, haptic feedback and 200 ms bounce-back when incomplete;
+  - completion summary uses authoritative Rider payout and real rating summary only;
+  - Android and Web pan now resume navigation follow after 8 seconds idle; return animation is <=500 ms.
+- Map Engine off-route policy now also uses >30 m sustained for 3 seconds and rejects navigation decisions above 35 m GPS accuracy.
+- Source tests added/updated:
+  - `NavigationGuidanceTest.kt`
+  - `NavigationViewModeTest.kt`
+  - `RiderNavigationHudTest.kt`
+  - `tests/native-rider-delivery-success-parity.cjs`
+  - `tests/queuego-map-web-camera.cjs`
+- Evidence status: source assertions committed; this `work-native-*` successor exists specifically to run exact-head Native Pilot CI.
+- Release blockers: physical Android road/GPS test, ANR/OOM/battery evidence, Production/public runtime gate remain mandatory before launch-ready claim.
+- NEXT: finish Web current/next maneuver HUD using QueueGo route `legs[].steps`, then run exact-head source/CI gates; fix only the first failure before any further release claim.

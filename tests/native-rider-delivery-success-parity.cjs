@@ -9,6 +9,8 @@ assert(app.includes('var deliverySuccessJob by remember { mutableStateOf<RiderJo
 assert(
   app.includes('deliverySuccessJob = job') &&
   app.includes('RiderDeliverySuccess(') &&
+  app.includes('auth = auth') &&
+  app.includes('api = api') &&
   app.includes('job = completed') &&
   app.includes('recommendation = afterWorkRecommendation') &&
   app.includes('onDismiss = { deliverySuccessJob = null }'),
@@ -19,8 +21,10 @@ assert(app.includes('if (completedMode == "delivery") {')&&app.includes('closeVe
 
 assert(ui.includes('"จัดส่งสำเร็จ"'),'Success card must preserve Production completion copy');
 assert(ui.includes('job.numberLabel'),'Success card must show the same order number');
-assert(ui.includes('"รายได้ค่าส่ง ฿"')&&ui.includes('job.deliveryFee ?: 0.0'),
-  'Success card must show the authoritative Native Rider delivery earning');
+assert(ui.includes('"รายได้สุทธิ ฿"')&&ui.includes('job.deliveryFee ?: 0.0'),
+  'Success card must show the authoritative Native Rider net payout');
+assert(ui.includes('api.ratingSummary(auth)')&&ui.includes('"คะแนนจากลูกค้า"')&&ui.includes('rating.average'),
+  'Success card must load and render real customer rating context instead of a fabricated five-star value');
 assert(ui.includes('"รับทราบ"')&&ui.includes('if (recommendation == null)')&&ui.includes('delay(4_500)'),
   'Success feedback must keep acknowledgement and auto-dismiss only when no real recommendation exists');
 assert(

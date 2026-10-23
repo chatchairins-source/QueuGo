@@ -28,6 +28,29 @@ class NavigationViewModeTest {
     }
 
     @Test
+    fun idleTimeoutReturnsActiveNavigationToFollow() {
+        val controller = NavigationViewModeController()
+        controller.onUserGesture()
+
+        val state = controller.onIdleTimeout(navigationActive = true)
+
+        assertEquals(NavigationViewMode.FOLLOW, state.mode)
+        assertFalse(state.recenterVisible)
+        assertEquals(8_000L, NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS)
+    }
+
+    @Test
+    fun idleTimeoutDoesNotForceIdleMapBackToFollow() {
+        val controller = NavigationViewModeController()
+        controller.onUserGesture()
+
+        val state = controller.onIdleTimeout(navigationActive = false)
+
+        assertEquals(NavigationViewMode.FREE_PAN, state.mode)
+        assertTrue(state.recenterVisible)
+    }
+
+    @Test
     fun activeStopChangeClosesOverviewButPreservesFreePan() {
         val controller = NavigationViewModeController()
         controller.onOverview()

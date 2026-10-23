@@ -14,6 +14,22 @@ with engine.db() as db:
     points=[dict(db.execute('SELECT latitude AS lat,longitude AS lon FROM nodes WHERE id=?',(i,)).fetchone()) for i in ids]
 routes=engine.route({'points':points[:2],'profile':'motorcycle'},True)['routes'];route=routes[0]
 check('real A to B',route['distance']>1000,{'nodes':ids[:2],'distance_m':route['distance']})
+with engine.db() as db:
+    explicit_speed_count=db.execute("SELECT count(*) FROM segments WHERE speed_source='osm:maxspeed'").fetchone()[0]
+    estimated_speed_count=db.execute("SELECT count(*) FROM segments WHERE speed_source!='osm:maxspeed'").fetchone()[0]
+check('installed graph retains explicit OSM maxspeed provenance',explicit_speed_count>0,explicit_speed_count)
+check('installed graph keeps road-class estimates separate',estimated_speed_count>0,estimated_speed_count)
+check(
+    'route speed-limit intervals are explicit OSM only',
+    all(
+        item.get('source')=='osm:maxspeed' and
+        isinstance(item.get('maxspeed_raw'),str) and item.get('maxspeed_raw') and
+        float(item.get('maxspeed_kph',0))>0 and
+        float(item.get('end_geometry_m',0))>float(item.get('start_geometry_m',0))
+        for item in route.get('maxspeed_intervals',[])
+    ),
+    route.get('maxspeed_intervals',[])
+)
 check('alternatives',len(routes)>=2,len(routes))
 for preference in ('shortest','fewer_signals','reliable'):
     result=engine.route({'points':points[:2],'preference':preference},True)
@@ -30,17 +46,23 @@ start=route['geometry']['coordinates'][0];now=time.time()
 fix={'route_id':route['route_id'],'lon':start[0],'lat':start[1],'accuracy':10,'timestamp':now}
 progress=engine.progress(fix);check('route progress',progress['accepted'] and progress['remaining_distance_m']>1000)
 check('negative GPS accuracy rejected',not engine.progress({**fix,'accuracy':-1})['accepted'])
+check('weak GPS over 35m rejected',not engine.progress({**fix,'accuracy':36})['accepted'])
 check('poor GPS accuracy rejected',not engine.progress({**fix,'accuracy':100})['accepted'])
 check('stale GPS rejected',not engine.progress({**fix,'context':progress['context']})['accepted'])
 # Controlled timing around an actual different OSM road node; explicitly NOT a recorded road trace.
 far=points[2];context={};events=[]
-for i in range(3):
-    result=engine.progress({**fix,**far,'timestamp':now+i,'context':context});context=result['context'];events.append(result['reroute'])
-check('off route requires repeated evidence',events==[False,False,True],events)
+for stamp in (now,now+2.999,now+3.0):
+    result=engine.progress({**fix,**far,'timestamp':stamp,'context':context});context=result['context'];events.append(result['reroute'])
+check('off route requires three continuous seconds',events==[False,False,True],events)
+check('reroute context uses duration evidence','off_route_since' in context and 'off_route_hits' not in context,context)
 rerouted=engine.route({'points':[far,points[1]]})['routes'][0];check('off route to actual reroute',rerouted['distance']>0)
 fresh_context=engine.progress({'route_id':rerouted['route_id'],**far,'accuracy':10,'timestamp':now+4,'context':{**context,'route_id':route['route_id'],'last_reroute_at':now+999,'arrival_hits':2}})
 check('new route resets prior route navigation evidence',fresh_context['context']['route_id']==rerouted['route_id'] and fresh_context['context']['last_reroute_at']==0 and fresh_context['context']['arrival_hits']==0 and not fresh_context['reroute'])
-result=engine.progress({**fix,**far,'timestamp':now+3,'context':context});check('reroute cooldown',not result['reroute'])
+cooldown_context=context;cooldown_events=[]
+for stamp in (now+19.999,now+22.999):
+    result=engine.progress({**fix,**far,'timestamp':stamp,'context':cooldown_context});cooldown_context=result['context'];cooldown_events.append(result['reroute'])
+check('reroute cooldown blocks a sustained new off-route episode before twenty seconds',cooldown_events==[False,False],cooldown_events)
+result=engine.progress({**fix,**far,'timestamp':now+23,'context':cooldown_context});check('reroute resumes after cooldown with sustained evidence',result['reroute'],result)
 end=route['geometry']['coordinates'][-1];context={};events=[]
 for i in range(3):
     result=engine.progress({**fix,'lon':end[0],'lat':end[1],'timestamp':now+i,'context':context});context=result['context'];events.append(result['arrived'])
@@ -54,9 +76,9 @@ matched=engine.match({'points':timed});check('timestamp and accuracy aware HMM',
 check('latest inaccurate fix rejected',not engine.match({'points':timed+[{**timed[-1],'accuracy':100}]})['accepted'])
 gap=engine.match({'points':[timed[0],{**timed[-1],'timestamp':clock+30}]});check('signal loss resets HMM trace',gap['matching_method']=='nearest_initialization')
 context={};events=[]
-for i in range(3):
-    result=engine.match({'points':[{**far,'accuracy':10,'timestamp':now+i}],'route_id':route['route_id'],'context':context});context=result['context'];events.append(result['reroute'])
-check('matching preserves repeated raw off route evidence',events==[False,False,True],events)
+for stamp in (now,now+2.999,now+3.0):
+    result=engine.match({'points':[{**far,'accuracy':10,'timestamp':stamp}],'route_id':route['route_id'],'context':context});context=result['context'];events.append(result['reroute'])
+check('matching preserves three-second raw off route evidence',events==[False,False,True],events)
 with engine.db() as db:
     extra=[]
     for lat,lon in [(14.985,103.11),(15.015,103.11)]:
