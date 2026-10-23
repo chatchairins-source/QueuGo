@@ -4,6 +4,14 @@ Last governance checkpoint: `WORKFLOW.md` commit `9439569c15f72568b3398a1072f6d2
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
 
+## Native POS category recovery — 2026-10-23
+
+- Current POS source parent is PR #633 `d98ecdbf423e34b41e4fde3062d7b0d5db6750f0`, descending from Native successor `7e058b616e669634a8b58916184f7e551c82b1c3`. Web main `be33b8318967ad6105222efa8305fec8005a5335` is separate. Existing dirty worktrees were inspected and left untouched.
+- Exact Merchant POS run `39881729771` succeeded, including Kotlin/unit/APK and 16 KB checks. Exact Native Pilot `39881729809` passed regression/unit/build/package and is still capturing emulator lifecycle evidence at this checkpoint.
+- IN PROGRESS: guard explicit JSON null before category string conversion. Android's JSONObject converts its null sentinel to the string `null`; the JVM org.json library used by unit tests behaves differently. Add a real Android instrumentation test for null, named, literal `null`, and pre-category catalog snapshots, using only disposable local files.
+- Source contracts 313 PASS, backend mirror PASS, Python syntax and diff checks PASS. Full local regression reached the release evidence bundler, which requires a clean committed checkout; rerun after committing. No authenticated, physical-device, hardware or Production acceptance claimed.
+- NEXT: run regression from this clean committed successor; finish exact #633 CI, then publish and pass the new Android catalog instrumentation gate before merging into the Native POS successor. Overall POS remains NOT DONE.
+
 ## Dependency order
 
 ### 0. Work continuity / anti-repeat process
