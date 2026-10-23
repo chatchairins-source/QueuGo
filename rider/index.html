@@ -1829,6 +1829,10 @@ function switchTab(tab){
   if(tab==='chat'){qgMarkInboxSeen();qgRenderMessageInbox();return}if(tab==='earn'){document.getElementById('panel-earn')?.classList.add('show');qgRenderEarnings();return}if(tab==='profile'){document.getElementById('panel-profile')?.classList.add('show');renderProfilePanel();return}
   if(home){renderHomeDock();if(S.map)requestAnimationFrame(()=>{try{S.map.resize?.()}catch(_){}})}
 }
+function qgAvailabilitySwitchHTML(){
+  const on=!!S.online;
+  return `<div class="qg-online-pill ${on?'on':''}" id="status-pill"><i aria-hidden="true"></i><span id="status-text">${on?'ออนไลน์':'ออฟไลน์'}</span><button type="button" role="switch" aria-label="${on?'ปิดรับงาน':'เปิดรับงาน'}" aria-checked="${on}" class="qg-online-switch" id="status-switch"></button></div>`;
+}
 function updateStatusUI(){
   const button=document.getElementById('status-switch');
   if(button){button.setAttribute('aria-checked',String(S.online));button.disabled=riderAvailabilityBusy;}
@@ -2013,12 +2017,12 @@ function renderHomeDock(){
  if(S.activeOrder){qgLoadActiveItemPreview(S.activeOrder);qgSetHomeDockHTML(dock,jobCardHTML(S.activeOrder)+qgRouteBundleHTML(),true);bindJobCardEvents(S.activeOrder);qgBindRouteBundleUI();if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);return}
  if(qgActiveItemPreview.orderId)qgResetActiveItemPreview();
  if(!S.online){
-   qgSetHomeDockHTML(dock,`<section class="qg-home-card"><div class="qg-home-status-row"><div class="qg-home-title"><span class="qg-home-icon">${QTICON.loc}</span><div><h2>พร้อมรับงานเมื่อคุณพร้อม</h2><p>เปิดรับงานแล้วระบบจะค้นหางานใกล้ตำแหน่งปัจจุบัน</p></div></div><div class="qg-online-pill" id="status-pill"><i aria-hidden="true"></i><span id="status-text">ออฟไลน์</span><button type="button" role="switch" aria-label="เปิดรับงาน" aria-checked="false" class="qg-online-switch" id="status-switch"></button></div></div></section>`,true);
+   qgSetHomeDockHTML(dock,`<section class="qg-home-card"><div class="qg-home-status-row"><div class="qg-home-title"><span class="qg-home-icon">${QTICON.loc}</span><div><h2>พร้อมรับงานเมื่อคุณพร้อม</h2><p>เปิดรับงานแล้วระบบจะค้นหางานใกล้ตำแหน่งปัจจุบัน</p></div></div>${qgAvailabilitySwitchHTML()}</div></section>`,true);
    document.getElementById('status-switch').onclick=toggleOnline;updateStatusUI();return;
  }
  if(!S.openJobs.length){
    const today=new Date().toDateString(),done=(S.history||[]).filter(o=>o.status==='completed'&&new Date(o.updated_at||o.created_at||0).toDateString()===today),income=done.reduce((sum,o)=>sum+Number(riderEarning(o)||0),0);
-   qgSetHomeDockHTML(dock,`<section class="qg-home-card"><div class="qg-home-status-row"><div class="qg-home-title"><span class="qg-home-icon">${QTICON.home}</span><div><h2>พร้อมรับงานแล้ว</h2><p>${S.pos?'กำลังค้นหางานใกล้คุณ':'กำลังรอตำแหน่ง GPS'}</p></div></div><div class="qg-online-pill on" id="status-pill"><i aria-hidden="true"></i><span id="status-text">ออนไลน์</span><button type="button" role="switch" aria-label="ปิดรับงาน" aria-checked="true" class="qg-online-switch" id="status-switch"></button></div></div><div class="qg-home-stats"><div><span>วันนี้</span><b id="qg-wait-jobs">${done.length} งาน</b></div><div><span>รายได้</span><b id="qg-wait-income">฿${income.toLocaleString('th-TH')}</b></div><div><span>ออนไลน์</span><b id="qg-wait-hours">— ชม.</b></div></div><div class="qg-home-tip">อยู่ใกล้ย่านร้านอาหาร ตลาด และร้านค้าที่เข้าร่วม จะช่วยให้ได้รับงานเร็วขึ้น</div></section>${qgLaundryPoolHTML()}`,true);
+   qgSetHomeDockHTML(dock,`<section class="qg-home-card"><div class="qg-home-status-row"><div class="qg-home-title"><span class="qg-home-icon">${QTICON.home}</span><div><h2>พร้อมรับงานแล้ว</h2><p>${S.pos?'กำลังค้นหางานใกล้คุณ':'กำลังรอตำแหน่ง GPS'}</p></div></div>${qgAvailabilitySwitchHTML()}</div><div class="qg-home-stats"><div><span>วันนี้</span><b id="qg-wait-jobs">${done.length} งาน</b></div><div><span>รายได้</span><b id="qg-wait-income">฿${income.toLocaleString('th-TH')}</b></div><div><span>ออนไลน์</span><b id="qg-wait-hours">— ชม.</b></div></div><div class="qg-home-tip">อยู่ใกล้ย่านร้านอาหาร ตลาด และร้านค้าที่เข้าร่วม จะช่วยให้ได้รับงานเร็วขึ้น</div></section>${qgLaundryPoolHTML()}`,true);
    document.getElementById('status-switch').onclick=toggleOnline;updateStatusUI();qgRefreshWaitingSummary();return;
  }
  const shown=S.openJobs.slice(0,1);qgSetHomeDockHTML(dock,shown.map(x=>jobCardHTML(x.order,x)).join('')+qgLaundryPoolHTML(),false);shown.forEach(x=>bindJobCardEvents(x.order));
