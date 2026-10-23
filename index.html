@@ -870,15 +870,19 @@ function initLocationPicker(containerId,lat,lng,onChange,options={}){
     return p&&qgIsValidCoordinate(p.lat,p.lng,true)?setPoint(p.lat,p.lng,true):false;
   };
   const selectPlace=p=>{if(!disposed)setPoint(p.lat,p.lng,true)};
+  const selectTap=e=>{
+    const p=e?.lngLat;
+    if(!disposed&&p&&qgIsValidCoordinate(p.lat,p.lng,true))setPoint(p.lat,p.lng,true);
+  };
   window.QueueGoMapWeb?.attachPlaces?.(map,{onSelect:selectPlace,searchControl:true});
   map.on("load",()=>{if(disposed)return;if(hasInitial&&selectInitial)setPoint(viewLat,viewLng,true)});
-  map.on("moveend",syncCenter);
+  map.on("click",selectTap);
   return {
     map,
     selectCenter:syncCenter,
     destroy(){
       if(disposed)return;disposed=true;
-      try{map.off("moveend",syncCenter)}catch{}
+      try{map.off("click",selectTap)}catch{}
       try{marker?.remove()}catch{}
       try{map.remove()}catch{}
       if(customerPickerMap===map)customerPickerMap=null;
@@ -922,7 +926,7 @@ async function openCustomerLocationPicker(){
     '</button>'+
     '<div style="margin:14px 2px 7px;color:#8b929d;font-size:13px;font-weight:800">ที่อยู่จัดส่ง</div>'+
     '<textarea id="customer-address-input" maxlength="500" placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต" style="box-sizing:border-box;width:100%;min-height:92px;resize:none;border:1px solid #dfe3e8;border-radius:17px;background:#fff;padding:14px;font:inherit;font-size:16px;line-height:1.5;color:#16181c;outline:none">'+esc(currentPos?.address||'')+'</textarea>'+
-    '<div id="customer-location-status" class="sm" style="margin:7px 2px 0;color:#8a9099">เลื่อนแผนที่หรือใช้ GPS เพื่อเลือกพิกัด</div>'+
+    '<div id="customer-location-status" class="sm" style="margin:7px 2px 0;color:#8a9099">แตะตำแหน่งบนแผนที่ หรือใช้ GPS เพื่อปักพิกัด</div>'+
     '<button class="prim" style="min-height:58px;margin-top:14px;border-radius:18px;font-size:18px;font-weight:900;box-shadow:0 10px 24px rgba(239,35,60,.20)" onclick="saveCustomerLocationPicker()">'+ico('pin',20)+'<span style="margin-left:7px">บันทึกที่อยู่นี้</span></button>'+
    '</section>','home');
   let picked=currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)?{lat:Number(currentPos.lat),lng:Number(currentPos.lng)}:null;
@@ -1422,7 +1426,7 @@ addEventListener('hashchange',()=>route());
 <script>QueueGoPush.configure({role:'customer',getAccessToken:()=>token(true)});</script>
 <script src="customer-features.js?v=20261021-design-language1"></script>
 <script src="customer-laundry.js?v=20261006-orderlist5"></script>
-<script src="customer-ride.js?v=20261017-web8"></script>
+<script src="customer-ride.js?v=20261023-ridefix1"></script>
 <script>route();</script>
 <script src="catalog/customer-grocery.js?v=20261012"></script>
 </body>
