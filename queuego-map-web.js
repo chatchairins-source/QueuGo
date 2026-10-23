@@ -419,7 +419,7 @@ function navigationOverview(map,points,{padding=64,maxZoom=16,duration=450}={}){
   }catch(_){return false}
 }
 
-function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=true,navigation=false,searchControl=interactive&&!navigation}={}){
+function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=true,navigation=false,searchControl=false}={}){
   if(!host||typeof window.maplibregl==='undefined') return null;
   ensureQueueGoMapCss();
   host.classList.add('queuego-map-host');
