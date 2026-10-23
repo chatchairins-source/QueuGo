@@ -4,6 +4,7 @@ const customer=fs.readFileSync(path.join(root,'customer-ride.js'),'utf8');
 const rider=fs.readFileSync(path.join(root,'rider/rider-ride.js'),'utf8');
 const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261023091502_ride_whole_baht_and_unrestricted_completion.sql'),'utf8');
+const guardMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261023092028_ride_unrestricted_completion_guard.sql'),'utf8');
 parse(customer,{ecmaVersion:'latest'});parse(rider,{ecmaVersion:'latest'});
 assert(customer.includes('function renderActiveRideMap(current)'), 'Customer Ride must render live driver map');
 assert(customer.includes('current.rider_latitude')&&customer.includes('current.rider_longitude'), 'Customer Ride must consume rider coordinates from ride state');
@@ -23,4 +24,6 @@ assert(migration.includes("return round(greatest((c->>'minimum_fare')::numeric,f
 assert(migration.includes("elsif v_action='complete' and o.status='in_progress' then"), 'Server completion must allow in-progress Ride directly');
 assert(!migration.includes("v_action='complete' and o.status='in_progress' and o.rider_arrived_customer_at is not null"), 'Server completion must not require arrival/geofence flag');
 assert(migration.includes('rider_arrived_customer_at=coalesce(rider_arrived_customer_at,now())'), 'Completion should stamp arrival for state consistency');
-console.log(JSON.stringify({checks:18,failures:0,scope:'Passenger Ride web live tracking, tap pin, completion confirmation and server pricing/completion contract'}));
+assert(guardMigration.includes("or (old.status='in_progress' and new.status='completed')"), 'Ride transition guard must allow in-progress completion without an arrival prerequisite');
+assert(!guardMigration.includes("old.status='in_progress' and new.status='completed' and old.rider_arrived_customer_at is not null"), 'Ride transition guard must not restore the old dropoff/geofence gate');
+console.log(JSON.stringify({checks:20,failures:0,scope:'Passenger Ride web live tracking, tap pin, completion confirmation and server pricing/completion contract'}));
