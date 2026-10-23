@@ -286,3 +286,10 @@
 .qg-pos .qg-pos-table-status-ready{background:#edf5ff;color:#315f9b}
 .qg-pos .qg-pos-table-status-payment{background:#fff0f2;color:#b51a35}
 .qg-pos-counter-table .qg-pos-table-status{margin-top:6px}
+
+
+/* Product category filters stay compact and horizontally scrollable on checkout. */
+.qg-pos-categories{display:flex;gap:6px;margin:8px 0 10px;overflow-x:auto;padding:2px 1px;scrollbar-width:none}
+.qg-pos-categories::-webkit-scrollbar{display:none}
+.qg-pos-categories .qg-pos-category{flex:0 0 auto;min-height:34px;padding:6px 11px;border:1px solid #e7e9ee;border-radius:999px;background:#fff;color:#59616d;font-size:12px;font-weight:700}
+.qg-pos-categories .qg-pos-category.selected{border-color:#f1b4c0;background:#fff5f7;color:#cf1235}
