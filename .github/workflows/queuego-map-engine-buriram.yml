@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: queuego-map-engine-${{ github.ref }}
   cancel-in-progress: true
@@ -40,59 +41,123 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p map-data
-          curl --fail --location --retry 3 https://download.geofabrik.de/asia/thailand-261015.osm.pbf --output map-data/thailand.osm.pbf
-          echo '02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf  map-data/thailand.osm.pbf' | sha256sum --check
-
-          RELEASE_JSON="$(mktemp)"
-          VECTOR_READY=0
-          RELEASE_STATUS=1
-          if curl --fail --silent --show-error --location --retry 3 \
-            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/rider-buriram-offline-20261016" \
-            --output "${RELEASE_JSON}"; then
-            RELEASE_STATUS=0
-          fi
-          ASSET_STATUS=1
-          ASSET_URL=""
-          if [[ "${RELEASE_STATUS}" == "0" ]]; then
-            ASSET_URL="$(python -c "import json,sys; release=json.load(open(sys.argv[1],encoding='utf-8')); asset=next((a for a in release.get('assets',[]) if a.get('name')=='buriram-shortbread.pmtiles'),None); print(asset.get('url','') if asset else '')" "${RELEASE_JSON}")"
-            if [[ -n "${ASSET_URL}" ]]; then
-              if curl --fail --location --retry 3 \
-                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                -H "Accept: application/octet-stream" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
-                "${ASSET_URL}" \
-                --output map-data/vector.pmtiles; then
-                ASSET_STATUS=0
-              fi
+          SOURCE_READY=0
+          if curl --fail --location --retry 3 https://download.geofabrik.de/asia/thailand-261015.osm.pbf --output map-data/thailand.osm.pbf; then
+            if echo '02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf  map-data/thailand.osm.pbf' | sha256sum --check; then
+              SOURCE_READY=1
+            else
+              rm -f map-data/thailand.osm.pbf
             fi
           fi
-          if [[ "${RELEASE_STATUS}" == "0" && "${ASSET_STATUS}" == "0" && -s map-data/vector.pmtiles ]]; then
-            VECTOR_READY=1
-          fi
-          rm -f "${RELEASE_JSON}"
 
-          if [[ "${VECTOR_READY}" != "1" ]]; then
-            echo "Pinned release transport unavailable; rebuilding the exact published vector recipe."
-            rm -f map-data/vector.pmtiles map-data/buriram-shortbread.pmtiles
-            cp map-data/thailand.osm.pbf map-data/thailand-latest.osm.pbf
-            QG_MAP_DATA_DIR="${PWD}/map-data" \
-            QG_THAILAND_PBF_URL="https://download.geofabrik.de/asia/thailand-261015.osm.pbf" \
-            QG_PLANETILER_MEMORY="5g" \
-              native-android/qa/build-buriram-shortbread-pmtiles.sh
-            mv map-data/buriram-shortbread.pmtiles map-data/vector.pmtiles
+          if [[ "${SOURCE_READY}" == "1" ]]; then
+            RELEASE_JSON="$(mktemp)"
+            VECTOR_READY=0
+            RELEASE_STATUS=1
+            if curl --fail --silent --show-error --location --retry 3 \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/rider-buriram-offline-20261016" \
+              --output "${RELEASE_JSON}"; then
+              RELEASE_STATUS=0
+            fi
+            ASSET_STATUS=1
+            ASSET_URL=""
+            if [[ "${RELEASE_STATUS}" == "0" ]]; then
+              ASSET_URL="$(python -c "import json,sys; release=json.load(open(sys.argv[1],encoding='utf-8')); asset=next((a for a in release.get('assets',[]) if a.get('name')=='buriram-shortbread.pmtiles'),None); print(asset.get('url','') if asset else '')" "${RELEASE_JSON}")"
+              if [[ -n "${ASSET_URL}" ]]; then
+                if curl --fail --location --retry 3 \
+                  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                  -H "Accept: application/octet-stream" \
+                  -H "X-GitHub-Api-Version: 2022-11-28" \
+                  "${ASSET_URL}" \
+                  --output map-data/vector.pmtiles; then
+                  ASSET_STATUS=0
+                fi
+              fi
+            fi
+            if [[ "${RELEASE_STATUS}" == "0" && "${ASSET_STATUS}" == "0" && -s map-data/vector.pmtiles ]]; then
+              VECTOR_READY=1
+            fi
+            rm -f "${RELEASE_JSON}"
+
+            if [[ "${VECTOR_READY}" != "1" ]]; then
+              echo "Pinned release transport unavailable; rebuilding the exact published vector recipe."
+              rm -f map-data/vector.pmtiles map-data/buriram-shortbread.pmtiles
+              cp map-data/thailand.osm.pbf map-data/thailand-latest.osm.pbf
+              QG_MAP_DATA_DIR="${PWD}/map-data" \
+              QG_THAILAND_PBF_URL="https://download.geofabrik.de/asia/thailand-261015.osm.pbf" \
+              QG_PLANETILER_MEMORY="5g" \
+                native-android/qa/build-buriram-shortbread-pmtiles.sh
+              mv map-data/buriram-shortbread.pmtiles map-data/vector.pmtiles
+            fi
+            echo "QG_MAP_BOOTSTRAP_PACKAGE=0" >> "${GITHUB_ENV}"
+          else
+            echo "Pinned Geofabrik source is no longer available; restoring the exact verified package from successful Map Engine run 39873313811."
+            BOOTSTRAP_ZIP="$(mktemp --suffix=.zip)"
+            BOOTSTRAP_DIR="$(mktemp -d)"
+            curl --fail --location --retry 3 \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/12468116823/zip" \
+              --output "${BOOTSTRAP_ZIP}"
+            unzip -q "${BOOTSTRAP_ZIP}" -d "${BOOTSTRAP_DIR}"
+            echo "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d  ${BOOTSTRAP_DIR}/map-data/buriram.osm.pbf" | sha256sum --check
+            echo "9af9999583518c32177231826252d24883a6842960c9224faea100ff1685fc31  ${BOOTSTRAP_DIR}/map-data/buriram-map-v1.tar.gz" | sha256sum --check
+            python - "${BOOTSTRAP_DIR}/map-data/buriram.osm.manifest.json" <<'PY'
+import json,sys
+m=json.load(open(sys.argv[1],encoding='utf-8'))
+assert m['source_sha256']=='02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf'
+assert m['extract_sha256']=='426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d'
+assert m['source_replication_timestamp']=='2026-10-15T20:21:00Z'
+PY
+            cp "${BOOTSTRAP_DIR}/map-data/buriram.osm.pbf" map-data/buriram.osm.pbf
+            cp "${BOOTSTRAP_DIR}/map-data/buriram.osm.manifest.json" map-data/buriram.osm.manifest.json
+            cp "${BOOTSTRAP_DIR}/map-data/buriram-map-v1.tar.gz" map-data/buriram-map-v1.tar.gz
+            cp "${BOOTSTRAP_DIR}/map-data/buriram-map-v1.tar.gz.sha256" map-data/buriram-map-v1.tar.gz.sha256
+            cp "${BOOTSTRAP_DIR}/map-data/places-generated.json" map-data/places-generated.json
+            rm -rf map-data/bootstrap-store
+            python ops/maps/offline_package.py install --archive map-data/buriram-map-v1.tar.gz --sha256 9af9999583518c32177231826252d24883a6842960c9224faea100ff1685fc31 --store map-data/bootstrap-store
+            python ops/maps/offline_package.py activate --store map-data/bootstrap-store --version buriram-map-v1
+            python ops/maps/offline_package.py resolve --store map-data/bootstrap-store > map-data/bootstrap-resolved.json
+            python - <<'PY'
+import json,shutil
+from pathlib import Path
+r=json.load(open('map-data/bootstrap-resolved.json',encoding='utf-8'))
+db=Path(r['database']); cfg=Path(r['config']); vector=Path(r['vector']); root=db.parent
+shutil.copy2(db,'map-data/roads.sqlite')
+Path('map-data/valhalla').mkdir(parents=True,exist_ok=True)
+shutil.copytree(root/'tiles','map-data/valhalla/tiles')
+config=json.load(open(cfg,encoding='utf-8'))
+config['mjolnir']['tile_dir']=str(Path('map-data/valhalla/tiles').resolve())
+Path('map-data/valhalla/valhalla.json').write_text(json.dumps(config,indent=2)+'\n')
+manifest=json.load(open(root/'manifest.json',encoding='utf-8'))
+Path('map-data/valhalla/build-report.json').write_text(json.dumps({'dataset_sha256':manifest['dataset']['extract_sha256'],'bootstrap_package_sha256':'9af9999583518c32177231826252d24883a6842960c9224faea100ff1685fc31'},indent=2)+'\n')
+shutil.copy2(vector,'map-data/vector.pmtiles')
+PY
+            echo "QG_MAP_BOOTSTRAP_PACKAGE=1" >> "${GITHUB_ENV}"
+            rm -f "${BOOTSTRAP_ZIP}"
+            rm -rf "${BOOTSTRAP_DIR}"
           fi
 
           echo '30699573ed2068d3c7e4393ad477dbe8febf68f453f27ae88437f5c652a3ddfc  map-data/vector.pmtiles' | sha256sum --check
       - name: Build normalized database and actual routing tiles
         run: |
-          python ops/maps/extract_region.py map-data/thailand.osm.pbf map-data/buriram.osm.pbf
-          python ops/maps/normalize_osm.py map-data/buriram.osm.pbf map-data/roads.sqlite
-          python ops/maps/export_places.py map-data/roads.sqlite map-data/places-generated.json
-          python tests/map-places-export.py map-data/places-generated.json data/maps/buriram-places.json
-          python ops/maps/build_engine_graph.py valhalla map-data/buriram.osm.pbf map-data/valhalla --admin-pbf map-data/thailand.osm.pbf
+          if [[ "${QG_MAP_BOOTSTRAP_PACKAGE:-0}" == "1" ]]; then
+            test -s map-data/roads.sqlite
+            test -s map-data/valhalla/valhalla.json
+            test -d map-data/valhalla/tiles
+            test -s map-data/buriram.osm.pbf
+            python tests/map-places-export.py map-data/places-generated.json data/maps/buriram-places.json
+          else
+            python ops/maps/extract_region.py map-data/thailand.osm.pbf map-data/buriram.osm.pbf
+            python ops/maps/normalize_osm.py map-data/buriram.osm.pbf map-data/roads.sqlite
+            python ops/maps/export_places.py map-data/roads.sqlite map-data/places-generated.json
+            python tests/map-places-export.py map-data/places-generated.json data/maps/buriram-places.json
+            python ops/maps/build_engine_graph.py valhalla map-data/buriram.osm.pbf map-data/valhalla --admin-pbf map-data/thailand.osm.pbf
+          fi
       - name: Real graph runtime and restriction evidence
         run: |
           mkdir -p map-data/evidence
