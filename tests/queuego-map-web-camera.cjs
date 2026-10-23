@@ -1,5 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
 const source=fs.readFileSync(path.resolve(__dirname,'../queuego-map-web.js'),'utf8');
+assert.ok(source.includes("NavigationControl({showCompass:!!navigation,showZoom:false,visualizePitch:!!navigation}),'top-right'"),'navigation compass must stay on the right side');
 let checks=0;
 const ok=(v,msg)=>{assert.ok(v,msg);checks++};
 const eq=(a,b,msg)=>{assert.deepEqual(a,b,msg);checks++};
