@@ -19,11 +19,17 @@ const bundleBase=fs.existsSync(path.resolve(__dirname,'../QueueGo-Route-Bundle-v
 const bundleFair=fs.existsSync(path.resolve(__dirname,'../QueueGo-Route-Bundle-Fair-Savings.sql'))?read('QueueGo-Route-Bundle-Fair-Savings.sql'):'';
 const bundle=bundleBase+'\n'+bundleFair;
 const laundryV2=read('QueueGo-Laundry-v2.sql');
+const laundryCatalog=read('QueueGo-Laundry-Customer-Catalog.sql');
+const laundryDirectoryMigration=read('supabase/migrations/20261023191000_customer_laundry_registered_shop_directory.sql');
 
 // Customer top-level service separation.
 for(const label of ['อาหาร','เครื่องดื่ม','ร้านขายของชำ','ฝากซัก','ตลาดสด'])ok(customer.includes('<b>'+label+'</b>'),'missing service '+label);
 ok(customer.includes("go('market')"),'market must be a dedicated route');
 ok(/location\.href='laundry\/(?:\?[^']*)?'/.test(customer),'laundry must use dedicated module');
+ok(customer.includes("category!=='laundry'"),'Laundry shops must not appear in Customer Home nearby-store list');
+ok(laundry.includes("qgRpc('queuego_laundry_customer_catalog',{})"),'Laundry customer directory must use authoritative catalog RPC');
+ok(!laundry.includes("qgDb('laundry_hubs?select=id,name,shop_id"),'Laundry customer directory must not read raw Laundry hubs');
+ok(laundry.includes("safe(x.shop_name||x.name)"),'Laundry directory must render registered shop identity from catalog');
 ok(customer.includes("DEDICATED_MARKET_CATS"),'normal search must exclude dedicated market shop categories');
 ok(customer.includes("queuego_place_market_order"),'market checkout RPC missing');
 ok(customer.includes("queuego_add_market_order_shops"),'market add-shop RPC missing');
@@ -96,5 +102,8 @@ ok(customerLaundry.includes('laundry_order_events'),'Customer Laundry timeline m
 for(const col of ['unit_price_snapshot','pickup_fee_snapshot','return_fee_snapshot','delivery_fee_total_snapshot','request_key'])ok(laundryV2.includes(col),'Laundry snapshot field missing '+col);
 ok(laundryV2.includes("case when j.leg='pickup' then o.pickup_address else s.address end"),'Laundry pickup route origin must be customer for pickup');
 ok(laundryV2.includes("case when j.leg='pickup' then s.address else o.pickup_address end"),'Laundry pickup route destination must be shop for pickup');
+ok(laundryCatalog.includes("lower(coalesce(s.public_category,''))='laundry'"),'Customer Laundry catalog must only expose registered Laundry shops');
+ok(laundryDirectoryMigration.includes("set enabled=true"),'Laundry directory reconciliation must repair qualifying registered shops left disabled');
+ok(laundryDirectoryMigration.includes("hr.active=true"),'Laundry directory repair must require an accepted active Rider');
 
 console.log(JSON.stringify({checks,failures:0,scope:'static integration contracts for QueueGo Market, Route Bundle and Laundry; no production order mutation'}));
