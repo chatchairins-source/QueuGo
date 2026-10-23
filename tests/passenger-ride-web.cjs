@@ -8,6 +8,7 @@ parse(customer,{ecmaVersion:'latest'});parse(rider,{ecmaVersion:'latest'});
 assert(customer.includes('function renderActiveRideMap(current)'), 'Customer Ride must render live driver map');
 assert(customer.includes('current.rider_latitude')&&customer.includes('current.rider_longitude'), 'Customer Ride must consume rider coordinates from ride state');
 assert(customer.includes('อัปเดตอัตโนมัติทุกประมาณ 5 วินาที'), 'Customer Ride must disclose live refresh cadence');
+assert(customer.includes("o?.status==='in_progress'&&o?.arrived_dropoff_at?'ถึงจุดหมายแล้ว'"), 'Customer Ride must surface arrived-dropoff state without waiting for completed');
 assert(customer.includes('tapToSelect:true'), 'Ride location picker must use direct map tapping');
 assert(!customer.includes('id="ride-select-center"'), 'Ride picker must not require center-selection button');
 assert(index.includes('tapToSelect=options.tapToSelect===true'), 'Shared picker must support tap selection');
@@ -22,4 +23,4 @@ assert(migration.includes("return round(greatest((c->>'minimum_fare')::numeric,f
 assert(migration.includes("elsif v_action='complete' and o.status='in_progress' then"), 'Server completion must allow in-progress Ride directly');
 assert(!migration.includes("v_action='complete' and o.status='in_progress' and o.rider_arrived_customer_at is not null"), 'Server completion must not require arrival/geofence flag');
 assert(migration.includes('rider_arrived_customer_at=coalesce(rider_arrived_customer_at,now())'), 'Completion should stamp arrival for state consistency');
-console.log(JSON.stringify({checks:17,failures:0,scope:'Passenger Ride web live tracking, tap pin, completion confirmation and server pricing/completion contract'}));
+console.log(JSON.stringify({checks:18,failures:0,scope:'Passenger Ride web live tracking, tap pin, completion confirmation and server pricing/completion contract'}));
