@@ -1,10 +1,13 @@
 ## 2026-10-23 Customer Laundry shop photos
 
-- Stream: display each registered Laundry shop's real profile cover, falling back to its profile logo. The catalog returns shop identities, so the page fetches only the approved profile photo fields for catalog shop IDs under the authenticated session.
-- ROOT CAUSE: publicPhotoUrl used a regex character class containing a doubled backslash before s, which rejects the letter s and therefore filtered Supabase Storage URLs such as shop cover/logo URLs. Confirmed in committed laundry/index.html at branch HEAD c4d5db0208dafc4f661451a4b794541cdaeefea4.
-- IN PROGRESS (source/test): URL validation now uses the browser URL parser and accepts only HTTPS URLs; regression tests execute the helper against a Supabase Storage URL containing s and reject HTTP. Source commit c4d5db0208dafc4f661451a4b794541cdaeefea4; test commits 494a7b98bab1482eaf97d717128d4f66d2a66543 and f790813249ee1dbddfac498ed2a4de5bb756278f (correct helper boundary to locate newline).
-- PR #688 is open against main; initial exact-head QueueGo RC run 39961635054 is IN PROGRESS on HEAD 1a5872fdb8282a725f3ca41acf5f3edbc942fc24. No changes to Supabase data or schema were made for this display fix.
-- NEXT: wait for exact-head RC result; if this checkpoint commit changes HEAD, use the new head's run. Review required checks, then merge when gates permit and verify both public deployments.
+- Stream: display each registered Laundry shop's real profile cover, falling back to its profile logo. The catalog returns shop identities, so the page fetches only the profile photo fields for catalog shop IDs under the authenticated session.
+- ROOT CAUSE: publicPhotoUrl used a regex character class containing a doubled backslash before s, rejecting the letter s and filtering Supabase Storage URLs. Fixed with browser URL parsing and HTTPS-only validation.
+- DONE (source/test): PR #688 merged as badd6f1c3645a7a456ca08fcea2b212d84fdbe29. Exact-head RC run 39961728447 SUCCESS on 823284b3a4b91d72db334e702e4a514126b5b087; npm test and mobile WebKit checks passed. Regression covers the real Supabase Storage URL pattern and HTTP rejection. No schema or Production data changes.
+- DONE (Pages): GitHub Pages run 39962437420 SUCCESS on merge badd6f1c3645a7a456ca08fcea2b212d84fdbe29.
+- IN PROGRESS (post-merge RC): push run 39962437631 on merge badd6f1c3645a7a456ca08fcea2b212d84fdbe29; npm test passed, currently still in the WebKit installation step with no reported failure.
+- BLOCKED (Render release): queuego-web is configured for main with autoDeploy enabled, but no deploy for badd6f1c3645a7a456ca08fcea2b212d84fdbe29 exists; latest LIVE deploy still serves 000c9fdd29a7a17ce182425835d69a47873d2268. Manual trigger requires an explicitly selected workspace. Render listed one workspace: My Workspace (tea-dbdejavavr4c739q33l0); trigger was rejected with “no workspace selected,” so no deployment started.
+- NEXT: owner must select My Workspace in the Render connector; then trigger a deploy for queuego-web, verify it reaches LIVE on badd6f1c3645a7a456ca08fcea2b212d84fdbe29, and confirm the deployed Laundry page reads the registered photos. Keep post-merge RC run status in view.
+
 
 ## 2026-10-23 Customer Laundry registered directory + Render release
 
