@@ -8,7 +8,12 @@
  const rpc=(name,body={})=>db('rpc/'+name,{method:'POST',body});
  const pending=()=>{const raw=localStorage.getItem(key());if(!raw)return null;const p=JSON.parse(raw);if(!/^[0-9a-f-]{36}$/i.test(p.p_request_id)||!/^[0-9a-f-]{36}$/i.test(p.p_quote_id))throw Error('คำขอเดิมอ่านไม่ได้ กรุณาติดต่อฝ่ายช่วยเหลือ');return p};
  const same=u=>actor()===u&&onRide();
- const status=o=>({searching_rider:'กำลังหาคนขับ',rider_assigned:'คนขับกำลังไปจุดรับ',in_progress:'กำลังเดินทาง',completed:'จบการเดินทางแล้ว',cancelled:'ยกเลิกแล้ว',no_rider_available:'ยังไม่มีคนขับพร้อมรับเที่ยว'})[o.status]||o.status;
+ const status=o=>{
+  if(o?.status==='rider_assigned'&&o?.arrived_pickup_at)return 'คนขับถึงจุดรับแล้ว';
+  if(o?.status==='in_progress'&&o?.arrived_dropoff_at)return 'ถึงจุดหมายแล้ว';
+  return ({searching_rider:'กำลังหาคนขับ',rider_assigned:'คนขับกำลังไปจุดรับ',in_progress:'กำลังเดินทาง',completed:'จบการเดินทางแล้ว',cancelled:'ยกเลิกแล้ว',no_rider_available:'ยังไม่มีคนขับพร้อมรับเที่ยว'})[o?.status]||o?.status;
+ };
+ const rideMoney=v=>'฿'+Number(v||0).toLocaleString('th-TH',{minimumFractionDigits:Number.isInteger(Number(v||0))?0:2,maximumFractionDigits:2});
  function clearPreview(){
   if(!previewMap)return;
   try{previewMap.remove?.()}catch{}
@@ -41,6 +46,43 @@
  function schedule(){clearTimeout(timer);if(document.hidden||!onRide())return;timer=setTimeout(async()=>{if(!busy&&!picker){try{await refresh();if(!rows.some(o=>!terminal(o))&&pickup)await refreshSupply();if(onRide()&&(pending()||rows.some(o=>!terminal(o))||pickup))render()}catch(e){error=e.message;if(onRide())render()}}schedule()},5000)}
  function rideLocationButton(kind,label,value,color){
   return '<button type="button" data-action="'+kind+'" class="qg-ride-location" '+(busy||pending()||!config.enabled?'disabled':'')+' style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:13px 12px;border:1px solid #e6e7ea;border-radius:14px;background:#fff;color:#17181a;margin:0 0 9px"><span aria-hidden="true" style="width:12px;height:12px;border-radius:50%;background:'+color+';box-shadow:0 0 0 4px '+color+'1f;flex:none"></span><span style="min-width:0;flex:1"><small style="display:block;color:#777d86;font-weight:700;margin-bottom:3px">'+label+'</small><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(value||'เลือกบนแผนที่')+'</b></span><span aria-hidden="true" style="font-size:22px;color:#9aa0a8">›</span></button>';
+ }
+ function renderActiveRideMap(o){
+  clearPreview();
+  const host=$('ride-live-map');
+  if(!host||typeof maplibregl==='undefined'||typeof qgQueueGoPickerStyle!=='function'||!o)return;
+  try{
+   const points=[];
+   const addPoint=(lat,lng)=>{if(qgIsValidCoordinate(lat,lng,true))points.push([Number(lng),Number(lat)])};
+   addPoint(o.pickup_latitude,o.pickup_longitude);
+   addPoint(o.delivery_latitude,o.delivery_longitude);
+   addPoint(o.rider_latitude,o.rider_longitude);
+   const center=points[2]||points[0]||points[1]||[101,15];
+   previewMap=new maplibregl.Map({container:host,style:qgQueueGoPickerStyle(),center,zoom:points.length?15:6,minZoom:5,maxZoom:19,attributionControl:false,dragRotate:false,pitchWithRotate:false});
+   previewMap.touchZoomRotate.disableRotation();
+   previewMap.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),'top-left');
+   previewMap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
+   const bounds=new maplibregl.LngLatBounds();
+   const marker=(lat,lng,label,color,html)=>{
+    if(!qgIsValidCoordinate(lat,lng,true))return;
+    const el=document.createElement('div');
+    if(html)el.innerHTML=html;
+    else{el.style.width='22px';el.style.height='22px';el.style.borderRadius='50%';el.style.background=color;el.style.border='4px solid #fff';el.style.boxShadow='0 3px 12px rgba(0,0,0,.28)'}
+    el.setAttribute('aria-label',label);
+    new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([Number(lng),Number(lat)]).addTo(previewMap);
+    bounds.extend([Number(lng),Number(lat)]);
+   };
+   marker(o.pickup_latitude,o.pickup_longitude,'จุดรับ','#1677ff');
+   marker(o.delivery_latitude,o.delivery_longitude,'จุดหมาย','#e6002d');
+   marker(o.rider_latitude,o.rider_longitude,'ตำแหน่งคนขับ','#111',
+    '<div style="width:42px;height:42px;border-radius:50%;background:#fff;border:3px solid #e6002d;box-shadow:0 4px 14px #0003;display:flex;align-items:center;justify-content:center;color:#e6002d">'+ico('car',20)+'</div>');
+   previewMap.once('load',()=>{
+    if(!previewMap||bounds.isEmpty())return;
+    const ne=bounds.getNorthEast(),sw=bounds.getSouthWest();
+    if(Math.abs(ne.lat-sw.lat)<0.00001&&Math.abs(ne.lng-sw.lng)<0.00001)previewMap.easeTo({center:[sw.lng,sw.lat],zoom:16,duration:0});
+    else previewMap.fitBounds(bounds,{padding:54,maxZoom:16,duration:0});
+   });
+  }catch{clearPreview()}
  }
  function renderRoutePreview(){
   clearPreview();
@@ -121,7 +163,12 @@
   let html='<div class="pt"><button class="back" onclick="go(\'home\')">'+ico('back')+'</button><div><h1>บริการเรียกรถ</h1><p class="sm" style="margin:3px 0 0">รับส่งผู้โดยสารด้วย QueueGo</p></div></div>';
   if(error)html+='<p role="alert" style="margin:0 0 10px">'+esc(error)+'</p>';
   if(current){
-   html+='<section class="card"><h2>'+esc(QueueGoOrderNumber.format(current))+'</h2><b>'+esc(status(current))+'</b><p>จุดรับ: '+esc(current.pickup_address)+'</p><p>จุดหมาย: '+esc(current.delivery_address)+'</p><p>ค่าโดยสารเงินสด <b>'+baht(current.fare)+'</b></p><p>คนขับ: '+esc(current.rider_name||'กำลังหา')+'</p><p>เส้นทางที่ประเมิน '+Number(current.distance_km).toLocaleString('th-TH')+' กม. · เวลาวิ่งประมาณ '+Math.ceil(current.duration_minutes)+' นาที ไม่รวมเวลารอคนขับ</p>';
+   const tracking=current.rider_id&&!terminal(current)
+    ?(qgIsValidCoordinate(current.rider_latitude,current.rider_longitude,true)?'ตำแหน่งคนขับล่าสุด · อัปเดตประมาณทุก 5 วินาที':'กำลังรอตำแหน่งล่าสุดจากคนขับ')
+    :'';
+   html+='<div id="ride-live-map" class="mapbox" style="height:300px;border-radius:20px;overflow:hidden;margin:0 0 12px;background:#eef1f4"></div>'+
+    (tracking?'<p class="sm" style="margin:0 2px 10px;color:#6f7680">'+esc(tracking)+'</p>':'')+
+    '<section class="card"><h2>'+esc(QueueGoOrderNumber.format(current))+'</h2><b>'+esc(status(current))+'</b><p>จุดรับ: '+esc(current.pickup_address)+'</p><p>จุดหมาย: '+esc(current.delivery_address)+'</p><p>ค่าโดยสารเงินสด <b>'+rideMoney(current.fare)+'</b></p><p>คนขับ: '+esc(current.rider_name||'กำลังหา')+'</p><p>เส้นทางที่ประเมิน '+Number(current.distance_km).toLocaleString('th-TH')+' กม. · เวลาวิ่งประมาณ '+Math.ceil(current.duration_minutes)+' นาที ไม่รวมเวลารอคนขับ</p>';
    if(!terminal(current)&&current.rider_id)html+='<button class="lk" onclick="go(\'order-chat/'+esc(current.id)+'\')">ติดต่อคนขับ</button>';
    if(current.status==='searching_rider'&&!current.rider_id&&!p)html+='<button class="lk" data-action="cancel" '+(busy?'disabled':'')+'>ยกเลิกการเรียกรถ</button>';
    if(terminal(current)&&!p)html+='<button class="prim" data-action="new">เรียกรถเที่ยวใหม่</button>';
@@ -137,16 +184,16 @@
    html+=rideLocationButton('pickup','จุดรับ',pickup?.address,'#1677ff');
    html+=rideLocationButton('destination','จุดหมาย',destination?.address,'#e6002d');
    if(!pickup&&!p&&config.enabled)html+='<button type="button" id="ride-use-current" style="width:100%;padding:10px 12px;border:1px solid #cfd9e6;border-radius:12px;background:#f7faff;color:#2e6db4;font-weight:800;margin-bottom:10px">ใช้ตำแหน่งปัจจุบันเป็นจุดรับ</button>';
-   if(quote)html+='<div style="padding:12px;border-radius:14px;background:#f7f8fa;margin-top:4px"><div style="display:flex;justify-content:space-between;align-items:end"><span>ค่าโดยสารเงินสด</span><b style="font-size:24px">'+baht(quote.fare)+'</b></div><p class="sm" style="margin:5px 0 0">ระยะทาง '+Number(quote.distance_km).toLocaleString('th-TH',{maximumFractionDigits:1})+' กม. · เวลาวิ่งประมาณ '+Math.ceil(quote.duration_minutes)+' นาที</p></div>';
+   if(quote)html+='<div style="padding:12px;border-radius:14px;background:#f7f8fa;margin-top:4px"><div style="display:flex;justify-content:space-between;align-items:end"><span>ค่าโดยสารเงินสด</span><b style="font-size:24px">'+rideMoney(quote.fare)+'</b></div><p class="sm" style="margin:5px 0 0">ระยะทาง '+Number(quote.distance_km).toLocaleString('th-TH',{maximumFractionDigits:1})+' กม. · เวลาวิ่งประมาณ '+Math.ceil(quote.duration_minutes)+' นาที</p></div>';
    else if(!p)html+='<button class="prim" data-action="quote" '+(busy||!config.enabled||!pickup||!destination?'disabled':'')+' style="margin-top:4px">'+(busy?'กำลังตรวจสอบ…':'ดูค่าโดยสาร')+'</button>';
    html+='</section>';
   }
   if(p||!current&&quote)html+='<button class="prim" data-action="request" '+(busy?'disabled':'')+'>'+(p?'ตรวจผลคำขอเดิม / ลองอีกครั้ง':'เรียกรถ')+'</button>';
-  if(!current&&!p)html+=rows.filter(terminal).slice(0,5).map(o=>'<p><a href="#ride/'+esc(o.id)+'">'+esc(QueueGoOrderNumber.format(o))+' · '+baht(o.fare)+'</a></p>').join('');
+  if(!current&&!p)html+=rows.filter(terminal).slice(0,5).map(o=>'<p><a href="#ride/'+esc(o.id)+'">'+esc(QueueGoOrderNumber.format(o))+' · '+rideMoney(o.fare)+'</a></p>').join('');
   layout(html,'orders');
   document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>action(button.dataset.action));
   const quick=$('ride-use-current');if(quick)quick.onclick=quickCurrentPickup;
-  if(!current)renderRoutePreview();
+  if(current)renderActiveRideMap(current);else renderRoutePreview();
  }
  async function pick(which){
   const saved=which==='pickup'?pickup:destination;
@@ -181,7 +228,7 @@
     '</button>'+
     '<div style="margin:14px 2px 7px;color:#8b929d;font-size:13px;font-weight:800">'+addressLabel+'</div>'+
     '<textarea id="ride-address" maxlength="500" placeholder="ที่อยู่หรือจุดสังเกต" style="box-sizing:border-box;width:100%;min-height:82px;resize:none;border:1px solid #dfe3e8;border-radius:17px;background:#fff;padding:14px 14px;font:inherit;font-size:16px;line-height:1.5;color:#16181c;outline:none">'+esc(initialAddress)+'</textarea>'+
-    '<div id="ride-picked-status" class="sm" style="margin:7px 2px 0;color:#8a9099">'+(point?'เลือกพิกัดแล้ว':'เลื่อนแผนที่หรือใช้ GPS เพื่อเลือกพิกัด')+'</div>'+
+    '<div id="ride-picked-status" class="sm" style="margin:7px 2px 0;color:#8a9099">'+(point?'เลือกพิกัดแล้ว':'แตะตำแหน่งบนแผนที่ หรือใช้ GPS เพื่อปักพิกัด')+'</div>'+
     '<button id="ride-save-location" class="prim" style="min-height:58px;margin-top:14px;border-radius:18px;font-size:18px;font-weight:900;box-shadow:0 10px 24px rgba(239,35,60,.20)">'+ico('pin',20)+'<span style="margin-left:7px">ใช้จุดนี้</span></button>'+
     '<button id="ride-back" type="button" style="min-height:52px;margin-top:10px;padding:0 18px;border:0;border-radius:17px;background:#fff4f5;color:#e3263f;font-weight:900;font-size:16px;display:inline-flex;align-items:center;gap:7px">'+ico('back',18)+'<span>กลับ</span></button>'+
     '<p id="ride-location-error" role="status" style="margin:8px 2px 0;color:#e6002d"></p>'+
