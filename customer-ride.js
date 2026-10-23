@@ -104,6 +104,7 @@
     }
    });
   }catch{clearPreview()}
+ }
 
  function renderActiveRideMap(current){
   clearPreview();
@@ -135,7 +136,6 @@
    const s=$('ride-live-status');
    if(s)s.textContent=riderPoint?'ตำแหน่งคนขับล่าสุด · อัปเดตอัตโนมัติทุกประมาณ 5 วินาที':'กำลังรอตำแหน่งล่าสุดจากคนขับ';
   }catch{clearPreview()}
- }
  }
  async function quickCurrentPickup(){
   if(busy||pending()||!config.enabled)return;
