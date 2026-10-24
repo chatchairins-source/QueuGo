@@ -1,10 +1,10 @@
-## 2026-10-24 Web app HTML downloads and role icons
+## 2026-10-24 Web app HTML downloads and role icons — DONE (Web source/CI/deploy)
 
-- Active branch `feat/web-app-download-links-icons-20261024`, source checkpoint `af95f3412ae95eedf96d61f095f9412918c3811d`, based on deployed main `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`.
+- PR #715 source `d9020643e050033d35640aaabeb952054b74ff0c`, merged into main at `beb7438a3e36afe9991a37689660fe469b26cb32`.
 - User requests direct access to downloadable HTML for Customer/Shop/Rider and bold professional icons for Customer and Shop. Existing live app entry points are `/`, `/merchant/`, `/rider/`; HTML files require internet and their QueueGo services/assets.
-- Customer and Shop lacked PWA manifests; Rider already uses the approved shared icon. Change adds custom Customer/Shop SVGs, manifests, a three-app links/download page, and link-integrity regression coverage.
-- No Production data changed.
-- **NEXT:** run exact-head QueueGo RC and fix any failures, merge only tested source, verify public Pages assets/links and update this checkpoint with CI/deployment evidence.
+- Customer and Shop now have distinct bold PWA SVG icons and manifests; all three apps declare a manifest. `/apps.html` lists launch links and same-origin HTML downloads. Downloaded entry pages need internet and hosted assets/services.
+- Exact-head RC #3337 / `40103741633` and main RC #3338 / `40104022905` passed. Pages #1694 / `40104022142` succeeded. Public app links, Customer/Shop manifests and SVG assets were verified.
+- No Production data changed. **NEXT:** optional owner-side PWA install/display acceptance on a physical device.
 
 ## 2026-10-24 Shared Web map camera rotation and tilt — DONE
 

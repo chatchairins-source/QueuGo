@@ -1,11 +1,12 @@
 # QueueGo Next Actions
 
-## Current Web app links and icon work — 2026-10-24
+## Web app links and Customer/Shop icons — DONE (Web source/CI/deploy), 2026-10-24
 
-- Active branch: `feat/web-app-download-links-icons-20261024`, based on deployed main `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`.
-- Scope: add a QueueGo app page with launch + HTML download links for Customer, Shop and Rider; add role-specific Customer and Shop PWA icons/manifests and link all three app manifests.
-- Source checkpoint `af95f3412ae95eedf96d61f095f9412918c3811d`. No Production data changed.
-- **NEXT:** run exact-head QueueGo RC, resolve failures, merge tested branch, and verify live Pages app links and icons.
+- PR #715 source `d9020643e050033d35640aaabeb952054b74ff0c`, merged at `beb7438a3e36afe9991a37689660fe469b26cb32`. No Production data changed.
+- Adds `/apps.html` with launch and HTML download actions for Customer, Shop and Rider, plus custom SVG PWA icons/manifests for Customer and Shop.
+- Exact-head RC #3337 / `40103741633` and main RC #3338 / `40104022905` passed. Pages #1694 / `40104022142` succeeded; live app links, manifests and icon assets verified.
+- Downloaded HTML files are web app entry points and require internet and hosted QueueGo services.
+- **NEXT:** owner-side PWA install/display acceptance on a physical device, if desired.
 
 ## Completed Web map rotation and tilt — 2026-10-24
 

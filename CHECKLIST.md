@@ -1,9 +1,11 @@
-## 2026-10-24 Web app HTML downloads and Customer/Shop icons — IN PROGRESS
+## 2026-10-24 Web app HTML downloads and Customer/Shop icons — DONE (Web source/CI/deploy)
 
 - Scope: provide launch and HTML-download links for Customer, Shop and Rider; add distinct, professional Customer and Merchant PWA icons and install manifests.
 - Evidence: the three live Web entry points are `/`, `/merchant/` and `/rider/`; Customer and Merchant did not declare app manifests. Rider already has its approved icon and manifest.
-- Source commit `af95f3412ae95eedf96d61f095f9412918c3811d` on `feat/web-app-download-links-icons-20261024`, based on deployed main `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`. No production data changed.
-- **NEXT:** run exact-head QueueGo RC, fix any failing icon/download checks, merge the tested source and verify GitHub Pages links and manifests.
+- PR #715 source `d9020643e050033d35640aaabeb952054b74ff0c`, merged to main at `beb7438a3e36afe9991a37689660fe469b26cb32`. No production data changed.
+- Exact-head RC #3337 / `40103741633` and post-merge main RC #3338 / `40104022905` passed. Pages deployment #1694 / `40104022142` succeeded.
+- Live `/apps.html` shows all three launch and HTML download actions; Customer and Shop manifests and both SVG icons were opened and verified on Pages. Downloaded HTML entry pages require internet and hosted QueueGo assets/services.
+- **NEXT:** owner can install Customer/Shop as PWA or download the three HTML entry pages from `/apps.html`; physical device installation/appearance remains owner-side acceptance.
 
 ## 2026-10-24 Shared map rotation and tilt — DONE (Web source/CI/deploy)
 
