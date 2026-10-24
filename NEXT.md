@@ -1,5 +1,12 @@
 # QueueGo Next Actions
 
+## Current Web PWA brand icon correction — IN PROGRESS
+
+- Active branch `fix/web-pwa-icons-use-approved-q-20261024`, source commit `969eeb0f26a87d973f9626c1969e24b7034e82a1`, based on current Web main `2d3aa5ec203c873b69ec52e2dcd108dbd4ef688a`.
+- Replace the previous ad hoc Web icons with the exact Customer/Shop Q role family from the latest Native successor. Include PNG manifest icons and iOS touch icons.
+- **NEXT:** exact-head RC, merge, deploy Pages, verify public assets.
+
+
 ## Web app links and Customer/Shop icons — DONE (Web source/CI/deploy), 2026-10-24
 
 - PR #715 source `d9020643e050033d35640aaabeb952054b74ff0c`, merged at `beb7438a3e36afe9991a37689660fe469b26cb32`. No Production data changed.
