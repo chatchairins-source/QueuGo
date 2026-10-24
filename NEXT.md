@@ -2,20 +2,27 @@
 
 Current snapshot: 2026-10-24 · Authoritative main: `28a121178b6e15ceb0a7575452b5cb2a374f40a3`
 
+
+
+## Active QueueGo continuation — 2026-10-24
+
+- PR #704 branch `feat/queuego-places-search-successor-20261024`, head `779fa7b7fc11f310c8897042afff846f5df94afe`; current main `28a121178b6e15ceb0a7575452b5cb2a374f40a3`. Source head `e34c368716be12069fe1848e17c44a0c46800791` passed exact-head RC `40088891010`; documentation head `779fa7b` passed exact-head RC `40089120095` across npm and all configured mobile browser gates.
+- Places/Search source remains unlaunched. Read-only QueueTech check finds no Places relation or `qg_search_places`, and only one active ordering area in Buriram. Existing call RPCs are authenticated-only with fixed search paths; phone fallback and no-show authority RPCs are absent. Advisor findings remain under review.
+- DOPA registry contains 76 provinces, but no resource has verified payload bytes, checksum or row count. The public JSON mirror is incomplete/inactive and cannot establish source coverage. No Production write or deployment.
+- **NEXT:** obtain the original official DOPA JSON and dictionary through an approved access path; verify raw bytes, SHA-256, province identity and row count before staging/import. Continue read-only security and service-area planning while access is unavailable. Keep PR #704 draft and QueueGo NOT DONE.
+
 ## Immediate map-layout checkpoint
 
-- Customer location search no longer shows an empty results frame; map height and surrounding spacing are compact on mobile. Admin location editor map and dialog now fit and scroll within the mobile viewport.
-- Exact code HEAD `3d693ed7b43e00f1d4be3c06d55d1eb91bd30935`; RC #3307 / run `40075979310` SUCCESS.
-- **NEXT:** retain these changes on #704; after deployment, verify Customer and Admin maps on the owner’s iPhone Safari. The nationwide Places/Search mission remains in progress; continue from the latest `CHECKLIST.md` NEXT after the visual checkpoint.
+- Customer location search, Customer map height/spacing and Admin location editor viewport fit are source complete on the #704 successor and covered by exact-head RCs `40088891010` and `40089120095`.
+- Physical iPhone Safari visual acceptance is still pending; CI does not establish device appearance. **NEXT:** owner-side review after any eventual deployment, then adjust only if the device shows clipping or overlap.
 
 
-
-## Active owner mission — Nationwide QueueGo Places/Search and operation
+## Historical QueueGo owner mission — Nationwide Places/Search and operation
 
 - PR #697 is superseded/closed; PR #704 is the active successor. Preserve newest main and all Merchant/Laundry/Rider work by forward merges only.
 - Official Geofabrik Thailand PBF staging yields 163,924 candidate rows across 164 review SQL chunks. The latest aggregate report records category, geometry and address-hierarchy field presence without names or address values. No OSM SQL was executed.
 - Open Admin Data hierarchy is now sourced from two pinned files at commit `eef739a5…`; exact hashes and all 8,369 hierarchy rows validate. Review SQL remains local and unexecuted.
-- NEXT: refresh main and PR #704; commit this DOPA catalog/download evidence, publish via expected-head CAS/`force=false`, forward-merge locally, and wait for exact-head RC. Continue only work that does not require Production writes or the unavailable migration path. For Places ingestion, acquire exact official DOPA payload bytes and verify provenance/checksum before staging. Keep production, owner and physical-device gates blocked.
+- NEXT: follow the active QueueGo continuation at the top of this file. Continue source-only or read-only work while actual official payload and release gates remain blocked.
 - Production Places/Search schema/RPC and imported nationwide data remain absent. DOPA GIS-01 is blocked on official payload bytes (HTTP 503). Buriram ordering/service-area gate remains. Rider 10-failed-call phone fallback and verified cash no-show suspension need server RPC/audit. Supabase advisor findings, Production E2E and Web Owner acceptance remain unresolved. No fake/demo data, Longdo/legacy map, Production writes/deploy, or physical-device PASS.
 - QueueGo remains NOT DONE until the original mission Definition of Done is met. Keep cash-first.
 
