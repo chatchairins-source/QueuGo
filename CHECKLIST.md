@@ -1,3 +1,12 @@
+## 2026-10-24 hosted RC and DOPA retry — IN PROGRESS
+
+- Exact current source/test commit remains `6c809de9e57fe37222274fc41072ee4fd681b288`, tree `ae951a470a32580e84cba5dc7110c0369c0ebdb2`; full `npm test` EXIT 0 and `node tests/th-admin-import.cjs` 47 PASS. Search authority audit found Customer/Merchant/Rider and Map View consumers call the shared `QueueGoMapWeb.search()` path, whose only backend is `qg_search_places`; no separate provider fallback or Buriram search catalog was found.
+- Latest hosted branch before this documentation update: PR #704 head `7c64748e80defef4ec50a3399bfb5a749ad40470`, tree `2ab8009e1cdad122887ba470c8333dda77d16839`; local successor HEAD `27b38412aeffd35d69779d4a7387a124ffdbafa3` has the same tree and includes the exact hosted commit by forward merge. Main remains `04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd`. PR is open, mergeable and draft.
+- Hosted exact-head QueueGo RC #3296 / run `40070860574` succeeded on `7c64748e…`, with all 12 stages passing including `npm ci`, full `npm test`, Admin/Merchant WebKit, Map Lab gestures, QueueGo Map search and Grocery mobile/tablet. RC #3295 / run `40070748518` was cancelled when the newer docs-only checkpoint superseded it.
+- Retried official DOPA GIS-01 province-31 acquisition into `/tmp/queuego-dopa-20261024-retry`; endpoint again returned HTTP 503 and no payload file was produced. No data import, Production write or deployment.
+- Remaining blockers unchanged: Production Places/Search schema/RPC/import absent; Buriram ordering/service-area gate remains active in Production; Rider 10-failed-call fallback and verified-cash no-show suspension RPC/audit absent; Supabase advisor findings, Production E2E and Web Owner acceptance remain open. Do not claim mission DONE or device PASS.
+- **NEXT:** publish this docs-only state with a fresh main/PR check and expected-head CAS/`force=false`; verify exact tree and exact-head QueueGo RC. Then continue on the next unblocked source-only task.
+
 ## 2026-10-24 QueueGo publication/tree reconciliation — IN PROGRESS
 
 - Exact code evidence: source/test commit `6c809de9e57fe37222274fc41072ee4fd681b288`, tree `ae951a470a32580e84cba5dc7110c0369c0ebdb2`, full `npm test` EXIT 0 and Thai hierarchy importer 47 PASS. Docs checkpoint commits were published without code changes.
