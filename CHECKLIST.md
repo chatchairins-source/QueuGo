@@ -1,3 +1,14 @@
+## 2026-10-24 Merchant Add Menu bottom action — reconciled latest successor
+
+- Source base: PR #697 advanced to `a751de50ab41246d2f2151f865229705c5399f7a` while this fix was being validated; Merchant/test blobs were re-read from that exact latest successor before reconciliation.
+- Owner request: restaurant/cafe product management uses `เพิ่มเมนู` and the action sits at the bottom above Merchant navigation.
+- ROOT CAUSE: iPhone product CSS overrides `.qgm-fab` to `position:sticky`, leaving the action directly after the cards.
+- RECONCILED: the dedicated `.qgm-menu-add-action` is applied onto the exact latest Merchant file; Grocery keeps `เพิ่มสินค้าเอง` / catalog product actions unchanged.
+- TEST EVIDENCE: predecessor exact-head RC `40054555578` on `a2349a53d0728f60f61cbe4d326e95ecbad8bddb` passed npm, Merchant mobile WebKit, Admin mobile, Map Lab, QueueGo Map search and Grocery browser gates.
+- IN PROGRESS: this merge successor requires exact-head RC because PR #697 advanced during validation.
+- No Production data mutation.
+- NEXT: exact-head RC on the reconciled merge successor, then merge PR #698 into PR #697 and continue the latest successor line.
+
 Warning: truncated output (original token count: 59206)
 Total output lines: 1386
 
