@@ -1,4 +1,5 @@
 const assert=require('assert');
+const fs=require('fs'),path=require('path');
 const {
   SOURCE_KEY,SOURCE_LICENSE,parseOperationalSnapshot,renderOperationalPlacesSql,shopCategory
 }=require('../scripts/import-queuego-verified-places.cjs');
@@ -44,6 +45,13 @@ eq([market.category,market.subcategory],['market','fresh_market'],'verified mark
 eq(grocery.latitude,null,'coordinate-less verified places must retain null coordinates');
 ok(/^[a-f0-9]{64}$/.test(food.source_payload_hash),'each normalized public record must have a deterministic payload hash');
 eq(shopCategory('laundry'),{category:'laundry',subcategory:'laundry'},'Laundry category mapping must remain explicit');
+
+const exportSql=fs.readFileSync(path.join(__dirname,'../scripts/export-queuego-verified-places.sql'),'utf8');
+ok(exportSql.includes("'snapshot_complete', true"),'read-only exporter must mark the snapshot complete explicitly');
+for(const publicField of ['shop_name','public_category','status','onboarding_status','archived_at','market_membership_status','address','latitude','longitude','verified','province'])
+  ok(exportSql.includes("'"+publicField+"'"),'read-only exporter must include public field '+publicField);
+ok(!/\b(phone|email|user_id|auth_user_id|owner_name|contact_name|national_id)\b/i.test(exportSql),'read-only exporter must not select direct account/contact PII');
+ok(!/\b(update|insert|delete|truncate|alter|drop)\b\s+(public\.|into|from|table)/i.test(exportSql),'operational snapshot exporter must remain read-only');
 
 const sql=renderOperationalPlacesSql(snapshot);
 ok(sql.includes("'"+SOURCE_KEY+"'"),'SQL must use QueueGo verified source authority');
