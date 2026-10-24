@@ -1,3 +1,18 @@
+## 2026-10-24 QueueGo Places reconciled to latest main successor — IN PROGRESS
+
+- Latest main `c757450189fd63e85f27f99f8a0c9cc38a272205` is now an ancestor of active Places PR #697 via successor merge commit `d1025835fee28449114a901c57aee6dad104a22d` (PR #701). The PR branch advanced during the local forward-merge; that newer descendant was fetched and verified before continuing. Its source tree matches local tested code for the Merchant `74px` content clearance and updated regression test.
+- Local full `npm test` completed successfully on the same merged code tree; relevant suites include Rider registration map runtime (13), QueueGo Places schema (60), shared search (16), Thailand admin importer (29), DOPA importer (19), Map View search (10), and Merchant product reliability (90). `git diff --check` passed.
+- Exact-head hosted RC #3248 / run `40057854157` on `d1025835` was in progress at this checkpoint. No Production schema/data or deployment change. Official DOPA and data.go catalogs list the GIS-01 village dataset with Open Data Common license, but resource payload and checksum have not been obtained.
+- NEXT: read exact-head RC #3248. If successful, keep the PR draft and continue permitted data acquisition through an official catalog resource; if it fails, fix only the first regression. Do not route around Supabase CLI telemetry auto-review; Places deployment/import, order-area, Rider phone entitlement, and verified no-show remain blocked.
+
+## 2026-10-24 QueueGo Places forward-merge of latest main — IN PROGRESS
+
+- Refreshed `origin/main` after the prior checkpoint: `c757450189fd63e85f27f99f8a0c9cc38a272205` (PR #700). Active Places successor remains PR #697 at remote head `d88e4332f5b517a2330b2d3616c6a78040b9d55f`; no newer Places successor was found.
+- Forward-merged latest main into the clean PR #697 checkout. The only conflicts were the Merchant Add Menu content clearance and its exact-pixel regression assertion. Resolved using the newest main value (`74px`) and preserved compact button behavior and all other PR #697 files.
+- Full `npm test` completed successfully on the merged source tree, including registration map runtime (13), QueueGo Places schema (60), shared search (16), Thailand admin importer (29), DOPA importer (19), map UI (5), Map View Search (10), and Merchant product reliability (90). `git diff --check` passed. Prior exact-head RC #3245 / run `40057430678` passed on `d88e4332`; it does not certify this new forward-merge.
+- No Production schema/data or deployment change. Existing Supabase migration auto-review block remains in force. DOPA GIS-01 catalog is searchable in official web index, but official catalog page fetch still times out; no province resource checksum/import is claimed.
+- NEXT: commit this forward-merge with this ledger update, publish the descendant to PR #697, run fresh exact-head RC; continue unblocked ingestion/source work and keep schema-dependent phone/no-show/order-area authorities blocked until approved migration tooling is available.
+
 ## 2026-10-24 QueueGo Places successor forward-merge
 
 - Current source base: PR #697 branch head `465005316bf5b513f4aa2671b553327d26240c55`; latest main `fdccc127caa80ce0cbd9897ef7bbec09570fa825` includes the public Merchant Add Menu change. Local merge `295916e5c452d3a4a921e66edde1ba1b2d337ea2` preserves PR #697, forward-merges current main, and resolves only Merchant button CSS/test conflicts.
