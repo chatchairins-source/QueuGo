@@ -1,3 +1,12 @@
+## 2026-10-24 QueueGo publication/tree reconciliation — IN PROGRESS
+
+- Exact code evidence: source/test commit `6c809de9e57fe37222274fc41072ee4fd681b288`, tree `ae951a470a32580e84cba5dc7110c0369c0ebdb2`, full `npm test` EXIT 0 and Thai hierarchy importer 47 PASS. Docs checkpoint commits were published without code changes.
+- Local successor `work/places-current-successor-20261024` was forward-merged with the published PR checkpoint; current local HEAD before this note is `f6e6dc1c4a29831b48340e639fae9b7bbbc14870`, tree `4c83bf8c003d03916e3bdf5e69a407de7d6664c6`. This merge retains both histories and makes the local tree byte-identical to the hosted PR tree.
+- Rechecked refs before the last docs publication: main `04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd`; PR #704 was `5150a7bd3d89354f023e3fa8ef6222c91da09154`. Published documentation-only descendant via CAS/`force=false` as `5aa06859f602da2835b39d4b6aa9ed255362ecf4`, tree `4c83bf8c…`; then fetched and forward-merged that exact hosted commit. PR #704 remains open, draft and mergeable.
+- Hosted RC #3293 / run `40070332412` passed all 12 stages on commit `5150a7bd…`. After the docs-only publication, exact-head RC #3294 / run `40070653446` is running on `5aa06859…`; check its terminal status before considering this publication checkpoint verified.
+- Mission blockers remain unchanged: official DOPA village payload unavailable (HTTP 503); Production Places/Search migrations/RPC/data absent; Buriram ordering/service-area gate remains in Production; Rider fallback/no-show server RPC/audit absent; advisor remediation and Production E2E/Web Owner acceptance remain open. No Production write/deploy, fake/demo data or physical-device PASS.
+- **NEXT:** verify RC #3294 on exact PR head, then proceed with the next unblocked source-only task without duplicating the completed importer fix. Keep #704 draft and preserve all newer Merchant/Laundry/Rider work.
+
 ## 2026-10-24 Thai hierarchy first-run source provenance — IN PROGRESS
 
 - Evidence-backed root cause: generated review SQL inserted `queuego_places` in a data-modifying CTE, then joined the base table again in the same SQL statement to create `queuego_place_source_records`. PostgreSQL statement-snapshot visibility meant first-run places were not visible to that second read; a second import incorrectly appeared to repair the provenance rows. The source-record insert now joins the `upserted ... RETURNING place_id,admin_code` CTE directly.
