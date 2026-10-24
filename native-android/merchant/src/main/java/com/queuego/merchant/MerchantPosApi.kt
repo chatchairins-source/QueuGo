@@ -6,10 +6,13 @@ import com.queuego.shared.NativeAuth
 import com.queuego.shared.nativePosPermissionAllowed
 import com.queuego.shared.QueueGoNativeApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.SecureRandom
+import java.net.SocketTimeoutException
 import java.util.UUID
 
 data class PosProduct(
@@ -106,6 +109,36 @@ data class PosSnapshot(
 
 class PosAccessDeniedException(message: String) : IllegalStateException(message)
 
+internal fun merchantPosLoadError(failure: Throwable): String {
+    val detail = failure.message.orEmpty().trim()
+    val timedOut = failure is SocketTimeoutException ||
+        detail.equals("timeout", ignoreCase = true) ||
+        detail.contains("timed out", ignoreCase = true) ||
+        detail.contains("socket timeout", ignoreCase = true)
+    return if (timedOut) {
+        "โหลดข้อมูล POS ไม่ทัน ระบบหรือเครือข่ายตอบช้า · กดโหลดใหม่เพื่อลองอีกครั้ง"
+    } else {
+        detail.ifBlank { "โหลด POS ไม่สำเร็จ · กดโหลดใหม่เพื่อลองอีกครั้ง" }
+    }
+}
+
+internal fun merchantPosIsReadFailureMessage(message: String?): Boolean {
+    val value = message?.trim().orEmpty()
+    return value.equals("timeout", ignoreCase = true) ||
+        value.startsWith("โหลดข้อมูล POS ไม่ทัน") ||
+        value.startsWith("โหลด POS ไม่สำเร็จ")
+}
+
+private data class PosSnapshotReadSet(
+    val owner: Any,
+    val profile: JSONArray,
+    val tables: JSONArray,
+    val products: JSONArray,
+    val bills: JSONArray,
+    val openBills: JSONArray,
+    val staff: JSONArray
+)
+
 class MerchantPosApi(
     private val pendingStore: MerchantPosPendingStore,
     private val http: QueueGoNativeApi = QueueGoNativeApi()
@@ -172,42 +205,61 @@ class MerchantPosApi(
             throw PosAccessDeniedException("บัญชีนี้ยังไม่มีสิทธิ์ POS ของร้าน")
         }
 
-        val owner = scalarBoolean(
-            http.rpc("pos_is_owner", auth.session.accessToken, JSONObject()),
-            "pos_is_owner"
-        )
-        val profileRaw = http.array(http.get(
-            "shop_profiles?select=shop_name,public_category,metadata&id=eq." + http.enc(shopId) + "&limit=1",
-            auth.session.accessToken
-        ))
+        // These reads are independent after the server resolves the active shop. Fetching them
+        // concurrently prevents one POS refresh from waiting through a long chain of HTTP calls.
+        val reads = coroutineScope {
+            val owner = async { http.rpc("pos_is_owner", auth.session.accessToken, JSONObject()) }
+            val profile = async { http.array(http.get(
+                "shop_profiles?select=shop_name,public_category,metadata&id=eq." + http.enc(shopId) + "&limit=1",
+                auth.session.accessToken
+            )) }
+            val tables = async { http.array(http.get(
+                "pos_tables?select=id,label,active,qr_token&shop_id=eq." + http.enc(shopId) + "&order=label.asc",
+                auth.session.accessToken
+            )) }
+            val products = async { http.array(http.get(
+                "products?select=id,name,price,pos_price,delivery_price,image,available,pos_available,delivery_available" +
+                    "&shop_id=eq." + http.enc(shopId) + "&order=name.asc",
+                auth.session.accessToken
+            )) }
+            val billColumns = "select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status," +
+                "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at"
+            val bills = async { http.array(http.get(
+                "orders?$billColumns&shop_id=eq." + http.enc(shopId) +
+                    "&sales_channel=eq.POS&order=created_at.desc&limit=200",
+                auth.session.accessToken
+            )) }
+            val openBills = async { http.array(http.get(
+                "orders?$billColumns&shop_id=eq." + http.enc(shopId) +
+                    "&sales_channel=eq.POS&payment_status=eq.UNPAID&status=neq.cancelled&order=created_at.desc",
+                auth.session.accessToken
+            )) }
+            val staff = async { http.array(http.get(
+                "pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active" +
+                    "&shop_id=eq." + http.enc(shopId),
+                auth.session.accessToken
+            )) }
+            PosSnapshotReadSet(
+                owner = owner.await(),
+                profile = profile.await(),
+                tables = tables.await(),
+                products = products.await(),
+                bills = bills.await(),
+                openBills = openBills.await(),
+                staff = staff.await()
+            )
+        }
+        val owner = scalarBoolean(reads.owner, "pos_is_owner")
+        val profileRaw = reads.profile
+        val tablesRaw = reads.tables
+        val productsRaw = reads.products
+        val billsRaw = reads.bills
+        val openBillsRaw = reads.openBills
+        val staffRaw = reads.staff
         val profile = profileRaw.optJSONObject(0)
         val shopName = profile?.optString("shop_name")?.takeIf { it.isNotBlank() } ?: "ร้านค้า"
         val shopCategory = profile?.optString("public_category")?.takeIf { it.isNotBlank() }
             ?: profile?.optJSONObject("metadata")?.optString("category")?.orEmpty()
-
-        val tablesRaw = http.array(http.get(
-            "pos_tables?select=id,label,active,qr_token&shop_id=eq." + http.enc(shopId) + "&order=label.asc",
-            auth.session.accessToken
-        ))
-        val productsRaw = http.array(http.get(
-            "products?select=id,name,price,pos_price,delivery_price,image,available,pos_available,delivery_available" +
-                "&shop_id=eq." + http.enc(shopId) + "&order=name.asc",
-            auth.session.accessToken
-        ))
-        val billsRaw = http.array(http.get(
-            "orders?select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status," +
-                "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at" +
-                "&shop_id=eq." + http.enc(shopId) +
-                "&sales_channel=eq.POS&order=created_at.desc&limit=200",
-            auth.session.accessToken
-        ))
-        val openBillsRaw = http.array(http.get(
-            "orders?select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status," +
-                "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at" +
-                "&shop_id=eq." + http.enc(shopId) +
-                "&sales_channel=eq.POS&payment_status=eq.UNPAID&status=neq.cancelled&order=created_at.desc",
-            auth.session.accessToken
-        ))
         val mergedBillsRaw = JSONArray()
         val seenBillIds = mutableSetOf<String>()
         for (source in listOf(openBillsRaw, billsRaw)) {
@@ -218,11 +270,6 @@ class MerchantPosApi(
                 mergedBillsRaw.put(row)
             }
         }
-        val staffRaw = http.array(http.get(
-            "pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active" +
-                "&shop_id=eq." + http.enc(shopId),
-            auth.session.accessToken
-        ))
         val billIds = idsOf(mergedBillsRaw)
         val itemsRaw = if (billIds.isEmpty()) JSONArray() else http.array(http.get(
             "order_items?select=order_id,product_id,item_name,description,quantity,total_price,pos_kitchen_status,pos_batch" +

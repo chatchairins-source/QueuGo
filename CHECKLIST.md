@@ -1,3 +1,29 @@
+# 2026-10-24 Rider Android production schema mismatch — IN PROGRESS
+
+- Active local successor: `fix/native-customer-map-picker-20261024` (descends from PR #710 head `8a9089d4`; the Rider and POS source fixes are local and unpublished).
+- Evidence: owner photo shows Rider map with `column orders.express_distance_km does not exist`. Supabase production read-only schema query confirms none of the Express columns selected by Rider exist. Production PostgREST logs at `2026-10-24T16:29:49Z` show the same Android `SM-X135G` request failing with SQLSTATE `42703`.
+- Root cause: Native Rider already routes `GET orders` through `QueueGoOrderReadCompatibility`, but its optional-column allowlist omitted Express fields. The intended compatibility retry therefore rethrew this missing-column error and blocked the full Rider snapshot. The Express migration is not present in production migration history; it is explicitly source-only/staged, so it is not applied here.
+- Fix commit: `c288e3d9` adds the 11 selected Express fields to the optional read allowlist and covers repeated missing-column removal while preserving owner/status filters.
+- Evidence: `node tests/native-android-source.cjs` PASS (311 checks); `git diff --check` PASS. No Android SDK, Gradle wrapper or `adb` is available in this workspace, so no APK or emulator screenshot was produced. Production was only inspected, not changed.
+- Status: source fix is in progress; APK/runtime verification is blocked pending an exact-head Native Pilot build. Prior APK files predate this fix and must not be reused as evidence.
+- NEXT: run the shared Kotlin compatibility test and exact-head Native Pilot, inspect generated Rider screenshot/map state, and publish a new test APK only from that exact commit. Also continue the separate Merchant POS timeout/layout issue from the owner screenshots.
+
+## 2026-10-24 Native Merchant POS compared with Web — IN PROGRESS
+
+- Fix commit: `4e812a6e` makes Native POS fetch independent shop-scoped reads concurrently, matching the Web flow, and turns raw timeout text into a Thai retry message.
+- Evidence: owner screenshot shows raw `timeout` on the Native POS page. Native `MerchantPosScreen` displayed `failure.message` verbatim. Web `merchant/pos-table-v2.js` runs independent table/product/order/staff reads with `Promise.all`; Native `MerchantPosApi.snapshot()` did these reads sequentially. Production logs for the shown Android device (2026-10-24 16:24:30–16:27:00 UTC) show POS snapshot endpoints returning HTTP 200, origin times 0.19–2.30 s. The data and timeout appearing together means this log does not support a persistent POS backend failure.
+- Follow-up fix in progress: successful POS snapshot refresh clears a prior raw `timeout` or mapped read error while preserving success messages and offline-draft status. This addresses stale error text after a later successful read.
+- TEST: `node tests/native-android-source.cjs` PASS (311 checks); `git diff --check` PASS. No Android SDK, Gradle wrapper or `adb` is available here, so the Kotlin unit test/build and screenshot capture have not run.
+- Status: source fix only; no APK generated. The existing APKs predate these fixes. Kotlin unit test, exact-head APK build and screenshot are still unverified in this workspace.
+- NEXT: run Merchant Kotlin unit tests and exact-head Native Pilot; inspect actual POS screenshot on the generated build, then provide that build. Preserve web POS flow, which already loads these independent records concurrently.
+
+## 2026-10-24 Customer Android map picker failure — IN PROGRESS
+
+- Evidence from owner-provided Android photo and 7-second screen recording: the Ride location picker displayed a blank map surface with an indefinite loading spinner and no coordinates. The root cause is confirmed in the tested APK build path: `QG_MAP_SERVICE_BASE_URL` was empty in Native Pilot, so `queueGoMapVectorSourceUri()` returned null and `QgLocationPickerMap` could never signal ready. The Customer picker also used a fixed 150dp map height, too short on the shown device.
+- Fix commit `8df77697`: Native Pilot now uses the existing deployed QueueGo Map endpoint `https://queuego-map-buriram.onrender.com` when no repo override is set; production release workflow still requires an explicit validated endpoint. Customer map height now scales to 34% of screen height (240–400dp) and a 12-second load timeout exposes retry feedback instead of an endless spinner.
+- TEST: `node tests/native-android-source.cjs` PASS, 309 checks / 0 failures; `git diff --check` PASS. Android Gradle build is not available in this local environment; exact-head Native Pilot CI is required for APK build/runtime verification.
+- **NEXT:** publish this descendant of PR #710 with fast-forward only, run exact-head Native Pilot, confirm the Customer map source endpoint appears in the packaged manifest/runtime evidence, then provide the new three-APK test ZIP. Existing public map coverage is Buriram; nationwide map coverage remains a separate workstream.
+
 ## 2026-10-23 Current owner scope: map only; recovery cancelled
 
 - Latest owner instruction: ไม่ต้องกู้แล้วปรับแค่เรื่องแผนที่. Do not continue whole-file/module timestamp recovery. Native recovery PR #658 is closed without merge. Initial recovery snapshots are historical references only.

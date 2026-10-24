@@ -290,6 +290,7 @@ fun MerchantPosScreen(
             val fresh = api.snapshot(auth)
             snapshot = fresh
             snapshotActorId = auth.session.authUserId
+            if (merchantPosIsReadFailureMessage(message)) message = null
             offlineCatalogOnly = false
             draftDeviceId?.let { device -> runCatching {
                 withContext(Dispatchers.IO) {
@@ -340,10 +341,10 @@ fun MerchantPosScreen(
                         }
                     }.getOrNull()
                     message = "ออฟไลน์ · ใช้แคตตาล็อกที่บันทึกไว้สร้างร่างเท่านั้น · ยังไม่สร้างบิลหรือรับเงิน"
-                } else message = failure.message ?: "โหลด POS ไม่สำเร็จ"
+                } else message = merchantPosLoadError(failure)
             } else {
                 networkValidated = posNetworkValidated(context)
-                message = failure.message ?: "โหลด POS ไม่สำเร็จ"
+                message = merchantPosLoadError(failure)
             }
         } finally {
             snapshotLoading = false
@@ -750,16 +751,29 @@ fun MerchantPosScreen(
         }
 
         if (!message.isNullOrBlank()) {
-            Text(
-                message!!,
-                color = if (
-                    message!!.contains("แล้ว") ||
-                    message!!.contains("สำเร็จ") ||
-                    message!!.contains("สร้าง")
-                ) QgGreen else MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
-                fontSize = 12.sp
-            )
+            val text = message!!
+            val isSuccess = text.contains("แล้ว") || text.contains("สำเร็จ") || text.contains("สร้าง")
+            if (!isSuccess) {
+                Surface(
+                    color = Color(0xFFFFF1F3),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text, color = MaterialTheme.colorScheme.error, fontSize = 12.sp,
+                            modifier = Modifier.weight(1f))
+                        TextButton(onClick = { reload() }, enabled = !busy) {
+                            Text("ลองอีกครั้ง", fontSize = 11.sp)
+                        }
+                    }
+                }
+            } else {
+                Text(text, color = QgGreen,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp), fontSize = 12.sp)
+            }
         }
 
         if (pendingEdit != null || pendingEditError != null) {

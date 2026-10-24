@@ -186,7 +186,9 @@ private class QueueGoTrackingMapHolder {
         val style = map?.style ?: return
         val features = FeatureCollection.fromFeatures(
             lastPoints.map { point ->
-                Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude))
+                Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude)).apply {
+                    addStringProperty("color", "#%06X".format(point.color and 0xFFFFFF))
+                }
             }
         )
         val source = style.getSource(QUEUEGO_TRACKING_SOURCE)
@@ -196,7 +198,7 @@ private class QueueGoTrackingMapHolder {
             style.addLayer(
                 CircleLayer(QUEUEGO_TRACKING_LAYER, QUEUEGO_TRACKING_SOURCE)
                     .withProperties(
-                        circleColor("#E6002D"),
+                        circleColor(Expression.get("color")),
                         circleRadius(7f)
                     )
             )
@@ -210,7 +212,16 @@ private class QueueGoTrackingMapHolder {
                     ),
                     350
                 )
+            } else {
+                val bounds = org.maplibre.android.geometry.LatLngBounds.Builder().apply {
+                    lastPoints.forEach { include(LatLng(it.latitude, it.longitude)) }
+                }.build()
+                map?.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 48), 350)
             }
+        } ?: map?.animateCamera(
+            CameraUpdateFactory.newLatLngZoom(LatLng(14.9918756, 103.0994795), 11.0),
+            0
+        )
         }
     }
 

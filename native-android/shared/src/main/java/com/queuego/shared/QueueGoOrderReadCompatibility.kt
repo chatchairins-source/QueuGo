@@ -7,8 +7,13 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class QueueGoOrderReadCompatibility {
     private val absent = ConcurrentHashMap.newKeySet<String>()
-    private val optional = setOf("ride_distance_km", "ride_duration_minutes", "rider_delivery_payout",
-        "next_after_order_id", "merchant_ready_estimate_at", "merchant_ready_revision")
+    private val optional = setOf(
+        "ride_distance_km", "ride_duration_minutes", "rider_delivery_payout",
+        "next_after_order_id", "merchant_ready_estimate_at", "merchant_ready_revision",
+        "express_distance_km", "express_duration_minutes", "express_item_type", "express_weight_kg",
+        "express_size", "express_vehicle_type", "express_sender_name", "express_sender_phone",
+        "express_receiver_name", "express_receiver_phone", "express_instructions"
+    )
 
     fun compatiblePath(path: String): String {
         if (!isOrderRead(path)) return path
