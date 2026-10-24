@@ -1,3 +1,9 @@
+## 2026-10-24 Web PWA brand icon correction — IN PROGRESS
+
+- Active branch `fix/web-pwa-icons-use-approved-q-20261024`, source commit `969eeb0f26a87d973f9626c1969e24b7034e82a1`, based on current Web main `2d3aa5ec203c873b69ec52e2dcd108dbd4ef688a`.
+- PR #715 added Web PWA artwork that did not match the established QueueGo Q brand. Use the latest Native successor's Customer Q+cutlery and Shop Q+store SVG/512px PNG assets, with iOS touch icons. Keep Rider's approved icon.
+- No Production data changed. **NEXT:** exact-head QueueGo RC, merge after success, publish Pages and verify live icons.
+
 ## 2026-10-24 Web app HTML downloads and role icons — DONE (Web source/CI/deploy)
 
 - PR #715 source `d9020643e050033d35640aaabeb952054b74ff0c`, merged into main at `beb7438a3e36afe9991a37689660fe469b26cb32`.

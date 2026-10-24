@@ -1,3 +1,11 @@
+## 2026-10-24 Align Web app icons with QueueGo Q brand — IN PROGRESS
+
+- Evidence: Web app icons added in PR #715 did not match the established native QueueGo Q role family. The newest Native successor `work-native-rider-auth-review-20261024` includes Customer/Shop Q artwork and generated 512px PNGs; its launcher asset gate checks those assets.
+- Source commit `969eeb0f26a87d973f9626c1969e24b7034e82a1` on `fix/web-pwa-icons-use-approved-q-20261024`, based on current Web main `2d3aa5ec203c873b69ec52e2dcd108dbd4ef688a`.
+- Scope: use the approved Customer Q+cutlery and Shop Q+store icons in Web PWA manifests, include iOS touch icons, keep Rider's existing official icon, and preserve app HTML download links.
+- No Production data changed.
+- **NEXT:** run exact-head QueueGo RC, merge only after it passes, deploy Pages, and verify the live PWA PNG/SVG assets. Android icons/APKs are governed by the Native successor, not this Web branch.
+
 ## 2026-10-24 Web app HTML downloads and Customer/Shop icons — DONE (Web source/CI/deploy)
 
 - Scope: provide launch and HTML-download links for Customer, Shop and Rider; add distinct, professional Customer and Merchant PWA icons and install manifests.
