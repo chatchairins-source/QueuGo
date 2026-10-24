@@ -1361,3 +1361,11 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Full `npm test` EXIT 0 and `git diff --check` PASS on the tree containing source commit `21e24b0e`.
 - GitHub draft PR #697 is open from the newest-main descendant branch. The published branch was fetched back and its tree hash matched local exactly. Hosted RC was running for the published head; source timestamp correction may require the next workflow run. No merge/deploy or Production database changes.
 - NEXT: wait for hosted exact-head QueueGo RC on the latest branch head; fix only the first failure. Continue only after approved migration route, actual DOPA resource checksum/data validation, advisors, phone fallback/no-show authority and Buriram gate redesign are complete.
+
+
+## 2026-10-24 QueueGo nationwide successor exact-head RC
+- Hosted QueueGo RC run `40052035925` / run `3228` passed on exact head `8d0654223dc77ae2e13a7dc5160e304c12e0eb3f` (tree `4b7bc7d83bcdce6b998203b4bcd7988d4fdc1f4d`). `npm ci` and the full `npm test` passed.
+- Hosted mobile WebKit gates passed: Admin fast boot/section isolation, complete Merchant document boot, Map Lab hit targets/pan/zoom/sheet gestures, QueueGo Map place search and Grocery responsive rendering. This does not certify a physical device.
+- Local full `npm test` also passed on the same source tree before publication; local/remote tree hashes matched after fetch. No Production DDL/data writes or deployment. PR #697 remains draft.
+- Mission remains NOT DONE: actual DOPA resource checksum/import, approved Places/service-area/phone/no-show migrations, Production security/performance advisor remediation, end-to-end live backend acceptance, and Web deploy to Owner remain outstanding.
+- NEXT: continue from PR #697 head only; resolve approved migration path, real DOPA data validation and server authority gates. Re-run exact-head RC after each source change; do not merge/deploy or claim full release readiness while the listed blockers remain.
