@@ -27,8 +27,8 @@ const input={
 
 const snapshot=parseOperationalSnapshot(JSON.stringify(input));
 eq(snapshot.rows.length,3,'only map-addressable verified shops plus the verified market must import');
-eq(snapshot.summary.inactive_or_unapproved_shops,2,'pending and unverified-market-member shops must be excluded');
-eq(snapshot.summary.inactive_or_unverified_markets,1,'unverified market must be excluded');
+eq(snapshot.summary.excluded_shops,3,'unmappable, pending and unverified-market-member shops must be excluded');
+eq(snapshot.summary.excluded_markets,1,'unverified market must be excluded');
 eq(snapshot.summary.without_coordinates,1,'approved shop without coordinates must be excluded and reported');
 ok(/^[a-f0-9]{64}$/.test(snapshot.snapshotHash),'complete public snapshot must have a deterministic SHA-256 fingerprint');
 eq(snapshot.rows.map(x=>x.source_record_id),[
@@ -70,5 +70,14 @@ assert.throws(()=>parseOperationalSnapshot(JSON.stringify({...input,shops:[{...i
 assert.throws(()=>parseOperationalSnapshot(JSON.stringify({...input,shops:[{...input.shops[0],longitude:null}]})),/incomplete coordinate pair/);checks++;
 assert.throws(()=>parseOperationalSnapshot(JSON.stringify({...input,shops:[{...input.shops[0],id:'not-a-uuid'}]})),/shop id must be a UUID/);checks++;
 assert.throws(()=>parseOperationalSnapshot(JSON.stringify({...input,markets:[{...input.markets[0],email:'market@example.com'}]})),/prohibited sensitive field email/);checks++;
+const missingOnboarding=parseOperationalSnapshot(JSON.stringify({...input,shops:[{...input.shops[0],onboarding_status:null}],markets:[]}));
+eq(missingOnboarding.rows.length,0,'active Shop without explicit approved onboarding must fail closed');
+const missingMembership=parseOperationalSnapshot(JSON.stringify({...input,shops:[{...input.shops[4],market_membership_status:null}],markets:[]}));
+eq(missingMembership.rows.length,0,'Market-category Shop without explicit approved membership must fail closed');
+const blankShop=parseOperationalSnapshot(JSON.stringify({...input,shops:[{...input.shops[0],shop_name:'   '}],markets:[]}));
+eq(blankShop.rows.length,0,'blank Shop names must be excluded instead of aborting bootstrap');
+const blankMarket=parseOperationalSnapshot(JSON.stringify({...input,shops:[],markets:[{...input.markets[0],name:'   '}]}));
+eq(blankMarket.rows.length,0,'blank verified Market names must be excluded instead of aborting bootstrap');
+
 
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo-owned verified Shop/Market Places bootstrap, single runtime authority parity, map-coordinate gating, snapshot fingerprint and PII exclusion'}));
