@@ -68,6 +68,27 @@ def provision_map():
     assert verified == expected, "App-private map archive checksum mismatch"
 
 
+def scroll_to_text(label):
+    for _ in range(8):
+        ns=nodes()
+        if any(n.get("text","").strip()==label and rect(n) for n in ns): return ns
+        run(["shell","input","swipe","900","1900","900","600","450"])
+        time.sleep(0.5)
+    raise SystemExit("Read-only Rider profile entry not visible: "+label)
+
+def capture_profile_dialog(entry,title,name):
+    ns=scroll_to_text(entry)
+    tap_label(ns,entry)
+    ns=wait(lambda xs:any(title in n.get("text","") for n in xs),20)
+    assert ns, "Rider read-only profile screen did not open: "+title
+    screens.append({"screen":name,**shot(name)})
+    closes=[n for n in ns if n.get("text","").strip()=="ปิด" and rect(n)]
+    assert closes, "Read-only Rider profile screen has no close control: "+title
+    clickable=[n for n in closes if n.get("clickable")=="true"]
+    tap(clickable[-1] if clickable else closes[-1])
+    time.sleep(1)
+
+
 def main():
     phone=os.environ.get("QG_RIDER_REVIEW_PHONE","")
     password=os.environ.get("QG_RIDER_REVIEW_PASSWORD","")
@@ -95,12 +116,41 @@ def main():
     labels=("หน้าแรก","ข้อความ","รายได้","โปรไฟล์")
     ns=wait(lambda xs:all(any(n.get("text","").strip()==t for n in xs) for t in labels),90)
     if not ns: raise SystemExit("Login did not reach active Rider Home; no login screenshot was saved")
-    time.sleep(8)
+    global screens
     screens=[{"screen":"home_map",**shot("01-home-map")}]
-    for label,name in (("ข้อความ","02-messages"),("รายได้","03-earnings"),("โปรไฟล์","04-profile")):
-        tap_label(nodes(),label)
-        time.sleep(4)
-        screens.append({"screen":name.split("-",1)[1],**shot(name)})
+    tap_label(nodes(),"ข้อความ")
+    time.sleep(4)
+    screens.append({"screen":"messages_chat",**shot("02-messages-chat")})
+    ns=nodes()
+    if any(n.get("text","").strip()=="แจ้งเตือน" and rect(n) for n in ns):
+        tap_label(ns,"แจ้งเตือน")
+        time.sleep(3)
+        screens.append({"screen":"messages_notifications",**shot("03-messages-notifications")})
+        tap_label(nodes(),"แชต")
+        time.sleep(1)
+
+    tap_label(nodes(),"รายได้")
+    time.sleep(4)
+    screens.append({"screen":"earnings_today",**shot("04-earnings-today")})
+    for label,name in (("7 วัน","05-earnings-7-days"),("30 วัน","06-earnings-30-days")):
+        ns=nodes()
+        if any(n.get("text","").strip()==label and rect(n) for n in ns):
+            tap_label(ns,label)
+            time.sleep(3)
+            screens.append({"screen":name,**shot(name)})
+    if any(n.get("text","").strip()=="วันนี้" and rect(n) for n in nodes()):
+        tap_label(nodes(),"วันนี้")
+
+    tap_label(nodes(),"โปรไฟล์")
+    time.sleep(3)
+    screens.append({"screen":"profile",**shot("07-profile")})
+    for entry,title,name in (
+        ("แนะนำบริการและวิธีใช้งาน","ศูนย์เรียนรู้ Rider","08-learning-center"),
+        ("ศูนย์ความปลอดภัย","ศูนย์ความปลอดภัย","09-safety-center"),
+        ("แจ้งปัญหา / ติดตามเรื่อง","ติดต่อฝ่ายดูแล","10-support"),
+        ("ตรวจสอบระบบ Rider","ตรวจสอบระบบ Rider","11-diagnostics"),
+    ):
+        capture_profile_dialog(entry,title,name)
     meta={
       "source_head":os.environ.get("GITHUB_SHA",""),
       "workflow_run":os.environ.get("GITHUB_RUN_ID",""),
