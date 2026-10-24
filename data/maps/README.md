@@ -24,7 +24,13 @@ Batch staging deliberately does **not** modify `dopa-gis01-resources.json` and d
 
 The importer only keeps public place fields (name, public category, public address hierarchy, coordinates, operational source ID and timestamps). It rejects snapshots containing direct identity/contact fields such as phone, email, user/auth IDs, owner/contact names or national-ID fields. Active shops are eligible; Market-category shops additionally require approved market membership. Markets require both `active=true` and `verified=true`.
 
-The generated SQL is review-only. It upserts deterministic `queuego_verified` source records and field provenance, maps cafés into the `food` nearby category while preserving `cafe` as the subtype, and marks prior QueueGo shop/market Places as rejected only when they are absent from a complete snapshot. Coordinate-less verified shops remain text-searchable and are reported explicitly; partial/out-of-range coordinate pairs fail closed.
+The generated SQL is review-only. It upserts deterministic `queuego_verified` source records and field provenance, maps cafés into the `food` nearby category while preserving `cafe` as the subtype, and marks prior QueueGo shop/market Places as rejected only when they are absent from a complete snapshot. Operational Shop/Market Places must be map-addressable: rows without coordinates are excluded and reported, while partial/out-of-range coordinate pairs fail closed. This matches QueueGo Map/Search, which discards results without valid coordinates.
 
 Do not run the generated SQL until the QueueGo Places migrations have passed the approved release gate. This importer never applies Production changes itself.
 
+
+### Operational runtime authority
+
+`scripts/generate-queuego-shop-place-sync.cjs` generates review-only SQL for the future approved migration path. Its private `qg_private.queuego_upsert_operational_place` / `queuego_retire_operational_place` functions are the single write authority for both Shop and Market Places. Runtime triggers and bootstrap snapshots use the same `shop:<uuid>` / `market:<uuid>` source IDs and derive the same `queuego:<source-id>` dedupe key, preventing duplicate POIs across live sync and snapshot reconciliation.
+
+The snapshot importer is therefore a bootstrap/audit path, not a second Places writer: generated snapshot SQL calls the same private runtime authority. Do not apply either generated SQL artifact directly; first create the reviewed migration through the approved Supabase migration workflow and pass the release/security gates.

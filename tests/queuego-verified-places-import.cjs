@@ -26,24 +26,21 @@ const input={
 };
 
 const snapshot=parseOperationalSnapshot(JSON.stringify(input));
-eq(snapshot.rows.length,4,'three verified shops plus one verified market must import');
+eq(snapshot.rows.length,3,'only map-addressable verified shops plus the verified market must import');
 eq(snapshot.summary.inactive_or_unapproved_shops,2,'pending and unverified-market-member shops must be excluded');
 eq(snapshot.summary.inactive_or_unverified_markets,1,'unverified market must be excluded');
-eq(snapshot.summary.without_coordinates,1,'approved shop without coordinates must remain searchable and be reported');
+eq(snapshot.summary.without_coordinates,1,'approved shop without coordinates must be excluded and reported');
 ok(/^[a-f0-9]{64}$/.test(snapshot.snapshotHash),'complete public snapshot must have a deterministic SHA-256 fingerprint');
 eq(snapshot.rows.map(x=>x.source_record_id),[
-  'market:'+uuid(11),'shop:'+uuid(1),'shop:'+uuid(2),'shop:'+uuid(3)
+  'market:'+uuid(11),'shop:'+uuid(1),'shop:'+uuid(2)
 ],'records must sort deterministically by stable source identity');
 
 const food=snapshot.rows.find(x=>x.source_record_id==='shop:'+uuid(1));
 const cafe=snapshot.rows.find(x=>x.source_record_id==='shop:'+uuid(2));
-const grocery=snapshot.rows.find(x=>x.source_record_id==='shop:'+uuid(3));
 const market=snapshot.rows.find(x=>x.source_record_id==='market:'+uuid(11));
 eq([food.category,food.subcategory],['food','restaurant'],'food shops must map to food/restaurant');
 eq([cafe.category,cafe.subcategory],['food','cafe'],'cafes must share food nearby category while retaining cafe subtype');
-eq([grocery.category,grocery.subcategory],['grocery','grocery'],'grocery category must be preserved');
 eq([market.category,market.subcategory],['market','fresh_market'],'verified markets must use market/fresh_market');
-eq(grocery.latitude,null,'coordinate-less verified places must retain null coordinates');
 ok(/^[a-f0-9]{64}$/.test(food.source_payload_hash),'each normalized public record must have a deterministic payload hash');
 eq(shopCategory('laundry'),{category:'laundry',subcategory:'laundry'},'Laundry category mapping must remain explicit');
 
@@ -57,10 +54,10 @@ ok(!/\b(update|insert|delete|truncate|alter|drop)\b\s+(public\.|into|from|table)
 const sql=renderOperationalPlacesSql(snapshot);
 ok(sql.includes("'"+SOURCE_KEY+"'"),'SQL must use QueueGo verified source authority');
 ok(sql.includes("'"+SOURCE_LICENSE+"'"),'SQL must record QueueGo internal source license');
-ok(sql.includes("ON CONFLICT(dedupe_key) WHERE dedupe_key IS NOT NULL"),'operational records must upsert by stable QueueGo dedupe identity');
-ok(sql.includes("queuego_place_source_records"),'source-record provenance must be recorded');
-ok(sql.includes("queuego_place_field_provenance"),'field-level provenance must be recorded');
-ok(sql.includes("queuego_operational_snapshot_absent"),'complete snapshots must retire stale operational places');
+ok(sql.includes('qg_private.queuego_upsert_operational_place'),'bootstrap must call the single runtime upsert authority instead of implementing a second writer');
+ok(sql.includes("i.dedupe_key='queuego:'||i.source_record_id"),'bootstrap must verify the same stable source/dedupe identity contract');
+ok(!sql.includes('INSERT INTO public.queuego_places'),'bootstrap snapshot must not duplicate the runtime QueueGo Places upsert implementation');
+ok(sql.includes('qg_private.queuego_retire_operational_place'),'complete snapshots must retire stale operational places through the runtime retire authority');
 ok(sql.includes("p.source_id LIKE 'shop:%' OR p.source_id LIKE 'market:%'"),'stale reconciliation must be scoped only to operational shop/market records');
 ok(!/phone|email|user_id|auth_user_id|owner_name|contact_name/i.test(sql),'generated search SQL must not contain direct contact/identity PII fields');
 ok(sql.includes("last_operational_snapshot_at"),'source metadata must record the operational snapshot timestamp');
@@ -74,4 +71,4 @@ assert.throws(()=>parseOperationalSnapshot(JSON.stringify({...input,shops:[{...i
 assert.throws(()=>parseOperationalSnapshot(JSON.stringify({...input,shops:[{...input.shops[0],id:'not-a-uuid'}]})),/shop id must be a UUID/);checks++;
 assert.throws(()=>parseOperationalSnapshot(JSON.stringify({...input,markets:[{...input.markets[0],email:'market@example.com'}]})),/prohibited sensitive field email/);checks++;
 
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo-owned verified shop/market Places ingestion, complete-snapshot stale reconciliation, category mapping, provenance and PII exclusion'}));
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo-owned verified Shop/Market Places bootstrap, single runtime authority parity, map-coordinate gating, snapshot fingerprint and PII exclusion'}));

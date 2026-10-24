@@ -91,6 +91,7 @@ function makeShop(row, generatedAt) {
   const name = publicText(row.shop_name, 'shop name', 240);
   if (!name) throw new Error('active shop name is required');
   const point = coordinates(row, `shop ${row.id}`);
+  if (point.latitude == null) return null;
   const mapped = shopCategory(publicCategory);
   const sourceUpdatedAt = normalizedTimestamp(row.updated_at, generatedAt);
   const output = {
@@ -119,6 +120,7 @@ function makeMarket(row, generatedAt) {
   const name = publicText(row.name, 'market name', 240);
   if (!name) throw new Error('verified active market name is required');
   const point = coordinates(row, `market ${row.id}`);
+  if (point.latitude == null) return null;
   const sourceUpdatedAt = normalizedTimestamp(row.updated_at, generatedAt);
   const output = {
     source_record_id: 'market:' + clean(row.id).toLowerCase(),
@@ -171,17 +173,18 @@ function parseOperationalSnapshot(text) {
       imported: rows.length,
       inactive_or_unapproved_shops: inactiveShops,
       inactive_or_unverified_markets: inactiveMarkets,
-      without_coordinates: rows.filter(row => row.latitude == null).length
+      without_coordinates: [...parsed.shops,...parsed.markets].filter(row => (row?.latitude == null || clean(row.latitude) === '') && (row?.longitude == null || clean(row.longitude) === '')).length
     }
   };
 }
 function renderOperationalPlacesSql(snapshot) {
-  if (!snapshot || !Array.isArray(snapshot.rows) || !snapshot.generatedAt) throw new Error('validated snapshot is required');
+  if (!snapshot || !Array.isArray(snapshot.rows) || !snapshot.generatedAt || !snapshot.snapshotHash) throw new Error('validated snapshot is required');
   const json = JSON.stringify(snapshot.rows).replace(/'/g, "''");
   const generatedAt = sqlLiteral(snapshot.generatedAt);
-  return `-- QueueGo-owned verified operational places snapshot.
--- Generated from a complete, PII-free snapshot at ${snapshot.generatedAt}.
--- Requires QueueGo Places foundation + provenance unique index migrations.
+  return `-- QueueGo-owned verified operational places bootstrap/audit snapshot.
+-- Generated from a complete, PII-free, map-addressable snapshot at ${snapshot.generatedAt}.
+-- Requires the approved QueueGo operational runtime sync authority before execution.
+-- Runtime and bootstrap share qg_private.queuego_upsert_operational_place; there is no second upsert implementation.
 BEGIN;
 WITH incoming AS (
  SELECT * FROM jsonb_to_recordset('${json}'::jsonb) AS r(
@@ -190,64 +193,22 @@ WITH incoming AS (
   province text,postcode text,source_updated_at timestamptz,verification_method text,source_payload_hash text
  )
 )
-INSERT INTO public.queuego_places(
- canonical_name,name_th,name_en,aliases,category,subcategory,latitude,longitude,address,
- village,moo,subdistrict,district,province,postcode,country,country_code,source,source_id,
- source_license,source_updated_at,verification_status,verification_method,confidence,dedupe_key,
- parent_place_id,admin_level,admin_code
+SELECT qg_private.queuego_upsert_operational_place(
+ i.source_record_id,i.canonical_name,i.category,i.subcategory,
+ i.latitude,i.longitude,i.address,i.subdistrict,i.district,i.province,i.postcode,
+ i.source_updated_at,i.verification_method,i.source_payload_hash
 )
-SELECT i.canonical_name,i.canonical_name,NULL,'{}'::text[],i.category,i.subcategory,
- i.latitude,i.longitude,i.address,NULL,NULL,i.subdistrict,i.district,i.province,i.postcode,
- 'Thailand','TH','${SOURCE_KEY}',i.source_record_id,'${SOURCE_LICENSE}',i.source_updated_at,
- 'verified',i.verification_method,1.000,i.dedupe_key,NULL,NULL,NULL
 FROM incoming i
-ON CONFLICT(dedupe_key) WHERE dedupe_key IS NOT NULL DO UPDATE SET
- canonical_name=excluded.canonical_name,name_th=excluded.name_th,category=excluded.category,
- subcategory=excluded.subcategory,latitude=excluded.latitude,longitude=excluded.longitude,
- address=excluded.address,subdistrict=excluded.subdistrict,district=excluded.district,
- province=excluded.province,postcode=excluded.postcode,source=excluded.source,
- source_id=excluded.source_id,source_license=excluded.source_license,
- source_updated_at=excluded.source_updated_at,verification_status='verified',
- verification_method=excluded.verification_method,confidence=excluded.confidence,updated_at=now();
-
-WITH incoming AS (
- SELECT * FROM jsonb_to_recordset('${json}'::jsonb) AS r(source_record_id text,dedupe_key text,source_updated_at timestamptz,source_payload_hash text)
-)
-INSERT INTO public.queuego_place_source_records(source,source_record_id,place_id,source_license,source_updated_at,source_payload_hash)
-SELECT '${SOURCE_KEY}',i.source_record_id,p.place_id,'${SOURCE_LICENSE}',i.source_updated_at,i.source_payload_hash
-FROM incoming i JOIN public.queuego_places p ON p.dedupe_key=i.dedupe_key
-ON CONFLICT(source,source_record_id) DO UPDATE SET
- place_id=excluded.place_id,source_license=excluded.source_license,
- source_updated_at=excluded.source_updated_at,source_payload_hash=excluded.source_payload_hash,imported_at=now();
-
-WITH incoming AS (
- SELECT * FROM jsonb_to_recordset('${json}'::jsonb) AS r(
-  source_record_id text,dedupe_key text,canonical_name text,category text,subcategory text,
-  latitude double precision,longitude double precision,address text,subdistrict text,district text,
-  province text,postcode text,source_updated_at timestamptz,verification_method text,source_payload_hash text
- )
-)
-INSERT INTO public.queuego_place_field_provenance(place_id,field_name,source,source_record_id,observed_at,confidence,raw_value)
-SELECT p.place_id,v.field_name,'${SOURCE_KEY}',i.source_record_id,i.source_updated_at,1.000,v.raw_value
-FROM incoming i JOIN public.queuego_places p ON p.dedupe_key=i.dedupe_key
-CROSS JOIN LATERAL (VALUES
- ('canonical_name',to_jsonb(i.canonical_name)),('category',to_jsonb(i.category)),
- ('subcategory',to_jsonb(i.subcategory)),('latitude',to_jsonb(i.latitude)),
- ('longitude',to_jsonb(i.longitude)),('address',to_jsonb(i.address)),
- ('subdistrict',to_jsonb(i.subdistrict)),('district',to_jsonb(i.district)),
- ('province',to_jsonb(i.province)),('postcode',to_jsonb(i.postcode)),
- ('source_id',to_jsonb(i.source_record_id)),('source_license',to_jsonb('${SOURCE_LICENSE}'::text)),
- ('verification_status',to_jsonb('verified'::text)),('verification_method',to_jsonb(i.verification_method))
-) AS v(field_name,raw_value)
-ON CONFLICT(place_id,field_name,source,source_record_id) WHERE source_record_id IS NOT NULL
-DO UPDATE SET observed_at=excluded.observed_at,confidence=excluded.confidence,raw_value=excluded.raw_value;
+WHERE i.dedupe_key='queuego:'||i.source_record_id;
 
 WITH incoming AS (
  SELECT * FROM jsonb_to_recordset('${json}'::jsonb) AS r(source_record_id text)
 )
-UPDATE public.queuego_places p
-SET verification_status='rejected',verification_method='queuego_operational_snapshot_absent',updated_at=now()
-WHERE p.source='${SOURCE_KEY}'
+SELECT qg_private.queuego_retire_operational_place(
+ p.source_id,'queuego_operational_snapshot_absent'
+)
+FROM public.queuego_places p
+WHERE p.source='queuego_verified'
   AND (p.source_id LIKE 'shop:%' OR p.source_id LIKE 'market:%')
   AND NOT EXISTS (SELECT 1 FROM incoming i WHERE i.source_record_id=p.source_id);
 
@@ -260,7 +221,7 @@ SET metadata=jsonb_set(
       '{last_operational_snapshot_sha256}',to_jsonb(${sqlLiteral(snapshot.snapshotHash)}::text),true
     ),
     updated_at=now()
-WHERE source_key='${SOURCE_KEY}';
+WHERE source_key='queuego_verified';
 COMMIT;
 `;
 }
@@ -274,7 +235,7 @@ if (require.main === module) {
   const snapshot = parseOperationalSnapshot(fs.readFileSync(path.resolve(input), 'utf8'));
   const sql = renderOperationalPlacesSql(snapshot);
   if (output) fs.writeFileSync(path.resolve(output), sql, 'utf8'); else process.stdout.write(sql);
-  console.error(`validated ${snapshot.rows.length} QueueGo operational places; ${snapshot.summary.without_coordinates} without coordinates`);
+  console.error(`validated ${snapshot.rows.length} map-addressable QueueGo operational places; ${snapshot.summary.without_coordinates} source rows without coordinates excluded`);
 }
 
 module.exports = {
