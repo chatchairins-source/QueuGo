@@ -6,11 +6,11 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 ok(merchant.includes('let qgmProductSaveBusy=false;'),'product save must have a duplicate-submit lock');
 ok(merchant.includes('qgm-fab qgm-menu-add-action'),'food/cafe product management must expose the dedicated menu add action');
-ok(merchant.includes("${svg('plus')} เพิ่มเมนู"),'food/cafe product management must label the action เพิ่มเมนู');
-ok(merchant.includes('body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action{position:fixed'),'menu add action must stay at the bottom above Merchant navigation');
-ok(merchant.includes('.qgm-menu-add-action button{width:auto;min-width:156px;height:42px'),'menu add action must stay compact instead of spanning the screen');
-ok(merchant.includes('background:#fff;color:#d7192d'),'menu add action must use a quieter outlined treatment');
-ok(merchant.includes('qgm-grocery-add-choices')&&merchant.includes('เพิ่มสินค้าเอง'),'Grocery add-product actions must remain product-specific');
+ok(merchant.includes('class="qgm-outline qgm-add-manual" onclick="navigate(\'shop-catalog\')">${svg(\'plus\')} เพิ่มเมนู'),'food/cafe add-menu must reuse the Grocery manual-add button treatment without changing its menu flow');
+ok(merchant.includes('body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action,')&&merchant.includes('body.qgm-app .qgm-unified-products .qgm-fab.qgm-grocery-add-choices{display:grid'),'food/cafe and Grocery add actions must share the same action-panel layout');
+ok(merchant.includes('.qgm-fab.qgm-menu-add-action button,')&&merchant.includes('.qgm-fab.qgm-grocery-add-choices button{height:46px;min-height:46px'),'food/cafe and Grocery manual actions must share button sizing');
+ok(!merchant.includes('.qgm-fab.qgm-menu-add-action{position:fixed'),'food/cafe add-menu must no longer use the floating fixed-pill treatment');
+ok(merchant.includes('qgm-grocery-add-choices')&&merchant.includes('เพิ่มสินค้าเอง')&&merchant.includes('เพิ่มสินค้าจากแคตตาล็อก'),'Grocery must retain both manual add and catalog add actions');
 ok(merchant.includes("data-product-request-id="),'new product editor must keep a stable request/product id');
 ok(merchant.includes("window.qgmNewProductRequestId||(window.qgmNewProductRequestId=uid())"),'new product request id must survive editor rerenders');
 ok(merchant.includes("if(!id&&String(window.qgmNewProductRequestId||'')===String(stableId))window.qgmNewProductRequestId=null;"),'stable new-product request id must clear only after confirmed save');
