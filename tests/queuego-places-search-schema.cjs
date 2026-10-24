@@ -50,11 +50,12 @@ ok((operationalSync.match(/set search_path=''/g)||[]).length>=6,'all operational
 ok(operationalSync.includes("v_dedupe_key text:='queuego:'||p_source_record_id"),'dedupe identity must be derived from source identity in one place');
 ok(operationalSync.includes("v_source_id text:='shop:'||p_shop_id::text"),'runtime Shop identity must match snapshot shop:<uuid>');
 ok(operationalSync.includes("v_source_id text:='market:'||p_market_id::text"),'runtime Market identity must match snapshot market:<uuid>');
-ok(operationalSync.includes("s.status <> 'active'")&&operationalSync.includes("s.onboarding_status <> 'approved'")&&operationalSync.includes('s.archived_at is not null'),'only active approved non-archived shops may be searchable');
-ok(operationalSync.includes("v_public_category='market' and s.market_membership_status <> 'approved'"),'market-category shops require approved market membership');
+ok(operationalSync.includes("s.status is distinct from 'active'")&&operationalSync.includes("s.onboarding_status is distinct from 'approved'")&&operationalSync.includes('s.archived_at is not null'),'only active approved non-archived shops may be searchable, including null-safe rejection');
+ok(operationalSync.includes("v_public_category='market' and s.market_membership_status is distinct from 'approved'"),'market-category shops require explicit approved market membership, including null-safe rejection');
 ok(operationalSync.includes("when 'cafe' then 'food'")&&operationalSync.includes("when 'food' then 'restaurant'")&&operationalSync.includes("when 'market' then 'fresh_market_shop'"),'runtime category mapping must match snapshot category mapping');
 ok(operationalSync.includes('s.latitude is null')&&operationalSync.includes('s.longitude is null')&&operationalSync.includes('m.latitude is null')&&operationalSync.includes('m.longitude is null'),'operational Places must fail closed without map coordinates');
 ok(operationalSync.includes("m.active is not true")&&operationalSync.includes("m.verified is not true"),'only active verified markets may be searchable');
+ok((operationalSync.match(/nullif\(btrim\(coalesce\((s\.shop_name|m\.name),''\)\),''\) is null/g)||[]).length>=2,'blank Shop/Market names must retire instead of aborting operational writes');
 ok(operationalSync.includes('queuego_shop_place_sync_trg')&&operationalSync.includes('queuego_market_place_sync_trg'),'both Shop and Market changes must drive runtime Places sync');
 ok(operationalSync.includes('select qg_private.queuego_sync_shop_place(id) from public.shop_profiles')&&operationalSync.includes('select qg_private.queuego_sync_market_place(id) from public.markets'),'existing Shop and Market rows must backfill through the same runtime authority');
 ok(operationalSync.includes('queuego_place_source_records')&&operationalSync.includes('queuego_place_field_provenance'),'runtime sync must preserve source and field provenance');
