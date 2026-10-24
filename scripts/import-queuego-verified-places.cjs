@@ -85,11 +85,11 @@ function makeShop(row, generatedAt) {
   const status = clean(row.status).toLowerCase();
   const onboarding = clean(row.onboarding_status).toLowerCase();
   const archived = clean(row.archived_at);
-  if (status !== 'active' || archived || (onboarding && onboarding !== 'approved')) return null;
+  if (status !== 'active' || onboarding !== 'approved' || archived) return null;
   const publicCategory = clean(row.public_category).toLowerCase() || 'other';
   if (publicCategory === 'market' && clean(row.market_membership_status).toLowerCase() !== 'approved') return null;
   const name = publicText(row.shop_name, 'shop name', 240);
-  if (!name) throw new Error('active shop name is required');
+  if (!name) return null;
   const point = coordinates(row, `shop ${row.id}`);
   if (point.latitude == null) return null;
   const mapped = shopCategory(publicCategory);
@@ -118,7 +118,7 @@ function makeMarket(row, generatedAt) {
   if (!isUuid(row?.id)) throw new Error('market id must be a UUID');
   if (row.active !== true || row.verified !== true) return null;
   const name = publicText(row.name, 'market name', 240);
-  if (!name) throw new Error('verified active market name is required');
+  if (!name) return null;
   const point = coordinates(row, `market ${row.id}`);
   if (point.latitude == null) return null;
   const sourceUpdatedAt = normalizedTimestamp(row.updated_at, generatedAt);
