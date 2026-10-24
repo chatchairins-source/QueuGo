@@ -9,9 +9,9 @@
   "theme_color": "#e6002d",
   "icons": [
     {
-      "src": "assets/icons/queuego-customer.svg",
+      "src": "assets/icons/queuego-customer.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
