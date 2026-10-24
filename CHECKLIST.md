@@ -1,3 +1,25 @@
+## 2026-10-24 DOPA GIS-01 deterministic batch staging — IN PROGRESS
+
+- Active successor: PR #697 branch `feat/queuego-places-search-foundation-20261023`; source commits `b02917cf` (batch stager), `06809c99` (batch regression) and `a926c977` (evidence contract docs).
+- Added `scripts/stage-dopa-village-batch.cjs`. It consumes only local exact payload bytes named by official resource UUID plus a sidecar containing the same UUID, exact registered `catalog.dopa.go.th` download URL and retrieval timestamp. It never downloads data itself and never mutates the manifest.
+- Each present payload is SHA-256 hashed and passed through the existing province/village parser; province code/name, village identifiers, names and Thailand coordinate bounds must validate before any SQL is written. Existing manifest checksum/row-count values, when present, are enforced.
+- Output is review-only: per-province SQL plus `dopa-gis01-stage-report.json` containing checksum, validated row count and `import_candidate`. Missing files stay missing; missing/mismatched provenance or invalid bytes are blocked and emit no SQL. `import_candidate` is deliberately not `import_eligible`.
+- Regression now covers one staged Buriram payload, a missing province, exact checksum/row count, no manifest mutation, official metadata matching and a blocked non-DOPA URL. README records the two-file evidence contract.
+- Official Buriram resource acquisition remains blocked: current web fetch cannot access the DOPA catalog resource and an independent runtime probe cannot resolve `catalog.dopa.go.th`; no mirror bytes, checksum, row count or Production import is claimed.
+- Current main differs from the Nationwide successor only by the compact Add Menu public-release CHECKLIST checkpoint. That checkpoint is reconciled below so no runtime source is lost; a clean ancestry merge/exact-head hosted RC is still required.
+- NEXT: make current main an ancestor of PR #697, obtain exact-head RC for the batch-staging successor, then continue official DOPA payload acquisition. If DOPA remains unavailable, continue the next unblocked Places/Search ingestion task; Production DDL/data remains blocked by the approved migration/release gate.
+
+## 2026-10-24 Merchant Add Menu compact public release
+
+- ROOT CAUSE: moving `เพิ่มเมนู` to the bottom correctly fixed placement, but the inherited generic `.qgm-fab button` style kept it as a full-width solid-red primary CTA, making a secondary action visually dominant.
+- DONE (source): food/cafe `เพิ่มเมนู` is fixed above Merchant bottom navigation as a compact 156px pill, 42px high, white background with red text/border. Grocery `เพิ่มสินค้าเอง` / catalog actions are unchanged.
+- DONE (merge): PR #700 merged to main as `c757450189fd63e85f27f99f8a0c9cc38a272205`; Merchant blob `240b06faabb982ba9f72a9a4351aab37518b0580`.
+- TEST EVIDENCE: post-merge QueueGo RC run `40057628775` / #3246 SUCCESS across npm, Merchant mobile WebKit, Admin mobile, Map Lab, QueueGo Map search and Grocery mobile/tablet gates.
+- DONE (GitHub Pages): run `40057628235` / #1683 SUCCESS on the same merge commit.
+- No Production database/order/payment mutation. Unfinished Nationwide PR #697 was not merged into main for this UI release.
+- BLOCKED (owner visual acceptance only): confirm on the owner device that the compact outlined `เพิ่มเมนู` treatment is visually balanced.
+- NEXT: preserve this compact treatment on every Merchant successor; do not restore the full-width solid-red CTA unless explicitly requested.
+
 ## 2026-10-24 DOPA GIS-01 nationwide resource registry — IN PROGRESS
 
 - Active Nationwide successor is PR #697 head `8e54805cd5e7d0f2c95b0b814d5df970e656b81a`, descended from main `c757450189fd63e85f27f99f8a0c9cc38a272205` via #701 merge `d1025835fee28449114a901c57aee6dad104a22d`. Exact-head QueueGo RC #3248 / run `40057854157` SUCCESS on `d1025835` before DOPA source/test additions; latest head still needs its own hosted RC.
