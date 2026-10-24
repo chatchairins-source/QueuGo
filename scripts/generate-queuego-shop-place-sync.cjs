@@ -189,9 +189,10 @@ begin
   select * into s from public.shop_profiles where id=p_shop_id;
 
   if not found
-     or s.status <> 'active'
-     or s.onboarding_status <> 'approved'
+     or s.status is distinct from 'active'
+     or s.onboarding_status is distinct from 'approved'
      or s.archived_at is not null
+     or nullif(btrim(coalesce(s.shop_name,'')),'') is null
      or s.latitude is null
      or s.longitude is null
      or s.latitude not between 5 and 21
@@ -201,7 +202,7 @@ begin
   end if;
 
   v_public_category:=coalesce(nullif(lower(btrim(s.public_category)),''),'other');
-  if v_public_category='market' and s.market_membership_status <> 'approved' then
+  if v_public_category='market' and s.market_membership_status is distinct from 'approved' then
     perform qg_private.queuego_retire_operational_place(v_source_id,'queuego_market_shop_unapproved');
     return;
   end if;
@@ -251,6 +252,7 @@ begin
   if not found
      or m.active is not true
      or m.verified is not true
+     or nullif(btrim(coalesce(m.name,'')),'') is null
      or m.latitude is null
      or m.longitude is null
      or m.latitude not between 5 and 21
