@@ -253,10 +253,6 @@ WHERE p.source='${SOURCE_KEY}'
 
 UPDATE public.queuego_place_sources
 SET metadata=jsonb_set(
-      jsonb_set(coalesce(metadata,'{}'::jsonb),'{last_operational_snapshot_at}',to_jsonb(${generatedAt}::timestamptz),true),
-      '{last_operational_snapshot_count}',to_jsonb(${snapshot.rows.length}),true
-    ),
-    metadata=jsonb_set(
       jsonb_set(
         jsonb_set(coalesce(metadata,'{}'::jsonb),'{last_operational_snapshot_at}',to_jsonb(${generatedAt}::timestamptz),true),
         '{last_operational_snapshot_count}',to_jsonb(${snapshot.rows.length}),true
