@@ -151,6 +151,13 @@ def main():
         ("ตรวจสอบระบบ Rider","สถานะจริงของโทรศัพท์เครื่องนี้","11-diagnostics"),
     ):
         capture_profile_dialog(entry,title,name)
+    expected_screens=(
+      "home_map","messages_chat","messages_notifications",
+      "earnings_today","05-earnings-7-days","06-earnings-30-days",
+      "profile","08-learning-center","09-safety-center","10-support","11-diagnostics",
+    )
+    captured={item["screen"] for item in screens}
+    missing_screens=[name for name in expected_screens if name not in captured]
     meta={
       "source_head":os.environ.get("GITHUB_SHA",""),
       "workflow_run":os.environ.get("GITHUB_RUN_ID",""),
@@ -160,8 +167,13 @@ def main():
       "viewport_px":"1080x2280","screens":screens,"physical_device":False,
       "production_order_or_dispatch_mutations":False,"visual_parity_certified":False,
       "scope":"Authenticated Rider Home map, messages, earnings and profile; no job actions",
+      "expected_screens":list(expected_screens),
+      "missing_screens":missing_screens,
+      "review_complete":not missing_screens,
     }
     (OUT/"metadata.json").write_text(json.dumps(meta,ensure_ascii=False,indent=2)+"\n")
-    print("QUEUEGO_RIDER_AUTHENTICATED_REVIEW_PASS: home map, messages, earnings, profile")
+    if missing_screens:
+        raise SystemExit("Authenticated Rider review incomplete; missing screens: "+", ".join(missing_screens))
+    print("QUEUEGO_RIDER_AUTHENTICATED_REVIEW_PASS: all expected Rider screens captured")
 
 if __name__=="__main__": main()
