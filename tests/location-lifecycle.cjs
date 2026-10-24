@@ -19,7 +19,8 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
     created++;
     this.container=container;
     this.center={lng:center[0],lat:center[1]};
-    this.touchZoomRotate={disableRotation(){}};
+    this.touchZoomRotate={disableRotation(){},enableRotation(){}};
+    this.touchPitch={enable(){}};
     this.node=document.createElement('canvas');
     this.node.className='qg-maplibre';
     container.appendChild(this.node);

@@ -2,8 +2,9 @@
 
 - Evidence-backed cause: shared `QueueGoMapWeb.create()` set `maxPitch:0`, disabled mouse/touch rotation, and only showed its compass in Rider navigation mode. Customer Ride, Customer location picker, QueueGo Map and Map Lab each repeated the same disabled settings. The base style is raster OpenStreetMap, so camera tilt can give a perspective view but cannot create extruded 3D buildings without a vector/elevation tile source.
 - Scope: enable mouse/touch map rotation and 3D camera tilt on every Web map surface (Customer pickers/Ride, Merchant, Admin, Rider idle/navigation, QueueGo Map and Map Lab); show a compass/pitch control while retaining existing zoom buttons, preserve automatic Rider follow and the north-up reset behavior.
-- Source changes and regression evidence are being prepared from current deployed main `b476db051f7a1951d76d60f776fd6368ce84e897`. No Production data changed.
-- **NEXT:** run focused map-camera tests, then exact-head QueueGo RC on the PR branch; fix any failures, merge the green head and deploy GitHub Pages. Confirm live HTML/assets expose the cache-busted camera gesture build. Physical iPhone gesture feel still needs owner-side confirmation after release.
+- Source/test head `cacfc27ba2d1d42b75868c84aacacf1acd7dc891` is based on current deployed main `b476db051f7a1951d76d60f776fd6368ce84e897`. No Production data changed.
+- First exact-head CI #3333 / run `40102161709` failed at `tests/location-lifecycle.cjs`: its MapLibre mock lacked `touchZoomRotate.enableRotation()` and `touchPitch.enable()`, which the updated picker now calls. Application source was not implicated; the mock is being brought up to the new public interaction contract.
+- **NEXT:** rerun exact-head QueueGo RC on the test-harness fix; fix only any next exact-head first failure, then merge the green head and deploy GitHub Pages. Confirm live HTML/assets expose the cache-busted camera gesture build. Physical iPhone gesture feel still needs owner-side confirmation after release.
 
 ## 2026-10-24 Customer Ride map flicker and Rider tracking — DONE (source/CI/deployment)
 
