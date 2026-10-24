@@ -59,6 +59,27 @@ jobs:
           gradle-version: '9.6.0'
       - name: Build actual Rider debug APK
         run: gradle -p native-android :rider:assembleDebug --no-build-cache --stacktrace
+      - name: Boot Android Emulator
+        env:
+          ANDROID_AVD_HOME: ${{ runner.temp }}/queuego-rider-review-avd
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_AVD_HOME"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            -n queuego_rider_review -k "system-images;android-30;default;x86_64" \
+            --device pixel_4 -p "$ANDROID_AVD_HOME/queuego_rider_review" <<< "no"
+          "$ANDROID_HOME/platform-tools/adb" start-server
+          nohup "$ANDROID_HOME/emulator/emulator" -avd queuego_rider_review -port 5554 \
+            -accel on -no-window -no-snapshot -no-audio -gpu swiftshader \
+            -memory 2048 -cores 2 > "$RUNNER_TEMP/queuego-rider-review-emulator.log" 2>&1 &
+          adb="$ANDROID_HOME/platform-tools/adb"
+          "$adb" -s emulator-5554 wait-for-device
+          for attempt in $(seq 1 90); do
+            if [ "$("$adb" -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; then exit 0; fi
+            sleep 5
+          done
+          cat "$RUNNER_TEMP/queuego-rider-review-emulator.log"
+          exit 1
       - name: Enable runner-only Android acceleration
         run: |
           set -euo pipefail
