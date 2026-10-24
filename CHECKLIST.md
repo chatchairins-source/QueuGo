@@ -1,3 +1,13 @@
+## 2026-10-24 Merchant Add Menu bottom action — DONE (source/test)
+
+- Latest-successor integration commit: `be7b1a65b7f41512010e1f76f8f3886646f32c53` on PR #697. The exact PR #697 HEAD was re-checked before this checkpoint.
+- Food/cafe product management now uses `เพิ่มเมนู` and keeps the action fixed at the bottom above Merchant navigation.
+- Grocery remains product-specific with `เพิ่มสินค้าเอง` and catalog add actions unchanged.
+- Exact-head QueueGo RC run `40055332378`: SUCCESS. npm test, Merchant mobile WebKit, Admin mobile, Map Lab, QueueGo Map search and Grocery browser gates all passed.
+- DONE (source/test). No Production data mutation and no older main Merchant file was used or backported.
+- BLOCKED (visual/release only): the owner-device screenshot cannot be re-accepted until the broader PR #697 successor is released/deployed.
+- NEXT: keep this commit in every descendant of PR #697; after that successor is released, verify on the owner device that the button reads `เพิ่มเมนู` and sits immediately above the Merchant bottom navigation.
+
 ## 2026-10-24 Merchant Add Menu bottom action — integrated into latest PR #697
 
 - Source base: exact latest PR #697 HEAD `261e0c2d919a01bbd7b18d7156ef5ae73f907118`; Merchant and regression files were re-read from this SHA immediately before write.
