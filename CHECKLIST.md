@@ -1098,7 +1098,7 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 ## Rider Android authenticated visual review — 2026-10-24
 
 - Branch: `work-native-rider-auth-review-20261024`, based on the latest Native Rider/route-bundle checkpoint.
-- Added a dedicated secret-gated Android Emulator workflow and capture script for authenticated Rider Home map, Messages, Earnings, and Profile.
+- Added a dedicated secret-gated Android Emulator workflow and capture script for authenticated Rider Home map, Messages/Notifications, Earnings for today/7/30 days, Profile, Learning Center, Safety Center, Support, and Diagnostics.
 - The capture script uses a verified pinned real Buriram PMTiles archive in debug-only app storage; it does not tap online/accept/start/complete controls or save credentials/screens UI hierarchy.
 - Added the same debug-only map archive to Native Pilot capture so its map lifecycle is exercised instead of recorded as blocked.
 - Screenshot evidence status: **not captured yet**. The repository Actions secrets `QG_RIDER_REVIEW_PHONE` and `QG_RIDER_REVIEW_PASSWORD` must exist before the authenticated job can run. The current GitHub connector cannot create Actions secrets.
