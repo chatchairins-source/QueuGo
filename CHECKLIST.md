@@ -1665,3 +1665,12 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - DOPA registry on PR #704 lists 76 province JSON resources; all 76 lack exact payload SHA-256 and validated row count and remain `import_eligible=false`. Government portal mirror metadata for one JSON resource states datastore inactive/incomplete. No data import or Production write.
 - PR #704 documentation head `779fa7b7fc11f310c8897042afff846f5df94afe`; exact QueueGo RC run `40089120095` SUCCESS across npm and all browser gates. Source head `e34c368716be12069fe1848e17c44a0c46800791` also passed exact-head RC `40088891010`.
 - **NEXT:** obtain and hash an original DOPA province payload via an approved official access path; validate it against the published dictionary before staging. Until then continue only read-only schema/security planning and owner-side map review. Keep PR #704 draft and QueueGo mission NOT DONE.
+
+
+## 2026-10-24 Nationwide successor checkpoint — exact-head CI verified
+
+- Current main remains `28a121178b6e15ceb0a7575452b5cb2a374f40a3`. Active PR #704 remains open, draft and mergeable. Latest source-reconciliation commit `e34c368716be12069fe1848e17c44a0c46800791`; latest verified documentation head `f876a6761c7d01631fa4bea699024f3152285962`.
+- Exact-head RCs passed: `40088891010` on source reconciliation and `40089120095`, `40089392407`, `40089654836` on documentation successors. Each completed npm and all configured Admin/Merchant mobile WebKit, Map Lab, QueueGo Map search and Grocery mobile/tablet gates.
+- Current DOPA registry covers 76 provinces but has zero raw payload SHA-256/validated row count receipts. Production read-only inventory confirms no Places relation or search RPC; only Buriram has an active order area. No phone-fallback/no-show authority exists. Advisor review remains open. No Production mutation, data import or deployment.
+- Map responsive changes are source-covered by CI; physical iPhone Safari acceptance remains owner-side. The website route itself loads publicly, but no physical mobile map appearance is certified.
+- **NEXT:** retrieve the original DOPA JSON and dictionary through an approved official access path, hash and validate province identity/schema/count, then stage only after provenance checks pass. While access is blocked, continue read-only release/security planning and owner-side map review. QueueGo remains NOT DONE; keep #704 draft until all deployment gates pass.
