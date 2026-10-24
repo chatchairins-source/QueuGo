@@ -18,6 +18,20 @@ The batch stage computes SHA-256, validates province identity, village codes, na
 
 Batch staging deliberately does **not** modify `dopa-gis01-resources.json` and does not make a payload import-eligible. Promote a resource only after the staged checksum and validated row count have been independently reviewed against the exact official bytes.
 
+## OpenStreetMap Thailand staging
+
+The source registry allows storage and redistribution of OSM-derived records under ODbL-1.0 and requires visible OpenStreetMap attribution. The source is registered in 20261023144405_queuego_places_search_foundation.sql; this does not imply that its data has been imported or that the database is live.
+
+Use a locally obtained Geofabrik Thailand PBF at https://download.geofabrik.de/asia/thailand-latest.osm.pbf. Record its exact retrieval time, snapshot date, and SHA-256. Export a privacy-minimal GeoJSON Text Sequence with only the OSM identity and object timestamp attributes:
+
+    osmium export thailand-latest.osm.pbf --output=thailand.geojsonseq --output-format=geojsonseq --geometry-types=point --attributes=type,id,timestamp
+
+Then stage review SQL:
+
+    node scripts/stage-osm-places.cjs thailand.geojsonseq thailand-latest.osm.pbf /tmp/queuego-osm-review 2026-10-24T00:00:00Z 2026-10-24 PBF_SHA256
+
+The script independently hashes both the exact PBF file and exported bytes, verifies the supplied PBF checksum, requires a fresh empty output directory, streams records into bounded SQL chunks, keeps only named place/search tags from its allowlist, filters coordinates to Thailand, and records OSM object ID, source-object timestamp, per-record payload hash, PBF hash, export hash, license and attribution. It accepts only Point geometry. OSM ways/relations exported as lines or areas are counted as skipped: a reviewed point-on-surface transform is needed before staging those objects. The generated SQL keeps records unverified; it is a review artifact, not an approved migration and never executes itself. Preserve ODbL attribution and share-alike obligations in any database distribution.
+
 ## QueueGo verified operational places
 
 `scripts/import-queuego-verified-places.cjs` stages QueueGo-owned public shop and verified-market records into the same Places authority without copying private account data. The input must be a **complete public snapshot** with `snapshot_complete: true`, a valid `generated_at`, and separate `shops` / `markets` arrays.
