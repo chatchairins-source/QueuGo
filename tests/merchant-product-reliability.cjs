@@ -5,12 +5,11 @@ const sql=fs.readFileSync(path.join(root,'supabase/migrations/20261006083000_pro
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 ok(merchant.includes('let qgmProductSaveBusy=false;'),'product save must have a duplicate-submit lock');
-ok(merchant.includes('qgm-fab qgm-menu-add-action'),'food/cafe product management must expose the dedicated menu add action');
+ok(merchant.includes('qgm-fab qgm-grocery-add-choices qgm-menu-add-action'),'food/cafe Add Menu must reuse the Grocery action layout');
+ok(merchant.includes('class="qgm-outline qgm-add-manual" onclick="navigate(\'shop-catalog\')"'),'food/cafe Add Menu must reuse the Grocery manual-add button treatment without changing navigation');
 ok(merchant.includes("${svg('plus')} เพิ่มเมนู"),'food/cafe product management must label the action เพิ่มเมนู');
-ok(merchant.includes('body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action{position:fixed'),'menu add action must stay at the bottom above Merchant navigation');
-ok(merchant.includes('.qgm-menu-add-action button{width:auto;min-width:156px;height:42px'),'menu add action must stay compact instead of spanning the screen');
-ok(merchant.includes('background:#fff;color:#d7192d'),'menu add action must use a quieter outlined treatment');
-ok(merchant.includes('qgm-grocery-add-choices')&&merchant.includes('เพิ่มสินค้าเอง'),'Grocery add-product actions must remain product-specific');
+ok(!merchant.includes('.qgm-unified-products .qgm-fab.qgm-menu-add-action{position:fixed'),'food/cafe Add Menu must stay in the same natural page flow as Grocery actions');
+ok(merchant.includes('qgm-grocery-add-choices')&&merchant.includes('เพิ่มสินค้าเอง')&&merchant.includes('เพิ่มสินค้าจากแคตตาล็อก'),'Grocery add-product actions must remain unchanged');
 ok(merchant.includes("data-product-request-id="),'new product editor must keep a stable request/product id');
 ok(merchant.includes("window.qgmNewProductRequestId||(window.qgmNewProductRequestId=uid())"),'new product request id must survive editor rerenders');
 ok(merchant.includes("if(!id&&String(window.qgmNewProductRequestId||'')===String(stableId))window.qgmNewProductRequestId=null;"),'stable new-product request id must clear only after confirmed save');
