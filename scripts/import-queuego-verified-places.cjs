@@ -148,14 +148,14 @@ function parseOperationalSnapshot(text) {
   const generatedAt = normalizedTimestamp(parsed.generated_at, null);
   if (!Array.isArray(parsed.shops) || !Array.isArray(parsed.markets)) throw new Error('snapshot must contain shops and markets arrays');
   const rows = [];
-  let inactiveShops = 0, inactiveMarkets = 0;
+  let excludedShops = 0, excludedMarkets = 0;
   for (const shop of parsed.shops) {
     const row = makeShop(shop, generatedAt);
-    if (row) rows.push(row); else inactiveShops++;
+    if (row) rows.push(row); else excludedShops++;
   }
   for (const market of parsed.markets) {
     const row = makeMarket(market, generatedAt);
-    if (row) rows.push(row); else inactiveMarkets++;
+    if (row) rows.push(row); else excludedMarkets++;
   }
   rows.sort((a, b) => a.source_record_id.localeCompare(b.source_record_id));
   const seen = new Set();
@@ -171,8 +171,8 @@ function parseOperationalSnapshot(text) {
       shops_input: parsed.shops.length,
       markets_input: parsed.markets.length,
       imported: rows.length,
-      inactive_or_unapproved_shops: inactiveShops,
-      inactive_or_unverified_markets: inactiveMarkets,
+      excluded_shops: excludedShops,
+      excluded_markets: excludedMarkets,
       without_coordinates: [...parsed.shops,...parsed.markets].filter(row => (row?.latitude == null || clean(row.latitude) === '') && (row?.longitude == null || clean(row.longitude) === '')).length
     }
   };
