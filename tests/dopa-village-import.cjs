@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { parseDopaVillageDataset, renderDopaVillageImport, sha256, SOURCE_KEY } = require('../scripts/import-dopa-villages.cjs');
+const { parseDataset: parseAdminDataset } = require('../scripts/import-th-admin-places.cjs');
 const manifest = JSON.parse(fs.readFileSync(path.join(__dirname,'../data/maps/dopa-gis01-resources.json'),'utf8'));
 const sample = [
   { pcode: 31, pname: 'บุรีรัมย์', acode: 3101, aname: 'เมืองบุรีรัมย์', tcode: 310101, tname: 'ในเมือง', mcode: 31010101, mname: 'บ้านหลักเมือง', lat: 14.99, long: 103.1, q01: 'ignored' },
@@ -16,6 +17,14 @@ assert.equal(data.rows[0].source_record_id, '31:31010101');
 assert.equal(data.rows[0].subdistrict_code, '310101');
 assert.equal(data.rows[0].latitude, 14.99);
 assert.equal(data.rows[1].latitude, null);
+const adminInput = [
+  { id:'31', level:1, code:{id:'31'}, name:{local:'บุรีรัมย์',en:'Buri Ram',slug:'buri-ram-31'}, parent:null, geo:{lat:'14.99',lon:'103.1'}, zip_codes:[] },
+  { id:'3101', level:2, code:{id:'3101'}, name:{local:'เมืองบุรีรัมย์',en:'Mueang Buri Ram',slug:'mueang-buri-ram-3101'}, parent:{id:'31'}, geo:{lat:'14.99',lon:'103.1'}, zip_codes:[] },
+  { id:'310101', level:3, code:{id:'310101'}, name:{local:'ในเมือง',en:'Nai Mueang',slug:'nai-mueang-310101'}, parent:{id:'3101'}, geo:{lat:'14.99',lon:'103.1'}, zip_codes:['31000'] }
+].map(row => JSON.stringify(row)).join('\n');
+const adminData = parseAdminDataset(adminInput, { expectedCounts:{1:1,2:1,3:1} });
+const adminSubdistrict = adminData.rows.find(row => row.admin_level === 'subdistrict');
+assert.equal(adminSubdistrict.id, data.rows[0].subdistrict_code);
 assert.equal(manifest.dataset_id, '705402d4-2715-4ece-9166-22b54c6c3476');
 assert.equal(manifest.license, 'Open Data Common');
 assert.equal(manifest.resources.length, 76);
@@ -40,6 +49,7 @@ assert.match(sql, /'Open Data Common',NULL,'verified'/);
 assert.match(sql, /resource_import_history/);
 assert.match(sql, /2e6697b4-6efe-46b5-940a-0d7b2caf771f/);
 assert.match(sql, /i\.subdistrict_code/);
+assert.match(sql, /p\.admin_code=i\.subdistrict_code/);
 assert.doesNotMatch(sql, /population|q01/);
 assert.throws(() => parseDopaVillageDataset(raw.toString(), { expectedProvinceCode: '10', expectedProvinceName: 'กรุงเทพมหานคร' }), /province code mismatch/);
 assert.throws(() => parseDopaVillageDataset(JSON.stringify([sample[0], sample[0]]), { expectedProvinceCode: '31', expectedProvinceName: 'บุรีรัมย์' }), /duplicate village code/);
@@ -47,4 +57,4 @@ assert.throws(() => parseDopaVillageDataset(JSON.stringify([{ ...sample[0], lat:
 assert.throws(() => parseDopaVillageDataset(raw.toString(), { expectedProvinceCode: '31', expectedProvinceName: 'บุรีรัมย์', rawBuffer: raw, expectedSha256: '0'.repeat(64) }), /SHA-256 mismatch/);
 assert.throws(() => renderDopaVillageImport(data, { resourceUrl: 'https://example.org/resource/not-dopa', retrievedAt: '2026-10-24T00:00:00Z', checksum: sha256(raw) }), /resource UUID/);
 assert.equal(SOURCE_KEY, 'th_dopa_village_gis');
-console.log(JSON.stringify({ checks: 31, failures: 0, scope: 'DOPA GIS-01 importer schema, nationwide resource registry, provenance, dedupe, license and source integrity contracts' }));
+console.log(JSON.stringify({ checks: 34, failures: 0, scope: 'DOPA GIS-01 importer schema, nationwide resource registry, admin hierarchy linking, provenance, dedupe, license and source integrity contracts' }));
