@@ -45,6 +45,7 @@ ok(/^[a-f0-9]{64}$/.test(food.source_payload_hash),'each normalized public recor
 eq(shopCategory('laundry'),{category:'laundry',subcategory:'laundry'},'Laundry category mapping must remain explicit');
 
 const exportSql=fs.readFileSync(path.join(__dirname,'../scripts/export-queuego-verified-places.sql'),'utf8');
+const runtimeSync=fs.readFileSync(path.join(__dirname,'../scripts/generate-queuego-shop-place-sync.cjs'),'utf8');
 ok(exportSql.includes("'snapshot_complete', true"),'read-only exporter must mark the snapshot complete explicitly');
 for(const publicField of ['shop_name','public_category','status','onboarding_status','archived_at','market_membership_status','address','latitude','longitude','verified','province'])
   ok(exportSql.includes("'"+publicField+"'"),'read-only exporter must include public field '+publicField);
@@ -53,7 +54,7 @@ ok(!/\b(update|insert|delete|truncate|alter|drop)\b\s+(public\.|into|from|table)
 
 const sql=renderOperationalPlacesSql(snapshot);
 ok(sql.includes("'"+SOURCE_KEY+"'"),'SQL must use QueueGo verified source authority');
-ok(sql.includes("'"+SOURCE_LICENSE+"'"),'SQL must record QueueGo internal source license');
+ok(runtimeSync.includes("'"+SOURCE_LICENSE+"'"),'shared runtime authority must record QueueGo internal source license');
 ok(sql.includes('qg_private.queuego_upsert_operational_place'),'bootstrap must call the single runtime upsert authority instead of implementing a second writer');
 ok(sql.includes("i.dedupe_key='queuego:'||i.source_record_id"),'bootstrap must verify the same stable source/dedupe identity contract');
 ok(!sql.includes('INSERT INTO public.queuego_places'),'bootstrap snapshot must not duplicate the runtime QueueGo Places upsert implementation');

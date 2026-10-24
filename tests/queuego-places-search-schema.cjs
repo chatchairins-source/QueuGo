@@ -47,6 +47,7 @@ ok(operationalSync.includes('qg_private.queuego_upsert_operational_place('),'Sho
 ok(operationalSync.includes('qg_private.queuego_retire_operational_place('),'operational retirement must use one private authority');
 ok((operationalSync.match(/security definer/g)||[]).length>=6,'operational helpers and trigger wrappers must be controlled definers');
 ok((operationalSync.match(/set search_path=''/g)||[]).length>=6,'all operational definer functions must use an empty search path');
+ok(!/revoke\s+all\s+on\s+schema\s+qg_private/i.test(operationalSync),'Places must not revoke established qg_private schema usage needed by existing authenticated internals');
 ok(operationalSync.includes("v_dedupe_key text:='queuego:'||p_source_record_id"),'dedupe identity must be derived from source identity in one place');
 ok(operationalSync.includes("v_source_id text:='shop:'||p_shop_id::text"),'runtime Shop identity must match snapshot shop:<uuid>');
 ok(operationalSync.includes("v_source_id text:='market:'||p_market_id::text"),'runtime Market identity must match snapshot market:<uuid>');

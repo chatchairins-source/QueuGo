@@ -10,7 +10,6 @@ function renderQueueGoOperationalPlaceSync() {
 -- Requires QueueGo Places foundation + provenance unique-index migrations first.
 -- One private upsert/retire authority is shared by Shop/Market triggers and bootstrap snapshots.
 create schema if not exists qg_private;
-revoke all on schema qg_private from public,anon,authenticated;
 
 create or replace function qg_private.queuego_upsert_operational_place(
   p_source_record_id text,
