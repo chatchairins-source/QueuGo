@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { PGlite } = require('@electric-sql/pglite');
 const { parseDataset, renderImportSql, gitBlobSha, PINNED_GIT_BLOB_SHA, PINNED_SUBDISTRICT_GIT_BLOB_SHA, PINNED_SOURCE_COMMIT_SHA, EXPECTED_COUNTS } = require('../scripts/import-th-admin-places.cjs');
 const registrySql = fs.readFileSync(path.join(__dirname, '../supabase/migrations/20261023195500_queuego_th_admin_source_registry.sql'), 'utf8');
 
@@ -69,4 +70,31 @@ assert.throws(() => parseDataset(records.map(row => JSON.stringify(row)).join('\
 }), /all-flat source must contain province and district records only/);
 assert.match(registrySql, /repository_commit":"eef739a534e26181c86073d69e9aeb527110cf1a/);
 assert.match(registrySql, /all-subdistrict\.json","git_blob_sha":"bd5c49a7e1af578c9e34e32020ddd90eabdc167f/);
-console.log(JSON.stringify({checks:41, failures:0, scope:'pinned two-file Thai administrative import, exact source provenance, full hierarchy, and DOPA village source registry contracts'}));
+
+(async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`create table public.queuego_places(place_id bigserial primary key,canonical_name text not null,name_th text,name_en text,aliases text[] not null,category text,subcategory text,latitude double precision,longitude double precision,address text,village text,moo text,subdistrict text,district text,province text,postcode text,country text,country_code text,source text,source_id text,source_license text,source_updated_at timestamptz,verification_status text,verification_method text,confidence numeric,dedupe_key text,parent_place_id bigint,admin_level text,admin_code text,updated_at timestamptz not null default now());
+      create unique index queuego_places_admin_uq on public.queuego_places(country,admin_code) where admin_code is not null;
+      create table public.queuego_place_source_records(source text,source_record_id text,place_id bigint,source_license text,source_updated_at timestamptz,source_payload_hash text,imported_at timestamptz default now(),unique(source,source_record_id));
+      create table public.queuego_place_field_provenance(place_id bigint,field_name text,source text,source_record_id text,observed_at timestamptz,confidence numeric,raw_value jsonb);
+      create unique index queuego_prov_uq on public.queuego_place_field_provenance(place_id,field_name,source,source_record_id) where source_record_id is not null;
+      create table public.queuego_place_aliases(place_id bigint,alias text,language_code text,source text,normalized_alias text generated always as (lower(alias)) stored);
+      create unique index queuego_alias_uq on public.queuego_place_aliases(place_id,normalized_alias);`);
+    const importSql = renderImportSql(separateFiles);
+    await db.exec(importSql);
+    const first = await db.query(`select (select count(*)::int from public.queuego_places) places,(select count(*)::int from public.queuego_place_source_records) source_rows,(select count(*)::int from public.queuego_place_field_provenance) provenance_rows,(select count(*)::int from public.queuego_place_aliases) aliases`);
+    const sourceIds = await db.query(`select array_agg(source_record_id order by source_record_id) ids from public.queuego_place_source_records`);
+    await db.exec(importSql);
+    const second = await db.query(`select (select count(*)::int from public.queuego_places) places,(select count(*)::int from public.queuego_place_source_records) source_rows,(select count(*)::int from public.queuego_place_field_provenance) provenance_rows,(select count(*)::int from public.queuego_place_aliases) aliases`);
+    assert.equal(first.rows[0].places, 3);
+    assert.equal(first.rows[0].source_rows, 3);
+    assert.ok(first.rows[0].provenance_rows > 0);
+    assert.equal(first.rows[0].aliases, 3);
+    assert.deepEqual(sourceIds.rows[0].ids, ['10', '1001', '100101']);
+    assert.deepEqual(second.rows[0], first.rows[0]);
+    console.log(JSON.stringify({checks:47, failures:0, scope:'pinned two-file Thai hierarchy, first-run source provenance, and idempotent review SQL in isolated PGlite mock schema; no PostGIS or Production schema/data'}));
+  } finally {
+    await db.close();
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });
