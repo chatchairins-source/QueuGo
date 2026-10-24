@@ -410,6 +410,13 @@ ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.incl
 ok(!source.includes('longdo.map.key')&&!source.includes('longdo.map.apikeychecker'),'native apps must not package retired Longdo credential metadata');
 const customerManifest=read('customer/src/main/AndroidManifest.xml');
 ok(customerManifest.includes('queuego.map.service.base_url')&&customerManifest.includes('${queuegoMapServiceBaseUrl}')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer QueueGo Map picker must declare map service config and location permission');
+const customerMapPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
+ok(customerMapPicker.includes('screenHeightDp.dp * 0.34f')&&customerMapPicker.includes('mapFailed')&&customerMapPicker.includes('ลองโหลดแผนที่อีกครั้ง'),'Customer native map picker must use responsive map height and expose a retry state instead of spinning forever');
+const customerRide=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
+ok(customerRide.includes('QgTrackingMap(')&&customerRide.includes('.height(245.dp)'),'Customer native Ride request must show the QueueGo route map preview like Web');
+const sharedMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
+ok(sharedMap.includes('newLatLngBounds(bounds, 48)')&&sharedMap.includes('LatLng(14.9918756, 103.0994795)'),'Native tracking preview must frame both selected Ride stops and use the Buriram pilot viewport when empty');
+ok(pilotWorkflow.includes("vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com'"),'pilot APKs must compile the deployed QueueGo Map endpoint when no override is configured');
 const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
 ok(
   riderNavigationLocationService.includes('LocationServices.getFusedLocationProviderClient') &&

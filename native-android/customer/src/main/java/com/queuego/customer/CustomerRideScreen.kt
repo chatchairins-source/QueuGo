@@ -149,6 +149,13 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             if (current.terminal && pending == null) Button(onClick = { selected = null;quote = null },enabled = !busy) { Text("เรียกรถเที่ยวใหม่") }
         } else {
             if (loaded && !enabled) Text("บริการเรียกรถยังไม่เปิดให้ใช้ในขณะนี้")
+            QgTrackingMap(
+                points = listOfNotNull(
+                    pickup?.let { QgMapPoint(it.latitude, it.longitude, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER) },
+                    destination?.let { QgMapPoint(it.latitude, it.longitude, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER) }
+                ),
+                modifier = Modifier.fillMaxWidth().height(245.dp)
+            )
             OutlinedButton(enabled = loaded && enabled && !frozen,onClick = { picker = "pickup" }) { Text("จุดรับ: " + (pickup?.address ?: "เลือกบนแผนที่")) }
             OutlinedButton(enabled = loaded && enabled && !frozen,onClick = { picker = "destination" }) { Text("จุดหมาย: " + (destination?.address ?: "เลือกบนแผนที่")) }
             if (quote == null && pending == null) Button(enabled = loaded && enabled && !frozen && pickup != null && destination != null,onClick = {

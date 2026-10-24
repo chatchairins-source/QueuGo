@@ -4,6 +4,7 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -30,9 +31,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,9 +85,12 @@ internal fun CustomerLocationPickerScreen(
     val draftAddress = draft.address
     var recenterToken by remember { mutableIntStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
+    var mapFailed by remember { mutableStateOf(false) }
+    var mapAttempt by remember { mutableIntStateOf(0) }
     var autoGpsRequested by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val mapHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.34f).coerceIn(240.dp, 400.dp)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scope = rememberCoroutineScope()
     var gpsBusy by remember { mutableStateOf(false) }
@@ -142,6 +148,15 @@ internal fun CustomerLocationPickerScreen(
         requestGps()
     }
 
+    LaunchedEffect(mapReady, mapAttempt) {
+        if (mapReady) {
+            mapFailed = false
+            return@LaunchedEffect
+        }
+        delay(12_000)
+        if (!mapReady) mapFailed = true
+    }
+
     LaunchedEffect(selected?.latitude, selected?.longitude, draft.revision) {
         val point = selected ?: return@LaunchedEffect
         if (draft.manualAddress || draft.address.isNotBlank()) return@LaunchedEffect
@@ -195,27 +210,41 @@ internal fun CustomerLocationPickerScreen(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(mapHeight)
                 .semantics { stateDescription = if (mapReady) "แผนที่พร้อมใช้งาน" else "กำลังโหลดแผนที่" }
                 .clip(RoundedCornerShape(14.dp))
                 .background(Color(0xFFF0F1F2))
                 .border(1.dp, QgLine, RoundedCornerShape(14.dp))
         ) {
-            QgLocationPickerMap(
-                initialPoint = selectedPoint,
-                recenterPoint = externalPoint,
-                recenterToken = recenterToken,
-                modifier = Modifier.fillMaxSize(),
-                onCenterChanged = { point ->
-                    draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
-                },
-                onReady = { mapReady = it }
-            )
-            if (!mapReady) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center).size(28.dp),
-                    strokeWidth = 2.dp
+            key(mapAttempt) {
+                QgLocationPickerMap(
+                    initialPoint = selectedPoint,
+                    recenterPoint = externalPoint,
+                    recenterToken = recenterToken,
+                    modifier = Modifier.fillMaxSize(),
+                    onCenterChanged = { point ->
+                        draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
+                    },
+                    onReady = { mapReady = it; if (it) mapFailed = false }
                 )
+            }
+            if (!mapReady) {
+                if (mapFailed) {
+                    Column(
+                        Modifier.align(Alignment.Center).padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("โหลด QueueGo Map ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่", color = QgMuted)
+                        TextButton(onClick = { mapAttempt++; mapReady = false; mapFailed = false }) {
+                            Text("ลองโหลดแผนที่อีกครั้ง")
+                        }
+                    }
+                } else {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center).size(28.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
             }
         }
 

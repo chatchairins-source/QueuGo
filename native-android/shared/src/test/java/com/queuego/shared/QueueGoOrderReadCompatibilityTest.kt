@@ -66,6 +66,30 @@ class QueueGoOrderReadCompatibilityTest {
         }
         assertEquals("orders?select=id,rider_arrived_customer_at&id=in.(owned)", result)
     }
+
+    @Test fun riderJobsStillLoadWhenExpressMigrationIsNotDeployed() {
+        val reader = QueueGoOrderReadCompatibility()
+        val fields = listOf(
+            "express_distance_km", "express_duration_minutes", "express_item_type", "express_weight_kg",
+            "express_size", "express_vehicle_type", "express_sender_name", "express_sender_phone",
+            "express_receiver_name", "express_receiver_phone", "express_instructions"
+        )
+        val path = "orders?select=id,order_number,status,fulfillment_vertical," + fields.joinToString(",") +
+            ",delivery_fee,total_amount&rider_id=eq.owned&status=in.(ready,in_progress)&order=created_at.asc"
+        var calls = 0
+        val compatible = reader.read(path, status) { attempted ->
+            calls++
+            val selected = attempted.substringAfter("select=").substringBefore('&').split(',')
+            val missing = fields.firstOrNull { it in selected }
+            if (missing != null) throw Http(400, "column orders.$missing does not exist")
+            attempted
+        }
+        assertEquals(fields.size + 1, calls)
+        assertTrue(compatible.contains("select=id,order_number,status,fulfillment_vertical,delivery_fee,total_amount"))
+        assertTrue(compatible.contains("rider_id=eq.owned&status=in.(ready,in_progress)&order=created_at.asc"))
+        assertEquals(compatible, reader.read(path, status) { it })
+    }
+
     @Test fun anotherReadDiscoveringTheSameColumnDoesNotBreakRecovery() {
         val reader = QueueGoOrderReadCompatibility()
         val path = "orders?select=id,ride_distance_km&rider_id=eq.owner"
