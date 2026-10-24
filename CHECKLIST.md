@@ -1,3 +1,12 @@
+## 2026-10-24 QueueGo publication verification and DOPA endpoint retry — IN PROGRESS
+
+- Latest source/test commit remains `6c809de9e57fe37222274fc41072ee4fd681b288`, tree `ae951a470a32580e84cba5dc7110c0369c0ebdb2`; full `npm test` EXIT 0, hierarchy importer/PGlite 47 PASS.
+- PR #704 head `9a2cd9f5f91ed594ca7a210c7688b887ab369f74`, tree `8c0da9b7ec31b1d615a808715db1cf83a2aa9b4e`; local forward-merge HEAD `83776abfe3ba119e58d5c72b8db9364137ef8554` has that same tree. Main `04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd`. PR remains open/draft/mergeable.
+- Hosted exact-head RC #3300 / run `40072083639` passed all 12 stages on `9a2cd9f5…`, including full npm and every Admin/Merchant/Map Lab/Map Search/Grocery browser gate.
+- Repeated official DOPA download for province 32 (Surin) alongside province 31 (Buriram); both returned HTTP 503 and wrote no payload file. Current QueueTech Production read-only inventory confirms Places relation/search RPC absent, phone-fallback/no-show named RPCs absent, and only one active Buriram Pilot service area. No Production write, import or deploy.
+- Read-only advisors: Security 25 no-policy RLS, 10 anon and 186 authenticated SECURITY DEFINER, 1 leaked-password; Performance 18 unindexed FK, 3 no-PK, 79 unused indexes, 57 multiple permissive policies. `qg_rider_mark_arrival` is guarded by active Rider/order/stage and fixed search_path but records client-supplied GPS without validation; this cannot establish no-show evidence. No grant or policy changes made.
+- **NEXT:** refresh main and PR #704, publish this docs-only update with expected-head CAS and `force=false`, confirm tree equality and exact-head RC. Continue the next source-only/read-only audit; mission remains NOT DONE.
+
 ## 2026-10-24 Production capability inventory (read-only) — BLOCKED
 
 - QueueTech read-only catalog query returned no `public.queuego_places` relation, zero `qg_search_places` routines and zero RPC names matching phone-fallback/no-show. `public.queuego_service_areas` still has exactly one active area: `Buriram Pilot` / บุรีรัมย์. This verifies the release blockers against current Production without changing it; name matching does not rule out a differently named routine.
