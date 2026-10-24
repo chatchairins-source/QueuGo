@@ -18,6 +18,12 @@ assert.equal(data.rows[0].latitude, 14.99);
 assert.equal(data.rows[1].latitude, null);
 assert.equal(manifest.dataset_id, '705402d4-2715-4ece-9166-22b54c6c3476');
 assert.equal(manifest.license, 'Open Data Common');
+assert.equal(manifest.resources.length, 76);
+assert.equal(new Set(manifest.resources.map(r => r.province_code)).size, 76);
+assert.equal(new Set(manifest.resources.map(r => r.resource_id)).size, 76);
+assert.ok(!manifest.resources.some(r => r.province_code === '10'));
+assert.ok(manifest.resources.every(r => r.import_eligible === false && r.sha256 === null && r.validated_row_count === null));
+assert.ok(manifest.resources.every(r => r.official_download_url.includes('/resource/'+r.resource_id+'/download/.json')));
 const buriram = manifest.resources.find(r => r.province_code === '31');
 assert.ok(buriram);
 assert.equal(buriram.resource_id, '2e6697b4-6efe-46b5-940a-0d7b2caf771f');
@@ -41,4 +47,4 @@ assert.throws(() => parseDopaVillageDataset(JSON.stringify([{ ...sample[0], lat:
 assert.throws(() => parseDopaVillageDataset(raw.toString(), { expectedProvinceCode: '31', expectedProvinceName: 'บุรีรัมย์', rawBuffer: raw, expectedSha256: '0'.repeat(64) }), /SHA-256 mismatch/);
 assert.throws(() => renderDopaVillageImport(data, { resourceUrl: 'https://example.org/resource/not-dopa', retrievedAt: '2026-10-24T00:00:00Z', checksum: sha256(raw) }), /resource UUID/);
 assert.equal(SOURCE_KEY, 'th_dopa_village_gis');
-console.log(JSON.stringify({ checks: 25, failures: 0, scope: 'DOPA GIS-01 importer schema, official resource identity, provenance, dedupe, license and source integrity contracts' }));
+console.log(JSON.stringify({ checks: 31, failures: 0, scope: 'DOPA GIS-01 importer schema, nationwide resource registry, provenance, dedupe, license and source integrity contracts' }));
