@@ -222,7 +222,6 @@ private class QueueGoTrackingMapHolder {
             CameraUpdateFactory.newLatLngZoom(LatLng(14.9918756, 103.0994795), 11.0),
             0
         )
-        }
     }
 
     fun start() {
