@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$ANDROID_AVD_HOME"
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+          "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
             -n queuego_rider_review -k "system-images;android-30;default;x86_64" \
             --device pixel_4 -p "$ANDROID_AVD_HOME/queuego_rider_review" <<< "no"
           "$ANDROID_HOME/platform-tools/adb" start-server
