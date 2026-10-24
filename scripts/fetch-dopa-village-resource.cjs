@@ -44,39 +44,38 @@ async function fetchProvinceResource(resource, {
   if (requested.hostname !== 'catalog.dopa.go.th') throw new Error('resource URL must start from catalog.dopa.go.th');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(new Error('DOPA download timeout')), timeoutMs);
-  let response;
   try {
-    response = await fetchImpl(requested.toString(), {
+    const response = await fetchImpl(requested.toString(), {
       method: 'GET',
       redirect: 'follow',
       signal: controller.signal,
       headers: { accept: 'application/json' }
     });
+    if (!response || !response.ok) throw new Error(`DOPA download failed: HTTP ${response?.status ?? 'unknown'}`);
+    const finalUrl = assertAllowedDopaUrl(response.url || requested.toString(), 'final DOPA URL').toString();
+    const contentLength = Number(response.headers?.get?.('content-length') || 0);
+    if (Number.isFinite(contentLength) && contentLength > maxBytes) throw new Error('DOPA resource exceeds maximum allowed size');
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (!buffer.length) throw new Error('DOPA resource is empty');
+    if (buffer.length > maxBytes) throw new Error('DOPA resource exceeds maximum allowed size');
+    const checksum = sha256(buffer);
+    const parsed = parseDopaVillageDataset(buffer.toString('utf8'), {
+      expectedProvinceCode: resource.province_code,
+      expectedProvinceName: resource.province_name_th,
+      rawBuffer: buffer,
+      expectedSha256: checksum
+    });
+    return {
+      buffer,
+      checksum,
+      rowCount: parsed.rows.length,
+      requestedUrl: requested.toString(),
+      finalUrl,
+      retrievedAt: now().toISOString()
+    };
   } finally {
     clearTimeout(timer);
   }
-  if (!response || !response.ok) throw new Error(`DOPA download failed: HTTP ${response?.status ?? 'unknown'}`);
-  const finalUrl = assertAllowedDopaUrl(response.url || requested.toString(), 'final DOPA URL').toString();
-  const contentLength = Number(response.headers?.get?.('content-length') || 0);
-  if (Number.isFinite(contentLength) && contentLength > maxBytes) throw new Error('DOPA resource exceeds maximum allowed size');
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (!buffer.length) throw new Error('DOPA resource is empty');
-  if (buffer.length > maxBytes) throw new Error('DOPA resource exceeds maximum allowed size');
-  const checksum = sha256(buffer);
-  const parsed = parseDopaVillageDataset(buffer.toString('utf8'), {
-    expectedProvinceCode: resource.province_code,
-    expectedProvinceName: resource.province_name_th,
-    rawBuffer: buffer,
-    expectedSha256: checksum
-  });
-  return {
-    buffer,
-    checksum,
-    rowCount: parsed.rows.length,
-    requestedUrl: requested.toString(),
-    finalUrl,
-    retrievedAt: now().toISOString()
-  };
 }
 
 function writeCandidate(outputDir, resource, result) {
