@@ -212,6 +212,9 @@ jobs:
             sudo chown "$(id -u):$(id -g)" /dev/kvm
           fi
       - name: Capture native launch, map and voice service lifecycle on Android
+        env:
+          # Exercise the pinned real map archive in debug CI.
+          QG_DEBUG_MAP_ARCHIVE: '1'
         timeout-minutes: 12
         run: python3 native-android/qa/capture-rider-launch.py
       - name: Save real Android launch evidence
