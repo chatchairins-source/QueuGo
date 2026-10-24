@@ -1,3 +1,10 @@
+## 2026-10-24 Customer Ride map flicker and Rider tracking — IN PROGRESS
+
+- Evidence-backed cause: the Ride screen's 5-second polling called `render()` for the route request page even when its data had not changed. `render()` removes the MapLibre instance, replacing the map tiles and causing the observed flash. Supply refreshes could also rebuild it.
+- Fix on isolated latest-main branch `fix/customer-ride-map-follow-20261024`: polling now leaves the request page mounted when its ride state is unchanged and updates nearby supply markers/count in place. Nearby Rider clusters use motorcycle icons. On active trips the Rider marker uses a motorcycle icon, eases between fresh positions, and the map follows the Rider relative to the pickup point (or destination during the trip). Asset query is cache-busted.
+- Source syntax (`node --check customer-ride.js`) and `git diff --check` pass. No browser/device runtime evidence yet; exact-head CI and live Pages verification are pending.
+- **NEXT:** commit the isolated fix, open PR against current main, resolve exact-head CI, then merge and verify the deployed Customer HTML/JS and map behavior.
+
 ## 2026-10-24 Merchant Add Menu compact public release
 
 - ROOT CAUSE: moving `เพิ่มเมนู` to the bottom correctly fixed placement, but the inherited generic `.qgm-fab button` style kept it as a full-width solid-red primary CTA, making a secondary action visually dominant.
