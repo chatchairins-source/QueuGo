@@ -1,3 +1,13 @@
+## 2026-10-24 Merchant Add Menu compact public hotfix
+
+- Source base: public main `fdccc127caa80ce0cbd9897ef7bbec09570fa825`; hotfix branch `hotfix/merchant-add-menu-compact-20261024`.
+- DONE (source): restaurant/cafe `เพิ่มเมนู` remains fixed above Merchant bottom navigation, but is reduced from a full-width red CTA to a compact 156px pill, 42px high, white background with red text/border. Grocery actions are unchanged.
+- ROOT CAUSE: the previous public hotfix correctly moved the action to the bottom, but retained the generic full-width red `.qgm-fab button` treatment, making the secondary action visually dominant.
+- TEST EVIDENCE: focused assertions are committed; RC run `40056775482` passed `npm test` but the GitHub-hosted runner became stuck in the WebKit installation step with no code failure reported.
+- No Production data mutation and no unfinished Nationwide PR #697 files are included in this hotfix.
+- IN PROGRESS: trigger a fresh exact-head RC from this checkpoint; merge only after the complete gate passes.
+- NEXT: verify fresh exact-head RC, merge PR #700 to main, verify GitHub Pages deployment, then owner-device visual acceptance.
+
 ## 2026-10-23 Embedded map search separation — latest successor
 
 - Source base: main `c7090f1ced830e7203a719bea38db3ba636aee64`, including the shared Laundry storefront and its latest cache-bust.
