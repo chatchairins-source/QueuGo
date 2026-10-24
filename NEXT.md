@@ -1,5 +1,13 @@
 # QueueGo Next Actions
 
+## 2026-10-24 Native APK files and QueueGo Q role icons — DONE (test build/Web deploy)
+
+- User clarified they need Android APKs. Latest successful Native Pilot run `40085133108` built Customer, Merchant and Rider debug APKs at Native source `8a9089d4fd87ab974da836cb0f3b6e61752cd027`; launcher asset-family verification passed. Artifact `12557006258` (`queuego-native-pilot-apks`) contains all three APKs; SHA-256: Customer `8a00886947e2350354d0d7c5b15375abcad83010f67152f171a01c7579578ca8`, Merchant `8acb51f3df1a40bca4b815dbdab1e6fb25359d0682dc8dbe80c8f321b37edb1f`, Rider `f803c0f31ac22bd0b719fae07f3098860063d54ec328fefff43e72ee4def6d34`.
+- These are debug/test APKs, not Play Store production releases. Native icons are the established Q family: Customer Q+cutlery; Merchant Q+store; Rider Q.
+- Web app icons now match the approved Customer/Shop Q artwork. PR #716 source `11a0d8efb14e082bb4176cb1a0e774bc7c0a798b`, merged `68968e74e83472119f91d7163c13b81925e6a9c2`; exact-head CI `40105477083`, main RC `40105786044`, Pages `40105786009` passed. Live 512px PNG icons and app links were verified.
+- **NEXT:** provide APK download files and explain they are Native Pilot debug builds. Native Play Store/release gate remains separate.
+
+
 ## Current Web PWA brand icon correction — IN PROGRESS
 
 - Active branch `fix/web-pwa-icons-use-approved-q-20261024`, source commit `969eeb0f26a87d973f9626c1969e24b7034e82a1`, based on current Web main `2d3aa5ec203c873b69ec52e2dcd108dbd4ef688a`.
@@ -22,7 +30,7 @@
 - All Web maps now support rotation and tilt, with compass/pitch controls. Raster OSM basemaps show perspective only; extruded 3D buildings need vector/elevation tiles. Physical iPhone gesture acceptance remains pending.
 
 
-Current snapshot: 2026-10-24 · Authoritative main: 03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6
+Current snapshot: 2026-10-24 · Authoritative main: 68968e74e83472119f91d7163c13b81925e6a9c2
 
 ## Current verified POS checkpoint — 2026-10-23
 

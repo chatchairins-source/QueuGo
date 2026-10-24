@@ -1,3 +1,10 @@
+## 2026-10-24 Native APK files and QueueGo Q role icons — DONE (test build/Web deploy)
+
+- User clarified they need Android APKs. Latest successful Native Pilot run `40085133108` built Customer, Merchant and Rider debug APKs at Native source `8a9089d4fd87ab974da836cb0f3b6e61752cd027`; launcher asset-family verification passed. Artifact `12557006258` (`queuego-native-pilot-apks`) contains all three APKs; SHA-256: Customer `8a00886947e2350354d0d7c5b15375abcad83010f67152f171a01c7579578ca8`, Merchant `8acb51f3df1a40bca4b815dbdab1e6fb25359d0682dc8dbe80c8f321b37edb1f`, Rider `f803c0f31ac22bd0b719fae07f3098860063d54ec328fefff43e72ee4def6d34`.
+- These are debug/test APKs, not Play Store production releases. Native icons are the established Q family: Customer Q+cutlery; Merchant Q+store; Rider Q.
+- Web app icons now match the approved Customer/Shop Q artwork. PR #716 source `11a0d8efb14e082bb4176cb1a0e774bc7c0a798b`, merged `68968e74e83472119f91d7163c13b81925e6a9c2`; exact-head CI `40105477083`, main RC `40105786044`, Pages `40105786009` passed. Live 512px PNG icons and app links were verified.
+- **NEXT:** provide APK download files and explain they are Native Pilot debug builds. Native Play Store/release gate remains separate.
+
 ## 2026-10-24 Align Web app icons with QueueGo Q brand — IN PROGRESS
 
 - Evidence: Web app icons added in PR #715 did not match the established native QueueGo Q role family. The newest Native successor `work-native-rider-auth-review-20261024` includes Customer/Shop Q artwork and generated 512px PNGs; its launcher asset gate checks those assets.
@@ -6,7 +13,7 @@
 - No Production data changed.
 - **NEXT:** run exact-head QueueGo RC, merge only after it passes, deploy Pages, and verify the live PWA PNG/SVG assets. Android icons/APKs are governed by the Native successor, not this Web branch.
 
-## 2026-10-24 Web app HTML downloads and Customer/Shop icons — DONE (Web source/CI/deploy)
+## 2026-10-24 Web app entry downloads and QueueGo Q icons — DONE (Web source/CI/deploy)
 
 - Scope: provide launch and HTML-download links for Customer, Shop and Rider; add distinct, professional Customer and Merchant PWA icons and install manifests.
 - Evidence: the three live Web entry points are `/`, `/merchant/` and `/rider/`; Customer and Merchant did not declare app manifests. Rider already has its approved icon and manifest.
