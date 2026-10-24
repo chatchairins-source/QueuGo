@@ -1,3 +1,11 @@
+## 2026-10-24 QueueGo Places successor forward-merge
+
+- Current source base: PR #697 branch head `465005316bf5b513f4aa2671b553327d26240c55`; latest main `fdccc127caa80ce0cbd9897ef7bbec09570fa825` includes the public Merchant Add Menu change. Local merge `295916e5c452d3a4a921e66edde1ba1b2d337ea2` preserves PR #697, forward-merges current main, and resolves only Merchant button CSS/test conflicts.
+- Resolution keeps the newer compact `เพิ่มเมนู` action (156px minimum, 42px tall, quiet white/red outline) while taking the newer 88px content clearance. Grocery add actions remain unchanged.
+- Verification on the merged local tree: full `npm test` exit 0; focused Merchant product reliability 91 checks PASS; Merchant home layout 8 PASS; `git diff --check` PASS. Existing PR-head RC #3240 passed on `be7b1a6` before this forward-merge; a fresh exact-head RC is required after publishing this merge.
+- No Production schema/data or deployment change. Places/Search still lacks Production tables/RPC; nationwide order coverage, 10-call phone fallback and verified no-show server authority remain blocked by the unreleased migration path. Keep the external schema gate; do not route around the Supabase CLI telemetry auto-review.
+- NEXT: publish the forward-merge onto PR #697 from current remote head `46500531`, confirm main is an ancestor, then verify exact-head RC. Continue into the next unblocked QueueGo Places/Search backend or data-ingestion gap without changing role flows or map/search separation.
+
 ## 2026-10-24 Merchant Add Menu bottom action — DONE (source/test)
 
 - Latest-successor integration commit: `be7b1a65b7f41512010e1f76f8f3886646f32c53` on PR #697. The exact PR #697 HEAD was re-checked before this checkpoint.
