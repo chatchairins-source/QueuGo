@@ -1,3 +1,12 @@
+## 2026-10-24 advisor refresh and exact-head RC — IN PROGRESS
+
+- Current source/test checkpoint: commit `6c809de9e57fe37222274fc41072ee4fd681b288`, tree `ae951a470a32580e84cba5dc7110c0369c0ebdb2`; full `npm test` EXIT 0 and hierarchy PGlite importer regression 47 PASS.
+- Current refs before this documentation update: `main=04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd`; PR #704 `473123128cf179f074081efb13f906f55b02e39c`, tree `2e62f96aa20f225d6d17b622a1ec7ecef3a3be92`; local successor HEAD `5e62f1cdddcc9b909aabe929bd1e38af9708d4d1` has the same tree and includes the hosted commit via forward merge. PR remains open, draft, mergeable.
+- Hosted exact-head RC #3297 / run `40071210025` passed on `47312312…`: `npm ci`, full `npm test`, Admin/Merchant WebKit, Map Lab gestures, QueueGo Map search and Grocery mobile/tablet all succeeded.
+- Read-only QueueTech Supabase advisors observed at `2026-10-24T06:42Z`: Security counts RLS enabled/no policy 25, anon SECURITY DEFINER 10, authenticated SECURITY DEFINER 186, leaked-password protection 1. Performance counts unindexed FK 18, no primary key 3, unused indexes 79, multiple permissive policies 57. The unused-index count is one lower than the previous snapshot (80); the other counts match. Private-table RLS findings and guarded SECURITY DEFINER RPCs may be intentional; do not apply bulk changes. Object-level remediation remains unresolved. No QueueGo Places/Search schema/RPC is present in Production.
+- Latest official DOPA GIS-01 retry still returned HTTP 503 with no payload file. Production database and hosting remain untouched. Buriram order-area, Rider 10-call fallback/no-show authority, advisor remediation and Production/Owner acceptance remain blockers; QueueGo is NOT DONE.
+- **NEXT:** publish this docs-only checkpoint after refreshing refs, using expected-head CAS and `force=false`; verify tree equality and exact-head RC. Continue read-only advisor/object review or other source-only work; do not mutate Production.
+
 ## 2026-10-24 hosted RC and DOPA retry — IN PROGRESS
 
 - Exact current source/test commit remains `6c809de9e57fe37222274fc41072ee4fd681b288`, tree `ae951a470a32580e84cba5dc7110c0369c0ebdb2`; full `npm test` EXIT 0 and `node tests/th-admin-import.cjs` 47 PASS. Search authority audit found Customer/Merchant/Rider and Map View consumers call the shared `QueueGoMapWeb.search()` path, whose only backend is `qg_search_places`; no separate provider fallback or Buriram search catalog was found.
