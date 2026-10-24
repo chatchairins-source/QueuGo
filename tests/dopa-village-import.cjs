@@ -2,7 +2,9 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const { parseDopaVillageDataset, renderDopaVillageImport, sha256, SOURCE_KEY } = require('../scripts/import-dopa-villages.cjs');
+const { stageDopaVillageBatch, validateManifest } = require('../scripts/stage-dopa-village-batch.cjs');
 const manifest = JSON.parse(fs.readFileSync(path.join(__dirname,'../data/maps/dopa-gis01-resources.json'),'utf8'));
 const sample = [
   { pcode: 31, pname: 'บุรีรัมย์', acode: 3101, aname: 'เมืองบุรีรัมย์', tcode: 310101, tname: 'ในเมือง', mcode: 31010101, mname: 'บ้านหลักเมือง', lat: 14.99, long: 103.1, q01: 'ignored' },
@@ -47,4 +49,41 @@ assert.throws(() => parseDopaVillageDataset(JSON.stringify([{ ...sample[0], lat:
 assert.throws(() => parseDopaVillageDataset(raw.toString(), { expectedProvinceCode: '31', expectedProvinceName: 'บุรีรัมย์', rawBuffer: raw, expectedSha256: '0'.repeat(64) }), /SHA-256 mismatch/);
 assert.throws(() => renderDopaVillageImport(data, { resourceUrl: 'https://example.org/resource/not-dopa', retrievedAt: '2026-10-24T00:00:00Z', checksum: sha256(raw) }), /resource UUID/);
 assert.equal(SOURCE_KEY, 'th_dopa_village_gis');
-console.log(JSON.stringify({ checks: 31, failures: 0, scope: 'DOPA GIS-01 importer schema, nationwide resource registry, provenance, dedupe, license and source integrity contracts' }));
+
+const batchRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'queuego-dopa-stage-'));
+const batchInput = path.join(batchRoot, 'input');
+const batchOutput = path.join(batchRoot, 'output');
+fs.mkdirSync(batchInput, { recursive: true });
+const missingProvince = manifest.resources.find(r => r.province_code !== '31');
+const batchManifest = { ...manifest, resources: [buriram, missingProvince] };
+fs.writeFileSync(path.join(batchInput, buriram.resource_id + '.json'), raw);
+fs.writeFileSync(path.join(batchInput, buriram.resource_id + '.meta.json'), JSON.stringify({
+  resource_id: buriram.resource_id,
+  resource_url: buriram.official_download_url,
+  retrieved_at: '2026-10-24T00:00:00Z'
+}));
+const batch = stageDopaVillageBatch({ manifest: batchManifest, inputDir: batchInput, outputDir: batchOutput });
+assert.deepEqual(batch.summary, { total: 2, staged: 1, missing: 1, blocked: 0 });
+const staged = batch.resources.find(r => r.resource_id === buriram.resource_id);
+assert.equal(staged.status, 'staged');
+assert.equal(staged.sha256, sha256(raw));
+assert.equal(staged.validated_row_count, 2);
+assert.equal(staged.import_candidate, true);
+assert.ok(fs.existsSync(path.join(batchOutput, staged.sql_file)));
+assert.equal(buriram.sha256, null);
+assert.equal(buriram.import_eligible, false);
+assert.doesNotThrow(() => validateManifest(batchManifest));
+
+const blockedOutput = path.join(batchRoot, 'blocked');
+fs.writeFileSync(path.join(batchInput, buriram.resource_id + '.meta.json'), JSON.stringify({
+  resource_id: buriram.resource_id,
+  resource_url: 'https://example.org/not-official.json',
+  retrieved_at: '2026-10-24T00:00:00Z'
+}));
+const blocked = stageDopaVillageBatch({ manifest: batchManifest, inputDir: batchInput, outputDir: blockedOutput });
+assert.equal(blocked.summary.blocked, 1);
+assert.equal(blocked.resources.find(r => r.resource_id === buriram.resource_id).status, 'blocked_invalid_payload');
+assert.equal(fs.readdirSync(blockedOutput).filter(name => name.endsWith('.sql')).length, 0);
+fs.rmSync(batchRoot, { recursive: true, force: true });
+
+console.log(JSON.stringify({ checks: 43, failures: 0, scope: 'DOPA GIS-01 importer schema, nationwide resource registry, provenance, dedupe, license, batch staging and source integrity contracts' }));
