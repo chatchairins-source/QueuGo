@@ -37,6 +37,18 @@ assert.equal(marketArea.source_record_id, 'way/110');
 assert.equal(marketArea.category, 'grocery');
 assert.equal(marketArea.latitude, null);
 assert.match(marketArea.boundary_geojson, /Polygon/);
+const thaiAddress = normalizeFeature(feature(114, {
+  amenity: 'restaurant', name: 'ร้านอยู่กรุงเทพ',
+  'addr:subdistrict': 'ค่าจากแท็กทั่วไป', 'addr:subdistrict:th': 'แขวงไทย',
+  'addr:suburb': 'ค่าจาก suburb', 'addr:district:th': 'เขตหลัก',
+  'addr:district': 'เขตสำรอง', 'addr:province:th': 'กรุงเทพมหานคร',
+  'addr:province': 'จังหวัดสำรอง', 'addr:moo': '7', 'addr:village': 'ชุมชน'
+}));
+assert.equal(thaiAddress.subdistrict, 'แขวงไทย');
+assert.equal(thaiAddress.district, 'เขตหลัก');
+assert.equal(thaiAddress.province, 'กรุงเทพมหานคร');
+assert.equal(thaiAddress.moo, '7');
+assert.equal(thaiAddress.village, 'ชุมชน');
 const multiArea = normalizeFeature({ ...areaFeature(111), geometry: { type: 'MultiPolygon', coordinates: [[[[103,15],[103.02,15],[103.02,15.02],[103,15.02],[103,15]]]] } });
 assert.match(multiArea.boundary_geojson, /MultiPolygon/);
 assert.equal(normalizeFeature({ ...areaFeature(112), geometry: { type: 'Polygon', coordinates: [[[120,15],[120.02,15],[120.02,15.02],[120,15.02],[120,15]]] } }).skipped, 'outside_thailand');
@@ -79,6 +91,8 @@ const areaSql = renderOsmChunkSql([marketArea], {
 assert.match(areaSql, /boundary_geojson/);
 assert.match(areaSql, /st_pointonsurface/);
 assert.match(areaSql, /st_multi\(geom\)/);
+assert.match(areaSql, /moo=excluded\.moo/);
+assert.match(areaSql, /\('moo',to_jsonb\(p\.moo\)\)/);
 assert.match(sql, /osm:node\/101/);
 assert.match(sql, /unverified/);
 assert.match(sql, /ร้านกาแฟ/);
@@ -114,5 +128,5 @@ assert.equal(ATTRIBUTION, '© OpenStreetMap contributors');
     snapshotDate: '2026-10-20', pbfSha256: 'c'.repeat(64)
   }), /PBF SHA-256 mismatch/);
   fs.rmSync(root, { recursive: true, force: true });
-  console.log(JSON.stringify({ checks: 49, failures: 0, scope: 'OSM ODbL point and polygon staging, Thailand bounds, stable IDs, category mapping, allowlisted tags, bounded chunks and provenance' }));
+  console.log(JSON.stringify({ checks: 56, failures: 0, scope: 'OSM ODbL point/polygon staging, Thai administrative address tags, Thailand bounds, stable IDs, allowlist, chunks and provenance' }));
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,11 +1,19 @@
+## 2026-10-24 OSM Thai address hierarchy normalization — IN PROGRESS
+
+- Refreshed refs before edits: main 04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd; active PR #704 remains draft at bbfb12864c5a487e281acc1a4f64107a23c684e2. Local successor is work/places-current-successor-20261024.
+- OSM staging now preserves explicit addr:subdistrict, addr:district and addr:province, plus Thai suffix variants that take precedence over generic tags. It retains addr:moo in the existing QueueGo Places moo field and records moo provenance. The existing public-tag allowlist remains enforced; no user/uid/changeset fields enter SQL.
+- TEST: tests/osm-places-stage.cjs 56 checks PASS; full npm test exited 0 on exact source commit d461ac272d4a54d82a091bfc68d2108eb674fe95, tree 8e4fb1cca566e0ff1f824ff5f43ce573013a783a; node --check and git diff --check PASS.
+- RC #3286 / run 40064755457 passed on the prior OSM area tree 61a44072, before address-tag changes. This chunk has no exact-head hosted RC yet. No actual PBF retrieval, SQL execution, Production write/deployment, or physical-device validation.
+- **NEXT:** publish this source and checkpoint descendant to PR #704 with expected-head CAS against a freshly fetched remote SHA and force=false; fetch/forward-merge if any ref moves, then wait for exact-head QueueGo RC. Keep PR draft; next continue unblocked nationwide Places/Search ingestion/source work while preserving production and DOPA blockers.
+
 ## 2026-10-24 OSM areal POI coverage — IN PROGRESS
 
 - Refreshed current refs before this chunk: main 04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd; PR #704 draft head e70b17d1699329c2dabb30f84c72e094549f722a. Both are ancestors of local branch work/places-current-successor-20261024.
 - Extended scripts/stage-osm-places.cjs to accept Point, Polygon, and MultiPolygon GeoJSONSeq records. Polygons retain their source geometry as a candidate boundary; generated review SQL derives an interior search coordinate using PostGIS ST_PointOnSurface and stores the boundary in the existing multipolygon column. Polygon vertices/rings are validated, and all geometry coordinates must lie within Thailand bounds. Lines and unsupported geometries remain explicitly skipped.
 - Updated the documented Osmium export to include point and polygon geometry. Source timestamps from Osmium @timestamp attributes remain interpreted as epoch seconds. The generated records retain stable OSM type/id, full-geometry payload hash, source license and extract/export provenance; verification stays unverified.
 - TEST: OSM staging 49 checks PASS (point, polygon, multipolygon, invalid rings, Thailand bounds, interior-point SQL contract, provenance/chunking); QueueGo Places schema 79 PASS; full npm test exited 0; node --check and git diff --check PASS. Source commit c2f7c4769143990c6fa07cae282a7db2114fc55a, tree 3c0fcb2b6135dd17dc860a4128502a2e35d80072.
-- The prior exact-head RC #3285 / run 40064212590 passed on PR commit e70b17d1, which predates this geometry extension. No RC covers c2f7c476 yet. No actual PBF was fetched, no SQL executed, and no Production data/schema/deployment or physical-device test occurred.
-- **NEXT:** publish this tested descendant plus updated checkpoint docs to PR #704 using expected-head CAS against a freshly fetched head; force=false. If head moves, fetch and forward-merge before republishing. Wait for exact-head RC, keep PR draft, then continue to the next unblocked Places/Search gap. No Production writes/deployments or fake/demo data.
+- Exact-head QueueGo RC #3286 / run 40064755457 SUCCESS on PR commit bbfb12864c5a487e281acc1a4f64107a23c684e2, tree 61a44072008391a291118c7176a71f4db63ed1b5, identical to local source tree. npm test, Admin/Merchant WebKit, Map Lab, QueueGo Map search and Grocery mobile/tablet gates all passed. No actual PBF was fetched, no SQL executed, and no Production data/schema/deployment or physical-device test occurred.
+- **NEXT:** extend OSM administrative address-tag normalization for explicit Thai addr:subdistrict/district/province forms; refresh main and PR #704 before source edits, test, checkpoint, publish with expected-head CAS/force=false, and obtain exact-head RC. Keep PR draft. No Production writes/deployments or fake/demo data.
 
 ## 2026-10-24 QueueGo OSM Thailand source staging — IN PROGRESS
 
