@@ -1,3 +1,18 @@
+Warning: truncated output (original token count: 40291)
+Total output lines: 920
+
+## 2026-10-23 Nationwide Places/Search and operations mission
+
+- Owner mission changes the technical boundary from Buriram Pilot to Thailand-wide maps, registration, search and QueueGo Places; order availability remains supply-dependent. Keep the current #695 map/search separation and all newer Merchant, Laundry and Rider successor work.
+- Verified startup successor: PR #695 head `db3c75b6e7e5f8409bf4f83e39cd26bba49d306d`, descendant of main `c7090f1ced830e7203a719bea38db3ba636aee64`. During the work, PR #696 merged latest Map/Search separation into main at `0c22c1dc98ed6aa793483aa90ad8dfc8007486a8`; the local feature merged this current main forward at `04d037fcddccad8857a432b8c740d387d73e5215`. New local branch: `feat/queuego-places-search-foundation-20261023`.
+- Latest implementation source commit: `2115bdfc625758ef88ce7599c96bd3b02dfc5395`, full `npm test` exited 0 on the implementation source; exact-head hosted CI and isolated Postgres migration validation remain pending.
+- Production read-only evidence: one active `queuego_service_areas` row named `Buriram Pilot`, centered at 14.99292,103.10804 with 20km radius and 15km delivery cap. `queuego_assert_service_route` delegates to this circle gate. Existing voice session table and start/active/end RPCs are present; table direct-client RLS policy denies all, anon execute is false, authenticated execute is true. `qg_call_end` only marks `ended`; Rider order enrichment currently reads `users.phone`. No current no-show adjudication RPC was found during source/Production inventory.
+- DONE (local foundation only): additive QueueGo Places schema with PostGIS point and polygon storage, Thai/English names, aliases, administrative hierarchy, source/license registry, source-record mapping, field-level provenance, canonical dedupe key, spatial/trigram/prefix indexes, and bounded `qg_search_places` RPC. The registry includes OSM with ODbL attribution and QueueGo verified operational records. Search filters out sources without storage or redistribution permission.
+- IN PROGRESS (local implementation): `20261023195500_queuego_th_admin_source_registry.sql` records the reviewed Open Admin Data 2026.06 CC BY 4.0 source, attribution, update policy and `all-flat.ndjson` blob SHA. `scripts/import-th-admin-places.cjs` validates the pinned fingerprint, 77/928/7,364 counts, valid Thailand coordinates, unique admin codes and parent chain before rendering idempotent SQL with per-field provenance. Villages are absent from this source and no data has been imported.
+- IN PROGRESS (local implementation): Customer, Merchant and Rider configure one `QueueGoMapWeb.search` adapter which calls `qg_search_places`; optional provider adapters are explicit and external results are non-persistable. Rider destination settings now searches outside its map and moves the existing map on result selection. No provider secrets beyond existing public publishable config were added.
+- Verification: 55 focused schema-contract assertions PASS; full local `npm test` PASS on the exact reconciled source tree. Source only; no country data import, database migration application, Production data writes, user/account/order/payment changes or external hosting. Current environment lacks local Docker/psql, so real Postgres migration validation and exact-head hosted RC are still required.
+- NEXT: validate the migration in isolated Postgres/hosted CI; add verified Thai admin hierarchy and open POI ingestion with pinned source/license provenance; wire the shared search RPC into Customer/Merchant/Rider; replace circular service-area gating with polygon/admin-area order authority that leaves map/registration available nationwide. Then implement secure 10-failed-call phone fallback and evidence-backed permanent cash no-show suspension with immutable audit. Do not claim QueueGo nationwide launch-ready before every owner Definition of Done gate is verified.
+
 ## 2026-10-23 Rider Web work preferences
 
 - Owner requests Rider choice of accepting bundles, automatic/manual acceptance and service types, including visible Passenger Ride. Continue from latest Web main `6df56209021a0a47fce1928861a63472a00d3f6b`; numbered map stops stay intact.
@@ -354,218 +369,7 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 
 ## Notification read state + 30-minute Rider/Customer chat retention (2026-10-06)
 
-- Customer notification center marks currently unread notifications as read when the user opens it. The local unread count is cleared immediately after a successful write so the red bell badge does not survive a read because a background notification refresh is already busy.
-- Rider/Customer order chat remains available through the active delivery and for exactly 30 minutes after a completed delivery. Either side may initiate or reply during that post-completion window.
-- Supabase is authoritative: `qg_chat_postjob_allowed` gates inserts and `qg_chat_read_allowed` gates reads. Completed chat uses the actual delivery/completion timestamp and closes after 30 minutes even if a client remains open.
-- `queuego-chat-retention-30m` runs once per minute via pg_cron and removes expired Rider/Customer messages for completed orders. Admin access/audit behavior and unrelated shop/technician behavior are not broadened.
-- Customer and Rider UIs hide or close expired chat threads and show the remaining post-completion window while it is active.
-- Existing expired post-completion Rider/Customer chat was cleaned when the migration was applied. Order state, payments, delivery records, notifications and audit history are unchanged.
-- Backup before this change: `backup-pre-notification-chat30-20261006-1233`.
-
-
-## Rider professional flow — acceptance reference (2026-10-06)
-
-The user-supplied Rider reference screens are the acceptance reference for workflow and information hierarchy. QueueGo keeps its own red brand and implementation; do not copy another service's branding/assets.
-
-- Home/waiting: map-first Rider home, online/offline state, nearby-job readiness, messages, earnings, profile and laundry mode.
-- Offer: show order code, shop, customer area, distance/ETA when available, Rider earning and explicit Accept/Reject. Never fake a countdown unless the server owns an expiry.
-- Pickup: when the Merchant reaches READY, Rider opens a dedicated pickup screen, sees real order items/customer/note when available, takes exactly one required pickup photo, then taps “รับสินค้าแล้ว”. Do not add checkbox gates, customer PINs, or slide-to-confirm controls.
-- Pickup confirmation records the existing cash handoff to the Merchant and moves a normal order through READY → PICKED_UP → IN_PROGRESS atomically. There is no separate payment-confirmation screen.
-- Market pickup: every shop pickup also requires one pickup photo before that pickup can become PICKED_UP.
-- Delivery: Rider map targets the Customer, keeps call/chat/details available, and uses the existing GPS arrival guard. Being outside the guard shows a warning rather than inventing a new order state.
-- Completion: Rider takes exactly one required delivery photo and taps “จัดส่งแล้ว”. There is no customer handoff PIN and no optional second proof photo.
-- Customer: customer UI must not generate, fetch, or show any Rider delivery PIN.
-- Cash: pickup records Rider cash paid to Merchant; completion records Customer cash payment through the existing order/payment transition. No repeated “confirm money” step.
-- Market completion validates every shop cash advance atomically, persists the delivery photo on suborders, writes completion audit history and sends one group completion notification.
-- Layout: do not use elongated slide controls when a normal action button is sufficient. Do not stretch empty sections; render real data when present and omit empty detail blocks where possible.
-- Earnings/cash ledger and profile/message/laundry surfaces remain part of the Rider experience. Rider/Customer chat remains available for 30 minutes after completion, then backend read/write access closes and retention cleanup removes expired Rider/Customer messages.
-- Legacy full-screen Rider checklist, pseudo `arrived` order state, delivery PIN, slide-to-confirm pickup/delivery and direct client IN_PROGRESS → COMPLETED shortcuts must not return.
-- Backup before this correction: `backup-pre-rider-photo-only-flow-20261006-1501`.
-- Automated RC tests certify code/state/security contracts only. A physical-device three-role delivery is still required before claiming camera, GPS, route and mobile UX fully certified.
-
-
-## Merchant preparation countdown inside ready button (2026-10-08)
-
-- Owner requested the existing 20-minute preparation countdown inside the “สินค้าพร้อมส่ง” button. Removed the separate countdown card and its unused CSS.
-- Countdown still derives from Production `preparing_at`; reopening the order does not restart it. At expiry it stays at 00:00 and the Merchant explicitly presses the ready action. The timer does not transition an order automatically or prevent an earlier ready action.
-- No database, RPC, RLS, payment or order-state changes. Backup: `backup-pre-merchant-button-countdown-20261008-0856`.
-
-## 2026-10-12 Grocery Master Catalog mission (independent of Rider)
-
-- Owner authorized a real Thai Grocery Master Catalog with Big C as one reference, factual manufacturer/distributor sources, strict image-rights handling and batch idempotent import. Do not bulk-copy Big C or use retailer image hotlinks. No fake production catalog, no store-mandated master price, no Rider Native mission changes.
-- Candidate branch `work-grocery-master-catalog-20261012`, base main `7595d764`; backup `backup-web-pre-grocery-master-20261012`.
-- Candidate schema links master identities to existing `products` store listings and preserves checkout/GP/POS/state flow. Paged Merchant onboarding, Admin catalog/import/merge/image approval and Customer Grocery storefront are staged. New imports are inactive until review. Missing licensed images stay pending.
-- Research: 1,109 factual observations, 415 normalized package records across all 45 populated categories; 45 category definitions. 691 package identities remain incomplete; no verified barcodes and no approved/licensed images. No Production migration/import/deployment occurred.
-- See `docs/GROCERY-MASTER-CATALOG.md` and generated `catalog/statistics.json`. Release remains OPEN: authenticated Production/mobile E2E, restorable Production backup/rollout/advisors, multi-client stock races and Production 10k query evidence. The 691 incomplete observations are excluded from import. Overlapping store listing merges reject deliberately; inventory/price conflicts must be reviewed rather than guessed. Do not call this candidate a completed or released catalog.
-
-- 2026-10-13 follow-up: corrected Thai substring classification and quarantined six ambiguous name/size observations; added 81 reviewed package observations, preserving source references. Actual 415-row isolated SQL import/reimport passes. Added barcode/no-barcode bridging and server identity-conflict/null-input denial checks. Local Grocery coverage: 66 SQL/normalization + 16 Merchant/Customer DOM + 11 Admin DOM + 48 rendered browser checks (320/390/768px). Admin merge target uses searchable product selection and requires confirmed server success.
-- Backup access blocker: connected Supabase MCP has no backup tool; CLI linked dump returns ProjectRefNotLinkedError and no DB connection/token environment is configured. No current restorable DB backup obtained; no Production schema/data mutation permitted before that prerequisite is met. User authorized completion and rollout; do not ask for deployment approval again.
-
-- 2026-10-13 Production Grocery checkpoint supersedes earlier no-mutation/backup blocker: private scoped application snapshot (82 tables, 1,860 typed rows, exact round-trip) saved before additive migration. Excludes Auth credentials and physical Storage bytes; not full disaster recovery. Installed Grocery schema and imported/reimported 414 real inactive masters across 45 categories, 415 source records, zero GTINs/approved images/store links. Existing 7 product row hashes unchanged. Web PR #168 remains draft, activation and authenticated E2E/release gate OPEN. Generic backup/management seed scripts contain no private snapshot data. User has authorized completion and rollout; no repeat permission needed.
-
-- Latest published Grocery head e73cf77c4027ce38c2278a66ced8761848b1aaa6, RC CI 38334905956 SUCCESS (npm regression + rendered browser). Production no-session authenticated-role import/inactive master/source isolation passed. Timestamped non-private Production counters are separate from generated research statistics. Activation/authenticated web E2E/main publication remain OPEN.
-
-
-## 2026-10-13 continuation — reviewed activation and advisors
-
-Fetched current main and Grocery branch; no Grocery successor PR found. Exact head `f2f5740e5f3fea2618a1a2766cc6635784263eb7` RC CI run 38335174150 succeeded. Re-ran full npm regression and 48 Chromium component checks (320/390/768 px); these remain isolated tests, not authenticated E2E.
-
-Production advisors identified three Grocery foreign-key indexes. Added and read back `grocery_master_merged_into_fk`, `grocery_stock_product_fk`, and `products_grocery_master_fk`; follow-up performance advisor reports no unindexed foreign keys. Two internal deny-all tables intentionally retain RLS with no client policies. Other system advisories are outside this mission.
-
-Rechecked official manufacturer pages and activated ONLY Foremost plain UHT milk 225 ml, one carton (`https://www.foremostthailand.com/product/100-uht-plain-milk/`, explicit one-carton nutritional serving) and Roza salted pickled cabbage 170 g, one can (`https://www.hiqfood.com/product/salted-pickled-cabbage/`). Production readback confirms 2 active / 412 inactive masters, no store links. No prices, GTINs or image permissions invented. Total remains 414 / 45 categories / 415 provenance / zero barcodes / 414 pending images.
-
-Release remains OPEN. Cloud Merchant shows the sign-in form and has no saved session. Real Merchant A/B, Customer and Admin web E2E cannot be certified without authenticated sessions. No main merge or web deployment. Concurrent stock gate must investigate the Production cash-order core's `FOR SHARE` product read followed by the Grocery trigger's `FOR UPDATE`: simultaneous transactions may require a lock upgrade and deadlock. This is a source-review concern, not a reproduced Production race; do not mark concurrency passed. POS readback uses order_items inserts and the new stock trigger, without a second explicit stock decrement in pos_edit_bill/pos_take_payment. Rider Android untouched.
-
-
-Later in the same continuation, secure Merchant sign-in succeeded. The visible account page confirms a Grocery test shop. This supersedes the earlier no-Merchant-session observation; it does NOT certify candidate UI E2E, because main still lacks the PR's Grocery editor. Production currently has one non-archived Grocery shop, so two-real-store price isolation is still unavailable. Customer/Admin authenticated sessions and simultaneous stock connections remain unverified. Commit `7c0a485eff6d9a434a5da9f982449439a552ec02` RC CI 38335868729 succeeded. Gate remains OPEN; no main merge/deployment.
-
-
-- 2026-10-13 Grocery concurrency continuation: confirmed Production cash checkout used product `FOR SHARE` before the Grocery stock trigger's `FOR UPDATE`. Deployed migration `20261013023547_grocery_cash_checkout_lock_order`: checkout now locks products `FOR UPDATE` in deterministic UUID order before `order_items` stock triggers. RC 38337527764 passed full npm + rendered Grocery browser checks before rollout. Post-deploy readback preserves SECURITY DEFINER/search_path and existing ACL (no direct anon/authenticated execute), confirms deterministic order/FOR UPDATE and removal of old FOR SHARE. Source deadlock hazard is closed, but real simultaneous authenticated Grocery checkout E2E remains OPEN. PR #168 stays draft; no main/web deploy; Rider Android untouched.
-
-## 2026-10-15 Merchant white-screen root cause
-- Continue Web main `9b8eeacf1f7cc0a801523c1095942d954b84295d`; inspected PR347/348/349/351 and open PRs. No newer open Merchant Web/Grocery successor was present. Backup `backup-merchant-white-screen-20261015` preserves that baseline.
-- Reproduced on the actual authenticated Production path: Products → เพิ่มสินค้าจากแคตตาล็อก changes the hash but rejects with `ReferenceError: shopUser is not defined` in grocery-catalog.js. shopUser/profileId/layout were private to the Merchant IIFE, while the external Catalog renderer used them as globals. Previous component tests supplied replacement helpers, masking the missing integration. Router also ignored the returned async render promise.
-- Export the existing three helpers; capture rejected async route/direct-click renders. Add an independent static recovery shell and empty-app guard, keep optional Map/Voice loading from blocking HTML parsing, and provide an AbortController timeout fallback for Safari without AbortSignal.timeout. POS cleanup must tolerate a missing optional POS script. No production database/auth/credit/business-rule changes.
-- Add whole-document integration and mobile WebKit scenarios using localhost-only transport fixtures. These do not certify physical iPhone or live Supabase writes. Owner signed in through the secure browser flow; authenticated Production verification and a real Catalog save remain required after candidate CI/deployment. Keep the release gate OPEN until those checks have evidence.
-- Mobile runtime investigation additionally reproduced unhandled refresh-timeout rejections from queued background hydration and a redundant post-restore router invocation after identity restore failed. Queued work now logs failures, failed restore keeps the existing Catalog shell, and unresolved shop identity presents a retry control with editing/save locked. Catalog JS cache version advanced with that change. Whole-document mobile WebKit covers optional SDKs hanging, absent POS, normal/expired sessions including missing AbortSignal.timeout, timed-out refresh, delayed Catalog, save/reload, reopen and rejected renderer recovery.
-
-
-## 2026-10-16 QueueGo Map Lab — Buriram web-first prototype
-- Owner requested the map/navigation data system be prototyped on Web before Android. Backup \`backup/web-before-queuego-map-lab-20261016\`; candidate \`work-web-queuego-map-lab-buriram-20261016\`, based on main \`a44bdb15c80d7216b82b1a6787775001dec1e70b\`.
-- Added isolated \`/map-lab/\`: MapLibre map, Buriram working extent, OSM/Overpass traffic-signal + stop/give-way + railway-crossing + traffic-calming + speed-camera inventory, optional schools/hospitals, best-effort DRR FeatureServer road overlay, point-to-point routing prototype, route-near-signal/hazard audit and provenance-preserving GeoJSON export.
-- Safety invariant: never fabricate a route when routing fails; never display a red/green countdown unless an authoritative time-synchronised controller/SPaT feed exists. OSM signal timing defaults to unknown. Public OSRM/Overpass/Nominatim endpoints are prototype dependencies only and must not become sole Production services.
-- No Google Maps geometry/content is ingested or traced. OSM attribution/ODbL is visible. Each future merged road segment must retain source provenance and licensing metadata.
-- Production target remains self-controlled QueueGo vector/offline tiles + versioned regional packages + routing graph + map matching + navigation safety gates. Evaluate OSM PBF with official DRR/DOH/MOT enrichment, MapLibre + PMTiles, and Valhalla/GraphHopper. Physical motorcycle validation is mandatory before sole-navigation release.
-- This prototype makes no Supabase mutation and does not alter Customer/Merchant/Rider order flow, payments or Android. Web publication/release evidence remains required before calling it deployed.
-- Successor expands the web prototype with the published NGIS national-highway ArcGIS layer for the Buriram envelope alongside DRR. NGIS/DRR stay isolated provenance-bearing verification overlays; endpoint/CORS failure does not fabricate roads or break the base map. Loaded NGIS features are included in provenance-preserving GeoJSON export.
-
-## 2026-10-16 QueueGo Map Lab — Buriram web-first navigation research
-
-- Owner requested QueueGo-owned map/navigation work on Web first before Android, using as much legitimate Thailand road/map data as practical and prioritizing navigation safety.
-- PR #369 merged Map Lab v1 into main: isolated `/map-lab/` MapLibre surface; OSM/Overpass traffic signals, stop/give-way, level crossings, traffic calming and speed cameras; optional schools/hospitals; DRR rural-road + public bridge layers; NGIS national-highway overlay; A→B research routing; route-near signal/hazard audit; provenance-preserving GeoJSON export.
-- PR #370 merged Map Lab v2 into main: optional OSM one-way/access/motor-vehicle/motorcycle restrictions plus `type=restriction` relation counts and route-near rule audit. Exact-head RC passed full npm regression, mobile WebKit Merchant boot and Grocery rendered checks before merge.
-- Current main after v2: `070f0acc7fc292bf12ed6b7403baa3fb1c0c30fc` before this memory-only checkpoint.
-- Safety rule: NEVER show a traffic-light countdown or claim future red/green timing unless QueueGo has an authoritative synchronized controller/SPaT feed for that intersection. Observed waiting time may inform ETA statistics only.
-- Do not ingest/trace Google Maps geometry or proprietary navigation content into QueueGo map data.
-- Public OSRM/Nominatim/Overpass and browser GIS services are research/prototype dependencies only; production QueueGo Navigation must move to pinned source snapshots, provenance/confidence per segment, validated topology/turn/access restrictions, self-controlled routing graph, map matching and versioned offline packages.
-- OSM remains the routing-capable base candidate. DRR/NGIS/other official Thai datasets are verification/enrichment layers subject to per-dataset licence and redistribution review. Public road-accident/risk datasets are candidate safety enrichment; do not treat historical accident data as a real-time closure.
-- Android navigation remains untouched by Map Lab work. Next phase should validate the web data layers on real routes in Buriram, then build the canonical QueueGo road ingestion/graph pipeline before porting the navigation experience to Rider Native.
-
-
-## 2026-10-16 QueueGo Map Lab — Overture transportation
-- Owner asked to search for dense open/global road datasets that include small roads/alleys and try them in QueueGo.
-- Research identified Overture Maps transportation as the strongest additional global open road network: primarily OSM, enhanced with TomTom and local/regional authoritative sources; current release pinned to 2026-09-23.1 and transportation is ODbL.
-- Candidate `work-web-map-lab-overture-transport-20261016` adds the official Overture transportation PMTiles archive as a subtle street-zoom road overlay without adding another front-page layer control. It is comparison/coverage intelligence, not a claim of complete alley coverage.
-- Production plan remains: frequent Thailand OSM PBF (Geofabrik) + Overture transportation + NGIS/DRR + QueueGo verified field observations, preserving provenance and licence boundaries.
-
-## 2026-10-18 owner website camera/single-proof deployment
-- Owner provided road-video camera reversals/anchor drift and reported duplicate pickup/delivery photos from old ChatGPT/web files. Use bounded tested UI delta from newest source successor73c458c5, deployed onto current live main ded5dab4; do not merge staged backend or fake-map endpoint just to update Rider Web.
-- Camera: optional null heading no longer north; same latest direction/overlap/progress guards, repeated off-route reroute, stale/duplicate GPS rejection and marker/camera duration. Proof: one photo+one action per pickup/delivery, inline cash, no second collection/slider page, retain preview/File/path through cancel/back/reopen/RPC retry, duplicate-tap/session fence and logout cleanup. Native existing one-photo/no-slider implementation unchanged.
-- Focused tests camera65/proofDOM34/GPS9/live-route94/UI102/runtime83/source88 PASS; require full clean-tree npm, RC and Pages + public byte verification. Build rider-20261018-camera-proof1, script20261018-12. Existing route transport remains until QueueGo Map HTTPS gate; cap2/backend/providers unchanged. Physical Safari camera/GPS acceptance still requires actual owner test.
-
-## 2026-10-18 public Rider repair VERIFIED
-- Owner-authorized Web runtime f8986c1b8c9f9d86cf43c20fc1eded18b81f37e6/tree67b1058c075bfaccfda44ef1c3fab8f00f6a08fa: local full npm EXIT0, RC1869/39129222944, Pages1432/39129222693 and Chat134/39129222931 SUCCESS. Live HTML tag rider-20261018-camera-proof1 and script20261018-12 verified; shared JS exact bytes SHA256cef3140b63cbe3f8b332dfa2c49c79b7146d65f9c861366630e17d66628641d1.
-- Pickup/delivery proof, GPS and puck function bodies exactly match strict staged PR436 d32fe66d. Main and Native source history diverged before this task; preserve bounded Web-only projection, not a full unrelated main merge over the newer staged services. No runtime backend/cap activation. Source Native3413/Map155 exact checks remain separate from public Web deploy.
-- User may now physically test the versioned Rider URL. One pickup photo+one receive action; one delivery photo+one finish action; cancel/back/reopen/RPC retry retains proof and uploaded path. Physical camera/GPS acceptance is still open. Resume real evidence, do not bring back retired cash/collection slider screens or old files.
-
-## 2026-10-18 route-progress display while retaining stable geometry
-- The camera/proof repair keeps the road route instead of recalculating every10 seconds; preserve live distance/ETA presentation by reading accepted route-match progress against existing authoritative distance/duration. Time is labelled approximate; invalid/opposite/off-route evidence does not invent progress. Helper14/GPS9/proof34/camera65 PASS; full gate required. Build rider-20261018-camera-proof2; no backend/cap/pricing change or duplicate route engine.
-
-## 2026-10-18 bold route from real20:19 recording
-- Continue newest sourcec41453e9/livebad7dcba. Owner asks large visible navigation route. Web6px/no casing becomes12px red with16px white; Native active8 becomes12, future6 becomes8, casing4 wider. Same route geometry/camera/state/proof retained; current one-photo fix stays. Build rider-20261018-route-bold1; source/physical CI gates apply.
-
-## 2026-10-18 real route disappearance and aligned arrows
-- Owner20:43 recording plus actual MapLibre reproduction proves casing loading can suppress red fill via past load event. Existing helper now applies immediately and owns style.load retry/removal. Direction chevrons, displayed remaining-only route and same-point camera/puck road snap (<=12m, known accuracy<=35m, no opposite heading) preserve raw GPS/full route authority. Native reuses its hybrid signal pipeline; renderer alignment/chevrons only. Build route-arrow1; parente8d3716910d08a804c978bc738ab9ec021f0aa70; full exact CI and physical acceptance required.
-
-## 2026-10-18 camera follows shared Rider course
-- Owner asks camera behind/rotating with Rider arrow. Cache Web smoothed course once per fix for camera and puck; interpolate puck yaw with same easing. Native FOLLOW uses existing filtered course via existing camera policy option; keep unknown-heading, gesture, lifecycle and all route safety gates. Build route-arrow2; exact full CI and physical acceptance required.
-
-## 2026-10-18 exhausted route lifecycle
-- Endpoint replay exposes leftover red/casing when remaining geometry becomes empty. Reconcile renderer-owned IDs, remove exhausted/past multipart overlays and preserve later authoritative parts. Full road geometry/heading/financial authority unchanged. Build route-arrow3; require exact CI and physical acceptance.
-
-## 2026-10-19 Web-first real places
-- Pinned OSM3079 places/1284 business-service records via PR437; same shared asset/search/display with explicit source attribution and coordinate selection. Imported records are not merchants/orderable. Preserve current live routing/camera/proof and project only bounded UI/data. Full/exact gates required; native same-asset integration follows.
-
-
-## 2026-10-19 Market Catalog continuation from PR441
-- Verified latest successor `68b9b0b9` descends from current main `fa0b7ac9`; PR440 explicitly superseded. 128 sourced products, 84 approved images, 44 rights-pending candidates; Phase2 data exists. Do not recreate catalog or auto-approve retailer images.
-- `6cfb031b` reuses the same image/credit/status rendering in list and add form, with explicit broken-image fallback; the Market gates now participate in npm test. Focused tests pass, full regression/exact CI and authenticated Merchant browser acceptance remain gates. Shared manual-editor kg presets and remaining rights resolution are next; no Production migration applied.
-
-- Successor batch17 `c9c7c040` increases approved images to 88/128, 40 remain rights-pending. Published image-flow successor `840771cd` preserves it; full npm pre-batch17 passed, focused tests after integration passed. Local weight source `53097a3e` shares manual/catalog presets and custom metric synchronization; exact successor CI and authenticated browser acceptance remain required.
-
-
-## 2026-10-19 — Actual SQL Market release gate
-- IN PROGRESS; branch `work-market-master-catalog-successor-v2-20261019`; predecessor `83b7bac11b3478ad19d496acf774fc2d5c206f10` passed exact RC2008/run39233210924, including mobile WebKit. Local source commit `3336a6d1`.
-- Actual migration execution found malformed rambutan slug in the staged phase2 seed. Production migration history confirms only Grocery grant `20261019051041` applied today, not these Market migrations. Corrected the unapplied seed to the canonical JSON/image slug; no applied history edited.
-- Actual live read-only function audit confirms POS helpers exclude pending shops. New scoped owner-preparation helper reused by existing Market catalog page/add/manual-save functions allows only owned pending/active nonarchived Market/Grocery profiles; POS, approval, public shop visibility, checkout and financial triggers are unchanged. Owner-only stock/movement read policies enable pending-shop readback.
-- TEST: full npm regression EXIT0; actual isolated SQL migrations + pending browse/add/readback/receipt replay/body mismatch/no duplicate/stock movement once/staff+archived+suspended+anon denial PASS19; Merchant DOM PASS42; source/data/image/category contracts PASS. SQL gate now included in npm test/RC. No Production writes.
-- Counts unchanged: 128 sourced products, 88 approved images, 40 rights-pending. Browser binary download in this host returned truncated archives; use CI WebKit and do not claim signed-in live Merchant acceptance from isolated tests.
-- NEXT: exact successor CI then release-gate review, remaining40 image rights and authenticated Merchant acceptance. No Production apply until exact successor passes.
-
-
-## 2026-10-19 — Owner-authorized test shop and real backend acceptance
-- Owner explicitly authorized creating a test shop. Created a dedicated test account through normal Auth signup and owner-scoped registration; marked test metadata, shop pending/draft, product Delivery availability false. No real customer account impersonation, approval bypass or public fake storefront.
-- Pre-release function/policy backup committed on `backup/market-catalog-pre-release-20261019-e273cc59` at `aa57572411bfb5a9e12f65c4f068150dab035d64`. Exact HEAD e273cc59 passed RC2010/run39234648240. All 25 staged Market migrations passed a real-database transaction rehearsal and rollback before atomic activation. Original source migration receipts recorded with their versions to prevent CLI replay. Production readback:128 master rows,88 approved,40 rights-pending.
-- Real authenticated test-shop REST PASS: paging128/no duplicate source IDs, category/search, approved+pending image fields, custom1.75kg, original receipt replay, new request/same master no duplicate, stock unchanged on replay. Actual GP trigger persisted storefront100 and Delivery110. Product availability false; shop remains pending/draft.
-- Live frontend module with actual authenticated REST exposed a real optional-GP403 bug: Promise.all blocked the catalog even though browse/add were authorized. Shared nonblocking GP read now preserves unknown as null and shows server-calculated-after-save copy; no zero GP invented and no financial RPC grants changed. Manual stock and catalog reuse it. Versioned assets `20261019-market-gp5`.
-- Local source/test commit25f8db44: full npm regression EXIT0; Merchant DOM45 and SQL19 PASS. Actual frontend module + real authenticated REST PASS:50 rows,1/2/3kg,custom2.25kg,double-submit1 write,readback correct. This is DOM-harness frontend acceptance, not a claim of physical-device or full signed-in-browser appearance certification.
-- Opt-in live QA harness: `ops/market/live-catalog-qa.cjs`; requires explicit env opt-in, private session file and owned pending/draft shop with is_test metadata. Credentials/tokens never committed. Advisors reviewed: private receipts intentionally deny all direct access; authenticated definer warnings are intentional guarded RPCs, with owner/anon/staff/suspended checks tested.
-- Image HTTP audit:79 unique URLs for88 approved rows;24 HTTP200 image responses,55 rate-limited429 during batch HEAD audit; no404 observed. Stop bulk retrying; keep explicit image failure UI and rights-pending labels. Remaining40 need exact reusable images/rights evidence, not a coding permission.
-- NEXT: exact GP-fix CI, then merge/deploy Web and verify public gp5 bytes; keep test shop unpublished. Physical review and remaining image rights remain separate acceptance limits.
-
-
-## 2026-10-19 — Market Catalog Web activation VERIFIED
-- Branch: main; deployed runtime commit `532bb70d3c971effe0a07ab50175b6fbeadc8387`, merged PR441 from exact source `42ae26fd9390c8e54a01ff152d49bee53b8bf36f`. Source/test DONE and Web activation DONE for the stated data/add flow.
-- Exact source RC2011/run39236477702 SUCCESS; merged-main RC2012/run39236885146 SUCCESS; Pages build/deploy39236883990 SUCCESS. Public Merchant HTML and actual browser reload expose `market-gp5` for CSS/Market/catalog scripts. Public JS exact-byte match with tested source:market.js SHA256986a44763cbf83b194eec4448ffee41bbd45f36c86903c92dd7107df80a8037b; market-catalog.js SHA2569ed01ab70446382aaf2b53dffd8ddf04bc2ba201f37597b49206781551aaa3b4.
-- Backend activated25 tested source migrations; source-version receipts recorded atomically. Production readback128 total/88 approved/40 rights-pending. Backup aa57572411bfb5a9e12f65c4f068150dab035d64 retains pre-release functions/policies. POS/checkout/approval/public storefront conditions preserved.
-- Owner-authorized test shop remains pending/draft and marked is_test. Real authenticated REST+frontend module acceptance PASS:search/category/paging,image states,presets,custom1.75/2.25kg,GP100→110,duplicate receipt/new request/double-submit1 write,authoritative stock readback. Actual manual stock screen reads all3 fixture products. Anonymous REST returns zero test products. No fake products exposed to customers; no actual orders/payment generated.
-- This supersedes the previous login-blocked release checkpoint: authenticated backend and module flow is verified using the authorized test shop. Full signed-in-browser appearance/physical-device acceptance remains explicitly unclaimed; anonymous browser verifies deployed asset tags only.
-- Remaining image work:40 retailer candidates still need exact reusable replacements or rights evidence; keep pending placeholders.79 unique approved-image URLs audited:24 HTTP200,55 HTTP429 batch-rate-limited,zero404; do not falsely mark these as deleted or auto-approve pending retailer art.
-- NEXT: continue only remaining exact image/rights work from newest main descendant; keep test shop unpublished. Do not recreate catalog, migrations, presets, optional-GP fix or add receipts, and do not restart PR440/closed441.
-
-## 2026-10-19 — Market image continuation after PR443
-- Source main7959ede0 records live128 items/91 approved images/37 rights pending. Main CI and Pages both successful. Catalog, receipts, editable1/2/3kg, pending-owner and optional GP flow already implemented; continue image rights only.
-- Batch20 stages two reviewed species/commodity images (banana prawn, white sand fish) with existing rights fields, taking staged counts93/35. Never infer retailer size/brand/pack from a generic photo. Rejected mixed empty-shell art for edible clam. NEXT: exact-source tests/CI, forward-only migration and live readback; do not claim signed-in physical-device appearance certification.
-
-## 2026-10-19 — Market batch20 activated
-- PR444 source20829ca2 passed RC2020/run39247512452 full regression/mobile WebKit; merged main f630086a. Forward-only batch20 image migration activated with original version receipt after rollback rehearsal. Live catalog128 total /93 approved /35 rights pending. Pending QA owner SQL RPC readback includes new fish/prawn image/source/license; no product, financial or stock changes.
-- NEXT:remaining35 rights/exact-image replacements; preserve explicit placeholders. Research leads Pure_squid_meat.jpg and Oysters_at_LFS_Fish_Market_2013_(2).JPG need visual/cut review before approval. Empty mixed-shell art rejected. Supabase CLI telemetry was denied by automatic approval review; no retry/bypass. Use established connector for verified migration activation. Full signed-in browser/physical-device appearance remains unclaimed.
-
-## 2026-10-20 Admin audit continuation
-- Owner authorizes full Admin Web audit, performance and operational coverage with server-side role checks, audited financial idempotency, Web-first merge/Pages after green CI. PR445 is merged and must not be recreated. Base mainb8b9f988; backup/admin-before-overhaul-20261020.
-- First scoped-loading checkpoint removes Admin entry into legacy full hydration, adds HEAD summary counts and section cache/coalescing, Users directory scope, Audit100, Notifications100 and stops hidden Rider5s polling. All APIs retain authenticated RLS/RPC enforcement. No Production schema/data writes.
-- Full npm suite passed once; final exact-source/CI still pending. Executed new section runtime19 checks passed. Local WebKit binary is downloaded but shared libs unavailable; normal dependency install fails setgroups/seteuid. Existing hosted RC WebKit runner now executes whole Admin before/after fixture metrics. Do not claim physical/live authorization or Production timing from fixtures.
-- Scope remains incomplete: permission matrix, existing staged controls/dependency integration, paged directories, subscription scopes, mutation/audit hardening, exact CI, merge/Pages/live verification. Continue on current Web successor; staged latest native source38baf74c is inspected without overwriting newer Web main.
-
-## 2026-10-20 Admin performance slice merged
-- PR457 source42fcd82449a7d02812059cc0f1ce39d8df756a01 passed RC2076/run39348758285: full npm, actual complete Admin mobile WebKit, Merchant mobile WebKit, map/catalog browser gates. Merge main827b34cd69ab25a93d4692b21a4ce816779edea7 has identical tree04584c3bff1fa89065d59e0d8e75fe99ccf75900.
-- Controlled50ms localhost WebKit metrics: Supabase boot requests43→10; ready3392→828ms; shell478→329ms. Do not present these as Production latency/physical-device evidence.
-- Pages1459/run39349127341 was in progress at checkpoint. Actual public predeploy Admin HTML matched baselineb8b9f988 SHA2569efbc5f5… exactly; live browser shows normal login and has no Admin session. No real authenticated operation/physical iPhone certification is claimed.
-- Continue from newest main descendant, not PR445 or closed457. Permission coverage matrix remains honest about staged Credit/Admin Ride RPCs absent in Production and remaining operational APIs/health/pricing/control work. No Production schema/data changed. Do not call the whole mission DONE.
-
-## 2026-10-20 Admin scoped operational readers checkpoint
-- CURRENT BASE:9017567baff0b9fb325245578e3dbef5e7a0efea. PR458 sourceae0b438355b5684a466e742f4df575bfd2def25c passed RC39349869823; main CI39350311495 and Pages39350310925 SUCCESS. Full Admin mobile WebKit74 checks PASS. Latest controlled fixture25→10 requests /1933→762ms ready; prior baseline43 reflects legacy duplicate-boot timing variability, not Production latency.
-- IMPLEMENTED: additive page-scoped shop overview overload (max200 IDs, invoker/RLS); bounded Dispatch projection (max100 each); notification outbox status aggregates. Private table grants unchanged. New private readers require active Admin and live session, wrappers authenticated only; no payloads/tokens or business mutations.
-- TEST: full npm EXIT0; operational SQL25 and DOM24 PASS; whitespace PASS. SQL verifies anon/non-admin/suspended/session denial and limits. Production migration NOT APPLIED; exact-source hosted CI pending.
-- REMAINING/BLOCKED: whole mission IN PROGRESS per audit matrix; Credit/Ride backend rollout, audited missing controls, further paging/abort work, authenticated and physical-device acceptance remain. NEXT: publish checkpoint, exact-source CI, rollback rehearsal before additive migration deployment, merge/Pages and byte verification.
-
-## 2026-10-20 Admin readers deployed / Support successor
-- DONE (PR459 slice): sourceccd9f421 passed RC2084/run39351062344 including full npm and mobile WebKit74. Maina1fb415b94a7ee4b55753c5f98199603ba8d4456 treefbdf1d5694894f044dabc3e96d2fc615fcc77bb2 equals tested source. Pages39351465709 SUCCESS. Controlled fixture43→10 requests; ready3427→754ms; shell435→254ms, not Production latency.
-- Migration applied via connector version20261020010500; source CLI file20261020005115. Three public reader wrappers invoker; anon EXECUTE false; authenticated true with server role checks. Rollback rehearsal passed3 non-Admin denials; no business writes. Advisor warning counts unchanged; five new indexes appear as unused INFO immediately after creation (not evidence to drop them). Existing unrelated advisories remain.
-- CURRENT BASE:a1fb415b. Support successor: inbox200/201 and per-shop conversation100/101 keyset pages; profile+thread reads parallel; Map grouping instead of repeated full filters; selecting shop only fetches that thread; actor/route fencing and text escaping. Dedicated visible/online60s fallback because live support table is not in Realtime publication; removed unrelated order-chat scope and duplicate shared Support loader.
-- TEST: Support DOM18, section19, performance15, source95/82 PASS. Exact successor full suite/CI still required. REMAINING: financial/staged backend gates and all unresolved matrix controls. NEXT: exact Support CI/merge/Pages, then remaining permission and performance source work. Whole mission IN PROGRESS; authenticated/physical acceptance unclaimed.
-
-## 2026-10-20 Admin stale-read checkpoint (mission IN PROGRESS)
-- CURRENT BASE:b4b3f9f6f15c4b4b178d4fcaa57510cecc5882ae. PR460 source4982883c passed full RC39351721764/mobile WebKit74; Pages39352035615 SUCCESS. Support DOM22/full local npm PASS. No Production messages sent.
-- IMPLEMENTED: section/session-aware GET/HEAD cancellation, shared directory scope reuse, pending-read coalescing beyond TTL and correct new-scope handling before hash event delivery. Mutations continue to completion; POST RPC reads are not yet cancelled. Role/RLS guards unchanged.
-- TEST: section runtime34, Support22, interrupted network26, source95/82 PASS; exact full suite/CI pending. DONE only deployed slices459/460, not the mission. REMAINING: Rider queue paging, global search, financial reconciliation and unresolved feature matrix; scale indexes/aggregates and POST read cancellation. BLOCKED: live authenticated/physical acceptance; staged backend release gates remain separate. NEXT: exact-source CI, merge/Pages/live asset verification, continue remaining source work.
-
-## 2026-10-21 Cash-based Admin finance scope
-- Removed the obsolete Admin refund-request panel, handler, request read, and dormant finance-ledger status adapter. Cash settlement, GP, and credit tools remain. Admin has no refund workflow in QueueGo's cash-based scope. Merchant POS cash refunds remain a shop-side function and are separate from Admin.
-## 2026-10-20 Customer saved-location coverage checkpoint
-- CURRENT BASE:4ae1c89bb5f90f980033384b612988d9cd27791f (PR462 successor). Verified actual Customer source stores one location in users.metadata plus local cache, and immutable per-order delivery snapshots; live schema has no separate address table. Corrected initial inventory's assumed owner address policies.
-- IMPLEMENTED: existing guarded Users detail shows saved delivery address, safely escaped; reuses existing read-only location map with validated coordinates. No additional queries, address table, customer edit, order-location rewrite or new privilege. Existing user_view audit retained; clearly distinguishes current account location from the order snapshot.
-- TEST: Customer detail DOM11 and source95/82 PASS; full/exact CI pending. PRIOR PR461 passed RC39352282187 (full npm/mobile WebKit74) and merged main791a25340f87f7d47d55ab04569b36e4b2f7f4de; Pages verification pending. Whole mission remains IN PROGRESS per matrix.
+- Customer notification center marks currently unread notifications as read when the user opens it. The local unread count is cleared immediately after a successful write so the red bell badge does not survive a read because a background notification refresh i…10291 tokens truncated…rification pending. Whole mission remains IN PROGRESS per matrix.
 
 ## 2026-10-20 Server directory search checkpoint
 - CURRENT BASE:283aec9bc977f93e4822e7e3033a96b66192a90c (PR463 successor). Newest main at start02d27a67c87a565fbf75f663032f018ed4f6e581; no reset/revert/cherry-pick. PR461 source3929a38c RC39352282187 PASS and PR462 source4ae1c89b RC39352428793 PASS (full npm/mobile WebKit74 each), merged791a2534/02d27a67 respectively. Pages/live verification follows deployed head.

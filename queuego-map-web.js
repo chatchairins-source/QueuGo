@@ -759,17 +759,36 @@ function attachPlaces(map,{onSelect=null,searchControl=false}={}){
   map.__qgPlaces={dispose,control};return map.__qgPlaces;
 }
 
-async function search(term){
-  const q=String(term||'').trim();if(!q)return[];
-  try{const local=await searchPlaceCatalog(q,{limit:8});if(local.length)return local.map(p=>({...p,label:placeResult(p).display_name}))}catch(_){}
-  try{
-    const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=th&q='+encodeURIComponent(q),{
-      headers:{'Accept':'application/json'}
-    });
-    if(!r.ok)return[];
-    const rows=await r.json();
-    return (Array.isArray(rows)?rows:[]).map(x=>({lat:Number(x.lat),lng:Number(x.lon),label:String(x.display_name||'')})).filter(x=>valid(x.lat,x.lng));
-  }catch(_){return[]}
+let qgSearchConfig=null;
+function configureSearch(config={}){qgSearchConfig={...config,providers:Array.isArray(config.providers)?config.providers.slice():[]};return true}
+function normalizeSearchResult(row,provider){
+  const lat=Number(row?.latitude??row?.lat),lng=Number(row?.longitude??row?.lng??row?.lon);
+  if(!valid(lat,lng))return null;
+  const name=String(row?.canonical_name||row?.name_th||row?.name_en||row?.name||row?.label||row?.display_name||'สถานที่').trim();
+  const label=String(row?.label||row?.display_name||[name,row?.village,row?.subdistrict,row?.district,row?.province].filter(Boolean).join(', '));
+  return {...row,id:row?.place_id||row?.id||null,place_id:row?.place_id||row?.id||null,name,lat,lng,label,display_name:label,provider,source:row?.source||provider,persistable:provider==='queuego-places'};
+}
+async function searchQueueGoPlaces(query,options={}){
+  const cfg=qgSearchConfig||window.QG_SEARCH_CONFIG||{};if(!cfg.url||!cfg.key)throw new Error('QueueGo Search is not configured');
+  const body={p_query:query,p_latitude:options.latitude??options.lat??null,p_longitude:options.longitude??options.lng??null,p_category:options.category||null,p_province:options.province||null,p_limit:Math.max(1,Math.min(50,Number(options.limit)||8)),p_radius_m:Math.max(100,Math.min(100000,Number(options.radius_m)||50000))};
+  const response=await fetch(String(cfg.url).replace(/\/$/,'')+'/rest/v1/rpc/qg_search_places',{method:'POST',headers:{apikey:cfg.key,'Content-Type':'application/json'},body:JSON.stringify(body),signal:typeof AbortSignal!=='undefined'&&AbortSignal.timeout?AbortSignal.timeout(12000):undefined});
+  if(!response.ok)throw new Error('QUEUEGO_SEARCH_ERROR_'+response.status);
+  const rows=await response.json();return (Array.isArray(rows)?rows:[]).map(row=>normalizeSearchResult(row,'queuego-places')).filter(Boolean);
+}
+async function search(term,options={}){
+  const q=String(term||'').trim();if(!q&&options.latitude==null)return[];
+  const cfg=qgSearchConfig||window.QG_SEARCH_CONFIG;
+  if(cfg?.url&&cfg?.key){
+    try{const places=await searchQueueGoPlaces(q,options);if(places.length)return places}catch(error){if(!cfg.providers?.length)throw error}
+    for(const provider of cfg.providers||[]){
+      if(!provider||typeof provider.search!=='function')continue;
+      try{const rows=await provider.search(q,options);const normalized=(Array.isArray(rows)?rows:[]).map(row=>normalizeSearchResult(row,provider.id||'external-provider')).filter(Boolean);if(normalized.length)return normalized}catch(_){}
+    }
+    return[];
+  }
+  // Legacy catalog path is retained only for isolated map utility consumers without app search config.
+  try{const local=await searchPlaceCatalog(q,{limit:8});if(local.length)return local.map(p=>({...p,label:placeResult(p).display_name,provider:'legacy-local-catalog',persistable:false}))}catch(_){}
+  return[];
 }
 async function reverse(lat,lng){
   if(!valid(lat,lng))return'';
@@ -783,5 +802,5 @@ async function reverse(lat,lng){
   }catch(_){return''}
 }
 function destroy(map){try{map?.remove?.()}catch(_){}}
-window.QueueGoMapWeb={loadPlaceCatalog,searchPlaceCatalog,nearbyPlaces,attachPlaces,addPlaceSearchControl,style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,remainingNavigationRoute,navigationCameraDecision:navCameraDecision,navigationScreenAnchorRatio:navScreenAnchorRatio,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
+window.QueueGoMapWeb={loadPlaceCatalog,searchPlaceCatalog,nearbyPlaces,attachPlaces,addPlaceSearchControl,style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,configureSearch,searchQueueGoPlaces,search,reverse,destroy,remainingNavigationRoute,navigationCameraDecision:navCameraDecision,navigationScreenAnchorRatio:navScreenAnchorRatio,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
 })();

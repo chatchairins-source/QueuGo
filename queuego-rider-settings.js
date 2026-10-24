@@ -15,11 +15,11 @@ async function openDestination({getActor,getAccessToken,rpc,map:Q,gps=null,toast
   if(active){active.node.querySelector('button')?.focus();return}
   const actor=getActor();if(!actor)return;
   const opener=document.activeElement,node=document.createElement('div');node.className='qg-destination-overlay';
-  node.innerHTML='<section class="qg-destination-dialog" role="dialog" aria-modal="true" aria-labelledby="qg-destination-title" tabindex="-1"><header><div><h2 id="qg-destination-title">ปลายทางของฉัน</h2><p>เลือกทิศทางงานที่คุณต้องการ</p></div><button type="button" data-close aria-label="ปิดการตั้งค่าจุดหมาย">×</button></header><div role="status" data-message>กำลังโหลดการตั้งค่า…</div><form hidden><div class="qg-destination-map-wrap"><div data-map></div><div class="qg-destination-pin" aria-hidden="true">●</div></div><div class="qg-destination-map-note"><span>เลื่อนแผนที่ให้หมุดอยู่ตรงจุดหมาย</span><button type="button" data-gps>ตำแหน่งปัจจุบัน</button></div><label class="qg-destination-label">ชื่อจุดหมาย<input name="label" maxlength="160" required autocomplete="off" placeholder="เช่น บ้านหรือย่านที่ต้องการไป"></label><label class="qg-destination-check"><span>เลือกงานที่ไปทางนี้<small>เป็นความต้องการเส้นทาง ไม่รับประกันว่าจะมีงาน</small></span><input name="enabled" type="checkbox"></label><button type="submit" class="qg-btn qg-btn-primary" disabled>บันทึกจุดหมาย</button></form></section>';
+  node.innerHTML='<section class="qg-destination-dialog" role="dialog" aria-modal="true" aria-labelledby="qg-destination-title" tabindex="-1"><header><div><h2 id="qg-destination-title">ปลายทางของฉัน</h2><p>เลือกทิศทางงานที่คุณต้องการ</p></div><button type="button" data-close aria-label="ปิดการตั้งค่าจุดหมาย">×</button></header><div role="status" data-message>กำลังโหลดการตั้งค่า…</div><form hidden><div class="qg-destination-search"><input type="search" data-search-input autocomplete="off" aria-label="ค้นหาสถานที่" placeholder="ค้นหาสถานที่ ถนน หรือชุมชน"><button type="button" data-search>ค้นหา</button></div><div data-search-results hidden></div><div class="qg-destination-map-wrap"><div data-map></div><div class="qg-destination-pin" aria-hidden="true">●</div></div><div class="qg-destination-map-note"><span>เลื่อนแผนที่ให้หมุดอยู่ตรงจุดหมาย</span><button type="button" data-gps>ตำแหน่งปัจจุบัน</button></div><label class="qg-destination-label">ชื่อจุดหมาย<input name="label" maxlength="160" required autocomplete="off" placeholder="เช่น บ้านหรือย่านที่ต้องการไป"></label><label class="qg-destination-check"><span>เลือกงานที่ไปทางนี้<small>เป็นความต้องการเส้นทาง ไม่รับประกันว่าจะมีงาน</small></span><input name="enabled" type="checkbox"></label><button type="submit" class="qg-btn qg-btn-primary" disabled>บันทึกจุดหมาย</button></form></section>';
   document.body.append(node);
-  const dialog=node.querySelector('section'),form=node.querySelector('form'),message=node.querySelector('[data-message]'),save=form.querySelector('[type=submit]'),label=form.elements.namedItem('label'),enabled=form.elements.namedItem('enabled'),closeButton=node.querySelector('[data-close]'),gpsButton=node.querySelector('[data-gps]');
+  const dialog=node.querySelector('section'),form=node.querySelector('form'),message=node.querySelector('[data-message]'),save=form.querySelector('[type=submit]'),label=form.elements.namedItem('label'),enabled=form.elements.namedItem('enabled'),closeButton=node.querySelector('[data-close]'),gpsButton=node.querySelector('[data-gps]'),searchInput=node.querySelector('[data-search-input]'),searchButton=node.querySelector('[data-search]'),searchResults=node.querySelector('[data-search-results]');
   const state={node,busy:false};active=state;
-  let nativeMap=null,loaded=null,point=null,mapReady=false,disposed=false,gpsBusy=false;
+  let nativeMap=null,loaded=null,point=null,mapReady=false,disposed=false,gpsBusy=false,searchSerial=0;
   const current=()=>!disposed&&active===state&&getActor()===actor;
   const sync=()=>{save.disabled=state.busy||!loaded||!point||!label.value.trim()||label.value.trim().length>160||(!loaded.configured&&!mapReady);label.disabled=state.busy;enabled.disabled=state.busy;gpsButton.disabled=state.busy||gpsBusy||!nativeMap;closeButton.disabled=state.busy;};
   const cleanup=()=>{
@@ -41,6 +41,25 @@ async function openDestination({getActor,getAccessToken,rpc,map:Q,gps=null,toast
   document.addEventListener('keydown',key);closeButton.onclick=close;node.onclick=e=>{if(e.target===node)close()};dialog.focus();
   const watch=setInterval(()=>{if(!current())cleanup()},500);
   label.oninput=sync;enabled.onchange=sync;
+  const clearSearch=()=>{searchSerial++;searchResults.replaceChildren();searchResults.hidden=true};
+  const runSearch=async()=>{
+    const query=String(searchInput.value||'').trim(),ticket=++searchSerial;searchResults.replaceChildren();
+    if(query.length<2){searchResults.hidden=true;return}
+    searchResults.hidden=false;const status=document.createElement('div');status.textContent='กำลังค้นหาสถานที่…';searchResults.append(status);searchButton.disabled=true;
+    try{
+      const rows=await Q.search(query,{limit:8});if(!current()||ticket!==searchSerial)return;
+      searchResults.replaceChildren();
+      if(!rows.length){status.textContent='ไม่พบสถานที่';searchResults.append(status);return}
+      for(const row of rows){
+        const lat=Number(row.lat),lng=Number(row.lng??row.lon);if(!validPoint(lat,lng))continue;
+        const item=document.createElement('button');item.type='button';item.textContent=String(row.name||row.label||'สถานที่');item.setAttribute('data-place-id',String(row.place_id||''));
+        item.onclick=()=>{if(!current()||!nativeMap)return;point={lat,lng};label.value=String(row.name||row.label||'').slice(0,160);Q.setCenter(nativeMap,lat,lng,16,450);clearSearch();sync()};searchResults.append(item);
+      }
+      if(!searchResults.childElementCount){status.textContent='ไม่พบพิกัดที่ใช้ได้';searchResults.append(status)}
+    }catch(_){if(current()&&ticket===searchSerial){status.textContent='ค้นหาสถานที่ไม่ได้ กรุณาลองใหม่';searchResults.replaceChildren(status)}}
+    finally{if(searchButton.isConnected)searchButton.disabled=false}
+  };
+  searchButton.onclick=runSearch;searchInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();runSearch()}});searchInput.addEventListener('input',clearSearch);
   const readCenter=()=>{
     if(!current()||state.busy||!mapReady)return;
     const center=nativeMap.getCenter();point=validPoint(center.lat,center.lng)?{lat:Number(center.lat),lng:Number(center.lng)}:null;sync();

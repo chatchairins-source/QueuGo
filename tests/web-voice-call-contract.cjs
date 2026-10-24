@@ -49,6 +49,10 @@ assert.match(rider,/qgRiderVoiceCallTarget\(order,'customer'/,'Rider delivery mu
 assert.match(rider,/qgRiderVoiceCallTarget\(child,'shop'/,'Rider Market pickup must target the exact current child-order shop');
 assert.match(rider,/id="chat-call"/,'Rider chat must expose a QueueGo call action');
 assert.match(rider,/id="qg-delivery-call"/,'Rider delivery flow must expose a QueueGo call action');
+assert.match(rider,/users\?select=id,name&id=in\./,'ordinary Rider enrichment must fetch Customer identity without phone');
+assert.doesNotMatch(rider,/users\?select=id,name,phone/,'ordinary Rider payload must never fetch Customer phone');
+assert.doesNotMatch(rider,/qgTelHref\(cust\.phone\)|href=["']\$\{tel\}/,'ordinary Rider delivery UI must not derive a direct customer phone link');
+assert.match(rider,/if\(\/\^tel\\s\*:\/i\.test\(href\)\)/,'direct tel links remain blocked until server entitlement exists');
 
 assert.match(merchant,/\.\.\/queuego-voice-web\.js\?v=20261012-voice2/,'Merchant web must load the shared voice client');
 assert.match(merchant,/QueueGoVoiceWeb\.create/,'Merchant must initialize shared voice controller');
