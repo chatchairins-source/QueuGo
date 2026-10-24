@@ -1,13 +1,13 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-24. Repository: `chatchairins-source/QueuGo`. Local successor branch: `work/places-current-successor-20261024`. Latest main: `04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd`. Active PR #704 is open/draft at `3e9185d6bd9853e3736640f1d4d6f10d7406c28a`. Latest tested source commit: `61acdcc0a4bf6be69562bc0ad781dc26aa72cda9` (tree `1c6dd76037511c5d46f1d97764ad3e70ea9c213a`), descendant of current main and PR head. Full `npm test` EXIT 0; Thai admin importer 41 PASS; OSM staging 72 PASS. Hosted RC #3290 / run `40067981147` passed on previous PR head `3e9185d6`; current importer change still needs exact-head hosted RC. See the newest OSM and hierarchy checkpoints in CHECKLIST.md.
+Current snapshot: 2026-10-24. Repository: `chatchairins-source/QueuGo`. Local successor branch `work/places-current-successor-20261024`, latest tested source commit `2136b4f61432bf10673294c39f6a5e7d18d1b6fa` (tree `26a3dab1959f3aba0363cf9d3cee49a8480a8efc`). Latest main `04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd`; PR #704 remains open/draft at `64e3bef1bbceddb0ef7af5ee5a64a9eb516bab68` before this source change. Full `npm test` EXIT 0; OSM staging 76 PASS; Thai hierarchy importer 41 PASS. Hosted RC #3291 / run `40069117625` passed on the previous PR head. See the newest staging and hierarchy checkpoints in CHECKLIST.md.
 
 ## Active owner mission — Nationwide QueueGo Places/Search and operation
 
 - PR #697 is superseded/closed; PR #704 is the active successor. Preserve newest main and all Merchant/Laundry/Rider work by forward merges only.
-- Official Geofabrik Thailand PBF retrieval and review-only staging are proven locally: 163,924 candidate SQL rows across 164 chunks with exact snapshot/hash/provenance. OSM SQL was not executed.
-- Open Admin Data hierarchy root cause is resolved in source: levels 1-2 and level 3 come from two separately pinned files at commit `eef739a5…`; exact hashes and all 8,369 hierarchy rows validate. Review SQL is local only; no import executed.
-- NEXT: refresh main and PR #704, reconcile forward if either advanced, publish the tested descendant with expected-head compare-and-swap and `force=false`, verify tree equality, then wait for exact-head QueueGo RC. Keep the PR draft.
+- Official Geofabrik Thailand PBF staging yields 163,924 candidate rows across 164 review SQL chunks. The latest aggregate report records category, geometry and address-hierarchy field presence without names or address values. No OSM SQL was executed.
+- Open Admin Data hierarchy is now sourced from two pinned files at commit `eef739a5…`; exact hashes and all 8,369 hierarchy rows validate. Review SQL remains local and unexecuted.
+- NEXT: refresh main and PR #704; reconcile forward if either advanced; publish the latest tested descendant with expected-head CAS and `force=false`; verify tree equality and wait for exact-head QueueGo RC. Keep PR #704 draft.
 - Production Places/Search schema/RPC and imported nationwide data remain absent. DOPA GIS-01 is blocked on official payload bytes (HTTP 503). Buriram ordering/service-area gate remains. Rider 10-failed-call phone fallback and verified cash no-show suspension need server RPC/audit. Supabase advisor findings, Production E2E and Web Owner acceptance remain unresolved. No fake/demo data, Longdo/legacy map, Production writes/deploy, or physical-device PASS.
 - QueueGo remains NOT DONE until the original mission Definition of Done is met. Keep cash-first.
 

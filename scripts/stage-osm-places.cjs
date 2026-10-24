@@ -194,7 +194,9 @@ async function stageOsmGeoJsonSeq({ inputFile, pbfFile, outputDir, retrievedAt, 
   const exportSha = await hashFile(inputFile);
   await fsp.mkdir(outputDir, { recursive: true });
   if ((await fsp.readdir(outputDir)).length) throw new Error('review output directory must be empty');
-  const report = { source: SOURCE_KEY, license: SOURCE_LICENSE, attribution: ATTRIBUTION, license_url: LICENSE_URL, pbf_url: pbfUrl, snapshot_date: snapshotDate, retrieved_at: retrieved, pbf_sha256: actualPbfSha, geojsonseq_sha256: exportSha, execution: 'review_only_no_database_write', chunk_rows: chunkRows, summary: { records: 0, staged: 0, skipped_unsupported_geometry: 0, skipped_outside_thailand: 0, skipped_not_named_searchable_place: 0 }, chunks: [] };
+  const report = { source: SOURCE_KEY, license: SOURCE_LICENSE, attribution: ATTRIBUTION, license_url: LICENSE_URL, pbf_url: pbfUrl, snapshot_date: snapshotDate, retrieved_at: retrieved, pbf_sha256: actualPbfSha, geojsonseq_sha256: exportSha, execution: 'review_only_no_database_write', chunk_rows: chunkRows,
+    summary: { records: 0, staged: 0, skipped_unsupported_geometry: 0, skipped_outside_thailand: 0, skipped_not_named_searchable_place: 0 },
+    coverage: { staged_by_category: {}, staged_by_geometry: { point: 0, boundary: 0 }, hierarchy_fields_present: { province: 0, district: 0, subdistrict: 0, village: 0, moo: 0 } }, chunks: [] };
   const meta = { retrievedAt: retrieved, snapshotDate, pbfSha256: actualPbfSha, exportSha256: exportSha, pbfUrl };
   const rows = [], seen = new Set();
   let sequence = 0;
@@ -215,6 +217,11 @@ async function stageOsmGeoJsonSeq({ inputFile, pbfFile, outputDir, retrievedAt, 
       if (row.skipped) { report.summary['skipped_' + row.skipped]++; continue; }
       if (seen.has(row.source_record_id)) throw new Error('duplicate OSM object ' + row.source_record_id);
       seen.add(row.source_record_id); rows.push(row); report.summary.staged++;
+      report.coverage.staged_by_category[row.category] = (report.coverage.staged_by_category[row.category] || 0) + 1;
+      report.coverage.staged_by_geometry[row.boundary_geojson ? 'boundary' : 'point']++;
+      for (const field of Object.keys(report.coverage.hierarchy_fields_present)) {
+        if (row[field] !== null && row[field] !== undefined && row[field] !== '') report.coverage.hierarchy_fields_present[field]++;
+      }
       if (rows.length >= chunkRows) await flush();
     }
     await flush();

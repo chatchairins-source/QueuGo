@@ -122,7 +122,7 @@ assert.equal(ATTRIBUTION, '© OpenStreetMap contributors');
 (async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'queuego-osm-stage-'));
   const input = path.join(root, 'sample.geojsonseq'), pbf = path.join(root, 'sample.osm.pbf'), output = path.join(root, 'review');
-  const exportText = [feature(301, { amenity: 'cafe', name: 'กาแฟ' }), feature(302, { shop: 'supermarket', name: 'มินิมาร์ท' }), feature(303, { shop: 'guest_house', name: 'รีสอร์ต', 'addr:street': 'Muu4, Koh Samet,\u2028Phe subdistrict' })]
+  const exportText = [feature(301, { amenity: 'cafe', name: 'กาแฟ' }), feature(302, { shop: 'supermarket', name: 'มินิมาร์ท' }), feature(303, { shop: 'guest_house', name: 'รีสอร์ต', 'addr:street': 'Muu4, Koh Samet,\u2028Phe subdistrict', 'addr:province': 'Rayong', 'addr:district': 'Mueang Rayong', 'addr:subdistrict': 'Phe', 'addr:village': 'Koh Samet', 'addr:moo': '4' })]
     .map(value => '\x1e' + JSON.stringify(value) + '\n').join('');
   fs.writeFileSync(input, exportText);
   fs.writeFileSync(pbf, 'isolated non-production OSM checksum fixture');
@@ -132,10 +132,14 @@ assert.equal(ATTRIBUTION, '© OpenStreetMap contributors');
     snapshotDate: '2026-10-20', pbfSha256, pbfUrl: 'https://download.geofabrik.de/asia/thailand-261022.osm.pbf', chunkRows: 1
   });
   assert.equal(report.summary.staged, 3);
+  assert.deepEqual(report.coverage.staged_by_category, { food: 1, grocery: 1, shopping: 1 });
+  assert.deepEqual(report.coverage.staged_by_geometry, { point: 3, boundary: 0 });
+  assert.deepEqual(report.coverage.hierarchy_fields_present, { province: 1, district: 1, subdistrict: 1, village: 1, moo: 1 });
   assert.equal(report.chunks.length, 3);
   assert.equal(report.geojsonseq_sha256, checksum(exportText));
   assert.equal(report.execution, 'review_only_no_database_write');
   assert.equal(report.pbf_url, 'https://download.geofabrik.de/asia/thailand-261022.osm.pbf');
+  assert.doesNotMatch(JSON.stringify(report.coverage), /Rayong|Mueang Rayong|Phe|Koh Samet/);
   assert.ok(fs.existsSync(path.join(output, report.chunks[0].file)));
   assert.ok(fs.existsSync(path.join(output, 'osm-th-stage-report.json')));
   await assert.rejects(stageOsmGeoJsonSeq({
@@ -147,5 +151,5 @@ assert.equal(ATTRIBUTION, '© OpenStreetMap contributors');
     snapshotDate: '2026-10-20', pbfSha256: 'c'.repeat(64)
   }), /PBF SHA-256 mismatch/);
   fs.rmSync(root, { recursive: true, force: true });
-  console.log(JSON.stringify({ checks: 72, failures: 0, scope: 'OSM ODbL point/polygon staging, Thai address hierarchy, RFC 8142 separator streaming, controlled leisure/historic/craft/office/transit tags, bounds and provenance' }));
+  console.log(JSON.stringify({ checks: 76, failures: 0, scope: 'OSM ODbL point/polygon staging, privacy-safe category/geometry/hierarchy aggregates, RFC 8142 separator streaming, controlled tags, bounds and provenance' }));
 })().catch(error => { console.error(error); process.exitCode = 1; });
