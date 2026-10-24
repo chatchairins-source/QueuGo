@@ -164,6 +164,7 @@ function parseOperationalSnapshot(text) {
   return {
     generatedAt,
     rows,
+    snapshotHash: sha256Text(JSON.stringify(rows)),
     summary: {
       shops_input: parsed.shops.length,
       markets_input: parsed.markets.length,
@@ -254,6 +255,13 @@ UPDATE public.queuego_place_sources
 SET metadata=jsonb_set(
       jsonb_set(coalesce(metadata,'{}'::jsonb),'{last_operational_snapshot_at}',to_jsonb(${generatedAt}::timestamptz),true),
       '{last_operational_snapshot_count}',to_jsonb(${snapshot.rows.length}),true
+    ),
+    metadata=jsonb_set(
+      jsonb_set(
+        jsonb_set(coalesce(metadata,'{}'::jsonb),'{last_operational_snapshot_at}',to_jsonb(${generatedAt}::timestamptz),true),
+        '{last_operational_snapshot_count}',to_jsonb(${snapshot.rows.length}),true
+      ),
+      '{last_operational_snapshot_sha256}',to_jsonb(${sqlLiteral(snapshot.snapshotHash)}::text),true
     ),
     updated_at=now()
 WHERE source_key='${SOURCE_KEY}';
