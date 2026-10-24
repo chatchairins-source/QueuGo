@@ -1,3 +1,14 @@
+## 2026-10-24 Nationwide DOPA GIS-01 resource registry — IN PROGRESS
+
+- Successor branch: `work-web-queuego-places-dopa-resources-20261024`, created directly from PR #697 latest implementation HEAD `8e54805cd5e7d0f2c95b0b814d5df970e656b81a`; no older branch/file was reused.
+- SOURCE: `data/maps/dopa-gis01-resources.json` now registers all 76 province resources in DOPA GIS-01 with unique province codes and official DOPA resource UUID/download URLs. Bangkok code 10 is intentionally absent because the source dataset is the 76-province village collection.
+- SAFETY GATE: all 76 rows remain `import_eligible=false`, `sha256=null`, and `validated_row_count=null`. Resource-link discovery is not treated as payload validation; no village rows or generated SQL have been imported/applied.
+- TEST: `tests/dopa-village-import.cjs` now requires exactly 76 unique province codes, 76 unique resource UUIDs, no Bangkok entry, official resource URLs tied to each UUID, and an unverified state for every resource. Buriram remains pinned to `2e6697b4-6efe-46b5-940a-0d7b2caf771f`.
+- External payload blocker remains: reviewed DOPA paths time out/return 502, so exact bytes/checksums/row counts are still unavailable. No unverified mirror bytes were substituted.
+- CI: prior forward-merge exact RC #3248 / `40057854157` SUCCESS on `d1025835`; the 76-resource additions are newer and require a new exact-head RC. This successor uses a `work-web-*` branch so the existing RC push gate can test the current source.
+- No Production schema/data/deployment mutation.
+- NEXT: run exact-head RC for this successor. If green, keep the nationwide registry and continue acquiring exact DOPA bytes/checksums province-by-province; if official payload access remains unavailable, record the blocker and continue the next unblocked QueueGo Places/Search source task without weakening checksum/import gates.
+
 ## 2026-10-24 DOPA GIS-01 Buriram resource identity — IN PROGRESS
 
 - Recovered active Nationwide successor PR #697 after forward-merge of current main. Merge commit `d1025835fee28449114a901c57aee6dad104a22d` is a descendant of main `c757450189fd63e85f27f99f8a0c9cc38a272205`; exact-head QueueGo RC #3248 / run `40057854157` SUCCESS across npm, Merchant mobile WebKit, Admin mobile, Map Lab, QueueGo Map search and Grocery browser gates.
