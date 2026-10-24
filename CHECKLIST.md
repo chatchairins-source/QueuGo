@@ -1,11 +1,17 @@
-## 2026-10-24 Shared map rotation and tilt — IN PROGRESS
+## 2026-10-24 Web app HTML downloads and Customer/Shop icons — IN PROGRESS
 
-- Evidence-backed cause: shared `QueueGoMapWeb.create()` set `maxPitch:0`, disabled mouse/touch rotation, and only showed its compass in Rider navigation mode. Customer Ride, Customer location picker, QueueGo Map and Map Lab each repeated the same disabled settings. The base style is raster OpenStreetMap, so camera tilt can give a perspective view but cannot create extruded 3D buildings without a vector/elevation tile source.
-- Scope: enable mouse/touch map rotation and 3D camera tilt on every Web map surface (Customer pickers/Ride, Merchant, Admin, Rider idle/navigation, QueueGo Map and Map Lab); show a compass/pitch control while retaining existing zoom buttons, preserve automatic Rider follow and the north-up reset behavior.
-- Source/test head `cacfc27ba2d1d42b75868c84aacacf1acd7dc891` is based on current deployed main `b476db051f7a1951d76d60f776fd6368ce84e897`. No Production data changed.
-- First exact-head CI #3333 / run `40102161709` failed at `tests/location-lifecycle.cjs`: its MapLibre mock lacked `touchZoomRotate.enableRotation()` and `touchPitch.enable()`, which the updated picker now calls. The mock update is in `217a9eaf502b184fee84c63a85db91d5bc9c2ec8`; npm test then passed.
-- The Map Lab WebKit step on `217a9eaf502b184fee84c63a85db91d5bc9c2ec8` remained in progress after the new test called undocumented `isRotationEnabled()`. The pinned MapLibre API exposes `isEnabled()`, so the browser assertion is being corrected to the documented method; map rotation itself is enabled with `enableRotation()`.
-- **NEXT:** rerun exact-head QueueGo RC on the corrected browser assertion; merge the green head and deploy GitHub Pages. Confirm live HTML/assets expose the cache-busted camera gesture build. Physical iPhone gesture feel still needs owner-side confirmation after release.
+- Scope: provide launch and HTML-download links for Customer, Shop and Rider; add distinct, professional Customer and Merchant PWA icons and install manifests.
+- Evidence: the three live Web entry points are `/`, `/merchant/` and `/rider/`; Customer and Merchant did not declare app manifests. Rider already has its approved icon and manifest.
+- Source commit `af95f3412ae95eedf96d61f095f9412918c3811d` on `feat/web-app-download-links-icons-20261024`, based on deployed main `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`. No production data changed.
+- **NEXT:** run exact-head QueueGo RC, fix any failing icon/download checks, merge the tested source and verify GitHub Pages links and manifests.
+
+## 2026-10-24 Shared map rotation and tilt — DONE (Web source/CI/deploy)
+
+- Cause: shared and direct MapLibre maps disabled camera gestures or clamped pitch to zero outside Rider navigation. Raster OpenStreetMap tiles support tilted perspective but do not provide extruded 3D buildings.
+- Change: enable mouse drag and two-finger rotation/tilt on Customer picker/Ride, Merchant, Admin, Rider, QueueGo Map and Map Lab; show compass/pitch controls while preserving zoom buttons and Rider follow.
+- Exact-head RC #3335 / run `40103081891` passed npm regression and all mobile WebKit gates, including Admin, Merchant, Map Lab, QueueGo Map and Grocery.
+- Merged PR #714 as `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`. GitHub Pages run `40103399673` succeeded; live Customer entry point opened at `https://chatchairins-source.github.io/QueuGo/`.
+- Owner iPhone gesture acceptance remains a separate physical-device check.
 
 ## 2026-10-24 Customer Ride map flicker and Rider tracking — DONE (source/CI/deployment)
 

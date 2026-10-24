@@ -1,15 +1,20 @@
 # QueueGo Next Actions
 
-## Current Web map rotation continuation — 2026-10-24
+## Current Web app links and icon work — 2026-10-24
 
-- Active branch: `fix/web-map-rotation-all-pages-20261024`, based on deployed main `b476db051f7a1951d76d60f776fd6368ce84e897`.
-- Root cause: non-Rider maps lock `maxPitch` at zero and disable drag/touch rotation; Rider only unlocks these while navigation is active. OSM base tiles are raster, so tilt is supported but building extrusion needs a future vector/elevation tile source.
-- Scope: consistent rotation and tilt gestures plus compass/pitch controls with existing zoom buttons on Customer, Ride, Merchant, Admin, Rider, QueueGo Map and Map Lab; preserve Rider follow and reset-to-north behavior.
-- RC #3333 / `40102161709` first failed in `location-lifecycle.cjs` because the MapLibre mock lacked camera gesture methods. The mock is fixed in `217a9eaf502b184fee84c63a85db91d5bc9c2ec8`; npm test passed.
-- The Map Lab WebKit gate on that head stalled on the browser assertion for `touchZoomRotate.isRotationEnabled()`; the pinned MapLibre API exposes `isEnabled()`. Fix that assertion before continuing.
-- **NEXT:** run exact-head QueueGo RC on the corrected browser assertion, merge only the tested head, deploy GitHub Pages, and verify public cache-busted assets. Owner iPhone gesture acceptance remains a distinct post-deploy step.
+- Active branch: `feat/web-app-download-links-icons-20261024`, based on deployed main `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`.
+- Scope: add a QueueGo app page with launch + HTML download links for Customer, Shop and Rider; add role-specific Customer and Shop PWA icons/manifests and link all three app manifests.
+- Source checkpoint `af95f3412ae95eedf96d61f095f9412918c3811d`. No Production data changed.
+- **NEXT:** run exact-head QueueGo RC, resolve failures, merge tested branch, and verify live Pages app links and icons.
 
-Current snapshot: 2026-10-23 · Authoritative main: `be33b8318967ad6105222efa8305fec8005a5335`
+## Completed Web map rotation and tilt — 2026-10-24
+
+- Merged PR #714 at `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`.
+- Exact-head RC #3335 / `40103081891` passed full npm regression and mobile WebKit checks; Pages `40103399673` succeeded and the Customer site opened live.
+- All Web maps now support rotation and tilt, with compass/pitch controls. Raster OSM basemaps show perspective only; extruded 3D buildings need vector/elevation tiles. Physical iPhone gesture acceptance remains pending.
+
+
+Current snapshot: 2026-10-24 · Authoritative main: 03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6
 
 ## Current verified POS checkpoint — 2026-10-23
 
