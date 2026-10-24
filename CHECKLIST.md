@@ -1,3 +1,14 @@
+## 2026-10-24 Merchant Add Menu bottom action — integrated into latest PR #697
+
+- Source base: exact latest PR #697 HEAD `261e0c2d919a01bbd7b18d7156ef5ae73f907118`; Merchant and regression files were re-read from this SHA immediately before write.
+- Owner request implemented: restaurant/cafe product management action now says `เพิ่มเมนู` and is fixed at the bottom above Merchant navigation.
+- ROOT CAUSE: the iPhone product CSS changed generic `.qgm-fab` to sticky, leaving the action immediately after product cards.
+- Grocery behavior is unchanged: `เพิ่มสินค้าเอง` and catalog product actions remain product-specific.
+- TEST EVIDENCE: exact-head RC `40054885493` passed on merge successor `a1df8864737a4f43ce3a168c489ccaa628a34b52`, including npm, Merchant mobile WebKit, Admin mobile, Map Lab, QueueGo Map search and Grocery browser gates.
+- IN PROGRESS: PR #697 exact-head RC must validate this integrated merge commit.
+- No Production data mutation.
+- NEXT: verify PR #697 exact-head RC, then continue from its latest successor without reverting this change.
+
 ## 2026-10-24 Nationwide map POI authority checkpoint
 
 - Source change: `queuego-map-web.js` no longer fetches or searches a bundled Buriram POI catalog. Map viewport POIs, shared text search, category lookup and nearby lookup now use only `qg_search_places`; map search overlay mounting returns null, leaving Search outside the embedded map. Removed `data/maps/buriram-places.json` and updated its README. Search fails closed when shared QueueGo Search is unconfigured; no local regional or unconfigured geocoder fallback.

@@ -5,6 +5,10 @@ const sql=fs.readFileSync(path.join(root,'supabase/migrations/20261006083000_pro
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 ok(merchant.includes('let qgmProductSaveBusy=false;'),'product save must have a duplicate-submit lock');
+ok(merchant.includes('qgm-fab qgm-menu-add-action'),'food/cafe product management must expose the dedicated menu add action');
+ok(merchant.includes("${svg('plus')} เพิ่มเมนู"),'food/cafe product management must label the action เพิ่มเมนู');
+ok(merchant.includes('body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action{position:fixed'),'menu add action must stay at the bottom above Merchant navigation');
+ok(merchant.includes('qgm-grocery-add-choices')&&merchant.includes('เพิ่มสินค้าเอง'),'Grocery add-product actions must remain product-specific');
 ok(merchant.includes("data-product-request-id="),'new product editor must keep a stable request/product id');
 ok(merchant.includes("window.qgmNewProductRequestId||(window.qgmNewProductRequestId=uid())"),'new product request id must survive editor rerenders');
 ok(merchant.includes("if(!id&&String(window.qgmNewProductRequestId||'')===String(stableId))window.qgmNewProductRequestId=null;"),'stable new-product request id must clear only after confirmed save');
