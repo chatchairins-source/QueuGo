@@ -67,7 +67,7 @@
     .qg-search-pill button{width:38px;height:38px;border:0;border-radius:11px;background:transparent;color:#2e292e;display:grid;place-items:center}
     .qg-search-results{pointer-events:auto;margin-top:7px;max-height:min(44dvh,360px);overflow:auto;border:1px solid var(--line);border-radius:15px;background:#fff;box-shadow:0 14px 36px rgba(31,24,29,.18)}
     .qg-search-result{display:block;width:100%;border:0;border-bottom:1px solid #f0edef;background:#fff;text-align:left;padding:10px 12px}.qg-search-result:last-child{border-bottom:0}
-    .qg-search-result b,.qg-search-result small{display:block}.qg-search-result b{font-size:12px}.qg-search-result small{font-size:9px;color:var(--muted);margin-top:2px;line-height:1.35}
+    .qg-search-result b,.qg-search-result small{display:block}.qg-search-result b{font-size:12px}.qg-search-result small{font-size:9px;color:var(--muted);margin-top:2px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
     .tool-sheet{position:fixed;z-index:34;left:8px;right:8px;bottom:calc(6px + var(--safe-b));max-height:74dvh;overflow:auto;background:rgba(255,255,255,.985);border-radius:24px 24px 20px 20px;box-shadow:0 -14px 42px rgba(30,24,29,.2);padding:10px 12px 14px}
     .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tool-card{border:1px solid var(--line);border-radius:14px;background:#faf9f9;text-align:left;padding:11px;color:var(--ink)}
@@ -258,7 +258,7 @@
   </section>
 
   <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
-  <script src="../queuego-map-web.js?v=20261019-places1"></script>
+  <script src="../queuego-map-web.js?v=20261024-addresscompact1"></script>
   <script>
   (function(){
     "use strict";
@@ -859,7 +859,7 @@
       state.inspectPoint={lat,lon};
       $("inspectOutput").textContent="กำลังอ่านข้อมูล…";
       const [rev,nearest]=await Promise.allSettled([engineReverse(lat,lon),engineNearestRoad(lat,lon)]);
-      const address=rev.status==="fulfilled"?(rev.value.display_name||"ไม่พบที่อยู่"):"อ่านที่อยู่ไม่ได้";
+      const rawAddress=rev.status==="fulfilled"?(rev.value.display_name||""):"",address=rev.status==="fulfilled"?(window.QueueGoMapWeb?.compactAddress?.(rawAddress)||rawAddress||"ไม่พบที่อยู่"):"อ่านที่อยู่ไม่ได้";
       const road=nearest.status==="fulfilled"&&nearest.value?(nearest.value.name||"ถนนที่ใกล้ที่สุด"):"ไม่พบถนน";
       const snap=nearest.status==="fulfilled"&&nearest.value&&nearest.value.location?nearest.value.location:null;
       const offset=nearest.status==="fulfilled"&&nearest.value&&Number.isFinite(nearest.value.distance)?formatDistance(nearest.value.distance):"—";
@@ -1030,7 +1030,7 @@
       if(!rows.length){host.innerHTML='<button class="qg-search-result" type="button"><b>ไม่พบสถานที่</b><small>ลองชื่อหมู่บ้าน ถนน ตำบล อำเภอ หรือพิกัด เช่น 14.99, 103.10</small></button>';host.hidden=false;return}
       rows.forEach((r,i)=>{
         const b=document.createElement("button");b.type="button";b.className="qg-search-result";
-        b.innerHTML="<b>"+esc(r.name||String(r.display_name||"").split(",")[0])+"</b><small>"+esc(r.display_name||"")+"</small>";
+        const resultName=r.name||String(r.display_name||"").split(",")[0],shortAddress=window.QueueGoMapWeb?.compactAddress?.(r.display_name)||r.display_name||"";b.innerHTML="<b>"+esc(resultName)+"</b><small>"+esc(shortAddress)+"</small>";
         b.onclick=()=>{
           const lon=Number(r.lon),lat=Number(r.lat);
           if(Number.isFinite(lon)&&Number.isFinite(lat)){
