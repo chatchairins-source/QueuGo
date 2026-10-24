@@ -17,3 +17,14 @@ Use `scripts/stage-dopa-village-batch.cjs` only after exact province payload byt
 The batch stage computes SHA-256, validates province identity, village codes, names and Thailand coordinate bounds through the single-province importer, and writes reviewable SQL plus `dopa-gis01-stage-report.json`. Missing resources remain `missing`; payloads without matching official metadata or valid content are blocked and do not produce SQL.
 
 Batch staging deliberately does **not** modify `dopa-gis01-resources.json` and does not make a payload import-eligible. Promote a resource only after the staged checksum and validated row count have been independently reviewed against the exact official bytes.
+
+## QueueGo verified operational places
+
+`scripts/import-queuego-verified-places.cjs` stages QueueGo-owned public shop and verified-market records into the same Places authority without copying private account data. The input must be a **complete public snapshot** with `snapshot_complete: true`, a valid `generated_at`, and separate `shops` / `markets` arrays.
+
+The importer only keeps public place fields (name, public category, public address hierarchy, coordinates, operational source ID and timestamps). It rejects snapshots containing direct identity/contact fields such as phone, email, user/auth IDs, owner/contact names or national-ID fields. Active shops are eligible; Market-category shops additionally require approved market membership. Markets require both `active=true` and `verified=true`.
+
+The generated SQL is review-only. It upserts deterministic `queuego_verified` source records and field provenance, maps cafés into the `food` nearby category while preserving `cafe` as the subtype, and marks prior QueueGo shop/market Places as rejected only when they are absent from a complete snapshot. Coordinate-less verified shops remain text-searchable and are reported explicitly; partial/out-of-range coordinate pairs fail closed.
+
+Do not run the generated SQL until the QueueGo Places migrations have passed the approved release gate. This importer never applies Production changes itself.
+
