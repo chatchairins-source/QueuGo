@@ -56,6 +56,16 @@ assert.throws(() => normalizeFeature({ ...areaFeature(113), geometry: { type: 'P
 assert.equal(normalizeFeature(feature(102, { shop: 'supermarket', name: 'ร้าน' })).category, 'grocery');
 assert.equal(normalizeFeature(feature(103, { shop: 'laundry', name: 'ซักรีด' })).category, 'laundry');
 assert.equal(normalizeFeature(feature(104, { shop: 'bookshop', name: 'หนังสือ' })).category, 'shopping');
+assert.deepEqual(
+  ['leisure', 'historic', 'craft', 'office', 'public_transport', 'railway', 'bus_stop', 'terminal'].map((tag, index) => {
+    const key = ['leisure','historic','craft','office','public_transport','railway','highway','aeroway'][index];
+    const value = tag === 'bus_stop' ? 'bus_stop' : tag === 'terminal' ? 'terminal' : tag === 'railway' ? 'station' : tag;
+    const row = normalizeFeature(feature(120 + index, { [key]: value, name: 'POI ' + tag }));
+    return [row.category, row.subcategory];
+  }),
+  [['place','leisure'],['place','historic'],['shopping','craft'],['place','office'],['place','public_transport'],['place','railway'],['place','bus_stop'],['place','terminal']]
+);
+assert.equal(normalizeFeature(feature(140, { leisure: 'park' })).skipped, 'not_named_searchable_place');
 assert.equal(normalizeFeature(feature(105, { shop: 'cafe', name: 'Cafe' }, [103, 15], 'LineString')).skipped, 'unsupported_geometry');
 assert.equal(normalizeFeature(feature(106, { shop: 'cafe', name: 'Cafe' }, [120, 15])).skipped, 'outside_thailand');
 assert.equal(normalizeFeature(feature(107, { shop: 'cafe' })).skipped, 'not_named_searchable_place');
@@ -128,5 +138,5 @@ assert.equal(ATTRIBUTION, '© OpenStreetMap contributors');
     snapshotDate: '2026-10-20', pbfSha256: 'c'.repeat(64)
   }), /PBF SHA-256 mismatch/);
   fs.rmSync(root, { recursive: true, force: true });
-  console.log(JSON.stringify({ checks: 56, failures: 0, scope: 'OSM ODbL point/polygon staging, Thai administrative address tags, Thailand bounds, stable IDs, allowlist, chunks and provenance' }));
+  console.log(JSON.stringify({ checks: 58, failures: 0, scope: 'OSM ODbL point/polygon staging, Thai address hierarchy, controlled leisure/historic/craft/office/transit tags, bounds and provenance' }));
 })().catch(error => { console.error(error); process.exitCode = 1; });

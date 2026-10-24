@@ -35,6 +35,14 @@ function classify(tags) {
   if (['laundry', 'dry_cleaning'].includes(tags.shop)) return { category: 'laundry', subcategory: 'laundry' };
   if (['supermarket', 'convenience', 'greengrocer', 'wholesale'].includes(tags.shop)) return { category: 'grocery', subcategory: tags.shop };
   if (tags.shop) return { category: 'shopping', subcategory: clean(tags.shop, 80) };
+  if (tags.craft) return { category: 'shopping', subcategory: 'craft' };
+  if (tags.leisure) return { category: 'place', subcategory: clean(tags.leisure, 80) };
+  if (tags.historic) return { category: 'place', subcategory: clean(tags.historic, 80) };
+  if (tags.office) return { category: 'place', subcategory: 'office' };
+  if (tags.public_transport) return { category: 'place', subcategory: 'public_transport' };
+  if (['station', 'halt', 'tram_stop', 'subway_entrance'].includes(tags.railway)) return { category: 'place', subcategory: 'railway' };
+  if (tags.highway === 'bus_stop') return { category: 'place', subcategory: 'bus_stop' };
+  if (tags.aeroway === 'terminal') return { category: 'place', subcategory: 'terminal' };
   if (tags.tourism) return { category: 'place', subcategory: clean(tags.tourism, 80) };
   if (tags.amenity) return { category: 'place', subcategory: clean(tags.amenity, 80) };
   return null;
@@ -65,7 +73,7 @@ function normalizeFeature(feature, line = 1) {
   const longitude = geometry.type === 'Point' ? Number(geometry.coordinates[0]) : null;
   const latitude = geometry.type === 'Point' ? Number(geometry.coordinates[1]) : null;
   const sourceTags = p.tags && typeof p.tags === 'object' ? p.tags : p;
-  const allowed = ['shop','amenity','tourism','name','name:th','name:en','brand','addr:housenumber','addr:street','addr:suburb','addr:city_district','addr:subdistrict','addr:subdistrict:th','addr:district','addr:district:th','addr:county','addr:state','addr:province','addr:province:th','addr:city','addr:village','addr:hamlet','addr:place','addr:moo','addr:postcode'];
+  const allowed = ['shop','amenity','tourism','leisure','historic','craft','office','public_transport','railway','highway','aeroway','name','name:th','name:en','brand','addr:housenumber','addr:street','addr:suburb','addr:city_district','addr:subdistrict','addr:subdistrict:th','addr:district','addr:district:th','addr:county','addr:state','addr:province','addr:province:th','addr:city','addr:village','addr:hamlet','addr:place','addr:moo','addr:postcode'];
   const tags = {};
   for (const key of allowed) {
     const value = clean(sourceTags[key], key.startsWith('name') ? 240 : 120);

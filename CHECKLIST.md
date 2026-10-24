@@ -1,10 +1,18 @@
+## 2026-10-24 OSM named category coverage — IN PROGRESS
+
+- Startup refs refreshed before edits: main 04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd; PR #704 draft head 25ba03b8cdce5ff81b47cb4d1c07b81fd7a1f649. Local branch work/places-current-successor-20261024 descends from both.
+- Extended the OSM tag allowlist and controlled category map for named leisure, historic, craft, office, public-transport, railway station, bus-stop and airport-terminal POIs. Existing food/shop categories keep precedence; untagged/unnamed features stay excluded and source user/uid/changeset attributes remain dropped.
+- TEST: OSM importer 58 checks PASS; full npm test exited 0 on source commit 868435e5b6ff2a2e932ace92f43a63ba36604c4e, tree adcbfe2fff552a15748ea04b3e599979ad6d3c00; node --check and git diff --check PASS.
+- Prior exact-head RC #3287 / run 40065287650 passed on tree 40b72aa5, before this category expansion. This source chunk has no exact-head hosted RC yet. No PBF download, SQL execution, Production data/schema write, deployment or physical-device test.
+- **NEXT:** publish source + checkpoint with expected-head CAS against freshly fetched PR #704, force=false; forward-merge any newer refs first. Wait for exact-head RC. Keep draft and Production/release blockers.
+
 ## 2026-10-24 OSM Thai address hierarchy normalization — IN PROGRESS
 
 - Refreshed refs before edits: main 04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd; active PR #704 remains draft at bbfb12864c5a487e281acc1a4f64107a23c684e2. Local successor is work/places-current-successor-20261024.
 - OSM staging now preserves explicit addr:subdistrict, addr:district and addr:province, plus Thai suffix variants that take precedence over generic tags. It retains addr:moo in the existing QueueGo Places moo field and records moo provenance. The existing public-tag allowlist remains enforced; no user/uid/changeset fields enter SQL.
 - TEST: tests/osm-places-stage.cjs 56 checks PASS; full npm test exited 0 on exact source commit d461ac272d4a54d82a091bfc68d2108eb674fe95, tree 8e4fb1cca566e0ff1f824ff5f43ce573013a783a; node --check and git diff --check PASS.
-- RC #3286 / run 40064755457 passed on the prior OSM area tree 61a44072, before address-tag changes. This chunk has no exact-head hosted RC yet. No actual PBF retrieval, SQL execution, Production write/deployment, or physical-device validation.
-- **NEXT:** publish this source and checkpoint descendant to PR #704 with expected-head CAS against a freshly fetched remote SHA and force=false; fetch/forward-merge if any ref moves, then wait for exact-head QueueGo RC. Keep PR draft; next continue unblocked nationwide Places/Search ingestion/source work while preserving production and DOPA blockers.
+- Exact-head QueueGo RC #3287 / run 40065287650 SUCCESS on PR commit 25ba03b8cdce5ff81b47cb4d1c07b81fd7a1f649, tree 40b72aa54d7fcd9df9110ed5a7bdddedd30b6432, matching local source tree. Full npm, Admin/Merchant WebKit, Map Lab, QueueGo Map search and Grocery mobile/tablet gates passed. No actual PBF retrieval, SQL execution, Production write/deployment, or physical-device validation.
+- **NEXT:** extend the controlled OSM tag map for named leisure, historic, craft, office and transit POIs; refresh main and PR before editing, cover tag precedence/exclusions in focused tests, run full npm test, checkpoint and publish by expected-head CAS/force=false, then wait for exact-head RC. Keep PR draft and Production blocked.
 
 ## 2026-10-24 OSM areal POI coverage — IN PROGRESS
 
