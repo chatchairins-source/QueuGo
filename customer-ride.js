@@ -1,6 +1,6 @@
 /* Passenger flow shares existing auth, Orders, targeted dispatch, location picker and cash. */
 (()=>{
- let owner='',pickup=null,destination=null,quote=null,rows=[],selected=null,busy=false,error='',picker=null,previewMap=null,previewMode='',activeRideId='',activeRideMarkers={pickup:null,dropoff:null,rider:null},timer=null,config={},supply={nearby_count:0,clusters:[]},supplyAt=0;
+ let owner='',pickup=null,destination=null,quote=null,rows=[],selected=null,busy=false,error='',picker=null,previewMap=null,previewMode='',activeRideId='',activeRideMarkers={pickup:null,dropoff:null,rider:null},routeSupplyMarkers=[],timer=null,config={},supply={nearby_count:0,clusters:[]},supplyAt=0;
  const terminal=o=>!o||['completed','cancelled','no_rider_available'].includes(o.status);
  const key=()=> 'qg_customer_ride_pending_v1:'+S.get()?.userId;
  const actor=()=>S.get()?.userId||'';
@@ -16,6 +16,7 @@
  const rideMoney=v=>'฿'+Number(v||0).toLocaleString('th-TH',{minimumFractionDigits:Number.isInteger(Number(v||0))?0:2,maximumFractionDigits:2});
  function clearPreview(){
   activeRideMarkers={pickup:null,dropoff:null,rider:null};
+  routeSupplyMarkers=[];
   activeRideId='';previewMode='';
   if(!previewMap)return;
   try{previewMap.remove?.()}catch{}
@@ -51,15 +52,18 @@
   el.textContent=qgIsValidCoordinate(o.rider_latitude,o.rider_longitude,true)?'ตำแหน่งคนขับล่าสุด · อัปเดตประมาณทุก 5 วินาที':'กำลังรอตำแหน่งล่าสุดจากคนขับ';
  }
  function schedule(){clearTimeout(timer);if(document.hidden||!onRide())return;timer=setTimeout(async()=>{if(!busy&&!picker){try{
-   const before=rows.find(o=>o.id===selected),beforeKey=rideSnapshotKey(before);
+   const before=rows.find(o=>o.id===selected),beforeKey=rideSnapshotKey(before),hadActive=rows.some(o=>!terminal(o)),hadPending=!!pending(),beforeSupply=JSON.stringify(supply);
    await refresh();
    if(!rows.some(o=>!terminal(o))&&pickup)await refreshSupply();
    if(onRide()&&(pending()||rows.some(o=>!terminal(o))||pickup)){
     const current=rows.find(o=>o.id===selected);
-    if(current&&beforeKey&&beforeKey===rideSnapshotKey(current)&&updateActiveRideMap(current)){updateRideTrackingText(current)}
-    else render();
+    if(current){
+     if(beforeKey&&beforeKey===rideSnapshotKey(current)&&updateActiveRideMap(current))updateRideTrackingText(current);
+     else render();
+    }else if(hadActive||hadPending!==!!pending())render();
+    else if(beforeSupply!==JSON.stringify(supply))updateRouteSupplyView();
    }
-  }catch(e){error=e.message;if(onRide())render()}}schedule()},5000)}
+  }catch(e){error=e.message}}schedule()},5000)}
  function rideLocationButton(kind,label,value,color){
   return '<button type="button" data-action="'+kind+'" class="qg-ride-location" '+(busy||pending()||!config.enabled?'disabled':'')+' style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:13px 12px;border:1px solid #e6e7ea;border-radius:14px;background:#fff;color:#17181a;margin:0 0 9px"><span aria-hidden="true" style="width:12px;height:12px;border-radius:50%;background:'+color+';box-shadow:0 0 0 4px '+color+'1f;flex:none"></span><span style="min-width:0;flex:1"><small style="display:block;color:#777d86;font-weight:700;margin-bottom:3px">'+label+'</small><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(value||'เลือกบนแผนที่')+'</b></span><span aria-hidden="true" style="font-size:22px;color:#9aa0a8">›</span></button>';
  }
@@ -71,10 +75,32 @@
  }
  function riderLiveMarkerElement(){
   const el=document.createElement('div');
-  el.style.zIndex='20';
-  el.innerHTML='<div style="width:42px;height:42px;border-radius:50%;background:#fff;border:3px solid #e6002d;box-shadow:0 4px 14px #0003;display:flex;align-items:center;justify-content:center;color:#e6002d">'+ico('car',20)+'</div>';
+  el.style.cssText='z-index:20;transition:transform 900ms linear';
+  el.innerHTML='<div style="width:42px;height:42px;border-radius:50%;background:#fff;border:3px solid #e6002d;box-shadow:0 4px 14px #0003;display:flex;align-items:center;justify-content:center;color:#e6002d">'+ico('motorcycle',22)+'</div>';
   el.setAttribute('aria-label','ตำแหน่งคนขับ');
   return el;
+ }
+ function rideClusterMarkerElement(cluster){
+  const count=Math.max(2,Number(cluster.count||2)),el=document.createElement('div');
+  el.innerHTML='<div style="min-width:36px;height:36px;padding:0 8px;border-radius:18px;background:#fff;border:2px solid #e6002d;box-shadow:0 3px 12px #0003;display:flex;align-items:center;justify-content:center;gap:3px;color:#e6002d;font-weight:900;font-size:12px">'+ico('motorcycle',16)+'<span>'+count+'</span></div>';
+  el.style.zIndex='10';el.setAttribute('aria-label','Rider พร้อมรับงานโดยประมาณ');
+  return el;
+ }
+ function updateRouteSupplyView(){
+  const host=$('ride-route-map');
+  if(previewMode==='route'&&previewMap&&host&&(!previewMap.getContainer||previewMap.getContainer()===host)){
+   for(const marker of routeSupplyMarkers)try{marker.remove()}catch{}
+   routeSupplyMarkers=[];
+   for(const cluster of supply.clusters||[]){
+    if(!qgIsValidCoordinate(cluster.latitude,cluster.longitude,true))continue;
+    routeSupplyMarkers.push(new maplibregl.Marker({element:rideClusterMarkerElement(cluster)}).setLngLat([Number(cluster.longitude),Number(cluster.latitude)]).addTo(previewMap));
+   }
+  }
+  const summary=$('ride-nearby-supply');
+  if(summary){
+   const n=Number(supply.nearby_count||0);
+   summary.innerHTML='<span style="width:8px;height:8px;border-radius:50%;background:'+(n>0?'#18a875':'#a0a5ad')+'"></span><b>'+(n>0?'มี Rider พร้อมรับงานใกล้จุดรับ '+n+' คน':'ยังไม่พบ Rider พร้อมรับงานในระยะ 8 กม.')+'</b><span style="margin-left:auto;color:#8a9098">ตำแหน่งบนแผนที่เป็นแบบกลุ่มโดยประมาณ</span>';
+  }
  }
  function setActiveRideMarker(kind,lat,lng,label,color){
   const current=activeRideMarkers[kind],valid=qgIsValidCoordinate(lat,lng,true);
@@ -93,7 +119,16 @@
    if(previewMap.getContainer&&previewMap.getContainer()!==host)return false;
    setActiveRideMarker('pickup',o.pickup_latitude,o.pickup_longitude,'รับ','#1677ff');
    setActiveRideMarker('dropoff',o.delivery_latitude,o.delivery_longitude,'ส่ง','#e6002d');
-   setActiveRideMarker('rider',o.rider_latitude,o.rider_longitude,'','#e6002d');
+   const previousRider=activeRideMarkers.rider?.getLngLat?.();
+   const rider=setActiveRideMarker('rider',o.rider_latitude,o.rider_longitude,'','#e6002d');
+   const target=o.status==='in_progress'
+    ?(qgIsValidCoordinate(o.delivery_latitude,o.delivery_longitude,true)?[Number(o.delivery_longitude),Number(o.delivery_latitude)]:null)
+    :(qgIsValidCoordinate(o.pickup_latitude,o.pickup_longitude,true)?[Number(o.pickup_longitude),Number(o.pickup_latitude)]:null);
+   if(rider&&target&&(!previousRider||Math.abs(previousRider.lng-rider[0])>0.000001||Math.abs(previousRider.lat-rider[1])>0.000001)){
+    const bounds=new maplibregl.LngLatBounds();bounds.extend(rider);bounds.extend(target);
+    if(Math.abs(rider[0]-target[0])<0.00001&&Math.abs(rider[1]-target[1])<0.00001)previewMap.easeTo({center:rider,zoom:16,duration:850});
+    else previewMap.fitBounds(bounds,{padding:56,maxZoom:16,duration:850});
+   }
    return true;
   }catch{return false}
  }
@@ -158,7 +193,8 @@
     if(!qgIsValidCoordinate(lat,lng,true))return;
     const el=stopLabel?rideStopMarkerElement(stopLabel,color):document.createElement('div');
     if(!stopLabel){
-     if(html)el.innerHTML=html;
+     if(html instanceof HTMLElement)el.append(html);
+     else if(html)el.innerHTML=html;
      else {
       el.style.width='24px';el.style.height='24px';el.style.borderRadius='50%';
       el.style.background=color;el.style.border='4px solid #fff';
@@ -167,15 +203,15 @@
      el.style.zIndex='10';
     }
     el.setAttribute('aria-label',title||'ตำแหน่ง');
-    new maplibregl.Marker({element:el,anchor:stopLabel?'bottom':'center'}).setLngLat([Number(lng),Number(lat)]).addTo(previewMap);
+    const marker=new maplibregl.Marker({element:el,anchor:stopLabel?'bottom':'center'}).setLngLat([Number(lng),Number(lat)]).addTo(previewMap);
     bounds.extend([Number(lng),Number(lat)]);
+    return marker;
    };
 
    for(const cluster of (supply.clusters||[])){
     if(!qgIsValidCoordinate(cluster.latitude,cluster.longitude,true))continue;
-    const count=Math.max(2,Number(cluster.count||2));
-    const html='<div style="min-width:36px;height:36px;padding:0 8px;border-radius:18px;background:#fff;border:2px solid #e6002d;box-shadow:0 3px 12px #0003;display:flex;align-items:center;justify-content:center;gap:3px;color:#e6002d;font-weight:900;font-size:12px">'+ico('car',16)+'<span>'+count+'</span></div>';
-    addMarker(cluster.latitude,cluster.longitude,'#e6002d','Rider พร้อมรับงานโดยประมาณ',html);
+    const marker=addMarker(cluster.latitude,cluster.longitude,'#e6002d','Rider พร้อมรับงานโดยประมาณ',rideClusterMarkerElement(cluster));
+    if(marker)routeSupplyMarkers.push(marker);
    }
    if(pickup)addMarker(pickup.lat,pickup.lng,'#1677ff','จุดรับ',null,'รับ');
    if(destination)addMarker(destination.lat,destination.lng,'#e6002d','จุดหมาย',null,'ส่ง');
@@ -226,7 +262,7 @@
    html+='<div id="ride-route-map" class="mapbox" style="height:245px;border-radius:16px;overflow:hidden;margin-bottom:8px;background:#eef1f4"></div>';
    if(pickup){
     const n=Number(supply.nearby_count||0);
-    html+='<div class="sm" style="display:flex;align-items:center;gap:7px;margin:0 2px 12px;color:#59606a"><span style="width:8px;height:8px;border-radius:50%;background:'+(n>0?'#18a875':'#a0a5ad')+'"></span><b>'+(n>0?'มี Rider พร้อมรับงานใกล้จุดรับ '+n+' คน':'ยังไม่พบ Rider พร้อมรับงานในระยะ 8 กม.')+'</b><span style="margin-left:auto;color:#8a9098">ตำแหน่งบนแผนที่เป็นแบบกลุ่มโดยประมาณ</span></div>';
+    html+='<div id="ride-nearby-supply" class="sm" style="display:flex;align-items:center;gap:7px;margin:0 2px 12px;color:#59606a"><span style="width:8px;height:8px;border-radius:50%;background:'+(n>0?'#18a875':'#a0a5ad')+'"></span><b>'+(n>0?'มี Rider พร้อมรับงานใกล้จุดรับ '+n+' คน':'ยังไม่พบ Rider พร้อมรับงานในระยะ 8 กม.')+'</b><span style="margin-left:auto;color:#8a9098">ตำแหน่งบนแผนที่เป็นแบบกลุ่มโดยประมาณ</span></div>';
    }
    html+=rideLocationButton('pickup','จุดรับ',pickup?.address,'#1677ff');
    html+=rideLocationButton('destination','จุดหมาย',destination?.address,'#e6002d');
