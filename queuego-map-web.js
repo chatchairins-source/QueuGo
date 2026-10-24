@@ -644,6 +644,7 @@ const PLACE_LABELS={food:'ร้านอาหาร คาเฟ่',grocery:'
 function placeDistance(a,b){return navDistanceMeters({lat:Number(a.lat),lng:Number(a.lng)},{lat:Number(b.lat),lng:Number(b.lng)})}
 async function searchPlaceCatalog(query,{limit=20,category=null,center=null,bounds=null,radius=null,province=null}={}){
   // Compatibility name only: every result comes from the QueueGo Places authority.
+  if(!String(query||'').trim()&&!center&&!bounds)return[];
   if(bounds&&!center){const midLng=(bounds[0]+bounds[2])/2,midLat=(bounds[1]+bounds[3])/2;center={lat:midLat,lng:midLng};radius=Math.max(placeDistance(center,{lat:bounds[1],lng:bounds[0]}),placeDistance(center,{lat:bounds[3],lng:bounds[2]}))}
   const rows=await searchQueueGoPlaces(query,{limit,category,province,latitude:center?.lat,longitude:center?.lng,radius_m:radius});
   return rows.filter(p=>!bounds||(p.lng>=bounds[0]&&p.lat>=bounds[1]&&p.lng<=bounds[2]&&p.lat<=bounds[3]));
@@ -672,7 +673,7 @@ function attachPlaces(map,{onSelect=null}={}){
     const ticket=++serial;if(disposed||!map.getBounds||!map.getCenter)return;
     try{
       const b=map.getBounds(),center=map.getCenter();if(!b||!center)return;
-      const radius=Math.min(100000,Math.max(1000,placeDistance(center,{lat:b.getNorth(),lng:b.getEast()})));
+      const radius=Math.min(100000,Math.max(1000,...[[b.getSouth(),b.getWest()],[b.getSouth(),b.getEast()],[b.getNorth(),b.getWest()],[b.getNorth(),b.getEast()]].map(([lat,lng])=>placeDistance(center,{lat,lng}))));
       const rows=await searchQueueGoPlaces('',{latitude:center.lat,longitude:center.lng,radius_m:radius,limit:50});
       if(disposed||ticket!==serial)return;
       features=rows.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lng,p.lat]},properties:{id:p.place_id,name:p.name}}));
