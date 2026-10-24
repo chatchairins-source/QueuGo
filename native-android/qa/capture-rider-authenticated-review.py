@@ -46,6 +46,28 @@ def shot(name):
     assert data.startswith(b"\x89PNG\r\n\x1a\n"), "Invalid emulator screenshot"
     return {"file":p.name,"sha256":hashlib.sha256(data).hexdigest()}
 
+def provision_map():
+    if os.environ.get("QG_DEBUG_MAP_ARCHIVE") != "1":
+        return
+    import shutil
+    import urllib.request
+    url = "https://github.com/chatchairins-source/QueuGo/releases/download/rider-buriram-offline-20261016/buriram-shortbread.pmtiles"
+    expected = "30699573ed2068d3c7e4393ad477dbe8febf68f453f27ae88437f5c652a3ddfc"
+    archive = Path(os.environ.get("RUNNER_TEMP", ".")) / "queuego-ci-buriram.pmtiles"
+    if not archive.is_file():
+        with urllib.request.urlopen(url, timeout=90) as response, archive.open("wb") as target:
+            shutil.copyfileobj(response, target)
+    actual = hashlib.sha256(archive.read_bytes()).hexdigest()
+    assert actual == expected, "Pinned real map archive checksum mismatch"
+    device_path = "/data/local/tmp/queuego-ci-buriram.pmtiles"
+    run(["push", str(archive), device_path], timeout=120)
+    run(["shell", "run-as", PKG, "mkdir", "-p", "files"])
+    run(["shell", "run-as", PKG, "cp", device_path, "files/queuego-ci-buriram.pmtiles"])
+    verified = run(["shell", "run-as", PKG, "sha256sum", "files/queuego-ci-buriram.pmtiles"],
+                   capture_output=True, text=True).stdout.split()[0]
+    assert verified == expected, "App-private map archive checksum mismatch"
+
+
 def main():
     phone=os.environ.get("QG_RIDER_REVIEW_PHONE","")
     password=os.environ.get("QG_RIDER_REVIEW_PASSWORD","")
@@ -56,6 +78,7 @@ def main():
     assert apk.is_file(), "Build Rider debug APK first"
     run(["install","-r",str(apk)],timeout=180)
     run(["shell","pm","clear",PKG],timeout=60)
+    provision_map()
     run(["shell","am","start","-W","-n",PKG+"/.MainActivity"],capture_output=True,text=True,timeout=60)
     ns=wait(lambda xs:any("เข้าสู่ระบบ" in (n.get("text","")+n.get("content-desc","")) for n in xs))
     assert ns, "Rider login did not render"
