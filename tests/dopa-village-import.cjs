@@ -20,6 +20,8 @@ assert.match(sql, /DOPA attribution required/);
 assert.match(sql, /queuego_place_source_records/);
 assert.match(sql, /queuego_place_field_provenance/);
 assert.match(sql, /resource_imports/);
+assert.match(sql, /'Open Data Common',NULL,'verified'/);
+assert.match(sql, /resource_import_history/);
 assert.match(sql, /01234567-89ab-cdef-0123-456789abcdef/);
 assert.match(sql, /i\.subdistrict_code/);
 assert.doesNotMatch(sql, /population|q01/);
@@ -29,4 +31,4 @@ assert.throws(() => parseDopaVillageDataset(JSON.stringify([{ ...sample[0], lat:
 assert.throws(() => parseDopaVillageDataset(raw.toString(), { expectedProvinceCode: '31', expectedProvinceName: 'บุรีรัมย์', rawBuffer: raw, expectedSha256: '0'.repeat(64) }), /SHA-256 mismatch/);
 assert.throws(() => renderDopaVillageImport(data, { resourceUrl: 'https://example.org/resource/not-dopa', retrievedAt: '2026-10-24T00:00:00Z', checksum: sha256(raw) }), /resource UUID/);
 assert.equal(SOURCE_KEY, 'th_dopa_village_gis');
-console.log(JSON.stringify({ checks: 17, failures: 0, scope: 'DOPA GIS-01 importer schema, provenance, dedupe, license and source integrity contracts' }));
+console.log(JSON.stringify({ checks: 19, failures: 0, scope: 'DOPA GIS-01 importer schema, provenance, dedupe, license and source integrity contracts' }));
