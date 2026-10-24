@@ -1,3 +1,12 @@
+## 2026-10-24 Responsive map layouts — source/CI DONE, owner visual review pending
+
+- Reviewed Customer address selection, checkout and order maps; Merchant shop location maps; Rider home, navigation and registration maps; Admin shop review and location editor; QueueGo Map and Map Lab. Full-screen Rider/Map surfaces and existing compact order/registration maps remain unchanged.
+- Customer screenshot root cause: `#customer-location-search-results` had the `hidden` attribute but also an inline `display:grid`, leaving an empty bordered strip visible. The grid now applies only when results exist. Customer location map height is responsive (`clamp(236px, 33dvh, 285px)`); the heading/card/action spacing is tighter. Admin location editor map is responsive (`clamp(220px, 34dvh, 300px)`) and the dialog scrolls within `90dvh`.
+- Source commits: Customer `c18ef5ceae5a0ed5339ab96dd945569daf64abd2`; Admin `3d693ed7b43e00f1d4be3c06d55d1eb91bd30935`. Active successor: PR #704, branch `feat/queuego-places-search-successor-20261024`; exact HEAD `3d693ed7b43e00f1d4be3c06d55d1eb91bd30935`.
+- Exact-head QueueGo RC #3307 / run `40075979310` SUCCESS: full `npm test`, Admin and Merchant mobile WebKit, Map Lab gestures, QueueGo Map search, and Grocery mobile/tablet rendering. No Production deploy or data mutation.
+- **IN PROGRESS (visual acceptance):** CI does not certify the screenshot on a physical iPhone/Safari. **NEXT:** after the successor is deployed, owner-side refresh and visual check of Customer address selection and Admin location editor; then adjust only if the device evidence shows remaining clipping/overlap.
+- The available local checkout is the older POS branch `work-pos-next-from-main-20261022` at `56a5c251920ce3a471e8aa3418ff24b0af4411f0`, 206 commits behind main with unrelated uncommitted POS work. Preserve it; map changes are committed on the PR successor above.
+
 ## 2026-10-24 Rider call outcome authority audit — IN PROGRESS
 
 - Read-only QueueTech catalog/RPC audit: `qg_call_sessions` RLS is enabled, anon/authenticated SELECT are both denied, and one deny policy exists. Seven `qg_call_*` RPCs were found; all are SECURITY DEFINER with fixed `search_path=public,pg_temp`, anon EXECUTE false and authenticated EXECUTE true. Definitions use active-session checks and participant/order scoping.

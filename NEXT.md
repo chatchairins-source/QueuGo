@@ -1,6 +1,14 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-24. Repository: `chatchairins-source/QueuGo`. Local successor branch `work/places-current-successor-20261024`; current forward-merge HEAD `a49556e69d0a9dcb2d956cee0f4bc73784fb3e4c`, tree `4b774dae09b3ad0eae2e0f477c78cad65a74c821`. Published PR #704 checkpoint `15c76b30ebbb8e7a1af78b0fb8a8e9d869ecf185` has the same tree and parent `2001e89bcddf491c1e33ca50c622d0071605968c`; main remains `04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd`. The full `npm test` suite exited 0 against the unchanged source tree carried by `97abbe5c3d5e3efdc63c616fe840984a88458a0f`; only documentation changed afterward. `git diff --check` passed. Exact-head RC #3304 / run `40074488663` passed on `dc52908d…`, including npm and all Admin/Merchant/Map/Grocery browser gates. Official DOPA GIS-01 metadata is public and specifies Open Data Common, but its linked Buriram download returned HTTP 502; no payload bytes/checksum were obtained. Read-only Rider call outcome audit is recorded at the top of CHECKLIST.md; DOPA provinces 31 and 32 still return HTTP 503.
+Current snapshot: 2026-10-24. Repository: `chatchairins-source/QueuGo`. Main `04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd`. Active nationwide successor PR #704 branch `feat/queuego-places-search-successor-20261024`, current HEAD `3d693ed7b43e00f1d4be3c06d55d1eb91bd30935`, tree `a3cc5a9096e46035fb44a56c6976ceecbd394d3f`; Customer/Admin map layout adjustments are committed there and exact-head RC #3307 / run `40075979310` passed. Source/test scope is complete; physical iPhone/Safari visual acceptance remains pending. No Production deploy/data mutation. The local checkout is an older POS branch with unrelated uncommitted work; preserve it.
+
+## Immediate map-layout checkpoint
+
+- Customer location search no longer shows an empty results frame; map height and surrounding spacing are compact on mobile. Admin location editor map and dialog now fit and scroll within the mobile viewport.
+- Exact code HEAD `3d693ed7b43e00f1d4be3c06d55d1eb91bd30935`; RC #3307 / run `40075979310` SUCCESS.
+- **NEXT:** retain these changes on #704; after deployment, verify Customer and Admin maps on the owner’s iPhone Safari. The nationwide Places/Search mission remains in progress; continue from the latest `CHECKLIST.md` NEXT after the visual checkpoint.
+
+
 
 ## Active owner mission — Nationwide QueueGo Places/Search and operation
 
