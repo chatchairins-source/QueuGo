@@ -1,3 +1,12 @@
+## 2026-10-24 QueueGo advisor/Rider RPC read-only audit — IN PROGRESS
+
+- Source/test checkpoint remains `6c809de9e57fe37222274fc41072ee4fd681b288`, tree `ae951a470a32580e84cba5dc7110c0369c0ebdb2`; full `npm test` EXIT 0 and `node tests/th-admin-import.cjs` 47 PASS.
+- Hosted exact-head RC #3298 / run `40071527998` passed on PR commit `a54d37e53abb3cf84d1e357e11525ea1b97cc0af` (tree `2dbd67bdd03eac04e311785bb48545029fc5ec0c`), including full npm, Admin/Merchant WebKit, Map Lab, QueueGo Map search and Grocery mobile/tablet. Local forward-merge HEAD `da8ee276c89778e9e6f6b5f1606e5bd197ed1097` has the same tree.
+- Read-only advisor snapshot at `2026-10-24T06:42Z`: Security RLS/no-policy 25, anon SECURITY DEFINER 10, authenticated SECURITY DEFINER 186, leaked-password protection 1; Performance unindexed FK 18, no-PK 3, unused indexes 79, multiple permissive policies 57. No blanket mutations: findings include intentional private tables and guarded RPCs; object-level remediation is still pending.
+- Read-only Production `pg_proc` inspection confirmed `qg_rider_mark_arrival(uuid,text,double precision,double precision)`: `SECURITY DEFINER`, fixed empty `search_path`, owner `postgres`, anon EXECUTE false, authenticated EXECUTE true. Live definition matches the pinned migration: active Rider identity, assigned-order ownership and delivery-stage guards. It stores client-provided `p_lat`/`p_lng` in audit metadata without validating that GPS as proof; that timestamp/audit is not sufficient to adjudicate or suspend a Customer for a cash no-show. No change was made.
+- DOPA GIS-01 retry still returned HTTP 503 with no payload. Production Places/Search migration/RPC/import remains absent; Buriram ordering gate, verified no-show and fallback authorities, advisor remediation, Production E2E and Web Owner acceptance remain blockers. No Production writes/deploy or physical-device PASS.
+- **NEXT:** refresh main and PR #704, publish this read-only audit checkpoint with expected-head CAS/`force=false`, verify exact tree and hosted RC, then continue the next source-only/read-only task.
+
 ## 2026-10-24 advisor refresh and exact-head RC — IN PROGRESS
 
 - Current source/test checkpoint: commit `6c809de9e57fe37222274fc41072ee4fd681b288`, tree `ae951a470a32580e84cba5dc7110c0369c0ebdb2`; full `npm test` EXIT 0 and hierarchy PGlite importer regression 47 PASS.
