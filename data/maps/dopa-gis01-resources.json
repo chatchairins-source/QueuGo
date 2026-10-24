@@ -1,0 +1,25 @@
+{
+  "dataset_key": "gis-01",
+  "publisher": "กรมการปกครอง",
+  "dataset_id": "705402d4-2715-4ece-9166-22b54c6c3476",
+  "source_catalog_url": "https://catalog.dopa.go.th/dataset/705402d4-2715-4ece-9166-22b54c6c3476",
+  "public_catalog_url": "https://data.go.th/dataset/gis-01",
+  "license": "Open Data Common",
+  "format": "JSON",
+  "geographic_scope": "village",
+  "import_policy": "Resource metadata may be registered before download, but no resource is import-eligible until its exact bytes, SHA-256 and validated row count are recorded.",
+  "resources": [
+    {
+      "province_code": "31",
+      "province_name_th": "บุรีรัมย์",
+      "resource_id": "2e6697b4-6efe-46b5-940a-0d7b2caf771f",
+      "resource_catalog_url": "https://catalog.dopa.go.th/dataset/705402d4-2715-4ece-9166-22b54c6c3476/resource/2e6697b4-6efe-46b5-940a-0d7b2caf771f",
+      "official_download_url": "https://catalog.dopa.go.th/dataset/705402d4-2715-4ece-9166-22b54c6c3476/resource/2e6697b4-6efe-46b5-940a-0d7b2caf771f/download/.json",
+      "sha256": null,
+      "validated_row_count": null,
+      "import_eligible": false,
+      "last_probe_date": "2026-10-24",
+      "last_probe_result": "official resource identity resolved; file bytes unavailable through reviewed paths (timeout/502)"
+    }
+  ]
+}
