@@ -1,6 +1,6 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-24. Repository: `chatchairins-source/QueuGo`. Main `04aa8b3b51cf2b2549107bb67f101c3dd91ed1bd`. Active nationwide successor PR #704 branch `feat/queuego-places-search-successor-20261024`, current HEAD `3d693ed7b43e00f1d4be3c06d55d1eb91bd30935`, tree `a3cc5a9096e46035fb44a56c6976ceecbd394d3f`; Customer/Admin map layout adjustments are committed there and exact-head RC #3307 / run `40075979310` passed. Source/test scope is complete; physical iPhone/Safari visual acceptance remains pending. No Production deploy/data mutation. The local checkout is an older POS branch with unrelated uncommitted work; preserve it.
+Current snapshot: 2026-10-24 · Authoritative main: `28a121178b6e15ceb0a7575452b5cb2a374f40a3`
 
 ## Immediate map-layout checkpoint
 
@@ -79,3 +79,11 @@ Continue POS controlled migration recovery and authorized device acceptance trac
 
 ## Next action
 Implement the recommended durable offline draft recovery slice from `docs/POS-OFFLINE-RECOVERY.md`, without accepting offline payment or treating the draft as a completed sale. Preserve the cashier/device and controlled Production migration gates.
+
+
+## Active QueueGo continuation — 2026-10-24
+
+- Nationwide successor PR #704 branch `feat/queuego-places-search-successor-20261024`; forward-merged source HEAD `e34c368716be12069fe1848e17c44a0c46800791`. Exact-head QueueGo RC `40088891010` passed all configured source and mobile WebKit gates.
+- DOPA GIS-01 catalog metadata is available, but the official download has not yielded exact JSON bytes. The public mirror says its datastore is inactive and incomplete; it cannot support import or nationwide coverage claims.
+- No Production data/schema change or deployment. Production Places/Search RPC remains absent, Buriram ordering gate remains active, and rider phone/no-show server authority and advisor remediation remain open.
+- **NEXT:** retrieve the original licensed DOPA payload through an approved source path and verify its bytes, hash, province identity, schema and row count. Continue read-only release/security planning while blocked; keep QueueGo NOT DONE.
