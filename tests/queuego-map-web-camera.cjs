@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
 const source=fs.readFileSync(path.resolve(__dirname,'../queuego-map-web.js'),'utf8');
-assert.ok(source.includes("NavigationControl({showCompass:!!navigation,showZoom:false,visualizePitch:!!navigation}),'top-right'"),'navigation compass must stay on the right side');
+assert.ok(source.includes("NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),'top-right'"),'shared maps must expose the common compass and pitch indicator');
 let checks=0;
 const ok=(v,msg)=>{assert.ok(v,msg);checks++};
 const eq=(a,b,msg)=>{assert.deepEqual(a,b,msg);checks++};
@@ -262,12 +262,19 @@ ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.0035,speed:8,bearing:90,a
 Q.setNavigationMode(gestureMap,false,{center:{lat:15,lng:103.004},zoom:15,duration:300});
 eq(gestureMap.easeCalls.at(-1).bearing,0,'idle Rider map must return north-up');
 eq(gestureMap.easeCalls.at(-1).pitch,0,'idle Rider map must return top-down');
-eq(gestureMap.maxPitch,0,'idle Rider map must disable navigation pitch');
-eq(gestureMap.rotationEnabled,false,'idle Rider map must disable rotation gestures');
+eq(gestureMap.maxPitch,60,'idle Rider map must retain camera tilt while automatic navigation is idle');
+eq(gestureMap.rotationEnabled,true,'idle Rider map must retain manual rotation gestures');
 eq(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.005,speed:8,bearing:90},straight,{force:true}),null,'idle Rider map must reject automatic follow even when a caller asks to force it');
 
+const idleMap=Q.create(host,{lat:15,lng:103,zoom:12});
+eq(idleMap.opts.maxPitch,60,'shared non-navigation maps must allow camera tilt');
+eq(idleMap.opts.dragRotate,true,'shared non-navigation maps must allow mouse rotation');
+eq(idleMap.opts.pitchWithRotate,true,'shared non-navigation maps must allow rotation-based pitch');
+eq(idleMap.rotationEnabled,true,'shared non-navigation maps must enable touch rotation');
+eq(idleMap.pitchEnabled,true,'shared non-navigation maps must enable touch pitch');
+
 Q.setNavigationMode(gestureMap,true);
-eq(gestureMap.maxPitch,60,'active job must restore navigation pitch');
+eq(gestureMap.maxPitch,60,'active job must retain navigation pitch');
 eq(gestureMap.rotationEnabled,true,'active job must restore rotation gestures');
 ok(Q.followNavigationCamera(gestureMap,{lat:15,lng:103.005,speed:8,bearing:90},straight,{force:true})!=null,'active job must start follow camera');
 

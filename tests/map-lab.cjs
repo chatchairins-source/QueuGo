@@ -14,7 +14,9 @@ has("height:100dvh","map must fill dynamic viewport height");
 has('container:"map"',"MapLibre must target the full-screen map");
 has('tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"]',"OSM base map required");
 has("BURIRAM_CENTER=[103.1029,14.9930]","Buriram start view required");
-has("map.touchZoomRotate.disableRotation()","touch zoom must remain enabled");
+has("map.touchZoomRotate.enableRotation()","touch rotation must be enabled");
+has("map.touchPitch.enable()","touch pitch must be enabled");
+has("NavigationControl({showCompass:true,showZoom:false,visualizePitch:true})","compass and pitch controls must be visible");
 
 not("search-pill","no search overlay on startup");
 not("bottom sheet","no bottom-sheet copy");

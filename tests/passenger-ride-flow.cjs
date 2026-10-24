@@ -10,6 +10,10 @@ const finishSql=fs.readFileSync('supabase/migrations/20261023165000_ride_complet
 let checks=0;const eq=(a,b,m)=>{assert.equal(a,b,m);checks++};
 
 eq(index.includes('map.on("click",selectTap)'),true,'customer location picker must select directly on map tap');
+eq(index.includes('maxPitch:60,\n    dragRotate:true,\n    pitchWithRotate:true'),true,'Customer location picker must allow tilt and rotation');
+eq(index.includes('map.touchZoomRotate.enableRotation();\n  map.touchPitch.enable();'),true,'Customer location picker must enable mobile rotation and tilt gestures');
+eq(customer.includes('maxPitch:60'),true,'Customer Ride maps must allow tilt');
+eq(customer.includes('previewMap.touchZoomRotate.enableRotation();'),true,'Customer Ride maps must allow mobile rotation');
 eq(index.includes('map.on("moveend",syncCenter)'),false,'moving map must not silently move the selected pin');
 eq(index.includes('customer-ride.js?v=20261024-ride-map-follow1'),true,'customer Ride asset must be cache-busted');
 

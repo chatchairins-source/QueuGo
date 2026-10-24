@@ -295,10 +295,10 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   state.bearing=0;
   state.lastDecision=null;
   state.lastDecisionApplied=null;
-  try{map.dragRotate?.disable?.()}catch(_){}
-  try{map.touchZoomRotate?.disableRotation?.()}catch(_){}
-  try{map.touchPitch?.disable?.()}catch(_){}
-  try{map.setMaxPitch?.(0)}catch(_){}
+  try{map.dragRotate?.enable?.()}catch(_){}
+  try{map.touchZoomRotate?.enableRotation?.()}catch(_){}
+  try{map.touchPitch?.enable?.()}catch(_){}
+  try{map.setMaxPitch?.(60)}catch(_){}
   const camera={bearing:0,pitch:0,duration:Math.max(0,Number(duration)||0),easing:navCameraEasing,essential:true};
   if(center&&valid(center.lat,center.lng))camera.center=[Number(center.lng),Number(center.lat)];
   if(navHasNumber(zoom))camera.zoom=Number(zoom);
@@ -430,11 +430,11 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
     center:[Number(lng),Number(lat)],
     zoom:Number(zoom),
     minZoom,maxZoom,
-    maxPitch:navigation?60:0,
+    maxPitch:60,
     interactive,
     attributionControl:false,
-    dragRotate:!!navigation,
-    pitchWithRotate:!!navigation
+    dragRotate:true,
+    pitchWithRotate:true
   });
   if(navigation){
     navState(map).follow=true;
@@ -492,9 +492,11 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
     for(const event of ['zoomstart','rotatestart','pitchstart'])try{map.on(event,keepGesture)}catch(_){}
     for(const event of ['zoomend','rotateend','pitchend'])try{map.on(event,endGesture)}catch(_){}
   }else{
-    try{map.touchZoomRotate.disableRotation()}catch(_){}
+    try{map.dragRotate?.enable?.()}catch(_){}
+    try{map.touchZoomRotate.enableRotation()}catch(_){}
+    try{map.touchPitch?.enable?.()}catch(_){}
   }
-  try{map.addControl(new maplibregl.NavigationControl({showCompass:!!navigation,showZoom:false,visualizePitch:!!navigation}),'top-right')}catch(_){}
+  try{map.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),'top-right')}catch(_){}
   try{map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right')}catch(_){}
   attachPlaces(map,{searchControl:!!searchControl});
   return map;

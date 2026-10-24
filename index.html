@@ -352,7 +352,7 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 </style>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="queuego-map-web.js?v=20261024-addresscompact1"></script>
+<script src="queuego-map-web.js?v=20261024-addresscompact1&camera3d=20261024"></script>
 <script src="queuego-order-number.js"></script>
 </head>
 <body>
@@ -869,12 +869,14 @@ function initLocationPicker(containerId,lat,lng,onChange,options={}){
     minZoom:5,
     maxZoom:19,
     attributionControl:false,
-    dragRotate:false,
-    pitchWithRotate:false
+    maxPitch:60,
+    dragRotate:true,
+    pitchWithRotate:true
   });
   customerPickerMap=map;
-  map.touchZoomRotate.disableRotation();
-  map.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),"top-left");
+  map.touchZoomRotate.enableRotation();
+  map.touchPitch.enable();
+  map.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),"top-left");
   map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
   let disposed=false,marker=null;
   const setPoint=(plat,plng,notify=true)=>{
@@ -1496,7 +1498,7 @@ addEventListener('hashchange',()=>route());
 <script>QueueGoPush.configure({role:'customer',getAccessToken:()=>token(true)});</script>
 <script src="customer-features.js?v=20261021-design-language1"></script>
 <script src="customer-laundry.js?v=20261023-sharedstore1"></script>
-<script src="customer-ride.js?v=20261024-ride-map-follow1&address-compact=20261024"></script>
+<script src="customer-ride.js?v=20261024-ride-map-follow1&address-compact=20261024&camera3d=20261024"></script>
 <script>route();</script>
 <script src="catalog/customer-grocery.js?v=20261012"></script>
 </body>

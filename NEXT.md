@@ -1,5 +1,12 @@
 # QueueGo Next Actions
 
+## Current Web map rotation continuation — 2026-10-24
+
+- Active branch: `fix/web-map-rotation-all-pages-20261024`, based on deployed main `b476db051f7a1951d76d60f776fd6368ce84e897`.
+- Root cause: non-Rider maps lock `maxPitch` at zero and disable drag/touch rotation; Rider only unlocks these while navigation is active. OSM base tiles are raster, so tilt is supported but building extrusion needs a future vector/elevation tile source.
+- Scope: consistent rotation and tilt gestures plus compass/pitch control on Customer, Ride, Merchant, Admin, Rider, QueueGo Map and Map Lab; preserve Rider follow and reset-to-north behavior.
+- **NEXT:** run targeted camera tests and exact-head QueueGo RC, merge only the tested head, deploy GitHub Pages, and verify public cache-busted assets. Owner iPhone gesture acceptance remains a distinct post-deploy step.
+
 Current snapshot: 2026-10-23 · Authoritative main: `be33b8318967ad6105222efa8305fec8005a5335`
 
 ## Current verified POS checkpoint — 2026-10-23
