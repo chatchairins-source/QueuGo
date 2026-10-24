@@ -1,18 +1,19 @@
-# Buriram places snapshot
-Source: OpenStreetMap contributors / Geofabrik Thailand, ODbL-1.0.
-Attribution: © OpenStreetMap contributors — https://www.openstreetmap.org/copyright
-Licence: https://opendatacommons.org/licenses/odbl/1.0/
-This open-data catalog is distributed under ODbL-1.0. Preserve its attribution and provenance when copying or adapting it.
+# QueueGo Maps place data
 
-Snapshot: 2026-10-15T20:21:00Z. The padded operating envelope includes adjacent border areas; it is not an administrative boundary or exhaustive business inventory.
-The 3,079 records include 1,284 business/service category records and 1,795 other named places.
-No record grants merchant membership, ordering eligibility, verified address/entrance, current opening status, phone ownership or business approval.
+Map POIs and place search are served only by the shared QueueGo Places backend (`qg_search_places`). The web client must not bundle a region-specific catalog or fall back to an external geocoder for persisted/search authority.
 
-Rebuild from the reference-complete PBF whose SHA256 is recorded in the JSON:
-1. python3 ops/maps/normalize_osm.py /path/buriram.osm.pbf /new/path/roads.sqlite
-2. python3 ops/maps/export_places.py /new/path/roads.sqlite data/maps/buriram-places.json
+QueueGo Places ingestion must register every source, license, attribution requirement, update policy, storage permission and redistribution permission before importing records. See the source registry migration and importer contracts in `supabase/migrations/` and `scripts/`.
 
-The PBF and manifest were recovered from successful Map Engine CI run39135860008 / artifact12140330989 at exact source531c1ac9632a836fa753fa77fd13cc3be93544ce.
-Extract SHA256: 426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d.
-Nodes preserve mapped points; areas use an unverified representative point inside/on the source polygon, not an invented entrance. Distinct OSM identities remain distinct; do not collapse branches merely by shared name.
-Phone, website, hours and address exist only where present in OSM tags. No ratings, photos, prices or missing business details are invented. Potential cross-object duplicates require review before merchant linking.
+`dopa-gis01-resources.json` records reviewed DOPA GIS-01 resource identities only. A listed resource is **not** approved for import until `sha256` and `validated_row_count` are filled from the exact downloaded bytes and `import_eligible` is explicitly true after importer validation. Catalog metadata, mirrors, file-size labels, or a reachable URL are not substitutes for checksum verification.
+
+
+## DOPA GIS-01 batch staging
+
+Use `scripts/stage-dopa-village-batch.cjs` only after exact province payload bytes have been obtained from the registered official DOPA resource URL. For each payload, place these two files in the staging input directory:
+
+- `<resource-uuid>.json` — the exact downloaded bytes.
+- `<resource-uuid>.meta.json` — `resource_id`, the exact manifest `resource_url`, and a valid `retrieved_at` timestamp.
+
+The batch stage computes SHA-256, validates province identity, village codes, names and Thailand coordinate bounds through the single-province importer, and writes reviewable SQL plus `dopa-gis01-stage-report.json`. Missing resources remain `missing`; payloads without matching official metadata or valid content are blocked and do not produce SQL.
+
+Batch staging deliberately does **not** modify `dopa-gis01-resources.json` and does not make a payload import-eligible. Promote a resource only after the staged checksum and validated row count have been independently reviewed against the exact official bytes.

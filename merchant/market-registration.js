@@ -4,7 +4,6 @@
 (()=>{
 'use strict';
 const MARKET_CATS=new Set(['market','meat','fish','vegetable','fruit']);
-const BURIRAM='บุรีรัมย์';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const km=v=>Number(v||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2});
 const picker={rows:[],filtered:[],selectedMarketId:null,nearestMarketId:null,query:'',lat:null,lng:null};
@@ -70,8 +69,7 @@ async function loadMarkets(lat,lng){
   const token=await qtGetAccessToken();
   if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
   const rows=await qtSupabaseTable(
-    'markets?select=id,name,address,province,district,subdistrict,latitude,longitude,verified,assignment_radius_km&active=eq.true&latitude=not.is.null&longitude=not.is.null&province=eq.'+
-    encodeURIComponent(BURIRAM)+'&order=name.asc',
+    'markets?select=id,name,address,province,district,subdistrict,latitude,longitude,verified,assignment_radius_km&active=eq.true&latitude=not.is.null&longitude=not.is.null&order=name.asc',
     {accessToken:token}
   );
   return (Array.isArray(rows)?rows:[]).map(m=>{
@@ -127,7 +125,7 @@ function renderPicker(){
   if(note){
     note.innerHTML=selected
       ? '<b>'+esc(selected.market_name)+'</b><small>'+esc(marketMeta(selected))+'</small>'
-      : '<b>ยังไม่ได้เลือกตลาด</b><small>ค้นหาหรือเลือกจากรายการตลาดในบุรีรัมย์</small>';
+      : '<b>ยังไม่ได้เลือกตลาด</b><small>ค้นหาหรือเลือกตลาดใกล้พิกัดร้านของคุณ</small>';
     note.classList.toggle('warn',!!selected&&!selectable(selected));
   }
 }
@@ -147,7 +145,7 @@ function pickerHtml(){
   return '<section class="qgm-market-picker">'+
     '<div class="qgm-market-picker-head"><div><b>เลือกตลาด</b><small>ระบบเลือกตลาดที่ใกล้พิกัดร้านที่สุดให้ก่อน คุณเปลี่ยนเองได้</small></div>'+(nearest?'<span>ใกล้สุด '+km(nearest.distance_km)+' กม.</span>':'')+'</div>'+
     '<label class="qgm-market-search"><span>ค้นหาชื่อตลาด</span><input id="qgm-market-search" type="search" autocomplete="off" placeholder="เช่น สวายจีก, เทศบาลเมืองบุรีรัมย์" oninput="qgmMarketFilter(this.value)"></label>'+
-    '<label class="qgm-market-select-label"><span>ตลาดในจังหวัดบุรีรัมย์</span><select id="qgm-market-select" onchange="qgmMarketSelect(this.value)">'+pickerOptions()+'</select></label>'+
+    '<label class="qgm-market-select-label"><span>ตลาดใกล้ร้าน</span><select id="qgm-market-select" onchange="qgmMarketSelect(this.value)">'+pickerOptions()+'</select></label>'+
     '<div id="qgm-market-selected-note" class="qgm-market-selected-note"></div>'+
     '<div id="qgm-market-suggestions" class="qgm-market-suggestions"></div>'+
   '</section>';
@@ -247,10 +245,10 @@ window.qgmRenderMarketMembership=async function(){
           '<label class="qgm-market-confirm"><input id="qgm-market-confirm-place" type="checkbox"><span>ฉันยืนยันว่า <b>ร้าน/แผงของฉันตั้งอยู่ในตลาดที่เลือกจริง</b></span></label>'+
           '<label class="qgm-market-confirm"><input id="qgm-market-confirm-seller" type="checkbox"><span>ฉันยืนยันว่า <b>ฉันเป็นผู้ค้าหรือมีร้าน/แผงขายอยู่ในตลาดนี้จริง</b></span></label>'+
           '<button class="qgm-primary" type="button" onclick="qgmSubmitMarketMembership()">ส่งให้ Admin ตรวจสอบ</button>'
-        : '<div class="qgm-market-status warn"><b>ยังไม่มีตลาดในจังหวัดบุรีรัมย์ที่เปิดใช้</b><small>คุณสามารถส่งคำขอเพิ่มตลาดใหม่ให้ Admin ตรวจสอบได้</small></div>')+
+        : '<div class="qgm-market-status warn"><b>ยังไม่มีตลาดใกล้พิกัดร้านที่เปิดใช้</b><small>คุณสามารถส่งคำขอเพิ่มตลาดใหม่ให้ Admin ตรวจสอบได้</small></div>')+
       '<details class="qgm-market-request"><summary>ไม่พบตลาดของฉัน / ขอเพิ่มตลาดใหม่</summary>'+
         '<label>ชื่อตลาด<input id="qgm-request-name" maxlength="160" placeholder="เช่น ตลาดสดสวายจีก"></label>'+
-        '<label>จังหวัด<input id="qgm-request-province" maxlength="100" value="บุรีรัมย์"></label>'+
+        '<label>จังหวัด<input id="qgm-request-province" maxlength="100" autocomplete="address-level1"></label>'+
         '<label>อำเภอ<input id="qgm-request-district" maxlength="100"></label>'+
         '<label>ตำบล<input id="qgm-request-subdistrict" maxlength="100"></label>'+
         '<label>รายละเอียดเพิ่มเติม<textarea id="qgm-request-note" maxlength="1000" rows="3"></textarea></label>'+
