@@ -288,7 +288,28 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 .qg-shopping-category span{font-size:11px;line-height:1.25;text-align:center}
 .qg-shopping-filters{display:flex;gap:8px;overflow:auto;padding:2px 0 8px}.qg-shopping-filters button{white-space:nowrap;border:1px solid #e1e4e8;background:#fff;border-radius:999px;padding:8px 12px;font:inherit;font-size:11px;font-weight:800}.qg-shopping-filters button.active{background:#111;color:#fff;border-color:#111}
 @media(max-width:380px){.qg-shopping-categories{gap:7px}.qg-shopping-category{padding:11px 5px}.qg-shopping-category span{font-size:10px}}
-.mapbox{position:relative;height:280px;border-radius:18px;overflow:hidden;background:linear-gradient(145deg,#eef5ee,#e7eef4);border:1px solid var(--ln);margin-top:10px}#customer-location-search-results:not([hidden]){display:grid}#customer-location-map{height:clamp(236px,33dvh,285px)!important}.dist{font-size:11px;color:var(--mu);margin:5px 3px 10px}
+.mapbox{position:relative;height:280px;border-radius:18px;overflow:hidden;background:linear-gradient(145deg,#eef5ee,#e7eef4);border:1px solid var(--ln);margin-top:10px}.dist{font-size:11px;color:var(--mu);margin:5px 3px 10px}
+.qg-customer-location-heading{display:flex;align-items:center;gap:9px;margin:8px 0 12px}
+.qg-customer-location-heading .back{width:42px!important;height:42px!important;flex:none;border-radius:13px!important}
+.qg-customer-location-heading h1{margin:0;font-size:21px!important;line-height:1.2;font-weight:850;color:#111827}
+.qg-customer-location-heading p{margin:4px 0 0;color:#8a9099;font-size:12px!important;line-height:1.35;font-weight:600}
+.qg-customer-location-card{padding:10px 11px 12px!important;border-radius:18px!important}
+.qg-customer-location-search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-bottom:8px}
+.qg-customer-location-search input{min-width:0;min-height:42px!important;padding:0 10px!important;border-radius:11px!important;font-size:16px!important}
+.qg-customer-location-search button{min-height:40px!important;padding:0 12px!important;border-radius:11px!important;font-size:13px;font-weight:800}
+.qg-customer-location-map{height:clamp(190px,34dvh,270px)!important;margin-top:0!important;border-radius:16px!important}
+.qg-customer-location-center{right:9px!important;bottom:9px!important;min-height:36px!important;padding:0 11px!important;font-size:12px}
+.qg-customer-location-gps{gap:9px!important;margin-top:10px!important;padding:9px!important;border-radius:14px!important}
+.qg-customer-location-gps>span:first-child{width:36px!important;height:36px!important}
+.qg-customer-location-gps b{font-size:14px!important}
+.qg-customer-location-gps span span{font-size:11px!important}
+.qg-customer-location-gps>span:last-child{font-size:22px!important}
+.qg-customer-location-label{margin:10px 2px 5px!important;font-size:11px!important}
+.qg-customer-location-address{min-height:70px!important;padding:10px!important;border-radius:13px!important;font-size:16px!important;line-height:1.4!important}
+.qg-customer-location-status{margin:6px 2px 0!important;font-size:10px!important;line-height:1.35}
+.qg-customer-location-save{min-height:48px!important;margin-top:10px!important;border-radius:14px!important;font-size:15px!important;box-shadow:0 6px 16px rgba(239,35,60,.16)!important}
+@media(max-height:760px){.qg-customer-location-map{height:clamp(170px,31dvh,225px)!important}.qg-customer-location-heading{margin-bottom:9px}.qg-customer-location-card{padding:9px 10px 10px!important}}
+@media(max-width:360px){.qg-customer-location-heading h1{font-size:19px!important}.qg-customer-location-heading p{font-size:11px!important}.qg-customer-location-search{gap:5px}.qg-customer-location-search button{padding:0 9px!important}}
 
 @media(max-height:760px){
   .top{padding-top:calc(env(safe-area-inset-top,0px) + 4px);padding-bottom:4px}
@@ -917,29 +938,29 @@ async function qtReverseGeocodeCustomer(lat,lng){
 async function openCustomerLocationPicker(){
   const u=S.get();
   layout(
-   '<div style="display:flex;align-items:center;gap:12px;margin:4px 0 12px">'+
-    '<button class="back" onclick="history.back()" style="width:50px;height:50px;border-radius:16px;background:#fff;border:1px solid #eceef2;box-shadow:0 4px 14px rgba(17,24,39,.05)">'+ico('back')+'</button>'+
-    '<div><h1 style="margin:0;font-size:clamp(23px,6vw,30px);line-height:1.12;font-weight:900;color:#111827">เลือกที่อยู่จัดส่ง</h1><p style="margin:6px 0 0;color:#8a9099;font-size:15px;font-weight:600">เลือกตำแหน่งบน QueueGo Map หรือใช้ GPS ปัจจุบัน</p></div>'+
+   '<div class="qg-customer-location-heading">'+
+    '<button class="back" onclick="history.back()" style="background:#fff;border:1px solid #eceef2;box-shadow:0 4px 14px rgba(17,24,39,.05)">'+ico('back')+'</button>'+
+    '<div><h1>เลือกที่อยู่จัดส่ง</h1><p>เลือกตำแหน่งบน QueueGo Map หรือใช้ GPS ปัจจุบัน</p></div>'+
    '</div>'+
-   '<section class="card" style="padding:12px 12px 14px;border-radius:20px;border:1px solid #eceef2;background:#fff;box-shadow:0 12px 32px rgba(24,32,48,.06)">'+
-    '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-bottom:9px">'+
-     '<input id="customer-location-search" type="search" autocomplete="off" placeholder="ค้นหาถนน หมู่บ้าน ตำบล หรือสถานที่" aria-label="ค้นหาสถานที่" style="min-width:0;min-height:44px;border:1px solid #dfe3e8;border-radius:13px;background:#fff;padding:0 12px;font:inherit;font-size:15px;outline:none">'+
+   '<section class="card qg-customer-location-card" style="border:1px solid #eceef2;background:#fff;box-shadow:0 8px 22px rgba(24,32,48,.05)">'+
+    '<div class="qg-customer-location-search">'+
+     '<input id="customer-location-search" type="search" autocomplete="off" placeholder="ค้นหาถนน หมู่บ้าน ตำบล หรือสถานที่" aria-label="ค้นหาสถานที่" style="min-width:0;border:1px solid #dfe3e8;background:#fff;outline:none">'+
      '<button id="customer-location-search-button" type="button" style="min-height:44px;border:0;border-radius:13px;background:#ef233c;color:#fff;padding:0 15px;font-weight:850">ค้นหา</button>'+
     '</div>'+
-    '<div id="customer-location-search-results" class="customer-location-search-results" hidden style="gap:5px;max-height:190px;overflow:auto;margin:-1px 0 9px;padding:5px;border:1px solid #e4e7ec;border-radius:13px;background:#fff"></div>'+
+    '<div id="customer-location-search-results" hidden style="display:grid;gap:5px;max-height:190px;overflow:auto;margin:-1px 0 9px;padding:5px;border:1px solid #e4e7ec;border-radius:13px;background:#fff"></div>'+
     '<div style="position:relative">'+
-     '<div id="customer-location-map" class="mapbox" style="height:330px;border-radius:18px;overflow:hidden;background:#eef1f4"></div>'+
-     '<button type="button" id="customer-select-center" style="position:absolute;right:12px;bottom:12px;min-height:42px;padding:0 14px;border:1px solid #e0e3e8;border-radius:999px;background:rgba(255,255,255,.96);color:#343941;font-weight:800;box-shadow:0 5px 18px rgba(17,24,39,.12)">เลือกตรงกลาง</button>'+
+     '<div id="customer-location-map" class="mapbox qg-customer-location-map" style="border-radius:20px;overflow:hidden;background:#eef1f4"></div>'+
+     '<button type="button" id="customer-select-center" class="qg-customer-location-center" style="position:absolute;border:1px solid #e0e3e8;border-radius:999px;background:rgba(255,255,255,.96);color:#343941;font-weight:800;box-shadow:0 5px 18px rgba(17,24,39,.12)">เลือกตรงกลาง</button>'+
     '</div>'+
-    '<button type="button" id="customer-gps" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;margin-top:10px;padding:10px;border:1px solid #e4e7ec;border-radius:16px;background:#fff;color:#ef233c">'+
+    '<button type="button" id="customer-gps" class="qg-customer-location-gps" style="width:100%;display:flex;align-items:center;text-align:left;border:1px solid #e4e7ec;background:#fff;color:#ef233c">'+
      '<span style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff0f2;color:#ef233c;flex:none">'+ico('pin',20)+'</span>'+
      '<span style="min-width:0;flex:1"><b style="display:block;font-size:16px;line-height:1.25">ใช้ตำแหน่ง GPS ปัจจุบัน</b><span style="display:block;margin-top:2px;color:#9aa0aa;font-size:13px">ค้นหาตำแหน่งของคุณบนแผนที่</span></span>'+
      '<span aria-hidden="true" style="font-size:28px;line-height:1;color:#6f7680">›</span>'+
     '</button>'+
-    '<div style="margin:10px 2px 6px;color:#8b929d;font-size:13px;font-weight:800">ที่อยู่จัดส่ง</div>'+
-    '<textarea id="customer-address-input" maxlength="500" placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต" style="box-sizing:border-box;width:100%;min-height:92px;resize:none;border:1px solid #dfe3e8;border-radius:17px;background:#fff;padding:14px;font:inherit;font-size:16px;line-height:1.5;color:#16181c;outline:none">'+esc(currentPos?.address||'')+'</textarea>'+
-    '<div id="customer-location-status" class="sm" style="margin:7px 2px 0;color:#8a9099">แตะตำแหน่งบนแผนที่ หรือใช้ GPS เพื่อปักพิกัด</div>'+
-    '<button class="prim" style="min-height:58px;margin-top:14px;border-radius:18px;font-size:18px;font-weight:900;box-shadow:0 10px 24px rgba(239,35,60,.20)" onclick="saveCustomerLocationPicker()">'+ico('pin',20)+'<span style="margin-left:7px">บันทึกที่อยู่นี้</span></button>'+
+    '<div class="qg-customer-location-label" style="color:#8b929d;font-weight:800">ที่อยู่จัดส่ง</div>'+
+    '<textarea id="customer-address-input" class="qg-customer-location-address" maxlength="500" placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต" style="box-sizing:border-box;width:100%;resize:none;border:1px solid #dfe3e8;background:#fff;color:#16181c;outline:none">'+esc(currentPos?.address||'')+'</textarea>'+
+    '<div id="customer-location-status" class="sm qg-customer-location-status" style="color:#8a9099">แตะตำแหน่งบนแผนที่ หรือใช้ GPS เพื่อปักพิกัด</div>'+
+    '<button class="prim qg-customer-location-save" onclick="saveCustomerLocationPicker()">'+ico('pin',20)+'<span style="margin-left:7px">บันทึกที่อยู่นี้</span></button>'+
    '</section>','home');
   let picked=currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)?{lat:Number(currentPos.lat),lng:Number(currentPos.lng)}:null;
   let locationVersion=0,lastAutoAddress=currentPos?.address||null;
@@ -1472,7 +1493,7 @@ addEventListener('hashchange',()=>route());
 <script>QueueGoPush.configure({role:'customer',getAccessToken:()=>token(true)});</script>
 <script src="customer-features.js?v=20261021-design-language1"></script>
 <script src="customer-laundry.js?v=20261023-sharedstore1"></script>
-<script src="customer-ride.js?v=20261023-ridefix3"></script>
+<script src="customer-ride.js?v=20261024-ride-map-follow1"></script>
 <script>route();</script>
 <script src="catalog/customer-grocery.js?v=20261012"></script>
 </body>

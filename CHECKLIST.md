@@ -1,3 +1,12 @@
+## 2026-10-24 Customer Ride map flicker and Rider tracking — DONE (source/CI/deployment)
+
+- Evidence-backed cause: the Ride screen's 5-second polling called `render()` for the route request page even when its data had not changed. `render()` removes the MapLibre instance, replacing the map tiles and causing the observed flash. Supply refreshes could also rebuild it.
+- Fix on isolated latest-main branch `fix/customer-ride-map-follow-20261024`: polling now leaves the request page mounted when its ride state is unchanged and updates nearby supply markers/count in place. Nearby Rider clusters use motorcycle icons. On active trips the Rider marker uses a motorcycle icon, eases between fresh positions, and the map follows the Rider relative to the pickup point (or destination during the trip). Asset query is cache-busted.
+- Source syntax (`node --check customer-ride.js`) and `git diff --check` pass. PR RC #3311 / run `40078362321` and post-merge main RC #3312 / run `40078632981` both passed all stages.
+- PR #708 merged to `main` as `6a3267ae8a0cd2113c4d68ed7454431dea2bd133`. GitHub Pages run #1688 / `40078632889` succeeded. Public Customer HTML SHA-256 `edda958b4d06144cffce227f638809b8829ae241155431d5525961bb47207bcb` and `customer-ride.js` SHA-256 `14121b4988fccc492f46c077cae658d379f8172a5eea00a514b4368fca42dc06` match the deployed files.
+- **NEXT:** owner can confirm no flicker and Rider movement on iPhone Safari during a live Ride. Release is deployed; no physical-device behavior is claimed from CI.
+
+
 ## 2026-10-24 Responsive map layouts — source/CI DONE, owner visual review pending
 
 - Reviewed Customer address selection, checkout and order maps; Merchant shop location maps; Rider home, navigation and registration maps; Admin shop review and location editor; QueueGo Map and Map Lab. Full-screen Rider/Map surfaces and existing compact order/registration maps remain unchanged.

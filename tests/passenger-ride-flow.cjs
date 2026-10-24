@@ -11,7 +11,7 @@ let checks=0;const eq=(a,b,m)=>{assert.equal(a,b,m);checks++};
 
 eq(index.includes('map.on("click",selectTap)'),true,'customer location picker must select directly on map tap');
 eq(index.includes('map.on("moveend",syncCenter)'),false,'moving map must not silently move the selected pin');
-eq(index.includes('customer-ride.js?v=20261023-ridefix3'),true,'customer Ride asset must be cache-busted');
+eq(index.includes('customer-ride.js?v=20261024-ride-map-follow1'),true,'customer Ride asset must be cache-busted');
 
 eq(customer.includes("if(o?.status==='in_progress'&&o?.arrived_dropoff_at)return 'ถึงจุดหมายแล้ว'"),true,'customer Ride status must derive arrived dropoff');
 eq(customer.includes("function renderActiveRideMap(o)"),true,'customer Ride must render active live map');
