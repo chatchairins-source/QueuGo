@@ -673,6 +673,21 @@ async function searchPlaceCatalog(query,{limit=20,category=null,center=null,boun
   const rank=p=>!q?0:placeQuery(p.name)===q?0:placeQuery(p.name).startsWith(q)?1:2;
   return matches.sort((a,b)=>rank(a)-rank(b)||(center?placeDistance(center,a)-placeDistance(center,b):0)||a.name.localeCompare(b.name,'th')||a.id.localeCompare(b.id)).slice(0,Math.max(1,Math.min(100,limit)));
 }
+function compactAddress(value){
+  const raw=String(value||'').split(',').map(part=>part.trim()).filter(Boolean);
+  const parts=raw.filter(part=>!/^\d{5}$/.test(part)&&!/^(ประเทศไทย|ไทย|Thailand)$/i.test(part));
+  const unique=parts.filter((part,index)=>parts.findIndex(other=>other.toLocaleLowerCase('th-TH')===part.toLocaleLowerCase('th-TH'))===index);
+  if(unique.length<=4&&parts.length===raw.length&&unique.length===parts.length)return unique.join(', ');
+  const area=unique.filter(part=>/^(จังหวัด|จ\.|อำเภอ|อ\.|เขต|ตำบล|ต\.|แขวง)/.test(part));
+  const place=unique.filter(part=>!area.includes(part));
+  const selected=area.length>=2?[...place.slice(0,2),...area.slice(-2)]:unique.slice(0,4);
+  const compact=selected.filter((part,index)=>selected.indexOf(part)===index).map(part=>part
+    .replace(/^จังหวัด\s*/,'จ.')
+    .replace(/^อำเภอ\s*/,'อ.')
+    .replace(/^ตำบล\s*/,'ต.')
+    .replace(/^กรุงเทพมหานคร$/,'กรุงเทพฯ'));
+  return (compact.length?compact:unique.slice(0,4)).join(', ');
+}
 function placeResult(p){return {...p,place_id:p.id,lon:String(p.lng),lat:String(p.lat),display_name:[p.name,...Object.values(p.address||{})].filter(Boolean).join(', '),source:'OpenStreetMap',licence:'ODbL-1.0',provider:'queuego-catalog'}}
 async function nearbyPlaces(category,lat,lng,radius=5000){
   const groups={food:'food',fuel:'fuel',hospital:'health',school:'education',grocery:'grocery',laundry:'laundry',hotel:'hotel',all:null};
@@ -724,7 +739,7 @@ function attachPlaces(map,{onSelect=null,searchControl=false}={}){
     popup?.remove();
     const box=document.createElement('div'),name=document.createElement('b'),detail=document.createElement('p'),button=document.createElement('button'),credit=document.createElement('a');
     name.textContent=p.name;
-    detail.textContent=[PLACE_LABELS[p.category],...Object.values(p.address||{}),p.phone||'',p.opening_hours?'เวลาที่ระบุ: '+p.opening_hours:'','ข้อมูลสถานที่ โปรดตรวจสอบกับร้าน'].filter(Boolean).join(' · ');
+    detail.textContent=[PLACE_LABELS[p.category],compactAddress(Object.values(p.address||{}).join(', ')),p.phone||'',p.opening_hours?'เวลาที่ระบุ: '+p.opening_hours:'','ข้อมูลสถานที่ โปรดตรวจสอบกับร้าน'].filter(Boolean).join(' · ');
     button.type='button';button.textContent='ใช้ตำแหน่งนี้';button.onclick=()=>choose(p);
     credit.textContent='© OpenStreetMap contributors';credit.href=p.source_url;credit.target='_blank';credit.rel='noopener noreferrer';credit.style.cssText='display:block;font-size:10px;margin-top:6px';
     box.append(name,detail,button,credit);
@@ -761,14 +776,14 @@ function attachPlaces(map,{onSelect=null,searchControl=false}={}){
 
 async function search(term){
   const q=String(term||'').trim();if(!q)return[];
-  try{const local=await searchPlaceCatalog(q,{limit:8});if(local.length)return local.map(p=>({...p,label:placeResult(p).display_name}))}catch(_){}
+  try{const local=await searchPlaceCatalog(q,{limit:8});if(local.length)return local.map(p=>({...p,label:compactAddress(placeResult(p).display_name)}))}catch(_){}
   try{
     const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=th&q='+encodeURIComponent(q),{
       headers:{'Accept':'application/json'}
     });
     if(!r.ok)return[];
     const rows=await r.json();
-    return (Array.isArray(rows)?rows:[]).map(x=>({lat:Number(x.lat),lng:Number(x.lon),label:String(x.display_name||'')})).filter(x=>valid(x.lat,x.lng));
+    return (Array.isArray(rows)?rows:[]).map(x=>({lat:Number(x.lat),lng:Number(x.lon),label:compactAddress(x.display_name||'')})).filter(x=>valid(x.lat,x.lng));
   }catch(_){return[]}
 }
 async function reverse(lat,lng){
@@ -779,9 +794,9 @@ async function reverse(lat,lng){
     });
     if(!r.ok)return'';
     const row=await r.json();
-    return String(row?.display_name||'').trim();
+    return compactAddress(row?.display_name||'');
   }catch(_){return''}
 }
 function destroy(map){try{map?.remove?.()}catch(_){}}
-window.QueueGoMapWeb={loadPlaceCatalog,searchPlaceCatalog,nearbyPlaces,attachPlaces,addPlaceSearchControl,style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,remainingNavigationRoute,navigationCameraDecision:navCameraDecision,navigationScreenAnchorRatio:navScreenAnchorRatio,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
+window.QueueGoMapWeb={compactAddress,loadPlaceCatalog,searchPlaceCatalog,nearbyPlaces,attachPlaces,addPlaceSearchControl,style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,search,reverse,destroy,remainingNavigationRoute,navigationCameraDecision:navCameraDecision,navigationScreenAnchorRatio:navScreenAnchorRatio,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
 })();
