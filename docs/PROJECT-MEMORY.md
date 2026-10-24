@@ -1,3 +1,17 @@
+## 2026-10-24 Web app HTML downloads and role icons
+
+- Active branch `feat/web-app-download-links-icons-20261024`, source checkpoint `af95f3412ae95eedf96d61f095f9412918c3811d`, based on deployed main `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`.
+- User requests direct access to downloadable HTML for Customer/Shop/Rider and bold professional icons for Customer and Shop. Existing live app entry points are `/`, `/merchant/`, `/rider/`; HTML files require internet and their QueueGo services/assets.
+- Customer and Shop lacked PWA manifests; Rider already uses the approved shared icon. Change adds custom Customer/Shop SVGs, manifests, a three-app links/download page, and link-integrity regression coverage.
+- No Production data changed.
+- **NEXT:** run exact-head QueueGo RC and fix any failures, merge only tested source, verify public Pages assets/links and update this checkpoint with CI/deployment evidence.
+
+## 2026-10-24 Shared Web map camera rotation and tilt — DONE
+
+- PR #714 source `2cfed544bf12caa5d967896f886953957b13ee5b` merged at `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`.
+- Exact-head RC #3335 / run `40103081891` passed all npm and mobile WebKit checks. GitHub Pages run `40103399673` succeeded; live Customer page opened.
+- Camera rotation and tilt are available throughout Web Customer, Shop, Admin, Rider and map tools. Current OSM raster tiles cannot render 3D building geometry. Owner iPhone gesture acceptance remains a physical-device check.
+
 ## 2026-10-23 Rider Web work preferences
 
 - Owner requests Rider choice of accepting bundles, automatic/manual acceptance and service types, including visible Passenger Ride. Continue from latest Web main `6df56209021a0a47fce1928861a63472a00d3f6b`; numbered map stops stay intact.

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="QueueGo Shop">
+<defs><linearGradient id="bg" x1="58" y1="18" x2="451" y2="490" gradientUnits="userSpaceOnUse"><stop stop-color="#3be0aa"/><stop offset=".48" stop-color="#149a70"/><stop offset="1" stop-color="#075b47"/></linearGradient><linearGradient id="front" x1="126" y1="94" x2="381" y2="422" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#e6fff4"/></linearGradient><filter id="shadow" x="76" y="82" width="360" height="378" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="12"/></filter></defs>
+<path fill="url(#bg)" d="M0 0h512v512H0z"/><path fill="#073c32" opacity=".36" filter="url(#shadow)" d="M112 194 145 91h222l33 103v225H112V194Z"/>
+<path fill="url(#front)" d="m118 183 29-94h218l29 94v228H118V183Z"/><path fill="#075b47" d="M147 89h218l29 94H118l29-94Z"/>
+<path fill="#fff" d="M118 183h69v43c0 20-15 35-34 35s-35-15-35-35v-43Zm69 0h69v43c0 20-15 35-34 35s-35-15-35-35v-43Zm69 0h69v43c0 20-15 35-34 35s-35-15-35-35v-43Zm69 0h69v43c0 20-15 35-34 35s-35-15-35-35v-43Z"/>
+<path fill="#0a7657" d="M148 276h90v135h-90z"/><path fill="#d5f5e8" d="M164 292h58v67h-58z"/><path fill="#0a7657" d="M258 276h91v82h-91z"/><path fill="#d5f5e8" d="M275 293h57v48h-57z"/><path fill="#063f34" d="M132 392h248v19H132z"/><circle cx="205" cy="325" r="7" fill="#075b47"/><path fill="#fff" d="M278 305h50v22h-50z"/>
+</svg>
