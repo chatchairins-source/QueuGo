@@ -82,6 +82,19 @@ const headers = values => ({ get: name => values[String(name).toLowerCase()] ?? 
     })
   }), /HTTP 503/);
 
+  await assert.rejects(() => fetchProvinceResource(buriram, {
+    timeoutMs: 5,
+    fetchImpl: async (url, options) => ({
+      ok: true,
+      status: 200,
+      url,
+      headers: headers({}),
+      arrayBuffer: async () => new Promise((resolve, reject) => {
+        options.signal.addEventListener('abort', () => reject(options.signal.reason || new Error('aborted')), { once: true });
+      })
+    })
+  }), /DOPA download timeout|aborted/);
+
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qg-dopa-fetch-'));
   try {
     const files = writeCandidate(dir, buriram, result);
@@ -97,7 +110,7 @@ const headers = values => ({ get: name => values[String(name).toLowerCase()] ?? 
   }
 
   console.log(JSON.stringify({
-    checks: 24,
+    checks: 25,
     failures: 0,
     scope: 'guarded one-province DOPA download, host allowlist, checksum, schema validation and candidate evidence'
   }));
