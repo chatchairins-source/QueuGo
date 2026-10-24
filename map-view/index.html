@@ -258,7 +258,7 @@
   </section>
 
   <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
-  <script src="../queuego-map-web.js?v=20261024-addresscompact1"></script>
+  <script src="../queuego-map-web.js?v=20261024-addresscompact1&camera3d=20261024"></script>
   <script>
   (function(){
     "use strict";
@@ -284,12 +284,15 @@
       zoom:12.2,
       minZoom:6,
       maxZoom:19,
-      dragRotate:false,
-      pitchWithRotate:false,
+      maxPitch:60,
+      dragRotate:true,
+      pitchWithRotate:true,
       attributionControl:false
     });
 
-    map.touchZoomRotate.disableRotation();
+    map.touchZoomRotate.enableRotation();
+    map.touchPitch.enable();
+    map.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),"top-right");
     map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
 
     const state={

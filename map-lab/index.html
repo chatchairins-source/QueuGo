@@ -46,12 +46,15 @@
         zoom:12.2,
         minZoom:6,
         maxZoom:19,
-        dragRotate:false,
-        pitchWithRotate:false,
+        maxPitch:60,
+        dragRotate:true,
+        pitchWithRotate:true,
         attributionControl:false
       });
 
-      map.touchZoomRotate.disableRotation();
+      map.touchZoomRotate.enableRotation();
+      map.touchPitch.enable();
+      map.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),"top-right");
       map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
 
       window.QueueGoMapLab={

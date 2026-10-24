@@ -1,3 +1,12 @@
+## 2026-10-24 Shared map rotation and tilt — IN PROGRESS
+
+- Evidence-backed cause: shared `QueueGoMapWeb.create()` set `maxPitch:0`, disabled mouse/touch rotation, and only showed its compass in Rider navigation mode. Customer Ride, Customer location picker, QueueGo Map and Map Lab each repeated the same disabled settings. The base style is raster OpenStreetMap, so camera tilt can give a perspective view but cannot create extruded 3D buildings without a vector/elevation tile source.
+- Scope: enable mouse/touch map rotation and 3D camera tilt on every Web map surface (Customer pickers/Ride, Merchant, Admin, Rider idle/navigation, QueueGo Map and Map Lab); show a compass/pitch control while retaining existing zoom buttons, preserve automatic Rider follow and the north-up reset behavior.
+- Source/test head `cacfc27ba2d1d42b75868c84aacacf1acd7dc891` is based on current deployed main `b476db051f7a1951d76d60f776fd6368ce84e897`. No Production data changed.
+- First exact-head CI #3333 / run `40102161709` failed at `tests/location-lifecycle.cjs`: its MapLibre mock lacked `touchZoomRotate.enableRotation()` and `touchPitch.enable()`, which the updated picker now calls. The mock update is in `217a9eaf502b184fee84c63a85db91d5bc9c2ec8`; npm test then passed.
+- The Map Lab WebKit step on `217a9eaf502b184fee84c63a85db91d5bc9c2ec8` remained in progress after the new test called undocumented `isRotationEnabled()`. The pinned MapLibre API exposes `isEnabled()`, so the browser assertion is being corrected to the documented method; map rotation itself is enabled with `enableRotation()`.
+- **NEXT:** rerun exact-head QueueGo RC on the corrected browser assertion; merge the green head and deploy GitHub Pages. Confirm live HTML/assets expose the cache-busted camera gesture build. Physical iPhone gesture feel still needs owner-side confirmation after release.
+
 ## 2026-10-24 Customer Ride map flicker and Rider tracking — DONE (source/CI/deployment)
 
 - Evidence-backed cause: the Ride screen's 5-second polling called `render()` for the route request page even when its data had not changed. `render()` removes the MapLibre instance, replacing the map tiles and causing the observed flash. Supply refreshes could also rebuild it.

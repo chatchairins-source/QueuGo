@@ -38,6 +38,11 @@ function serve(){
     rect:document.getElementById("map").getBoundingClientRect().toJSON(),
     bodyChildren:[...document.body.children].map(x=>x.tagName+"#"+(x.id||""))
   }));
+  const cameraGestures=await page.evaluate(()=>{
+    const map=window.QueueGoMapLab.map;
+    return {rotation:map.dragRotate.isEnabled(),touchRotation:map.touchZoomRotate.isEnabled(),pitch:map.touchPitch.isEnabled(),maxPitch:map.getMaxPitch()};
+  });
+  ok(cameraGestures.rotation&&cameraGestures.touchRotation&&cameraGestures.pitch&&cameraGestures.maxPitch>=45,"Map Lab must allow touch/mouse rotation and 3D tilt");
   ok(startup.rect.width===startup.vw&&Math.abs(startup.rect.height-startup.vh)<2,"map must fill the entire viewport");
   ok(startup.bodyChildren.filter(x=>x.startsWith("DIV#")).length===1,"only the map div may be present as page UI");
 

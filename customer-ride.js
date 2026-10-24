@@ -143,10 +143,11 @@
    addPoint(o.delivery_latitude,o.delivery_longitude);
    addPoint(o.rider_latitude,o.rider_longitude);
    const center=points[2]||points[0]||points[1]||[101,15];
-   previewMap=new maplibregl.Map({container:host,style:qgQueueGoPickerStyle(),center,zoom:points.length?15:6,minZoom:5,maxZoom:19,attributionControl:false,dragRotate:false,pitchWithRotate:false});
+   previewMap=new maplibregl.Map({container:host,style:qgQueueGoPickerStyle(),center,zoom:points.length?15:6,minZoom:5,maxZoom:19,attributionControl:false,maxPitch:60,dragRotate:true,pitchWithRotate:true});
    previewMode='active';activeRideId=String(o.id||'');
-   previewMap.touchZoomRotate.disableRotation();
-   previewMap.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),'top-left');
+   previewMap.touchZoomRotate.enableRotation();
+   previewMap.touchPitch.enable();
+   previewMap.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:true,visualizePitch:true}),'top-left');
    previewMap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
    const bounds=new maplibregl.LngLatBounds();
    for(const point of [
@@ -180,12 +181,14 @@
     minZoom:5,
     maxZoom:19,
     attributionControl:false,
-    dragRotate:false,
-    pitchWithRotate:false
+    maxPitch:60,
+    dragRotate:true,
+    pitchWithRotate:true
    });
    previewMode='route';
-   previewMap.touchZoomRotate.disableRotation();
-   previewMap.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),'top-left');
+   previewMap.touchZoomRotate.enableRotation();
+   previewMap.touchPitch.enable();
+   previewMap.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:true,visualizePitch:true}),'top-left');
    previewMap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
 
    const bounds=new maplibregl.LngLatBounds();

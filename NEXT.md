@@ -1,5 +1,14 @@
 # QueueGo Next Actions
 
+## Current Web map rotation continuation — 2026-10-24
+
+- Active branch: `fix/web-map-rotation-all-pages-20261024`, based on deployed main `b476db051f7a1951d76d60f776fd6368ce84e897`.
+- Root cause: non-Rider maps lock `maxPitch` at zero and disable drag/touch rotation; Rider only unlocks these while navigation is active. OSM base tiles are raster, so tilt is supported but building extrusion needs a future vector/elevation tile source.
+- Scope: consistent rotation and tilt gestures plus compass/pitch controls with existing zoom buttons on Customer, Ride, Merchant, Admin, Rider, QueueGo Map and Map Lab; preserve Rider follow and reset-to-north behavior.
+- RC #3333 / `40102161709` first failed in `location-lifecycle.cjs` because the MapLibre mock lacked camera gesture methods. The mock is fixed in `217a9eaf502b184fee84c63a85db91d5bc9c2ec8`; npm test passed.
+- The Map Lab WebKit gate on that head stalled on the browser assertion for `touchZoomRotate.isRotationEnabled()`; the pinned MapLibre API exposes `isEnabled()`. Fix that assertion before continuing.
+- **NEXT:** run exact-head QueueGo RC on the corrected browser assertion, merge only the tested head, deploy GitHub Pages, and verify public cache-busted assets. Owner iPhone gesture acceptance remains a distinct post-deploy step.
+
 Current snapshot: 2026-10-23 · Authoritative main: `be33b8318967ad6105222efa8305fec8005a5335`
 
 ## Current verified POS checkpoint — 2026-10-23
