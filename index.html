@@ -876,7 +876,7 @@ function initLocationPicker(containerId,lat,lng,onChange,options={}){
   customerPickerMap=map;
   map.touchZoomRotate.enableRotation();
   map.touchPitch.enable();
-  map.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),"top-left");
+  map.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:true,visualizePitch:true}),"top-left");
   map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
   let disposed=false,marker=null;
   const setPoint=(plat,plng,notify=true)=>{

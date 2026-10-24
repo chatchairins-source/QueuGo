@@ -14,6 +14,8 @@ eq(index.includes('maxPitch:60,\n    dragRotate:true,\n    pitchWithRotate:true'
 eq(index.includes('map.touchZoomRotate.enableRotation();\n  map.touchPitch.enable();'),true,'Customer location picker must enable mobile rotation and tilt gestures');
 eq(customer.includes('maxPitch:60'),true,'Customer Ride maps must allow tilt');
 eq(customer.includes('previewMap.touchZoomRotate.enableRotation();'),true,'Customer Ride maps must allow mobile rotation');
+eq(customer.includes('NavigationControl({showCompass:true,showZoom:true,visualizePitch:true})'),true,'Customer Ride must retain zoom buttons while adding compass and pitch');
+eq(index.includes('NavigationControl({showCompass:true,showZoom:true,visualizePitch:true})'),true,'Customer picker must retain zoom buttons while adding compass and pitch');
 eq(index.includes('map.on("moveend",syncCenter)'),false,'moving map must not silently move the selected pin');
 eq(index.includes('customer-ride.js?v=20261024-ride-map-follow1'),true,'customer Ride asset must be cache-busted');
 

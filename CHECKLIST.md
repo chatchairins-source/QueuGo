@@ -1,7 +1,7 @@
 ## 2026-10-24 Shared map rotation and tilt — IN PROGRESS
 
 - Evidence-backed cause: shared `QueueGoMapWeb.create()` set `maxPitch:0`, disabled mouse/touch rotation, and only showed its compass in Rider navigation mode. Customer Ride, Customer location picker, QueueGo Map and Map Lab each repeated the same disabled settings. The base style is raster OpenStreetMap, so camera tilt can give a perspective view but cannot create extruded 3D buildings without a vector/elevation tile source.
-- Scope: enable mouse/touch map rotation and 3D camera tilt on every Web map surface (Customer pickers/Ride, Merchant, Admin, Rider idle/navigation, QueueGo Map and Map Lab); show one shared compass/pitch control, preserve automatic Rider follow and the north-up reset behavior.
+- Scope: enable mouse/touch map rotation and 3D camera tilt on every Web map surface (Customer pickers/Ride, Merchant, Admin, Rider idle/navigation, QueueGo Map and Map Lab); show a compass/pitch control while retaining existing zoom buttons, preserve automatic Rider follow and the north-up reset behavior.
 - Source changes and regression evidence are being prepared from current deployed main `b476db051f7a1951d76d60f776fd6368ce84e897`. No Production data changed.
 - **NEXT:** run focused map-camera tests, then exact-head QueueGo RC on the PR branch; fix any failures, merge the green head and deploy GitHub Pages. Confirm live HTML/assets expose the cache-busted camera gesture build. Physical iPhone gesture feel still needs owner-side confirmation after release.
 

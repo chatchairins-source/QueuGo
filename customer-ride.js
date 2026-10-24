@@ -147,7 +147,7 @@
    previewMode='active';activeRideId=String(o.id||'');
    previewMap.touchZoomRotate.enableRotation();
    previewMap.touchPitch.enable();
-   previewMap.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),'top-left');
+   previewMap.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:true,visualizePitch:true}),'top-left');
    previewMap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
    const bounds=new maplibregl.LngLatBounds();
    for(const point of [
@@ -188,7 +188,7 @@
    previewMode='route';
    previewMap.touchZoomRotate.enableRotation();
    previewMap.touchPitch.enable();
-   previewMap.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),'top-left');
+   previewMap.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:true,visualizePitch:true}),'top-left');
    previewMap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
 
    const bounds=new maplibregl.LngLatBounds();
