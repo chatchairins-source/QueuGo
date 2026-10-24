@@ -8,6 +8,8 @@ ok(merchant.includes('let qgmProductSaveBusy=false;'),'product save must have a 
 ok(merchant.includes('qgm-fab qgm-menu-add-action'),'food/cafe product management must expose the dedicated menu add action');
 ok(merchant.includes("${svg('plus')} เพิ่มเมนู"),'food/cafe product management must label the action เพิ่มเมนู');
 ok(merchant.includes('body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action{position:fixed'),'menu add action must stay at the bottom above Merchant navigation');
+ok(merchant.includes('.qgm-menu-add-action button{width:auto;min-width:156px;height:42px'),'menu add action must stay compact instead of spanning the screen');
+ok(merchant.includes('background:#fff;color:#d7192d'),'menu add action must use a quieter outlined treatment');
 ok(merchant.includes('qgm-grocery-add-choices')&&merchant.includes('เพิ่มสินค้าเอง'),'Grocery add-product actions must remain product-specific');
 ok(merchant.includes("data-product-request-id="),'new product editor must keep a stable request/product id');
 ok(merchant.includes("window.qgmNewProductRequestId||(window.qgmNewProductRequestId=uid())"),'new product request id must survive editor rerenders');
