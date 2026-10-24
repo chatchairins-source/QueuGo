@@ -146,9 +146,9 @@ def main():
     screens.append({"screen":"profile",**shot("07-profile")})
     for entry,title,name in (
         ("แนะนำบริการและวิธีใช้งาน","ศูนย์เรียนรู้ Rider","08-learning-center"),
-        ("ศูนย์ความปลอดภัย","ศูนย์ความปลอดภัย","09-safety-center"),
-        ("แจ้งปัญหา / ติดตามเรื่อง","ติดต่อฝ่ายดูแล","10-support"),
-        ("ตรวจสอบระบบ Rider","ตรวจสอบระบบ Rider","11-diagnostics"),
+        ("ศูนย์ความปลอดภัย","กรณีฉุกเฉิน","09-safety-center"),
+        ("แจ้งปัญหา / ติดตามเรื่อง","แจ้งปัญหาและติดตามสถานะจากระบบ","10-support"),
+        ("ตรวจสอบระบบ Rider","สถานะจริงของโทรศัพท์เครื่องนี้","11-diagnostics"),
     ):
         capture_profile_dialog(entry,title,name)
     meta={
