@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="QueueGo Customer">
+<defs><linearGradient id="bg" x1="55" y1="24" x2="457" y2="488" gradientUnits="userSpaceOnUse"><stop stop-color="#ff3957"/><stop offset=".52" stop-color="#e6002d"/><stop offset="1" stop-color="#a80728"/></linearGradient><linearGradient id="pin" x1="171" y1="79" x2="337" y2="425" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#ffe5eb"/></linearGradient><filter id="shadow" x="72" y="52" width="368" height="438" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="13"/></filter></defs>
+<path fill="url(#bg)" d="M0 0h512v512H0z"/><path fill="#640a23" opacity=".34" filter="url(#shadow)" d="M256 86c-86 0-156 68-156 153 0 105 156 241 156 241s156-136 156-241c0-85-70-153-156-153Z"/>
+<path fill="url(#pin)" d="M256 66c-91 0-164 71-164 159 0 111 164 254 164 254s164-143 164-254c0-88-73-159-164-159Z"/>
+<circle cx="256" cy="220" r="99" fill="#e6002d"/><circle cx="256" cy="191" r="38" fill="#fff"/><path fill="#fff" d="M184 300c15-39 40-59 72-59s57 20 72 59v17H184z"/><path fill="#c90b32" d="M225 308h62l-31 47z"/>
+<path fill="#fff" opacity=".23" d="M92 458h328v16H92z"/>
+</svg>
