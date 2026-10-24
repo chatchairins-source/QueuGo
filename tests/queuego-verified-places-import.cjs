@@ -30,6 +30,7 @@ eq(snapshot.rows.length,4,'three verified shops plus one verified market must im
 eq(snapshot.summary.inactive_or_unapproved_shops,2,'pending and unverified-market-member shops must be excluded');
 eq(snapshot.summary.inactive_or_unverified_markets,1,'unverified market must be excluded');
 eq(snapshot.summary.without_coordinates,1,'approved shop without coordinates must remain searchable and be reported');
+ok(/^[a-f0-9]{64}$/.test(snapshot.snapshotHash),'complete public snapshot must have a deterministic SHA-256 fingerprint');
 eq(snapshot.rows.map(x=>x.source_record_id),[
   'market:'+uuid(11),'shop:'+uuid(1),'shop:'+uuid(2),'shop:'+uuid(3)
 ],'records must sort deterministically by stable source identity');
@@ -64,6 +65,7 @@ ok(sql.includes("p.source_id LIKE 'shop:%' OR p.source_id LIKE 'market:%'"),'sta
 ok(!/phone|email|user_id|auth_user_id|owner_name|contact_name/i.test(sql),'generated search SQL must not contain direct contact/identity PII fields');
 ok(sql.includes("last_operational_snapshot_at"),'source metadata must record the operational snapshot timestamp');
 ok(sql.includes("last_operational_snapshot_count"),'source metadata must record the imported row count');
+ok(sql.includes("last_operational_snapshot_sha256")&&sql.includes(snapshot.snapshotHash),'source metadata must retain the exact public snapshot fingerprint');
 
 assert.throws(()=>parseOperationalSnapshot(JSON.stringify({...input,snapshot_complete:false})),/snapshot_complete=true/);checks++;
 assert.throws(()=>parseOperationalSnapshot(JSON.stringify({...input,shops:[{...input.shops[0],phone:'0812345678'}]})),/prohibited sensitive field phone/);checks++;
