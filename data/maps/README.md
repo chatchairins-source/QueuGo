@@ -4,6 +4,20 @@ Map POIs and place search are served only by the shared QueueGo Places backend (
 
 QueueGo Places ingestion must register every source, license, attribution requirement, update policy, storage permission and redistribution permission before importing records. See the source registry migration and importer contracts in `supabase/migrations/` and `scripts/`.
 
+## Thailand administrative hierarchy
+
+Open Admin Data Thailand Administrative Divisions 2026.06 is CC BY 4.0. Its `data/all-flat.ndjson` contains province and district records only; the 7,364 subdistricts are in the separate `data/all-subdistrict.json`. QueueGo pins repository commit `eef739a534e26181c86073d69e9aeb527110cf1a`, all-flat Git blob SHA `baa3eb18fb79412e85dcef08059d16f8cf47b317`, and all-subdistrict Git blob SHA `bd5c49a7e1af578c9e34e32020ddd90eabdc167f`.
+
+Retrieve the pinned source files without adding dataset bytes to this repository, then validate and generate a review-only SQL artifact:
+
+    git clone --filter=blob:none --no-checkout https://github.com/open-admin-data/thailand-administrative-divisions.git /tmp/oad-thailand
+    git -C /tmp/oad-thailand fetch origin eef739a534e26181c86073d69e9aeb527110cf1a
+    git -C /tmp/oad-thailand show eef739a534e26181c86073d69e9aeb527110cf1a:data/all-flat.ndjson > /tmp/all-flat.ndjson
+    git -C /tmp/oad-thailand show eef739a534e26181c86073d69e9aeb527110cf1a:data/all-subdistrict.json > /tmp/all-subdistrict.json
+    node scripts/import-th-admin-places.cjs /tmp/all-flat.ndjson /tmp/all-subdistrict.json /tmp/th-admin.review.sql
+
+The importer verifies both Git blob hashes, the 77/928/7,364 row counts, unique admin IDs, Thailand coordinate bounds and the complete province→district→subdistrict parent chain. Generated SQL carries both file hashes and the repository commit, plus CC BY 4.0 attribution and per-record field provenance. This source has no village records; villages use the separately gated DOPA GIS-01 source. The SQL is review-only and must not be run against Production outside the approved migration/release path.
+
 `dopa-gis01-resources.json` records reviewed DOPA GIS-01 resource identities only. A listed resource is **not** approved for import until `sha256` and `validated_row_count` are filled from the exact downloaded bytes and `import_eligible` is explicitly true after importer validation. Catalog metadata, mirrors, file-size labels, or a reachable URL are not substitutes for checksum verification.
 
 
