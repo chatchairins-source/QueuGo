@@ -7,7 +7,6 @@
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
-const readline = require('node:readline');
 const crypto = require('node:crypto');
 
 const SOURCE_KEY = 'openstreetmap';
@@ -148,9 +147,44 @@ async function hashFile(file) {
   return hash.digest('hex');
 }
 
+async function* geoJsonSeqRecords(file) {
+  let buffer = '', started = false;
+  for await (const chunk of fs.createReadStream(file, { encoding: 'utf8' })) {
+    buffer += chunk;
+    if (!started) {
+      const first = buffer.indexOf('\x1e');
+      if (first < 0) {
+        if (buffer.trim()) throw new Error('GeoJSONSeq must use RFC 8142 record separators');
+        continue;
+      }
+      if (buffer.slice(0, first).trim()) throw new Error('GeoJSONSeq must use RFC 8142 record separators');
+      buffer = buffer.slice(first);
+      started = true;
+    }
+    let next;
+    while ((next = buffer.indexOf('\x1e', 1)) >= 0) {
+      const record = buffer.slice(1, next).trim();
+      if (record) yield record;
+      buffer = buffer.slice(next);
+    }
+  }
+  if (!started) {
+    if (buffer.trim()) throw new Error('GeoJSONSeq must use RFC 8142 record separators');
+    return;
+  }
+  const last = buffer.slice(1).trim();
+  if (last) yield last;
+}
+
 async function stageOsmGeoJsonSeq({ inputFile, pbfFile, outputDir, retrievedAt, snapshotDate, pbfSha256, pbfUrl = OFFICIAL_PBF_URL, chunkRows = CHUNK_ROWS }) {
   if (!inputFile || !pbfFile || !outputDir) throw new Error('inputFile, pbfFile and outputDir are required');
-  if (pbfUrl !== OFFICIAL_PBF_URL) throw new Error('PBF URL must be the registered Geofabrik Thailand extract');
+  let parsedPbfUrl;
+  try { parsedPbfUrl = new URL(pbfUrl); } catch { throw new Error('PBF URL must be a registered Geofabrik Thailand extract'); }
+  if (parsedPbfUrl.protocol !== 'https:' || parsedPbfUrl.hostname !== 'download.geofabrik.de'
+    || parsedPbfUrl.search || parsedPbfUrl.hash
+    || !/^\/asia\/thailand-(?:latest|\d{6})\.osm\.pbf$/.test(parsedPbfUrl.pathname)) {
+    throw new Error('PBF URL must be a registered Geofabrik Thailand extract');
+  }
   const retrieved = timestamp(retrievedAt, 'retrieval');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(snapshotDate || '') || new Date(snapshotDate + 'T00:00:00Z').toISOString().slice(0, 10) !== snapshotDate) throw new Error('valid PBF snapshot date required');
   if (!/^[a-f0-9]{64}$/i.test(pbfSha256 || '')) throw new Error('verified PBF SHA-256 required');
@@ -162,7 +196,6 @@ async function stageOsmGeoJsonSeq({ inputFile, pbfFile, outputDir, retrievedAt, 
   if ((await fsp.readdir(outputDir)).length) throw new Error('review output directory must be empty');
   const report = { source: SOURCE_KEY, license: SOURCE_LICENSE, attribution: ATTRIBUTION, license_url: LICENSE_URL, pbf_url: pbfUrl, snapshot_date: snapshotDate, retrieved_at: retrieved, pbf_sha256: actualPbfSha, geojsonseq_sha256: exportSha, execution: 'review_only_no_database_write', chunk_rows: chunkRows, summary: { records: 0, staged: 0, skipped_unsupported_geometry: 0, skipped_outside_thailand: 0, skipped_not_named_searchable_place: 0 }, chunks: [] };
   const meta = { retrievedAt: retrieved, snapshotDate, pbfSha256: actualPbfSha, exportSha256: exportSha, pbfUrl };
-  const rl = readline.createInterface({ input: fs.createReadStream(inputFile), crlfDelay: Infinity });
   const rows = [], seen = new Set();
   let sequence = 0;
   const flush = async () => {
@@ -173,9 +206,7 @@ async function stageOsmGeoJsonSeq({ inputFile, pbfFile, outputDir, retrievedAt, 
     report.chunks.push({ file, rows: rows.length }); rows.length = 0;
   };
   try {
-    for await (const raw of rl) {
-      const line = raw.trim().replace(/^\x1e/, '');
-      if (!line) continue;
+    for await (const line of geoJsonSeqRecords(inputFile)) {
       let feature;
       try { feature = JSON.parse(line); } catch { throw new Error('invalid GeoJSONSeq JSON at record ' + (report.summary.records + 1)); }
       report.summary.records++;

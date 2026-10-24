@@ -22,13 +22,15 @@ Batch staging deliberately does **not** modify `dopa-gis01-resources.json` and d
 
 The source registry allows storage and redistribution of OSM-derived records under ODbL-1.0 and requires visible OpenStreetMap attribution. The source is registered in 20261023144405_queuego_places_search_foundation.sql; this does not imply that its data has been imported or that the database is live.
 
-Use a locally obtained Geofabrik Thailand PBF at https://download.geofabrik.de/asia/thailand-latest.osm.pbf. Record its exact retrieval time, snapshot date, and SHA-256. Export a privacy-minimal GeoJSON Text Sequence with only the OSM identity and object timestamp attributes:
+Use a locally obtained Geofabrik Thailand PBF at https://download.geofabrik.de/asia/thailand-latest.osm.pbf. Record its exact retrieval time, snapshot date, final redirect URL, and SHA-256. Install the pinned PyOsmium helper dependency into an isolated environment and export a privacy-minimal GeoJSON Text Sequence:
 
-    osmium export thailand-latest.osm.pbf --output=thailand.geojsonseq --output-format=geojsonseq --geometry-types=point,polygon --attributes=type,id,timestamp
+    python3 -m venv /tmp/queuego-osm-env
+    /tmp/queuego-osm-env/bin/pip install -r requirements-osm-staging.txt
+    /tmp/queuego-osm-env/bin/python scripts/export-osm-places-geojsonseq.py thailand-261022.osm.pbf thailand.geojsonseq
 
-Then stage review SQL:
+Then stage review SQL with the pinned Geofabrik URL:
 
-    node scripts/stage-osm-places.cjs thailand.geojsonseq thailand-latest.osm.pbf /tmp/queuego-osm-review 2026-10-24T00:00:00Z 2026-10-24 PBF_SHA256
+    node scripts/stage-osm-places.cjs thailand.geojsonseq thailand-261022.osm.pbf /tmp/queuego-osm-review 2026-10-24T00:00:00Z 2026-10-22 PBF_SHA256 https://download.geofabrik.de/asia/thailand-261022.osm.pbf
 
 The script independently hashes both the exact PBF file and exported bytes, verifies the supplied PBF checksum, requires a fresh empty output directory, streams records into bounded SQL chunks, keeps only named place/search tags from its allowlist, filters coordinates to Thailand, and records OSM object ID, source-object timestamp, per-record payload hash, PBF hash, export hash, license and attribution. It preserves addr:subdistrict / addr:district / addr:province (including explicit Thai variants), village and moo fields when present. The controlled tag map includes named shopping, food, leisure, historic, craft, office, tourism and transit facilities. Point features retain their mapped coordinates. Polygon and multipolygon features retain their full geometry as a candidate boundary; generated SQL uses PostGIS ST_PointOnSurface for an interior search coordinate and stores the boundary. Lines and other unsupported geometries are counted as skipped. The generated SQL keeps records unverified; it is a review artifact, not an approved migration and never executes itself. Preserve ODbL attribution and share-alike obligations in any database distribution.
 

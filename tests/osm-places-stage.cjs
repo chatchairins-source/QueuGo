@@ -8,6 +8,14 @@ const {
   SOURCE_KEY, SOURCE_LICENSE, ATTRIBUTION, OFFICIAL_PBF_URL,
   normalizeFeature, parseGeoJsonSeq, renderOsmChunkSql, stageOsmGeoJsonSeq
 } = require('../scripts/stage-osm-places.cjs');
+const exporterSource = fs.readFileSync(path.join(__dirname, '../scripts/export-osm-places-geojsonseq.py'), 'utf8');
+assert.match(exporterSource, /GeoJSONFactory/);
+assert.match(exporterSource, /create_multipolygon/);
+assert.match(exporterSource, /orig_id\(\)/);
+assert.match(exporterSource, /skipped_invalid_geometry/);
+assert.match(exporterSource, /os\.replace\(temporary, args\.output\)/);
+assert.doesNotMatch(exporterSource, /changeset|['"]user['"]|['"]uid['"]/);
+assert.match(fs.readFileSync(path.join(__dirname, '../requirements-osm-staging.txt'), 'utf8'), /^osmium==4\.3\.2\s*$/);
 const checksum = value => crypto.createHash('sha256').update(value).digest('hex');
 const feature = (id, tags = {}, coordinates = [103.1, 15.2], geometry = 'Point') => ({
   type: 'Feature', id, properties: { type: 'node', id: String(id), timestamp: '2026-10-20T12:00:00Z', ...tags },
@@ -114,19 +122,20 @@ assert.equal(ATTRIBUTION, '© OpenStreetMap contributors');
 (async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'queuego-osm-stage-'));
   const input = path.join(root, 'sample.geojsonseq'), pbf = path.join(root, 'sample.osm.pbf'), output = path.join(root, 'review');
-  const exportText = [feature(301, { amenity: 'cafe', name: 'กาแฟ' }), feature(302, { shop: 'supermarket', name: 'มินิมาร์ท' })]
+  const exportText = [feature(301, { amenity: 'cafe', name: 'กาแฟ' }), feature(302, { shop: 'supermarket', name: 'มินิมาร์ท' }), feature(303, { shop: 'guest_house', name: 'รีสอร์ต', 'addr:street': 'Muu4, Koh Samet,\u2028Phe subdistrict' })]
     .map(value => '\x1e' + JSON.stringify(value) + '\n').join('');
   fs.writeFileSync(input, exportText);
   fs.writeFileSync(pbf, 'isolated non-production OSM checksum fixture');
   const pbfSha256 = checksum(fs.readFileSync(pbf));
   const report = await stageOsmGeoJsonSeq({
     inputFile: input, pbfFile: pbf, outputDir: output, retrievedAt: '2026-10-24T00:00:00Z',
-    snapshotDate: '2026-10-20', pbfSha256, chunkRows: 1
+    snapshotDate: '2026-10-20', pbfSha256, pbfUrl: 'https://download.geofabrik.de/asia/thailand-261022.osm.pbf', chunkRows: 1
   });
-  assert.equal(report.summary.staged, 2);
-  assert.equal(report.chunks.length, 2);
+  assert.equal(report.summary.staged, 3);
+  assert.equal(report.chunks.length, 3);
   assert.equal(report.geojsonseq_sha256, checksum(exportText));
   assert.equal(report.execution, 'review_only_no_database_write');
+  assert.equal(report.pbf_url, 'https://download.geofabrik.de/asia/thailand-261022.osm.pbf');
   assert.ok(fs.existsSync(path.join(output, report.chunks[0].file)));
   assert.ok(fs.existsSync(path.join(output, 'osm-th-stage-report.json')));
   await assert.rejects(stageOsmGeoJsonSeq({
@@ -138,5 +147,5 @@ assert.equal(ATTRIBUTION, '© OpenStreetMap contributors');
     snapshotDate: '2026-10-20', pbfSha256: 'c'.repeat(64)
   }), /PBF SHA-256 mismatch/);
   fs.rmSync(root, { recursive: true, force: true });
-  console.log(JSON.stringify({ checks: 58, failures: 0, scope: 'OSM ODbL point/polygon staging, Thai address hierarchy, controlled leisure/historic/craft/office/transit tags, bounds and provenance' }));
+  console.log(JSON.stringify({ checks: 72, failures: 0, scope: 'OSM ODbL point/polygon staging, Thai address hierarchy, RFC 8142 separator streaming, controlled leisure/historic/craft/office/transit tags, bounds and provenance' }));
 })().catch(error => { console.error(error); process.exitCode = 1; });
