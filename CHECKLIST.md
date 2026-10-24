@@ -1,3 +1,13 @@
+## 2026-10-24 Merchant Add Menu bottom action — latest successor
+
+- Source base: newest real descendant PR #697 HEAD `06c7f4d1c95671c233a2765dab78711a887fb53b`; this stream does not use the older main Merchant file.
+- Owner screenshot requires the restaurant/cafe product-management action to say `เพิ่มเมนู` and sit at the bottom above Merchant navigation.
+- ROOT CAUSE: the current iPhone product CSS overrides `.qgm-fab` to `position:sticky`, so the non-Grocery add action stays immediately after the product cards instead of at the bottom of the viewport.
+- IN PROGRESS: source commit `6174604e8c948892858459c7cd477b9de2f5f00a` adds a dedicated `.qgm-menu-add-action`, changes only the non-Grocery label to `เพิ่มเมนู`, fixes it above the bottom nav, and adds enough scroll padding to avoid covering the last card. Grocery actions remain product-specific.
+- IN PROGRESS: regression commit `d48711e77e92e1837e39493d28792441daf4d0d7` locks the menu label/bottom position and verifies Grocery still exposes `เพิ่มสินค้าเอง`.
+- No Production data mutation.
+- NEXT: run exact-head QueueGo RC on the `work-web-merchant-add-menu-bottom-successor-20261024` successor, reconcile if PR #697 advances, then merge/deploy and require owner-device visual acceptance before claiming physical mobile PASS.
+
 ## 2026-10-23 Nationwide QueueGo Places/Search foundation
 
 - Mission: make map, registration and place search nationwide while keeping order availability separate; build QueueGo Places/Search; remove the Buriram-only route gate; harden Rider phone fallback and verified cash no-show suspension.
