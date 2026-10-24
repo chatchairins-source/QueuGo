@@ -1,3 +1,12 @@
+## 2026-10-24 QueueGo Places/Search clean successor — IN PROGRESS
+
+- Source of Truth moved from superseded PR #697 to PR #704 on branch `feat/queuego-places-search-successor-20261024`.
+- Successor commit `0f83333d645525fb67cb5f3a4237c7055d28e817` is a direct child of latest main `0e8ff9a1560c0a74deb5cf9a256948ca07acca40`. Its tree SHA `0e3412bc9a249e1457dfc18ec8c777804ee46658` is byte-identical to the latest #697 tree, so no Nationwide source/test work was dropped and no older main code was restored.
+- PR #697 and stale forward-merge PR #703 are closed as superseded. PR #704 is clean/mergeable and RC #3260 / run `40059085684` was queued on exact source commit `0f83333d`.
+- Deterministic DOPA batch staging remains in the successor: exact official bytes + matching sidecar metadata are required before SHA-256/row validation and review SQL; manifest import eligibility is never changed automatically.
+- No Production schema/data/deployment mutation. QueueGo Places tables/RPC, nationwide order coverage, phone fallback entitlement and verified no-show authority remain unreleased.
+- NEXT: verify exact-head RC for PR #704. If green, continue the next unblocked Places/Search ingestion task while official DOPA payload access remains blocked; keep Production DDL/data behind the approved migration/release gate.
+
 ## 2026-10-24 Merchant Add Menu compact public release
 
 - ROOT CAUSE: moving `เพิ่มเมนู` to the bottom correctly fixed placement, but the inherited generic `.qgm-fab button` style kept it as a full-width solid-red primary CTA, making a secondary action visually dominant.
