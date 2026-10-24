@@ -1,3 +1,14 @@
+## 2026-10-24 Merchant Add Menu compact public release
+
+- ROOT CAUSE: moving `เพิ่มเมนู` to the bottom correctly fixed placement, but the inherited generic `.qgm-fab button` style kept it as a full-width solid-red primary CTA, making a secondary action visually dominant.
+- DONE (source): food/cafe `เพิ่มเมนู` is fixed above Merchant bottom navigation as a compact 156px pill, 42px high, white background with red text/border. Grocery `เพิ่มสินค้าเอง` / catalog actions are unchanged.
+- DONE (merge): PR #700 merged to main as `c757450189fd63e85f27f99f8a0c9cc38a272205`; Merchant blob `240b06faabb982ba9f72a9a4351aab37518b0580`.
+- TEST EVIDENCE: post-merge QueueGo RC run `40057628775` / #3246 SUCCESS across npm, Merchant mobile WebKit, Admin mobile, Map Lab, QueueGo Map search and Grocery mobile/tablet gates.
+- DONE (GitHub Pages): run `40057628235` / #1683 SUCCESS on the same merge commit.
+- No Production database/order/payment mutation. Unfinished Nationwide PR #697 was not merged into main for this UI release.
+- BLOCKED (owner visual acceptance only): confirm on the owner device that the compact outlined `เพิ่มเมนู` treatment is visually balanced.
+- NEXT: preserve this compact treatment on every Merchant successor; do not restore the full-width solid-red CTA unless explicitly requested.
+
 ## 2026-10-23 Embedded map search separation — latest successor
 
 - Source base: main `c7090f1ced830e7203a719bea38db3ba636aee64`, including the shared Laundry storefront and its latest cache-bust.
