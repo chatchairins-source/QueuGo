@@ -1,5 +1,6 @@
 const fs=require("fs"),path=require("path"),assert=require("assert");
 const html=fs.readFileSync(path.resolve(__dirname,"../map-view/index.html"),"utf8");
+const mapClient=fs.readFileSync(path.resolve(__dirname,"../queuego-map-web.js"),"utf8");
 let checks=0;
 const ok=(v,m)=>{assert.ok(v,m);checks++};
 const has=(x,m)=>ok(html.includes(x),m||("missing "+x));
@@ -10,10 +11,10 @@ new Function(scripts[0]);checks++;
 has("QueueGo Map","QueueGo Map branding required");
 has('id="placeSearchForm"',"place search UI required");
 has("engineGeocode","forward geocoding required");
-has("PHOTON","fallback geocoder endpoint required");
-has("geocodeNominatim","Nominatim search provider required");
-has("geocodePhoton","Photon fallback search provider required");
-has("geocodeOverpass","Overpass fallback search provider required");
+has("QG_SEARCH_CONFIG","shared QueueGo Search must be configured");
+has("QueueGoMapWeb?.search?.(query","Map View must use the shared QueueGo Search client");
+ok(mapClient.includes("/rest/v1/rpc/qg_search_places"),"shared QueueGo Map client must call the QueueGo Search RPC");
+has('search?.("",{latitude:lat,longitude:lon,category,limit:50',"nearby search must use the shared QueueGo Search client");
 has("coordinateSearch","direct coordinate search required");
 has("lastSearchProvider","search provider observability required");
 has("searchMarkerElement","search result marker required");
@@ -49,7 +50,12 @@ has("queuego:current-location-confirmed","confirmed current-location event requi
 has('source:"device_gps"',"confirmed current location must preserve GPS provenance");
 has("currentLocationElement","current-location marker required");
 has("get currentLocation()","Map View must expose current location");
-has("viewbox=102.4,15.8,103.5,14.1","Buriram-biased search required");
+ok(!html.includes("viewbox="),"place search must not be constrained to a regional bounding box");
+ok(!html.includes("14.132135,102.442357,15.789217,103.499967"),"place search must not contain a Buriram-only Overpass bounding box");
+ok(!html.includes("DOPA_BURIRAM"),"place search/address suggestions must not depend on a Buriram-only catalog");
+ok(!html.includes("photon.komoot.io"),"Map View must not bypass QueueGo Search with a direct external search provider");
+ok(!html.includes("searchPlaceCatalog(query"),"Map View must not use the Buriram pilot catalog as a search fallback");
+ok(!html.includes('"addr:province"]||"บุรีรัมย์"'),"Map View results must not invent Buriram as the result province");
 ok(!html.includes("countrycodes=th"),"search must not be hard-limited to Thailand");
 ok(!html.includes("maps.googleapis.com"),"must not depend on Google map data");
 

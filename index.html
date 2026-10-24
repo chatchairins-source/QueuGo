@@ -362,6 +362,7 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 'use strict';
 /* ===== 1) Connection (same Supabase project and endpoints as the old app) ===== */
 const CFG={URL:'https://pkypiqhlrmzocysgeqew.supabase.co',KEY:'sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre'};
+window.QG_SEARCH_CONFIG={url:CFG.URL,key:CFG.KEY,providers:[]};
 const hdr=t=>{const h={apikey:CFG.KEY,'Content-Type':'application/json'};if(t)h.Authorization='Bearer '+t;return h};
 async function auth(path,body){
   const r=await fetch(CFG.URL+'/auth/v1/'+path,{method:'POST',headers:hdr(),body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
@@ -931,6 +932,20 @@ function initLocationPicker(containerId,lat,lng,onChange,options={}){
     }
   };
 }
+function qgCompactCustomerAddress(value){
+  const raw=String(value||'').split(',').map(part=>part.trim()).filter(Boolean);
+  const parts=raw.filter(part=>! /^\d{5}$/.test(part)&&!/^(ประเทศไทย|ไทย|Thailand)$/i.test(part));
+  const unique=parts.filter((part,index)=>parts.findIndex(other=>other.toLocaleLowerCase('th-TH')===part.toLocaleLowerCase('th-TH'))===index);
+  if(unique.length<=4)return unique.join(', ');
+  const admin=unique.filter(part=>/^(จังหวัด|จ\.|อำเภอ|อ\.|เขต|ตำบล|ต\.|แขวง)/.test(part));
+  const place=unique.filter(part=>!admin.includes(part));
+  const selected=[...place.slice(0,2),...admin.slice(-3)];
+  const compact=selected.filter((part,index)=>selected.indexOf(part)===index).map(part=>part
+    .replace(/^จังหวัด\s*/,'จ.')
+    .replace(/^อำเภอ\s*/,'อ.')
+    .replace(/^ตำบล\s*/,'ต.'));
+  return (compact.length?compact:unique.slice(0,4)).join(', ');
+}
 async function qtReverseGeocodeCustomer(lat,lng){
   return window.QueueGoMapWeb?.reverse ? await window.QueueGoMapWeb.reverse(lat,lng) : '';
 }
@@ -970,7 +985,7 @@ async function openCustomerLocationPicker(){
     const version=++locationVersion,field=$('customer-address-input'),previous=field.value;
     if(previous&&previous!==lastAutoAddress)return;
     const t=await qtReverseGeocodeCustomer(lat,lng);
-    if(t&&version===locationVersion&&field.isConnected&&field.value===previous){field.value=t;lastAutoAddress=t;currentPos.address=t}
+    if(t&&version===locationVersion&&field.isConnected&&field.value===previous){const compact=qgCompactCustomerAddress(t);field.value=compact;lastAutoAddress=compact;currentPos.address=compact}
   },{selectInitial:true});
   window.__customerPickedLocation=()=>picked;
   $('customer-gps').onclick=()=>customerLocationPicker?.locate();

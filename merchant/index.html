@@ -477,6 +477,7 @@ window.QT_SUPABASE_CONFIG = {
   URL: 'https://pkypiqhlrmzocysgeqew.supabase.co',
   KEY: 'sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre'
 };
+window.QG_SEARCH_CONFIG={url:window.QT_SUPABASE_CONFIG.URL,key:window.QT_SUPABASE_CONFIG.KEY,providers:[]};
 function qtRequestTimeout(ms){
   if(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')return {signal:AbortSignal.timeout(ms),clear:function(){}};
   var controller=new AbortController(),timer=setTimeout(function(){controller.abort()},ms);
@@ -1496,7 +1497,7 @@ function qgRegRenderMarketChoices(){
   const host=document.getElementById('qgm-reg-market-list');if(!host)return;
   const rows=QG_REG_MARKET_STATE.markets||[];
   if(!rows.length){
-    host.innerHTML='<div class="qgm-market-status warn"><b>ยังไม่มีตลาดในจังหวัดบุรีรัมย์ที่เปิดใช้</b><small>ใช้ “ไม่พบตลาดของฉัน / ขอเพิ่มตลาดใหม่” ด้านล่างได้</small></div>';
+    host.innerHTML='<div class="qgm-market-status warn"><b>ยังไม่มีตลาดใกล้พิกัดร้านที่เปิดใช้</b><small>ใช้ “ไม่พบตลาดของฉัน / ขอเพิ่มตลาดใหม่” ด้านล่างได้</small></div>';
     QG_REG_MARKET_STATE.selectedMarketId=null;
     return;
   }
@@ -1504,7 +1505,7 @@ function qgRegRenderMarketChoices(){
   qgRegFilterRows('');
   host.innerHTML='<section class="qgm-market-picker"><div class="qgm-market-picker-head"><div><b>เลือกตลาด</b><small>ระบบเลือกตลาดที่ใกล้ที่สุดให้ก่อน หรือค้นหาชื่อและเลือกเองได้</small></div><span>ใกล้สุด '+Number(rows[0].distance_km||0).toLocaleString('th-TH',{maximumFractionDigits:2})+' กม.</span></div>'+
     '<label class="qgm-market-search"><span>ค้นหาชื่อตลาด</span><input type="search" autocomplete="off" placeholder="เช่น สวายจีก, เทศบาลเมืองบุรีรัมย์" oninput="qgRegSearchMarkets(this.value)"></label>'+
-    '<label class="qgm-market-select-label"><span>ตลาดในจังหวัดบุรีรัมย์</span><select id="qgm-reg-market-select" onchange="qgRegSelectMarket(this.value)"></select></label>'+
+    '<label class="qgm-market-select-label"><span>ตลาดใกล้ร้าน</span><select id="qgm-reg-market-select" onchange="qgRegSelectMarket(this.value)"></select></label>'+
     '<div id="qgm-reg-market-suggestions" class="qgm-market-suggestions"></div></section>';
   qgRegPaintMarketChoices();
 }
@@ -1519,7 +1520,7 @@ window.qgRegFindMarkets=function(){
       const lat=Number(pos.coords.latitude),lng=Number(pos.coords.longitude);
       if(!Number.isFinite(lat)||!Number.isFinite(lng))throw Error('พิกัดไม่ถูกต้อง');
       QG_REG_MARKET_STATE.lat=lat;QG_REG_MARKET_STATE.lng=lng;
-      const raw=await qtSupabaseTable('markets?select=id,name,address,province,district,subdistrict,latitude,longitude,verified,assignment_radius_km&active=eq.true&latitude=not.is.null&longitude=not.is.null&province=eq.'+encodeURIComponent('บุรีรัมย์')+'&order=name.asc');
+      const raw=await qtSupabaseTable('markets?select=id,name,address,province,district,subdistrict,latitude,longitude,verified,assignment_radius_km&active=eq.true&latitude=not.is.null&longitude=not.is.null&order=name.asc');
       QG_REG_MARKET_STATE.markets=(Array.isArray(raw)?raw:[]).map(m=>({market_id:m.id,market_name:m.name,address:m.address,province:m.province,district:m.district,subdistrict:m.subdistrict,verified:m.verified===true,assignment_radius_km:Number(m.assignment_radius_km||3),distance_km:qgRegDistanceKm(lat,lng,m.latitude,m.longitude)})).sort((a,b)=>Number(a.distance_km)-Number(b.distance_km)||String(a.market_name).localeCompare(String(b.market_name),'th'));
       QG_REG_MARKET_STATE.selectedMarketId=QG_REG_MARKET_STATE.markets[0]?.market_id||null;
       qgRegMarketStatus('พิกัดร้าน '+lat.toFixed(6)+', '+lng.toFixed(6),'approved');
@@ -2423,7 +2424,7 @@ window.renderShopRegister=function(){
           <div class="qgm-market-fields"><label>เลขแผง (ถ้ามี)<input id="qgm-reg-market-stall" maxlength="80" placeholder="เช่น A12"></label><label>โซน (ถ้ามี)<input id="qgm-reg-market-zone" maxlength="80" placeholder="เช่น โซนผัก"></label></div>
           <label class="qgm-market-confirm"><input id="qgm-reg-confirm-place" type="checkbox"><span>ฉันยืนยันว่า <b>ร้าน/แผงของฉันตั้งอยู่ในตลาดที่เลือกหรือระบุจริง</b></span></label>
           <label class="qgm-market-confirm"><input id="qgm-reg-confirm-seller" type="checkbox"><span>ฉันยืนยันว่า <b>ฉันเป็นผู้ค้าหรือมีร้าน/แผงขายอยู่ในตลาดนี้จริง</b></span></label>
-          <details class="qgm-market-request"><summary>ไม่พบตลาดของฉัน / ขอเพิ่มตลาดใหม่</summary><label>ชื่อตลาด<input id="qgm-reg-request-name" maxlength="160" placeholder="เช่น ตลาดสดสวายจีก"></label><label>จังหวัด<input id="qgm-reg-request-province" maxlength="100" value="บุรีรัมย์"></label><label>อำเภอ<input id="qgm-reg-request-district" maxlength="100" value="เมืองบุรีรัมย์"></label><label>ตำบล<input id="qgm-reg-request-subdistrict" maxlength="100"></label><label>ที่อยู่/รายละเอียดตลาด<input id="qgm-reg-request-address" maxlength="500"></label></details>
+          <details class="qgm-market-request"><summary>ไม่พบตลาดของฉัน / ขอเพิ่มตลาดใหม่</summary><label>ชื่อตลาด<input id="qgm-reg-request-name" maxlength="160"></label><label>จังหวัด<input id="qgm-reg-request-province" maxlength="100" autocomplete="address-level1"></label><label>อำเภอ<input id="qgm-reg-request-district" maxlength="100" autocomplete="address-level2"></label><label>ตำบล<input id="qgm-reg-request-subdistrict" maxlength="100" autocomplete="address-level3"></label><label>ที่อยู่/รายละเอียดตลาด<input id="qgm-reg-request-address" maxlength="500"></label></details>
         </section>
         <label class="qgm-login-input">${svg('user')}<input id="reg-name" autocomplete="name" required maxlength="120" placeholder="ชื่อผู้ติดต่อ" aria-label="ชื่อผู้ติดต่อ"></label>
         <label class="qgm-login-input">${svg('phone')}<input id="reg-phone" type="tel" inputmode="numeric" autocomplete="tel" required maxlength="12" placeholder="เบอร์โทรศัพท์ 10 หลัก" aria-label="เบอร์โทรศัพท์"></label>
@@ -3397,8 +3398,12 @@ body.qgm-app{background:#f8f9fb}
 .qgm-unified-products .qgm-tabs{margin:1px 0 10px}
 .qgm-unified-products .qgm-tabs button{background:#fff;border:1px solid #e7e9ec;color:#777e87;padding:8px 12px}
 .qgm-unified-products .qgm-tabs button.active{background:#fff0f3;color:#d90d2d;border-color:#f2c8d0;font-weight:750}
+body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action,
 body.qgm-app .qgm-unified-products .qgm-fab.qgm-grocery-add-choices{display:grid;grid-template-columns:1fr;gap:6px;padding:8px 10px 10px;margin-top:12px;background:#fff;border:1px solid #eceef1;border-radius:18px;box-shadow:0 6px 18px rgba(28,31,35,.05)}
+body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action button,
 body.qgm-app .qgm-unified-products .qgm-fab.qgm-grocery-add-choices button{height:46px;min-height:46px;margin-top:0;border-radius:13px;font-size:14px;font-weight:800}
+body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action button{display:flex;align-items:center;justify-content:center;text-align:center;line-height:1;padding-top:0;padding-bottom:0}
+body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action .qgm-add-manual,
 body.qgm-app .qgm-unified-products .qgm-fab.qgm-grocery-add-choices .qgm-add-manual{background:#fff;color:#d7192d;border:1px solid #edc7cf}
 body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action .qgm-add-manual{display:flex;align-items:center;justify-content:center;text-align:center;line-height:1;padding-left:12px;padding-right:12px}
 body.qgm-app .qgm-unified-products .qgm-fab.qgm-menu-add-action .qgm-add-manual svg{display:none}
