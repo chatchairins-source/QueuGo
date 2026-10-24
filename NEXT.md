@@ -6,14 +6,14 @@ Current snapshot: 2026-10-24 · Authoritative main: `28a121178b6e15ceb0a7575452b
 
 ## Active QueueGo continuation — 2026-10-24
 
-- PR #704 branch `feat/queuego-places-search-successor-20261024`, head `779fa7b7fc11f310c8897042afff846f5df94afe`; current main `28a121178b6e15ceb0a7575452b5cb2a374f40a3`. Source head `e34c368716be12069fe1848e17c44a0c46800791` passed exact-head RC `40088891010`; documentation head `779fa7b` passed exact-head RC `40089120095` across npm and all configured mobile browser gates.
+- PR #704 branch `feat/queuego-places-search-successor-20261024`, latest verified head before this pointer update `ff0664638e51f77c962ce633afb3b66340c616a3`; current main `28a121178b6e15ceb0a7575452b5cb2a374f40a3`. Source head `e34c368716be12069fe1848e17c44a0c46800791` passed exact-head RC `40088891010`; documentation heads `779fa7b` and `ff06646` passed exact-head RCs `40089120095` and `40089392407` across npm and all configured mobile browser gates.
 - Places/Search source remains unlaunched. Read-only QueueTech check finds no Places relation or `qg_search_places`, and only one active ordering area in Buriram. Existing call RPCs are authenticated-only with fixed search paths; phone fallback and no-show authority RPCs are absent. Advisor findings remain under review.
 - DOPA registry contains 76 provinces, but no resource has verified payload bytes, checksum or row count. The public JSON mirror is incomplete/inactive and cannot establish source coverage. No Production write or deployment.
 - **NEXT:** obtain the original official DOPA JSON and dictionary through an approved access path; verify raw bytes, SHA-256, province identity and row count before staging/import. Continue read-only security and service-area planning while access is unavailable. Keep PR #704 draft and QueueGo NOT DONE.
 
 ## Immediate map-layout checkpoint
 
-- Customer location search, Customer map height/spacing and Admin location editor viewport fit are source complete on the #704 successor and covered by exact-head RCs `40088891010` and `40089120095`.
+- Customer location search, Customer map height/spacing and Admin location editor viewport fit are source complete on the #704 successor and covered by exact-head RCs `40088891010`, `40089120095` and `40089392407`.
 - Physical iPhone Safari visual acceptance is still pending; CI does not establish device appearance. **NEXT:** owner-side review after any eventual deployment, then adjust only if the device shows clipping or overlap.
 
 
