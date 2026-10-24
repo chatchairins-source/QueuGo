@@ -1,3 +1,13 @@
+## 2026-10-24 DOPA GIS-01 Buriram resource identity — IN PROGRESS
+
+- Recovered active Nationwide successor PR #697 after forward-merge of current main. Merge commit `d1025835fee28449114a901c57aee6dad104a22d` is a descendant of main `c757450189fd63e85f27f99f8a0c9cc38a272205`; exact-head QueueGo RC #3248 / run `40057854157` SUCCESS across npm, Merchant mobile WebKit, Admin mobile, Map Lab, QueueGo Map search and Grocery browser gates.
+- Reviewed public government catalogs for DOPA GIS-01. Dataset package `705402d4-2715-4ece-9166-22b54c6c3476` is the DOPA village-level JSON source under Open Data Common. Buriram resolves to official resource UUID `2e6697b4-6efe-46b5-940a-0d7b2caf771f`.
+- SOURCE: `data/maps/dopa-gis01-resources.json` records the reviewed dataset/resource identity and official catalog download URL. Buriram remains `import_eligible=false` with `sha256=null` and `validated_row_count=null`; catalog metadata is deliberately not treated as verified payload evidence.
+- TEST: `tests/dopa-village-import.cjs` now locks the real dataset/resource identity, keeps the official-host/UUID contract, and verifies unverified resources cannot be represented as approved manifest entries. `data/maps/README.md` explicitly requires exact bytes + SHA-256 + validated row count before import eligibility.
+- BLOCKED (payload only): reviewed DOPA download paths still return timeout/502, so no actual province bytes, checksum, row count or generated import SQL are claimed. No mirror bytes were substituted as authoritative source. No Production schema/data/deployment mutation.
+- IN PROGRESS: implementation head `f3ff2808d43b7c1e651103dc2596ed8f22fba3c4`; fresh exact-head hosted RC is required because #3248 predates the manifest/test additions.
+- NEXT: obtain exact-head RC for the resource-manifest/test successor. If green, continue acquisition of the exact Buriram DOPA JSON through a working permitted official path; compute SHA-256, validate rows with `scripts/import-dopa-villages.cjs`, and only then flip that resource import-eligible/stage generated SQL. Keep Production DDL/data blocked until the approved migration/release path exists.
+
 ## 2026-10-24 QueueGo Places reconciled to latest main successor — IN PROGRESS
 
 - Latest main `c757450189fd63e85f27f99f8a0c9cc38a272205` is now an ancestor of active Places PR #697 via successor merge commit `d1025835fee28449114a901c57aee6dad104a22d` (PR #701). The PR branch advanced during the local forward-merge; that newer descendant was fetched and verified before continuing. Its source tree matches local tested code for the Merchant `74px` content clearance and updated regression test.
