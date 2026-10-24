@@ -1369,3 +1369,9 @@ Do not treat every open PR as active work. Before touching any older PR, compare
 - Local full `npm test` also passed on the same source tree before publication; local/remote tree hashes matched after fetch. No Production DDL/data writes or deployment. PR #697 remains draft.
 - Mission remains NOT DONE: actual DOPA resource checksum/import, approved Places/service-area/phone/no-show migrations, Production security/performance advisor remediation, end-to-end live backend acceptance, and Web deploy to Owner remain outstanding.
 - NEXT: continue from PR #697 head only; resolve approved migration path, real DOPA data validation and server authority gates. Re-run exact-head RC after each source change; do not merge/deploy or claim full release readiness while the listed blockers remain.
+
+
+## 2026-10-24 QueueGo RC run 3229
+- Hosted exact-head run `40052486098` / `3229` passed on PR head `42fbfd3632f47ef07b4158c71b6f11c6af179b03` (tree `22eff897e90f8826c8753092a3fd2f7cdf9fd7c7`). The complete `npm test` and all configured Admin, Merchant, Map Lab, QueueGo Map search and Grocery WebKit gates passed.
+- This head includes the DOPA importer timestamp correction and QueueGo checklist/next-action updates. It was fetched from GitHub and its tree hash matched local before the run. No physical-device pass, Production mutation, merge or deployment is claimed.
+- NEXT: complete approved migration/security gates, actual DOPA province data/checksum/import, phone fallback and verified no-show server authorities, and replace the Buriram ordering gate. PR #697 stays draft; QueueGo mission stays NOT DONE.
