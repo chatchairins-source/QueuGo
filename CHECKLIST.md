@@ -1,3 +1,9 @@
+## 2026-10-24 Production capability inventory (read-only) — BLOCKED
+
+- QueueTech read-only catalog query returned no `public.queuego_places` relation, zero `qg_search_places` routines and zero RPC names matching phone-fallback/no-show. `public.queuego_service_areas` still has exactly one active area: `Buriram Pilot` / บุรีรัมย์. This verifies the release blockers against current Production without changing it; name matching does not rule out a differently named routine.
+- Source and local regression remain committed at `6c809de9e57fe37222274fc41072ee4fd681b288` (tree `ae951a470a32580e84cba5dc7110c0369c0ebdb2`): full `npm test` EXIT 0, Thai importer/PGlite 47 PASS. Exact-host RC for docs-only commit `c8060d1f34a30bc6f02a9b937d741db84017d587` is run #3299 / `40071834270`, currently in progress.
+- No production import/write/deploy. **NEXT:** wait for #3299, then proceed only with source/read-only work until an approved migration path, official DOPA bytes/checksum, advisor remediation plan and owner release evidence exist.
+
 ## 2026-10-24 QueueGo advisor/Rider RPC read-only audit — IN PROGRESS
 
 - Source/test checkpoint remains `6c809de9e57fe37222274fc41072ee4fd681b288`, tree `ae951a470a32580e84cba5dc7110c0369c0ebdb2`; full `npm test` EXIT 0 and `node tests/th-admin-import.cjs` 47 PASS.
