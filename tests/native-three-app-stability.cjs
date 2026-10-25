@@ -655,13 +655,15 @@ ok(
   riderNavigationMapRuntime.includes('routeLines.clear()') &&
   riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
   riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
-  riderNavigationMapRuntime.includes('riderMarker = null') &&
+  riderNavigationMapRuntime.includes('riderSource = null') &&
+  riderNavigationMapRuntime.includes('riderStyleInitialized = false') &&
+  riderNavigationMapRuntime.includes('riderPosition = null') &&
   riderNavigationMapRuntime.includes('map = null') &&
   riderNavigationMapRuntime.includes('view?.onDestroy()') &&
   riderNavigationMapRuntime.includes('view = null') &&
   !riderNavigationMapRuntime.includes('markerBitmaps') &&
   !riderNavigationMapRuntime.includes('Bitmap.createBitmap('),
-  'Rider MapLibre dispose must drop renderer, marker and view refs without legacy bitmap caches'
+  'Rider MapLibre dispose must drop renderer, QueueGo puck and view refs without legacy bitmap caches'
 );
 
 const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
