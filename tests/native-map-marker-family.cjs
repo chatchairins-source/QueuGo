@@ -5,6 +5,7 @@ const root='native-android/';
 const sharedMap=read(root+'shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 const trackingPolicy=read(root+'customer/src/main/java/com/queuego/customer/CustomerTrackingPolicy.kt');
 const riderMap=read(root+'rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
+const riderPuck=read(root+'rider-navigation-map/src/main/res/drawable/qg_rider_puck.xml');
 
 assert(sharedMap.includes('org.maplibre.android.maps.MapView'));
 assert(sharedMap.includes('queueGoMapVectorSourceUri'));
