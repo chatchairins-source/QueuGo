@@ -8,7 +8,10 @@
 - Tests cover exporter LineString support, controlled highway classes, road midpoint, Thailand bounds, non-road LineString rejection, review SQL provenance and road coverage accounting.
 - Exact-head RC `40183874260` on `a504ed503aa6bbdb341be25c804edb41719d68eb` first failed only because the new road provenance assertion contained an invalid JavaScript regex literal. Fix `8e2376454e89169882636b880458e7b93574ab83` replaced that assertion with a literal string check.
 - Exact-head RC `40184098250` on `8e2376454e89169882636b880458e7b93574ab83`: **SUCCESS** — full npm regression, Admin/Merchant WebKit boot, Map Lab gestures, QueueGo Map place-search browser gate and Grocery renders all passed.
-- **NEXT:** add a deterministic road search grouping/dedupe policy so repeated OSM way segments do not flood one road-name query. Then stage a checksum-pinned Thailand snapshot and review coverage/provenance. No Production import until those gates pass.
+- Added `20261025102500_queuego_road_search_grouping.sql` on top of the hardened private RPC only: every road source segment remains stored/auditable, while read-time `row_number()` returns one best segment per normalized road-name + road-class + ~5 km grid group. Non-road Places retain unique place-ID partitions and exact province/district/subdistrict ranking is preserved.
+- Read-only Production-engine synthetic SQL verified the grouping policy: adjacent same-name/same-class road segments collapse to one; a same-name road outside the grid remains separate; non-road rows do not collapse. No Production table/function/data was changed by this check.
+- Exact-head RC `40184498541` on `83411bf1270547afbad7a289bc2033643b6d48ef`: **SUCCESS** — full npm regression plus Admin/Merchant WebKit, Map Lab, QueueGo Map Search and Grocery gates passed.
+- **NEXT:** run the combined README/CHECKLIST checkpoint. Then obtain an exact date-specific Geofabrik Thailand PBF from the registered official source, compute SHA-256 locally, export/stage review SQL, inspect category/road/hierarchy coverage and provenance, and only then decide whether a reviewed migration is eligible. No Production import before those gates pass.
 
 ## 2026-10-25 Detailed Thailand service boundary revision 2 — DONE (Production cutover/readback)
 
