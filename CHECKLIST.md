@@ -6,7 +6,9 @@
 - OSM staging now recognizes controlled named road classes as `category=road`, derives one deterministic representative point on each LineString for QueueGo Search, retains the full source geometry inside the payload checksum/provenance input, and never writes LineString into the MultiPolygon-only `queuego_places.boundary`.
 - Coverage reporting now separates point / road / boundary records. ODbL-1.0, © OpenStreetMap contributors attribution, official Geofabrik source validation, source-record mapping and field provenance remain unchanged. This branch still generates review SQL only and performs **no Production database write**.
 - Tests cover exporter LineString support, controlled highway classes, road midpoint, Thailand bounds, non-road LineString rejection, review SQL provenance and road coverage accounting.
-- **NEXT:** run focused OSM staging test and hosted regression on the exact HEAD. Fix the first failure only. Before any real PBF promotion, add a deterministic road search grouping/dedupe policy so repeated OSM way segments do not flood a single road-name query, then stage a checksum-pinned Thailand snapshot and review coverage/provenance. No Production import until those gates pass.
+- Exact-head RC `40183874260` on `a504ed503aa6bbdb341be25c804edb41719d68eb` first failed only because the new road provenance assertion contained an invalid JavaScript regex literal. Fix `8e2376454e89169882636b880458e7b93574ab83` replaced that assertion with a literal string check.
+- Exact-head RC `40184098250` on `8e2376454e89169882636b880458e7b93574ab83`: **SUCCESS** — full npm regression, Admin/Merchant WebKit boot, Map Lab gestures, QueueGo Map place-search browser gate and Grocery renders all passed.
+- **NEXT:** add a deterministic road search grouping/dedupe policy so repeated OSM way segments do not flood one road-name query. Then stage a checksum-pinned Thailand snapshot and review coverage/provenance. No Production import until those gates pass.
 
 ## 2026-10-25 Detailed Thailand service boundary revision 2 — DONE (Production cutover/readback)
 
