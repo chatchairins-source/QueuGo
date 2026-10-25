@@ -35,4 +35,32 @@ class QueueGoPlacesReverseTest {
 
         assertNull(queueGoReverseCandidate(rows))
     }
+    @Test fun parsesNationwidePlaceSearchResult() {
+        val row = JSONObject()
+            .put("place_id", "place-1")
+            .put("canonical_name", "พระสิงห์")
+            .put("latitude", 18.7883)
+            .put("longitude", 98.9853)
+            .put("category", "administrative_area")
+            .put("subcategory", "subdistrict")
+            .put("subdistrict", "พระสิงห์")
+            .put("district", "เมืองเชียงใหม่")
+            .put("province", "เชียงใหม่")
+            .put("postcode", "50200")
+
+        val result = queueGoPlaceSearchResult(row)
+        assertEquals("place-1", result?.id)
+        assertEquals("พระสิงห์", result?.name)
+        assertEquals(18.7883, result?.latitude ?: 0.0, 0.000001)
+        assertEquals("พระสิงห์ เมืองเชียงใหม่ เชียงใหม่ 50200", result?.address)
+    }
+
+    @Test fun rejectsPlaceSearchResultOutsideThailandBounds() {
+        val row = JSONObject()
+            .put("place_id", "foreign")
+            .put("canonical_name", "Foreign")
+            .put("latitude", 3.139)
+            .put("longitude", 101.6869)
+        assertNull(queueGoPlaceSearchResult(row))
+    }
 }
