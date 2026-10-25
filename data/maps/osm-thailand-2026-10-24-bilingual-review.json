@@ -718,5 +718,12 @@
       "method": null,
       "source_id": null
     }
-  ]
+  ],
+  "hosted_successor_evidence": {
+    "head": "31aaac9a392f488628f21ea116a92f03f7a71eb5",
+    "rc_run_id": 40193430433,
+    "osm_audit_run_id": 40193430409,
+    "conclusion": "success",
+    "production_import_allowed": false
+  }
 }

@@ -11,6 +11,9 @@ on:
       - 'scripts/match-osm-admin-boundaries-to-oad.cjs'
       - 'tests/osm-admin-boundaries-stage.cjs'
       - 'tests/osm-admin-boundary-match.cjs'
+      - 'scripts/audit-admin-boundary-topology.py'
+      - 'tests/admin-boundary-topology.py'
+      - 'requirements-boundary-topology.txt'
       - 'requirements-osm-staging.txt'
       - 'package.json'
       - 'package-lock.json'
@@ -61,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m venv "$RUNNER_TEMP/qg-osm-admin-env"
-          "$RUNNER_TEMP/qg-osm-admin-env/bin/pip" install --disable-pip-version-check -r requirements-osm-staging.txt
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/pip" install --disable-pip-version-check -r requirements-osm-staging.txt -r requirements-boundary-topology.txt
           "$RUNNER_TEMP/qg-osm-admin-env/bin/python" scripts/export-osm-admin-boundaries-geojsonseq.py \
             "$RUNNER_TEMP/thailand.osm.pbf" "$RUNNER_TEMP/osm-admin.geojsonseq"
           test -s "$RUNNER_TEMP/osm-admin.geojsonseq"
@@ -81,6 +84,14 @@ jobs:
             if(!(r.summary?.staged_by_admin_type?.[level]>0)) throw new Error('missing '+level+' boundaries');
           }
           NODE
+      - name: Review exact OSM geometry validity with GEOS
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" tests/admin-boundary-topology.py
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" scripts/audit-admin-boundary-topology.py osm \
+            "$RUNNER_TEMP/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq" \
+            "$RUNNER_TEMP/osm-admin-review/osm-topology-review.json"
       - name: Fetch exact pinned Open Admin Data hierarchy
         shell: bash
         run: |
@@ -117,6 +128,7 @@ jobs:
           name: queuego-osm-thailand-admin-boundaries
           path: |
             ${{ runner.temp }}/osm-admin-review/osm-th-admin-boundaries-stage-report.json
+            ${{ runner.temp }}/osm-admin-review/osm-topology-review.json
             ${{ runner.temp }}/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq
             ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-match-report.json
             ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-mapping.json

@@ -9,6 +9,9 @@ on:
       - 'scripts/audit-hdx-thailand-admin.cjs'
       - 'scripts/match-osm-admin-boundaries-to-oad.cjs'
       - 'tests/hdx-thailand-admin-audit.cjs'
+      - 'scripts/audit-admin-boundary-topology.py'
+      - 'tests/admin-boundary-topology.py'
+      - 'requirements-boundary-topology.txt'
   workflow_dispatch:
 
 permissions:
@@ -51,10 +54,21 @@ jobs:
           if(r.execution!=='review_only_no_database_write'||r.production_import_allowed!==false) throw Error('candidate audit must never authorize import');
           if(r.topology_gate!=='not_tested'||r.parent_polygon_containment_gate!=='not_tested') throw Error('audit must not claim untested spatial gates');
           NODE
+      - name: Review exact HDX geometry and full source-parent polygon containment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/qg-topology-env"
+          "$RUNNER_TEMP/qg-topology-env/bin/pip" install --disable-pip-version-check -r requirements-boundary-topology.txt
+          "$RUNNER_TEMP/qg-topology-env/bin/python" tests/admin-boundary-topology.py
+          "$RUNNER_TEMP/qg-topology-env/bin/python" scripts/audit-admin-boundary-topology.py hdx \
+            "$RUNNER_TEMP/hdx-thailand.zip" "$RUNNER_TEMP/hdx-topology-review.json"
       - name: Preserve review report with source identity and unresolved codes
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: queuego-hdx-thailand-admin-candidate-review
-          path: ${{ runner.temp }}/hdx-admin-review.json
+          path: |
+            ${{ runner.temp }}/hdx-admin-review.json
+            ${{ runner.temp }}/hdx-topology-review.json
           if-no-files-found: error
           retention-days: 7
