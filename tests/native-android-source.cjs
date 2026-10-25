@@ -601,4 +601,9 @@ ok(!/PosDelivery|deliveryOrders|pos_delivery_kitchen_action|pos_enable_delivery|
 ok(!/GP หน้าร้าน|GP Delivery|report\.gp|report\.delivery|optDouble\("GP"/.test(posOnlyApi+posOnlyUi),'Native POS must not render Delivery GP or include its totals');
 ok(posOnlyApi.includes('&sales_channel=eq.POS&created_at=gte.'),'Native POS history must be scoped to POS at the server');
 
+const sharedNativeApi=read('shared/src/main/java/com/queuego/shared/QueueGoNativeApi.kt');
+ok(sharedNativeApi.includes('"qg_search_places"')&&sharedNativeApi.includes('reversePlaceAddress')&&sharedNativeApi.includes('"administrative_area"'),'Native reverse labels must use shared QueueGo Places authority');
+ok(!customerApi.includes('api.longdo.com')&&!riderApi.includes('api.longdo.com'),'Customer and Rider Native must not call Longdo reverse geocoding directly');
+ok(customerApi.includes('http.reversePlaceAddress(latitude, longitude)')&&riderApi.includes('placesApi.reversePlaceAddress(latitude, longitude)'),'Customer and Rider reverse labels must converge on the shared QueueGo Places client');
+
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
