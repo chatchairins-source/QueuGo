@@ -15,6 +15,7 @@ const LICENSE_URL = 'https://www.openstreetmap.org/copyright';
 const ATTRIBUTION = '© OpenStreetMap contributors';
 const OFFICIAL_PBF_URL = 'https://download.geofabrik.de/asia/thailand-latest.osm.pbf';
 const THAILAND_BOUNDS = { minLat: 5, maxLat: 21, minLon: 97, maxLon: 106 };
+const ROAD_HIGHWAYS = new Set(['motorway','trunk','primary','secondary','tertiary','residential','unclassified','service','living_street','pedestrian','road']);
 const CHUNK_ROWS = 250;
 const sha256 = data => crypto.createHash('sha256').update(data).digest('hex');
 const clean = (value, max = 240) => typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').slice(0, max) : '';
@@ -41,6 +42,7 @@ function classify(tags) {
   if (tags.public_transport) return { category: 'place', subcategory: 'public_transport' };
   if (['station', 'halt', 'tram_stop', 'subway_entrance'].includes(tags.railway)) return { category: 'place', subcategory: 'railway' };
   if (tags.highway === 'bus_stop') return { category: 'place', subcategory: 'bus_stop' };
+  if (ROAD_HIGHWAYS.has(tags.highway)) return { category: 'road', subcategory: tags.highway };
   if (tags.aeroway === 'terminal') return { category: 'place', subcategory: 'terminal' };
   if (tags.tourism) return { category: 'place', subcategory: clean(tags.tourism, 80) };
   if (tags.amenity) return { category: 'place', subcategory: clean(tags.amenity, 80) };
@@ -49,9 +51,40 @@ function classify(tags) {
 
 function geometryCoordinates(type, coordinates, line) {
   if (type === 'Point') return Array.isArray(coordinates) ? [coordinates] : [];
+  if (type === 'LineString') return Array.isArray(coordinates) ? coordinates : [];
   if (type === 'Polygon') return Array.isArray(coordinates) ? coordinates.flat(1) : [];
   if (type === 'MultiPolygon') return Array.isArray(coordinates) ? coordinates.flat(2) : [];
   return [];
+}
+
+function lineMidpoint(coordinates) {
+  if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+  const segments = [];
+  let total = 0;
+  for (let index = 1; index < coordinates.length; index++) {
+    const a = coordinates[index - 1], b = coordinates[index];
+    const midLat = (Number(a[1]) + Number(b[1])) * Math.PI / 360;
+    const dx = (Number(b[0]) - Number(a[0])) * Math.cos(midLat);
+    const dy = Number(b[1]) - Number(a[1]);
+    const length = Math.hypot(dx, dy);
+    segments.push({ a, b, length });
+    total += length;
+  }
+  if (!(total > 0)) return null;
+  let remaining = total / 2;
+  for (const segment of segments) {
+    if (remaining > segment.length) {
+      remaining -= segment.length;
+      continue;
+    }
+    const ratio = segment.length === 0 ? 0 : remaining / segment.length;
+    return [
+      Number(segment.a[0]) + (Number(segment.b[0]) - Number(segment.a[0])) * ratio,
+      Number(segment.a[1]) + (Number(segment.b[1]) - Number(segment.a[1])) * ratio
+    ];
+  }
+  const last = coordinates[coordinates.length - 1];
+  return [Number(last[0]), Number(last[1])];
 }
 
 function normalizeFeature(feature, line = 1) {
@@ -61,7 +94,8 @@ function normalizeFeature(feature, line = 1) {
   const id = clean(String(p.id ?? p['@id'] ?? ''), 24);
   if (!['node', 'way', 'relation'].includes(type) || !/^\d{1,20}$/.test(id)) throw new Error('missing stable OSM type/id at GeoJSONSeq record ' + line);
   const geometry = feature.geometry;
-  if (!geometry || !['Point', 'Polygon', 'MultiPolygon'].includes(geometry.type) || !Array.isArray(geometry.coordinates)) return { skipped: 'unsupported_geometry' };
+  if (!geometry || !['Point', 'LineString', 'Polygon', 'MultiPolygon'].includes(geometry.type) || !Array.isArray(geometry.coordinates)) return { skipped: 'unsupported_geometry' };
+  if (geometry.type === 'LineString' && geometry.coordinates.length < 2) throw new Error('invalid linestring at GeoJSONSeq record ' + line);
   if (geometry.type === 'Polygon') {
     if (!geometry.coordinates.length || geometry.coordinates.some(ring => !Array.isArray(ring) || ring.length < 4 || JSON.stringify(ring[0]) !== JSON.stringify(ring[ring.length - 1]))) throw new Error('invalid polygon ring at GeoJSONSeq record ' + line);
   }
@@ -69,8 +103,10 @@ function normalizeFeature(feature, line = 1) {
   const coordinates = geometryCoordinates(geometry.type, geometry.coordinates, line);
   if (!coordinates.length || coordinates.some(point => !Array.isArray(point) || point.length < 2 || !Number.isFinite(Number(point[0])) || !Number.isFinite(Number(point[1])))) throw new Error('invalid OSM geometry coordinates at GeoJSONSeq record ' + line);
   if (coordinates.some(point => Number(point[1]) < 5 || Number(point[1]) > 21 || Number(point[0]) < 97 || Number(point[0]) > 106)) return { skipped: 'outside_thailand' };
-  const longitude = geometry.type === 'Point' ? Number(geometry.coordinates[0]) : null;
-  const latitude = geometry.type === 'Point' ? Number(geometry.coordinates[1]) : null;
+  const linePoint = geometry.type === 'LineString' ? lineMidpoint(geometry.coordinates) : null;
+  if (geometry.type === 'LineString' && !linePoint) throw new Error('invalid road linestring at GeoJSONSeq record ' + line);
+  const longitude = geometry.type === 'Point' ? Number(geometry.coordinates[0]) : linePoint?.[0] ?? null;
+  const latitude = geometry.type === 'Point' ? Number(geometry.coordinates[1]) : linePoint?.[1] ?? null;
   const sourceTags = p.tags && typeof p.tags === 'object' ? p.tags : p;
   const allowed = ['shop','amenity','tourism','leisure','historic','craft','office','public_transport','railway','highway','aeroway','name','name:th','name:en','brand','addr:housenumber','addr:street','addr:suburb','addr:city_district','addr:subdistrict','addr:subdistrict:th','addr:district','addr:district:th','addr:county','addr:state','addr:province','addr:province:th','addr:city','addr:village','addr:hamlet','addr:place','addr:moo','addr:postcode'];
   const tags = {};
@@ -81,6 +117,8 @@ function normalizeFeature(feature, line = 1) {
   const mapping = classify(tags);
   const name = tags['name:th'] || tags.name || tags['name:en'] || tags.brand;
   if (!mapping || !name) return { skipped: 'not_named_searchable_place' };
+  if (geometry.type === 'LineString' && mapping.category !== 'road') return { skipped: 'unsupported_geometry' };
+  if (mapping.category === 'road' && geometry.type !== 'LineString') return { skipped: 'unsupported_geometry' };
   const sourceId = type + '/' + id;
   const address = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean).join(' ') || null;
   const payload = { tags, geometry };
@@ -89,7 +127,7 @@ function normalizeFeature(feature, line = 1) {
     canonical_name: name, name_th: tags['name:th'] || null, name_en: tags['name:en'] || null,
     aliases: [...new Set([tags.name, tags.brand].filter(v => v && v !== name))].slice(0, 8),
     category: mapping.category, subcategory: mapping.subcategory, latitude, longitude,
-    boundary_geojson: geometry.type === 'Point' ? null : JSON.stringify(geometry), address,
+    boundary_geojson: ['Polygon','MultiPolygon'].includes(geometry.type) ? JSON.stringify(geometry) : null, address,
     village: tags['addr:village'] || tags['addr:hamlet'] || tags['addr:place'] || null,
     moo: tags['addr:moo'] || null,
     subdistrict: tags['addr:subdistrict:th'] || tags['addr:subdistrict'] || tags['addr:suburb'] || tags['addr:city_district'] || null,
@@ -196,7 +234,7 @@ async function stageOsmGeoJsonSeq({ inputFile, pbfFile, outputDir, retrievedAt, 
   if ((await fsp.readdir(outputDir)).length) throw new Error('review output directory must be empty');
   const report = { source: SOURCE_KEY, license: SOURCE_LICENSE, attribution: ATTRIBUTION, license_url: LICENSE_URL, pbf_url: pbfUrl, snapshot_date: snapshotDate, retrieved_at: retrieved, pbf_sha256: actualPbfSha, geojsonseq_sha256: exportSha, execution: 'review_only_no_database_write', chunk_rows: chunkRows,
     summary: { records: 0, staged: 0, skipped_unsupported_geometry: 0, skipped_outside_thailand: 0, skipped_not_named_searchable_place: 0 },
-    coverage: { staged_by_category: {}, staged_by_geometry: { point: 0, boundary: 0 }, hierarchy_fields_present: { province: 0, district: 0, subdistrict: 0, village: 0, moo: 0 } }, chunks: [] };
+    coverage: { staged_by_category: {}, staged_by_geometry: { point: 0, road: 0, boundary: 0 }, hierarchy_fields_present: { province: 0, district: 0, subdistrict: 0, village: 0, moo: 0 } }, chunks: [] };
   const meta = { retrievedAt: retrieved, snapshotDate, pbfSha256: actualPbfSha, exportSha256: exportSha, pbfUrl };
   const rows = [], seen = new Set();
   let sequence = 0;
@@ -218,7 +256,7 @@ async function stageOsmGeoJsonSeq({ inputFile, pbfFile, outputDir, retrievedAt, 
       if (seen.has(row.source_record_id)) throw new Error('duplicate OSM object ' + row.source_record_id);
       seen.add(row.source_record_id); rows.push(row); report.summary.staged++;
       report.coverage.staged_by_category[row.category] = (report.coverage.staged_by_category[row.category] || 0) + 1;
-      report.coverage.staged_by_geometry[row.boundary_geojson ? 'boundary' : 'point']++;
+      report.coverage.staged_by_geometry[row.category === 'road' ? 'road' : (row.boundary_geojson ? 'boundary' : 'point')]++;
       for (const field of Object.keys(report.coverage.hierarchy_fields_present)) {
         if (row[field] !== null && row[field] !== undefined && row[field] !== '') report.coverage.hierarchy_fields_present[field]++;
       }
@@ -240,8 +278,8 @@ if (require.main === module) {
     process.exit(2);
   }
   stageOsmGeoJsonSeq({ inputFile: path.resolve(inputFile), pbfFile: path.resolve(pbfFile), outputDir: path.resolve(outputDir), retrievedAt, snapshotDate, pbfSha256, pbfUrl })
-    .then(report => console.error('staged ' + report.summary.staged + ' OSM point places in ' + report.chunks.length + ' review SQL chunk(s); export SHA-256 ' + report.geojsonseq_sha256))
+    .then(report => console.error('staged ' + report.summary.staged + ' OSM searchable places in ' + report.chunks.length + ' review SQL chunk(s); export SHA-256 ' + report.geojsonseq_sha256))
     .catch(error => { console.error(error.message); process.exitCode = 1; });
 }
 
-module.exports = { SOURCE_KEY, SOURCE_LICENSE, LICENSE_URL, ATTRIBUTION, OFFICIAL_PBF_URL, THAILAND_BOUNDS, CHUNK_ROWS, classify, normalizeFeature, parseGeoJsonSeq, renderOsmChunkSql, stageOsmGeoJsonSeq };
+module.exports = { SOURCE_KEY, SOURCE_LICENSE, LICENSE_URL, ATTRIBUTION, OFFICIAL_PBF_URL, THAILAND_BOUNDS, ROAD_HIGHWAYS, CHUNK_ROWS, classify, lineMidpoint, normalizeFeature, parseGeoJsonSeq, renderOsmChunkSql, stageOsmGeoJsonSeq };

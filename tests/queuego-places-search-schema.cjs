@@ -8,6 +8,7 @@ const operationalSync=renderQueueGoOperationalPlaceSync();
 const operationalMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261025080000_queuego_operational_places_runtime_sync.sql'),'utf8');
 const rpcHardening=fs.readFileSync(path.join(root,'supabase/migrations/20261025084500_queuego_public_read_rpc_hardening.sql'),'utf8');
 const sourceFkIndexes=fs.readFileSync(path.join(root,'supabase/migrations/20261025091500_queuego_places_source_fk_indexes.sql'),'utf8');
+const roadGrouping=fs.readFileSync(path.join(root,'supabase/migrations/20261025102500_queuego_road_search_grouping.sql'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 const has=(s,m)=>ok(sql.includes(s),m);
 
@@ -75,4 +76,12 @@ ok(rpcHardening.includes('qg_rpc_private.queuego_order_service_route_status_v2_i
 ok(rpcHardening.includes('revoke all on schema qg_rpc_private from public,anon,authenticated'),'private RPC schema must not inherit public access');
 ok(!/grant\s+select\s+on\s+public\.queuego_places\s+to\s+(anon|authenticated)/i.test(rpcHardening),'RPC hardening must not expose the Places table directly');
 ok(sourceFkIndexes.includes('queuego_places_source_idx')&&sourceFkIndexes.includes('queuego_place_aliases_source_idx'),'Places source foreign keys must retain covering indexes');
+ok(roadGrouping.includes('create or replace function qg_rpc_private.qg_search_places_impl'),'road grouping must modify only the hardened private search implementation');
+ok(roadGrouping.includes("r.category='road'")&&roadGrouping.includes('row_number() over(')&&roadGrouping.includes('road_group_rank'),'named road segments must be grouped at read time');
+ok(roadGrouping.includes("floor((r.latitude+90.0)*20.0)")&&roadGrouping.includes("floor((r.longitude+180.0)*20.0)"),'road grouping must use deterministic ~5 km spatial buckets');
+ok(roadGrouping.includes("regexp_replace(lower(btrim(r.canonical_name)),'[[:space:]]+','','g')")&&roadGrouping.includes("coalesce(r.subcategory,'road')"),'road grouping identity must preserve normalized road name and road class');
+ok(roadGrouping.includes('from deduped r where r.road_group_rank=1'),'only the best segment in each road search group may be returned');
+ok(roadGrouping.includes("lower(r.canonical_name)=r.term and r.category='administrative_area'")&&roadGrouping.includes("when 'province' then 0 when 'district' then 1 when 'subdistrict' then 2"),'road grouping must preserve exact administrative ranking');
+ok(roadGrouping.includes('s.allowed_redistribution')&&roadGrouping.includes("p.verification_status<>'rejected'"),'road grouping must preserve source redistribution and rejection gates');
+ok(!/grant\s+select\s+on\s+public\.queuego_places/i.test(roadGrouping)&&!/create\s+or\s+replace\s+function\s+public\.qg_search_places/i.test(roadGrouping),'road grouping migration must not expose backing tables or replace the public invoker wrapper');
 console.log(JSON.stringify({checks,failures:0,scope:'nationwide QueueGo Places schema, provenance/licensing, dedupe, spatial indexes, shared search security, single-authority verified Shop/Market runtime sync and ranking contract; no Production mutation'}));

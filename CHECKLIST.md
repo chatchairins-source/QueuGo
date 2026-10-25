@@ -1,3 +1,18 @@
+## 2026-10-25 QueueGo Places nationwide named-road staging — IN PROGRESS
+
+- Source starts from current web/main nationwide Places merge `2941dff7fdf5585963b09123695dc20afcd37da4`; old Rider local-road/navigation branches are not reused.
+- Root cause: Production QueueGo Places currently has 8,372 verified/non-rejected rows dominated by province/district/subdistrict data and only two operational POIs; named roads are absent. The reviewed OSM pipeline exported nodes/areas only, classified `highway` only for bus stops, and rejected LineString geometry, so street names could not become QueueGo Search candidates.
+- Added review-only named OSM highway-way export for controlled public road classes. PyOsmium now requests way-node locations and emits LineString geometry with stable OSM way ID/timestamp while preserving the existing controlled-tag/privacy boundary.
+- OSM staging now recognizes controlled named road classes as `category=road`, derives one deterministic representative point on each LineString for QueueGo Search, retains the full source geometry inside the payload checksum/provenance input, and never writes LineString into the MultiPolygon-only `queuego_places.boundary`.
+- Coverage reporting now separates point / road / boundary records. ODbL-1.0, © OpenStreetMap contributors attribution, official Geofabrik source validation, source-record mapping and field provenance remain unchanged. This branch still generates review SQL only and performs **no Production database write**.
+- Tests cover exporter LineString support, controlled highway classes, road midpoint, Thailand bounds, non-road LineString rejection, review SQL provenance and road coverage accounting.
+- Exact-head RC `40183874260` on `a504ed503aa6bbdb341be25c804edb41719d68eb` first failed only because the new road provenance assertion contained an invalid JavaScript regex literal. Fix `8e2376454e89169882636b880458e7b93574ab83` replaced that assertion with a literal string check.
+- Exact-head RC `40184098250` on `8e2376454e89169882636b880458e7b93574ab83`: **SUCCESS** — full npm regression, Admin/Merchant WebKit boot, Map Lab gestures, QueueGo Map place-search browser gate and Grocery renders all passed.
+- Added `20261025102500_queuego_road_search_grouping.sql` on top of the hardened private RPC only: every road source segment remains stored/auditable, while read-time `row_number()` returns one best segment per normalized road-name + road-class + ~5 km grid group. Non-road Places retain unique place-ID partitions and exact province/district/subdistrict ranking is preserved.
+- Read-only Production-engine synthetic SQL verified the grouping policy: adjacent same-name/same-class road segments collapse to one; a same-name road outside the grid remains separate; non-road rows do not collapse. No Production table/function/data was changed by this check.
+- Exact-head RC `40184498541` on `83411bf1270547afbad7a289bc2033643b6d48ef`: **SUCCESS** — full npm regression plus Admin/Merchant WebKit, Map Lab, QueueGo Map Search and Grocery gates passed.
+- **NEXT:** run the combined README/CHECKLIST checkpoint. Then obtain an exact date-specific Geofabrik Thailand PBF from the registered official source, compute SHA-256 locally, export/stage review SQL, inspect category/road/hierarchy coverage and provenance, and only then decide whether a reviewed migration is eligible. No Production import before those gates pass.
+
 ## 2026-10-25 Detailed Thailand service boundary revision 2 — DONE (Production cutover/readback)
 
 - Source HEAD `3eec1ee005e052d695db802433c70f7d0017ffe1`; exact-head QueueGo RC run `40173334398` SUCCESS.

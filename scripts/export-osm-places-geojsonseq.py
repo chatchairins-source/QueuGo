@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export minimal OSM Thailand point and area records as RFC 8142 GeoJSONSeq."""
+"""Export minimal OSM Thailand searchable points, areas and named road ways as RFC 8142 GeoJSONSeq."""
 import argparse
 import json
 import os
@@ -22,6 +22,11 @@ CATEGORY_TAGS = ALLOWED_TAGS - {
     if key.startswith('addr:') or key in {'name', 'name:th', 'name:en', 'brand'}
 }
 NAME_TAGS = {'name', 'name:th', 'name:en', 'brand'}
+ROAD_HIGHWAYS = {
+    'motorway', 'trunk', 'primary', 'secondary', 'tertiary',
+    'residential', 'unclassified', 'service', 'living_street',
+    'pedestrian', 'road'
+}
 
 
 class PlaceExporter(osmium.SimpleHandler):
@@ -31,12 +36,13 @@ class PlaceExporter(osmium.SimpleHandler):
         self.geometry_factory = osmium.geom.GeoJSONFactory()
         self.counts = {
             'nodes_written': 0,
+            'ways_written': 0,
             'areas_written': 0,
             'skipped_without_name_or_category': 0,
             'skipped_invalid_geometry': 0
         }
 
-    def emit(self, obj, osm_type, osm_id, geometry_factory):
+    def emit(self, obj, osm_type, osm_id, geometry_factory, counter_key):
         tags = {key: str(value) for key, value in dict(obj.tags).items()
                 if key in ALLOWED_TAGS and str(value).strip()}
         if not tags.keys() & NAME_TAGS or not tags.keys() & CATEGORY_TAGS:
@@ -55,18 +61,24 @@ class PlaceExporter(osmium.SimpleHandler):
         properties.update(tags)
         feature = {'type': 'Feature', 'properties': properties, 'geometry': geometry}
         self.handle.write('\x1e' + json.dumps(feature, ensure_ascii=False, separators=(',', ':')) + '\n')
-        self.counts['nodes_written' if osm_type == 'node' else 'areas_written'] += 1
+        self.counts[counter_key] += 1
 
     def node(self, node):
         if not node.location.valid():
             self.counts['skipped_invalid_geometry'] += 1
             return
-        self.emit(node, 'node', node.id, lambda: self.geometry_factory.create_point(node))
+        self.emit(node, 'node', node.id, lambda: self.geometry_factory.create_point(node), 'nodes_written')
+
+    def way(self, way):
+        highway = str(way.tags.get('highway', '')).strip()
+        if highway not in ROAD_HIGHWAYS:
+            return
+        self.emit(way, 'way', way.id, lambda: self.geometry_factory.create_linestring(way), 'ways_written')
 
     def area(self, area):
         osm_type = 'way' if area.from_way() else 'relation'
         self.emit(area, osm_type, area.orig_id(),
-                  lambda: self.geometry_factory.create_multipolygon(area))
+                  lambda: self.geometry_factory.create_multipolygon(area), 'areas_written')
 
 
 def main():
@@ -85,9 +97,10 @@ def main():
     try:
         with temporary.open('x', encoding='utf-8', newline='\n') as handle:
             exporter = PlaceExporter(handle)
-            # An area callback enables PyOsmium's node-location and multipolygon
-            # processing. Invalid geometries are counted and skipped by emit().
-            exporter.apply_file(str(args.pbf))
+            # locations=True supplies way-node coordinates for named road LineStrings;
+            # the area callback still enables multipolygon processing. Invalid
+            # geometries are counted and skipped by emit().
+            exporter.apply_file(str(args.pbf), locations=True)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, args.output)
