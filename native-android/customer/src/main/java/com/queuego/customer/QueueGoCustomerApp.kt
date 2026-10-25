@@ -1033,6 +1033,7 @@ private fun CustomerShell(
                     address = address,
                     note = note,
                     busy = busy,
+                    searchPlaces = { query -> api.searchPlaces(query) },
                     resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },
                     onBack = { screen = "cart" },
                     onGps = {
