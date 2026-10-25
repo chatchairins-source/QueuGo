@@ -12,9 +12,22 @@ def run(args, **kw):
     return subprocess.run(ADB+args, check=True, timeout=kw.pop("timeout",30), **kw)
 
 def nodes():
-    run(["shell","uiautomator","dump","/sdcard/qg-review.xml"], timeout=30)
-    raw=run(["exec-out","cat","/sdcard/qg-review.xml"],capture_output=True,timeout=30).stdout
-    return list(ET.fromstring(raw).iter("node"))
+    last_error=None
+    for _ in range(5):
+        dumped=subprocess.run(ADB+["shell","uiautomator","dump","/sdcard/qg-review.xml"],
+                              timeout=30,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        if dumped.returncode==0:
+            raw=subprocess.run(ADB+["exec-out","cat","/sdcard/qg-review.xml"],
+                               timeout=30,capture_output=True).stdout
+            try:
+                root=ET.fromstring(raw)
+                return list(root.iter("node"))
+            except ET.ParseError as failure:
+                last_error=failure
+        else:
+            last_error=f"uiautomator dump exited {dumped.returncode}"
+        time.sleep(0.7)
+    raise RuntimeError("Android UI hierarchy unavailable after retries") from last_error
 
 def rect(n):
     v=[int(x) for x in re.findall(r"\d+",n.get("bounds",""))]
