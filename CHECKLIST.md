@@ -1,10 +1,12 @@
-## 2026-10-25 Rider authenticated review — SDK install fix IN PROGRESS
+## 2026-10-25 Authenticated Android review — Merchant + Rider capture successor IN PROGRESS
 
-- Active Native review successor: `work-native-rider-auth-review-20261024`; workflow fix commit `6ff29dd2f1639f15aac86e0149b1e1c3eb0f0f30`, descendant of review HEAD `8bb7282f73a38e24ebbdcb511e58ac7910603b24`.
-- Root cause from run `40114494944`: SDK installation exited 1 because `yes` received SIGPIPE after sdkmanager finished, while `pipefail` treated the upstream pipe status as the step result. Keep sdkmanager's exit status authoritative for this license-input pipeline.
-- Review credentials were configured as repository Actions secrets. Credential-check passed, but no Android build or authenticated screenshot was produced in that failed run.
-- Status: workflow fix committed; exact-head CI is pending. No physical device evidence is claimed.
-- **NEXT:** inspect the workflow run for the newest descendant; continue to emulator login and verify all expected screenshots. Capture Merchant separately if the active workflow does not cover it; Customer requires an authorized Customer test account.
+- Branch: `work-native-rider-auth-review-20261024`.
+- Latest implementation HEAD before this checkpoint: `63708a959c0cdef28f2f2a733830372dba632ef8`; adds secret-gated Merchant login/tab screenshots, builds both native APKs, and moves KVM permission setup before emulator startup with bounded adb boot wait.
+- Evidence: workflow runs `40146515007` and `40146542196` passed secret check and built the Rider APK, then remained on emulator boot; logs were unavailable from the active job endpoint. No authenticated screenshots exist yet.
+- This is a mitigation for the observed boot stall; the exact emulator failure remains unconfirmed until the next run emits logs or succeeds.
+- Merchant capture is read-only and covers home, orders, products, promotions, and profile. Rider capture remains the existing 11-screen flow. Customer still needs an authorized Customer test account.
+- Status: IN PROGRESS. No physical-device or screenshot-complete claim.
+- **NEXT:** inspect the exact latest workflow run; verify APK build, emulator boot, Merchant/Rider login, then inspect screenshot artifacts and metadata. Fix the first concrete failure only.
 
 # 2026-10-24 Rider Android production schema mismatch — IN PROGRESS
 
