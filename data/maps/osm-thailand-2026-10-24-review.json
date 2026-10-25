@@ -1,0 +1,60 @@
+{
+  "source": "openstreetmap",
+  "provider": "Geofabrik GmbH",
+  "source_url": "https://download.geofabrik.de/asia/thailand-261024.osm.pbf",
+  "snapshot_date": "2026-10-24",
+  "retrieved_at": "2026-10-25T10:59:51Z",
+  "latest_last_modified": "Sat, 24 Oct 2026 23:00:29 GMT",
+  "pbf_bytes": 329280467,
+  "pbf_md5": "215e1ff30fe4d4adef2db3d664dab9da",
+  "pbf_sha256": "e8373240cf0be47cc641f2c8627e674064d8c47f4ff2a11f6a33fcbfc9a50949",
+  "geojsonseq_sha256": "afb4774d177b23c1d9353f19e6ba4d33736c01becfd8b82b9f1b801e6b8c4153",
+  "license": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "workflow_run_id": 40187013298,
+  "workflow_head_sha": "56e8400da7acffca8615f376fc7832ddcd8377b1",
+  "artifact_id": 12597445846,
+  "artifact_digest": "sha256:367a58e381749a7fdf02aee4992e1945dc8929b0135b0d9d293bae797f9032e9",
+  "artifact_size_bytes": 105796347,
+  "execution": "review_only_no_database_write",
+  "summary": {
+    "records": 302725,
+    "staged": 301333,
+    "skipped_unsupported_geometry": 532,
+    "skipped_outside_thailand": 1,
+    "skipped_not_named_searchable_place": 859
+  },
+  "coverage": {
+    "staged_by_category": {
+      "place": 97606,
+      "food": 32383,
+      "shopping": 20238,
+      "grocery": 11624,
+      "laundry": 660,
+      "market": 1490,
+      "road": 137332
+    },
+    "staged_by_geometry": {
+      "point": 113388,
+      "road": 137332,
+      "boundary": 50613
+    },
+    "hierarchy_fields_present": {
+      "province": 15471,
+      "district": 14677,
+      "subdistrict": 13729,
+      "village": 3339,
+      "moo": 3
+    }
+  },
+  "review_chunks": 1206,
+  "production_preflight": {
+    "eligible": false,
+    "reason": "OSM snapshot integrity and review staging passed, but nationwide hierarchy enrichment is incomplete. Production administrative Places currently have boundaries only for country; province/district/subdistrict rows have centroids only. OSM hierarchy tags cover only a minority of staged records, and DOPA village resources have no approved checksums yet.",
+    "required_next": [
+      "stage licensed province/district/subdistrict administrative boundary enrichment and verify containment coverage",
+      "retrieve and checksum official DOPA GIS-01 village payloads before village promotion",
+      "rerun search/performance/security release gates against reviewed enriched data before Production import"
+    ]
+  }
+}
