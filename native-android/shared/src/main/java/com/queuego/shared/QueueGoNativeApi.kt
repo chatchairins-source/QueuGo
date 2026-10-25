@@ -14,6 +14,17 @@ import java.nio.charset.StandardCharsets
 
 class QueueGoHttpException(val statusCode: Int, message: String) : Exception(message)
 
+data class QueueGoPlaceSearchResult(
+    val id: String,
+    val name: String,
+    val address: String?,
+    val latitude: Double,
+    val longitude: Double,
+    val category: String?,
+    val subcategory: String?,
+    val province: String?
+)
+
 private const val QUEUEGO_NATIVE_RESPONSE_MAX_BYTES = 12 * 1024 * 1024
 
 private fun InputStream.readQueueGoResponseBounded(
@@ -46,6 +57,29 @@ internal fun queueGoPlaceAddress(row: JSONObject): String? {
     }
     return parts.joinToString(" ").takeIf { it.isNotBlank() }
         ?: row.optString("canonical_name").trim().takeIf { it.isNotBlank() && it != "null" }
+}
+
+internal fun queueGoPlaceSearchResult(row: JSONObject): QueueGoPlaceSearchResult? {
+    val id = row.optString("place_id").trim()
+    val name = row.optString("canonical_name").trim()
+    val latitude = row.optDouble("latitude", Double.NaN)
+    val longitude = row.optDouble("longitude", Double.NaN)
+    if (
+        id.isBlank() || name.isBlank() ||
+        !latitude.isFinite() || !longitude.isFinite() ||
+        latitude !in 5.0..21.0 || longitude !in 97.0..106.0
+    ) return null
+    val address = queueGoPlaceAddress(row)?.takeIf { !it.equals(name, ignoreCase = true) }
+    return QueueGoPlaceSearchResult(
+        id = id,
+        name = name,
+        address = address,
+        latitude = latitude,
+        longitude = longitude,
+        category = row.optString("category").trim().takeIf { it.isNotBlank() && it != "null" },
+        subcategory = row.optString("subcategory").trim().takeIf { it.isNotBlank() && it != "null" },
+        province = row.optString("province").trim().takeIf { it.isNotBlank() && it != "null" }
+    )
 }
 
 internal fun queueGoReverseCandidate(rows: JSONArray): JSONObject? {
@@ -100,6 +134,35 @@ class QueueGoNativeApi {
 
     suspend fun functionPost(name: String, token: String, body: JSONObject): Any =
         withContext(Dispatchers.IO) { request("POST", "/functions/v1/" + name, token, body) }
+
+    suspend fun searchPlaces(
+        query: String,
+        token: String? = null,
+        limit: Int = 8
+    ): List<QueueGoPlaceSearchResult> {
+        val normalized = query.trim()
+        if (normalized.length < 2) return emptyList()
+        return try {
+            val rows = array(
+                rpc(
+                    "qg_search_places",
+                    token,
+                    JSONObject()
+                        .put("p_query", normalized)
+                        .put("p_limit", limit.coerceIn(1, 12))
+                )
+            )
+            buildList {
+                for (index in 0 until rows.length()) {
+                    queueGoPlaceSearchResult(rows.optJSONObject(index) ?: continue)?.let(::add)
+                }
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 
     suspend fun reversePlaceAddress(
         latitude: Double,
