@@ -145,6 +145,15 @@ ok(merchantMain.includes('QueueGoMerchantApp(')&&merchantMain.includes('setConte
 ok(source.includes('queuego_place_cash_order'),'Customer native checkout must use production cash-order RPC');
 const customerCartCheckout=read('customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt');
 ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(115.dp)')&&customerCartCheckout.includes('QgLocationPickerMap')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with checkout QueueGo Map and fixed action dock');
+ok(
+  customerCartCheckout.includes('searchPlaces: suspend (String) -> List<QueueGoPlaceSearchResult>') &&
+  customerCartCheckout.includes('QgPlaceSearchPanel(') &&
+  customerCartCheckout.indexOf('QgPlaceSearchPanel(') < customerCartCheckout.indexOf('QgLocationPickerMap(') &&
+  customerCartCheckout.includes('lastAutoAddress = label') &&
+  customerCartCheckout.includes('recenterPoint = selected?.takeIf') &&
+  source.includes('searchPlaces = { query -> api.searchPlaces(query) }'),
+  'Customer checkout place search must use shared QueueGo Places outside the map canvas'
+);
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
 ok(customerCartCheckout.includes('checkoutPending: Boolean')&&customerCartCheckout.includes('enabled = !checkoutPending')&&customerCartCheckout.includes('pendingCheckout: PendingCustomerCheckout?')&&customerCartCheckout.includes('p_expected_delivery_fee'),'Customer pending checkout must lock cart edits and render the persisted Production quote');
 ok(source.includes('loadActiveOrder(auth)')&&source.includes('&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned,picked_up,in_progress)'),'Customer checkout must preserve Production active-order guard before creating another order');
