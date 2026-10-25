@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
-const sql=read('QueueGo-Pilot-Service-Area.sql'),v2=read('supabase/migrations/20261025070500_queuego_nationwide_order_service_area_v2.sql'),customer=read('index.html'),laundry=read('laundry/index.html');
+const sql=read('QueueGo-Pilot-Service-Area.sql'),v2=read('supabase/migrations/20261025070500_queuego_nationwide_order_service_area_v2.sql'),cutover=read('supabase/migrations/20261025073000_queuego_nationwide_service_area_cutover.sql'),customer=read('index.html'),laundry=read('laundry/index.html');
 
 ok(sql.includes('create table if not exists public.queuego_service_areas'),'service area registry must exist');
 ok(sql.includes("'Buriram Pilot','บุรีรัมย์',14.99292,103.10804,20,15"),'Buriram pilot must have explicit coverage and delivery cap');
@@ -29,5 +29,8 @@ ok(v2.includes('max_direct_delivery_km'),'route distance cap must be separate fr
 ok(v2.includes("constraint queuego_order_rule_one_boundary"),'each order rule must have exactly one boundary authority');
 ok(v2.includes("set search_path=''"),'new public capability functions must use an empty search path');
 ok(!/\bdrop\s+(table|schema|column)\b/i.test(v2),'nationwide v2 foundation must remain additive');
+ok(cutover.includes('queuego_order_service_route_status_v2'),'legacy route-status contract must delegate to nationwide v2 after cutover');
+ok(cutover.includes("'area_id',v->'rule_id'")&&cutover.includes("'area_name',v->'rule_name'"),'cutover must preserve legacy area_id/area_name compatibility');
+ok(!/\bdrop\s+(table|schema|column)\b/i.test(cutover),'cutover must preserve legacy rollback data and schema');
 
 console.log(JSON.stringify({checks,failures:0,scope:'legacy pilot guard plus additive nationwide polygon service-area authority, independent map/registration capability, route cap and shadow decision contract'}));
