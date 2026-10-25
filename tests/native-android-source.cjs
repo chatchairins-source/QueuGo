@@ -151,7 +151,8 @@ ok(
   customerCartCheckout.indexOf('QgPlaceSearchPanel(') < customerCartCheckout.indexOf('QgLocationPickerMap(') &&
   customerCartCheckout.includes('lastAutoAddress = label') &&
   customerCartCheckout.includes('recenterPoint = selected?.takeIf') &&
-  source.includes('searchPlaces = { query -> api.searchPlaces(query) }'),
+  source.includes('"checkout" -> CustomerCheckoutScreen(') &&
+  source.includes('busy = busy,\n                    searchPlaces = { query -> api.searchPlaces(query) },\n                    resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },'),
   'Customer checkout place search must use shared QueueGo Places outside the map canvas'
 );
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
