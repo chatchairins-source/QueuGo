@@ -570,6 +570,9 @@ ok(
   launchQa.includes('"send-trim-memory", pkg, "RUNNING_CRITICAL"') &&
   launchQa.includes('"send-trim-memory", pkg, "COMPLETE"') &&
   launchQa.includes('adb + ["shell", "am", "kill", pkg]') &&
+  launchQa.includes('adb + ["shell", "am", "kill-all"]') &&
+  !launchQa.includes('"run-as", pkg, "kill", "-9"') &&
+  launchQa.includes('original_pids.intersection(current_pids)') &&
   launchQa.includes('verify_three_role_system_kill_recovery()'),
   'Android emulator lifecycle evidence must exercise Customer/Merchant/Rider background system-kill and cold recreation'
 );

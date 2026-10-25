@@ -759,48 +759,54 @@ def verify_three_role_system_kill_recovery():
         am_kill = subprocess.run(adb + ["shell", "am", "kill", pkg], capture_output=True, text=True, timeout=20)
         kill_attempts.append({"mode": "am-kill", "returncode": am_kill.returncode, "stdout": am_kill.stdout, "stderr": am_kill.stderr})
 
-        # ActivityManager kill is asynchronous and on some AOSP emulator builds a
-        # WebView/renderer binding can keep the debuggable app process alive even
-        # after HOME + COMPLETE trim. Poll first. If it is still alive, deliver
-        # SIGKILL as the app UID via run-as. This models abrupt LMK/process death
-        # without force-stop semantics, so the subsequent start still exercises
-        # ordinary cold recreation rather than Android's stopped-package state.
+        # ActivityManager package kill is asynchronous. Poll the original process
+        # identity first. On some AOSP emulator builds `am kill <package>` can leave
+        # a cached debuggable process alive even after HOME + COMPLETE trim.
+        #
+        # Do NOT use `run-as kill -9` as a fallback: Android SELinux intentionally
+        # keeps the run-as domain from signalling the untrusted-app process domain.
+        # Use ActivityManager's system-owned background kill-all path instead. It
+        # preserves non-force-stop semantics and still models LMK/process death.
+        original_pids = set(before_pids)
         kill_mode = "am-kill"
         kill_deadline = time.time() + 5
-        remaining = package_pids_optional(pkg)
-        while remaining and time.time() < kill_deadline:
+        observed = package_pids_optional(pkg)
+        while original_pids.intersection(observed) and time.time() < kill_deadline:
+            pid_observations.append({"time": time.time(), "pids": observed})
             time.sleep(0.25)
-            remaining = package_pids_optional(pkg)
-        if remaining:
-            kill_mode = "run-as-sigkill"
-            for pid in remaining:
-                killed = subprocess.run(
-                    adb + ["shell", "run-as", pkg, "kill", "-9", str(pid)],
-                    capture_output=True,
-                    text=True,
-                    timeout=15,
-                )
-                kill_attempts.append({"mode": "run-as-sigkill", "pid": pid, "returncode": killed.returncode,
-                                      "stdout": killed.stdout, "stderr": killed.stderr})
+            observed = package_pids_optional(pkg)
+
+        if original_pids.intersection(observed):
+            kill_mode = "am-kill-all"
+            killed = subprocess.run(
+                adb + ["shell", "am", "kill-all"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+            kill_attempts.append({
+                "mode": "am-kill-all",
+                "returncode": killed.returncode,
+                "stdout": killed.stdout,
+                "stderr": killed.stderr,
+            })
             kill_deadline = time.time() + 5
             observed = package_pids_optional(pkg)
-            while observed and time.time() < kill_deadline:
+            while original_pids.intersection(observed) and time.time() < kill_deadline:
                 pid_observations.append({"time": time.time(), "pids": observed})
                 time.sleep(0.25)
                 observed = package_pids_optional(pkg)
 
         (directory / "kill-attempts.json").write_text(json.dumps(kill_attempts, indent=2))
         (directory / "kill-pid-observations.json").write_text(json.dumps(pid_observations, indent=2))
-        dead = subprocess.run(
-            adb + ["shell", "pidof", pkg],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
+        current_pids = package_pids_optional(pkg)
+        original_survivors = sorted(original_pids.intersection(current_pids))
         (directory / "after-kill-pid.txt").write_text(
-            "mode=" + kill_mode + "\n" + dead.stdout + dead.stderr
+            "mode=" + kill_mode + "\n" +
+            "current=" + " ".join(current_pids) + "\n" +
+            "original_survivors=" + " ".join(original_survivors) + "\n"
         )
-        if dead.stdout.strip():
+        if original_survivors:
             for label, command in [
                 ("kill-failure-logcat.txt", ["logcat", "-d", "-v", "threadtime"]),
                 ("kill-failure-processes.txt", ["shell", "ps", "-A", "-o", "USER,PID,PPID,NAME,ARGS"]),
@@ -808,7 +814,9 @@ def verify_three_role_system_kill_recovery():
             ]:
                 evidence = subprocess.run(adb + command, capture_output=True, text=True, timeout=20)
                 (directory / label).write_text(evidence.stdout + evidence.stderr)
-        assert not dead.stdout.strip(), f"{role} process did not die after system-style abrupt kill"
+        assert not original_survivors, (
+            f"{role} original process survived system-style abrupt kill: {original_survivors}"
+        )
 
         relaunched = run(
             adb + ["shell", "am", "start", "-W", "-n", component_name],

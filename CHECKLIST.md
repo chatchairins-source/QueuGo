@@ -1,5 +1,10 @@
 ## 2026-10-25 Android Web-Parity Rebuild — IN PROGRESS
 
+- **Rider Web-parity component checkpoint:** `9097e5c9a334a4c60bc140aaadd833448780e083` adds dedicated Web-Golden-Master Ready + Offer surfaces. Native Pilot run `40212139566` passed full regression, source integrity, Kotlin/unit, all three APK builds, 16 KB packaging and WebView rejection; emulator UI matrices also passed before the final lifecycle helper failure.
+- **Exact-head lifecycle root cause:** evidence artifact `12606960335` shows Customer original PID `4827` survived `am kill`; the old fallback `run-as ... kill -9` returned SELinux denial (`runas_app` may not signal `untrusted_app`). This is a CI helper fault, not a Rider parity crash.
+- **Fix in progress:** replace the invalid run-as SIGKILL fallback with ActivityManager-owned `am kill-all`, require the original PID set to disappear, preserve non-force-stop semantics, crash checks and cold relaunch verification.
+- **NEXT:** run exact-head Native Pilot on the lifecycle-helper fix; only after it passes, wire `RiderWebParityReadyCard` and `RiderWebParityOfferCard` into the live Rider Home and retire the legacy call sites.
+
 - Branch: `work-native-web-parity-rebuild-20261025`.
 - Starting parent: `65918d8ca7dbe720127e1c915a0483c3f209cb01`.
 - Mission checkpoint: `a4c9e95711c114011c77431b2225f347e6577135` adds `docs/native-web-parity-rebuild-20261025.md`.
