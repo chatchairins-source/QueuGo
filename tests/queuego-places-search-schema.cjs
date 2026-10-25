@@ -7,6 +7,7 @@ const {renderQueueGoOperationalPlaceSync}=require('../scripts/generate-queuego-s
 const operationalSync=renderQueueGoOperationalPlaceSync();
 const operationalMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261025080000_queuego_operational_places_runtime_sync.sql'),'utf8');
 const rpcHardening=fs.readFileSync(path.join(root,'supabase/migrations/20261025084500_queuego_public_read_rpc_hardening.sql'),'utf8');
+const sourceFkIndexes=fs.readFileSync(path.join(root,'supabase/migrations/20261025091500_queuego_places_source_fk_indexes.sql'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 const has=(s,m)=>ok(sql.includes(s),m);
 
@@ -73,4 +74,5 @@ ok(rpcHardening.includes('language sql stable security invoker')&&rpcHardening.i
 ok(rpcHardening.includes('qg_rpc_private.queuego_order_service_route_status_v2_impl')&&rpcHardening.includes('qg_rpc_private.queuego_country_capability_impl'),'route and country capability definers must also be hidden behind private implementations');
 ok(rpcHardening.includes('revoke all on schema qg_rpc_private from public,anon,authenticated'),'private RPC schema must not inherit public access');
 ok(!/grant\s+select\s+on\s+public\.queuego_places\s+to\s+(anon|authenticated)/i.test(rpcHardening),'RPC hardening must not expose the Places table directly');
+ok(sourceFkIndexes.includes('queuego_places_source_idx')&&sourceFkIndexes.includes('queuego_place_aliases_source_idx'),'Places source foreign keys must retain covering indexes');
 console.log(JSON.stringify({checks,failures:0,scope:'nationwide QueueGo Places schema, provenance/licensing, dedupe, spatial indexes, shared search security, single-authority verified Shop/Market runtime sync and ranking contract; no Production mutation'}));
