@@ -1,8 +1,10 @@
 package com.queuego.rider
 
+import android.Manifest
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -65,6 +67,36 @@ private fun riderQueueGoMapServiceBaseUrl(context: Context): String? = runCatchi
 private fun validNavigationPoint(lat: Double?, lon: Double?): NavigationMapPoint? {
     if (lat == null || lon == null) return null
     return NavigationMapPoint(lat, lon).takeIf { it.valid }
+}
+
+private fun riderLastKnownPresentationCamera(context: Context): NavigationMapCamera? {
+    val appContext = context.applicationContext
+    val fine = appContext.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+    val coarse = appContext.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+    if (!fine && !coarse) return null
+
+    val manager = appContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        ?: return null
+    val location = runCatching {
+        manager.getProviders(true)
+            .mapNotNull { provider ->
+                runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
+            }
+            .maxByOrNull { it.time }
+    }.getOrNull() ?: return null
+    val point = NavigationMapPoint(location.latitude, location.longitude)
+        .takeIf { it.valid } ?: return null
+
+    // Presentation-only seed: this never enters RiderNavigationLocationStore and is
+    // therefore never treated as dispatch/server-authoritative location.
+    return NavigationMapCamera(
+        point = point,
+        zoom = 17,
+        bearingDegrees = null,
+        tiltDegrees = 0f
+    )
 }
 
 internal fun riderNavigationAutoFollow(
@@ -288,7 +320,8 @@ internal fun QueueGoRiderNavigationMap(
             }
             camera to mode
         }
-        initialCamera = restored.first ?: fallbackCamera
+        val presentationCamera = riderLastKnownPresentationCamera(context)
+        initialCamera = presentationCamera ?: restored.first ?: fallbackCamera
         initialViewMode = restored.second
         persistenceHydrated = true
     }
