@@ -55,6 +55,27 @@ class QueueGoPlacesReverseTest {
         assertEquals("พระสิงห์ เมืองเชียงใหม่ เชียงใหม่ 50200", result?.address)
     }
 
+    @Test fun buildsConsistentPlaceSelectionLabel() {
+        assertEquals(
+            "พระสิงห์ เมืองเชียงใหม่ เชียงใหม่ 50200",
+            queueGoPlaceLabel(
+                QueueGoPlaceSearchResult(
+                    "id", "พระสิงห์", "พระสิงห์ เมืองเชียงใหม่ เชียงใหม่ 50200",
+                    18.7883, 98.9853, "administrative_area", "subdistrict", "เชียงใหม่"
+                )
+            )
+        )
+        assertEquals(
+            "สนามบินเชียงใหม่ 60 ถนนมหิดล เชียงใหม่",
+            queueGoPlaceLabel(
+                QueueGoPlaceSearchResult(
+                    "id2", "สนามบินเชียงใหม่", "60 ถนนมหิดล เชียงใหม่",
+                    18.7668, 98.9626, "transport", "airport", "เชียงใหม่"
+                )
+            )
+        )
+    }
+
     @Test fun rejectsPlaceSearchResultOutsideThailandBounds() {
         val row = JSONObject()
             .put("place_id", "foreign")
