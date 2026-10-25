@@ -256,6 +256,7 @@ internal fun QueueGoRiderNavigationMap(
     demandZones: List<RiderDemandZone> = emptyList(),
     recenterSignal: Int,
     overviewSignal: Int = 0,
+    compassResetSignal: Int = 0,
     fallbackCamera: NavigationMapCamera? = null,
     viewportInsets: NavigationViewportInsets = NavigationViewportInsets(),
     onMapReady: (Boolean) -> Unit,
@@ -623,6 +624,7 @@ internal fun QueueGoRiderNavigationMap(
         modifier = modifier,
         initialCamera = initialCamera,
         onMapReady = onMapReady,
+        compassResetSignal = compassResetSignal,
         onUserGesture = {
             if (riderFix?.point?.valid == true) {
                 viewModeState = viewModeController.onUserGesture()
