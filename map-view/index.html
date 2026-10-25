@@ -258,7 +258,7 @@
   </section>
 
   <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
-  <script src="../queuego-map-web.js?v=20261024-addresscompact1&camera3d=20261024"></script>
+  <script src="../queuego-map-web.js?v=20261024-addresscompact1&camera3d=20261024&boundary=20261025"></script>
   <script>
   (function(){
     "use strict";
@@ -292,7 +292,7 @@
     map.touchZoomRotate.enableRotation();
     map.touchPitch.enable();
     map.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),"top-right");
-    map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
+    map.addControl(new maplibregl.AttributionControl({compact:true,customAttribution:'ขอบเขตบริการ: <a href="https://www.geoboundaries.org">geoBoundaries</a> · <a href="../docs/map-data.html">ข้อมูลแผนที่</a>'}),"bottom-right");
 
     const state={
       mode:null,pinMode:false,selected:null,address:null,nearbyVillages:[],nearbyRoads:[],

@@ -1,3 +1,11 @@
+## 2026-10-25 Detailed boundary revision 2 — IN PROGRESS
+
+- Parent published source `840f2923` passed hosted RC `40171718136`. Preserved its exact source tree and forward-merged its canonical Git object locally.
+- Candidate passed read-only Production PostGIS: ST_IsValid true, 70 polygons, 93,940 vertices, all 14 paired positive/negative containment expectations true. Ranong/Tao/Phi Phi/Lipe and the separately sourced Lanta clinic point are inside; foreign/sea points are outside. Original approximate Lanta sample remains diagnostic rather than asserted land.
+- Added a Supabase-CLI-created migration and reproducible checksum-pinned generator. Revision 2 uses a separate custom ODbL boundary, preserves original master Places/source and revision 1, copies the prior verticals/cap/specificity, rejects conflicting successors, deactivates only its predecessor and records an audit_logs release receipt atomically. Reruns do not resurrect deactivated rules.
+- Added public map-data attribution/download/license/checksum page plus compact attribution links on shared maps. No layout redesign. Isolated release regression 23 PASS; focused search/UI/camera 16/5/77 PASS. Full npm regression is running; exact-source hosted CI and release apply remain pending.
+- NEXT: finish full regression, publish this exact descendant and obtain green hosted RC; apply the reviewed migration, verify live coast/island/foreign/sea/distance decisions, merge/deploy the attribution source and read back actual public bytes. Then continue native shared search/reverse and map-data coverage. No Production mutation has occurred in this checkpoint.
+
 ## 2026-10-25 Coastal/island service-area audit — IN PROGRESS
 
 - Recovered current main `a3949038`, published #704 head `0c3e9252` and local checkpoint `d119ceb7`; forward-merged the published head without replacing newer source. Exact-head hosted RC `40170835613` succeeded on `0c3e9252`.

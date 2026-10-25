@@ -1,3 +1,9 @@
+## 2026-10-25 Detailed land boundary release prepared
+
+- `840f2923` hosted RC `40171718136` passed. Exact pinned geoBoundaries component passed real read-only PostGIS validity and all 14 positive/negative paired containment expectations.
+- CLI-created migration `20261025071356_queuego_detailed_thailand_service_boundary.sql` atomically inserts custom-boundary revision 2 with original cap/services/specificity, keeps the old Natural Earth master/source intact, records audit_logs provenance and deactivates only revision 1. Source year 2017 and ODbL are explicitly disclosed in docs/map-data.html; original shape remains available at its pinned source URL.
+- Local migration regression uses disposable PGlite test doubles for spatial functions (actual spatial proof is separate PostGIS read-only). It verifies audit, CAS, idempotency, RLS and atomic failure. NEXT: exact source CI, controlled migration apply/readback and public attribution deployment before claiming this boundary fix deployed.
+
 ## 2026-10-25 Country coverage has coastal/island gaps
 
 - Continue #704 from its latest descendant, preserving main and the red Rider compass. Hosted RC `40170835613` on `0c3e9252` passed. The live 77/928/7364 hierarchy exists, but that is not nationwide delivery acceptance.

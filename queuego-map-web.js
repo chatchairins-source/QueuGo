@@ -1,5 +1,6 @@
 (function(){
 'use strict';
+const QG_MAP_DATA_URL=String(document.currentScript?.src||'queuego-map-web.js').replace(/[^/]*$/,'')+'docs/map-data.html';
 const QG_OSM_STYLE={
   version:8,
   sources:{
@@ -7,7 +8,7 @@ const QG_OSM_STYLE={
       type:'raster',
       tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
       tileSize:256,
-      attribution:'© OpenStreetMap contributors'
+      attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
     }
   },
   layers:[
@@ -497,7 +498,7 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
     try{map.touchPitch?.enable?.()}catch(_){}
   }
   try{map.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),'top-right')}catch(_){}
-  try{map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right')}catch(_){}
+  try{map.addControl(new maplibregl.AttributionControl({compact:true,customAttribution:'ขอบเขตบริการ: <a href="https://www.geoboundaries.org">geoBoundaries</a> · <a href="'+QG_MAP_DATA_URL+'">ข้อมูลแผนที่</a>'}),'bottom-right')}catch(_){}
   attachPlaces(map,{searchControl:!!searchControl});
   return map;
 }
