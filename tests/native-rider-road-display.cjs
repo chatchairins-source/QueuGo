@@ -18,7 +18,15 @@ assert(map.includes('renderRoutes(activeMap, state, force)') && map.includes('ac
 const resetSurfaceAt=map.indexOf('private fun resetSurface()');
 const disposeAt=map.indexOf('fun dispose()');
 assert(resetSurfaceAt>=0 && disposeAt>resetSurfaceAt && map.includes('resetSurface()'));
-assert(map.includes('stopMarkers.clear()') && map.includes('demandMarkers.clear()') && map.includes('riderMarker = null') && map.includes('view?.onDestroy()') && map.includes('view = null'));
+assert(
+  map.includes('stopMarkers.clear()') &&
+  map.includes('demandMarkers.clear()') &&
+  map.includes('riderSource = null') &&
+  map.includes('riderStyleInitialized = false') &&
+  map.includes('riderPosition = null') &&
+  map.includes('view?.onDestroy()') &&
+  map.includes('view = null')
+);
 assert(!map.includes('clearPin()'));
 require('./native-rider-google-maps-return.cjs');
 require('./native-rider-route-bundle-parity.cjs');
