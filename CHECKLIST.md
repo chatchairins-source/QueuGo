@@ -1,12 +1,12 @@
-## 2026-10-25 Authenticated Android review — Merchant + Rider capture IN PROGRESS
+## 2026-10-25 Authenticated Android review — Rider UI-tree retry in progress
 
-- Branch: `work-native-rider-auth-review-20261024`; newest capture fix HEAD: `aab0a2b4f01112b1c525365816dac405933f9ef4`.
-- Confirmed in run `40147149275` at source `a01d609c964309c4893712fa4fc7d08b82ce26f6`: both Rider and Merchant debug APKs built successfully; Android Emulator booted; Rider authenticated. 10 Rider PNGs were uploaded (home map, messages/chat, messages/notifications, earnings 3 periods, profile, learning, safety, support).
-- First failure: support dialog has a drawn X but no accessible text node named `ปิด`; the capture script incorrectly required that label and stopped before diagnostics. Fix now dismisses via accessible close label or Android Back and verifies dialog closure.
-- Workflow now runs the Merchant read-only capture after Rider even if Rider capture fails, provided emulator boot succeeded; this prevents one app's screen failure from suppressing the other app's evidence.
-- No Merchant screenshots or Rider diagnostics screenshot verified yet. Customer app needs an authorized Customer test account. No physical-device evidence claimed.
+- Branch: `work-native-rider-auth-review-20261024`; Rider hierarchy retry commit `2e1a3f6e0ee12c76947e39cb0b70c109a34cb283`.
+- Run `40147614344` at `b182dbda560e1fd17081bf2a915c8a5868b0357b` PASSED end to end: actual Rider + Merchant debug APK builds, Android Emulator boot, Rider 11/11 screens, Merchant 5/5 screens, and both artifacts uploaded.
+- Newer run `40147630049` passed Merchant capture (5/5) but Rider failed at login because UIAutomator reported `null root node` and returned empty XML during a screen transition. This is intermittent; earlier run on the same Rider source completed all screens.
+- Fix: Rider UI hierarchy dump now retries up to five times on command/parse failure. Workflow continues with Merchant after Rider failure if emulator boot succeeded.
+- No physical-device proof. Customer app still needs an authorized Customer test account.
 - Status: IN PROGRESS.
-- **NEXT:** inspect exact latest workflow after `aab0a2b`; validate Rider diagnostics capture and Merchant login/screens; download and inspect both screenshot artifacts/metadata.
+- **NEXT:** inspect exact latest run after retry commit; verify 11 Rider + 5 Merchant screenshots and metadata, then download/inspect final artifacts.
 
 # 2026-10-24 Rider Android production schema mismatch — IN PROGRESS
 
