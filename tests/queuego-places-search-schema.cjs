@@ -6,6 +6,7 @@ const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
 const {renderQueueGoOperationalPlaceSync}=require('../scripts/generate-queuego-shop-place-sync.cjs');
 const operationalSync=renderQueueGoOperationalPlaceSync();
 const operationalMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261025080000_queuego_operational_places_runtime_sync.sql'),'utf8');
+const rpcHardening=fs.readFileSync(path.join(root,'supabase/migrations/20261025084500_queuego_public_read_rpc_hardening.sql'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 const has=(s,m)=>ok(sql.includes(s),m);
 
@@ -67,4 +68,9 @@ ok(operationalSync.includes('queuego_place_source_records')&&operationalSync.inc
 ok(!/\bphone\b/i.test(operationalSync),'public Places runtime sync must never copy Merchant phone numbers');
 ok(!/grant\s+execute/i.test(operationalSync),'private operational sync functions must never be exposed through EXECUTE grants');
 ok(operationalMigration.includes('qg_private.queuego_upsert_operational_place(')&&operationalMigration.includes('queuego_shop_place_sync_trg')&&operationalMigration.includes('queuego_market_place_sync_trg'),'materialized Production migration must retain the single operational Places authority and both runtime triggers');
+ok(rpcHardening.includes('create schema if not exists qg_rpc_private'),'public read RPC privileged implementations must live outside the exposed public schema');
+ok(rpcHardening.includes('language sql stable security invoker')&&rpcHardening.includes('qg_rpc_private.qg_search_places_impl'),'public place search must be an invoker wrapper over the private implementation');
+ok(rpcHardening.includes('qg_rpc_private.queuego_order_service_route_status_v2_impl')&&rpcHardening.includes('qg_rpc_private.queuego_country_capability_impl'),'route and country capability definers must also be hidden behind private implementations');
+ok(rpcHardening.includes('revoke all on schema qg_rpc_private from public,anon,authenticated'),'private RPC schema must not inherit public access');
+ok(!/grant\s+select\s+on\s+public\.queuego_places\s+to\s+(anon|authenticated)/i.test(rpcHardening),'RPC hardening must not expose the Places table directly');
 console.log(JSON.stringify({checks,failures:0,scope:'nationwide QueueGo Places schema, provenance/licensing, dedupe, spatial indexes, shared search security, single-authority verified Shop/Market runtime sync and ranking contract; no Production mutation'}));
