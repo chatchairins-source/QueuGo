@@ -225,6 +225,7 @@ internal fun CustomerExpressScreen(
             location = original,
             address = original?.address.orEmpty(),
             busy = false,
+            searchPlaces = { query -> customerApi.searchPlaces(query) },
             resolveAddress = { lat, lng -> customerApi.reverseGeocode(lat, lng) },
             onSave = {
                 if (editing == "pickup") pickup = it else destination = it
