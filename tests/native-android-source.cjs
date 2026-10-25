@@ -11,6 +11,7 @@ for(const p of [
   'shared/src/main/java/com/queuego/shared/QueueGoDesign.kt',
   'shared/src/main/java/com/queuego/shared/NativeChatImage.kt',
   'shared/src/main/java/com/queuego/shared/QueueGoAccountDeletion.kt',
+  'shared/src/main/java/com/queuego/shared/QueueGoPlaceSearch.kt',
   'customer/build.gradle.kts',
   'customer/src/main/AndroidManifest.xml',
   'merchant/build.gradle.kts',
@@ -604,9 +605,34 @@ ok(!/GP หน้าร้าน|GP Delivery|report\.gp|report\.delivery|optDoub
 ok(posOnlyApi.includes('&sales_channel=eq.POS&created_at=gte.'),'Native POS history must be scoped to POS at the server');
 
 const sharedNativeApi=read('shared/src/main/java/com/queuego/shared/QueueGoNativeApi.kt');
+const sharedPlaceSearch=read('shared/src/main/java/com/queuego/shared/QueueGoPlaceSearch.kt');
 const customerApi=read('customer/src/main/java/com/queuego/customer/CustomerApi.kt');
+const riderDestinationDialog=read('rider/src/main/java/com/queuego/rider/RiderMyDestinationDialog.kt');
 ok(sharedNativeApi.includes('"qg_search_places"')&&sharedNativeApi.includes('reversePlaceAddress')&&sharedNativeApi.includes('"administrative_area"'),'Native reverse labels must use shared QueueGo Places authority');
 ok(!customerApi.includes('api.longdo.com')&&!riderApi.includes('api.longdo.com'),'Customer and Rider Native must not call Longdo reverse geocoding directly');
 ok(customerApi.includes('http.reversePlaceAddress(latitude, longitude)')&&riderApi.includes('placesApi.reversePlaceAddress(latitude, longitude)'),'Customer and Rider reverse labels must converge on the shared QueueGo Places client');
+ok(
+  sharedNativeApi.includes('suspend fun searchPlaces(') &&
+  sharedNativeApi.includes('.put("p_query", normalized)') &&
+  sharedNativeApi.includes('QueueGoPlaceSearchResult') &&
+  sharedPlaceSearch.includes('fun QgPlaceSearchPanel(') &&
+  sharedPlaceSearch.includes('delay(300)'),
+  'Native text place search must use one shared debounced QueueGo Places authority'
+);
+ok(
+  customerLocationPicker.includes('QgPlaceSearchPanel(') &&
+  merchantSetup.includes('QgPlaceSearchPanel(') &&
+  riderDestinationDialog.includes('QgPlaceSearchPanel(') &&
+  customerLocationPicker.indexOf('QgPlaceSearchPanel(') < customerLocationPicker.indexOf('QgLocationPickerMap(') &&
+  merchantSetup.indexOf('QgPlaceSearchPanel(') < merchantSetup.indexOf('QgLocationPickerMap(') &&
+  riderDestinationDialog.indexOf('QgPlaceSearchPanel(') < riderDestinationDialog.indexOf('QgLocationPickerMap('),
+  'Customer Merchant Rider place search must stay outside the map canvas'
+);
+ok(
+  customerApi.includes('http.searchPlaces(query)') &&
+  merchantApiSource.includes('http.searchPlaces(query)') &&
+  riderApi.includes('placesApi.searchPlaces(query)'),
+  'Customer Merchant Rider must converge on the shared QueueGo Places text search client'
+);
 
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
