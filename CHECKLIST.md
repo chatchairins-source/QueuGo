@@ -1,12 +1,12 @@
 ## 2026-10-25 Authenticated Android review — Merchant + Rider capture successor IN PROGRESS
 
 - Branch: `work-native-rider-auth-review-20261024`.
-- Latest implementation HEAD before this checkpoint: `63708a959c0cdef28f2f2a733830372dba632ef8`; adds secret-gated Merchant login/tab screenshots, builds both native APKs, and moves KVM permission setup before emulator startup with bounded adb boot wait.
-- Evidence: workflow runs `40146515007` and `40146542196` passed secret check and built the Rider APK, then remained on emulator boot; logs were unavailable from the active job endpoint. No authenticated screenshots exist yet.
-- This is a mitigation for the observed boot stall; the exact emulator failure remains unconfirmed until the next run emits logs or succeeds.
-- Merchant capture is read-only and covers home, orders, products, promotions, and profile. Rider capture remains the existing 11-screen flow. Customer still needs an authorized Customer test account.
+- Latest capture implementation HEAD: `a01d609c964309c4893712fa4fc7d08b82ce26f6`; includes Merchant login accessibility labels for Compose fields.
+- Workflow/checklist checkpoint: `c33cb7cb52859f0adf2e3aea113434e3ed11ddfc`; builds both native APKs, configures KVM before emulator startup, and bounds adb boot wait. Secret checks passed on each run.
+- Earlier exact-head builds created the Rider APK but stayed at emulator boot; no screenshot artifacts were captured. Latest exact-head run `40147149275` is building Rider and Merchant APKs.
+- Merchant capture covers home, orders, products, promotions, and profile; Rider capture retains the 11-screen flow. Customer still needs an authorized Customer test account.
 - Status: IN PROGRESS. No physical-device or screenshot-complete claim.
-- **NEXT:** inspect the exact latest workflow run; verify APK build, emulator boot, Merchant/Rider login, then inspect screenshot artifacts and metadata. Fix the first concrete failure only.
+- **NEXT:** inspect exact latest run, verify emulator boot and both authenticated capture scripts, then inspect PNG artifacts and metadata. Fix the first concrete failure only.
 
 # 2026-10-24 Rider Android production schema mismatch — IN PROGRESS
 
