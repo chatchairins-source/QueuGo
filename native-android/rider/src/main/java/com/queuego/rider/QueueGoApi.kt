@@ -1,6 +1,7 @@
 package com.queuego.rider
 
 import com.queuego.shared.QueueGoNativeApi
+import com.queuego.shared.QueueGoPlaceSearchResult
 import com.queuego.shared.nativeOrderNumber
 
 import android.content.Context
@@ -1154,6 +1155,9 @@ class QueueGoApi {
             )
         )
     }
+
+    suspend fun searchPlaces(query: String): List<QueueGoPlaceSearchResult> =
+        placesApi.searchPlaces(query)
 
     suspend fun reverseGeocodeDestination(latitude: Double, longitude: Double): String? =
         placesApi.reversePlaceAddress(latitude, longitude)
