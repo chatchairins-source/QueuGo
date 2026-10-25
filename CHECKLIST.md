@@ -1,3 +1,11 @@
+## 2026-10-25 Exact Geofabrik Thailand Places snapshot acquisition — IN PROGRESS
+
+- Parent source is tested/merged `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; main RC `40185254887`, scheduled RC `40186049542`, and Pages `40185254415` are SUCCESS.
+- Road source/test pipeline and read-time grouping are already merged. This acquisition chunk does not change search/runtime code and must not write Production.
+- Added a one-shot least-privilege GitHub workflow with `contents: read` only and no Supabase secrets. It resolves an immutable dated Thailand PBF from the official Geofabrik latest-file timestamp window, fails closed if no dated file is verifiable, downloads the matching official MD5, computes local SHA-256/byte size, exports with the pinned PyOsmium dependency, and stages review SQL using the existing ODbL/provenance pipeline.
+- The workflow validates that staging remains `review_only_no_database_write`, requires nonzero searchable and named-road coverage, records an immutable source receipt, and uploads only receipt/report plus compressed review SQL chunks. It does not upload raw PBF bytes and has no Production database action.
+- **NEXT:** run the exact workflow HEAD. If acquisition succeeds, inspect the source receipt and stage report for immutable URL/date/checksums, category/road/geometry/hierarchy coverage and review chunk counts before any promotion decision. If it fails, fix only the first acquisition/gate failure. No Production import.
+
 ## 2026-10-25 QueueGo Places nationwide named-road staging — IN PROGRESS
 
 - Source starts from current web/main nationwide Places merge `2941dff7fdf5585963b09123695dc20afcd37da4`; old Rider local-road/navigation branches are not reused.

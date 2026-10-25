@@ -1,0 +1,184 @@
+name: QueueGo OSM Thailand snapshot review
+
+on:
+  push:
+    branches:
+      - work-web-queuego-places-osm-thailand-snapshot-20261025
+    paths:
+      - '.github/workflows/queuego-osm-thailand-snapshot.yml'
+      - 'scripts/export-osm-places-geojsonseq.py'
+      - 'scripts/stage-osm-places.cjs'
+      - 'requirements-osm-staging.txt'
+      - 'CHECKLIST.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-osm-thailand-snapshot-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Resolve immutable Geofabrik Thailand snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest_url='https://download.geofabrik.de/asia/thailand-latest.osm.pbf'
+          headers="$RUNNER_TEMP/geofabrik-latest.headers"
+          curl --fail --silent --show-error --location --head --retry 4 --retry-delay 5 \
+            --dump-header "$headers" --output /dev/null "$latest_url"
+          last_modified="$(grep -i '^last-modified:' "$headers" | tail -1 | sed 's/^[^:]*:[[:space:]]*//;s/[[:space:]]*$//')"
+          test -n "$last_modified"
+          mapfile -t candidates < <(python3 - "$last_modified" <<'PY'
+          from datetime import timedelta, timezone
+          from email.utils import parsedate_to_datetime
+          import sys
+          dt = parsedate_to_datetime(sys.argv[1]).astimezone(timezone.utc)
+          for offset in range(0, 6):
+              print((dt - timedelta(days=offset)).strftime('%y%m%d'))
+          PY
+          )
+          selected=''
+          selected_date=''
+          for yymmdd in "${candidates[@]}"; do
+            url="https://download.geofabrik.de/asia/thailand-${yymmdd}.osm.pbf"
+            code="$(curl --silent --show-error --location --head --retry 2 --retry-delay 2 \
+              --output /dev/null --write-out '%{http_code}' "$url" || true)"
+            if [ "$code" = '200' ]; then
+              selected="$url"
+              selected_date="$yymmdd"
+              break
+            fi
+          done
+          if [ -z "$selected" ]; then
+            echo "No immutable dated Thailand PBF matched the official latest-file timestamp window" >&2
+            exit 1
+          fi
+          snapshot_date="$(python3 - "$selected_date" <<'PY'
+          from datetime import datetime
+          import sys
+          print(datetime.strptime(sys.argv[1], '%y%m%d').date().isoformat())
+          PY
+          )"
+          retrieved_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "QG_OSM_URL=$selected" >> "$GITHUB_ENV"
+          echo "QG_OSM_SNAPSHOT_DATE=$snapshot_date" >> "$GITHUB_ENV"
+          echo "QG_OSM_RETRIEVED_AT=$retrieved_at" >> "$GITHUB_ENV"
+          echo "QG_OSM_LATEST_LAST_MODIFIED=$last_modified" >> "$GITHUB_ENV"
+          printf '%s\n' "$selected" > "$RUNNER_TEMP/geofabrik-selected-url.txt"
+
+      - name: Download and verify exact official PBF bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          pbf="$RUNNER_TEMP/thailand.osm.pbf"
+          md5file="$RUNNER_TEMP/thailand.osm.pbf.md5"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 5 \
+            "$QG_OSM_URL" --output "$pbf"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 5 \
+            "$QG_OSM_URL.md5" --output "$md5file"
+          expected_md5="$(awk '{print tolower($1)}' "$md5file" | head -1)"
+          actual_md5="$(md5sum "$pbf" | awk '{print $1}')"
+          [[ "$expected_md5" =~ ^[0-9a-f]{32}$ ]]
+          test "$expected_md5" = "$actual_md5"
+          sha256="$(sha256sum "$pbf" | awk '{print $1}')"
+          bytes="$(stat -c '%s' "$pbf")"
+          test "$bytes" -gt 100000000
+          echo "QG_OSM_MD5=$actual_md5" >> "$GITHUB_ENV"
+          echo "QG_OSM_SHA256=$sha256" >> "$GITHUB_ENV"
+          echo "QG_OSM_BYTES=$bytes" >> "$GITHUB_ENV"
+
+      - name: Export privacy-minimal QueueGo Places GeoJSONSeq
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/queuego-osm-env"
+          "$RUNNER_TEMP/queuego-osm-env/bin/pip" install --disable-pip-version-check -r requirements-osm-staging.txt
+          "$RUNNER_TEMP/queuego-osm-env/bin/python" scripts/export-osm-places-geojsonseq.py \
+            "$RUNNER_TEMP/thailand.osm.pbf" "$RUNNER_TEMP/thailand.geojsonseq"
+          test -s "$RUNNER_TEMP/thailand.geojsonseq"
+
+      - name: Stage review-only SQL and provenance report
+        shell: bash
+        run: |
+          set -euo pipefail
+          review="$RUNNER_TEMP/queuego-osm-review"
+          node scripts/stage-osm-places.cjs \
+            "$RUNNER_TEMP/thailand.geojsonseq" \
+            "$RUNNER_TEMP/thailand.osm.pbf" \
+            "$review" \
+            "$QG_OSM_RETRIEVED_AT" \
+            "$QG_OSM_SNAPSHOT_DATE" \
+            "$QG_OSM_SHA256" \
+            "$QG_OSM_URL"
+          node - "$review/osm-th-stage-report.json" <<'NODE'
+          const fs=require('node:fs');
+          const report=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(report.execution!=='review_only_no_database_write') throw new Error('staging must remain review-only');
+          if(report.source!=='openstreetmap'||report.license!=='ODbL-1.0') throw new Error('OSM provenance/license missing');
+          if(!(report.summary?.staged>0)) throw new Error('no searchable OSM rows staged');
+          if(!(report.coverage?.staged_by_category?.road>0)) throw new Error('no named road rows staged');
+          if(!(report.coverage?.staged_by_geometry?.road>0)) throw new Error('road geometry coverage missing');
+          if(!Array.isArray(report.chunks)||report.chunks.length<1) throw new Error('review SQL chunks missing');
+          NODE
+
+      - name: Record immutable acquisition receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - "$RUNNER_TEMP/queuego-osm-review/osm-th-stage-report.json" "$RUNNER_TEMP/queuego-osm-source-receipt.json" <<'NODE'
+          const fs=require('node:fs');
+          const report=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const receipt={
+            source:'openstreetmap',
+            provider:'Geofabrik GmbH',
+            source_url:process.env.QG_OSM_URL,
+            snapshot_date:process.env.QG_OSM_SNAPSHOT_DATE,
+            retrieved_at:process.env.QG_OSM_RETRIEVED_AT,
+            latest_last_modified:process.env.QG_OSM_LATEST_LAST_MODIFIED,
+            pbf_bytes:Number(process.env.QG_OSM_BYTES),
+            pbf_md5:process.env.QG_OSM_MD5,
+            pbf_sha256:process.env.QG_OSM_SHA256,
+            geojsonseq_sha256:report.geojsonseq_sha256,
+            license:'ODbL-1.0',
+            attribution:'© OpenStreetMap contributors',
+            execution:'review_only_no_database_write',
+            staged_summary:report.summary,
+            coverage:report.coverage,
+            review_chunks:report.chunks.length
+          };
+          fs.writeFileSync(process.argv[3],JSON.stringify(receipt,null,2)+'\n');
+          NODE
+          tar -C "$RUNNER_TEMP" -czf "$RUNNER_TEMP/queuego-osm-review.tar.gz" queuego-osm-review
+          split -b 900M -d -a 3 "$RUNNER_TEMP/queuego-osm-review.tar.gz" "$RUNNER_TEMP/queuego-osm-review.tar.gz.part-"
+          rm "$RUNNER_TEMP/queuego-osm-review.tar.gz"
+          {
+            echo "### QueueGo OSM Thailand review snapshot"
+            echo "- URL: $QG_OSM_URL"
+            echo "- Snapshot: $QG_OSM_SNAPSHOT_DATE"
+            echo "- PBF SHA-256: $QG_OSM_SHA256"
+            echo "- Execution: review-only; no database write"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload review receipt and staged SQL archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-osm-thailand-review
+          path: |
+            ${{ runner.temp }}/queuego-osm-source-receipt.json
+            ${{ runner.temp }}/queuego-osm-review/osm-th-stage-report.json
+            ${{ runner.temp }}/queuego-osm-review.tar.gz.part-*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
