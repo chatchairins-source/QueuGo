@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
-const sql=read('QueueGo-Pilot-Service-Area.sql'),v2=read('supabase/migrations/20261025070500_queuego_nationwide_order_service_area_v2.sql'),cutover=read('supabase/migrations/20261025073000_queuego_nationwide_service_area_cutover.sql'),customer=read('index.html'),laundry=read('laundry/index.html');
+const sql=read('QueueGo-Pilot-Service-Area.sql'),v2=read('supabase/migrations/20261025070500_queuego_nationwide_order_service_area_v2.sql'),cutover=read('supabase/migrations/20261025073000_queuego_nationwide_service_area_cutover.sql'),legacyLaundryRetire=read('supabase/migrations/20261025094500_retire_legacy_laundry_order_writer.sql'),customer=read('index.html'),laundry=read('laundry/index.html');
 
 ok(sql.includes('create table if not exists public.queuego_service_areas'),'service area registry must exist');
 ok(sql.includes("'Buriram Pilot','บุรีรัมย์',14.99292,103.10804,20,15"),'Buriram pilot must have explicit coverage and delivery cap');
@@ -32,5 +32,9 @@ ok(!/\bdrop\s+(table|schema|column)\b/i.test(v2),'nationwide v2 foundation must 
 ok(cutover.includes('queuego_order_service_route_status_v2'),'legacy route-status contract must delegate to nationwide v2 after cutover');
 ok(cutover.includes("'area_id',v->'rule_id'")&&cutover.includes("'area_name',v->'rule_name'"),'cutover must preserve legacy area_id/area_name compatibility');
 ok(!/\bdrop\s+(table|schema|column)\b/i.test(cutover),'cutover must preserve legacy rollback data and schema');
+ok(legacyLaundryRetire.includes('revoke all on function public.queuego_place_laundry_order(')&&legacyLaundryRetire.includes('from public,anon,authenticated'),'legacy Laundry v1 must not remain client-executable after nationwide cutover');
+ok(legacyLaundryRetire.includes('to service_role'),'legacy Laundry v1 may remain service-role only for controlled rollback/audit');
+ok(/qgRpc\(['"]queuego_place_laundry_order_v2['"]/.test(laundry),'Laundry customer UI must use the v2 service-area-enforced writer');
+ok(!/qgRpc\(['"]queuego_place_laundry_order['"]/.test(laundry),'Laundry customer UI must not call the legacy v1 writer');
 
 console.log(JSON.stringify({checks,failures:0,scope:'legacy pilot guard plus additive nationwide polygon service-area authority, independent map/registration capability, route cap and shadow decision contract'}));
