@@ -613,5 +613,17 @@
   "province_match_methods": {
     "iso_name_centroid": 76,
     "iso_name_centroid_rounding_tolerance": 1
+  },
+  "successor_evidence": {
+    "source_head": "8fe6cd51c5f0ec6a405ab75b91c3ef88d5396b24",
+    "audit_run_id": 40192026311,
+    "audit_conclusion": "success",
+    "artifact_id": 12598452952,
+    "artifact_sha256": "678905fe69b7637257f8387beeb44e43e54efc943414195097718ab3cd05e2d4",
+    "hierarchy_gate": "blocked",
+    "production_import_allowed": false,
+    "local_full_npm_test": "passed",
+    "rc_run_id": 40192026319,
+    "rc_conclusion": "success"
   }
 }
