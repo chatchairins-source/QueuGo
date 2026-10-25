@@ -486,9 +486,19 @@
 
 # QueueGo Active Work Checklist
 
-Last governance checkpoint: 2026-10-23; latest verified main `9eb3dac112ab0003c5b36dd844c3abbcff1decac`
+Last governance checkpoint: 2026-10-23; latest verified main `9efe9748a7c5a8d133856ab1238c20d48516a5c2`
 
 This checklist is the repository continuation ledger. Read `WORKFLOW.md` first.
+
+## Current verified Rider Native checkpoint — 2026-10-23
+
+- Current Native Rider integration successor: `work-native-route-bundle-play-release-20261021 @ 83aac3dedb86432a0f6989b812ccdb80e91aa381`, merged from PR #640. Its exact pre-merge successor tree was `fc8db07ac0f2bc510cf4535b26bbfef80ab15749`.
+- Exact successor CI: Native Pilot `39891731414` SUCCESS and QueueGo Map Engine Buriram `39891737262` SUCCESS. Post-merge CI on `83aac3de…`: Native Pilot `39893120502` SUCCESS and Map Engine `39893120482` / `39893125244` SUCCESS.
+- Navigation contract verified on the exact successor tree: missed commanded turn reroutes immediately on the first reliable moving fix; ordinary off-route drift remains 30 m sustained for 3 s; immediate reroute uses the separate 3 s anti-storm cooldown and GPS-quality guards. QueueGo Map/MapLibre remains authoritative; do not restore Longdo/legacy navigation ownership.
+- Release Secret Readiness run `39893120464` FAILS CLOSED only because repository secrets `QG_SUPABASE_SERVICE_ROLE_KEY`, `QG_SUPABASE_DB_URL`, and `QG_BACKUP_PASSPHRASE` are absent. Firebase and Android signing secrets are present. Do not fake, hard-code, or bypass these secrets.
+- Physical road/GPS, ANR/OOM/battery and public Production runtime acceptance remain separate release gates; CI/emulator evidence is not physical-device PASS.
+- Superseded Rider ancestors #620 and #593 are closed. Continue only from `83aac3de…` or a newer descendant.
+- **NEXT:** once the three release secrets are configured by an authorized repository owner, rerun Release Secret Readiness on the current Native successor. Independently perform/record physical Rider road/GPS acceptance; make no Rider navigation source changes unless that evidence exposes a reproducible regression.
 
 ## Current verified Rider Web checkpoint — 2026-10-23
 
