@@ -938,18 +938,7 @@ function initLocationPicker(containerId,lat,lng,onChange,options={}){
   };
 }
 function qgCompactCustomerAddress(value){
-  const raw=String(value||'').split(',').map(part=>part.trim()).filter(Boolean);
-  const parts=raw.filter(part=>! /^\d{5}$/.test(part)&&!/^(ประเทศไทย|ไทย|Thailand)$/i.test(part));
-  const unique=parts.filter((part,index)=>parts.findIndex(other=>other.toLocaleLowerCase('th-TH')===part.toLocaleLowerCase('th-TH'))===index);
-  if(unique.length<=4)return unique.join(', ');
-  const admin=unique.filter(part=>/^(จังหวัด|จ\.|อำเภอ|อ\.|เขต|ตำบล|ต\.|แขวง)/.test(part));
-  const place=unique.filter(part=>!admin.includes(part));
-  const selected=[...place.slice(0,2),...admin.slice(-3)];
-  const compact=selected.filter((part,index)=>selected.indexOf(part)===index).map(part=>part
-    .replace(/^จังหวัด\s*/,'จ.')
-    .replace(/^อำเภอ\s*/,'อ.')
-    .replace(/^ตำบล\s*/,'ต.'));
-  return (compact.length?compact:unique.slice(0,4)).join(', ');
+  return window.QueueGoMapWeb?.compactAddress?.(value)||String(value||'').trim();
 }
 async function qtReverseGeocodeCustomer(lat,lng){
   if(!window.QueueGoMapWeb?.reverse)return '';

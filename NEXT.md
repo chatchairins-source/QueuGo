@@ -1,3 +1,17 @@
+## 2026-10-25 Integrated nationwide web regression — DONE (local source/test)
+
+- Commit f1531207: full npm test completed with exit 0 after restart; focused checks also passed. Temporary log from the interrupted session was unavailable, so the suite was rerun instead of inferring success.
+- Native #710 at 2160f30e still calls Longdo from QueueGoApi.reverseGeocodeDestination. This violates the QueueGo-only direction and must be migrated to the shared authority; do not replace it with a Buriram-only reverse endpoint and claim nationwide coverage.
+- Local git push failed because HTTPS credentials are unavailable. No remote publication, deployment or APK build occurred.
+- NEXT: publish the tested integration through the GitHub connector with fresh branch checks; implement shared nationwide reverse lookup and migrate native destination lookup; then build all three apps. Production data/routing and end-to-end delivery remain incomplete.
+
+## 2026-10-25 Three-app nationwide reconciliation — IN PROGRESS
+
+- Integrated Places successor fe198b153fc7d02c226e8df5f8095c3edd70508a with current web main 0e6718cf0070a01cf6a52dcd589fad7edb47d7e8 using a forward merge. Preserved current compact addresses, rotation/tilt, PWA role icons and manifests alongside the shared Places RPC and nationwide registration. Combined both test lists without dropping either branch's checks.
+- Focused evidence: shared search runtime 16, map UI 5, camera 77, Map View core 56, Map View search 10, nationwide registration 15 checks passed; PWA links/icons passed; JS syntax and diff whitespace passed. Full npm suite is still running; not certified yet.
+- Latest native successor is PR #710 at 2160f30ef10d88f3f59acf86aa20b4a2ec414884; isolated worktree prepared without modifying its source. No APK build, Production migration, import or deploy in this checkpoint.
+- NEXT: finish full regression on this integrated web tree, resolve its first failure, publish the forward successor, then reconcile native against the same search authority. Nationwide routing/vector data and Production Places/service-area release remain incomplete. Do not describe the apps as nationwide-ready.
+
 # QueueGo Next Actions
 
 ## 2026-10-24 Native APK files and QueueGo Q role icons — DONE (test build/Web deploy)

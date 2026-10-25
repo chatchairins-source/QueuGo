@@ -682,7 +682,7 @@ function attachPlaces(map,{onSelect=null}={}){
   const show=p=>{
     popup?.remove();
     const box=document.createElement('div'),name=document.createElement('b'),detail=document.createElement('p'),button=document.createElement('button');
-    name.textContent=p.name;detail.textContent=[PLACE_LABELS[p.category],p.label||p.display_name,'QueueGo Places'].filter(Boolean).join(' · ');
+    name.textContent=p.name;detail.textContent=[PLACE_LABELS[p.category],compactAddress(p.label||p.display_name),'QueueGo Places'].filter(Boolean).join(' · ');
     button.type='button';button.textContent='ใช้ตำแหน่งนี้';button.onclick=()=>choose(p);box.append(name,detail,button);
     if(typeof maplibregl.Popup==='function')popup=new maplibregl.Popup({closeButton:true}).setLngLat([p.lng,p.lat]).setDOMContent(box).addTo(map);else choose(p);
   };
