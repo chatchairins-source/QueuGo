@@ -1,3 +1,13 @@
+## 2026-10-25 HDX/OCHA boundary candidate code audit — IN PROGRESS
+
+- Separate candidate review continues from bilingual matcher `f798fd68ac2307bc06b508412b4ee334721da5ba`. Preserve OSM ODbL and HDX CC BY 3.0 IGO as distinct sources; do not union or overwrite public administrative Places.
+- Retrieved primary HDX CKAN metadata for `cod-ab-tha`: resource `89a09f13-7b83-458a-9531-4f2418613065`, represented boundaries 2022-01-01; metadata modified 2026-08-14. Actual downloaded GeoJSON ZIP **436,725,731 bytes**, local SHA-256 `02370dc5bd824563de71fd71cc1ee0b88df717c935a09bd7f15611560ef8bfd1`. Source metadata/license/attribution receipt: `data/maps/hdx-thailand-admin-candidate.json`.
+- Added streaming audit that verifies exact ZIP SHA/size and both pinned OAD blob hashes, inspects only province/district/subdistrict members, matches exact code + published bilingual name + OAD centroid + resolved parent code, rejects duplicate source codes and records missing/extra/conflicting rows. It never emits SQL or writes a database. Topology and full parent-polygon containment are explicitly NOT TESTED.
+- Real source counts: **77 / 928 / 7,425**. Independent strict code/name/centroid/parent matches: **67 / 833 / 6,540**. Province centroid-outside 10; district centroid-outside 20, name mismatch 1, extra code 1, missing code 1, parent-unresolved 73; subdistrict centroid-outside 94, name mismatch 17, extra codes 71, missing codes 10, parent-unresolved 703. Counts cannot be substituted for complete coverage.
+- Concrete identity conflict: HDX เวียงเก่า=`TH4029`; pinned OAD เวียงเก่า=`4026`. Keep quarantined for primary administrative-code reconciliation; no automatic alias/remap. The remaining district name conflict is OAD บึงกาฬ / HDX เมืองบึงกาฬ. Do not strip meaningful town prefixes to force a match.
+- Local audit guard tests 10 PASS; real full archive audit completed. Added least-privilege exact-payload hosted review workflow; hosted CI pending publication. Report: `data/maps/hdx-thailand-admin-boundary-review.json`.
+- **NEXT:** inspect exact-source RC/OSM/HDX audit results; reconcile the 4026/4029 code conflict, 10 missing and 71 extra subdistrict source codes against primary administrative references, and investigate centroid-outside rows before any boundary crosswalk. Full injective hierarchy, topology, parent-polygon containment, license/provenance and DOPA village gates remain open. Production import forbidden; PR #728 remains draft.
+
 ## 2026-10-25 Exact bilingual boundary matching — IN PROGRESS
 
 - Continued PR #728 checkpoint `272ff5a59be67d06f3a9c537c0cce502d65fd543`, preserving tested injective matcher `8fe6cd51`. Main remains `7e036a07`.

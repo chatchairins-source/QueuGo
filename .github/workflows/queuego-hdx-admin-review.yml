@@ -1,0 +1,60 @@
+name: QueueGo HDX Thailand boundary candidate review
+
+on:
+  push:
+    branches:
+      - work-web-queuego-places-osm-admin-boundaries-20261025
+    paths:
+      - '.github/workflows/queuego-hdx-admin-review.yml'
+      - 'scripts/audit-hdx-thailand-admin.cjs'
+      - 'scripts/match-osm-admin-boundaries-to-oad.cjs'
+      - 'tests/hdx-thailand-admin-audit.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-hdx-admin-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Verify candidate review guards
+        run: node tests/hdx-thailand-admin-audit.cjs
+      - name: Acquire checksum-pinned candidate and OAD references
+        shell: bash
+        run: |
+          set -euo pipefail
+          url=$(node -p "require('./scripts/audit-hdx-thailand-admin.cjs').PIN.url")
+          curl --fail --silent --show-error --location --retry 3 --max-time 600 "$url" --output "$RUNNER_TEMP/hdx-thailand.zip"
+          base="https://raw.githubusercontent.com/open-admin-data/thailand-administrative-divisions/eef739a534e26181c86073d69e9aeb527110cf1a/data"
+          curl --fail --silent --show-error --location --retry 3 --max-time 120 "$base/all-flat.ndjson" --output "$RUNNER_TEMP/all-flat.ndjson"
+          curl --fail --silent --show-error --location --retry 3 --max-time 120 "$base/all-subdistrict.json" --output "$RUNNER_TEMP/all-subdistrict.json"
+      - name: Audit exact codes names centroids and parents without database access
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-hdx-thailand-admin.cjs \
+            "$RUNNER_TEMP/hdx-thailand.zip" \
+            "$RUNNER_TEMP/all-flat.ndjson" "$RUNNER_TEMP/all-subdistrict.json" \
+            "$RUNNER_TEMP/hdx-admin-review.json"
+          node - "$RUNNER_TEMP/hdx-admin-review.json" <<'NODE'
+          const r=require(process.argv[2]);
+          if(r.execution!=='review_only_no_database_write'||r.production_import_allowed!==false) throw Error('candidate audit must never authorize import');
+          if(r.topology_gate!=='not_tested'||r.parent_polygon_containment_gate!=='not_tested') throw Error('audit must not claim untested spatial gates');
+          NODE
+      - name: Preserve review report with source identity and unresolved codes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-hdx-thailand-admin-candidate-review
+          path: ${{ runner.temp }}/hdx-admin-review.json
+          if-no-files-found: error
+          retention-days: 7
