@@ -30,6 +30,7 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
@@ -57,6 +58,9 @@ private const val STOP_SHOP_NUMBER_LAYER_ID = "qg-rider-stops-shop-number"
 private const val STOP_CUSTOMER_NUMBER_LAYER_ID = "qg-rider-stops-customer-number"
 private const val STOP_SHOP_IMAGE_ID = "qg-stop-shop"
 private const val STOP_CUSTOMER_IMAGE_ID = "qg-stop-customer"
+private const val RIDER_SOURCE_ID = "qg-rider-puck"
+private const val RIDER_LAYER_ID = "qg-rider-puck-layer"
+private const val RIDER_IMAGE_ID = "qg-rider-puck-image"
 
 internal fun navigationStopMarkerTitle(stop: NavigationMapStop): String = buildString {
     append("จุด ")
@@ -154,7 +158,9 @@ private class RiderNavigationMapHolder {
     private var lastStopSignature: Int? = null
     private var lastDemandSignature: Int? = null
     private var lastRenderedRiderFix: NavigationMapFix? = null
-    private var riderMarker: Marker? = null
+    private var riderSource: GeoJsonSource? = null
+    private var riderStyleInitialized = false
+    private var riderPosition: LatLng? = null
     private var riderAnimator: ValueAnimator? = null
     private val routeLines = mutableListOf<Polyline>()
     private val activeHeadLines = mutableListOf<Polyline>()
@@ -402,7 +408,7 @@ private class RiderNavigationMapHolder {
                     renderDirectionArrows(activeMap, segment)
                 }
             }
-        riderMarker?.position?.let { alignActiveRouteHead(activeMap, it) }
+        riderPosition?.let { alignActiveRouteHead(activeMap, it) }
         lastRouteSignature = signature
         routeLayerRebuildCount += 1
         routeGeometryUpdateCount += 1
@@ -635,41 +641,109 @@ private class RiderNavigationMapHolder {
         lastDemandSignature = signature
     }
 
+    private fun riderFeatureCollectionJson(position: LatLng, bearingDegrees: Float?): String {
+        val properties = JSONObject()
+            .put("bearing", normalizeNavigationBearing(bearingDegrees ?: 0f).toDouble())
+        val geometry = JSONObject()
+            .put("type", "Point")
+            .put("coordinates", JSONArray().put(position.longitude).put(position.latitude))
+        val feature = JSONObject()
+            .put("type", "Feature")
+            .put("geometry", geometry)
+            .put("properties", properties)
+        return JSONObject()
+            .put("type", "FeatureCollection")
+            .put("features", JSONArray().put(feature))
+            .toString()
+    }
+
+    private fun ensureRiderStyle(activeMap: MapLibreMap): GeoJsonSource? {
+        if (riderStyleInitialized) riderSource?.let { return it }
+        val style = activeMap.style ?: return null
+        val context = view?.context ?: return null
+        val source = GeoJsonSource(
+            RIDER_SOURCE_ID,
+            """{"type":"FeatureCollection","features":[]}"""
+        )
+        style.addSource(source)
+        context.getDrawable(R.drawable.qg_rider_puck)?.let { drawable ->
+            style.addImage(RIDER_IMAGE_ID, drawable)
+        }
+        style.addLayer(
+            SymbolLayer(RIDER_LAYER_ID, RIDER_SOURCE_ID).apply {
+                setProperties(
+                    PropertyFactory.iconImage(RIDER_IMAGE_ID),
+                    PropertyFactory.iconSize(0.92f),
+                    PropertyFactory.iconRotate(Expression.get("bearing")),
+                    PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+                    PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.iconIgnorePlacement(true)
+                )
+            }
+        )
+        riderStyleInitialized = true
+        riderSource = source
+        return source
+    }
+
+    private fun updateRiderPuck(
+        source: GeoJsonSource,
+        position: LatLng,
+        bearingDegrees: Float?
+    ) {
+        source.setGeoJson(riderFeatureCollectionJson(position, bearingDegrees))
+        riderPosition = position
+    }
+
     private fun renderRider(activeMap: MapLibreMap, state: RiderNavigationMapState) {
         // Display-only road alignment: keep authoritative GNSS untouched, but render the
-        // Rider on the direction-consistent carriageway when the match is very close.
+        // QueueGo Rider puck on the direction-consistent carriageway when the match is close.
         val fix = navigationRiderDisplayFix(state) ?: return
+        val source = ensureRiderStyle(activeMap) ?: return
         val displayPoint = fix.point
         val target = LatLng(displayPoint.latitude, displayPoint.longitude)
-        val marker = riderMarker
-        if (marker == null) {
-            riderMarker = activeMap.addMarker(
-                MarkerOptions()
-                    .position(target)
-                    .title("Rider")
-            )
+        val previous = lastRenderedRiderFix
+        val moved = shouldMoveRiderMarker(previous, fix)
+        val bearingChanged = navigationBearingChangedEnough(
+            previous?.bearingDegrees,
+            fix.bearingDegrees,
+            1.0f
+        )
+
+        if (previous == null || riderPosition == null) {
+            updateRiderPuck(source, target, fix.bearingDegrees)
+            alignActiveRouteHead(activeMap, target)
             lastRenderedRiderFix = fix
             return
         }
-        if (!shouldMoveRiderMarker(lastRenderedRiderFix, fix)) return
-        val previous = lastRenderedRiderFix
-        val from = previous?.point
+        if (!moved && !bearingChanged) return
+
+        val from = riderPosition ?: LatLng(previous.point.latitude, previous.point.longitude)
+        val fromPoint = NavigationMapPoint(from.latitude, from.longitude)
+        val fromBearing = previous.bearingDegrees ?: fix.bearingDegrees ?: 0f
+        val toBearing = fix.bearingDegrees ?: fromBearing
         riderAnimator?.cancel()
-        if (from != null && shouldAnimateRiderMarker(from, displayPoint)) {
+
+        if (moved && shouldAnimateRiderMarker(fromPoint, displayPoint)) {
             riderAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
                 duration = riderMarkerAnimationMillis(previous, fix)
                 addUpdateListener { animation ->
                     val t = animation.animatedFraction.toDouble()
-                    marker.position = LatLng(
+                    val next = LatLng(
                         from.latitude + (displayPoint.latitude - from.latitude) * t,
                         from.longitude + (displayPoint.longitude - from.longitude) * t
                     )
-                    alignActiveRouteHead(activeMap, marker.position)
+                    val bearing = normalizeNavigationBearing(
+                        fromBearing + navigationShortestBearingDelta(fromBearing, toBearing) * t.toFloat()
+                    )
+                    updateRiderPuck(source, next, bearing)
+                    alignActiveRouteHead(activeMap, next)
                 }
                 start()
             }
         } else {
-            marker.position = target
+            updateRiderPuck(source, target, toBearing)
             alignActiveRouteHead(activeMap, target)
         }
         lastRenderedRiderFix = fix
@@ -782,7 +856,7 @@ private class RiderNavigationMapHolder {
                 renderPassCount = renderPassCount,
                 routeGeometryUpdateCount = routeGeometryUpdateCount,
                 demandMutationCount = demandMutationCount,
-                riderPuckPresent = riderMarker != null
+                riderPuckPresent = riderSource != null && riderPosition != null
             )
         )
     }
@@ -797,7 +871,9 @@ private class RiderNavigationMapHolder {
         stopSource = null
         stopStyleInitialized = false
         demandMarkers.clear()
-        riderMarker = null
+        riderSource = null
+        riderStyleInitialized = false
+        riderPosition = null
         map = null
         styleReady = false
         view?.onDestroy()
