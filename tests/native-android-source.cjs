@@ -427,6 +427,13 @@ const customerRide=read('customer/src/main/java/com/queuego/customer/CustomerRid
 ok(customerRide.includes('QgTrackingMap(')&&customerRide.includes('.height(245.dp)'),'Customer native Ride request must show the QueueGo route map preview like Web');
 const sharedMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(sharedMap.includes('newLatLngBounds(bounds, 48)')&&sharedMap.includes('LatLng(14.9918756, 103.0994795)'),'Native tracking preview must frame both selected Ride stops and use the Buriram pilot viewport when empty');
+ok(
+  sharedMap.includes('https://tile.openstreetmap.org/{z}/{x}/{y}.png') &&
+  sharedMap.includes('RasterSource(QUEUEGO_WEB_BASEMAP_SOURCE') &&
+  sharedMap.includes('RasterLayer(QUEUEGO_WEB_BASEMAP_LAYER') &&
+  sharedMap.includes('map.uiSettings.isLogoEnabled = false'),
+  'Native QueueGo basemap presentation must stay locked to the same raster tiles as Web'
+);
 ok(pilotWorkflow.includes("vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com'"),'pilot APKs must compile the deployed QueueGo Map endpoint when no override is configured');
 const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
 ok(
