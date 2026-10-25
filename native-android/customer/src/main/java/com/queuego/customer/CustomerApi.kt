@@ -4,6 +4,7 @@ import com.queuego.shared.nativeOrderNumber
 
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QueueGoNativeApi
+import com.queuego.shared.QueueGoPlaceSearchResult
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -362,6 +363,9 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             JSONObject().put("metadata", metadata)
         )
     }
+
+    suspend fun searchPlaces(query: String): List<QueueGoPlaceSearchResult> =
+        http.searchPlaces(query)
 
     suspend fun reverseGeocode(latitude: Double, longitude: Double): String? =
         http.reversePlaceAddress(latitude, longitude)
