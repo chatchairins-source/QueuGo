@@ -439,12 +439,15 @@ const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider
 ok(
   riderNavigationLocationService.includes('LocationServices.getFusedLocationProviderClient') &&
   riderNavigationLocationService.includes('NavigationMapFix(') &&
-  riderMap.includes('riderMarker = activeMap.addMarker(') &&
+  riderMap.includes('private const val RIDER_SOURCE_ID = "qg-rider-puck"') &&
+  riderMap.includes('SymbolLayer(RIDER_LAYER_ID, RIDER_SOURCE_ID)') &&
+  riderMap.includes('PropertyFactory.iconImage(RIDER_IMAGE_ID)') &&
+  riderMap.includes('PropertyFactory.iconRotate(Expression.get("bearing"))') &&
   riderMap.includes('GeoJsonSource(') &&
   riderMap.includes('SymbolLayer(STOP_SHOP_ICON_LAYER_ID, STOP_SOURCE_ID)') &&
   riderMap.includes('SymbolLayer(STOP_CUSTOMER_ICON_LAYER_ID, STOP_SOURCE_ID)') &&
   riderMap.includes('source.setGeoJson(stopFeatureCollectionJson(stops, activeId))'),
-  'native Rider QueueGo Map must use Android fused GPS and render rider plus numbered shop/customer stop layers'
+  'native Rider QueueGo Map must use Android fused GPS, the QueueGo heading puck, and numbered shop/customer stop layers'
 );
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
