@@ -8,7 +8,9 @@ on:
       - '.github/workflows/queuego-osm-admin-boundaries.yml'
       - 'scripts/export-osm-admin-boundaries-geojsonseq.py'
       - 'scripts/stage-osm-admin-boundaries.cjs'
+      - 'scripts/match-osm-admin-boundaries-to-oad.cjs'
       - 'tests/osm-admin-boundaries-stage.cjs'
+      - 'tests/osm-admin-boundary-match.cjs'
       - 'requirements-osm-staging.txt'
       - 'package.json'
       - 'package-lock.json'
@@ -31,6 +33,9 @@ jobs:
       PBF_SHA256: e8373240cf0be47cc641f2c8627e674064d8c47f4ff2a11f6a33fcbfc9a50949
       SNAPSHOT_DATE: '2026-10-24'
       RETRIEVED_AT: '2026-10-25T10:59:51Z'
+      OAD_COMMIT: eef739a534e26181c86073d69e9aeb527110cf1a
+      OAD_FLAT_BLOB: baa3eb18fb79412e85dcef08059d16f8cf47b317
+      OAD_SUBDISTRICT_BLOB: bd5c49a7e1af578c9e34e32020ddd90eabdc167f
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -74,6 +79,34 @@ jobs:
             if(!(r.summary?.staged_by_admin_type?.[level]>0)) throw new Error('missing '+level+' boundaries');
           }
           NODE
+      - name: Fetch exact pinned Open Admin Data hierarchy
+        shell: bash
+        run: |
+          set -euo pipefail
+          flat="$RUNNER_TEMP/all-flat.ndjson"
+          subs="$RUNNER_TEMP/all-subdistrict.json"
+          base="https://raw.githubusercontent.com/open-admin-data/thailand-administrative-divisions/$OAD_COMMIT/data"
+          curl --fail --silent --show-error --location --retry 5 "$base/all-flat.ndjson" --output "$flat"
+          curl --fail --silent --show-error --location --retry 5 "$base/all-subdistrict.json" --output "$subs"
+          test "$(git hash-object "$flat")" = "$OAD_FLAT_BLOB"
+          test "$(git hash-object "$subs")" = "$OAD_SUBDISTRICT_BLOB"
+      - name: Match OAD centroids to same-level OSM polygons
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/osm-admin-match"
+          node scripts/match-osm-admin-boundaries-to-oad.cjs \
+            "$RUNNER_TEMP/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq" \
+            "$RUNNER_TEMP/all-flat.ndjson" "$RUNNER_TEMP/all-subdistrict.json" "$out"
+          node - "$out/osm-oad-admin-boundary-match-report.json" <<'NODE'
+          const fs=require('node:fs');
+          const r=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(r.execution!=='review_only_no_database_write') throw new Error('matcher must remain review-only');
+          if(r.oad_counts.province!==77||r.oad_counts.district!==928||r.oad_counts.subdistrict!==7364) throw new Error('unexpected OAD hierarchy counts');
+          if(r.summary.by_admin_type.province.deterministic!==77) throw new Error('province boundaries must match deterministic 77/77 before any promotion');
+          if(!(r.summary.by_admin_type.district.deterministic>0)) throw new Error('district matcher produced no deterministic coverage');
+          if(!(r.summary.by_admin_type.subdistrict.deterministic>0)) throw new Error('subdistrict matcher produced no deterministic coverage');
+          NODE
       - name: Upload admin boundary audit artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -81,6 +114,8 @@ jobs:
           path: |
             ${{ runner.temp }}/osm-admin-review/osm-th-admin-boundaries-stage-report.json
             ${{ runner.temp }}/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq
+            ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-match-report.json
+            ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-mapping.json
           if-no-files-found: error
           compression-level: 9
           retention-days: 7
