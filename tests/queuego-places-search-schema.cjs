@@ -1,6 +1,7 @@
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.resolve(__dirname,'..');
 const sql=fs.readFileSync(path.join(root,'supabase/migrations/20261023144405_queuego_places_search_foundation.sql'),'utf8');
+const rankSql=fs.readFileSync(path.join(root,'supabase/migrations/20261025063500_queuego_places_admin_exact_rank.sql'),'utf8');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
 const {renderQueueGoOperationalPlaceSync}=require('../scripts/generate-queuego-shop-place-sync.cjs');
 const operationalSync=renderQueueGoOperationalPlaceSync();
@@ -41,6 +42,8 @@ has('extensions.st_dwithin','nearby-only search must use indexed spatial radius'
 has('p_limit>50','RPC result count must be bounded');
 has('p_radius_m>100000','nearby radius must be bounded');
 has("p.verification_status<>'rejected'",'rejected places must never be returned');
+ok(rankSql.includes("when 'province' then 0 when 'district' then 1 when 'subdistrict' then 2"),'exact administrative-name ties must prefer province, then district, then subdistrict');
+ok(rankSql.includes("lower(r.canonical_name)=r.term")&&rankSql.includes("r.category='administrative_area'"),'administrative tie-break must apply only to exact administrative matches');
 ok(!/\bdrop\s+(table|schema|column)\b/i.test(sql),'Places foundation must be additive');
 ok(pkg.scripts.test.includes('tests/queuego-places-search-schema.cjs'),'Places contract test must run in full regression');
 ok(operationalSync.includes('qg_private.queuego_upsert_operational_place('),'Shop/Market/bootstrap must share one private operational upsert authority');
