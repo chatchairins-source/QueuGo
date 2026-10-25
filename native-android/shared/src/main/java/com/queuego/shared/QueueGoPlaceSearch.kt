@@ -39,9 +39,16 @@ fun QgPlaceSearchPanel(
     var results by remember { mutableStateOf<List<QueueGoPlaceSearchResult>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
     var searched by remember { mutableStateOf(false) }
+    var selectedQuery by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(query, enabled) {
+    LaunchedEffect(query, enabled, selectedQuery) {
         val normalized = query.trim()
+        if (selectedQuery == query) {
+            results = emptyList()
+            searched = false
+            busy = false
+            return@LaunchedEffect
+        }
         if (!enabled || normalized.length < 2) {
             results = emptyList()
             searched = false
@@ -72,7 +79,10 @@ fun QgPlaceSearchPanel(
     ) {
         OutlinedTextField(
             value = query,
-            onValueChange = { query = it.take(120) },
+            onValueChange = {
+                selectedQuery = null
+                query = it.take(120)
+            },
             modifier = Modifier.fillMaxWidth(),
             enabled = enabled,
             singleLine = true,
@@ -99,6 +109,7 @@ fun QgPlaceSearchPanel(
                             Modifier
                                 .fillMaxWidth()
                                 .clickable(enabled = enabled) {
+                                    selectedQuery = result.name
                                     query = result.name
                                     results = emptyList()
                                     searched = false
