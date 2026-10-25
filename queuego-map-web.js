@@ -295,10 +295,10 @@ function setNavigationMode(map,enabled,{center=null,zoom=null,duration=420}={}){
   state.bearing=0;
   state.lastDecision=null;
   state.lastDecisionApplied=null;
-  try{map.dragRotate?.disable?.()}catch(_){}
-  try{map.touchZoomRotate?.disableRotation?.()}catch(_){}
-  try{map.touchPitch?.disable?.()}catch(_){}
-  try{map.setMaxPitch?.(0)}catch(_){}
+  try{map.dragRotate?.enable?.()}catch(_){}
+  try{map.touchZoomRotate?.enableRotation?.()}catch(_){}
+  try{map.touchPitch?.enable?.()}catch(_){}
+  try{map.setMaxPitch?.(60)}catch(_){}
   const camera={bearing:0,pitch:0,duration:Math.max(0,Number(duration)||0),easing:navCameraEasing,essential:true};
   if(center&&valid(center.lat,center.lng))camera.center=[Number(center.lng),Number(center.lat)];
   if(navHasNumber(zoom))camera.zoom=Number(zoom);
@@ -430,11 +430,11 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
     center:[Number(lng),Number(lat)],
     zoom:Number(zoom),
     minZoom,maxZoom,
-    maxPitch:navigation?60:0,
+    maxPitch:60,
     interactive,
     attributionControl:false,
-    dragRotate:!!navigation,
-    pitchWithRotate:!!navigation
+    dragRotate:true,
+    pitchWithRotate:true
   });
   if(navigation){
     navState(map).follow=true;
@@ -492,9 +492,11 @@ function create(host,{lat=15,lng=101,zoom=6,minZoom=5,maxZoom=19,interactive=tru
     for(const event of ['zoomstart','rotatestart','pitchstart'])try{map.on(event,keepGesture)}catch(_){}
     for(const event of ['zoomend','rotateend','pitchend'])try{map.on(event,endGesture)}catch(_){}
   }else{
-    try{map.touchZoomRotate.disableRotation()}catch(_){}
+    try{map.dragRotate?.enable?.()}catch(_){}
+    try{map.touchZoomRotate.enableRotation()}catch(_){}
+    try{map.touchPitch?.enable?.()}catch(_){}
   }
-  try{map.addControl(new maplibregl.NavigationControl({showCompass:!!navigation,showZoom:false,visualizePitch:!!navigation}),'top-right')}catch(_){}
+  try{map.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),'top-right')}catch(_){}
   try{map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right')}catch(_){}
   attachPlaces(map,{searchControl:!!searchControl});
   return map;
@@ -649,7 +651,22 @@ async function searchPlaceCatalog(query,{limit=20,category=null,center=null,boun
   const rows=await searchQueueGoPlaces(query,{limit,category,province,latitude:center?.lat,longitude:center?.lng,radius_m:radius});
   return rows.filter(p=>!bounds||(p.lng>=bounds[0]&&p.lat>=bounds[1]&&p.lng<=bounds[2]&&p.lat<=bounds[3]));
 }
-function placeResult(p){return {...p,display_name:p.label||p.display_name,source:p.source||'QueueGo Places',provider:p.provider||'queuego-places'}}
+function compactAddress(value){
+  const raw=String(value||'').split(',').map(part=>part.trim()).filter(Boolean);
+  const parts=raw.filter(part=>!/^\d{5}$/.test(part)&&!/^(ประเทศไทย|ไทย|Thailand)$/i.test(part));
+  const unique=parts.filter((part,index)=>parts.findIndex(other=>other.toLocaleLowerCase('th-TH')===part.toLocaleLowerCase('th-TH'))===index);
+  if(unique.length<=4&&parts.length===raw.length&&unique.length===parts.length)return unique.join(', ');
+  const area=unique.filter(part=>/^(จังหวัด|จ\.|อำเภอ|อ\.|เขต|ตำบล|ต\.|แขวง)/.test(part));
+  const place=unique.filter(part=>!area.includes(part));
+  const selected=area.length>=2?[...place.slice(0,2),...area.slice(-2)]:unique.slice(0,4);
+  const compact=selected.filter((part,index)=>selected.indexOf(part)===index).map(part=>part
+    .replace(/^จังหวัด\s*/,'จ.')
+    .replace(/^อำเภอ\s*/,'อ.')
+    .replace(/^ตำบล\s*/,'ต.')
+    .replace(/^กรุงเทพมหานคร$/,'กรุงเทพฯ'));
+  return (compact.length?compact:unique.slice(0,4)).join(', ');
+}
+function placeResult(p){const label=compactAddress(p.label||p.display_name);return {...p,label,display_name:label,source:p.source||'QueueGo Places',provider:p.provider||'queuego-places'}}
 async function nearbyPlaces(category,lat,lng,radius=5000){
   const groups={food:'food',fuel:'fuel',hospital:'health',school:'education',grocery:'grocery',laundry:'laundry',hotel:'hotel',all:null};
   if(!(category in groups))return null;
@@ -699,7 +716,7 @@ function normalizeSearchResult(row,provider){
   const lat=Number(row?.latitude??row?.lat),lng=Number(row?.longitude??row?.lng??row?.lon);
   if(!valid(lat,lng))return null;
   const name=String(row?.canonical_name||row?.name_th||row?.name_en||row?.name||row?.label||row?.display_name||'สถานที่').trim();
-  const label=String(row?.label||row?.display_name||[name,row?.village,row?.subdistrict,row?.district,row?.province].filter(Boolean).join(', '));
+  const label=compactAddress(row?.label||row?.display_name||[name,row?.village,row?.subdistrict,row?.district,row?.province].filter(Boolean).join(', '));
   return {...row,id:row?.place_id||row?.id||null,place_id:row?.place_id||row?.id||null,name,lat,lng,label,display_name:label,provider,source:row?.source||provider,persistable:provider==='queuego-places'};
 }
 async function searchQueueGoPlaces(query,options={}){
@@ -731,9 +748,9 @@ async function reverse(lat,lng){
     });
     if(!r.ok)return'';
     const row=await r.json();
-    return String(row?.display_name||'').trim();
+    return compactAddress(row?.display_name||'');
   }catch(_){return''}
 }
 function destroy(map){try{map?.remove?.()}catch(_){}}
-window.QueueGoMapWeb={searchPlaceCatalog,nearbyPlaces,attachPlaces,addPlaceSearchControl,style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,configureSearch,searchQueueGoPlaces,search,reverse,destroy,remainingNavigationRoute,navigationCameraDecision:navCameraDecision,navigationScreenAnchorRatio:navScreenAnchorRatio,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
+window.QueueGoMapWeb={compactAddress,searchPlaceCatalog,nearbyPlaces,attachPlaces,addPlaceSearchControl,style:QG_OSM_STYLE,valid,create,marker,moveMarker,moveMarkerSmooth,fit,setCenter,addGeoJsonLine,removeGeoJsonLine,locate,configureSearch,searchQueueGoPlaces,search,reverse,destroy,remainingNavigationRoute,navigationCameraDecision:navCameraDecision,navigationScreenAnchorRatio:navScreenAnchorRatio,followNavigationCamera,setNavigationFollow,setNavigationMode,navigationOverview,reanchorNavigationAfterZoom,reanchorNavigationAfterGesture};
 })();
