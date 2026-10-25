@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "QueueGo Customer",
+  "short_name": "QueueGo",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fffafa",
+  "theme_color": "#e6002d",
+  "icons": [
+    {
+      "src": "assets/icons/queuego-customer.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

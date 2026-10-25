@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "QueueGo Shop",
+  "short_name": "QueueGo Shop",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5fffb",
+  "theme_color": "#137a60",
+  "icons": [
+    {
+      "src": "../assets/icons/queuego-merchant.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

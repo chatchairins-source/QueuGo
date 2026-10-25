@@ -65,7 +65,7 @@
    }
   }catch(e){error=e.message}}schedule()},5000)}
  function rideLocationButton(kind,label,value,color){
-  return '<button type="button" data-action="'+kind+'" class="qg-ride-location" '+(busy||pending()||!config.enabled?'disabled':'')+' style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:13px 12px;border:1px solid #e6e7ea;border-radius:14px;background:#fff;color:#17181a;margin:0 0 9px"><span aria-hidden="true" style="width:12px;height:12px;border-radius:50%;background:'+color+';box-shadow:0 0 0 4px '+color+'1f;flex:none"></span><span style="min-width:0;flex:1"><small style="display:block;color:#777d86;font-weight:700;margin-bottom:3px">'+label+'</small><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(value||'เลือกบนแผนที่')+'</b></span><span aria-hidden="true" style="font-size:22px;color:#9aa0a8">›</span></button>';
+  return '<button type="button" data-action="'+kind+'" class="qg-ride-location" '+(busy||pending()||!config.enabled?'disabled':'')+' style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:13px 12px;border:1px solid #e6e7ea;border-radius:14px;background:#fff;color:#17181a;margin:0 0 9px"><span aria-hidden="true" style="width:12px;height:12px;border-radius:50%;background:'+color+';box-shadow:0 0 0 4px '+color+'1f;flex:none"></span><span style="min-width:0;flex:1"><small style="display:block;color:#777d86;font-weight:700;margin-bottom:3px">'+label+'</small><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(window.QueueGoMapWeb?.compactAddress?.(value)||value||'เลือกบนแผนที่')+'</b></span><span aria-hidden="true" style="font-size:22px;color:#9aa0a8">›</span></button>';
  }
  function rideStopMarkerElement(text,color){
   const el=document.createElement('div');
@@ -143,10 +143,11 @@
    addPoint(o.delivery_latitude,o.delivery_longitude);
    addPoint(o.rider_latitude,o.rider_longitude);
    const center=points[2]||points[0]||points[1]||[101,15];
-   previewMap=new maplibregl.Map({container:host,style:qgQueueGoPickerStyle(),center,zoom:points.length?15:6,minZoom:5,maxZoom:19,attributionControl:false,dragRotate:false,pitchWithRotate:false});
+   previewMap=new maplibregl.Map({container:host,style:qgQueueGoPickerStyle(),center,zoom:points.length?15:6,minZoom:5,maxZoom:19,attributionControl:false,maxPitch:60,dragRotate:true,pitchWithRotate:true});
    previewMode='active';activeRideId=String(o.id||'');
-   previewMap.touchZoomRotate.disableRotation();
-   previewMap.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),'top-left');
+   previewMap.touchZoomRotate.enableRotation();
+   previewMap.touchPitch.enable();
+   previewMap.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:true,visualizePitch:true}),'top-left');
    previewMap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
    const bounds=new maplibregl.LngLatBounds();
    for(const point of [
@@ -180,12 +181,14 @@
     minZoom:5,
     maxZoom:19,
     attributionControl:false,
-    dragRotate:false,
-    pitchWithRotate:false
+    maxPitch:60,
+    dragRotate:true,
+    pitchWithRotate:true
    });
    previewMode='route';
-   previewMap.touchZoomRotate.disableRotation();
-   previewMap.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),'top-left');
+   previewMap.touchZoomRotate.enableRotation();
+   previewMap.touchPitch.enable();
+   previewMap.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:true,visualizePitch:true}),'top-left');
    previewMap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
 
    const bounds=new maplibregl.LngLatBounds();
@@ -286,7 +289,7 @@
     :null;
   const selectedInitial=saved||auto;
   const initial=selectedInitial||reference;
-  const initialAddress=selectedInitial?.address||'';
+  const rawAddress=selectedInitial?.address||'',initialAddress=window.QueueGoMapWeb?.compactAddress?.(rawAddress)||rawAddress;
   let point=selectedInitial?{lat:initial.lat,lng:initial.lng}:null,revision=0;
   const title=which==='pickup'?'เลือกจุดรับ':'เลือกจุดหมาย';
   const subtitle=which==='pickup'
