@@ -1,12 +1,12 @@
-## 2026-10-25 Authenticated Android review — Rider UI-tree retry in progress
+## 2026-10-25 Authenticated Android visual review — DONE
 
-- Branch: `work-native-rider-auth-review-20261024`; Rider hierarchy retry commit `2e1a3f6e0ee12c76947e39cb0b70c109a34cb283`.
-- Run `40147614344` at `b182dbda560e1fd17081bf2a915c8a5868b0357b` PASSED end to end: actual Rider + Merchant debug APK builds, Android Emulator boot, Rider 11/11 screens, Merchant 5/5 screens, and both artifacts uploaded.
-- Newer run `40147630049` passed Merchant capture (5/5) but Rider failed at login because UIAutomator reported `null root node` and returned empty XML during a screen transition. This is intermittent; earlier run on the same Rider source completed all screens.
-- Fix: Rider UI hierarchy dump now retries up to five times on command/parse failure. Workflow continues with Merchant after Rider failure if emulator boot succeeded.
-- No physical-device proof. Customer app still needs an authorized Customer test account.
-- Status: IN PROGRESS.
-- **NEXT:** inspect exact latest run after retry commit; verify 11 Rider + 5 Merchant screenshots and metadata, then download/inspect final artifacts.
+- Branch: `work-native-rider-auth-review-20261024`; verified exact HEAD: `0a07a9352159295ff0f0c6a4d182c85703d329be`.
+- Exact-head Actions run `40148163225`: **SUCCESS**. Both debug APKs built; Android Emulator booted; Rider authentication and all expected 11 screenshots passed; Merchant authentication and all expected 5 read-only screenshots passed; both artifacts uploaded.
+- Rider metadata: `review_complete=true`, 11/11 screenshots, no missing screens. Merchant metadata: `review_complete=true`, 5/5 screenshots, no missing screens. Screenshots were inspected after download; no order/dispatch mutation was used.
+- Transient UIAutomator empty-root failure is handled by five bounded retries. Support dialogs close by accessible button or Android Back.
+- Physical device evidence is not claimed. Customer app capture remains blocked until an authorized Customer test account is provided.
+- Status: DONE for Rider + Merchant authenticated emulator screenshot scope.
+- **NEXT:** continue only if an authorized Customer test account becomes available or the owner requests another workstream.
 
 # 2026-10-24 Rider Android production schema mismatch — IN PROGRESS
 
