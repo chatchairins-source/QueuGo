@@ -6,6 +6,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 
 const EXPECTED=Object.freeze({province:77,district:928,subdistrict:7364});
+const PROVINCE_CENTROID_ROUNDING_TOLERANCE_M=100;
 const THAI_PREFIX=/^(จังหวัด|อำเภอ|เขต|ตำบล|แขวง)\s*/;
 const EN_SUFFIX=/\s+(province|district|subdistrict)$/i;
 const clean=value=>String(value??'').trim().replace(/\s+/g,' ');
@@ -40,6 +41,26 @@ function geometryContains(point,geometry){
   if(geometry.type==='MultiPolygon') return geometry.coordinates.some(poly=>polygonContains(point,poly));
   return false;
 }
+function segmentDistanceMeters(point,a,b){
+  const latRad=point[1]*Math.PI/180;
+  const mx=Math.cos(latRad)*111320;
+  const my=110574;
+  const ax=(a[0]-point[0])*mx, ay=(a[1]-point[1])*my;
+  const bx=(b[0]-point[0])*mx, by=(b[1]-point[1])*my;
+  const dx=bx-ax,dy=by-ay,den=dx*dx+dy*dy;
+  const t=den===0?0:Math.max(0,Math.min(1,-(ax*dx+ay*dy)/den));
+  return Math.hypot(ax+t*dx,ay+t*dy);
+}
+function geometryEdgeDistanceMeters(point,geometry){
+  let best=Infinity;
+  const rings=geometry?.type==='Polygon'?geometry.coordinates:
+    geometry?.type==='MultiPolygon'?geometry.coordinates.flat(1):[];
+  for(const ring of rings){
+    for(let i=1;i<ring.length;i++) best=Math.min(best,segmentDistanceMeters(point,ring[i-1],ring[i]));
+  }
+  return best;
+}
+
 function geometryBbox(geometry){
   const boxes=[];
   const visit=value=>{
@@ -117,6 +138,12 @@ function matchHierarchy(osm,oad){
         const isoContaining=isoMatches.filter(row=>bboxContains(row.bbox,item.point)&&geometryContains(item.point,row.geometry));
         if(isoContaining.length===1&&isoContaining[0].names.has(item.normalized_name)){
           chosen=isoContaining[0]; method='iso_name_centroid';
+        } else if(
+          isoMatches.length===1 &&
+          isoMatches[0].names.has(item.normalized_name) &&
+          geometryEdgeDistanceMeters(item.point,isoMatches[0].geometry)<=PROVINCE_CENTROID_ROUNDING_TOLERANCE_M
+        ){
+          chosen=isoMatches[0]; method='iso_name_centroid_rounding_tolerance';
         } else if(isoMatches.length>1||c.matching.length>1) status='ambiguous';
       }
       if(!chosen&&!status&&c.matching.length===1){ chosen=c.matching[0]; method='name_centroid'; }
@@ -182,4 +209,4 @@ if(require.main===module){
   try{const result=run({boundariesFile,flatFile,subdistrictFile,outputDir});console.error(JSON.stringify(result.report.summary));}
   catch(error){console.error(error.stack||error.message);process.exitCode=1;}
 }
-module.exports={EXPECTED,normalizedName,onSegment,ringContains,polygonContains,geometryContains,geometryBbox,parseOad,candidateRows,matchHierarchy,run};
+module.exports={EXPECTED,PROVINCE_CENTROID_ROUNDING_TOLERANCE_M,normalizedName,onSegment,ringContains,polygonContains,geometryContains,segmentDistanceMeters,geometryEdgeDistanceMeters,geometryBbox,parseOad,candidateRows,matchHierarchy,run};

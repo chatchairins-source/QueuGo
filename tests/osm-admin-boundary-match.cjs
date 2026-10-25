@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
-const {normalizedName,geometryContains,matchHierarchy}=require('../scripts/match-osm-admin-boundaries-to-oad.cjs');
+const {normalizedName,geometryContains,geometryEdgeDistanceMeters,matchHierarchy}=require('../scripts/match-osm-admin-boundaries-to-oad.cjs');
 
 assert.equal(normalizedName('จังหวัด อุบลราชธานี'),'อุบลราชธานี');
 assert.equal(normalizedName('อำเภอเมืองเชียงใหม่'),'เมืองเชียงใหม่');
@@ -12,6 +12,7 @@ assert.equal(normalizedName('แขวง บางมด'),'บางมด');
 const square=(x1,y1,x2,y2)=>({type:'Polygon',coordinates:[[[x1,y1],[x2,y1],[x2,y2],[x1,y2],[x1,y1]]]});
 assert.equal(geometryContains([100.5,13.5],square(100,13,101,14)),true);
 assert.equal(geometryContains([102,13.5],square(100,13,101,14)),false);
+assert.ok(geometryEdgeDistanceMeters([104.0003,13],square(100,10,104,16))<40);
 
 const wrap=(source_record_id,admin_type,name,geometry,iso3166_2=null)=>({
   source_record_id,admin_type,canonical_name:name,name_th:name,name_en:null,osm_name:name,iso3166_2,
@@ -28,6 +29,11 @@ const oad={all:[
   {id:'1001',type:'district',name:'เมืองหนึ่ง',normalized_name:'เมืองหนึ่ง',point:[102,13],parent_id:'10',province_id:'10',district_id:'1001'},
   {id:'100101',type:'subdistrict',name:'กลาง',normalized_name:'กลาง',point:[102,13],parent_id:'1001',province_id:'10',district_id:'1001'}
 ]};
+const roundedOad={all:[{...oad.all[0],point:[104.0003,13]}]};
+const rounded=matchHierarchy(osm,roundedOad);
+assert.equal(rounded.mapping[0].status,'deterministic');
+assert.equal(rounded.mapping[0].method,'iso_name_centroid_rounding_tolerance');
+
 const matched=matchHierarchy(osm,oad);
 assert.equal(matched.summary.by_admin_type.province.deterministic,1);
 assert.equal(matched.summary.by_admin_type.district.deterministic,1);
@@ -40,4 +46,4 @@ const amb=matchHierarchy(ambiguous,oad);
 assert.equal(amb.summary.by_admin_type.district.ambiguous,1);
 assert.equal(amb.summary.by_admin_type.subdistrict.parent_unresolved,1);
 
-console.log(JSON.stringify({checks:14,failures:0,scope:'OAD centroid/name/parent deterministic matching to review-only OSM admin polygons'}));
+console.log(JSON.stringify({checks:17,failures:0,scope:'OAD centroid/name/parent deterministic matching to review-only OSM admin polygons'}));
