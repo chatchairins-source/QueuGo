@@ -1094,6 +1094,8 @@ function initMap(){
   if(!Q||typeof maplibregl==='undefined'||!host){S.map=null;if(host)host.innerHTML='<div class="qg-map-fallback">QueueGo Map โหลดไม่ได้ในขณะนี้<br><small>รับงานและเปิดนำทางภายนอกได้ตามปกติ</small></div>';return}
   try{Q.destroy(riderMapInstance)}catch(_){}
   S.map=riderMapInstance=Q.create(host,{lat:13.7563,lng:100.5018,zoom:13,navigation:true});
+  // Rider owns a single compass in the right-side tool stack; remove MapLibre's duplicate top control.
+  host.querySelector('.maplibregl-ctrl-compass')?.remove();
   riderNavigationCameraActive=!qgNavigationCameraFollowEnabled();
   syncRiderNavigationCameraMode(true);
 }
@@ -1190,6 +1192,10 @@ function recenterMap(){
     Q?.setNavigationMode?.(S.map,false,{duration:220});
     Q?.setCenter(S.map,S.pos.lat,S.pos.lng,15,350);
   }
+}
+function resetRiderCompass(){
+  if(!S.map){toast('แผนที่ยังไม่พร้อม');return}
+  try{S.map.easeTo({bearing:0,duration:320})}catch(_){try{S.map.setBearing?.(0)}catch(__){}}
 }
 function qgOverviewRoutePoints(){
   const points=[],add=(lat,lng)=>{
@@ -1834,8 +1840,8 @@ function qgNavHTML(){
 }
 function renderStage(){
   stopPolling();disposeRiderMap();
-  document.getElementById('app').innerHTML=`<div class="stage qg-stage"><div id="map" class="qg-map"></div><header class="qg-topbar">${qgHeaderWordmark('qg-brand-pill')}</header><div class="qg-route-badge" id="route-badge"><div class="qg-route-icon" id="route-turn-icon">${qgTurnSvg(5)}</div><div class="qg-route-copy"><div class="qg-route-main"><strong id="route-maneuver-distance">--</strong></div><span class="qg-route-road" id="route-road">กำลังคำนวณเส้นทาง</span><small class="qg-route-summary" id="route-text">อัปเดตตามตำแหน่งของคุณ</small><div class="qg-route-next" id="route-next"></div><div class="qg-route-customer-note" id="route-customer-note"></div></div></div><div class="qg-map-tools"><div class="qg-speed-pill" aria-label="ความเร็วปัจจุบัน"><b id="qg-speed-value">—</b><span>กม./ชม.</span></div><button class="qg-map-button" id="recenter" aria-label="กลับไปยังตำแหน่งปัจจุบัน">${QTICON.loc}</button><button class="qg-map-button" id="overview" aria-label="ดูเส้นทางทั้งหมด">${QTICON.route}</button></div><main class="qg-home-dock" id="home-dock"></main><section class="qg-panel" id="panel-earn"></section><section class="qg-panel" id="panel-profile"></section>${qgNavHTML()}</div><div class="qg-message" id="qg-message"><i>●</i><div><b>ข้อความใหม่</b><small id="qg-message-text"></small></div></div>`;
-  document.getElementById('recenter').onclick=recenterMap;document.getElementById('overview').onclick=overviewRoute;document.querySelectorAll('.qg-nav-item').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));initMap();updateStatusUI();updateRiderSpeedUI();renderHomeDock();startGeolocation();refreshData();startPolling();qgStartMessageWatch();qgRiderVoiceActivate();
+  document.getElementById('app').innerHTML=`<div class="stage qg-stage"><div id="map" class="qg-map"></div><header class="qg-topbar">${qgHeaderWordmark('qg-brand-pill')}</header><div class="qg-route-badge" id="route-badge"><div class="qg-route-icon" id="route-turn-icon">${qgTurnSvg(5)}</div><div class="qg-route-copy"><div class="qg-route-main"><strong id="route-maneuver-distance">--</strong></div><span class="qg-route-road" id="route-road">กำลังคำนวณเส้นทาง</span><small class="qg-route-summary" id="route-text">อัปเดตตามตำแหน่งของคุณ</small><div class="qg-route-next" id="route-next"></div><div class="qg-route-customer-note" id="route-customer-note"></div></div></div><div class="qg-map-tools"><div class="qg-speed-pill" aria-label="ความเร็วปัจจุบัน"><b id="qg-speed-value">—</b><span>กม./ชม.</span><button class="qg-map-button" id="compass" aria-label="หันแผนที่กลับทิศเหนือ"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.8 8.2 13.6 13.6 8.2 15.8l2.2-5.4 5.4-2.2Z"/><circle cx="12" cy="12" r="9"/></svg></button></div><button class="qg-map-button" id="recenter" aria-label="กลับไปยังตำแหน่งปัจจุบัน">${QTICON.loc}</button><button class="qg-map-button" id="overview" aria-label="ดูเส้นทางทั้งหมด">${QTICON.route}</button></div><main class="qg-home-dock" id="home-dock"></main><section class="qg-panel" id="panel-earn"></section><section class="qg-panel" id="panel-profile"></section>${qgNavHTML()}</div><div class="qg-message" id="qg-message"><i>●</i><div><b>ข้อความใหม่</b><small id="qg-message-text"></small></div></div>`;
+  document.getElementById('recenter').onclick=recenterMap;document.getElementById('overview').onclick=overviewRoute;document.getElementById('compass').onclick=resetRiderCompass;document.querySelectorAll('.qg-nav-item').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));initMap();updateStatusUI();updateRiderSpeedUI();renderHomeDock();startGeolocation();refreshData();startPolling();qgStartMessageWatch();qgRiderVoiceActivate();
 }
 function switchTab(tab){
   document.getElementById('qg-rider-inbox')?.remove();S.activeTab=tab;document.querySelectorAll('.qg-nav-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelectorAll('.qg-panel').forEach(p=>p.classList.remove('show'));
