@@ -454,9 +454,11 @@ ok(source.includes('ToneGenerator')&&source.includes('STREAM_NOTIFICATION'),'Mer
 ok(source.includes('queuego_delete_or_archive_product')&&source.includes('saveProduct('),'Merchant native must support safe product archive and full product editing');
 ok(source.includes('shop_support_messages?select=id,sender_user_id,body,created_at'),'Merchant native must preserve Admin support messaging');
 const merchantSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
+const merchantApiSource=read('merchant/src/main/java/com/queuego/merchant/MerchantApi.kt');
 const merchantImageUpload=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
 const merchantManifest=read('merchant/src/main/AndroidManifest.xml');
 ok(merchantSetup.includes('QgLocationPickerMap(')&&merchantSetup.includes('ใช้ตำแหน่ง GPS ปัจจุบัน')&&merchantSetup.includes('บันทึกข้อมูลร้าน'),'Merchant native shop setup must preserve QueueGo Map picker, GPS and save flow');
+ok(merchantApiSource.includes('http.reversePlaceAddress(latitude, longitude)')&&merchantSetup.includes('resolveAddress: suspend (Double, Double) -> String?')&&merchantSetup.includes('addressLockedByUser'),'Merchant reverse labels must use shared QueueGo Places authority without overwriting typed addresses');
 ok(merchantSetup.includes('mobile_accessories')&&merchantSetup.includes('automotive_motorcycle')&&merchantSetup.includes('home_decor'),'Merchant native Shopping setup must preserve web subcategories');
 ok(merchantImageUpload.includes('/storage/v1/object/merchant-media/')&&merchantImageUpload.includes('12 * 1024 * 1024')&&merchantImageUpload.includes('3 * 1024 * 1024'),'Merchant native shop images must use production merchant-media limits');
 ok(merchantManifest.includes('ACCESS_FINE_LOCATION')&&merchantManifest.includes('queuego.map.service.base_url')&&merchantManifest.includes('${queuegoMapServiceBaseUrl}'),'Merchant native setup must declare location and QueueGo Map service config');
