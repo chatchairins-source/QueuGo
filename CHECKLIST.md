@@ -1,3 +1,11 @@
+## 2026-10-25 Rider authenticated review — SDK install fix IN PROGRESS
+
+- Active Native review successor: `work-native-rider-auth-review-20261024`; workflow fix commit `6ff29dd2f1639f15aac86e0149b1e1c3eb0f0f30`, descendant of review HEAD `8bb7282f73a38e24ebbdcb511e58ac7910603b24`.
+- Root cause from run `40114494944`: SDK installation exited 1 because `yes` received SIGPIPE after sdkmanager finished, while `pipefail` treated the upstream pipe status as the step result. Keep sdkmanager's exit status authoritative for this license-input pipeline.
+- Review credentials were configured as repository Actions secrets. Credential-check passed, but no Android build or authenticated screenshot was produced in that failed run.
+- Status: workflow fix committed; exact-head CI is pending. No physical device evidence is claimed.
+- **NEXT:** inspect the workflow run for the newest descendant; continue to emulator login and verify all expected screenshots. Capture Merchant separately if the active workflow does not cover it; Customer requires an authorized Customer test account.
+
 # 2026-10-24 Rider Android production schema mismatch — IN PROGRESS
 
 - Active local successor: `fix/native-customer-map-picker-20261024` (descends from PR #710 head `8a9089d4`; the Rider and POS source fixes are local and unpublished).
