@@ -1,3 +1,15 @@
+## 2026-10-25 Android Web-Parity Rebuild — IN PROGRESS
+
+- Branch: `work-native-web-parity-rebuild-20261025`.
+- Starting parent: `65918d8ca7dbe720127e1c915a0483c3f209cb01`.
+- Mission checkpoint: `a4c9e95711c114011c77431b2225f347e6577135` adds `docs/native-web-parity-rebuild-20261025.md`.
+- Owner physical-device evidence rejects the current Native presentation as launch-ready. Treat the existing Customer/Merchant/Rider UI as **NOT RELEASE CANDIDATE** regardless of historical CI success.
+- Production Web is now the visual/interaction Golden Master. Native may reuse stable Auth/API/RPC/models/order state/GPS/background/push/routing/payment/release infrastructure, but visible Compose presentation that differs from Web is to be replaced.
+- No WebView/TWA shortcut. Native remains real Android for GPS/background/navigation/camera/push.
+- A green build is insufficient: migrated screens require matching Web/Android evidence and functional parity. OS-owned permission/keyboard/system chrome is excluded from pixel parity.
+- First target: Rider Home + Map, then offer → accepted job → merchant arrival → pickup → navigation → customer arrival → complete.
+- **NEXT:** rebuild Rider Home/Map presentation against Production Web while preserving existing authoritative navigation/location/order engines; remove legacy visible fallback for each migrated state; then run exact-head CI and capture paired evidence.
+
 ## 2026-10-25 Native Customer checkout QueueGo Places parity — DONE (source/test)
 
 - Implementation HEAD `4e7028be0cfc734828a8762628bb860840176093` extends the reconciled shared Places/Search successor without touching Rider compass/navigation.
