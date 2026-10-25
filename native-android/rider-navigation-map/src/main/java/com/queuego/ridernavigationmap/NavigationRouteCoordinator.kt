@@ -146,10 +146,19 @@ class NavigationRouteCoordinator(
                 guidance = guidance
             )
         }
-        val updatedMapState = if (visibleSegment != null) {
-            replaceActiveLeg(state, activeStop, visibleSegment)
-        } else {
-            state
+        val updatedMapState = when {
+            guidance.arrived -> {
+                // Presentation parity with Web: once the authoritative guidance reports
+                // arrival, remove only the active renderer geometry immediately. The
+                // business stop/order state remains unchanged until its real mutation.
+                state.copy(
+                    routes = state.routes.filter { segment ->
+                        segment.toStopId != activeStop.id
+                    }
+                )
+            }
+            visibleSegment != null -> replaceActiveLeg(state, activeStop, visibleSegment)
+            else -> state
         }
         return NavigationRouteCoordinatorResult(
             mapState = updatedMapState,
