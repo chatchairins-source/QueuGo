@@ -1,0 +1,617 @@
+{
+  "execution": "review_only_no_database_write",
+  "source_head": "79f932c1e6e51f9b0eafd0155e21d5a48ef20529",
+  "audit_run_id": 40191415943,
+  "rc_run_id": 40191415902,
+  "artifact_id": 12598197248,
+  "artifact_sha256": "31197fe895201d686454fb5b1b3e5c818993dbdbd52d54cf5eed4ac17b8c0e90",
+  "snapshot_date": "2026-10-24",
+  "pbf_sha256": "e8373240cf0be47cc641f2c8627e674064d8c47f4ff2a11f6a33fcbfc9a50949",
+  "exact_head_report": {
+    "execution": "review_only_no_database_write",
+    "osm_source": "openstreetmap",
+    "osm_license": "ODbL-1.0",
+    "osm_attribution": "© OpenStreetMap contributors",
+    "osm_normalized_sha256": "2cc723c57b9a0b4ae25e92ac2fe4f5dad84db4a6dcb8e187a4062c73b562772c",
+    "oad_commit": "eef739a534e26181c86073d69e9aeb527110cf1a",
+    "oad_flat_git_blob": "baa3eb18fb79412e85dcef08059d16f8cf47b317",
+    "oad_subdistrict_git_blob": "bd5c49a7e1af578c9e34e32020ddd90eabdc167f",
+    "oad_flat_sha256": "e33f99b468973fdeb0960eac1f96c04cf31046b1c32a32b0f8061071ef6cb309",
+    "oad_subdistrict_sha256": "83d90d98390afdfeaff7c0367e5f6527045e6be166c82e52f9ced1717459422c",
+    "oad_counts": {
+      "province": 77,
+      "district": 928,
+      "subdistrict": 7364
+    },
+    "osm_counts": {
+      "province": 77,
+      "district": 1112,
+      "subdistrict": 855
+    },
+    "summary": {
+      "by_admin_type": {
+        "province": {
+          "total": 77,
+          "deterministic": 77,
+          "ambiguous": 0,
+          "missing": 0,
+          "name_only_outside_centroid": 0,
+          "centroid_only_name_mismatch": 0,
+          "parent_unresolved": 0
+        },
+        "district": {
+          "total": 928,
+          "deterministic": 898,
+          "ambiguous": 0,
+          "missing": 1,
+          "name_only_outside_centroid": 24,
+          "centroid_only_name_mismatch": 5,
+          "parent_unresolved": 0
+        },
+        "subdistrict": {
+          "total": 7364,
+          "deterministic": 746,
+          "ambiguous": 0,
+          "missing": 6129,
+          "name_only_outside_centroid": 446,
+          "centroid_only_name_mismatch": 20,
+          "parent_unresolved": 23
+        }
+      },
+      "unused_osm_boundaries": {
+        "province": 0,
+        "district": 214,
+        "subdistrict": 109
+      }
+    }
+  },
+  "local_injective_match_replay": {
+    "execution": "review_only_no_database_write",
+    "osm_source": "openstreetmap",
+    "osm_license": "ODbL-1.0",
+    "osm_attribution": "© OpenStreetMap contributors",
+    "osm_normalized_sha256": "2cc723c57b9a0b4ae25e92ac2fe4f5dad84db4a6dcb8e187a4062c73b562772c",
+    "oad_commit": "eef739a534e26181c86073d69e9aeb527110cf1a",
+    "oad_flat_git_blob": "baa3eb18fb79412e85dcef08059d16f8cf47b317",
+    "oad_subdistrict_git_blob": "bd5c49a7e1af578c9e34e32020ddd90eabdc167f",
+    "oad_flat_sha256": "e33f99b468973fdeb0960eac1f96c04cf31046b1c32a32b0f8061071ef6cb309",
+    "oad_subdistrict_sha256": "83d90d98390afdfeaff7c0367e5f6527045e6be166c82e52f9ced1717459422c",
+    "oad_counts": {
+      "province": 77,
+      "district": 928,
+      "subdistrict": 7364
+    },
+    "osm_counts": {
+      "province": 77,
+      "district": 1112,
+      "subdistrict": 855
+    },
+    "summary": {
+      "by_admin_type": {
+        "province": {
+          "total": 77,
+          "deterministic": 77,
+          "ambiguous": 0,
+          "missing": 0,
+          "name_only_outside_centroid": 0,
+          "centroid_only_name_mismatch": 0,
+          "parent_unresolved": 0,
+          "duplicate_osm_assignment": 0
+        },
+        "district": {
+          "total": 928,
+          "deterministic": 898,
+          "ambiguous": 0,
+          "missing": 1,
+          "name_only_outside_centroid": 24,
+          "centroid_only_name_mismatch": 5,
+          "parent_unresolved": 0,
+          "duplicate_osm_assignment": 0
+        },
+        "subdistrict": {
+          "total": 7364,
+          "deterministic": 746,
+          "ambiguous": 0,
+          "missing": 6129,
+          "name_only_outside_centroid": 446,
+          "centroid_only_name_mismatch": 20,
+          "parent_unresolved": 23,
+          "duplicate_osm_assignment": 0
+        }
+      },
+      "unused_osm_boundaries": {
+        "province": 0,
+        "district": 214,
+        "subdistrict": 109
+      }
+    },
+    "hierarchy_gate": {
+      "status": "blocked",
+      "levels": {
+        "province": {
+          "expected": 77,
+          "deterministic": 77,
+          "unresolved": 0,
+          "passed": true
+        },
+        "district": {
+          "expected": 928,
+          "deterministic": 898,
+          "unresolved": 30,
+          "passed": false
+        },
+        "subdistrict": {
+          "expected": 7364,
+          "deterministic": 746,
+          "unresolved": 6618,
+          "passed": false
+        }
+      },
+      "production_import_allowed": false
+    }
+  },
+  "next": "Investigate the 30 unresolved districts and 6618 unresolved subdistricts; acquire/check licensed missing geometry without guessed names, nearest-centroid assignment or duplicate canonical Places. Require full injective hierarchy coverage and independent topology/provenance/village gates before Production import.",
+  "unresolved_districts": [
+    {
+      "oad_id": "1403",
+      "admin_type": "district",
+      "oad_name": "นครหลวง",
+      "parent_id": "14",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [
+        "relation/11007109"
+      ],
+      "candidate_name_only": [
+        "relation/11000842"
+      ]
+    },
+    {
+      "oad_id": "2009",
+      "admin_type": "district",
+      "oad_name": "สัตหีบ",
+      "parent_id": "20",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18996908"
+      ]
+    },
+    {
+      "oad_id": "2101",
+      "admin_type": "district",
+      "oad_name": "เมืองระยอง",
+      "parent_id": "21",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18955763"
+      ]
+    },
+    {
+      "oad_id": "2103",
+      "admin_type": "district",
+      "oad_name": "แกลง",
+      "parent_id": "21",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [
+        "relation/18955763",
+        "way/26610107"
+      ],
+      "candidate_name_only": [
+        "relation/18955627"
+      ]
+    },
+    {
+      "oad_id": "2306",
+      "admin_type": "district",
+      "oad_name": "เกาะกูด",
+      "parent_id": "23",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/19036109"
+      ]
+    },
+    {
+      "oad_id": "3801",
+      "admin_type": "district",
+      "oad_name": "บึงกาฬ",
+      "parent_id": "38",
+      "status": "centroid_only_name_mismatch",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [
+        "relation/18918807"
+      ],
+      "candidate_name_only": []
+    },
+    {
+      "oad_id": "4401",
+      "admin_type": "district",
+      "oad_name": "เมืองมหาสารคาม",
+      "parent_id": "44",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [
+        "relation/18936095"
+      ],
+      "candidate_name_only": [
+        "relation/18971831"
+      ]
+    },
+    {
+      "oad_id": "4906",
+      "admin_type": "district",
+      "oad_name": "ว่านใหญ่",
+      "parent_id": "49",
+      "status": "centroid_only_name_mismatch",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [
+        "relation/18972275"
+      ],
+      "candidate_name_only": []
+    },
+    {
+      "oad_id": "6607",
+      "admin_type": "district",
+      "oad_name": "สามง่าม",
+      "parent_id": "66",
+      "status": "missing",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": []
+    },
+    {
+      "oad_id": "8101",
+      "admin_type": "district",
+      "oad_name": "เมืองกระบี่",
+      "parent_id": "81",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18935570"
+      ]
+    },
+    {
+      "oad_id": "8103",
+      "admin_type": "district",
+      "oad_name": "เกาะลันตา",
+      "parent_id": "81",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18935357"
+      ]
+    },
+    {
+      "oad_id": "8105",
+      "admin_type": "district",
+      "oad_name": "อ่าวลึก",
+      "parent_id": "81",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18934964"
+      ]
+    },
+    {
+      "oad_id": "8206",
+      "admin_type": "district",
+      "oad_name": "คุระบุรี",
+      "parent_id": "82",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18975845"
+      ]
+    },
+    {
+      "oad_id": "8301",
+      "admin_type": "district",
+      "oad_name": "เมืองภูเก็ต",
+      "parent_id": "83",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/14029495"
+      ]
+    },
+    {
+      "oad_id": "8303",
+      "admin_type": "district",
+      "oad_name": "ถลาง",
+      "parent_id": "83",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/14029490"
+      ]
+    },
+    {
+      "oad_id": "8403",
+      "admin_type": "district",
+      "oad_name": "ดอนสัก",
+      "parent_id": "84",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18989816"
+      ]
+    },
+    {
+      "oad_id": "8404",
+      "admin_type": "district",
+      "oad_name": "เกาะสมุย",
+      "parent_id": "84",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18990148"
+      ]
+    },
+    {
+      "oad_id": "8411",
+      "admin_type": "district",
+      "oad_name": "ท่าฉาง",
+      "parent_id": "84",
+      "status": "centroid_only_name_mismatch",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [
+        "relation/18993629"
+      ],
+      "candidate_name_only": []
+    },
+    {
+      "oad_id": "8414",
+      "admin_type": "district",
+      "oad_name": "เคียนซา",
+      "parent_id": "84",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [
+        "relation/18936873"
+      ],
+      "candidate_name_only": [
+        "relation/18936901"
+      ]
+    },
+    {
+      "oad_id": "8501",
+      "admin_type": "district",
+      "oad_name": "เมืองระนอง",
+      "parent_id": "85",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18997125"
+      ]
+    },
+    {
+      "oad_id": "8505",
+      "admin_type": "district",
+      "oad_name": "สุขสำราญ",
+      "parent_id": "85",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/19097176"
+      ]
+    },
+    {
+      "oad_id": "8601",
+      "admin_type": "district",
+      "oad_name": "เมืองชุมพร",
+      "parent_id": "86",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18906765"
+      ]
+    },
+    {
+      "oad_id": "8603",
+      "admin_type": "district",
+      "oad_name": "ปะทิว",
+      "parent_id": "86",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18906935"
+      ]
+    },
+    {
+      "oad_id": "8607",
+      "admin_type": "district",
+      "oad_name": "สวี",
+      "parent_id": "86",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18917911"
+      ]
+    },
+    {
+      "oad_id": "8608",
+      "admin_type": "district",
+      "oad_name": "ทุ่งตะโก",
+      "parent_id": "86",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18918241"
+      ]
+    },
+    {
+      "oad_id": "9101",
+      "admin_type": "district",
+      "oad_name": "เมืองสตูล",
+      "parent_id": "91",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18935220"
+      ]
+    },
+    {
+      "oad_id": "9205",
+      "admin_type": "district",
+      "oad_name": "สิเกา",
+      "parent_id": "92",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18989202"
+      ]
+    },
+    {
+      "oad_id": "9210",
+      "admin_type": "district",
+      "oad_name": "หาดสำราญ",
+      "parent_id": "92",
+      "status": "name_only_outside_centroid",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [],
+      "candidate_name_only": [
+        "relation/18988747"
+      ]
+    },
+    {
+      "oad_id": "9310",
+      "admin_type": "district",
+      "oad_name": "ป่าพยอม",
+      "parent_id": "93",
+      "status": "centroid_only_name_mismatch",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [
+        "relation/18989001"
+      ],
+      "candidate_name_only": []
+    },
+    {
+      "oad_id": "9508",
+      "admin_type": "district",
+      "oad_name": "กรงปีนัง",
+      "parent_id": "95",
+      "status": "centroid_only_name_mismatch",
+      "method": null,
+      "osm_source_record_id": null,
+      "osm_name": null,
+      "candidate_name_centroid": [],
+      "candidate_centroid_only": [
+        "relation/18929017"
+      ],
+      "candidate_name_only": []
+    }
+  ],
+  "province_match_methods": {
+    "iso_name_centroid": 76,
+    "iso_name_centroid_rounding_tolerance": 1
+  }
+}

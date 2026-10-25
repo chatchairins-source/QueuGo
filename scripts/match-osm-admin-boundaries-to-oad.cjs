@@ -117,7 +117,7 @@ function candidateRows(oad,osmRows){
   return {containing,sameName,matching};
 }
 function summarizeStatuses(mapping){
-  const summary={total:mapping.length,deterministic:0,ambiguous:0,missing:0,name_only_outside_centroid:0,centroid_only_name_mismatch:0,parent_unresolved:0};
+  const summary={total:mapping.length,deterministic:0,ambiguous:0,missing:0,name_only_outside_centroid:0,centroid_only_name_mismatch:0,parent_unresolved:0,duplicate_osm_assignment:0};
   for(const row of mapping){
     if(Object.hasOwn(summary,row.status)) summary[row.status]++;
   }
@@ -128,6 +128,7 @@ function matchHierarchy(osm,oad){
   const resolved=new Map();
   const osmUsed=new Set();
   for(const type of ['province','district','subdistrict']){
+    const levelStart=mapping.length;
     for(const item of oad.all.filter(row=>row.type===type)){
       const rows=osm.byType[type];
       const c=candidateRows(item,rows);
@@ -176,12 +177,47 @@ function matchHierarchy(osm,oad){
         candidate_name_only:c.sameName.map(row=>row.source_record_id).slice(0,8)
       });
     }
+    // Reject every side of a collision before resolving the next level. Never
+    // let input ordering choose which OAD code gets a shared OSM polygon.
+    const claims=new Map();
+    for(const row of mapping.slice(levelStart)){
+      if(row.status!=='deterministic') continue;
+      const key=row.osm_source_record_id;
+      if(!claims.has(key)) claims.set(key,[]);
+      claims.get(key).push(row);
+    }
+    for(const [sourceId,rows] of claims){
+      if(rows.length<2) continue;
+      osmUsed.delete(sourceId);
+      for(const row of rows){
+        resolved.delete(row.oad_id);
+        row.status='duplicate_osm_assignment';
+        row.conflicting_oad_ids=rows.map(other=>other.oad_id).sort();
+        row.osm_source_record_id=null;
+        row.osm_name=null;
+        row.method=null;
+      }
+    }
   }
   const byType={};
   for(const type of ['province','district','subdistrict']) byType[type]=summarizeStatuses(mapping.filter(row=>row.admin_type===type));
   const unused={};
   for(const type of ['province','district','subdistrict']) unused[type]=osm.byType[type].filter(row=>!osmUsed.has(row.source_record_id)).length;
   return {mapping,summary:{by_admin_type:byType,unused_osm_boundaries:unused}};
+}
+function hierarchyGate(summary){
+  const levels={};
+  for(const [type,expected] of Object.entries(EXPECTED)){
+    const counts=summary.by_admin_type[type];
+    levels[type]={expected,deterministic:counts.deterministic,
+      unresolved:counts.total-counts.deterministic,
+      passed:counts.total===expected&&counts.deterministic===expected};
+  }
+  const passed=Object.values(levels).every(level=>level.passed);
+  return {status:passed?'passed':'blocked',levels,
+    // This audit certifies only centroid/name/parent identity and injectivity.
+    // Topology, provenance/licensing and village gates remain independent.
+    production_import_allowed:false};
 }
 function run({boundariesFile,flatFile,subdistrictFile,outputDir}){
   const osm=readOsmBoundaries(boundariesFile);
@@ -198,7 +234,8 @@ function run({boundariesFile,flatFile,subdistrictFile,outputDir}){
     oad_subdistrict_git_blob:'bd5c49a7e1af578c9e34e32020ddd90eabdc167f',
     oad_flat_sha256:oad.flat_sha256,oad_subdistrict_sha256:oad.subdistrict_sha256,
     oad_counts:oad.counts,osm_counts:Object.fromEntries(Object.entries(osm.byType).map(([k,v])=>[k,v.length])),
-    summary:matched.summary
+    summary:matched.summary,
+    hierarchy_gate:hierarchyGate(matched.summary)
   };
   fs.writeFileSync(path.join(outputDir,'osm-oad-admin-boundary-match-report.json'),JSON.stringify(report,null,2)+'\n');
   fs.writeFileSync(path.join(outputDir,'osm-oad-admin-boundary-mapping.json'),JSON.stringify({execution:report.execution,matches:matched.mapping},null,2)+'\n');
@@ -209,4 +246,4 @@ if(require.main===module){
   try{const result=run({boundariesFile,flatFile,subdistrictFile,outputDir});console.error(JSON.stringify(result.report.summary));}
   catch(error){console.error(error.stack||error.message);process.exitCode=1;}
 }
-module.exports={EXPECTED,PROVINCE_CENTROID_ROUNDING_TOLERANCE_M,normalizedName,onSegment,ringContains,polygonContains,geometryContains,segmentDistanceMeters,geometryEdgeDistanceMeters,geometryBbox,parseOad,candidateRows,matchHierarchy,run};
+module.exports={EXPECTED,PROVINCE_CENTROID_ROUNDING_TOLERANCE_M,normalizedName,onSegment,ringContains,polygonContains,geometryContains,segmentDistanceMeters,geometryEdgeDistanceMeters,geometryBbox,parseOad,candidateRows,matchHierarchy,hierarchyGate,run};

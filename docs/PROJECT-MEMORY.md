@@ -1,3 +1,12 @@
+## 2026-10-25 Exact-head OSM boundary audit and injective matching — IN PROGRESS
+
+- Recovered PR #728 exact source `79f932c1e6e51f9b0eafd0155e21d5a48ef20529`, descendant of main `7e036a0735cc49905e9b0a2434492470551a0c9d`. Existing audit run `40191415943` and RC `40191415902` both SUCCESS; no duplicate acquisition run was needed.
+- Downloaded audit artifact `12598197248` and independently verified ZIP SHA-256 `31197fe895201d686454fb5b1b3e5c818993dbdbd52d54cf5eed4ac17b8c0e90`. Staged OSM levels 4/6/8: **77 / 1,112 / 855** polygons. Exact pinned OAD files verified against both registered Git blob hashes.
+- Real deterministic matches: **77/77 provinces, 898/928 districts, 746/7,364 subdistricts**. District unresolved: 1 missing, 24 name-only outside centroid, 5 centroid-only name mismatch. Subdistrict unresolved: 6,129 missing, 446 name-only, 20 centroid-only, 23 unresolved parent. No complete hierarchy gate and no Production import.
+- Evidence-backed matcher gap: `osmUsed` only counted unused boundaries; it did not reject multiple OAD codes selecting the same OSM polygon. Reject every colliding assignment before matching children, independently of input order, and classify `duplicate_osm_assignment`. Add explicit full-count hierarchy coverage report, with Production import always disabled in this review-only tool. Green acquisition CI is not hierarchy approval.
+- Local focused staging/matcher checks: 27 + 28 PASS. Replayed the improved matcher against the checksum-verified real artifact and both pinned OAD files: identical 77/898/746 deterministic coverage, zero collisions. Aggregate receipt: `data/maps/osm-thailand-2026-10-24-admin-review.json`. Exact successor hosted CI remains pending until publication.
+- **NEXT:** run exact successor RC/boundary audit, inspect unresolved district candidates and subdistrict missing geometry by parent against licensed sources. Do not widen centroid tolerances, guess nearest polygons or create duplicate administrative Places to force coverage. Full injective hierarchy coverage, real topology, source/license/provenance and DOPA village gates must pass before any Production promotion. PR #728 stays draft.
+
 ## 2026-10-25 Detailed land boundary release prepared
 
 - `840f2923` hosted RC `40171718136` passed. Exact pinned geoBoundaries component passed real read-only PostGIS validity and all 14 positive/negative paired containment expectations.

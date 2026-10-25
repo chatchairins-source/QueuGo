@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
-const {normalizedName,geometryContains,geometryEdgeDistanceMeters,matchHierarchy}=require('../scripts/match-osm-admin-boundaries-to-oad.cjs');
+const {normalizedName,geometryContains,geometryEdgeDistanceMeters,matchHierarchy,hierarchyGate}=require('../scripts/match-osm-admin-boundaries-to-oad.cjs');
 
 assert.equal(normalizedName('จังหวัด อุบลราชธานี'),'อุบลราชธานี');
 assert.equal(normalizedName('อำเภอเมืองเชียงใหม่'),'เมืองเชียงใหม่');
@@ -46,4 +46,25 @@ const amb=matchHierarchy(ambiguous,oad);
 assert.equal(amb.summary.by_admin_type.district.ambiguous,1);
 assert.equal(amb.summary.by_admin_type.subdistrict.parent_unresolved,1);
 
-console.log(JSON.stringify({checks:17,failures:0,scope:'OAD centroid/name/parent deterministic matching to review-only OSM admin polygons'}));
+// Two OAD codes must never claim the same polygon, even with matching names
+// and centroids. Reject both and prevent children from resolving through them.
+const duplicateOad={all:[...oad.all,{...oad.all[1],id:'1002',district_id:'1002',point:[102.1,13]}]};
+const collision=matchHierarchy(osm,duplicateOad);
+assert.equal(collision.summary.by_admin_type.district.duplicate_osm_assignment,2);
+assert.equal(collision.summary.by_admin_type.district.deterministic,0);
+assert.equal(collision.summary.by_admin_type.subdistrict.parent_unresolved,1);
+assert.equal(collision.summary.unused_osm_boundaries.district,2);
+const reordered=matchHierarchy(osm,{all:[...duplicateOad.all].reverse()});
+const byId=result=>[...result.mapping].sort((a,b)=>a.oad_id.localeCompare(b.oad_id));
+assert.deepEqual(byId(collision),byId(reordered));
+assert.deepEqual(collision.mapping.find(row=>row.oad_id==='1001').conflicting_oad_ids,['1001','1002']);
+const partialGate=hierarchyGate(matched.summary);
+assert.equal(partialGate.status,'blocked');
+assert.equal(partialGate.production_import_allowed,false);
+const fullSummary={by_admin_type:Object.fromEntries(Object.entries({province:77,district:928,subdistrict:7364}).map(([type,total])=>[type,{total,deterministic:total}]))};
+assert.equal(hierarchyGate(fullSummary).status,'passed');
+assert.equal(hierarchyGate(fullSummary).production_import_allowed,false);
+fullSummary.by_admin_type.subdistrict.deterministic--;
+assert.equal(hierarchyGate(fullSummary).status,'blocked');
+
+console.log(JSON.stringify({checks:28,failures:0,scope:'OAD centroid/name/parent deterministic matching to review-only OSM admin polygons'}));
