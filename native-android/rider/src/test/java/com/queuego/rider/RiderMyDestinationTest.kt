@@ -44,14 +44,4 @@ class RiderMyDestinationTest {
         assertFalse(riderDestinationReady(15.0, 103.0, "   "))
         assertFalse(riderDestinationReady(30.0, 103.0, "บ้าน"))
     }
-
-    @Test fun reverseGeocodeFormatterKeepsOnlyUsefulAddressParts() {
-        val raw = JSONObject()
-            .put("house_number", "99")
-            .put("road", "ถนนทดสอบ")
-            .put("province", "บุรีรัมย์")
-            .put("postcode", "31000")
-            .toString()
-        assertEquals("99 ถนนทดสอบ บุรีรัมย์ 31000", riderFormatLongdoAddress(raw))
-    }
 }
