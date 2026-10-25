@@ -41,6 +41,7 @@ import com.queuego.shared.QgRiderBg
 import com.queuego.ridernavigationmap.NavigationViewportInsets
 import com.queuego.ridernavigationmap.NavigationGuidanceState
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -1033,6 +1034,7 @@ private fun RiderHome(
 
     var recenterSignal by remember { mutableStateOf(0) }
     var overviewSignal by remember { mutableStateOf(0) }
+    var compassResetSignal by remember { mutableStateOf(0) }
     var routeOverviewActive by remember { mutableStateOf(false) }
     var pendingMapRecenter by remember { mutableStateOf(false) }
 
@@ -2536,6 +2538,7 @@ private fun RiderHome(
             demandZones = if (mapJob == null && snapshot?.online == true) demandZones else emptyList(),
             recenterSignal = recenterSignal,
             overviewSignal = overviewSignal,
+            compassResetSignal = compassResetSignal,
             viewportInsets = NavigationViewportInsets(
                 topPx = navigationTopInsetPx,
                 bottomPx = navigationBottomInsetPx
@@ -2732,6 +2735,41 @@ private fun RiderHome(
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 QgIcon("location", Modifier.size(23.dp), QgRed)
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 116.dp, end = 10.dp)
+                .size(44.dp)
+                .clickable { compassResetSignal += 1 },
+            shape = androidx.compose.foundation.shape.CircleShape,
+            colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.size(23.dp)) {
+                    val cx = size.width / 2f
+                    val cy = size.height / 2f
+                    val north = Path().apply {
+                        moveTo(cx, size.height * 0.08f)
+                        lineTo(size.width * 0.68f, cy)
+                        lineTo(cx, size.height * 0.43f)
+                        lineTo(size.width * 0.32f, cy)
+                        close()
+                    }
+                    val south = Path().apply {
+                        moveTo(cx, size.height * 0.92f)
+                        lineTo(size.width * 0.68f, cy)
+                        lineTo(cx, size.height * 0.57f)
+                        lineTo(size.width * 0.32f, cy)
+                        close()
+                    }
+                    drawPath(north, color = QgRed)
+                    drawPath(south, color = Color(0xFFFFA3B4))
+                }
             }
         }
 
