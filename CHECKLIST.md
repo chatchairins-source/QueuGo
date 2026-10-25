@@ -1,9 +1,14 @@
-## 2026-10-25 Native shared QueueGo Places reverse labels — IN PROGRESS
+## 2026-10-25 Native shared QueueGo Places Search + Reverse — IN PROGRESS
 
-- Successor source starts exactly from Rider compass PR #718 head `4d56aa3ba7b1efcee6073820c36fa31902212aee`; navigation/compass files are untouched.
-- Added shared `QueueGoNativeApi.reversePlaceAddress` using existing public `qg_search_places` with administrative-area results, bounded 100 km search and 50 km accepted label distance. Customer and Rider no longer call Longdo reverse geocoding directly.
-- Added shared unit coverage and a native source regression that rejects direct `api.longdo.com` reverse lookup in Customer/Rider.
-- **NEXT:** run the exact-head Native Pilot workflow (full npm regression, shared/customer/merchant/rider unit tests, three APK builds, 16 KB packaging and emulator launch). Fix first exact-head failure only. Then reconcile Merchant map address parity without touching #718 navigation.
+- Successor remains a strict descendant of Rider compass PR #718 head `4d56aa3ba7b1efcee6073820c36fa31902212aee`; Rider compass/navigation implementation files remain untouched.
+- Production Thailand service boundary revision 2 and Web Places/Search source/attribution were already merged to `main` at `2941dff7fdf5585963b09123695dc20afcd37da4`; main RC, Chat Retention and Pages all passed.
+- Shared Native reverse authority: `QueueGoNativeApi.reversePlaceAddress` uses public `qg_search_places`, bounded to Thailand coordinates, 100 km lookup / 50 km accepted administrative-label distance. Customer, Merchant and Rider use the same reverse client; direct Customer/Rider Longdo reverse calls and obsolete Longdo formatter tests were removed.
+- Exact-head Native Pilot run `40178222093` for `8853c17f30319fc93b202c77bde99b8644ba05a8` passed full regression, source integrity, all Kotlin unit suites, three APK builds, Android 16 KB packaging, WebView rejection, artifact upload and emulator launch/map/voice lifecycle.
+- Merchant parity is now included: GPS/map movement resolves the shop address through QueueGo Places with debounce; typed merchant addresses are preserved; selecting a search result recenters the existing QueueGo map instead of adding an overlay.
+- Shared Native text search is now implemented with `QueueGoNativeApi.searchPlaces` + one `QgPlaceSearchPanel`. Search is nationwide by default, debounced 300 ms, capped to 8 displayed results, and parses only valid Thailand coordinates from the authoritative RPC.
+- Customer delivery-location picker, Merchant shop setup and Rider My Destination all place the shared search panel outside the map canvas. Selecting a result uses one shared label formatter, moves the current pin and recenters the existing QueueGo map; no duplicate map/search backend was introduced.
+- Source regressions require all three roles to converge on shared QueueGo search/reverse authority and keep the search UI outside `QgLocationPickerMap`.
+- **NEXT:** run Native Pilot on the exact checkpoint HEAD, fix only the first failure if any, then mark PR #722 ready. Physical-device navigation remains a separate release gate and must not be claimed from emulator evidence.
 
 ## 2026-10-25 Authenticated Android visual review — DONE
 
