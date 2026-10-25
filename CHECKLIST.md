@@ -8,7 +8,9 @@
 - Shared Native text search is now implemented with `QueueGoNativeApi.searchPlaces` + one `QgPlaceSearchPanel`. Search is nationwide by default, debounced 300 ms, capped to 8 displayed results, and parses only valid Thailand coordinates from the authoritative RPC.
 - Customer delivery-location picker, Merchant shop setup and Rider My Destination all place the shared search panel outside the map canvas. Selecting a result uses one shared label formatter, moves the current pin and recenters the existing QueueGo map; no duplicate map/search backend was introduced.
 - Source regressions require all three roles to converge on shared QueueGo search/reverse authority and keep the search UI outside `QgLocationPickerMap`.
-- **NEXT:** run Native Pilot on the exact checkpoint HEAD, fix only the first failure if any, then mark PR #722 ready. Physical-device navigation remains a separate release gate and must not be claimed from emulator evidence.
+- Exact-head Native Pilot run `40179473743` on `48aa131b5b2998387394af4e735c5bf041ff7f46` passed full regression/source gates and failed first at shared Kotlin compile because `QueueGoPlaceSearch.kt` explicitly imported Compose `weight`, resolving to an internal API in this Compose version.
+- Fix `36f807f55f2c1b0fc011d4dafbd3b5d4e9abf5e6` removes only that invalid import; `Modifier.weight(1f)` remains correctly scoped inside `Row`.
+- **NEXT:** run Native Pilot on the exact successor HEAD, fix only the first failure if any, then mark PR #722 ready. Physical-device navigation remains a separate release gate and must not be claimed from emulator evidence.
 
 ## 2026-10-25 Authenticated Android visual review — DONE
 
