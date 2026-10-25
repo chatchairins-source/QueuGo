@@ -1,3 +1,13 @@
+## 2026-10-25 QueueGo Places nationwide named-road staging — IN PROGRESS
+
+- Source starts from current web/main nationwide Places merge `2941dff7fdf5585963b09123695dc20afcd37da4`; old Rider local-road/navigation branches are not reused.
+- Root cause: Production QueueGo Places currently has 8,372 verified/non-rejected rows dominated by province/district/subdistrict data and only two operational POIs; named roads are absent. The reviewed OSM pipeline exported nodes/areas only, classified `highway` only for bus stops, and rejected LineString geometry, so street names could not become QueueGo Search candidates.
+- Added review-only named OSM highway-way export for controlled public road classes. PyOsmium now requests way-node locations and emits LineString geometry with stable OSM way ID/timestamp while preserving the existing controlled-tag/privacy boundary.
+- OSM staging now recognizes controlled named road classes as `category=road`, derives one deterministic representative point on each LineString for QueueGo Search, retains the full source geometry inside the payload checksum/provenance input, and never writes LineString into the MultiPolygon-only `queuego_places.boundary`.
+- Coverage reporting now separates point / road / boundary records. ODbL-1.0, © OpenStreetMap contributors attribution, official Geofabrik source validation, source-record mapping and field provenance remain unchanged. This branch still generates review SQL only and performs **no Production database write**.
+- Tests cover exporter LineString support, controlled highway classes, road midpoint, Thailand bounds, non-road LineString rejection, review SQL provenance and road coverage accounting.
+- **NEXT:** run focused OSM staging test and hosted regression on the exact HEAD. Fix the first failure only. Before any real PBF promotion, add a deterministic road search grouping/dedupe policy so repeated OSM way segments do not flood a single road-name query, then stage a checksum-pinned Thailand snapshot and review coverage/provenance. No Production import until those gates pass.
+
 ## 2026-10-25 Detailed Thailand service boundary revision 2 — DONE (Production cutover/readback)
 
 - Source HEAD `3eec1ee005e052d695db802433c70f7d0017ffe1`; exact-head QueueGo RC run `40173334398` SUCCESS.
