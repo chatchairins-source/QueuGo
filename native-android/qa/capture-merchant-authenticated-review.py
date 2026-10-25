@@ -60,8 +60,11 @@ def main():
     run(["shell","am","start","-W","-n",PKG+"/.MainActivity"],capture_output=True,text=True,timeout=60)
     ns=wait(lambda xs:any("เข้าสู่ระบบ" in (n.get("text","")+n.get("content-desc","")) for n in xs))
     assert ns, "Merchant login did not render"
-    fields=sorted([n for n in ns if n.get("class")=="android.widget.EditText" and rect(n)],
-                  key=lambda n:rect(n)[1])
+    by_description={n.get("content-desc","").strip():n for n in ns if rect(n)}
+    fields=[by_description.get("เบอร์โทรศัพท์ / อีเมล"),by_description.get("รหัสผ่าน")]
+    if not all(fields):
+        fields=sorted([n for n in ns if n.get("class")=="android.widget.EditText" and rect(n)],
+                      key=lambda n:rect(n)[1])
     if len(fields)<2: raise SystemExit("Merchant login fields are inaccessible to Android UI automation")
     for n,value in zip(fields[:2],(phone,password)):
         tap(n)
