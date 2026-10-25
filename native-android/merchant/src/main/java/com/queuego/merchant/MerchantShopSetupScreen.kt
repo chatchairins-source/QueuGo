@@ -43,6 +43,9 @@ import com.queuego.shared.QgLine
 import com.queuego.shared.QgLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
+import com.queuego.shared.QgPlaceSearchPanel
+import com.queuego.shared.QueueGoPlaceSearchResult
+import com.queuego.shared.queueGoPlaceLabel
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +84,7 @@ internal fun MerchantShopSetupScreen(
     onPickLogo: () -> Unit,
     onPickCover: () -> Unit,
     onGps: () -> Unit,
+    searchPlaces: suspend (String) -> List<QueueGoPlaceSearchResult>,
     resolveAddress: suspend (Double, Double) -> String?,
     onSave: (MerchantShopSetupDraft) -> Unit,
     onBack: () -> Unit
@@ -230,6 +234,20 @@ internal fun MerchantShopSetupScreen(
             }
         }
 
+        SetupField("ค้นหาตำแหน่งร้าน") {
+            QgPlaceSearchPanel(
+                enabled = !busy,
+                search = searchPlaces,
+                onSelect = { result ->
+                    latitude = result.latitude
+                    longitude = result.longitude
+                    address = queueGoPlaceLabel(result)
+                    addressLockedByUser = true
+                    recenterToken++
+                }
+            )
+        }
+
         SetupField("ที่อยู่ร้าน") {
             OutlinedTextField(
                 value = address,
@@ -268,7 +286,7 @@ internal fun MerchantShopSetupScreen(
             ) {
                 QgLocationPickerMap(
                     initialPoint = currentPoint,
-                    recenterPoint = gpsPoint,
+                    recenterPoint = currentPoint,
                     recenterToken = recenterToken,
                     modifier = Modifier.fillMaxSize(),
                     onCenterChanged = {
