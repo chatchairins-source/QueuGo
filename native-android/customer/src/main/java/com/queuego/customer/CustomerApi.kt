@@ -4,27 +4,9 @@ import com.queuego.shared.nativeOrderNumber
 
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QueueGoNativeApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.UUID
-
-private fun InputStream.readCustomerLongdoResponseBounded(limit: Int = 512 * 1024): String {
-    val output = ByteArrayOutputStream(minOf(limit, 64 * 1024))
-    val buffer = ByteArray(8 * 1024)
-    while (true) {
-        val count = read(buffer)
-        if (count < 0) break
-        require(output.size() + count <= limit) { "ข้อมูลพิกัดมีขนาดใหญ่เกินไป" }
-        output.write(buffer, 0, count)
-    }
-    return output.toString(Charsets.UTF_8.name())
-}
 
 data class CustomerShop(
     val id: String,
@@ -381,26 +363,8 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         )
     }
 
-    suspend fun reverseGeocode(latitude: Double, longitude: Double): String? = withContext(Dispatchers.IO) {
-        if (latitude !in 5.0..21.0 || longitude !in 97.0..106.0) return@withContext null
-        val connection = URL(
-            "https://api.longdo.com/map/services/address?lon=$longitude&lat=$latitude&key=347649ca13f49db0d8a599ae35f8de2b"
-        ).openConnection() as HttpURLConnection
-        connection.connectTimeout = 8_000
-        connection.readTimeout = 8_000
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("Accept", "application/json")
-        try {
-            if (connection.responseCode !in 200..299) return@withContext null
-            connection.inputStream.use { input ->
-                formatLongdoAddress(input.readCustomerLongdoResponseBounded())
-            }
-        } catch (_: Exception) {
-            null
-        } finally {
-            connection.disconnect()
-        }
-    }
+    suspend fun reverseGeocode(latitude: Double, longitude: Double): String? =
+        http.reversePlaceAddress(latitude, longitude)
 
     suspend fun loadHomeBanners(auth: NativeAuth): List<HomeBanner> =
         loadHomeBannersWithToken(auth.session.accessToken)
@@ -556,20 +520,6 @@ private fun JSONObject.optNullable(key: String): String? =
 private fun JSONObject.optDoubleOrNull(key: String): Double? =
     if (!has(key) || isNull(key)) null else optDouble(key).takeIf { it.isFinite() }
 
-
-private val longdoAddressKeys =
-    listOf("house_number", "soi", "road", "subdistrict", "district", "province", "postcode")
-
-internal fun formatLongdoAddressParts(parts: Map<String, String?>): String? =
-    longdoAddressKeys
-        .mapNotNull { key -> parts[key]?.trim()?.takeIf { it.isNotBlank() && it != "null" } }
-        .joinToString(" ")
-        .takeIf { it.isNotBlank() }
-
-internal fun formatLongdoAddress(raw: String): String? = runCatching {
-    val address = JSONObject(raw)
-    formatLongdoAddressParts(longdoAddressKeys.associateWith { key -> address.optString(key) })
-}.getOrNull()
 
 
 internal fun normalizeShopSubcategories(values: Iterable<String>): Set<String> =
