@@ -59,8 +59,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: '9.6.0'
-      - name: Build actual Rider debug APK
-        run: gradle -p native-android :rider:assembleDebug --no-build-cache --stacktrace
+      - name: Build actual Rider and Merchant debug APKs
+        run: gradle -p native-android :rider:assembleDebug :merchant:assembleDebug --no-build-cache --stacktrace
+      - name: Enable runner-only Android acceleration
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then sudo chown "$(id -u):$(id -g)" /dev/kvm; fi
       - name: Boot Android Emulator
         env:
           ANDROID_AVD_HOME: ${{ runner.temp }}/queuego-rider-review-avd
@@ -71,28 +76,39 @@ jobs:
             -n queuego_rider_review -k "system-images;android-30;default;x86_64" \
             --device pixel_4 -p "$ANDROID_AVD_HOME/queuego_rider_review" <<< "no"
           "$ANDROID_HOME/platform-tools/adb" start-server
-          nohup "$ANDROID_HOME/emulator/emulator" -avd queuego_rider_review -port 5554 \
-            -accel on -no-window -no-snapshot -no-audio -gpu swiftshader \
-            -memory 2048 -cores 2 > "$RUNNER_TEMP/queuego-rider-review-emulator.log" 2>&1 &
           adb="$ANDROID_HOME/platform-tools/adb"
-          "$adb" -s emulator-5554 wait-for-device
+          nohup "$ANDROID_HOME/emulator/emulator" -avd queuego_rider_review -port 5554 \
+            -accel on -no-window -no-snapshot -no-audio -no-boot-anim -gpu swiftshader \
+            -memory 2048 -cores 2 > "$RUNNER_TEMP/queuego-rider-review-emulator.log" 2>&1 &
+          timeout 90s "$adb" -s emulator-5554 wait-for-device
           for attempt in $(seq 1 90); do
             if [ "$("$adb" -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; then exit 0; fi
             sleep 5
           done
           cat "$RUNNER_TEMP/queuego-rider-review-emulator.log"
           exit 1
-      - name: Enable runner-only Android acceleration
-        run: |
-          set -euo pipefail
-          test -c /dev/kvm
-          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then sudo chown "$(id -u):$(id -g)" /dev/kvm; fi
       - name: Capture authenticated Rider views on Android Emulator
         env:
           QG_DEBUG_MAP_ARCHIVE: '1'
           QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
           QG_RIDER_REVIEW_PASSWORD: ${{ secrets.QG_RIDER_REVIEW_PASSWORD }}
         run: python3 native-android/qa/capture-rider-authenticated-review.py
+      - name: Capture authenticated Merchant views on Android Emulator
+        if: success()
+        env:
+          QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
+          QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
+        run: python3 native-android/qa/capture-merchant-authenticated-review.py
+      - name: Save authenticated Merchant screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-merchant-authenticated-screens
+          path: |
+            artifacts/merchant-authenticated-review/*.png
+            artifacts/merchant-authenticated-review/metadata.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Save authenticated Rider screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
