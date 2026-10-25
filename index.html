@@ -355,7 +355,7 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 </style>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
-<script src="queuego-map-web.js?v=20261024-addresscompact1&camera3d=20261024"></script>
+<script src="queuego-map-web.js?v=20261024-addresscompact1&camera3d=20261024&boundary=20261025"></script>
 <script src="queuego-order-number.js"></script>
 </head>
 <body>
@@ -365,6 +365,7 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 'use strict';
 /* ===== 1) Connection (same Supabase project and endpoints as the old app) ===== */
 const CFG={URL:'https://pkypiqhlrmzocysgeqew.supabase.co',KEY:'sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre'};
+window.QG_SEARCH_CONFIG={url:CFG.URL,key:CFG.KEY,providers:[]};
 const hdr=t=>{const h={apikey:CFG.KEY,'Content-Type':'application/json'};if(t)h.Authorization='Bearer '+t;return h};
 async function auth(path,body){
   const r=await fetch(CFG.URL+'/auth/v1/'+path,{method:'POST',headers:hdr(),body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});

@@ -5,11 +5,11 @@ const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve()};
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {resolve,reject,promise}};
 function boot(){
  const dom=new JSDOM('<button id="opener">ตั้งค่า</button>',{url:'https://queuego.invalid/rider/',runScripts:'outside-only'}),w=dom.window;
- const state={actor:'rider:session',calls:[],events:[],row:{configured:true,enabled:false,label:'บ้าน',latitude:15,longitude:103},center:{lat:15,lng:103},handlers:{},maps:0};
+ const state={actor:'rider:session',calls:[],events:[],row:{configured:true,enabled:false,label:'บ้าน',latitude:15,longitude:103},center:{lat:15,lng:103},handlers:{},maps:0,searches:[]};
  w.eval(code);w.document.querySelector('button').focus();
  const deps={getActor:()=>state.actor,getAccessToken:async()=> 'isolated-token',toast:s=>state.events.push(s),
   rpc:async(name,body,token)=>{state.calls.push({name,body,token});if(name==='qg_rider_destination_preference')return state.row;return state.write?state.write(body):{configured:true,enabled:body.p_enabled,label:body.p_label,latitude:body.p_latitude,longitude:body.p_longitude}},
-  map:{create:()=>{state.maps++;return {on:(key,fn)=>state.handlers[key]=fn,getCenter:()=>state.center}},destroy:()=>state.events.push('destroy'),locate:async()=>({lat:15.1,lng:103.1}),setCenter:()=>state.events.push('center')}
+  map:{create:()=>{state.maps++;return {on:(key,fn)=>state.handlers[key]=fn,getCenter:()=>state.center}},destroy:()=>state.events.push('destroy'),locate:async()=>({lat:15.1,lng:103.1}),search:async(query,options)=>{state.searches.push({query,options});return state.searchRows||[]},setCenter:(map,lat,lng,zoom)=>{state.center={lat,lng};state.events.push(['center',lat,lng,zoom])}}
  };
  const open=()=>w.QueueGoRiderSettings.openDestination(deps),query=s=>w.document.querySelector(s),submit=()=>query('form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
  return {dom,w,state,deps,open,query,submit};
@@ -23,6 +23,7 @@ function boot(){
  t.state.center={lat:15.2,lng:103.2};t.state.handlers.moveend();
  const body=t.state.calls[1].body;eq(body.p_latitude,15);eq(body.p_longitude,103);eq(body.p_enabled,true);
  write.resolve({configured:true,enabled:true,label:'บ้าน',latitude:15,longitude:103});await flush();eq(t.query('[role=dialog]'),null);eq(t.state.events.includes('บันทึกจุดหมายแล้ว'),true);eq(t.w.document.activeElement.id,'opener');t.dom.window.close();
+ const search=boot();await search.open();search.state.handlers.load();search.state.searchRows=[{place_id:'place-1',name:'บ้านโคก',lat:15.25,lng:102.5,provider:'queuego-places'}];search.query('[data-search-input]').value='บ้านโคก';search.query('[data-search]').click();await flush();eq(search.state.searches[0].query,'บ้านโคก');eq(search.query('[data-search-results] button').textContent,'บ้านโคก');search.query('[data-search-results] button').click();eq(search.state.events.some(x=>Array.isArray(x)&&x[0]==='center'&&x[1]===15.25&&x[2]===102.5),true);eq(search.query('[name=label]').value,'บ้านโคก');eq(search.query('[data-search-results]').hidden,true);search.query('[data-close]').click();search.dom.window.close();
  // A committed response lost in transport is reconciled by the same existing read RPC.
  const lost=boot();lost.state.write=async body=>{lost.state.row={configured:true,enabled:body.p_enabled,label:body.p_label,latitude:body.p_latitude,longitude:body.p_longitude};throw Error('lost response')};await lost.open();lost.submit();await flush();eq(lost.state.calls.map(x=>x.name),['qg_rider_destination_preference','qg_rider_set_destination_preference','qg_rider_destination_preference']);eq(lost.query('[role=dialog]'),null);lost.dom.window.close();
  // A rejected write never produces a saved message or mutates the acknowledged preference.

@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>QueueGo Map — Buriram</title>
+  <title>QueueGo Map</title>
   <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css">
   <style>
@@ -89,7 +89,7 @@
   </style>
 </head>
 <body>
-  <div id="map" aria-label="แผนที่ QueueGo บุรีรัมย์"></div>
+  <div id="map" aria-label="แผนที่ QueueGo ประเทศไทย"></div>
 
   <div class="qg-search">
     <form id="placeSearchForm" class="qg-search-pill" role="search">
@@ -242,7 +242,7 @@
       <div class="field full"><label for="road">ถนน</label><input id="road" autocomplete="address-line2"></div>
       <div class="field"><label for="subdistrict">ตำบล</label><input id="subdistrict"></div>
       <div class="field"><label for="district">อำเภอ</label><input id="district"></div>
-      <div class="field"><label for="province">จังหวัด</label><input id="province" value="บุรีรัมย์"></div>
+      <div class="field"><label for="province">จังหวัด</label><input id="province"></div>
       <div class="field"><label for="postcode">รหัสไปรษณีย์</label><input id="postcode" inputmode="numeric" autocomplete="postal-code"></div>
       <div class="field full"><label for="note">จุดสังเกต / รายละเอียดเพิ่มเติม</label><textarea id="note" placeholder="เช่น บ้านหลังคาสีแดง ตรงข้ามวัด"></textarea></div>
     </div>
@@ -254,20 +254,19 @@
       <button id="saveAddress" class="primary" type="button">ใช้ที่อยู่นี้</button>
     </div>
 
-    <p class="source-note">ใช้พิกัดที่ผู้ใช้ปัก + OpenStreetMap/Nominatim/Overpass และข้อมูลหมู่บ้านสาธารณะของกรมการปกครองเมื่อบริการพร้อม ข้อมูลที่ไม่พบสามารถกรอกเองได้</p>
+    <p class="source-note">ใช้พิกัดที่ผู้ใช้ปัก ร่วมกับ QueueGo Search และข้อมูลแผนที่เปิดสำหรับรายละเอียดที่อยู่ใกล้เคียง ข้อมูลที่ไม่พบสามารถกรอกเองได้</p>
   </section>
 
   <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
-  <script src="../queuego-map-web.js?v=20261024-addresscompact1&camera3d=20261024"></script>
+  <script src="../queuego-map-web.js?v=20261024-addresscompact1&camera3d=20261024&boundary=20261025"></script>
   <script>
   (function(){
     "use strict";
 
+    window.QG_SEARCH_CONFIG={url:"https://pkypiqhlrmzocysgeqew.supabase.co",key:"sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre",providers:[]};
     const BURIRAM_CENTER=[103.1029,14.9930];
     const NOMINATIM="https://nominatim.openstreetmap.org";
-    const PHOTON="https://photon.komoot.io/api/";
     const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
-    const DOPA_BURIRAM="https://opendata_tst.dopa.go.th/downloads/15/%E0%B8%88%E0%B8%B1%E0%B8%87%E0%B8%AB%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%9A%E0%B8%B8%E0%B8%A3%E0%B8%B5%E0%B8%A3%E0%B8%B1%E0%B8%A1%E0%B8%A2%E0%B9%8C.json";
     const OSRM="https://router.project-osrm.org/route/v1/driving/";
 
     const map=new maplibregl.Map({
@@ -293,10 +292,10 @@
     map.touchZoomRotate.enableRotation();
     map.touchPitch.enable();
     map.addControl(new maplibregl.NavigationControl({showCompass:true,showZoom:false,visualizePitch:true}),"top-right");
-    map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
+    map.addControl(new maplibregl.AttributionControl({compact:true,customAttribution:'ขอบเขตบริการ: <a href="https://www.geoboundaries.org">geoBoundaries</a> · <a href="../docs/map-data.html">ข้อมูลแผนที่</a>'}),"bottom-right");
 
     const state={
-      mode:null,pinMode:false,selected:null,address:null,nearbyVillages:[],nearbyRoads:[],dopaVillages:[],
+      mode:null,pinMode:false,selected:null,address:null,nearbyVillages:[],nearbyRoads:[],
       routeStart:null,routeEnd:null,routes:[],trafficSignals:[],routeRestrictions:[],selectedRoute:0,routeStartMarker:null,routeEndMarker:null,
       navigationActive:false,watchId:null,offRouteHits:0,lastRerouteAt:0,lastPosition:null,speedHistory:null,
       toolMode:null,inspectPoint:null,measurePoints:[],waypoints:[],waypointMarkers:[],nearbyFeatures:[],nearbyCategory:null,
@@ -353,7 +352,7 @@
       $("village").value=pickThai(address,["village","hamlet","suburb"]);
       $("subdistrict").value=pickThai(address,["subdistrict","municipality","town","city_district"]);
       $("district").value=pickThai(address,["county","state_district","city"]);
-      $("province").value=pickThai(address,["state"])||"บุรีรัมย์";
+      $("province").value=pickThai(address,["state"]);
       $("postcode").value=pickThai(address,["postcode"]);
     }
     function renderChips(hostId,values,inputId){
@@ -394,33 +393,14 @@
         if(t.highway) roads.push(name);
       });
       state.nearbyVillages=uniq(villages);state.nearbyRoads=uniq(roads);
-      renderChips("villageChips",state.nearbyVillages.concat(state.dopaVillages),"village");
+      renderChips("villageChips",state.nearbyVillages,"village");
       renderChips("soiChips",state.nearbyRoads,"soi");
-    }
-    function collectDopaVillages(node,out){
-      if(Array.isArray(node)){node.forEach(x=>collectDopaVillages(x,out));return}
-      if(!node||typeof node!=="object")return;
-      const province=pickThai(node,["จังหวัด","PROVINCE","province","PROV_NAM_T"]);
-      if(!province||/บุรีรัมย์/.test(province)){
-        const village=pickThai(node,["หมู่บ้าน","VILLAGE","village","VILL_NAM_T","ชื่อหมู่บ้าน"]);
-        if(village)out.push(village);
-      }
-      Object.values(node).forEach(v=>{if(v&&typeof v==="object")collectDopaVillages(v,out)});
-    }
-    async function loadDopaVillages(){
-      if(state.dopaVillages.length)return;
-      try{
-        const r=await fetchTimeout(DOPA_BURIRAM,{cache:"no-store"},10000);
-        if(!r.ok)throw Error("dopa");const j=await r.json(),names=[];
-        collectDopaVillages(j,names);state.dopaVillages=uniq(names);
-        renderChips("villageChips",state.nearbyVillages.concat(state.dopaVillages),"village");
-      }catch(_){}
     }
     async function openAddressEditor(){
       const p=centerPoint();state.selected=p;$("coordText").textContent="พิกัด "+p.lat+", "+p.lon;
       setPinMode(false);$("addressSheet").hidden=false;
       toast("กำลังอ่านที่อยู่และถนนใกล้เคียง");
-      await Promise.allSettled([reverseGeocode(p),nearbyOpenNames(p),loadDopaVillages()]);
+      await Promise.allSettled([reverseGeocode(p),nearbyOpenNames(p)]);
       toast("ตรวจและแก้ที่อยู่ได้");
     }
     function markerEl(color){
@@ -768,69 +748,13 @@
       if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return [];
       return [{name:"พิกัด",display_name:"พิกัด "+lat.toFixed(6)+", "+lon.toFixed(6),lat:String(lat),lon:String(lon),provider:"coordinates"}];
     }
-    function normalizePhoton(json){
-      return (json&&json.features||[]).map(f=>{
-        const p=f.properties||{},c=f.geometry&&f.geometry.coordinates||[];
-        const parts=[p.name,p.street,p.locality,p.district,p.city,p.county,p.state,p.country].filter(Boolean);
-        return {name:p.name||p.street||p.city||"สถานที่",display_name:parts.filter((v,i,a)=>a.indexOf(v)===i).join(", "),lat:String(c[1]),lon:String(c[0]),provider:"photon"};
-      }).filter(r=>Number.isFinite(Number(r.lat))&&Number.isFinite(Number(r.lon)));
-    }
-    function escapeOverpassRegex(value){
-      return String(value||"")
-        .replace(/[\\.^$|?*+(){}\[\]]/g,function(ch){return "\\"+ch})
-        .replace(/"/g,'\\"')
-        .slice(0,80);
-    }
-    async function geocodeNominatim(query){
-      const url=NOMINATIM+"/search?format=jsonv2&addressdetails=1&limit=8&accept-language=th,en&viewbox=102.4,15.8,103.5,14.1&q="+encodeURIComponent(query);
-      const r=await fetchTimeout(url,{},9000);if(!r.ok)throw Error("nominatim "+r.status);
-      const rows=await r.json();
-      return Array.isArray(rows)?rows.map(x=>({...x,provider:"nominatim"})):[];
-    }
-    async function geocodePhoton(query){
-      const c=map.getCenter();
-      const url=PHOTON+"?limit=8&lang=th&lat="+encodeURIComponent(c.lat)+"&lon="+encodeURIComponent(c.lng)+"&q="+encodeURIComponent(query);
-      const r=await fetchTimeout(url,{},9000);if(!r.ok)throw Error("photon "+r.status);
-      return normalizePhoton(await r.json());
-    }
-    async function geocodeOverpass(query){
-      const name=escapeOverpassRegex(query);if(name.length<2)return [];
-      const box="14.132135,102.442357,15.789217,103.499967";
-      const q='[out:json][timeout:20];nwr["name"~"'+name+'",i]('+box+');out center tags 25;';
-      let data=null,last=null;
-      for(const ep of OVERPASS){
-        try{
-          const r=await fetchTimeout(ep,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:"data="+encodeURIComponent(q)},22000);
-          if(!r.ok)throw Error("overpass "+r.status);data=await r.json();break;
-        }catch(e){last=e}
-      }
-      if(!data)throw last||Error("overpass");
-      return (data.elements||[]).map(x=>{
-        const t=x.tags||{},lat=Number(x.lat!=null?x.lat:x.center&&x.center.lat),lon=Number(x.lon!=null?x.lon:x.center&&x.center.lon);
-        if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
-        const name=t["name:th"]||t.name||t.official_name||"สถานที่";
-        const parts=[name,t["addr:street"],t["addr:subdistrict"],t["addr:district"],t["addr:province"]||"บุรีรัมย์"].filter(Boolean);
-        return {name,display_name:parts.join(", "),lat:String(lat),lon:String(lon),provider:"overpass"};
-      }).filter(Boolean);
-    }
     async function engineGeocode(query){
       const direct=coordinateSearch(query);
       if(direct.length){state.lastSearchProvider="coordinates";return direct}
-      try{
-        const local=await window.QueueGoMapWeb?.searchPlaceCatalog(query,{center:map.getCenter(),limit:20});
-        if(local?.length){state.lastSearchProvider="queuego-catalog";return local.map(p=>({...p,lon:String(p.lng),lat:String(p.lat),display_name:[p.name,...Object.values(p.address||{})].join(", "),provider:"queuego-catalog"}))}
-      }catch(_){}
-      const providers=[["nominatim",geocodeNominatim],["photon",geocodePhoton],["overpass",geocodeOverpass]];
-      let lastError=null;
-      for(const [name,fn] of providers){
-        try{
-          const rows=await fn(query);
-          if(rows&&rows.length){state.lastSearchProvider=name;return rows}
-        }catch(e){lastError=e;console.warn("QueueGo Map search provider failed",name,e)}
-      }
-      state.lastSearchProvider=null;
-      if(lastError)throw lastError;
-      return [];
+      const center=map.getCenter();
+      const rows=await window.QueueGoMapWeb?.search?.(query,{latitude:center.lat,longitude:center.lng,limit:20})||[];
+      state.lastSearchProvider=rows[0]?.provider||null;
+      return rows.map(row=>({...row,lat:String(row.lat),lon:String(row.lng??row.lon),display_name:row.label||row.display_name||row.name}));
     }
     async function engineReverse(lat,lon){
       const url=NOMINATIM+"/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=th&lat="+encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon);
@@ -975,36 +899,9 @@
       toast("กำลังคำนวณตารางเวลาและระยะทาง");
       try{renderMatrix(await engineMatrix(state.waypoints));toast("ตารางพร้อม")}catch(e){console.warn(e);toast("คำนวณตารางไม่สำเร็จ")}
     }
-    const NEARBY_FILTERS={
-      food:'["amenity"~"restaurant|cafe|fast_food"]',
-      fuel:'["amenity"="fuel"]',
-      hospital:'["amenity"~"hospital|clinic|pharmacy"]',
-      police:'["amenity"="police"]',
-      atm:'["amenity"="atm"]',
-      school:'["amenity"~"school|kindergarten|college|university"]',
-      toilet:'["amenity"="toilets"]'
-    };
     async function engineNearby(category,lat,lon,radius=5000){
-      try{
-        const local=await window.QueueGoMapWeb?.nearbyPlaces(category,lat,lon,radius);
-        if(local)return local.map(x=>({type:"Feature",geometry:{type:"Point",coordinates:[Number(x.lon),Number(x.lat)]},properties:{name:x.display_name,kind:x.category,category}}));
-      }catch(_){}
-
-      const filter=NEARBY_FILTERS[category];if(!filter)throw Error("unknown category");
-      const q='[out:json][timeout:25];nwr(around:'+Math.min(10000,Math.max(250,radius))+','+lat+','+lon+')'+filter+';out center tags;';
-      let data=null,last=null;
-      for(const ep of OVERPASS){
-        try{
-          const r=await fetchTimeout(ep,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:"data="+encodeURIComponent(q)},30000);
-          if(!r.ok)throw Error("overpass "+r.status);data=await r.json();break;
-        }catch(e){last=e}
-      }
-      if(!data)throw last||Error("overpass");
-      return (data.elements||[]).map(x=>{
-        const lat2=Number(x.lat!=null?x.lat:x.center&&x.center.lat),lon2=Number(x.lon!=null?x.lon:x.center&&x.center.lon),t=x.tags||{};
-        if(!Number.isFinite(lat2)||!Number.isFinite(lon2))return null;
-        return {type:"Feature",geometry:{type:"Point",coordinates:[lon2,lat2]},properties:{name:t["name:th"]||t.name||t.brand||"ไม่ระบุชื่อ",kind:t.amenity||category,category}};
-      }).filter(Boolean).slice(0,60);
+      const rows=await window.QueueGoMapWeb?.search?.("",{latitude:lat,longitude:lon,category,limit:50,radius_m:Math.min(100000,Math.max(100,Number(radius)||5000))})||[];
+      return rows.map(x=>({type:"Feature",geometry:{type:"Point",coordinates:[Number(x.lng),Number(x.lat)]},properties:{name:x.label||x.name,kind:x.subcategory||x.category,category,source:x.source,place_id:x.place_id}}));
     }
     function renderNearby(features){
       state.nearbyFeatures=features;ensureToolLayers();map.getSource("tool-nearby").setData({type:"FeatureCollection",features});

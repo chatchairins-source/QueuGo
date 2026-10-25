@@ -1,3 +1,17 @@
+## 2026-10-25 Integrated nationwide web regression — DONE (local source/test)
+
+- Commit f1531207: full npm test completed with exit 0 after restart; focused checks also passed. Temporary log from the interrupted session was unavailable, so the suite was rerun instead of inferring success.
+- Native #710 at 2160f30e still calls Longdo from QueueGoApi.reverseGeocodeDestination. This violates the QueueGo-only direction and must be migrated to the shared authority; do not replace it with a Buriram-only reverse endpoint and claim nationwide coverage.
+- Local git push failed because HTTPS credentials are unavailable. No remote publication, deployment or APK build occurred.
+- NEXT: publish the tested integration through the GitHub connector with fresh branch checks; implement shared nationwide reverse lookup and migrate native destination lookup; then build all three apps. Production data/routing and end-to-end delivery remain incomplete.
+
+## 2026-10-25 Three-app nationwide reconciliation — IN PROGRESS
+
+- Integrated Places successor fe198b153fc7d02c226e8df5f8095c3edd70508a with current web main 0e6718cf0070a01cf6a52dcd589fad7edb47d7e8 using a forward merge. Preserved current compact addresses, rotation/tilt, PWA role icons and manifests alongside the shared Places RPC and nationwide registration. Combined both test lists without dropping either branch's checks.
+- Focused evidence: shared search runtime 16, map UI 5, camera 77, Map View core 56, Map View search 10, nationwide registration 15 checks passed; PWA links/icons passed; JS syntax and diff whitespace passed. Full npm suite is still running; not certified yet.
+- Latest native successor is PR #710 at 2160f30ef10d88f3f59acf86aa20b4a2ec414884; isolated worktree prepared without modifying its source. No APK build, Production migration, import or deploy in this checkpoint.
+- NEXT: finish full regression on this integrated web tree, resolve its first failure, publish the forward successor, then reconcile native against the same search authority. Nationwide routing/vector data and Production Places/service-area release remain incomplete. Do not describe the apps as nationwide-ready.
+
 # QueueGo Next Actions
 
 ## 2026-10-24 Native APK files and QueueGo Q role icons — DONE (test build/Web deploy)
@@ -32,47 +46,27 @@
 
 Current snapshot: 2026-10-24 · Authoritative main: aad07e0aedf57c0b7992534bea5b1fa6cf24719e
 
-## Current verified POS checkpoint — 2026-10-23
+## Active QueueGo continuation — 2026-10-24
 
-- Web POS category filters remain deployed and byte-verified from `be33b8318967ad6105222efa8305fec8005a5335` (PR #631). Exact RC `39878988663`, main RC `39879361494`, Pages `39879361545` succeeded. This checkpoint changes documentation only.
-- Native PR #633 exact `d98ecdbf423e34b41e4fde3062d7b0d5db6750f0` passed both requested runs `39881729771` and `39881729809`; merged only into Native successor at `0a9c17dd774f59781de0565e9fa313da5ee955b8`.
-- Native PR #635 fixes Android cached null-category conversion and tests null/named/literal-null/legacy catalogs on Android itself. Exact source `639bedea25710988c5f446ba6c16d1c0d3072a7d` passed Native Pilot `39882985832`: regression, Kotlin/unit tests, APK/16 KB checks and emulator instrumentation. Log confirms `QUEUEGO_MERCHANT_POS_CATALOG_PASS`. Merge `1f71c351b88d635de810fccb8e82bc447de37390` has the identical tested tree; Native successor documentation head is `382a746ad9176a03c4b7beafdfd1dbc2dad8b9ce`.
-- Full clean local source-equivalent regression passed at `4b2c56c0` (map asset-fetch pretest skipped; existing assets reused); source contracts 313 and migration mirror PASS. Hosted CI included full setup. Emulator evidence artifact `12471178946`, SHA-256 `7d794e8f91cdfbdc90e0dea4b5ca7eae913f3f0522360c61808c816d78fbddb8`.
-- Existing dirty POS/Native worktrees were preserved. No Production schema/data or authenticated sale changed. BLOCKED (release): authorized owner/cashier/staff journeys, physical phone/tablet/scanner/printer/drawer, and real-register offline/reconnect/retry evidence. Emulator success is not physical-device acceptance. Overall POS remains **NOT DONE**.
-- **NEXT:** complete the authorized real cashier/device Release Gate and record evidence on these same successors. Do not restart from an older checkout or merge the divergent Native code into Web main.
+- PR #704 branch `feat/queuego-places-search-successor-20261024`, latest verified head before this pointer update `ff0664638e51f77c962ce633afb3b66340c616a3`; current main `28a121178b6e15ceb0a7575452b5cb2a374f40a3`. Source head `e34c368716be12069fe1848e17c44a0c46800791` passed exact-head RC `40088891010`; documentation heads `779fa7b` and `ff06646` passed exact-head RCs `40089120095` and `40089392407` across npm and all configured mobile browser gates.
+- Places/Search source remains unlaunched. Read-only QueueTech check finds no Places relation or `qg_search_places`, and only one active ordering area in Buriram. Existing call RPCs are authenticated-only with fixed search paths; phone fallback and no-show authority RPCs are absent. Advisor findings remain under review.
+- DOPA registry contains 76 provinces, but no resource has verified payload bytes, checksum or row count. The public JSON mirror is incomplete/inactive and cannot establish source coverage. No Production write or deployment.
+- **NEXT:** obtain the original official DOPA JSON and dictionary through an approved access path; verify raw bytes, SHA-256, province identity and row count before staging/import. Continue read-only security and service-area planning while access is unavailable. Keep PR #704 draft and QueueGo NOT DONE.
 
-## Historical checkpoints (superseded where they conflict with the current checkpoint above)
-## Prior active chunk — historical detail superseded by the current checkpoint above
+## Immediate map-layout checkpoint
 
-**POS Production continuation — Product Code history aligned; generic inventory release was the recorded next step.**
+- Customer location search, Customer map height/spacing and Admin location editor viewport fit are source complete on the #704 successor and covered by exact-head RCs `40088891010`, `40089120095` and `40089392407`.
+- Physical iPhone Safari visual acceptance is still pending; CI does not establish device appearance. **NEXT:** owner-side review after any eventual deployment, then adjust only if the device shows clipping or overlap.
 
-- PR #619 exact-head RC `39777668898` passed all test and browser stages and merged at `513e9b6d5c97c1324c48724848f17857ee7fe554`. Product Code migration filenames now match Production versions `20261022113556` and `20261022114328`; no runtime files, sale or payment changed.
-- Production Product Code registry is live at migration `20261022113556`; FK indexes are live at `20261022114328`. The table is RLS-enabled, direct anon/authenticated grants are denied, and its four fixed-search-path SECURITY DEFINER RPCs are authenticated-only. Registry is empty; no demo product, sale or payment was inserted.
-- Lookup uses storefront `coalesce(pos_price, price)` and does not reference GP or Delivery markup. Save/remove audit events are atomic, with idempotent same-code retry.
-- Production advisor confirmed the two FK indexes cover the new foreign keys. The unused-index notice is expected while this shop-scoped registry is empty. Generic inventory reservation/adjustment migrations remain absent.
-- Production `products.stock` is `integer`; existing Grocery and Market stock triggers remain authoritative. `pos_inventory_reservations`, `pos_inventory_adjustments`, and their RPCs are absent. Do not deploy the generic inventory chain until the actor foreign-key child index, ordered trigger/ACL review and release checks are complete.
-- NEXT: finish the adjustment-ledger actor FK index regression, run exact-head RC, then review and deploy the ordered generic inventory stack with Production readback. POS remains **NOT READY** pending authenticated cashier/device, offline recovery and release gates.
-- PR #568 cash movement source was merged after exact-head QueueGo RC `39622237860` completed all 12 test/browser steps successfully. Merge commit: `c79640e0c896cc81961e8ba2dc69d336a9f519b0`; main now contains the audited cash-in/out UI and RPC source.
-- PR #572 merged to `main` at `6050a51ab7cb06001fb4163b5ff88c890fb4950d` after exact-source RC `39636799778` passed all 12 steps on `7d2ffec2417884dce70805f646dccaa3f388059e`. Merge publishes source only; no Production migration was applied.
-- PR #573 manager guard merged to `main` at `ab36bfb9da66d5d4a43a83011e4a50fb08c27213`; exact-source RC `39638917216` passed all 12 steps on PR head `7d2bc0d0c14cce0f3a64eb8d71e068d92b260ff0`. Source tree guard requires existing server-side `pos_allowed('manage_staff')` to enable tracking on insert or toggle it. Focused PGlite 40 checks and full local `npm test` pass.
-- Read-only Production trigger/function review found `market_item_stock_guard()` already decrements `market_products.stock_quantity`, while generic inventory only excluded Grocery Master rows. A Market-linked product with generic tracking enabled could decrement both ledgers. Successor migration `20261021233300_pos_market_inventory_owner_guard.sql` rejects overlapping Market/generic ownership, prevents concurrent map/toggle conflicts, and skips mapped Market products after product-row lock. Focused inventory test passes 47 checks; migration-order simulation applies 330 → 331 → 332 → 333 and verifies the RLS-enabled/no-policy Market table under authenticated role. `npm test` EXIT 0; adjustment UI test 9 PASS; `git diff --check` PASS.
-- RLS review exposed that the toggle guard also needs SECURITY DEFINER to see the Market mapping because Production enables RLS on `market_products` without an authenticated SELECT policy. It retains fixed `search_path` and still calls the existing permission function under caller JWT context. PR #574 head `3b2c36d43dec42f8d5db92a9df97253d210027f8` has matching local tree `984ba41b28a95808e8032915b77cb481f5d986dd`; the prior exact QueueGo RC is superseded by stronger mapping update/delete serialization; final exact-head RC is pending.
-- Read-only Production schema verification: migration history ends at `20261021133330`; `pos_register_cash_events` has RLS enabled, `anon SELECT=false`, `authenticated SELECT=true`, `authenticated INSERT=false`; it has no `event_type`/`idempotency_key` columns and `pos_record_cash_movement(...)` is absent. The merged cash feature is not live. The four PR #572 inventory migrations and #573/#574 guard migrations are also unapplied.
-- Production Supabase advisors were read. Security lints include intentionally private tables with RLS/no policies and public/anon SECURITY DEFINER API warnings; review each finding against the intended endpoint policy before activation. Performance lints include unindexed foreign keys. No advisor-based change or database mutation is authorized by these findings alone.
-- PR #572 source adds shop-scoped SKU/barcode, server-authoritative options/prices, opt-in generic inventory reservation across POS/QR/Delivery, manager-only idempotent stock adjustments and private audit history. Grocery Master and Market stock owners remain separate.
 
-## Previous dependency notes — superseded by the current checkpoint above
+## Historical QueueGo owner mission — Nationwide Places/Search and operation
 
-1. Continue read-only Production schema compatibility and controlled migration plan review. Six POS feature migrations remain unapplied; Production latest is `20261021133330`, and `products.inventory_stock_tracking` is absent, so Market-overlap preflight cannot run until prerequisite schema migration is installed. No Production apply without authorized cashier/device acceptance.
-2. Continue staged schema compatibility review and preserve Market/Grocery stock authorities; keep Production activation blocked until authenticated sale/cancel/refund and manager-adjustment journeys pass with an authorized register/device, then controlled schema release, deployment/readback and regression.
-3. Complete authenticated cashier flows: shift open/float → sale → cash movement/refund → close/count/variance/history; then barcode/options/bill and inventory reservation/adjustment/cancel/refund across POS, QR and Delivery. Use authorized test accounts and avoid fake Production data.
-4. After inventory release dependencies are satisfied, implement supplier directory + purchase order receiving through the same generic inventory adjustment/audit authority; do not duplicate Grocery Master or Market ledgers. Then cost history/COGS, item exchanges, hardware and offline recovery by dependency.
-5. Continue the highest-priority unblocked North Star row from `FEATURE_GAP_MATRIX.md`, always checking current main and newest successor first. QueueGo and POS remain **NOT DONE** until role journeys and applicable release evidence pass.
-
-## Resume protocol
-
-After each bounded chunk, update this file and `CHECKLIST.md` with exact SHA, local/hosted tests, deployment/readback evidence, blockers, and one precise next action. A new session must begin from `WORKFLOW.md`, `CHECKLIST.md`, current main and the newest successor.
-
+- PR #697 is superseded/closed; PR #704 is the active successor. Preserve newest main and all Merchant/Laundry/Rider work by forward merges only.
+- Official Geofabrik Thailand PBF staging yields 163,924 candidate rows across 164 review SQL chunks. The latest aggregate report records category, geometry and address-hierarchy field presence without names or address values. No OSM SQL was executed.
+- Open Admin Data hierarchy is now sourced from two pinned files at commit `eef739a5…`; exact hashes and all 8,369 hierarchy rows validate. Review SQL remains local and unexecuted.
+- NEXT: follow the active QueueGo continuation at the top of this file. Continue source-only or read-only work while actual official payload and release gates remain blocked.
+- Production Places/Search schema/RPC and imported nationwide data remain absent. DOPA GIS-01 is blocked on official payload bytes (HTTP 503). Buriram ordering/service-area gate remains. Rider 10-failed-call phone fallback and verified cash no-show suspension need server RPC/audit. Supabase advisor findings, Production E2E and Web Owner acceptance remain unresolved. No fake/demo data, Longdo/legacy map, Production writes/deploy, or physical-device PASS.
+- QueueGo remains NOT DONE until the original mission Definition of Done is met. Keep cash-first.
 
 ## Latest verified checkpoint
 - Main: `2d0c6b58a45689585dc7653bd18bcf89dfd1e4c1`; PR #574 exact RC `39643279380` PASS; Pages deploy `39643901620` SUCCESS.
@@ -134,3 +128,11 @@ Continue POS controlled migration recovery and authorized device acceptance trac
 
 ## Next action
 Implement the recommended durable offline draft recovery slice from `docs/POS-OFFLINE-RECOVERY.md`, without accepting offline payment or treating the draft as a completed sale. Preserve the cashier/device and controlled Production migration gates.
+
+
+## Active QueueGo continuation — 2026-10-24
+
+- Nationwide successor PR #704 branch `feat/queuego-places-search-successor-20261024`; forward-merged source HEAD `e34c368716be12069fe1848e17c44a0c46800791`. Exact-head QueueGo RC `40088891010` passed all configured source and mobile WebKit gates.
+- DOPA GIS-01 catalog metadata is available, but the official download has not yielded exact JSON bytes. The public mirror says its datastore is inactive and incomplete; it cannot support import or nationwide coverage claims.
+- No Production data/schema change or deployment. Production Places/Search RPC remains absent, Buriram ordering gate remains active, and rider phone/no-show server authority and advisor remediation remain open.
+- **NEXT:** retrieve the original licensed DOPA payload through an approved source path and verify its bytes, hash, province identity, schema and row count. Continue read-only release/security planning while blocked; keep QueueGo NOT DONE.

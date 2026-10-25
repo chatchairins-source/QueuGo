@@ -38,18 +38,12 @@ function serve(){
     const nativeFetch=window.fetch.bind(window);
     window.fetch=async function(input,init){
       const url=String(typeof input==="string"?input:(input&&input.url)||"");
-      if(url.includes("nominatim.openstreetmap.org")){
-        return new Response("{}",{status:503,headers:{"content-type":"application/json"}});
-      }
-      if(url.includes("photon.komoot.io")){
-        return new Response(JSON.stringify({
-          type:"FeatureCollection",
-          features:[{
-            type:"Feature",
-            geometry:{type:"Point",coordinates:[103.09523,14.96691]},
-            properties:{name:"สนามช้าง อินเตอร์เนชั่นแนล เซอร์กิต",city:"บุรีรัมย์",state:"บุรีรัมย์",country:"ประเทศไทย"}
-          }]
-        }),{status:200,headers:{"content-type":"application/json"}});
+      if(url.includes("/rest/v1/rpc/qg_search_places")){
+        const body=JSON.parse(init.body||"{}");
+        const rows=String(body.p_query||"").toLowerCase().includes("7-eleven")
+          ?[{place_id:"qg-711-phuket",canonical_name:"7-Eleven Phuket",name_th:"7-Eleven ภูเก็ต",latitude:7.8804,longitude:98.3923,province:"ภูเก็ต",source:"osm",source_license:"ODbL-1.0",verification_status:"verified"}]
+          :[{place_id:"qg-phuket-market",canonical_name:"ตลาดภูเก็ต",name_th:"ตลาดภูเก็ต",latitude:7.8804,longitude:98.3923,province:"ภูเก็ต",source:"osm",source_license:"ODbL-1.0",verification_status:"verified"}];
+        return new Response(JSON.stringify(rows),{status:200,headers:{"content-type":"application/json"}});
       }
       return nativeFetch(input,init);
     };
@@ -75,14 +69,14 @@ function serve(){
 
   await page.fill("#placeSearchInput","fixture-provider-fallback-only");
   await page.click('#placeSearchForm button[type="submit"]');
-  await page.waitForFunction(()=>document.querySelector("#placeSearchResults")&&!document.querySelector("#placeSearchResults").hidden&&document.querySelector("#placeSearchResults b")&&document.querySelector("#placeSearchResults b").textContent.includes("สนามช้าง"),null,{timeout:10000});
+  await page.waitForFunction(()=>document.querySelector("#placeSearchResults")&&!document.querySelector("#placeSearchResults").hidden&&document.querySelector("#placeSearchResults b")&&document.querySelector("#placeSearchResults b").textContent.includes("ตลาดภูเก็ต"),null,{timeout:10000});
 
   const search=await page.evaluate(()=>({
     result:document.querySelector("#placeSearchResults b").textContent,
     provider:window.QueueGoMapView.state.lastSearchProvider
   }));
-  ok(search.result.includes("สนามช้าง"),"search result must render from fallback provider");
-  ok(search.provider==="photon","Photon must be used when Nominatim fails");
+  ok(search.result.includes("ตลาดภูเก็ต"),"nationwide result must render from QueueGo Places");
+  ok(search.provider==="queuego-places","all address search must use QueueGo Places authority");
 
   await page.click("#placeSearchResults .qg-search-result");
   await page.waitForTimeout(650);
@@ -90,14 +84,14 @@ function serve(){
     center:window.QueueGoMapView.map.getCenter().toArray(),
     markerCount:document.querySelectorAll(".maplibregl-marker").length
   }));
-  ok(Math.abs(selected.center[0]-103.09523)<0.02&&Math.abs(selected.center[1]-14.96691)<0.02,"clicking a result must move the map");
+  ok(Math.abs(selected.center[0]-98.3923)<0.02&&Math.abs(selected.center[1]-7.8804)<0.02,"selecting a Phuket result must move the map nationwide");
   ok(selected.markerCount>=1,"clicking a result must add a visible map marker");
 
   await page.fill("#placeSearchInput","7-Eleven");
   await page.click('#placeSearchForm button[type="submit"]');
-  await page.waitForFunction(()=>window.QueueGoMapView.state.lastSearchProvider==="queuego-catalog",null,{timeout:10000});
+  await page.waitForFunction(()=>window.QueueGoMapView.state.lastSearchProvider==="queuego-places",null,{timeout:10000});
   const localResult=await page.locator("#placeSearchResults b").first().textContent();
-  ok(localResult.toLowerCase().includes("7-eleven"),"actual pinned local business catalog must search without public geocoder");
+  ok(localResult.toLowerCase().includes("7-eleven"),"QueueGo Places result must contain the requested business");
   await page.fill("#placeSearchInput","14.993, 103.103");
   await page.click('#placeSearchForm button[type="submit"]');
   await page.waitForFunction(()=>document.querySelector("#placeSearchResults b")&&document.querySelector("#placeSearchResults b").textContent.includes("พิกัด"),null,{timeout:5000});
@@ -105,5 +99,5 @@ function serve(){
   ok(coordProvider==="coordinates","coordinate search must work without an external provider");
 
   await context.close();await browser.close();await new Promise(r=>server.close(r));
-  console.log(JSON.stringify({checks,failures:0,scope:"QueueGo Map search fallback and result selection"}));
+  console.log(JSON.stringify({checks,failures:0,scope:"QueueGo Map nationwide QueueGo Places search and result selection"}));
 })().catch(err=>{console.error(err&&err.stack||err);process.exit(1)});

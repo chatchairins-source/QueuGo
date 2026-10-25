@@ -5,7 +5,8 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),{JSDOM}=require
  const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
  const root=path.resolve(__dirname,'..');
  const sharedMap=fs.readFileSync(root+'/queuego-map-web.js','utf8');
- eq(sharedMap.includes("new maplibregl.AttributionControl({compact:true})"),true);
+ eq(/new maplibregl\.AttributionControl\(\{compact:true(?:,|\})/.test(sharedMap),true);
+ eq(sharedMap.includes('customAttribution:')&&sharedMap.includes('docs/map-data.html'),true);
  eq(sharedMap.includes("font:9px/13px"),true);
  eq(sharedMap.includes("width:18px!important"),true);
  eq(sharedMap.includes("searchControl=false"),true);
