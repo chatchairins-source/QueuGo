@@ -67,4 +67,22 @@ assert.equal(hierarchyGate(fullSummary).production_import_allowed,false);
 fullSummary.by_admin_type.subdistrict.deterministic--;
 assert.equal(hierarchyGate(fullSummary).status,'blocked');
 
-console.log(JSON.stringify({checks:28,failures:0,scope:'OAD centroid/name/parent deterministic matching to review-only OSM admin polygons'}));
+// Use an exact published English name when Thai source spellings differ.
+// Contradictory bilingual candidates remain ambiguous, with all spatial/parent
+// and reverse-uniqueness gates still active. No transliteration or fuzzy match.
+const englishDistrict=wrap('relation/en','district','ชื่อไทยต่างกัน',square(101,11,103,15));
+englishDistrict.names.add(normalizedName('Wan Yai District'));
+const bilingualOsm={byType:{...osm.byType,district:[englishDistrict]}};
+const bilingualOad={all:oad.all.map(row=>row.type==='district'?{...row,normalized_name_en:normalizedName('Wan Yai')}:row)};
+const bilingual=matchHierarchy(bilingualOsm,bilingualOad);
+assert.equal(bilingual.mapping[1].status,'deterministic');
+assert.equal(bilingual.mapping[1].method,'english_name_centroid');
+assert.equal(bilingual.mapping[2].status,'deterministic');
+const conflictBilingual=matchHierarchy({byType:{...osm.byType,district:[...osm.byType.district,englishDistrict]}},bilingualOad);
+assert.equal(conflictBilingual.mapping[1].status,'ambiguous');
+assert.equal(conflictBilingual.mapping[2].status,'parent_unresolved');
+assert.equal(matchHierarchy(bilingualOsm,{all:oad.all}).mapping[1].status,'centroid_only_name_mismatch');
+const englishOutside={byType:{...osm.byType,district:[{...englishDistrict,geometry:square(101,11,101.1,11.1),bbox:[101,11,101.1,11.1]}]}};
+assert.notEqual(matchHierarchy(englishOutside,bilingualOad).mapping[1].status,'deterministic');
+
+console.log(JSON.stringify({checks:35,failures:0,scope:'OAD centroid/name/parent deterministic matching to review-only OSM admin polygons'}));

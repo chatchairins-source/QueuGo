@@ -1,3 +1,11 @@
+## 2026-10-25 Exact bilingual boundary matching — IN PROGRESS
+
+- Continued PR #728 checkpoint `272ff5a59be67d06f3a9c537c0cce502d65fd543`, preserving tested injective matcher `8fe6cd51`. Main remains `7e036a07`.
+- Evidence-backed cause: parser retained OAD English names but candidate matching used only its Thai name, although OSM candidates already include their published English names. Actual unresolved district pairs include OAD ว่านใหญ่ / OSM หว้านใหญ่ (both Wan Yai), ป่าพยอม / ป่าพะยอม (both Pa Phayom), กรงปีนัง / กรงปินัง (both Krong Pinang), and Thai ท่าฉาง / English-only Tha Chang.
+- Match exact normalized published English names alongside Thai names. Keep conflicting bilingual candidates ambiguous, centroid containment, parent resolution and reverse-unique polygon matching; no fuzzy names, synthetic aliases, nearest assignment or wider tolerance.
+- Local focused matcher 35 PASS. Replayed against the checksum-verified exact OSM artifact and pinned OAD inputs: province **77/77**, district **902/928** (+4), subdistrict **757/7,364** (+11), zero reverse collisions. Full hierarchy remains BLOCKED. Source-only receipt: `data/maps/osm-thailand-2026-10-24-bilingual-review.json`.
+- **NEXT:** finish exact-source RC/boundary audit; inspect HDX/OCHA COD-AB Thailand candidate metadata/payload independently for missing geometry. Its metadata reports 77/928/7,425 and CC BY-IGO, which must not be conflated with OAD's 7,364 or OSM's ODbL provenance. Require checksummed source payload, code/parent/centroid and topology review before any promotion. No Production import; PR remains draft.
+
 ## 2026-10-25 Exact-head OSM boundary audit and injective matching — IN PROGRESS
 
 - Recovered PR #728 exact source `79f932c1e6e51f9b0eafd0155e21d5a48ef20529`, descendant of main `7e036a0735cc49905e9b0a2434492470551a0c9d`. Existing audit run `40191415943` and RC `40191415902` both SUCCESS; no duplicate acquisition run was needed.

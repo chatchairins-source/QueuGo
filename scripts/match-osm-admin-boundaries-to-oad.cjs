@@ -98,7 +98,7 @@ function parseOad(flatFile,subdistrictFile){
     if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat<5||lat>21||lon<97||lon>106) throw new Error('invalid OAD centroid '+row.id);
     return {
       id:String(row.id),type,name:clean(row.name?.local),name_en:clean(row.name?.en),
-      normalized_name:normalizedName(row.name?.local),point:[lon,lat],
+      normalized_name:normalizedName(row.name?.local),normalized_name_en:normalizedName(row.name?.en),point:[lon,lat],
       parent_id:row.parent?.id?String(row.parent.id):null,
       province_id:row.level===1?String(row.id):String(row.ancestors?.find(a=>a.level===1)?.id||''),
       district_id:row.level===2?String(row.id):row.level===3?String(row.parent?.id||''):null
@@ -112,8 +112,10 @@ function parseOad(flatFile,subdistrictFile){
 }
 function candidateRows(oad,osmRows){
   const containing=osmRows.filter(row=>bboxContains(row.bbox,oad.point)&&geometryContains(oad.point,row.geometry));
-  const sameName=osmRows.filter(row=>row.names.has(oad.normalized_name));
-  const matching=containing.filter(row=>row.names.has(oad.normalized_name));
+  const names=[oad.normalized_name,oad.normalized_name_en].filter(Boolean);
+  const nameMatches=row=>names.some(name=>row.names.has(name));
+  const sameName=osmRows.filter(nameMatches);
+  const matching=containing.filter(nameMatches);
   return {containing,sameName,matching};
 }
 function summarizeStatuses(mapping){
@@ -147,7 +149,7 @@ function matchHierarchy(osm,oad){
           chosen=isoMatches[0]; method='iso_name_centroid_rounding_tolerance';
         } else if(isoMatches.length>1||c.matching.length>1) status='ambiguous';
       }
-      if(!chosen&&!status&&c.matching.length===1){ chosen=c.matching[0]; method='name_centroid'; }
+      if(!chosen&&!status&&c.matching.length===1){ chosen=c.matching[0]; method=chosen.names.has(item.normalized_name)?'name_centroid':'english_name_centroid'; }
       if(!chosen&&!status&&c.matching.length>1) status='ambiguous';
       if(!chosen&&!status&&c.sameName.length===1) status='name_only_outside_centroid';
       if(!chosen&&!status&&c.containing.length===1) status='centroid_only_name_mismatch';
