@@ -1093,6 +1093,9 @@ private fun MerchantShell(
                                     )
                                 }
                             },
+                            resolveAddress = { latitude, longitude ->
+                                api.reverseGeocode(latitude, longitude)
+                            },
                             onSave = { draft ->
                                 if (!busy) {
                                     busy = true
