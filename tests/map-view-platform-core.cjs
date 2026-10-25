@@ -9,6 +9,10 @@ ok(scripts.length===1,"Map View must keep one inline application script");
 new Function(scripts[0]);checks++;
 
 has("QueueGo Map","QueueGo Map branding required");
+has("maxPitch:60","QueueGo Map must allow tilt");
+has("dragRotate:true","QueueGo Map must allow map rotation");
+has("map.touchZoomRotate.enableRotation()","QueueGo Map must enable mobile rotation");
+has('NavigationControl({showCompass:true,showZoom:false,visualizePitch:true})',"QueueGo Map must expose compass and pitch controls");
 has('id="placeSearchForm"',"place search UI required");
 has("engineGeocode","forward geocoding required");
 has("QG_SEARCH_CONFIG","shared QueueGo Search must be configured");
