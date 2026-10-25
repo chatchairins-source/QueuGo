@@ -1,8 +1,36 @@
 # QueueGo Next Actions
 
-Current snapshot: 2026-10-24 · Authoritative main: `28a121178b6e15ceb0a7575452b5cb2a374f40a3`
+## 2026-10-24 Native APK files and QueueGo Q role icons — DONE (test build/Web deploy)
+
+- User clarified they need Android APKs. Latest successful Native Pilot run `40085133108` built Customer, Merchant and Rider debug APKs at Native source `8a9089d4fd87ab974da836cb0f3b6e61752cd027`; launcher asset-family verification passed. Artifact `12557006258` (`queuego-native-pilot-apks`) contains all three APKs; SHA-256: Customer `8a00886947e2350354d0d7c5b15375abcad83010f67152f171a01c7579578ca8`, Merchant `8acb51f3df1a40bca4b815dbdab1e6fb25359d0682dc8dbe80c8f321b37edb1f`, Rider `f803c0f31ac22bd0b719fae07f3098860063d54ec328fefff43e72ee4def6d34`.
+- These are debug/test APKs, not Play Store production releases. Native icons are the established Q family: Customer Q+cutlery; Merchant Q+store; Rider Q.
+- Web app icons now match the approved Customer/Shop Q artwork. PR #716 source `11a0d8efb14e082bb4176cb1a0e774bc7c0a798b`, merged `68968e74e83472119f91d7163c13b81925e6a9c2`; exact-head CI `40105477083`, main RC `40105786044`, Pages `40105786009` passed. Live 512px PNG icons and app links were verified.
+- **NEXT:** owner-side install acceptance on the target Android devices; Native Play Store/release gate remains separate.
 
 
+## Current Web PWA brand icon correction — IN PROGRESS
+
+- Active branch `fix/web-pwa-icons-use-approved-q-20261024`, source commit `969eeb0f26a87d973f9626c1969e24b7034e82a1`, based on current Web main `2d3aa5ec203c873b69ec52e2dcd108dbd4ef688a`.
+- Replace the previous ad hoc Web icons with the exact Customer/Shop Q role family from the latest Native successor. Include PNG manifest icons and iOS touch icons.
+- **NEXT:** exact-head RC, merge, deploy Pages, verify public assets.
+
+
+## Web app links and Customer/Shop icons — DONE (Web source/CI/deploy), 2026-10-24
+
+- PR #715 source `d9020643e050033d35640aaabeb952054b74ff0c`, merged at `beb7438a3e36afe9991a37689660fe469b26cb32`. No Production data changed.
+- Adds `/apps.html` with launch and HTML download actions for Customer, Shop and Rider, plus custom SVG PWA icons/manifests for Customer and Shop.
+- Exact-head RC #3337 / `40103741633` and main RC #3338 / `40104022905` passed. Pages #1694 / `40104022142` succeeded; live app links, manifests and icon assets verified.
+- Downloaded HTML files are web app entry points and require internet and hosted QueueGo services.
+- **NEXT:** owner-side PWA install/display acceptance on a physical device, if desired.
+
+## Completed Web map rotation and tilt — 2026-10-24
+
+- Merged PR #714 at `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`.
+- Exact-head RC #3335 / `40103081891` passed full npm regression and mobile WebKit checks; Pages `40103399673` succeeded and the Customer site opened live.
+- All Web maps now support rotation and tilt, with compass/pitch controls. Raster OSM basemaps show perspective only; extruded 3D buildings need vector/elevation tiles. Physical iPhone gesture acceptance remains pending.
+
+
+Current snapshot: 2026-10-24 · Authoritative main: aad07e0aedf57c0b7992534bea5b1fa6cf24719e
 
 ## Active QueueGo continuation — 2026-10-24
 
