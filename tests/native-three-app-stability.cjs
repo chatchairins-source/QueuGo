@@ -681,11 +681,13 @@ ok(
   !fs.existsSync(legacyRiderLongdoMapPath) &&
   riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
   riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
-  riderNavigationMapRuntime.includes('riderMarker = null') &&
+  riderNavigationMapRuntime.includes('riderSource = null') &&
+  riderNavigationMapRuntime.includes('riderStyleInitialized = false') &&
+  riderNavigationMapRuntime.includes('riderPosition = null') &&
   riderNavigationMapRuntime.includes('view?.onDestroy()') &&
   !riderNavigationMapRuntime.includes('markerBitmaps') &&
   !riderNavigationMapRuntime.includes('stopBitmaps'),
-  'Rider MapLibre renderer must release marker references without restoring legacy app-owned bitmap caches'
+  'Rider MapLibre renderer must release QueueGo puck references without restoring legacy app-owned bitmap caches'
 );
 
 const sharedManifest=read('shared/src/main/AndroidManifest.xml');
