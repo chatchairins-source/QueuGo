@@ -267,6 +267,10 @@ private class RiderNavigationMapHolder {
                 mapCreatedCount += 1
                 // QueueGo renders one branded compass in the Rider tool stack.
                 readyMap.uiSettings.isCompassEnabled = false
+                // Match the Web presentation: no MapLibre logo watermark, but keep
+                // source attribution visible.
+                readyMap.uiSettings.isLogoEnabled = false
+                readyMap.uiSettings.isAttributionEnabled = true
                 initialCamera?.takeIf { it.point.valid }?.let { camera ->
                     readyMap.cameraPosition = CameraPosition.Builder()
                         .target(LatLng(camera.point.latitude, camera.point.longitude))
