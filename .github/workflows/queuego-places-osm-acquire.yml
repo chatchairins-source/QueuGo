@@ -1,0 +1,212 @@
+name: QueueGo OSM Thailand acquisition review
+
+on:
+  push:
+    branches:
+      - work-queuego-places-osm-acquire-20261025
+    paths:
+      - '.github/workflows/queuego-places-osm-acquire.yml'
+      - 'requirements-osm-staging.txt'
+      - 'scripts/export-osm-places-geojsonseq.py'
+      - 'scripts/stage-osm-places.cjs'
+      - 'tests/osm-places-stage.cjs'
+      - 'tests/queuego-places-search-schema.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-osm-thailand-acquire-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: Verify OSM staging contracts
+        run: |
+          node tests/osm-places-stage.cjs
+          node tests/queuego-places-search-schema.cjs
+
+      - name: Resolve exact dated Thailand extract
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/qg-osm"
+          mkdir -p "$work"
+          page="$work/thailand.html"
+          curl --fail --location --retry 5 --retry-all-errors --connect-timeout 20 --max-time 120 \
+            --silent --show-error https://download.geofabrik.de/asia/thailand.html -o "$page"
+          name="$(grep -oE 'thailand-[0-9]{6}\.osm\.pbf' "$page" | sort -u | tail -n 1)"
+          if [[ ! "$name" =~ ^thailand-([0-9]{2})([0-9]{2})([0-9]{2})\.osm\.pbf$ ]]; then
+            echo "Could not resolve a dated Thailand PBF from the official Geofabrik page" >&2
+            exit 1
+          fi
+          snapshot_date="20${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}"
+          source_url="https://download.geofabrik.de/asia/$name"
+          retrieved_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "QG_OSM_WORK=$work" >> "$GITHUB_ENV"
+          echo "QG_OSM_PBF=$work/$name" >> "$GITHUB_ENV"
+          echo "QG_OSM_GEOJSON=$work/thailand.geojsonseq" >> "$GITHUB_ENV"
+          echo "QG_OSM_REVIEW=$work/review" >> "$GITHUB_ENV"
+          echo "QG_OSM_NAME=$name" >> "$GITHUB_ENV"
+          echo "QG_OSM_SOURCE_URL=$source_url" >> "$GITHUB_ENV"
+          echo "QG_OSM_SNAPSHOT_DATE=$snapshot_date" >> "$GITHUB_ENV"
+          echo "QG_OSM_RETRIEVED_AT=$retrieved_at" >> "$GITHUB_ENV"
+          echo "QG_OSM_SOURCE_PAGE_SHA256=$(sha256sum "$page" | awk '{print $1}')" >> "$GITHUB_ENV"
+
+      - name: Download exact PBF and verify official MD5 plus local SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          effective_url="$(curl --fail --location --retry 5 --retry-all-errors --connect-timeout 20 --max-time 2400 \
+            --silent --show-error --write-out '%{url_effective}' -o "$QG_OSM_PBF" "$QG_OSM_SOURCE_URL")"
+          curl --fail --location --retry 5 --retry-all-errors --connect-timeout 20 --max-time 120 \
+            --silent --show-error "$QG_OSM_SOURCE_URL.md5" -o "$QG_OSM_WORK/$QG_OSM_NAME.md5"
+          expected_md5="$(awk 'NF {print $1; exit}' "$QG_OSM_WORK/$QG_OSM_NAME.md5" | tr 'A-F' 'a-f')"
+          actual_md5="$(md5sum "$QG_OSM_PBF" | awk '{print $1}')"
+          if [[ ! "$expected_md5" =~ ^[a-f0-9]{32}$ ]] || [[ "$actual_md5" != "$expected_md5" ]]; then
+            echo "Geofabrik MD5 verification failed" >&2
+            exit 1
+          fi
+          sha256="$(sha256sum "$QG_OSM_PBF" | awk '{print $1}')"
+          bytes="$(stat -c '%s' "$QG_OSM_PBF")"
+          if (( bytes < 100000000 )); then
+            echo "Downloaded Thailand PBF is unexpectedly small: $bytes bytes" >&2
+            exit 1
+          fi
+          completed_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          {
+            echo "QG_OSM_EFFECTIVE_URL=$effective_url"
+            echo "QG_OSM_OFFICIAL_MD5=$expected_md5"
+            echo "QG_OSM_ACTUAL_MD5=$actual_md5"
+            echo "QG_OSM_PBF_SHA256=$sha256"
+            echo "QG_OSM_PBF_BYTES=$bytes"
+            echo "QG_OSM_DOWNLOAD_COMPLETED_AT=$completed_at"
+          } >> "$GITHUB_ENV"
+
+      - name: Save acquisition receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const receipt={
+            source:'Geofabrik Thailand OpenStreetMap extract',
+            source_page:'https://download.geofabrik.de/asia/thailand.html',
+            source_page_sha256:process.env.QG_OSM_SOURCE_PAGE_SHA256,
+            requested_url:process.env.QG_OSM_SOURCE_URL,
+            effective_url:process.env.QG_OSM_EFFECTIVE_URL,
+            file:process.env.QG_OSM_NAME,
+            snapshot_date:process.env.QG_OSM_SNAPSHOT_DATE,
+            retrieved_at:process.env.QG_OSM_RETRIEVED_AT,
+            download_completed_at:process.env.QG_OSM_DOWNLOAD_COMPLETED_AT,
+            bytes:Number(process.env.QG_OSM_PBF_BYTES),
+            official_md5:process.env.QG_OSM_OFFICIAL_MD5,
+            actual_md5:process.env.QG_OSM_ACTUAL_MD5,
+            sha256:process.env.QG_OSM_PBF_SHA256,
+            license:'ODbL-1.0',
+            attribution:'© OpenStreetMap contributors',
+            execution:'acquisition_and_review_staging_only_no_database_write'
+          };
+          fs.writeFileSync(process.env.QG_OSM_WORK+'/acquisition.json',JSON.stringify(receipt,null,2)+'\n');
+          NODE
+
+      - name: Install pinned PyOsmium
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/qg-osm-venv"
+          "$RUNNER_TEMP/qg-osm-venv/bin/pip" install --disable-pip-version-check -r requirements-osm-staging.txt
+
+      - name: Export privacy-minimal searchable OSM records
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/qg-osm-venv/bin/python" scripts/export-osm-places-geojsonseq.py \
+            "$QG_OSM_PBF" "$QG_OSM_GEOJSON"
+
+      - name: Stage checksum-pinned review SQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$QG_OSM_REVIEW"
+          node scripts/stage-osm-places.cjs \
+            "$QG_OSM_GEOJSON" "$QG_OSM_PBF" "$QG_OSM_REVIEW" \
+            "$QG_OSM_RETRIEVED_AT" "$QG_OSM_SNAPSHOT_DATE" "$QG_OSM_PBF_SHA256" "$QG_OSM_SOURCE_URL"
+
+      - name: Validate review report and hash every SQL chunk
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$QG_OSM_WORK/acquisition.json" "$QG_OSM_REVIEW/acquisition.json"
+          (
+            cd "$QG_OSM_REVIEW"
+            find . -maxdepth 1 -type f -name '*.review.sql' -print0 | sort -z | xargs -0 -r sha256sum > review-sql-sha256.txt
+            test -s review-sql-sha256.txt
+          )
+          node <<'NODE'
+          const fs=require('fs');
+          const path=require('path');
+          const dir=process.env.QG_OSM_REVIEW;
+          const report=JSON.parse(fs.readFileSync(path.join(dir,'osm-th-stage-report.json'),'utf8'));
+          if(report.execution!=='review_only_no_database_write') throw new Error('stage must remain review-only');
+          if(report.source!=='openstreetmap'||report.license!=='ODbL-1.0') throw new Error('OSM source/license mismatch');
+          if(report.pbf_sha256!==process.env.QG_OSM_PBF_SHA256) throw new Error('PBF SHA-256 receipt mismatch');
+          if(report.pbf_url!==process.env.QG_OSM_SOURCE_URL) throw new Error('PBF source URL mismatch');
+          if(report.snapshot_date!==process.env.QG_OSM_SNAPSHOT_DATE) throw new Error('snapshot date mismatch');
+          if(!(report.summary?.records>0&&report.summary?.staged>0)) throw new Error('empty OSM stage');
+          if(!(report.coverage?.staged_by_category?.road>0)) throw new Error('no named road candidates staged');
+          if(!Array.isArray(report.chunks)||report.chunks.length<1) throw new Error('no review SQL chunks');
+          const manifest=fs.readFileSync(path.join(dir,'review-sql-sha256.txt'),'utf8').trim().split('\n').filter(Boolean);
+          if(manifest.length!==report.chunks.length) throw new Error('SQL checksum manifest/chunk count mismatch');
+          console.log(JSON.stringify({
+            snapshot_date:report.snapshot_date,
+            records:report.summary.records,
+            staged:report.summary.staged,
+            road:report.coverage.staged_by_category.road,
+            geometry:report.coverage.staged_by_geometry,
+            hierarchy:report.coverage.hierarchy_fields_present,
+            chunks:report.chunks.length,
+            pbf_sha256:report.pbf_sha256,
+            export_sha256:report.geojsonseq_sha256,
+            execution:report.execution
+          }));
+          NODE
+
+      - name: Publish privacy-safe stage summary
+        shell: bash
+        run: |
+          node <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs=require('fs'),path=require('path');
+          const report=JSON.parse(fs.readFileSync(path.join(process.env.QG_OSM_REVIEW,'osm-th-stage-report.json'),'utf8'));
+          console.log('## QueueGo OSM Thailand review stage');
+          console.log('');
+          console.log('- Snapshot: '+report.snapshot_date);
+          console.log('- Records scanned: '+report.summary.records);
+          console.log('- Searchable staged: '+report.summary.staged);
+          console.log('- Named roads: '+(report.coverage.staged_by_category.road||0));
+          console.log('- Review SQL chunks: '+report.chunks.length);
+          console.log('- Execution: **'+report.execution+'**');
+          console.log('- PBF SHA-256: `'+report.pbf_sha256+'`');
+          console.log('- Export SHA-256: `'+report.geojsonseq_sha256+'`');
+          NODE
+
+      - name: Upload review-only receipts and SQL
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-osm-thailand-review-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/qg-osm/acquisition.json
+            ${{ runner.temp }}/qg-osm/review
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 9
