@@ -111,6 +111,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
@@ -2407,6 +2408,14 @@ private fun RiderHome(
         snapshot?.deliveryReturn?.canReturnToShop == true ||
             snapshot?.activeJob != null ||
             snapshot?.laundry?.activeJob != null
+    val readyStateVisible =
+        auth.user.status == "active" &&
+            snapshot?.let { current ->
+                current.activeJob == null &&
+                    current.offeredJob == null &&
+                    current.laundry.activeJob == null &&
+                    current.deliveryReturn == null
+            } == true
     val connectivityNotice = riderConnectivityNotice(
         consecutiveRefreshFailures = consecutiveSnapshotFailures,
         hasSnapshot = snapshot != null,
@@ -2559,7 +2568,7 @@ private fun RiderHome(
             }
         }
 
-        if (snapshot?.online == true || activeNavigationWork) {
+        if ((snapshot?.online == true || activeNavigationWork) && !readyStateVisible) {
             Box(
                 Modifier
                     .align(Alignment.TopStart)
@@ -2843,7 +2852,7 @@ private fun RiderHome(
                     }
                 }
             } else {
-                if (current.activeJob == null && current.offeredJob == null && current.laundry.activeJob == null) {
+                if (readyStateVisible) {
                     RiderReadyCard(
                         online = current.online,
                         enabled = !actionBusy,
@@ -4295,29 +4304,73 @@ private fun RiderBlueprintSpeedPill(speedKph: Int?) {
 
 @Composable
 private fun RiderReadyCard(online: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val compact = LocalConfiguration.current.screenWidthDp <= 360
+    val horizontalPadding = if (compact) 14.dp else 20.dp
+    val verticalPadding = if (compact) 18.dp else 22.dp
+    val gap = if (compact) 10.dp else 14.dp
+    val titleSize = if (compact) 17.sp else 20.sp
+    val subtitleSize = if (compact) 12.sp else 13.sp
+    val thumbOffset by animateDpAsState(
+        targetValue = if (online) 23.dp else 3.dp,
+        animationSpec = tween(durationMillis = 180),
+        label = "rider-ready-switch"
+    )
+
     Card(
-        Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 20.dp),
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = horizontalPadding, vertical = verticalPadding),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(10.dp).background(
-                if (online) Color(0xFF12A651) else Color(0xFFA2A2A7),
-                androidx.compose.foundation.shape.CircleShape))
+            horizontalArrangement = Arrangement.spacedBy(gap)
+        ) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .background(
+                        if (online) Color(0xFF12A651) else Color(0xFFA2A2A7),
+                        androidx.compose.foundation.shape.CircleShape
+                    )
+            )
             Column(Modifier.weight(1f)) {
-                Text(if (online) "พร้อมรับงานแล้ว" else "ยังไม่พร้อมรับงาน",
-                    fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold)
-                Text(if (online) "คุณจะได้รับงานในพื้นที่ใกล้เคียง" else "เปิดเพื่อเริ่มรับงาน",
-                    fontSize = 13.sp, lineHeight = 19.sp, color = QgMuted,
-                    modifier = Modifier.padding(top = 3.dp))
+                Text(
+                    if (online) "พร้อมรับงานแล้ว" else "ยังไม่พร้อมรับงาน",
+                    fontSize = titleSize,
+                    lineHeight = if (compact) 24.sp else 28.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    if (online) "คุณจะได้รับงานในพื้นที่ใกล้เคียง" else "เปิดเพื่อเริ่มรับงาน",
+                    fontSize = subtitleSize,
+                    lineHeight = 19.sp,
+                    color = Color(0xFF77777F),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
-            androidx.compose.material3.Switch(
-                checked = online, onCheckedChange = onCheckedChange, enabled = enabled,
-                modifier = Modifier.semantics { contentDescription = "พร้อมรับงาน" },
-                colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = QgRed,
-                    checkedThumbColor = Color.White))
+            Box(
+                modifier = Modifier
+                    .size(width = 54.dp, height = 34.dp)
+                    .alpha(if (enabled) 1f else 0.5f)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(if (online) QgRed else Color(0xFFD9D5D7))
+                    .clickable(enabled = enabled) { onCheckedChange(!online) }
+                    .semantics { contentDescription = "พร้อมรับงาน" }
+            ) {
+                Card(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .align(Alignment.CenterStart)
+                        .offset(x = thumbOffset),
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {}
+            }
         }
     }
 }
