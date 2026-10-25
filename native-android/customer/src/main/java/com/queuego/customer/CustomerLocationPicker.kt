@@ -56,6 +56,9 @@ import com.queuego.shared.QgLine
 import com.queuego.shared.QgLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
+import com.queuego.shared.QgPlaceSearchPanel
+import com.queuego.shared.QueueGoPlaceSearchResult
+import com.queuego.shared.queueGoPlaceLabel
 import kotlinx.coroutines.delay
 
 @Composable
@@ -63,6 +66,7 @@ internal fun CustomerLocationPickerScreen(
     location: CustomerLocation?,
     address: String,
     busy: Boolean,
+    searchPlaces: suspend (String) -> List<QueueGoPlaceSearchResult>,
     resolveAddress: suspend (Double, Double) -> String?,
     onSave: (CustomerLocation) -> Unit,
     onBack: () -> Unit,
@@ -204,6 +208,22 @@ internal fun CustomerLocationPickerScreen(
         Text(
             "ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง",
             color = QgMuted
+        )
+        Spacer(Modifier.height(10.dp))
+
+        QgPlaceSearchPanel(
+            enabled = !busy,
+            search = searchPlaces,
+            onSelect = { result ->
+                draft = draft.move(
+                    CustomerLocation(
+                        result.latitude,
+                        result.longitude,
+                        queueGoPlaceLabel(result)
+                    )
+                )
+                recenterToken++
+            }
         )
         Spacer(Modifier.height(10.dp))
 

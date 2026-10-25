@@ -115,6 +115,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     if (editing != null && !frozen) {
         val original = if (editing == "pickup") pickup else destination
         CustomerLocationPickerScreen(location = original, address = original?.address.orEmpty(), busy = false,
+            searchPlaces = { query -> customerApi.searchPlaces(query) },
             resolveAddress = { lat,lng -> customerApi.reverseGeocode(lat,lng) },
             onSave = { if (editing == "pickup") pickup = it else destination = it; quote = null; picker = null },
             onBack = { picker = null })

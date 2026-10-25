@@ -8,6 +8,7 @@ import android.view.ViewConfiguration
 import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -182,6 +183,18 @@ private class RiderNavigationMapHolder {
     private var gestureReported = false
     private var touchSlop = 8f
 
+    fun resetNorth() {
+        val activeMap = map ?: return
+        val camera = activeMap.cameraPosition
+        activeMap.animateCamera(
+            CameraUpdateFactory.newCameraPosition(
+                CameraPosition.Builder(camera).bearing(0.0).build()
+            ),
+            320
+        )
+        lastCameraBearing = 0f
+    }
+
     fun bindCallbacks(
         ready: (Boolean) -> Unit,
         cameraChanged: (NavigationMapCamera) -> Unit,
@@ -252,6 +265,8 @@ private class RiderNavigationMapHolder {
                 if (disposed || view !== mapView) return@getMapAsync
                 map = readyMap
                 mapCreatedCount += 1
+                // QueueGo renders one branded compass in the Rider tool stack.
+                readyMap.uiSettings.isCompassEnabled = false
                 initialCamera?.takeIf { it.point.valid }?.let { camera ->
                     readyMap.cameraPosition = CameraPosition.Builder()
                         .target(LatLng(camera.point.latitude, camera.point.longitude))
@@ -872,6 +887,7 @@ fun RiderNavigationMap(
     onMapReady: (Boolean) -> Unit = {},
     onCameraChanged: (NavigationMapCamera) -> Unit = {},
     onUserGesture: () -> Unit = {},
+    compassResetSignal: Int = 0,
     onDiagnostics: ((NavigationMapDiagnostics) -> Unit)? = null
 ) {
     require(stateKey.isNotBlank()) {
@@ -922,6 +938,10 @@ fun RiderNavigationMap(
             holder.render(state)
         }
     )
+
+    LaunchedEffect(compassResetSignal) {
+        if (compassResetSignal > 0) holder.resetNorth()
+    }
 
     DisposableEffect(lifecycle, stateKey) {
         val observer = LifecycleEventObserver { _, event ->

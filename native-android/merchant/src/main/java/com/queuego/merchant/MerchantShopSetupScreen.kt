@@ -43,6 +43,9 @@ import com.queuego.shared.QgLine
 import com.queuego.shared.QgLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
+import com.queuego.shared.QgPlaceSearchPanel
+import com.queuego.shared.QueueGoPlaceSearchResult
+import com.queuego.shared.queueGoPlaceLabel
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +84,8 @@ internal fun MerchantShopSetupScreen(
     onPickLogo: () -> Unit,
     onPickCover: () -> Unit,
     onGps: () -> Unit,
+    searchPlaces: suspend (String) -> List<QueueGoPlaceSearchResult>,
+    resolveAddress: suspend (Double, Double) -> String?,
     onSave: (MerchantShopSetupDraft) -> Unit,
     onBack: () -> Unit
 ) {
@@ -93,6 +98,7 @@ internal fun MerchantShopSetupScreen(
         mutableStateOf(shop.shoppingSubcategories)
     }
     var address by remember(shop.id, shop.address) { mutableStateOf(shop.address.orEmpty()) }
+    var addressLockedByUser by remember(shop.id, shop.address) { mutableStateOf(!shop.address.isNullOrBlank()) }
     var latitude by remember(shop.id, shop.latitude) { mutableStateOf(shop.latitude) }
     var longitude by remember(shop.id, shop.longitude) { mutableStateOf(shop.longitude) }
     var openTime by remember(shop.id, shop.openTime) { mutableStateOf(shop.openTime ?: "06:00") }
@@ -112,7 +118,17 @@ internal fun MerchantShopSetupScreen(
         if (!point.valid) return@LaunchedEffect
         latitude = point.latitude
         longitude = point.longitude
+        addressLockedByUser = false
         recenterToken = gpsSignal
+    }
+
+    LaunchedEffect(latitude, longitude, addressLockedByUser) {
+        val lat = latitude ?: return@LaunchedEffect
+        val lng = longitude ?: return@LaunchedEffect
+        if (addressLockedByUser || !merchantCoordinateValid(lat, lng)) return@LaunchedEffect
+        kotlinx.coroutines.delay(350)
+        val resolved = resolveAddress(lat, lng)?.trim().orEmpty()
+        if (!addressLockedByUser && resolved.isNotBlank()) address = resolved
     }
 
     val compact = LocalConfiguration.current.screenWidthDp <= 380
@@ -218,10 +234,27 @@ internal fun MerchantShopSetupScreen(
             }
         }
 
+        SetupField("ค้นหาตำแหน่งร้าน") {
+            QgPlaceSearchPanel(
+                enabled = !busy,
+                search = searchPlaces,
+                onSelect = { result ->
+                    latitude = result.latitude
+                    longitude = result.longitude
+                    address = queueGoPlaceLabel(result)
+                    addressLockedByUser = true
+                    recenterToken++
+                }
+            )
+        }
+
         SetupField("ที่อยู่ร้าน") {
             OutlinedTextField(
                 value = address,
-                onValueChange = { address = it },
+                onValueChange = {
+                    address = it
+                    addressLockedByUser = true
+                },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2
             )
@@ -253,12 +286,13 @@ internal fun MerchantShopSetupScreen(
             ) {
                 QgLocationPickerMap(
                     initialPoint = currentPoint,
-                    recenterPoint = gpsPoint,
+                    recenterPoint = currentPoint,
                     recenterToken = recenterToken,
                     modifier = Modifier.fillMaxSize(),
                     onCenterChanged = {
                         latitude = it.latitude
                         longitude = it.longitude
+                        addressLockedByUser = false
                     },
                     onReady = { mapReady = it }
                 )

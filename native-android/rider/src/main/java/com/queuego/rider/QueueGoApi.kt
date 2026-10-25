@@ -1,5 +1,7 @@
 package com.queuego.rider
 
+import com.queuego.shared.QueueGoNativeApi
+import com.queuego.shared.QueueGoPlaceSearchResult
 import com.queuego.shared.nativeOrderNumber
 
 import android.content.Context
@@ -520,16 +522,6 @@ internal fun riderDestinationPreferenceFromRpc(raw: Any?): RiderDestinationPrefe
     )
 }
 
-private val riderDestinationAddressKeys =
-    listOf("house_number", "soi", "road", "subdistrict", "district", "province", "postcode")
-
-internal fun riderFormatLongdoAddress(raw: String): String? = runCatching {
-    val row = JSONObject(raw)
-    riderDestinationAddressKeys
-        .mapNotNull { key -> row.optString(key).trim().takeIf { it.isNotBlank() && it != "null" } }
-        .joinToString(" ")
-        .takeIf { it.isNotBlank() }
-}.getOrNull()
 
 internal fun riderDocumentReadinessFromRpc(raw: Any?): RiderDocumentReadiness {
     val row = when (raw) {
@@ -671,6 +663,7 @@ internal fun riderBenefitsFromRpc(raw: Any?): List<RiderBenefit> {
 }
 
 class QueueGoApi {
+    private val placesApi = QueueGoNativeApi()
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
         private const val PUBLISHABLE_KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
@@ -1163,27 +1156,11 @@ class QueueGoApi {
         )
     }
 
+    suspend fun searchPlaces(query: String): List<QueueGoPlaceSearchResult> =
+        placesApi.searchPlaces(query)
+
     suspend fun reverseGeocodeDestination(latitude: Double, longitude: Double): String? =
-        withContext(Dispatchers.IO) {
-            if (latitude !in 5.0..21.0 || longitude !in 97.0..106.0) return@withContext null
-            val connection = URL(
-                "https://api.longdo.com/map/services/address?lon=$longitude&lat=$latitude&key=347649ca13f49db0d8a599ae35f8de2b"
-            ).openConnection() as HttpURLConnection
-            connection.connectTimeout = 8_000
-            connection.readTimeout = 8_000
-            connection.requestMethod = "GET"
-            connection.setRequestProperty("Accept", "application/json")
-            try {
-                if (connection.responseCode !in 200..299) return@withContext null
-                connection.inputStream.use { input ->
-                    riderFormatLongdoAddress(input.readRiderApiResponseBounded(512 * 1024))
-                }
-            } catch (_: Exception) {
-                null
-            } finally {
-                connection.disconnect()
-            }
-        }
+        placesApi.reversePlaceAddress(latitude, longitude)
 
     suspend fun passengerLicenseStatus(auth: QueueGoAuth): RiderPassengerLicenseStatus =
         withContext(Dispatchers.IO) {

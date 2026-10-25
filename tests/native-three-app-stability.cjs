@@ -353,10 +353,15 @@ ok(
   'Rider profile bytes must stay bounded and evidence preflight must stream-count without heap-buffering the source before 500 KB compression'
 );
 ok(
-  riderApiMemory.includes('readRiderApiResponseBounded(512 * 1024)') &&
-  customerApiMemory.includes('readCustomerLongdoResponseBounded') &&
-  !customerApiMemory.includes('reader.readText()'),
-  'Customer and Rider Longdo reverse-geocode payloads must be bounded before parsing'
+  sharedApi.includes('QUEUEGO_REVERSE_RADIUS_M = 100_000') &&
+  sharedApi.includes('QUEUEGO_REVERSE_MAX_LABEL_DISTANCE_M = 50_000.0') &&
+  sharedApi.includes('"qg_search_places"') &&
+  sharedApi.includes('readQueueGoResponseBounded') &&
+  customerApiMemory.includes('http.reversePlaceAddress(latitude, longitude)') &&
+  riderApiMemory.includes('placesApi.reversePlaceAddress(latitude, longitude)') &&
+  !customerApiMemory.includes('api.longdo.com') &&
+  !riderApiMemory.includes('api.longdo.com'),
+  'Customer and Rider reverse labels must stay bounded and use the shared QueueGo Places authority'
 );
 
 const riderAppForProofIo=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
