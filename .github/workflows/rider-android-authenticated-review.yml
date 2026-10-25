@@ -51,6 +51,8 @@ jobs:
       - name: Install Android SDK and test image
         run: |
           set -euo pipefail
+          # sdkmanager can close stdin after license acceptance; keep its exit status authoritative.
+          set +o pipefail
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "platforms;android-36" "build-tools;36.0.0" "emulator" "platform-tools" \
             "system-images;android-30;default;x86_64" >/dev/null
