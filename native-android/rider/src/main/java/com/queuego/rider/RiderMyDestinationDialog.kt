@@ -19,6 +19,8 @@ import com.queuego.shared.QgLine
 import com.queuego.shared.QgLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
+import com.queuego.shared.QgPlaceSearchPanel
+import com.queuego.shared.queueGoPlaceLabel
 import com.queuego.shared.QgRed
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -154,6 +156,18 @@ internal fun RiderMyDestinationDialog(
                 )
 
                 Spacer(Modifier.height(10.dp))
+                QgPlaceSearchPanel(
+                    enabled = !busy,
+                    search = { query -> api.searchPlaces(query) },
+                    onSelect = { result ->
+                        selected = QgMapPoint(result.latitude, result.longitude, 0)
+                        draftLabel = queueGoPlaceLabel(result).take(160)
+                        lastAutoLabel = draftLabel
+                        recenterToken++
+                    }
+                )
+
+                Spacer(Modifier.height(10.dp))
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -164,7 +178,7 @@ internal fun RiderMyDestinationDialog(
                 ) {
                     QgLocationPickerMap(
                         initialPoint = selected,
-                        recenterPoint = gpsPoint,
+                        recenterPoint = selected,
                         recenterToken = recenterToken,
                         modifier = Modifier.fillMaxSize(),
                         onCenterChanged = { point ->
