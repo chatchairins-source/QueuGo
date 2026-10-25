@@ -1,0 +1,86 @@
+name: QueueGo OSM Thailand admin boundary review
+
+on:
+  push:
+    branches:
+      - work-web-queuego-places-osm-admin-boundaries-20261025
+    paths:
+      - '.github/workflows/queuego-osm-admin-boundaries.yml'
+      - 'scripts/export-osm-admin-boundaries-geojsonseq.py'
+      - 'scripts/stage-osm-admin-boundaries.cjs'
+      - 'tests/osm-admin-boundaries-stage.cjs'
+      - 'requirements-osm-staging.txt'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-osm-admin-boundaries-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PBF_URL: https://download.geofabrik.de/asia/thailand-261024.osm.pbf
+      PBF_MD5: 215e1ff30fe4d4adef2db3d664dab9da
+      PBF_SHA256: e8373240cf0be47cc641f2c8627e674064d8c47f4ff2a11f6a33fcbfc9a50949
+      SNAPSHOT_DATE: '2026-10-24'
+      RETRIEVED_AT: '2026-10-25T10:59:51Z'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify boundary staging contracts
+        run: node tests/osm-admin-boundaries-stage.cjs
+      - name: Download exact reviewed Thailand PBF
+        shell: bash
+        run: |
+          set -euo pipefail
+          pbf="$RUNNER_TEMP/thailand.osm.pbf"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 5 "$PBF_URL" --output "$pbf"
+          test "$(md5sum "$pbf" | awk '{print $1}')" = "$PBF_MD5"
+          test "$(sha256sum "$pbf" | awk '{print $1}')" = "$PBF_SHA256"
+          test "$(stat -c '%s' "$pbf")" -eq 329280467
+      - name: Export OSM administrative polygons
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/qg-osm-admin-env"
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/pip" install --disable-pip-version-check -r requirements-osm-staging.txt
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" scripts/export-osm-admin-boundaries-geojsonseq.py \
+            "$RUNNER_TEMP/thailand.osm.pbf" "$RUNNER_TEMP/osm-admin.geojsonseq"
+          test -s "$RUNNER_TEMP/osm-admin.geojsonseq"
+      - name: Stage privacy-safe admin boundary review
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/osm-admin-review"
+          node scripts/stage-osm-admin-boundaries.cjs \
+            "$RUNNER_TEMP/osm-admin.geojsonseq" "$out" \
+            "$PBF_URL" "$PBF_SHA256" "$SNAPSHOT_DATE" "$RETRIEVED_AT"
+          node - "$out/osm-th-admin-boundaries-stage-report.json" <<'NODE'
+          const fs=require('node:fs');
+          const r=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(r.execution!=='review_only_no_database_write') throw new Error('must remain review-only');
+          for(const level of ['province','district','subdistrict']){
+            if(!(r.summary?.staged_by_admin_type?.[level]>0)) throw new Error('missing '+level+' boundaries');
+          }
+          NODE
+      - name: Upload admin boundary audit artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-osm-thailand-admin-boundaries
+          path: |
+            ${{ runner.temp }}/osm-admin-review/osm-th-admin-boundaries-stage-report.json
+            ${{ runner.temp }}/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq
+          if-no-files-found: error
+          compression-level: 9
+          retention-days: 7

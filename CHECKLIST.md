@@ -1,3 +1,12 @@
+## 2026-10-25 OSM administrative boundary enrichment audit — IN PROGRESS
+
+- Successor starts from OSM acquisition checkpoint `0abe04b931c25408583df7ef1eb8cf435b1d76bd`; exact PBF identity remains locked to Geofabrik Thailand 2026-10-24 SHA-256 `e8373240cf0be47cc641f2c8627e674064d8c47f4ff2a11f6a33fcbfc9a50949`.
+- Root cause: Production canonical administrative Places contain all 77 provinces / 928 districts / 7,364 subdistricts with verified OAD centroids, but only the country row has polygon geometry. The OSM Places snapshot itself carries hierarchy tags for only a minority of POI/road records, so nationwide hierarchy enrichment cannot be certified yet.
+- Added a separate review-only OSM administrative-area exporter for `boundary=administrative` levels 4/6/8. It keeps only stable OSM area identity/timestamp, controlled public name/ref tags and polygon geometry; user/uid/changeset fields are not exported.
+- Added staging validation/reporting that accepts only closed Polygon/MultiPolygon geometry inside Thailand bounds and normalizes levels 4/6/8 to province/district/subdistrict. No public QueueGo Places rows or Production data are written in this chunk.
+- Added exact-snapshot CI that re-downloads and verifies the same PBF MD5/SHA/byte length, exports boundaries, runs source contracts and uploads normalized boundary geometry plus aggregate report.
+- **NEXT:** run exact-head boundary audit; inspect real counts for OSM levels 4/6/8. Only after counts are understood, match OAD centroid codes to same-level polygons and require deterministic 1:1 coverage before any boundary promotion.
+
 ## 2026-10-25 Exact Geofabrik Thailand Places snapshot acquisition — IN PROGRESS
 
 - Parent source is tested/merged `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; main RC `40185254887`, scheduled RC `40186049542`, and Pages `40185254415` are SUCCESS.
