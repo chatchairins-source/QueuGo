@@ -1,3 +1,12 @@
+## 2026-10-25 Coastal/island service-area audit — IN PROGRESS
+
+- Recovered current main `a3949038`, published #704 head `0c3e9252` and local checkpoint `d119ceb7`; forward-merged the published head without replacing newer source. Exact-head hosted RC `40170835613` succeeded on `0c3e9252`.
+- Read-only live public service-area RPC: 18/22 approximate locality routes accepted. Ranong, Ko Tao, Ko Phi Phi Don and Ko Lipe samples rejected. Deployed Natural Earth boundary has only 20 polygons / 3,317 vertices; offline source containment reproduces exactly the four rejected cases. Province-name search completeness does not certify country coverage.
+- Added a review-only boundary audit with pinned geoBoundaries LFS SHA-256/byte length, explicit ODbL provenance, polygon/hole/edge checks, disconnected-island checks and a read-only live SQL generator. The candidate contains 70 polygons; 21/22 route samples are contained, including the four current failures. The Ko Lanta sample disagrees with the coarse boundary and needs precise land/address verification; approximate fixtures are not verified addresses.
+- Focused boundary regression: 18 PASS; pinned full candidate audit succeeded. Independent Shapely/GEOS reports Valid Geometry (70 polygons / 93,940 vertices); this is not a Production PostGIS test. Full `npm test` completed with exit 0 on source commit `9ce5395f`.
+- No Production mutation or deployment. Candidate is not approved for cutover: require PostGIS validity, accurate border/coast/island address fixtures, sea/foreign negative cases and ODbL attribution/derivative distribution review. Never fix this by buffering the whole country or removing the server guard.
+- NEXT: resolve the Ko Lanta sample against a precise licensed land/address source, validate candidate topology and boundary semantics, then stage a forward-only replacement with complete provenance and audited rule revision. Continue shared nationwide native lookup separately; no native build or real delivery acceptance is claimed.
+
 ## 2026-10-25 Integrated nationwide web regression — DONE (local source/test)
 
 - Commit f1531207: full npm test completed with exit 0 after restart; focused checks also passed. Temporary log from the interrupted session was unavailable, so the suite was rerun instead of inferring success.

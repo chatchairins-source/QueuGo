@@ -1,3 +1,10 @@
+## 2026-10-25 Country coverage has coastal/island gaps
+
+- Continue #704 from its latest descendant, preserving main and the red Rider compass. Hosted RC `40170835613` on `0c3e9252` passed. The live 77/928/7364 hierarchy exists, but that is not nationwide delivery acceptance.
+- Live and offline source checks agree that the 20-polygon Natural Earth boundary rejects the sampled short routes in Ranong, Ko Tao, Phi Phi Don and Lipe. A pinned 70-polygon geoBoundaries candidate covers those samples, but disagrees on the approximate Ko Lanta sample. This is review evidence, not a deployed fix.
+- `scripts/audit-thailand-boundary.cjs` validates exact candidate bytes and emits a review summary or read-only live SQL. geoBoundaries Thailand ADM0 is OSM-derived ODbL-1.0, represented year 2017; never label this particular source CC-BY or merge it silently with public-domain data.
+- NEXT: precise coast/island fixtures, topology/negative acceptance and license/attribution handling before any boundary cutover. Preserve independent map/registration, distance cap, server authority and deny precedence. Native Longdo reverse lookup and nationwide road/vector runtime remain pending.
+
 ## 2026-10-25 Three-app nationwide reconciliation — IN PROGRESS
 
 - Integrated Places successor fe198b153fc7d02c226e8df5f8095c3edd70508a with current web main 0e6718cf0070a01cf6a52dcd589fad7edb47d7e8 using a forward merge. Preserved current compact addresses, rotation/tilt, PWA role icons and manifests alongside the shared Places RPC and nationwide registration. Combined both test lists without dropping either branch's checks.
