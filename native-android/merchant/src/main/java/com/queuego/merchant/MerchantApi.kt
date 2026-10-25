@@ -5,6 +5,7 @@ import com.queuego.shared.nativeOrderNumber
 import com.queuego.shared.sendNativeChatOnce
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QueueGoNativeApi
+import com.queuego.shared.QueueGoPlaceSearchResult
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -285,6 +286,9 @@ data class MerchantHoursState(
 data class ShopReadiness(val complete: Boolean, val checks: JSONObject, val catalogKind: String?)
 
 class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
+    suspend fun searchPlaces(query: String): List<QueueGoPlaceSearchResult> =
+        http.searchPlaces(query)
+
     suspend fun reverseGeocode(latitude: Double, longitude: Double): String? =
         http.reversePlaceAddress(latitude, longitude)
 
