@@ -1,0 +1,38 @@
+{
+  "execution": "review_only_no_database_write",
+  "checked_date": "2026-10-25",
+  "status": "blocked_primary_code_reconciliation",
+  "production_import_allowed": false,
+  "conflict": {
+    "name": "เวียงเก่า",
+    "oad_id": "4026",
+    "hdx_pcode": "TH4029",
+    "resolution": "unresolved; preserve both source identities; no automatic code rewrite"
+  },
+  "primary_sources": [
+    {
+      "publisher": "Ministry of Interior",
+      "page": "https://moi.go.th/moi/รหัสมาตรฐานเขตการปกครอ/",
+      "published_date": "2019-08-06",
+      "attachment": "https://www.moi.go.th/pls/portal/url/ITEM/872E524355C33545E0540003BA24A787",
+      "observed_result": "404 Not Found",
+      "eligible": false
+    },
+    {
+      "publisher": "DOPA",
+      "url": "https://multi.dopa.go.th/asa/assets/modules/news/uploads/b0722c0eb109ec0693b3719e37b2e56063ef167a53b25369097030715451219.pdf",
+      "observed_result": "403 Forbidden from both retrieval tool and direct HTTPS fetch",
+      "eligible": false
+    },
+    {
+      "publisher": "DLD Data Service Hub",
+      "url": "https://datahub.dld.go.th/datahub/index.php/data-standard/dataset-std/farmer/address/master-data-standard/location",
+      "html_sha256": "f015babb30ba2c973929fe9925b79b3f2fa54dd15a8f38d90a2234a44a458367",
+      "published_link": "https://bit.ly/tumbol-std",
+      "resolved_reference": "https://stat.bora.dopa.go.th/stat/statnew/statMenu/newStat/ccaa.php",
+      "observed_result": "DOPA target returned HTTP 503 by direct fetch; retrieval tool timed out",
+      "eligible": false
+    }
+  ],
+  "next": "Retrieve a current, versioned primary administrative-code release and audit the full code/parent/name crosswalk. Treat geography/topology, identity and OAD representative-point quality as separate gates. Do not infer an authoritative code from secondary lists or substitute source centroids without field-level evidence."
+}

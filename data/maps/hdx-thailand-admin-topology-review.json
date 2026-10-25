@@ -33,5 +33,13 @@
   "geometry_validity_gate": "passed",
   "source_parent_polygon_gate": "passed",
   "production_import_allowed": false,
-  "limits": "Source geometry QA only; does not certify OAD identity/centroids, source freshness, cross-source containment, PostGIS release acceptance or village coverage."
+  "limits": "Source geometry QA only; does not certify OAD identity/centroids, source freshness, cross-source containment, PostGIS release acceptance or village coverage.",
+  "hosted_evidence": {
+    "source_head": "cd5f74391a8878db03ddffbd4c203040bb77009a",
+    "audit_run_id": 40193873487,
+    "rc_run_id": 40193873429,
+    "conclusion": "success",
+    "artifact_id": 12599351577,
+    "artifact_sha256": "3a539cf0fc86ada8b0004923b587fe878c8993cfcc57c14561e81dadf8f30a89"
+  }
 }
