@@ -5,6 +5,7 @@ const rankSql=fs.readFileSync(path.join(root,'supabase/migrations/20261025063500
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
 const {renderQueueGoOperationalPlaceSync}=require('../scripts/generate-queuego-shop-place-sync.cjs');
 const operationalSync=renderQueueGoOperationalPlaceSync();
+const operationalMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261025080000_queuego_operational_places_runtime_sync.sql'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 const has=(s,m)=>ok(sql.includes(s),m);
 
@@ -65,4 +66,5 @@ ok(operationalSync.includes('select qg_private.queuego_sync_shop_place(id) from 
 ok(operationalSync.includes('queuego_place_source_records')&&operationalSync.includes('queuego_place_field_provenance'),'runtime sync must preserve source and field provenance');
 ok(!/\bphone\b/i.test(operationalSync),'public Places runtime sync must never copy Merchant phone numbers');
 ok(!/grant\s+execute/i.test(operationalSync),'private operational sync functions must never be exposed through EXECUTE grants');
+ok(operationalMigration.includes('qg_private.queuego_upsert_operational_place(')&&operationalMigration.includes('queuego_shop_place_sync_trg')&&operationalMigration.includes('queuego_market_place_sync_trg'),'materialized Production migration must retain the single operational Places authority and both runtime triggers');
 console.log(JSON.stringify({checks,failures:0,scope:'nationwide QueueGo Places schema, provenance/licensing, dedupe, spatial indexes, shared search security, single-authority verified Shop/Market runtime sync and ranking contract; no Production mutation'}));
