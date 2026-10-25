@@ -25,6 +25,13 @@ data class QueueGoPlaceSearchResult(
     val province: String?
 )
 
+fun queueGoPlaceLabel(result: QueueGoPlaceSearchResult): String {
+    val detail = result.address?.trim().orEmpty()
+    if (detail.isBlank()) return result.name
+    return if (detail.startsWith(result.name, ignoreCase = true)) detail
+    else result.name + " " + detail
+}
+
 private const val QUEUEGO_NATIVE_RESPONSE_MAX_BYTES = 12 * 1024 * 1024
 
 private fun InputStream.readQueueGoResponseBounded(
