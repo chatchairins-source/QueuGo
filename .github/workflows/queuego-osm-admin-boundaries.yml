@@ -122,6 +122,19 @@ jobs:
           if(!(r.summary.by_admin_type.district.deterministic>0)) throw new Error('district matcher produced no deterministic coverage');
           if(!(r.summary.by_admin_type.subdistrict.deterministic>0)) throw new Error('subdistrict matcher produced no deterministic coverage');
           NODE
+      - name: Check chosen OAD-OSM child polygons against full matched parent polygons
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" scripts/audit-admin-boundary-topology.py osm \
+            "$RUNNER_TEMP/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq" \
+            "$RUNNER_TEMP/osm-admin-match/osm-crosswalk-parent-topology-review.json" \
+            --mapping "$RUNNER_TEMP/osm-admin-match/osm-oad-admin-boundary-mapping.json"
+          node - "$RUNNER_TEMP/osm-admin-match/osm-crosswalk-parent-topology-review.json" <<'NODE'
+          const r=require(process.argv[2]);
+          if(!r.osm_crosswalk_parent_review||r.production_import_allowed!==false) throw Error('review-only crosswalk containment report required');
+          if(r.osm_crosswalk_parent_review.production_import_allowed!==false) throw Error('crosswalk QA cannot authorize import');
+          NODE
       - name: Upload admin boundary audit artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -131,6 +144,7 @@ jobs:
             ${{ runner.temp }}/osm-admin-review/osm-topology-review.json
             ${{ runner.temp }}/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq
             ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-match-report.json
+            ${{ runner.temp }}/osm-admin-match/osm-crosswalk-parent-topology-review.json
             ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-mapping.json
           if-no-files-found: error
           compression-level: 9

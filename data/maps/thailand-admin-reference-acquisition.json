@@ -34,5 +34,34 @@
       "eligible": false
     }
   ],
-  "next": "Retrieve a current, versioned primary administrative-code release and audit the full code/parent/name crosswalk. Treat geography/topology, identity and OAD representative-point quality as separate gates. Do not infer an authoritative code from secondary lists or substitute source centroids without field-level evidence."
+  "next": "Retrieve a current, versioned primary administrative-code release and audit the full code/parent/name crosswalk. Treat geography/topology, identity and OAD representative-point quality as separate gates. Do not infer an authoritative code from secondary lists or substitute source centroids without field-level evidence.",
+  "additional_attempts": [
+    {
+      "publisher": "DOPA Bureau of Registration Administration",
+      "reference_page": "https://stat.bora.dopa.go.th/new_stat/webPage/statByYear.php",
+      "listed_year_be": 2568,
+      "url": "https://stat.bora.dopa.go.th/new_stat/file/68/stat_a68.txt",
+      "scope": "district-level aggregate population file; administrative codes for corroboration only, not a licensed boundary master",
+      "observed_result": "HTTP 503 on initial fetch and one retry",
+      "eligible": false
+    },
+    {
+      "publisher": "DOPA Bureau of Registration Administration",
+      "reference_page": "https://stat.bora.dopa.go.th/new_stat/webPage/statByYear.php",
+      "listed_year_be": 2568,
+      "url": "https://stat.bora.dopa.go.th/new_stat/file/68/stat_t68.txt",
+      "scope": "subdistrict-level aggregate population file; administrative codes for corroboration only, not a licensed boundary master",
+      "observed_result": "HTTP 503 on initial fetch and one retry",
+      "eligible": false
+    },
+    {
+      "publisher": "National Statistical Office",
+      "metadata_api": "https://catalog.nso.go.th/api/3/action/package_search?q=รหัสท้องที่",
+      "dataset": "0210_00_0009",
+      "metadata_modified": "2026-05-21T02:54:23.100476",
+      "url": "https://catalogapi.nso.go.th/api/doc/department/D08/SD08_08/SD08_08_47_22.pdf",
+      "observed_result": "metadata acquired; resource download HTTP 418",
+      "eligible": false
+    }
+  ]
 }
