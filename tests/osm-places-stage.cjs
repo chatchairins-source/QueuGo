@@ -143,7 +143,7 @@ const roadSql = renderOsmChunkSql([road], {
   retrievedAt: '2026-10-24T00:00:00.000Z', snapshotDate: '2026-10-20',
   pbfSha256: 'a'.repeat(64), exportSha256: 'b'.repeat(64), pbfUrl: OFFICIAL_PBF_URL
 });
-assert.match(roadSql, /osm:way\\/150/);
+assert.ok(roadSql.includes('osm:way/150'));
 assert.match(roadSql, /"category":"road"/);
 assert.match(roadSql, /"boundary_geojson":null/);
 assert.match(sql, /osm:node\/101/);
