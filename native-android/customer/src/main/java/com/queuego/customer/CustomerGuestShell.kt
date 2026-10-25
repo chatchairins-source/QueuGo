@@ -324,6 +324,7 @@ internal fun GuestCustomerShell(
                     location = location,
                     address = address,
                     busy = locationBusy,
+                    searchPlaces = { query -> api.searchPlaces(query) },
                     resolveAddress = { lat, lng -> api.reverseGeocode(lat, lng) },
                     onSave = { picked ->
                         if (!locationBusy) {
