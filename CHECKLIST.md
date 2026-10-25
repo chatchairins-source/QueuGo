@@ -1,3 +1,35 @@
+## 2026-10-24 Native APK files and QueueGo Q role icons — DONE (test build/Web deploy)
+
+- User clarified they need Android APKs. Latest successful Native Pilot run `40085133108` built Customer, Merchant and Rider debug APKs at Native source `8a9089d4fd87ab974da836cb0f3b6e61752cd027`; launcher asset-family verification passed. Artifact `12557006258` (`queuego-native-pilot-apks`) contains all three APKs; SHA-256: Customer `8a00886947e2350354d0d7c5b15375abcad83010f67152f171a01c7579578ca8`, Merchant `8acb51f3df1a40bca4b815dbdab1e6fb25359d0682dc8dbe80c8f321b37edb1f`, Rider `f803c0f31ac22bd0b719fae07f3098860063d54ec328fefff43e72ee4def6d34`.
+- These are debug/test APKs, not Play Store production releases. Native icons are the established Q family: Customer Q+cutlery; Merchant Q+store; Rider Q.
+- Web app icons now match the approved Customer/Shop Q artwork. PR #716 source `11a0d8efb14e082bb4176cb1a0e774bc7c0a798b`, merged `68968e74e83472119f91d7163c13b81925e6a9c2`; exact-head CI `40105477083`, main RC `40105786044`, Pages `40105786009` passed. Live 512px PNG icons and app links were verified.
+- **NEXT:** owner-side install acceptance on the target Android devices; Native Play Store/release gate remains separate.
+
+## 2026-10-24 Align Web app icons with QueueGo Q brand — IN PROGRESS
+
+- Evidence: Web app icons added in PR #715 did not match the established native QueueGo Q role family. The newest Native successor `work-native-rider-auth-review-20261024` includes Customer/Shop Q artwork and generated 512px PNGs; its launcher asset gate checks those assets.
+- Source commit `969eeb0f26a87d973f9626c1969e24b7034e82a1` on `fix/web-pwa-icons-use-approved-q-20261024`, based on current Web main `2d3aa5ec203c873b69ec52e2dcd108dbd4ef688a`.
+- Scope: use the approved Customer Q+cutlery and Shop Q+store icons in Web PWA manifests, include iOS touch icons, keep Rider's existing official icon, and preserve app HTML download links.
+- No Production data changed.
+- **NEXT:** run exact-head QueueGo RC, merge only after it passes, deploy Pages, and verify the live PWA PNG/SVG assets. Android icons/APKs are governed by the Native successor, not this Web branch.
+
+## 2026-10-24 Web app entry downloads and QueueGo Q icons — DONE (Web source/CI/deploy)
+
+- Scope: provide launch and HTML-download links for Customer, Shop and Rider; add distinct, professional Customer and Merchant PWA icons and install manifests.
+- Evidence: the three live Web entry points are `/`, `/merchant/` and `/rider/`; Customer and Merchant did not declare app manifests. Rider already has its approved icon and manifest.
+- PR #715 source `d9020643e050033d35640aaabeb952054b74ff0c`, merged to main at `beb7438a3e36afe9991a37689660fe469b26cb32`. No production data changed.
+- Exact-head RC #3337 / `40103741633` and post-merge main RC #3338 / `40104022905` passed. Pages deployment #1694 / `40104022142` succeeded.
+- Live `/apps.html` shows all three launch and HTML download actions; Customer and Shop manifests and both SVG icons were opened and verified on Pages. Downloaded HTML entry pages require internet and hosted QueueGo assets/services.
+- **NEXT:** owner can install Customer/Shop as PWA or download the three HTML entry pages from `/apps.html`; physical device installation/appearance remains owner-side acceptance.
+
+## 2026-10-24 Shared map rotation and tilt — DONE (Web source/CI/deploy)
+
+- Cause: shared and direct MapLibre maps disabled camera gestures or clamped pitch to zero outside Rider navigation. Raster OpenStreetMap tiles support tilted perspective but do not provide extruded 3D buildings.
+- Change: enable mouse drag and two-finger rotation/tilt on Customer picker/Ride, Merchant, Admin, Rider, QueueGo Map and Map Lab; show compass/pitch controls while preserving zoom buttons and Rider follow.
+- Exact-head RC #3335 / run `40103081891` passed npm regression and all mobile WebKit gates, including Admin, Merchant, Map Lab, QueueGo Map and Grocery.
+- Merged PR #714 as `03ce3d5d4ebfff9f9aef150dec946ca12f54ecd6`. GitHub Pages run `40103399673` succeeded; live Customer entry point opened at `https://chatchairins-source.github.io/QueuGo/`.
+- Owner iPhone gesture acceptance remains a separate physical-device check.
+
 ## 2026-10-24 Customer Ride map flicker and Rider tracking — DONE (source/CI/deployment)
 
 - Evidence-backed cause: the Ride screen's 5-second polling called `render()` for the route request page even when its data had not changed. `render()` removes the MapLibre instance, replacing the map tiles and causing the observed flash. Supply refreshes could also rebuild it.
