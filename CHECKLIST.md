@@ -1,3 +1,13 @@
+## 2026-10-25 Detailed Thailand service boundary revision 2 — DONE (Production cutover/readback)
+
+- Source HEAD `3eec1ee005e052d695db802433c70f7d0017ffe1`; exact-head QueueGo RC run `40173334398` SUCCESS.
+- Production preflight had one active revision 1 `Thailand Nationwide Launch` rule from Natural Earth with the existing 15 km cap and current verticals. No customer/order/payment data was modified.
+- The canonical migration payload exceeded the Supabase migration request-size limit. Applied the exact checksum-validated geometry through a private chunk staging transport, then executed the same atomic revision logic. Production migration receipts: `20261025074754 queuego_boundary_release_payload_stage` and `20261025074942 queuego_detailed_thailand_service_boundary`; the private staging table was dropped after success.
+- Production readback: revision 1 preserved/inactive; revision 2 active with source `geoboundaries_th_adm0`, ODbL-1.0, 70 polygons / 93,940 points, 15 km cap unchanged, and one `service_area_rule_revised` audit receipt.
+- Live route checks: Ranong, Ko Tao, Phi Phi Don, Ko Lipe, Ko Lanta clinic reference and Bangkok short route => `OK`; Kuala Lumpur, Phnom Penh, Gulf open water and Andaman open water => `OUTSIDE_SERVICE_AREA`; Bangkok 21.435 km route => `DELIVERY_DISTANCE_EXCEEDED`. This verifies coast/island coverage without removing foreign/sea or distance guards.
+- Post-change advisors show the existing intentional no-policy RLS backing table and newly used/fresh service-area indexes; no public table grant was introduced by this release.
+- **NEXT:** merge/deploy the exact attribution/source descendant, verify public `docs/map-data.html` and shared map asset bytes, then continue native shared Search/Reverse migration and nationwide map-data/runtime coverage. Physical-device navigation and completed-delivery acceptance remain separate gates.
+
 ## 2026-10-25 Detailed boundary revision 2 — IN PROGRESS
 
 - Parent published source `840f2923` passed hosted RC `40171718136`. Preserved its exact source tree and forward-merged its canonical Git object locally.
