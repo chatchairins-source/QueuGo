@@ -9,7 +9,6 @@ on:
       - 'scripts/export-osm-places-geojsonseq.py'
       - 'scripts/stage-osm-places.cjs'
       - 'requirements-osm-staging.txt'
-      - 'CHECKLIST.md'
   workflow_dispatch:
 
 permissions:
