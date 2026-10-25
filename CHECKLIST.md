@@ -1,3 +1,10 @@
+## 2026-10-25 Native shared QueueGo Places reverse labels — IN PROGRESS
+
+- Successor source starts exactly from Rider compass PR #718 head `4d56aa3ba7b1efcee6073820c36fa31902212aee`; navigation/compass files are untouched.
+- Added shared `QueueGoNativeApi.reversePlaceAddress` using existing public `qg_search_places` with administrative-area results, bounded 100 km search and 50 km accepted label distance. Customer and Rider no longer call Longdo reverse geocoding directly.
+- Added shared unit coverage and a native source regression that rejects direct `api.longdo.com` reverse lookup in Customer/Rider.
+- **NEXT:** run the exact-head Native Pilot workflow (full npm regression, shared/customer/merchant/rider unit tests, three APK builds, 16 KB packaging and emulator launch). Fix first exact-head failure only. Then reconcile Merchant map address parity without touching #718 navigation.
+
 ## 2026-10-25 Authenticated Android visual review — DONE
 
 - Branch: `work-native-rider-auth-review-20261024`; verified exact HEAD: `0a07a9352159295ff0f0c6a4d182c85703d329be`.
