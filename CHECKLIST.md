@@ -1,3 +1,9 @@
+## 2026-10-26 Merchant inventory tracking — first regression failure isolated
+
+- Exact Native Pilot `40302199708` on `2eb010c99d8d8f5f0132c0904ed82fa2f2a47b7c` stopped at the first full-regression source contract; all preceding regression checks passed. Failure: `tests/native-android-source.cjs:683` required the former exact product projection and rejected the newly required `inventory_stock_tracking,grocery_master_id,grocery_stock_tracking` fields.
+- Bounded test correction committed as `46ab406b8c73f20fea4c4126b2f69aee9250479b`: preserve stock/category/variant/channel checks and require the three inventory-tracking fields. No application behavior or test coverage was weakened.
+- **NEXT:** rerun Native Pilot on the exact successor after this checklist commit, inspect only its first failure, then continue Merchant POS parity for disabling add on tracked zero-stock products.
+
 ## 2026-10-26 Native exact-head Pilot + parity audits — checkpointed
 
 - Exact current Native HEAD before this checklist commit: `843ff11e34cc8d8732e0d41f815398f959e88931`, tree `f8f5939cbf59f3b6fd90bb2f9ca5a2ed0addca5b`. Its bounded Kotlin fix imports shared `QgLine` and replaces the unresolved Merchant `QgBorder` reference.
