@@ -1,0 +1,27 @@
+name: QueueGo Thailand admin corroboration guard
+
+on:
+  push:
+    branches:
+      - work-web-queuego-places-osm-admin-boundaries-20261025
+    paths:
+      - '.github/workflows/queuego-thailand-admin-corroboration.yml'
+      - 'data/maps/thailand-admin-corroboration-review.json'
+      - 'tests/thailand-admin-corroboration.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-thailand-admin-corroboration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Verify corroboration cannot approve canonical identity
+        run: node tests/thailand-admin-corroboration.cjs

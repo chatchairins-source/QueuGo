@@ -1,0 +1,92 @@
+{
+  "execution": "review_only_no_database_write",
+  "checked_date": "2026-10-26",
+  "status": "corroboration_supports_4029_but_current_primary_bytes_unresolved",
+  "canonical_resolution": "unresolved",
+  "production_import_allowed": false,
+  "conflict": {
+    "name": "เวียงเก่า",
+    "oad_candidate": "4026",
+    "hdx_candidate": "4029",
+    "canonical_code_candidate": null,
+    "canonical_code_approved": false,
+    "resolution": "preserve both source identities; no rewrite, alias, remap or promotion"
+  },
+  "evidence_sources": [
+    {
+      "id": "moi_2019_standard_announcement",
+      "publisher": "Ministry of Interior",
+      "url": "https://moi.go.th/moi/รหัสมาตรฐานเขตการปกครอ/",
+      "source_type": "official_html",
+      "page_published_date": "2019-08-06",
+      "referenced_announcement_date": "2019-04-17",
+      "scope": "MOI announcement for Thailand standard administrative codes and attached province/district/subdistrict/village codes",
+      "row_evidence": false,
+      "checksum_status": "attachment_bytes_unavailable",
+      "freshness_status": "historical_standard_announcement",
+      "canonical_eligible": false
+    },
+    {
+      "id": "bora_birth_registry_fy2557",
+      "publisher": "Department of Provincial Administration / Bureau of Registration Administration",
+      "url": "https://www.bora.dopa.go.th/bora/sbp/9314/",
+      "source_type": "official_pdf",
+      "source_period": "FY2557",
+      "observed_page": 35,
+      "observed_rows": [
+        {
+          "code": "4029",
+          "name": "อำเภอเวียงเก่า",
+          "field": "R-Code"
+        }
+      ],
+      "checksum_status": "raw_pdf_bytes_not_available_for_checksum_in_current_environment",
+      "freshness_status": "historical",
+      "canonical_eligible": false
+    },
+    {
+      "id": "bora_registry_system_installation_plan",
+      "publisher": "Department of Provincial Administration / Bureau of Registration Administration",
+      "url": "https://www.bora.dopa.go.th/bora/spt/10050/",
+      "source_type": "official_pdf",
+      "source_period": "undated_in_retrieved_page",
+      "observed_page": 18,
+      "observed_rows": [
+        {
+          "code": "4029",
+          "name": "อำเภอเวียงเก่า",
+          "province": "ขอนแก่น"
+        }
+      ],
+      "checksum_status": "raw_pdf_bytes_not_available_for_checksum_in_current_environment",
+      "freshness_status": "version_date_unresolved",
+      "canonical_eligible": false
+    },
+    {
+      "id": "dga_catalog_bot_dopa_location_codes",
+      "publisher": "Digital Government Development Agency catalog; dataset organization Bank of Thailand",
+      "url": "https://data.go.th/dataset/ds-3479",
+      "source_type": "government_open_data_metadata",
+      "description": "ข้อมูลรหัสที่ตั้ง (location code) ของกรมการปกครอง",
+      "dataset_id": "057d5232-4029-4d19-932f-ec9fbf041fff",
+      "resource_id": "f469c1e5-7aa3-4467-98ad-dc95ce896c01",
+      "metadata_updated": "2026-05-05",
+      "license": "Creative Commons Attributions",
+      "row_evidence": false,
+      "data_origin": "ระบบฐานข้อมูลกลางของธนาคารแห่งประเทศไทย",
+      "primary_dopa_bytes": false,
+      "checksum_status": "resource_rows_not_retrieved",
+      "freshness_status": "metadata_current_but_underlying_row_version_unresolved",
+      "canonical_eligible": false
+    }
+  ],
+  "gates": {
+    "identity_code_correctness": "blocked",
+    "current_primary_reference": "blocked",
+    "source_freshness": "blocked",
+    "license_provenance": "blocked_for_canonical_primary_reference",
+    "postgis_release_acceptance": "not_tested"
+  },
+  "limits": "These sources are corroboration only. Two official BORA documents show 4029 for Wiang Kao, but one is historical and the other lacks a verified source/version date and checksum. Government catalog metadata is current but is secondary and does not expose checksum-pinned DOPA primary rows here.",
+  "next": "Acquire a current/versioned checksum-pinned primary DOPA/MOI code payload or equivalent authoritative row-level reference; then reconcile 4026/4029 and all HDX missing/extra codes. Keep Production import false until independent identity, freshness, provenance, hierarchy and PostGIS gates pass."
+}
