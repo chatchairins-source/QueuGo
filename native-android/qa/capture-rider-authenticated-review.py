@@ -187,11 +187,17 @@ def main():
     tap_label(nodes(),"โปรไฟล์")
     time.sleep(3)
     screens.append({"screen":"profile",**shot("07-profile")})
+    # Support is part of the core Web-aligned Profile and sits above the collapsed
+    # Native-only tools. Capture it before scrolling down to expand extras.
+    capture_profile_dialog(
+        "แจ้งปัญหา / ติดตามเรื่อง",
+        "แจ้งปัญหาและติดตามสถานะจากระบบ",
+        "10-support"
+    )
     expand_profile_extra_tools()
     for entry,title,name in (
         ("แนะนำบริการและวิธีใช้งาน","ศูนย์เรียนรู้ Rider","08-learning-center"),
         ("ศูนย์ความปลอดภัย","กรณีฉุกเฉิน","09-safety-center"),
-        ("แจ้งปัญหา / ติดตามเรื่อง","แจ้งปัญหาและติดตามสถานะจากระบบ","10-support"),
         ("ตรวจสอบระบบ Rider","สถานะจริงของโทรศัพท์เครื่องนี้","11-diagnostics"),
     ):
         capture_profile_dialog(entry,title,name)
