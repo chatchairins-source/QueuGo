@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 20222)
-Total output lines: 674
-
 const fs=require('fs'),assert=require('assert'),path=require('path');
 const root=path.resolve(__dirname,'..','native-android');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
@@ -402,7 +399,17 @@ ok(riderApi.includes('/functions/v1/queuego-push')&&riderApi.includes('"subscrib
 ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes('UUID.randomUUID().toString()'),'Rider push subscription must use a stable UUID device id');
 ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
 ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
-ok(source.includes('QueueGoRiderNavigationMap(')&&gradle.includes('implementation(project(\":rider-navigation-map\"))')&&read('rider-navigation-map/build.g…222 tokens truncated…bDock.includes('.draggable(')&&
+ok(source.includes('QueueGoRiderNavigationMap(')&&gradle.includes('implementation(project(\":rider-navigation-map\"))')&&read('rider-navigation-map/build.gradle.kts').includes('org.maplibre.gl:android-sdk-opengl:13.5.3'),'native Rider must include QueueGo MapLibre navigation host');
+const riderJobDock=read('rider/src/main/java/com/queuego/rider/RiderJobDock.kt');
+ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
+   riderApp.includes('RiderJobDock(')&&riderApp.includes('val dockKey = when {')&&
+   riderApp.includes('activeSheetJob != null -> activeSheetJob.id')&&
+   riderApp.includes('snapshot?.offeredJob != null -> null')&&
+   riderApp.includes('snapshot?.offeredJob != null -> null\n            else -> null')&&
+   riderApp.includes('initiallyExpanded = activeSheetJob == null && dockKey != null')&&
+   riderApp.includes('(maxHeight * 0.62f)')&&
+   riderApp.includes('navigationBottomInsetPx = coordinates.size.height + with(navigationDensity) { 68.dp.roundToPx() }')&&
+   riderJobDock.includes('rememberSaveable(jobKey)')&&riderJobDock.includes('.draggable(')&&
    riderJobDock.includes('onClick = ::toggle')&&
    riderJobDock.includes('mapOverviewActive: Boolean = false')&&
    riderJobDock.includes('if (mapOverviewActive) "ไปที่" else "ภาพรวม"')&&

@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 22696)
-Total output lines: 1910
-
 package com.queuego.customer
 
 import android.Manifest
@@ -841,7 +838,204 @@ private fun CustomerShell(
                                 finally { busy = false }
                             }
                         }
-              …2696 tokens truncated…archPlaces(query) },
+                    },
+                    onBack = { screen = "home" }
+                )
+                "category" -> ServiceCategoryScreen(
+                    loading = loading,
+                    category = category,
+                    serviceBanner = serviceBanners[category],
+                    shops = shops,
+                    location = location,
+                    onBack = {
+                        category = "all"
+                        screen = "home"
+                    },
+                    onShop = { shop -> openShopFromHome(shop, "category") },
+                    onBannerLink = ::openHomeBannerLink
+                )
+                "shopping" -> CustomerShoppingScreen(
+                    loading = loading,
+                    mode = shoppingMode,
+                    serviceBanners = serviceBanners,
+                    shops = shops,
+                    location = location,
+                    onBack = {
+                        if (shoppingMode == "all") screen = "home"
+                        else shoppingMode = "all"
+                    },
+                    onMode = { shoppingMode = it },
+                    onShop = { shop -> openShopFromHome(shop, "shopping") },
+                    onBannerLink = ::openHomeBannerLink
+                )
+                "laundry" -> LaundryNativeScreen(
+                    auth = auth,
+                    location = location,
+                    address = address,
+                    onAddress = {
+                        address = it
+                        location = location?.copy(address = it)
+                    },
+                    onGps = {
+                        if (hasLocation(context)) {
+                            val p = lastKnownLocation(context)
+                            if (p != null) {
+                                location = CustomerLocation(p.first, p.second, address)
+                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
+                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
+                        } else {
+                            permission.launch(arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ))
+                        }
+                    },
+                    onBack = { screen = "home" },
+                    onDone = {
+                        message = "ส่งคำขอฝากซักแล้ว"
+                        screen = "orders"
+                    }
+                )
+                "market", "market-cart" -> MarketNativeScreen(
+                    cartPage = screen == "market-cart",
+                    onOpenCart = { screen = "market-cart" },
+                    onBrowse = { screen = "market" },
+                    auth = auth,
+                    location = location,
+                    address = address,
+                    onAddress = {
+                        address = it
+                        location = location?.copy(address = it)
+                    },
+                    onGps = {
+                        if (hasLocation(context)) {
+                            val p = lastKnownLocation(context)
+                            if (p != null) {
+                                location = CustomerLocation(p.first, p.second, address)
+                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
+                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
+                        } else {
+                            permission.launch(arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ))
+                        }
+                    },
+                    serviceBanner = serviceBanners["market"],
+                    onBack = { screen = "home" },
+                    onDone = { tripId ->
+                        screen = "orders"
+                        scope.launch {
+                            runCatching { CustomerMarketApi().trips(auth) }.onSuccess { fresh ->
+                                marketTrips = fresh
+                                fresh.find { it.id == tripId }?.let { trip ->
+                                    selectedMarketTrip = trip
+                                    if (screen == "orders") screen = "market-trip"
+                                }
+                            }
+                        }
+                    },
+                    onBannerLink = ::openHomeBannerLink
+                )
+                "promotion" -> CustomerPromotionScreen(
+                    onBack = { screen = "home" },
+                    onOpenShop = { shopId ->
+                        shops.find { it.id == shopId }?.let { openShopFromHome(it, "promotion") }
+                    }
+                )
+                "shop" -> ShopScreen(
+                    auth = auth,
+                    shop = selectedShop,
+                    products = catalogState.products,
+                    productsLoading = catalogState.loading,
+                    productsError = catalogState.error,
+                    onRetryProducts = { selectedShop?.let { shop -> shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) } } },
+                    cart = cart,
+                    onBack = { screen = shopReturnScreen },
+                    onAdd = { product ->
+                        val currentShopId = cart.firstOrNull()?.product?.shopId
+                        if (checkoutPending) {
+                            message = "กรุณาตรวจผลคำสั่งซื้อเดิมก่อนแก้ตะกร้า"
+                        } else if (currentShopId != null && currentShopId != product.shopId) {
+                            message = "หนึ่งตะกร้าสั่งได้จากร้านเดียว กรุณาสั่งร้านเดิมให้เสร็จก่อน"
+                        } else {
+                            val existing = cart.find { it.product.id == product.id }
+                            cart = if (existing == null) cart + CartLine(product, 1)
+                            else cart.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
+                            message = "เพิ่มลงตะกร้าแล้ว"
+                        }
+                    },
+                    onCart = { screen = "cart" }
+                )
+                "cart" -> CustomerCartScreen(
+                    cart = cart,
+                    busy = busy,
+                    checkoutPending = checkoutPending,
+                    onBack = { screen = "home" },
+                    onMinus = { id ->
+                        if (!checkoutPending) cart = cart.mapNotNull {
+                            if (it.product.id != id) it
+                            else if (it.quantity <= 1) null else it.copy(quantity = it.quantity - 1)
+                        }
+                    },
+                    onPlus = { id ->
+                        if (!checkoutPending) cart = cart.map {
+                            if (it.product.id == id) it.copy(quantity = (it.quantity + 1).coerceAtMost(99)) else it
+                        }
+                    },
+                    onRemove = { id ->
+                        if (!checkoutPending) cart = cart.filterNot { it.product.id == id }
+                    },
+                    onCheckout = {
+                        if (checkoutPending) {
+                            screen = "checkout"
+                        } else if (!busy && cart.isNotEmpty()) {
+                            busy = true
+                            message = null
+                            scope.launch {
+                                val current = cart.toList()
+                                val shopId = current.firstOrNull()?.product?.shopId
+                                runCatching {
+                                    require(!shopId.isNullOrBlank()) { "ตะกร้าว่าง" }
+                                    val fresh = api.loadProducts(auth, shopId)
+                                    val byId = fresh.associateBy { it.id }
+                                    val unavailable = current.filter { line ->
+                                        byId[line.product.id]?.available != true
+                                    }
+                                    require(unavailable.isEmpty()) {
+                                        "รายการที่ยังสั่งไม่ได้: " + unavailable.joinToString(", ") { it.product.name }
+                                    }
+                                    var changed = false
+                                    val reconciled = current.map { line ->
+                                        val latest = byId.getValue(line.product.id)
+                                        if (latest.deliveryPrice != line.product.deliveryPrice ||
+                                            latest.name != line.product.name ||
+                                            latest.image != line.product.image
+                                        ) changed = true
+                                        line.copy(product = latest)
+                                    }
+                                    cart = reconciled
+                                    if (changed) {
+                                        message = "ราคาสินค้ามีการเปลี่ยนแปลง กรุณาตรวจสอบยอดล่าสุดก่อนยืนยัน"
+                                    }
+                                    screen = "checkout"
+                                }.onFailure {
+                                    message = it.message ?: "ตรวจสอบตะกร้าไม่สำเร็จ"
+                                }
+                                busy = false
+                            }
+                        }
+                    }
+                )
+                "checkout" -> CustomerCheckoutScreen(
+                    pendingCheckout = pendingCheckoutRecord,
+                    cart = cart,
+                    shop = shops.find { it.id == cart.firstOrNull()?.product?.shopId },
+                    location = location,
+                    address = address,
+                    note = note,
+                    busy = busy,
+                    searchPlaces = { query -> api.searchPlaces(query) },
                     resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },
                     onBack = { screen = "cart" },
                     onGps = {
