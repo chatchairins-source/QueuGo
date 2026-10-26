@@ -531,6 +531,13 @@ ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
    riderJobDock.includes('Modifier.weight(1f).fillMaxWidth().clipToBounds().verticalScroll(scroll)')&&
    !riderJobDock.includes('AndroidView')&&riderApp.includes('recenterSignal'),
    'Rider job dock must expand/collapse over retained map, preserve targeted offer visibility, leave the idle Ready card without a duplicate collapse header and measure camera inset including bottom navigation');
+ok(
+   riderApp.includes('QgIcon("route", Modifier.size(23.dp), QgRed)') &&
+   riderApp.includes('actionMessage = "ยังไม่มีเส้นทางให้ดูทั้งหมด"') &&
+   riderApp.includes('.padding(top = 168.dp, end = 10.dp)') &&
+   riderApp.includes('routeOverviewActive = true') &&
+   riderApp.includes('overviewSignal += 1'),
+   'Rider map right rail must expose Web-parity overview between recenter and the lower compass');
 ok(riderApp.includes('var auth by remember { mutableStateOf<QueueGoAuth?>(null) }')&&
    riderApp.includes('var restoring by remember { mutableStateOf(true) }')&&
    riderApp.includes('val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&
