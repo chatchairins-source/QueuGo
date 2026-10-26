@@ -1095,7 +1095,6 @@ private fun MerchantShell(
                 "profile" -> MerchantProfileScreen(
                     auth = auth,
                     shop = shop,
-                    readiness = readiness,
                     shopOpen = shopOpen,
                     onSetup = {
                         setupLogoUri = null
@@ -1106,7 +1105,6 @@ private fun MerchantShell(
                     onHours = { screen = "hours" },
                     onProducts = { screen = "products" },
                     onModules = { screen = "modules" },
-                    onNotifications = { screen = "notifications" },
                     pushBusy = pushActionBusy,
                     onEnableBackgroundNotifications = {
                         launchMerchantPushProfileAction(false)
@@ -2225,22 +2223,27 @@ private fun MerchantCancelGuard(
 }
 
 @Composable
+private const val MERCHANT_PRIVACY_POLICY_URL =
+    "https://chatchairins-source.github.io/QueuGo/docs/privacy.html"
+
+@Composable
 private fun MerchantProfileScreen(
     auth: NativeAuth,
     shop: MerchantShop?,
-    readiness: ShopReadiness?,
     shopOpen: Boolean,
     onSetup: () -> Unit,
     onHours: () -> Unit,
     onProducts: () -> Unit,
     onModules: () -> Unit,
-    onNotifications: () -> Unit,
     pushBusy: Boolean,
     onEnableBackgroundNotifications: () -> Unit,
     onTestNotification: () -> Unit,
     onSupport: () -> Unit,
     logout: () -> Unit
 ) {
+    val context = LocalContext.current
+    var showDeletion by remember { mutableStateOf(false) }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -2346,46 +2349,9 @@ private fun MerchantProfileScreen(
             )
         }
 
-        if (readiness != null) {
-            Spacer(Modifier.height(12.dp))
-            MerchantProfileSectionTitle("ความพร้อมร้าน")
-            MerchantProfileCard {
-                val labels = listOf(
-                    "shop_info" to "ข้อมูลร้าน",
-                    "storefront_image" to "รูปหน้าร้าน",
-                    "cover_image" to "รูปหน้าปก",
-                    "location" to "ตำแหน่งร้าน",
-                    "catalog" to "สินค้า/บริการ"
-                )
-                labels.forEachIndexed { index, (key, label) ->
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(label, Modifier.weight(1f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        val ready = readiness.checks.optBoolean(key, false)
-                        Text(
-                            if (ready) "พร้อม" else "ยังไม่ครบ",
-                            color = if (ready) QgGreen else QgRed,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
-                    if (index != labels.lastIndex) HorizontalDivider(color = Color(0xFFECEEF1))
-                }
-            }
-        }
-
         Spacer(Modifier.height(12.dp))
         MerchantProfileSectionTitle("การแจ้งเตือน")
         MerchantProfileCard {
-            MerchantProfileActionRow(
-                icon = "bell",
-                title = "ศูนย์การแจ้งเตือน",
-                subtitle = "ดูออเดอร์ สถานะระบบ และข่าวสารของร้าน",
-                onClick = onNotifications
-            )
-            HorizontalDivider(color = Color(0xFFECEEF1))
             MerchantProfileActionRow(
                 icon = "bell",
                 title = "การแจ้งเตือนเบื้องหลัง",
@@ -2404,6 +2370,34 @@ private fun MerchantProfileScreen(
         }
 
         Spacer(Modifier.height(12.dp))
+        MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
+        MerchantProfileCard {
+            MerchantProfileActionRow(
+                icon = "gear",
+                title = "นโยบายความเป็นส่วนตัว",
+                subtitle = "ข้อมูลเกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคล"
+            ) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(MERCHANT_PRIVACY_POLICY_URL))
+                    .addCategory(Intent.CATEGORY_BROWSABLE)
+                runCatching { context.startActivity(intent) }
+            }
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "back",
+                title = "ลบบัญชีถาวร",
+                subtitle = "ลบบัญชีและข้อมูลร้านตามขั้นตอนที่กำหนด",
+                danger = true
+            ) { showDeletion = true }
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "back",
+                title = "ออกจากระบบ",
+                subtitle = "ออกจากบัญชีร้านค้าบนอุปกรณ์นี้",
+                onClick = logout
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
         MerchantProfileSectionTitle("ช่วยเหลือ")
         MerchantProfileCard {
             MerchantProfileActionRow(
@@ -2414,20 +2408,32 @@ private fun MerchantProfileScreen(
             )
         }
 
-        Spacer(Modifier.height(12.dp))
-        if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
-            "Merchant", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
-            BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
-        MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
-        QgAccountDeletionSection(
-            accessToken = auth.session.accessToken,
-            onDeleted = logout
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth().height(46.dp)) {
-            Text("ออกจากระบบ", fontWeight = FontWeight.Bold)
+        if (BuildConfig.DEBUG) {
+            Spacer(Modifier.height(12.dp))
+            com.queuego.shared.QgTestBuildInfo(
+                "Merchant", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
+                BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE
+            )
         }
         Spacer(Modifier.height(28.dp))
+    }
+
+    if (showDeletion) {
+        AlertDialog(
+            onDismissRequest = { showDeletion = false },
+            text = {
+                QgAccountDeletionSection(
+                    accessToken = auth.session.accessToken,
+                    onDeleted = logout
+                )
+            },
+            confirmButton = {},
+            dismissButton = {
+                OutlinedButton(onClick = { showDeletion = false }) {
+                    Text("ปิด")
+                }
+            }
+        )
     }
 }
 
@@ -2485,6 +2491,7 @@ private fun MerchantProfileActionRow(
     title: String,
     subtitle: String,
     primary: Boolean = false,
+    danger: Boolean = false,
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -2499,7 +2506,7 @@ private fun MerchantProfileActionRow(
             Modifier
                 .size(34.dp)
                 .background(
-                    if (primary) Color(0xFFFFF0F3) else Color(0xFFF6F7F8),
+                    if (primary || danger) Color(0xFFFFF0F3) else Color(0xFFF6F7F8),
                     RoundedCornerShape(11.dp)
                 ),
             contentAlignment = Alignment.Center
@@ -2507,14 +2514,14 @@ private fun MerchantProfileActionRow(
             QgIcon(
                 icon,
                 Modifier.size(17.dp),
-                if (primary) QgRed else Color(0xFF737982)
+                if (primary || danger) QgRed else Color(0xFF737982)
             )
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 title,
-                color = if (primary) Color(0xFFD90D2D) else Color(0xFF202329),
+                color = if (primary || danger) Color(0xFFD90D2D) else Color(0xFF202329),
                 fontSize = 12.5.sp,
                 fontWeight = FontWeight.ExtraBold
             )
