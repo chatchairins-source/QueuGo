@@ -28,8 +28,7 @@ import kotlinx.coroutines.launch
 internal fun MerchantPromotionScreen(
     auth: NativeAuth,
     shop: MerchantShop,
-    api: MerchantApi,
-    onBack: () -> Unit
+    api: MerchantApi
 ) {
     val scope = rememberCoroutineScope()
     var rows by remember(shop.id) { mutableStateOf<List<MerchantPromotion>>(emptyList()) }
@@ -61,19 +60,7 @@ internal fun MerchantPromotionScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp)
     ) {
-        Row(
-            Modifier.padding(top = 6.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedButton(
-                onClick = onBack,
-                modifier = Modifier.height(38.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)
-            ) { Text("กลับ") }
-            Spacer(Modifier.width(10.dp))
-            Text("โปรโมชั่น", fontSize = MerchantPageTitleSize, fontWeight = FontWeight.ExtraBold)
-        }
-
+        Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             PromotionFilter("ทั้งหมด", "all", filter) { filter = it }
             PromotionFilter("กำลังใช้งาน", "active", filter) { filter = it }
