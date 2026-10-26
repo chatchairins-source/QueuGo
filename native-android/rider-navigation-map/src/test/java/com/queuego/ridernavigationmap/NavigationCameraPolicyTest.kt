@@ -88,7 +88,7 @@ class NavigationCameraPolicyTest {
         )
         val decision = navigationCameraDecision(state, previousBearingDegrees = 88f)
         assertNotNull(decision)
-        assertEquals(15, decision!!.zoom)
+        assertEquals(15.0, decision!!.zoom, 0.001)
         assertTrue(decision.center.longitude > state.rider!!.point.longitude)
         assertTrue(decision.bearingDegrees!! in 88f..91f)
     }
@@ -278,7 +278,7 @@ class NavigationCameraPolicyTest {
 
     @Test fun approachingDestinationKeepsNavigationPerspectiveReadable() {
         assertEquals(
-            45f,
+            28f,
             navigationTilt(
                 speedMetersPerSecond = 16f,
                 remainingRouteMeters = 45.0,
@@ -295,38 +295,41 @@ class NavigationCameraPolicyTest {
         assertTrue(!navigationTiltChangedEnough(34f, 34.4f))
     }
 
-    @Test fun upcomingTurnInsideOneHundredFiftyMetersZoomsIn() {
+    @Test fun nextTurnDistanceDoesNotForkFromWebSpeedZoomAuthority() {
         assertEquals(
-            18,
+            15.3,
             navigationZoom(
                 baseZoom = 17,
                 speedMetersPerSecond = 16f,
                 remainingRouteMeters = 2_000.0,
                 accuracyMeters = 4f,
                 nextTurnDistanceMeters = 140.0
-            )
+            ),
+            0.001
         )
         assertEquals(
-            19,
+            15.3,
             navigationZoom(
                 baseZoom = 17,
                 speedMetersPerSecond = 16f,
                 remainingRouteMeters = 2_000.0,
                 accuracyMeters = 4f,
                 nextTurnDistanceMeters = 45.0
-            )
+            ),
+            0.001
         )
     }
 
     @Test fun approachingDestinationZoomsInEvenWhenMovingFast() {
         assertEquals(
-            19,
+            19.0,
             navigationZoom(
                 baseZoom = 17,
                 speedMetersPerSecond = 16f,
                 remainingRouteMeters = 45.0,
                 accuracyMeters = 4f
-            )
+            ),
+            0.001
         )
     }
 
@@ -376,7 +379,7 @@ class NavigationCameraPolicyTest {
         val decision = navigationCameraDecision(state, previousBearingDegrees = 92f)!!
         assertEquals(0f, decision.bearingDegrees!!, 0.001f)
         assertEquals(0f, decision.tiltDegrees, 0.001f)
-        assertEquals(17, decision.zoom)
+        assertEquals(17.0, decision.zoom, 0.001)
         assertEquals(state.rider!!.point, decision.center)
     }
 
@@ -395,7 +398,7 @@ class NavigationCameraPolicyTest {
         val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)!!
         assertTrue(decision.bearingDegrees!! in 89f..91f)
         assertEquals(0f, decision.tiltDegrees, 0.001f)
-        assertEquals(17, decision.zoom)
+        assertEquals(16.5, decision.zoom, 0.001)
         assertEquals(state.rider!!.point, decision.center)
     }
 
@@ -412,7 +415,7 @@ class NavigationCameraPolicyTest {
             followZoom = 17
         )
         val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)!!
-        assertEquals(15, decision.zoom)
+        assertEquals(15.0, decision.zoom, 0.001)
         assertEquals(0f, decision.tiltDegrees, 0.001f)
     }
 
@@ -466,13 +469,14 @@ class NavigationCameraPolicyTest {
 
     @Test fun poorGpsAccuracyAvoidsOverZooming() {
         assertEquals(
-            18,
+            18.0,
             navigationZoom(
                 baseZoom = 17,
                 speedMetersPerSecond = 0.5f,
                 remainingRouteMeters = 40.0,
                 accuracyMeters = 90f
-            )
+            ),
+            0.001
         )
     }
 
@@ -503,14 +507,14 @@ class NavigationCameraPolicyTest {
             cadenceMillis = 500L
         )
         assertTrue(corner > small)
-        assertTrue(corner <= 800L)
-        assertTrue(small >= 500L)
+        assertTrue(corner <= 900L)
+        assertTrue(small >= 420L)
     }
 
-    @Test fun movingCameraThresholdKeepsPuckFromWalkingAcrossScreen() {
-        assertTrue(navigationCameraMovementThresholdMeters(10f) <= 0.5)
-        assertTrue(navigationCameraMovementThresholdMeters(3f) <= 1.0)
-        assertTrue(navigationCameraMovementThresholdMeters(0.5f) > 2.0)
+    @Test fun movingCameraThresholdMatchesWebSubMeterFollowGate() {
+        assertEquals(0.8, navigationCameraMovementThresholdMeters(10f), 0.001)
+        assertEquals(0.8, navigationCameraMovementThresholdMeters(3f), 0.001)
+        assertEquals(0.8, navigationCameraMovementThresholdMeters(0.5f), 0.001)
     }
 
     @Test fun highSpeedSameTurnFinishesFasterThanLowSpeed() {
@@ -527,7 +531,7 @@ class NavigationCameraPolicyTest {
             speedMetersPerSecond = 3f
         )
         assertTrue(fast < slow)
-        assertTrue(fast <= 620L)
+        assertTrue(fast <= 460L)
     }
 
     @Test fun rotationDurationUsesShortestTurnAcrossNorth() {
@@ -543,6 +547,25 @@ class NavigationCameraPolicyTest {
         )
         assertTrue(acrossNorth < longCorner)
         assertEquals(10f, navigationShortestBearingDelta(355f, 5f), 0.001f)
+    }
+
+    @Test fun screenAnchorRatioMatchesWebSpeedProfile() {
+        assertEquals(0.66, navigationScreenAnchorRatio(0.5f), 0.001)
+        assertEquals(0.69, navigationScreenAnchorRatio(3f), 0.001)
+        assertEquals(0.72, navigationScreenAnchorRatio(8f), 0.001)
+        assertEquals(0.76, navigationScreenAnchorRatio(20f), 0.001)
+    }
+
+    @Test fun followPaddingPlacesPuckAboveBottomDockLikeWeb() {
+        val padding = navigationFollowCameraPadding(
+            insets = NavigationViewportInsets(bottomPx = 220),
+            viewportHeightPx = 900,
+            speedMetersPerSecond = 8f
+        )
+        val logicalCenterY = (padding[1] + (900.0 - padding[3])) / 2.0
+        val expectedY = maxOf(900.0 * 0.46, minOf(900.0 * 0.72, 900.0 - 220.0 - 56.0))
+        assertEquals(expectedY, logicalCenterY, 0.001)
+        assertTrue(padding[3] >= 220.0)
     }
 
     @Test fun cameraEaseInOutIsContinuousAndCentered() {
