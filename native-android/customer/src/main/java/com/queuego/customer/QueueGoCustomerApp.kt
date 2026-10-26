@@ -42,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.key
 import androidx.compose.runtime.DisposableEffect
@@ -115,6 +116,7 @@ private val homeCategories = listOf(
 )
 
 private val homeNearbyShopCategories = setOf("food", "cafe")
+internal const val CUSTOMER_PRIVACY_POLICY_URL = "https://chatchairins-source.github.io/QueuGo/docs/privacy.html"
 
 @Composable
 fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
@@ -205,32 +207,93 @@ private fun CustomerShell(
     val pushStore = remember { NativePushDeviceStore(context, "customer") }
     val pushApi = remember { NativePushApi() }
     val pushLogoutScope = remember(context) { nativeLogoutScope(context, scope) }
-    var pushPermissionRequested by remember(auth.user.id) { mutableStateOf(false) }
+    var pushEnabled by remember(auth.user.id) {
+        mutableStateOf(customerPushEnabled(context, auth.user.id))
+    }
+    var arrivalSoundEnabled by remember(auth.user.id) {
+        mutableStateOf(customerArrivalSoundEnabled(context, auth.user.id))
+    }
+    var pushBusy by remember(auth.user.id) { mutableStateOf(false) }
+    var notificationMessage by remember(auth.user.id) { mutableStateOf<String?>(null) }
     val pushPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            scope.launch { runCatching { syncCustomerNativePush(context, auth) } }
+            scope.launch {
+                pushBusy = true
+                runCatching { syncCustomerNativePush(context, auth) }
+                    .onSuccess { synced ->
+                        if (synced) {
+                            setCustomerPushEnabled(context, auth.user.id, true)
+                            pushEnabled = true
+                            notificationMessage = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                        } else notificationMessage = "บริการแจ้งเตือนยังไม่พร้อม กรุณาลองอีกครั้ง"
+                    }
+                    .onFailure { notificationMessage = it.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ" }
+                pushBusy = false
+            }
+        } else {
+            notificationMessage = "ยังไม่ได้อนุญาตการแจ้งเตือนจาก Android"
+        }
+    }
+    fun toggleCustomerPush() {
+        if (pushBusy) return
+        if (pushEnabled) {
+            pushBusy = true
+            scope.launch {
+                disableCustomerNativePush(context, auth)
+                setCustomerPushEnabled(context, auth.user.id, false)
+                pushEnabled = false
+                pushBusy = false
+                notificationMessage = "ปิดการแจ้งเตือนเบื้องหลังแล้ว"
+            }
+            return
+        }
+        if (!customerFirebaseConfigured(context)) {
+            notificationMessage = "บริการแจ้งเตือนยังไม่พร้อม"
+            return
+        }
+        if (
+            Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        scope.launch {
+            pushBusy = true
+            runCatching { syncCustomerNativePush(context, auth) }
+                .onSuccess { synced ->
+                    if (synced) {
+                        setCustomerPushEnabled(context, auth.user.id, true)
+                        pushEnabled = true
+                        notificationMessage = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                    } else notificationMessage = "บริการแจ้งเตือนยังไม่พร้อม กรุณาลองอีกครั้ง"
+                }
+                .onFailure { notificationMessage = it.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ" }
+            pushBusy = false
+        }
+    }
+    fun testCustomerPush() {
+        if (pushBusy) return
+        if (!pushEnabled) {
+            notificationMessage = "เปิดการแจ้งเตือนเบื้องหลังก่อนทดสอบ"
+            return
+        }
+        pushBusy = true
+        notificationMessage = "ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย"
+        scope.launch {
+            runCatching { pushApi.test(auth) }
+                .onFailure { notificationMessage = it.message ?: "ทดสอบแจ้งเตือนไม่สำเร็จ" }
+            pushBusy = false
         }
     }
     fun logoutWithPushCleanup() {
+        setCustomerPushEnabled(context, auth.user.id, false)
         pushLogoutScope.launch {
             runCatching { pushApi.unsubscribe(auth, pushStore.deviceId()) }
         }
         logout()
-    }
-    LaunchedEffect(auth.user.id, auth.session.accessToken, auth.session.sessionId) {
-        if (!customerFirebaseConfigured(context)) return@LaunchedEffect
-        ensureCustomerNotificationChannel(context)
-        if (
-            Build.VERSION.SDK_INT < 33 ||
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        ) {
-            runCatching { syncCustomerNativePush(context, auth) }
-        } else if (!pushPermissionRequested) {
-            pushPermissionRequested = true
-            pushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
     }
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
     val locationStore = remember { CustomerLocationStore(context) }
@@ -1267,6 +1330,22 @@ private fun CustomerShell(
                         supportInitialOrderId = null
                         screen = "support"
                     },
+                    pushEnabled = pushEnabled,
+                    pushBusy = pushBusy,
+                    arrivalSoundEnabled = arrivalSoundEnabled,
+                    notificationMessage = notificationMessage,
+                    onTogglePush = ::toggleCustomerPush,
+                    onTestPush = ::testCustomerPush,
+                    onToggleArrivalSound = {
+                        val next = !arrivalSoundEnabled
+                        setCustomerArrivalSoundEnabled(context, auth.user.id, next)
+                        arrivalSoundEnabled = next
+                    },
+                    onPrivacy = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(CUSTOMER_PRIVACY_POLICY_URL)))
+                        }.onFailure { notificationMessage = "เปิดนโยบายความเป็นส่วนตัวไม่สำเร็จ" }
+                    },
                     logout = ::logoutWithPushCleanup
                 )
             }
@@ -1810,6 +1889,14 @@ private fun ProfileScreen(
     onFavorites: () -> Unit,
     onPromotions: () -> Unit,
     onSupport: () -> Unit,
+    pushEnabled: Boolean,
+    pushBusy: Boolean,
+    arrivalSoundEnabled: Boolean,
+    notificationMessage: String?,
+    onTogglePush: () -> Unit,
+    onTestPush: () -> Unit,
+    onToggleArrivalSound: () -> Unit,
+    onPrivacy: () -> Unit,
     logout: () -> Unit
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
@@ -1846,6 +1933,44 @@ private fun ProfileScreen(
             }
         }
         Spacer(Modifier.height(10.dp))
+        QgSectionTitle("การแจ้งเตือน")
+        Spacer(Modifier.height(8.dp))
+        QgCard(Modifier.fillMaxWidth()) {
+            Column {
+                ProfileSwitch(
+                    title = "เสียงแจ้งเตือนเมื่อ Rider ถึง",
+                    subtitle = "เสียงเตือนเมื่อ Rider มาถึงจุดส่ง",
+                    checked = arrivalSoundEnabled,
+                    enabled = !pushBusy,
+                    onCheckedChange = { onToggleArrivalSound() }
+                )
+                ProfileSwitch(
+                    title = "การแจ้งเตือนเบื้องหลัง",
+                    subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดแอป",
+                    checked = pushEnabled,
+                    enabled = !pushBusy,
+                    onCheckedChange = { onTogglePush() }
+                )
+                ProfileDestination("ทดสอบการแจ้งเตือน", onTestPush, enabled = !pushBusy)
+                if (!notificationMessage.isNullOrBlank()) {
+                    Text(
+                        notificationMessage,
+                        color = QgMuted,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
+                }
+                Text("การชำระเงิน", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+                Text("ชำระเงินสดเมื่อรับสินค้า", color = QgMuted, modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp))
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        QgSectionTitle("ความเป็นส่วนตัวและบัญชี")
+        Spacer(Modifier.height(8.dp))
+        QgCard(Modifier.fillMaxWidth()) {
+            ProfileDestination("นโยบายความเป็นส่วนตัว", onPrivacy)
+        }
+        Spacer(Modifier.height(10.dp))
         QgAccountDeletionSection(
             accessToken = auth.session.accessToken,
             onDeleted = logout,
@@ -1857,9 +1982,29 @@ private fun ProfileScreen(
 }
 
 @Composable
-private fun ProfileDestination(label: String, onClick: () -> Unit) {
+private fun ProfileSwitch(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 13.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f).clickable(enabled = enabled) { onCheckedChange(!checked) }) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+    }
+}
+
+@Composable
+private fun ProfileDestination(label: String, onClick: () -> Unit, enabled: Boolean = true) {
+    Row(
+        Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

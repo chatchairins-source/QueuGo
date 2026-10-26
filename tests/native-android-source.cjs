@@ -256,6 +256,32 @@ ok(
     .every(label => customerAppForMemory.includes(`ProfileDestination("${label}"`)),
   'Customer Profile must expose the same six destinations as the current Web Profile'
 );
+const customerPushForMemory=read('customer/src/main/java/com/queuego/customer/CustomerPush.kt');
+ok(
+  customerAppForMemory.includes('pushEnabled = pushEnabled') &&
+  customerAppForMemory.includes('onTogglePush = ::toggleCustomerPush') &&
+  customerAppForMemory.includes('onTestPush = ::testCustomerPush') &&
+  customerAppForMemory.includes('onPrivacy = {') &&
+  customerAppForMemory.includes('CUSTOMER_PRIVACY_POLICY_URL') &&
+  customerAppForMemory.includes('setCustomerPushEnabled(context, auth.user.id, true)') &&
+  customerAppForMemory.includes('setCustomerPushEnabled(context, auth.user.id, false)') &&
+  customerAppForMemory.includes('pushApi.test(auth)'),
+  'Customer Profile notification controls must use the real permission, subscribe/unsubscribe and test-push actions and expose the production privacy policy'
+);
+ok(
+  customerPushForMemory.includes('if (!customerPushEnabled(applicationContext, cached.user.id)) return') &&
+  customerPushForMemory.includes('CUSTOMER_ARRIVAL_SOUND_CHANNEL') &&
+  customerPushForMemory.includes('CUSTOMER_ARRIVAL_SILENT_CHANNEL') &&
+  customerPushForMemory.includes('customerArrivalNotification(title, body)'),
+  'Customer push must respect the explicit background preference and arrival sound preference across token refresh and process recreation'
+);
+ok(
+  customerAppForMemory.includes('"เสียงแจ้งเตือนเมื่อ Rider ถึง"') &&
+  customerAppForMemory.includes('"การแจ้งเตือนเบื้องหลัง"') &&
+  customerAppForMemory.includes('"ทดสอบการแจ้งเตือน"') &&
+  customerAppForMemory.includes('"นโยบายความเป็นส่วนตัว"'),
+  'Customer Profile must match current Web notification and privacy controls'
+);
 const merchantMediaForMemory=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
 ok(
   sharedDesign.includes('QG_REMOTE_IMAGE_MAX_SIDE = 1280'),

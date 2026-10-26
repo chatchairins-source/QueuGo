@@ -1,3 +1,12 @@
+## 2026-10-26 Customer notification preferences and privacy entry — IN PROGRESS
+
+- Web blueprint: latest fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; verified native owner branch is `work-native-web-parity-20261026`, remote head `ebf9a83210f741232709bcedca6f029c88c3f57e`, descendant of prior exact successful Native Pilot checkpoint `260c3f0a84fef014ae30e5c81bc8213ecc46351e`. No newer Native owner branch or applicable open PR successor was found.
+- Root cause/evidence: current Web Profile exposes arrival sound, opt-in background notification toggle, test notification and the public privacy-policy link. Android automatically requested `POST_NOTIFICATIONS` and subscribed on session startup; it had no corresponding Profile controls. `NativePushApi` already provides authenticated subscribe, unsubscribe and test actions; Rider source confirms the public privacy URL.
+- Bounded change: move Customer background-push enrollment to the Profile toggle and Android permission action, persist user preference, gate token refresh on that preference, provide test push and arrival-sound preference (separate Android sound/silent arrival channels), and open the same privacy policy URL. No backend or production data changed.
+- Focused checks: `node tests/native-android-source.cjs` PASS (326); `node tests/native-customer-web-home-parity.cjs` PASS (55); `git diff --check` PASS. Local Gradle/Android SDK is unavailable.
+- Full regression, exact-head Native Pilot/APK/emulator evidence: pending this source checkpoint.
+- **NEXT:** commit this bounded chunk, run clean full `npm test`, then verify exact-head Native Pilot and inspect any available Customer screens. Customer remains active; route Back/process-recreation parity follows this chunk.
+
 ## 2026-10-26 Customer Profile destinations and Favorites — DONE (source/test/CI); notification settings P1 remains
 
 - Web blueprint: `main=7e036a0735cc49905e9b0a2434492470551a0c9d`. Native owner branch `work-native-web-parity-20261026` was fetched at `5e589cecc4f11a4dbf27d8c595aa9952ad630e28`, still the newest branch head and a descendant of the prior Native successor.
@@ -13,8 +22,8 @@
 - Clean local full `npm test` PASS on source checkpoint `1ca5c7475a573fed5e0119384cf820970aa92b77`, including map asset provision, full regression, Grocery, release evidence bundler and map field-evidence gate. The later visibility-only Kotlin correction was verified by the exact Native Pilot below.
 - Exact-head Native Pilot `40270538542` on `260c3f0a84fef014ae30e5c81bc8213ecc46351e`: **SUCCESS** — full QueueGo regression, tracking Kotlin tests, Customer/Merchant/Rider APK builds, 16 KB packaging, WebView rejection and Android emulator launch/map/voice lifecycle. APK artifact `12628191588`; emulator evidence `12629021809`.
 - Visual evidence: inspected Web Home at 1365 × 900 and exact-run Android phone Login/Home/Market browse captures at 1080 × 2280. Home hierarchy aligns from top bar through service banner/categories/nearby shops/four-tab nav; this is structural evidence and not a same-viewport pixel comparison. Test shop content is layout-only. Authenticated Profile/Favorites screenshots remain blocked by unavailable authorized Customer review credentials.
-- Status: Profile destinations and Favorites source/test/CI are DONE. Customer notification sound/background/test controls and privacy-policy entry remain P1 OPEN; authenticated Favorites runtime proof, route-specific Back and process recreation also remain open.
-- **NEXT:** implement Customer notification preferences/privacy-entry parity from Web using the existing Native push API and Android permission flow; then close route-specific Back/process-recreation parity. Keep Customer as the active phase.
+- Status: Profile destinations and Favorites source/test/CI are DONE. Customer notification sound/background/test controls and privacy-policy entry are being implemented in the active checkpoint; authenticated Favorites runtime proof, route-specific Back and process recreation also remain open.
+- **NEXT:** finish exact-head validation and record this Customer notification/preferences checkpoint; then close route-specific Back/process-recreation parity. Keep Customer as the active phase.
 
 ## 2026-10-26 Customer Guest protected-action parity — DONE (source/test/CI)
 
