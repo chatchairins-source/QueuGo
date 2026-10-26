@@ -43,7 +43,8 @@ data class LaundryService(
 data class LaundryCatalog(
     val featureEnabled: Boolean,
     val hubs: List<LaundryHub>,
-    val settings: Map<String, LaundrySettings>
+    val settings: Map<String, LaundrySettings>,
+    val servicesByHub: Map<String, List<LaundryService>> = emptyMap()
 )
 
 data class LaundryOrderSummary(
@@ -63,82 +64,61 @@ data class LaundryEvent(
     val createdAt: String?
 )
 
-class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
-    suspend fun catalog(auth: NativeAuth): LaundryCatalog {
-        val enabledRaw = http.rpc(
-            "queuego_feature_enabled",
-            auth.session.accessToken,
-            JSONObject().put("p_feature", "laundry")
-        )
-        val enabled = when (enabledRaw) {
-            is Boolean -> enabledRaw
-            is JSONArray -> enabledRaw.optBoolean(0, false)
-            else -> enabledRaw.toString().toBooleanStrictOrNull() ?: false
+internal fun parseCustomerLaundryCatalog(raw: JSONObject): LaundryCatalog {
+    if (!raw.optBoolean("enabled", false)) return LaundryCatalog(false, emptyList(), emptyMap())
+    val rows = raw.optJSONArray("hubs") ?: JSONArray()
+    val hubs = mutableListOf<LaundryHub>()
+    val settings = linkedMapOf<String, LaundrySettings>()
+    val servicesByHub = linkedMapOf<String, List<LaundryService>>()
+    for (index in 0 until rows.length()) {
+        val row = rows.optJSONObject(index) ?: continue
+        val id = row.optString("id")
+        val shopId = row.optString("shop_id")
+        val config = row.optJSONObject("settings") ?: continue
+        if (id.isBlank() || shopId.isBlank() || shopId == "null" || id in settings) continue
+        val serviceRows = row.optJSONArray("services") ?: continue
+        val services = (0 until serviceRows.length()).mapNotNull { serviceIndex ->
+            val service = serviceRows.optJSONObject(serviceIndex) ?: return@mapNotNull null
+            val serviceId = service.optString("id")
+            val price = service.optDouble("price", 0.0)
+            val pricingType = service.optString("pricing_type")
+            if (serviceId.isBlank() || !price.isFinite() || price < 0 ||
+                pricingType !in setOf("per_kg", "per_item", "per_set", "fixed")) return@mapNotNull null
+            LaundryService(serviceId, id, service.optString("name").ifBlank { "บริการฝากซัก" },
+                service.optString("description").takeIf { it.isNotBlank() && it != "null" },
+                price, pricingType,
+                if (service.has("estimated_minutes") && !service.isNull("estimated_minutes")) service.optInt("estimated_minutes") else null)
         }
-
-        val hubsRaw = http.array(http.get(
-            "laundry_hubs?select=id,name,shop_id&active=eq.true&order=name.asc",
-            auth.session.accessToken
-        ))
-        val settingsRaw = http.array(http.get(
-            "laundry_shop_settings?select=hub_id,enabled,accepts_pickup,accepts_return,minimum_order,base_pickup_fee,return_fee,round_trip_fee,delivery_fee_mode" +
-                "&enabled=eq.true&accepts_pickup=eq.true&accepts_return=eq.true",
-            auth.session.accessToken
-        ))
-
-        val settings = buildMap {
-            for (i in 0 until settingsRaw.length()) {
-                val r = settingsRaw.optJSONObject(i) ?: continue
-                val id = r.optString("hub_id")
-                if (id.isBlank()) continue
-                put(id, LaundrySettings(
-                    id,
-                    r.optBoolean("enabled", true),
-                    r.optDouble("minimum_order", 0.0),
-                    r.optDouble("base_pickup_fee", 0.0),
-                    r.optDouble("return_fee", 0.0),
-                    r.optDouble("round_trip_fee", 0.0),
-                    r.optString("delivery_fee_mode").ifBlank { "separate" }
-                ))
-            }
-        }
-
-        val hubs = buildList {
-            for (i in 0 until hubsRaw.length()) {
-                val r = hubsRaw.optJSONObject(i) ?: continue
-                val id = r.optString("id")
-                if (id.isBlank() || !settings.containsKey(id)) continue
-                add(LaundryHub(
-                    id,
-                    r.optString("name").ifBlank { "ร้านฝากซัก" },
-                    r.optString("shop_id").takeIf { it.isNotBlank() && it != "null" }
-                ))
-            }
-        }
-
-        return LaundryCatalog(enabled, hubs, settings)
+        val configRow = LaundrySettings(id, true, config.optDouble("minimum_order", 0.0),
+            config.optDouble("pickup_fee", 0.0), config.optDouble("return_fee", 0.0),
+            config.optDouble("round_trip_fee", 0.0), config.optString("delivery_fee_mode").ifBlank { "separate" })
+        if (services.isEmpty() || listOf(configRow.minimumOrder, configRow.pickupFee,
+                configRow.returnFee, configRow.roundTripFee).any { !it.isFinite() || it < 0 }) continue
+        hubs += LaundryHub(id, row.optString("name").ifBlank {
+            row.optString("shop_name").ifBlank { "ร้านฝากซัก" }
+        }, shopId)
+        settings[id] = configRow
+        servicesByHub[id] = services
     }
+    return LaundryCatalog(true, hubs, settings, servicesByHub)
+}
+
+internal fun LaundryCatalog.servicesForCustomerHub(hubId: String): List<LaundryService> {
+    check(featureEnabled && hubs.any { it.id == hubId }) {
+        "ร้านฝากซักนี้ยังไม่พร้อมให้บริการ กรุณาเลือกร้านใหม่"
+    }
+    return servicesByHub[hubId].orEmpty().also {
+        check(it.isNotEmpty()) { "ร้านฝากซักนี้ยังไม่พร้อมให้บริการ กรุณาเลือกร้านใหม่" }
+    }
+}
+
+class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
+    suspend fun catalog(auth: NativeAuth): LaundryCatalog =
+        parseCustomerLaundryCatalog(http.obj(http.rpc("queuego_laundry_customer_catalog",
+            auth.session.accessToken, JSONObject())))
 
     suspend fun services(auth: NativeAuth, hubId: String): List<LaundryService> {
-        val rows = http.array(http.get(
-            "laundry_services?select=id,hub_id,name,price,pricing_type,description,estimated_minutes" +
-                "&hub_id=eq." + http.enc(hubId) + "&active=eq.true&order=sort_order.asc",
-            auth.session.accessToken
-        ))
-        return buildList {
-            for (i in 0 until rows.length()) {
-                val r = rows.optJSONObject(i) ?: continue
-                add(LaundryService(
-                    r.optString("id"),
-                    r.optString("hub_id"),
-                    r.optString("name").ifBlank { "บริการฝากซัก" },
-                    r.optString("description").takeIf { it.isNotBlank() && it != "null" },
-                    r.optDouble("price", 0.0),
-                    r.optString("pricing_type").ifBlank { "fixed" },
-                    if (r.has("estimated_minutes") && !r.isNull("estimated_minutes")) r.optInt("estimated_minutes") else null
-                ))
-            }
-        }
+        return catalog(auth).servicesForCustomerHub(hubId)
     }
 
     suspend fun orders(auth: NativeAuth): List<LaundryOrderSummary> {

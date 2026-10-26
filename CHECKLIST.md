@@ -1,3 +1,21 @@
+## 2026-10-26 Customer Laundry eligible-catalog parity — IN PROGRESS (source/test checkpoint; Pilot NEXT)
+
+- Native now reads `queuego_laundry_customer_catalog`, exactly as Web `customer-laundry.js`, instead of independently joining raw active/enabled tables that do not enforce accepted-active-Rider eligibility. Settings and services come from the returned eligible snapshot.
+- Service selection refreshes that catalog and rejects a hub absent from it; disabled/malformed/empty-service snapshots cannot provide a bookable hub. Added JVM flag/eligibility/fee/service cases and an RPC/no-raw-fallback contract.
+- Order/event/checkout implementation from `orders()` onward is byte-identical to the parent. Existing submission, durable pending UUID/body, cash and state authority remain.
+- **NEXT:** inspect exact successor Native Pilot and fix only its first confirmed failure. After relevant regression/Kotlin/JVM gates pass, implement the confirmed Ride arrival-state gap below, then complete final latest-head APK/runtime Pilot.
+
+## 2026-10-26 Customer Ride arrival-state parity — P1 gap confirmed
+
+- Web `customer-ride.js` distinguishes `rider_assigned + arrived_pickup_at` (“คนขับถึงจุดรับแล้ว”) and `in_progress + arrived_dropoff_at` (“ถึงจุดหมายแล้ว”). Native `PassengerRide` omits both fields and renders only the coarse status; arrival-only updates cannot change the parsed DTO or label.
+- Quote/request/cancel and durable request+quote UUID semantics otherwise match the inspected Web flow.
+- **NEXT:** read those timestamps into the existing DTO/parser, use a pure Web-aligned status label policy, and test arrival-only state changes plus stale/terminal timestamps after Laundry's relevant gates pass.
+
+## 2026-10-26 Customer signed-in quantity cap — DONE (source/regression/Kotlin/JVM/APK)
+
+- Source `5f5412016889e0835ef805593a55056b2d668e3e`; exact Pilot [40315822728](https://github.com/chatchairins-source/QueuGo/actions/runs/40315822728) passed full regression, source integrity, JVM/Kotlin, three APKs, 16 KB and WebView rejection. Emulator was still running at succession and may be cancelled by branch concurrency; no full-run SUCCESS is claimed.
+- **NEXT:** Laundry authority and Ride arrival-state parity above; final full Pilot on their latest descendant.
+
 ## 2026-10-26 Customer signed-in shop quantity cap — IN PROGRESS (bounded source fix; Pilot NEXT)
 
 - Web Production `index.html` refuses another add when a line already has 99 units. Native guest-shop and both cart-plus paths also cap at 99, but signed-in `ShopScreen.onAdd` incremented the quantity without a bound. `QueueGoCartStore` restores at most 99, while checkout sends the in-memory quantity verbatim; SQL `queuego_place_cash_order_core` requires `qty` matching `^[1-9][0-9]?$`. This source mismatch can produce an invalid checkout and inconsistent restored quantity.

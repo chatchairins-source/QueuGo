@@ -1,3 +1,10 @@
+## 2026-10-26 Customer Laundry authority; Ride arrival-state NEXT
+
+- Base quantity guard `5f5412016889e0835ef805593a55056b2d668e3e` passed exact Pilot `40315822728` regression/source/JVM/Kotlin/APK/16KB/WebView gates; emulator may be superseded. Grocery `f262329d657409fa29bc4129afcabd674bc91244` passed full exact Pilot `40313768964`. Do not call the partial quantity run a full SUCCESS.
+- This successor changes Laundry discovery to Web's `queuego_laundry_customer_catalog`, including its eligible hub/settings/services snapshot and fresh selected-hub eligibility check. Raw active/enabled table discovery lacked accepted-active-Rider filtering. JVM/source tests added; exact successor compile/test is NEXT. Orders/checkout/events/pending-body code is unchanged.
+- Confirmed next P1: PassengerRide omits `arrived_pickup_at`/`arrived_dropoff_at`, which Web uses for arrival labels inside unchanged coarse statuses. Include them in the DTO/parser and pure label policy, test arrival-only equality and terminal/stale fields, preserve quote/request/cancel/cash/journal authority.
+- **NEXT:** inspect exact successor relevant gates, fix only first confirmed failure, then implement Ride arrival-state parity and complete all gates on the final latest descendant. No overlay, APK publication, Production mutation or physical/authenticated visual certification is implied.
+
 ## 2026-10-26 Native three-app parity — latest verified successor and pending P1 work
 
 - Current owner scope is continuous Native Customer/Merchant/Rider parity against Web Production `main=7e036a0735cc49905e9b0a2434492470551a0c9d`, on `work-native-web-parity-20261026`. This latest scope supersedes older map-only work restrictions. Preserve Rider PR #729 ancestry, current QueueGo map authority, existing cash-only/order/audit rules and all inherited capabilities; no overlay or APK publication is requested.

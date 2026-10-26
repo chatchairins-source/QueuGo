@@ -829,4 +829,8 @@ const groceryCustomerGuest=read('customer/src/main/java/com/queuego/customer/Cus
 const groceryCustomerApp=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
 ok(groceryCustomerApi.includes('"qg_grocery_customer_page"')&&groceryCustomerApi.includes('"qg_grocery_customer_categories"')&&groceryCustomerApi.includes('put("p_offset", offset)')&&groceryCustomerCatalog.includes('rows.take(50)')&&groceryCustomerCatalog.includes('rows.size > 50')&&groceryCustomerGuest.includes('api.loadGroceryPage(null, shop.id, category, offset)')&&groceryCustomerApp.includes('api.loadGroceryPage(auth, shop.id, category, offset)'),'Native guest and signed-in Grocery must use the Production category/page RPCs and 51-row sentinel');
 
+
+const customerLaundryCatalogApi=read('customer/src/main/java/com/queuego/customer/CustomerLaundryApi.kt');
+ok(customerLaundryCatalogApi.includes('"queuego_laundry_customer_catalog"')&&customerLaundryCatalogApi.includes('catalog(auth).servicesForCustomerHub(hubId)')&&!customerLaundryCatalogApi.includes('laundry_hubs?select=')&&!customerLaundryCatalogApi.includes('laundry_shop_settings?select=')&&!customerLaundryCatalogApi.includes('laundry_services?select='),'Native Customer Laundry discovery must use the same eligible catalog authority as Production Web, without raw-table fallback');
+
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
