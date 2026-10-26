@@ -33,6 +33,18 @@ class MerchantDashboardSummaryTest {
         assertEquals("26 ต.ค. 2569", merchantDashboardDateLabel(today))
     }
 
+    @Test fun orderStatusFiltersMatchWebBuckets() {
+        assertEquals("pending", merchantOrderFilterBucket("pending_shop"))
+        assertEquals("preparing", merchantOrderFilterBucket("shop_accepted"))
+        assertEquals("preparing", merchantOrderFilterBucket("rider_to_shop"))
+        assertEquals("searching", merchantOrderFilterBucket("searching_rider"))
+        assertEquals("ready", merchantOrderFilterBucket("waiting_rider"))
+        assertEquals("delivering", merchantOrderFilterBucket("delivering"))
+        assertEquals("delivering", merchantOrderFilterBucket("rider_to_customer", "2026-10-26T10:00:00Z"))
+        assertEquals("done", merchantOrderFilterBucket("delivered"))
+        assertEquals("cancel", merchantOrderFilterBucket("no_rider_available"))
+    }
+
     private fun order(status: String, createdAt: String?) = MerchantOrder(
         id = status + (createdAt ?: "unknown"),
         number = "QG-1",
@@ -43,6 +55,14 @@ class MerchantDashboardSummaryTest {
         note = null,
         createdAt = createdAt,
         preparingAt = null,
-        readyAt = null
+        readyAt = null,
+        customerName = "สมชาย"
     )
+
+    @Test fun orderSearchMatchesWebOrderNumberAndCustomerName() {
+        val sample = order("preparing", "2026-10-26T10:00:00+07:00").copy(number = "QT-1234")
+        assertEquals(true, merchantOrderSearchMatches(sample, "qt-12"))
+        assertEquals(true, merchantOrderSearchMatches(sample, "สมชาย"))
+        assertEquals(false, merchantOrderSearchMatches(sample, "unmatched"))
+    }
 }

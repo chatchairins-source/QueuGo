@@ -373,6 +373,17 @@ ok(merchantDashboardSource.includes('merchantDashboardSummary(orders)')&&
    merchantDashboardSummarySource.includes('status in setOf("completed", "delivered")')&&
    merchantDashboardSummarySource.includes('status in setOf("shop_accepted", "preparing")'),
    'Merchant home must show Web status counts and main menu from the authoritative native order list');
+const merchantOrdersStart=source.indexOf('private fun MerchantOrdersScreen(');
+const merchantOrdersEnd=source.indexOf('@Composable\nprivate fun MerchantOrderCard',merchantOrdersStart);
+const merchantOrdersSource=source.slice(merchantOrdersStart,merchantOrdersEnd);
+ok(merchantOrdersSource.includes('merchantOrderFilterBucket')&&
+   merchantOrdersSource.includes('merchantOrderSearchMatches')&&
+   ['"ทั้งหมด"','"รอรับ"','"กำลังเตรียม"','"กำลังหาไรเดอร์"','"กำลังส่ง"','"สำเร็จ"'].every(label=>merchantOrdersSource.includes(label))&&
+   merchantOrdersSource.includes('"ค้นหาด้วยเลขออเดอร์ หรือชื่อลูกค้า"')&&
+   merchantOrdersSource.includes('"ไม่พบคำสั่งซื้อ"')&&
+   merchantAppSource.includes('"pending_shop" -> "รอรับ"')&&
+   merchantAppSource.includes('"delivered" -> "จัดส่งสำเร็จ"'),
+   'Merchant order list must preserve Web status filters, order/customer search, empty results and status labels');
 ok(source.includes('RiderReadyCard')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve one Ready card and the active job accept countdown');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');

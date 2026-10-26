@@ -84,7 +84,8 @@ data class MerchantOrder(
     val riderArrivedCustomerAt: String? = null,
     val riderId: String? = null,
     val readyEstimateAt: String? = null,
-    val readyRevision: Long = 0
+    val readyRevision: Long = 0,
+    val customerName: String? = null
 )
 
 data class MerchantRiderContext(
@@ -621,7 +622,8 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                         r.optNullable("preparing_at"),
                         r.optNullable("ready_at"),
                         itemCount = r.optJSONArray("items")?.length() ?: 0,
-                        riderId = r.optNullable("rider_id")
+                        riderId = r.optNullable("rider_id"),
+                        customerName = r.optNullable("customer_name")
                     )
                 )
             }

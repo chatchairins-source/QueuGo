@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -1425,12 +1426,47 @@ private fun MerchantMenuTile(
 
 @Composable
 private fun MerchantOrdersScreen(orders: List<MerchantOrder>, loading: Boolean, onOpen: (MerchantOrder) -> Unit) {
+    var selectedFilter by rememberSaveable { mutableStateOf("all") }
+    var query by rememberSaveable { mutableStateOf("") }
+    val filters = listOf(
+        "all" to "ทั้งหมด", "pending" to "รอรับ", "preparing" to "กำลังเตรียม",
+        "searching" to "กำลังหาไรเดอร์", "delivering" to "กำลังส่ง", "done" to "สำเร็จ"
+    )
+    val visibleOrders = orders.filter { order ->
+        (selectedFilter == "all" || merchantOrderFilterBucket(order.status, order.riderArrivedCustomerAt) == selectedFilter) &&
+            merchantOrderSearchMatches(order, query)
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("ออเดอร์", "รับ → เตรียม → พร้อมส่ง")
+        QgSectionTitle("คำสั่งซื้อ", "ดูสถานะและจัดการออเดอร์ของร้าน")
         Spacer(Modifier.height(10.dp))
-        if (loading && orders.isEmpty()) CircularProgressIndicator()
-        else if (orders.isEmpty()) QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์", color = QgMuted) }
-        else orders.forEach { MerchantOrderCard(it, onOpen) }
+        if (loading && orders.isEmpty()) CircularProgressIndicator() else {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                filters.forEach { (filter, label) ->
+                    if (selectedFilter == filter) Button(onClick = { selectedFilter = filter }) {
+                        Text(label, fontSize = 11.sp)
+                    } else OutlinedButton(onClick = { selectedFilter = filter }) {
+                        Text(label, fontSize = 11.sp)
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                leadingIcon = { QgIcon("search", Modifier.size(18.dp), QgMuted) },
+                placeholder = { Text("ค้นหาด้วยเลขออเดอร์ หรือชื่อลูกค้า") }
+            )
+            Spacer(Modifier.height(10.dp))
+            if (orders.isEmpty()) {
+                QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีคำสั่งซื้อ", color = QgMuted) }
+            } else if (visibleOrders.isEmpty()) {
+                QgCard(Modifier.fillMaxWidth()) { Text("ไม่พบคำสั่งซื้อ", color = QgMuted) }
+            } else visibleOrders.forEach { MerchantOrderCard(it, onOpen) }
+        }
         Spacer(Modifier.height(30.dp))
     }
 }
@@ -1445,7 +1481,11 @@ private fun MerchantOrderCard(order: MerchantOrder, onOpen: (MerchantOrder) -> U
                 QgStatusPill(merchantStatus(order.status, order.riderArrivedCustomerAt), order.status !in setOf("cancelled", "no_rider_available"))
             }
             Spacer(Modifier.height(6.dp))
-            Text("ยอดสินค้า ฿" + "%.0f".format(order.subtotal), fontWeight = FontWeight.Bold)
+            Text("ลูกค้า: " + (order.customerName ?: "ลูกค้า"), color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            Text("${order.itemCount} รายการ • ฿" + "%.0f".format(order.subtotal), fontWeight = FontWeight.Bold)
+            merchantOrderTimeLabel(order.createdAt).takeIf { it.isNotBlank() }?.let {
+                Text(it, color = QgMuted, style = MaterialTheme.typography.labelSmall)
+            }
             if (!order.note.isNullOrBlank()) Text(order.note!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -2368,15 +2408,15 @@ private fun merchantStatus(status: String, riderArrivedCustomerAt: String? = nul
         !riderArrivedCustomerAt.isNullOrBlank()
     ) return "Rider ถึงลูกค้าแล้ว"
     return when (normalized) {
-        "pending" -> "ออเดอร์ใหม่"
-        "accepted" -> "รับแล้ว"
-        "searching_rider" -> "กำลังหา Rider"
-        "rider_assigned", "assigned" -> "Rider รับงานแล้ว"
+        "pending", "pending_shop" -> "รอรับ"
+        "accepted", "shop_accepted" -> "ร้านรับออเดอร์แล้ว"
+        "searching_rider" -> "กำลังค้นหาไรเดอร์"
+        "rider_to_shop", "rider_assigned", "assigned" -> "Rider กำลังมารับสินค้า"
         "preparing" -> "กำลังเตรียม"
-        "ready" -> "พร้อมส่ง"
+        "ready", "waiting_rider" -> "พร้อมให้ Rider รับ"
         "picked_up" -> "Rider รับสินค้าแล้ว"
         "in_progress", "delivering", "rider_to_customer" -> "กำลังจัดส่ง"
-        "completed" -> "สำเร็จ"
+        "completed", "delivered" -> "จัดส่งสำเร็จ"
         "cancelled" -> "ยกเลิก"
         "no_rider_available" -> "ไม่พบ Rider"
         else -> status

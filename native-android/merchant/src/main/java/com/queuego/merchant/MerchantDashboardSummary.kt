@@ -19,6 +19,39 @@ internal data class MerchantDashboardSummary(
 internal fun merchantDashboardDateLabel(today: LocalDate = LocalDate.now()): String =
     ThaiBuddhistDate.from(today).format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("th-TH")))
 
+internal fun merchantOrderFilterBucket(status: String, riderArrivedCustomerAt: String? = null): String {
+    val normalized = status.lowercase()
+    val state = if (normalized in setOf("in_progress", "delivering", "rider_to_customer") &&
+        !riderArrivedCustomerAt.isNullOrBlank()
+    ) "arrived" else normalized
+    return when (state) {
+        "pending", "pending_shop" -> "pending"
+        "searching_rider" -> "searching"
+        "shop_accepted", "accepted", "rider_to_shop", "assigned", "rider_assigned", "preparing" -> "preparing"
+        "waiting_rider", "ready" -> "ready"
+        "picked_up", "delivering", "in_progress", "rider_to_customer", "arrived" -> "delivering"
+        "completed", "delivered" -> "done"
+        "cancelled", "no_rider_available" -> "cancel"
+        else -> "processing"
+    }
+}
+
+internal fun merchantOrderSearchMatches(order: MerchantOrder, query: String): Boolean {
+    val needle = query.trim().lowercase(Locale.ROOT)
+    if (needle.isEmpty()) return true
+    return listOf(order.number, order.customerName.orEmpty()).any { it.lowercase(Locale.ROOT).contains(needle) }
+}
+
+internal fun merchantOrderTimeLabel(createdAt: String?): String {
+    if (createdAt.isNullOrBlank()) return ""
+    val instant = runCatching { Instant.parse(createdAt) }.getOrNull()
+        ?: runCatching { OffsetDateTime.parse(createdAt).toInstant() }.getOrNull()
+        ?: runCatching { LocalDateTime.parse(createdAt).atZone(ZoneId.systemDefault()).toInstant() }.getOrNull()
+        ?: return ""
+    return DateTimeFormatter.ofPattern("HH:mm", Locale.forLanguageTag("th-TH"))
+        .format(instant.atZone(ZoneId.systemDefault())) + " น."
+}
+
 internal fun merchantDashboardSummary(
     orders: List<MerchantOrder>,
     today: LocalDate = LocalDate.now(),
