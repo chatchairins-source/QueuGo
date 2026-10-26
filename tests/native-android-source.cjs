@@ -569,6 +569,13 @@ ok(
   riderProfile.includes('var showExtraTools by remember { mutableStateOf(false) }') &&
   riderProfile.includes('"เครื่องมือ Rider เพิ่มเติม"') &&
   riderProfile.includes('if (showExtraTools && showAccountDetails)') &&
+  riderProfile.includes('fontSize = 9.sp') &&
+  riderProfile.includes('shape = RoundedCornerShape(16.dp)') &&
+  riderProfile.includes('heightIn(min = 52.dp)') &&
+  riderProfile.includes('.size(34.dp)') &&
+  riderProfile.includes('RoundedCornerShape(11.dp)') &&
+  riderProfile.includes('fontSize = 12.sp') &&
+  riderProfile.includes('fontSize = 8.5.sp') &&
   !riderProfile.includes('RiderProfileSection("บัญชีและเอกสาร")') &&
   !riderProfile.includes('RiderProfileSection("การนำทางและแผนที่")') &&
   !riderProfile.includes('RiderProfileSection("ขั้นสูง")'),
