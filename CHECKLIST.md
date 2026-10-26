@@ -1,3 +1,76 @@
+## 2026-10-26 Native Rider Web map/navigation parity — DONE (source/test)
+
+- Parallel stream remained isolated from Places/OSM PR #728 and was built from the newest unchanged Native Rider successor PR #710 at `65918d8ca7dbe720127e1c915a0483c3f209cb01`; no older Rider implementation was restored.
+- Evidence-backed root cause: Web and Native had separate Rider presentation/navigation policies. Native still used a default MapLibre Rider marker plus Native-only route-match/camera/display-filter/gesture behavior, while Web uses a branded red directional puck, one speed-aware heading, Rider-puck viewport anchoring and different camera/route scoring.
+- Tested implementation HEAD `09936c6d9d4bccc59d0228ee0011ae7b9903652c` on draft PR #729. Native Rider now uses the Web-equivalent `#E6002D` red puck with 4px white border and white directional arrow, removes the default `MarkerOptions().title("Rider")` presentation, and feeds puck + FOLLOW camera from the same speed-aware smoothed heading.
+- FOLLOW camera now anchors to the same confidence-bounded Rider presentation point rather than a separate Native look-ahead center. Speed zoom, navigation/free-drive pitch, bearing threshold, rotation duration and viewport anchor/bottom-dock padding are aligned to `queuego-map-web.js`.
+- Native route presentation matching now uses the Web distance + heading + backtrack score; the Native-only opposite-heading hard rejection and forward-jump penalty were removed from the visible matcher. The separate experimental Native display-confidence pipeline is disabled in the visible path; authoritative raw GPS/business state/routing remain unchanged.
+- Gesture parity: one-finger pan can enter FREE_PAN; two-finger pinch/rotate/pitch keeps FOLLOW, matching Web ownership. Existing 8-second FREE_PAN auto-follow is preserved.
+- Regression guards were updated so the old default Rider marker cannot be reintroduced. Native Pilot also accepts native fix/PR branches so parity work cannot bypass the standard regression/build/runtime gates.
+- Exact implementation Native Pilot run `40282973410`: **SUCCESS**. Full QueueGo regression, source integrity/contracts, Kotlin unit suites including Rider navigation-map tests, Customer/Merchant/Rider APK builds, Android 16 KB packaging, WebView rejection, APK artifact upload, and Android emulator launch/map/voice lifecycle all passed.
+- Artifacts: `queuego-native-pilot-apks` id `12632823973`; `queuego-rider-native-launch-evidence` id `12633591041`.
+- No Production database/data mutation and no Places/OSM source change.
+- **BLOCKED (physical acceptance only):** emulator/source evidence does not certify real-road GPS, OEM sensor heading, turn behavior or physical-device visual parity.
+- **NEXT:** keep PR #729 as the Native parity successor; perform physical Rider device/road acceptance when available. For further code-only parity, add a shared golden GPS trace contract comparing Web and Kotlin snapped point / heading / route progress / camera / reroute outputs before changing either navigation authority again.
+
+## 2026-10-25 Native Customer checkout QueueGo Places parity — DONE (source/test)
+
+- Implementation HEAD `4e7028be0cfc734828a8762628bb860840176093` extends the reconciled shared Places/Search successor without touching Rider compass/navigation.
+- Customer checkout now uses the same shared `QgPlaceSearchPanel` / `QueueGoNativeApi.searchPlaces` authority as the other location pickers. Search stays outside the map canvas; selecting a result updates coordinates/address atomically, recenters the existing QueueGo map, and preserves reverse-geocode behavior for later map movement.
+- Exact-head Native Pilot run `40183176581`: **SUCCESS** — full regression/source guards, Kotlin unit suites, all three APK builds, Android 16 KB packaging, WebView rejection, artifact upload and emulator launch/map/voice lifecycle all passed.
+- This is source/test evidence only. No physical-device navigation, real GPS/road drive, signed Play release or Production data mutation is claimed.
+- **NEXT:** run the docs-only checkpoint HEAD, then mark PR #724 ready. Keep global Customer shop search on its current operational shop source until QueueGo Places shop ingestion is complete; do not regress it to the currently sparse Places POI set.
+
+## 2026-10-25 Native shared QueueGo Places Search + Reverse — IN PROGRESS
+
+- Successor remains a strict descendant of Rider compass PR #718 head `4d56aa3ba7b1efcee6073820c36fa31902212aee`; Rider compass/navigation implementation files remain untouched.
+- Production Thailand service boundary revision 2 and Web Places/Search source/attribution were already merged to `main` at `2941dff7fdf5585963b09123695dc20afcd37da4`; main RC, Chat Retention and Pages all passed.
+- Shared Native reverse authority: `QueueGoNativeApi.reversePlaceAddress` uses public `qg_search_places`, bounded to Thailand coordinates, 100 km lookup / 50 km accepted administrative-label distance. Customer, Merchant and Rider use the same reverse client; direct Customer/Rider Longdo reverse calls and obsolete Longdo formatter tests were removed.
+- Exact-head Native Pilot run `40178222093` for `8853c17f30319fc93b202c77bde99b8644ba05a8` passed full regression, source integrity, all Kotlin unit suites, three APK builds, Android 16 KB packaging, WebView rejection, artifact upload and emulator launch/map/voice lifecycle.
+- Merchant parity is now included: GPS/map movement resolves the shop address through QueueGo Places with debounce; typed merchant addresses are preserved; selecting a search result recenters the existing QueueGo map instead of adding an overlay.
+- Shared Native text search is now implemented with `QueueGoNativeApi.searchPlaces` + one `QgPlaceSearchPanel`. Search is nationwide by default, debounced 300 ms, capped to 8 displayed results, and parses only valid Thailand coordinates from the authoritative RPC.
+- Customer delivery-location picker, Merchant shop setup and Rider My Destination all place the shared search panel outside the map canvas. Selecting a result uses one shared label formatter, moves the current pin and recenters the existing QueueGo map; no duplicate map/search backend was introduced.
+- Source regressions require all three roles to converge on shared QueueGo search/reverse authority and keep the search UI outside `QgLocationPickerMap`.
+- Exact-head Native Pilot run `40179473743` on `48aa131b5b2998387394af4e735c5bf041ff7f46` passed full regression/source gates and failed first at shared Kotlin compile because `QueueGoPlaceSearch.kt` explicitly imported Compose `weight`, resolving to an internal API in this Compose version.
+- Fix `36f807f55f2c1b0fc011d4dafbd3b5d4e9abf5e6` removes only that invalid import; `Modifier.weight(1f)` remains correctly scoped inside `Row`.
+- **NEXT:** run Native Pilot on the exact successor HEAD, fix only the first failure if any, then mark PR #722 ready. Physical-device navigation remains a separate release gate and must not be claimed from emulator evidence.
+
+## 2026-10-25 Authenticated Android visual review — DONE
+
+- Branch: `work-native-rider-auth-review-20261024`; verified exact HEAD: `0a07a9352159295ff0f0c6a4d182c85703d329be`.
+- Exact-head Actions run `40148163225`: **SUCCESS**. Both debug APKs built; Android Emulator booted; Rider authentication and all expected 11 screenshots passed; Merchant authentication and all expected 5 read-only screenshots passed; both artifacts uploaded.
+- Rider metadata: `review_complete=true`, 11/11 screenshots, no missing screens. Merchant metadata: `review_complete=true`, 5/5 screenshots, no missing screens. Screenshots were inspected after download; no order/dispatch mutation was used.
+- Transient UIAutomator empty-root failure is handled by five bounded retries. Support dialogs close by accessible button or Android Back.
+- Physical device evidence is not claimed. Customer app capture remains blocked until an authorized Customer test account is provided.
+- Status: DONE for Rider + Merchant authenticated emulator screenshot scope.
+- **NEXT:** continue only if an authorized Customer test account becomes available or the owner requests another workstream.
+
+# 2026-10-24 Rider Android production schema mismatch — IN PROGRESS
+
+- Active local successor: `fix/native-customer-map-picker-20261024` (descends from PR #710 head `8a9089d4`; the Rider and POS source fixes are local and unpublished).
+- Evidence: owner photo shows Rider map with `column orders.express_distance_km does not exist`. Supabase production read-only schema query confirms none of the Express columns selected by Rider exist. Production PostgREST logs at `2026-10-24T16:29:49Z` show the same Android `SM-X135G` request failing with SQLSTATE `42703`.
+- Root cause: Native Rider already routes `GET orders` through `QueueGoOrderReadCompatibility`, but its optional-column allowlist omitted Express fields. The intended compatibility retry therefore rethrew this missing-column error and blocked the full Rider snapshot. The Express migration is not present in production migration history; it is explicitly source-only/staged, so it is not applied here.
+- Fix commit: `c288e3d9` adds the 11 selected Express fields to the optional read allowlist and covers repeated missing-column removal while preserving owner/status filters.
+- Evidence: `node tests/native-android-source.cjs` PASS (311 checks); `git diff --check` PASS. No Android SDK, Gradle wrapper or `adb` is available in this workspace, so no APK or emulator screenshot was produced. Production was only inspected, not changed.
+- Status: source fix is in progress; APK/runtime verification is blocked pending an exact-head Native Pilot build. Prior APK files predate this fix and must not be reused as evidence.
+- NEXT: run the shared Kotlin compatibility test and exact-head Native Pilot, inspect generated Rider screenshot/map state, and publish a new test APK only from that exact commit. Also continue the separate Merchant POS timeout/layout issue from the owner screenshots.
+
+## 2026-10-24 Native Merchant POS compared with Web — IN PROGRESS
+
+- Fix commit: `4e812a6e` makes Native POS fetch independent shop-scoped reads concurrently, matching the Web flow, and turns raw timeout text into a Thai retry message.
+- Evidence: owner screenshot shows raw `timeout` on the Native POS page. Native `MerchantPosScreen` displayed `failure.message` verbatim. Web `merchant/pos-table-v2.js` runs independent table/product/order/staff reads with `Promise.all`; Native `MerchantPosApi.snapshot()` did these reads sequentially. Production logs for the shown Android device (2026-10-24 16:24:30–16:27:00 UTC) show POS snapshot endpoints returning HTTP 200, origin times 0.19–2.30 s. The data and timeout appearing together means this log does not support a persistent POS backend failure.
+- Follow-up fix in progress: successful POS snapshot refresh clears a prior raw `timeout` or mapped read error while preserving success messages and offline-draft status. This addresses stale error text after a later successful read.
+- TEST: `node tests/native-android-source.cjs` PASS (311 checks); `git diff --check` PASS. No Android SDK, Gradle wrapper or `adb` is available here, so the Kotlin unit test/build and screenshot capture have not run.
+- Status: source fix only; no APK generated. The existing APKs predate these fixes. Kotlin unit test, exact-head APK build and screenshot are still unverified in this workspace.
+- NEXT: run Merchant Kotlin unit tests and exact-head Native Pilot; inspect actual POS screenshot on the generated build, then provide that build. Preserve web POS flow, which already loads these independent records concurrently.
+
+## 2026-10-24 Customer Android map picker failure — IN PROGRESS
+
+- Evidence from owner-provided Android photo and 7-second screen recording: the Ride location picker displayed a blank map surface with an indefinite loading spinner and no coordinates. The root cause is confirmed in the tested APK build path: `QG_MAP_SERVICE_BASE_URL` was empty in Native Pilot, so `queueGoMapVectorSourceUri()` returned null and `QgLocationPickerMap` could never signal ready. The Customer picker also used a fixed 150dp map height, too short on the shown device.
+- Fix commit `8df77697`: Native Pilot now uses the existing deployed QueueGo Map endpoint `https://queuego-map-buriram.onrender.com` when no repo override is set; production release workflow still requires an explicit validated endpoint. Customer map height now scales to 34% of screen height (240–400dp) and a 12-second load timeout exposes retry feedback instead of an endless spinner.
+- TEST: `node tests/native-android-source.cjs` PASS, 309 checks / 0 failures; `git diff --check` PASS. Android Gradle build is not available in this local environment; exact-head Native Pilot CI is required for APK build/runtime verification.
+- **NEXT:** publish this descendant of PR #710 with fast-forward only, run exact-head Native Pilot, confirm the Customer map source endpoint appears in the packaged manifest/runtime evidence, then provide the new three-APK test ZIP. Existing public map coverage is Buriram; nationwide map coverage remains a separate workstream.
+
 ## 2026-10-23 Current owner scope: map only; recovery cancelled
 
 - Latest owner instruction: ไม่ต้องกู้แล้วปรับแค่เรื่องแผนที่. Do not continue whole-file/module timestamp recovery. Native recovery PR #658 is closed without merge. Initial recovery snapshots are historical references only.
@@ -1093,3 +1166,13 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Evidence status: source assertions committed; this `work-native-*` successor exists specifically to run exact-head Native Pilot CI.
 - Release blockers: physical Android road/GPS test, ANR/OOM/battery evidence, Production/public runtime gate remain mandatory before launch-ready claim.
 - NEXT: finish Web current/next maneuver HUD using QueueGo route `legs[].steps`, then run exact-head source/CI gates; fix only the first failure before any further release claim.
+
+
+## Rider Android authenticated visual review — 2026-10-24
+
+- Branch: `work-native-rider-auth-review-20261024`, based on the latest Native Rider/route-bundle checkpoint.
+- Added a dedicated secret-gated Android Emulator workflow and capture script for authenticated Rider Home map, Messages/Notifications, Earnings for today/7/30 days, Profile, Learning Center, Safety Center, Support, and Diagnostics.
+- The capture script uses a verified pinned real Buriram PMTiles archive in debug-only app storage; it does not tap online/accept/start/complete controls or save credentials/screens UI hierarchy.
+- Added the same debug-only map archive to Native Pilot capture so its map lifecycle is exercised instead of recorded as blocked.
+- Screenshot evidence status: **not captured yet**. The repository Actions secrets `QG_RIDER_REVIEW_PHONE` and `QG_RIDER_REVIEW_PASSWORD` must exist before the authenticated job can run. The current GitHub connector cannot create Actions secrets.
+- NEXT: configure those two repository secrets, then rerun the Rider authenticated review workflow and inspect the four screenshot artifacts. Until then, login and all post-login screens remain unverified.

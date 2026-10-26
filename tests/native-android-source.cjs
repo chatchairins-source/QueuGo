@@ -11,6 +11,7 @@ for(const p of [
   'shared/src/main/java/com/queuego/shared/QueueGoDesign.kt',
   'shared/src/main/java/com/queuego/shared/NativeChatImage.kt',
   'shared/src/main/java/com/queuego/shared/QueueGoAccountDeletion.kt',
+  'shared/src/main/java/com/queuego/shared/QueueGoPlaceSearch.kt',
   'customer/build.gradle.kts',
   'customer/src/main/AndroidManifest.xml',
   'merchant/build.gradle.kts',
@@ -144,6 +145,16 @@ ok(merchantMain.includes('QueueGoMerchantApp(')&&merchantMain.includes('setConte
 ok(source.includes('queuego_place_cash_order'),'Customer native checkout must use production cash-order RPC');
 const customerCartCheckout=read('customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt');
 ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(115.dp)')&&customerCartCheckout.includes('QgLocationPickerMap')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with checkout QueueGo Map and fixed action dock');
+ok(
+  customerCartCheckout.includes('searchPlaces: suspend (String) -> List<QueueGoPlaceSearchResult>') &&
+  customerCartCheckout.includes('QgPlaceSearchPanel(') &&
+  customerCartCheckout.indexOf('QgPlaceSearchPanel(') < customerCartCheckout.indexOf('QgLocationPickerMap(') &&
+  customerCartCheckout.includes('lastAutoAddress = label') &&
+  customerCartCheckout.includes('recenterPoint = selected?.takeIf') &&
+  source.includes('"checkout" -> CustomerCheckoutScreen(') &&
+  source.includes('busy = busy,\n                    searchPlaces = { query -> api.searchPlaces(query) },\n                    resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },'),
+  'Customer checkout place search must use shared QueueGo Places outside the map canvas'
+);
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
 ok(customerCartCheckout.includes('checkoutPending: Boolean')&&customerCartCheckout.includes('enabled = !checkoutPending')&&customerCartCheckout.includes('pendingCheckout: PendingCustomerCheckout?')&&customerCartCheckout.includes('p_expected_delivery_fee'),'Customer pending checkout must lock cart edits and render the persisted Production quote');
 ok(source.includes('loadActiveOrder(auth)')&&source.includes('&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned,picked_up,in_progress)'),'Customer checkout must preserve Production active-order guard before creating another order');
@@ -410,16 +421,61 @@ ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.incl
 ok(!source.includes('longdo.map.key')&&!source.includes('longdo.map.apikeychecker'),'native apps must not package retired Longdo credential metadata');
 const customerManifest=read('customer/src/main/AndroidManifest.xml');
 ok(customerManifest.includes('queuego.map.service.base_url')&&customerManifest.includes('${queuegoMapServiceBaseUrl}')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer QueueGo Map picker must declare map service config and location permission');
+const customerMapPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
+ok(customerMapPicker.includes('screenHeightDp.dp * 0.34f')&&customerMapPicker.includes('mapFailed')&&customerMapPicker.includes('ลองโหลดแผนที่อีกครั้ง'),'Customer native map picker must use responsive map height and expose a retry state instead of spinning forever');
+const customerRide=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
+ok(customerRide.includes('QgTrackingMap(')&&customerRide.includes('.height(245.dp)'),'Customer native Ride request must show the QueueGo route map preview like Web');
+const sharedMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
+ok(sharedMap.includes('newLatLngBounds(bounds, 48)')&&sharedMap.includes('LatLng(14.9918756, 103.0994795)'),'Native tracking preview must frame both selected Ride stops and use the Buriram pilot viewport when empty');
+ok(
+  sharedMap.includes('https://tile.openstreetmap.org/{z}/{x}/{y}.png') &&
+  sharedMap.includes('RasterSource(QUEUEGO_WEB_BASEMAP_SOURCE') &&
+  sharedMap.includes('RasterLayer(QUEUEGO_WEB_BASEMAP_LAYER') &&
+  sharedMap.includes('map.uiSettings.isLogoEnabled = false'),
+  'Native QueueGo basemap presentation must stay locked to the same raster tiles as Web'
+);
+ok(pilotWorkflow.includes("vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com'"),'pilot APKs must compile the deployed QueueGo Map endpoint when no override is configured');
 const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
+const riderPuckArrow=read('rider-navigation-map/src/main/res/drawable/qg_rider_puck_arrow.xml');
 ok(
   riderNavigationLocationService.includes('LocationServices.getFusedLocationProviderClient') &&
   riderNavigationLocationService.includes('NavigationMapFix(') &&
-  riderMap.includes('riderMarker = activeMap.addMarker(') &&
   riderMap.includes('GeoJsonSource(') &&
+  riderMap.includes('CircleLayer(RIDER_BODY_LAYER_ID, RIDER_SOURCE_ID)') &&
+  riderMap.includes('SymbolLayer(RIDER_ARROW_LAYER_ID, RIDER_SOURCE_ID)') &&
+  riderMap.includes('PropertyFactory.circleColor(android.graphics.Color.rgb(230, 0, 45))') &&
+  riderMap.includes('PropertyFactory.circleStrokeColor(android.graphics.Color.WHITE)') &&
+  riderMap.includes('PropertyFactory.iconRotate(Expression.get("bearing"))') &&
+  riderMap.includes('Property.ICON_ROTATION_ALIGNMENT_MAP') &&
+  riderMap.includes('smoothRiderPuckHeading(') &&
+  riderMap.includes('resolvedRiderPuckHeading(state.rider)') &&
+  !riderMap.includes('.title("Rider")') &&
+  riderPuckArrow.includes('#FFFFFFFF') &&
+  riderPuckArrow.includes('M13.5,2.5 L23.5,23 L13.5,18.2 L3.5,23') &&
   riderMap.includes('SymbolLayer(STOP_SHOP_ICON_LAYER_ID, STOP_SOURCE_ID)') &&
   riderMap.includes('SymbolLayer(STOP_CUSTOMER_ICON_LAYER_ID, STOP_SOURCE_ID)') &&
   riderMap.includes('source.setGeoJson(stopFeatureCollectionJson(stops, activeId))'),
-  'native Rider QueueGo Map must use Android fused GPS and render rider plus numbered shop/customer stop layers'
+  'native Rider QueueGo Map must match the Web red directional puck/heading and preserve numbered shop/customer stop layers'
+);
+const riderCameraPolicy=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationCameraPolicy.kt');
+const riderRouteMatcher=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteMatcher.kt');
+const riderNavigationIntegrationForParity=read('rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
+ok(
+  riderMap.includes('CAMERA_BEARING_MIN_DELTA_DEGREES = 0.7f') &&
+  riderMap.includes('navigationRiderDisplayFix(state)?.point') &&
+  riderMap.includes('navigationFollowCameraPadding(') &&
+  riderMap.includes('.padding(') &&
+  riderCameraPolicy.includes('return 0.8') &&
+  riderCameraPolicy.includes('speedMetersPerSecond >= 18f -> 0.76') &&
+  riderCameraPolicy.includes('remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 28f') &&
+  riderRouteMatcher.includes('headingDelta <= 35f -> headingDelta * 0.08') &&
+  riderRouteMatcher.includes('(it - progress - 35.0).coerceAtLeast(0.0)') &&
+  !riderRouteMatcher.includes('headingDelta > 105f') &&
+  !riderRouteMatcher.includes('forwardJump') &&
+  riderNavigationIntegrationForParity.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false') &&
+  riderMap.includes('MotionEvent.ACTION_POINTER_DOWN') &&
+  riderMap.includes('if (event.pointerCount >= 2) multiTouchGesture = true'),
+  'Native Rider FOLLOW, route matching, visible GPS path and gestures must stay locked to Web navigation behavior'
 );
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
@@ -447,9 +503,11 @@ ok(source.includes('ToneGenerator')&&source.includes('STREAM_NOTIFICATION'),'Mer
 ok(source.includes('queuego_delete_or_archive_product')&&source.includes('saveProduct('),'Merchant native must support safe product archive and full product editing');
 ok(source.includes('shop_support_messages?select=id,sender_user_id,body,created_at'),'Merchant native must preserve Admin support messaging');
 const merchantSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
+const merchantApiSource=read('merchant/src/main/java/com/queuego/merchant/MerchantApi.kt');
 const merchantImageUpload=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
 const merchantManifest=read('merchant/src/main/AndroidManifest.xml');
 ok(merchantSetup.includes('QgLocationPickerMap(')&&merchantSetup.includes('ใช้ตำแหน่ง GPS ปัจจุบัน')&&merchantSetup.includes('บันทึกข้อมูลร้าน'),'Merchant native shop setup must preserve QueueGo Map picker, GPS and save flow');
+ok(merchantApiSource.includes('http.reversePlaceAddress(latitude, longitude)')&&merchantSetup.includes('resolveAddress: suspend (Double, Double) -> String?')&&merchantSetup.includes('addressLockedByUser'),'Merchant reverse labels must use shared QueueGo Places authority without overwriting typed addresses');
 ok(merchantSetup.includes('mobile_accessories')&&merchantSetup.includes('automotive_motorcycle')&&merchantSetup.includes('home_decor'),'Merchant native Shopping setup must preserve web subcategories');
 ok(merchantImageUpload.includes('/storage/v1/object/merchant-media/')&&merchantImageUpload.includes('12 * 1024 * 1024')&&merchantImageUpload.includes('3 * 1024 * 1024'),'Merchant native shop images must use production merchant-media limits');
 ok(merchantManifest.includes('ACCESS_FINE_LOCATION')&&merchantManifest.includes('queuego.map.service.base_url')&&merchantManifest.includes('${queuegoMapServiceBaseUrl}'),'Merchant native setup must declare location and QueueGo Map service config');
@@ -593,5 +651,36 @@ const posOnlyApi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosAp
 ok(!/PosDelivery|deliveryOrders|pos_delivery_kitchen_action|pos_enable_delivery|QUEUEGO_DELIVERY/.test(posOnlyApi+posOnlyUi),'Native POS must not read, render or mutate Delivery orders');
 ok(!/GP หน้าร้าน|GP Delivery|report\.gp|report\.delivery|optDouble\("GP"/.test(posOnlyApi+posOnlyUi),'Native POS must not render Delivery GP or include its totals');
 ok(posOnlyApi.includes('&sales_channel=eq.POS&created_at=gte.'),'Native POS history must be scoped to POS at the server');
+
+const sharedNativeApi=read('shared/src/main/java/com/queuego/shared/QueueGoNativeApi.kt');
+const sharedPlaceSearch=read('shared/src/main/java/com/queuego/shared/QueueGoPlaceSearch.kt');
+const customerApi=read('customer/src/main/java/com/queuego/customer/CustomerApi.kt');
+const riderDestinationDialog=read('rider/src/main/java/com/queuego/rider/RiderMyDestinationDialog.kt');
+ok(sharedNativeApi.includes('"qg_search_places"')&&sharedNativeApi.includes('reversePlaceAddress')&&sharedNativeApi.includes('"administrative_area"'),'Native reverse labels must use shared QueueGo Places authority');
+ok(!customerApi.includes('api.longdo.com')&&!riderApi.includes('api.longdo.com'),'Customer and Rider Native must not call Longdo reverse geocoding directly');
+ok(customerApi.includes('http.reversePlaceAddress(latitude, longitude)')&&riderApi.includes('placesApi.reversePlaceAddress(latitude, longitude)'),'Customer and Rider reverse labels must converge on the shared QueueGo Places client');
+ok(
+  sharedNativeApi.includes('suspend fun searchPlaces(') &&
+  sharedNativeApi.includes('.put("p_query", normalized)') &&
+  sharedNativeApi.includes('QueueGoPlaceSearchResult') &&
+  sharedPlaceSearch.includes('fun QgPlaceSearchPanel(') &&
+  sharedPlaceSearch.includes('delay(300)'),
+  'Native text place search must use one shared debounced QueueGo Places authority'
+);
+ok(
+  customerLocationPicker.includes('QgPlaceSearchPanel(') &&
+  merchantSetup.includes('QgPlaceSearchPanel(') &&
+  riderDestinationDialog.includes('QgPlaceSearchPanel(') &&
+  customerLocationPicker.indexOf('QgPlaceSearchPanel(') < customerLocationPicker.indexOf('QgLocationPickerMap(') &&
+  merchantSetup.indexOf('QgPlaceSearchPanel(') < merchantSetup.indexOf('QgLocationPickerMap(') &&
+  riderDestinationDialog.indexOf('QgPlaceSearchPanel(') < riderDestinationDialog.indexOf('QgLocationPickerMap('),
+  'Customer Merchant Rider place search must stay outside the map canvas'
+);
+ok(
+  customerApi.includes('http.searchPlaces(query)') &&
+  merchantApiSource.includes('http.searchPlaces(query)') &&
+  riderApi.includes('placesApi.searchPlaces(query)'),
+  'Customer Merchant Rider must converge on the shared QueueGo Places text search client'
+);
 
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));

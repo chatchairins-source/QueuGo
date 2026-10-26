@@ -2,10 +2,14 @@ name: QueueGo Native Android Pilot
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - 'work-native-**'
   push:
     branches:
       - queuego-native-android-v1
       - 'work-native-**'
+      - 'fix/native-**'
       - 'work-rider-**'
       - work-native-release-integration-20261010
       - work-native-release-preflight-20261010
@@ -95,10 +99,10 @@ concurrency:
   group: queuego-native-${{ github.ref }}
   cancel-in-progress: true
 
-# Empty until QueueGo Map public/runtime hosting is explicitly approved.
-# When configured, the same value is compiled into manifests and exposed to runtime evidence.
+# Pilot APKs use the already deployed QueueGo Map endpoint used by the Customer
+# Web map. Production release builds still require an explicit validated URL.
 env:
-  QG_MAP_SERVICE_BASE_URL: ${{ vars.QG_MAP_SERVICE_BASE_URL }}
+  QG_MAP_SERVICE_BASE_URL: ${{ vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com' }}
 
 jobs:
   native-pilot:
@@ -212,6 +216,9 @@ jobs:
             sudo chown "$(id -u):$(id -g)" /dev/kvm
           fi
       - name: Capture native launch, map and voice service lifecycle on Android
+        env:
+          # Exercise the pinned real map archive in debug CI.
+          QG_DEBUG_MAP_ARCHIVE: '1'
         timeout-minutes: 12
         run: python3 native-android/qa/capture-rider-launch.py
       - name: Save real Android launch evidence

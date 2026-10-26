@@ -115,6 +115,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     if (editing != null && !frozen) {
         val original = if (editing == "pickup") pickup else destination
         CustomerLocationPickerScreen(location = original, address = original?.address.orEmpty(), busy = false,
+            searchPlaces = { query -> customerApi.searchPlaces(query) },
             resolveAddress = { lat,lng -> customerApi.reverseGeocode(lat,lng) },
             onSave = { if (editing == "pickup") pickup = it else destination = it; quote = null; picker = null },
             onBack = { picker = null })
@@ -149,6 +150,13 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             if (current.terminal && pending == null) Button(onClick = { selected = null;quote = null },enabled = !busy) { Text("เรียกรถเที่ยวใหม่") }
         } else {
             if (loaded && !enabled) Text("บริการเรียกรถยังไม่เปิดให้ใช้ในขณะนี้")
+            QgTrackingMap(
+                points = listOfNotNull(
+                    pickup?.let { QgMapPoint(it.latitude, it.longitude, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER) },
+                    destination?.let { QgMapPoint(it.latitude, it.longitude, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER) }
+                ),
+                modifier = Modifier.fillMaxWidth().height(245.dp)
+            )
             OutlinedButton(enabled = loaded && enabled && !frozen,onClick = { picker = "pickup" }) { Text("จุดรับ: " + (pickup?.address ?: "เลือกบนแผนที่")) }
             OutlinedButton(enabled = loaded && enabled && !frozen,onClick = { picker = "destination" }) { Text("จุดหมาย: " + (destination?.address ?: "เลือกบนแผนที่")) }
             if (quote == null && pending == null) Button(enabled = loaded && enabled && !frozen && pickup != null && destination != null,onClick = {

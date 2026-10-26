@@ -26,10 +26,6 @@ internal fun matchNavigationRoute(
     val travelBearing = bearingDegrees
         ?.takeIf { it.isFinite() && speed != null && speed >= 2f }
         ?.let(::normalizeNavigationBearing)
-    val forwardAllowance = previousProgressMeters?.let {
-        if (speed == null) 120.0 else maxOf(80.0, speed.toDouble() * 12.0 + 60.0)
-    }
-
     var bestScore = Double.POSITIVE_INFINITY
     var bestDistance = Double.POSITIVE_INFINITY
     var bestPoint: NavigationMapPoint? = null
@@ -53,30 +49,21 @@ internal fun matchNavigationRoute(
             abs(navigationShortestBearingDelta(it, segmentBearing))
         }
 
-        // At riding speed, an opposite-direction segment is a different carriageway or
-        // a future U-turn leg. Do not pull the Rider across the median just because GPS
-        // happens to be a few meters closer to that geometry.
-        if (headingDelta != null && headingDelta > 105f) {
-            walked += segmentMeters
-            continue
-        }
-
+        // Keep this scoring contract identical to queuego-map-web.js navMatchRoute().
+        // Do not hard-reject opposite candidates or add Native-only forward-jump penalties:
+        // Web resolves carriageways through the same distance + heading + backtrack score.
         val headingPenalty = when {
             headingDelta == null -> 0.0
-            headingDelta <= 30f -> headingDelta * 0.05
-            headingDelta <= 60f -> 1.5 + (headingDelta - 30f) * 0.25
-            else -> 9.0 + (headingDelta - 60f) * 0.9
+            headingDelta <= 35f -> headingDelta * 0.08
+            headingDelta <= 75f -> 2.8 + (headingDelta - 35f) * 0.35
+            else -> 16.8 + (headingDelta - 75f) * 1.4
         }
         val backtrack = previousProgressMeters?.let {
-            (it - progress - 20.0).coerceAtLeast(0.0)
+            (it - progress - 35.0).coerceAtLeast(0.0)
         } ?: 0.0
-        val forwardJump = if (previousProgressMeters != null && forwardAllowance != null) {
-            (progress - previousProgressMeters - forwardAllowance).coerceAtLeast(0.0)
-        } else 0.0
         val score = projection.distanceMeters +
             headingPenalty +
-            backtrack * 3.2 +
-            forwardJump * 1.35
+            backtrack * 2.5
 
         if (score < bestScore) {
             bestScore = score

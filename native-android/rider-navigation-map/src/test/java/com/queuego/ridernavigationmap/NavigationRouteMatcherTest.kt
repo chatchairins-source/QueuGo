@@ -22,6 +22,28 @@ class NavigationRouteMatcherTest {
         assertTrue(match.progressMeters > 400.0)
         assertTrue(match.progressMeters < 700.0)
     }
+    @Test fun oppositeHeadingCandidateIsScoredInsteadOfHardRejectedLikeWeb() {
+        val segment = NavigationRouteSegment(
+            id = "single-westbound",
+            toStopId = "shop",
+            points = listOf(
+                NavigationMapPoint(15.0, 103.01),
+                NavigationMapPoint(15.0, 103.00)
+            ),
+            style = NavigationRouteStyle.ACTIVE
+        )
+
+        val match = matchNavigationRoute(
+            segment = segment,
+            point = NavigationMapPoint(15.00001, 103.005),
+            bearingDegrees = 90f,
+            speedMetersPerSecond = 8f
+        )
+
+        assertNotNull(match)
+        assertTrue(match!!.segmentBearingDegrees!! > 250f)
+    }
+
     @Test fun movingRiderStaysOnSameDirectionCarriagewayEvenWhenOppositeIsCloser() {
         val segment = NavigationRouteSegment(
             id = "divided-road",

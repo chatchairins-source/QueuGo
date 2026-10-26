@@ -17,8 +17,12 @@ assert(trackingPolicy.includes('QgMapRole.CUSTOMER'));
 assert(trackingPolicy.includes('QgMapRole.RIDER'));
 assert(trackingPolicy.includes('0xFFE6002D')&&trackingPolicy.includes('0xFF007F99'));
 
-assert(riderMap.includes('MarkerOptions()'));
-assert(riderMap.includes('.title("Rider")'));
+assert(riderMap.includes('CircleLayer(RIDER_BODY_LAYER_ID, RIDER_SOURCE_ID)'));
+assert(riderMap.includes('SymbolLayer(RIDER_ARROW_LAYER_ID, RIDER_SOURCE_ID)'));
+assert(riderMap.includes('PropertyFactory.circleColor(android.graphics.Color.rgb(230, 0, 45))'));
+assert(riderMap.includes('PropertyFactory.circleStrokeColor(android.graphics.Color.WHITE)'));
+assert(riderMap.includes('PropertyFactory.iconRotate(Expression.get("bearing"))'));
+assert(!riderMap.includes('.title("Rider")'));
 assert(riderMap.includes('stop.sequence'));
 assert(!/com\.longdo|LongdoMapAndroidSDK|longdo\.map/i.test(riderMap));
 

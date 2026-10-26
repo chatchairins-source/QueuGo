@@ -35,6 +35,7 @@ import org.maplibre.android.style.layers.BackgroundLayer
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory.backgroundColor
 import org.maplibre.android.style.layers.PropertyFactory.circleColor
@@ -47,12 +48,17 @@ import org.maplibre.android.style.layers.PropertyFactory.lineJoin
 import org.maplibre.android.style.layers.PropertyFactory.lineOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.android.style.sources.RasterSource
+import org.maplibre.android.style.sources.TileSet
 import org.maplibre.android.style.sources.VectorSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
 
 private const val QUEUEGO_VECTOR_SOURCE = "queuego-vector"
+private const val QUEUEGO_WEB_BASEMAP_SOURCE = "queuego-web-basemap"
+private const val QUEUEGO_WEB_BASEMAP_LAYER = "queuego-web-basemap-layer"
+private const val QUEUEGO_WEB_BASEMAP_TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 private const val QUEUEGO_TRACKING_SOURCE = "queuego-tracking"
 private const val QUEUEGO_TRACKING_LAYER = "queuego-tracking-points"
 
@@ -81,90 +87,27 @@ fun queueGoMapVectorSourceUri(context: Context): String? {
 }
 
 fun queueGoMapStyle(sourceUri: String): Style.Builder {
-    var builder = Style.Builder()
+    // Web is the visual source of truth. Native registers the same OSM raster
+    // presentation used by queuego-map-web.js so Customer/Merchant/Rider no
+    // longer render a separate Shortbread-looking basemap.
+    //
+    // Keep the QueueGo-hosted vector source registered for QueueGo-owned map
+    // capabilities and future overlays, but do not paint a second competing
+    // basemap underneath/above the Web-parity raster layer.
+    val webTiles = TileSet("2.2.0", QUEUEGO_WEB_BASEMAP_TILE).apply {
+        attribution = "© OpenStreetMap contributors"
+    }
+    return Style.Builder()
+        .withSource(RasterSource(QUEUEGO_WEB_BASEMAP_SOURCE, webTiles, 256))
         .withSource(VectorSource(QUEUEGO_VECTOR_SOURCE, sourceUri))
         .withLayer(
             BackgroundLayer("queuego-background").withProperties(
-                backgroundColor("#f3f0e9")
+                backgroundColor("#f3f0e8")
             )
         )
         .withLayer(
-            FillLayer("queuego-water", QUEUEGO_VECTOR_SOURCE)
-                .withSourceLayer("water_polygons")
-                .withProperties(
-                    fillColor("#b9dadd"),
-                    fillOpacity(1.0f)
-                )
+            RasterLayer(QUEUEGO_WEB_BASEMAP_LAYER, QUEUEGO_WEB_BASEMAP_SOURCE)
         )
-        .withLayer(
-            FillLayer("queuego-buildings", QUEUEGO_VECTOR_SOURCE)
-                .withSourceLayer("buildings")
-                .withProperties(
-                    fillColor("#d5d7d9"),
-                    fillOpacity(0.9f)
-                )
-                .also { it.minZoom = 14f }
-        )
-
-    val roads = listOf(
-        Triple("motorway", "#e8a7a1", 7.0f),
-        Triple("trunk", "#edb4a4", 6.5f),
-        Triple("primary", "#f2cf86", 6.0f),
-        Triple("secondary", "#f2dfa0", 5.4f),
-        Triple("tertiary", "#f7f4e8", 4.8f),
-        Triple("unclassified", "#ffffff", 4.2f),
-        Triple("residential", "#ffffff", 4.2f),
-        Triple("living_street", "#ffffff", 3.8f),
-        Triple("service", "#ffffff", 3.2f)
-    )
-    roads.forEach { (kind, color, widthAt16) ->
-        val filter = Expression.eq(
-            Expression.get("kind"),
-            Expression.literal(kind)
-        )
-        builder = builder
-            .withLayer(
-                LineLayer("queuego-road-$kind-casing", QUEUEGO_VECTOR_SOURCE)
-                    .withSourceLayer("streets")
-                    .withFilter(filter)
-                    .withProperties(
-                        lineColor("#b8b8b4"),
-                        lineOpacity(1.0f),
-                        lineCap(Property.LINE_CAP_ROUND),
-                        lineJoin(Property.LINE_JOIN_ROUND),
-                        lineWidth(
-                            Expression.interpolate(
-                                Expression.linear(),
-                                Expression.zoom(),
-                                Expression.stop(12f, 1.0f),
-                                Expression.stop(16f, widthAt16 + 1.8f),
-                                Expression.stop(19f, widthAt16 + 4.0f)
-                            )
-                        )
-                    )
-            )
-            .withLayer(
-                LineLayer("queuego-road-$kind", QUEUEGO_VECTOR_SOURCE)
-                    .withSourceLayer("streets")
-                    .withFilter(filter)
-                    .withProperties(
-                        lineColor(color),
-                        lineOpacity(1.0f),
-                        lineCap(Property.LINE_CAP_ROUND),
-                        lineJoin(Property.LINE_JOIN_ROUND),
-                        lineWidth(
-                            Expression.interpolate(
-                                Expression.linear(),
-                                Expression.zoom(),
-                                Expression.stop(12f, 0.6f),
-                                Expression.stop(16f, widthAt16),
-                                Expression.stop(19f, widthAt16 + 2.2f)
-                            )
-                        )
-                    )
-            )
-    }
-    return builder
 }
 
 private fun Context.lifecycleOwnerOrNull(): LifecycleOwner? = when (this) {
@@ -186,7 +129,9 @@ private class QueueGoTrackingMapHolder {
         val style = map?.style ?: return
         val features = FeatureCollection.fromFeatures(
             lastPoints.map { point ->
-                Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude))
+                Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude)).apply {
+                    addStringProperty("color", "#%06X".format(point.color and 0xFFFFFF))
+                }
             }
         )
         val source = style.getSource(QUEUEGO_TRACKING_SOURCE)
@@ -196,7 +141,7 @@ private class QueueGoTrackingMapHolder {
             style.addLayer(
                 CircleLayer(QUEUEGO_TRACKING_LAYER, QUEUEGO_TRACKING_SOURCE)
                     .withProperties(
-                        circleColor("#E6002D"),
+                        circleColor(Expression.get("color")),
                         circleRadius(7f)
                     )
             )
@@ -210,8 +155,16 @@ private class QueueGoTrackingMapHolder {
                     ),
                     350
                 )
+            } else {
+                val bounds = org.maplibre.android.geometry.LatLngBounds.Builder().apply {
+                    lastPoints.forEach { include(LatLng(it.latitude, it.longitude)) }
+                }.build()
+                map?.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 48), 350)
             }
-        }
+        } ?: map?.animateCamera(
+            CameraUpdateFactory.newLatLngZoom(LatLng(14.9918756, 103.0994795), 11.0),
+            0
+        )
     }
 
     fun start() {
@@ -281,6 +234,8 @@ fun QgTrackingMap(
                 view.getMapAsync { map ->
                     if (holder.destroyed) return@getMapAsync
                     holder.map = map
+                    map.uiSettings.isLogoEnabled = false
+                    map.uiSettings.isAttributionEnabled = true
                     map.setStyle(queueGoMapStyle(sourceUri)) {
                         holder.render(points)
                         currentReady.value(true)
@@ -409,6 +364,8 @@ fun QgLocationPickerMap(
                         view.getMapAsync { map ->
                             if (holder.destroyed) return@getMapAsync
                             holder.map = map
+                            map.uiSettings.isLogoEnabled = false
+                            map.uiSettings.isAttributionEnabled = true
                             val start = initialPoint?.takeIf { it.valid }
                             map.cameraPosition = CameraPosition.Builder()
                                 .target(
