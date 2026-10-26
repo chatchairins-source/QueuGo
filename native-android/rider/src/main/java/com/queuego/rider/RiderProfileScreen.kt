@@ -99,24 +99,6 @@ fun RiderProfileScreen(
             }
         }
     }
-    var ratingSummary by remember(auth.user.id) { mutableStateOf<RiderRatingSummary?>(null) }
-    var complimentSummary by remember(auth.user.id) { mutableStateOf<RiderComplimentSummary?>(null) }
-    LaunchedEffect(auth.user.id, auth.session.accessToken) {
-        ratingSummary = try {
-            api.ratingSummary(auth)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
-        complimentSummary = try {
-            api.complimentSummary(auth)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
-    }
     LaunchedEffect(message) {
         if (message != null) { delay(4_000); message = null }
     }
@@ -135,97 +117,53 @@ fun RiderProfileScreen(
                     Text("QueueGo", color = QgRed, fontSize = 9.sp, fontWeight = FontWeight.Black)
                 }
             }
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(1.dp, Color(0xFFEEE6E8)), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                Row(Modifier.fillMaxWidth().padding(if (smallScreen) 10.dp else 12.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        QgRemoteImage(
-                            source = profile?.profilePhoto,
-                            modifier = Modifier
-                                .size(if (smallScreen) 52.dp else 58.dp)
-                                .clickable(enabled = !busy, role = Role.Button) {
-                                    profilePhotoPicker.launch("image/*")
-                                },
-                            fallback = displayName,
-                            cornerRadius = if (smallScreen) 16.dp else 18.dp
-                        )
-                        TextButton(
-                            onClick = { profilePhotoPicker.launch("image/*") },
-                            enabled = !busy,
-                            contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp),
-                            modifier = Modifier.height(26.dp)
-                        ) {
-                            Text(
-                                when {
-                                    busy -> "กำลังบันทึก"
-                                    profile?.profilePhoto.isNullOrBlank() -> "เพิ่มรูป"
-                                    else -> "เปลี่ยนรูป"
-                                },
-                                color = QgRed,
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, Color(0xFFEEE6E8)),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(if (smallScreen) 10.dp else 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(11.dp)
+                ) {
+                    QgRemoteImage(
+                        source = profile?.profilePhoto,
+                        modifier = Modifier
+                            .size(if (smallScreen) 52.dp else 58.dp)
+                            .clickable(enabled = !busy, role = Role.Button) {
+                                profilePhotoPicker.launch("image/*")
+                            },
+                        fallback = displayName,
+                        cornerRadius = if (smallScreen) 16.dp else 18.dp
+                    )
                     Column(Modifier.weight(1f)) {
-                        Text(displayName, fontWeight = FontWeight.Bold, fontSize = if (smallScreen) 17.sp else 19.sp)
-                        if (profile?.profilePhoto.isNullOrBlank()) {
-                            Text(
-                                "เพิ่มรูปเพื่อให้ลูกค้าและร้านค้าจำ Rider ได้",
-                                color = Color(0xFF9A6B00),
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 3.dp)
-                            )
-                        }
-                        Text(displayPhone.ifBlank { "-" }, color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                        Text(
+                            displayName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (smallScreen) 17.sp else 19.sp,
+                            maxLines = 1
+                        )
+                        Text(
+                            displayPhone.ifBlank { "-" },
+                            color = QgMuted,
+                            fontSize = 10.sp,
+                            modifier = Modifier.padding(top = 3.dp),
+                            maxLines = 1
+                        )
                         val vehicle = riderVehicleLabel(profile?.vehicleType)
                         val plate = profile?.vehiclePlate?.takeIf { it.isNotBlank() }
-                        Text(vehicle + (plate?.let { " · $it" } ?: " · QueueGo Rider"), color = Color(0xFF746A6E), fontSize = 8.5.sp,
-                            modifier = Modifier.padding(top = 5.dp).background(Color(0xFFF7F3F4), RoundedCornerShape(99.dp)).padding(horizontal = 7.dp, vertical = 4.dp))
-                        if (!profile?.vehicleVerifiedAt.isNullOrBlank() || profile?.vehicleStatus.equals("verified", true)) {
-                            Text(
-                                "ยืนยันข้อมูลรถแล้ว",
-                                color = Color(0xFF12845E),
-                                fontSize = 8.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-                        }
-                        ratingSummary?.let { rating ->
-                            val label = if (rating.count > 0 && rating.average != null) {
-                                "★ " + "%.1f".format(rating.average) + " · " + rating.count + " รีวิว"
-                            } else {
-                                "ยังไม่มีคะแนนจากลูกค้า"
-                            }
-                            Text(
-                                label,
-                                color = if (rating.count > 0) Color(0xFFD59A00) else QgMuted,
-                                fontSize = 9.sp,
-                                fontWeight = if (rating.count > 0) FontWeight.Black else FontWeight.Medium,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-                        }
-                        complimentSummary?.takeIf { it.total > 0 && it.items.isNotEmpty() }?.let { summary ->
-                            val visible = summary.items.take(if (smallScreen) 2 else 3)
-                            Row(
-                                Modifier.padding(top = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                visible.forEach { item ->
-                                    Text(
-                                        riderComplimentLabel(item.key) + " " + item.count,
-                                        color = Color(0xFF6E5C15),
-                                        fontSize = 8.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier
-                                            .background(Color(0xFFFFF7D6), RoundedCornerShape(99.dp))
-                                            .padding(horizontal = 6.dp, vertical = 3.dp)
-                                    )
-                                }
-                            }
-                        }
+                        Text(
+                            vehicle + (plate?.let { " · $it" } ?: " · QueueGo Rider"),
+                            color = Color(0xFF746A6E),
+                            fontSize = 8.5.sp,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .padding(top = 5.dp)
+                                .background(Color(0xFFF7F3F4), RoundedCornerShape(99.dp))
+                                .padding(horizontal = 7.dp, vertical = 4.dp)
+                        )
                     }
                     RiderProfilePill(snapshot?.online == true)
                 }
