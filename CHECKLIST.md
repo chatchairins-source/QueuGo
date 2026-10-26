@@ -3,15 +3,15 @@
 - Current Web `main=7e036a0735cc49905e9b0a2434492470551a0c9d` filters category pages by exact `public_category` (`food`, `cafe`, `grocery`). `CustomerApi` maps that same field to Native `CustomerShop.category`, but `serviceCategoryRows` also admitted `restaurant`, `drink`, `beverage`, and `convenience`, allowing Native-only rows/counts and changing empty states.
 - Bounded fix: apply exact three Web category filters; preserve distance ordering, category banners, other global search labels, and all business actions. Added Kotlin alias exclusion test plus Customer source-parity contract; no API/backend changes.
 - Focused Customer parity 55/0, Native source 332/0, and `git diff --check` pass. Full `TZ=Asia/Bangkok npm test` EXIT 0 on exact source commit `ef5799bc`, tree `b0e6a72c`; post-test map QA 28/0. No Production writes.
-- Exact Pilot `40295299296` is still running on preceding Guest-header source checkpoint `966ebb75`; this category source tree is next for remote exact-tree sync and hosted Kotlin/APK/emulator validation. Android SDK/Gradle wrapper are not installed locally.
-- **NEXT:** audit Customer shop/product detail and cart against current Web actions/states for another source-backed gap, then continue checkout/order flow. Run/inspect exact-tree Pilot and repair only its first real failure.
+- Exact Pilot `40295299296` on source checkpoint `966ebb75` failed at first Android compile: `CustomerGuestShell.kt:512` unresolved `clip` (missing Compose import from the Guest-header change). Added `androidx.compose.ui.draw.clip` in commit `991ff3e8`; focused contracts and clean full regression pass on tree `25a0b28f`. Exact successor Pilot `40296040683` on remote checkpoint `d9c66383` is now in progress. Android SDK/Gradle wrapper are unavailable locally.
+- **NEXT:** audit Customer shop/product detail and cart against current Web actions/states for another source-backed gap, then continue checkout/order flow. Inspect Pilot `40296040683`; fix only its first real failure.
 
-## 2026-10-26 Customer Guest top-bar Web parity — DONE (source/full regression); exact Pilot pending
+## 2026-10-26 Customer Guest top-bar Web parity — DONE (source/full regression); exact Pilot in progress
 
 - Web `index.html` gives Guest Home 16/10 dp-equivalent padding, compact pages 12/6, QueueGo letter spacing -0.4, and a plain red `เข้าสู่ระบบ` label. Native Guest header used Home padding on every route, a pink pill, and no wordmark tracking.
 - Bounded fix in `CustomerGuestShell.kt`: pass route density, match the Web values and label, retain a generous transparent tap target. No auth or navigation behavior changed.
 - Focused parity 55/0 and Native source 332/0 pass. Full `TZ=Asia/Bangkok npm test` EXIT 0 on source commit `39f3bf8a`, tree `db8225f2`; post-test map QA 28/0. No Production writes.
-- Remote exact-tree checkpoint `966ebb75` has Native Pilot `40295299296` still validating Kotlin/APK/emulator gates; Guest-header local tree is exact. Authenticated screens remain session-gated, physical acceptance remains separate.
+- Remote checkpoint `d9c66383` exact tree includes the missing `clip` import; Native Pilot `40296040683` is in progress. Prior `40295299296` stopped at the Customer Kotlin compile error documented above. Authenticated screens remain session-gated, physical acceptance remains separate.
 - Guest top-bar source scope is DONE; **NEXT:** continue Customer shop/product detail and cart Web comparison.
 
 ## 2026-10-26 Merchant order-detail Web parity — DONE (source/full regression); exact Pilot running

@@ -2,7 +2,7 @@
 
 - Web `main=7e036a0` uses exact `public_category` filters for Food/Cafe/Grocery. Native reads that same field but previously admitted extra aliases (`restaurant`, `drink`, `beverage`, `convenience`), changing category eligibility and empty/count states.
 - Fix at `ef5799bc`: strict canonical category match only, preserving location sort and all other views. Added Kotlin unit coverage for canonical inclusion and alias exclusion, plus a source parity guard. Focused parity 55/0, Native source 332/0, full `TZ=Asia/Bangkok npm test` pass; post-test map QA 28/0.
-- Exact Pilot `40295299296` remains in progress on preceding source checkpoint `966ebb75`; current tree `b0e6a72c` needs exact-head hosted validation. **NEXT:** continue Customer shop/product detail/cart audit, then checkout/order states.
+- Pilot `40295299296` on `966ebb75` exposed missing `androidx.compose.ui.draw.clip` import in the Guest header at Kotlin compile. Fix commit `991ff3e8` resolves it; clean full regression passes on tree `25a0b28f`. Exact successor Pilot `40296040683` on `d9c66383` is in progress. **NEXT:** continue Customer shop/product detail/cart audit, then checkout/order states.
 
 ## 2026-10-26 Native Customer Guest top-bar parity
 
