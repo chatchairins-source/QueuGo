@@ -2562,9 +2562,9 @@ private fun RiderHome(
         if (snapshot?.online == true || activeNavigationWork) {
             Box(
                 Modifier
-                    .align(Alignment.TopStart)
+                    .align(Alignment.TopEnd)
                     .padding(
-                        start = 12.dp,
+                        end = 10.dp,
                         top = when {
                             activeNavigationWork && navigationCustomerNote != null -> 180.dp
                             activeNavigationWork && navigationHud != null -> 132.dp
