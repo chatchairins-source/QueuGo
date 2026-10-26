@@ -457,6 +457,26 @@ ok(
   riderMap.includes('source.setGeoJson(stopFeatureCollectionJson(stops, activeId))'),
   'native Rider QueueGo Map must match the Web red directional puck/heading and preserve numbered shop/customer stop layers'
 );
+const riderCameraPolicy=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationCameraPolicy.kt');
+const riderRouteMatcher=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteMatcher.kt');
+const riderNavigationIntegrationForParity=read('rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt');
+ok(
+  riderMap.includes('CAMERA_BEARING_MIN_DELTA_DEGREES = 0.7f') &&
+  riderMap.includes('navigationRiderDisplayFix(state)?.point') &&
+  riderMap.includes('navigationFollowCameraPadding(') &&
+  riderMap.includes('.padding(') &&
+  riderCameraPolicy.includes('return 0.8') &&
+  riderCameraPolicy.includes('speedMetersPerSecond >= 18f -> 0.76') &&
+  riderCameraPolicy.includes('remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 28f') &&
+  riderRouteMatcher.includes('headingDelta <= 35f -> headingDelta * 0.08') &&
+  riderRouteMatcher.includes('(it - progress - 35.0).coerceAtLeast(0.0)') &&
+  !riderRouteMatcher.includes('headingDelta > 105f') &&
+  !riderRouteMatcher.includes('forwardJump') &&
+  riderNavigationIntegrationForParity.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false') &&
+  riderMap.includes('MotionEvent.ACTION_POINTER_DOWN') &&
+  riderMap.includes('if (event.pointerCount >= 2) multiTouchGesture = true'),
+  'Native Rider FOLLOW, route matching, visible GPS path and gestures must stay locked to Web navigation behavior'
+);
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
