@@ -665,12 +665,20 @@ const queueGoCreditCard=read('shared/src/main/java/com/queuego/shared/QueueGoCre
 const riderEarningsCredit=read('rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt');
 ok(queueGoCreditCard.includes('"ใช้ได้ ${money(data.optLong("available_minor"))}"')&&!queueGoCreditCard.includes('เงินจริง')&&!queueGoCreditCard.includes('โปรโมชั่น')&&!queueGoCreditCard.includes('· กันไว้'),'Merchant/Rider native credit surface must show one unified usable balance');
 ok(queueGoCreditCard.includes('"topup" to "เพิ่มเครดิต"')&&queueGoCreditCard.includes('"promo" to "เพิ่มเครดิต"'),'Native credit history must not expose paid-vs-admin-credit balance buckets');
-ok(merchantRevenue.includes('QueueGoCreditCard(')&&merchantRevenue.includes('kind = "merchant"')&&riderEarningsCredit.includes('QueueGoCreditCard(auth.user.id, auth.session.accessToken, "rider")'),'Merchant and Rider must reuse the same unified credit component');
 ok(
-  queueGoCreditCard.includes('Modifier.fillMaxWidth().padding(bottom = 10.dp)') &&
-  queueGoCreditCard.includes('border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE4E7))') &&
-  queueGoCreditCard.includes('Text("ตรวจสอบรายการ / รีเฟรชยอด", fontSize = 10.sp'),
-  'Rider credit must keep the compact white Web-aligned earnings surface'
+  merchantRevenue.includes('QueueGoCreditCard(') &&
+  merchantRevenue.includes('kind = "merchant"') &&
+  riderEarningsCredit.includes('QueueGoCreditInline(auth.user.id, auth.session.accessToken, "rider")'),
+  'Merchant must retain the full shared credit panel while Rider Earnings uses the Web inline credit surface'
+);
+ok(
+  queueGoCreditCard.includes('fun QueueGoCreditInline(') &&
+  queueGoCreditCard.includes('"queuego_credit_summary"') &&
+  queueGoCreditCard.includes('Text("เครดิต"') &&
+  queueGoCreditCard.includes('Text(if (busy) "กำลังเช็ก" else "เช็กยอด"') &&
+  riderEarningsCredit.includes('QueueGoCreditInline(') &&
+  !riderEarningsCredit.includes('QueueGoCreditCard('),
+  'Rider Earnings credit must match Web mountInline: balance plus explicit recheck without expanded ledger/top-up history'
 );
 
 ok(source.includes('merchant_revenue_days')&&!source.includes('report_shop_gp'),'Merchant revenue must read reports without the retired GP collection RPC');
