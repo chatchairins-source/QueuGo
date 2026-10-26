@@ -557,9 +557,22 @@ fun RiderProfileScreen(
 @Composable
 private fun RiderProfileSection(title: String, content: @Composable () -> Unit) {
     Column {
-        Text(title, color = Color(0xFF898287), fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp))
+        Text(
+            title,
+            color = Color(0xFF898287),
+            fontWeight = FontWeight.Black,
+            fontSize = 9.sp,
+            letterSpacing = 0.2.sp,
+            modifier = Modifier.padding(horizontal = 2.dp)
+        )
         Spacer(Modifier.height(5.dp))
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Card(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFFEEE6E8)),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
             Column { content() }
         }
     }
@@ -569,14 +582,42 @@ private fun RiderProfileSection(title: String, content: @Composable () -> Unit) 
 private fun RiderSettingRow(title: String, detail: String, icon: Int, enabled: Boolean = true, green: Boolean = false,
     danger: Boolean = false, trailing: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
     val color = if (danger) QgRed else if (green) Color(0xFF14A35C) else Color(0xFF777177)
-    Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-        .padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-        Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) {
-            Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+    val iconBackground = when {
+        danger -> Color(0xFFFFF0F3)
+        green -> Color(0xFFEDF9F2)
+        else -> Color(0xFFF7F4F5)
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        Box(
+            Modifier
+                .size(34.dp)
+                .background(iconBackground, RoundedCornerShape(11.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (danger) QgRed else Color(0xFF211E20), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            Text(detail, color = Color(0xFF8A8387), fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(
+                title,
+                color = if (danger) QgRed else Color(0xFF211E20),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                detail,
+                color = Color(0xFF8A8387),
+                fontSize = 8.5.sp,
+                lineHeight = 12.sp,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
         if (trailing != null) trailing() else Text("›", color = Color(0xFFB4ADB1), fontSize = 21.sp)
     }
