@@ -1,11 +1,11 @@
-## 2026-10-26 Merchant product search visual parity — IN PROGRESS (source/test checkpoint; exact Pilot NEXT)
+## 2026-10-26 Merchant add-menu visual hierarchy parity — IN PROGRESS (source/test checkpoint; exact Pilot NEXT)
 
-- Continued from newest Native successor `3d0036b0dc88d753ccac40a10aa1bc94dac4b58e` only; no reset/revert/cherry-pick and no Production mutation.
-- Verified authenticated Merchant artifact from exact passed checkpoint `d65652edc3e70bd43bb0f91edf3320c9f9f0bf3e`: Products rendered correctly but Native lacked the Web Production search field present on the unified products page.
-- Added a Web-aligned single-line product search field above the existing status chips. Search matches product name or category and composes with `ทั้งหมด / เปิดขาย / ปิดขาย`; current Grocery price gating and row ordering stay unchanged.
-- Added four pure JVM cases for Thai/name/category search, case-insensitive English search, availability+query composition, Grocery zero-price exclusion, and blank-query mode preservation. Source commits: `7872949ef5e16d5bfa0721a1b1df7cebf52f3c48` + test head `c72c9bd1cb4b87a5a932e51683a5b0231d4e8af2`.
-- Opened stacked draft PR #730 from `work-native-web-parity-20261026` to its direct ancestor `work-native-rider-auth-review-20261024`; branch was 83 commits ahead / 0 behind at creation. Exact-head workflow run had not yet appeared at checkpoint, so no CI PASS is claimed.
-- **NEXT:** inspect the first exact-head PR workflow result when GitHub publishes it; fix only the first confirmed failure. Continue visual/source parity audit without changing business authority, then regenerate Merchant authenticated screenshots after the final UI source stabilizes.
+- Continued from newest Native successor only. The temporary product-search patch was forward-corrected after checking current Web Production source on `main` `7e036a0735cc49905e9b0a2434492470551a0c9d`; no reset/revert/cherry-pick and no Production mutation.
+- Current Web `merchant/index.html` no longer renders a search field on the unified product list. For non-Grocery shops it renders a bottom action card with a centered white/red-outline `เพิ่มเมนู` button; Grocery retains `เพิ่มสินค้าเอง` plus red `เพิ่มสินค้าจากแคตตาล็อก`.
+- Native now follows that hierarchy: removed the stale search UI, preserved existing `ทั้งหมด / เปิดขาย / ปิดขาย` filtering and Grocery price gating, moved add actions out of the scrolling rows into a bottom-aligned white bordered surface, and uses `เพิ่มเมนู` for Food/Cafe while product shops retain `เพิ่มสินค้า`.
+- Source checkpoint `917270d77ed9dec757de2a91a69591c7d842b130`; current copy tests `f8838bab7a089c2dc2964d3485f1938921cb702f` cover Food/Cafe, case-insensitive category input, and product-shop fallback.
+- Draft stacked PR #730 remains the active review from `work-native-web-parity-20261026` to direct ancestor `work-native-rider-auth-review-20261024`. No exact-head CI PASS is claimed until GitHub publishes a containing Native Pilot result.
+- **NEXT:** inspect the first exact-head Native Pilot failure only. After source gates pass, trigger/read authenticated Merchant visual evidence on the final UI head and compare Products against current Web; then continue the next concrete visual mismatch without changing business authority.
 
 ## 2026-10-26 Customer Ride stop/aggregate marker labels — IN PROGRESS (source checkpoint; exact Pilot NEXT)
 
