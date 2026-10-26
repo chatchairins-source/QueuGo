@@ -107,6 +107,19 @@ def capture_profile_dialog(entry,title,name):
     time.sleep(1)
 
 
+def home_ready(ns):
+    visible=[n for n in ns if rect(n)]
+    texts={n.get("text","").strip() for n in visible}
+    descriptions={n.get("content-desc","").strip() for n in visible}
+    tabs={"หน้าแรก","ข้อความ","รายได้","โปรไฟล์"}
+    content_ready=(
+        "พร้อมรับงาน" in descriptions
+        or "การ์ดไรเดอร์ กดหรือลากเพื่อเปิดและย่อ" in descriptions
+        or "บัญชียังไม่พร้อมรับงาน" in texts
+        or any(t.startswith("รับงาน · ") for t in texts)
+    )
+    return tabs.issubset(texts) and content_ready
+
 def input_credential(value):
     try:
         subprocess.run(ADB+["shell","input","text",value],check=True,timeout=30,
@@ -138,8 +151,8 @@ def main():
     run(["shell","input","keyevent","4"])
     tap_label(nodes(),"เข้าสู่ระบบ")
     labels=("หน้าแรก","ข้อความ","รายได้","โปรไฟล์")
-    ns=wait(lambda xs:all(any(n.get("text","").strip()==t for n in xs) for t in labels),90)
-    if not ns: raise SystemExit("Login did not reach active Rider Home; no login screenshot was saved")
+    ns=wait(home_ready,90)
+    if not ns: raise SystemExit("Rider Home content did not become ready; no loading screenshot was saved")
     global screens
     screens=[{"screen":"home_map",**shot("01-home-map")}]
     tap_label(nodes(),"ข้อความ")

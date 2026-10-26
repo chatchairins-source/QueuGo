@@ -1,3 +1,11 @@
+## 2026-10-26 Rider Home capture content readiness — IN PROGRESS
+
+- The initial 5a68212 artifact captured Home navigation/map before snapshot-owned content appeared. Source confirms tabs exist independently of snapshot; idle Ready card only exists after a nonnull snapshot, and active-job dock has an existing semantic header. The original harness waited only for the tabs.
+- The harness now requires visible navigation plus a visible Ready switch, active-job dock header, offer action or inactive-account explanation. Navigation-only/loading/error-only Home fails without being saved as complete. Unsupported content also fails rather than receiving false acceptance. No toggle, claim or order action is performed.
+- Eight isolated selector fixtures, capture wiring and Python syntax passed locally: idle, active dock, offer, inactive account, loading, error-only, missing tab and hidden anchor.
+- Base Ride endpoint source `e6264171eca0b33a009be6aeddcf24bc8c6484b8` exact Pilot 40326100567 is queued/pending; no compile/pass claim for that chunk yet. Authenticated review 40325237658 at app-equivalent Rider/Merchant source 8a70f27 is still running; review 40326100479 is presence-only and must not be called screenshot acceptance.
+- **NEXT:** allow this exact successor Pilot and marker-triggered authenticated review to finish without further source pushes; fix only first confirmed failure, inspect actual Merchant loaded Home/Orders/Products and Rider Home images plus exact metadata. Then continue nearby Ride aggregate-supply parity. Customer authenticated credentials and physical/release gates remain separate.
+
 ## 2026-10-26 Customer Ride authoritative map endpoints — IN PROGRESS (source checkpoint; Pilot NEXT)
 
 - Base `8a70f27dd72a6b2912688a807f58aa3b3af4ca20` exact Pilot 40325237596 passed full regression/source/assets and Kotlin/JVM (including Merchant category/shared-note tests); APK build was running at succession. Authenticated capture 40325237658 built actual Rider/Merchant APKs and began emulator capture. These are relevant gates, not full containing-run SUCCESS or visual acceptance.
