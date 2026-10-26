@@ -1,3 +1,14 @@
+## 2026-10-26 Checksum-pinned BORA operational PDF — DONE (corroboration); canonical primary master — BLOCKED
+
+- Exact implementation `7471151721fbf097a85d3a71d2471611a2db49dd` fixes the first real failure from primary run `40256997548`: GitHub Ubuntu 24.04 did not include `pdftotext`, so the workflow had acquired valid BORA PDF bytes but could not inspect their text. The fix installs `poppler-utils` only when needed and restores strict PDF assertions.
+- Exact-head primary acquisition `40257666157`: **SUCCESS**. Offline XLSX/text/PDF guards pass; `pdftotext 24.02.0` is present. The four `stat.bora.dopa.go.th` current-master/2568 endpoints still fail DNS exactly as before; no fake bytes/checksums are created.
+- Reachable official BORA operational PDF `https://www.bora.dopa.go.th/bora/spt/10050/`: HTTP 200, **232,931 bytes**, SHA-256 `d1b7313990eff9ec5990243aed1ef829b5c02e2e6e729c85507639001e182ad9`. Extracted text SHA-256 `a06270d4b05b5d95ae89177ba0e03728e07fcc0a04477d5ca5a4cc7fb85f6a71`.
+- Strict exact-byte inspection asserts that the operational document contains code **4029** and the `4029 + เวียงเก่า` name match, while `4026 + เวียงเก่า` is absent from this document. This is **official operational corroboration only**; `identity_approval=not_performed`, because source version/scope does not establish a current canonical DOPA/MOI code master.
+- Evidence artifact `12623143167`, digest `sha256:ea6deedd9f129307792e39373149fccf50bb6180c9faba63889f229dfd9f4358`, size 2,834 bytes. Raw downloaded bodies are removed before artifact upload; only bounded receipt/headers/checksum/inspection evidence is retained.
+- Exact-head RC `40257666146`: **SUCCESS** — full npm regression plus Admin/Merchant WebKit, Map Lab, QueueGo Map Search and Grocery render gates pass.
+- Wiang Kao canonical conflict remains **UNRESOLVED**: OAD candidate `4026`, HDX candidate `4029`. The 9 OSM matched-parent exclusions remain quarantined; no geometry promotion, code rewrite, alias or Production import occurs. PR #728 stays draft.
+- **NEXT:** obtain a current/versioned checksum-pinned DOPA/MOI code master or equivalent authoritative row-level reference; reconcile `4026/4029` and the 10 missing / 71 extra HDX subdistrict codes. In parallel, build deterministic identity-vs-geometry evidence for the 9 OSM quarantines without allowing identity corroboration to override failed polygon containment.
+
 ## 2026-10-26 Official BORA primary-reference acquisition — BLOCKED (external DNS), tooling/CI DONE
 
 - Successor implementation `fa84dc14a627abb6352a948daac03e2dba6a6b4b` adds a least-privilege `contents: read` acquisition workflow plus offline XLSX/text inspection guards. It has no database credentials and performs no Production write or identity approval.

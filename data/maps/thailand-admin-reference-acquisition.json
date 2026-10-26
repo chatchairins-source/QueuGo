@@ -34,7 +34,7 @@
       "eligible": false
     }
   ],
-  "next": "The stat.bora.dopa.go.th primary payload is blocked by DNS even from the GitHub runner. Preserve this receipt; inspect alternative official DOPA/MOI primary references that are independently reachable and checksum-pinnable. Keep Wiang Kao 4026/4029 and all missing/extra codes quarantined until current/versioned primary bytes, provenance/freshness, hierarchy and PostGIS gates pass.",
+  "next": "Checksum-pinned official BORA operational PDF now corroborates code 4029 for Wiang Kao, but its version/scope does not replace the blocked current code-master payload. Keep 4026/4029 unresolved canonically. Next acquire a current/versioned checksum-pinned DOPA/MOI code master or equivalent authoritative row-level reference, then reconcile all HDX missing/extra codes. Preserve the 9 OSM geometry quarantines and keep Production import false until identity, freshness, provenance, hierarchy and PostGIS gates pass.",
   "additional_attempts": [
     {
       "publisher": "DOPA Bureau of Registration Administration",
@@ -65,13 +65,13 @@
     }
   ],
   "latest_runner_acquisition": {
-    "source_head": "fa84dc14a627abb6352a948daac03e2dba6a6b4b",
-    "workflow_run_id": 40255630029,
+    "source_head": "7471151721fbf097a85d3a71d2471611a2db49dd",
+    "workflow_run_id": 40257666157,
     "workflow_conclusion": "success",
-    "artifact_id": 12622725862,
-    "artifact_digest": "sha256:1d016fa3a47cac3aff18f9200b21627070817728ed35446042375c21ef331050",
-    "artifact_size_bytes": 1473,
-    "result": "blocked_external_source",
+    "artifact_id": 12623143167,
+    "artifact_digest": "sha256:ea6deedd9f129307792e39373149fccf50bb6180c9faba63889f229dfd9f4358",
+    "artifact_size_bytes": 2834,
+    "result": "acquired_official_corroboration_bytes_primary_master_still_blocked",
     "attempts": [
       {
         "id": "bora_ccaa_page",
@@ -108,6 +108,21 @@
         "bytes": 0,
         "sha256": null,
         "error": "Could not resolve host: stat.bora.dopa.go.th"
+      },
+      {
+        "id": "bora_registry_installation_plan_pdf",
+        "url": "https://www.bora.dopa.go.th/bora/spt/10050/",
+        "curl_exit": 0,
+        "http_code": "200",
+        "bytes": 232931,
+        "sha256": "d1b7313990eff9ec5990243aed1ef829b5c02e2e6e729c85507639001e182ad9",
+        "text_sha256": "a06270d4b05b5d95ae89177ba0e03728e07fcc0a04477d5ca5a4cc7fb85f6a71",
+        "parser": "pdftotext 24.02.0",
+        "code_4029_seen": true,
+        "wiang_kao_4029_name_match": true,
+        "wiang_kao_4026_name_match": false,
+        "evidence_role": "official_operational_corroboration",
+        "canonical_eligible": false
       }
     ],
     "identity_approval": "not_performed",
