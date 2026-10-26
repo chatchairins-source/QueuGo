@@ -349,11 +349,14 @@ ok(
 ok(
   sharedMapForStability.includes('private class QueueGoTrackingMapHolder') &&
   sharedMapForStability.includes('view?.onDestroy()') &&
+  sharedMapForStability.includes('labelImages.clear()') &&
+  sharedMapForStability.includes('lastPoints = emptyList()') &&
   sharedMapForStability.includes('map = null') &&
   sharedMapForStability.includes('view = null') &&
   sharedMapForStability.includes('holder.destroy()') &&
-  !sharedMapForStability.includes('Bitmap.createBitmap('),
-  'Shared QueueGo MapLibre tracking maps must destroy MapView ownership without legacy marker bitmap caches'
+  !sharedMapForStability.includes('mutableMapOf<String, Bitmap>') &&
+  !sharedMapForStability.includes('mutableMapOf<String, android.graphics.Bitmap>'),
+  'Shared QueueGo MapLibre tracking maps must destroy MapView ownership and clear label signatures without retaining bitmap cache objects'
 );
 ok(merchantAppSource.includes('LaunchedEffect(screen, auth.session.accessToken, lifecycle)')&&
    merchantAppSource.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')&&
