@@ -2743,6 +2743,29 @@ private fun RiderHome(
                 .align(Alignment.TopEnd)
                 .padding(top = 116.dp, end = 10.dp)
                 .size(44.dp)
+                .clickable {
+                    if (activeNavigationWork) {
+                        routeOverviewActive = true
+                        overviewSignal += 1
+                    } else {
+                        actionMessage = "ยังไม่มีเส้นทางให้ดูทั้งหมด"
+                    }
+                },
+            shape = androidx.compose.foundation.shape.CircleShape,
+            colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                QgIcon("route", Modifier.size(23.dp), QgRed)
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 168.dp, end = 10.dp)
+                .size(44.dp)
                 .clickable { compassResetSignal += 1 },
             shape = androidx.compose.foundation.shape.CircleShape,
             colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
