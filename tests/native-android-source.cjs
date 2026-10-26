@@ -555,17 +555,25 @@ ok(riderEarnings.includes('api.periodSummary(auth, days)')&&riderEarnings.includ
 ok(riderProfile.includes('api.updateAccount(auth, name, phone)')&&riderProfile.includes('api.testNativePush(auth)')&&riderProfile.includes('QgAccountDeletionSection')&&!riderProfile.includes('api.setLaundryMode(auth, enabled)')&&!riderProfile.includes('api.respondLaundryInvite(auth, invite.inviteId, true)'),'Rider native profile must preserve Production account, push and deletion controls while shop-managed Laundry stays retired');
 const riderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
 ok(riderProfile.includes('RiderSupportScreen(')&&riderProfile.includes('แจ้งปัญหา / ติดตามเรื่อง'),'Rider native profile must expose Production support flow');
+const riderProfilePreferencesSection = riderProfile.indexOf('RiderProfileSection("รูปแบบและประเภทงาน")');
 const riderProfileWorkSection = riderProfile.indexOf('RiderProfileSection("การรับงาน")');
 const riderProfileAccountSection = riderProfile.indexOf('RiderProfileSection("บัญชีและช่วยเหลือ")');
 const riderProfileNotificationSection = riderProfile.indexOf('RiderProfileSection("การแจ้งเตือน")');
 const riderProfilePrivacySection = riderProfile.indexOf('RiderProfileSection("ความเป็นส่วนตัวและบัญชี")');
 const riderProfileExtraSection = riderProfile.indexOf('RiderProfileSection("เพิ่มเติม")');
 ok(
-  riderProfileWorkSection >= 0 &&
+  riderProfilePreferencesSection >= 0 &&
+  riderProfileWorkSection > riderProfilePreferencesSection &&
   riderProfileAccountSection > riderProfileWorkSection &&
   riderProfileNotificationSection > riderProfileAccountSection &&
   riderProfilePrivacySection > riderProfileNotificationSection &&
   riderProfileExtraSection > riderProfilePrivacySection &&
+  riderProfile.includes('"สถานะรับงาน"') &&
+  riderProfile.includes('"จัดการสถานะที่หน้าแรก"') &&
+  riderProfile.includes('onClick = onOpenHome') &&
+  riderProfile.includes('routeSettings()') &&
+  riderApp.includes('onOpenHome = { activeTab = "home" }') &&
+  riderApp.includes('routeSettings = {') &&
   riderProfile.includes('var showExtraTools by remember { mutableStateOf(false) }') &&
   riderProfile.includes('"เครื่องมือ Rider เพิ่มเติม"') &&
   riderProfile.includes('if (showExtraTools && showAccountDetails)') &&
