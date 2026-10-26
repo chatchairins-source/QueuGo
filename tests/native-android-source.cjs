@@ -433,6 +433,7 @@ ok(sharedTicketSource.includes('"qg_support_tickets?select=id,category,details,s
 ok(source.includes('RiderReadyCard')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve one Ready card and the active job accept countdown');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
+const riderAcceptanceMode=read('rider/src/main/java/com/queuego/rider/RiderAcceptanceMode.kt');
 const riderPush=read('rider/src/main/java/com/queuego/rider/RiderPush.kt');
 const riderSessionStore=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
 const sharedManifest=read('shared/src/main/AndroidManifest.xml');
@@ -449,6 +450,20 @@ const runtimeCapture=read('qa/capture-rider-launch.py');
 const pilotWorkflow=fs.readFileSync(path.resolve(root,'..','.github','workflows','build-native-rider-pilot.yml'),'utf8');
 ok(riderApi.includes('qg_get_my_rider_offer')&&!riderApi.includes('rpcArray("get_rider_delivery_pool"'),'Rider native must show only the server-selected live offer, never a shared delivery pool');
 ok(riderApi.includes('qg_rider_decline_offer')&&riderApi.includes('qg_rider_action_once'),'Rider native offer accept/decline must stay on guarded Production RPCs');
+ok(
+  riderApi.includes('"qg_rider_work_preferences"') &&
+  riderApi.includes('suspend fun workPreferences(auth: QueueGoAuth)') &&
+  riderApi.includes('suspend fun saveWorkPreferences(') &&
+  riderApp.includes('val restored = api.workPreferences(auth)') &&
+  riderApp.includes('val acknowledged = api.saveWorkPreferences(') &&
+  riderApp.includes('acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, acknowledged.autoAccept)') &&
+  riderAcceptanceMode.includes('RiderWorkPreferencesControl(') &&
+  riderAcceptanceMode.includes('"รับงานพ่วง"') &&
+  riderAcceptanceMode.includes('"ประเภทบริการที่รับ"') &&
+  riderAcceptanceMode.includes('"ส่งพัสดุ Express"') &&
+  riderAcceptanceMode.includes('"รับส่งผู้โดยสาร"'),
+  'Rider Native work preferences must reuse the Web server authority and expose bundle/service choices without local-only toggles'
+);
 ok(riderApp.includes('พร้อมรับงานแล้ว')&&riderApp.includes('คุณจะได้รับงานในพื้นที่ใกล้เคียง'),'Rider idle card must use the approved Ready title and nearby-work subtitle');
 ok(riderApp.includes('snapshot?.laundry?.activeJob?.jobId')&&!riderApp.includes('snapshot?.laundry?.activeJob?.id,'),'Rider Auto Accept lifecycle key must use Laundry jobId, never a nonexistent id field');
 ok(riderApp.includes('onExpired =')&&riderApp.includes('ข้อเสนอนี้หมดเวลา ระบบกำลังส่งงานให้ Rider คนถัดไป'),'Rider expired offers must immediately leave the card and continue sequential dispatch');

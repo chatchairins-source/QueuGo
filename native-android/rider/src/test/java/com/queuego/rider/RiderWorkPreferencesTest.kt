@@ -58,4 +58,11 @@ class RiderWorkPreferencesTest {
             riderWorkPreferencesFromRpc(bad)
         }
     }
+
+    @Test fun serviceToggleNeverAllowsUnknownOrZeroSelection() {
+        assertEquals(setOf("food", "express"), riderWorkServicesAfterToggle(setOf("food"), "express", true))
+        assertEquals(setOf("food"), riderWorkServicesAfterToggle(setOf("food", "express"), "express", false))
+        assertEquals(null, riderWorkServicesAfterToggle(setOf("food"), "food", false))
+        assertEquals(null, riderWorkServicesAfterToggle(setOf("food"), "unknown", true))
+    }
 }

@@ -599,23 +599,47 @@ private fun RiderHome(
         if (snapshot == null && cachedSnapshot != null) snapshot = cachedSnapshot
     }
     var dispatchPreferencesHydrated by remember(auth.user.id) { mutableStateOf(false) }
+    var workPreferences by remember(auth.user.id) { mutableStateOf<RiderWorkPreferences?>(null) }
+    var workPreferencesBusy by remember(auth.user.id) { mutableStateOf(false) }
+    var workPreferencesError by remember(auth.user.id) { mutableStateOf<String?>(null) }
     var autoAcceptEnabled by rememberSaveable(auth.user.id) { mutableStateOf(false) }
     var autoAcceptAttemptKey by rememberSaveable(auth.user.id) {
         mutableStateOf<String?>(null)
     }
     var stopAfterWorkPending by rememberSaveable(auth.user.id) { mutableStateOf(false) }
 
-    LaunchedEffect(auth.user.id, acceptanceModeStore, stopAfterWorkStore) {
-        try {
-            val restoredAutoAccept = acceptanceModeStore.autoAcceptEnabled(auth.user.id)
-            val restoredStopAfterWork = stopAfterWorkStore.pending(auth.user.id)
-            autoAcceptEnabled = restoredAutoAccept
-            stopAfterWorkPending = restoredStopAfterWork
+    LaunchedEffect(auth.user.id, auth.session.accessToken, acceptanceModeStore, stopAfterWorkStore) {
+        dispatchPreferencesHydrated = false
+        stopAfterWorkPending = try {
+            stopAfterWorkStore.pending(auth.user.id)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
+            false
+        }
+        try {
+            val restored = api.workPreferences(auth)
+            dispatchPreferenceWriteMutex.withLock {
+                acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, restored.autoAccept)
+            }
+            workPreferences = restored
+            autoAcceptEnabled = restored.autoAccept
+            workPreferencesError = null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            workPreferences = null
             autoAcceptEnabled = false
-            stopAfterWorkPending = false
+            workPreferencesError = "ตรวจอินเทอร์เน็ตแล้วลองใหม่"
+            try {
+                dispatchPreferenceWriteMutex.withLock {
+                    acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, false)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Fail closed in memory even when the cache cannot be updated.
+            }
         } finally {
             dispatchPreferencesHydrated = true
         }
@@ -680,6 +704,58 @@ private fun RiderHome(
     var consecutiveSnapshotFailures by remember(auth.user.id) { mutableIntStateOf(0) }
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
+
+    fun retryWorkPreferences() {
+        if (workPreferencesBusy) return
+        workPreferencesBusy = true
+        scope.launch {
+            try {
+                val restored = api.workPreferences(auth)
+                dispatchPreferenceWriteMutex.withLock {
+                    acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, restored.autoAccept)
+                }
+                workPreferences = restored
+                autoAcceptEnabled = restored.autoAccept
+                workPreferencesError = null
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                workPreferences = null
+                autoAcceptEnabled = false
+                workPreferencesError = "ตรวจอินเทอร์เน็ตแล้วลองใหม่"
+            } finally {
+                workPreferencesBusy = false
+            }
+        }
+    }
+
+    fun saveWorkPreferences(nextAutoAccept: Boolean, nextBundleEnabled: Boolean, nextServices: Set<String>) {
+        if (workPreferencesBusy || workPreferences == null) return
+        workPreferencesBusy = true
+        scope.launch {
+            try {
+                val acknowledged = api.saveWorkPreferences(
+                    auth = auth,
+                    autoAccept = nextAutoAccept,
+                    bundleEnabled = nextBundleEnabled,
+                    services = nextServices
+                )
+                dispatchPreferenceWriteMutex.withLock {
+                    acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, acknowledged.autoAccept)
+                }
+                workPreferences = acknowledged
+                autoAcceptEnabled = acknowledged.autoAccept
+                workPreferencesError = null
+                actionMessage = "บันทึกการรับงานแล้ว"
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                actionMessage = e.message ?: "บันทึกการรับงานไม่สำเร็จ"
+            } finally {
+                workPreferencesBusy = false
+            }
+        }
+    }
 
     suspend fun persistCommittedSnapshot(value: RiderSnapshot) {
         val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -2045,32 +2121,17 @@ private fun RiderHome(
                     onSnapshot = { snapshot = it },
                     onNavigationSettings = { configureReturnControl() },
                     workSettings = {
-                        RiderAcceptanceModeControl(
-                            autoAcceptEnabled = autoAcceptEnabled,
-                            enabled = dispatchPreferencesHydrated && !actionBusy,
-                            onAutoAcceptChanged = { enabled ->
-                                autoAcceptEnabled = enabled
-                                scope.launch {
-                                    try {
-                                        dispatchPreferenceWriteMutex.withLock {
-                                            acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
-                                        }
-                                    } catch (cancelled: CancellationException) {
-                                        throw cancelled
-                                    } catch (_: Exception) {
-                                        actionMessage = "บันทึกโหมดรับงานไม่สำเร็จ"
-                                    }
-                                }
-                                actionMessage = if (enabled) {
-                                    "เปิดรับงานอัตโนมัติแล้ว"
-                                } else {
-                                    "เปลี่ยนเป็นเลือกงานเองแล้ว"
-                                }
-                            },
-                            modifier = Modifier.padding(top = 8.dp)
+                        RiderWorkPreferencesControl(
+                            preferences = workPreferences,
+                            busy = workPreferencesBusy || !dispatchPreferencesHydrated,
+                            error = workPreferencesError,
+                            onRetry = ::retryWorkPreferences,
+                            onChange = ::saveWorkPreferences,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
-
-                        RiderSettingDestinationRow(enabled = destinationLoaded && !actionBusy) { showDestination = true }
+                        RiderSettingDestinationRow(
+                            enabled = destinationLoaded && !actionBusy && !workPreferencesBusy
+                        ) { showDestination = true }
                     },
                     onLogout = onLogout,
                     modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 748.dp).fillMaxSize()
