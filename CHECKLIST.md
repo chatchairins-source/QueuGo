@@ -1,3 +1,9 @@
+## 2026-10-26 Native POS option dialog compile failure — bounded import fix; exact-head Pilot NEXT
+
+- Exact Native Pilot [40307372943](https://github.com/chatchairins-source/QueuGo/actions/runs/40307372943) on exact HEAD `c9c3a6b21bb446b600a88747d0e60b4f7a920a33` passed Full QueueGo regression, POS idempotency, Customer/Merchant push, session binding, release, voice, source integrity and asset gates. Its first failure was `:merchant:compileDebugKotlin`: `MerchantPosOptions.kt:10:43 Cannot access RowColumnParentData?.weight: it is internal in file`.
+- Root cause is the explicit `androidx.compose.foundation.layout.weight` import in the new dialog source; the Compose `weight` extension is scope-provided. Removed only that invalid import.
+- **NEXT:** run/poll Native Pilot on the exact successor HEAD. Fix only its first confirmed failure. If green, continue Merchant offline-draft custom-option parity (persist base price, canonical options and option labels; group by product+options; revalidate and submit exact options with stable request IDs).
+
 ## 2026-10-26 Merchant POS option source contract — bounded correction; exact-head Pilot NEXT
 
 - Exact Native Pilot [40306967037](https://github.com/chatchairins-source/QueuGo/actions/runs/40306967037) ran on exact HEAD `d648c0c0446281d7f1c236936590f6abfdc7be37`. It stopped at the first Full QueueGo regression check, `tests/native-android-source.cjs:706`: the contract searched for `optionsJson = optionsJson` in `MerchantPosApi.kt`, although that argument is passed from `MerchantPosScreen.kt`. The implementation's API RPC call and screen payload are present; this is a test source-location error, not an app failure.
