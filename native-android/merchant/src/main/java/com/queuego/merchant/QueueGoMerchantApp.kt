@@ -1256,7 +1256,7 @@ private fun MerchantTopBar(
                 title,
                 modifier = Modifier.align(Alignment.Center),
                 color = Color(0xFF17191D),
-                fontSize = 18.sp,
+                fontSize = MerchantPageTitleSize,
                 fontWeight = FontWeight.ExtraBold
             )
         }
