@@ -1,3 +1,13 @@
+## 2026-10-26 Official BORA primary-reference acquisition — BLOCKED (external DNS), tooling/CI DONE
+
+- Successor implementation `fa84dc14a627abb6352a948daac03e2dba6a6b4b` adds a least-privilege `contents: read` acquisition workflow plus offline XLSX/text inspection guards. It has no database credentials and performs no Production write or identity approval.
+- Exact-head primary acquisition run `40255630029`: **SUCCESS as a blocker-detection workflow**; parser guards 6 PASS. All four official `stat.bora.dopa.go.th` targets failed before HTTP with `curl exit 6 / HTTP 000 / Could not resolve host`, including `ccaatt.xlsx` and the 2568 district/subdistrict text files. No source bytes or SHA-256 were fabricated.
+- Persistent evidence artifact: `12622725862`, digest `sha256:1d016fa3a47cac3aff18f9200b21627070817728ed35446042375c21ef331050`, size 1,473 bytes. The receipt contains only failure/provenance metadata because zero payload bytes were retrieved.
+- Exact-head RC run `40255629965`: **SUCCESS** — full npm regression, Admin/Merchant WebKit, Map Lab, QueueGo Map Search and Grocery render gates passed.
+- Wiang Kao remains **UNRESOLVED** in the canonical gate: OAD candidate `4026`, HDX candidate `4029`. All 9 OSM matched-parent exclusions and all HDX missing/extra/conflicting rows remain quarantined; Production import remains **FALSE** and PR #728 stays draft.
+- **BLOCKER:** current/versioned primary BORA payload bytes cannot be resolved from this environment or the GitHub runner. DNS failure is now reproduced and persisted; repeated blind retries are not useful evidence.
+- **NEXT:** inspect alternative official DOPA/MOI primary references that are independently reachable and checksum-pinnable, prioritizing a current/versioned district-code source and then subdistrict code/parent rows. Treat any DOPA operational/finance list as corroboration until version/scope/provenance are explicit. Do not approve 4029, remap 4026, or promote geometry from corroboration alone.
+
 ## 2026-10-26 Deterministic Thailand admin reconciliation gate — DONE (source/CI); primary-current reference — BLOCKED
 
 - Exact implementation `d19571e8876ce701653ea7157f40e0bdbb1fcc8c` adds a review-only deterministic reconciliation report across the pinned OSM bilingual matcher, OSM matched-parent polygon gate, OSM/HDX source-topology reports, HDX code/name/centroid diagnostics and the primary-reference acquisition receipt. It does not write SQL or mutate Production.

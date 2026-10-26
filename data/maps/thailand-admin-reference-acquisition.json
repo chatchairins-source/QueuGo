@@ -1,7 +1,7 @@
 {
   "execution": "review_only_no_database_write",
-  "checked_date": "2026-10-25",
-  "status": "blocked_primary_code_reconciliation",
+  "checked_date": "2026-10-26",
+  "status": "blocked_primary_code_reconciliation_external_dns",
   "production_import_allowed": false,
   "conflict": {
     "name": "เวียงเก่า",
@@ -34,7 +34,7 @@
       "eligible": false
     }
   ],
-  "next": "Retrieve a current, versioned primary administrative-code release and audit the full code/parent/name crosswalk. Treat geography/topology, identity and OAD representative-point quality as separate gates. Do not infer an authoritative code from secondary lists or substitute source centroids without field-level evidence.",
+  "next": "The stat.bora.dopa.go.th primary payload is blocked by DNS even from the GitHub runner. Preserve this receipt; inspect alternative official DOPA/MOI primary references that are independently reachable and checksum-pinnable. Keep Wiang Kao 4026/4029 and all missing/extra codes quarantined until current/versioned primary bytes, provenance/freshness, hierarchy and PostGIS gates pass.",
   "additional_attempts": [
     {
       "publisher": "DOPA Bureau of Registration Administration",
@@ -63,5 +63,54 @@
       "observed_result": "metadata acquired; resource download HTTP 418",
       "eligible": false
     }
-  ]
+  ],
+  "latest_runner_acquisition": {
+    "source_head": "fa84dc14a627abb6352a948daac03e2dba6a6b4b",
+    "workflow_run_id": 40255630029,
+    "workflow_conclusion": "success",
+    "artifact_id": 12622725862,
+    "artifact_digest": "sha256:1d016fa3a47cac3aff18f9200b21627070817728ed35446042375c21ef331050",
+    "artifact_size_bytes": 1473,
+    "result": "blocked_external_source",
+    "attempts": [
+      {
+        "id": "bora_ccaa_page",
+        "url": "https://stat.bora.dopa.go.th/stat/statnew/statMenu/newStat/ccaa.php",
+        "curl_exit": 6,
+        "http_code": "000",
+        "bytes": 0,
+        "sha256": null,
+        "error": "Could not resolve host: stat.bora.dopa.go.th"
+      },
+      {
+        "id": "bora_ccaatt_xlsx",
+        "url": "https://stat.bora.dopa.go.th/dload/ccaatt.xlsx",
+        "curl_exit": 6,
+        "http_code": "000",
+        "bytes": 0,
+        "sha256": null,
+        "error": "Could not resolve host: stat.bora.dopa.go.th"
+      },
+      {
+        "id": "bora_2568_district_text",
+        "url": "https://stat.bora.dopa.go.th/new_stat/file/68/stat_a68.txt",
+        "curl_exit": 6,
+        "http_code": "000",
+        "bytes": 0,
+        "sha256": null,
+        "error": "Could not resolve host: stat.bora.dopa.go.th"
+      },
+      {
+        "id": "bora_2568_subdistrict_text",
+        "url": "https://stat.bora.dopa.go.th/new_stat/file/68/stat_t68.txt",
+        "curl_exit": 6,
+        "http_code": "000",
+        "bytes": 0,
+        "sha256": null,
+        "error": "Could not resolve host: stat.bora.dopa.go.th"
+      }
+    ],
+    "identity_approval": "not_performed",
+    "production_import_allowed": false
+  }
 }
