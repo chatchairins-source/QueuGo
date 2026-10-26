@@ -497,8 +497,7 @@ fun QueueGoCreditCard(
                     color = Color(0xFF30282C)
                 )
                 if (data != null) {
-                    Text(
-                        "ใช้ได้ ${money(data.optLong("available_minor"))}",
+                    Text("ใช้ได้ ${money(data.optLong("available_minor"))}",
                         fontSize = 20.sp,
                         lineHeight = 24.sp,
                         fontWeight = FontWeight.Black,
