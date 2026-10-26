@@ -50,6 +50,8 @@ internal fun merchantOrderProgressStage(status: String): Int = when (status.lowe
     else -> 0
 }
 
+internal fun merchantOrderCanReportIssue(status: String): Boolean = status.equals("completed", ignoreCase = true)
+
 internal fun merchantOrderShowsProgress(status: String): Boolean =
     status.lowercase() !in setOf("cancelled", "no_rider_available")
 

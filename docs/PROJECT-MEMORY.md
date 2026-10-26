@@ -1,3 +1,9 @@
+## 2026-10-26 Native Merchant completed-order support ticket parity
+
+- Web completed orders alone show `แจ้งปัญหาออเดอร์นี้`, opening the existing QueueGo ticket panel with the current order selected. Native detail lacked this action; profile's Native support chat is a separate behavior.
+- Commit `8827b2b5` adds completed-only entry, ticket form/list/status/evidence flow and order selection. Shared `NativeSupportTicketApi` uses the existing Web `qg_create_ticket`, `qg_support_tickets`, and `qg-evidence` APIs; no migration, refund or GP-slip implementation. `db9d00c5` fixes first hosted compile failure in Merchant progress UI (`CircleShape` import; replace nonexistent `QgText` with shared `QgInk`).
+- Source contracts 336/0; full `TZ=Asia/Bangkok npm test` passes on exact source tree `fe6d8fa4`, map QA 28/0. Pilot `40296378388` failed before this fix; exact run for the new tree is pending sync. **NEXT:** Customer cart/checkout/order parity while Pilot runs.
+
 ## 2026-10-26 Native Customer category filter parity
 
 - Web `main=7e036a0` uses exact `public_category` filters for Food/Cafe/Grocery. Native reads that same field but previously admitted extra aliases (`restaurant`, `drink`, `beverage`, `convenience`), changing category eligibility and empty/count states.

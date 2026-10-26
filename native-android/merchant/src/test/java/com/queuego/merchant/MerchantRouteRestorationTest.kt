@@ -6,6 +6,7 @@ import org.junit.Test
 class MerchantRouteRestorationTest {
     @Test fun editorsAndDetailsRestoreToReloadableParents() {
         assertEquals("orders", merchantRestorableRoute("order"))
+        assertEquals("profile", merchantRestorableRoute("order-report"))
         for (route in listOf("product", "catalog", "grocery-catalog", "market-catalog")) {
             assertEquals("products", merchantRestorableRoute(route))
         }

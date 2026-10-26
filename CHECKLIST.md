@@ -1,3 +1,11 @@
+## 2026-10-26 Merchant completed-order issue reporting — DONE (source/full regression); exact Pilot pending
+
+- Current Merchant Web `renderShopOrderModern` exposes `แจ้งปัญหาออเดอร์นี้` only when `status === completed`; it opens the QueueGo ticket form with that order selected. Native order detail had no report action, and its profile support route was a separate admin chat.
+- Bounded Native flow: add the same completed-only action and an order-bound ticket screen with Web categories, optional order selection, 10–2000 character details, optional JPG/PNG/WebP evidence (5 MB max), create/list/status/admin note and signed evidence viewing. New shared `NativeSupportTicketApi` uses the existing `qg_create_ticket`, `qg_support_tickets`, and `qg-evidence` authority; no schema, refund or GP-slip changes.
+- `node tests/native-android-source.cjs` 336/0; clean full `TZ=Asia/Bangkok npm test` EXIT 0 on commit `db9d00c5`, tree `fe6d8fa4`; post-test map QA 28/0. No Production ticket was created. Local Gradle/Android SDK are unavailable.
+- Prior exact Native Pilot `40296378388` on `ce2a9cec` failed at first Merchant compile: `CircleShape` was unimported and `QgText` did not exist. Commit `db9d00c5` imports `CircleShape` and uses shared `QgInk`; latest source plus ticket UI needs new exact-head Pilot.
+- **NEXT:** resume Customer cart/checkout/order state parity from the pinned Web `main=7e036a0` while exact-head Pilot runs; then inspect Pilot and fix only its first real failure.
+
 ## 2026-10-26 Customer Food/Cafe/Grocery category filter parity — DONE (source/full regression); hosted Pilot pending
 
 - Current Web `main=7e036a0735cc49905e9b0a2434492470551a0c9d` filters category pages by exact `public_category` (`food`, `cafe`, `grocery`). `CustomerApi` maps that same field to Native `CustomerShop.category`, but `serviceCategoryRows` also admitted `restaurant`, `drink`, `beverage`, and `convenience`, allowing Native-only rows/counts and changing empty states.

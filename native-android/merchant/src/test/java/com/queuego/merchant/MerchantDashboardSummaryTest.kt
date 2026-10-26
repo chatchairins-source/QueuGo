@@ -72,6 +72,13 @@ class MerchantDashboardSummaryTest {
         assertFalse(merchantOrderShowsProgress("no_rider_available"))
     }
 
+    @Test fun completedOrderIssueReportMatchesWebEligibility() {
+        assertTrue(merchantOrderCanReportIssue("completed"))
+        assertFalse(merchantOrderCanReportIssue("delivered"))
+        assertFalse(merchantOrderCanReportIssue("cancelled"))
+        assertFalse(merchantOrderCanReportIssue("no_rider_available"))
+    }
+
     @Test fun orderSearchMatchesWebOrderNumberAndCustomerName() {
         val sample = order("preparing", "2026-10-26T10:00:00+07:00").copy(number = "QT-1234")
         assertEquals(true, merchantOrderSearchMatches(sample, "qt-12"))

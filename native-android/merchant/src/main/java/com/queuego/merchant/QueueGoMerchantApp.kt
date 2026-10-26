@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -63,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.merchantRealtimeSubscriptions
+import com.queuego.shared.QgInk
 import com.queuego.shared.NativeOrderRealtime
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -714,6 +716,7 @@ private fun MerchantShell(
                         selectedRiderContext = null
                         screen = "orders"
                     },
+                    onReportIssue = { if (selectedOrder?.let { merchantOrderCanReportIssue(it.status) } == true) screen = "order-report" },
                     onAction = { action, reason -> selectedOrder?.let { runAction(it, action, reason) } },
                     onCallCustomer = { selectedOrder?.let { startCustomerVoiceCall(it.id) } },
                     onAdjustReady = { delta -> selectedOrder?.let { adjustReadyEstimate(it, delta) } },
@@ -1071,6 +1074,9 @@ private fun MerchantShell(
                     onLaundry = { screen = "laundry" }
                 )
                 "support" -> MerchantSupportScreen(auth) { screen = "profile" }
+                "order-report" -> selectedOrder?.let { order ->
+                    MerchantSupportTicketsScreen(auth, orders, order.id, order.number) { screen = "order" }
+                } ?: run { screen = "orders" }
                 "profile" -> MerchantProfileScreen(
                     auth = auth,
                     shop = shop,
@@ -1537,6 +1543,7 @@ private fun MerchantOrderDetail(
     busy: Boolean,
     canStartCustomerCall: Boolean,
     onBack: () -> Unit,
+    onReportIssue: () -> Unit,
     onAction: (String, String?) -> Unit,
     onCallCustomer: () -> Unit,
     onAdjustReady: (Int) -> Unit,
@@ -1574,7 +1581,7 @@ private fun MerchantOrderDetail(
                                 Modifier.size(16.dp)
                                     .background(if (index <= stage) QgRed else QgBorder, CircleShape)
                             )
-                            Text(label, color = if (index <= stage) QgText else QgMuted, fontSize = 8.sp, lineHeight = 10.sp)
+                            Text(label, color = if (index <= stage) QgInk else QgMuted, fontSize = 8.sp, lineHeight = 10.sp)
                         }
                     }
                 }
@@ -1790,6 +1797,14 @@ private fun MerchantOrderDetail(
             "no_rider_available" -> QgCard(Modifier.fillMaxWidth()) {
                 Text("ไม่พบ Rider · ออเดอร์สิ้นสุดแล้ว", color = QgMuted, fontWeight = FontWeight.ExtraBold)
             }
+        }
+        if (merchantOrderCanReportIssue(order.status)) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onReportIssue,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("แจ้งปัญหาออเดอร์นี้") }
         }
         Spacer(Modifier.height(30.dp))
     }

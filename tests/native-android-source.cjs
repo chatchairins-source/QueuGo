@@ -12,6 +12,7 @@ for(const p of [
   'shared/src/main/java/com/queuego/shared/NativeChatImage.kt',
   'shared/src/main/java/com/queuego/shared/QueueGoAccountDeletion.kt',
   'shared/src/main/java/com/queuego/shared/QueueGoPlaceSearch.kt',
+  'shared/src/main/java/com/queuego/shared/NativeSupportTickets.kt',
   'customer/build.gradle.kts',
   'customer/src/main/AndroidManifest.xml',
   'merchant/build.gradle.kts',
@@ -41,6 +42,7 @@ for(const p of [
   'customer/src/main/java/com/queuego/customer/CustomerChat.kt',
   'customer/src/main/java/com/queuego/customer/CustomerReview.kt',
   'merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantSupportTicketsScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantApi.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt',
@@ -406,6 +408,19 @@ ok(merchantAppSource.includes('voiceController.startOutgoing(auth, orderId, "cus
    merchantOrderDetailSource.includes('"โทรหาลูกค้าผ่าน QueueGo"')&&
    merchantOrderDetailSource.includes('"completed", "delivered", "cancelled", "no_rider_available"'),
    'Merchant order detail must start the existing authenticated QueueGo customer voice call only in active order states');
+const merchantTicketSource=read('merchant/src/main/java/com/queuego/merchant/MerchantSupportTicketsScreen.kt');
+const sharedTicketSource=read('shared/src/main/java/com/queuego/shared/NativeSupportTickets.kt');
+ok(merchantOrderDetailSource.includes('merchantOrderCanReportIssue(order.status)')&&
+   merchantOrderDetailSource.includes('onReportIssue')&&merchantOrderDetailSource.includes('"แจ้งปัญหาออเดอร์นี้"')&&
+   merchantAppSource.includes('screen = "order-report"')&&merchantAppSource.includes('MerchantSupportTicketsScreen(auth, orders, order.id, order.number)'),
+   'Merchant order detail must expose Web report action only for completed orders and bind the selected order');
+ok(sharedTicketSource.includes('"qg_support_tickets?select=id,category,details,status,order_id,created_at,admin_note,evidence_path"')&&
+   sharedTicketSource.includes('http.rpc("qg_create_ticket"')&&sharedTicketSource.includes('/storage/v1/object/qg-evidence/')&&
+   sharedTicketSource.includes('10..2000')&&sharedTicketSource.includes('5 * 1024 * 1024')&&
+   merchantTicketSource.includes('"ออเดอร์ที่เกี่ยวข้อง (ถ้ามี)"')&&merchantTicketSource.includes('"ประเภทปัญหา"')&&
+   merchantTicketSource.includes('"รายละเอียด"')&&merchantTicketSource.includes('"ส่งเรื่อง"')&&
+   merchantTicketSource.includes('"เรื่องที่แจ้งไว้"')&&merchantTicketSource.includes('"ดูหลักฐาน"'),
+   'Merchant issue reporting must reuse QueueGo ticket RPC/evidence authority and match Web form/list states');
 ok(source.includes('RiderReadyCard')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve one Ready card and the active job accept countdown');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
