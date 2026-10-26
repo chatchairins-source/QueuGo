@@ -1,9 +1,18 @@
+## 2026-10-26 Native exact-head Pilot + parity audits — checkpointed
+
+- Exact current Native HEAD before this checklist commit: `843ff11e34cc8d8732e0d41f815398f959e88931`, tree `f8f5939cbf59f3b6fd90bb2f9ca5a2ed0addca5b`. Its bounded Kotlin fix imports shared `QgLine` and replaces the unresolved Merchant `QgBorder` reference.
+- Exact-head Native Pilot [40299842063](https://github.com/chatchairins-source/QueuGo/actions/runs/40299842063) on `843ff11` completed SUCCESS: full regression, Native POS/edit and Customer/Merchant contracts, source integrity/assets, Kotlin tests, all three APK builds, 16 KB packaging, WebView rejection, and Android launch/map/voice lifecycle evidence passed.
+- Rider active-job audit against Web `main=7e036a0735cc49905e9b0a2434492470551a0c9d`: offer/accept, arrival, pickup/proof, customer arrival/cash, and completion use matching RPC/state transitions; no evidence-backed source gap in the audited flow.
+- Merchant catalog/POS audit: Grocery and Market catalogs, POS checkout/staff/kitchen/cash/discount/offline draft flows are present. A P1 Merchant inventory gap is confirmed: Web stores `inventory_stock_tracking`, locks direct stock edits for tracked goods, and supports manager-scoped adjustment plus audit history; Native `MerchantProduct`/editor/load/save omit this flag and adjustment/history API.
+- Customer standard product/cart/checkout and Market Trip inventory audit found no P1/P0 gap: Native reads availability/available packs, limits quantities and uses the same authoritative checkout RPCs with durable pending recovery.
+- **NEXT:** implement the bounded Merchant generic inventory parity: read/persist `inventory_stock_tracking`, guard tracked-stock edits, and add audited adjustment/history calls through existing `pos_inventory_stock_adjust` and `pos_inventory_adjustment_history`. Add focused Native source/JVM contracts, commit the complete chunk, update this checklist, and run Native Pilot on the exact successor before continuing the next Merchant/Customer P1/P0 audit.
+
 ## 2026-10-26 Merchant ticket Pilot compile failure #1 — fixed (focused source check); exact-head rerun NEXT
 
 - Exact hosted Pilot `40297983878` on `0e4b431362db83e0eef7c4be19087fd0e4b4d2d0`: full QueueGo regression and source-integrity/asset gates passed; Kotlin tracking/build stage failed. First compiler diagnostic: `MerchantSupportTicketsScreen.kt:196` cannot smart-cast `ticket.evidencePath` because it is a public API property from another module.
 - Bounded fix: capture `ticket.evidencePath` into a local immutable value before rendering the evidence button and pass that local to the signed-evidence API. No ticket behavior or backend changed.
 - Focused Native source contract: 336/0; `git diff --check` PASS. Local Android SDK/Gradle unavailable; hosted Kotlin compile remains the relevant verification.
-- **NEXT:** commit this first compiler fix and rerun Native Pilot against the exact successor HEAD; only then address its first remaining real failure. Continue the Rider transition audit after dispatching the exact-head rerun.
+- **Checkpoint:** the smart-cast fix is committed in successor history; subsequent exact-head runs found and fixed `QgBorder` and validated the current tree. This interim NEXT is superseded by the top checkpoint below.
 
 ## 2026-10-26 Customer checkout and standard order-state audit — audited; no source gap found
 
