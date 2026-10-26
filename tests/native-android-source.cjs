@@ -686,7 +686,7 @@ ok(
 ok(
   queueGoCreditCard.includes('fun QueueGoCreditInline(') &&
   queueGoCreditCard.includes('"queuego_credit_summary"') &&
-  queueGoCreditCard.includes('Text("เครดิต"') &&
+  /Text\(\s*"เครดิต"/.test(queueGoCreditCard) &&
   queueGoCreditCard.includes('Text(if (busy) "กำลังเช็ก" else "เช็กยอด"') &&
   riderEarningsCredit.includes('QueueGoCreditInline(') &&
   !riderEarningsCredit.includes('QueueGoCreditCard('),
