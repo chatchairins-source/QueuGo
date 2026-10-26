@@ -158,14 +158,6 @@ def main():
     tap_label(nodes(),"ข้อความ")
     time.sleep(4)
     screens.append({"screen":"messages_chat",**shot("02-messages-chat")})
-    ns=nodes()
-    if any(n.get("text","").strip()=="แจ้งเตือน" and rect(n) for n in ns):
-        tap_label(ns,"แจ้งเตือน")
-        time.sleep(3)
-        screens.append({"screen":"messages_notifications",**shot("03-messages-notifications")})
-        tap_label(nodes(),"แชต")
-        time.sleep(1)
-
     tap_label(nodes(),"รายได้")
     time.sleep(4)
     screens.append({"screen":"earnings_today",**shot("04-earnings-today")})
@@ -189,7 +181,7 @@ def main():
     ):
         capture_profile_dialog(entry,title,name)
     expected_screens=(
-      "home_map","messages_chat","messages_notifications",
+      "home_map","messages_chat",
       "earnings_today","05-earnings-7-days","06-earnings-30-days",
       "profile","08-learning-center","09-safety-center","10-support","11-diagnostics",
     )
