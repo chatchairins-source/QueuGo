@@ -266,11 +266,13 @@ ok(
   customerAppForMemory.includes('CUSTOMER_PRIVACY_POLICY_URL') &&
   customerAppForMemory.includes('setCustomerPushEnabled(context, auth.user.id, true)') &&
   customerAppForMemory.includes('setCustomerPushEnabled(context, auth.user.id, false)') &&
+  customerAppForMemory.includes('if (!customerPushEnabled(context, auth.user.id)) {\n            // Remove registrations created by versions that subscribed at login.\n            disableCustomerNativePush(context, auth)') &&
   customerAppForMemory.includes('pushApi.test(auth)'),
   'Customer Profile notification controls must use the real permission, subscribe/unsubscribe and test-push actions and expose the production privacy policy'
 );
 ok(
   customerPushForMemory.includes('if (!customerPushEnabled(applicationContext, cached.user.id)) return') &&
+  customerPushForMemory.includes('if (!customerPushEnabled(this, cached.user.id)) return') &&
   customerPushForMemory.includes('CUSTOMER_ARRIVAL_SOUND_CHANNEL') &&
   customerPushForMemory.includes('CUSTOMER_ARRIVAL_SILENT_CHANNEL') &&
   customerPushForMemory.includes('customerArrivalNotification(title, body)'),

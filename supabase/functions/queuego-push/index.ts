@@ -112,7 +112,7 @@ async function firebaseAccess(){
   };
   return firebaseCache;
 }
-async function sendNativePush(deviceToken:string,user:any,n:any,sessionId:string){
+async function sendNativePush(deviceToken:string,user:any,n:any,sessionId:string,platform:string){
   let riderOfferMessage:any=null;
   if(isRiderOfferNotification(user,n)){
     const [profile,offer]=await Promise.all([
@@ -130,11 +130,16 @@ async function sendNativePush(deviceToken:string,user:any,n:any,sessionId:string
     if(!riderOfferMessage)return 204;
   }
   const firebase=await firebaseAccess();
+  const customerAndroid=user.role==='customer'&&platform==='android';
   const data={
     notificationId:String(n.id||''),
     role:String(user.role||''),
     type:String(n.type||'notification'),
     referenceId:String(n.reference_id||''),
+    ...(customerAndroid?{
+      title:visibleOrderText(n.title||'QueueGo').slice(0,80),
+      message:visibleOrderText(n.message||'มีรายการอัปเดต').slice(0,220)
+    }:{}),
     ...(user.role==='rider'?{userId:String(n.user_id||''),sessionId}: {})
   };
   const riderMessage=riderOfferMessage||(user.role==='rider'?buildRiderEventMessage(deviceToken,{
@@ -150,7 +155,11 @@ async function sendNativePush(deviceToken:string,user:any,n:any,sessionId:string
         'Content-Type':'application/json'
       },
       body:JSON.stringify({
-        message:riderMessage||{
+        message:riderMessage||(customerAndroid?{
+          token:deviceToken,
+          data,
+          android:{priority:'high'}
+        }:{
           token:deviceToken,
           notification:{
             title:visibleOrderText(n.title||'QueueGo').slice(0,80),
@@ -161,7 +170,7 @@ async function sendNativePush(deviceToken:string,user:any,n:any,sessionId:string
             priority:(user.role==='rider'||n.type==='voice_call')?'high':'normal',
             notification:{channel_id:'queuego_orders_v2',sound:'default'}
           }
-        }
+        })
       }),
       signal:AbortSignal.timeout(10000)
     }
@@ -236,7 +245,7 @@ Deno.serve(async(req)=>{
                   .maybeSingle();
                 status=active.error||!active.data
                   ?410
-                  :await sendNativePush(t.token,context.user,context.n,t.session_id);
+                  :await sendNativePush(t.token,context.user,context.n,t.session_id,t.platform);
               }
             }
           }else{

@@ -44,6 +44,11 @@ has(customer,/auth\.user\.status != "active"/,'Customer active-status guard miss
 has(merchant,/auth\.user\.status != "active"/,'Merchant active-status guard missing');
 has(pushEdge,/user\.role==='rider'\|\|n\.type==='voice_call'/,'voice_call push must be high priority for all roles');
 has(pushEdge,/channel_id:'queuego_orders_v2',sound:'default'/,'native FCM must target the audible v2 notification channel');
+has(pushEdge,/const customerAndroid=user\.role==='customer'&&platform==='android'/,'data-only behavior must be limited to Customer Android tokens');
+has(pushEdge,/customerAndroid\?\{[\s\S]*?title:visibleOrderText\(n\.title\|\|'QueueGo'\)[\s\S]*?message:visibleOrderText\(n\.message\|\|'มีรายการอัปเดต'\)/,'Customer Android data-only FCM payload must preserve notification title and body for the Native service');
+has(pushEdge,/message:riderMessage\|\|\(customerAndroid\?\{\s*token:deviceToken,\s*data,\s*android:\{priority:'high'\}\s*\}:\{[\s\S]*?notification:\{/,'Customer Android background FCM must reach its Native service while Merchant/Rider/iOS keep their existing notification payload path');
+has(pushEdge,/sendNativePush\(t\.token,context\.user,context\.n,t\.session_id,t\.platform\)/,'Native push dispatch must pass the registered platform through to its FCM payload policy');
+has(customer,/if \(!customerPushEnabled\(this, cached\.user\.id\)\) return/,'Customer FCM service must enforce background opt-out before displaying a queued push');
 has(workflow,/com\.queuego\.customer/,'CI must discover Customer Firebase client');
 has(workflow,/com\.queuego\.merchant/,'CI must discover Merchant Firebase client');
 has(workflow,/com\.queuego\.rider/,'CI must retain Rider Firebase client gate');

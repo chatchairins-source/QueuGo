@@ -150,6 +150,7 @@ class QueueGoCustomerMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         val cached = SecureRoleSessionStore(applicationContext, "customer").load() ?: return
         if (cached.user.role != "customer" || cached.user.status != "active") return
+        if (!customerPushEnabled(this, cached.user.id)) return
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=

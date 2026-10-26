@@ -295,6 +295,12 @@ private fun CustomerShell(
         }
         logout()
     }
+    LaunchedEffect(auth.user.id, auth.session.accessToken, auth.session.sessionId) {
+        if (!customerPushEnabled(context, auth.user.id)) {
+            // Remove registrations created by versions that subscribed at login.
+            disableCustomerNativePush(context, auth)
+        }
+    }
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
     val locationStore = remember { CustomerLocationStore(context) }
     val contentCache = remember(context.applicationContext) {
