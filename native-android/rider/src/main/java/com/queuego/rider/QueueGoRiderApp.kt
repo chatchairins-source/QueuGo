@@ -2119,6 +2119,7 @@ private fun RiderHome(
                     history = recentHistory,
                     api = api,
                     onSnapshot = { snapshot = it },
+                    onOpenHome = { activeTab = "home" },
                     onNavigationSettings = { configureReturnControl() },
                     workSettings = {
                         RiderWorkPreferencesControl(
@@ -2129,6 +2130,8 @@ private fun RiderHome(
                             onChange = ::saveWorkPreferences,
                             modifier = Modifier.padding(top = 4.dp)
                         )
+                    },
+                    routeSettings = {
                         RiderSettingDestinationRow(
                             enabled = destinationLoaded && !actionBusy && !workPreferencesBusy
                         ) { showDestination = true }
