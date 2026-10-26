@@ -44,7 +44,7 @@ private const val RIDER_MARKER_MIN_ANIMATION_MS = 420L
 private const val RIDER_MARKER_MAX_ANIMATION_MS = 1_200L
 private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 1.05
 private const val RIDER_MARKER_TELEPORT_METERS = 120.0
-private const val CAMERA_BEARING_MIN_DELTA_DEGREES = 0.75f
+private const val CAMERA_BEARING_MIN_DELTA_DEGREES = 0.7f
 private const val CAMERA_ANIMATION_FALLBACK_MS = 560L
 private const val CAMERA_OVERVIEW_ANIMATION_MS = 380
 private const val DEFAULT_LONGITUDE = 101.0
@@ -228,6 +228,7 @@ private class RiderNavigationMapHolder {
     private var lastCameraPoint: NavigationMapPoint? = null
     private var lastCameraBearing: Float? = null
     private var lastCameraTilt: Float? = null
+    private var lastCameraZoom: Double? = null
     private var lastOverviewSignature: Int? = null
     private var lastAppliedRecenterRequest = 0
     private var onCameraChanged: (NavigationMapCamera) -> Unit = {}
@@ -851,6 +852,7 @@ private class RiderNavigationMapHolder {
                         .zoom(decision.zoom.toDouble())
                         .bearing(0.0)
                         .tilt(0.0)
+                        .padding(0.0, 0.0, 0.0, 0.0)
                         .build()
                 ),
                 CAMERA_OVERVIEW_ANIMATION_MS
@@ -859,6 +861,7 @@ private class RiderNavigationMapHolder {
             lastCameraPoint = decision.center
             lastCameraBearing = 0f
             lastCameraTilt = 0f
+            lastCameraZoom = decision.zoom.toDouble()
             return
         }
 
@@ -876,8 +879,14 @@ private class RiderNavigationMapHolder {
         } else {
             decision.bearingDegrees ?: renderedBearing
         }
+        // Web FOLLOW anchors the camera on the exact presentation puck, then shifts that
+        // anchor down the viewport according to speed and the bottom dock. Do the same here
+        // instead of centering the route look-ahead point as a separate Native policy.
+        val cameraCenter = navigationRiderDisplayFix(state)?.point
+            ?: state.rider?.point
+            ?: decision.center
         val pointChanged = lastCameraPoint == null ||
-            navigationHaversineMeters(lastCameraPoint!!, decision.center) >=
+            navigationHaversineMeters(lastCameraPoint!!, cameraCenter) >=
             navigationCameraMovementThresholdMeters(state.rider?.speedMetersPerSecond)
         val bearingChanged = navigationBearingChangedEnough(
             lastCameraBearing ?: renderedBearing,
@@ -888,7 +897,12 @@ private class RiderNavigationMapHolder {
             lastCameraTilt,
             decision.tiltDegrees
         )
-        if (!force && !explicitRecenter && !pointChanged && !bearingChanged && !tiltChanged) return
+        val zoomChanged = lastCameraZoom == null ||
+            abs(lastCameraZoom!! - decision.zoom) >= 0.05
+        if (
+            !force && !explicitRecenter &&
+            !pointChanged && !bearingChanged && !tiltChanged && !zoomChanged
+        ) return
 
         val cameraAnimationMs = navigationRotationDurationMillis(
             currentBearing = renderedBearing,
@@ -897,21 +911,33 @@ private class RiderNavigationMapHolder {
             fallbackMillis = CAMERA_ANIMATION_FALLBACK_MS,
             speedMetersPerSecond = state.rider?.speedMetersPerSecond
         ).toInt()
+        val cameraPadding = navigationFollowCameraPadding(
+            insets = state.viewportInsets,
+            viewportHeightPx = view?.height ?: 0,
+            speedMetersPerSecond = state.rider?.speedMetersPerSecond
+        )
         activeMap.animateCamera(
             CameraUpdateFactory.newCameraPosition(
                 CameraPosition.Builder()
-                    .target(LatLng(decision.center.latitude, decision.center.longitude))
-                    .zoom(decision.zoom.toDouble())
+                    .target(LatLng(cameraCenter.latitude, cameraCenter.longitude))
+                    .zoom(decision.zoom)
                     .bearing(targetBearing.toDouble())
                     .tilt(decision.tiltDegrees.toDouble())
+                    .padding(
+                        cameraPadding[0],
+                        cameraPadding[1],
+                        cameraPadding[2],
+                        cameraPadding[3]
+                    )
                     .build()
             ),
             cameraAnimationMs
         )
         if (explicitRecenter) lastAppliedRecenterRequest = state.recenterRequest
-        lastCameraPoint = decision.center
+        lastCameraPoint = cameraCenter
         lastCameraBearing = targetBearing
         lastCameraTilt = decision.tiltDegrees
+        lastCameraZoom = decision.zoom
     }
 
     private fun publishCamera() {
@@ -969,6 +995,7 @@ private class RiderNavigationMapHolder {
         lastStopSignature = null
         lastDemandSignature = null
         lastRenderedRiderFix = null
+        lastCameraZoom = null
     }
 
     fun dispose() {
