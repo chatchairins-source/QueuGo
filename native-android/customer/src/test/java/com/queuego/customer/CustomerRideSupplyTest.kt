@@ -30,6 +30,7 @@ class CustomerRideSupplyTest {
         val supply = parsePassengerRideSupply(JSONObject().put("nearby_count", 7).put("clusters", rows))
         assertEquals(1, supply.clusters.size)
         assertEquals(2, supply.clusters.single().count)
+        assertEquals("2", supply.clusters.single().point.label)
         assertEquals(15.1, supply.clusters.single().point.latitude, 0.0)
     }
     @Test fun malformedOrMissingSupplySafelyRendersEmpty() {

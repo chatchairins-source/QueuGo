@@ -365,13 +365,12 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 line(.18f,.40f,.43f,.52f); line(.68f,.40f,.43f,.52f); line(.43f,.52f,.43f,.72f)
                 line(.68f,.56f,.88f,.56f); line(.79f,.46f,.88f,.56f); line(.79f,.66f,.88f,.56f)
             }
-            "motorcycle" -> {
-                drawCircle(color, w*.13f, Offset(w*.25f,h*.67f), style=stroke)
-                drawCircle(color, w*.13f, Offset(w*.75f,h*.67f), style=stroke)
-                line(.38f,.67f,.55f,.67f); line(.55f,.67f,.63f,.46f); line(.63f,.46f,.46f,.46f)
-                line(.46f,.46f,.38f,.33f); line(.38f,.33f,.25f,.33f)
-                line(.55f,.67f,.42f,.46f); line(.63f,.46f,.75f,.67f); line(.58f,.29f,.71f,.29f)
-            }
+            "motorcycle" -> qgMotorcycleGeometry(
+                drawLine = { x1, y1, x2, y2 -> line(x1, y1, x2, y2) },
+                drawCircle = { cx, cy, radius ->
+                    drawCircle(color, w * radius, Offset(w * cx, h * cy), style = stroke)
+                }
+            )
             "tag" -> {
                 line(.83f,.54f,.54f,.83f); line(.54f,.83f,.17f,.46f)
                 line(.17f,.46f,.17f,.17f); line(.17f,.17f,.46f,.17f)

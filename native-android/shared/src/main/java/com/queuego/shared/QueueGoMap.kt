@@ -1,6 +1,11 @@
 package com.queuego.shared
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Typeface
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.content.pm.ApplicationInfo
@@ -34,6 +39,8 @@ import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.BackgroundLayer
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.layers.Property
@@ -116,6 +123,46 @@ private fun Context.lifecycleOwnerOrNull(): LifecycleOwner? = when (this) {
     else -> null
 }
 
+private fun trackingLabelBitmap(point: QgMapPoint, label: String): Bitmap {
+    val cluster = point.role == QgMapRole.RIDER
+    val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 24f
+        typeface = Typeface.DEFAULT_BOLD
+        textAlign = if (cluster) Paint.Align.LEFT else Paint.Align.CENTER
+        color = if (cluster) point.color else android.graphics.Color.WHITE
+    }
+    val bodyWidth = maxOf(72, kotlin.math.ceil(text.measureText(label)).toInt() + if (cluster) 70 else 28)
+    val width = bodyWidth + 12
+    val bitmap = Bitmap.createBitmap(width, if (cluster) 84 else 104, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    val center = width / 2f
+    fun fill(color: Int) { paint.style = Paint.Style.FILL; paint.color = color }
+    fun border(color: Int, stroke: Float) {
+        paint.style = Paint.Style.STROKE; paint.color = color; paint.strokeWidth = stroke
+        paint.strokeJoin = Paint.Join.ROUND
+    }
+    if (!cluster) {
+        val tip = Path().apply { moveTo(center - 14f, 66f); lineTo(center, 96f); lineTo(center + 14f, 66f); close() }
+        fill(point.color); canvas.drawPath(tip, paint)
+        border(android.graphics.Color.WHITE, 6f); canvas.drawPath(tip, paint)
+    }
+    fill(if (cluster) android.graphics.Color.WHITE else point.color)
+    canvas.drawRoundRect(6f, 6f, width - 6f, 78f, 36f, 36f, paint)
+    border(if (cluster) point.color else android.graphics.Color.WHITE, if (cluster) 4f else 6f)
+    canvas.drawRoundRect(6f, 6f, width - 6f, 78f, 36f, 36f, paint)
+    if (cluster) {
+        border(point.color, 3f)
+        paint.strokeCap = Paint.Cap.ROUND
+        qgMotorcycleGeometry(
+            drawLine = { x1, y1, x2, y2 -> canvas.drawLine(22f + x1 * 32f, 26f + y1 * 32f, 22f + x2 * 32f, 26f + y2 * 32f, paint) },
+            drawCircle = { cx, cy, radius -> canvas.drawCircle(22f + cx * 32f, 26f + cy * 32f, radius * 32f, paint) }
+        )
+    }
+    canvas.drawText(label, if (cluster) 60f else center, 42f - (text.ascent() + text.descent()) / 2f, text)
+    return bitmap
+}
+
 private class QueueGoTrackingMapHolder {
     var view: MapView? = null
     var map: MapLibreMap? = null
@@ -123,14 +170,25 @@ private class QueueGoTrackingMapHolder {
     var resumed = false
     var destroyed = false
     var lastPoints: List<QgMapPoint> = emptyList()
+    private val labelImages = mutableMapOf<String, Triple<QgMapRole, Int, String>>()
 
     fun render(points: List<QgMapPoint>) {
         lastPoints = points.filter { it.valid }
         val style = map?.style ?: return
         val features = FeatureCollection.fromFeatures(
-            lastPoints.map { point ->
+            lastPoints.mapIndexed { index, point ->
                 Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude)).apply {
                     addStringProperty("color", "#%06X".format(point.color and 0xFFFFFF))
+                    point.label?.trim()?.take(12)?.takeIf { it.isNotEmpty() }?.let { label ->
+                        val imageId = "$QUEUEGO_TRACKING_SOURCE-label-$index"
+                        val signature = Triple(point.role, point.color, label)
+                        if (labelImages[imageId] != signature) {
+                            style.addImage(imageId, trackingLabelBitmap(point, label))
+                            labelImages[imageId] = signature
+                        }
+                        addStringProperty("marker_image", imageId)
+                        addStringProperty("marker_kind", if (point.role == QgMapRole.RIDER) "cluster" else "stop")
+                    }
                 }
             }
         )
@@ -143,8 +201,22 @@ private class QueueGoTrackingMapHolder {
                     .withProperties(
                         circleColor(Expression.get("color")),
                         circleRadius(7f)
-                    )
+                    ).apply { setFilter(Expression.not(Expression.has("marker_image"))) }
             )
+            listOf("stop" to "bottom", "cluster" to "center").forEach { (kind, anchor) ->
+                style.addLayer(
+                    SymbolLayer("$QUEUEGO_TRACKING_LAYER-$kind-label", QUEUEGO_TRACKING_SOURCE).apply {
+                        setFilter(Expression.eq(Expression.get("marker_kind"), Expression.literal(kind)))
+                        setProperties(
+                            PropertyFactory.iconImage(Expression.get("marker_image")),
+                            PropertyFactory.iconSize(0.5f),
+                            PropertyFactory.iconAnchor(anchor),
+                            PropertyFactory.iconAllowOverlap(true),
+                            PropertyFactory.iconIgnorePlacement(true)
+                        )
+                    }
+                )
+            }
         }
         lastPoints.firstOrNull()?.let { point ->
             if (lastPoints.size == 1) {

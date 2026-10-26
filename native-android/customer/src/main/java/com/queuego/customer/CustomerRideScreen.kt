@@ -45,11 +45,11 @@ internal fun parsePassengerRide(o: JSONObject): PassengerRide {
 }
 internal fun passengerRideMapPoints(ride: PassengerRide): List<QgMapPoint> {
     if (ride.terminal) return emptyList()
-    fun point(lat: Double?, lng: Double?, color: Int, role: QgMapRole): QgMapPoint? =
-        if (lat == null || lng == null) null else QgMapPoint(lat, lng, color, role).takeIf { it.valid }
+    fun point(lat: Double?, lng: Double?, color: Int, role: QgMapRole, label: String? = null): QgMapPoint? =
+        if (lat == null || lng == null) null else QgMapPoint(lat, lng, color, role, label).takeIf { it.valid }
     return listOfNotNull(
-        point(ride.pickupLat, ride.pickupLng, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER),
-        point(ride.destinationLat, ride.destinationLng, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER),
+        point(ride.pickupLat, ride.pickupLng, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER, "รับ"),
+        point(ride.destinationLat, ride.destinationLng, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER, "ส่ง"),
         point(ride.riderLat, ride.riderLng, 0xFFE6002D.toInt(), QgMapRole.RIDER)
     )
 }
@@ -82,7 +82,7 @@ internal fun parsePassengerRideSupply(raw: JSONObject): PassengerRideSupply {
         val row = clusters?.optJSONObject(index) ?: return@mapNotNull null
         val count = row.optInt("count", 0)
         val point = QgMapPoint(row.optDouble("latitude"), row.optDouble("longitude"),
-            0xFFE6002D.toInt(), QgMapRole.RIDER)
+            0xFFE6002D.toInt(), QgMapRole.RIDER, count.toString())
         if (count < 2 || !row.optBoolean("approximate", false) || !point.valid) null
         else PassengerRideSupplyCluster(point, count)
     }
@@ -235,8 +235,8 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             if (loaded && !enabled) Text("บริการเรียกรถยังไม่เปิดให้ใช้ในขณะนี้")
             QgTrackingMap(
                 points = listOfNotNull(
-                    pickup?.let { QgMapPoint(it.latitude, it.longitude, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER) },
-                    destination?.let { QgMapPoint(it.latitude, it.longitude, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER) }
+                    pickup?.let { QgMapPoint(it.latitude, it.longitude, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER, "รับ") },
+                    destination?.let { QgMapPoint(it.latitude, it.longitude, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER, "ส่ง") }
                 ) + supply.clusters.map { it.point },
                 modifier = Modifier.fillMaxWidth().height(245.dp)
             )
