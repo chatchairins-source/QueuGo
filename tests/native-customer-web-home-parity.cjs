@@ -51,9 +51,17 @@ assert.ok(guestSource.includes('"laundry" -> onLogin("home")'),'Guest Laundry mu
 assert.ok(guestSource.includes('"orders" -> onLogin("home")'),'Guest Orders bottom nav must return Home after login like Web');
 assert.ok(guestSource.includes('onCheckout = { onLogin("checkout") }'),'Guest checkout alone must preserve checkout after login like Web');
 
+const laundryShell=blueprint.customer.laundry_shell;
+assert.deepEqual(laundryShell,{global_top_bar:true,bottom_navigation:true,bottom_navigation_selected:'home',home_density:false});
+assert.ok(!native.includes('if (screen != "laundry") CustomerBottomNavigation'),'Authenticated Laundry must keep the global Web bottom navigation');
+assert.ok(!native.includes('if (screen != "laundry") CustomerTopBar'),'Authenticated Laundry must keep the global Web QueueGo top bar');
+
 const navItems=blueprint.customer.bottom_navigation;
 assert.deepEqual(navItems.map(x=>x.label),['หน้าหลัก','ค้นหา','ตะกร้า','ออเดอร์']);
 const navSource=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerBottomNavigation.kt','utf8');
+assert.ok(navSource.includes('"home", "category", "shopping", "shop", "market", "laundry", "location" -> "home"'),'Laundry bottom navigation must select Home like Web');
+assert.ok(navSource.includes('val home = screen == "home"'),'Laundry must keep default compact navigation density rather than Home density');
+
 const navTriples=[...navSource.matchAll(/Triple\("([^"]+)",\s*"([^"]+)",\s*R\.drawable\.[^)]+\)/g)].map(x=>[x[1],x[2]]);
 assert.deepEqual(navTriples.map(x=>x[0]),navItems.map(x=>x.route));
 assert.deepEqual(navTriples.map(x=>x[1]),navItems.map(x=>x.label));
@@ -68,4 +76,4 @@ assert.equal(navGeo.explicit_label_line_height,false);
 assert.ok(!/Row\(Modifier\.fillMaxWidth\(\)\.height\(if \(home\)/.test(navSource),'Native bottom nav must not impose Android-only fixed row height');
 assert.ok(!/Text\(label,[^\n]*lineHeight/.test(navSource),'Native bottom nav label must not impose Android-only line height');
 
-console.log(JSON.stringify({checks:42,failures:0,scope:'Customer Android Home, nearby authority, bottom navigation and Guest protected-route login destinations match pinned Web main'}));
+console.log(JSON.stringify({checks:48,failures:0,scope:'Customer Android Home, protected-route login destinations and authenticated Laundry global chrome match pinned Web main'}));

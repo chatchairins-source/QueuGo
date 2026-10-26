@@ -101,6 +101,12 @@
       "orders": "home",
       "laundry": "home",
       "checkout": "checkout"
+    },
+    "laundry_shell": {
+      "global_top_bar": true,
+      "bottom_navigation": true,
+      "bottom_navigation_selected": "home",
+      "home_density": false
     }
   }
 }
