@@ -1,3 +1,13 @@
+## 2026-10-26 Native Customer Web parity — Guest Ride login destination DONE (source/test)
+
+- Stream: Android/Web functional parity, Customer only. Active branch `work-native-web-parity-20261026`; Web authority remains pinned to `main=7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Root cause/evidence: current Web protects Guest `ride` and, unlike checkout, does not persist a post-login Ride destination; successful login returns Home. Native Guest preserved `ride`, creating an Android-only post-login flow. Web and Native already agree that Guest orders/laundry return Home and checkout alone resumes checkout.
+- Change: Native Guest Ride now calls `onLogin("home")`. Authenticated Ride routing/screen implementation is untouched. The pinned parity blueprint now records Guest protected-route login destinations and the deterministic regression rejects restoring the Android-only Ride resume.
+- Implementation HEAD: `2376155ae0806302e62bbb53db59900f85efaca3`.
+- Test/CI: Native Pilot run `40263250008` **SUCCESS** — full QueueGo regression including route-parity guard, source integrity, Kotlin/tracking tests, all three APK builds, Android 16 KB packaging, WebView rejection, artifact upload, and emulator launch/map/voice lifecycle all passed.
+- Status: **DONE (source/test)**. Physical-device parity is not claimed.
+- NEXT: continue Customer only. Restore Web-equivalent global Customer chrome on authenticated Laundry: Web renders the default QueueGo top bar and compact bottom nav with Home selected; Native currently hides both when `screen == "laundry"`. Remove only those two hide conditions, preserve Laundry business logic, and add deterministic shell-parity guards before exact-head Native Pilot.
+
 ## 2026-10-26 Native Customer Web parity — nearby shop authority DONE (source/test)
 
 - Stream: Android/Web visual + functional parity, Customer only. Active branch `work-native-web-parity-20261026`; Web blueprint stays pinned to `main=7e036a0735cc49905e9b0a2434492470551a0c9d`.
