@@ -43,7 +43,7 @@ internal fun setCustomerPushEnabled(context: Context, userId: String, enabled: B
 
 internal fun customerArrivalSoundEnabled(context: Context, userId: String): Boolean =
     context.getSharedPreferences(CUSTOMER_PUSH_PREFS, Context.MODE_PRIVATE)
-        .getBoolean("arrival_sound_$userId", true)
+        .getBoolean("arrival_sound_$userId", false)
 
 internal fun setCustomerArrivalSoundEnabled(context: Context, userId: String, enabled: Boolean) {
     context.getSharedPreferences(CUSTOMER_PUSH_PREFS, Context.MODE_PRIVATE)

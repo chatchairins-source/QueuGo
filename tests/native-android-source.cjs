@@ -257,6 +257,7 @@ ok(
   'Customer Profile must expose the same six destinations as the current Web Profile'
 );
 const customerPushForMemory=read('customer/src/main/java/com/queuego/customer/CustomerPush.kt');
+const customerWebFeaturesForMemory=fs.readFileSync(path.resolve(__dirname,'../customer-features.js'),'utf8');
 ok(
   customerAppForMemory.includes('pushEnabled = pushEnabled') &&
   customerAppForMemory.includes('onTogglePush = ::toggleCustomerPush') &&
@@ -274,6 +275,11 @@ ok(
   customerPushForMemory.includes('CUSTOMER_ARRIVAL_SILENT_CHANNEL') &&
   customerPushForMemory.includes('customerArrivalNotification(title, body)'),
   'Customer push must respect the explicit background preference and arrival sound preference across token refresh and process recreation'
+);
+ok(
+  customerPushForMemory.includes('.getBoolean("arrival_sound_$userId", false)') &&
+  customerWebFeaturesForMemory.includes("soundOn=localStorage.getItem('qg_customer_sound_'+u.userId)==='on'"),
+  'Customer arrival sound must default off on Native exactly as it does on the current Web Profile'
 );
 ok(
   customerAppForMemory.includes('"เสียงแจ้งเตือนเมื่อ Rider ถึง"') &&

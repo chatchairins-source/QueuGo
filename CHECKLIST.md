@@ -2,10 +2,10 @@
 
 - Web blueprint: latest fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; verified native owner branch is `work-native-web-parity-20261026`, remote head `ebf9a83210f741232709bcedca6f029c88c3f57e`, descendant of prior exact successful Native Pilot checkpoint `260c3f0a84fef014ae30e5c81bc8213ecc46351e`. No newer Native owner branch or applicable open PR successor was found.
 - Root cause/evidence: current Web Profile exposes arrival sound, opt-in background notification toggle, test notification and the public privacy-policy link. Android automatically requested `POST_NOTIFICATIONS` and subscribed on session startup; it had no corresponding Profile controls. `NativePushApi` already provides authenticated subscribe, unsubscribe and test actions; Rider source confirms the public privacy URL.
-- Bounded change: move Customer background-push enrollment to the Profile toggle and Android permission action, persist user preference, gate token refresh on that preference, provide test push and arrival-sound preference (separate Android sound/silent arrival channels), and open the same privacy policy URL. No backend or production data changed.
-- Focused checks: `node tests/native-android-source.cjs` PASS (326); `node tests/native-customer-web-home-parity.cjs` PASS (55); `git diff --check` PASS. Local Gradle/Android SDK is unavailable.
+- Bounded change: move Customer background-push enrollment to the Profile toggle and Android permission action, persist user preference, gate token refresh on that preference, provide test push and arrival-sound preference (default OFF to match Web; separate Android sound/silent arrival channels), and open the same privacy policy URL. No backend or production data changed.
+- Focused checks: `node tests/native-android-source.cjs` PASS (327); `node tests/native-customer-web-home-parity.cjs` PASS (55); `git diff --check` PASS. Local Gradle/Android SDK is unavailable.
 - Full regression, exact-head Native Pilot/APK/emulator evidence: pending this source checkpoint.
-- **NEXT:** commit this bounded chunk, run clean full `npm test`, then verify exact-head Native Pilot and inspect any available Customer screens. Customer remains active; route Back/process-recreation parity follows this chunk.
+- **NEXT:** commit this default-alignment correction with the notification preferences chunk, run clean full `npm test`, then verify exact-head Native Pilot/APK/emulator evidence on the new SHA. The earlier exact run on `dcc787941d4b180641f50fa5f406f5be92a4d9ee` is still in progress and does not include this correction. Customer remains active; route Back/process-recreation parity follows this chunk.
 
 ## 2026-10-26 Customer Profile destinations and Favorites — DONE (source/test/CI); notification settings P1 remains
 
