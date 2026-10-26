@@ -115,4 +115,51 @@ class MerchantPosOfflineDraftStoreTest {
             assertEquals(groups, restored.optionGroups)
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun selectedOptionsPricesAndRetryIdsSurviveDraftReload() {
+        val root = Files.createTempDirectory("pos-offline-options-roundtrip").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val product = UUID.randomUUID().toString()
+            val original = draft(actor, shop, device).copy(items = listOf(
+                PosOfflineDraftItem(product, "ชาไทย", 65.0, 2,
+                    requestIds = List(2) { UUID.randomUUID().toString() },
+                    basePriceSnapshot = 45.0, optionsJson = "{\"size\":\"large\"}", optionLabel = "ขนาด: ใหญ่"),
+                PosOfflineDraftItem(product, "ชาไทย", 45.0, 1,
+                    requestIds = listOf(UUID.randomUUID().toString()),
+                    basePriceSnapshot = 45.0, optionsJson = "{\"size\":\"normal\"}", optionLabel = "ขนาด: ปกติ")
+            ))
+            val store = MerchantPosOfflineDraftStore(root)
+            store.save(original)
+            val restored = MerchantPosOfflineDraftStore(root).load(PosOfflineDraftScope(actor, shop, device))
+            assertEquals(original, restored)
+            assertEquals(2, restored!!.items.size)
+            assertNotEquals(restored.items[0].optionsJson, restored.items[1].optionsJson)
+            val json = JSONObject(root.listFiles()!!.single { it.name.endsWith(".json") }.readText())
+            assertEquals("large", json.getJSONArray("items").getJSONObject(0).getJSONObject("options").getString("size"))
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun olderPlainDraftsKeepTheirPriceAndEmptyOptions() {
+        val root = Files.createTempDirectory("pos-offline-legacy-draft").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val original = draft(actor, shop, device)
+            val store = MerchantPosOfflineDraftStore(root)
+            store.save(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".json") }
+            val json = JSONObject(file.readText())
+            val item = json.getJSONArray("items").getJSONObject(0)
+            item.remove("base_price")
+            item.remove("options")
+            item.remove("option_label")
+            file.writeText(json.toString())
+            assertEquals(original, store.load(PosOfflineDraftScope(actor, shop, device)))
+        } finally { root.deleteRecursively() }
+    }
+
 }

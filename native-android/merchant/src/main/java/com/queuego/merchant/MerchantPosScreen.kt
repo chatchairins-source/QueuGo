@@ -390,12 +390,8 @@ fun MerchantPosScreen(
             message = "บัญชีนี้ไม่มีสิทธิ์รับออเดอร์"
             return
         }
-        if (online && optionsJson == null && product.optionGroups.isNotEmpty()) {
+        if (optionsJson == null && product.optionGroups.isNotEmpty()) {
             optionTarget = product
-            return
-        }
-        if (!online && product.optionGroups.isNotEmpty()) {
-            message = "สินค้านี้มีตัวเลือกสินค้า กรุณาออนไลน์ก่อนเพิ่มลงร่าง"
             return
         }
         if (mode == "DINE_IN" && tableId == null && !noTable) {
@@ -403,7 +399,7 @@ fun MerchantPosScreen(
             return
         }
 
-        if (!online) {
+        if (!online || offlineDraft != null || offlineCatalogOnly) {
             val snap = snapshot
             val device = draftDeviceId
             if (snap == null || snapshotActorId != auth.session.authUserId || device == null) {
@@ -432,12 +428,12 @@ fun MerchantPosScreen(
                             auth.session.authUserId, snap.shopId, device, targetType, targetTable,
                             System.currentTimeMillis(), emptyList()
                         )
+                        val candidate = posOfflineDraftItem(product, optionsJson)
                         val current = draft.items.toMutableList()
-                        val index = current.indexOfFirst { it.productId == product.id }
+                        val index = current.indexOfFirst { it.productId == candidate.productId && it.optionsJson == candidate.optionsJson }
                         if (index >= 0) current[index] = current[index].copy(quantity = current[index].quantity + 1,
                             requestIds = emptyList())
-                        else current.add(PosOfflineDraftItem(product.id, product.name,
-                            product.price, 1))
+                        else current.add(candidate)
                         offlineDraftStore.save(draft.copy(items = current))
                     }
                     offlineDraft = withContext(Dispatchers.IO) {
@@ -448,10 +444,6 @@ fun MerchantPosScreen(
                     message = failure.message ?: "บันทึกร่างออฟไลน์ไม่สำเร็จ"
                 }
             }
-            return
-        }
-        if (offlineDraft != null) {
-            message = "ส่งหรือลบร่างออฟไลน์ก่อนเพิ่มสินค้าในบิลจริง"
             return
         }
 
@@ -560,6 +552,12 @@ fun MerchantPosScreen(
         val products = draft.items.map { item -> snap.products.firstOrNull { it.id == item.productId } }
         if (products.any { it == null || !it.available }) {
             message = "มีสินค้าที่ไม่พร้อมขายในขณะนี้ กรุณาออนไลน์และตรวจร่างอีกครั้ง"
+            return
+        }
+        try {
+            draft.items.forEachIndexed { index, item -> posOfflineDraftItem(products[index]!!, item.optionsJson) }
+        } catch (failure: Exception) {
+            message = failure.message ?: "มีตัวเลือกสินค้าที่ไม่มีหรือไม่ครบ กรุณาตรวจร่างอีกครั้ง"
             return
         }
         if (draft.type == "DINE_IN" && draft.tableId != null && snap.tables.none { it.id == draft.tableId && it.active }) {
@@ -1241,6 +1239,7 @@ fun MerchantPosScreen(
         MerchantPosOptionSelectionDialog(
             product = product,
             groups = product.optionGroups,
+            confirmLabel = if (posNetworkValidated(context) && offlineDraft == null && !offlineCatalogOnly) "เพิ่มลงบิล" else "เพิ่มลงร่าง",
             onDismiss = { if (!busy) optionTarget = null },
             onConfirm = { options ->
                 optionTarget = null
@@ -1411,12 +1410,12 @@ fun MerchantPosScreen(
     if (confirmDraftSubmit && offlineDraft != null && snap != null) {
         val draft = offlineDraft!!
         val products = draft.items.mapNotNull { item ->
-            snap.products.firstOrNull { it.id == item.productId }?.let { item to it }
+            snap.products.firstOrNull { it.id == item.productId }?.let { product ->
+                runCatching { item to posOfflineDraftItem(product, item.optionsJson) }.getOrNull()
+            }
         }
-        val changed = products.filter { (item, product) ->
-            item.nameSnapshot != product.name || kotlin.math.abs(item.priceSnapshot - product.price) >= 0.005
-        }
-        val total = products.sumOf { (item, product) -> product.price * item.quantity }
+        val changed = products.filter { (item, current) -> posOfflineDraftLineChanged(item, current) }
+        val total = products.sumOf { (item, current) -> current.priceSnapshot * item.quantity }
         AlertDialog(
             onDismissRequest = { if (!busy) confirmDraftSubmit = false },
             title = { Text("ตรวจร่างก่อนสร้างบิล") },
@@ -1425,13 +1424,16 @@ fun MerchantPosScreen(
                     Text("ส่งรายการไปตรวจสอบราคาและสิทธิ์บนเซิร์ฟเวอร์หรือไม่? จะสร้างบิลจริงเท่านั้น ยังไม่ชำระเงินและไม่ส่งเข้าครัว")
                     Spacer(Modifier.height(8.dp))
                     Text("ยอดจากราคาปัจจุบัน: ฿${money(total)}", fontWeight = FontWeight.Bold)
-                    changed.forEach { (item, product) ->
-                        Text("${item.nameSnapshot} → ${product.name} · ฿${money(item.priceSnapshot)} → ฿${money(product.price)}", fontSize = 12.sp)
+                    products.filter { it.second.optionLabel.isNotBlank() }.forEach { (item, current) ->
+                        Text("${item.nameSnapshot} × ${item.quantity} · ${current.optionLabel}", fontSize = 12.sp)
+                    }
+                    changed.forEach { (item, current) ->
+                        Text("${item.nameSnapshot} → ${current.nameSnapshot} · ฿${money(item.priceSnapshot)} → ฿${money(current.priceSnapshot)}", fontSize = 12.sp)
                     }
                 }
             },
             confirmButton = {
-                TextButton(enabled = !busy, onClick = ::commitReviewedDraft) { Text("ส่งเป็นบิลจริง") }
+                TextButton(enabled = !busy && products.size == draft.items.size, onClick = ::commitReviewedDraft) { Text("ส่งเป็นบิลจริง") }
             },
             dismissButton = {
                 TextButton(enabled = !busy, onClick = { confirmDraftSubmit = false }) { Text("กลับไปตรวจร่าง") }
@@ -1461,27 +1463,33 @@ private fun PosOfflineDraftPanel(
     onSubmit: () -> Unit,
     onDiscard: () -> Unit
 ) {
-    val currentProducts = draft.items.map { item -> item to snapshot?.products?.firstOrNull { it.id == item.productId } }
+    val currentProducts = draft.items.map { item ->
+        item to snapshot?.products?.firstOrNull { it.id == item.productId }?.let { product ->
+            runCatching { posOfflineDraftItem(product, item.optionsJson) }.getOrNull()
+        }
+    }
     val pending = draft.items.any { it.requestIds.isNotEmpty() }
-    val changes = currentProducts.count { (item, product) ->
-        product != null && (item.nameSnapshot != product.name || kotlin.math.abs(item.priceSnapshot - product.price) >= 0.005)
+    val valid = currentProducts.all { it.second != null }
+    val changes = currentProducts.count { (item, current) ->
+        current != null && posOfflineDraftLineChanged(item, current)
     }
     QgCard(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("ร่างตะกร้าบนอุปกรณ์นี้", fontWeight = FontWeight.Black)
             Text(if (online) "ออนไลน์ · ตรวจสินค้าและราคาปัจจุบันก่อนส่ง" else "ออฟไลน์ · ยังไม่สร้างบิล ไม่ชำระเงิน และไม่ส่งเข้าครัว",
                 color = if (online) QgGreen else QgRed, fontSize = 12.sp)
-            draft.items.take(4).forEach { item ->
-                val product = snapshot?.products?.firstOrNull { it.id == item.productId }
+            currentProducts.take(4).forEach { (item, current) ->
                 Text("${item.nameSnapshot} × ${item.quantity}" +
-                    if (product != null && (item.nameSnapshot != product.name || kotlin.math.abs(item.priceSnapshot - product.price) >= 0.005))
-                        " · ปัจจุบัน ${product.name} ฿${money(product.price)}" else " · ฿${money(item.priceSnapshot)}",
+                    if (current != null && posOfflineDraftLineChanged(item, current))
+                        " · ปัจจุบัน ${current.nameSnapshot} ฿${money(current.priceSnapshot)}" else " · ฿${money(item.priceSnapshot)}",
                     fontSize = 12.sp)
+                if (item.optionLabel.isNotBlank()) Text(item.optionLabel, fontSize = 11.sp, color = QgMuted)
             }
             if (draft.items.size > 4) Text("และอีก ${draft.items.size - 4} รายการ", color = QgMuted, fontSize = 11.sp)
             if (changes > 0) Text("มี ${changes} รายการที่ชื่อหรือราคาเปลี่ยน · ตรวจทานก่อนส่ง", color = QgRed, fontSize = 11.sp)
+            if (online && !valid) Text("มีสินค้าหรือตัวเลือกที่ไม่พร้อมขาย กรุณาตรวจร่างอีกครั้ง", color = QgRed, fontSize = 11.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(enabled = enabled && online && snapshot != null, onClick = onSubmit) { Text("ตรวจและส่งเมื่อออนไลน์") }
+                Button(enabled = enabled && online && snapshot != null && valid, onClick = onSubmit) { Text("ตรวจและส่งเมื่อออนไลน์") }
                 OutlinedButton(enabled = !pending, onClick = onDiscard) { Text(if (pending) "ตรวจผลก่อนลบ" else "ลบร่าง") }
             }
         }

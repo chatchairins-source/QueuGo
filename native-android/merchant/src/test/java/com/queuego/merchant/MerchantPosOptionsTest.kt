@@ -57,4 +57,32 @@ class MerchantPosOptionsTest {
             posProductOptionPayload(groups, mapOf("portion" to listOf("normal"), "toppings" to listOf("egg", "meat", "egg")))
         }
     }
+
+    @Test fun offlineLinesIncludeChosenPriceAndNormalizeEquivalentSelections() {
+        val product = PosProduct("product", "อาหาร", 45.0, null, true, optionGroups = groups())
+        val first = posOfflineDraftItem(product,
+            "{\"portion\":\"special\",\"toppings\":[\"meat\",\"egg\"]}")
+        val same = posOfflineDraftItem(product,
+            "{\"toppings\":[\"egg\",\"meat\"],\"portion\":\"special\"}")
+        assertEquals(45.0, first.basePriceSnapshot, 0.001)
+        assertEquals(80.0, first.priceSnapshot, 0.001)
+        assertEquals(first.optionsJson, same.optionsJson)
+        assertTrue(first.optionLabel.contains("ขนาด: พิเศษ"))
+        assertTrue(first.optionLabel.contains("ท็อปปิ้ง: ไข่ดาว"))
+        assertFalse(posOfflineDraftLineChanged(first, same))
+        val repriced = posOfflineDraftItem(product.copy(price = 50.0), first.optionsJson)
+        assertTrue(posOfflineDraftLineChanged(first, repriced))
+    }
+
+    @Test fun offlineLinesRejectMissingRequiredAndRemovedOptionKeys() {
+        val product = PosProduct("product", "อาหาร", 45.0, null, true, optionGroups = groups())
+        assertThrows(IllegalArgumentException::class.java) { posOfflineDraftItem(product) }
+        assertThrows(IllegalArgumentException::class.java) {
+            posOfflineDraftItem(product, "{\"portion\":\"normal\",\"toppings\":[\"egg\",\"egg\"]}")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            posOfflineDraftItem(product.copy(optionGroups = emptyList()), "{\"portion\":\"normal\"}")
+        }
+    }
+
 }

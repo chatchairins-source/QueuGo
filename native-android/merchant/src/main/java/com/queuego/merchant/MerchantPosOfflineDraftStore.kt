@@ -14,7 +14,10 @@ data class PosOfflineDraftItem(
     val nameSnapshot: String,
     val priceSnapshot: Double,
     val quantity: Int,
-    val requestIds: List<String> = emptyList()
+    val requestIds: List<String> = emptyList(),
+    val basePriceSnapshot: Double = priceSnapshot,
+    val optionsJson: String = "{}",
+    val optionLabel: String = ""
 )
 
 data class PosOfflineDraft(
@@ -182,7 +185,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         .put("items", JSONArray().apply { d.items.forEach { i ->
             put(JSONObject().put("product_id", i.productId).put("name", i.nameSnapshot)
                 .put("price", i.priceSnapshot).put("quantity", i.quantity)
-                .put("request_ids", JSONArray(i.requestIds)))
+                .put("base_price", i.basePriceSnapshot).put("options", JSONObject(i.optionsJson))
+                .put("option_label", i.optionLabel).put("request_ids", JSONArray(i.requestIds)))
         } })
 
     private fun decode(j: JSONObject): PosOfflineDraft {
@@ -195,7 +199,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 val requests = item.getJSONArray("request_ids")
                 PosOfflineDraftItem(item.getString("product_id"), item.getString("name"),
                     item.getDouble("price"), item.getInt("quantity"),
-                    (0 until requests.length()).map(requests::getString))
+                    (0 until requests.length()).map(requests::getString),
+                    basePriceSnapshot = item.optDouble("base_price", item.getDouble("price")),
+                    optionsJson = canonicalPosOptionJson((item.optJSONObject("options") ?: JSONObject()).toString()),
+                    optionLabel = item.optString("option_label", ""))
             })
     }
 
@@ -210,6 +217,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             requireUuid(item.productId)
             require(item.nameSnapshot.isNotBlank() && item.nameSnapshot.length <= 200)
             require(item.priceSnapshot.isFinite() && item.priceSnapshot >= 0)
+            require(item.basePriceSnapshot.isFinite() && item.basePriceSnapshot >= 0)
+            require(item.optionsJson.length <= 5000 && canonicalPosOptionJson(item.optionsJson) == item.optionsJson)
+            require(item.optionLabel.length <= 1000)
             require(item.quantity in 1..99)
             require(item.requestIds.size in setOf(0, item.quantity))
             item.requestIds.forEach(::requireUuid)

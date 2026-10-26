@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgRed
+import java.math.BigDecimal
+import java.math.RoundingMode
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -119,12 +121,47 @@ internal fun posProductOptionGroupsJson(groups: List<PosProductOptionGroup>): JS
     }
 }
 
+internal fun posOfflineDraftLineChanged(saved: PosOfflineDraftItem, current: PosOfflineDraftItem): Boolean =
+    saved.nameSnapshot != current.nameSnapshot ||
+        kotlin.math.abs(saved.basePriceSnapshot - current.basePriceSnapshot) >= 0.001 ||
+        kotlin.math.abs(saved.priceSnapshot - current.priceSnapshot) >= 0.001
+
+/** Snapshot the chosen local line; the server still validates options and prices at submission. */
+internal fun posOfflineDraftItem(product: PosProduct, rawOptions: String? = null): PosOfflineDraftItem {
+    require(product.available) { "สินค้านี้ไม่ได้เปิดขายหน้าร้านตามข้อมูลที่บันทึกล่าสุด" }
+    require(product.price.isFinite() && product.price >= 0) { "ราคาสินค้าที่บันทึกไว้ไม่พร้อมใช้งาน" }
+    val input = JSONObject(rawOptions ?: "{}")
+    val selections = input.keys().asSequence().associateWith { key ->
+        when (val value = input.get(key)) {
+            is String -> listOf(value)
+            is JSONArray -> (0 until value.length()).map { index ->
+                value.get(index) as? String ?: throw IllegalArgumentException("ตัวเลือกสินค้าไม่ถูกต้อง")
+            }
+            else -> throw IllegalArgumentException("ตัวเลือกสินค้าไม่ถูกต้อง")
+        }
+    }
+    val payload = if (product.optionGroups.isEmpty()) {
+        require(selections.isEmpty()) { "ตัวเลือกสินค้าเปลี่ยน กรุณาตรวจร่างอีกครั้ง" }
+        JSONObject()
+    } else posProductOptionPayload(product.optionGroups, selections)
+    val selectedOptions = product.optionGroups.flatMap { group ->
+        group.options.filter { it.key in selections[group.key].orEmpty() }.map { option -> group to option }
+    }
+    val delta = selectedOptions.sumOf { it.second.priceDelta }
+    val price = BigDecimal.valueOf(product.price + delta).setScale(2, RoundingMode.HALF_UP).toDouble()
+    return PosOfflineDraftItem(product.id, product.name, price, 1,
+        basePriceSnapshot = product.price,
+        optionsJson = canonicalPosOptionJson(payload.toString()),
+        optionLabel = selectedOptions.joinToString(" · ") { (group, option) -> "${group.name}: ${option.name}" })
+}
+
 @Composable
 internal fun MerchantPosOptionSelectionDialog(
     product: PosProduct,
     groups: List<PosProductOptionGroup>,
     onDismiss: () -> Unit,
-    onConfirm: (JSONObject) -> Unit
+    onConfirm: (JSONObject) -> Unit,
+    confirmLabel: String = "เพิ่มลงบิล"
 ) {
     var choices by remember(product.id) { mutableStateOf(defaultPosProductOptionSelections(groups)) }
     var validationMessage by remember(product.id) { mutableStateOf<String?>(null) }
@@ -171,7 +208,7 @@ internal fun MerchantPosOptionSelectionDialog(
                 runCatching { posProductOptionPayload(groups, choices) }
                     .onSuccess(onConfirm)
                     .onFailure { validationMessage = it.message ?: "ตัวเลือกสินค้าไม่ถูกต้อง" }
-            }) { Text("เพิ่มลงบิล") }
+            }) { Text(confirmLabel) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("ยกเลิก") } }
     )

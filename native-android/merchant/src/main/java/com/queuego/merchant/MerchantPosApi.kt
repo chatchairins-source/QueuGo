@@ -398,7 +398,7 @@ class MerchantPosApi(
         val items = JSONArray().apply {
             draft.items.forEach { item ->
                 put(JSONObject().put("product_id", item.productId).put("quantity", item.quantity)
-                    .put("options", JSONObject()).put("request_ids", JSONArray(item.requestIds)))
+                    .put("options", JSONObject(item.optionsJson)).put("request_ids", JSONArray(item.requestIds)))
             }
         }
         val raw = http.rpc("pos_submit_offline_draft", auth.session.accessToken,

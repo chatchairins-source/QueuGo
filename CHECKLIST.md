@@ -1,3 +1,17 @@
+## 2026-10-26 Merchant POS offline custom options — IN PROGRESS (source/test checkpoint; exact-head Pilot NEXT)
+
+- Based on the verified Native successor `49478a5ca477f84b89d7c004d010da3f991739b1`, branch `work-native-web-parity-20261026`; Web Production remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Web `merchant/pos-table-v2.js` stores a separate local line for each product+option combination, snapshots base/option-inclusive price and option labels, validates current required/min/max/unknown/duplicate options before submission, and sends exact saved options with stable per-unit request IDs. Existing `20261022080048_pos_offline_draft_submission.sql` already validates/hashes those items and delegates to `pos_add_product_with_options`; no backend change is needed.
+- This atomic source/test checkpoint implements that Native flow: offline selection dialog; canonical option-aware line grouping; durable base-price/options/labels with backward-compatible plain-draft decoding; review of current options and option-inclusive prices; exact saved options in the existing atomic RPC. Price/name changes retain Web's explicit confirmation flow. Offline confirmation says “เพิ่มลงร่าง”; pending drafts retain their payload and request IDs.
+- Added focused JVM cases for distinct option-line persistence, retry IDs, old-draft decoding, option-inclusive pricing, equivalent multi-choice normalization, and rejection of missing/duplicate/removed selections. Local Android tooling is unavailable; hosted Native Pilot is the required compile/JUnit/APK/runtime evidence.
+- **NEXT:** run/poll Native Pilot on this exact successor HEAD; inspect and fix only its first confirmed failure. If green, record offline custom options DONE (source/test), then continue the Merchant catalog/POS and remaining Customer inventory P1/P0 audit.
+
+## 2026-10-26 Merchant POS online custom options — DONE (source/test)
+
+- Implementation `feef406520de0f912de87e9873aed128b21d508a` with bounded source-contract/compile/test-fixture corrections through `49478a5ca477f84b89d7c004d010da3f991739b1`.
+- Exact Native Pilot [40309589021](https://github.com/chatchairins-source/QueuGo/actions/runs/40309589021) on `49478a5ca477f84b89d7c004d010da3f991739b1` completed SUCCESS: full regression, Native source/contracts, all module JVM tests, three APKs, 16 KB packaging, WebView rejection, and emulator launch/map/voice lifecycle.
+- **NEXT:** complete offline draft custom-option parity and its exact-head Pilot as recorded above.
+
 ## 2026-10-26 Merchant POS options JUnit fixture syntax — bounded repair; exact-head Pilot NEXT
 
 - Exact Native Pilot [40308748160](https://github.com/chatchairins-source/QueuGo/actions/runs/40308748160) on `83f40abb3420a7a3acec06b1d350e44b9f9c490e` cleared regression and all earlier gates, then failed at the first remaining compiler diagnostic: `MerchantPosOptionsTest.kt:17:101 Syntax error: Expecting ','`. The nested `JSONArray().put(...)` fixture had unbalanced closures, causing the remaining option-test diagnostics to cascade.
