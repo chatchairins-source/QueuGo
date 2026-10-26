@@ -39,7 +39,20 @@
       "nearby_shop_categories": [
         "food",
         "cafe"
-      ]
+      ],
+      "category_tile": {
+        "tile_width_css_px": 64,
+        "tile_width_native_dp": 64,
+        "gap_css_px": 13,
+        "gap_native_dp": 13,
+        "circle_css_px": 54,
+        "circle_native_dp": 54,
+        "icon_css_px": 25,
+        "icon_native_dp": 25,
+        "label_font_css_px": 10,
+        "label_font_native_sp": 10,
+        "label_nowrap": true
+      }
     },
     "bottom_navigation": [
       {

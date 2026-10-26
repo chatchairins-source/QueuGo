@@ -1581,7 +1581,7 @@ private fun CustomerCategoryButton(
     }
     Column(
         Modifier
-            .width(72.dp)
+            .width(64.dp)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -1609,7 +1609,8 @@ private fun CustomerCategoryButton(
             fontWeight = FontWeight.Bold,
             fontSize = 10.sp,
             lineHeight = 12.sp,
-            maxLines = 2,
+            maxLines = 1,
+            softWrap = false,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
