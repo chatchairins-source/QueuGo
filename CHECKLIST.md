@@ -1,3 +1,9 @@
+## 2026-10-26 Merchant POS custom options parity — P1 source gap confirmed
+
+- Web Production `main=7e036a0735cc49905e9b0a2434492470551a0c9d` loads each product's `variants`, presents structured `queuego.menu-options.v1` groups and legacy string variants, validates required/min/max/duplicate selections, and uses `pos_add_product_with_options` with a stable request UUID. The server validates selected keys and authoritative price deltas, snapshots option labels into the order item, and replays safely (`supabase/migrations/20261021223000_pos_menu_option_pricing.sql`).
+- Native Merchant POS product projection and `PosProduct` omit `variants`; tapping a product calls the plain `pos_edit_bill_once` add path. Native offline draft submission also currently sends empty `options`. This prevents required customizations and option-based price calculation in Native, a confirmed P1 catalog/POS gap.
+- **NEXT:** implement Native online option parity in one bounded chunk: parse Web option groups/legacy variants, present validated selection UI, persist the exact pending choice/request across interruption, and call the existing authoritative `pos_add_product_with_options` RPC. Add focused JUnit/source contracts, run exact-head Native Pilot, then separately close offline-draft option parity if still open.
+
 ## 2026-10-26 Merchant POS tracked stock parity — DONE (source + exact-head Native Pilot)
 
 - Native POS parity implementation `6199e8561c7433a7cf95cdb6cb92ff316bec07ba`; checklist successor HEAD `43f98d6cdd05bccfe7e0b0f76998258abaa0c062` with source tree unchanged after that code commit.
