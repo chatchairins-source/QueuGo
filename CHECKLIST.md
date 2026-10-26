@@ -1,3 +1,12 @@
+## 2026-10-26 Authenticated Rider visual parity — inline credit + single inbox — IN PROGRESS (exact Pilot NEXT)
+
+- Fresh authenticated review run `40338610666` on exact checkpoint `2e52a516b8caba51ad9195a6bbe4dea1c67799b4` completed SUCCESS: Rider and Merchant APKs built, emulator booted, Rider capture completed, Merchant capture completed and artifacts were uploaded. Merchant artifact `12659106342`; Rider artifact `12658932086`. This is emulator visual evidence, not physical-device certification.
+- Verified visually: Merchant Home now loads the real shop image after the bounded HTTPS retry; Merchant Products/Promotions remain clean. Rider Home now has the Web-aligned right rail (speed → recenter → overview → compass) and compact Ready card.
+- Fresh Rider Earnings exposed a remaining architecture mismatch: current Web uses `QueueGoCredit.mountInline()` (label + balance + explicit recheck), while Native still mounted the full ledger/top-up panel. Added native `QueueGoCreditInline` using existing `queuego_credit_summary` only, switched Rider Earnings to it, and guarded Merchant full-panel ownership separately. Source/test head chain: `7ead2afe` → `bf7239f5` → `e0158c6b`.
+- Fresh Rider Messages also exposed a current-Web mismatch: Web renders a single message inbox with no `แชต / แจ้งเตือน` segmented tabs. Native now renders the single inbox directly, removes notification-center count from the Messages badge, and updates authenticated capture to 10 expected screens. FCM subscription, notification permission and Profile push/test controls remain intact. Source/test head chain: `c7e675b4` → `4a0d7a87` → `174811ed` → `43a5d0f3`.
+- No Production database/data write and no dispatch/order/payment authority change.
+- **NEXT:** inspect exact-head Native Pilot on the newest successor and fix only the first confirmed failure. After green source/Kotlin/APK/runtime gates, trigger a fresh authenticated review and visually confirm Rider Earnings inline credit and single Messages inbox. Customer authenticated review remains blocked on the recorded missing secret pair.
+
 ## 2026-10-26 Current Web visual parity — exact Pilot PASS / final authenticated capture requested
 
 - Newest successor `4077aa5fd1c2b9a78cc519fcdf0cc70aacdb204f` exact Native Pilot run `40336638038` completed **SUCCESS** on the same head: Full QueueGo regression, source integrity/assets, tracking/unit tests, all three Native APK builds, Android 16 KB packaging, WebView rejection, and Android emulator launch/map/voice/lifecycle all passed.
