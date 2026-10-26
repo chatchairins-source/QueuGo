@@ -1,3 +1,13 @@
+## 2026-10-26 Native Customer Web parity — nearby shop authority DONE (source/test)
+
+- Stream: Android/Web visual + functional parity, Customer only. Active branch `work-native-web-parity-20261026`; Web blueprint stays pinned to `main=7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Root cause/evidence: Web Home “ร้านใกล้คุณ” admits only `food` and `cafe`. Native previously approximated this with an exclusion filter, which could admit Laundry/other future service categories and diverge from Web.
+- Change: Native Customer Home now uses the explicit Web allowlist `setOf("food", "cafe")`; distance sorting and shop-card presentation are unchanged. The deterministic Web-parity regression now rejects an exclusion-based approximation.
+- Implementation HEAD: `71af23c9505dd77b5d57636098dc37491e11cbff`.
+- Test/CI: Native Pilot run `40261856409` **SUCCESS** — full QueueGo regression, Customer Web parity guard, source integrity, Kotlin/tracking tests, all three APK builds, Android 16 KB packaging, WebView rejection, artifact upload, and emulator launch/map/voice lifecycle all passed.
+- Status: **DONE (source/test)**. Physical-device pixel parity is not claimed.
+- NEXT: continue Customer only. Fix Guest Ride post-login destination parity: current Web protects `ride` and returns to Home after login, while Native Guest currently preserves `ride`. Change only Guest login destination for Ride to Home; keep Ride implementation/routing intact for authenticated entry points. Add deterministic route-parity assertions, then run exact-head Native Pilot.
+
 ## 2026-10-26 Native Customer Web parity — Bottom navigation geometry DONE (source/test)
 
 - Stream: Android/Web visual parity, Customer only. Active branch `work-native-web-parity-20261026`; Web blueprint remains pinned to `main=7e036a0735cc49905e9b0a2434492470551a0c9d`.
