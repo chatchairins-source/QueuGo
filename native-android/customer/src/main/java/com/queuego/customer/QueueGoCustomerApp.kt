@@ -1984,79 +1984,197 @@ private fun ProfileScreen(
     onPrivacy: () -> Unit,
     logout: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+    var showDeletion by remember { mutableStateOf(false) }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 4.dp)
+    ) {
         if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
             "Customer", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
-            BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
-        QgSectionTitle("บัญชีของฉัน")
-        Spacer(Modifier.height(12.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text(auth.user.name, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                Text("บัญชีลูกค้า", color = QgMuted)
-                Text("สถานะบัญชี: " + auth.user.status, color = QgMuted)
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        QgSectionTitle("บัญชีและการใช้งาน")
-        Spacer(Modifier.height(8.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                ProfileDestination("ที่อยู่จัดส่ง", onAddress)
-                ProfileDestination("ออเดอร์ของฉัน", onOrders)
-                ProfileDestination("การแจ้งเตือน", onNotifications)
-                ProfileDestination("รายการโปรด", onFavorites)
-                ProfileDestination("โปรโมชั่นจากร้าน", onPromotions)
-                ProfileDestination("ติดต่อฝ่ายช่วยเหลือ", onSupport)
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        QgSectionTitle("การแจ้งเตือน")
-        Spacer(Modifier.height(8.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                ProfileSwitch(
-                    title = "เสียงแจ้งเตือนเมื่อ Rider ถึง",
-                    subtitle = "เสียงเตือนเมื่อ Rider มาถึงจุดส่ง",
-                    checked = arrivalSoundEnabled,
-                    enabled = !pushBusy,
-                    onCheckedChange = { onToggleArrivalSound() }
-                )
-                ProfileSwitch(
-                    title = "การแจ้งเตือนเบื้องหลัง",
-                    subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดแอป",
-                    checked = pushEnabled,
-                    enabled = !pushBusy,
-                    onCheckedChange = { onTogglePush() }
-                )
-                ProfileDestination("ทดสอบการแจ้งเตือน", onTestPush, enabled = !pushBusy)
-                if (!notificationMessage.isNullOrBlank()) {
-                    Text(
-                        notificationMessage,
-                        color = QgMuted,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                    )
-                }
-                Text("การชำระเงิน", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
-                Text("ชำระเงินสดเมื่อรับสินค้า", color = QgMuted, modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp))
-                Spacer(Modifier.height(8.dp))
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        QgSectionTitle("ความเป็นส่วนตัวและบัญชี")
-        Spacer(Modifier.height(8.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            ProfileDestination("นโยบายความเป็นส่วนตัว", onPrivacy)
-        }
-        Spacer(Modifier.height(10.dp))
-        QgAccountDeletionSection(
-            accessToken = auth.session.accessToken,
-            onDeleted = logout,
-            pendingChatUserId = auth.user.id
+            BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE
         )
-        Spacer(Modifier.height(18.dp))
-        OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth()) { Text("ออกจากระบบ") }
+
+        CustomerProfileHero(auth.user.name)
+
+        CustomerProfileSection("บัญชีและการใช้งาน") {
+            ProfileDestination("ที่อยู่จัดส่ง", onAddress)
+            CustomerProfileDivider()
+            ProfileDestination("ออเดอร์ของฉัน", onOrders)
+            CustomerProfileDivider()
+            ProfileDestination("การแจ้งเตือน", onNotifications)
+            CustomerProfileDivider()
+            ProfileDestination("รายการโปรด", onFavorites)
+            CustomerProfileDivider()
+            ProfileDestination("โปรโมชั่นจากร้าน", onPromotions)
+            CustomerProfileDivider()
+            ProfileDestination("ติดต่อฝ่ายช่วยเหลือ", onSupport)
+        }
+
+        Spacer(Modifier.height(10.dp))
+        CustomerProfileSection("การแจ้งเตือน") {
+            ProfileSwitch(
+                title = "เสียงแจ้งเตือนเมื่อ Rider ถึง",
+                subtitle = "เสียงเตือนเมื่อ Rider มาถึงจุดส่ง",
+                checked = arrivalSoundEnabled,
+                enabled = !pushBusy,
+                onCheckedChange = { onToggleArrivalSound() }
+            )
+            CustomerProfileDivider()
+            ProfileSwitch(
+                title = "การแจ้งเตือนเบื้องหลัง",
+                subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดแอป",
+                checked = pushEnabled,
+                enabled = !pushBusy,
+                onCheckedChange = { onTogglePush() }
+            )
+            CustomerProfileDivider()
+            ProfileDestination(
+                "ทดสอบการแจ้งเตือน",
+                onTestPush,
+                enabled = !pushBusy,
+                detail = "ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง"
+            )
+        }
+        if (!notificationMessage.isNullOrBlank()) {
+            Text(
+                notificationMessage,
+                color = QgMuted,
+                fontSize = 9.5.sp,
+                lineHeight = 13.sp,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+            )
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 7.dp)
+                .background(androidx.compose.ui.graphics.Color(0xFFF7F7F8), RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                "การชำระเงิน",
+                color = androidx.compose.ui.graphics.Color(0xFF5D6269),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "ชำระเงินสดเมื่อรับสินค้า",
+                color = androidx.compose.ui.graphics.Color(0xFF737980),
+                fontSize = 9.5.sp
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        CustomerProfileSection("ความเป็นส่วนตัวและบัญชี") {
+            ProfileDestination("นโยบายความเป็นส่วนตัว", onPrivacy)
+            CustomerProfileDivider()
+            ProfileDestination(
+                "ลบบัญชีถาวร",
+                { showDeletion = true },
+                detail = "ลบ Auth และข้อมูลส่วนบุคคล",
+                danger = true
+            )
+            CustomerProfileDivider()
+            ProfileDestination("ออกจากระบบ", logout)
+        }
+
+        if (showDeletion) {
+            Spacer(Modifier.height(10.dp))
+            QgAccountDeletionSection(
+                accessToken = auth.session.accessToken,
+                onDeleted = logout,
+                pendingChatUserId = auth.user.id
+            )
+            OutlinedButton(
+                onClick = { showDeletion = false },
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+            ) {
+                Text("ปิด")
+            }
+        }
+
+        Spacer(Modifier.height(30.dp))
     }
+}
+
+@Composable
+private fun CustomerProfileHero(name: String) {
+    val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "Q"
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            Modifier
+                .size(60.dp)
+                .background(androidx.compose.ui.graphics.Color(0xFFE9EAEC), RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                initial,
+                color = androidx.compose.ui.graphics.Color(0xFF989DA5),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                name.ifBlank { "ลูกค้า" },
+                color = androidx.compose.ui.graphics.Color(0xFF17171B),
+                fontSize = 20.sp,
+                lineHeight = 23.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+            Text(
+                "บัญชีลูกค้า",
+                color = androidx.compose.ui.graphics.Color(0xFF0A9660),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier
+                    .padding(top = 5.dp)
+                    .background(androidx.compose.ui.graphics.Color(0xFFE9FAF2), RoundedCornerShape(99.dp))
+                    .padding(horizontal = 7.dp, vertical = 3.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CustomerProfileSection(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            title,
+            color = androidx.compose.ui.graphics.Color(0xFF777D85),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(start = 2.dp, bottom = 6.dp)
+        )
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(androidx.compose.ui.graphics.Color.White, RoundedCornerShape(16.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun CustomerProfileDivider() {
+    HorizontalDivider(color = QgLine)
 }
 
 @Composable
@@ -2068,26 +2186,80 @@ private fun ProfileSwitch(
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(Modifier.weight(1f).clickable(enabled = enabled) { onCheckedChange(!checked) }) {
-            Text(title, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = androidx.compose.ui.graphics.Color(0xFF211E20),
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                subtitle,
+                color = androidx.compose.ui.graphics.Color(0xFF8A8F96),
+                fontSize = 9.5.sp,
+                lineHeight = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled
+        )
     }
 }
 
 @Composable
-private fun ProfileDestination(label: String, onClick: () -> Unit, enabled: Boolean = true) {
+private fun ProfileDestination(
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    detail: String? = null,
+    danger: Boolean = false
+) {
     Row(
-        Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(horizontal = 14.dp, vertical = 13.dp),
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(label, fontWeight = FontWeight.SemiBold)
-        Text("›", color = QgMuted, style = MaterialTheme.typography.titleLarge)
+        Column(Modifier.weight(1f)) {
+            Text(
+                label,
+                color = if (danger) androidx.compose.ui.graphics.Color(0xFFD92F3E)
+                    else androidx.compose.ui.graphics.Color(0xFF211E20),
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (!detail.isNullOrBlank()) {
+                Text(
+                    detail,
+                    color = androidx.compose.ui.graphics.Color(0xFF8A8F96),
+                    fontSize = 9.5.sp,
+                    lineHeight = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+        Text(
+            "›",
+            color = androidx.compose.ui.graphics.Color(0xFFAFB3B9),
+            fontSize = 22.sp,
+            lineHeight = 22.sp
+        )
     }
 }
 
