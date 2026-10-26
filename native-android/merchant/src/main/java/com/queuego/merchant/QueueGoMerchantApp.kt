@@ -626,6 +626,7 @@ private fun MerchantShell(
     ) { insets ->
         Column(Modifier.fillMaxSize().padding(insets).background(QgBg)) {
             MerchantTopBar(
+                screen = screen,
                 unreadCount = notifications.count { !it.isRead },
                 onHome = { screen = "home" },
                 onNotifications = { screen = "notifications" }
@@ -1012,8 +1013,7 @@ private fun MerchantShell(
                         MerchantPromotionScreen(
                             auth = auth,
                             shop = activeShop,
-                            api = api,
-                            onBack = { screen = "home" }
+                            api = api
                         )
                     }
                 }
@@ -1228,12 +1228,40 @@ private fun MerchantShell(
     }
 }
 
+internal fun merchantTopBarTitle(screen: String): String? =
+    if (screen == "promotions") "โปรโมชั่น" else null
+
 @Composable
 private fun MerchantTopBar(
+    screen: String,
     unreadCount: Int,
     onHome: () -> Unit,
     onNotifications: () -> Unit
 ) {
+    val title = merchantTopBarTitle(screen)
+    if (title != null) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(Color(0xFAFFFFFF))
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .height(40.dp)
+        ) {
+            QgIconButton(
+                icon = "back",
+                modifier = Modifier.align(Alignment.CenterStart),
+                onClick = onHome
+            )
+            Text(
+                title,
+                modifier = Modifier.align(Alignment.Center),
+                color = Color(0xFF17191D),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+        return
+    }
     Row(
         Modifier
             .fillMaxWidth()
