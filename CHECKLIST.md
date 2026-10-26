@@ -1,3 +1,12 @@
+## 2026-10-26 Guest protected-action parity — local full regression PASS
+
+- Web blueprint: fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; Native owner branch remains `work-native-web-parity-20261026` and is a descendant of the fetched remote head.
+- Root cause/evidence: Native Pilot `40265752567` exposed a stale Market login test; after that contract was corrected, exact-head run `40265972696` exposed a second stale assertion that expected a literal checkout callback instead of the shared Web-aligned destination policy. The runtime continues to preserve checkout as the sole post-login destination.
+- Change: remote descendant `ba5138d3b8bef147adaa313099eb1f7673b63f58` updates that second source assertion. No runtime or backend behavior changed in this checkpoint.
+- Focused tests on merged exact local HEAD `702f4c90b4d656b13565a91d20ccd89d057206e5`: `node tests/native-android-source.cjs` PASS (321 checks), `node tests/native-customer-web-home-parity.cjs` PASS (55 checks), `git diff --check` PASS.
+- Full local `npm test` on clean HEAD `17c65d51999ba00ed7e84e02b1e896f0c48fb8db`: PASS, including 12 pinned map assets, full repository regression, Grocery suite, release evidence bundler and map field-evidence gate.
+- **NEXT:** run Native Pilot on the exact pushed successor. If green, mark Guest protected-action policy DONE and resume the Customer page-by-page Web ↔ Android inventory and evidence-backed P0/P1 selection. APK/device evidence is pending that run.
+
 ## 2026-10-26 Guest protected-action parity — second exact-head stale assertion FIXED (test-only)
 
 - Failing exact HEAD: `6b337be6c234f1dcb15b2c93bd4c0c31b080d1f2`; Native Pilot run `40265972696`.
@@ -38,8 +47,18 @@
 - Change: Native Guest Ride now calls `onLogin("home")`. Authenticated Ride routing/screen implementation is untouched. The pinned parity blueprint now records Guest protected-route login destinations and the deterministic regression rejects restoring the Android-only Ride resume.
 - Implementation HEAD: `2376155ae0806302e62bbb53db59900f85efaca3`.
 - Test/CI: Native Pilot run `40263250008` **SUCCESS** — full QueueGo regression including route-parity guard, source integrity, Kotlin/tracking tests, all three APK builds, Android 16 KB packaging, WebView rejection, artifact upload, and emulator launch/map/voice lifecycle all passed.
+- Independent local full `npm test` on source HEAD `2376155ae0806302e62bbb53db59900f85efaca3`: PASS, including 12 pinned map assets, repository regression, Grocery suite, and map field-evidence checks. This is supplemental to the exact-head Native Pilot evidence above.
 - Status: **DONE (source/test)**. Physical-device parity is not claimed.
-- NEXT: continue Customer only. Restore Web-equivalent global Customer chrome on authenticated Laundry: Web renders the default QueueGo top bar and compact bottom nav with Home selected; Native currently hides both when `screen == "laundry"`. Remove only those two hide conditions, preserve Laundry business logic, and add deterministic shell-parity guards before exact-head Native Pilot.
+## 2026-10-26 Native Customer Web parity — authenticated Laundry global chrome — DONE (source/test)
+
+- Stream: Customer Android ↔ Web parity only. Web blueprint `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; current Native branch includes the Guest Ride checkpoint above.
+- Root cause/evidence: the deterministic parity gate requires authenticated Laundry to retain the Web shell's QueueGo top bar and compact bottom navigation with Home selected. Native previously hid both controls on `screen == "laundry"`.
+- Change at `3becc3b0adef21041773e021c08e84543ccb0f91`: restored both existing shell controls, preserved Laundry content/behavior, and expanded the parity blueprint and assertions from 42 to 48 checks.
+- Focused parity at `3becc3b0adef21041773e021c08e84543ccb0f91`: `node tests/native-customer-web-home-parity.cjs` PASS, 48 checks / 0 failures.
+- Full local `npm test` at docs-only checkpoint `4beafbd843a3f0fb57c4014653166b919f6f9db8` (same runtime tree as `3becc3b0adef21041773e021c08e84543ccb0f91`): PASS, including the 12 pinned map assets, complete repository regression, Grocery checks and map field-evidence checks.
+- Exact-head Native Pilot run `40264624269` for `3becc3b0adef21041773e021c08e84543ccb0f91`: **SUCCESS** — full QueueGo regression, source integrity, Kotlin/tracking tests, Customer/Merchant/Rider APK builds, 16 KB packaging, WebView rejection, emulator launch/map/voice lifecycle. APK artifact `12625303845`; Android launch evidence artifact `12626645648`.
+- Status: **DONE (source/test)** for authenticated Laundry shell chrome. This is not full Customer screenshot/visual parity or physical-device parity certification.
+- **NEXT:** complete the page-by-page Customer Web (`main=7e036a0735cc49905e9b0a2434492470551a0c9d`) ↔ Android inventory and deterministic parity matrix; capture/review critical unblocked screens, mark credential-blocked authenticated screens explicitly, then select the first evidence-backed P0/P1 gap.
 
 ## 2026-10-26 Native Customer Web parity — nearby shop authority DONE (source/test)
 
