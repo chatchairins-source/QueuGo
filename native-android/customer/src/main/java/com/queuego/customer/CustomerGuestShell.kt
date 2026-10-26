@@ -296,7 +296,7 @@ internal fun GuestCustomerShell(
                     onSearch = { screen = "search" },
                     onCategory = { selected ->
                         when (selected) {
-                            "ride" -> onLogin("ride")
+                            "ride" -> onLogin("home")
                             "market" -> screen = "market"
                             "laundry" -> onLogin("home")
                             "shopping" -> {

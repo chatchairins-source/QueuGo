@@ -42,6 +42,15 @@ assert.ok(categoryFn.includes('QgIcon(icon, Modifier.size(' + tile.icon_native_d
 assert.ok(categoryFn.includes('fontSize = ' + tile.label_font_native_sp + '.sp'),'Native category label font must match Web Home');
 assert.ok(categoryFn.includes('maxLines = 1')&&categoryFn.includes('softWrap = false'),'Native category label must stay on one line like Web nowrap');
 
+const guestSource=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerGuestShell.kt','utf8');
+const guestDestinations=blueprint.customer.guest_login_destinations;
+assert.deepEqual(guestDestinations,{ride:'home',orders:'home',laundry:'home',checkout:'checkout'});
+assert.ok(guestSource.includes('"ride" -> onLogin("'+guestDestinations.ride+'")'),'Guest Ride must return to Home after login like Web');
+assert.ok(!guestSource.includes('"ride" -> onLogin("ride")'),'Guest Ride must not preserve an Android-only post-login Ride destination');
+assert.ok(guestSource.includes('"laundry" -> onLogin("home")'),'Guest Laundry must return Home after login like Web');
+assert.ok(guestSource.includes('"orders" -> onLogin("home")'),'Guest Orders bottom nav must return Home after login like Web');
+assert.ok(guestSource.includes('onCheckout = { onLogin("checkout") }'),'Guest checkout alone must preserve checkout after login like Web');
+
 const navItems=blueprint.customer.bottom_navigation;
 assert.deepEqual(navItems.map(x=>x.label),['หน้าหลัก','ค้นหา','ตะกร้า','ออเดอร์']);
 const navSource=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerBottomNavigation.kt','utf8');
@@ -59,4 +68,4 @@ assert.equal(navGeo.explicit_label_line_height,false);
 assert.ok(!/Row\(Modifier\.fillMaxWidth\(\)\.height\(if \(home\)/.test(navSource),'Native bottom nav must not impose Android-only fixed row height');
 assert.ok(!/Text\(label,[^\n]*lineHeight/.test(navSource),'Native bottom nav label must not impose Android-only line height');
 
-console.log(JSON.stringify({checks:35,failures:0,scope:'Customer Android Home categories, nearby-shop authority and bottom navigation match pinned Web main; non-food/cafe services stay off Home nearby list'}));
+console.log(JSON.stringify({checks:42,failures:0,scope:'Customer Android Home, nearby authority, bottom navigation and Guest protected-route login destinations match pinned Web main'}));

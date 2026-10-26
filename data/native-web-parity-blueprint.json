@@ -95,6 +95,12 @@
       "default_label_font_native_sp": 9,
       "fixed_row_height": false,
       "explicit_label_line_height": false
+    },
+    "guest_login_destinations": {
+      "ride": "home",
+      "orders": "home",
+      "laundry": "home",
+      "checkout": "checkout"
     }
   }
 }
