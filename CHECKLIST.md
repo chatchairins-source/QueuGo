@@ -1,3 +1,9 @@
+## 2026-10-26 Merchant POS custom option selection — source committed; exact-head Pilot pending
+
+- Bounded Native implementation committed as `feef406520de0f912de87e9873aed128b21d508a`: product options parse Web structured and legacy variants, a Compose dialog validates required/min/max/duplicate/unknown selections, and the existing `pos_add_product_with_options` RPC receives the selections with a stable UUID and durable pending replay body.
+- The app-private offline catalog now retains inventory and option inputs; custom-option products are kept out of offline drafts until the offline option submission flow is implemented, preventing accidental plain-price lines. Added focused JUnit and Native source contracts. No SQL/backend changes.
+- **NEXT:** run the hosted Native Pilot on the exact checklist successor; inspect and fix only its first confirmed failure. If clean, implement offline-draft option parity because Web stores and submits exact per-item selections while Native currently blocks those products offline.
+
 ## 2026-10-26 Merchant POS custom options parity — P1 source gap confirmed
 
 - Web Production `main=7e036a0735cc49905e9b0a2434492470551a0c9d` loads each product's `variants`, presents structured `queuego.menu-options.v1` groups and legacy string variants, validates required/min/max/duplicate selections, and uses `pos_add_product_with_options` with a stable request UUID. The server validates selected keys and authoritative price deltas, snapshots option labels into the order item, and replays safely (`supabase/migrations/20261021223000_pos_menu_option_pricing.sql`).
