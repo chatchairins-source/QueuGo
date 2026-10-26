@@ -1,3 +1,10 @@
+## 2026-10-26 Merchant POS tracked stock parity — implementation committed; hosted exact-head Pilot pending
+
+- Web Production `merchant/pos-table-v2.js` loads `stock`, `inventory_stock_tracking`, `grocery_master_id`, and `grocery_stock_tracking`; it keeps products visible and disables only the add action when tracking is enabled and stock is zero or below, while displaying remaining stock.
+- Native POS omitted all four inputs and had no sold-out add gate. Bounded source implementation committed as `6199e8561c7433a7cf95cdb6cb92ff316bec07ba`: load/parse stock and both tracking paths, retain Web's missing-column fallback, disable add for tracked zero stock, and show stock status/quantity. Added focused JUnit rules and Native source contract; no checkout or server authority changed.
+- Prior exact Pilot `40303613757` on `8ba905f3d11d93e7e3038fa103031d0e8a141fba` passed full regression and all pre-Kotlin contracts, then was cancelled at the Kotlin/JUnit step when another run on parent `5335ecb685bef5139e7afa3af98cf4019aa9dc3b` entered the workflow's branch concurrency group. This supplied no compile diagnostic and no Kotlin/APK evidence. Local Android SDK/Gradle remains unavailable.
+- **NEXT:** complete the Native Pilot on the latest checklist successor exact HEAD; read the first confirmed failure if any and fix only that. If successful, continue Merchant catalog/POS and Customer inventory P1/P0 audit from Web Production.
+
 ## 2026-10-26 Merchant inventory Pilot compile failure #2 — bounded fix committed; exact-head Pilot NEXT
 
 - Exact Native Pilot [40302510796](https://github.com/chatchairins-source/QueuGo/actions/runs/40302510796) on exact HEAD `79b378f23c554db244140407d3baf380d86530f9`: full QueueGo regression, POS/edit and Customer/Merchant contracts, source integrity, and asset checks passed. Kotlin unit/build step failed first at `MerchantProductsScreen.kt:429:48`: unresolved `launch`; subsequent suspend-call diagnostics at the three adjustment/history callbacks follow from the missing coroutine extension import.
