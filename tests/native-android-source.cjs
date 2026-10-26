@@ -555,6 +555,25 @@ ok(riderEarnings.includes('api.periodSummary(auth, days)')&&riderEarnings.includ
 ok(riderProfile.includes('api.updateAccount(auth, name, phone)')&&riderProfile.includes('api.testNativePush(auth)')&&riderProfile.includes('QgAccountDeletionSection')&&!riderProfile.includes('api.setLaundryMode(auth, enabled)')&&!riderProfile.includes('api.respondLaundryInvite(auth, invite.inviteId, true)'),'Rider native profile must preserve Production account, push and deletion controls while shop-managed Laundry stays retired');
 const riderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
 ok(riderProfile.includes('RiderSupportScreen(')&&riderProfile.includes('แจ้งปัญหา / ติดตามเรื่อง'),'Rider native profile must expose Production support flow');
+const riderProfileWorkSection = riderProfile.indexOf('RiderProfileSection("การรับงาน")');
+const riderProfileAccountSection = riderProfile.indexOf('RiderProfileSection("บัญชีและช่วยเหลือ")');
+const riderProfileNotificationSection = riderProfile.indexOf('RiderProfileSection("การแจ้งเตือน")');
+const riderProfilePrivacySection = riderProfile.indexOf('RiderProfileSection("ความเป็นส่วนตัวและบัญชี")');
+const riderProfileExtraSection = riderProfile.indexOf('RiderProfileSection("เพิ่มเติม")');
+ok(
+  riderProfileWorkSection >= 0 &&
+  riderProfileAccountSection > riderProfileWorkSection &&
+  riderProfileNotificationSection > riderProfileAccountSection &&
+  riderProfilePrivacySection > riderProfileNotificationSection &&
+  riderProfileExtraSection > riderProfilePrivacySection &&
+  riderProfile.includes('var showExtraTools by remember { mutableStateOf(false) }') &&
+  riderProfile.includes('"เครื่องมือ Rider เพิ่มเติม"') &&
+  riderProfile.includes('if (showExtraTools && showAccountDetails)') &&
+  !riderProfile.includes('RiderProfileSection("บัญชีและเอกสาร")') &&
+  !riderProfile.includes('RiderProfileSection("การนำทางและแผนที่")') &&
+  !riderProfile.includes('RiderProfileSection("ขั้นสูง")'),
+  'Rider Profile must keep the current Web core section order and collapse Native-only tools below it'
+);
 ok(riderSupport.includes('qg_support_tickets?select=id,category,details,status,order_id,created_at,admin_note,evidence_path')&&riderSupport.includes('"qg_create_ticket"')&&riderSupport.includes('/storage/v1/object/qg-evidence/')&&riderSupport.includes('/storage/v1/object/sign/qg-evidence/')&&riderSupport.includes('"expiresIn", 300')&&riderSupport.includes('"ดูหลักฐาน"'),'Rider native support must reuse Production ticket RPC/table, private evidence bucket and signed evidence viewer');
 ok(riderApi.includes('qg_rider_cash_ledger')&&riderApi.includes('/rest/v1/users?auth_user_id=eq.')&&riderApi.includes('/rest/v1/rider_profiles?user_id=eq.'),'Rider native profile and earnings must reuse Production ownership APIs');
 ok(nativeRootGradle.includes('com.google.gms.google-services')&&gradle.includes('com.google.firebase:firebase-bom:35.0.0')&&gradle.includes('com.google.firebase:firebase-messaging'),'Rider native must compile with current Firebase Messaging transport');
