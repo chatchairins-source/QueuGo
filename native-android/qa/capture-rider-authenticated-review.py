@@ -89,6 +89,20 @@ def scroll_to_text(label):
         time.sleep(0.5)
     raise SystemExit("Read-only Rider profile entry not visible: "+label)
 
+def expand_profile_extra_tools():
+    ns=nodes()
+    if any(n.get("text","").strip()=="แนะนำบริการและวิธีใช้งาน" and rect(n) for n in ns):
+        return
+    ns=scroll_to_text("เครื่องมือ Rider เพิ่มเติม")
+    tap_label(ns,"เครื่องมือ Rider เพิ่มเติม")
+    expanded=wait(
+        lambda xs:any(n.get("text","").strip()=="แนะนำบริการและวิธีใช้งาน" and rect(n) for n in xs),
+        15
+    )
+    assert expanded, "Rider extra tools did not expand"
+    time.sleep(1)
+
+
 def capture_profile_dialog(entry,title,name):
     ns=scroll_to_text(entry)
     tap_label(ns,entry)
@@ -173,6 +187,7 @@ def main():
     tap_label(nodes(),"โปรไฟล์")
     time.sleep(3)
     screens.append({"screen":"profile",**shot("07-profile")})
+    expand_profile_extra_tools()
     for entry,title,name in (
         ("แนะนำบริการและวิธีใช้งาน","ศูนย์เรียนรู้ Rider","08-learning-center"),
         ("ศูนย์ความปลอดภัย","กรณีฉุกเฉิน","09-safety-center"),
