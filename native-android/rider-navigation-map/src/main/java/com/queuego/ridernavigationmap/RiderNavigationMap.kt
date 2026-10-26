@@ -238,6 +238,7 @@ private class RiderNavigationMapHolder {
     private var touchDownX = 0f
     private var touchDownY = 0f
     private var gestureReported = false
+    private var multiTouchGesture = false
     private var touchSlop = 8f
 
     fun resetNorth() {
@@ -301,9 +302,19 @@ private class RiderNavigationMapHolder {
                         touchDownX = event.x
                         touchDownY = event.y
                         gestureReported = false
+                        multiTouchGesture = false
+                    }
+                    MotionEvent.ACTION_POINTER_DOWN -> {
+                        // Match Web: pinch / rotate / pitch are temporary transforms and
+                        // must not abandon FOLLOW. Only a deliberate one-finger pan does.
+                        if (event.pointerCount >= 2) multiTouchGesture = true
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        if (!gestureReported &&
+                        if (event.pointerCount >= 2) {
+                            multiTouchGesture = true
+                        } else if (
+                            !multiTouchGesture &&
+                            !gestureReported &&
                             hypot(
                                 (event.x - touchDownX).toDouble(),
                                 (event.y - touchDownY).toDouble()
@@ -314,7 +325,10 @@ private class RiderNavigationMapHolder {
                         }
                     }
                     MotionEvent.ACTION_UP,
-                    MotionEvent.ACTION_CANCEL -> gestureReported = false
+                    MotionEvent.ACTION_CANCEL -> {
+                        gestureReported = false
+                        multiTouchGesture = false
+                    }
                 }
                 false
             }
