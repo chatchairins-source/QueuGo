@@ -2568,8 +2568,8 @@ window.renderShopDashboardModern=function(u){
  main.querySelector('.qgm-home-store')?.after(menu);
 }
 
-{const host=document.querySelector('.qgm-menu-grid');if(host){const b=document.createElement('button');b.className='qgm-menu';b.innerHTML='<span class="ico">▦</span><span>หน้าร้าน POS</span>';b.onclick=()=>navigate('pos');host.prepend(b)}}
-{if(qgMarketCategory(u.category)){const grid=document.querySelector('.qgm-menu-grid');if(grid){const b=document.createElement('button');b.className='qgm-menu qgm-market-menu';b.type='button';b.innerHTML='<span class="ico">'+svg('box')+'</span><span>ตลาดและสต๊อก</span>';b.onclick=()=>navigate('market-stock');grid.append(b)}}}
+{const host=document.querySelector('.qgm-menu-grid');if(host){const b=document.createElement('button');b.className='qgm-menu';b.dataset.qgmRoute='pos';b.innerHTML='<span class="ico">▦</span><span>หน้าร้าน POS</span>';b.onclick=()=>navigate('pos');host.prepend(b)}}
+{if(qgMarketCategory(u.category)){const grid=document.querySelector('.qgm-menu-grid');if(grid){const b=document.createElement('button');b.className='qgm-menu qgm-market-menu';b.type='button';b.dataset.qgmRoute='market-stock';b.innerHTML='<span class="ico">'+svg('box')+'</span><span>ตลาดและสต๊อก</span>';b.onclick=()=>navigate('market-stock');grid.append(b)}}}
 };
 
 window.qgmOrderStatus=function(o){
@@ -2729,11 +2729,11 @@ window.renderShopOrderModern=function(id){
  const st=window.qgmOrderStatus(o),subtotal=qgmMerchantSalesAmount(o),items=o.items||[],created=new Date(o.createdAt||Date.now()).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
  const canCancel=qgmCanCancelDelivery(o);
  const primary=o.status==='pending_shop'
-   ?`<button class="qgm-od-primary" onclick="updateOrderStatus('${o.id}','shop_accepted',this)">รับออเดอร์</button><button class="qgm-od-secondary" onclick="shopCancelOrder('${o.id}',this)">ปฏิเสธออเดอร์</button>`
+   ?`<button class="qgm-od-primary qgm-od-success" onclick="updateOrderStatus('${o.id}','shop_accepted',this)">รับออเดอร์</button><button class="qgm-od-secondary qgm-od-danger" onclick="shopCancelOrder('${o.id}',this)">ปฏิเสธออเดอร์</button>`
    :o.status==='rider_to_shop'
     ?`<button class="qgm-od-primary" onclick="updateOrderStatus('${o.id}','preparing',this)">เริ่มเตรียมสินค้า</button>`
     :o.status==='preparing'
-     ?`<button class="qgm-od-primary qgm-od-ready-button" ${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))?`data-qgm-prep-start="${Number(o.preparingAt)}"`:''} onclick="updateOrderStatus('${o.id}','waiting_rider',this)"><span data-qgm-prep-label>${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))&&qgmPrepCountdownText(o.preparingAt).left>0?'กำลังเตรียมสินค้า':'สินค้าพร้อมส่ง'}</span>${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))?`<strong data-qgm-prep-remaining>${qgmPrepCountdownText(o.preparingAt).text}</strong>`:''}</button>`
+     ?`<button class="qgm-od-primary qgm-od-success qgm-od-ready-button" ${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))?`data-qgm-prep-start="${Number(o.preparingAt)}"`:''} onclick="updateOrderStatus('${o.id}','waiting_rider',this)"><span data-qgm-prep-label>${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))&&qgmPrepCountdownText(o.preparingAt).left>0?'กำลังเตรียมสินค้า':'สินค้าพร้อมส่ง'}</span>${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))?`<strong data-qgm-prep-remaining>${qgmPrepCountdownText(o.preparingAt).text}</strong>`:''}</button>`
      :'';
  const waitingNote=o.status==='waiting_rider'?'<div class="qgm-od-action-note">สินค้าพร้อมแล้ว · รอ Rider มารับสินค้า</div>':o.status==='searching_rider'?'<div class="qgm-od-action-note">กำลังค้นหา Rider ให้กับออเดอร์นี้</div>':'';
  const arrived=o.riderArrivedShopAt?`<div class="qgm-od-arrived">Rider ถึงร้านแล้ว · ${new Date(o.riderArrivedShopAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.</div>`:'';
@@ -2792,8 +2792,8 @@ window.renderShopOrderModern=function(id){
    ${waitingNote}
    ${showActions?`<div class="qgm-od-actions">
      ${primary}
-     ${o.status==='rider_to_shop'?`<button class="qgm-od-secondary qgm-od-edit" type="button" onclick="qgmOpenOrderEditor('${o.id}')">แก้ไขรายการ</button>`:''}
-     ${canCancel?`<button class="qgm-od-secondary" onclick="shopCancelOrder('${o.id}',this)">ยกเลิกออเดอร์</button>`:''}
+     ${o.status==='rider_to_shop'?`<button class="qgm-od-secondary soft qgm-od-edit" type="button" onclick="qgmOpenOrderEditor('${o.id}')">แก้ไขรายการ</button>`:''}
+     ${canCancel?`<button class="qgm-od-secondary qgm-od-danger" onclick="shopCancelOrder('${o.id}',this)">ยกเลิกออเดอร์</button>`:''}
      ${canReportCompleted?`<button class="qgm-od-secondary soft qgm-od-report-completed" type="button" onclick="qgOpenTicketPanel('${o.id}')">แจ้งปัญหาออเดอร์นี้</button>`:''}
    </div>`:''}
  </div>`,'shop-orders',{back:true});
@@ -3154,9 +3154,9 @@ window.qgmDeleteProduct=async function(id,button){
  finally{qgmProductDeleteBusy=false;if(button&&button.isConnected)button.disabled=false}
 };
 
-window.renderShopPromote=function(){const u=shopUser(),all=dbGet('qt_promotions',[]).filter(p=>String(p.shopId||p.shop_id)===String(u.id)||String(p.shopProfileId||p.shop_id)===String(profileId(u)));layout('โปรโมชั่น',`<div class="qgm-tabs"><button class="active" data-promo="all" onclick="qgmPromoFilter('all')">ทั้งหมด</button><button data-promo="active" onclick="qgmPromoFilter('active')">กำลังใช้งาน</button><button data-promo="pending" onclick="qgmPromoFilter('pending')">รออนุมัติ</button></div><button class="qgm-outline" type="button" onclick="navigate('shop-promote-create')">สร้างโปรโมชั่นใหม่</button>${all.length?all.map(p=>`<section class="qgm-card qgm-info" data-promo-status="${esc(p.status||'pending')}"><b>${esc(p.title||p.category||'โปรโมชั่น')}</b><small style="display:block;color:#8b9098;margin-top:5px">${esc(p.status||'pending')}</small></section>`).join(''):`<div class="qgm-empty"><div class="mega">${svg('megaphone')}</div><h2>ยังไม่มีโปรโมชั่น</h2><p>สร้างโปรโมชั่นเพื่อเพิ่มยอดขาย<br>และดึงดูดลูกค้า</p><button class="qgm-primary" style="max-width:220px" onclick="navigate('shop-promote-create')">＋ สร้างโปรโมชั่น</button></div>`}`,'shop-promote',{back:true})};
+window.renderShopPromote=function(){const u=shopUser(),all=dbGet('qt_promotions',[]).filter(p=>String(p.shopId||p.shop_id)===String(u.id)||String(p.shopProfileId||p.shop_id)===String(profileId(u)));layout('โปรโมชั่น',`<div class="qgm-tabs"><button class="active" data-promo="all" onclick="qgmPromoFilter('all')">ทั้งหมด</button><button data-promo="active" onclick="qgmPromoFilter('active')">กำลังใช้งาน</button><button data-promo="pending" onclick="qgmPromoFilter('pending')">รออนุมัติ</button></div><button class="qgm-outline qgm-promo-action" type="button" onclick="navigate('shop-promote-create')">สร้างโปรโมชั่นใหม่</button>${all.length?all.map(p=>`<section class="qgm-card qgm-info" data-promo-status="${esc(p.status||'pending')}"><b>${esc(p.title||p.category||'โปรโมชั่น')}</b><small style="display:block;color:#8b9098;margin-top:5px">${esc(p.status||'pending')}</small></section>`).join(''):`<div class="qgm-empty"><div class="mega">${svg('megaphone')}</div><h2>ยังไม่มีโปรโมชั่น</h2><p>สร้างโปรโมชั่นเพื่อเพิ่มยอดขาย<br>และดึงดูดลูกค้า</p><button class="qgm-primary qgm-promo-primary" style="max-width:220px" onclick="navigate('shop-promote-create')">＋ สร้างโปรโมชั่น</button></div>`}`,'shop-promote',{back:true})};
 
-window.renderShopPromoteCreate=function(){layout('สร้างโปรโมชั่น',`<form class="qgm-card qgm-form-card" onsubmit="return qgmSavePromo(event)"><div class="qgm-field"><label>ชื่อ/ประเภทโปรโมชั่น</label><input id="qgm-promo-title" required placeholder="เช่น โปรโมตร้านประจำสัปดาห์"></div><div class="qgm-inline"><div class="qgm-field"><label>งบสูงสุด</label><input id="qgm-promo-budget" type="number" min="0" required></div><div class="qgm-field"><label>จำนวนวัน</label><input id="qgm-promo-days" type="number" min="1" value="7" required></div></div><button class="qgm-primary" type="submit">ส่งคำขอโปรโมชั่น</button></form>`,'shop-promote',{back:true})};
+window.renderShopPromoteCreate=function(){layout('สร้างโปรโมชั่น',`<form class="qgm-card qgm-form-card" onsubmit="return qgmSavePromo(event)"><div class="qgm-field"><label>ชื่อ/ประเภทโปรโมชั่น</label><input id="qgm-promo-title" required placeholder="เช่น โปรโมตร้านประจำสัปดาห์"></div><div class="qgm-inline"><div class="qgm-field"><label>งบสูงสุด</label><input id="qgm-promo-budget" type="number" min="0" required></div><div class="qgm-field"><label>จำนวนวัน</label><input id="qgm-promo-days" type="number" min="1" value="7" required></div></div><button class="qgm-primary qgm-promo-primary" type="submit">ส่งคำขอโปรโมชั่น</button></form>`,'shop-promote',{back:true})};
 window.qgmSavePromo=async function(e){e.preventDefault();const u=shopUser(),pid=profileId(u);try{await qtSupabaseTable('promotions',{method:'POST',accessToken:qtAccessToken(),body:{shop_id:pid,shop_name:u.shopName||u.name,category:$('#qgm-promo-title').value.trim(),area:u.address||'',bid_price:0,max_budget:Number($('#qgm-promo-budget').value),period_days:Number($('#qgm-promo-days').value),status:'pending',payment_status:'pending',metadata:{title:$('#qgm-promo-title').value.trim()}}});toast('ส่งคำขอโปรโมชั่นแล้ว');try{navigate('shop-promote')}catch(navErr){console.warn('merchant promo post-commit navigation failed',navErr)}}catch(err){toast('บันทึกโปรโมชั่นไม่สำเร็จ: '+(err.message||err))}return false};
 
 window.qgmDeleteAccount=async function(button){
@@ -4434,6 +4434,42 @@ window.qgmExportRevenue=async function(button){
 <script defer src="market-registration.js?v=20261005-1723"></script>
 <link rel="stylesheet" href="laundry.css?v=20261005">
 <script defer src="laundry.js?v=20261005"></script>
+<style id="qgm-semantic-color-v1">
+/* Merchant semantic color hierarchy: color follows action meaning, not button position. */
+.qgm-stat:nth-child(1) .qgm-stat-icon{background:#fff0f1;color:#d91f2d}
+.qgm-stat:nth-child(2) .qgm-stat-icon{background:#eaf8f1;color:#148b61}
+.qgm-stat:nth-child(3) .qgm-stat-icon{background:#fff5e5;color:#b86e00}
+.qgm-stat:nth-child(4) .qgm-stat-icon{background:#f1f2f4;color:#6e737b}
+
+.qgm-menu[data-qgm-route="shop-orders"] .ico,
+.qgm-menu[data-qgm-route="notifications"] .ico{background:#fff0f1;color:#d91f2d}
+.qgm-menu[data-qgm-route="shop-products"] .ico,
+.qgm-menu[data-qgm-route="pos"] .ico,
+.qgm-menu[data-qgm-route="market-stock"] .ico{background:#edf4fc;color:#2e6db4}
+.qgm-menu[data-qgm-route="shop-promote"] .ico,
+.qgm-menu[data-qgm-route="shop-media"] .ico{background:#f2eefc;color:#7356c8}
+.qgm-menu[data-qgm-route="shop-settlement"] .ico{background:#eaf8f1;color:#148b61}
+.qgm-menu[data-qgm-route="shop-laundry"] .ico{background:#e9f8f7;color:#198d8a}
+.qgm-menu[data-qgm-route="shop-profile"] .ico,
+.qgm-menu[data-qgm-route="shop-modules"] .ico,
+.qgm-menu[data-qgm-route="shop-support"] .ico{background:#f1f2f4;color:#6e737b}
+
+.qgm-call,.qgm-od-call{background:#edf4fc!important;border-color:#b8d0ea!important;color:#2e6db4!important}
+.qgm-od-success{background:#18a875!important;color:#fff!important;box-shadow:0 8px 20px rgba(24,168,117,.15)!important}
+.qgm-od-danger{background:#fff!important;border-color:#f0b7bd!important;color:#d91f2d!important}
+.qgm-od-edit{background:#fff!important;border-color:#d9dce1!important;color:#5f6670!important}
+
+.qgm-promo-action{border-color:#cfc2f2!important;color:#7356c8!important;background:#fff!important}
+.qgm-promo-primary{background:#7356c8!important;color:#fff!important}
+.qgm-promo-primary:active{background:#6248b4!important}
+
+.qt-notif-sound{border-color:#cfe0f2;background:linear-gradient(135deg,#fff 0%,#f6faff 100%)}
+.qt-notif-sound-icon{background:#edf4fc;color:#2e6db4}
+.qt-notif-sound-action{color:#2e6db4}
+
+.qt-support-compose button{background:#148b61}
+.qgm-location .qgm-outline,.qgm-pause-menu button{border-color:#b8decf;color:#148b61;background:#f6fcf9}
+</style>
 <style id="qg-viewport-scroll-baseline-20261002">
 /* QueueGo mobile baseline: one vertical document scroller; zoom is controlled by viewport metadata, not global touch cancellation. */
 html,body{width:100%;max-width:100%}
