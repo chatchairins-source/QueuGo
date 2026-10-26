@@ -71,6 +71,30 @@
         "route": "orders",
         "label": "ออเดอร์"
       }
-    ]
+    ],
+    "bottom_navigation_geometry": {
+      "outer_horizontal_padding_css_px": 8,
+      "outer_horizontal_padding_native_dp": 8,
+      "home_outer_vertical_padding_css_px": 6,
+      "home_outer_vertical_padding_native_dp": 6,
+      "default_outer_vertical_padding_css_px": 4,
+      "default_outer_vertical_padding_native_dp": 4,
+      "home_item_vertical_padding_css_px": 3,
+      "home_item_vertical_padding_native_dp": 3,
+      "default_item_vertical_padding_css_px": 2,
+      "default_item_vertical_padding_native_dp": 2,
+      "home_icon_box_css_px": 24,
+      "home_icon_box_native_dp": 24,
+      "default_icon_box_css_px": 22,
+      "default_icon_box_native_dp": 22,
+      "icon_css_px": 20,
+      "icon_native_dp": 20,
+      "home_label_font_css_px": 10,
+      "home_label_font_native_sp": 10,
+      "default_label_font_css_px": 9,
+      "default_label_font_native_sp": 9,
+      "fixed_row_height": false,
+      "explicit_label_line_height": false
+    }
   }
 }

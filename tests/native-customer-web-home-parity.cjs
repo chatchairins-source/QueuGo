@@ -37,4 +37,21 @@ assert.ok(categoryFn.includes('QgIcon(icon, Modifier.size(' + tile.icon_native_d
 assert.ok(categoryFn.includes('fontSize = ' + tile.label_font_native_sp + '.sp'),'Native category label font must match Web Home');
 assert.ok(categoryFn.includes('maxLines = 1')&&categoryFn.includes('softWrap = false'),'Native category label must stay on one line like Web nowrap');
 
-console.log(JSON.stringify({checks:18,failures:0,scope:'Customer Android Home category order and geometry match pinned Web main blueprint; Express preserved off Home'}));
+const navItems=blueprint.customer.bottom_navigation;
+assert.deepEqual(navItems.map(x=>x.label),['หน้าหลัก','ค้นหา','ตะกร้า','ออเดอร์']);
+const navSource=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerBottomNavigation.kt','utf8');
+const navTriples=[...navSource.matchAll(/Triple\("([^"]+)",\s*"([^"]+)",\s*R\.drawable\.[^)]+\)/g)].map(x=>[x[1],x[2]]);
+assert.deepEqual(navTriples.map(x=>x[0]),navItems.map(x=>x.route));
+assert.deepEqual(navTriples.map(x=>x[1]),navItems.map(x=>x.label));
+const navGeo=blueprint.customer.bottom_navigation_geometry;
+assert.ok(navSource.includes('padding(horizontal = '+navGeo.outer_horizontal_padding_native_dp+'.dp, vertical = if (home) '+navGeo.home_outer_vertical_padding_native_dp+'.dp else '+navGeo.default_outer_vertical_padding_native_dp+'.dp)'));
+assert.ok(navSource.includes('padding(vertical = if (home) '+navGeo.home_item_vertical_padding_native_dp+'.dp else '+navGeo.default_item_vertical_padding_native_dp+'.dp)'));
+assert.ok(navSource.includes('Modifier.size(if (home) '+navGeo.home_icon_box_native_dp+'.dp else '+navGeo.default_icon_box_native_dp+'.dp)'));
+assert.ok(navSource.includes('Modifier.size('+navGeo.icon_native_dp+'.dp)'));
+assert.ok(navSource.includes('fontSize = if (home) '+navGeo.home_label_font_native_sp+'.sp else '+navGeo.default_label_font_native_sp+'.sp'));
+assert.equal(navGeo.fixed_row_height,false);
+assert.equal(navGeo.explicit_label_line_height,false);
+assert.ok(!/Row\(Modifier\.fillMaxWidth\(\)\.height\(if \(home\)/.test(navSource),'Native bottom nav must not impose Android-only fixed row height');
+assert.ok(!/Text\(label,[^\n]*lineHeight/.test(navSource),'Native bottom nav label must not impose Android-only line height');
+
+console.log(JSON.stringify({checks:31,failures:0,scope:'Customer Android Home categories and bottom navigation match pinned Web main presentation contract; Express preserved off Home'}));
