@@ -42,23 +42,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-internal fun merchantProductRows(
-    products: List<MerchantProduct>,
-    shopCategory: String,
-    mode: String,
-    query: String
-): List<MerchantProduct> {
-    val needle = query.trim().lowercase()
-    return merchantPricedProducts(products, shopCategory == "grocery").filter { product ->
-        val matchesMode = mode == "all" ||
-            (mode == "on" && product.available) ||
-            (mode == "off" && !product.available)
-        val matchesQuery = needle.isBlank() ||
-            product.name.lowercase().contains(needle) ||
-            product.category.lowercase().contains(needle)
-        matchesMode && matchesQuery
-    }
-}
+internal fun merchantProductAddLabel(shopCategory: String): String =
+    if (shopCategory.lowercase() in setOf("food", "cafe")) "เพิ่มเมนู" else "เพิ่มสินค้า"
 
 @Composable
 internal fun MerchantProductsScreen(
@@ -71,10 +56,14 @@ internal fun MerchantProductsScreen(
     onOpenCatalog: () -> Unit
 ) {
     var mode by rememberSaveable { mutableStateOf("all") }
-    var query by rememberSaveable { mutableStateOf("") }
     val hasMasterCatalog = shopCategory == "grocery" || merchantMarketStockPermitted(shopCategory)
-    val rows = remember(products, shopCategory, mode, query) {
-        merchantProductRows(products, shopCategory, mode, query)
+    val pricedProducts = merchantPricedProducts(products, shopCategory == "grocery")
+    val rows = remember(pricedProducts, mode) {
+        pricedProducts.filter { product ->
+            mode == "all" ||
+                (mode == "on" && product.available) ||
+                (mode == "off" && !product.available)
+        }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -82,7 +71,7 @@ internal fun MerchantProductsScreen(
         Modifier
             .fillMaxSize()
             .padding(horizontal = 12.dp),
-        contentPadding = PaddingValues(bottom = if (hasMasterCatalog) 136.dp else 20.dp)
+        contentPadding = PaddingValues(bottom = if (hasMasterCatalog) 142.dp else 86.dp)
     ) {
         item(key = "products-header") {
             Spacer(Modifier.height(8.dp))
@@ -100,22 +89,6 @@ internal fun MerchantProductsScreen(
             )
 
             Spacer(Modifier.height(2.dp))
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("ค้นหาสินค้า...", color = QgMuted, fontSize = 11.sp) },
-                leadingIcon = { QgIcon("search", Modifier.size(18.dp), color = QgMuted) },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = QgRed,
-                    unfocusedBorderColor = Color(0xFFE4E6E9),
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                )
-            )
-            Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 MerchantProductFilter("ทั้งหมด", "all", mode) { mode = it }
                 MerchantProductFilter("เปิดขาย", "on", mode) { mode = it }
@@ -135,11 +108,7 @@ internal fun MerchantProductsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        when {
-                            query.isNotBlank() -> "ไม่พบสินค้าที่ค้นหา"
-                            products.isEmpty() -> "ยังไม่มีสินค้า"
-                            else -> "ไม่มีสินค้าในสถานะนี้"
-                        },
+                        if (products.isEmpty()) "ยังไม่มีสินค้า" else "ไม่มีสินค้าในสถานะนี้",
                         fontWeight = FontWeight.ExtraBold
                     )
                 }
@@ -198,34 +167,48 @@ internal fun MerchantProductsScreen(
             }
         }
 
-        if (!hasMasterCatalog) item(key = "products-add") {
-            Button(onClick = onOpenCatalog, enabled = !busy, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                Text("เพิ่มสินค้า", fontWeight = FontWeight.ExtraBold)
-            }
-        }
     }
-    if (hasMasterCatalog) {
-        Column(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 10.dp, vertical = 8.dp)
-        ) {
+    Column(
+        Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .background(Color.White, RoundedCornerShape(18.dp))
+            .border(1.dp, Color(0xFFECEEF1), RoundedCornerShape(18.dp))
+            .padding(8.dp)
+    ) {
+        if (hasMasterCatalog) {
             OutlinedButton(
                 onClick = onAddManual,
                 enabled = !busy,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = QgRed),
                 border = BorderStroke(1.dp, Color(0xFFEDC7CF)),
-                modifier = Modifier.fillMaxWidth().height(44.dp)
+                shape = RoundedCornerShape(13.dp),
+                modifier = Modifier.fillMaxWidth().height(46.dp)
             ) { Text("เพิ่มสินค้าเอง", fontWeight = FontWeight.ExtraBold) }
             Spacer(Modifier.height(6.dp))
             Button(
                 onClick = onOpenCatalog,
                 enabled = !busy,
                 colors = ButtonDefaults.buttonColors(containerColor = QgRed),
-                modifier = Modifier.fillMaxWidth().height(44.dp)
+                shape = RoundedCornerShape(13.dp),
+                modifier = Modifier.fillMaxWidth().height(46.dp)
             ) { Text("เพิ่มสินค้าจากแคตตาล็อก", fontWeight = FontWeight.ExtraBold) }
+        } else {
+            OutlinedButton(
+                onClick = onOpenCatalog,
+                enabled = !busy,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = QgRed),
+                border = BorderStroke(1.dp, Color(0xFFEDC7CF)),
+                shape = RoundedCornerShape(13.dp),
+                modifier = Modifier.fillMaxWidth().height(46.dp)
+            ) {
+                Text(
+                    merchantProductAddLabel(shopCategory),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
         }
     }
     }
