@@ -6,15 +6,30 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class MerchantPosOptionsTest {
-    private fun groups() = parsePosProductOptionGroups(JSONArray().put(
-        JSONObject().put("schema", "queuego.menu-options.v1").put("key", "portion").put("name", "ขนาด")
-            .put("type", "single").put("required", true).put("options", JSONArray()
+    private fun groups() = parsePosProductOptionGroups(JSONArray().apply {
+        put(JSONObject().apply {
+            put("schema", "queuego.menu-options.v1")
+            put("key", "portion")
+            put("name", "ขนาด")
+            put("type", "single")
+            put("required", true)
+            put("options", JSONArray()
                 .put(JSONObject().put("key", "normal").put("name", "ธรรมดา").put("price_delta", 0))
                 .put(JSONObject().put("key", "special").put("name", "พิเศษ").put("price_delta", 20)))
-    ).put(JSONObject().put("schema", "queuego.menu-options.v1").put("key", "toppings").put("name", "ท็อปปิ้ง")
-        .put("type", "multi").put("required", false).put("min", 0).put("max", 2).put("options", JSONArray()
-            .put(JSONObject().put("key", "egg").put("name", "ไข่ดาว").put("price_delta", 5))
-            .put(JSONObject().put("key", "meat").put("name", "เพิ่มเนื้อ").put("price_delta", 10))))
+        })
+        put(JSONObject().apply {
+            put("schema", "queuego.menu-options.v1")
+            put("key", "toppings")
+            put("name", "ท็อปปิ้ง")
+            put("type", "multi")
+            put("required", false)
+            put("min", 0)
+            put("max", 2)
+            put("options", JSONArray()
+                .put(JSONObject().put("key", "egg").put("name", "ไข่ดาว").put("price_delta", 5))
+                .put(JSONObject().put("key", "meat").put("name", "เพิ่มเนื้อ").put("price_delta", 10)))
+        })
+    })
 
     @Test fun structuredGroupsAndLegacyVariantsMatchRpcShape() {
         val structured = groups()

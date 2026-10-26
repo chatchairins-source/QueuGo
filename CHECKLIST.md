@@ -1,3 +1,9 @@
+## 2026-10-26 Merchant POS options JUnit fixture syntax — bounded repair; exact-head Pilot NEXT
+
+- Exact Native Pilot [40308748160](https://github.com/chatchairins-source/QueuGo/actions/runs/40308748160) on `83f40abb3420a7a3acec06b1d350e44b9f9c490e` cleared regression and all earlier gates, then failed at the first remaining compiler diagnostic: `MerchantPosOptionsTest.kt:17:101 Syntax error: Expecting ','`. The nested `JSONArray().put(...)` fixture had unbalanced closures, causing the remaining option-test diagnostics to cascade.
+- Rewrote only that test fixture using explicit `apply` scopes; no production source behavior changed.
+- **NEXT:** run/poll Native Pilot on the exact successor HEAD. Fix only its first confirmed failure. If green, proceed with Merchant offline-draft custom-option parity.
+
 ## 2026-10-26 Merchant POS option JUnit compile failure — first diagnostic fixed; exact-head Pilot NEXT
 
 - Exact Native Pilot [40308165171](https://github.com/chatchairins-source/QueuGo/actions/runs/40308165171) on `920e19e199c29856d8eb98238a1a0911211390f9` passed full regression and all pre-JUnit gates, including the app Kotlin compile that verifies the Compose import fix.
