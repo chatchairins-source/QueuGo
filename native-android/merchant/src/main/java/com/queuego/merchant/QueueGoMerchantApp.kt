@@ -2222,7 +2222,6 @@ private fun MerchantCancelGuard(
     )
 }
 
-@Composable
 private const val MERCHANT_PRIVACY_POLICY_URL =
     "https://chatchairins-source.github.io/QueuGo/docs/privacy.html"
 
