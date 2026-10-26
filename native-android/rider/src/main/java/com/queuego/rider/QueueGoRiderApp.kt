@@ -4296,28 +4296,50 @@ private fun RiderBlueprintSpeedPill(speedKph: Int?) {
 @Composable
 private fun RiderReadyCard(online: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Card(
-        Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 20.dp),
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(10.dp).background(
-                if (online) Color(0xFF12A651) else Color(0xFFA2A2A7),
-                androidx.compose.foundation.shape.CircleShape))
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                Modifier
+                    .size(8.dp)
+                    .background(
+                        if (online) Color(0xFF12A651) else Color(0xFFA2A2A7),
+                        androidx.compose.foundation.shape.CircleShape
+                    )
+            )
             Column(Modifier.weight(1f)) {
-                Text(if (online) "พร้อมรับงานแล้ว" else "ยังไม่พร้อมรับงาน",
-                    fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold)
-                Text(if (online) "คุณจะได้รับงานในพื้นที่ใกล้เคียง" else "เปิดเพื่อเริ่มรับงาน",
-                    fontSize = 13.sp, lineHeight = 19.sp, color = QgMuted,
-                    modifier = Modifier.padding(top = 3.dp))
+                Text(
+                    if (online) "พร้อมรับงานแล้ว" else "ยังไม่พร้อมรับงาน",
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    if (online) "คุณจะได้รับงานในพื้นที่ใกล้เคียง" else "เปิดเพื่อเริ่มรับงาน",
+                    fontSize = 9.sp,
+                    lineHeight = 13.sp,
+                    color = QgMuted,
+                    modifier = Modifier.padding(top = 1.dp)
+                )
             }
             androidx.compose.material3.Switch(
-                checked = online, onCheckedChange = onCheckedChange, enabled = enabled,
+                checked = online,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
                 modifier = Modifier.semantics { contentDescription = "พร้อมรับงาน" },
-                colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = QgRed,
-                    checkedThumbColor = Color.White))
+                colors = androidx.compose.material3.SwitchDefaults.colors(
+                    checkedTrackColor = QgRed,
+                    checkedThumbColor = Color.White
+                )
+            )
         }
     }
 }
