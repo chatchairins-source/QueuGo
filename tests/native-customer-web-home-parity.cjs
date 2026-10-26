@@ -9,6 +9,8 @@ assert.equal(blueprint.source_web_ref,'main');
 assert.match(blueprint.source_web_sha,/^[0-9a-f]{40}$/);
 const webHome=blueprint.customer.home.categories;
 assert.deepEqual(webHome.map(x=>x.label),['อาหาร','เครื่องดื่ม','ร้านขายของชำ','ฝากซัก','ตลาดสด','บริการเรียกรถ','ช้อปปิ้ง']);
+const nearbyCategories=blueprint.customer.home.nearby_shop_categories;
+assert.deepEqual(nearbyCategories,['food','cafe']);
 const tile=blueprint.customer.home.category_tile;
 assert.deepEqual(tile,{
   tile_width_css_px:64,tile_width_native_dp:64,
@@ -25,6 +27,9 @@ const nativePairs=[...block[1].matchAll(/"([^"]+)"\s+to\s+"([^"]+)"/g)].map(x=>[
 assert.deepEqual(nativePairs.map(x=>x[0]),webHome.map(x=>x.route));
 assert.deepEqual(nativePairs.map(x=>x[1]),webHome.map(x=>x.label));
 assert.ok(native.includes('homeCategories.forEach { (key, label) ->'),'Customer Home must render the Web-parity list directly');
+assert.ok(native.includes('private val homeNearbyShopCategories = setOf("food", "cafe")'),'Native nearby Home authority must be an explicit Web allowlist');
+assert.ok(native.includes('shop.category.lowercase() in homeNearbyShopCategories'),'Native Home nearby shops must use the Web allowlist');
+assert.ok(!native.includes('key != "grocery" && key != "shopping"'),'Native Home must not approximate Web nearby authority with an exclusion list');
 assert.ok(!block[1].includes('"express"'),'Express must not create an Android-only Home category tile');
 assert.ok(native.includes('"express" -> CustomerExpressScreen('),'Express capability must remain available; this change is Home presentation only');
 assert.ok(native.includes('"express" -> screen = "express"'),'Express routing must remain intact for existing entry points');
@@ -54,4 +59,4 @@ assert.equal(navGeo.explicit_label_line_height,false);
 assert.ok(!/Row\(Modifier\.fillMaxWidth\(\)\.height\(if \(home\)/.test(navSource),'Native bottom nav must not impose Android-only fixed row height');
 assert.ok(!/Text\(label,[^\n]*lineHeight/.test(navSource),'Native bottom nav label must not impose Android-only line height');
 
-console.log(JSON.stringify({checks:31,failures:0,scope:'Customer Android Home categories and bottom navigation match pinned Web main presentation contract; Express preserved off Home'}));
+console.log(JSON.stringify({checks:35,failures:0,scope:'Customer Android Home categories, nearby-shop authority and bottom navigation match pinned Web main; non-food/cafe services stay off Home nearby list'}));

@@ -114,8 +114,7 @@ private val homeCategories = listOf(
     "shopping" to "ช้อปปิ้ง"
 )
 
-private val homeDedicatedMarketCategories =
-    setOf("market", "fresh", "fresh_market", "meat", "fish", "vegetable", "fruit")
+private val homeNearbyShopCategories = setOf("food", "cafe")
 
 @Composable
 fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
@@ -1424,8 +1423,7 @@ internal fun CustomerHome(
 
     val nearbyShops = remember(shops, location) {
         val eligible = shops.filter { shop ->
-            val key = shop.category.lowercase()
-            key != "grocery" && key != "shopping" && key !in homeDedicatedMarketCategories
+            shop.category.lowercase() in homeNearbyShopCategories
         }
         if (location == null) eligible
         else eligible.sortedBy { customerDistanceKm(location, it) }
