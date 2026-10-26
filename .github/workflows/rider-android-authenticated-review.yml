@@ -139,8 +139,20 @@ jobs:
             -accel on -no-window -no-snapshot -no-audio -no-boot-anim -gpu swiftshader \
             -memory 2048 -cores 2 > "$RUNNER_TEMP/queuego-rider-review-emulator.log" 2>&1 &
           timeout 90s "$adb" -s emulator-5554 wait-for-device
+          review_framework_ready() {
+            [ "$("$adb" -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = "1" ] &&
+            [ "$("$adb" -s emulator-5554 shell service check activity | tr -d '\r')" = "Service activity: found" ] &&
+            [ "$("$adb" -s emulator-5554 shell service check window | tr -d '\r')" = "Service window: found" ] &&
+            [ "$("$adb" -s emulator-5554 shell service check package | tr -d '\r')" = "Service package: found" ]
+          }
+          stable_samples=0
           for attempt in $(seq 1 90); do
-            if [ "$("$adb" -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; then exit 0; fi
+            if review_framework_ready; then
+              stable_samples=$((stable_samples + 1))
+              if [ "$stable_samples" -ge 3 ]; then exit 0; fi
+            else
+              stable_samples=0
+            fi
             sleep 5
           done
           cat "$RUNNER_TEMP/queuego-rider-review-emulator.log"

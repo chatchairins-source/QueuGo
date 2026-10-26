@@ -1,3 +1,11 @@
+## 2026-10-26 Exact authenticated-review framework readiness failure — IN PROGRESS
+
+- Exact source `04842b15fc794dad4dda964f9d2811e3b67feaf9` Pilot 40326293414 passed regression/source/assets, Kotlin/JVM (including Ride endpoint cases), all three APKs, 16 KB and WebView rejection; artifact upload/runtime remained in progress at this checkpoint. No containing-run SUCCESS yet.
+- Exact review 40326293619 failed before login: Rider `am start` exited 224, then Merchant `wm size` exited 20 with `Can't find service: window`. APK compilation succeeded. Underlying guest-system loss/restart cause is unproven; this is not evidence of a Rider app-source crash.
+- Confirmed harness gap: boot gate accepted one `sys.boot_completed=1` sample without checking Android activity/window/package services. It now requires boot plus all three exact `Service ...: found` responses for three consecutive samples, resetting on absence. Five actual Bash readiness fixtures (boot, each missing service, CRLF/not-found rejection) and workflow YAML parse passed locally.
+- Merchant app-equivalent artifact 12651860532 from exact review 40325237658 at `8a70f27` has verified ZIP SHA256 `a9fe6ff4c03635c5862ec2acb9cd21ef7866acb24c367b221e4c7a5e0eb2698e` and matching metadata. Visual inspection confirms loaded Home numbers, no status protocol line in Orders, and no literal null category in Products. Five-screen capture complete; full visual parity/physical certification remains false.
+- **NEXT:** rerun exact successor review/Pilot; inspect first actual failure only and obtain Rider Home content-ready screenshot. If system services disappear again, collect framework diagnostics before changing app source. Finish final latest-head emulator lifecycle, then implement/audit Web nearby Ride aggregate supply. Customer authenticated credential and release/physical blockers remain separate.
+
 ## 2026-10-26 Rider Home capture content readiness — IN PROGRESS
 
 - The initial 5a68212 artifact captured Home navigation/map before snapshot-owned content appeared. Source confirms tabs exist independently of snapshot; idle Ready card only exists after a nonnull snapshot, and active-job dock has an existing semantic header. The original harness waited only for the tabs.
