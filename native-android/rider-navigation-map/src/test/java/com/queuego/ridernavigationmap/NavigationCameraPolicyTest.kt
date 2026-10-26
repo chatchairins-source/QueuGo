@@ -361,9 +361,9 @@ class NavigationCameraPolicyTest {
         assertTrue(navigationBearingChangedEnough(90f, 93f))
     }
 
-    @Test fun cameraMoveThresholdSuppressesStandstillJitter() {
-        assertTrue(navigationCameraMovementThresholdMeters(0.5f) >
-            navigationCameraMovementThresholdMeters(8f))
+    @Test fun cameraMoveThresholdUsesTheSameWebFollowGateAtEverySpeed() {
+        assertEquals(0.8, navigationCameraMovementThresholdMeters(0.5f), 0.001)
+        assertEquals(0.8, navigationCameraMovementThresholdMeters(8f), 0.001)
     }
 
     @Test fun idleMapReturnsToNormalNorthUpTopDownView() {
