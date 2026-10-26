@@ -139,7 +139,7 @@ internal fun RiderWorkPreferencesControl(
                 "บันทึกความต้องการไว้ได้ · บริการงานพ่วงยังไม่เปิดใช้งาน"
             },
             checked = preferences.bundleEnabled,
-            enabled = !busy && preferences.capabilities.bundle
+            enabled = !busy
         ) { enabled ->
             onChange(preferences.autoAccept, enabled, preferences.services)
         }
