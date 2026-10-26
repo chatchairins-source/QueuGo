@@ -1,3 +1,10 @@
+## 2026-10-26 Customer initial-load error recovery — IN PROGRESS
+
+- Blueprint: Web main 7e036a0 index.html route catch renders a load-error card with ลองอีกครั้ง calling route() after clearing shop cache.
+- Root cause: Native initial refresh failure only set message, while Search/Category rendered empty shop lists with no retry entry. A transient network failure looked like no shops and could not be retried from the current page.
+- Bounded fix: separate initial-home read error from action messages; show the Web-equivalent error/retry card on Home/Search/Category/Shopping; retry calls existing refresh authority, disabled while loading. Successful load clears error. Existing cached content remains usable.
+- **NEXT:** focused checks, full regression and exact-head Native Pilot; continue independent Merchant/Rider audit during CI. Authenticated screenshot/physical acceptance remain unverified.
+
 ## 2026-10-26 Rider earnings same-period recovery — IN PROGRESS
 
 - Base: latest integrated parity 3c91d8e; Web blueprint main 7e036a0. Preserves PR729 Rider map successor.

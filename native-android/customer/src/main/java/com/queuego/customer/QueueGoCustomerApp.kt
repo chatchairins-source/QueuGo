@@ -348,6 +348,7 @@ private fun CustomerShell(
     var note by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
+    var homeLoadError by remember(auth.user.id) { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var pendingVoiceCall by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
@@ -503,11 +504,12 @@ private fun CustomerShell(
                     withContext(Dispatchers.IO) {
                         contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
                     }
+                    homeLoadError = null
                     message = null
                 }.onFailure {
                     if (it is CancellationException) throw it
                     if (shops.isEmpty() && banners.isEmpty()) {
-                        message = it.message ?: "โหลดข้อมูลไม่สำเร็จ"
+                        homeLoadError = it.message ?: "เชื่อมต่อไม่ได้"
                     }
                 }
             }
@@ -820,7 +822,17 @@ private fun CustomerShell(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
-            when (screen) {
+            if (homeLoadError != null && screen in setOf("home", "search", "category", "shopping")) {
+                QgCard(Modifier.fillMaxWidth().padding(14.dp)) {
+                    Column {
+                        Text("โหลดข้อมูลไม่สำเร็จ", fontWeight = FontWeight.Bold)
+                        Text(homeLoadError!!, color = QgMuted, modifier = Modifier.padding(vertical = 8.dp))
+                        androidx.compose.material3.Button(onClick = { refresh(showLoading = true) }, enabled = !loading) {
+                            Text(if (loading) "กำลังโหลดข้อมูล…" else "ลองอีกครั้ง")
+                        }
+                    }
+                }
+            } else when (screen) {
                 "search" -> CustomerSearchScreen(
                     shops = shops,
                     location = location,
