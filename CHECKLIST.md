@@ -1,3 +1,9 @@
+## 2026-10-26 Merchant inventory Pilot compile failure #2 — bounded fix committed; exact-head Pilot NEXT
+
+- Exact Native Pilot [40302510796](https://github.com/chatchairins-source/QueuGo/actions/runs/40302510796) on exact HEAD `79b378f23c554db244140407d3baf380d86530f9`: full QueueGo regression, POS/edit and Customer/Merchant contracts, source integrity, and asset checks passed. Kotlin unit/build step failed first at `MerchantProductsScreen.kt:429:48`: unresolved `launch`; subsequent suspend-call diagnostics at the three adjustment/history callbacks follow from the missing coroutine extension import.
+- Bounded fix committed as `5335ecb685bef5139e7afa3af98cf4019aa9dc3b`: add `kotlinx.coroutines.launch` to the existing Merchant coroutine imports. No behavior changed. Local Android SDK/Gradle is unavailable; hosted Native Pilot is the Kotlin/JUnit and APK gate.
+- **NEXT:** run Native Pilot on the exact successor after this checkpoint; inspect only the first confirmed failure. If clean, continue the recorded Merchant POS parity chunk: tracked zero-stock products remain visible but cannot be added, with available stock displayed.
+  
 ## 2026-10-26 Merchant inventory tracking — first regression failure isolated
 
 - Exact Native Pilot `40302199708` on `2eb010c99d8d8f5f0132c0904ed82fa2f2a47b7c` stopped at the first full-regression source contract; all preceding regression checks passed. Failure: `tests/native-android-source.cjs:683` required the former exact product projection and rejected the newly required `inventory_stock_tracking,grocery_master_id,grocery_stock_tracking` fields.
