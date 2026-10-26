@@ -103,10 +103,13 @@ def expand_profile_extra_tools():
     time.sleep(1)
 
 
+def node_contains(n,marker):
+    return marker in n.get("text","") or marker in n.get("content-desc","")
+
 def capture_profile_dialog(entry,title,name):
     ns=scroll_to_text(entry)
     tap_label(ns,entry)
-    ns=wait(lambda xs:any(title in n.get("text","") for n in xs),20)
+    ns=wait(lambda xs:any(node_contains(n,title) and rect(n) for n in xs),20)
     assert ns, "Rider read-only profile screen did not open: "+title
     screens.append({"screen":name,**shot(name)})
     closes=[n for n in ns if (n.get("text","").strip()=="ปิด" or n.get("content-desc","").strip() in ("ปิด","ปิดหน้าต่าง","Close")) and rect(n)]
@@ -116,7 +119,7 @@ def capture_profile_dialog(entry,title,name):
     else:
         # Some read-only dialogs expose only a drawn X icon without accessibility text.
         run(["shell","input","keyevent","4"])
-    closed=wait(lambda xs:not any(title in n.get("text","") for n in xs),15)
+    closed=wait(lambda xs:not any(node_contains(n,title) for n in xs),15)
     assert closed, "Read-only Rider profile screen did not close: "+title
     time.sleep(1)
 
@@ -191,7 +194,7 @@ def main():
     # Native-only tools. Capture it before scrolling down to expand extras.
     capture_profile_dialog(
         "แจ้งปัญหา / ติดตามเรื่อง",
-        "แจ้งปัญหาและติดตามสถานะจากระบบ",
+        "ติดต่อฝ่ายดูแล",
         "10-support"
     )
     expand_profile_extra_tools()
