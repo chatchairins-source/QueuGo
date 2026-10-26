@@ -1,3 +1,13 @@
+## 2026-10-26 Native Customer Web parity — Bottom navigation geometry DONE (source/test)
+
+- Stream: Android/Web visual parity, Customer only. Active branch `work-native-web-parity-20261026`; Web blueprint remains pinned to `main=7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Root cause/evidence: Native bottom navigation imposed Android-only row geometry instead of the Web Home/default density contract.
+- Change: Native bottom navigation now preserves Web labels/order and matches Web-equivalent outer padding, item padding, icon box, 20 dp icon and 10/9 sp labels without an Android-only fixed row height or explicit label line-height.
+- Implementation HEAD: `bd03119ea967f886aef1e3dd48a17dd1232d0f0d`.
+- Test/CI: Native Pilot run `40260504415` **SUCCESS** — full QueueGo regression, Customer Web Home parity gate, source integrity, Kotlin/unit suites, all three APK builds, Android 16 KB packaging, WebView rejection, artifact upload, and emulator launch/map/voice lifecycle all passed.
+- Status: **DONE (source/test)**. Physical-device pixel parity is not claimed.
+- NEXT: continue Customer only. Match Web Home “ร้านใกล้คุณ” authority exactly: Web includes only `food` and `cafe`; Native must not admit Laundry/Grocery/Market/Shopping or other service categories merely by exclusion. Add a deterministic parity guard, then run exact-head Native Pilot.
+
 ## 2026-10-26 Native Customer Web parity — Home category geometry DONE (source/test)
 
 - Stream: Android/Web visual parity, Customer only. Active branch `work-native-web-parity-20261026`; Web blueprint remains pinned to `main=7e036a0735cc49905e9b0a2434492470551a0c9d`.
