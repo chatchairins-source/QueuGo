@@ -1,7 +1,7 @@
 {
   "execution": "review_only_no_database_write",
   "checked_date": "2026-10-26",
-  "status": "current_government_corroboration_supports_4029_hierarchy_but_primary_authority_unresolved",
+  "status": "checksum_pinned_bora_and_current_government_corroboration_support_4029_but_primary_authority_unresolved",
   "canonical_resolution": "unresolved",
   "production_import_allowed": false,
   "conflict": {
@@ -58,9 +58,16 @@
           "province": "ขอนแก่น"
         }
       ],
-      "checksum_status": "raw_pdf_bytes_not_available_for_checksum_in_current_environment",
-      "freshness_status": "version_date_unresolved",
-      "canonical_eligible": false
+      "checksum_status": "verified_exact_bytes",
+      "freshness_status": "historical_http_last_modified_2022_primary_scope_unresolved",
+      "canonical_eligible": false,
+      "effective_url": "https://www.bora.dopa.go.th/wp-content/uploads/2022/02/plan_v26325.pdf",
+      "bytes": 232931,
+      "sha256": "d1b7313990eff9ec5990243aed1ef829b5c02e2e6e729c85507639001e182ad9",
+      "text_sha256": "a06270d4b05b5d95ae89177ba0e03728e07fcc0a04477d5ca5a4cc7fb85f6a71",
+      "http_last_modified": "Sun, 13 Feb 2022 19:21:47 GMT",
+      "http_etag": "\"38de3-5d7eb3603d94a\"",
+      "row_evidence_from_same_checksum_pinned_bytes": true
     },
     {
       "id": "dga_catalog_bot_dopa_location_codes",
@@ -146,8 +153,9 @@
     "source_freshness": "blocked",
     "license_provenance": "blocked_for_canonical_primary_reference",
     "postgis_release_acceptance": "not_tested",
-    "current_government_operational_corroboration": "supports_4029_hierarchy"
+    "current_government_operational_corroboration": "supports_4029_hierarchy",
+    "checksum_pinned_official_bora_corroboration": "supports_4029_not_4026"
   },
-  "limits": "Official BORA historical/undated documents and current DOAE operational registry data independently use 4029 for Wiang Kao; current DOAE data also uses 402901/402902/402903 as its subdistrict children. This materially strengthens corroboration but is not a checksum-pinned current DOPA/MOI canonical code master. Therefore canonical identity, freshness/provenance, geometry hierarchy and Production release gates remain independent and blocked.",
+  "limits": "Checksum-pinned BORA operational PDF bytes and current DOAE operational registry data independently support 4029 for Wiang Kao; current DOAE also supports 402901/402902/402903 under parent 4029. The pinned BORA PDF has HTTP Last-Modified in 2022 and is an operational installation-plan document, not a current/versioned DOPA/MOI canonical code master. Canonical identity, freshness/provenance, geometry hierarchy and Production release gates therefore remain independent and blocked.",
   "next": "Acquire a current/versioned checksum-pinned primary DOPA/MOI administrative-code payload or equivalent authoritative row-level reference. Then reconcile 4026/4029 and all HDX missing/extra code rows. Do not use DOAE operational corroboration to rewrite OAD codes or release any quarantined geometry."
 }

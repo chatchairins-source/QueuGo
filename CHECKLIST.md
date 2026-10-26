@@ -1,3 +1,11 @@
+## 2026-10-26 BORA provenance/freshness gate separation — DONE (source/CI); canonical identity — BLOCKED
+
+- Continued successor `75fbfac6f07dadfad94a0869f02ac6960286b826` after exact-head OSM audit `40258036411` and RC `40258036407` both **SUCCESS**.
+- Persisted the already verified BORA operational PDF checksum/redirect/HTTP metadata into the corroboration and acquisition receipts: effective URL `plan_v26325.pdf`, 232,931 bytes, SHA-256 `d1b7313990eff9ec5990243aed1ef829b5c02e2e6e729c85507639001e182ad9`, extracted-text SHA-256 `a06270d4b05b5d95ae89177ba0e03728e07fcc0a04477d5ca5a4cc7fb85f6a71`, HTTP Last-Modified `2022-02-13`, ETag `"38de3-5d7eb3603d94a"`.
+- Gate meaning is explicit: exact-byte official BORA row evidence **supports 4029 and not 4026 in that operational document**, while freshness/current-primary and canonical identity remain **BLOCKED**. No one may convert `checksum_status=verified_exact_bytes` into `canonical_eligible=true`.
+- Current DOAE evidence continues to corroborate `4029 → 402901/402902/402903`; it remains operational/non-primary. Production import stays **FALSE** and PR #728 stays draft.
+- **NEXT:** enrich the existing deterministic reconciliation output for all 9 OSM quarantines with independent HDX identity diagnostic + HDX source-topology evidence and parent diagnostic chain. Keep every row quarantined and explicitly state that passing HDX source topology does not override failed OSM matched-parent containment or approve HDX as canonical geometry.
+
 ## 2026-10-26 Checksum-pinned BORA operational PDF — DONE (corroboration); canonical primary master — BLOCKED
 
 - Exact implementation `7471151721fbf097a85d3a71d2471611a2db49dd` fixes the first real failure from primary run `40256997548`: GitHub Ubuntu 24.04 did not include `pdftotext`, so the workflow had acquired valid BORA PDF bytes but could not inspect their text. The fix installs `poppler-utils` only when needed and restores strict PDF assertions.

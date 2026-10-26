@@ -122,7 +122,13 @@
         "wiang_kao_4029_name_match": true,
         "wiang_kao_4026_name_match": false,
         "evidence_role": "official_operational_corroboration",
-        "canonical_eligible": false
+        "canonical_eligible": false,
+        "effective_url": "https://www.bora.dopa.go.th/wp-content/uploads/2022/02/plan_v26325.pdf",
+        "last_modified": "Sun, 13 Feb 2022 19:21:47 GMT",
+        "etag": "\"38de3-5d7eb3603d94a\"",
+        "content_type": "application/pdf",
+        "freshness_status": "historical_http_last_modified_2022",
+        "raw_payload_redistributed": false
       }
     ],
     "identity_approval": "not_performed",
