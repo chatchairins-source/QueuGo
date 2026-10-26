@@ -1,16 +1,17 @@
-## 2026-10-26 Merchant order-detail Web parity — DONE (source/full regression); hosted Pilot pending
+## 2026-10-26 Merchant order-detail Web parity — DONE (source/full regression); exact Pilot running
 
 - Web `renderShopOrderModern` shows the customer name/address, five-step delivery progress, item quantity total, and Rider cash amount only after the pending/cancelled states. Native detail previously lacked the address/progress/quantity summary and always showed expected Rider cash, including pending and cancelled orders.
 - Bounded source change: reuse the current authenticated `orders` RLS read to add `delivery_address`; display Web-aligned customer/address, progress stages and item count; hide the Rider cash summary while pending or cancelled. No new endpoint, payment action or order authority. Added deterministic JUnit stage/terminal-state coverage and source contracts.
-- Clean full `TZ=Asia/Bangkok npm test` on exact source commit `517140355858fb74b2e9593004b5728a22b9ca19`: EXIT 0; Native source 331/0, order state 70/0, stability 106/0, Merchant title 18/0, substitution 32/0, and map QA 28/0. The first uncommitted run was correctly stopped by the release-evidence clean-checkout guard; rerun passed after commit.
-- **NEXT:** run hosted Native Pilot on the current exact source tree and review the Android detail layout on emulator; then continue the Customer page/state audit. Customer-call and completed-order report actions remain open Merchant detail gaps.
+- Clean full `TZ=Asia/Bangkok npm test` on the combined order-detail and call source tree (`a92d75f2`, exact tree `520f64f7`): EXIT 0; Native source 332/0, order state 70/0, stability 106/0, Merchant title 18/0, substitution 32/0, and post-test map QA 28/0. No Production writes.
+- Exact-head Native Pilot run `40294781492` on remote checkpoint `adc08ab8ee8d885298425ec004e628c7ecaa43a3` is running; local/remote tree equality verified at `520f64f7`. Android SDK/Gradle wrapper are unavailable locally, so hosted JUnit/APKs/16 KB/emulator gates remain pending.
+- **NEXT:** continue the Customer page/state audit from its pinned Web blueprint while Pilot runs; then inspect exact-head Pilot and fix only its first real failure. Merchant completed-order issue reporting remains a separate open detail gap.
 
-## 2026-10-26 Merchant QueueGo customer call parity — IN PROGRESS
+## 2026-10-26 Merchant QueueGo customer call parity — DONE (source/full regression); exact Pilot running
 
 - Web order detail invokes the existing QueueGo voice caller while an order is active. Native already has the shared authenticated voice controller and permission flow, but Merchant detail had no outgoing customer-call action.
 - Bounded change: add the Web-labeled call action for nonterminal orders, request `RECORD_AUDIO` only on tap, and reuse the shared controller's existing `startOutgoing(auth, orderId, "customer")`. It disables during another active call and rechecks state after permission returns. No phone-number fallback, new signaling or backend authority.
-- Focused Native source 332/0, shared voice UI and call SQL contracts PASS. Clean full regression and exact hosted Kotlin/APK/emulator validation pending.
-- **NEXT:** commit and run full clean regression, then sync this tree and inspect exact-head Native Pilot. Completed-order issue reporting remains a separate Web parity gap.
+- Focused Native source 332/0, shared voice UI and call SQL contracts PASS. Full `TZ=Asia/Bangkok npm test` passes on source tree `520f64f7`; exact-hosted Pilot `40294781492` is in progress on that same tree.
+- **NEXT:** audit Customer page/state parity using the pinned current Web blueprint. Completed-order issue reporting remains a separate Web parity gap.
 
 ## 2026-10-26 Native Merchant order-detail source checkpoint — exact Pilot NEXT
 

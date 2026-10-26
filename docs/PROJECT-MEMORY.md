@@ -2,9 +2,9 @@
 
 - Web order detail exposes QueueGo voice calling on nonterminal orders. Native Merchant already shared the authenticated voice controller with other roles but lacked its outgoing customer action.
 - The detail action now calls the existing controller with target `customer`, requests microphone permission only when tapped, prevents a concurrent active call, and rechecks active-call state after permission returns. No phone-call fallback, duplicate signaling path, backend change or new call state.
-- Focused Native source 332/0 and existing shared voice UI/call SQL contracts pass. NEXT: commit, clean full regression, sync to the existing Native branch and run exact-head Pilot. Completed-order issue reporting remains open.
+- Source commit `a92d75f2`; full `TZ=Asia/Bangkok npm test` passes on exact tree `520f64f7` (Native source 332/0; map QA 28/0). Remote exact-tree checkpoint `adc08ab8` has Pilot `40294781492` running. Completed-order issue reporting remains open; continue Customer inventory while CI runs.
 
-## 2026-10-26 Native Merchant order-detail parity follow-up
+## 2026-10-26 Native Merchant order-detail parity follow-up (source/full regression done)
 
 - Verified Web blueprint `renderShopOrderModern` against Native `MerchantOrderDetail`: Web provides customer name/address, five delivery stages, item quantity total, and expected Rider cash only after pending/cancelled; Native previously omitted those details and showed cash for every state.
 - Current bounded Native change uses the existing authenticated orders RLS query to read delivery_address and adds a pure progress-stage policy. It does not add payment confirmation, backend API or new state authority. Focused source/stability/order-state/substitution checks pass. Full local regression first stopped at the intentional release-evidence clean-checkout guard while this chunk was uncommitted.
