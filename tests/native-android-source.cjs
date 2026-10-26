@@ -467,7 +467,15 @@ for(const role of ['customer','merchant','rider']){
 const riderManifest=read('rider/src/main/AndroidManifest.xml');
 const nativeRootGradle=read('build.gradle.kts');
 const runtimeCapture=read('qa/capture-rider-launch.py');
+const authenticatedReviewCapture=read('qa/capture-rider-authenticated-review.py');
 const pilotWorkflow=fs.readFileSync(path.resolve(root,'..','.github','workflows','build-native-rider-pilot.yml'),'utf8');
+ok(
+  authenticatedReviewCapture.includes('def node_exact(n,marker):') &&
+  authenticatedReviewCapture.includes('any(node_exact(n,title) and rect(n) for n in xs)') &&
+  authenticatedReviewCapture.includes('not any(node_exact(n,title) and rect(n) for n in xs)') &&
+  !authenticatedReviewCapture.includes('node_contains(n,title)'),
+  'Rider authenticated Profile-dialog capture must use exact dialog titles so underlying Profile subtitles cannot fake open/close state'
+);
 ok(riderApi.includes('qg_get_my_rider_offer')&&!riderApi.includes('rpcArray("get_rider_delivery_pool"'),'Rider native must show only the server-selected live offer, never a shared delivery pool');
 ok(riderApi.includes('qg_rider_decline_offer')&&riderApi.includes('qg_rider_action_once'),'Rider native offer accept/decline must stay on guarded Production RPCs');
 ok(
