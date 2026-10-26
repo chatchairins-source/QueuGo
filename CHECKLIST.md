@@ -1,3 +1,10 @@
+## 2026-10-27 Fresh authenticated visual gate — REQUESTED
+
+- Exact successor `bb747776af826b0c5962e8d54f5765d42fd8dec5` passed Native Pilot push 40360128398, Native Pilot PR 40360140176, and Map Engine PR 40360140190.
+- Authenticated review 40360128345 was readiness-only: credential-check passed but `capture` was skipped because the branch push did not request authenticated capture.
+- This documentation-only checkpoint requests the existing read-only authenticated Rider/Merchant emulator capture. No app source, Production data, dispatch, payment or map authority changes.
+- **NEXT:** inspect the fresh Rider/Merchant artifacts from this exact successor line. Fix only concrete visual mismatches; Customer visual acceptance remains blocked on its recorded missing review credentials.
+
 ## 2026-10-26 Rider/Web parity consolidation — exact Pilot PASS; authenticated visual review requested
 
 - Continued on the newest `work-native-web-parity-20261026` successor only; no reset/revert/cherry-pick and no Production database/data mutation.
