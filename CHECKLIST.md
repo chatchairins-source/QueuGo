@@ -1,3 +1,10 @@
+## 2026-10-26 Rider earnings same-period recovery — IN PROGRESS
+
+- Base: latest integrated parity 3c91d8e; Web blueprint main 7e036a0. Preserves PR729 Rider map successor.
+- Root cause: Web period buttons invoke summary/ledger loaders on every click. Native click assigned the same days value; Compose did not restart effects, so retrying the selected period after a read failure did nothing.
+- Bounded fix: increment refresh generation on existing period click; key summary, cash ledger and offer performance read effects by it. Cancellation still propagates; no mutation or new UI/backend authority.
+- **NEXT:** focused source checks, clean full regression and exact-head Native Pilot; continue Customer/Merchant audits during hosted CI. See docs/native-rider-web-parity-matrix.md.
+
 ## 2026-10-26 Merchant route restoration — IN PROGRESS
 
 - Base: newest parity remote 3e7b5aa17995ab9d1ad93d5b635ffe945b3b5d04; Web main 7e036a0735cc49905e9b0a2434492470551a0c9d.

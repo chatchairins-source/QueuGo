@@ -31,6 +31,7 @@ import java.util.Locale
 @Composable
 fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, modifier: Modifier = Modifier) {
     var days by remember { mutableIntStateOf(1) }
+    var periodRefresh by remember { mutableIntStateOf(0) }
     var summary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
     var offerPerformance by remember { mutableStateOf<RiderOfferPerformance?>(null) }
     var offerPerformanceError by remember { mutableStateOf<String?>(null) }
@@ -66,11 +67,11 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
             supplyPlanError = "โหลดช่วงเวลางานไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้")
         }
     }
-    LaunchedEffect(auth.session.accessToken, days) {
+    LaunchedEffect(auth.session.accessToken, days, periodRefresh) {
         summary = null; summaryError = null
         try { summary = api.periodSummary(auth, days) } catch (e: CancellationException) { throw e } catch (e: Exception) { summaryError = "โหลดสรุปงานไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้") }
     }
-    LaunchedEffect(auth.session.accessToken, days) {
+    LaunchedEffect(auth.session.accessToken, days, periodRefresh) {
         offerPerformance = null
         offerPerformanceError = null
         try {
@@ -81,7 +82,7 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
             offerPerformanceError = "โหลดสถิติข้อเสนอไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้")
         }
     }
-    LaunchedEffect(auth.session.accessToken, days) {
+    LaunchedEffect(auth.session.accessToken, days, periodRefresh) {
         ledger = null; ledgerError = null
         expandedOrderId = null
         val to = LocalDate.now(ZoneId.of("Asia/Bangkok"))
@@ -115,7 +116,7 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
             Row(Modifier.fillMaxWidth().padding(5.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(1 to "วันนี้", 7 to "7 วัน", 30 to "30 วัน").forEach { (value, label) ->
                     Box(Modifier.weight(1f).height(44.dp).background(if (days == value) QgRed else Color.Transparent, RoundedCornerShape(14.dp))
-                        .clickable(role = Role.Button) { days = value }, contentAlignment = Alignment.Center) {
+                        .clickable(role = Role.Button) { days = value; periodRefresh++ }, contentAlignment = Alignment.Center) {
                         Text(label, color = if (days == value) Color.White else Color(0xFF8B8488), fontWeight = FontWeight.Black)
                     }
                 }
