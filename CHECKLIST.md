@@ -1,3 +1,9 @@
+## 2026-10-26 Merchant initial-load recovery — IN PROGRESS
+
+- Web blueprint main 7e036a0 includes explicit boot recovery/retry. Native refreshAll failed into message while shop remained null, leaving first-load failure indistinguishable from no shop in subsequent rendering.
+- Bounded change: initial shop-read error owns a retry card; successful authoritative refresh clears it, including legitimate null-shop results. Existing loaded shop remains visible on later refresh errors. Cancellation propagates.
+- **NEXT:** focused source checks, clean full regression and exact-head Native Pilot; continue page/state audit during CI. No authenticated or physical acceptance claim.
+
 ## 2026-10-26 Customer initial-load error recovery — IN PROGRESS
 
 - Blueprint: Web main 7e036a0 index.html route catch renders a load-error card with ลองอีกครั้ง calling route() after clearing shop cache.

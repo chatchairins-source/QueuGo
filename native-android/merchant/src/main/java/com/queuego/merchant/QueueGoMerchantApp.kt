@@ -146,6 +146,7 @@ private fun MerchantShell(
     var orderItems by remember { mutableStateOf<List<MerchantOrderItem>>(emptyList()) }
     var gpRate by remember { mutableStateOf(0.0) }
     var loading by remember { mutableStateOf(true) }
+    var initialLoadError by remember(auth.user.id) { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var handledPushEventId by remember { mutableStateOf<Long?>(null) }
@@ -323,7 +324,12 @@ private fun MerchantShell(
                 todayRevenue = runCatching { api.todayRevenue(auth, today) }.getOrDefault(MerchantTodayRevenue(0, 0.0, 0.0, 0.0))
                 gpRate = runCatching { api.effectiveGp(auth, s.id) }.getOrDefault(0.0)
             }
-        }.onFailure { message = it.message ?: "โหลดข้อมูลร้านไม่สำเร็จ" }
+            initialLoadError = null
+        }.onFailure {
+            if (it is kotlinx.coroutines.CancellationException) throw it
+            if (shop == null) initialLoadError = it.message ?: "เชื่อมต่อไม่ได้"
+            else message = it.message ?: "โหลดข้อมูลร้านไม่สำเร็จ"
+        }
         loading = false
     }
 
@@ -598,7 +604,17 @@ private fun MerchantShell(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
-            when (screen) {
+            if (initialLoadError != null) {
+                QgCard(Modifier.fillMaxWidth().padding(14.dp)) {
+                    Column {
+                        Text("โหลดข้อมูลร้านไม่สำเร็จ", fontWeight = FontWeight.Bold)
+                        Text(initialLoadError!!, color = QgMuted, modifier = Modifier.padding(vertical = 8.dp))
+                        Button(onClick = { scope.launch { refreshAll() } }, enabled = !loading) {
+                            Text(if (loading) "กำลังโหลดข้อมูล…" else "ลองอีกครั้ง")
+                        }
+                    }
+                }
+            } else when (screen) {
                 "home" -> DashboardScreen(
                     shop = shop,
                     orders = orders,
