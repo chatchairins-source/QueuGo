@@ -13,6 +13,12 @@ on:
       - 'tests/osm-admin-boundary-match.cjs'
       - 'scripts/audit-admin-boundary-topology.py'
       - 'tests/admin-boundary-topology.py'
+      - 'scripts/reconcile-thailand-admin-boundaries.cjs'
+      - 'tests/thailand-admin-reconciliation.cjs'
+      - 'data/maps/hdx-thailand-admin-boundary-review.json'
+      - 'data/maps/hdx-thailand-admin-topology-review.json'
+      - 'data/maps/osm-thailand-2026-10-24-bilingual-review.json'
+      - 'data/maps/thailand-admin-reference-acquisition.json'
       - 'requirements-boundary-topology.txt'
       - 'requirements-osm-staging.txt'
       - 'package.json'
@@ -135,6 +141,25 @@ jobs:
           if(!r.osm_crosswalk_parent_review||r.production_import_allowed!==false) throw Error('review-only crosswalk containment report required');
           if(r.osm_crosswalk_parent_review.production_import_allowed!==false) throw Error('crosswalk QA cannot authorize import');
           NODE
+      - name: Reconcile identity topology provenance and freshness gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/thailand-admin-reconciliation.cjs
+          node scripts/reconcile-thailand-admin-boundaries.cjs \
+            data/maps/osm-thailand-2026-10-24-bilingual-review.json \
+            "$RUNNER_TEMP/osm-admin-match/osm-crosswalk-parent-topology-review.json" \
+            "$RUNNER_TEMP/osm-admin-review/osm-topology-review.json" \
+            data/maps/hdx-thailand-admin-boundary-review.json \
+            data/maps/hdx-thailand-admin-topology-review.json \
+            data/maps/thailand-admin-reference-acquisition.json \
+            "$RUNNER_TEMP/osm-admin-match/thailand-admin-reconciliation-review.json"
+          node - "$RUNNER_TEMP/osm-admin-match/thailand-admin-reconciliation-review.json" <<'NODE'
+          const r=require(process.argv[2]);
+          if(r.production_import_allowed!==false||r.release_decision!=='blocked') throw Error('reconciliation must fail closed');
+          if(r.summary.osm_matched_parent_excluded!==9||r.summary.eligible_rows!==0) throw Error('quarantine coverage changed unexpectedly');
+          if(r.gates.identity_code_correctness.status!=='blocked'||r.gates.postgis_release_acceptance.status!=='not_tested') throw Error('independent release gates were collapsed');
+          NODE
       - name: Upload admin boundary audit artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -145,6 +170,7 @@ jobs:
             ${{ runner.temp }}/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq
             ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-match-report.json
             ${{ runner.temp }}/osm-admin-match/osm-crosswalk-parent-topology-review.json
+            ${{ runner.temp }}/osm-admin-match/thailand-admin-reconciliation-review.json
             ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-mapping.json
           if-no-files-found: error
           compression-level: 9
