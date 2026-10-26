@@ -563,6 +563,40 @@ private fun riderVehicleLabel(type: String?): String = when (type) {
 
 @Composable
 internal fun RiderSettingDestinationRow(enabled: Boolean, onClick: () -> Unit) {
-    RiderSettingRow("ปลายทางของฉัน", "ตั้งค่าความต้องการเส้นทางรับงาน", R.drawable.qg_rider_flow_loc,
-        enabled = enabled, onClick = onClick)
+    Column {
+        RiderSettingDivider()
+        RiderSettingRow(
+            "ปลายทางของฉัน",
+            "ตั้งค่าความต้องการเส้นทางรับงาน",
+            R.drawable.qg_rider_flow_loc,
+            enabled = enabled,
+            onClick = onClick
+        )
+    }
+}
+
+@Composable
+internal fun RiderSettingLaundryModeRow(
+    featureEnabled: Boolean,
+    modeEnabled: Boolean,
+    enabled: Boolean,
+    onModeChanged: (Boolean) -> Unit
+) {
+    Column {
+        RiderSettingDivider()
+        RiderSettingRow(
+            "รับงานฝากซัก",
+            if (featureEnabled) "งานรับ–ส่งผ้าจากร้านที่เข้าร่วม" else "บริการงานฝากซักยังไม่เปิดใช้งาน",
+            R.drawable.qg_rider_flow_jobs,
+            enabled = enabled && featureEnabled,
+            trailing = {
+                Switch(
+                    checked = modeEnabled,
+                    onCheckedChange = onModeChanged,
+                    enabled = enabled && featureEnabled,
+                    colors = SwitchDefaults.colors(checkedTrackColor = QgRed)
+                )
+            }
+        ) { onModeChanged(!modeEnabled) }
+    }
 }
