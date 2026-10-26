@@ -17,4 +17,8 @@ with tempfile.TemporaryDirectory() as td:
  txt='4026|เวียงเก่า\nอื่น'.encode('cp874'); q=Path(td)/'a.txt';q.write_bytes(txt)
  t=m.inspect_text(q);assert t['encoding']=='cp874' and t['matched_lines'][0]['line']==1
  assert m.sha256_file(p) and len(m.sha256_file(p))==64
- print(json.dumps({'checks':6,'failures':0,'scope':'primary admin reference xlsx/text inspection; no network or Production'}))
+ pdf=m.inspect_pdf_text('432 4025 อำเภอโนนศิลา ขอนแก่น\n433 4029 อำเภอเวียงเก่า ขอนแก่น\n')
+ assert pdf['code_4029_seen'] and pdf['wiang_kao_4029_name_match'] and not pdf['wiang_kao_4026_name_match']
+ h=Path(td)/'h.txt';h.write_text('HTTP/2 200\nLast-Modified: Mon, 01 Jan 2026 00:00:00 GMT\nETag: abc\nSet-Cookie: secret\n',encoding='iso-8859-1')
+ meta=m.response_metadata(h);assert meta['last-modified'].startswith('Mon') and meta['etag']=='abc' and 'set-cookie' not in meta
+ print(json.dumps({'checks':9,'failures':0,'scope':'primary admin reference xlsx/text/pdf inspection and safe response metadata; no network or Production'}))

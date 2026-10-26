@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Verify offline XLSX/text inspection guards
+      - name: Verify offline XLSX/text/PDF inspection guards
         run: python3 tests/primary-admin-reference-inspection.py
       - name: Acquire official BORA primary-reference candidates without database access
         shell: bash
@@ -40,9 +40,17 @@ jobs:
           assert r['identity_approval']=='not_performed'
           x=next(s for s in r['sources'] if s['id']=='bora_ccaatt_xlsx')
           if x.get('retrieved'): assert x.get('inspection',{}).get('valid_xlsx') is True
+          f=next(s for s in r['sources'] if s['id']=='bora_registry_installation_plan_pdf')
+          if f.get('retrieved'):
+              assert f.get('sha256') and f.get('bytes',0)>0
+              assert f.get('inspection',{}).get('pdf_text_extractable') is True
+              assert f.get('inspection',{}).get('code_4029_seen') is True
           print('primary acquisition status:',r['status'])
           PY
-      - name: Preserve raw official responses headers checksums and inspection receipt
+      - name: Remove raw downloaded bodies before evidence artifact
+        shell: bash
+        run: find "$RUNNER_TEMP/thailand-primary-admin-reference" -maxdepth 1 -type f -name '*.bin' -delete
+      - name: Preserve headers checksums and bounded inspection receipt
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: queuego-thailand-primary-admin-reference
