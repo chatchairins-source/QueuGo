@@ -101,16 +101,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-private val categories = listOf(
-    "all" to "ทั้งหมด",
+// Web main is the visual/navigation blueprint for Customer Home.
+// Keep Express capability in the app, but do not surface an extra Home tile that
+// does not exist on Web.
+private val homeCategories = listOf(
     "food" to "อาหาร",
     "cafe" to "เครื่องดื่ม",
     "grocery" to "ร้านขายของชำ",
     "laundry" to "ฝากซัก",
     "market" to "ตลาดสด",
-    "shopping" to "ช้อปปิ้ง",
     "ride" to "บริการเรียกรถ",
-    "express" to "ส่งด่วน"
+    "shopping" to "ช้อปปิ้ง"
 )
 
 private val homeDedicatedMarketCategories =
@@ -1517,7 +1518,7 @@ internal fun CustomerHome(
                     .padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 5.dp),
                 horizontalArrangement = Arrangement.spacedBy(13.dp)
             ) {
-                categories.filter { it.first != "all" }.forEach { (key, label) ->
+                homeCategories.forEach { (key, label) ->
                     CustomerCategoryButton(key = key, label = label, onClick = { onCategory(key) })
                 }
             }
