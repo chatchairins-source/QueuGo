@@ -479,11 +479,31 @@ fun QueueGoCreditCard(
             }
         }
     } else {
-        Card(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("เครดิต Rider", style = MaterialTheme.typography.titleMedium)
+        Card(
+            Modifier.fillMaxWidth().padding(bottom = 10.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE4E7)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    "เครดิต Rider",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF30282C)
+                )
                 if (data != null) {
-                    Text("ใช้ได้ ${money(data.optLong("available_minor"))}")
+                    Text(
+                        "ใช้ได้ ${money(data.optLong("available_minor"))}",
+                        fontSize = 20.sp,
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF211E20)
+                    )
                 }
                 if (data?.optBoolean("enabled") == true) {
                     if (request == null) {
@@ -557,13 +577,27 @@ fun QueueGoCreditCard(
                         ) { Text("รายการใหม่") }
                     }
                 } else {
-                    Text("ระบบเติมเครดิตยังไม่เปิดใช้งาน")
+                    Text(
+                        "ระบบเติมเครดิตยังไม่เปิดใช้งาน",
+                        color = Color(0xFF72646B),
+                        fontSize = 10.sp,
+                        lineHeight = 14.sp
+                    )
                 }
                 OutlinedButton(
                     enabled = !busy,
-                    onClick = { runAction { refresh(true) } }
-                ) { Text("ตรวจสอบรายการ / รีเฟรชยอด") }
-                message?.let { Text(it) }
+                    onClick = { runAction { refresh(true) } },
+                    modifier = Modifier.height(34.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 11.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB90B30)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8CCD4))
+                ) {
+                    Text("ตรวจสอบรายการ / รีเฟรชยอด", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+                message?.let {
+                    Text(it, color = Color(0xFF72646B), fontSize = 10.sp, lineHeight = 14.sp)
+                }
                 val entries = data?.optJSONArray("entries")
                 for (i in 0 until minOf(entries?.length() ?: 0, 10)) {
                     val e = entries?.optJSONObject(i) ?: continue
@@ -582,12 +616,17 @@ fun QueueGoCreditCard(
                                     kotlin.math.abs(e.optLong("held_cash_delta") + e.optLong("held_promo_delta"))
                                 else
                                     e.optLong("cash_delta") + e.optLong("promo_delta")
-                            )
+                            ),
+                        color = Color(0xFF5F565A),
+                        fontSize = 10.sp,
+                        lineHeight = 14.sp
                     )
                 }
                 Text(
                     "เครดิตใช้ชำระค่าบริการ QueueGo · ถอนหรือโอนไม่ได้",
-                    style = MaterialTheme.typography.bodySmall
+                    color = Color(0xFF72646B),
+                    fontSize = 10.sp,
+                    lineHeight = 14.sp
                 )
             }
         }
