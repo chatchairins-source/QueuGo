@@ -296,8 +296,8 @@ ok(
   customerAppForMemory.includes('RoundedCornerShape(16.dp)') &&
   customerAppForMemory.includes('fontSize = 13.sp') &&
   customerAppForMemory.includes('fontSize = 9.5.sp') &&
-  customerAppForMemory.includes('ProfileDestination(\n                "ลบบัญชีถาวร"') &&
-  customerAppForMemory.includes('ProfileDestination("ออกจากระบบ", logout)') &&
+  /ProfileDestination\(\s*"ลบบัญชีถาวร"/.test(customerAppForMemory) &&
+  /ProfileDestination\(\s*"ออกจากระบบ",\s*logout/.test(customerAppForMemory) &&
   customerAppForMemory.includes('QgAccountDeletionSection('),
   'Customer Profile must keep the current Web compact hero/grouped-row hierarchy while preserving account deletion authority'
 );
