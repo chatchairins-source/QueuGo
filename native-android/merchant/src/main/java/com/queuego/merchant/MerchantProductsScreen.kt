@@ -42,6 +42,24 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
+internal fun merchantProductRows(
+    products: List<MerchantProduct>,
+    shopCategory: String,
+    mode: String,
+    query: String
+): List<MerchantProduct> {
+    val needle = query.trim().lowercase()
+    return merchantPricedProducts(products, shopCategory == "grocery").filter { product ->
+        val matchesMode = mode == "all" ||
+            (mode == "on" && product.available) ||
+            (mode == "off" && !product.available)
+        val matchesQuery = needle.isBlank() ||
+            product.name.lowercase().contains(needle) ||
+            product.category.lowercase().contains(needle)
+        matchesMode && matchesQuery
+    }
+}
+
 @Composable
 internal fun MerchantProductsScreen(
     products: List<MerchantProduct>,
@@ -52,15 +70,11 @@ internal fun MerchantProductsScreen(
     onAddManual: () -> Unit,
     onOpenCatalog: () -> Unit
 ) {
-    var mode by remember { mutableStateOf("all") }
+    var mode by rememberSaveable { mutableStateOf("all") }
+    var query by rememberSaveable { mutableStateOf("") }
     val hasMasterCatalog = shopCategory == "grocery" || merchantMarketStockPermitted(shopCategory)
-    val pricedProducts = merchantPricedProducts(products, shopCategory == "grocery")
-    val rows = remember(pricedProducts, mode) {
-        pricedProducts.filter { product ->
-            mode == "all" ||
-                (mode == "on" && product.available) ||
-                (mode == "off" && !product.available)
-        }
+    val rows = remember(products, shopCategory, mode, query) {
+        merchantProductRows(products, shopCategory, mode, query)
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -86,6 +100,22 @@ internal fun MerchantProductsScreen(
             )
 
             Spacer(Modifier.height(2.dp))
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("ค้นหาสินค้า...", color = QgMuted, fontSize = 11.sp) },
+                leadingIcon = { QgIcon("search", Modifier.size(18.dp), color = QgMuted) },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = QgRed,
+                    unfocusedBorderColor = Color(0xFFE4E6E9),
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
+                )
+            )
+            Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 MerchantProductFilter("ทั้งหมด", "all", mode) { mode = it }
                 MerchantProductFilter("เปิดขาย", "on", mode) { mode = it }
@@ -105,7 +135,11 @@ internal fun MerchantProductsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        if (products.isEmpty()) "ยังไม่มีสินค้า" else "ไม่มีสินค้าในสถานะนี้",
+                        when {
+                            query.isNotBlank() -> "ไม่พบสินค้าที่ค้นหา"
+                            products.isEmpty() -> "ยังไม่มีสินค้า"
+                            else -> "ไม่มีสินค้าในสถานะนี้"
+                        },
                         fontWeight = FontWeight.ExtraBold
                     )
                 }
