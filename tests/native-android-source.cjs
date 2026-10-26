@@ -436,15 +436,26 @@ ok(
 );
 ok(pilotWorkflow.includes("vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com'"),'pilot APKs must compile the deployed QueueGo Map endpoint when no override is configured');
 const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
+const riderPuckArrow=read('rider-navigation-map/src/main/res/drawable/qg_rider_puck_arrow.xml');
 ok(
   riderNavigationLocationService.includes('LocationServices.getFusedLocationProviderClient') &&
   riderNavigationLocationService.includes('NavigationMapFix(') &&
-  riderMap.includes('riderMarker = activeMap.addMarker(') &&
   riderMap.includes('GeoJsonSource(') &&
+  riderMap.includes('CircleLayer(RIDER_BODY_LAYER_ID, RIDER_SOURCE_ID)') &&
+  riderMap.includes('SymbolLayer(RIDER_ARROW_LAYER_ID, RIDER_SOURCE_ID)') &&
+  riderMap.includes('PropertyFactory.circleColor(android.graphics.Color.rgb(230, 0, 45))') &&
+  riderMap.includes('PropertyFactory.circleStrokeColor(android.graphics.Color.WHITE)') &&
+  riderMap.includes('PropertyFactory.iconRotate(Expression.get("bearing"))') &&
+  riderMap.includes('Property.ICON_ROTATION_ALIGNMENT_MAP') &&
+  riderMap.includes('smoothRiderPuckHeading(') &&
+  riderMap.includes('resolvedRiderPuckHeading(state.rider)') &&
+  !riderMap.includes('.title("Rider")') &&
+  riderPuckArrow.includes('#FFFFFFFF') &&
+  riderPuckArrow.includes('M13.5,2.5 L23.5,23 L13.5,18.2 L3.5,23') &&
   riderMap.includes('SymbolLayer(STOP_SHOP_ICON_LAYER_ID, STOP_SOURCE_ID)') &&
   riderMap.includes('SymbolLayer(STOP_CUSTOMER_ICON_LAYER_ID, STOP_SOURCE_ID)') &&
   riderMap.includes('source.setGeoJson(stopFeatureCollectionJson(stops, activeId))'),
-  'native Rider QueueGo Map must use Android fused GPS and render rider plus numbered shop/customer stop layers'
+  'native Rider QueueGo Map must match the Web red directional puck/heading and preserve numbered shop/customer stop layers'
 );
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
