@@ -1,3 +1,12 @@
+## 2026-10-26 Customer system Back destination parity — IN PROGRESS
+
+- Web blueprint: latest fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; current Native successor before this chunk is `cdc9b1a8aa6368902302b0a1cab4806cf2d5111e`, with exact Native Pilot `40275714947` **SUCCESS**. No open PR targets `work-native-web-parity-20261026`.
+- Root cause/evidence: Web `index.html` and `customer-features.js` use `history.back()` or explicit parent routes on Cart, Checkout, Map picker, Shop, Promotion, Favorites, Order detail, Market Trip, Laundry order, Chat and Support. Native's root `BackHandler` only handled Favorites, Market cart and Checkout specially, then routed every remaining screen to Home.
+- Bounded change: add one pure back-target resolver used by the existing Android BackHandler; capture current parent for Cart, Orders, Location picker and Promotions; align Cart, Location and Promotion Back controls with those destinations. Shopping mode still collapses before leaving its page. No second navigation stack or business state was introduced.
+- Focused checks: `node tests/native-android-source.cjs` PASS (328); `node tests/native-customer-web-home-parity.cjs` PASS (55); `node tests/native-customer-merchant-push.cjs` PASS; `git diff --check` PASS. Full `npm test` PASS (exit 0) on clean commit `68165b524772b349ab54e24ce7bd29a7289a9255`. Kotlin Back mapping and APK build await exact-head Native Pilot.
+- Scope limit: process-recreation restoration is a separate Customer P1 chunk and remains open. Authenticated Profile visual review still needs an authorized Customer review session.
+- **NEXT:** publish this verified Customer Back tree and pass exact-head Native Pilot/APK/emulator; record the resulting artifacts, then continue process-recreation parity without leaving Customer phase.
+
 ## 2026-10-26 Customer notification preferences and privacy entry — DONE (source/test/Native Pilot); authenticated review remains open
 
 - Web blueprint: latest fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; current Native owner branch is `work-native-web-parity-20261026` at exact tested commit `99398fb06f8eaf16c5e28426dc13c68c3b61cfab`, forward from `846c95ba4b2f91a05a868f9f5c63ea04a0c898c8` and descended from Native checkpoint `260c3f0a84fef014ae30e5c81bc8213ecc46351e`. Open-PR search found no applicable successor.

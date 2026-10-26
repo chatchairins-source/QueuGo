@@ -310,6 +310,10 @@ private fun CustomerShell(
 
     var screen by remember(auth.user.id) { mutableStateOf(initialScreen) }
     var shopReturnScreen by remember { mutableStateOf("home") }
+    var cartReturnScreen by remember { mutableStateOf("home") }
+    var ordersReturnScreen by remember { mutableStateOf("home") }
+    var locationReturnScreen by remember { mutableStateOf("home") }
+    var promotionReturnScreen by remember { mutableStateOf("home") }
     var category by remember { mutableStateOf("all") }
     var shoppingMode by remember { mutableStateOf("all") }
     var shops by remember { mutableStateOf<List<CustomerShop>>(emptyList()) }
@@ -508,21 +512,29 @@ private fun CustomerShell(
     }
 
     BackHandler(enabled = screen != "home") {
-        if (screen == "favorites") {
-            screen = "profile"
-        } else if (screen == "market-cart") {
-            screen = "market"
-        } else if (screen == "checkout") {
-            screen = "cart"
-        } else if (screen == "shopping" && shoppingMode != "all") {
+        if (screen == "shopping" && shoppingMode != "all") {
             shoppingMode = "all"
         } else {
-            screen = "home"
-            selectedOrder = null
-            trackingContext = null
-            selectedMarketTrip = null
-            selectedLaundryOrder = null
-            selectedShop = null
+            val destination = customerSystemBackTarget(
+                screen = screen,
+                shopReturnScreen = shopReturnScreen,
+                cartReturnScreen = cartReturnScreen,
+                ordersReturnScreen = ordersReturnScreen,
+                locationReturnScreen = locationReturnScreen,
+                promotionReturnScreen = promotionReturnScreen,
+                supportHasOrder = supportInitialOrderId != null,
+                hasSelectedOrder = selectedOrder != null,
+            )
+            if (destination != null) {
+                screen = destination
+                if (destination == "home") {
+                    selectedOrder = null
+                    trackingContext = null
+                    selectedMarketTrip = null
+                    selectedLaundryOrder = null
+                    selectedShop = null
+                }
+            }
         }
     }
 
@@ -562,11 +574,23 @@ private fun CustomerShell(
             when {
                 route.isBlank() || route == "home" -> screen = "home"
                 route == "search" -> screen = "search"
-                route == "cart" -> screen = "cart"
-                route == "orders" -> screen = "orders"
-                route == "map" -> screen = "location"
+                route == "cart" -> {
+                    cartReturnScreen = screen
+                    screen = "cart"
+                }
+                route == "orders" -> {
+                    ordersReturnScreen = screen
+                    screen = "orders"
+                }
+                route == "map" -> {
+                    locationReturnScreen = screen
+                    screen = "location"
+                }
                 route == "market" || route == "market-cart" -> screen = route
-                route == "promotion" -> screen = "promotion"
+                route == "promotion" -> {
+                    promotionReturnScreen = screen
+                    screen = "promotion"
+                }
                 route == "laundry" -> screen = "laundry"
                 route == "shopping" -> {
                     shoppingMode = "all"
@@ -760,7 +784,11 @@ private fun CustomerShell(
         Scaffold(
         containerColor = QgBg,
         bottomBar = {
-            CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) { screen = it }
+        CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) {
+            if (it == "cart" && screen != "cart") cartReturnScreen = screen
+            if (it == "orders" && screen != "orders") ordersReturnScreen = screen
+            screen = it
+        }
         }
     ) { insets ->
         Column(
@@ -773,7 +801,10 @@ private fun CustomerShell(
                 cartCount = cart.sumOf { it.quantity },
                 unreadCount = notifications.count { !it.read },
                 onHome = { screen = "home" },
-                onCart = { screen = "cart" },
+                onCart = {
+                    if (screen != "cart") cartReturnScreen = screen
+                    screen = "cart"
+                },
                 onNotifications = { screen = "notifications" },
                 onProfile = { screen = "profile" }
             )
@@ -835,7 +866,10 @@ private fun CustomerShell(
                     location = location,
                     deliveryAddress = address,
                     shops = shops,
-                    onLocation = { screen = "location" },
+                    onLocation = {
+                        locationReturnScreen = screen
+                        screen = "location"
+                    },
                     onSearch = { screen = "search" },
                     onCategory = {
                         when (it) {
@@ -908,7 +942,7 @@ private fun CustomerShell(
                             }
                         }
                     },
-                    onBack = { screen = "home" }
+                    onBack = { screen = locationReturnScreen }
                 )
                 "category" -> ServiceCategoryScreen(
                     loading = loading,
@@ -1007,7 +1041,7 @@ private fun CustomerShell(
                     onBannerLink = ::openHomeBannerLink
                 )
                 "promotion" -> CustomerPromotionScreen(
-                    onBack = { screen = "home" },
+                    onBack = { screen = promotionReturnScreen },
                     onOpenShop = { shopId ->
                         shops.find { it.id == shopId }?.let { openShopFromHome(it, "promotion") }
                     }
@@ -1034,13 +1068,16 @@ private fun CustomerShell(
                             message = "เพิ่มลงตะกร้าแล้ว"
                         }
                     },
-                    onCart = { screen = "cart" }
+                    onCart = {
+                        cartReturnScreen = "shop"
+                        screen = "cart"
+                    }
                 )
                 "cart" -> CustomerCartScreen(
                     cart = cart,
                     busy = busy,
                     checkoutPending = checkoutPending,
-                    onBack = { screen = "home" },
+                    onBack = { screen = cartReturnScreen },
                     onMinus = { id ->
                         if (!checkoutPending) cart = cart.mapNotNull {
                             if (it.product.id != id) it
@@ -1327,11 +1364,20 @@ private fun CustomerShell(
                 )
                 "profile" -> ProfileScreen(
                     auth = auth,
-                    onAddress = { screen = "location" },
-                    onOrders = { screen = "orders" },
+                    onAddress = {
+                        locationReturnScreen = "profile"
+                        screen = "location"
+                    },
+                    onOrders = {
+                        ordersReturnScreen = "profile"
+                        screen = "orders"
+                    },
                     onNotifications = { screen = "notifications" },
                     onFavorites = { screen = "favorites" },
-                    onPromotions = { screen = "promotion" },
+                    onPromotions = {
+                        promotionReturnScreen = "profile"
+                        screen = "promotion"
+                    },
                     onSupport = {
                         supportInitialOrderId = null
                         screen = "support"

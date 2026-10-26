@@ -244,12 +244,29 @@ const customerSearchForMemory=read('customer/src/main/java/com/queuego/customer/
 const customerAppForMemory=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
 ok(
   customerAppForMemory.includes('"favorites" -> CustomerFavoritesScreen(') &&
-  customerAppForMemory.includes('if (screen == "favorites") {\n            screen = "profile"') &&
+  customerAppForMemory.includes('customerSystemBackTarget(') &&
+  read('customer/src/main/java/com/queuego/customer/CustomerBackNavigation.kt').includes('"favorites" -> "profile"') &&
   customerShopForMemory.includes('qg_customer_favorites?select=id,shop_id,product_id') &&
   customerShopForMemory.includes('available=eq.true&id=in.($selected)') &&
   customerShopForMemory.includes('"รายการนี้ยังไม่พร้อมให้บริการ"') &&
   customerShopForMemory.includes('api.toggle(auth, if (favorite.shop.isNotBlank()) "shop" else "product"'),
   'Customer Favorites must read the existing Production authority, retain unavailable entries for removal, and return to Profile'
+);
+const customerBackNavigation=read('customer/src/main/java/com/queuego/customer/CustomerBackNavigation.kt');
+ok(
+  customerAppForMemory.includes('shopReturnScreen = shopReturnScreen') &&
+  customerAppForMemory.includes('cartReturnScreen = cartReturnScreen') &&
+  customerAppForMemory.includes('ordersReturnScreen = ordersReturnScreen') &&
+  customerAppForMemory.includes('locationReturnScreen = locationReturnScreen') &&
+  customerAppForMemory.includes('promotionReturnScreen = promotionReturnScreen') &&
+  customerBackNavigation.includes('"market-cart" -> "market"') &&
+  customerBackNavigation.includes('"checkout" -> "cart"') &&
+  customerBackNavigation.includes('"orders" -> ordersReturnScreen') &&
+  customerBackNavigation.includes('"market-trip", "laundry-order" -> "orders"') &&
+  customerAppForMemory.includes('onBack = { screen = cartReturnScreen }') &&
+  customerAppForMemory.includes('onBack = { screen = locationReturnScreen }') &&
+  customerAppForMemory.includes('onBack = { screen = promotionReturnScreen }'),
+  'Customer system Back and page controls must use Web-aligned parent routes for nested journeys'
 );
 ok(
   ['ที่อยู่จัดส่ง', 'ออเดอร์ของฉัน', 'การแจ้งเตือน', 'รายการโปรด', 'โปรโมชั่นจากร้าน', 'ติดต่อฝ่ายช่วยเหลือ']
