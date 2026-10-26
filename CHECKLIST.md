@@ -1,3 +1,17 @@
+## 2026-10-26 Customer Grocery category/page parity — IN PROGRESS (source/test checkpoint; Pilot NEXT)
+
+- Web Production `main=7e036a0735cc49905e9b0a2434492470551a0c9d`, `catalog/customer-grocery.js`, uses `qg_grocery_customer_categories` and `qg_grocery_customer_page` with category, offset, 50 visible rows and the 51st-row sentinel. The existing SQL in `20261012170449_grocery_master_catalog.sql` filters available Delivery products with positive store price.
+- Confirmed P1 source gap: Native guest and signed-in shop visits both used one unpaged products-table read for Grocery, with no category or further-page UI. That cannot provide Web's complete paged catalog navigation and sellable-item filtering. No live catalog size/truncation claim is made.
+- This atomic checkpoint routes Grocery in both shells through those existing public/authenticated RPCs, adds category selection and load-more/retry, preserves visited-page cache and cart behavior, and scopes every page/category request to the active shop generation. A failed page retries its same offset; the sentinel is not displayed or skipped.
+- Added JVM cases for sentinel boundaries, retry offsets, accumulated cache, category races, wrong-shop responses, category-only failures and scoped sellable cache fallback; added the production RPC wiring contract. Hosted Native Pilot is required for compile/JUnit/APK/runtime evidence.
+- **NEXT:** run/poll Native Pilot on this exact successor HEAD; fix only its first confirmed failure. If green, record Grocery browse parity DONE (source/test), then continue Customer inventory/availability P1/P0 audit against Web Production.
+
+## 2026-10-26 Merchant POS offline custom options — DONE (source/test)
+
+- Implementation `bbeb3eb9efbcde5c108cb7f514e3020eb679f812`; exact Native Pilot [40311664858](https://github.com/chatchairins-source/QueuGo/actions/runs/40311664858) on that same HEAD completed SUCCESS: full regression, source/contracts, JVM tests, all three APKs, 16 KB packaging, WebView rejection, and emulator launch/map/voice lifecycle.
+- Follow-up Merchant audit: `MerchantProductsScreen.kt` and `MerchantProductModel.kt` already edit structured portion/toppings with the same schema and validation as Web `merchant/index.html`. POS reduction uses matching product+description semantics in Web and Native. No further P1/P0 source gap was confirmed in those inspected capabilities.
+- **NEXT:** continue the confirmed Customer Grocery browse gap above, then the remaining Customer inventory/availability audit. Physical/release evidence remains separate.
+
 ## 2026-10-26 Merchant POS offline custom options — IN PROGRESS (source/test checkpoint; exact-head Pilot NEXT)
 
 - Based on the verified Native successor `49478a5ca477f84b89d7c004d010da3f991739b1`, branch `work-native-web-parity-20261026`; Web Production remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.

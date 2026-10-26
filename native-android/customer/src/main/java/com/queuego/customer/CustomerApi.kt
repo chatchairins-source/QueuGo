@@ -163,24 +163,42 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadProductsPublic(shopId: String): List<CustomerProduct> =
         loadProductsWithToken(null, shopId)
 
+    internal suspend fun loadGroceryCategories(auth: NativeAuth?, shopId: String): List<String> {
+        val rows = http.array(http.rpc("qg_grocery_customer_categories", auth?.session?.accessToken,
+            JSONObject().put("p_shop_id", shopId)))
+        return (0 until rows.length()).mapNotNull { index ->
+            rows.optJSONObject(index)?.optString("category")?.takeIf { it.isNotBlank() }
+        }.distinct()
+    }
+
+    internal suspend fun loadGroceryPage(
+        auth: NativeAuth?, shopId: String, category: String, offset: Int
+    ): List<CustomerProduct> {
+        require(offset >= 0)
+        val rows = http.array(http.rpc("qg_grocery_customer_page", auth?.session?.accessToken,
+            JSONObject().put("p_shop_id", shopId).put("p_category", category).put("p_offset", offset)))
+        return parseCustomerProducts(rows)
+    }
+
     private suspend fun loadProductsWithToken(token: String?, shopId: String): List<CustomerProduct> {
         val path = "products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available" +
             "&shop_id=eq." + http.enc(shopId) + "&delivery_available=eq.true&order=name.asc"
-        val rows = http.array(http.get(path, token))
-        return buildList {
-            for (i in 0 until rows.length()) {
-                val r = rows.optJSONObject(i) ?: continue
-                add(CustomerProduct(
-                    r.optString("id"),
-                    r.optString("shop_id"),
-                    r.optString("name").ifBlank { "สินค้า" },
-                    r.optNullable("description"),
-                    r.optDouble("price", 0.0),
-                    r.optDouble("delivery_price", r.optDouble("price", 0.0)),
-                    r.optNullable("image"),
-                    r.optBoolean("available", true)
-                ))
-            }
+        return parseCustomerProducts(http.array(http.get(path, token)))
+    }
+
+    private fun parseCustomerProducts(rows: JSONArray): List<CustomerProduct> = buildList {
+        for (i in 0 until rows.length()) {
+            val r = rows.optJSONObject(i) ?: continue
+            add(CustomerProduct(
+                r.optString("id"),
+                r.optString("shop_id"),
+                r.optString("name").ifBlank { "สินค้า" },
+                r.optNullable("description"),
+                r.optDouble("price", 0.0),
+                r.optDouble("delivery_price", r.optDouble("price", 0.0)),
+                r.optNullable("image"),
+                r.optBoolean("available", true)
+            ))
         }
     }
 

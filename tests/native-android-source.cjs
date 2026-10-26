@@ -822,4 +822,11 @@ ok(
   'Customer Merchant Rider must converge on the shared QueueGo Places text search client'
 );
 
+
+const groceryCustomerApi=read('customer/src/main/java/com/queuego/customer/CustomerApi.kt');
+const groceryCustomerCatalog=read('customer/src/main/java/com/queuego/customer/CustomerShopCatalog.kt');
+const groceryCustomerGuest=read('customer/src/main/java/com/queuego/customer/CustomerGuestShell.kt');
+const groceryCustomerApp=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
+ok(groceryCustomerApi.includes('"qg_grocery_customer_page"')&&groceryCustomerApi.includes('"qg_grocery_customer_categories"')&&groceryCustomerApi.includes('put("p_offset", offset)')&&groceryCustomerCatalog.includes('rows.take(50)')&&groceryCustomerCatalog.includes('rows.size > 50')&&groceryCustomerGuest.includes('api.loadGroceryPage(null, shop.id, category, offset)')&&groceryCustomerApp.includes('api.loadGroceryPage(auth, shop.id, category, offset)'),'Native guest and signed-in Grocery must use the Production category/page RPCs and 51-row sentinel');
+
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));

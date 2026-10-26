@@ -199,16 +199,26 @@ internal fun GuestCustomerShell(
         returnScreen = from
         selectedShop = shop
         screen = "shop"
-        shopCatalog.openCached(
-            shopId = shop.id,
-            loadCached = {
-                withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
-            },
-            fetch = { api.loadProductsPublic(shop.id) },
-            persist = { rows ->
-                withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
-            }
-        )
+        if (shop.category == "grocery") {
+            shopCatalog.openGroceryCached(
+                shopId = shop.id,
+                loadCached = { withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) } },
+                loadCategories = { api.loadGroceryCategories(null, shop.id) },
+                fetchPage = { category, offset -> api.loadGroceryPage(null, shop.id, category, offset) },
+                persist = { rows -> withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) } }
+            )
+        } else {
+            shopCatalog.openCached(
+                shopId = shop.id,
+                loadCached = {
+                    withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+                },
+                fetch = { api.loadProductsPublic(shop.id) },
+                persist = { rows ->
+                    withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
+                }
+            )
+        }
     }
 
     fun openBannerLink(raw: String) {
@@ -392,11 +402,10 @@ internal fun GuestCustomerShell(
                     cart = cart,
                     productsLoading = catalogState.loading,
                     productsError = catalogState.error,
-                    onRetryProducts = {
-                        selectedShop?.let { shop ->
-                            shopCatalog.open(shop.id) { api.loadProductsPublic(shop.id) }
-                        }
-                    },
+                    groceryPaging = catalogState.grocery,
+                    onGroceryCategory = shopCatalog::selectGroceryCategory,
+                    onGroceryMore = shopCatalog::loadGroceryMore,
+                    onRetryProducts = { selectedShop?.let { openShop(it, returnScreen) } },
                     onBack = { screen = returnScreen },
                     onAdd = { product ->
                         val currentShop = cart.firstOrNull()?.product?.shopId

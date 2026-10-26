@@ -560,16 +560,26 @@ private fun CustomerShell(
         shopReturnScreen = returnTo
         selectedShop = shop
         screen = "shop"
-        shopCatalog.openCached(
-            shopId = shop.id,
-            loadCached = {
-                withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
-            },
-            fetch = { api.loadProducts(auth, shop.id) },
-            persist = { rows ->
-                withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
-            }
-        )
+        if (shop.category == "grocery") {
+            shopCatalog.openGroceryCached(
+                shopId = shop.id,
+                loadCached = { withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) } },
+                loadCategories = { api.loadGroceryCategories(auth, shop.id) },
+                fetchPage = { category, offset -> api.loadGroceryPage(auth, shop.id, category, offset) },
+                persist = { rows -> withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) } }
+            )
+        } else {
+            shopCatalog.openCached(
+                shopId = shop.id,
+                loadCached = {
+                    withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+                },
+                fetch = { api.loadProducts(auth, shop.id) },
+                persist = { rows ->
+                    withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
+                }
+            )
+        }
     }
 
     fun openHomeBannerLink(raw: String) {
@@ -1068,7 +1078,10 @@ private fun CustomerShell(
                     products = catalogState.products,
                     productsLoading = catalogState.loading,
                     productsError = catalogState.error,
-                    onRetryProducts = { selectedShop?.let { shop -> shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) } } },
+                    groceryPaging = catalogState.grocery,
+                    onGroceryCategory = shopCatalog::selectGroceryCategory,
+                    onGroceryMore = shopCatalog::loadGroceryMore,
+                    onRetryProducts = { selectedShop?.let { openShopFromHome(it, shopReturnScreen) } },
                     cart = cart,
                     onBack = { screen = shopReturnScreen },
                     onAdd = { product ->

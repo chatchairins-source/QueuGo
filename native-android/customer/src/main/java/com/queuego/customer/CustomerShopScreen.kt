@@ -194,12 +194,13 @@ internal fun CustomerFavoritesScreen(
 internal fun ShopScreen(auth: NativeAuth?, shop: CustomerShop?, products: List<CustomerProduct>, cart: List<CartLine>,
     productsLoading: Boolean, productsError: String?, onRetryProducts: () -> Unit,
     onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit,
-    onRequireLogin: () -> Unit = {}) {
+    onRequireLogin: () -> Unit = {}, groceryPaging: CustomerGroceryPaging? = null,
+    onGroceryCategory: (String) -> Unit = {}, onGroceryMore: () -> Unit = {}) {
     if (shop == null) { Text("ไม่พบร้านค้า", Modifier.padding(35.dp), color = QgMuted); return }
     // Guest and signed-in shop views use the same Production-derived renderer.
     key(auth?.user?.id ?: "guest", shop.id) {
         ShopBody(auth, shop, products, cart, productsLoading, productsError, onRetryProducts,
-            onBack, onAdd, onCart, onRequireLogin)
+            onBack, onAdd, onCart, onRequireLogin, groceryPaging, onGroceryCategory, onGroceryMore)
     }
 }
 
@@ -207,7 +208,8 @@ internal fun ShopScreen(auth: NativeAuth?, shop: CustomerShop?, products: List<C
 private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<CustomerProduct>, cart: List<CartLine>,
     productsLoading: Boolean, productsError: String?, onRetryProducts: () -> Unit,
     onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit,
-    onRequireLogin: () -> Unit) {
+    onRequireLogin: () -> Unit, groceryPaging: CustomerGroceryPaging?,
+    onGroceryCategory: (String) -> Unit, onGroceryMore: () -> Unit) {
     val api = remember { ShopExtrasApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -222,6 +224,7 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
     var busyFavorites by remember { mutableStateOf<Set<String>>(emptySet()) }
     var expanded by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
+    var categoryMenu by remember { mutableStateOf(false) }
     LaunchedEffect(reload, auth?.session?.accessToken, shop.id) {
         loadError = false
         try {
@@ -289,12 +292,31 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
             }
             item(key = "product-heading") {
                 Column(Modifier.offset(y = (-18).dp)) {
+                    if (groceryPaging != null) {
+                        Box(Modifier.padding(horizontal = inset, vertical = 8.dp)) {
+                            OutlinedButton(
+                                enabled = !productsLoading && !groceryPaging.loadingMore,
+                                onClick = { categoryMenu = true }
+                            ) { Text("หมวดสินค้า · " + groceryPaging.category.ifBlank { "ทั้งหมด" }) }
+                            DropdownMenu(expanded = categoryMenu, onDismissRequest = { categoryMenu = false }) {
+                                (listOf("" to "ทั้งหมด") + groceryPaging.categories.map { it to it }).forEach { (key, title) ->
+                                    DropdownMenuItem(text = { Text(title) }, onClick = {
+                                        categoryMenu = false
+                                        onGroceryCategory(key)
+                                    })
+                                }
+                            }
+                        }
+                        if (groceryPaging.categoriesError) Text("โหลดหมวดไม่สำเร็จ · ลองอีกครั้ง",
+                            color = QgRed, modifier = Modifier.padding(horizontal = inset).clickable(onClick = onRetryProducts))
+                    } else {
                     Text("ทั้งหมด", color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = inset + 6.dp, vertical = 12.dp))
+                    }
                     Spacer(Modifier.height(6.dp))
                     when {
                         productsLoading -> LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 18.dp))
                         productsError != null -> Text("$productsError · ลองอีกครั้ง", Modifier.fillMaxWidth().clickable(onClick = onRetryProducts).padding(35.dp), color = QgRed)
-                        products.isEmpty() -> Text("ยังไม่มีเมนู", Modifier.fillMaxWidth().padding(35.dp), color = QgMuted)
+                        products.isEmpty() -> Text(if (groceryPaging != null) "ยังไม่มีสินค้าที่เปิดขาย" else "ยังไม่มีเมนู", Modifier.fillMaxWidth().padding(35.dp), color = QgMuted)
                     }
                 }
             }
@@ -312,6 +334,19 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
                         else ShopIcon(R.drawable.qg_shop_plus, "เพิ่ม", Modifier.size(36.dp).clip(CircleShape).background(if (shop.open) QgRed else Color(0xFFC9CCD1)), Color.White, shop.open) { onAdd(product) }
                     }
                     HorizontalDivider(color = QgLine)
+                }
+            }
+            if (groceryPaging != null && (groceryPaging.hasMore || groceryPaging.loadingMore || groceryPaging.error != null)) {
+                item(key = "grocery-more") {
+                    Button(
+                        enabled = !productsLoading && !groceryPaging.loadingMore,
+                        onClick = onGroceryMore,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 8.dp)
+                    ) { Text(when {
+                        groceryPaging.loadingMore -> "กำลังโหลดสินค้า…"
+                        groceryPaging.error != null -> "ลองโหลดสินค้าอีกครั้ง"
+                        else -> "โหลดสินค้าเพิ่มเติม"
+                    }) }
                 }
             }
             item(key = "shop-reviews") {
