@@ -833,4 +833,8 @@ ok(groceryCustomerApi.includes('"qg_grocery_customer_page"')&&groceryCustomerApi
 const customerLaundryCatalogApi=read('customer/src/main/java/com/queuego/customer/CustomerLaundryApi.kt');
 ok(customerLaundryCatalogApi.includes('"queuego_laundry_customer_catalog"')&&customerLaundryCatalogApi.includes('catalog(auth).servicesForCustomerHub(hubId)')&&!customerLaundryCatalogApi.includes('laundry_hubs?select=')&&!customerLaundryCatalogApi.includes('laundry_shop_settings?select=')&&!customerLaundryCatalogApi.includes('laundry_services?select='),'Native Customer Laundry discovery must use the same eligible catalog authority as Production Web, without raw-table fallback');
 
+
+const customerRideArrivalSource=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
+ok(customerRideArrivalSource.includes('text("arrived_pickup_at")')&&customerRideArrivalSource.includes('text("arrived_dropoff_at")')&&customerRideArrivalSource.includes('Text(passengerRideStatus(current))'),'Native Customer Ride must render arrival timestamps from the existing server state');
+
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));

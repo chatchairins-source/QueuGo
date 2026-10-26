@@ -1,3 +1,9 @@
+## 2026-10-26 Customer Ride arrival-state source checkpoint
+
+- This successor adds Web-aligned arrived-pickup/destination labels by retaining `arrived_pickup_at`/`arrived_dropoff_at` in PassengerRide. Arrival-only values now change DTO equality; terminal/unrelated statuses ignore stale timestamps. JVM and source wiring cases added. Quote/request/cancel, cash and pending UUID/body authority are preserved.
+- Parent Laundry `48e2d1f17191913321dcc24eebac8300e4c9c34e` passed exact Pilot `40317526297` full regression/source/JVM/Kotlin gates; APK/runtime may be superseded. Quantity `5f54120` containing run was cancelled after its recorded regression/JVM/APK/packaging gates, not a full SUCCESS. Grocery `f262329` full exact Pilot remains SUCCESS.
+- **NEXT:** inspect exact successor Pilot first failure only; finish all final latest-head APK/16KB/WebView/emulator gates. Then consolidate the current source P0/P1 audit and explicitly retain authenticated visual, physical GPS/device, signing/Play and Production cutover as external gates. No overlay or APK publication is requested.
+
 ## 2026-10-26 Customer Laundry authority; Ride arrival-state NEXT
 
 - Base quantity guard `5f5412016889e0835ef805593a55056b2d668e3e` passed exact Pilot `40315822728` regression/source/JVM/Kotlin/APK/16KB/WebView gates; emulator may be superseded. Grocery `f262329d657409fa29bc4129afcabd674bc91244` passed full exact Pilot `40313768964`. Do not call the partial quantity run a full SUCCESS.

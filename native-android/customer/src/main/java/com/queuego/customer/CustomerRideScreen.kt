@@ -28,7 +28,8 @@ internal data class PendingRide(val requestId: String, val quoteId: String) {
 }
 internal data class PassengerRide(val id: String, val number: String, val status: String, val riderId: String?,
     val pickup: String, val destination: String, val fare: Double, val riderName: String?,
-    val minutes: Double, val km: Double, val riderLat: Double?, val riderLng: Double?) {
+    val minutes: Double, val km: Double, val riderLat: Double?, val riderLng: Double?,
+    val arrivedPickupAt: String? = null, val arrivedDropoffAt: String? = null) {
     val terminal get() = status in listOf("completed", "cancelled", "no_rider_available")
 }
 internal fun parsePassengerRide(o: JSONObject): PassengerRide {
@@ -36,8 +37,23 @@ internal fun parsePassengerRide(o: JSONObject): PassengerRide {
     fun point(k: String) = if (o.isNull(k)) null else o.optDouble(k).takeIf { it.isFinite() }
     return PassengerRide(o.getString("id"), nativeOrderNumber(o.optString("order_number")), o.getString("status"), text("rider_id"),
         o.optString("pickup_address"), o.optString("delivery_address"), o.getDouble("fare"), text("rider_name"),
-        o.getDouble("duration_minutes"), o.getDouble("distance_km"), point("rider_latitude"), point("rider_longitude"))
+        o.getDouble("duration_minutes"), o.getDouble("distance_km"), point("rider_latitude"), point("rider_longitude"),
+        text("arrived_pickup_at"), text("arrived_dropoff_at"))
 }
+internal fun passengerRideStatus(ride: PassengerRide): String {
+    if (ride.status == "rider_assigned" && !ride.arrivedPickupAt.isNullOrBlank()) return "คนขับถึงจุดรับแล้ว"
+    if (ride.status == "in_progress" && !ride.arrivedDropoffAt.isNullOrBlank()) return "ถึงจุดหมายแล้ว"
+    return when (ride.status) {
+        "searching_rider" -> "กำลังหาคนขับ"
+        "rider_assigned" -> "คนขับกำลังไปจุดรับ"
+        "in_progress" -> "กำลังเดินทาง"
+        "completed" -> "จบการเดินทางแล้ว"
+        "cancelled" -> "ยกเลิกแล้ว"
+        "no_rider_available" -> "ยังไม่มีคนขับพร้อมรับเที่ยว"
+        else -> ride.status
+    }
+}
+
 private class PassengerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun state(auth: NativeAuth, id: String? = null): List<PassengerRide> {
         val body = JSONObject().put("p_order_id", id ?: JSONObject.NULL)
@@ -128,7 +144,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
         if (!loaded) Text("กำลังตรวจสถานะเที่ยวล่าสุด…")
         if (current != null) {
             Text(current.number,fontWeight = FontWeight.Bold)
-            Text(when(current.status) { "searching_rider" -> "กำลังหาคนขับ"; "rider_assigned" -> "คนขับกำลังไปจุดรับ"; "in_progress" -> "กำลังเดินทาง"; "completed" -> "จบการเดินทางแล้ว"; "cancelled" -> "ยกเลิกแล้ว"; else -> "ยังไม่มีคนขับพร้อมรับเที่ยว" })
+            Text(passengerRideStatus(current))
             Text("จุดรับ: " + current.pickup);Text("จุดหมาย: " + current.destination)
             Text("ค่าโดยสารเงินสด " + customerBaht(current.fare),fontWeight = FontWeight.Bold)
             current.riderName?.let { Text("คนขับ: " + it) }

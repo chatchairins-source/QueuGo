@@ -1,3 +1,15 @@
+## 2026-10-26 Customer Ride arrival-state parity — IN PROGRESS (source/test checkpoint; exact Pilot NEXT)
+
+- The existing PassengerRide DTO/parser now retains `arrived_pickup_at` and `arrived_dropoff_at`, making arrival-only server updates change structural state. The renderer uses a pure Web-aligned label policy for arrived pickup/destination within the existing coarse statuses; terminal and unrelated statuses ignore stale arrival fields.
+- Added JVM parsing/equality/label/terminal/stale-field cases and a parser-to-renderer wiring contract. Quote, request, cancellation, cash and durable request/quote UUID behavior are preserved.
+- **NEXT:** run/poll Native Pilot on this exact successor; fix only its first confirmed failure. Complete regression/JVM, all three APKs, 16 KB, WebView rejection and emulator lifecycle on the final latest descendant, then close the current source P0/P1 audit and record any remaining external/visual gates explicitly.
+
+## 2026-10-26 Customer Laundry authority — DONE (source/regression/Kotlin/JVM)
+
+- Source `48e2d1f17191913321dcc24eebac8300e4c9c34e`; exact Pilot [40317526297](https://github.com/chatchairins-source/QueuGo/actions/runs/40317526297) passed full regression, source integrity and all Android JVM/Kotlin tests, including the new eligible-catalog cases. APK build was running at succession; this is relevant-gate evidence, not a containing-run SUCCESS claim.
+- Existing catalog RPC now owns eligible hubs/settings/services. Order, checkout, event and pending-body code remains unchanged.
+- **NEXT:** Ride arrival-state successor above and final complete latest-head Native Pilot.
+
 ## 2026-10-26 Customer Laundry eligible-catalog parity — IN PROGRESS (source/test checkpoint; Pilot NEXT)
 
 - Native now reads `queuego_laundry_customer_catalog`, exactly as Web `customer-laundry.js`, instead of independently joining raw active/enabled tables that do not enforce accepted-active-Rider eligibility. Settings and services come from the returned eligible snapshot.
