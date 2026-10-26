@@ -1,3 +1,12 @@
+## 2026-10-26 Customer Native Pilot process-death harness fallback — IN PROGRESS
+
+- Workstream: Customer remains active; no Merchant/Rider parity implementation started.
+- Web blueprint: latest fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`. Native owner branch: `work-native-web-parity-20261026`, newest remote checkpoint before this fix `9cbf45953f80baa3031eb2de4396813a24c4a207`; no open PR targets this branch.
+- Exact-head run `40279520146` on `9cbf459`: QueueGo regression, source/JUnit, three APKs, 16 KB packaging and WebView rejection PASS; emulator capture failed at Customer process death. Artifact `12631883677` shows `am kill` left PID `4828`; fallback `run-as ... kill -9` was rejected by emulator SELinux (`avc: denied { sigkill }`, `runas_app` → `untrusted_app`). This is a capture harness permission failure; it does not establish a Customer app process-recreation defect.
+- Bounded harness fix: use `adb root` on the CI-only AOSP AVD for SIGKILL fallback, retain PID disappearance and cold-relaunch assertions, and add a focused source contract. No application behavior or Production data changed.
+- Source checkpoint: `b814a59499ee852b86cdfc19c000293b469492a1` (remote fast-forward successor; local `ca9565cd` had the same source tree). Focused evidence: `node tests/native-three-app-stability.cjs` PASS (106, 0); Python compile and `git diff --check` PASS. Full `npm test` PASS (exit 0) on the same source tree. Exact Native Pilot with the corrected emulator fallback is still required.
+- **NEXT:** run full regression on the clean committed fix, then Native Pilot on its exact remote successor; inspect Customer/Merchant/Rider process-kill evidence. After a green run, resume Customer process-restoration parity.
+
 ## 2026-10-26 Customer system Back destination parity — DONE (source/test/Native Pilot); process recreation remains open
 
 - Web blueprint: latest fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; exact tested Native checkpoint `f236094b5535e9d39b37f135f5e24dd17192bed4`, forward from `cdc9b1a8aa6368902302b0a1cab4806cf2d5111e`. No open PR targets `work-native-web-parity-20261026`.
