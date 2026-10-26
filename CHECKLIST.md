@@ -1,3 +1,14 @@
+## 2026-10-26 Customer Guest protected-action parity — DONE (source/test/CI)
+
+- Web blueprint: fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; newest Native owner branch `work-native-web-parity-20261026` was verified at `297ab952c3d94090c9026f6f696404a7a03f9182`, a descendant of the branch's prior Native checkpoint.
+- Root cause: Web persists a post-login destination only for checkout. Guest Ride/Orders/Laundry/Market submit must return Home. The exact-head regression initially failed on two stale assertions that still required Android-only cart/checkout callbacks; runtime behavior was already Web-aligned.
+- Bounded change: source assertions now require the shared `customerGuestPostLoginDestination` policy; no runtime or backend change was made in this test-fix checkpoint.
+- Focused: `node tests/native-android-source.cjs` PASS (321 checks); `node tests/native-customer-web-home-parity.cjs` PASS (55 checks); `git diff --check` PASS.
+- Full local `npm test`: PASS on clean SHA `17c65d51999ba00ed7e84e02b1e896f0c48fb8db`, with the same source tree as the Pilot head.
+- Exact-head Native Pilot `40266778666` on `297ab952c3d94090c9026f6f696404a7a03f9182`: **SUCCESS** — full regression, tracking tests, all three APKs, 16 KB packaging, WebView rejection, and emulator launch/map/voice lifecycle. Artifacts: APKs `12626459492`; emulator evidence `12627496112`.
+- Visual status: public Web Home/Food/Search were inspected at GitHub Pages; this Pilot captures Rider lifecycle, not Customer screenshots. Customer paired Android screenshots and physical-device parity remain open.
+- **NEXT:** close Customer Profile/Favorites/notification-settings P1, then fix route-specific system Back/process-recreation parity. See `docs/native-customer-web-parity-matrix.md`; do not advance to Merchant until Customer P0/P1 are closed.
+
 ## 2026-10-26 Guest protected-action parity — local full regression PASS
 
 - Web blueprint: fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; Native owner branch remains `work-native-web-parity-20261026` and is a descendant of the fetched remote head.
@@ -13,7 +24,7 @@
 - First real failure: full regression advanced past the Market stale contract, then `tests/native-android-source.cjs:224` still searched for literal `onCheckout = { onLogin("checkout") }`.
 - Evidence: runtime still preserves checkout through `customerGuestPostLoginDestination("checkout")`; the dedicated Web-parity guard remained green at `55 checks / 0 failures`.
 - Bounded fix: test-only assertion now verifies checkout persistence through the shared Guest destination authority. Runtime and backend remain unchanged.
-- **NEXT:** rerun exact-head Native Pilot; fix only its first real failure before any visual work.
+- Resolution: exact-head Native Pilot `40266778666` on `297ab952c3d94090c9026f6f696404a7a03f9182` passed full regression, APK, packaging, WebView, and emulator lifecycle gates.
 
 ## 2026-10-26 Guest protected-action parity — exact-head first failure FIXED (test-only)
 
@@ -21,7 +32,7 @@
 - First real failure: full `npm test` reached the new Web-parity guard successfully (`55 checks / 0 failures`) and then failed in `tests/native-android-source.cjs:172`, whose older assertion still required `onLogin("market-cart")` and claimed Guest Market checkout must resume the cart after login.
 - Root cause: stale regression contract. Web main `marketPlaceOrder()` sends an unauthenticated user to login without persisting a Market destination, and Web login preserves only `checkout`; therefore the old test encoded Android-only behavior.
 - Bounded fix: test-only. The source regression now requires Guest Market submit to use `customerGuestPostLoginDestination("market-submit")`, rejects literal `onLogin("market-cart")`, and preserves public Market browse/cart. Runtime implementation from `3fb69567e4ff5994d3f79d285dfdb014d4112de8` is unchanged.
-- **NEXT:** rerun exact-head Native Pilot. If green, mark Guest protected-action policy DONE and proceed to Customer Guest top-bar visual parity. Do not change runtime to satisfy the retired Market-cart expectation.
+- Resolution: after both stale assertions were aligned with current Web policy, exact-head Native Pilot `40266778666` passed; runtime was unchanged.
 
 ## 2026-10-26 Native Customer Web parity — authenticated Laundry global chrome DONE (source/test)
 
