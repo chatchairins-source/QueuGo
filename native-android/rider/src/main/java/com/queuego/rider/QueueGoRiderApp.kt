@@ -757,32 +757,6 @@ private fun RiderHome(
         }
     }
 
-    fun changeLaundryMode(enabled: Boolean) {
-        val current = snapshot ?: return
-        if (actionBusy || !current.laundry.featureEnabled) return
-        actionBusy = true
-        scope.launch {
-            try {
-                api.setLaundryMode(auth, enabled)
-                val acknowledged = snapshot?.let { value ->
-                    value.copy(laundry = value.laundry.copy(modeEnabled = enabled))
-                }
-                if (acknowledged != null) snapshot = acknowledged
-                runCatching { api.riderSnapshot(auth) }
-                    .onFailure { if (it is CancellationException) throw it }
-                    .getOrNull()
-                    ?.let { snapshot = it }
-                actionMessage = if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (e: Exception) {
-                actionMessage = e.message ?: "บันทึกโหมดงานฝากซักไม่สำเร็จ"
-            } finally {
-                actionBusy = false
-            }
-        }
-    }
-
     suspend fun persistCommittedSnapshot(value: RiderSnapshot) {
         val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching { pushStore.saveHomeSnapshot(auth.user.id, value, durable = true) }
@@ -2158,12 +2132,6 @@ private fun RiderHome(
                         RiderSettingDestinationRow(
                             enabled = destinationLoaded && !actionBusy && !workPreferencesBusy
                         ) { showDestination = true }
-                        RiderSettingLaundryModeRow(
-                            featureEnabled = snapshot?.laundry?.featureEnabled == true,
-                            modeEnabled = snapshot?.laundry?.modeEnabled == true,
-                            enabled = !actionBusy && !workPreferencesBusy,
-                            onModeChanged = ::changeLaundryMode
-                        )
                     },
                     onLogout = onLogout,
                     modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 748.dp).fillMaxSize()
