@@ -187,13 +187,14 @@ internal fun MerchantSupportTicketsScreen(
                         Text(ticket.details, modifier = Modifier.padding(top = 7.dp))
                         ticket.createdAt?.let { Text(it, color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp)) }
                         ticket.adminNote?.let { Text("ฝ่ายดูแล: $it", color = QgMuted, modifier = Modifier.padding(top = 5.dp)) }
-                        if (ticket.evidencePath != null) OutlinedButton(
+                        val evidencePath = ticket.evidencePath
+                        if (evidencePath != null) OutlinedButton(
                             onClick = {
                                 if (openingEvidence) return@OutlinedButton
                                 openingEvidence = true
                                 scope.launch {
                                     try {
-                                        val url = api.signedEvidenceUrl(auth.session.accessToken, ticket.evidencePath)
+                                        val url = api.signedEvidenceUrl(auth.session.accessToken, evidencePath)
                                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                     } catch (failure: Exception) {
                                         message = failure.message ?: "เปิดหลักฐานไม่สำเร็จ"

@@ -1,3 +1,17 @@
+## 2026-10-26 Merchant ticket Pilot compile failure #1 — fixed (focused source check); exact-head rerun NEXT
+
+- Exact hosted Pilot `40297983878` on `0e4b431362db83e0eef7c4be19087fd0e4b4d2d0`: full QueueGo regression and source-integrity/asset gates passed; Kotlin tracking/build stage failed. First compiler diagnostic: `MerchantSupportTicketsScreen.kt:196` cannot smart-cast `ticket.evidencePath` because it is a public API property from another module.
+- Bounded fix: capture `ticket.evidencePath` into a local immutable value before rendering the evidence button and pass that local to the signed-evidence API. No ticket behavior or backend changed.
+- Focused Native source contract: 336/0; `git diff --check` PASS. Local Android SDK/Gradle unavailable; hosted Kotlin compile remains the relevant verification.
+- **NEXT:** commit this first compiler fix and rerun Native Pilot against the exact successor HEAD; only then address its first remaining real failure. Continue the Rider transition audit after dispatching the exact-head rerun.
+
+## 2026-10-26 Customer checkout and standard order-state audit — audited; no source gap found
+
+- Audited current Web `main=7e036a0735cc49905e9b0a2434492470551a0c9d` against `CustomerCartCheckout.kt`, `QueueGoCustomerApp.kt`, and `CustomerOrderTrackingScreen.kt` at successor tree `d5da640c3d7d5826c201920d3ff9f1bb05506b6b`.
+- Checkout parity evidence: separate cart/checkout screens; latest catalog price and availability reconciliation; QueueGo Places and location picker, GPS, address, note, delivery-fee quote, active-order guard, cash checkout, idempotent pending recovery, and pending cart lock. Native order status labels/stages/time, cancellation eligibility, support/contact, live tracking, totals, and review states match the current Web behavior inspected in `index.html` and `customer-features.js`.
+- This audit found no evidence-backed source gap in this bounded flow; no code changed. Paired authenticated screenshots remain open because no authorized Customer review session is available. No physical-device claim.
+- **NEXT:** continue the Rider active-job Web/Native transition audit (offer/accept, merchant arrival, pickup/proof, customer arrival/cash, completion) while Native Pilot `40297983878` validates exact successor `0e4b431362db83e0eef7c4be19087fd0e4b4d2d0`; inspect its first failure if any, then proceed to Merchant catalog/POS independent gaps.
+
 ## 2026-10-26 Merchant completed-order issue reporting — DONE (source/full regression); exact Pilot pending
 
 - Current Merchant Web `renderShopOrderModern` exposes `แจ้งปัญหาออเดอร์นี้` only when `status === completed`; it opens the QueueGo ticket form with that order selected. Native order detail had no report action, and its profile support route was a separate admin chat.
