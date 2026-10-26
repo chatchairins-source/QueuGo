@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - work-native-rider-auth-review-20261024
+      - work-native-web-parity-20261026
 
 permissions:
   contents: read
@@ -20,16 +21,33 @@ jobs:
         env:
           QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
           QG_RIDER_REVIEW_PASSWORD: ${{ secrets.QG_RIDER_REVIEW_PASSWORD }}
+          QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
+          QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
+          QG_CUSTOMER_REVIEW_PHONE: ${{ secrets.QG_CUSTOMER_REVIEW_PHONE }}
+          QG_CUSTOMER_REVIEW_PASSWORD: ${{ secrets.QG_CUSTOMER_REVIEW_PASSWORD }}
         run: |
-          mkdir -p artifacts/rider-authenticated-review
-          if [ -n "$QG_RIDER_REVIEW_PHONE" ] && [ -n "$QG_RIDER_REVIEW_PASSWORD" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-            printf '{"status":"ready","screenshots":"pending"}\n' > artifacts/rider-authenticated-review/status.json
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            printf '{"status":"skipped","reason":"Repository Actions secrets QG_RIDER_REVIEW_PHONE and QG_RIDER_REVIEW_PASSWORD are not configured"}\n' > artifacts/rider-authenticated-review/status.json
-            echo "::warning::Authenticated Rider capture skipped; configure the two repository Actions secrets"
-          fi
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          roles = {}
+          for role in ("RIDER", "MERCHANT", "CUSTOMER"):
+              names = [f"QG_{role}_REVIEW_PHONE", f"QG_{role}_REVIEW_PASSWORD"]
+              missing = [name for name in names if not os.environ.get(name)]
+              roles[role.lower()] = {"ready": not missing, "missing_secret_names": missing}
+              print(role + "_review_credentials=" + ("present" if not missing else "missing"))
+          ready = roles["rider"]["ready"]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("ready=" + str(ready).lower() + "\n")
+          capture_requested = (os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+              or os.environ.get("GITHUB_REF_NAME") == "work-native-rider-auth-review-20261024")
+          report = {"status": "ready" if ready else "skipped",
+              "scope": "credential presence only; not authenticated visual acceptance",
+              "roles": roles, "capture_requested": capture_requested,
+              "screenshots": "pending" if ready and capture_requested else "not_run"}
+          target = Path("artifacts/rider-authenticated-review/status.json")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(json.dumps(report, indent=2) + "\n")
+          PY
       - name: Save review readiness
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -39,7 +57,7 @@ jobs:
 
   capture:
     needs: credential-check
-    if: needs.credential-check.outputs.ready == 'true'
+    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024')
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:

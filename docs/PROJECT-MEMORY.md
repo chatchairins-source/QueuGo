@@ -1,3 +1,9 @@
+## 2026-10-26 Current-branch authenticated review readiness
+
+- This checkpoint links the existing authenticated-review credential check to `work-native-web-parity-20261026`, reporting only role presence/missing secret names for Rider/Merchant/Customer. Current parity pushes are presence-only; existing manual/old-review-branch capture behavior remains. No new account/order/dispatch action is triggered by this branch push.
+- YAML and four isolated role-presence/privacy cases passed before commit. Native app source is identical to `f5cb1f4273739fea360e671a6b3eb8cedf922cfa`; its exact Native Pilot `40318997253` had passed relevant compile/test/APK/packaging gates, with emulator lifecycle pending at succession. No full containing-run SUCCESS claim yet.
+- **NEXT:** read the successor's credential readiness and final Native Pilot. If credentials are missing, record exact secret names and evidence, then continue other unblocked parity work. If available, continue authorized read-only authenticated review using current source. Physical/release gates stay separate.
+
 ## 2026-10-26 Customer Ride arrival-state source checkpoint
 
 - This successor adds Web-aligned arrived-pickup/destination labels by retaining `arrived_pickup_at`/`arrived_dropoff_at` in PassengerRide. Arrival-only values now change DTO equality; terminal/unrelated statuses ignore stale timestamps. JVM and source wiring cases added. Quote/request/cancel, cash and pending UUID/body authority are preserved.

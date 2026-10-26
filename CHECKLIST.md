@@ -1,3 +1,10 @@
+## 2026-10-26 Authenticated parity review readiness — IN PROGRESS
+
+- Existing Rider/Merchant authenticated-review workflow only auto-ran on the older review branch. Added the current Native owner branch to its credential-presence check and report per-role Rider/Merchant/Customer readiness plus missing secret names; values never enter logs/artifacts.
+- Current parity-branch pushes run presence-only checks. Existing explicit manual/old review-branch capture behavior is retained; this checkpoint does not start account/job actions on the new push trigger.
+- Validation before commit: workflow YAML parse and four isolated empty/partial/full role-presence/privacy fixtures passed. App source remains identical to `f5cb1f4273739fea360e671a6b3eb8cedf922cfa`, whose exact Pilot `40318997253` passed regression/JVM/APK/packaging gates and was still in emulator lifecycle at succession.
+- **NEXT:** inspect exact successor authenticated-review readiness artifact/job and latest Native Pilot. Use current role readiness to continue authorized read-only review or record the exact missing-credential blocker; finish all Native Pilot gates on the final latest head. Continue unblocked source parity work while external evidence is unavailable.
+
 ## 2026-10-26 Customer Ride arrival-state parity — IN PROGRESS (source/test checkpoint; exact Pilot NEXT)
 
 - The existing PassengerRide DTO/parser now retains `arrived_pickup_at` and `arrived_dropoff_at`, making arrival-only server updates change structural state. The renderer uses a pure Web-aligned label policy for arrived pickup/destination within the existing coarse statuses; terminal and unrelated statuses ignore stale arrival fields.
