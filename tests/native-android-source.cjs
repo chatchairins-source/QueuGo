@@ -504,6 +504,18 @@ ok(riderApp.includes('RiderBottomNavigation(')&&riderApp.includes('Triple("home"
 ok(riderApp.includes('BackHandler(enabled = activeTab != "home"')&&riderApp.includes('activeTab = "home"'),'Rider native Android back must return non-home tabs to Home');
 ok(riderApp.includes('chatJob = null')&&riderApp.includes('activeTab = "home"')&&riderApp.includes('มีงานใหม่ที่ระบบจัดให้ กรุณาตอบรับภายใน 30 วินาที'),'new selected Rider offer must immediately surface on Home from any tab');
 ok(riderMessages.includes('order_chat_messages?select=order_id,sender_id,message,created_at')&&riderMessages.includes('deliveries?select=order_id,delivered_at')&&riderMessages.includes('30 * 60_000L'),'Rider native message inbox must use Production chat and 30-minute completed-order window');
+ok(
+  riderMessages.includes('Text("ข้อความ"') &&
+  !riderMessages.includes('"แชต"') &&
+  !riderMessages.includes('"แจ้งเตือน"') &&
+  !riderMessages.includes('RiderNotificationCenter(') &&
+  !riderApp.includes('messageSection') &&
+  !riderApp.includes('unreadNotifications') &&
+  riderApp.includes('unreadMessages = unreadMessages.coerceAtMost(99)') &&
+  riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)') &&
+  riderProfile.includes('api.testNativePush(auth)'),
+  'Rider Messages must match current Web single inbox while native push remains owned by background/profile controls'
+);
 ok(riderEarnings.includes('api.periodSummary(auth, days)')&&riderEarnings.includes('api.cashLedger(auth, from.toString(), to.toString())')&&riderEarnings.includes('"วันนี้"')&&riderEarnings.includes('"7 วัน"')&&riderEarnings.includes('"30 วัน"'),'Rider native earnings must preserve Production periods and ledger source');
 ok(riderProfile.includes('api.updateAccount(auth, name, phone)')&&riderProfile.includes('api.testNativePush(auth)')&&riderProfile.includes('QgAccountDeletionSection')&&!riderProfile.includes('api.setLaundryMode(auth, enabled)')&&!riderProfile.includes('api.respondLaundryInvite(auth, invite.inviteId, true)'),'Rider native profile must preserve Production account, push and deletion controls while shop-managed Laundry stays retired');
 const riderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
