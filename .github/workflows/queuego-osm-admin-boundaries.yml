@@ -13,6 +13,9 @@ on:
       - 'tests/osm-admin-boundary-match.cjs'
       - 'scripts/audit-admin-boundary-topology.py'
       - 'tests/admin-boundary-topology.py'
+      - 'scripts/audit-osm-hdx-quarantine-geometry.py'
+      - 'tests/osm-hdx-quarantine-geometry.py'
+      - 'scripts/audit-hdx-thailand-admin.cjs'
       - 'scripts/reconcile-thailand-admin-boundaries.cjs'
       - 'tests/thailand-admin-reconciliation.cjs'
       - 'data/maps/hdx-thailand-admin-boundary-review.json'
@@ -163,6 +166,26 @@ jobs:
           if(!r.osm_excluded_rows.every(x=>x.status==='quarantined'&&x.eligible===false&&x.cross_source_decision?.geometry_override_allowed===false)) throw Error('cross-source quarantine override detected');
           if(r.gates.identity_code_correctness.status!=='blocked'||r.gates.postgis_release_acceptance.status!=='not_tested') throw Error('independent release gates were collapsed');
           NODE
+      - name: Compare quarantined OSM polygons against exact HDX geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" tests/osm-hdx-quarantine-geometry.py
+          hdx_url=$(node -p "require('./scripts/audit-hdx-thailand-admin.cjs').PIN.url")
+          curl --fail --silent --show-error --location --retry 3 --max-time 600 "$hdx_url" --output "$RUNNER_TEMP/hdx-thailand.zip"
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" scripts/audit-osm-hdx-quarantine-geometry.py             "$RUNNER_TEMP/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq"             "$RUNNER_TEMP/osm-admin-match/osm-oad-admin-boundary-mapping.json"             "$RUNNER_TEMP/osm-admin-match/osm-crosswalk-parent-topology-review.json"             "$RUNNER_TEMP/hdx-thailand.zip"             "$RUNNER_TEMP/osm-admin-match/osm-hdx-quarantine-geometry-review.json"
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" - "$RUNNER_TEMP/osm-admin-match/osm-hdx-quarantine-geometry-review.json" <<'PY'
+          import json,sys
+          r=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert r['execution']=='review_only_no_database_write'
+          assert r['production_import_allowed'] is False and r['canonical_source_selected'] is False
+          assert r['summary']['quarantined_rows']==9 and r['summary']['eligible_rows']==0
+          assert r['summary']['geometry_override_allowed_rows']==0
+          assert all(x['status']=='quarantined' and not x['eligible'] and not x['geometry_override_allowed'] and not x['canonical_geometry_approved'] for x in r['rows'])
+          assert all(x['source_parent_evidence']['hdx_parent_covers_hdx_child'] is True for x in r['rows'])
+          assert all(x['source_parent_evidence']['osm_parent_covers_osm_child'] is False for x in r['rows'] if x['osm_failure_status']=='outside_parent')
+          print(json.dumps(r['summary'],ensure_ascii=False))
+          PY
       - name: Upload admin boundary audit artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -174,6 +197,7 @@ jobs:
             ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-match-report.json
             ${{ runner.temp }}/osm-admin-match/osm-crosswalk-parent-topology-review.json
             ${{ runner.temp }}/osm-admin-match/thailand-admin-reconciliation-review.json
+            ${{ runner.temp }}/osm-admin-match/osm-hdx-quarantine-geometry-review.json
             ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-mapping.json
           if-no-files-found: error
           compression-level: 9
