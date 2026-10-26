@@ -420,8 +420,9 @@ ok(
   riderRoot.includes('if (!dispatchPreferencesHydrated) return@LaunchedEffect') &&
   riderRoot.includes('dispatchPreferenceWriteMutex = remember(auth.user.id) { Mutex() }') &&
   riderRoot.includes('dispatchPreferenceWriteMutex.withLock') &&
-  riderRoot.includes('enabled = dispatchPreferencesHydrated && !actionBusy'),
-  'Rider dispatch automation must wait for preference restore and serialize preference writes before Auto Accept/Stop-after-work can act'
+  riderRoot.includes('busy = workPreferencesBusy || !dispatchPreferencesHydrated') &&
+  riderRoot.includes('acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, acknowledged.autoAccept)'),
+  'Rider dispatch automation must wait for server preference hydration and serialize acknowledged preference writes before Auto Accept/Stop-after-work can act'
 );
 
 const riderChat=read('rider/src/main/java/com/queuego/rider/RiderChat.kt');
