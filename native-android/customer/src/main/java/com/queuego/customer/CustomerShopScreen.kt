@@ -32,12 +32,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private data class ShopFavorite(val id: String, val shop: String, val product: String)
+internal data class ShopFavorite(val id: String, val shop: String, val product: String)
 private data class ShopReview(val name: String, val rating: Int, val comment: String, val date: String)
 private data class ShopReviews(val count: Int, val average: Double, val items: List<ShopReview>)
 
 // These are the same table and RPC used by Production customer-features.js.
-private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
+internal class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun favorites(auth: NativeAuth): List<ShopFavorite> {
         val rows = http.array(http.get("qg_customer_favorites?select=id,shop_id,product_id&user_id=eq." +
             http.enc(auth.user.id) + "&order=created_at.desc", auth.session.accessToken))
@@ -52,6 +52,25 @@ private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeAp
         if (rows.length() > 0) http.delete("qg_customer_favorites?id=eq." + http.enc(rows.getJSONObject(0).getString("id")) + "&$owner", auth.session.accessToken)
         else http.post("qg_customer_favorites", auth.session.accessToken, JSONObject().put("user_id", auth.user.id).put("${kind}_id", id))
     }
+    suspend fun availableFavoriteProducts(auth: NativeAuth, ids: List<String>): List<CustomerProduct> {
+        if (ids.isEmpty()) return emptyList()
+        val selected = ids.distinct().joinToString(",") { http.enc(it) }
+        val rows = http.array(http.get(
+            "products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available" +
+                "&available=eq.true&id=in.($selected)",
+            auth.session.accessToken
+        ))
+        return (0 until rows.length()).mapNotNull { index -> rows.optJSONObject(index)?.let { row ->
+            CustomerProduct(
+                row.optString("id"), row.optString("shop_id"), row.optString("name").ifBlank { "สินค้า" },
+                row.optString("description").takeIf { row.has("description") && !row.isNull("description") },
+                row.optDouble("price", 0.0),
+                row.optDouble("delivery_price", row.optDouble("price", 0.0)),
+                row.optString("image").takeIf { row.has("image") && !row.isNull("image") },
+                row.optBoolean("available", true)
+            )
+        } }
+    }
     suspend fun reviews(auth: NativeAuth?, shop: String): ShopReviews {
         val data = http.obj(http.rpc("qg_public_shop_reviews", auth?.session?.accessToken, JSONObject().put("p_shop_id", shop)))
         val rows = data.optJSONArray("items")
@@ -59,6 +78,115 @@ private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeAp
             ShopReview(it.optString("customer_name").ifBlank { "ลูกค้า" }, it.optInt("rating"), it.optString("comment"), it.optString("updated_at"))
         } }
         return ShopReviews(data.optInt("count", items.size), data.optDouble("average", 0.0), items)
+    }
+}
+
+@Composable
+internal fun CustomerFavoritesScreen(
+    auth: NativeAuth,
+    onBack: () -> Unit,
+    onOpenShop: (CustomerShop) -> Unit
+) {
+    val api = remember { ShopExtrasApi() }
+    val customerApi = remember { CustomerApi() }
+    val scope = rememberCoroutineScope()
+    var favorites by remember(auth.user.id) { mutableStateOf<List<ShopFavorite>>(emptyList()) }
+    var shops by remember(auth.user.id) { mutableStateOf<List<CustomerShop>>(emptyList()) }
+    var products by remember(auth.user.id) { mutableStateOf<List<CustomerProduct>>(emptyList()) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    suspend fun load() {
+        error = null
+        try {
+            val freshFavorites = api.favorites(auth)
+            val freshShops = customerApi.loadShops(auth)
+            val freshProducts = api.availableFavoriteProducts(auth, freshFavorites.map { it.product }.filter { it.isNotBlank() })
+            favorites = freshFavorites
+            shops = freshShops
+            products = freshProducts
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            error = "โหลดรายการโปรดไม่สำเร็จ กรุณาลองใหม่"
+        }
+    }
+    LaunchedEffect(auth.user.id) { load() }
+
+    Column(Modifier.fillMaxSize().background(QgBg)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onBack) { Text("กลับ") }
+            Text("รายการโปรด", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleLarge)
+        }
+        when {
+            error != null -> Column(
+                Modifier.fillMaxWidth().padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(error!!, color = QgMuted)
+                TextButton(onClick = { scope.launch { load() } }) { Text("ลองอีกครั้ง") }
+            }
+            favorites.isEmpty() -> Text(
+                "ยังไม่มีรายการโปรด",
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                color = QgMuted
+            )
+            else -> LazyColumn(
+                Modifier.fillMaxSize().padding(horizontal = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(favorites, key = { it.id }) { favorite ->
+                    val shop = shops.firstOrNull { it.id == favorite.shop }
+                    val product = products.firstOrNull { it.id == favorite.product }
+                    val destinationShop = shop ?: product?.let { item -> shops.firstOrNull { it.id == item.shopId } }
+                    val label = shop?.name ?: product?.name ?: "รายการนี้ยังไม่พร้อมให้บริการ"
+                    QgCard(Modifier.fillMaxWidth()) {
+                        Row(
+                            Modifier.fillMaxWidth().clickable(enabled = destinationShop != null) {
+                                destinationShop?.let(onOpenShop)
+                            }.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            if (product != null) {
+                                QgRemoteImage(product.image, Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)), product.name)
+                            } else if (shop != null) {
+                                QgRemoteImage(shop.logo, Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)), shop.name)
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(label, fontWeight = FontWeight.Bold)
+                                when {
+                                    product != null -> Text("฿" + "%.0f".format(product.deliveryPrice), color = QgMuted)
+                                    shop != null -> Text(shopCategory(shop.category), color = QgMuted)
+                                }
+                            }
+                            TextButton(
+                                enabled = !busy,
+                                onClick = {
+                                    busy = true
+                                    scope.launch {
+                                        try {
+                                            api.toggle(auth, if (favorite.shop.isNotBlank()) "shop" else "product",
+                                                favorite.shop.ifBlank { favorite.product })
+                                            load()
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (_: Exception) {
+                                            error = "นำรายการออกจากรายการโปรดไม่สำเร็จ"
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                }
+                            ) { Text("นำออก", color = QgRed) }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

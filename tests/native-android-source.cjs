@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 20222)
+Total output lines: 674
+
 const fs=require('fs'),assert=require('assert'),path=require('path');
 const root=path.resolve(__dirname,'..','native-android');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
@@ -242,6 +245,20 @@ ok(
 const customerShopForMemory=read('customer/src/main/java/com/queuego/customer/CustomerShopScreen.kt');
 const customerSearchForMemory=read('customer/src/main/java/com/queuego/customer/CustomerSearchScreen.kt');
 const customerAppForMemory=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
+ok(
+  customerAppForMemory.includes('"favorites" -> CustomerFavoritesScreen(') &&
+  customerAppForMemory.includes('if (screen == "favorites") {\n            screen = "profile"') &&
+  customerShopForMemory.includes('qg_customer_favorites?select=id,shop_id,product_id') &&
+  customerShopForMemory.includes('available=eq.true&id=in.($selected)') &&
+  customerShopForMemory.includes('"รายการนี้ยังไม่พร้อมให้บริการ"') &&
+  customerShopForMemory.includes('api.toggle(auth, if (favorite.shop.isNotBlank()) "shop" else "product"'),
+  'Customer Favorites must read the existing Production authority, retain unavailable entries for removal, and return to Profile'
+);
+ok(
+  ['ที่อยู่จัดส่ง', 'ออเดอร์ของฉัน', 'การแจ้งเตือน', 'รายการโปรด', 'โปรโมชั่นจากร้าน', 'ติดต่อฝ่ายช่วยเหลือ']
+    .every(label => customerAppForMemory.includes(`ProfileDestination("${label}"`)),
+  'Customer Profile must expose the same six destinations as the current Web Profile'
+);
 const merchantMediaForMemory=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
 ok(
   sharedDesign.includes('QG_REMOTE_IMAGE_MAX_SIDE = 1280'),
@@ -385,17 +402,7 @@ ok(riderApi.includes('/functions/v1/queuego-push')&&riderApi.includes('"subscrib
 ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes('UUID.randomUUID().toString()'),'Rider push subscription must use a stable UUID device id');
 ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
 ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
-ok(source.includes('QueueGoRiderNavigationMap(')&&gradle.includes('implementation(project(\":rider-navigation-map\"))')&&read('rider-navigation-map/build.gradle.kts').includes('org.maplibre.gl:android-sdk-opengl:13.5.3'),'native Rider must include QueueGo MapLibre navigation host');
-const riderJobDock=read('rider/src/main/java/com/queuego/rider/RiderJobDock.kt');
-ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
-   riderApp.includes('RiderJobDock(')&&riderApp.includes('val dockKey = when {')&&
-   riderApp.includes('activeSheetJob != null -> activeSheetJob.id')&&
-   riderApp.includes('snapshot?.offeredJob != null -> null')&&
-   riderApp.includes('snapshot?.offeredJob != null -> null\n            else -> null')&&
-   riderApp.includes('initiallyExpanded = activeSheetJob == null && dockKey != null')&&
-   riderApp.includes('(maxHeight * 0.62f)')&&
-   riderApp.includes('navigationBottomInsetPx = coordinates.size.height + with(navigationDensity) { 68.dp.roundToPx() }')&&
-   riderJobDock.includes('rememberSaveable(jobKey)')&&riderJobDock.includes('.draggable(')&&
+ok(source.includes('QueueGoRiderNavigationMap(')&&gradle.includes('implementation(project(\":rider-navigation-map\"))')&&read('rider-navigation-map/build.g…222 tokens truncated…bDock.includes('.draggable(')&&
    riderJobDock.includes('onClick = ::toggle')&&
    riderJobDock.includes('mapOverviewActive: Boolean = false')&&
    riderJobDock.includes('if (mapOverviewActive) "ไปที่" else "ภาพรวม"')&&
