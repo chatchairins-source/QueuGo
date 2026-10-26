@@ -1,6 +1,7 @@
 const fs=require('fs'),assert=require('assert');
 const rider=fs.readFileSync('rider/laundry.js','utf8');
 const riderIndex=fs.readFileSync('rider/index.html','utf8');
+const workPreferences=fs.readFileSync('rider/work-preferences.js','utf8');
 const merchant=fs.readFileSync('merchant/laundry.js','utf8');
 const shopSql=fs.readFileSync('QueueGo-Laundry-Shop-Transport.sql','utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
@@ -16,6 +17,9 @@ for(const retired of [
 ]) ok(!riderIndex.includes(retired),retired+' must not remain in integrated Rider Web');
 for(const stale of ['qgLoadLaundryRiderState','qgLaundryPoolHTML','qgLaundryActiveHTML','qg-laundry-mode','S.laundryJob','S.laundryInvites','S.laundryPool','S.laundryMode'])
  ok(!riderIndex.includes(stale),stale+' must not restore retired general Rider Laundry state/UI');
+ok(!workPreferences.includes('S.laundryJob'),'Web work preferences must not depend on retired general Rider Laundry state');
+for(const retired of ['queuego_set_laundry_rider_mode','queuego_laundry_rider_invite_action','queuego_claim_laundry_job','queuego_laundry_rider_action'])
+ ok(!workPreferences.includes(retired),retired+' must not be callable from Web work preferences');
 ok(riderIndex.includes('work-preferences.js')&&riderIndex.includes('id="qg-work-preferences"')&&
    riderIndex.includes('QueueGoRiderWork?.mount')&&riderIndex.includes('QueueGoRiderWork?.maybeAccept'),
    'Integrated Rider Web must use current server-authoritative work preferences after Laundry retirement');
