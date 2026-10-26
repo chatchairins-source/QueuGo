@@ -1,3 +1,11 @@
+## 2026-10-26 Guest protected-action parity — second exact-head stale assertion FIXED (test-only)
+
+- Failing exact HEAD: `6b337be6c234f1dcb15b2c93bd4c0c31b080d1f2`; Native Pilot run `40265972696`.
+- First real failure: full regression advanced past the Market stale contract, then `tests/native-android-source.cjs:224` still searched for literal `onCheckout = { onLogin("checkout") }`.
+- Evidence: runtime still preserves checkout through `customerGuestPostLoginDestination("checkout")`; the dedicated Web-parity guard remained green at `55 checks / 0 failures`.
+- Bounded fix: test-only assertion now verifies checkout persistence through the shared Guest destination authority. Runtime and backend remain unchanged.
+- **NEXT:** rerun exact-head Native Pilot; fix only its first real failure before any visual work.
+
 ## 2026-10-26 Guest protected-action parity — exact-head first failure FIXED (test-only)
 
 - Failing exact HEAD: `3fb69567e4ff5994d3f79d285dfdb014d4112de8`; Native Pilot run `40265752567`.
