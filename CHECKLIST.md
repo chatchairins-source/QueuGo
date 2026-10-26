@@ -1,3 +1,11 @@
+## 2026-10-26 Customer route restoration — IN PROGRESS
+
+- Base: exact Native `01df476d08105c2a237fd4bcb94c63496e2cdc29`; Web main `7e036a0735cc49905e9b0a2434492470551a0c9d`. Native Pilot `40281441623` SUCCESS: full regression/JUnit, three APKs, 16 KB, WebView rejection and emulator lifecycle. APK artifact `12631549499`; emulator artifact `12632507538`. This closes the prior capture harness CI blocker.
+- Root cause: Customer route, return parents, category and shopping mode used `remember`, which loses state on process recreation. Detail selections are also in-memory objects and cannot safely be restored as empty detail pages.
+- Change: use the existing Compose saved-state mechanism for reloadable pages and category/mode; a pure restore policy maps order/chat/trip details to Orders, Support to Profile, and Shop/unknown routes to Home. Parent destinations use the same safe policy. Existing cart/location stores and checkout recovery remain the authorities.
+- Focused source checks: native source 328 PASS; Customer Web Home parity 55 PASS; diff check PASS. Added deterministic Kotlin restore-policy tests; hosted JUnit/APK/emulator validation still required.
+- **NEXT:** full regression and exact-head Native Pilot for this route-restoration successor; inspect runtime evidence before claiming process restoration DONE. Customer remains active; authenticated and physical-device parity remain unverified.
+
 ## 2026-10-26 Customer Native Pilot process-death harness fallback — IN PROGRESS
 
 - Workstream: Customer remains active; no Merchant/Rider parity implementation started.

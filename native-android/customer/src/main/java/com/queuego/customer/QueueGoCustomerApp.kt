@@ -61,6 +61,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -308,14 +309,17 @@ private fun CustomerShell(
     }
     val guestCartStore = remember { CustomerCartStore(context, "guest") }
 
-    var screen by remember(auth.user.id) { mutableStateOf(initialScreen) }
-    var shopReturnScreen by remember { mutableStateOf("home") }
-    var cartReturnScreen by remember { mutableStateOf("home") }
-    var ordersReturnScreen by remember { mutableStateOf("home") }
-    var locationReturnScreen by remember { mutableStateOf("home") }
-    var promotionReturnScreen by remember { mutableStateOf("home") }
-    var category by remember { mutableStateOf("all") }
-    var shoppingMode by remember { mutableStateOf("all") }
+    val routeSaver = Saver<String, String>(
+        save = { customerRestorableRoute(it) }, restore = { customerRestorableRoute(it) }
+    )
+    var screen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf(initialScreen) }
+    var shopReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var cartReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var ordersReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var locationReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var promotionReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var category by rememberSaveable(auth.user.id) { mutableStateOf("all") }
+    var shoppingMode by rememberSaveable(auth.user.id) { mutableStateOf("all") }
     var shops by remember { mutableStateOf<List<CustomerShop>>(emptyList()) }
     var orders by remember { mutableStateOf<List<CustomerOrder>>(emptyList()) }
     var marketTrips by remember { mutableStateOf<List<MarketTripSummary>>(emptyList()) }
