@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 96502)
-Total output lines: 1969
-
 ## 2026-10-26 Native three-app Web parity continuation
 
 - Current Native successor: `work-native-web-parity-20261026` at `b66b6a3b1b2a83613ed9984a7dc8e900135f0b07`, a descendant of fetched remote checkpoint `ed3a29ae`; current Web `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`. The integrated line preserves Rider map/navigation PR #729. Older open PR #710 is not the current Native head.
@@ -409,7 +406,1161 @@ Total output lines: 1969
 
 ## 2026-10-14 Grab Driver parity: real Large Order / vehicle load transparency
 - Rebased onto current runtime network+jank diagnostics successor 97a722a so QueueGo keeps Work's local API latency/Jank tracking while adding Large Order transparency. No diagnostic data or behavior is overwritten.
-- QueueGo dispatch already enforces real vehicle-capacity matching for Market/Grocery using market_order_weight(order)=…56502 tokens truncated…account-identity checkpoint recovers through sign-in instead of repeating signup. No password is persisted. Registration navigation/phone-email/back captures are added to actual emulator CI without submitting accounts or credentials. JVM HTTP tests cover payload, validation, active/role checks and no automatic replay. Compilation/runtime evidence pending the new CI; source191 and Python syntax/whitespace checks PASS.
+- QueueGo dispatch already enforces real vehicle-capacity matching for Market/Grocery using market_order_weight(order)=quantity*item_weight_kg and selected vehicle_capacity_kg. This feature does not change matching; it exposes the authoritative load to the targeted/assigned Rider.
+- Production migration 20261014085832 rider_order_load_summary_v1 is additive and Rider-scoped. Assigned Rider or the live targeted-offer Rider may read only that order's summary. Market multi-shop returns the non-cancelled trip total; single Market/Grocery returns real catalog weight; unknown/food weight remains hidden.
+- Native Offer and pickup-stage Active Job show real kg, selected-vehicle capacity and utilization. >=80% is labelled “งานใหญ่ · ใกล้เต็มความจุรถ”; over-capacity is shown defensively. No fake weight, bag count or estimate is introduced.
+- Backup backup/rider-runtime-performance-before-load-summary-20261014 retains 97a722a. Exact successor native-pilot + navigation-map-runtime are required before PASS.
+
+## 2026-10-14 Grab Driver parity: Rider runtime network + jank diagnostics
+- Confirmed the owner-supplied Grab Driver package contains networkStats and janktracker modules. QueueGo already had device readiness, ApplicationExitInfo crash/ANR history and retained-map diagnostics, but did not distinguish slow API sessions from UI frame jank.
+- Added local-only runtime measurements. QueueGo API requests record only request count, success/failure and elapsed milliseconds; no URL, RPC name, order ID, payload, customer, shop or location data is stored. Slow is >=1500 ms. Diagnostics shows count/fail/slow/average/worst for the current process session.
+- Added a lightweight Choreographer frame sampler for the Rider app process. Frames >=34 ms count as jank, >=100 ms as severe, and lifecycle/background gaps >500 ms are ignored. Diagnostics waits for at least 60 rendered frames before classifying health.
+- No Production DB or telemetry upload was added. This phase is intentionally on-device diagnosis only, so Rider/support can tell whether a reported lag is network-side or UI-side without collecting personal trip data.
+- Backup backup/rider-runtime-performance-before-network-jank-20261014 retains 472bde3. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
+## 2026-10-14 Grab Driver parity: Merchant pickup + parking guidance
+- Confirmed the owner-supplied Grab Driver package contains parking/pickup-support capability while QueueGo Merchant only exposed address/pin. Added Rider-facing pickup instructions and parking/entrance instructions to the existing Merchant shop setup; both are stored inside existing shop metadata and capped at 300 characters.
+- Production migration 20261014085155 merchant_pickup_guidance_v1 is additive and exposes only allowlisted guidance through Rider-scoped RPCs. A Rider may read a single-shop guide only while assigned to that order or holding the live targeted offer. Market multi-stop guides require the Rider to own an active order in that market trip. No full shop metadata is exposed.
+- Native Rider shows guidance only when present: Active Job before arrival, pickup verification, Market multi-stop list and Market pickup verification. Market zone/stall are reused from existing shop fields. Empty stores render no placeholder guidance.
+- Backup backup/rider-document-readiness-before-pickup-guide-20261014 retains 9da9beb. Successor work-native-rider-navigation-map-grab-parity-pickup-guide-20261014 requires native-pilot + navigation-map-runtime exact-head PASS.
+
+## 2026-10-14 Grab Driver parity: Rider document expiry readiness v1
+- Added real expiry readiness for Rider identity/driver documents and the selected vehicle's PRB without inventing dates. Admin records dates only after checking actual documents. Legacy/unknown dates remain status=unknown and do NOT block existing Riders.
+- Production migration 20261014084324 rider_document_readiness_v1 is additive. Private expiry rows live in qg_private. Rider sees only its own readiness. Admin reads/sets dates only through authenticated public wrappers that re-check active Admin server-side. anon execute is revoked.
+- Online eligibility is enforced at the rider_profiles metadata transition boundary only when a known national ID, driver licence, or selected-vehicle PRB date is already expired. Unknown dates and dates within the next 30 days do not block; <=30 days is a warning state.
+- Native Home availability readiness now includes documents as the ninth check, refreshed with the existing offline readiness loop. Native setOnline has a friendly preflight, while the database trigger remains authoritative. Rider Profile shows real valid/expiring/expired/unknown states; Admin Rider panel sets or clears dates and associates PRB with the selected vehicle.
+- Production read-only validation with an active Rider session returned 3 unknown items and blocking=false, preserving current Riders. Backup backup/rider-doc-expiry-before-readiness-20261014 retains dce9a05. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
+## 2026-10-14 Grab Driver parity: Rider Multiple Vehicles v1
+- Confirmed the owner-supplied Grab Driver package contains a multiplevehicles module while QueueGo previously projected only one vehicle through rider_profiles. Added an additive private multi-vehicle registry while preserving rider_profiles as the selected-vehicle compatibility projection for all existing order/dispatch/market flows.
+- Production migrations 20261014081916, 20261014082029 and 20261014082657 are applied. Existing vehicle data was seeded without changing Rider identity/order state. Legacy selected vehicles are grandfathered so existing Riders are not suddenly blocked; new vehicles require a fresh camera photo, Admin approval and an approved status before selection.
+- Rider can keep up to five non-rejected vehicles, see current/pending/rejected/approved states, resubmit rejected or legacy vehicle evidence, and switch only to approved vehicles while offline with no active delivery. Selection atomically syncs type/name/plate/capacity/verified status back to rider_profiles.
+- Admin reuses the existing Rider-status panel and public authenticated RPCs to review the private qg-evidence photo, approve or reject with a required reason. Admin UI never reads qg_private directly.
+- Server gates offline-to-online when a newly selected vehicle is not approved. A compatibility v2 exempts legacy seeded pending vehicles so rollout cannot break existing Riders. v3 prevents a currently selected legacy vehicle from being converted into a new pending verification while online or carrying an active delivery.
+- Production read-only validation after migration found two seeded vehicle rows and zero newly-unapproved selected rows; existing active Rider compatibility remained intact. Backup backup/rider-vehicle-inspection-before-multiple-vehicles-20261014 retains 0b9910f. Exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
+## 2026-10-14 Grab Driver parity: Rider Vehicle Inspection v1
+- Confirmed the owner-supplied Grab Driver package contains vehicle-inspection/readiness modules while QueueGo had onboarding vehicle documents but no in-service periodic vehicle check or expiry data. QueueGo therefore adds an explicit Admin-requested current-vehicle inspection instead of inventing document-expiry dates.
+- Production migration 20261014080810_rider_vehicle_inspection_v1 is additive. Private requests live in qg_private; Rider status/submit, Admin request/review/queue and server online gate are exposed only through authenticated public wrappers with anon execution revoked.
+- Admin can request a vehicle check with a reason. Rider captures a fresh camera-only vehicle photo through the existing evidence camera/preview stack; private qg-evidence is reused and gallery selection is not added. Pending evidence is visible to Admin through the existing signed evidence viewer. Rejection requires a reason and Rider can resubmit.
+- Offline -> online is blocked at the database trigger boundary while the latest vehicle inspection is required, pending or rejected; old clients/direct metadata PATCH cannot bypass it. Native setOnline also performs a friendly preflight, but the database remains authoritative.
+- Production migration 20261014081405 closes the already-online edge case: Admin may create a new vehicle-inspection request only while the Rider is offline and has no active delivery. Admin UI mirrors this rule and hides the request action while Rider is online.
+- Production validation used existing active Rider/Admin sessions read-only: no Rider is currently enrolled, Rider returned required=false, Admin queue returned the existing Rider rows, and anon EXECUTE is false for Rider status/submit/Admin queue.
+- Backup backup/rider-supply-planning-before-vehicle-inspection-20261014 retains 72fb541. Successor work-native-rider-navigation-map-grab-parity-vehicle-inspection-release-20261014 requires native-pilot + navigation-map-runtime exact-head PASS.
+
+## 2026-10-14 Grab Driver parity: Rider Supply Planning v1
+- Confirmed the owner-supplied Grab Driver package contains HotSpot Navigation, Heatmap V2 and Supply Shaping modules. QueueGo already had a privacy-safe spatial demand heatmap; this adds time-of-week planning without copying Grab implementation or assets.
+- Production migration 20261014075257_rider_supply_planning_v1 is read-only and Rider-only. It aggregates distinct delivery trips over the previous 28 days in Bangkok time into 2-hour weekday slots. Market multi-shop children are deduplicated by market_order_id.
+- The RPC returns only up to six day/time windows, relative level 1-3, confidence bucket and source window. It returns forecast=false and no raw order IDs, customer/shop identities, locations or exact demand counts.
+- Planning fails closed when fewer than 20 real historical trips are available. Confidence is low below 40 trips, medium from 40 and high from 100; the UI explicitly says historical tendency is not a guarantee of future work.
+- Native Rider shows Supply Planning in Earnings alongside real performance/missions. Production read-only validation used an already-active Rider session and returned real historical windows with forecast=false; no business record was written.
+- Backup backup/rider-map-feedback-before-supply-planning-20261014 retains 9044719. PASS requires native-pilot + navigation-map-runtime on the exact successor HEAD.
+
+## 2026-10-14 Grab Driver parity: Rider Map Feedback v1
+- Added a privacy-bounded QueueGo map-feedback workflow after confirming the owner-supplied Grab Driver package contains realtime/navigation feedback services and option-sheet UI. No Grab code, assets or road geometry are copied.
+- Production migration 20261014074523_rider_map_feedback_v1 stores feedback only in qg_private. Rider submits an allowlisted issue category, one current coordinate snapshot and an optional <=500-character note. No order/customer/shop/destination identifiers are accepted or stored by this contract. Rider rate limit is 5 submissions/hour.
+- Native Rider exposes “รายงานปัญหาแผนที่ / ถนน” from Safety Centre. It reuses the existing retained navigation fix or fresh safety last-known location snapshot; no new GPS stream is opened. UI tells Rider to stop safely before reporting.
+- Admin Rider panel has a pending review queue with location viewer and accepted_for_review/dismissed decisions. accepted_for_review is review-only: this migration never edits Local Roads, route geometry, map renderer or dispatch data automatically.
+- Public wrappers are SECURITY INVOKER with anon EXECUTE revoked; qg_private validates live active Rider/Admin sessions. Admin UI never reads the private table directly.
+- Rebasing preserves the latest Message Center hardening at 683499e, including live server unread badge polling and fail-closed mark-read behavior. Backup backup/rider-safety-messages-before-map-feedback-20261014 retains pre-feedback 4e8f712.
+- PASS requires native-pilot + navigation-map-runtime + Admin regression on this exact successor HEAD.
+
+## 2026-10-14 Rider Message Center release hardening
+- Message Center unread badge is now server-backed even before Rider opens the Notifications subsection: foreground Home polls only unread notification IDs under the existing own-row RLS every 30 seconds and caps the bottom-nav count at 99.
+- A transient unread-count failure preserves the last server-confirmed count. A single notification is no longer optimistically marked read when the PATCH fails; navigation may still proceed through the existing order-reference authorization path while unread state remains server-accurate.
+- Added pure badge-boundary regression coverage. Backup backup/rider-message-center-before-unread-hardening-20261014 retains 4e8f712.
+
+## 2026-10-14 Grab Driver parity unified release: Fatigue + Unplanned Stop + Message Center
+- Consolidated three parallel successors onto the current navigation-map release line instead of leaving Rider safety/messages split across PRs.
+- Preserves persistent server-backed Fatigue Safety from the current base: presence-history continuous/today online minutes and advisory rest levels only; no medical/drowsiness claim and no automatic work interruption.
+- Carries Unplanned Stop advisory from the reviewed safety branch: active navigation only, >=10 minutes reliably stationary, suppressed for weak GPS/off-route/arrival/unknown speed/near-destination, with explicit “ฉันโอเค” and Safety Centre actions only. It never calls, shares or mutates an order automatically.
+- Carries Native Message Center into the existing “ข้อความ” tab as Chat / Notifications. Notifications use the existing own-row RLS table, latest 100 rows, read/unread state, mark-one/all read and existing pendingPushReference authorization for order/rider_offer references.
+- Chat seen state is acknowledged only while the Chat subsection is visible; opening Notifications alone no longer clears chat unread. Bottom message badge combines chat + notification unread once notification rows are loaded.
+- Backup backup/rider-fatigue-before-safety-message-unify-20261014 retains f90463f. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
+## 2026-10-14 Grab Driver parity: persistent Rider Fatigue Safety v1
+- Added a QueueGo-native persistent work/rest safety layer after confirming the owner-supplied Grab Driver package contains a dedicated Fatigue v1/v2 service/repository/UI stack. QueueGo does not claim liveness, drowsiness, biometric or medical detection.
+- Production migration 20261014073631_rider_fatigue_status_v1 is additive and read-only. It derives the current continuous online session and Bangkok-day total online minutes from server-owned qg_rider_presence_events, using the existing rider_id/occurred_at index. Public wrapper is SECURITY INVOKER, anon EXECUTE is revoked, and active Rider live-session ownership is checked in qg_private.
+- Advisory levels are normal (<120 continuous minutes), rest_recommended (>=120) and strong_rest_recommended (>=240). They do not interrupt an active order or auto-close the Rider. Existing 2-hour continuous-navigation reminder remains; this new layer survives screen/app lifecycle because its source is server presence history.
+- Native Safety Centre shows continuous online time, today's total and an explicit non-medical disclaimer. Empty/invalid payloads fail safe to normal/zero rather than inventing fatigue state.
+- Production read-only validation used an already-active Rider session and confirmed the RPC returns real presence-derived values with medical_detection=false; no Rider state or business record was written.
+- Backup backup/rider-destination-safety-before-fatigue-20261014 retains 1170fde. PASS requires native-pilot + navigation-map-runtime on the exact successor HEAD.
+
+## 2026-10-14 Grab Driver parity: My Destination + Safety location-share release
+- Continued from consolidated My Destination head 8d53ab6 so Learning/Missions/Safety/Speed/ETA, Runtime Diagnostics, Offer Performance, Availability Readiness and My Destination all remain in one line.
+- Added one-time current-location sharing in Safety Centre. QueueGo uses the retained navigation GPS fix when available, otherwise only a system last-known fix no older than 5 minutes and with reported accuracy <=200 m.
+- Generic share opens the Android share sheet. If an emergency contact exists, Rider may open the SMS composer with the same location snapshot. Nothing is sent automatically.
+- Shared text intentionally excludes order number, customer address, merchant address and delivery destination, and states that the shared point is not live tracking.
+- Backup backup/rider-destination-before-safety-share-20261014 retains 8d53ab6. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
+## 2026-10-14 Grab Driver parity: Rider My Destination soft preference
+- Added My Destination as a soft offer-ordering preference without changing QueueGo's owner-approved targeted 30-second offer contract. It never auto-accepts, never hides other eligible jobs and never grants a Rider access to another Rider's destination.
+- Production migration 20261014071752 rider_my_destination_soft_dispatch_v1 is applied and mirrored. Preference rows live in qg_private; anon has no RPC access and authenticated clients cannot SELECT the private table directly.
+- Dispatch preserves all current eligibility, active Shopping/Laundry exclusions, vehicle/capacity checks, one-live-offer behavior and 30-second expiry. Pickup proximity remains primary via 1-km pickup-distance bands; only Riders in the same band get a preference advantage, and only when that order's delivery moves the Rider at least 1 km closer to the saved destination.
+- Native Rider reuses the shared Longdo location picker and Longdo reverse-geocode endpoint. The My Destination control is visible only while online and idle; it disappears for offers/active work. UI states explicitly that the Rider must still manually accept within 30 seconds.
+- Runtime Diagnostics + real Offer Performance were consolidated onto the same current Learning/Missions/Safety/ETA ancestry before this feature. Backup backup/rider-grab-parity-before-consolidated-destination-20261014 retains 3b41353.
+
+## 2026-10-14 Consolidated Rider parity: runtime diagnostics + real offer performance
+- Rebased both parity additions onto current unified Learning/Missions/Safety/ETA head 3b41353 instead of continuing older red ancestry. Runtime diagnostics reuses NavigationMapDiagnostics and local Android exit history only; offer performance uses the already-applied Rider-only aggregate RPC over server-owned offer history.
+- No new GPS stream, map renderer, direct offer-history access, dispatch mutation or fake rate. Today/7/30 offer metrics are real aggregates; empty periods render no invented percentage.
+- Backup backup/rider-grab-parity-before-consolidated-destination-20261014 retains 3b41353. Exact-head native-pilot + navigation-map-runtime remain required.
+
+## 2026-10-14 Grab Driver parity release scope lock: authoritative ETA HUD
+- Pulled PR246 ETA HUD onto the single Rider release line after verifying it reads only the existing Longdo NavigationGuidanceState. It does not request routes, change reroute/camera behavior or create another GPS stream.
+- Active work can now show real remaining route distance, Longdo-provided ETA when available, and parsed next-turn/road guidance. Weak-GPS or off-route guidance hides the HUD; missing ETA never falls back to an invented speed estimate.
+- This is the final feature addition for the current parity pass. From this checkpoint forward, scope is locked to regression/build/runtime fixes required to make the exact release head pass native-pilot and navigation-map-runtime.
+
+## 2026-10-14 Grab Driver parity unified: live speed + advisory rest reminder
+- Pulled the validated PR242 speed/rest implementation onto the current Learning + Missions + Emergency Contact release line after confirming QueueGoRiderApp.kt and RiderNavigationLocationService.kt were byte-identical to PR242's base.
+- Reuses the existing foreground navigation GPS stream; no second location provider is created. Current km/h renders only for accepted speed samples with accuracy guard, and implausible values above 200 km/h are hidden.
+- After two hours of one continuous navigation session, QueueGo shows a non-blocking advisory rest reminder that can be acknowledged once for that session. It does not change order state, block delivery, claim a legal limit, or claim biometric/fatigue detection.
+- This remains on the same navigation-map release branch so map reuse/runtime and full Native regressions validate the combined stack on one exact head.
+
+## 2026-10-14 Grab Driver parity unified: Learning Center + Missions + emergency contact
+- Continued from PR240 Learning Center, which itself preserves PR239 server-owned real Missions. No parallel training or mission implementation is introduced.
+- Added one Rider-owned personal emergency contact inside the existing Safety Centre. Production migration 20261014065058 stores it only in qg_private.rider_emergency_contacts; public wrappers validate live session + active Rider ownership and anon execute is revoked.
+- Native Safety Centre can add, edit, delete and dial the saved contact. QueueGo does not auto-call, auto-message or auto-share GPS/location. Official Thailand emergency numbers 191 / 1669 / 1155 remain unchanged and separate.
+- This branch uses the navigation-map prefix so Learning Center + Missions + Safety contact must pass native-pilot and navigation-map-runtime on the same exact head before PASS.
+
+## 2026-10-14 Grab Driver parity mission: Rider Learning Center
+- Added an in-app Rider Learning Center based on the training capability category observed in the owner-supplied Grab Driver package, while using QueueGo-only content and current production flow.
+- The Profile/Help section now opens eight compact expandable lessons: targeted 30-second offers, Google Maps merchant navigation, cash-to-merchant + one pickup photo, Market multi-stop, customer delivery/cash/photo completion, GPS/200m warning behavior, ratings/compliments/missions, and safety/device diagnostics.
+- The guide explicitly preserves current rules: no PIN/OTP pickup flow, no 250m hard geofence, no slide-to-complete step, and Market multi-shop Mission progress counts one trip. No mock business data, backend mutation or new permission is introduced.
+- Backup backup/rider-training-before-grab-parity-20261014 retains ac9704b. Exact successor CI required before PASS.
+
+## 2026-10-14 Grab Driver parity mission: real Rider Missions
+- Added a Mission framework based on the mission/incentive capability observed in the owner-supplied Grab Driver package, without copying code/assets and without introducing automatic money payout.
+- Production migration 20261014064750 rider_missions_v1 stores mission definitions only in qg_private. Admin-only public wrappers can list/create/activate missions; Rider wrapper returns only active/upcoming mission definitions plus the current Rider's aggregate progress. anon execute is revoked.
+- Mission progress counts completed shopping trips by completed_at. Market multi-shop children sharing one market_order_id count as one trip, preventing inflated progress. A partial index supports rider/completed_at aggregation.
+- Native Rider Earnings shows Mission cards only when Production returns real missions; zero missions renders no placeholder. Admin Rider section creates and opens/closes missions with title, description, target trips, time window and optional reward text. Reward text is informational only; this version does not credit a wallet, transfer money or mutate Rider earnings.
+- Production was intentionally left with zero mission rows after backend verification. Backup backup/rider-missions-before-grab-parity-20261014 retains d12e371. Exact successor CI required before PASS.
+
+## 2026-10-14 Rider re-verification Admin workflow on consolidated release
+- Pulled Work PR235 Admin workflow onto the consolidated #234 release line because its Admin files were byte-identical to the PR235 base before the new workflow, so the UI changes apply cleanly without overwriting newer Admin work.
+- Existing Admin Rider-status cards now call qg_admin_rider_reverification_queue, can request a fresh identity check, open pending private selfie evidence through the existing signed qg-evidence viewer, approve a pending selfie, or reject it with a required Rider-facing reason. The Admin UI never queries qg_private directly.
+- Production queue migration 20261014063649 remains authenticated-only and re-checks live session + active Admin server-side. Production gate migration 20261014063832 additionally prevents an affected Rider from going online until approved.
+- Admin interface regression guards the three public re-verification RPCs, signed evidence viewer usage and absence of direct private-table access. Exact-head consolidated CI remains required.
+
+## 2026-10-14 Rider Grab-parity release successor: selfie re-verification
+- Continued from consolidated Release Gate head 7220b29 so Heatmap, map-reuse runtime assertions, real compliments, detailed Job History, managed public Rider photo and all earlier parity remain on one line.
+- Added explicit Rider selfie re-verification without claiming biometric/liveness detection. Admin may request a check; Rider captures a fresh camera photo; private qg-evidence storage holds the selfie; server state is required/pending/approved/rejected. Public Rider avatar remains in rider-profile and is never reused as verification evidence.
+- Production migration 20261014062750 rider_reverification_v1 is additive and already applied. Public wrappers are SECURITY INVOKER with anon EXECUTE revoked; private helpers validate live auth.sessions plus active Rider/Admin roles. Rider reads only its own latest request and can submit only an owned qg-evidence path. Admin request/review functions re-check active-admin server-side.
+- Native Profile adds no visible UI when no request exists. Required/rejected states offer camera-only capture + preview + submit; pending is read-only. Production read-only exercise with an active Rider session returned required=false/status=null and no real Rider was enrolled for testing.
+- Re-verification now has a server-enforced online gate: qg_guard_rider_reverification_online blocks Rider metadata transitions from offline to online while the latest request is required, pending or rejected. Admin/service-role maintenance remains exempt. Native setOnline performs a friendly preflight, but the database trigger is authoritative even for old clients/direct PATCHes.
+- Production continuation migrations are 20261014063649 admin_rider_reverification_queue_v1 and 20261014063832 rider_reverification_online_gate_v1. The Admin queue is authenticated-only and re-checks active-admin status in qg_private; the gate trigger changes no Rider with no open re-verification request.
+- Backup backup/rider-grab-parity-release-before-reverification-20261014 retains 7220b29. PASS requires native-pilot and navigation-map-runtime on the exact successor HEAD.
+
+## 2026-10-14 Rider Grab-parity consolidated Release Gate
+- Consolidated the post-PR224 Rider experience work onto one exact-head release-gate branch: privacy-safe demand heatmap, map-reuse runtime assertions, real customer compliments, detailed job history and Rider-managed public profile photo.
+- The branch name intentionally enters navigation-map-runtime so the retained Longdo renderer and the full Native pilot suite run on the same head. No PASS claim is allowed unless both are green.
+- Active Production Rider aggregate currently has 3 active Riders and 0 profile photos, so the profile UI now labels the empty state as "เพิ่มรูป" and explains that Customer/Merchant use it to identify the Rider. This is non-blocking for the current pilot; no online-state hard gate was added.
+- Production backend migrations already applied in this chain: 20261014055901 rider_demand_heatmap_v1, 20261014061234 rider_compliments_v1, 20261014062708 rider_public_profile_photo_v1. No Grab proprietary code/assets/map geometry were copied.
+
+## 2026-10-14 Grab Driver parity mission: Rider-managed public profile photo
+- Added a dedicated public rider-profile Storage bucket for the Rider identity photo shown to Customer, Merchant and Rider. This is intentionally separate from private qg-evidence/KYC/proof media.
+- Storage writes are restricted to active Rider owner paths under auth.uid(); the app uses one stable authUid/profile object with upsert, max 5 MB and JPG/PNG/WebP only. A server RPC verifies the uploaded owner object and updates only rider_profiles.metadata.profileImage, preserving KYC, vehicle approval and all unrelated metadata.
+- The stored public URL carries a version query so replacing the same object changes the Compose image source and avoids stale profile-photo cache. Native Rider profile lets the Rider choose a new image from the device and refreshes the authoritative snapshot after server confirmation.
+- Production migration 20261014062708 rider_public_profile_photo_v1 is applied. anon cannot execute the profile-photo mutation RPC. No KYC document or approval state is modified. Backup backup/rider-grab-parity-before-profile-photo-20261014 retains d9b0eaf. Exact-head CI and physical upload verification remain required before PASS.
+
+## 2026-10-14 Heatmap map-reuse guard preserved in Rider parity successor
+- Pulled forward Work PR228 runtime assertions onto the latest Job History successor. These diagnostics prove demand add/level-change/clear reconciles pins while preserving the same MapGLSurfaceView and Longdo map identities.
+- No Heatmap product behavior changed here; this preserves the stronger renderer continuity guard while later Rider parity work continues.
+
+## 2026-10-14 Grab Driver parity mission: detailed Rider Job History
+- Upgraded the existing Rider Earnings recent-job list instead of creating a duplicate screen. Cash ledger remains the authoritative date-range source; existing owned completed-order history enriches each row with pickup address, delivery address and completion time.
+- Each recent job can expand in place to show pickup -> delivery, delivery fee, cash paid to merchant, cash collected from customer and cash received-minus-paid for that trip. UI explicitly labels this as cash flow, not net profit.
+- Rider history now prefers orders.completed_at and falls back to updated_at only for legacy rows. Completion time is formatted in Asia/Bangkok. Missing detail fails gracefully without fabricating addresses or timestamps.
+- No Production DB change and no order/dispatch/payment flow change. Backup backup/rider-grab-parity-before-job-history-20261014 retains d8057e0. Exact-head Native CI is required before PASS.
+
+## 2026-10-14 Grab Driver parity mission: real Rider compliments
+- Added optional Rider compliments as real customer-generated data on top of the existing rider_rating flow. Customer can choose up to three allowlisted compliments only after a 4–5 star Rider rating: polite, fast, careful, professional, friendly and helpful. No default/fake badges are created.
+- Production migration 20261014061234 rider_compliments_v1 stores compliment selections only in qg_private, not the public reviews table. Public wrappers are authenticated-only; customer read/write is restricted to the customer's own completed reviewed order and Rider aggregate is restricted to the current active Rider. Rider sees counts only, never customer identities/comments/order IDs.
+- Native Customer loads, edits and persists its own compliment selections with the review. Lowering Rider rating below 4 clears compliments via a private cleanup trigger. Native Rider profile shows up to the top three real compliment badges with counts; zero data renders no badges.
+- Backend contracts were exercised with active real Rider and Customer session claims without exposing identifiers; both empty-state reads returned zero as expected. Backup backup/rider-grab-parity-before-compliments-20261014 retains fd2ea9f. Exact successor CI is required before PASS.
+
+## 2026-10-14 Rider demand heatmap exact runtime gate
+- Re-cut the unchanged privacy-safe Heatmap implementation from 03f5194 onto branch work-native-rider-navigation-map-demand-heatmap-20261014 because the repository's navigation-map-runtime job is intentionally branch-prefix gated. This successor exists to force the actual retained Longdo navigation renderer runtime gate on the exact Heatmap implementation without weakening or changing CI conditions.
+- No product/backend behavior changed in this checkpoint. Source implementation remains the Production-tested aggregate heatmap from PR225; PASS requires both native-pilot and navigation-map-runtime on this successor HEAD.
+
+## 2026-10-14 Grab Driver parity mission: privacy-safe Rider demand heatmap
+- Continued exact unified parity head 9755a92 / PR224. The owner-supplied Grab Driver 5.457.1 package contains heatmap/hotspot capability; QueueGo implements its own aggregate demand surface without copying Grab code, assets, geometry or styling.
+- Production migration 20261014055901 rider_demand_heatmap_v1 is additive. Public qg_rider_demand_heatmap() is SECURITY INVOKER with anon EXECUTE revoked; private helper verifies auth.uid, live auth.sessions session_id and an active Rider profile. Security advisor reported no finding for the new RPC; existing unrelated advisor debt is unchanged.
+- Demand privacy policy: shopping pickups only; last 24 hours for pilot volume; 0.02-degree coarse grid (about 2 km); at least 2 orders per cell; max 25 cells. Response contains only coarse latitude/longitude, level 1-3 and window_hours. It never returns raw counts, order IDs, customer identities, shop identities or delivery destinations.
+- Production contract was exercised using claims from a currently active real Rider session without exposing its identifiers: result contained 1 coarse zone at level 1 with a 24-hour window.
+- Native Rider refreshes the aggregate at most every 5 minutes while online and idle. Demand overlays are removed for any offered/active/laundry job, never change camera/route selection, and reconcile stable coordinate-keyed cached pins in the retained navigation renderer instead of rebuilding the map. Empty/failing reads do not fabricate demand.
+- Existing orders created_at and order_type indexes already support the bounded 24-hour source query; no new index was added. Backup backup/rider-grab-parity-before-demand-heatmap-20261014 retains 9755a92. Exact-head JVM/build/map runtime CI is required before PASS.
+
+## 2026-10-14 Grab Driver parity unified successor: Safety + Rating + Identity + Performance
+- Reconciled parallel parity work after discovering Work PR221/PR222 were newer than the standalone performance branch. PR222 head 4afb11e2 is now the Source of Truth because it already contains Rider real rating, Merchant assigned-Rider identity, Production migration mirror and Safety Centre on top of PR219 identity/diagnostics.
+- Added the previously separate Rider Performance view onto that exact successor: average income per completed job, jobs per online hour, average income per day and jobs per day, derived only from the authoritative period summary. Zero-job/zero-online periods never fabricate per-job/per-hour values.
+- This successor intentionally supersedes standalone PR220 performance and duplicate PR223 Merchant identity. Preserve Work implementations from PR221/PR222; do not keep parallel versions.
+- Backup backup/rider-grab-parity-safety-before-performance-unify-20261014 retains 4afb11e2. New exact-head CI is required before any PASS claim.
+
+## 2026-10-14 Grab Driver parity mission: Rider Safety Centre
+- Added a QueueGo-native Rider Safety Centre as the next capability category observed in the supplied Grab Driver package. No Grab UI/code/assets are copied.
+- Safety Centre uses verified Thai emergency contacts: 191 urgent police, 1669 national emergency medical service, and 1155 Tourist Police. All emergency actions use ACTION_DIAL, never direct-call permission, so the Rider must confirm the call in the phone app.
+- The panel surfaces the current QueueGo order number when a job is active and links to existing QueueGo Support for order/account issues. It does not expose or transmit live location, create emergency recordings, or invent fatigue/safety scores.
+- Official references checked before implementation: Thailand Government emergency number directory, NIEM 1669, and Tourist Police 1155. Backup backup/rider-grab-parity-rating-before-safety-20261014 retains 993ddbd. Successor work-native-rider-grab-parity-safety-20261014 requires its own CI before merge.
+
+## 2026-10-14 Grab Driver parity mission: real Rider rating + Merchant identity
+- Continued from PR219 head 32df088b after backing it up at backup/rider-grab-parity-identity-before-rating-merchant-20261014. QueueGo Customer already had a real Rider card; Merchant lacked the equivalent and Rider did not surface the existing customer rider_rating data.
+- Production migration 20261014054747 rider_identity_rating_context_v1 adds owner-scoped Rider rating summary and shop-order-scoped Rider identity RPCs. Direct rider_profiles RLS remains unchanged. Public wrappers are SECURITY INVOKER with anon execute revoked; private definer helpers verify an active auth session and role/order ownership.
+- Merchant Rider contact is limited to the shop's own order. Phone is exposed only during active delivery or for 30 minutes after delivery; no Rider coordinates are returned. Rider rating summary returns only the current Rider's aggregate average/count/distribution from completed orders, never customer identities/comments.
+- Native Rider profile renders the real rating average/count only when returned by the server; zero reviews shows an empty-state label and no fabricated score. Native Merchant order detail renders real Rider photo/name/vehicle/plate/verified status and a dial action only while the server supplies a phone number.
+- Repository now mirrors the exact applied Production migration. New JVM parser tests cover rating summary and merchant context/contact expiry. No Grab code/assets were copied; this is QueueGo-native behavior using QueueGo Production data.
+
+## 2026-10-14 Grab Driver parity mission: Rider identity + diagnostics
+- Owner requested QueueGo to adopt useful Grab Driver capabilities found in the supplied Grab Driver 5.457.1 package, while keeping QueueGo branding/flows and never copying Grab proprietary code, assets or map geometry.
+- Source comparison confirms QueueGo already has session recovery, foreground navigation location, map matching/resilience, 30-second sequential offers, floating return control, earnings, chat, photo proof, multi-stop and Customer-side Rider identity. First real gaps selected for additive implementation are Rider self-profile identity and device health diagnostics.
+- Rider profile now reads the existing real registration metadata.profileImage and renders it through the shared remote/data-image component, retaining fallback initials only when no real image exists. Verified vehicle information is surfaced from the existing vehicle verification fields; no fake rating or placeholder identity is introduced.
+- Added a Rider system diagnostics panel inspired by the capability category observed in Grab: checks validated internet, location permission, device location services, QueueGo notifications, installed Google Maps, overlay return permission and microphone state. The first five are delivery-readiness checks; overlay/microphone remain recommendations. Settings actions use Android system screens only.
+- Backup backup/rider-grab-parity-before-identity-photo-20261014 retains dc6a4b7. Work branch work-native-rider-grab-parity-identity-20261014 must pass its own JVM/build/runtime gates before merge. Next parity candidates requiring real backend/product rules: Merchant-side Rider identity, safety centre/emergency contacts, rating/compliments, demand heatmap, incentives/missions and richer earnings breakdown.
+
+## 2026-10-14 Work continuation: reject identityless coverage references
+- Re-checked exact PR217 head 349d4d777b48b005254133b65ee818bead8187af. CI run 38514903001 is now complete: native-pilot, navigation-map-runtime and maplibre-osm-runtime all SUCCESS; map-display-only is skipped by branch rules. This closes PR217's exact-head automated validation only, not the physical/authenticated Release Gate.
+- Source audit found QueueGoAggregateTraceEvidence accepted "queuego-trace:" and whitespace-only suffixes. Those references carry no opaque evidence identity but could still produce review candidates and stable hashes. Require a non-blank suffix after the trusted queuego-trace: prefix; preserve the exact non-blank sourceReference and SHA-256 candidate-key behavior from PR217.
+- Added JVM regressions for empty and whitespace-only aggregate identities. This remains review-only and unreleased: no Production endpoint, database, renderer, road promotion, route selection, Google Maps handoff or persisted-key migration is changed.
+- Backup branch backup/local-roads-coverage-identity-before-empty-reference-20261014 retains 349d4d7. Successor work-native-rider-nav-local-roads-coverage-reference-20261014 needs its own exact-head CI before any PASS claim. Physical road/GPS/Google Maps handoff, authenticated E2E and final Rider Release Gate remain open.
+
+## 2026-10-14 Work continuation: coverage candidate identity
+- Verified live successor PR213 at355651f and continued from PR215 at5126d101; preserve navigation cache/retry/cancellation/viewport/puck/session and isolated signed Local Roads stack. No renderer swap or Production writes.
+- Found coverage candidate key collisions caused by lowercasing, punctuation replacement and100-character truncation. Hash the complete opaque aggregate reference with SHA-256; preserve the original sourceReference. Added a regression for punctuation, case and long-prefix collisions plus input-order stability. This review-only feature is unreleased; no persisted-key migration is introduced.
+- Local full regression on355651f passed. CI38513574551 already passed both dedicated map runtimes, JVM, three debug APK builds and16KB packaging; full native launch/voice lifecycle was still running at inspection. This fix requires its own JVM/CI results and must not borrow predecessor certification.
+- Branch backup/local-roads-coverage-before-key-fix-20261014 retains5126d101. Physical road/GPS/Google Maps handoff, authenticated E2E and final Release Gate remain open. No Grab code/assets/geometry copied.
+
+## 2026-10-14 continued exact-head navigation validation
+- Owner confirmed continuation/publication. Git HTTPS has no local credentials; published through the connected GitHub API with an expected old HEAD and no force. Remote ccbb64f has exactly local359bfc7 tree5e687b64; both7352807 and latest working35284c2 are retained as ancestors. Prior publication blocker is resolved.
+- Pilot38485198433 is validating ccbb64f; pending results must not be called PASS. Navigation emulator runner now enables Android animations at scale1 rather than disabling them, so marker interpolation is exercised. This runner change itself requires a new exact-head run.
+- Background design audit confirmed against Android Developers foreground-service types/restrictions documentation (https://developer.android.com/develop/background-work/services/fgs/service-types). Foreground-started, user-visible location FGS requires location type/permission plus granted foreground location; no blanket background permission addition. Existing return specialUse service still is not a location service. No background/service mutation in this mission.
+
+## 2026-10-13 zero-jank navigation follow-up (unreleased)
+- Continued PR180 source7352807 and merged current Rider working35284c2 locally, retaining approved banners and all newer work. Remote backup `backup/rider-smooth-before-zero-jank-20261013` points to existing7352807; no reset/revert.
+- Marker cadence now uses the last received fix rather than last moved target, with animation shorter even than sub180ms cadence; renderer replacement cancels the old animator and failed movement permits retry. Existing cancellable animator uses SDK non-animated Pin mutation; no overlapping vendor animations.
+- Low speed below0.83m/s without a route keeps the previous heading. Recenter invalidates camera-center threshold so manual pan cannot prevent animated return.
+- Route reconciliation preserves unrelated future Line objects when active reroute/stub removal changes topology; geometry mutation and rebuild diagnostics are separate. Runtime gate now awaits60 individually applied GPS states and asserts snapshot/replacement counts stay constant, plus future-Line identity on reroute. New tests are pending Android execution, not runtime evidence.
+- Verified vendor0.1.8 AAR SHA2560918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c: Pin overload is (MapLocation,boolean,int), Line has setLocation(MapLocation[]), Map has animated location/zoom/rotation. Do not infer fractional-seconds support from another SDK's documentation.
+- Background location audit: targetSDK36; existing Fused source starts ON_RESUME and stops ON_PAUSE/disposal. RiderReturnService is specialUse for the return overlay, not location; shared call service is microphone. No location FGS or background-location permission and no battery-exemption request found in Rider. Thus continuous QueueGo screen-off navigation is NOT certified.
+- Design before background changes: keep one Fused owner, bind visible map to its last fix, and start an explicitly user-initiated location foreground lifecycle while Activity is visible after location permission. Reuse existing service host only after separating return-overlay and navigation lifetimes; current overlay stop-on-return cannot govern location. For target36, review location FGS type/permission and while-in-use start restrictions, notification/stop controls and process recovery before implementation. ACCESS_BACKGROUND_LOCATION is not automatically required for a foreground-started location service; do not add it speculatively. No service/permission change in this patch.
+- Existing7352807 Pilot38420803121 success is predecessor evidence only. This new source needs clean full regression, JVM/compile, emulator/lifecycle,3APKs/16KB and post-merge validation. No FPS claim, no native-main/Production merge. Bulk git push was rejected by automatic approval review; remote backup was safely created by referencing an existing server commit without uploading repository contents. New-source publication remains blocked pending explicit confirmation of destination/payload.
+
+## 2026-10-13 approved category banners verified
+- Final Web merge b5f9e4e3c84ca4e1daf6cb0ccd44d32cc38c07a7/PR181 has exactly tested3d29de55 tree. RC38419925893 and merged-tree RC38420111285 / Pages38420111247 SUCCESS. Actual public Shopping overview, six subcategories and Laundry images decode960x458; bright full photos/light text wash and original category icons verified.
+- Native merge22a2a8b29b96ba555daa9aedcd5620e0b7d1e4cf/PR177 has exactly testedc01e91bf tree, preserving newest Rider4acbcda. Pilot38419935708 SUCCESS: full regression/source, all-role JVM, all3 debug builds,16KB/no-WebView and native-pilot launch/map/service lifecycle. Separate map-display-only/navigation-map-runtime jobs skipped for this branch; no new certification from those jobs.
+- Internal APK artifact11825313667 ZIPsha256d5f0f441e0b7fba052e3f3280fe4266ab69ee3f0343535dd9b7b14df82b29ba4 verified; all8 packaged Customer nodpi images decode960x458 and match Web bytes. Owner freezes the seven selected category images; only Laundry gets the small local-shop adjustment. No further photo regeneration unless requested. No business/backend writes. Physical/authenticated E2E and final Release Gate remain OPEN; no release APK/AAB delivered.
+
+## 2026-10-13 final selection freeze
+- Owner says use the existing selected images for every category in BOTH Web and Android; make only a small ordinary-shop adjustment to Laundry. Freeze the seven selected category images; no further scene changes outside Laundry. Retain black collared shirts/red Q, bright full pictures, no dark panel/strip and original category icon tiles. Any format compression only keeps the selected picture.
+
+## 2026-10-13 owner final banner scene correction: everyday Thai shops
+- Owner requires ordinary community shops and normal working vendors, not luxurious/designer showroom scenes. Phone imagery must show a mall glass-counter kiosk. Other categories use practical local shops/stalls and simple shelves. Everyone wears a BLACK COLLARED SHIRT with a RED Q chest emblem, no apron.
+- Keep bright shop details throughout the image, no black/dark left panel or strip. UI uses a soft light wash with readable dark text. Preserve category icons. Apply the same final artwork to Web and Native Laundry, Shopping and every Shopping mode. This instruction supersedes the intermediate luxury shop images; do not publish those variants.
+
+## 2026-10-13 owner banner correction: black shirt, red Q, bright full image
+- Latest explicit owner instruction: every depicted person wears a BLACK COLLARED SHIRT with a RED QueueGo Q on the chest. No white shirt or apron. The intermediate black-Q instruction was superseded by the explicit red-Q correction. Keep original category icon buttons.
+- Owner rejects dark/black left panels or strips. New artwork fills the entire banner with a bright shop and relevant merchandise. Existing UI text uses a light translucent wash and dark type; remove the old black gradient. Apply the same photo bytes and presentation to Web and Native Customer for Laundry, Shopping and all Shopping modes.
+- Web baseline503791f; preserve latest Native Rider manual-pan successor4acbcda. Native prior a07b8a0/Pilot38412835929 SUCCESS and APK artifact11822963430 ZIPsha2563d5522a362876bede047251773f1be4458d6c1f5c3866e43ffe5f914a62652a1 verified, but its dark/white-shirt artwork is superseded by this correction. New exact-head regression/build/runtime/publication remains required. Physical/authenticated Release Gate stays OPEN; no release APK/AAB delivery.
+
+## 2026-10-13 complete Customer category banner artwork
+- Owner requests matching Web/Native Android banners for Laundry, Shopping and every Shopping mode, while retaining the original category icon buttons. Continue Web31a4187 and Native56371ee; preserve Rider map/lifecycle/sequencing fixes and all unrelated successors.
+- Existing shopping sprite is not a decodable WebP in the repository. Replace its use with individually verified WebP files: shopping/mobile/computer/automotive/fashion/toys/home and laundry, all under50KiB. Automotive car/motorcycle use the automotive family image. Artwork is category illustration, never a substituted real store/product photo.
+- Both versions use identical image bytes; managed Admin banners/hide/link settings retained, bundled image remains visible while a remote banner loads/fails. Images belong in banners; category icons unchanged. No order/payment/state/backend changes. Source/CI and live publication checks pending; Native physical Release Gate stays OPEN.
+
+## 2026-10-13 owner road-display extension
+- Owner explicitly adds dark red road line from current Rider GPS to the next authoritative stop, and pale red lines between later stops. This supersedes the earlier no-line presentation; Google Maps app remains the only navigation engine. No in-app ETA/turn/voice or business state/routing change.
+- Preserve marker/zoom integration ee49d3dbf9b9a7e1bffa4afddd589f44697ee8a5 and latest Rider90b4f87. Exact ee49d3d/Pilot38372435693 SUCCESS in BOTH jobs for full regression, all-role JVM, all3 debug builds,16KB/no-WebView, Customer actual permission/pan/resume, Merchant map lifecycle and Rider map/vector/GPS/stressed lifecycle.
+- New display-only road layer requests actual Longdo GeoJSON, keeps pickup-before-drop/bundleSequence/dropRank and pending arrival/proof priority, truncates at unknown coordinates, omits closed/completed work, and never fabricates straight-line routes. GPS changes move existing pins; lines/geometry cache are bounded, requests are cancellable/foreground-only, generation rejects stale results, active geometry refresh is throttled and camera is untouched.
+- Active line RGBA163/0/31/255; later RGBA230/0/45/76. Actual vendor-example GeoJSON read returnedHTTP200/meta200/8 LineStrings using the existing map key. Runtime exercises live vendor-example road geometry and SDK dark/pale colors without any business order/account fixture or Production writes.
+- Remote backup/rider-before-road-display-ee49d3d-20261013 retains the verified pre-extension source. New extension combined-head unit/build/runtime remains pending. Physical Google Maps/overlay/GPS/authenticated E2E and final Release Gate remain OPEN; no release APK/AAB delivered.
+
+## 2026-10-13 verified marker family and Longdo zoom fix integration
+- Preserve latest Native Rider90b4f87978a5b0b22f35ca8ba638c14dabf0dcf9 (merged PR170) and merged marker PR169/c5a37c5/5251164. No reset/revert, cash-flow/state/routing changes are authored by this map integration; retain all latest source.
+- Exact fix679392e55c7d467e335cfddb6c4924bc6363e01d/Pilot38370365168 SUCCESS in BOTH native-pilot and map-display-only: full regression/source, all-role JVM, all3 debug APKs,16KB/no-WebView, actual Customer denied/granted permission/pan/resume, Merchant shop-map lifecycle, Rider native vector/GPS/display/stressed lifecycle and real SDK same-level zoom.
+- Customer-specific879d0d0/run38369148763 failed because Longdo0.1.8 setZoom dereferenced a null IZoomListener.postZoom. Process crash guard kept the picker alive but blocked mapReady/permission. Install ONLY an absent SDK observer before camera setup; preserve existing listeners and all GPS/mapReady/lifecycle guards. Vendor SDK checksum0918c236 verified.
+- Reviewed exact-head original map artifact11799201974, ZIPsha256d03381fc59c1f8f305edbc446e57ab479c58e87fd6e07f6f3cb01feefca498d3. Actual denied/allowed Customer SDK-gray fractions0 and0.0000004061; no inspected Customer fatal/null-pointer/crash. Rider phone/tablet camera is stable across initial/resumed/recreated, maps show roads and the new red arrow; emulator GPS injections are explicitly technical fixtures, not physical GPS or business orders.
+- Exact-head pilot evidence11799880885 digest8d8f3aebb0a9268eccc92910c111b4b73eebdb5ccda5c0d2dc50401a250ab223; internal debug APK artifact11798184448 digestd568b9555a7f782506a8ad016c59fd42fa3fc2455e4fbf18c86bc9605ef6a269.
+- New combined source with90b4f87 still requires exact combined-head CI. Physical Google Maps/overlay/GPS, authenticated Production E2E and final Release Gate remain OPEN; no release APK/AAB delivered.
+
+## 2026-10-13 additional Rider navigation and final cash flow mission
+- Owner adds to the same mission: automatic Google Maps handoff must show arrival actions on return; photo/proof uses buttons; slider belongs only to final completion on a full-screen customer cash amount review matching Production Web cash layout. This newer instruction supersedes the older prohibition on a separate cash review presentation. No additional payment confirmation RPC/state is introduced.
+- Start from integrated marker successor52511640/tree2861f70a, whose tree matches testedc5a37c52/run38367565964 SUCCESS. Backup backup/rider-before-delivery-cash-flow-52511640-20261013.
+- Fix stale navigation UI by sharing the persisted Maps stage key and observing preference changes plus Activity resume. Preserve Maps-only handoff, return overlay, bundle sequencing and Longdo fixes. Proof advances by button to final collection; full-screen amount uses authoritative customerCash, and final slider alone calls existing completeWithPhoto. Back returns to proof, retaining evidence; invalid/missing amounts block final collection.
+- Full regression/Native unit/build/16KB/no-WebView/runtime remain required on this new source. Physical/authenticated Release Gate remains OPEN; no release APK/AAB.
+
+## 2026-10-13 Customer tracking semantic marker integration
+- Preserved concurrent successor3ec0677 and its Rider marker/return design plus real vector instrumentation. PR169 integrates the same family into Customer tracking with explicit role fields; Customer mapReady/GPS and shared Longdo lifecycle code stay unchanged.
+- Local full regression passed before successor integration; combined exact-head regression/unit/build/runtime must pass. Physical gates remain OPEN; no release artifacts delivered.
+
+## 2026-10-13 professional map marker mission staging
+- Continue PR142 from 9270cb257db1de1d668fb717cac8c1bcae44b34d; preserve Customer mapReady/GPS ordering and shared Longdo fail-closed lifecycle fixes. Backup branch backup/map-markers-before-9270cb25-20261013.
+- Owner explicitly authorizes the existing Google Maps return overlay visual update. Custom bold vector family: red storefront pickup, teal house drop-off, red directional Rider, and branded vector Q on the draggable return control. Sequence badges render actual integers independently of icons, including 10+ stops. Retire old generic numbered marker resources.
+- Keep bundleSequence/dropRank and pickup-completion predicates unchanged. Incrementally reconcile stop pins instead of clearPin; foreground GPS moves the existing Rider pin. Preserve camera for same-job presentation updates. Overlay activity/session/drag/snap/persistence logic retained, with pressed feedback.
+- Source/regression and exact-head Pilot build/runtime gates must complete before certification. Physical GPS/Google Maps return, authenticated E2E and final Release Gate remain OPEN; no release artifact authorized by software CI alone.
+
+## 2026-10-12 Longdo mixed-endpoint and invalid-evidence follow-up
+- PR166/ada37df858e32c4dc4928b5d6e40ee591ca0415d exact Pilot38251358486 SUCCESS. Working e39090ca post-merge38250742424 failed initial map tile completeness after60s. Its artifact11748211365 sha25651a24e846027b02eb4134821d93c5318c0379e50b92303b96fa00c1ebb040a4b preserves a real19.8867% gray rectangle, unchanged after61.9s; corrected PID4686 did not show a verified app crash. This is a demonstrated incomplete map frame, not a timeout-only assumption.
+- Log shows in-flight tile requests on both the configured legacy HTTPS ms2 endpoint and the new HTTPS ms endpoint selected by actual key validation. Direct read-only requests for the observed tile returned valid512px PNGs on both hosts, with different bytes. Candidate starts the existing normal layer at the checker-selected ms endpoint, removing this avoidable mixed-host transition while retaining key validation/automatic host selection, map/camera/location/lifecycle and all strict60s/<=1%/crash/camera gates. Root-cause elimination requires exact/post-merge runtime evidence; no certainty is inferred from source alone. No SDK/provider/key bypass, new map renderer or fake business/GPS data.
+- Failed-run evidence also demonstrated ADB exec-out can return zero with cat errors on stdout. The prior collector incorrectly named those bytes as missing resumed/recreated PNG/JSON files. Candidate verifies PNG structure/chunk CRC and finite camera metrics, omits/removes only invalid generated files, records unavailable names, and requires all9 valid original files on a successful instrumentation run. Stdlib-only AST unit fixtures cover the exact zero-exit error, corrupt/truncated PNG, invalid/NaN JSON, partial failed collection and complete collection. These fixtures are not Android/physical evidence.
+- Python compilation, collector/budget/source232 guards PASS; full regression/exact Native Pilot pending. Production Voice verification remains deployed as recorded below. Release Gate remains OPEN; no APK/AAB delivered.
+
+## 2026-10-12 Voice block revocation Production verification
+- PR165 exact0a0cda702b4f06dd87a71bbeab80c43fd0030782 Pilot38249450248 SUCCESS for full regression including PostgreSQL block cases, JVM/all3 builds/16KB/no-WebView/actual Android launch-map-service runtime. Expected-SHA merge to workinge39090ca228caf278a386569554f1fed03745be0 has exactly tested tree90b9a08c280a0cf75797f43bfb805f847f60d916. Native main9f675d07 and Web main7595d764 remain preserved.
+- Applied the exact guarded migration to Production via MCP; actual recorded version20261012124318/name native_voice_block_revocation. Four deployed existing-function digests exactly match gated target definitions; paired BEFORE INSERT/UPDATE block trigger is present. anon EXECUTE=false on each of the six inspected functions. authenticated EXECUTE is retained on the3 existing API functions and private realtime helper, and denied on the2 new helpers. Blocks RLS remains enabled; active blocked calls0. No real test user/order/call/notification created.
+- Actual missing-session calls to start/active/ICE were rejected before data work; anonymous-context realtime authorization false. Security advisor keys are unchanged from the read-only baseline (no new findings; this is not a claim that all earlier project advisories are resolved). Saved readback/grants/trigger/migration metadata in docs/voice-block-production-verification-20261012.json with audio/physical/forced-TURN/cached-realtime certification false.
+- Follow existing migration-mirror convention: retain the CLI-created20261012121736 file and exact same tested SQL under actual Production version20261012124318, protected by the existing mirror test and repeatable hash/trigger guards. This checkpoint changes history/evidence only; no second Production application or new Voice implementation. New checkpoint exact-head and latest working post-merge Pilot remain pending. Authenticated rendered pairs/live cash/physical push, two-device/two-network audio and revocation, overlay/GPS/lifecycle and Rider Google Play Release Gate remain OPEN; no APK/AAB delivered.
+
+## 2026-10-12 Voice block revocation authorization staging
+- Rider money PR164/f615aa55 exact Pilot38246714668 SUCCESS; expected-SHA merge to working24d17f3d66f8786cf56f9f99e3940e80461f722b has tested tree89a044c1f762d5d2a3a86c79b082e3e30b16db14. Post-merge Pilot38248020447 SUCCESS. Map diagnostics PR163/de130b3e exact38245572870 SUCCESS and merged0552c1a8 treebccfb921. Original retained map PNG/JSON hashes match artifact11745837723 sha2569f42d77932287424c6567e06ee94fbb3ba21258b0aab133d87f620a483a18a86; all3 camera states identical and final gray0.003655%, emulator only.
+- Actual Production Voice inspection found start/answer/incoming enforce blocks, but active-call lookup, accepted signaling authorization and ICE authorization do not check blocks; blocking RPC only inserts the block and has no revocation trigger. Preserved exact four affected function definitions in ops/native-voice-before-block-revocation-20261012.sql. RLS on blocks is enabled; anon/authenticated INSERT privileges false; existing pair/caller/callee indexes present; active blocked call count0 at read-only inspection.
+- CLI2.120.0-created migration20261012121736_native_voice_block_revocation.sql stages private transaction pair locking shared by call start and block trigger, paired ringing/accepted cleanup, continuing block guards on active/signaling/ICE, and narrowly reconciles previously blocked live calls without deleting history. No new public RPC/signature/table, no client helper privileges, no notification insertion. Hash preflight refuses to overwrite newer Production definitions and accepts an already-applied exact target. Production is NOT changed at this staging checkpoint.
+- Isolated PGlite fixtures PASS for both block directions, ringing/accepted calls across orders, preservation of unrelated/history rows, unblock/new-call behavior, stale live row signaling/ICE denial, retained order/session checks, denied helper execution, deterministic pair-lock key, repeat application and newer-definition rejection. These are local test fixtures, not real users/orders/audio/concurrency or physical evidence. Existing Voice/TURN/migration guards PASS; full clean regression and exact-head Native Pilot remain required before merge/deployment. Existing peer audio/TURN allocation cleanup, cached realtime subscription revocation and two-device/two-network/forced-relay behavior still need physical certification.
+
+## 2026-10-12 Rider fractional cash/earning display parity
+- PR162 exact HEAD8f99b071437c6cb4c9ee7cede0f49b5ec429e531 Pilot38244423990 SUCCESS for full regression/JVM/all3 builds/16KB/no-WebView/Android launch-map-service runtime. Merged with expected SHA to workingf28739fae557c1083657002948d7bce91e41d31d; merge tree36a3131f399aa7106c718744e346d23dcc9a6b11 exactly matches tested head. PR161 was included/closed by that merge. Post-merge38245862656 and map-evidence PR163/de130b3e exact Pilot38245572870 remain pending at inspection.
+- Current Web main7595d764 uses th-TH default0–3 fractions on offer/active/proof/items/success/bundle money, and exactly2 fractions with grouping on Earnings/cash ledger. Native %.0f dropped fractional baht in job/proof/success/details/Laundry/bundle amounts, while %.2f ledger followed the phone locale and omitted grouping. Add Rider-only display formatters using explicit th-TH locale and decimal half-up rounding; preserve unknown/invalid display as dash. All server amounts, sums, request payloads, fees/GP/state transitions remain unchanged.
+- JVM tests cover fractional amounts, grouping,3-digit boundaries, fixed2-digit ledger,1.005 half-up, negative/missing/nonfinite amounts and a German device locale. Confirmed expected values against Node Intl used by Production. Existing source232/route-bundle/success guards PASS. Full clean regression and exact-head Pilot required before merge; authenticated rendered/physical cash E2E and Rider Release Gate remain OPEN.
+
+## 2026-10-12 Rider incomplete-tile runtime diagnostics
+- Post-155 Pilot38243346243 SUCCESS; merge04155b95 has exactly tested53246b2b treecd6f20a52c5453138f5a2893e6a208944ad74dce. Retrieved artifact11743458598 sha256cb5df50e282166cfc6f72ef25940431d4ca76f392748fd944d1abc1399a14dcd matches GitHub; launch matrix/map/background/recreation/service diagnostics are emulator only.
+- Live-status PR161 exact-head Pilot38244018658 attempt1 passed regression/JVM/build/launch matrix but failed initial map capture: tiles incomplete after60 seconds. Corrected PID4690 has no verified app crash; the old missing GestureDetectorCompat crash belongs to intentionally untransformed baseline PID4619. Tile responses are present, so CDN latency alone is not proven. One exact-head rerun requested, no criterion changed.
+- Actual failed-run artifact omitted the already-written map images/metrics because the capture script asserted success before copying them. New diagnostic follow-up preserves available original first/final PNGs and camera JSON before the same fail-closed checks, clears only generated test evidence before capture, and records hashes/source with physical/visual certification false. The60-second deadline, <=1% gray threshold, camera stability and process/crash checks remain unchanged. Exact-head Pilot required; no physical certification or feature rollback.
+
+## 2026-10-12 Rider screenshot report parity staging
+- Compared current Web main7595d764 queuego-ugc.js and Rider report/safety UI with existing Native chat. Removed per-message report links; the existing safety menu is the only report entry. Screenshot selection/preview is required, supports JPG/PNG/WebP and8MB input, uses the existing shared image preparation with its default chat limit preserved, and validates the exact Production900000-character data-URI ceiling before submission.
+- Read-only Production function inspection confirms qg_report_chat_with_evidence(uuid,text,text,text), actor/chat/counterpart checks, six reasons,1000-character details, screenshot allowlist/size, five-minute duplicate guard and existing Admin notification. anon EXECUTE false/authenticated true. Native reuses this existing RPC; no migration, backend deployment, order or report records created. Errors preserve selected evidence/details for retry, cancellation propagates and busy blocks duplicate taps.
+- Added JVM malformed/unsupported/remote/size-boundary evidence cases and focused single-menu/required-evidence contracts. Exact-head regression/Pilot, physical picker/upload, Admin receipt and authenticated rendered comparison remain required. No full visual/physical Release Gate claim.
+
+## 2026-10-12 Rider post-155 live chat call status
+- Re-fetched Native main9f675d0755b5be34105c6180bc3a8ed7d45cdafc, working04155b951c4a4c1229fce505bdb627710052c351 and Web main7595d764dac8a14d28162248d33f640d0a614870. PR155 is already merged with parents49f70cebe493d2221a3aa299bba5a811d9425a2e and53246b2bac60ba323b33f0fb9378b63bf2ab7d01; no repeated merge/reset/revert. Post-merge Native Pilot38243346243 is in progress at inspection.
+- Backup backup-rider-before-live-chat-call-04155b95-20261012 preserves the starting HEAD. A focused follow-up uses the existing refreshed chat window status for the call button instead of the initial job snapshot. Completed chat may remain available for30 minutes, but completed/cancelled/no_rider_available must hide calling immediately after refresh. Existing voice controller, permission flow and server authorization remain unchanged. JVM cases cover active-to-terminal transitions and all three terminal states; exact-head Pilot is required before merge.
+- Current Web also moved reports to the safety menu with screenshot evidence; Native still has per-message reports and needs a separate parity follow-up. Authenticated paired screens and physical push/voice/overlay/lifecycle certification remain OPEN. No APK/AAB delivery or Google Play Release Gate claim.
+
+## 2026-10-12 Rider verified software HEAD and Production sender v22
+- Latest fetched Native main9f675d07, notification successorc9f9a098 and map brancha3634c12 are preserved, including latest map verification JSON. c9f9a098 run38217274205 SUCCESS: full regression, all-role JVM, actual builds,16KB/no-WebView and Android launch/map/voice lifecycle. Artifact11733435776 sha2566cc2567f537def9739adc906f195e51be25f2e29112866b12a2ec5e9490cafff; evidence11733755900 sha25670ec5e0a40fc363e4d34611a218aaf98a404f77cc475de81ccffa21e489517ad. Authenticated/physical parity remains unverified.
+- Re-read live queuego-push v21, exact source equals preserved backup, then deployed existing function v22 under its existing custom-auth verify_jwt=false. Retrieved deployed files match candidate exactly; ezbr ebac6cd28939b62b82930bd3bb5395a684df1344a6680ac367f2f6cd417f93bb. OPTIONS204 and unauthenticated public-key401. No order/profile/schema mutations or actual FCM delivery certification.
+- Recovered previously owner-authorized Rider credentials privately; actual Native password endpoint200, account role Rider/active and exactly one owned active Rider profile. Read-only snapshot: online true,27 assigned completed orders in recent100 and no active owned order. No credential/identifier/token persisted in source/logs/artifacts, no fabricated business records or GPS sent.
+- Local official SDK/emulator/image checksums match Google manifests. A no-KVM software emulator boots, installs actual c9 APK, but renders an Android system-process ANR during launch (not a verified app ANR). Preserve evidence and recover environment; authenticated APK results remain OPEN.
+- New sender candidate makes remaining Rider status/call/test events data-only so the existing MessagingService checks cached actor/session after background logout. Customer/Merchant notification transport stays on the original branch. Add transport cases for all three event types; no weakening of existing tests. Full exact-tree rerun and paired actual delivery remain required; this additional candidate is not yet deployed.
+
+## 2026-10-12 Rider nullable profile compile recovery
+- Merged run38216768959 full regression PASS; compile found nullable riderProfileId in exact notification lookup. Require the authoritative loaded profile before the assigned-order read; missing profile keeps the existing recovery retry, never drops ownership filtering. Exact rerun pending.
+
+## 2026-10-12 Rider converged latest-HEAD compilation recovery
+- Fetched latest map working HEAD984e2dcf and notification successor97eec029. Merge preserves both histories: saved Activity push target, actual offer expiry, exact-ID recovery, persistent sound receipts, routing/GL lifecycle and draggable sheet. No reset/revert.
+- Notification CI38215644109 full regression passed but Kotlin compile failed because uploadEvidence referenced requestAny-local timeoutMillis. Restore existing proof upload TIMEOUT; bounded legacy offer lookup remains independent. All original regressions plus current two-channel realtime assertions remain. Exact merged-tree CI pending; authenticated/physical Release Gate remains OPEN.
+
+## 2026-10-12 Rider push recreation and actual CI correction
+- b3d705d4 run38215155685 full regression passed and actual Rider Kotlin compilation passed. Shared JVM test failed because its websocket test still expected three retired platform-Laundry subscriptions, while current Rider subscriptions intentionally include only owned notifications/orders. Update the test to require exactly these two, reject all three retired IDs, preserve every ownership-filter/accepted-event and partial-ack guard. No production subscription or runtime policy weakened.
+- Preserve the pending push reference/type/event counter through Activity savedInstanceState so recreation during recovery does not lose the selected order. Existing newer-intent handling still takes precedence.
+- Read-only Production inspection confirms orders_rider_select ownership and rider_orders_offered_select live-offer RLS, dispatcher creates a fresh notification per attempt, expiry cooldown30s, dispatcher cron every5s and push-retry cron enabled. Enabled native push tokens0, pending outbox0: physical delivery remains unverified. No Production writes/dispatch/account/order mutation.
+- Exact code source984e2dcf4333decd9ed854e6c2e8c4fb76a3843a / run38215858155 SUCCESS for both native-pilot and map-display-only: full regression, all-role JVM tests (including new Rider deadline/reference cases), all3 builds,16KB/no-WebView guards and actual Android fresh-session/map/voice-service lifecycle. Map artifact11731388744 manually reviewed all9 images: streets/labels visible, stable camera on resume/recreation; tiny final gray fractions0–0.0000366. OS allowed coordinates remain emulator virtual locations. Authenticated exact-reference retry/recreation and offer expiry E2E remain unverified; CI does not replace those real-account checks. No Rider Release Gate or APK/AAB claim.
+
+## 2026-10-12 Rider notification reference and offer expiry continuation
+- Re-fetched Native main9f675d07, working branch871970e3 and open PR138/140/141. Continue on work-native-map-display-20261012; backup-rider-notification-871970e-20261012 preserves the starting HEAD. No reset/revert or Production writes.
+- Rider push taps previously ignored referenceId and opened whichever job was latest. Candidate resolves exact active/offer references (including Market parent), otherwise reads the exact assigned normal/Market child using current Rider profile filtering and existing RLS, then opens the existing read-only order details. An unavailable reference is explicit; transport failure retries only while STARTED, and a newer tap/token cancels the old read. Voice call references remain in the existing voice controller.
+- Offers with expired, missing or invalid server deadlines cannot trigger a fresh in-app alert or remain actionable. Countdown initializes from the actual deadline, and expiry clears only the same order/deadline version before refreshing; later renewed offers remain intact.
+- JVM deadline/reference tests added. Source integrity232 passed; local regression reached the final evidence-bundler test, which requires a clean committed checkout. Existing state-coverage assertions were updated to the current one-primary-action UI while retaining arrival-before-handoff, start-delivery and navigation guards. Clean committed local full regression passed, including final evidence bundle checks. GitHub prior run38213818998 has full-regression FAILURE and independent map-display SUCCESS; it is not full CI PASS. New exact-tree Android compilation/runtime remain pending; authenticated notification/offer recovery is unverified. This does not fix or certify physical FCM transport, server dispatch retry or physical GPS. Rider Release Gate remains OPEN; no APK/AAB delivered.
+
+## 2026-10-12 Rider exact-head software verification and push continuation
+- Latest tested code e92562568efe55493e3b5cccc4254e7a2b47d84f / run38212251340 SUCCESS: full regression, unchanged release/source/assets guards, all-role JVM, all actual APK builds,16KB packaging, real Longdo creation/background/recreation and phone/small-phone/tablet fresh-session captures. Runs38211453239 /642e39 and38211725657 /5665fc also SUCCESS. These are software/emulator diagnostics, not authenticated UI, live delivery, physical GPS/FCM/TTS or Release Gate certification. Native main remains9f675d07; drafts138/140/141 preserved.
+- Read-only Production audit matched Native API project pkypiqhlrmzocysgeqew. Orders, Rider profiles, notifications, chat and market orders have RLS; observed SELECT policies scope assigned/current offered orders and participating market groups. Inspected actual qg_rider_action_once and proof completion functions: active Rider guards, request/advisory or row locks, replay results, owned proof paths and private storage checks remain. anon cannot execute the six inspected claim/offer/action/proof RPCs. No schema/account/order writes and no runtime role-isolation PASS is inferred.
+- New Native candidate: exact-reference notification lookup under existing JWT/RLS instead of opening whichever current job happens to exist; retain failed lookup for STARTED retry and cancel on tab/session/new-event changes. Persistent, account/lease-scoped audible-event receipts unify foreground offer tone and FCM, expire/cancel owned offer notifications, reject wrong role/user/session, and stop notifications on logout. Short legacy-offer lookup is bounded; new sender supplies verified expiry/recipient/session for immediate background processing. JVM fixtures cover replay across receipt restoration, account/lease separation, capacity and timezone normalization.
+- Production queuego-push v21 exact source backed up at ops/queuego-push-production-v21-before-rider-offer-expiry-20261012.ts (ezbr79f649287d18136b43f9a79c9ac289ebac118617fd52f85a83195e6b2d4e0b57). Staged sender uses data-only high-priority messages for Rider offers only, current owned lease checks, expired/old-attempt discard and TTL up to30s. Existing other-role notification payload/dispatch/session guards are retained. Added pure transport tests; no fake account/order rows or actual FCM sends. Sender candidate is NOT deployed; paired Native/sender physical verification remains required.
+- Secure Production Web Rider sign-in previously returned incorrect-credentials error. Authenticated actual APK screens, live offer/delivery/navigation/reroute/audio, phone/small-phone/tablet device gates, signing and final Rider Release Gate remain OPEN. No APK/AAB/source deliverable sent.
+
+## 2026-10-12 Rider Bottom Sheet interaction reference
+- Materialized and inspected the owner's actual ScreenRecording_10-12-2569 11-47-58_1.mp4. Initial frame shows expanded work content;6–15s show compact summary with map occupying almost all available space. Only gesture/interaction behavior is used; no reference-brand colours, artwork, business records or identifying details are copied.
+- Candidate preserves current QueueGo card content, map composition, authoritative snapshot, destination, timers/actions/proof and navigation controller. Handle and compact summary get direct drag recognition; expanded content cooperates through nested scroll at its top edge, preventing vertical content scroll from stealing sheet drags. Swipe velocity chooses the release anchor; drag targets are bounded and animation starts from the dragged height rather than jumping back to its previous anchor. Content scroll state remains mounted across collapse/expand.
+- Source integrity232 and state coverage70 PASS. Exact Android compile/runtime and actual authenticated sheet gestures remain pending. No new sample business orders or UI parity certification.
+
+## 2026-10-12 Rider realtime and route service follow-up
+- Full regression and all-role JVM/unit steps on642e39 / run38211453239 PASS; baseline/build/runtime steps remain pending at this checkpoint. Original five-filter transport test (all table/filter/event assertions) is retained with explicit historical transport subscriptions, and a new current Rider two-channel test checks owned events plus rejection of retired/foreign IDs. An earlier attempt to reduce the old channel assertions was rejected by automatic review; the safer replacement retains every original assertion and adds coverage. No production subscriptions were changed.
+- Read-only actual Longdo GeoJSON request using the existing configured key and public vendor-example coordinates returned meta.status200,2 road features, distance4494m/interval289s. No real or fake business order was created. TurnCode/restrict1 were checked against https://api.longdo.com/map/doc/rest.php. Route parser now uses service summary values and rejects service-error responses/missing duration instead of inventing ETA via7m/s. Added3 route-format JVM fixtures, using the same org.json test dependency already used by shared; these are technical parser tests, not business/GPS data or authenticated navigation proof.
+- Candidate route parser changes still require exact-head CI; physical GPS, authenticated APK UI, live order/navigation/TTS, notifications and final Release Gate remain OPEN. Secure browser login was rejected by the site as incorrect credentials; no retry, authentication bypass or credential copy was used.
+
+## 2026-10-12 Rider navigation recovery verification
+- Successor work-native-rider-navigation-recovery-20261012 preserves working-map HEAD plus compilation recovery. Commit3ed670 adds TTS jitter dedupe and current history coverage;6deebae updates source-only arrival/start-delivery coverage to the current guarded primary-button implementation without removing any state requirements.
+- Actual run38209960210 on1ace688: map-display-only compile/instrumentation/display/lifecycle SUCCESS; denied/allowed phone and allowed large-screen all PASS. Downloaded internal artifact11728353379 and inspected recreated allowed-phone frame: visible roads/labels. Metadata retains physical_device=false, gps_injected=false and authenticated_home_parity_certified=false. Full native-pilot failed the stale deleted History path, then the stale old-button source assertion; both now map to the current live UI/ledger implementation with stronger state/action checks. Clean local full npm regression PASS after committing the source gate changes. Exact-head CI for6deebae remains pending.
+- Secure Production Web Rider login submission returned the visible error “อีเมลหรือรหัสผ่านไม่ถูกต้อง หากสมัครด้วยอีเมลให้ใช้อีเมลนั้นเข้าสู่ระบบ”. No authenticated result is claimed; no credentials are stored in source/logs. Authenticated APK and full order/navigation E2E still require a usable real Rider session.
+- Follow-up candidate fixes a GL-map replacement retaining an obsolete route render key, ensures map-created callback consumes the latest navigation state, uses matched road position for marker/camera while preserving raw GPS off route, clears navigation process cache explicitly on logout, and retains the last authoritative job snapshot when post-action network refresh fails. Routing cancellation propagates instead of becoming an error state. Actual compilation/runtime of these follow-ups remains required.
+
+## 2026-10-12 Rider-only release mission and navigation compilation recovery
+- Owner priority is now Rider only until its Release Gate passes; Customer/Merchant/Admin work is paused except shared/backend changes directly necessary for Rider. Embedded Longdo navigation and draggable sheet are required. No incomplete deliverables.
+- Fetched Native main9f675d0755b5be34105c6180bc3a8ed7d45cdafc, working99c764aab49ab86a0c211463d879b14f58271063 and open PR138/140/141. Existing PR140 parity headcc0a6e33 and all new Navigation/Bottom Sheet work are preserved.
+- Actual CI38209474303 failed Rider compilation: map diagnostic omitted new navigation parameters; Longdo Line.setColor requires FloatArray; public map exposed internal navigation types. Commit1ace688 fixes these errors, bounds sheet height to the actual viewport, restores full native-pilot regression on the map branch, and restores Rider map capture instead of the unrelated Customer-only environment selector. Source integrity232 PASS locally; exact-head compilation/runtime remains pending.
+- TTS now remembers consumed threshold tokens rather than only the last token, preventing 300/100/300-meter GPS jitter from replaying old cues. Weak GPS/off-route suppresses stale turn speech; existing target/reroute tokens and lifecycle TTS remain. Added JVM jitter/destination/reroute/reset regression case.
+- Scratch lacks Android SDK/adb/emulator/KVM; actual Android checks use existing GitHub Actions. No authenticated UI/order lifecycle/physical GPS or notification PASS has been claimed. All Release Gate requirements remain OPEN until exact runtime evidence exists. No Production business records changed and no APK/AAB/source delivered.
+
+## 2026-10-12 Rider public Login/Registration actual visual audit continuation
+- Actual source7c4040f7 run38194270140 SUCCESS; original artifact11723210560 has real phone/small-phone/large-screen Login and first Registration frames. Reached actual Production Rider Login and Registration in cloud browser without filling/submitting a form. Production Registration width820/card585/grid406, two equal384x406 panels, input50/radius15/font16/weight800 and label11/line17 were measured from rendered DOM. Native large-screen screenshot confirms its photo panel is short and input text has wrong weight. Both before-states are observed, not inferred parity PASS.
+- Candidate visual corrections keep existing forms/session/submission/document APIs: equal-height wide Registration panels via intrinsic Row, bounded820 content, border/content insets,800-weight fields and measured label/step/file-note line heights. Login wide branch restores current radial background and faint Q watermark, and retains the CSS360 minimum right column near the800 breakpoint. This affects public Auth branding only; the owner's removed Home Q/QueueGo bar remains removed. No account/document/order writes.
+- Owner supplied an existing Rider test account. Browser credentials must go through browserAuth's secure request, not source/logs or lower-level entry. The secure request returned declined; no signed-in result is verified and no retry/credential fallback was performed. Credentials are deliberately not recorded here or in GitHub. Authenticated comparison remains OPEN.
+- Actual repeat compilation/rendering of these new visual changes remains pending; do not certify1:1 from source changes. Existing map proof and cold-tile/physical-GPS limitations remain intact. No APK/AAB/partial source deliverable sent and no full CI/release gate entered.
+
+## 2026-10-12 actual Rider map rendering investigation
+- Re-fetched Native main 9f675d0755b5be34105c6180bc3a8ed7d45cdafc, Production main 03803ab91bd7a418251c288ce9a09cc7c0660564 and all open PRs; PR138 and draft PR140/141 preserved. Diagnostic work-native-map-display-20261012 descends from exact PR140 head0f4c5b10. No reset/revert, Production write or APK/AAB delivery.
+- Scratch has Java17 but no Android SDK/adb/emulator/KVM. Existing GitHub Android runtime capture is reused in a focused diagnostic job; it builds/installs actual Rider/instrumentation and uploads screenshots/logs only. Release/full regression jobs remain unchanged for ordinary branches. Debug-only map activity mounts the actual RiderLongdoMap component without account/order or GPS fixtures; it does not certify authenticated Home parity.
+- Run38192074027 (9eb9703b) compiled actual Rider and passed map mount/recenter/background/recreation at1080x2280 denied/allowed and1600x2560 allowed. All nine captured frames were gray. Inspected real images and logcat: SDK0.1.8 default checker uses HTTP, cannot connect and disables layers with invalid-key messages. Callback/lifecycle success does NOT certify visible map tiles.
+- Verified downloaded SDK SHA2560918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c; inspected its actual manifest metadata reader and Layer.checkApiKey bytecode. Existing key returns a valid HTTPS checker response for the actual com.queuego.rider referer, with an HTTPS layerServer. Rider candidate supplies longdo.map.apikeychecker HTTPS metadata and HTTPS initial layerURL, retaining Android cleartext=false and server key checks. Default base now matches Web NORMAL and initial camera13/100.5018/13.7563; no GPS marker is fabricated.
+- Run38192683796 (2ff19b7d) compiled, passed denied-phone lifecycle and its actual initial/resumed frames show streets/labels. New diagnostic push canceled this run before remaining cases, so it is not an all-case PASS. Added an image coverage gate that rejects the previous uniform-gray originals, rather than treating onMapCreated as rendering proof.
+- Candidate e27ecc4e additionally requests real OS GPS/network locations only while the map is resumed, removes updates on pause/disposal, handles permission changes, preserves pan until explicit recenter and validates coordinate bounds. Home recenter now requests existing ActivityResult location permissions and gives expiring unavailable-GPS feedback. Run38192992083 compiled and passed three runtime cases, with0 GPS update starts/stops denied and3/3 each allowed. Actual images exposed a viewport reset on resume despite that lifecycle PASS; this was fixed in the next candidate. No injected GPS, fake users/jobs or Production business writes.
+- Latest verified48089650 / run38193716622 compiled and passed all3 cases and both image gates. Manually inspected all9 actual frames: streets/labels visible, no camera jump after resume/recreation, SDK center cross removed; real GPS update starts/stops are0/0 denied and3/3 each allowed. Saved camera/zoom survive GL-surface and Activity recreation; marker cache resets on each new map. One cold phone-allowed initial frame has a partial gray tile strip (~3.2% changed interior pixels); it is absent in resumed/recreated frames. Cold tile completeness remains a follow-up, not a certified100% render.
+- Allowed-case coordinates come from the emulator OS virtual provider, not a physical Thailand GPS fix. No coordinates were injected by the capture script; this is location registration/lifecycle and rendering evidence only. Physical GPS remains OPEN. Actual image previews and source/run/hash/coverage records are retained under native-android/qa/evidence/map-display-20261012.
+- Candidate7c4040f7 / run38194270140 passed actual map and Rider-only phone/small-phone/large-screen Login/Registration capture without entering/submitting data. Actual wide Registration has a short profile-photo panel and regular input text, differing from live Production equal406px panels and800-weight inputs. Auth wide background also misses the live radial gradient/Q watermark. Native visual corrections are now staged for repeat actual capture; exact parity is still OPEN. Current Rider map marker colours/numbers and real-job route rendering remain parity follow-ups; Customer/Merchant shared map checker defaults also require follow-up.
+- OPEN: authenticated Home/other-state visual parity, all Customer/Merchant screens, shop staff IDs/per-km/multi-stop flow, physical GPS allow/deny/fresh-install/background tests and final regression/release gate. Customer/Merchant shared map checker defaults require follow-up; Rider rendering findings do not certify those maps. No physical-device or full UI100 claim.
+
+## 2026-10-12 Rider Profile/Earnings/Support parity continuation
+- Re-fetched all remote branches. Native main remains 9f675d0755b5be34105c6180bc3a8ed7d45cdafc; Production main remains 03803ab91bd7a418251c288ce9a09cc7c0660564. Open PR138 preserved; PR140/141 remain drafts. No reset/revert or Production rollout.
+- Native Profile now uses the Web compact icon/menu groups and online status pill; account editing opens a separate bounded dialog, and support opens a 620dp bounded dialog rather than replacing the profile with a full-screen page. Saved profile name/phone prefer refreshed real rider profile values. Feedback expires after 4 seconds. Existing account deletion API/confirmations are reused; dialog cannot close while deletion is busy. No account was actually deleted.
+- Native Earnings uses Web period selector, four summary card colours/sizes, cash grid, single recent-job ledger and Home back control. Summary/ledger load independently and preserve cancellation; removed fabricated zero-summary fallback. Removed obsolete RiderHistoryCard.kt and duplicate last-five-history renderer; completed history remains in the Earnings ledger (plus the existing history data used by Messages/Support).
+- Support uses real existing ticket/evidence APIs, Web dialog/form grouping and initial loading/error states instead of reporting an empty ticket list before the response. No ticket/order/account/sample record created.
+- Native pickup/delivery verification content is now centered with the Web 680dp bound. Web canonical bottom-navigation/Profile/settings CSS is directly bounded and centered at 720px; narrow screen geometry remains fluid. No CSS hiding or duplicate renderer added. Web edits are on PR141; Native equivalents on PR140.
+- Validation: 232 existing source checks pass (required legacy-history file replaced by existing read-only order-details sheet); modified Kotlin syntax and 8 Web inline scripts parse; whitespace checks pass. These are source checks, not Android compilation, screenshots or runtime certification. Remaining Rider states/rendered comparisons, Customer/Merchant parity, staff-issued ID login/per-km pricing/10+ stops, physical GPS and release remain OPEN. No APK/AAB delivered.
+
+## 2026-10-11 Rider Home/offer/active-order parity continuation
+- Removed Home Q/QueueGo brand DOM and Compose card on both work branches; Production has not been redeployed. Native offline idle now follows the smaller Web offline card (no online stats/tip). Native feedback is bounded and expires after 4 seconds.
+- Native offer metrics now use actual GPS/pickup/dropoff coordinates for Web-equivalent straight-line distance and 25 km/h travel estimate; unknown values remain unknown. Native active card uses Web status title, fee badge, shop/customer identity, destination, customer note, three tools and one state-dependent primary action. Added the existing Web read-only order-details flow using current authorized items/contact APIs. Cash information remains in verification, not extra Home sections.
+- Removed the extra Q configuration card from active Home. Kept existing navigation return service and moved Android-specific permission configuration into Profile's existing notifications section. Navigation-start markers survive opening Maps; market primary navigation targets the next unfinished real pickup.
+- Profile header/avatar/identity/status and compact section labels adjusted to Web source. Detailed settings rows/account editing, all remaining Rider states, Customer/Merchant visual parity, shop-issued staff login, per-km pricing, multi-stop staff rounds, physical GPS and release remain OPEN.
+- Read-only Production inspection found queuego_laundry_save_settings still required an accepted platform Laundry Rider. Candidate rollout SQL now removes that prerequisite, preserving existing service validation and saved settings; exact prior function backed up. No Production schema/data/account change performed.
+- Reached actual published Rider Login and Registration in browser and inspected screenshots; authenticated states remain unverified. Native changes pass 232 existing source checks and Kotlin syntax parsing. Candidate SQL passes PostgreSQL statement parsing only, not execution/PLpgSQL/runtime checks. No Native render/build/device or parity100/GPS PASS is claimed; no APK/AAB delivered.
+
+## 2026-10-11 Rider Home Q/QueueGo bar removal
+- Owner explicitly requested removing the Q/QueueGo bar from Rider, including the Web blueprint. Remove the Home brand pill DOM/Compose card directly in both surfaces; keep compact availability and recenter controls. This supersedes the earlier requirement to copy that brand pill.
+- Rider UI/function parity remains a primary active mission alongside the shop-delivery staff account/per-km/multi-stop requirements. Do not claim all parity is complete from Home-source changes alone.
+
+## 2026-10-11 shop-issued delivery staff IDs, per-km fees and multi-stop runs
+- Owner now requires shop-issued staff IDs that authenticate in the existing Rider app. This supersedes the earlier first-version plan of names only/no staff account. Merchant creates/manages/revokes its own delivery employees; staff mode is distinct from ordinary platform Rider mode and sees only its own shop-assigned pickup/dropoff/navigation.
+- Staff mode has no earnings tab, income/GP/fare/cash summaries, platform job offers, shared Laundry pool or general Rider availability toggle. Ordinary Rider mode keeps its existing delivery work and income features; never remove those for all Riders.
+- Shop configures pickup/return fees per kilometre in addition to service pricing (per kg/fixed package). Actual chargeable distance/rate/fee must be snapshotted per order, derived from the real route rather than invented GPS/distance. Multi-stop routing must not duplicate a customer's charge.
+- Merchant can assign a run with at least 10 real pickup/dropoff stops to one of its own staff IDs, order/reorder stops, show completion per stop, and preserve links to the original Laundry orders. Staff sees one route with its assigned stops only; other shops/staff cannot read it. Do not use ordinary route_bundles or platform dispatch/earnings for these shop runs.
+- QueueGo GP remains 10% of the full Laundry amount including service and shop transport, with shop net snapshotted; staff compensation is outside the platform Rider earnings system.
+- Implementation gate: existing PR140/141 name-only staff assignment and flat-fee UI are incomplete for these newer requirements. Do not deploy that earlier candidate as complete. Staff authentication/authorization lifecycle, per-km quote validation, multi-stop assignment/navigation, income-free staff screen and integration tests are pending. Preserve existing session/auth, audit and order systems; extend them safely rather than creating a duplicate app.
+
+## 2026-10-11 Laundry shop pricing and QueueGo GP 10%
+- Owner sets laundry service pricing: shop-defined per-kg prices and fixed packages such as 10 kg are supported using existing service pricing types. No platform-fixed laundry unit price is introduced.
+- QueueGo GP is 10% of the entire Laundry order total, including service/pickup/return charges. Shop net is total less the rounded GP amount (90%); the retained Rider route view has no fare or platform income.
+- Save the GP rate and final fee/net as Laundry order snapshots. Do not add a wallet/top-up system or reinterpret this fee as an automatic cash collection/settlement; merchant GP credit remains deferred. Other category GP policies must not be silently overwritten by the Laundry implementation.
+
+## 2026-10-11 final clarification: retained Rider sees transport points only
+- Owner clarified that a QueueGo Rider specifically retained/assigned by the laundry shop sees pickup and dropoff points/navigation only for that shop assignment. No Laundry fee, fare, earnings card or income is shown or added to platform Rider income/settlements.
+- Shop retains all Laundry service/pickup/return pricing and manages operational statuses in Merchant. This does not imply staff work is unpaid; outside-app employee compensation is not a platform Rider ledger.
+- No general Rider availability switch, invitation/pool or automatic dispatch is restored. A dedicated authenticated assignment view must be restricted to the shop-selected person and owned pickup/dropoff points; it must not expose other Laundry orders, customer account details or platform earnings.
+- This supersedes the broader earlier wording that no Rider app view is ever involved: ordinary Rider Laundry integration stays removed, while a specifically assigned route-only view is now requested and remains to be implemented. Do not reuse the former fee-bearing Laundry job cards/API as that view.
+
+## 2026-10-11 clarification: shop transport may use a specifically retained QueueGo Rider
+- Owner reiterated: cut Laundry out of ordinary/platform Rider dispatch completely. Shops provide their own pickup/return, using their own employees or a QueueGo Rider they specifically engage as their shop transport worker.
+- Being a QueueGo Rider does not cause a Laundry order to enter the general offer queue or require ordinary Riders to collect/return clothes. Work remains assigned and controlled in Merchant. The current first-version staff-name assignment supports either person; no duplicated Rider flow, new employee app, or general Laundry availability switch is introduced.
+- Optional shop-retained Rider linkage is not permission to automatically enroll a Rider, change Rider availability, or create a platform dispatch job. Existing staging removes all general Rider Laundry API/UI/pool paths.
+
+## 2026-10-11 approved shop-managed Laundry implementation staging
+- Owner confirmed the laundry shop uses its own employees for pickup and return, entirely in Merchant. This supersedes all platform Rider-Laundry requirements. No employee app/account is required in the first version; shop account records staff names per leg.
+- Flow: pending → accepted → pickup_assigned → picked_up → at_hub → washing → ready_return → out_for_return → completed. Customer tracks shop updates; shop sets pickup/return fees. Existing order IDs, price snapshots, history and audit records are retained.
+- Production inspection found 3 pending Laundry orders and zero laundry_rider_jobs. Current placement requires linked Riders and current accept/ready-return creates Rider jobs; the staged SQL removes those dependencies without deleting data.
+- Merchant Web staging adds staff assignment, owned customer contact/navigation and full pickup/return actions. Customer labels identify shop employees. Rider Web no longer loads, renders or mutates Laundry work. Native equivalent is staged in PR140.
+- QueueGo-Laundry-Shop-Transport.sql is staged and NOT deployed. It adds staff-name fields, one ownership-guarded state machine with row lock, expected-status checks and repeat-safe actions; old action endpoints delegate to it. Placement keeps route/pricing/idempotency guards while removing the linked-Rider prerequisite. Backed up exact Production function definitions in ops/backups/laundry-shop-transport-20261011.sql.
+- Remaining: SQL database validation, retire old Rider RPC access, full relevant regression updates, authenticated shop/customer end-to-end test, visual QA and coordinated backend/Web rollout. Native compilation/physical-device tests remain OPEN. Do not claim Production changed, full parity or Play readiness.
+
+## 2026-10-11 approved shop employee Laundry flow
+- Owner explicitly confirmed: shop employees handle both pickup and return entirely in Merchant; no platform Rider app, eligibility switch, invitation, pool or dispatch. First version uses the shop account and records employee names per leg, with no separate employee app/account.
+- Approved flow: pending → accepted → pickup_assigned (shop employee) → picked_up → at_hub → washing → ready_return → out_for_return (shop employee) → completed. Shop sets pickup/return fees, sees owned customer address/contact/navigation, and Customer sees status updates. Different employees may handle the two legs.
+- Production inspection: 3 pending Laundry orders, zero laundry_rider_jobs. Current placement still requires laundry_hub_riders; accept/ready-return creates Rider jobs. These dependencies must be retired with Merchant controls before calling the flow complete. Preserve the existing orders, price snapshots and audit trail.
+
+## 2026-10-11 UI parity first / shop-managed Laundry override
+- Owner explicitly corrected Laundry: the laundry shop handles pickup and return itself; platform Riders must have no Laundry availability switch, invitations, pool, active-work UI or navigation. This supersedes prior Rider-Laundry requirements and the earlier instruction in this mission to move its toggle to Profile.
+- Owner clarified responsive UI must work across all screen sizes. Production proportions and bounded centered content remain the blueprint.
+- Working branch work-rider-ui-parity-20261011 starts from fetched Native HEAD 9f675d0755b5be34105c6180bc3a8ed7d45cdafc; Production main 03803ab91bd7a418251c288ce9a09cc7c0660564. All remote branches fetched; open PR138 Merchant privacy retained. Backup branch backup-native-pre-ui-parity-20261011 preserves source HEAD.
+- Rider Home staging consolidates idle title/stats/offline action/tip into one card, removes duplicate online headers, bounds dock/topbar/nav, restores compact online switch, moves recent history to Earnings and expires transient action feedback after four seconds.
+- Native Rider Laundry UI, API polling/mutations, map pins/navigation and realtime subscriptions removed. Database historical records/schema preserved. Production Web and backend dispatch retirement still pending; do not claim the whole system has been corrected.
+- Visual comparison on running Native phone/large screen and physical Android GPS crash verification remain OPEN. This environment has no Java/Gradle/Android SDK/adb or physical device. No full parity, compile success or release certification claimed; no APK/AAB delivered.
+
+# QueueGo project memory
+
+## 2026-10-10 secure legacy push integration staging
+- Fetched Native main b267f4c2 and voice/push RC 2353ca78; RC full CI38038818671 / #504 independently confirmed successful. Three-way merge retains post-deploy documentation and all newer Native work. Backup branch backup-native-pre-secure-push-integration-20261010-0900 preserves main before integration.
+- RC permits an invalid explicitly supplied sessionId to enter legacy derivation. Staging hardens this: only an omitted property may derive exactly one live session; explicit malformed, empty, null or non-string sessionId fails closed with 400. Valid explicit IDs still require the user's non-revoked active session. Zero/multiple legacy sessions are rejected.
+- Full CI on this exact staging tree is required before main advances. Production push v15 still requires the same hardening after backup and successful CI. Firebase credentials, TURN secret presence, physical push/audio/overlay tests and release signing remain unverified; no release files or Play-ready claim.
+
+## 2026-10-10 Native release packaging preflight staging
+- Native root Gradle now has one environment-only signing configuration for all three apps, explicitly non-debuggable release, no debug signing fallback and a required release-evidence verifier on packaging tasks. No keystore or certificate identity was fabricated. Explicit release version/name overrides are supported; actual Play version history remains an external gate.
+- Release verifier requires exact clean source HEAD, every named gate PASS with recorded evidence file/hash, P0/P1 zero, all three complete Firebase clients in one project and actual keystore/alias/key passwords. Operator-certified physical evidence is still required; hashes are evidence identity only. Missing or stale evidence fails closed in regression.
+- Native-specific gate inventory is native-android/qa/native-play-release-gate-20261010.md. Legacy Capacitor/Web claims do not certify Native. Native voice microphone/media/call metadata disclosures and current Play Data Safety review remain OPEN; old RECORD_AUDIO prohibition must not be reused.
+- Firebase Console reached Google sign-in but returned 502 Connection refused in this environment. No Firebase project/config or credentials were obtained. Local Android SDK/adb and Firebase/TURN/signing secrets are absent; Supabase connector has no secrets operation. Production TURN secret presence is still unknown, not claimed absent.
+
+## 2026-10-10 strict explicit push-session rollout
+- Integration40660cad passed full Native CI38039619102 before PR10 merged to Native main3eecbc55. Native main Full CI38040292297 was then started; completion must be checked. Original62bff538/2353ca78 ancestry and post-deploy main documentation are preserved.
+- Exact Production push v15 source/metadata were backed up on backup-native-push-v15-explicit-session-20261010 under ops/backups/pre-native-push-explicit-session-guard-20261010/. After fresh version/source comparison, push v16 was deployed with the strict explicit-ID guard, retaining verify_jwt=false and the custom auth architecture. Readback confirms ACTIVE v16 and byte-identical gated source (apart from trailing newline); unauthenticated HTTP POST returns401. Security advisor categories/counts unchanged at1 INFO/3 WARN; this does not certify authenticated push or physical behavior.
+- Production voice RPC/private-topic helper anon EXECUTE remains false; authenticated guarded execution remains true. All four idempotent Production migration mirrors remain unchanged. No live order/account/token data was fabricated.
+- Native privacy disclosure is staged in docs/privacy.html for microphone/audio transmission/call metadata and Firebase/Cloudflare infrastructure. Publication on the Production web privacy URL and Native Play Data Safety review remain OPEN. GitHub secrets settings in this browser show logged-out Sign in/404; connector does not expose secrets APIs. No secret was configured or read.
+
+Updated: 2026-10-06 (Asia/Bangkok).
+
+## User instruction
+
+Keep the navigation return feature below in project memory. Start implementing the Android return overlay only when the user explicitly instructs us to build an APK. Do not start it during web changes or unrelated development, and do not treat this memory as authorization to implement now. When the user requests an APK, include this feature in that work. The iPhone Live Activity remains a future option requiring a separate user request for iOS work. Both features are pending, not implemented.
+
+## Pending: return to the active rider order while navigating
+
+- Android installed app: add a draggable QueueGo Q overlay button while a rider has an active job and opens external navigation. Tapping returns to the same active order, preserving the session and current state. Request the OS draw-over-other-apps permission explicitly. Provide a notification return action when overlay permission is unavailable. Hide the overlay on completion, cancellation, logout, or loss of ownership. Implement in the native app, not only webpage CSS.
+- iPhone installed app: use a delivery Live Activity and Dynamic Island on supported devices, with a link back to the same active order. Use notifications as appropriate for other devices. Do not promise an Android-style free-floating cross-app button on iOS. Requires native iOS integration; not implemented in the web app.
+- Web/PWA: do not represent an in-page floating control as a cross-app overlay.
+- Use the existing order and authenticated rider identity. Returning to the app must never claim another order or change order/payment state automatically.
+- Navigation before pickup targets the shop. After pickup it targets the customer's actual delivery location. The authoritative order states remain unchanged. Rider verification is photo-only: one required pickup photo before leaving the shop and one required delivery photo before completion. These are delivery-safety proofs, not separate payment-confirmation states.
+
+## Existing flow constraints
+
+Customer order → PENDING → merchant accept → SEARCHING_RIDER → rider claim → RIDER_ASSIGNED → merchant preparing → PREPARING → merchant ready → READY → rider pickup → PICKED_UP → start delivery → IN_PROGRESS → complete → COMPLETED.
+
+Shop arrival is an audited event (`rider_arrived_shop_at`), not a new order state. Manual payment confirmations were removed; existing backend cash/audit records are created by order actions. Keep this behavior.
+
+## Verification needed before calling the pending feature complete
+
+- Physical Android device: permission allowed/denied, Google Maps navigation, dragging/tapping overlay, active-order restoration, completion/logout cleanup, and app lifecycle.
+- Physical iPhone: supported Live Activity presentations, tap to restore the correct order, lifecycle and completion cleanup.
+- Customer/Merchant/Rider regression checks; preserve order ownership, state machine, notifications, and audit history.
+
+## Last implementation reference
+
+Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer navigation link after pickup and prevented market pickup coordinates from overriding the delivery destination. Cross-app overlay and iOS Live Activity remain pending.
+
+## Rider web improvements implemented in this release
+
+- Returning from external Maps restores the active job view after checking the current authenticated session; cached job details are marked stale and action controls stay locked until refreshed.
+- Existing rider actions use `qg_rider_action_once` with a durable request ID and an owned receipt. Lost replies recover with the same ID rather than duplicating the action. Supabase remains authoritative.
+- The job card shows the actual customer delivery address, order notes/landmarks, and customer phone.
+- Opt-in Web Push connects the existing notifications table to a server-only outbox and Edge Function; chat messages to the rider generate notifications. Users enable it from Rider profile. iPhone requires a supported Home Screen web app.
+- Quick rider issues use the existing support tickets with an automatic order link and a stable ticket ID on retries.
+- Isolated regression tests cover action recovery, account races, quick ticket retries, and push-worker ownership. Physical-device push delivery and a complete live three-role delivery flow still require validation.
+- The Android cross-app Q overlay remains deferred until an explicit APK request; iOS native Live Activity is also pending.
+
+## Customer features restored after the cleanup audit
+
+- Backup: `backup-pre-customer-function-restore-20261005` at `ad8c61ce8ad599cb826840df134a6413c53d467b`.
+- Restore current Customer capabilities using `customer-features.js` and existing tables, with no legacy renderer or CSS overrides loaded.
+- Tracking reads only an owned order through `qg_customer_order_context`; closed orders never return live Rider coordinates. Missing/stale GPS stays visible as missing/stale, with no invented movement.
+- Chat uses existing `order_chat_messages`, durable per-user/order message IDs and the existing chat notification trigger. Customer and Rider may both continue the conversation for 30 minutes after completion; after that the backend denies Customer/Rider reads and writes and expired Customer/Rider messages are purged.
+- Favorites, reviews, notifications, shop menu categories, search modes, support evidence, email signup, cart removal/merge and profile links are restored. Promotions show existing active shop campaigns; no coupon/discount model is added.
+- Review ownership checks bind order, customer and shop; no financial/order transition RPC is replaced. Customer cancellation uses existing RPCs only.
+- Manual payment-confirmation screens stay removed. The customer delivery-PIN flow is retired. Rider uses only a pickup photo and a delivery photo as required proof. Android overlay still waits for an explicit APK request.
+- Full physical delivery, background mobile GPS, notification sound and push delivery still require device validation; unit tests do not certify these.
+
+## Market approval continuity fix
+
+- Admin dashboard has an explicit “อนุมัติตลาด” entry with a live pending count from existing market_requests and shop_profiles.
+- Market approval uses the existing queuego_admin_review_market_request and queuego_admin_review_market_membership RPCs. New market approval queues the applicant shop for a separate membership review; it never auto-approves that shop.
+- Failed request reads must show an error, never an empty approval queue. Realtime refresh also refreshes the market queue/count, with account ownership checks.
+- Membership review displays existing shop location and front/stall evidence; no new approval tables or order/payment states.
+- No actual pending request is approved as part of QA; the decision remains with Admin.
+
+## Admin provider category labels
+
+- Admin account approval, user details, shop control and market membership/request review display the shop's selected category (e.g. market → ตลาดสด), alongside the actual shop name and contact.
+- Hydration prefers shop_profiles.public_category; older rows fall back to the saved category. Missing categories remain explicitly unspecified rather than inferred from membership.
+- Role and permissions remain shop; the displayed business category does not create a new role or approval state.
+
+## Admin market/shop master coordinates
+
+- Admin can edit market coordinates from Admin → อนุมัติตลาด, and shop coordinates from the existing shop control list or pending market membership review.
+- qg_admin_update_location checks the current active Admin in Supabase, validates coordinates and reason, locks the target and rejects stale expected coordinates. Retries of an already saved position are no-ops, without duplicate audit.
+- Existing audit_logs records Admin identity, target, old/new coordinates, reason and timestamp atomically with the update. Related market suggestion distances are refreshed; existing membership/approval triggers remain.
+- Existing order pickup/delivery snapshots and state machine are not changed. Coordinates are master data for subsequent orders.
+- QA uses isolated fixtures plus real transactional checks with rollback; no actual market/shop pin is moved permanently by QA.
+
+## Admin interface rebuild (2026-10-05)
+
+- Replaced Admin presentation: one `admin/interface.css`, a responsive sidebar/mobile navigation, dashboard, shop/user cards, approval filters, announcement form and section selector. Removed all inline legacy style blocks, old panel injection, unused customer chat/tracking UI and the obsolete Admin market stylesheet.
+- Longdo map selection replaces numeric coordinate entry and Google Maps links in Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
+- Existing `qg_admin_update_location` remains authoritative with expected old coordinates, audit and retry behavior. Existing order coordinates and financial state transitions are untouched.
+- Native prompts were replaced by labelled dialog forms for reasons, market radius and vehicle capacity. Tests cover validation, account races, map failure and retry payloads.
+- Automated regression passes do not certify physical mobile GPS, live map tiles or real account approval. Local browser installation was blocked by the browser download returning HTML rather than a browser archive; do not claim visual browser/device certification from automated DOM tests.
+
+- Publication authorized explicitly by the user on 2026-10-05. Rebased onto the current Admin redesign at `a4abadde6fd3f2a7b03e992f173fc7cbb00db2da`; backup before publication: `backup-pre-longdo-publish-20261005`.
+
+## Merchant dashboard banner removal (2026-10-05)
+
+- Removed the home dashboard photo banner and its dedicated CSS at the user's request. Shop identity/open toggle, profile photo management, order statistics and all data/actions remain in place.
+
+## Merchant setup checklist (2026-10-05)
+
+- Replaced the pending application screen with a Thai checklist reading the owner's current shop profile and products. Shows missing contact/address/category/photos, valid Longdo pin, at least one named priced product with image, actual account approval, and market membership when category is market. Does not invent a contract/signature completion.
+- Dashboard shows setup while incomplete and normal summary when complete. Approved shops retain order access. Pending shops can edit profile/images/products and contact support through existing handlers; no approval or order state is changed. Failed reads show retry and account/navigation races discard results.
+- Verified source parsing, Merchant routing/checklist and realtime fixtures; read existing products RLS to confirm owner insert/update policy. Physical mobile rendering and a real pending-shop submission remain unverified.
+
+## Merchant market menu tile (2026-10-05)
+
+- Moved the market stock entry into the existing main-menu grid as a matching icon card labelled “ตลาดและสต๊อก”. Removed the standalone wide red button and its layout CSS. Existing market category visibility and market-stock navigation are preserved.
+
+
+## Merchant notifications interface (2026-10-05)
+
+- Rebuilt the Merchant notifications presentation into a mobile-first card layout with a clear header, compact sound-test control, segmented category filters with counts, date grouping, category-specific SVG icons, readable message hierarchy, timestamps and link affordances.
+- Removed reliance on unsupported glyph symbols that could render as black squares. Existing notification data, filters, mark-as-read behavior, navigation links, sound test, order state machine and backend writes are unchanged.
+
+
+## Merchant order price display (2026-10-05)
+
+- Merchant-facing order amounts now show product sales only, excluding delivery fees. This applies to the dashboard recent orders, order list, and order detail total.
+- The order detail label is now “รวมค่าสินค้า”. Existing order totals and delivery fees remain stored unchanged for customer/rider/platform accounting; this is a Merchant presentation fix only.
+- Legacy-safe calculation prefers order subtotal, then item totals, then total minus delivery fee when needed. No order state, payment flow, GP logic, or database schema was changed.
+
+
+## Merchant single price + locked Delivery GP (2026-10-05)
+
+- Merchant product editor now has one editable price: “ราคาขายหน้าร้าน”. The separate editable POS and Delivery price inputs were removed.
+- Delivery price is read-only and displays the effective shop GP above it as “+ GP X%”. Current effective GP is loaded from `effective_gp_rate`.
+- Delivery price formula is storefront price × (1 + GP%). Example at 10%: 100 → 110. The product save writes `price` and `pos_price` to the same storefront price.
+- Supabase migration `20261005094500_product_delivery_gp_lock.sql` enforces the rule server-side. Direct attempts to overwrite `delivery_price` are replaced by the derived value, POS price edits also rederive Delivery, and current products were normalized.
+- Product prices are repriced when current per-shop GP, legacy GP setting, or platform GP rule changes. Existing order/payment/state-machine behavior is unchanged.
+
+
+## Delivery GP markup accounting (2026-10-05)
+
+- The locked Delivery price model is now financially aligned end-to-end: merchant storefront price is the base, Delivery price = base × (1 + GP%).
+- `orders.gp_rate` remains the configured nominal GP percent, while `orders.gp_amount` is now the actual markup portion embedded in the Delivery subtotal. Example: storefront 100, GP 10%, Delivery 110, GP amount 10.
+- New Delivery orders calculate GP as subtotal × rate ÷ (100 + rate), so the merchant nets the storefront price after GP. DINE_IN/TAKEAWAY remain GP 0.
+- Existing orders are not repriced or rewritten. If an existing order subtotal changes later (for example a safe recalculation), its existing GP/subtotal ratio is preserved so historical pricing rules are not silently changed.
+
+
+## Product image upload feedback (2026-10-05)
+
+- Merchant product editor now shows a visible upload-status card for the product image.
+- Existing saved images are labeled as already stored in the system. Newly selected images show thumbnail, filename, file type, approximate size, and the status “เลือกแล้ว · จะอัปโหลดเมื่อกดบันทึก”.
+- This changes presentation/feedback only; the existing Storage upload flow still uploads the selected product image when the merchant presses Save.
+
+
+## Restaurant product categories (2026-10-05)
+
+- For restaurant/cafe Merchant product editing, the free-text product category field is replaced by a required fixed selector.
+- Categories are: เมนูแนะนำ / เมนูขายดี, อาหารจานเดียว, ข้าว, เส้น / ก๋วยเตี๋ยว, ของทอด, ของย่าง / ปิ้งย่าง, ต้ม / แกง / ซุป, ผัด, ส้มตำ / ยำ, กับข้าว, อาหารทะเล, ของทานเล่น, ของหวาน, เครื่องดื่ม, ชุดคอมโบ / เซ็ต, เมนูเด็ก, เมนูสุขภาพ / คลีน, เพิ่มเติม / ท็อปปิ้ง, อื่น ๆ.
+- The Merchant catalog category buttons use the same restaurant list for food/cafe shops. Save validation rejects restaurant categories outside this list. Other shop types keep their existing category behavior.
+
+
+## Restaurant menu options builder (2026-10-05)
+
+- Merchant restaurant/cafe product editing now has a structured menu-option builder instead of the old comma-separated free-text field.
+- Optional single-choice portion group supports “ธรรมดา” at base price and “พิเศษ” with an editable surcharge.
+- Optional multi-select toppings support starter rows for ไข่ดาว, ไข่เจียว, เพิ่มเนื้อ and เพิ่มข้าว, with per-item enable toggles, editable names/prices, delete, and custom topping rows.
+- Saved data uses the existing `products.variants` JSONB column with schema marker `queuego.menu-options.v1`; no database schema change or order/payment/state-machine change was needed.
+- This step only creates and saves Merchant-side option configuration. Customer Delivery, POS and table-QR option selection/pricing are not yet wired to consume these structured variants and must be implemented before calling modifiers end-to-end complete.
+
+
+## Restaurant catalog simplification (2026-10-05)
+
+- Removed the duplicate restaurant/cafe category card grid from Merchant → Products. Restaurant/cafe merchants now go straight to their current menu list and use “เพิ่มเมนูใหม่”.
+- Category selection remains only inside the menu editor, where it is required and uses the fixed restaurant category list.
+- Retail/non-food shop catalog category cards remain unchanged.
+
+
+## Merchant readiness check smoothing (2026-10-05)
+
+- Approved merchants no longer see the blocking “กำลังตรวจสอบข้อมูลร้าน...” screen every time they return to Dashboard.
+- A successful readiness result is cached per merchant for the current Bangkok business day. After that first successful check, Dashboard renders immediately.
+- Readiness is revalidated silently in the background once per page load. The existing full merchant hydration/poll still refreshes account approval/suspension status, so Admin status changes are not ignored.
+- Manual “ตรวจสอบข้อมูลอีกครั้ง” clears the readiness cache and performs a fresh check. Saving core shop profile/location data also invalidates the cache. Logout clears readiness cache entries.
+- Incomplete/unapproved shops still see the setup checklist. Order state, payments, GP, approval authority, and backend security rules are unchanged.
+
+
+## Buriram market picker + membership fix (2026-10-05)
+
+- Merchant market membership now loads active Buriram markets with coordinates and automatically selects the market nearest the saved shop pin first.
+- Merchant can override the automatic choice using a normal dropdown, or type a market name to get close-name suggestions; search results still show distance, verification state and whether the shop pin is within the market assignment radius.
+- The same nearest/search/select behavior is available during first-time market-category shop registration. Existing server-side `queuego_submit_market_membership` remains authoritative and still rejects a shop pin outside the selected market radius.
+- Fixed the market-membership runtime error `Can't find variable: qtSupabaseRpc` by using the existing `qtSupabaseTable('rpc/...')` data path with the current authenticated token.
+- Market picker data comes from the existing `markets` table; it does not create duplicate markets. Current Buriram master data includes ตลาดสดเทศบาลเมืองบุรีรัมย์ and ตลาดสดสวายจีก. Unverified market coordinates remain visibly marked for Admin verification.
+
+
+## Fresh market product categories (2026-10-05)
+
+- Market-type Merchant product editing now uses a required fixed product-category selector instead of free text.
+- Categories are: ผักสด, ผลไม้, เนื้อหมู, เนื้อวัว, ไก่ / เป็ด, ปลา, อาหารทะเล, ไข่, เต้าหู้ / เส้นสด / ลูกชิ้น, ของสดพร้อมปรุง, อาหารแช่เย็น / แช่แข็ง, พริกแกง / เครื่องแกง, เครื่องปรุง / ซอส, ข้าวสาร / ธัญพืช, ของแห้ง, อาหารปรุงสำเร็จ, ขนม / ของหวาน, เครื่องดื่ม, ของใช้ในครัวเรือน, ดอกไม้ / ของไหว้, อื่น ๆ.
+- This selector applies to market/meat/fish/vegetable/fruit shop types in the normal Merchant product editor and in the dedicated Market stock product editor. Grocery keeps its existing flexible category behavior.
+- Vegetable, fruit and fish shop types preselect ผักสด, ผลไม้ and ปลา respectively for a new product; merchants can change the selection before saving. Existing order/payment/GP behavior is unchanged.
+
+
+## Market catalog simplification (2026-10-05)
+
+- Removed the duplicate category-card grid from Merchant → Products for market/meat/fish/vegetable/fruit shop types.
+- Market-type merchants now see search, current products and the add-product button directly; category selection remains inside the product editor using the fixed fresh-market category list.
+- Restaurant/cafe category grid remains removed as before; grocery and other retail shop types keep their existing catalog grid behavior.
+
+
+## Merchant authoritative category hydration fix (2026-10-05)
+
+- Fixed a UI mismatch where Merchant could keep using a stale category from `users.metadata` even though `shop_profiles.public_category` had already changed (for example a real market shop still rendering grocery category cards).
+- Merchant hydration now treats `shop_profiles.public_category` as the authoritative category and exposes it on the current shop user. Market membership status is hydrated alongside it.
+- Merchant sync signatures now include shop category/membership fields, so a full profile refresh rerenders safe pages such as Products when the authoritative category changes. This makes the removed market category grid disappear without requiring a new login.
+
+
+## Merchant order action reliability (2026-10-05)
+
+- Fixed Merchant accept / start preparing / ready-for-rider / cancel actions that could require repeated taps or show an error even though the server had already committed the transition.
+- Root cause: Merchant called `merchant_order_action` and then awaited a full database hydrate inside the same try/catch. A refresh/network failure after a successful mutation was incorrectly shown as an action failure, leaving a stale action button that invited another tap.
+- Added `qg_merchant_action_once` with `qg_merchant_action_receipts`. Merchant now sends one durable request UUID; a lost HTTP reply can be retried with the same UUID without repeating the transition, audit entry or notifications.
+- Merchant buttons disable immediately while saving. Successful server status is applied to the local order immediately, so the action button disappears without waiting for a full refresh. Full hydration runs afterward in the background and cannot turn a committed action into a false failure message.
+- Transient transport failures retry once with the same request UUID and then reconcile the exact order status. If the outcome still cannot be confirmed, UI reports an uncertain connection state and refreshes automatically instead of claiming the order action failed.
+- The same reliability path is used by the normal order detail screen and Kitchen mode. Existing rider-first state machine, `merchant_order_action`, delivery rows, notifications, audit logs, cash model and payment behavior remain authoritative and unchanged.
+
+
+## Customer market shop visibility (2026-10-05)
+
+- Fixed Customer → ตลาดสด so the market selector and shop directory no longer depend on having at least one sellable `market_products` row. Active markets come from a new public `market_public_markets_v1` RPC, and approved market-member shops come from `market_public_shops_v2`.
+- `market_public_shops_v2` is now a safe SECURITY DEFINER public directory with explicit active-shop / active-user / approved-membership / active-market filters, so guest Customer access no longer trips RLS helper permission errors.
+- Customer market page now shows a “ร้านค้าในตลาด” section even when a shop has no market-stock product ready yet. Shop cards distinguish shops that have not enabled Delivery from shops that are open but have no sellable market stock.
+- Market selection uses the customer's current location when available to order markets by distance and preselect the nearest one; customers can still choose another market manually.
+- Product checkout behavior remains strict: only products in the existing `market_public_catalog_v2` (approved shop, Delivery enabled, market stock configured and in stock) are orderable. This avoids showing a product that would fail Market Trip checkout.
+
+
+## Customer market banner (2026-10-05)
+
+- Installed the user-supplied fresh-market banner above the market selector, with its full 16:9 composition and embedded WebP under 50 KiB, plus a green gradient background.
+- Removed the market search input and label from production markup. Existing nearest-market selection, categories, shop product links, market cart and order behavior remain available.
+- Backup: `backup-pre-market-banner-20261005-1853`.
+
+
+## Notification read state + 30-minute Rider/Customer chat retention (2026-10-06)
+
+- Customer notification center marks currently unread notifications as read when the user opens it. The local unread count is cleared immediately after a successful write so the red bell badge does not survive a read because a background notification refresh is already busy.
+- Rider/Customer order chat remains available through the active delivery and for exactly 30 minutes after a completed delivery. Either side may initiate or reply during that post-completion window.
+- Supabase is authoritative: `qg_chat_postjob_allowed` gates inserts and `qg_chat_read_allowed` gates reads. Completed chat uses the actual delivery/completion timestamp and closes after 30 minutes even if a client remains open.
+- `queuego-chat-retention-30m` runs once per minute via pg_cron and removes expired Rider/Customer messages for completed orders. Admin access/audit behavior and unrelated shop/technician behavior are not broadened.
+- Customer and Rider UIs hide or close expired chat threads and show the remaining post-completion window while it is active.
+- Existing expired post-completion Rider/Customer chat was cleaned when the migration was applied. Order state, payments, delivery records, notifications and audit history are unchanged.
+- Backup before this change: `backup-pre-notification-chat30-20261006-1233`.
+
+
+## Rider professional flow — acceptance reference (2026-10-06)
+
+The user-supplied Rider reference screens are the acceptance reference for workflow and information hierarchy. QueueGo keeps its own red brand and implementation; do not copy another service's branding/assets.
+
+- Home/waiting: map-first Rider home, online/offline state, nearby-job readiness, messages, earnings, profile and laundry mode.
+- Offer: show order code, shop, customer area, distance/ETA when available, Rider earning and explicit Accept/Reject. Never fake a countdown unless the server owns an expiry.
+- Pickup: when the Merchant reaches READY, Rider opens a dedicated pickup screen, sees real order items/customer/note when available, takes exactly one required pickup photo, then taps “รับสินค้าแล้ว”. Do not add checkbox gates, customer PINs, or slide-to-confirm controls.
+- Pickup confirmation records the existing cash handoff to the Merchant and moves a normal order through READY → PICKED_UP → IN_PROGRESS atomically. There is no separate payment-confirmation screen.
+- Market pickup: every shop pickup also requires one pickup photo before that pickup can become PICKED_UP.
+- Delivery: Rider map targets the Customer, keeps call/chat/details available, and uses the existing GPS arrival guard. Being outside the guard shows a warning rather than inventing a new order state.
+- Completion: Rider takes exactly one required delivery photo and taps “จัดส่งแล้ว”. There is no customer handoff PIN and no optional second proof photo.
+- Customer: customer UI must not generate, fetch, or show any Rider delivery PIN.
+- Cash: pickup records Rider cash paid to Merchant; completion records Customer cash payment through the existing order/payment transition. No repeated “confirm money” step.
+- Market completion validates every shop cash advance atomically, persists the delivery photo on suborders, writes completion audit history and sends one group completion notification.
+- Layout: do not use elongated slide controls when a normal action button is sufficient. Do not stretch empty sections; render real data when present and omit empty detail blocks where possible.
+- Earnings/cash ledger and profile/message/laundry surfaces remain part of the Rider experience. Rider/Customer chat remains available for 30 minutes after completion, then backend read/write access closes and retention cleanup removes expired Rider/Customer messages.
+- Legacy full-screen Rider checklist, pseudo `arrived` order state, delivery PIN, slide-to-confirm pickup/delivery and direct client IN_PROGRESS → COMPLETED shortcuts must not return.
+- Backup before this correction: `backup-pre-rider-photo-only-flow-20261006-1501`.
+- Automated RC tests certify code/state/security contracts only. A physical-device three-role delivery is still required before claiming camera, GPS, route and mobile UX fully certified.
+
+
+## Merchant preparation countdown inside ready button (2026-10-08)
+
+- Owner requested the existing 20-minute preparation countdown inside the “สินค้าพร้อมส่ง” button. Removed the separate countdown card and its unused CSS.
+- Countdown still derives from Production `preparing_at`; reopening the order does not restart it. At expiry it stays at 00:00 and the Merchant explicitly presses the ready action. The timer does not transition an order automatically or prevent an earlier ready action.
+- No database, RPC, RLS, payment or order-state changes. Backup: `backup-pre-merchant-button-countdown-20261008-0856`.
+
+
+## Native Android migration (2026-10-08)
+
+- Explicit Play Store direction: the owner rejected a WebView/website-wrapper app and requested real Android applications. Native Android is now the Play Store migration track; current web Production remains available while features are migrated.
+- Backup before native work: `backup-pre-native-android-20261008-2103`. Working branch: `queuego-native-android-v1`. Do not replace `main` until native regression/device gates pass.
+- Native stack: Kotlin + Jetpack Compose, compileSdk/targetSdk 36, minSdk 26. CI rejects WebView UI usage in `native-android/**`.
+- Three native application IDs now build from one Gradle project: `com.queuego.customer`, `com.queuego.merchant`, `com.queuego.rider`.
+- Customer and Merchant native shells share encrypted Android-Keystore session storage and the existing Supabase Production authentication / active-session RPCs. Role validation remains `customer` and `shop`; these shells are not yet feature-parity replacements for the web apps.
+- Rider native is farther along: existing sequential server dispatch (`get_rider_delivery_pool` + `qg_get_my_rider_offer`), accept/decline, active-order states, arrival RPC, pickup/delivery photo proof, existing `qg-evidence` bucket, and existing idempotent rider action RPC are reused. Manual cash-confirmation screens are not reintroduced.
+- Market multi-stop Rider native reuses `market_pickup_route_summary`, `market_claim`, `qg_market_pickup_with_photo`, market deliver action, and `qg_complete_market_with_photo`; no parallel order state machine was created.
+- Android navigation return feature is now implemented in native Rider: foreground service + draggable Q overlay when draw-over-other-apps permission is granted, with notification return fallback. It is stopped when returning to QueueGo, losing the active job, completing delivery, session loss, or logout.
+- Native CI builds Customer / Merchant / Rider debug APKs together and rejects WebView. Full QueueGo regression must run before native artifacts are accepted.
+- Still required before Play Closed Beta release: migrate Customer/Merchant feature parity, native push/FCM integration for the new native project, production release signing/AAB workflow for this native project, approved QueueGo launcher assets in each module, physical Android testing of login/session/GPS/camera/file upload/overlay/notification/Maps lifecycle, real three-role E2E, and final Play Console declarations/reviewer access.
+
+
+## Native parity audit resumed (2026-10-09)
+
+- Owner requires Kotlin/Compose Customer/Merchant/Rider to preserve every Production web screen and flow; no WebView, mock, shell, placeholders or new UI interpretation. Work only on `queuego-native-android-v1`; do not merge main or alter web blueprint.
+- Resume head: `c9a7c5b76aa9c425129d91313f2b203a5a053e7c`. Backup: `backup-native-before-parity-gate-20261009`. Production main inspected at `9026bf445650dbeeb0fd254582481a08a16108fc`.
+- Public Home rendered in the browser. Merchant and Rider rendered sign-in pages; authenticated operational screens have NOT been visually inspected. Mobile screenshot comparison is NOT certified.
+- Fixed Rider dock to wrap content with a maximum of 62% of available height instead of forcing every dock to occupy 62%. Native screenshot verification remains pending.
+- Removed commit-message-triggered public APK release from native build workflow. Internal build artifacts are QA inputs, not Owner deliverables. Keep public APK publication disabled until visual and live functional parity are proven and P0/P1 are zero.
+- `npm test` passes; native source integrity passes 88 checks. Neither certifies pixel match, GPS/camera, physical devices, true Realtime recovery or real Production deliveries.
+- Audit found polling loops and no native Realtime socket implementation. Functional parity must include actual Production Realtime integration and lifecycle/recovery testing.
+- Outstanding: authenticated screen inventory and measurements, all-page native parity repairs, professional three-icon preview/adaptive assets, screenshots side by side, live normal/market/laundry flows, physical lifecycle/notification tests. Do not mark the three apps complete based on README coverage or source-string assertions.
+
+- Additional audit gap: Customer tracking currently renders Rider coordinate text instead of a native map; Merchant source has no native map/location picker. These missing web capabilities remain parity blockers, even when source integrity passes. Merchant secure sign-in was offered but browser remains on the sign-in page; no authenticated screen certification is claimed.
+
+- Build verification: all three `assembleDebug` tasks passed locally with Gradle 9.6.0, JDK 17 and Android SDK 36 (126 tasks; BUILD SUCCESSFUL). These internal APKs are NOT approved for Owner delivery. Visual and Production functional gates remain unpassed.
+- Customer normal tracking now stops its repeating context requests after a terminal order (`completed`, `cancelled`, `no_rider_available`); the final snapshot is fetched once before stopping. No backend/state transition changes.
+
+
+## Customer native tracking map (2026-10-09)
+
+- Backup: `backup-native-before-tracking-map-20261009` at `c7b41f5946dd872071ffe19ce9de651f843c90de`. Work stays on `queuego-native-android-v1`; web and database are unchanged.
+- Added the native Longdo OpenGL tracking map using existing order pickup/delivery snapshot coordinates and Rider coordinates from `qg_customer_order_context`. Verified the four snapshot columns exist in Production via a read-only schema query.
+- Native normal Customer tracking now shows shop/customer/Rider pins, excludes invalid/swapped/outside-Thailand coordinates using the web's existing bounds, hides Rider markers during server search, and removes the live map on terminal orders. Missing coordinates remain missing; no fabricated movement or map points.
+- Map height follows the web CSS breakpoints: 145dp for compact-height screens, otherwise 160dp through 420dp width and 178dp above that. This is source-derived sizing, NOT a pixel-match certification.
+- Native map pauses/resumes with Activity lifecycle, keeps manual map panning on marker refresh, releases pins on disposal, and offers retry after a bounded map initialization timeout.
+- The verified Longdo AAR is shared by the three modules through `:shared`, preserving each launcher label in manifest merging. Rider continues to use its existing map/job flow.
+- Added five actual JVM unit tests for terminal-order cached-location suppression, searching-state Rider suppression, missing coordinates, invalid coordinate boundaries and incomplete pairs. CI runs these before the three-app builds.
+- Full `npm test` passes and native source integrity passes 88 checks. Build/output directories are excluded from source-integrity scanning so generated Gradle HTML does not masquerade as website source.
+- Outstanding: authenticated screenshot comparison/real map tile rendering; Customer location/checkout maps; Merchant settings/location picker; Market/Laundry native tracking map parity; native Realtime, icons, live E2E/device gates. No Owner APK delivery is approved.
+
+## Merchant native Realtime (2026-10-09)
+
+- Backup: `backup-native-before-realtime-20261009` at `f8fd7efb4575de0bad5c9bf9714038e78d9af49d`. No Production web/database edits or main merge.
+- Read-only Production publication inspection confirms `public.orders` is already in `supabase_realtime`; no publication/RLS changes are needed.
+- Added native OkHttp WebSocket transport following Supabase Realtime protocol v1: user JWT channel authentication, `orders` subscription filtered by the signed-in shop ID, acknowledged subscription validation, Phoenix heartbeats, bounded join timeout, heartbeat recovery and capped reconnect delay. Payloads only invalidate; existing owned API reads remain the source of state. Credentials and row data are not logged.
+- Merchant reconnect triggers a fresh order read. Realtime and the existing polling fallback share a mutex and the existing pending-order sound/selected-detail refresh behavior. Native socket runs only while Activity is STARTED; token rotation or shop changes cancel/rejoin the channel. No UI positions or order actions changed.
+- Added two actual local WebSocket transport tests: authenticated/shop-filtered join with a fresh read signal after reconnect; rejected join and pre-join change must not signal successful subscription. These isolated test fixtures are not app/backend data. CI runs shared and Customer JVM tests before builds.
+- Local verification: two transport tests and five Customer policy tests pass; all three debug builds pass; full npm test/source integrity passes. These do NOT certify physical background/offline recovery, Production Realtime/RLS isolation, notification delivery or completed deliveries.
+- Merchant authenticated Production screens are still unavailable in the browser, so no guessed store-settings UI was added. Settings/location picker, Customer/Rider Realtime, icons, all-screen visual comparisons and normal/market/laundry live E2E remain outstanding. Public APK delivery remains blocked by the requested release gates.
+
+## Rider owned Realtime and Merchant notification recovery (2026-10-09)
+
+- Backup: `backup-native-before-rider-realtime-20261009` at `6e4c3ce774ea3184947a4739d42e95fbbfd24a2c`. Work remains on `queuego-native-android-v1`; no web, database, RPC or RLS changes.
+- Re-read current Supabase protocol/changelog. Read-only Production checks confirmed existing `notifications.user_id` and `orders.rider_id` publication entries, notification ownership RLS, assigned-order Rider RLS and the targeted-offer SELECT policy. Current `get_rider_delivery_pool` and `qg_get_my_rider_offer` both return only the server-selected Rider's live offer; their existing behavior is preserved.
+- Generalized the native transport to validate every acknowledged table/ownership filter. Only event IDs belonging to acknowledged subscriptions invalidate data; partial/rejected joins cannot report connected. No event row payload becomes app state.
+- Rider subscribes to notifications filtered by QueueGo user ID and assigned orders filtered by Rider profile ID. Profile ID comes from the existing owned profile lookup. Each signal refreshes the existing authoritative rider snapshot/offer RPC flow. Snapshot polling and Realtime refresh share a mutex; token rotation restarts effects. Both stop at Activity background and resume with a fresh read. Existing summary/history/location cadence, map layout, offer actions and multi-stop API flow remain unchanged.
+- Production Merchant SELECT RLS intentionally excludes some unassigned delivery states. Added own-user notifications alongside shop-filtered orders, with `get_my_shop_orders` remaining the source of visible Merchant orders. No broader subscriptions or weakened RLS.
+- Shared tests now cover reconnect/authenticated Merchant filtering, rejected/pre-join events, Rider user/profile filter separation, accepted event-ID checks, partial acknowledgement rejection and Merchant own-notification filtering (six tests). Customer policy tests remain five.
+- Verification: full npm regression, native source integrity (88 checks), source No WebView gate and all three debug builds pass. Eleven JVM tests pass. Local transport tests do not certify Production notification timing or physical Android lifecycle behavior.
+- Outstanding: Customer Realtime, actual authenticated screen inventory/visual comparisons, store-settings/location picker, professional icons, native laundry Rider parity, normal/market/laundry live Production E2E and physical-device background/GPS/camera/notification gates. No Owner APK delivery or readiness certification.
+
+## Customer owned Realtime and terminal context guard (2026-10-09)
+
+- Backup: `backup-native-before-customer-realtime-20261009` at `182284f75c586df5f95157339e0853412964b340`. Work remains on native development branch; no Production web, schema, RPC, RLS or main changes.
+- Read-only Production inspection confirmed existing publication/ownership columns for `orders.customer_id`, `market_orders.customer_id`, `laundry_orders.customer_id` and `notifications.user_id`.
+- Customer now receives native Realtime invalidations for its own notifications and normal/market/laundry orders. Existing Customer APIs/RPCs still read all data; event row payloads are not applied. Refresh does not toggle the Home loading state, rebuild the cart or redirect screens.
+- Realtime, notification fallback and order fallback share a refresh mutex. Socket and repeating fallback requests run only while Activity is STARTED, restart on token changes and read fresh data after foreground/reconnect.
+- Normal detail context is guarded per detail visit: live orders may refresh, terminal orders attempt a final context once and suppress repeated location-context requests from later notifications. Cancellation restores the unfinished final attempt for resume. Detail item/context responses are applied only if that order is still open. Reopening a detail starts a new single-final-snapshot visit. Terminal map hiding remains intact.
+- Added one Customer subscription ownership test and three terminal-context gate tests, including repeated notifications, all terminal states and interrupted final snapshot recovery. Shared JVM suite now has seven tests; Customer suite has eight.
+- Verification: fifteen JVM tests, all three debug builds, full npm regression, native integrity (88 checks), source No WebView and whitespace checks pass. These isolated checks do NOT certify true Production Realtime timing, role isolation under real accounts or physical Android lifecycle recovery.
+- Outstanding: authenticated operational screen inventory/mobile screenshots, native/web visual match repairs, Merchant store-settings/location picker, professional three-icon preview/adaptive assets, native laundry Rider parity and real normal/market/laundry three-role/device E2E. Keep Owner APK delivery blocked until visual/functional gates and P0/P1 are cleared.
+
+## Native launcher family and preview (2026-10-09)
+
+- Backup: `backup-native-before-launcher-family-20261009` at `076ead089402712ea94b9646ceabd19c92348415`. Production web artwork and main are unchanged.
+- Device inventory: no attached Android device and no `/dev/kvm`; no mobile native/web screenshot comparison was performed or certified. Authenticated web operational screens remain inaccessible. Continued the independently authorized icon work instead of guessing screen layouts.
+- Replaced native legacy glossy icon frames/external role badges with one source-generated vector family: shared red Q, white background, Customer fork/spoon, Merchant storefront and Rider wheel/flame. Red `#EF3340` is from Production Customer `--red`. No app-name text, emoji or detailed motorcycle in the icons.
+- Rendered/reviewed side-by-side preview before integrating resources. Adjusted Merchant stroke after measuring heavier role coverage. Final coverage spread 8.44%; all three foregrounds have maximum radius 31.67dp within the 33dp adaptive safe circle. Preview includes small sizes and circular center crops. These are asset review metrics, not Owner approval or a physical-launcher certification.
+- Added distinct adaptive foreground/background resources, updated icon/roundIcon references, exported five Android launcher density sizes per app and opaque Play Store 512×512 PNGs. Vector/SVG master generation, raster exports and preview are in `native-android/branding`.
+- Added 61 launcher asset checks to native CI for actual PNG signatures/dimensions, removed old resources, manifest/adaptive layers, shared Q geometry and recorded safe-area/coverage metrics.
+- First incremental build failed with duplicate cached dex/class metadata after resource changes/rebases. Clean rebuild succeeded for all three apps; 15 JVM tests pass. Full npm regression, native source integrity (88 checks), launcher asset checks and source No WebView gate pass.
+- Outstanding: physical launcher checks, authenticated mobile/web/native visual comparisons and parity repairs, Merchant settings/location picker, native laundry Rider parity, live normal/market/laundry E2E and physical GPS/camera/background/notifications gates. No Owner APK delivery; P0/P1 zero and visual/functional parity are not certified.
+
+## Customer category blueprint repairs (2026-10-09)
+
+- Backup: `backup-native-before-category-parity-20261009` at `3f1b26a3b5800f39edc8834a2182aa6df8226cac`. Main fetched/read at `9026bf445650dbeeb0fd254582481a08a16108fc`; no web/main/database changes.
+- Rendered and inspected Production Food, Drink (actual route `#cafe`) and Grocery. Recorded DOM measurements in `native-android/qa/category-blueprint-20261009.md`. Browser viewport was 1363×936, NOT mobile; no Native screenshot/device pixel match is certified.
+- Repaired the three native category bodies from observed/source blueprint: 38dp arrow back button, original category headings/helper/count/empty text, 720:343 banner ratio, 20dp clipping, original gradient/padding/typography, and category cards with 72/78dp images at the web's <=420dp breakpoint. Existing Home card is unchanged and still requires visual review.
+- Extracted the existing three inline WebP images from Production main without re-encoding. Native uses these exact originals when config lacks a valid image; disabled banners disappear, failed configured images retain gradient treatment. Corrected Drink settings lookup from `drink` to the web's canonical `cafe` key.
+- Restored category/time metadata on category shop cards, selecting existing `public_open_time`/`public_close_time` columns (verified read-only in Production). No invented hours or catalog data. Removed unreachable duplicate Food/Drink/Grocery rendering from the old generic category renderer, retaining existing Shopping rendering separately.
+- Added nine actual image-byte checks to CI and two JVM tests for category resource/content separation and configured-image fallback handling. Shared image helper gained optional corner radius/no-letter fallback parameters; other callers retain defaults.
+- Production Grocery's server-provided shop opened into public Shop. Observed real product, share/favorite actions and folded customer reviews. These public Shop features and Guest-before-login flow are additional native parity gaps; no cart/order mutation or test data creation was performed.
+- Cached/incremental Gradle builds failed with duplicate generated R/dex artifacts even after clean. A clean, fully executed build with `--no-build-cache --rerun-tasks` passed all three apps and 17 JVM tests. Native CI disables task build-cache reuse for unit/build steps. Full npm regression, native integrity (88 checks), launcher checks (61), category assets (9) and source No WebView pass.
+- Outstanding: mobile/Native screenshots and all visual gates, global headers/navigation, Guest launch behavior, banner link navigation, public Shop feature/layout repairs, other pages, Merchant store settings/location picker, native Laundry Rider, live three-role E2E/device gates. Native shadows are Android approximations of CSS shadows, not proven pixel matches. No Owner APK delivery; P0/P1 zero is not certified.
+
+## Native Customer Shop body milestone — 2026-10-09
+
+- Backup `backup-native-before-shop-parity-20261009` at `e59101cc63f343d73f618558cb20bf6c52b12ef5`, created locally and on GitHub. Work stays on `queuego-native-android-v1`; Production main remains `9026bf445650dbeeb0fd254582481a08a16108fc`.
+- Re-inspected actual rendered public Shop and expanded its reviews. DOM measurements and pending checks are recorded in `native-android/qa/shop-blueprint-20261009.md`. Desktop only; no Android/mobile screenshot comparison.
+- Replaced old native Shop body with cover-only image, 18dp overlapping rounded store intro, original heading/category/address/pill structure, back/share controls, product row proportions and floating cart dock. Back returns to the originating Home/category/search screen.
+- Connected shop/product favorites to the existing owner-filtered `qg_customer_favorites` table and customer reviews to existing `qg_public_shop_reviews`, preserving latest-review and folded independently scrollable remainder. Requests/state are keyed to actor/shop and favorite controls block concurrent taps. Android shares the original public Shop URL through its native chooser.
+- Products that are unavailable now remain visible with “หมด”, matching the web; add is absent for unavailable products and disabled for closed stores. No invented menu categories: the Production loadMenu query currently omits category/menu_category, so only All is rendered.
+- New back/plus vectors use web SVG paths; heart/share vectors avoid emoji or Canvas primitives. Precise glyph/shadow parity, global navigation/header, Guest launch, loading/error menu races, actual favorite write/session recovery, share sheet, live review retrieval and device screenshots remain pending. No Production user data, web UI, schema or RPC modified.
+- Release gates remain blocked: no Owner APK until actual Visual/Functional Parity and P0/P1 zero. Full npm regression, Native integrity88, launcher61, category9 and No WebView pass. Final clean uncached build of Customer/Merchant/Rider and 17 JVM tests passed (142 tasks executed). Live device and Production functional checks remain pending.
+
+## Native catalog and checkout recovery — 2026-10-09
+
+- Backup `backup-native-before-catalog-recovery-20261009` at `763040f97545088d1f8e9a376d6a3e530d28274f`, local and GitHub. No main merge, Production web change or database mutation.
+- Closed Customer Shop catalog races: one scoped loader marks real loading/error/empty separately, cancels previous requests and rejects stale success/error responses even if cancellation is ignored. Leaving Shop or changing actor discards old data; retry replaces a previous request in the same shop.
+- Replaced per-tap checkout UUID generation with a durable owner-specific journal of the exact Production RPC body plus serialized submitted cart. Journal commit precedes transmission; unknown outcomes, cancellation, 401/403, timeout and throttling preserve the original ID/items/quote/address for retry and process restart. Concurrent taps are guarded synchronously and by an atomic coordinator.
+- Successful replies require the same order ID and a real order number. Errors reconcile through an explicit owned orders SELECT before being shown. Foreground/session restoration polls only the saved request's receipt, without resubmitting an order; background stops this read. Acknowledged server success is not changed into an error by local cleanup failure. Pending cleanup and unchanged submitted cart removal are one SharedPreferences edit; later cart edits remain. Successful UI navigates to Tracking.
+- Keyed the whole Customer authenticated subtree to QueueGo and Auth user IDs, disposing requests/state on account change. Cart retry remains available even when current cart/location was edited or lost, using the existing request rather than creating a new one.
+- Read-only Production verification: cash order core uses a customer advisory lock and returns the existing owned order for the same p_order_id before fresh-order validation; orders_customer_select uses customer_id=get_my_user_id(). Existing RPC/state machine/RLS are unchanged.
+- Added four asynchronous catalog-race tests and six checkout recovery tests covering lost reply, concurrent taps, process restart with edited cart, cancellation, failed journal write, post-commit cleanup failure, and definitive rejection after receipt lookup. These are isolated JVM tests, not Production order/device tests.
+- Native menu loading/error treatment remains unproven by mobile screenshot; no Visual Parity/Functional Parity pass or P0/P1-zero certification. Physical storage/process/lifecycle and authenticated E2E still required. Final clean uncached three-app build passed (142 tasks executed), 27 JVM tests with zero failures/errors, full npm test, Native source88, launcher61, category9, whitespace and No WebView checks passed. No APK delivered.
+
+## Native Customer navigation and Home banner — 2026-10-09
+
+- Backup `backup-native-before-customer-navigation-20261009` at `dd9a5fc0f9aaab5eaf68f8ecfa06e7610fa88166`, local/GitHub. Work remains isolated to Native branch, with no Production web/backend changes.
+- Re-inspected rendered Production Shop and Home. Measured ordinary nav49px and Home59px, distinct paddings/icon areas/label fonts; extracted exact web vector paths with stroke1.8 for all four nav icons. Desktop evidence only, recorded in `native-android/qa/customer-navigation-blueprint-20261009.md`.
+- Customer bottom nav now remains present on Shop/category and other screens instead of disappearing outside four main pages. Separate49/59dp layouts, top-only border, fixed Cart label and quantity badge replace the previous generic58dp Canvas icon nav. Native system bottom insets are applied; device behavior still needs testing.
+- Removed the invented red text-only Home fallback. Bundled byte-identical Production Home WebP (45722 bytes; SHA2561149f10b2608e9e183200d233676795dcb1200a065386c6b5cc6b6624c723972), preserving actual web photo behind remote loading/errors. Restored662:386 aspect and20dp radius; slide dots are inside the image at bottom9dp with the original active/inactive proportions and support selecting a slide.
+- Extended exact asset comparison to Home; now12 checks. Home location/search/header/categories/cards, remote banner links, configurable timing, mobile/native screenshots and live functionality remain pending. Do not infer overall Home/Navigation parity or release readiness from source/build checks.
+
+- Final validation: clean uncached Customer/Merchant/Rider build passed (142 tasks executed), 27 JVM tests zero failures/errors, full npm regression, Native integrity88, launcher61, image assets12, whitespace and source No WebView passed. Integrity search-navigation gate now checks the integrated Customer nav and real screen handler instead of the removed generic QgNavItem literal. No release APK delivered.
+
+
+## Native Rider automatic sequential assignment + push transport — 2026-10-09
+
+- Backups: `backup-native-before-rider-auto-offer-20261009`, `backup-native-before-rider-auto-navigation-20261009`, `backup-native-before-rider-fcm-20261009`.
+- Production Supabase already owns sequential dispatch. Verified `qg_dispatch_rider_offers()`, `qg_get_my_rider_offer()`, guarded accept through `qg_rider_action_once`, explicit decline through `qg_rider_decline_offer`, the order trigger on SEARCHING_RIDER, and the active 5-second dispatch cron. Offer lease is 30 seconds. The selected Rider alone owns the live offer; decline/expiry hands off to the next eligible Rider. No shared-pool race was introduced.
+- Native Rider now renders only `qg_get_my_rider_offer`; the old pool fallback is removed. New server offers alert once in foreground, use the real server expiry countdown, refresh immediately on expiry, and release immediately when the Rider goes offline or logs out.
+- Accept remains an explicit Rider action; “automatic assignment” means Server automatically chooses and offers one Rider at a time, not unsafe auto-accept. Accept refreshes authoritative state then opens navigation to the shop. Normal pickup proof refreshes state then opens navigation to the customer. Existing market multi-stop start-delivery navigation remains intact.
+- Added pure-native Firebase Messaging transport wired to existing QueueGo `/functions/v1/queuego-push` `subscribe-native` / `unsubscribe-native` backend, stable UUID device id, Android high-importance `queuego_orders` notification channel, FCM service, token refresh sync, notification permission request, and logout unsubscribe. Firebase Android BoM 35.0.0 and google-services plugin 4.5.0 are used.
+- Repository secret `QG_FIREBASE_GOOGLE_SERVICES_JSON_B64` is currently absent in the native pilot workflow environment. QA builds therefore conditionally compile without applying google-services; the FCM code is present but physical background-push delivery is NOT certified until a real Firebase config is supplied. The secret/config is never committed.
+- CI repair removed a duplicate Merchant market-category declaration and fixed nullable Merchant module-cycle state exposed by the full three-app build.
+- Final native pilot run `37884000618` PASS: npm regression, native source integrity, launcher/category asset checks, JVM tests, all three native APK debug builds, No-WebView gate and artifact upload all succeeded.
+
+## Rider Realtime CI repair continuation — 2026-10-09
+
+- Continued from authoritative branch HEAD ac489d0cd83ceb4277307cb676a6f6acdf697ccb. Preserved unfinished local Customer Home edits in git stash before fast-forwarding; did not overlay them onto the newer Native implementation.
+- Backup backup-native-before-rider-realtime-tests-20261009 at ac489d0, local and GitHub.
+- Verified Rider subscriptions already correctly scope notifications to QueueGo user ID and orders/Laundry jobs/invites/preferences to Rider profile ID. Production code unchanged.
+- Updated outdated shared tests to require all five subscriptions, assert every table/filter, and verify all five accepted event IDs invalidate while an unknown ID does not. Existing partial-ack rejection coverage is retained.
+- Initial run37886328274 verified failed at shared unit tests, with build/WebView/artifact steps skipped. Current local environment no longer has the previous Gradle/Android SDK installation; remote CI will provide actual JVM/build evidence. Source integrity180 and whitespace checks pass. Firebase configuration/background device push and real visual/Production E2E remain unverified; no Pilot/Play Store readiness claim.
+
+- Actual CI run37888000000 at 5b562d8 PASS: regression, integrity180, assets, shared/customer/rider JVM tests, three APK builds, No WebView and artifact upload. No remaining compile error was reported in that run.
+- Found and repaired a Production Realtime publication omission: laundry_rider_preferences was absent, while jobs/invites were present. Backup backup-native-before-laundry-preferences-realtime-20261009 at 5b562d8; applied server migration20261009052132 and checked all three published with preferences RLS preserved. Committed matching additive SQL; no policy/grant/data/RPC/dispatch change.
+- Four-tab audit against main9026bf4 verifies names/basic dock dimensions and selected-offer Home takeover only; icon/label rendered parity remains pending. See native-android/qa/rider-ci-recovery-20261009.md.
+- Actual CI log confirms Firebase config secret absent. Background FCM and device/reconnect/30s/Laundry/Production E2E plus screenshot parity remain blocked by missing configuration/device/authenticated sessions. No APK Pilot/Play readiness claimed.
+
+## Rider bottom-navigation vector parity — 2026-10-09
+
+- Latest baseline c5720c0 CI37888454332 PASS through all three APK builds and No WebView. Backup backup-native-before-rider-nav-vectors-20261009 local/GitHub before editing.
+- Inspected live rendered Production Rider: unauthenticated login page, so working-screen visual verification remains unavailable. No synthetic login or mock operational state introduced.
+- Replaced four generic navigation Canvas icons with Native vector drawable paths from main9026bf4 QTICON home/chat/earn/user, preserving 24-unit viewBox, 19dp size, 1.9 stroke and round caps/joins. User circle is the equivalent two SVG arcs. Labels now8sp with2dp gap; removed invented2dp gaps between grid columns. Native font scaling remains supported.
+- Source integrity180 and whitespace pass. Full build is delegated to real CI, not assumed from source. Native screenshot parity, responsive dock height/shadow/badge and authenticated/device/E2E/FCM gates remain pending.
+
+- Follow-up local full npm test PASS. Actual CI37889041290 passed JVM test step and reached three-app build; completion is not yet assumed.
+- Additional source parity gap found: web qgUpdateBadge/readRiderChat implements unseen incoming-message badge and foreground message notice, while current Native bottom nav/inbox has no unread count. Must implement against real scoped chat messages (including post-completion 30-minute rooms), with per-user/order seen state and lifecycle guards; do not fabricate a count. Current vector change does not close this gap.
+
+- Final actual CI37889041290 at b815baafe9173cb801e1a27b5aa28b8af21e57f2 PASS: regression, integrity, assets, shared/customer/rider tests, all three APK builds, No WebView and artifact upload. No device visual/background-push/live E2E certification inferred.
+
+## Rider unread-message Native parity — 2026-10-09
+
+- Backup backup-native-before-rider-message-badge-20261009 at874fa1f local/GitHub. Followed current main9026bf4 readRiderChat/qgUpdateBadge/watchCompletedChat; no backend or web changes.
+- Added RLS-scoped reads of existing orders/customer ownership, deliveries and order_chat_messages, bounded to existing active/history IDs (100 rooms/500 messages as web). Active-room first read is a baseline; new latest counterpart messages increment once, self messages do not, opening chat clears active count.
+- Completed-room count includes only the actual order customer, after delivered_at, before30-minute deadline and after the user's persisted inbox-seen timestamp. Opening messages updates that timestamp. Badge caps display at9+, using web red/white/8sp styling; foreground active-message notice follows web dark card and3800ms lifetime.
+- Tracker/count scoped to user+session, coroutine to current token+STARTED lifecycle; cancellation propagates and stale active-order reads are discarded. Failed reads preserve previous count, retry5s active/15s idle. Added JVM tests for baseline/duplicate/self/open-room behavior, customer/seen/deadline boundaries, changed room/account.
+- Source integrity180/whitespace PASS. Await actual CI JVM/build gate; do not claim visual/live RLS/reconnect/device/background notification certification. Existing native inbox and badge polling can issue separate reads; completed alert toast/notification behavior and screenshot parity still need verification.
+
+- Actual final CI37889890946 at2fea8cdffab6835cde0b2977304d2985f4273f02 PASS: full regression, integrity, assets, JVM tests including new badge cases, three native APK builds, No WebView and artifact upload. Production data/FCM/device/visual parity remain untested; no Owner APK delivery.
+
+## Rider proof preview and fixed actions — 2026-10-09
+
+- Backup backup-native-before-rider-proof-preview-20261009 at ef2b7be local/GitHub. Compared main9026bf4 pickup/delivery qg-proof-single and fixed camera/confirm buttons. Previously Native showed only a success text with no actual camera preview; actions scrolled with content.
+- Native now decodes the actual camera URI off the UI thread, bounds image memory to1280px and honors EXIF rotation/mirroring. Real decode/loading/error states; failed preview requires retaking instead of enabling confirmation. Camera file remains original for existing evidence upload/RPC.
+- Verification header is fixed with exact web back-vector, centered title/order number; items scroll with92dp footer clearance. Camera or confirmation is fixed54dp at bottom12dp/10dp side margins/radius18 and web#f04455. Actual preview uses web responsive108dp short-screen or160–215dp tall-screen height, Crop/radius15 and overlaid38dp retake action. Native Back is blocked while committing. No cash-confirm/OTP flow added; original pickup/market/completion actions preserved.
+- Item/market rows retained. Full shop/customer/note/contact/image density and native screenshots still need work; this checkpoint does not certify full verification-screen visual parity. Source integrity180/whitespace pass; actual build/CI pending.
+
+- Follow-up in the same proof work: retained product imageUrl now renders actual existing images at46dp/42dp short-screen, web11dp radius. Restored horizontal image/name/description/quantity/price rows, count, separators and actual shopCash total (only when present). No invented product or monetary fallback.
+
+- Re-fetched main: still9026bf445650dbeeb0fd254582481a08a16108fc. Actual final CI37890715086 at15573e8e068ad85295bc125a673bbd2c0b82b7e2 PASS: regression, source integrity/assets, shared/customer/rider JVM tests, three native APK builds, No WebView and artifact upload. Still no physical camera/EXIF/retake, screenshot comparison, background FCM or real Production E2E certification.
+
+## Rider verification real details/contact parity — 2026-10-09
+
+- Backup backup-native-before-rider-proof-details-20261009 at5fd4a3d local/GitHub. Followed current main9026bf4 pickup meta and delivery customer/contact/address/note sections.
+- Added authenticated RLS-scoped reads of existing order shop_id/customer_id/note, shop_profiles shop_name/public_logo and users name/phone, only by IDs from that order. Item/details hydration is parallel and a failed read keeps the existing job screen with an actionable error; no new policy/grant/backend.
+- Pickup shows actual40dp shop logo/name, QT order and customer rows with original jobs/user vectors. Delivery shows actual customer/name,44dp phone/chat controls, address/location vector and optional customer note before items; pickup note remains after items. Exact phone/location/jobs vectors converted from Production QTICON, stroke1.9/round joins.
+- Phone uses ACTION_DIAL (no direct call/permission); chat closes the proof page as web does and opens existing RiderChatScreen for the same job. Cleared details on close/market point entry; no stale prior-order metadata. Existing proof upload/atomic action RPCs unchanged.
+- Notes remove only lines beginning __QT_ORDER_STATUS__= as web; added JVM coverage for hidden status lines and preserving customer text. Source integrity180/whitespace pass; await actual CI. Physical call/chat/proof UX, live user RLS and screenshots remain uncertified.
+
+- Actual final CI37891622343 at80cc73cd12b515ed7545e1453a782670558d5f46 PASS through regression, integrity/assets, JVM tests including note cases, all three APK builds, No WebView and artifact upload.
+- Production catalog-only RLS audit found a real blocker: users SELECT policies permit own auth user, active approved shop users and active admin, but do NOT permit an assigned Rider to read the order customer. Orders has orders_rider_select for assigned Rider; shop_profiles permits approved active shops. Therefore protected customer name/phone GET returns no row under current policies; the wired UI cannot certify actual customer contact parity. No private user records queried and no RLS/grant/function changed.
+- Existing qg_customer_order_context(uuid) strictly requires an active Customer and its owned order; it cannot be reused by Rider. Catalog search found no customer/phone view and inspected get_rider_delivery_pool/qg_get_my_rider_offer: neither supplies customer contact. Do not work around this with admin/service-role credentials, relaxed users RLS or invented data. Must resolve an authorized scoped contact reader within Owner backend constraints before calling Rider contact parity complete; physical call/chat/live JWT checks remain unpassed.
+
+## Scoped Rider order contact reader — 2026-10-09
+
+- Backup backup-native-before-rider-contact-reader-20261009 atd57259d local/GitHub. Additive reader resolves missing assigned-Rider customer contact access without changing existing users/orders/profile policies or grants, ordering/dispatch/RPC state-machine logic or Production web UI.
+- Used Supabase skill/current function docs and changelog. CLI2.120.0 generated migration20261009061432; applied via Production MCP and aligned repository filename to server history version20261009061634_rider_order_contact.sql.
+- Public qg_rider_order_contact(uuid) is SECURITY INVOKER; dedicated qg_private.rider_order_contact is a narrow SECURITY DEFINER lookup with empty search_path and fully qualified tables. PUBLIC/anon EXECUTE revoked, only authenticated allowed; runtime checks auth.uid(), live auth.sessions row belonging to uid and not_after, active database Rider/user/profile, assigned order ownership and permitted actual status. Completed contacts expire30minutes after delivered_at, missing/future delivery proof fails closed. Only existing active customer's name/phone returned, no bulk/private profile fields.
+- Native verificationDetails uses that RPC, removing the blocked direct customer users read. Existing shop/order/items reads, contact UI and proof mutation RPCs preserved. No demo Production rows/accounts, no service-role client credential.
+- Isolated PGlite security regression22 checks PASS: ownership/other role/direct private entry/session mismatch/revocation/expiry/suspended/deleted/status/deadline; users direct read still blocked. Added to npm test. Production catalog checks: policies hash before/after d2335be977bdd286cdb967e77c4b19af identical, users ACL unchanged, anon_execute false, authenticated_execute true, public wrapper_definer false. Production unauthenticated execution denied. Security advisors checked before/after (baseline findings retained; no new reader finding).
+- Positive real JWT/device contact read, physical phone/chat and Production E2E remain unverified. This resolves reader availability/authorization design, not live contact or visual certification. Native CI pending.
+
+- Production REST anonymous call reached qg_rider_order_contact and was denied HTTP401/code42501 (schema cache exposes the RPC; no private data returned). Security advisors comparison excluding observation timestamps: zero new groups/findings, baseline6 INFO policyless backups/9 anonymous definer/134 authenticated definer/1 password-protection warning unchanged.
+- Actual final CI37892846686 atc1cf00c165450445e994ad72868279fedcc0ad26 PASS: npm regression including new22 SQL security checks, source integrity/assets, JVM tests, all three APK builds, No WebView and artifacts. Positive live Rider JWT/contact read, phone/chat/camera/device/visual/FCM/Production E2E still required; no Pilot readiness claim.
+
+## Rider Inbox and chat recovery — 2026-10-09
+
+- Backup backup-native-before-rider-chat-recovery-20261009 atf95c256 local/GitHub. Compared actual main9026bf4 qg-inbox CSS/render and riderChatDeadline/open rules; Production web unchanged.
+- Inbox now follows web27sp title,14dp sides/18dp top/78dp bottom,720dp width cap,13dp row padding,18dp radius/1dp border,13sp title/9sp preview/4dp gap and8dp row gaps. Removed invented subtitle/arrow/empty card; real loading/empty/error and retry retained. Actual authenticated order/message/delivery reads unchanged.
+- Inbox/chat polls only at STARTED, refresh immediately on return, rethrow cancellation and reject cancelled read responses before committing UI. Inbox state scoped to user/session; chat composition/scopes additionally isolated by order. No fake messages or data.
+- Chat checks actual order status/delivery timestamp, closes cancelled/expired room and enforces web30minute post-completion deadline (delivery timestamp preferred, existing updated_at fallback). Deadline timer resumes with lifecycle; send rechecks live access before existing idempotent send. No mutation/state-machine/backend changes. Added JVM tests for exact deadline boundary, authoritative timestamp precedence/fallback, malformed/missing completed timestamp, active and cancelled rooms.
+- Source integrity180 and whitespace PASS. Full CI pending; native screenshots, real room/background/reconnect/device behavior and Production E2E remain uncertified.
+
+- Reconnect follow-up separates transient chat read error from action notices and clears it after a successful authorized refresh. Actual final CI37894042162 atc216a7d27137606df8badf348bd5d38753dead22 PASS: full regression, integrity/assets, shared/customer/rider JVM tests including chat-window cases, three APK builds, No WebView and artifact upload. No device/visual/FCM/Production E2E certification or APK delivery.
+
+## Rider chat actual images and confirmed delivery — 2026-10-09
+
+- Backup backup-native-before-rider-chat-images-20261009 at9785300 local/GitHub. Source main9026bf4 uses __IMG__ data URI, file5MB cap and compressRiderImage1000/.7. Read current Supabase changelog/docs; catalog confirms existing message primary key and no text-length check. No Production mutation or RLS/backend change.
+- Native Photo Picker selects actual image, validates type/5MB before decoding, bounds decode memory, honors EXIF orientation and emits JPEG1000px/70% using the same protocol. Incoming image messages render actual data URI/HTTPS content with bounded reads/decoding and loading/error states, not raw base64. Lazy list avoids decoding every image in a long room at once. No fabricated image.
+- Sending preserves existing user/order/RLS path and uses scoped confirmation ID/sender. Successful POST representation confirms send immediately; response interruption checks the same ID before showing failure. Ambiguous retry reuses ID scoped to room/user/session, removes it only after confirmation. Cancellation propagates. Post-send refresh failure is a read error, never a false send failure; input is cleared only after actual confirmation. No automatic resending or backend replacement.
+- Added JVM cases for interrupted response without duplicate insert, authoritative response without extra read, absent confirmation/retained retry ID, cancellation and separate text/image validation. Native source integrity180/whitespace PASS. Actual CI pending. Camera/gallery/image rendering and send/reconnect require device/real JWT checks; full chat header/safety/quick-message visual parity remains pending. No APK/Pilot readiness claim.
+
+## Rider saved quick messages — 2026-10-09
+
+- Backup backup-native-before-rider-quick-messages-20261009 at6004c6e local/GitHub. Followed main9026bf4 riderQuickMessages/quickMessagesHTML/editor: five exact Production default templates; user-configured max5 and100character messages; selecting fills composer and does not send automatically. These are existing user-selectable text templates, not fake backend/chat records.
+- Added native shelf and editor, add/remove/empty/disabled-at5 states; long press opens editor. Persistence uses app-private Rider preferences keyed by actual user ID. Original send/moderation/expiry/ownership paths unchanged. No Production data change. Added JVM boundary cases for sixth-message rejection, remove/replace, trim/100character limit and blank rejection. Native source integrity180/whitespace PASS; runtime persistence/keyboard/layout/screenshots still unverified. CI pending.
+
+## Rider chat header, Back and safety controls — 2026-10-09
+
+- Backup backup-native-before-rider-chat-safety-20261009 atd82900b local/GitHub. Followed Production main9026bf4 qg-chat-head, safety/report overlays and actual community-guidelines URL. Header now64dp,44dp controls/12dp sides/8dp vertical, centered15sp actual customer name and8sp QT label, original QT back vector, web ellipsis safety button, white/f8f7f8 background and post-completion notice. Removed invented secondary title and inline safety button row. Passed existing Scaffold inset modifier into chat and added IME handling/Android Back, blocking Back during mutation as proof page already does.
+- Customer name uses existing scoped qg_rider_order_contact, never direct private users access. Safety opens report/block/community rules; block now requires the existing web confirmation. Report is a native modal with all six actual reasons and optional1000character details, sent through unchanged qg_report_chat with selected reason. Existing moderation/terms/block/unblock and deadlines retained; guidelines also available before terms acceptance. No backend changes, no fake contact/message.
+- Source integrity180/whitespace PASS. Actual CI pending. Authenticated rendered web/native screenshots, device dialog/keyboard/back/contact flow and Production E2E remain required; this is source/layout/function restoration, not certified visual parity.
+
+- Combined media/quick-message CI37896921027 atd82900b42b6f695814f850725eaf30cf27113300 PASS: full regression, integrity/assets, JVM tests including delivery/outbox/quick-message cases, all three APK builds, No WebView and artifacts. Earlier image-only CI37896622575 was cancelled when superseded; do not count it as a completed pass. Header/safety follow-up still awaits its own CI.
+
+- Follow-up before final gate: terms acceptance/block/unblock now share confirmed-action refresh recovery with sending. Once the existing mutation RPC confirms, a later read failure is displayed as read failure instead of incorrectly claiming the mutation failed. Original RPC calls, moderation and cancellation retained.
+
+- Actual final combined CI37897608875 at597bbaffdbab6ce94d5594e9d3e165b267c94602 PASS: full QueueGo regression, source integrity180/assets, shared/customer/rider JVM tests, three native APK builds, No WebView and artifacts. Superseded header-only run37897476146 was cancelled, not a pass. Re-fetched main still9026bf445650dbeeb0fd254582481a08a16108fc.
+- Continuing release blockers: no local Android SDK/emulator/adb or physical device available; authenticated rendered chat/other role pages and real JWT end-to-end flow not accessible in this work session. Rider Production Firebase config remains absent in CI; QA builds do not prove background FCM. No Owner APK/Pilot/Play Store readiness claim. Pending visual work includes actual chat composer/bubble/quick-editor comparison (source-backed header restoration is not screenshot evidence), remaining role-screen comparisons and actual customer→merchant→targeted Rider→proof→completion/Market/Laundry lifecycle tests.
+
+## Rider chat composer and small-screen forms — 2026-10-09
+
+- Backup backup-native-before-rider-chat-composer-20261009 at6b5a538 local/GitHub. Followed main9026bf4 qg-chat-compose grid44px/1fr/48px,7px gap,46px input,14px radius,10px horizontal/9px vertical padding, white background/top border and exact web send glyph. Removed floating Material input label/extra height. Native photo text remains accessible in the same44dp slot pending authenticated screenshot comparison; no invented camera icon.
+- Keyboard Send and button now use one existing busy/expiry/confirmed-delivery handler. Editing while a send is in flight remains possible; original guarded clear only removes the sent unchanged text. Report textarea is four lines as web; long quick-message editor content scrolls within native dialog on small screens. No backend/Production web changes.
+- Source integrity/whitespace checks pending; full CI and keyboard/small-screen/native-vs-rendered-web screenshots remain required. No visual certification or APK delivery.
+
+## Customer chat lifecycle and shared confirmed delivery — 2026-10-09
+
+- Backup backup-native-before-customer-chat-recovery-20261009 at5302cb3 local/GitHub. Existing Customer chat polled in background and could show send failure after a confirmed insert when refresh failed.
+- Moved already-tested Rider confirmation/outbox algorithm into shared NativeChatDelivery; Rider thin aliases preserve existing callers/tests, Customer uses same implementation. Both use actual order_chat_messages primary key and sender-scoped confirmation reads, retaining ID on ambiguous retry and consuming authoritative POST rows. No backend/RLS/state-machine changes or fake data.
+- Customer room/scopes keyed by actual user/session/order; foreground-only polling with cancellation rejection and immediate resume refresh, atomically applied moderation/messages and cleared read error. Deadline uses existing live parent order updates/completedAt/updatedAt rules, closes at expiry/cancellation and prevents expired sends; Android Back restores parent order and blocks during mutation. Confirmed send/terms/block/unblock refresh failures are read errors. Typing during send is preserved unless text still equals confirmed payload.
+- Existing Rider delivery regression exercises shared algorithm; added Customer exact terminal-window boundary and missing-data cases. Source/JVM/full CI pending; actual Production JWT/background/reconnect/device/visual checks not certified.
+
+## Merchant Support lifecycle/read-state recovery — 2026-10-09
+
+- Backup backup-native-before-merchant-support-recovery-20261009 at6e5e117 local/GitHub. Native Support used background5second polling and initial loading/error could display a false empty conversation.
+- Scoped room/coroutines by actual Merchant user/session, token-keyed STARTED-only polling/immediate foreground refresh, cancellation propagation and guard before applying read results. Added real initial loading state, suppressed false empty state on read error, preserved previous messages on failure and clears errors on successful reads. Android Back restores caller and is blocked during mutation; input edits made while sending are preserved. Removed implementation-only Production subtitle in favor of actual web QueueGo Support label.
+- Existing shop_support_messages filtered shop_user_id and original send path untouched. No schema/RLS/backend or Production web mutation. Support slips/visual layout and actual request idempotency still need parity work; no assumption about table ID type. Source integrity/whitespace and full CI pending; device/account switch/reconnect not certified.
+
+## Merchant support GP slip and confirmed retry — 2026-10-09
+
+- Backup backup-native-before-merchant-support-slip-20261009 at314dd27 local/GitHub. Production catalog-only check confirmed shop_support_messages.id UUID, slip_path text and RLS enabled; gp-slips remains private. No private records read and no DB grant/policy/schema changed. Followed actual web qgmOpenGpSlip and current Supabase signed-URL guidance.
+- Reads actual slip_path with existing shop-scoped support messages and exposes exact ดูสลิป GP control only when present. Existing private Storage signing endpoint with current authenticated JWT and expiresIn300 returns only same-project private gp-slips signed path; launches ACTION_VIEW for real image/PDF, no WebView/public-bucket workaround. Cancellation checked before external viewer launch.
+- Support sends now reuse shared already-tested confirmation/outbox algorithm and actual UUID primary key, scoped by message ID/shop user/sender user. Confirmed response clears only unchanged input; ambiguous retry retains same ID. Existing table/RLS/message notification behavior preserved, no manual financial confirmation or new backend.
+- Source/CI pending. Real Merchant JWT signing/viewer/ownership denial and physical image/PDF behavior remain unverified; no slip signed or opened in this work session.
+
+## Combined recovery gate and Customer actual chat images — 2026-10-09
+
+- Actual combined CI37900208088 atcc8484acd5fb25c1e9fb1aeef91e21f093019275 PASS: full regression, source/assets, shared/customer/rider JVM tests (Customer deadline and shared delivery), three APK builds, No WebView/artifacts. Superseded intermediate runs are not passes.
+- Backup backup-native-before-customer-chat-images-20261009 atcc8484a local/GitHub. Production customer-features.js uses __IMG__, JPEG/PNG/WebP5MB, JPEG1000px/.7 compression, explicit file selection followed by send, and latest100 messages reversed for display.
+- Moved tested bounded image renderer/EXIF/compression and payload validation to shared helpers; Rider thin delegates preserve behavior. Customer now renders actual incoming images, uses lazy rows, reads latest100 rather than oldest100, and selects actual file then sends with existing shared confirmed ID path. Form uses original ส่งข้อความ / ตรวจผลข้อความเดิม label; photo overrides text as web and resets only after confirmed send. No fake image/data, WebView, backend or RLS change. Source/CI pending; physical image selection/send/retry and visual parity remain uncertified.
+
+- Actual final CI37901191100 atfc74e85fcb5fafe130986f422419ebfce2f5e3b0 PASS: full QueueGo regression, source integrity180/assets, shared/customer/rider JVM tests, Customer/Merchant/Rider APK builds, No WebView and artifacts. Local final npm test also PASS. Customer photo selection guards unavailable filename metadata; supported picker types JPG/PNG/WebP.
+- No authenticated rendered-web/native screenshot or actual Production send/slip/E2E/device/FCM claim. Source and build evidence do not certify visual or runtime parity. Production web and DB/RLS unchanged throughout this batch; catalog-only checks verified existing support UUID/private GP bucket policies.
+- Next concrete parity gaps found: Customer web persists pending chat payload/ID across navigation/restart in localStorage; Native shared outbox currently retains ID only within room lifetime (must add scoped durable recovery, cleanup and test before claiming that parity). Rider message reader still takes first100 ascending while Production web reads full available history; needs safe history/late-message parity without losing image-memory bounds. Customer report dialog/controls and remaining role pages still require actual rendered comparison. Runtime release blockers remain absent Android device/emulator/authenticated Production test session and missing CI Rider Firebase config; no Owner APK delivery.
+
+## Rider chat history cutoff — 2026-10-09
+
+- Backup backup-native-before-rider-chat-history-20261009 atf097be3 local/GitHub. Actual main Rider loadChatMessages requests ascending order history without a client limit; Native incorrectly requested only the first100, hiding later replies. Removed that client cutoff to use the same Production server-capped history as web. Existing authenticated order filter, RLS, foreground refresh, lazy image rows and bounded image decoding remain intact. This does not promise unbounded history beyond the server cap.
+- Local regression/source/build CI pending. No Production data/schema/web change. Customer durable pending payload recovery is still pending; no restart-idempotency, visual/device/E2E/FCM certification or APK delivery claim.
+
+## Customer durable pending chat — 2026-10-09
+
+- Backup backup-native-before-customer-chat-durable-20261009 at5d39821 local/GitHub. Followed customer-features.js pending localStorage flow: persist actual UUID/payload before POST, recover by actual user/order, existing pending wins over new input, retry only via explicit original button, clear on confirmation/permanent4xx except408/409/429 and closed room. New text selected while resolving recovered payload is preserved.
+- App-private noBackupFilesDir storage uses hashed scope paths, bounded validated payload, sync/atomic rename and IO dispatcher. Corrupt or unwritable storage fails closed before network; no automatic resend or new backend. Account deletion clears only the actual deleted user’s local pending directory after confirmed deletion; another signed-in account’s pending payload is preserved. Existing auth/RLS/confirmation reads remain unchanged.
+- Added JVM persistence/reopen/text and image-protocol/scoped isolation/corruption/write-failure/permanent-vs-transient cases. Native integrity180 and whitespace PASS; full CI pending. Restart/process death/photo/account deletion behavior still needs actual device validation. No visual/Production E2E/FCM certification or Owner APK delivery.
+
+- Actual final durable/history CI37903097078 at77fea21ff27f6a4ec331f53f37a8720ea7273152 PASS: full regression, integrity/assets, shared/customer/rider JVM tests including persisted text/image-protocol/scopes/corruption/write failure/deleted-user isolation, three native builds and No WebView/artifacts. Earlier superseded runs are not final gate evidence. npm regression/source integrity also PASS locally. Device process-death/photo/runtime/visual/FCM/Production E2E remain uncertified.
+
+## Customer report dialog source parity — 2026-10-09
+
+- Backup backup-native-before-customer-chat-report-20261009 at77fea21 local/GitHub. Actual customer-features.js opens report dialog with six reason choices, harassment default, optional1000character details/four rows and cancel/send controls. Native previously used an inline form and always sent other. Restored native dialog, all exact labels/reason values, default reset and bounded scroll/details; sends selected reason through unchanged qg_report_chat and validates allowed reasons. Busy gates prevent double send/dismiss; cancellation propagates and errors keep report open for retry.
+- No new backend/RLS/data or Production web changes. Source/CI pending; authenticated rendered-dialog comparison and actual report/moderation/device keyboard flow still required. No visual parity, E2E or APK release claim.
+
+- Actual final report/recovery/history CI37903819443 atcb39964215997a481e07d0014d9a1d19e83f7032 PASS: Full QueueGo regression, integrity180/assets, shared/customer/rider JVM tests, all three native APK builds, No WebView and artifacts. Source/whitespace also PASS locally. Final repository worktree clean before this result-only memory update.
+- Read-only Rider push/offer follow-up: existing logout disables subscription and revokes session; offer countdown uses actual offerExpiresAt. These source paths do not establish physical background FCM, account-switch race, timely30second expiry, Laundry exclusivity or reconnect behavior. CI still lacks QG_FIREBASE_GOOGLE_SERVICES_JSON_B64, no authenticated device/Production E2E session exists here. No APK delivered or Pilot/Play readiness claim.
+- Pending release work: rendered mobile Production/native side-by-side for required Customer/Merchant/Rider pages including chat/report; actual Customer→Merchant→targeted Rider→pickup/photo→delivery/photo→complete plus Market/Laundry and session/offline/notifications. Source-backed restored dialogs/composers still require visual checks. Navigation-return overlay remains deferred per AGENTS until an explicit APK request. Current backend/Production web/main unchanged.
+
+## Customer chat safety controls — 2026-10-09
+
+- Resumed clean45c39ce and verified remote working branch agrees; main remains9026bf4. Backup backup-native-before-customer-chat-safety-20261009 local/GitHub. Actual customer-features.js has report/block/guidelines wrapping controls, explicit block confirmation and guidelines link before accepting UGC terms. Native missed guidelines and blocked immediately.
+- Restored exact report-user label, wrapping safety controls, external ACTION_VIEW to existing community-guidelines page before terms and in room, and native block confirmation with exact existing web message/cancel/retry/busy states. Same qg_block_chat_counterpart RPC; confirmed block followed by failed read remains read failure. No automatic terms acceptance or payment confirmation/backend change.
+- Corrected mutual-block moderation precedence: when blockedByMe and blockedMe are both true, Customer retains own unblock control as web; counterpart block alone never offers unblock. Added existing web explanation that blocking does not cancel delivery.
+- Opened actual Production Customer Home and inspected rendered image/loading→loaded state (desktop viewport; unauthenticated real empty-shop state). No authenticated order chat rendered comparison available; no mobile/native screenshot match claimed. Local source/regression/CI pending. Device/Production E2E/FCM release gates remain required; no APK delivery or main/Production web/DB changes.
+
+## Rider-first rendered visual release gate — 2026-10-09
+
+- Latest Owner instruction changes priority to actual mobile web/native side-by-side, Rider Home/Offer/Active/Pickup/Delivery first; then Customer/Merchant and real normal/Market/Laundry E2E/device FCM. VoIP deferred. No new feature/source-only visual certification. Floating Q remains explicitly required by Owner.
+- Fetched and fast-forwarded a368f7e→aa22b1830f122b495ff4b6e9a781435b7e8df6cc, retaining newer Customer cart/tracking and Merchant item-count work; verified94b297e is ancestor. CI37917468824 success at aa22b18. Backup backup-native-before-rider-visual-evidence-20261009 local/GitHub.
+- Authenticated actual Production Rider through secure browserAuth and captured real Longdo Home at1363×936/DPR1, desktop only. Detailed evidence/gate matrix in native-android/qa/rider-visual-gate-20261009.md. All five required visual pairs FAIL due missing matching mobile/native captures, not a claimed measured UI defect. No fabricated order/offer/GPS.
+- Runtime checks: no adb/emulator/SDK executable or connected device; /dev/kvm absent; official SDK repo reachable (not network outage). Browser API has no documented mobile viewport setter; one UI DevTools shortcut left viewport unchanged. Android test runtime with actual Rider session/order states and supported mobile browser viewport is needed; do not extract credentials/JWTs or emulate data to bypass. Existing icon-family preview inspected without redesign or physical-device/Owner approval claim.
+- No Native source/Production web/DB changes in evidence batch; no release/FCM/P0-P1 clearance/Owner APK claim. Continue from HEAD, preserving all work.
+
+- Actual evidence-batch CI37922547941 at3a13109d8bd1e76f1bbf14f7583c6f2aa7cbc796 PASS: full regression, source191/assets, JVM tests, Customer/Merchant/Rider builds, No WebView and artifact upload. Local npm test/source191/launcher61/whitespace also PASS. This does not change the Rider visual gate FAIL; matched mobile/native screenshots and physical-device/E2E evidence remain missing. Saved authenticated Rider tab for continuation; no credentials or browser JWT extracted.
+
+## Rider real Android runtime preparation — 2026-10-09
+
+- Re-fetched clean9d87b234654b3c7b3d4235aaeda0098432d80953; remote agrees. Backup backup-native-before-rider-runtime-evidence-20261009 local/GitHub. Installed official checksum-verified SDK/adb/emulator/API30 image and private JDK17/Gradle9.6 instead of treating absent local tools as permanent.
+- Initial stale generated outputs caused duplicate Rider dex R classes and three CustomerHomeBlueprintTest NoSuchMethodErrors (that class is absent from current source). Cleaned generated outputs only; cache-disabled/rerun148-task build PASS for all three apps and63 JVM tests (shared13/customer31/rider19). npm regression/source191/launcher61/category12/No WebView/whitespace PASS. No app/test/Production source or backend edits.
+- No local KVM; genuine Pixel4 API30 software boot exhausted45 checks, then18 read-only diagnostic checks. ADB became online and framework startup progressed but boot complete never reached1; no app install/launch/screenshot was claimed. Detailed versions/fingerprints/constraints in native-android/qa/rider-runtime-checkpoint-20261009.md. Never publish emulator RPC credentials or full private state files as evidence.
+- Added portable official-SDK accelerated CI capture after original gates: fresh Rider login only, real process/activity/UI/PNG and commit/APK/viewport metadata, crash diagnostics/internal artifact. Runner-only KVM access, no security disabling, no credential entry/mock/backend mutation. New CI pending. This step cannot pass Home visual/E2E/physical FCM; secure Native Rider session, matching mobile browser and actual jobs still needed. All release constraints remain; no Owner APK.
+
+
+## Actual Rider Android launch and CI recovery — 2026-10-09
+
+- Preserved fetched9d87b23 and Owner checkpoint94b297e; backup backup-native-before-rider-runtime-evidence-20261009 remains local/GitHub. First accelerated CI37929722268 at292df52 passed original regression/assets/JVM/three-native-build/No WebView gates but failed before Android boot. Retrieved its actual artifact11615598142: Unknown AVD name due different default Android user-home/AVD registry resolution. No application crash was inferred.
+- Fix986534696b8970d2a125fb695699ef001e7f426e shares explicit run-scoped ANDROID_AVD_HOME across official avdmanager/emulator and asserts the registry index before launch. Actual local avdmanager-create + emulator-list verification PASS. Local npm regression/source191/launcher61/category12/whitespace PASS; no Kotlin/application/test/Production web/DB/RPC/RLS/main change.
+- Actual full CI37932248613 at9865346 PASS, including genuine API30 accelerated Android boot, fresh actual Rider APK install/cold launch, resumed activity/process/accessibility, no FATAL EXCEPTION and empty crash buffer. Retrieved artifact11616627950 and verified ZIP SHA256 d22be3449bb915663dca1469a0288d8f5515212f1421a5791158c7f41e22ecaa. Inspected unmodified1080x2280/440dpi screenshot: real Thai fresh-session login with branding/fields/disabled action, no credentials entered. APK SHA256 ad43817f0ca07b500f3fe0ad0b85039e1f75877669885abf51cd8a182fcff2d3; PNG SHA2562999f0951c11308e8fadad7901bd01c73e8bc8cb1ee383b7954bff2c97aa33fc.
+- Evidence commit fe7b9e264f1621511f5c5b2367b9694b0d8a4cdc saves byte-identical screenshot/capture metadata plus updated runtime/visual gate records under native-android/qa. Final actual CI37933275263 atfe7b9e2 PASS: full regression, integrity/assets, shared/customer/rider JVM, Customer/Merchant/Rider native builds, Reject WebView and second genuine Android launch capture. This memory-only result record does not modify tested application/runtime sources.
+- Rider Home/Offer/Active/Pickup/Delivery visual gate remains FAIL for incomplete matching authenticated mobile Web/Native pairs. Existing1363x936 Production desktop Home cannot substitute for a mobile pair; fresh-session Native login cannot substitute for authenticated Home. No browser credentials/JWT exported, mock state or fabricated order/GPS inserted. Need supported matching mobile Production browser viewport and permitted actual Native Rider session/real job states before pixel comparisons.
+- Actual CI still warns Firebase config secret is absent. No physical Android test device/session is available here; physical background FCM/offline/session/role isolation and real normal/Market/Laundry Production E2E remain uncertified. No APK/RC/Pilot/Play readiness or P0/P1=0 claim. VoIP deferred; next work remains Rider Home visual pair, followed by remaining Rider screens, Customer, Merchant and real E2E.
+
+
+## Native Rider registration, pending routing and INSERT authorization — 2026-10-09
+
+- Re-fetched actual remote be46db2dd1ff35497ea81985eabebd3b4a5f059f into a new workspace; no prior local registration files were present. Remote backup backup-native-before-registration-security-20261009 preserves that HEAD. Actual baseline CI37947192680 completed successfully at that exact SHA.
+- Production inspection confirmed existing users privilege triggers and Rider UPDATE/vehicle guards. Added guard_rider_profile_insert_approval: authenticated INSERT requires owned Rider identity and profile approval matching authoritative users status (active legacy riders can recreate missing profiles; unapproved accounts remain pending). Existing UPDATE/vehicle guards, RLS, order RPC/state and Production Web unchanged. Real-account INSERT probes under authenticated role passed with transaction rollback; no lasting QA row/account/order was created. Eleven isolated PGlite cases pass for roles/ownership/status/admin/internal grants.
+- Recreated Native four-step Rider registration from current rider/index.html: personal/profile image, vehicle/service area, six mandatory documents, explicit truth/Beta agreements; Kotlin/Compose and existing Auth/users/rider_profiles contract. Removed external-browser signup routing. Images are bounded to8MB, compressed JPEG1400/78 with EXIF handling; document PDFs remain allowed. Drafts encrypted with existing Keystore key in noBackupFilesDir; passwords/consent not persisted. A checkpoint after actual sign-in supports retry after profile-write failure; returning pending login can resume a matching draft when the profile is absent. No automatic signup replay. Pending account route mounts the dedicated web-based pending screen, so Home/map/GPS/job engine is not mounted for unapproved accounts.
+- Rider session recovery preserves encrypted session on timeout/offline/429/5xx; cold restore stays behind the existing web connection-retry presentation until validated. Definitive401/revoked/replaced/invalid-role sessions require login. Added JVM recovery and registration validation cases. These are implementation/source facts, not visual/E2E/device proof.
+- New source/build CI pending. Required matched authenticated mobile Web/Native visual pairs, real normal/Market/Laundry E2E, physical notifications/lifecycle, Firebase config and release signing still need actual evidence. Do not call this Play-ready or P0/P1=0. Owner requested new APKs; proceed with latest source build, never substitute c018750 artifacts.
+
+- Follow-up live users transaction probe confirms owned non-admin role/status/auth_user_id escalation does not change stored values; rollback completed. No pending public.users Rider exists at this inspection, so pending-account INSERT denial is established by isolated PGlite tests, not represented as a live pending-user probe. Active Rider/Customer live INSERT cases were checked. SECURITY DEFINER grant audit confirms anonymous execution denied for inspected admin/claim/dispatch endpoints; get_my_role filters suspended/deleted and inactive Admins. Advisory warnings still include intentional public catalog/table-session APIs, authenticated guarded RPCs, and disabled leaked-password protection; this is not a blanket security PASS.
+- CI37950826463 at8f046cf passed native JVM tests and reached all-three APK build. Extended real accelerated capture to phone/small-phone/tablet for each of the three actual apps plus actual Rider registration step-one navigation; no credentials, mock job/state or submitted account. Python syntax checked; runtime matrix pending new final CI. Physical Samsung hardware and authenticated visual/E2E cannot be certified by emulator login captures.
+
+- Actual CI37950826463 at8f046cfb5765e1f3aa28cf6f7a45491e751b240c finished SUCCESS: full regression, source/assets, JVM registration/session tests, three native APKs, Reject WebView and genuine Rider cold launch. Follow-up snapshot adds the three-role viewport matrix and closes post-sign-in/draft exceptions leaving busy locked; final follow-up CI is required before APK delivery.
+
+
+## Three-role Android launch matrix and first rendered registration correction — 2026-10-10
+
+- Continued from unchanged remote15ad386537430913bf0496a53af3cad9243bd68e. CI38000408379 SUCCESS includes full regression/JVM/source/assets/three APKs/Reject WebView and actual accelerated phone/small-phone/tablet fresh-session launch for all roles (9 captures), plus actual Rider signup navigation (3 captures); no credentials entered or accounts/orders created. Artifact11649245750 APKs and11649560861 launch evidence were downloaded and matched each of9 metadata SHA256 values to the actual APK bytes. Official AGP9.4.0 apksig verifies all3 signatures for API26–36. They are DEBUG test builds, not Release/Play-ready.
+- Fetched main without merging; served Production Customer/Merchant/Rider HTML bytes match working source. Actual rendered Rider signup exposed an extra nested profile-upload border/label and oversized file picker absent in web. Corrected profile upload to the original unboxed centred face flow, required section label,42dp/12sp file picker and9sp step numbers. This is a source-derived correction; final new APK/Android matrix must rerun.
+- Actual Merchant fresh-session screenshot confirms its generic shared native login still differs substantially from Production Merchant login; Customer shares that generic auth host. These known presentation/function-parity gaps are not hidden by launch PASS. Full visual gate remains FAIL, not merely unmeasured. Authenticated normal/Market/Laundry E2E, physical Samsung/lifecycle/notifications, Firebase config and release signing remain required. New Owner APK milestone may only be described as test APKs; never claim UI100%, P0/P1=0, Full Gate, Release AAB or Play readiness from these login captures.
+
+
+## Customer/Merchant session recovery — 2026-10-10
+
+- Found shared AuthHost cleared encrypted credentials on all validation/heartbeat errors, including offline, timeout, 429 and 5xx. Replaced this with authoritative-only invalidation (401, confirmed session replacement, absent account, role mismatch, suspended/deleted account, explicit invalid refresh token codes). Cold recovery fails closed and offers retry without deleting credentials; warm recovery retries the heartbeat. Cancellation propagates and login resets busy in finally.
+- Rotated refresh tokens are saved before subsequent authorization reads/heartbeat so transient downstream errors cannot discard the rotated credential. This does not grant offline account approval: cold app access still requires server validation.
+- Added shared JVM regression cases for transient vs definitive errors. No account/order writes or Production UI changes. Actual authenticated offline/reconnect and expired-session device tests remain unproven.
+- Customer/Merchant generic authentication UI remains a known Production blueprint mismatch, and all authenticated flow/physical-device/notification visual gates remain open. Latest APK build must include this follow-up; do not deliver previous artifacts as final.
+
+- Follow-up review: malformed HTTP 200 session/account payloads must not look like confirmed revocation or a deleted account. Validation now checks actual Boolean/array shapes and treats unexpected shapes as recoverable errors. Added actual API response regression cases.
+
+- Compared Production Customer login contract in index.html: it requires users.status=active. Native Customer login/restore now enforces the same rule, including pending accounts; Merchant pending onboarding remains allowed. Regression covers pending Customer rejection.
+
+
+## Owner-requested direct APK sharing — 2026-10-10
+
+- Owner explicitly requested externally shareable direct APK links, rather than chat-scoped links or sign-in-only Actions artifact downloads. CI38002405309 at68cf202 passed; those test APKs were verified and delivered, but full visual/E2E/FCM/Release signing gates remain open.
+- Added a narrowly opt-in CI publisher: only successful pushes whose commit message includes [share-test-apks] can publish a clearly labelled GitHub prerelease. It rebuilds and tests all3 apps from the new HEAD, completes actual Android launch matrix first, verifies the branch has not advanced, and attaches those exact APKs plus matrix/checksums. Ordinary subsequent commits do not publish automatically.
+- This explicit Owner sharing request supersedes the previous internal-artifacts-only comment for these DEBUG test APKs. No Production UI/backend/orders or Native app screens changed. No Full Gate, UI100, P0/P1=0, signed Release AAB or Play readiness claim. Publication and direct-download verification pending the new CI run.
+
+
+## Rider exits immediately after login — 2026-10-10
+
+- Owner reports latest published Rider exits after login. Re-fetched remote213289d without resets. Inspected the verified Longdo0.1.8 binary: MapGLSurfaceView constructor directly calls android/support/v4/view/GestureDetectorCompat; delivered APK defines only androidx/core/view/GestureDetectorCompat. The active Home map is mounted after login, unlike prior login-only CI captures.
+- Enable AndroidX binary transformation for the existing verified native Longdo AAR (no WebView/SDK or UI substitution), bump Rider test version to5/0.4.1. Add a non-exported DEBUG-only component harness mounting the real RiderLongdoMap without accounts/orders. It is absent in release builds and has no navigation entry in ordinary app UI.
+- CI now builds an untransformed baseline for exact runtime crash reproduction, then the corrected APKs and actual instrumented map creation/background/foreground/activity recreation. Publication requires this regression plus existing three-role launch matrix. Runtime proof/new APK publication pending; no authenticated E2E or physical device PASS claimed. Existing Full Gate/UI100/FCM/Release limitations remain open.
+
+- CI38005370777 reproduced the exact native Longdo constructor NoClassDefFoundError in the untransformed baseline. Corrected APK instrumentation returned OK(1 test), including actual map creation, background/foreground and recreation. The final log gate rejected retained baseline crash-buffer entries (timestamp before corrected instrumentation); no distinct second corrected crash was observed. Clear all Android log buffers between intentional negative baseline and corrected run, retain the full before/after evidence, and rerun the entire latest-HEAD gate before publication.
+
+- CI38006171269 again reports OK(1 test) for the corrected map but Android retains the baseline PID3483 crash in logcat despite all-buffer clear. Avoid associating one process's deliberate negative-test crash with another: corrected instrumentation emits its actual completed PID, and the strict fatal-exception check now uses Android logcat --pid for that process. A missing completion marker or any crash in the corrected process still fails; baseline reproduction remains required and preserved separately. Rerun/publication pending.
+
+
+## Final three-app Mission resumed — 2026-10-10
+
+- Owner now explicitly prohibits incomplete APK/AAB/source delivery, including test APK sharing. This supersedes earlier requests to share DEBUG APKs. All three apps must meet the full Production Blueprint, real backend/E2E, voice calling, security and release evidence requirements before final delivery.
+- Fetched actual remote native branch HEAD `54c9ea77b39a52b94f2f20589e581ae8e12e8070`, preserving newer work after `be46db2`. Backup `backup-native-before-final-mission-20261010-54c9ea7` created locally and through GitHub.
+- Removed the opt-in `[share-test-apks]` GitHub prerelease publisher from native CI and reduced workflow contents permission to read. CI builds/captures remain internal; build success cannot publish incomplete apps. Existing historical releases were not deleted.
+- Shared Customer/Merchant auth now rejects duplicate submissions synchronously before launching a second sign-in/session registration. Existing backend authentication and session recovery stay authoritative.
+- Known Customer/Merchant generic login UI and missing registration parity remain open. Native voice calling is absent in inspected Kotlin/Gradle source. Full authenticated normal/Market/Laundry E2E, matched visual inventory, background push, physical lifecycle, full Production security audit, signed AAB and Play Console are UNVERIFIED. No P0/P1=0, Native complete or Release claim.
+- Current Mission explicitly includes Android floating Q and voice calls; earlier deferred-VoIP priority is superseded. Continue implementation from actual remote HEAD; no WebView, fake data, replacement state machine or manual cash confirmation.
+
+
+## Native Customer authentication restoration — 2026-10-10
+
+- Continued from real `f4ef345` with successful CI38009233543; remote backup `backup-native-before-customer-auth-20261010-f4ef345`. Customer generic auth screen is replaced by source-derived login/register card: exact Customer labels, phone/email selector, conditional email field, name/phone, password confirmation and location requirement. Inputs use native Compose with keyboard traversal/submit and scrolling; passwords are not saved to instance state.
+- Registration uses existing `/auth/v1/signup` metadata (fixed customer role, name, phone and real latitude/longitude), then existing sign-in, authoritative users role/active check and session claim. Password validation mirrors queuego-password-policy.js. No users/order/DB schema or Production web changes.
+- Fresh Android OS location is requested only on validated registration submission. Permission denial, disabled providers and15-second timeout remain visible errors. Location listeners are removed on completion/cancellation; no default or fabricated coordinates.
+- Signup followed by failed login routes back to login. Lost signup replies are explicitly ambiguous, not success; saved account-identity checkpoint recovers through sign-in instead of repeating signup. No password is persisted. Registration navigation/phone-email/back captures are added to actual emulator CI without submitting accounts or credentials. JVM HTTP tests cover payload, validation, active/role checks and no automatic replay. Compilation/runtime evidence pending the new CI; source191 and Python syntax/whitespace checks PASS.
 - This is authentication implementation work, not full Customer completion. Public guest Home/search/cart/order-navigation parity and full header/bottom-nav behavior are still open; matched Production/Native mobile visual evidence, actual GPS/signup E2E and real sessions remain UNVERIFIED. Merchant generic auth/registration remains next. Do not deliver artifacts or declare full Native/Release PASS.
 
 
