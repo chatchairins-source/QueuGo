@@ -655,7 +655,11 @@ ok(
   riderNavigationMapRuntime.includes('routeLines.clear()') &&
   riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
   riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
-  riderNavigationMapRuntime.includes('riderMarker = null') &&
+  riderNavigationMapRuntime.includes('riderSource = null') &&
+  riderNavigationMapRuntime.includes('riderStyleInitialized = false') &&
+  riderNavigationMapRuntime.includes('lastRenderedRiderPosition = null') &&
+  riderNavigationMapRuntime.includes('lastRenderedRiderHeading = null') &&
+  riderNavigationMapRuntime.includes('riderPuckHeading = null') &&
   riderNavigationMapRuntime.includes('map = null') &&
   riderNavigationMapRuntime.includes('view?.onDestroy()') &&
   riderNavigationMapRuntime.includes('view = null') &&
@@ -679,7 +683,9 @@ ok(
   !fs.existsSync(legacyRiderLongdoMapPath) &&
   riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
   riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
-  riderNavigationMapRuntime.includes('riderMarker = null') &&
+  riderNavigationMapRuntime.includes('riderSource = null') &&
+  riderNavigationMapRuntime.includes('lastRenderedRiderPosition = null') &&
+  riderNavigationMapRuntime.includes('riderPuckHeading = null') &&
   riderNavigationMapRuntime.includes('view?.onDestroy()') &&
   !riderNavigationMapRuntime.includes('markerBitmaps') &&
   !riderNavigationMapRuntime.includes('stopBitmaps'),

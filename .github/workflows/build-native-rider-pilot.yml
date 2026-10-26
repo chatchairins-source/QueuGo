@@ -2,10 +2,14 @@ name: QueueGo Native Android Pilot
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - 'work-native-**'
   push:
     branches:
       - queuego-native-android-v1
       - 'work-native-**'
+      - 'fix/native-**'
       - 'work-rider-**'
       - work-native-release-integration-20261010
       - work-native-release-preflight-20261010

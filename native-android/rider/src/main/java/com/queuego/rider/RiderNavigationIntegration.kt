@@ -51,7 +51,9 @@ import kotlinx.coroutines.withContext
 // Real-device pilot: use the stabilized road-matched renderer in the visible Rider map.
 // Shadow diagnostics are disabled so the Rider sees the exact pipeline being evaluated.
 private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false
-private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = true
+// Web is the presentation blueprint. Keep the experimental Native-only filter out of the
+// visible path so both platforms consume the same raw fix + route-match presentation rules.
+private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false
 // Ready/online Home follows Rider heading while staying flat; active work owns perspective.
 private const val RIDER_CAMERA_SMOOTHNESS_TEST_MODE = false
 
