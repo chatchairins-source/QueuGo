@@ -42,8 +42,8 @@ function render(host,p,error=''){
 function matches(p,d){return p.auto_accept===d.auto_accept&&p.bundle_enabled===d.bundle_enabled&&JSON.stringify([...p.services].sort())===JSON.stringify([...d.services].sort())}
 async function mount(host){const key=current();render(host,null,'กำลังโหลดการรับงาน…');try{const p=await load(true);if(p&&identity()===key&&host.isConnected)render(host,p)}catch(_){if(identity()===key&&host.isConnected)render(host,null,'โหลดการรับงานไม่ได้ กรุณาเปิดโปรไฟล์ใหม่')}}
 async function maybeAccept(){
- const key=current();if(!key||document.hidden||!navigator.onLine||!S.online||S.activeOrder||S.laundryJob||busy)return;
- const p=await load().catch(()=>null);if(identity()!==key||!p?.auto_accept||document.hidden||!S.online||S.activeOrder||S.laundryJob)return;
+ const key=current();if(!key||document.hidden||!navigator.onLine||!S.online||S.activeOrder||busy)return;
+ const p=await load().catch(()=>null);if(identity()!==key||!p?.auto_accept||document.hidden||!S.online||S.activeOrder)return;
  const o=S.openJobs?.[0]?.order;if(!o||!p.services.includes(o.fulfillment_vertical||'food'))return;
  const expiry=Date.parse(o._offerExpiresAt);if(!Number.isFinite(expiry)||expiry<=Date.now()+1000)return;
  const id=key+':'+o.id+':'+o._offerExpiresAt;if(attempted.has(id))return;attempted.add(id);
