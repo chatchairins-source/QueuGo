@@ -68,12 +68,38 @@ internal fun passengerRideStatus(ride: PassengerRide): String {
     }
 }
 
+internal fun passengerRideSupplyWaitMillis(lastReadAt: Long, now: Long): Long =
+    if (lastReadAt <= 0L) 0L else (15_000L - (now - lastReadAt).coerceAtLeast(0L)).coerceIn(0L, 15_000L)
+
+internal data class PassengerRideSupplyCluster(val point: QgMapPoint, val count: Int)
+internal data class PassengerRideSupply(
+    val nearbyCount: Int = 0,
+    val clusters: List<PassengerRideSupplyCluster> = emptyList()
+)
+internal fun parsePassengerRideSupply(raw: JSONObject): PassengerRideSupply {
+    val clusters = raw.optJSONArray("clusters")
+    val parsed = (0 until minOf(clusters?.length() ?: 0, 12)).mapNotNull { index ->
+        val row = clusters?.optJSONObject(index) ?: return@mapNotNull null
+        val count = row.optInt("count", 0)
+        val point = QgMapPoint(row.optDouble("latitude"), row.optDouble("longitude"),
+            0xFFE6002D.toInt(), QgMapRole.RIDER)
+        if (count < 2 || !row.optBoolean("approximate", false) || !point.valid) null
+        else PassengerRideSupplyCluster(point, count)
+    }
+    return PassengerRideSupply(raw.optInt("nearby_count", 0).coerceAtLeast(0), parsed)
+}
+
 private class PassengerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun state(auth: NativeAuth, id: String? = null): List<PassengerRide> {
         val body = JSONObject().put("p_order_id", id ?: JSONObject.NULL)
         val raw = http.rpc("queuego_ride_state", auth.session.accessToken, body) as? JSONObject ?: error("อ่านสถานะเที่ยวไม่ได้")
         val rows = raw.getJSONArray("rides")
         return (0 until rows.length()).map { parsePassengerRide(rows.getJSONObject(it)) }
+    }
+    suspend fun supply(auth: NativeAuth, pickup: CustomerLocation): PassengerRideSupply {
+        val raw = http.rpc("queuego_customer_ride_supply", auth.session.accessToken,
+            JSONObject().put("p_lat", pickup.latitude).put("p_lng", pickup.longitude)) as? JSONObject
+        return raw?.let(::parsePassengerRideSupply) ?: PassengerRideSupply()
     }
     suspend fun config(auth: NativeAuth) = http.rpc("queuego_ride_config", auth.session.accessToken) as JSONObject
     suspend fun quote(auth: NativeAuth, pickup: CustomerLocation, destination: CustomerLocation): JSONObject {
@@ -140,6 +166,32 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
         }
     }
     val current = rides.firstOrNull { it.id == selected }
+    val supplyPickup = pickup
+    var supply by remember(auth.user.id, supplyPickup?.latitude, supplyPickup?.longitude) {
+        mutableStateOf(PassengerRideSupply())
+    }
+    var supplyReadAt by remember(auth.user.id, supplyPickup?.latitude, supplyPickup?.longitude) {
+        mutableLongStateOf(0L)
+    }
+    val canReadSupply = current == null && picker == null && pending == null && loaded && enabled && !busy
+    LaunchedEffect(auth.user.id, auth.session.accessToken, lifecycle,
+        supplyPickup?.latitude, supplyPickup?.longitude, canReadSupply) {
+        if (!canReadSupply || supplyPickup == null ||
+            !QgMapPoint(supplyPickup.latitude, supplyPickup.longitude, 0).valid) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                val waitMillis = passengerRideSupplyWaitMillis(supplyReadAt, android.os.SystemClock.elapsedRealtime())
+                if (waitMillis > 0L) delay(waitMillis)
+                currentCoroutineContext().ensureActive()
+                supplyReadAt = android.os.SystemClock.elapsedRealtime()
+                val next = try { api.supply(auth, supplyPickup) }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { PassengerRideSupply() }
+                currentCoroutineContext().ensureActive()
+                supply = next
+            }
+        }
+    }
     val frozen = busy || pending != null || current?.terminal == false
     val editing = picker
     if (editing != null && !frozen) {
@@ -185,9 +237,15 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                 points = listOfNotNull(
                     pickup?.let { QgMapPoint(it.latitude, it.longitude, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER) },
                     destination?.let { QgMapPoint(it.latitude, it.longitude, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER) }
-                ),
+                ) + supply.clusters.map { it.point },
                 modifier = Modifier.fillMaxWidth().height(245.dp)
             )
+            if (pickup != null) {
+                Text(if (supply.nearbyCount > 0)
+                    "มี Rider พร้อมรับงานใกล้จุดรับ ${supply.nearbyCount} คน"
+                    else "ยังไม่พบ Rider พร้อมรับงานในระยะ 8 กม.")
+                Text("ตำแหน่งบนแผนที่เป็นแบบกลุ่มโดยประมาณ", style = MaterialTheme.typography.bodySmall)
+            }
             OutlinedButton(enabled = loaded && enabled && !frozen,onClick = { picker = "pickup" }) { Text("จุดรับ: " + (pickup?.address ?: "เลือกบนแผนที่")) }
             OutlinedButton(enabled = loaded && enabled && !frozen,onClick = { picker = "destination" }) { Text("จุดหมาย: " + (destination?.address ?: "เลือกบนแผนที่")) }
             if (quote == null && pending == null) Button(enabled = loaded && enabled && !frozen && pickup != null && destination != null,onClick = {
