@@ -553,6 +553,16 @@ ok(
 );
 ok(riderEarnings.includes('api.periodSummary(auth, days)')&&riderEarnings.includes('api.cashLedger(auth, from.toString(), to.toString())')&&riderEarnings.includes('"วันนี้"')&&riderEarnings.includes('"7 วัน"')&&riderEarnings.includes('"30 วัน"'),'Rider native earnings must preserve Production periods and ledger source');
 ok(riderProfile.includes('api.updateAccount(auth, name, phone)')&&riderProfile.includes('api.testNativePush(auth)')&&riderProfile.includes('QgAccountDeletionSection')&&!riderProfile.includes('api.setLaundryMode(auth, enabled)')&&!riderProfile.includes('api.respondLaundryInvite(auth, invite.inviteId, true)'),'Rider native profile must preserve Production account, push and deletion controls while shop-managed Laundry stays retired');
+ok(
+  riderProfile.includes('profilePhotoPicker.launch("image/*")') &&
+  riderProfile.includes('riderVehicleLabel(profile?.vehicleType)') &&
+  riderProfile.includes('RiderProfilePill(snapshot?.online == true)') &&
+  !riderProfile.includes('"ยืนยันข้อมูลรถแล้ว"') &&
+  !riderProfile.includes('"ยังไม่มีคะแนนจากลูกค้า"') &&
+  !riderProfile.includes('api.ratingSummary(auth)') &&
+  !riderProfile.includes('api.complimentSummary(auth)'),
+  'Rider Profile hero must match Web compact identity/vehicle/status surface without extra reputation or verification rows'
+);
 const riderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
 ok(riderProfile.includes('RiderSupportScreen(')&&riderProfile.includes('แจ้งปัญหา / ติดตามเรื่อง'),'Rider native profile must expose Production support flow');
 const riderProfilePreferencesSection = riderProfile.indexOf('RiderProfileSection("รูปแบบและประเภทงาน")');
