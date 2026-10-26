@@ -1,3 +1,17 @@
+## 2026-10-26 Merchant order-detail Web parity — DONE (source/full regression); hosted Pilot pending
+
+- Web `renderShopOrderModern` shows the customer name/address, five-step delivery progress, item quantity total, and Rider cash amount only after the pending/cancelled states. Native detail previously lacked the address/progress/quantity summary and always showed expected Rider cash, including pending and cancelled orders.
+- Bounded source change: reuse the current authenticated `orders` RLS read to add `delivery_address`; display Web-aligned customer/address, progress stages and item count; hide the Rider cash summary while pending or cancelled. No new endpoint, payment action or order authority. Added deterministic JUnit stage/terminal-state coverage and source contracts.
+- Clean full `TZ=Asia/Bangkok npm test` on exact source commit `517140355858fb74b2e9593004b5728a22b9ca19`: EXIT 0; Native source 331/0, order state 70/0, stability 106/0, Merchant title 18/0, substitution 32/0, and map QA 28/0. The first uncommitted run was correctly stopped by the release-evidence clean-checkout guard; rerun passed after commit.
+- **NEXT:** run hosted Native Pilot on the current exact source tree and review the Android detail layout on emulator; then continue the Customer page/state audit. Customer-call and completed-order report actions remain open Merchant detail gaps.
+
+## 2026-10-26 Native Merchant order-detail source checkpoint — exact Pilot NEXT
+
+- Current local Native successor commit: `517140355858fb74b2e9593004b5728a22b9ca19`, descendant of the verified local/remote integration checkpoint; last remote source tree was `5aa83efa7d8b2fac897319fb71b4e9e2dfeadae0`. The exact source diff is Merchant order-detail fields/presentation/tests plus the two parity matrices and continuation docs.
+- Clean exact-tree regression: `TZ=Asia/Bangkok npm test` EXIT 0 on `51714035`; Native source 331/0, order state 70/0, three-app stability 106/0, Merchant title 18/0, substitution 32/0, and post-test map QA 28/0. No Production writes. Android SDK/Gradle wrapper are not installed locally.
+- Exact hosted Native Pilot `40292468422` is still running on prior remote SHA `5aa83efa`; its full regression, POS/push/voice contracts, source integrity and asset checks passed. Its JUnit, APK, 16 KB and emulator gates are not yet complete and do not include this new Merchant detail source chunk.
+- **NEXT:** fast-forward the current source tree to the existing remote Native successor using the GitHub connector, verify its commit tree byte-for-byte against local HEAD, and inspect the new exact-head Pilot. Fix only its first real failure. Then continue the P1 Customer audit and remaining Merchant detail call/report actions.
+
 ## 2026-10-26 Native three-app parity successor — exact-head Pilot NEXT
 
 - Native branch `work-native-web-parity-20261026` is at `b66b6a3b1b2a83613ed9984a7dc8e900135f0b07`, a verified descendant of fetched remote successor `ed3a29ae` and based on current Web `main=7e036a0735cc49905e9b0a2434492470551a0c9d`. PR #729 map/navigation parity is preserved in the integrated ancestry. No open PR or Actions run exists for this exact HEAD; #710 remains an older open Rider review branch and is not the active successor.

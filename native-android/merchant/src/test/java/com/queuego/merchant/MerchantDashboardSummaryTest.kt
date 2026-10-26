@@ -3,6 +3,8 @@ package com.queuego.merchant
 import java.time.LocalDate
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MerchantDashboardSummaryTest {
@@ -58,6 +60,17 @@ class MerchantDashboardSummaryTest {
         readyAt = null,
         customerName = "สมชาย"
     )
+
+    @Test fun orderProgressMatchesWebStagesAndHidesTerminalFailures() {
+        assertEquals(0, merchantOrderProgressStage("pending"))
+        assertEquals(1, merchantOrderProgressStage("searching_rider"))
+        assertEquals(2, merchantOrderProgressStage("preparing"))
+        assertEquals(3, merchantOrderProgressStage("picked_up"))
+        assertEquals(4, merchantOrderProgressStage("completed"))
+        assertTrue(merchantOrderShowsProgress("completed"))
+        assertFalse(merchantOrderShowsProgress("cancelled"))
+        assertFalse(merchantOrderShowsProgress("no_rider_available"))
+    }
 
     @Test fun orderSearchMatchesWebOrderNumberAndCustomerName() {
         val sample = order("preparing", "2026-10-26T10:00:00+07:00").copy(number = "QT-1234")

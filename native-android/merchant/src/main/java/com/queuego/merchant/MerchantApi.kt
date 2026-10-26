@@ -85,7 +85,8 @@ data class MerchantOrder(
     val riderId: String? = null,
     val readyEstimateAt: String? = null,
     val readyRevision: Long = 0,
-    val customerName: String? = null
+    val customerName: String? = null,
+    val deliveryAddress: String? = null
 )
 
 data class MerchantRiderContext(
@@ -641,7 +642,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         val liveRows = runCatching {
             http.array(
                 http.get(
-                    "orders?select=id,rider_arrived_customer_at,merchant_ready_estimate_at,merchant_ready_revision&id=in.(" +
+                    "orders?select=id,delivery_address,rider_arrived_customer_at,merchant_ready_estimate_at,merchant_ready_revision&id=in.(" +
                         ids.joinToString(",") + ")",
                     auth.session.accessToken
                 )
@@ -650,6 +651,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         val arrivals = HashMap<String, String?>()
         val readyAt = HashMap<String, String?>()
         val readyRevision = HashMap<String, Long>()
+        val deliveryAddresses = HashMap<String, String?>()
         for (i in 0 until liveRows.length()) {
             val row = liveRows.optJSONObject(i) ?: continue
             val id = row.optString("id")
@@ -657,13 +659,15 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             arrivals[id] = row.optNullable("rider_arrived_customer_at")
             readyAt[id] = row.optNullable("merchant_ready_estimate_at")
             readyRevision[id] = row.optLong("merchant_ready_revision", 0L)
+            deliveryAddresses[id] = row.optNullable("delivery_address")
         }
 
         return orders.map { order ->
             order.copy(
                 riderArrivedCustomerAt = arrivals[order.id],
                 readyEstimateAt = readyAt[order.id],
-                readyRevision = readyRevision[order.id] ?: 0L
+                readyRevision = readyRevision[order.id] ?: 0L,
+                deliveryAddress = deliveryAddresses[order.id]
             )
         }
     }

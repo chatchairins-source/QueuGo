@@ -384,6 +384,20 @@ ok(merchantOrdersSource.includes('merchantOrderFilterBucket')&&
    merchantAppSource.includes('"pending_shop" -> "รอรับ"')&&
    merchantAppSource.includes('"delivered" -> "จัดส่งสำเร็จ"'),
    'Merchant order list must preserve Web status filters, order/customer search, empty results and status labels');
+const merchantOrderDetailStart=source.indexOf('private fun MerchantOrderDetail(');
+const merchantOrderDetailEnd=source.indexOf('private data class MerchantOrderEditDraftRow',merchantOrderDetailStart);
+const merchantOrderDetailSource=source.slice(merchantOrderDetailStart,merchantOrderDetailEnd);
+const merchantOrderDetailApiSource=read('merchant/src/main/java/com/queuego/merchant/MerchantApi.kt');
+ok(merchantOrderDetailApiSource.includes('select=id,delivery_address,rider_arrived_customer_at,merchant_ready_estimate_at,merchant_ready_revision')&&
+   merchantOrderDetailApiSource.includes('deliveryAddress = deliveryAddresses[order.id]')&&
+   merchantOrderDetailSource.includes('order.deliveryAddress')&&
+   merchantOrderDetailSource.includes('order.customerName')&&
+   merchantOrderDetailSource.includes('merchantOrderProgressStage(order.status)')&&
+   ['"ออเดอร์เข้า"','"ร้านรับ"','"เตรียมสินค้า"','"กำลังจัดส่ง"','"สำเร็จ"'].every(label=>merchantOrderDetailSource.includes(label))&&
+   merchantOrderDetailSource.includes('items.sumOf { it.quantity.coerceAtLeast(0) }')&&
+   merchantOrderDetailSource.includes('order.status !in setOf("pending", "pending_shop", "cancelled")')&&
+   merchantOrderDetailSource.includes('"เงินสดที่ Rider จ่ายร้านเมื่อรับสินค้า"'),
+   'Merchant order detail must show the Web customer/address/progress/item-count and only show Rider cash when Web does');
 ok(source.includes('RiderReadyCard')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve one Ready card and the active job accept countdown');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');

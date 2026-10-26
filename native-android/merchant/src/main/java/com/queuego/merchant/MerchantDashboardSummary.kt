@@ -42,6 +42,17 @@ internal fun merchantOrderSearchMatches(order: MerchantOrder, query: String): Bo
     return listOf(order.number, order.customerName.orEmpty()).any { it.lowercase(Locale.ROOT).contains(needle) }
 }
 
+internal fun merchantOrderProgressStage(status: String): Int = when (status.lowercase()) {
+    "completed", "delivered" -> 4
+    "picked_up", "delivering", "in_progress", "rider_to_customer", "arrived" -> 3
+    "rider_to_shop", "preparing", "ready", "waiting_rider", "assigned", "rider_assigned" -> 2
+    "shop_accepted", "searching_rider", "accepted" -> 1
+    else -> 0
+}
+
+internal fun merchantOrderShowsProgress(status: String): Boolean =
+    status.lowercase() !in setOf("cancelled", "no_rider_available")
+
 internal fun merchantOrderTimeLabel(createdAt: String?): String {
     if (createdAt.isNullOrBlank()) return ""
     val instant = runCatching { Instant.parse(createdAt) }.getOrNull()

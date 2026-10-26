@@ -1523,10 +1523,39 @@ private fun MerchantOrderDetail(
         Text(order.number, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(6.dp))
         QgStatusPill(merchantStatus(order.status, order.riderArrivedCustomerAt), order.status !in setOf("cancelled", "no_rider_available"))
+        if (merchantOrderShowsProgress(order.status)) {
+            Spacer(Modifier.height(12.dp))
+            QgCard(Modifier.fillMaxWidth()) {
+                val stageLabels = listOf("ออเดอร์เข้า", "ร้านรับ", "เตรียมสินค้า", "กำลังจัดส่ง", "สำเร็จ")
+                val stage = merchantOrderProgressStage(order.status)
+                Row(Modifier.fillMaxWidth()) {
+                    stageLabels.forEachIndexed { index, label ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                Modifier.size(16.dp)
+                                    .background(if (index <= stage) QgRed else QgBorder, CircleShape)
+                            )
+                            Text(label, color = if (index <= stage) QgText else QgMuted, fontSize = 8.sp, lineHeight = 10.sp)
+                        }
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
         QgCard(Modifier.fillMaxWidth()) {
             Column {
-                Text("รายการสินค้า", fontWeight = FontWeight.ExtraBold)
+                Text("ลูกค้า", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                Text(order.customerName?.takeIf(String::isNotBlank) ?: "ลูกค้า", fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text("ที่อยู่จัดส่ง", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                Text(order.deliveryAddress?.takeIf(String::isNotBlank) ?: "-")
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        QgCard(Modifier.fillMaxWidth()) {
+            Column {
+                val itemQuantity = items.sumOf { it.quantity.coerceAtLeast(0) }
+                Text("รายการสินค้า · $itemQuantity ชิ้น", fontWeight = FontWeight.ExtraBold)
                 if (items.isEmpty()) Text("กำลังโหลดรายการ...", color = QgMuted)
                 else items.forEach {
                     Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1544,11 +1573,13 @@ private fun MerchantOrderDetail(
             }
         }
         Spacer(Modifier.height(10.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text("ยอดที่ร้านได้รับจาก Rider", color = QgMuted)
-                Text("฿" + "%.0f".format(order.subtotal), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineMedium)
-                Text("แสดงยอดเงินสดเท่านั้น ไม่มีขั้นตอนยืนยันรับเงินซ้ำ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+        if (order.status !in setOf("pending", "pending_shop", "cancelled")) {
+            QgCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Text("ยอดที่ร้านได้รับจาก Rider", color = QgMuted)
+                    Text("฿" + "%.0f".format(order.subtotal), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineMedium)
+                    Text("เงินสดที่ Rider จ่ายร้านเมื่อรับสินค้า", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
         rider?.let { assignedRider ->

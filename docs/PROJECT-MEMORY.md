@@ -1,3 +1,10 @@
+## 2026-10-26 Native Merchant order-detail parity follow-up
+
+- Verified Web blueprint `renderShopOrderModern` against Native `MerchantOrderDetail`: Web provides customer name/address, five delivery stages, item quantity total, and expected Rider cash only after pending/cancelled; Native previously omitted those details and showed cash for every state.
+- Current bounded Native change uses the existing authenticated orders RLS query to read delivery_address and adds a pure progress-stage policy. It does not add payment confirmation, backend API or new state authority. Focused source/stability/order-state/substitution checks pass. Full local regression first stopped at the intentional release-evidence clean-checkout guard while this chunk was uncommitted.
+- Clean exact-tree `TZ=Asia/Bangkok npm test` on `517140355858fb74b2e9593004b5728a22b9ca19` EXIT 0 (Native source 331/0, order-state 70/0, three-app stability 106/0 and post-test map QA 28/0). Local Android SDK/Gradle wrapper are absent, so hosted Pilot is required for JUnit/APKs/emulator.
+- NEXT: fast-forward the current source tree to the existing remote Native successor via GitHub connector, verify tree equality, and inspect exact-head Pilot CI. Customer-call and completed-order report actions remain independent Merchant detail parity gaps.
+
 ## 2026-10-26 Native three-app Web parity continuation
 
 - Current Native successor: `work-native-web-parity-20261026` at `b66b6a3b1b2a83613ed9984a7dc8e900135f0b07`, a descendant of fetched remote checkpoint `ed3a29ae`; current Web `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`. The integrated line preserves Rider map/navigation PR #729. Older open PR #710 is not the current Native head.
