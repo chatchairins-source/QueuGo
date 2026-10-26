@@ -1,3 +1,12 @@
+## 2026-10-26 Current Web visual parity — exact Pilot PASS / final authenticated capture requested
+
+- Newest successor `4077aa5fd1c2b9a78cc519fcdf0cc70aacdb204f` exact Native Pilot run `40336638038` completed **SUCCESS** on the same head: Full QueueGo regression, source integrity/assets, tracking/unit tests, all three Native APK builds, Android 16 KB packaging, WebView rejection, and Android emulator launch/map/voice/lifecycle all passed.
+- Merchant Products/Promotions authenticated evidence from exact UI checkpoint `75b021570d0c24c7276f46e8ea5bc8eab43e2a87` is visually accepted for the two targeted fixes: Products shows the current Web-style bottom outlined `เพิ่มเมนู` action and Promotions uses one shell-owned back/title header without a duplicate QueueGo bar. Shell title now uses `MerchantPageTitleSize`; source title ownership guard is `4077aa5fd1c2b9a78cc519fcdf0cc70aacdb204f`.
+- Customer location picker presentation is now Web-aligned at `92edab135d47bd255fdaf4749c6dae88592fad4d`: no raw Lat/Lng debug text, larger rounded map surface, GPS action card, dedicated address section, and red rounded save action. Search remains outside the map canvas; auto-GPS/reverse-geocode/save authority is unchanged.
+- Unified credit remains one usable balance. The compact Rider credit visual kept ledger/PromptPay/API authority unchanged; the source guard was corrected to assert the balance invariant independently of Compose styling at `1aa79e723ea0be8bc5aff4171204de9e8e4ec1c7`.
+- Rider Home source now follows the current Web right-rail hierarchy speed → recenter → route overview → compass and uses the compact Ready card/credit surface. These Rider visual changes were made after the last full screenshot artifact, so visual acceptance still requires a refreshed authenticated capture.
+- **NEXT:** run the existing read-only authenticated Rider/Merchant capture on this app-equivalent successor; inspect Rider Home/right rail/Ready card and Earnings credit plus Merchant Products/Promotions. Fix only concrete visual mismatches. Customer authenticated review remains blocked only by the recorded missing secret pair; do not claim Customer screenshot acceptance.
+
 ## 2026-10-26 Native visual parity — Rider rail/credit + exact Pilot failure fix — IN PROGRESS
 
 - Continued only from newest `work-native-web-parity-20261026`; no reset/revert/cherry-pick and no Production mutation. Draft stacked PR #730 remains the active review line.
