@@ -1,0 +1,52 @@
+name: QueueGo Thailand primary admin reference acquisition
+
+on:
+  push:
+    branches:
+      - work-web-queuego-places-osm-admin-boundaries-20261025
+    paths:
+      - '.github/workflows/queuego-thailand-primary-admin-reference.yml'
+      - 'scripts/acquire-thailand-primary-admin-reference.py'
+      - 'tests/primary-admin-reference-inspection.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-thailand-primary-admin-reference-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Verify offline XLSX/text inspection guards
+        run: python3 tests/primary-admin-reference-inspection.py
+      - name: Acquire official BORA primary-reference candidates without database access
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/thailand-primary-admin-reference"
+          mkdir -p "$out"
+          python3 scripts/acquire-thailand-primary-admin-reference.py "$out"
+          python3 - "$out/receipt.json" <<'PY'
+          import json,sys
+          r=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert r['execution']=='review_only_no_database_write'
+          assert r['production_import_allowed'] is False
+          assert r['identity_approval']=='not_performed'
+          x=next(s for s in r['sources'] if s['id']=='bora_ccaatt_xlsx')
+          if x.get('retrieved'): assert x.get('inspection',{}).get('valid_xlsx') is True
+          print('primary acquisition status:',r['status'])
+          PY
+      - name: Preserve raw official responses headers checksums and inspection receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-thailand-primary-admin-reference
+          path: ${{ runner.temp }}/thailand-primary-admin-reference/
+          if-no-files-found: error
+          compression-level: 9
+          retention-days: 7
