@@ -1,3 +1,9 @@
+## 2026-10-26 Merchant POS option JUnit compile failure — first diagnostic fixed; exact-head Pilot NEXT
+
+- Exact Native Pilot [40308165171](https://github.com/chatchairins-source/QueuGo/actions/runs/40308165171) on `920e19e199c29856d8eb98238a1a0911211390f9` passed full regression and all pre-JUnit gates, including the app Kotlin compile that verifies the Compose import fix.
+- The first JUnit compiler diagnostic was `MerchantPosOfflineDraftStoreTest.kt:99:54 Unresolved reference JSONArray` (and the corresponding JSONObject use in the same changed test file); the file lacked `org.json` imports. Added those imports only. Later diagnostics in this same failed compile are deliberately left for the next exact-head run to establish whether they remain after the first confirmed cause is fixed.
+- **NEXT:** run/poll Native Pilot on the exact successor HEAD. Fix only its first confirmed failure. If green, continue Merchant offline-draft custom-option parity.
+
 ## 2026-10-26 Native POS option dialog compile failure — bounded import fix; exact-head Pilot NEXT
 
 - Exact Native Pilot [40307372943](https://github.com/chatchairins-source/QueuGo/actions/runs/40307372943) on exact HEAD `c9c3a6b21bb446b600a88747d0e60b4f7a920a33` passed Full QueueGo regression, POS idempotency, Customer/Merchant push, session binding, release, voice, source integrity and asset gates. Its first failure was `:merchant:compileDebugKotlin`: `MerchantPosOptions.kt:10:43 Cannot access RowColumnParentData?.weight: it is internal in file`.
