@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "source_repository": "chatchairins-source/QueuGo",
+  "source_web_ref": "main",
+  "source_web_sha": "7e036a0735cc49905e9b0a2434492470551a0c9d",
+  "captured_at": "2026-10-26",
+  "customer": {
+    "home": {
+      "categories": [
+        {
+          "route": "food",
+          "label": "อาหาร"
+        },
+        {
+          "route": "cafe",
+          "label": "เครื่องดื่ม"
+        },
+        {
+          "route": "grocery",
+          "label": "ร้านขายของชำ"
+        },
+        {
+          "route": "laundry",
+          "label": "ฝากซัก"
+        },
+        {
+          "route": "market",
+          "label": "ตลาดสด"
+        },
+        {
+          "route": "ride",
+          "label": "บริการเรียกรถ"
+        },
+        {
+          "route": "shopping",
+          "label": "ช้อปปิ้ง"
+        }
+      ],
+      "nearby_shop_categories": [
+        "food",
+        "cafe"
+      ]
+    },
+    "bottom_navigation": [
+      {
+        "route": "home",
+        "label": "หน้าหลัก"
+      },
+      {
+        "route": "search",
+        "label": "ค้นหา"
+      },
+      {
+        "route": "cart",
+        "label": "ตะกร้า"
+      },
+      {
+        "route": "orders",
+        "label": "ออเดอร์"
+      }
+    ]
+  }
+}
