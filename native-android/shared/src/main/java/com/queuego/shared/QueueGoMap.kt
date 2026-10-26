@@ -269,6 +269,8 @@ private class QueueGoTrackingMapHolder {
         if (destroyed) return
         stop()
         view?.onDestroy()
+        labelImages.clear()
+        lastPoints = emptyList()
         destroyed = true
         map = null
         view = null
