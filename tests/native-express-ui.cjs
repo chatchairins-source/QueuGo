@@ -3,8 +3,13 @@ const app=fs.readFileSync('native-android/customer/src/main/java/com/queuego/cus
 const ui=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerExpressScreen.kt','utf8');
 const cart=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerCartStore.kt','utf8');
 const design=fs.readFileSync('native-android/shared/src/main/java/com/queuego/shared/QueueGoDesign.kt','utf8');
+const blueprint=JSON.parse(fs.readFileSync('data/native-web-parity-blueprint.json','utf8'));
 let checks=0;const ok=(v,m)=>{assert(v,m);checks++;};
-ok(app.includes('"express" to "ส่งด่วน"')&&app.includes('"express" -> screen = "express"')&&app.includes('"express" -> CustomerExpressScreen('),'Customer Home must expose Express as a real category route');
+
+const homeRoutes=blueprint.customer.home.categories.map(x=>x.route);
+ok(!homeRoutes.includes('express'),'Pinned Web main does not expose Express on Customer Home');
+ok(!app.match(/private val homeCategories = listOf\(([\s\S]*?)\n\)/)?.[1].includes('"express" to "ส่งด่วน"'),'Native Home must not add an Android-only Express tile');
+ok(app.includes('"express" -> screen = "express"')&&app.includes('"express" -> CustomerExpressScreen('),'Express capability and internal route must remain available off Home');
 ok(design.includes('"express" -> {'),'Shared QueueGo icon family must include Express');
 for(const token of ['queuego-express-quote','queuego_request_express','queuego_express_state','queuego_express_config','qg_customer_cancel_order']) ok(ui.includes(token),'Customer Express missing '+token);
 for(const token of ['senderName','senderPhone','receiverName','receiverPhone','itemType','weightText','itemSize','vehicleType','instructions']) ok(ui.includes(token),'Customer Express form missing '+token);
@@ -14,4 +19,4 @@ ok(cart.includes('fun expressJournal()')&&cart.includes('"pending_express"'),'Ex
 ok(ui.includes('"searching_rider"')&&ui.includes('"rider_assigned"')&&ui.includes('"picked_up"')&&ui.includes('"in_progress"')&&ui.includes('"completed"'),'Express Customer state UI must cover the Phase 1 lifecycle');
 ok(ui.includes('QgTrackingMap(')&&ui.includes('current.riderLat')&&ui.includes('current.riderLng'),'Express Customer must track assigned Rider from authoritative state');
 ok(ui.includes('ค่าส่งเงินสด')&&!/credit card|e-payment|promptpay/i.test(ui),'Express Customer surface must stay cash-first without e-payment controls');
-console.log(JSON.stringify({checks,failures:0,scope:'Native Customer Express category/form/quote/request/state/recovery surface; no feature enablement or Production mutation'}));
+console.log(JSON.stringify({checks,failures:0,scope:'Native Customer Express capability preserved off Home while Home presentation follows pinned Web main; no feature enablement or Production mutation'}));
