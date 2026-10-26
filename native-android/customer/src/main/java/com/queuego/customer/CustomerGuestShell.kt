@@ -49,8 +49,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
+ * Web main preserves a post-login destination only for checkout.
+ * Every other protected Guest action authenticates and lands on Home.
+ */
+internal fun customerGuestPostLoginDestination(route: String): String {
+    val root = route.trim().removePrefix("#").trimStart('/').substringBefore('/').substringBefore('?')
+    return if (root == "checkout") "checkout" else "home"
+}
+
+/**
  * Production web allows anonymous Home/category/search/shop/cart/market/map/promotion browsing.
- * Protected checkout/orders/laundry/favorites route to the same native Customer authentication.
+ * Protected actions route to the same native Customer authentication.
  */
 @Composable
 internal fun GuestCustomerShell(
@@ -183,7 +192,7 @@ internal fun GuestCustomerShell(
 
     fun openShop(shop: CustomerShop, from: String) {
         if (shop.category.lowercase() == "laundry") {
-            onLogin("home")
+            onLogin(customerGuestPostLoginDestination("laundry"))
             return
         }
         returnScreen = from
@@ -210,9 +219,8 @@ internal fun GuestCustomerShell(
                 route.isBlank() || route == "home" -> screen = "home"
                 route == "search" -> screen = "search"
                 route == "cart" -> screen = "cart"
-                route == "orders" || route == "laundry" || route == "checkout" -> onLogin(
-                    if (route == "checkout") "checkout" else "home"
-                )
+                route in setOf("orders", "laundry", "checkout", "ride", "express") ->
+                    onLogin(customerGuestPostLoginDestination(route))
                 route == "map" -> screen = "location"
                 route == "market" || route == "market-cart" -> screen = route
                 route == "promotion" -> screen = "promotion"
@@ -232,6 +240,7 @@ internal fun GuestCustomerShell(
                     val id = route.substringAfter("shop/").substringBefore('/')
                     shops.find { it.id == id }?.let { openShop(it, "home") }
                 }
+                else -> onLogin(customerGuestPostLoginDestination(route))
             }
             return
         }
@@ -260,7 +269,7 @@ internal fun GuestCustomerShell(
         bottomBar = {
             CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) { target ->
                 when (target) {
-                    "orders" -> onLogin("home")
+                    "orders" -> onLogin(customerGuestPostLoginDestination("orders"))
                     else -> screen = target
                 }
             }
@@ -296,9 +305,9 @@ internal fun GuestCustomerShell(
                     onSearch = { screen = "search" },
                     onCategory = { selected ->
                         when (selected) {
-                            "ride" -> onLogin("home")
+                            "ride" -> onLogin(customerGuestPostLoginDestination("ride"))
                             "market" -> screen = "market"
-                            "laundry" -> onLogin("home")
+                            "laundry" -> onLogin(customerGuestPostLoginDestination("laundry"))
                             "shopping" -> {
                                 shoppingMode = "all"
                                 screen = "shopping"
@@ -403,7 +412,7 @@ internal fun GuestCustomerShell(
                         }
                     },
                     onCart = { screen = "cart" },
-                    onRequireLogin = { onLogin("home") }
+                    onRequireLogin = { onLogin(customerGuestPostLoginDestination("shop-action")) }
                 )
 
                 "cart" -> CustomerCartScreen(
@@ -425,7 +434,7 @@ internal fun GuestCustomerShell(
                         }
                     },
                     onRemove = { id -> cart = cart.filterNot { it.product.id == id } },
-                    onCheckout = { onLogin("checkout") }
+                    onCheckout = { onLogin(customerGuestPostLoginDestination("checkout")) }
                 )
 
                 "market", "market-cart" -> MarketNativeScreen(
@@ -443,7 +452,7 @@ internal fun GuestCustomerShell(
                     serviceBanner = serviceBanners["market"],
                     onBack = { screen = "home" },
                     onDone = { _ -> screen = "home" },
-                    onRequireLogin = { onLogin("market-cart") },
+                    onRequireLogin = { onLogin(customerGuestPostLoginDestination("market-submit")) },
                     onBannerLink = ::openBannerLink
                 )
 

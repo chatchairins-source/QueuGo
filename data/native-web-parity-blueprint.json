@@ -98,8 +98,11 @@
     },
     "guest_login_destinations": {
       "ride": "home",
+      "express": "home",
       "orders": "home",
       "laundry": "home",
+      "market_submit": "home",
+      "default_protected": "home",
       "checkout": "checkout"
     },
     "laundry_shell": {

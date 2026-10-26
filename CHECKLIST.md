@@ -1,3 +1,20 @@
+## 2026-10-26 Native Customer Web parity — authenticated Laundry global chrome DONE (source/test)
+
+- Implementation HEAD `3becc3b0adef21041773e021c08e84543ccb0f91` restores the Web shell contract for authenticated Laundry without changing Laundry business logic.
+- Root cause/evidence: Web `V.laundry` renders inside the normal Customer layout, so the QueueGo global top bar remains visible and the compact bottom navigation remains visible with Home selected. Native previously hid both whenever `screen == "laundry"`.
+- Change: removed only the two Native Laundry chrome hide conditions. Laundry remains mapped to Home selection and default compact navigation density; service/order logic is unchanged.
+- Test/CI: Native Pilot run `40264624269` **SUCCESS** — full regression, source integrity, Kotlin unit suites, all three APK builds, 16 KB packaging, WebView rejection, artifact upload and emulator launch/map/voice lifecycle all passed.
+- Status: **DONE (source/test)**. Physical-device visual certification is not claimed.
+
+## 2026-10-26 Native Customer Web parity — Guest protected-action login policy IN PROGRESS
+
+- Parent exact HEAD `3becc3b0adef21041773e021c08e84543ccb0f91` is green as above.
+- Root cause/evidence: Web main `7e036a0735cc49905e9b0a2434492470551a0c9d` persists a post-login destination only for `checkout`. Guest Ride/Orders/Laundry and any other protected route authenticate then land on Home. Web Market browsing/cart are public, but `marketPlaceOrder()` sends a Guest to login without persisting `market-cart`, so successful login also lands on Home. Native still preserved `market-cart` on Market submit and silently ignored protected banner `#ride` / `#express` routes.
+- Change: add one `customerGuestPostLoginDestination` authority. Checkout alone returns `checkout`; every other protected Guest action returns `home`. Ride/Laundry/Orders/shop actions/Market submit and protected banner routes use it. Public Guest browsing and authenticated business flows are unchanged.
+- Regression guard: parity blueprint + `tests/native-customer-web-home-parity.cjs` now reject Android-only Ride/Market resume, require Ride/Express banner protection and preserve checkout as the sole resumed destination.
+- Production/backend: unchanged.
+- **NEXT:** run exact-head Native Pilot. Fix only the first real failure. If green, checkpoint this P1 flow parity, then continue Customer Guest top-bar visual parity (Home 16/10; non-Home 12/6; brand tracking -0.4sp; plain red login link).
+
 ## 2026-10-26 Native Customer Web parity — Guest Ride login destination DONE (source/test)
 
 - Stream: Android/Web functional parity, Customer only. Active branch `work-native-web-parity-20261026`; Web authority remains pinned to `main=7e036a0735cc49905e9b0a2434492470551a0c9d`.

@@ -44,12 +44,21 @@ assert.ok(categoryFn.includes('maxLines = 1')&&categoryFn.includes('softWrap = f
 
 const guestSource=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerGuestShell.kt','utf8');
 const guestDestinations=blueprint.customer.guest_login_destinations;
-assert.deepEqual(guestDestinations,{ride:'home',orders:'home',laundry:'home',checkout:'checkout'});
-assert.ok(guestSource.includes('"ride" -> onLogin("'+guestDestinations.ride+'")'),'Guest Ride must return to Home after login like Web');
+assert.deepEqual(guestDestinations,{
+  ride:'home',express:'home',orders:'home',laundry:'home',
+  market_submit:'home',default_protected:'home',checkout:'checkout'
+});
+assert.ok(guestSource.includes('internal fun customerGuestPostLoginDestination(route: String): String'),'Guest protected actions must use one post-login destination authority');
+assert.ok(guestSource.includes('return if (root == "checkout") "checkout" else "home"'),'Only checkout may preserve its post-login destination like Web');
+assert.ok(guestSource.includes('"ride" -> onLogin(customerGuestPostLoginDestination("ride"))'),'Guest Ride must return to Home after login like Web');
 assert.ok(!guestSource.includes('"ride" -> onLogin("ride")'),'Guest Ride must not preserve an Android-only post-login Ride destination');
-assert.ok(guestSource.includes('"laundry" -> onLogin("home")'),'Guest Laundry must return Home after login like Web');
-assert.ok(guestSource.includes('"orders" -> onLogin("home")'),'Guest Orders bottom nav must return Home after login like Web');
-assert.ok(guestSource.includes('onCheckout = { onLogin("checkout") }'),'Guest checkout alone must preserve checkout after login like Web');
+assert.ok(guestSource.includes('"laundry" -> onLogin(customerGuestPostLoginDestination("laundry"))'),'Guest Laundry must return Home after login like Web');
+assert.ok(guestSource.includes('"orders" -> onLogin(customerGuestPostLoginDestination("orders"))'),'Guest Orders bottom nav must return Home after login like Web');
+assert.ok(guestSource.includes('onCheckout = { onLogin(customerGuestPostLoginDestination("checkout")) }'),'Guest checkout alone must preserve checkout after login like Web');
+assert.ok(guestSource.includes('route in setOf("orders", "laundry", "checkout", "ride", "express")'),'Guest banner Ride/Express must follow the Web protected-route auth policy');
+assert.ok(guestSource.includes('else -> onLogin(customerGuestPostLoginDestination(route))'),'Unknown protected hash routes must fail closed to login then Home like Web');
+assert.ok(!guestSource.includes('onLogin("market-cart")'),'Market submit must not preserve an Android-only market-cart destination after login');
+assert.ok(guestSource.includes('onRequireLogin = { onLogin(customerGuestPostLoginDestination("market-submit")) }'),'Guest Market submit must authenticate then return Home like Web');
 
 const laundryShell=blueprint.customer.laundry_shell;
 assert.deepEqual(laundryShell,{global_top_bar:true,bottom_navigation:true,bottom_navigation_selected:'home',home_density:false});
@@ -76,4 +85,4 @@ assert.equal(navGeo.explicit_label_line_height,false);
 assert.ok(!/Row\(Modifier\.fillMaxWidth\(\)\.height\(if \(home\)/.test(navSource),'Native bottom nav must not impose Android-only fixed row height');
 assert.ok(!/Text\(label,[^\n]*lineHeight/.test(navSource),'Native bottom nav label must not impose Android-only line height');
 
-console.log(JSON.stringify({checks:48,failures:0,scope:'Customer Android Home, protected-route login destinations and authenticated Laundry global chrome match pinned Web main'}));
+console.log(JSON.stringify({checks:55,failures:0,scope:'Customer Android Home, protected Guest login policy and authenticated Laundry global chrome match pinned Web main'}));
