@@ -286,6 +286,21 @@ ok(
   !customerAppForMemory.includes('บัญชีนี้ใช้ Session และ RLS ของระบบจริง'),
   'Customer Profile must not expose internal Production/session/RLS implementation copy'
 );
+ok(
+  customerAppForMemory.includes('private fun CustomerProfileHero(name: String)') &&
+  customerAppForMemory.includes('.size(60.dp)') &&
+  customerAppForMemory.includes('RoundedCornerShape(20.dp)') &&
+  customerAppForMemory.includes('"บัญชีลูกค้า"') &&
+  customerAppForMemory.includes('private fun CustomerProfileSection(') &&
+  customerAppForMemory.includes('fontSize = 10.sp') &&
+  customerAppForMemory.includes('RoundedCornerShape(16.dp)') &&
+  customerAppForMemory.includes('fontSize = 13.sp') &&
+  customerAppForMemory.includes('fontSize = 9.5.sp') &&
+  customerAppForMemory.includes('ProfileDestination(\n                "ลบบัญชีถาวร"') &&
+  customerAppForMemory.includes('ProfileDestination("ออกจากระบบ", logout)') &&
+  customerAppForMemory.includes('QgAccountDeletionSection('),
+  'Customer Profile must keep the current Web compact hero/grouped-row hierarchy while preserving account deletion authority'
+);
 const customerPushForMemory=read('customer/src/main/java/com/queuego/customer/CustomerPush.kt');
 const customerWebFeaturesForMemory=fs.readFileSync(path.resolve(__dirname,'../customer-features.js'),'utf8');
 ok(
