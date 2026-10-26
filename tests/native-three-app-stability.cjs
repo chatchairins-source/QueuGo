@@ -683,7 +683,9 @@ ok(
   !fs.existsSync(legacyRiderLongdoMapPath) &&
   riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
   riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
-  riderNavigationMapRuntime.includes('riderMarker = null') &&
+  riderNavigationMapRuntime.includes('riderSource = null') &&
+  riderNavigationMapRuntime.includes('lastRenderedRiderPosition = null') &&
+  riderNavigationMapRuntime.includes('riderPuckHeading = null') &&
   riderNavigationMapRuntime.includes('view?.onDestroy()') &&
   !riderNavigationMapRuntime.includes('markerBitmaps') &&
   !riderNavigationMapRuntime.includes('stopBitmaps'),
