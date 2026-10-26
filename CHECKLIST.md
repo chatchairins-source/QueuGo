@@ -1,3 +1,12 @@
+## 2026-10-27 Authenticated Rider dialog QA fix — exact Pilot PASS / recapture requested
+
+- Fresh authenticated review `40380709805` on app-source checkpoint `1fd0e69ceecea6a960e988937ccf000f224cc319` built Rider/Merchant APKs and booted the emulator. Merchant capture completed all 5 expected screens; artifact `12679216073`. Rider captured Home, Messages, Earnings today/7d/30d, Profile and Support before the review script failed.
+- First confirmed Rider review failure was QA-only, not app UI: support dialog title `ติดต่อฝ่ายดูแล` was matched by substring against the underlying Profile subtitle `ติดต่อฝ่ายดูแล QueueGo`, so the harness falsely concluded the dialog did not close.
+- Fixed the harness to use exact text/content-description dialog-title matching at `d84e39a1d1b76f577659e836223507e62f04bddc`; added a source guard at `e37fa9a4f61892cfa34630b7a1845d995e732e48`.
+- Exact `e37fa9a4...` Native Pilot push `40382031512` and PR `40382048557` completed SUCCESS, and Map Engine PR `40382047590` completed SUCCESS.
+- Visually inspected the partial Rider artifact `12679280989`: Home right rail/wordmark/Ready card, single Messages inbox, inline Earnings credit, Profile hero/work-preferences and Support dialog match the current Web hierarchy. Merchant 5-screen artifact is visually clean; no concrete UI regression found. No Production writes.
+- **NEXT:** run the existing authenticated capture again on this source-equivalent successor and require Rider 10/10 plus Merchant 5/5 screenshots. Inspect Learning/Safety/Diagnostics and record final visual evidence. Customer authenticated review remains blocked on the recorded missing Customer review credential pair.
+
 ## 2026-10-27 Fresh authenticated Rider/Merchant visual capture — REQUESTED
 
 - Exact current successor `0b04ba1ce2974535f4be92af4b85b49ea4cb6709` passed Native Pilot push `40370717648`, Native Pilot PR `40370726557`, and Map Engine PR `40370726631`.
