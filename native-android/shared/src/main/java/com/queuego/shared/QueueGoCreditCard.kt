@@ -25,6 +25,103 @@ import org.json.JSONObject
 import java.math.BigDecimal
 import java.util.UUID
 
+/** Web Production's Rider earnings credit row: balance + explicit recheck only. */
+@Composable
+fun QueueGoCreditInline(
+    userId: String,
+    token: String,
+    kind: String
+) {
+    val scope = rememberCoroutineScope()
+    val api = remember { QueueGoNativeApi() }
+    val accountKey = "$userId:$kind"
+    var balanceMinor by remember(accountKey) { mutableStateOf<Long?>(null) }
+    var busy by remember(accountKey) { mutableStateOf(false) }
+
+    suspend fun loadBalance() {
+        val summary = api.obj(
+            api.rpc(
+                "queuego_credit_summary",
+                token,
+                JSONObject().put("p_kind", kind).put("p_topup", JSONObject.NULL)
+            )
+        )
+        balanceMinor = summary.optLong("available_minor")
+    }
+
+    LaunchedEffect(accountKey, token) {
+        busy = true
+        try {
+            loadBalance()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            balanceMinor = null
+        } finally {
+            busy = false
+        }
+    }
+
+    fun reload() {
+        if (busy) return
+        busy = true
+        scope.launch {
+            try {
+                loadBalance()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                balanceMinor = null
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun money(minor: Long) = "฿" + BigDecimal.valueOf(minor, 2).toPlainString()
+
+    Card(
+        Modifier.fillMaxWidth().padding(bottom = 10.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE4E7)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    "เครดิต",
+                    color = Color(0xFF7D7478),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    balanceMinor?.let(::money) ?: "--",
+                    color = Color(0xFF211E20),
+                    fontSize = 19.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            OutlinedButton(
+                onClick = ::reload,
+                enabled = !busy,
+                modifier = Modifier.height(34.dp),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 11.dp, vertical = 4.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC20D31)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8CCD4))
+            ) {
+                Text(if (busy) "กำลังเช็ก" else "เช็กยอด", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+            }
+        }
+    }
+}
+
 /** The same authenticated ledger/Omise endpoint in Merchant and Rider; never stores keys. */
 @Composable
 fun QueueGoCreditCard(
