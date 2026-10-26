@@ -32,12 +32,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-internal data class ShopFavorite(val id: String, val shop: String, val product: String)
+private data class ShopFavorite(val id: String, val shop: String, val product: String)
 private data class ShopReview(val name: String, val rating: Int, val comment: String, val date: String)
 private data class ShopReviews(val count: Int, val average: Double, val items: List<ShopReview>)
 
 // These are the same table and RPC used by Production customer-features.js.
-internal class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
+private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun favorites(auth: NativeAuth): List<ShopFavorite> {
         val rows = http.array(http.get("qg_customer_favorites?select=id,shop_id,product_id&user_id=eq." +
             http.enc(auth.user.id) + "&order=created_at.desc", auth.session.accessToken))
