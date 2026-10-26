@@ -1,3 +1,10 @@
+## 2026-10-26 Merchant JSON-null category — IN PROGRESS (source checkpoint; JVM/Pilot NEXT)
+
+- Authenticated artifact 12650270511 at `5a682121d463ce94851a8fc03b591c97667c8550` shows literal `null` on a product category. Root cause: `merchantProductFromRow` used `optString`, whose JSON-null string bypassed `ifBlank`. Web uses `p.category ?? p.metadata?.category ?? ''`.
+- Reused existing nullable JSON helper for category and metadata fallback. Current explicit category and existing blank fallback remain; no stock/pricing/order changes. Parser made internal for four focused JVM cases: JSON-null metadata fallback, both-null, explicit priority, missing/blank.
+- Local Kotlin toolchain is unavailable; JVM execution and source regression are pending exact successor hosted Pilot. No runtime fix claim yet.
+- **NEXT:** inspect exact successor Pilot first failure only; inspect regenerated authenticated screenshots after source gates. Continue Rider Home readiness and Merchant note-display investigation. Customer authenticated review remains blocked by the two recorded missing secret names.
+
 ## 2026-10-26 Authenticated screenshot timing checkpoint — IN PROGRESS
 
 - Exact Native Pilot [40321700728](https://github.com/chatchairins-source/QueuGo/actions/runs/40321700728) at `5a682121d463ce94851a8fc03b591c97667c8550` completed SUCCESS, including regression/JVM, three APKs, 16 KB, WebView rejection and emulator lifecycle.

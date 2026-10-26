@@ -1517,12 +1517,12 @@ internal fun merchantRiderContextFromRpc(raw: Any?): MerchantRiderContext? {
 }
 
 
-private fun merchantProductFromRow(r: JSONObject): MerchantProduct? {
+internal fun merchantProductFromRow(r: JSONObject): MerchantProduct? {
     val id = r.optString("id")
     if (id.isBlank()) return null
     val metadata = r.optJSONObject("metadata")
-    val category = r.optString("category")
-        .ifBlank { metadata?.optString("category").orEmpty() }
+    val category = r.optNullable("category")
+        ?: metadata?.optNullable("category").orEmpty()
     val stock = if (r.has("stock") && !r.isNull("stock")) {
         r.optInt("stock", 0)
     } else metadata?.optInt("stock", 0) ?: 0
