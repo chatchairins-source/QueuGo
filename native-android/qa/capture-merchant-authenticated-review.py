@@ -47,6 +47,12 @@ def shot(name):
     assert data.startswith(b"\x89PNG\r\n\x1a\n"), "Invalid emulator screenshot"
     return {"file":p.name,"sha256":hashlib.sha256(data).hexdigest()}
 
+def home_ready(ns):
+    texts={n.get("text","").strip() for n in ns if rect(n)}
+    required={"หน้าหลัก","คำสั่งซื้อ","สินค้า","โปรโมชั่น","บัญชี",
+              "ออเดอร์ทั้งหมด","เสร็จแล้ว","กำลังเตรียม","ยกเลิก"}
+    return required.issubset(texts) and not texts.intersection({"…","..."})
+
 def input_credential(value):
     try:
         subprocess.run(ADB+["shell","input","text",value],check=True,timeout=30,
@@ -79,8 +85,8 @@ def main():
     run(["shell","input","keyevent","4"])
     tap_label(nodes(),"เข้าสู่ระบบ")
     tabs=("หน้าหลัก","คำสั่งซื้อ","สินค้า","โปรโมชั่น","บัญชี")
-    ns=wait(lambda xs:any("หน้าหลัก" in n.get("text","").strip() for n in xs),90)
-    if not ns: raise SystemExit("Login did not reach Merchant home")
+    ns=wait(home_ready,90)
+    if not ns: raise SystemExit("Merchant home summary did not finish loading; no loading screenshot was saved")
     screens=[{"screen":"home","account":"merchant-test","read_only":True,**shot("01-home")}]
     for i,label in enumerate(tabs[1:],2):
         tap_label(nodes(),label)

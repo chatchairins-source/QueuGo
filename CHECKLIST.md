@@ -1,3 +1,11 @@
+## 2026-10-26 Authenticated screenshot timing checkpoint — IN PROGRESS
+
+- Exact Native Pilot [40321700728](https://github.com/chatchairins-source/QueuGo/actions/runs/40321700728) at `5a682121d463ce94851a8fc03b591c97667c8550` completed SUCCESS, including regression/JVM, three APKs, 16 KB, WebView rejection and emulator lifecycle.
+- Exact authenticated review 40321700647 logged in and captured 11 Rider/5 Merchant screens; metadata source HEAD matched. This is evidence capture, not visual certification or physical acceptance.
+- Confirmed capture defect: Merchant Home was saved immediately after its navigation label appeared, while the four metrics still rendered loading ellipses. The harness now waits for all five tabs, all four metric labels and no visible loading ellipsis; timeout fails without saving a loading Home. Six isolated readiness fixtures, wiring and Python syntax passed before commit.
+- **BLOCKED (Customer authenticated review):** missing GitHub Actions secret names `QG_CUSTOMER_REVIEW_PHONE`, `QG_CUSTOMER_REVIEW_PASSWORD`; provide these through the existing secret mechanism to unlock. No values requested in logs.
+- **NEXT:** inspect exact successor capture/Pilot; inspect Rider Home loading versus dock readiness, then fix Merchant displayed protocol note and JSON-null product category after verifying Web/source behavior. Preserve raw order state authority and continue unblocked work.
+
 ## 2026-10-26 Current authenticated Rider/Merchant capture — IN PROGRESS
 
 - Exact readiness [40320797641](https://github.com/chatchairins-source/QueuGo/actions/runs/40320797641) on `00f605f08367d97f0bd3c780bacd6950484149a1` reports Rider/Merchant credential pairs present and Customer missing. Presence is not login or visual acceptance.
