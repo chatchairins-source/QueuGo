@@ -2011,13 +2011,6 @@ private fun ProfileScreen(
             }
         }
         Spacer(Modifier.height(10.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text("QueueGo Production", fontWeight = FontWeight.ExtraBold)
-                Text("บัญชีนี้ใช้ Session และ RLS ของระบบจริง", color = QgMuted)
-            }
-        }
-        Spacer(Modifier.height(10.dp))
         QgSectionTitle("การแจ้งเตือน")
         Spacer(Modifier.height(8.dp))
         QgCard(Modifier.fillMaxWidth()) {
