@@ -1,3 +1,12 @@
+## 2026-10-26 Merchant product search visual parity — IN PROGRESS (source/test checkpoint; exact Pilot NEXT)
+
+- Continued from newest Native successor `3d0036b0dc88d753ccac40a10aa1bc94dac4b58e` only; no reset/revert/cherry-pick and no Production mutation.
+- Verified authenticated Merchant artifact from exact passed checkpoint `d65652edc3e70bd43bb0f91edf3320c9f9f0bf3e`: Products rendered correctly but Native lacked the Web Production search field present on the unified products page.
+- Added a Web-aligned single-line product search field above the existing status chips. Search matches product name or category and composes with `ทั้งหมด / เปิดขาย / ปิดขาย`; current Grocery price gating and row ordering stay unchanged.
+- Added four pure JVM cases for Thai/name/category search, case-insensitive English search, availability+query composition, Grocery zero-price exclusion, and blank-query mode preservation. Source commits: `7872949ef5e16d5bfa0721a1b1df7cebf52f3c48` + test head `c72c9bd1cb4b87a5a932e51683a5b0231d4e8af2`.
+- Opened stacked draft PR #730 from `work-native-web-parity-20261026` to its direct ancestor `work-native-rider-auth-review-20261024`; branch was 83 commits ahead / 0 behind at creation. Exact-head workflow run had not yet appeared at checkpoint, so no CI PASS is claimed.
+- **NEXT:** inspect the first exact-head PR workflow result when GitHub publishes it; fix only the first confirmed failure. Continue visual/source parity audit without changing business authority, then regenerate Merchant authenticated screenshots after the final UI source stabilizes.
+
 ## 2026-10-26 Customer Ride stop/aggregate marker labels — IN PROGRESS (source checkpoint; exact Pilot NEXT)
 
 - Base `565dbf9b1129074d8ccb1005b70d784862457452` exact Pilot 40329618714 passed regression/source/assets, Kotlin/JVM including all five supply cases, three APKs, 16 KB and WebView rejection; lifecycle was still running at succession. Its readiness-only review is not screenshot acceptance.
