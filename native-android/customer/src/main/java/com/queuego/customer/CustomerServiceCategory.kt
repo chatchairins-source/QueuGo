@@ -51,9 +51,9 @@ internal fun serviceCategoryRows(
 ): List<CustomerShop> {
     val visible = shops.filter {
         when (category) {
-            "food" -> it.category in setOf("food", "restaurant")
-            "cafe" -> it.category in setOf("cafe", "drink", "beverage")
-            "grocery" -> it.category in setOf("grocery", "convenience")
+            "food" -> it.category == "food"
+            "cafe" -> it.category == "cafe"
+            "grocery" -> it.category == "grocery"
             else -> false
         }
     }

@@ -1,3 +1,15 @@
+## 2026-10-26 Native Customer category filter parity
+
+- Web `main=7e036a0` uses exact `public_category` filters for Food/Cafe/Grocery. Native reads that same field but previously admitted extra aliases (`restaurant`, `drink`, `beverage`, `convenience`), changing category eligibility and empty/count states.
+- Fix at `ef5799bc`: strict canonical category match only, preserving location sort and all other views. Added Kotlin unit coverage for canonical inclusion and alias exclusion, plus a source parity guard. Focused parity 55/0, Native source 332/0, full `TZ=Asia/Bangkok npm test` pass; post-test map QA 28/0.
+- Exact Pilot `40295299296` remains in progress on preceding source checkpoint `966ebb75`; current tree `b0e6a72c` needs exact-head hosted validation. **NEXT:** continue Customer shop/product detail/cart audit, then checkout/order states.
+
+## 2026-10-26 Native Customer Guest top-bar parity
+
+- Web `index.html` uses Home 16/10 padding, compact 12/6, `QueueGo` letter spacing -0.4, and a plain red Guest login label. Native had reused Home density and a pink pill on all Guest routes.
+- Fix at `39f3bf8a`: route-aware spacing, exact wordmark tracking and plain red label with a transparent padded tap target. Focused Customer parity 55/0 and Native source 332/0 pass; full `TZ=Asia/Bangkok npm test` passes, post-test map QA 28/0.
+- Remote exact-tree checkpoint `966ebb75`; Native Pilot `40295299296` is pending/running. **NEXT:** close the exact public-category filter mismatch in Food/Cafe/Grocery based on current Web source, then continue Customer screen/state inventory.
+
 ## 2026-10-26 Native Merchant order-detail QueueGo call
 
 - Web order detail exposes QueueGo voice calling on nonterminal orders. Native Merchant already shared the authenticated voice controller with other roles but lacked its outgoing customer action.

@@ -30,6 +30,9 @@ assert.ok(native.includes('homeCategories.forEach { (key, label) ->'),'Customer 
 assert.ok(native.includes('private val homeNearbyShopCategories = setOf("food", "cafe")'),'Native nearby Home authority must be an explicit Web allowlist');
 assert.ok(native.includes('shop.category.lowercase() in homeNearbyShopCategories'),'Native Home nearby shops must use the Web allowlist');
 assert.ok(!native.includes('key != "grocery" && key != "shopping"'),'Native Home must not approximate Web nearby authority with an exclusion list');
+const categorySource=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerServiceCategory.kt','utf8');
+assert.ok(categorySource.includes('"food" -> it.category == "food"')&&categorySource.includes('"cafe" -> it.category == "cafe"')&&categorySource.includes('"grocery" -> it.category == "grocery"'),'Food/Cafe/Grocery category rows must use exact Web public_category filters');
+assert.ok(!categorySource.includes('setOf("food", "restaurant")')&&!categorySource.includes('setOf("cafe", "drink", "beverage")')&&!categorySource.includes('setOf("grocery", "convenience")'),'Customer categories must not admit Native-only legacy aliases');
 assert.ok(!block[1].includes('"express"'),'Express must not create an Android-only Home category tile');
 assert.ok(native.includes('"express" -> CustomerExpressScreen('),'Express capability must remain available; this change is Home presentation only');
 assert.ok(native.includes('"express" -> screen = "express"'),'Express routing must remain intact for existing entry points');
