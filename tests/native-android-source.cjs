@@ -281,6 +281,11 @@ ok(
     .every(label => customerAppForMemory.includes(`ProfileDestination("${label}"`)),
   'Customer Profile must expose the same six destinations as the current Web Profile'
 );
+ok(
+  !customerAppForMemory.includes('Text("QueueGo Production"') &&
+  !customerAppForMemory.includes('บัญชีนี้ใช้ Session และ RLS ของระบบจริง'),
+  'Customer Profile must not expose internal Production/session/RLS implementation copy'
+);
 const customerPushForMemory=read('customer/src/main/java/com/queuego/customer/CustomerPush.kt');
 const customerWebFeaturesForMemory=fs.readFileSync(path.resolve(__dirname,'../customer-features.js'),'utf8');
 ok(
