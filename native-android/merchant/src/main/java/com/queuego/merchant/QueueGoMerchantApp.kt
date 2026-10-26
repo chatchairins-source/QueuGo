@@ -951,6 +951,20 @@ private fun MerchantShell(
                                     }
                                 }
                             },
+                            onAdjustInventory = { intent ->
+                                if (busy) error("กำลังบันทึกสินค้า")
+                                busy = true
+                                try {
+                                    val receipt = api.adjustInventoryStock(auth, intent)
+                                    val fresh = api.loadProducts(auth, activeShop.id)
+                                    products = fresh
+                                    selectedProduct = fresh.firstOrNull { it.id == intent.productId } ?: selectedProduct
+                                    receipt
+                                } finally { busy = false }
+                            },
+                            onLoadInventoryHistory = { product, beforeAt, beforeId ->
+                                api.loadInventoryAdjustmentHistory(auth, product.id, beforeAt, beforeId)
+                            },
                             onDelete = { product ->
                                 if (!busy) {
                                     busy = true

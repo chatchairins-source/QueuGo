@@ -136,7 +136,10 @@ data class MerchantProduct(
     val deliveryAvailable: Boolean = true,
     val posPrice: Double? = null,
     val deliveryRestriction: String = "none",
-    val catalogPreviewImage: String? = null
+    val catalogPreviewImage: String? = null,
+    val inventoryStockTracking: Boolean = false,
+    val groceryMasterId: String? = null,
+    val groceryStockTracking: Boolean = false
 )
 
 data class MerchantProductDraft(
@@ -150,7 +153,8 @@ data class MerchantProductDraft(
     val available: Boolean,
     val posAvailable: Boolean,
     val deliveryAvailable: Boolean,
-    val variantsJson: String
+    val variantsJson: String,
+    val inventoryStockTracking: Boolean = false
 )
 
 data class MerchantGroceryCatalogItem(
@@ -807,7 +811,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadProducts(auth: NativeAuth, shopId: String): List<MerchantProduct> {
         val rows = http.array(
             http.get(
-                "products?select=id,name,description,price,delivery_price,image,category,stock,variants,available,pos_available,delivery_available,pos_price,delivery_restriction,metadata" +
+                "products?select=id,name,description,price,delivery_price,image,category,stock,variants,available,pos_available,delivery_available,pos_price,delivery_restriction,inventory_stock_tracking,grocery_master_id,grocery_stock_tracking,metadata" +
                     "&shop_id=eq." + http.enc(shopId) + "&order=created_at.desc",
                 auth.session.accessToken
             )
@@ -984,6 +988,34 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         if (saved != 1) error("ฐานข้อมูลยังไม่ยืนยันการบันทึกสินค้า")
     }
 
+    suspend fun adjustInventoryStock(
+        auth: NativeAuth,
+        intent: MerchantInventoryAdjustmentIntent
+    ): MerchantInventoryAdjustmentReceipt {
+        val raw = http.rpc("pos_inventory_stock_adjust", auth.session.accessToken, intent.body())
+        val result = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0)
+            else -> null
+        } ?: error("Server ยังไม่ยืนยันการปรับสต็อก")
+        return merchantInventoryAdjustmentReceipt(result)
+    }
+
+    suspend fun loadInventoryAdjustmentHistory(
+        auth: NativeAuth, productId: String, beforeAt: String? = null, beforeId: String? = null
+    ): MerchantInventoryAdjustmentPage {
+        require((beforeAt == null) == (beforeId == null)) { "ข้อมูลหน้าประวัติสต็อกไม่ครบ" }
+        val body = JSONObject().put("p_product_id", productId).put("p_limit", 40)
+            .put("p_before_at", beforeAt ?: JSONObject.NULL).put("p_before_id", beforeId ?: JSONObject.NULL)
+        val raw = http.rpc("pos_inventory_adjustment_history", auth.session.accessToken, body)
+        val result = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0)
+            else -> null
+        } ?: error("โหลดประวัติสต็อกไม่สำเร็จ")
+        return merchantInventoryAdjustmentPage(result)
+    }
+
     suspend fun setProductAvailable(auth: NativeAuth, productId: String, available: Boolean) {
         val rows = http.patch(
             "products?id=eq." + http.enc(productId),
@@ -1007,6 +1039,10 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         require(cleanCategory.isNotBlank()) { "กรุณาเลือกหมวดหมู่สินค้า" }
         require(draft.price >= 0.0 && draft.price.isFinite()) { "ราคาขายหน้าร้านไม่ถูกต้อง" }
         require(draft.stock >= 0) { "จำนวนสินค้าในสต็อกไม่ถูกต้อง" }
+        requireMerchantStockEditAllowed(product, draft.stock)
+        if (product?.groceryMasterId != null) {
+            require(!draft.inventoryStockTracking) { "Grocery Master เป็นผู้จัดการการติดตามสต็อกสินค้านี้" }
+        }
         require(gpRate in 0.0..100.0 && gpRate.isFinite()) { "อัตรา GP ไม่ถูกต้อง" }
         val variants = runCatching { JSONArray(draft.variantsJson.ifBlank { "[]" }) }
             .getOrElse { throw IllegalArgumentException("ตัวเลือกสินค้าไม่ถูกต้อง") }
@@ -1034,6 +1070,8 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             .put("pos_price", draft.price)
             .put("delivery_price", deliveryPrice)
             .put("metadata", metadata)
+        if (product?.groceryMasterId == null) body.put("inventory_stock_tracking", draft.inventoryStockTracking)
+        if (product?.inventoryStockTracking == true) body.remove("stock")
 
         val raw = if (product != null) {
             http.patch(
@@ -1510,7 +1548,10 @@ private fun merchantProductFromRow(r: JSONObject): MerchantProduct? {
         deliveryAvailable = r.optBoolean("delivery_available", true),
         posPrice = r.optDoubleOrNull("pos_price") ?: price,
         deliveryRestriction = restriction,
-        catalogPreviewImage = metadata?.optNullable("catalog_preview_image")
+        catalogPreviewImage = metadata?.optNullable("catalog_preview_image"),
+        inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false),
+        groceryMasterId = r.optNullable("grocery_master_id"),
+        groceryStockTracking = r.optBoolean("grocery_stock_tracking", false)
     )
 }
 
