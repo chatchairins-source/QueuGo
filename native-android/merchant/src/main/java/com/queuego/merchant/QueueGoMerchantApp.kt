@@ -620,7 +620,6 @@ private fun MerchantShell(
                     orders = orders,
                     loading = loading,
                     shopOpen = shopOpen,
-                    revenue = todayRevenue,
                     busy = busy,
                     onToggleOpen = { next ->
                         val currentShop = shop
@@ -651,11 +650,6 @@ private fun MerchantShell(
                                 busy = false
                             }
                         }
-                    },
-                    onOpen = {
-                        selectedOrder = it
-                        orderItems = emptyList()
-                        screen = "order"
                     },
                     onPos = { screen = "pos" },
                     onOrders = { screen = "orders" },
@@ -1221,11 +1215,9 @@ private fun DashboardScreen(
     orders: List<MerchantOrder>,
     loading: Boolean,
     shopOpen: Boolean,
-    revenue: MerchantTodayRevenue,
     busy: Boolean,
     onToggleOpen: (Boolean) -> Unit,
     onPause: (Int) -> Unit,
-    onOpen: (MerchantOrder) -> Unit,
     onPos: () -> Unit,
     onOrders: () -> Unit,
     onProducts: () -> Unit,
@@ -1236,9 +1228,8 @@ private fun DashboardScreen(
     onSupport: () -> Unit,
     onMarketStock: () -> Unit
 ) {
-    val incoming = orders.filter {
-        it.status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "preparing", "ready")
-    }
+    val todayOrders = merchantDashboardSummary(orders)
+    val orderCountsLoading = loading && orders.isEmpty()
 
     Column(
         Modifier
@@ -1277,15 +1268,6 @@ private fun DashboardScreen(
                 }
             }
 
-            if (!shop.cover.isNullOrBlank()) {
-                Spacer(Modifier.height(2.dp))
-                QgRemoteImage(
-                    shop.cover,
-                    Modifier.fillMaxWidth().height(128.dp),
-                    shop.name,
-                    maxDecodeSide = 512
-                )
-            }
         }
 
         if (shop != null) {
@@ -1301,25 +1283,31 @@ private fun DashboardScreen(
             }
         }
 
-        Text(
-            "ภาพรวมวันนี้",
-            modifier = Modifier.padding(horizontal = 2.dp, vertical = 14.dp),
-            fontWeight = FontWeight.ExtraBold,
-            style = MaterialTheme.typography.titleMedium
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "สรุปออเดอร์วันนี้",
+                modifier = Modifier.weight(1f),
+                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(merchantDashboardDateLabel(), color = QgMuted, style = MaterialTheme.typography.labelSmall)
+        }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMetricCard("ออเดอร์", revenue.orderCount.toString(), "orders", Modifier.weight(1f))
-            MerchantMetricCard("ยอดขาย", "฿" + "%.0f".format(revenue.grossSales), "bag", Modifier.weight(1f))
+            MerchantMetricCard("ออเดอร์ทั้งหมด", if (orderCountsLoading) "…" else todayOrders.all.toString(), "orders", Modifier.weight(1f))
+            MerchantMetricCard("เสร็จแล้ว", if (orderCountsLoading) "…" else todayOrders.completed.toString(), "clock", Modifier.weight(1f))
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMetricCard("เงินสดรับ", "฿" + "%.0f".format(revenue.cashReceived), "store", Modifier.weight(1f))
-            MerchantMetricCard("GP ที่หักจากเครดิต", "฿" + "%.0f".format(revenue.gpAmount), "orders", Modifier.weight(1f))
+            MerchantMetricCard("กำลังเตรียม", if (orderCountsLoading) "…" else todayOrders.preparing.toString(), "box", Modifier.weight(1f))
+            MerchantMetricCard("ยกเลิก", if (orderCountsLoading) "…" else todayOrders.cancelled.toString(), "close", Modifier.weight(1f))
         }
 
         Text(
-            "จัดการร้าน",
+            "เมนูหลัก",
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 14.dp),
             fontWeight = FontWeight.ExtraBold,
             style = MaterialTheme.typography.titleMedium
@@ -1352,16 +1340,6 @@ private fun DashboardScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        QgSectionTitle("ออเดอร์ที่ต้องจัดการ", "รับ → เตรียม → พร้อมส่ง")
-        Spacer(Modifier.height(10.dp))
-        when {
-            loading && orders.isEmpty() -> CircularProgressIndicator()
-            incoming.isEmpty() -> QgCard(Modifier.fillMaxWidth()) {
-                Text("ยังไม่มีออเดอร์ที่ต้องจัดการ", color = QgMuted)
-            }
-            else -> incoming.take(6).forEach { MerchantOrderCard(it, onOpen) }
-        }
         Spacer(Modifier.height(28.dp))
     }
 }

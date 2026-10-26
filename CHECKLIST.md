@@ -1,3 +1,10 @@
+## 2026-10-26 Merchant Home Web status-summary parity — IN PROGRESS
+
+- Blueprint: current Web main 7e036a0735cc49905e9b0a2434492470551a0c9d `renderShopDashboardModern` shows today's total/completed/preparing/cancelled counts and the main menu. Native instead showed revenue/GP cards plus an extra six-order list, and a cover image, so the first screen hierarchy diverged materially.
+- Bounded change: Native now derives the four Web status counts from real loaded orders using the device-local calendar day; date label uses Thai Buddhist year; loading shows ellipses instead of false zeroes. Removed the extra dashboard order list and cover block; orders remain reachable from the existing menu and bottom navigation. Existing financial values remain in the Revenue screen.
+- Focused: native Android source 329 PASS; three-app stability 106 PASS; Merchant page-title 18 PASS; Merchant Grocery 24 PASS; diff check PASS. Added deterministic Kotlin tests for status grouping, local-day boundary and Thai date label; hosted JUnit is pending.
+- **NEXT:** exact-head full regression, Native Pilot/JUnit/three APKs/emulator; continue Merchant order/detail audit and independent Customer/Rider inventory while CI runs. Authenticated visual and physical acceptance remain unverified.
+
 ## 2026-10-26 Merchant initial-load recovery — IN PROGRESS
 
 - Web blueprint main 7e036a0 includes explicit boot recovery/retry. Native refreshAll failed into message while shop remained null, leaving first-load failure indistinguishable from no shop in subsequent rendering.

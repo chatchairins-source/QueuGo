@@ -362,7 +362,17 @@ ok(merchantAppSource.includes('runMerchantPushProfileAction')&&
    merchantAppSource.includes('title = "การแจ้งเตือนเบื้องหลัง"')&&
    merchantAppSource.includes('title = "ทดสอบการแจ้งเตือน"'),
    'Merchant profile must use the real native push subscription and server test path rather than a local-only sound check');
-ok(source.includes('MerchantMenuTile')&&source.includes('height(128.dp)')&&source.includes('"จัดการร้าน"'),'Merchant native dashboard must preserve store cover KPI and menu-grid blueprint');
+const merchantDashboardStart=source.indexOf('private fun DashboardScreen(');
+const merchantDashboardEnd=source.indexOf('@Composable\nprivate fun MerchantPauseButton',merchantDashboardStart);
+const merchantDashboardSource=source.slice(merchantDashboardStart,merchantDashboardEnd);
+const merchantDashboardSummarySource=read('merchant/src/main/java/com/queuego/merchant/MerchantDashboardSummary.kt');
+ok(merchantDashboardSource.includes('merchantDashboardSummary(orders)')&&
+   merchantDashboardSource.includes('"สรุปออเดอร์วันนี้"')&&
+   ['"ออเดอร์ทั้งหมด"','"เสร็จแล้ว"','"กำลังเตรียม"','"ยกเลิก"','"เมนูหลัก"'].every(label=>merchantDashboardSource.includes(label))&&
+   !merchantDashboardSource.includes('"ออเดอร์ที่ต้องจัดการ"')&&
+   merchantDashboardSummarySource.includes('status in setOf("completed", "delivered")')&&
+   merchantDashboardSummarySource.includes('status in setOf("shop_accepted", "preparing")'),
+   'Merchant home must show Web status counts and main menu from the authoritative native order list');
 ok(source.includes('RiderReadyCard')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve one Ready card and the active job accept countdown');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');

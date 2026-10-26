@@ -7,7 +7,7 @@ Owner now permits Merchant/Rider work while Customer CI runs. Source presence do
 | Web surface | Native source/route | Status | Priority | Evidence / next action |
 |---|---|---|---|---|
 | Login/session | Merchant auth/session host | Review open | P1 | Verify restoration and authenticated session lifecycle |
-| Home/dashboard/open-close | DashboardScreen / home | Present; review open | P1 | Compare current Web hierarchy and authoritative status action |
+| Home/dashboard/open-close | DashboardScreen / home | Status counts aligned in source; runtime pending | P1 | Web `renderShopDashboardModern` shows today's all/completed/preparing/cancelled, store identity/open toggle, pause controls and main menu. Native previously showed revenue/GP cards, an extra active-order list and cover image. Native now computes Web-equivalent status groups from loaded orders in device-local day, retains open/pause authority, and routes orders through existing menu/nav. JUnit added for time-zone boundary, status groups and Thai date label. Hosted build/JUnit and authenticated screen capture pending. |
 | Orders/detail | MerchantOrdersScreen / orders, order | Present; review open | P1 | Compare states/actions and detail Back |
 | Products/menu/categories | MerchantProductsScreen / products, product, catalog | Present; review open | P1 | Compare editor, category and channel price controls |
 | Grocery/Market catalog | grocery-catalog, market-catalog | Present; review open | P1 | Preserve source authority and exclude kitchen |
@@ -16,6 +16,7 @@ Owner now permits Merchant/Rider work while Customer CI runs. Source presence do
 | Revenue/finance/credit/top-up | MerchantRevenueScreen / revenue | Present; review open | P1 | Compare one balance and real payment/recovery actions |
 | Settings/shop/hours/location | profile, shop-setup, hours | Present; review open | P1 | Compare entry hierarchy, labels, map and save/retry |
 | Notifications/support/media | notifications, support, media | Present; review open | P1 | Compare reference routing, failed reads and retry |
-| Process recreation | QueueGoMerchantApp screen | Proven source gap | P1 | screen uses remember; safe route context disappears on recreation. Preserve reloadable routes, prevent blank detail restoration |
+| Initial-load recovery | QueueGoMerchantApp refreshAll | Retry card added; hosted runtime pending | P1 | Initial shop read failure is separated from legitimate no-shop result and can retry via existing refreshAll; successful null shop clears error. Full regression/Pilot pending. |
+| Process recreation | QueueGoMerchantApp screen | Source policy added; hosted runtime pending | P1 | screen used remember; reloadable destinations now save safely and selected detail/editor state returns to parent. Verify on exact-head emulator. |
 
-NEXT: bounded Merchant safe route restoration, then exact-head tests/build. Capture critical screens after authenticated access; physical-device status remains unverified.
+NEXT: exact-head Merchant Home tests/build, then audit Web order filters/search/detail actions against Native. Capture critical screens after authenticated access; physical-device status remains unverified.
