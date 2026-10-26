@@ -1,0 +1,25 @@
+{
+  "execution": "review_only_no_database_write",
+  "metadata_url": "https://data.humdata.org/api/3/action/package_show?id=cod-ab-tha",
+  "metadata_sha256": "ac4b4772aa3a14da5a6ddc91f8368a3a2854de984efeffb7d506ade7aa956425",
+  "dataset": {
+    "id": "d24bdc45-eb4c-4e3d-8b16-44db02667c27",
+    "title": "Thailand - Subnational Administrative Boundaries",
+    "license_id": "cc-by-igo",
+    "license_title": "Creative Commons Attribution for Intergovernmental Organisations (CC BY-IGO)",
+    "license_url": "http://creativecommons.org/licenses/by/3.0/igo/legalcode",
+    "notes": "Thailand administrative level 0-3 boundaries (COD-AB) dataset version 01.  \n  \nThis dataset is structured into 3 levels:  \n- Admin 1: 77 Province  \n- Admin 2: 928 District  \n- Admin 3: 7425 Sub-district (Tambon)  \n  \n  \nDates associated with this dataset:  \n- 30 October 2025: dataset reviewed for accuracy and completeness  \n- 22 January 2022: valid for use by the humanitarian community  \n- 01 January 2022: last edit to the dataset before publishing  \n- 01 January 2022: boundaries created by the source  \n  \nContributed by [OCHA Regional Office for Asia and the Pacific (ROAP)](https://data.humdata.org/organization/ocha-roap).  \nQuality assured, configured, and published by [OCHA Field Information Services (FIS)](https://data.humdata.org/organization/ocha-fiss) and [HDX](https://data.humdata.org/organization/hdx).  \n  \nPart of the dataset: [Global Subnational Administrative Boundaries](https://data.humdata.org/dataset/cod-ab-global)",
+    "metadata_modified": "2026-08-14T06:40:23.604903"
+  },
+  "resource": {
+    "id": "89a09f13-7b83-458a-9531-4f2418613065",
+    "name": "tha_admin_boundaries.geojson.zip",
+    "url": "https://data.humdata.org/dataset/d24bdc45-eb4c-4e3d-8b16-44db02667c27/resource/89a09f13-7b83-458a-9531-4f2418613065/download/tha_admin_boundaries.geojson.zip",
+    "size": 436725731,
+    "hash": "bbf9fd9f",
+    "last_modified": "2026-01-26T16:23:47.052914"
+  },
+  "payload_sha256": "02370dc5bd824563de71fd71cc1ee0b88df717c935a09bd7f15611560ef8bfd1",
+  "production_import_allowed": false,
+  "known_conflict": "HDX Wiang Kao district TH4029 versus OAD 4026; preserve both identities for review, never silently remap."
+}

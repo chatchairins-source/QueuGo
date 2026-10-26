@@ -1,0 +1,137 @@
+{
+  "execution": "review_only_no_database_write",
+  "checked_date": "2026-10-26",
+  "status": "blocked_primary_code_reconciliation_external_dns",
+  "production_import_allowed": false,
+  "conflict": {
+    "name": "เวียงเก่า",
+    "oad_id": "4026",
+    "hdx_pcode": "TH4029",
+    "resolution": "unresolved; preserve both source identities; no automatic code rewrite"
+  },
+  "primary_sources": [
+    {
+      "publisher": "Ministry of Interior",
+      "page": "https://moi.go.th/moi/รหัสมาตรฐานเขตการปกครอ/",
+      "published_date": "2019-08-06",
+      "attachment": "https://www.moi.go.th/pls/portal/url/ITEM/872E524355C33545E0540003BA24A787",
+      "observed_result": "404 Not Found",
+      "eligible": false
+    },
+    {
+      "publisher": "DOPA",
+      "url": "https://multi.dopa.go.th/asa/assets/modules/news/uploads/b0722c0eb109ec0693b3719e37b2e56063ef167a53b25369097030715451219.pdf",
+      "observed_result": "403 Forbidden from both retrieval tool and direct HTTPS fetch",
+      "eligible": false
+    },
+    {
+      "publisher": "DLD Data Service Hub",
+      "url": "https://datahub.dld.go.th/datahub/index.php/data-standard/dataset-std/farmer/address/master-data-standard/location",
+      "html_sha256": "f015babb30ba2c973929fe9925b79b3f2fa54dd15a8f38d90a2234a44a458367",
+      "published_link": "https://bit.ly/tumbol-std",
+      "resolved_reference": "https://stat.bora.dopa.go.th/stat/statnew/statMenu/newStat/ccaa.php",
+      "observed_result": "DOPA target returned HTTP 503 by direct fetch; retrieval tool timed out",
+      "eligible": false
+    }
+  ],
+  "next": "Checksum-pinned official BORA operational PDF now corroborates code 4029 for Wiang Kao, but its version/scope does not replace the blocked current code-master payload. Keep 4026/4029 unresolved canonically. Next acquire a current/versioned checksum-pinned DOPA/MOI code master or equivalent authoritative row-level reference, then reconcile all HDX missing/extra codes. Preserve the 9 OSM geometry quarantines and keep Production import false until identity, freshness, provenance, hierarchy and PostGIS gates pass.",
+  "additional_attempts": [
+    {
+      "publisher": "DOPA Bureau of Registration Administration",
+      "reference_page": "https://stat.bora.dopa.go.th/new_stat/webPage/statByYear.php",
+      "listed_year_be": 2568,
+      "url": "https://stat.bora.dopa.go.th/new_stat/file/68/stat_a68.txt",
+      "scope": "district-level aggregate population file; administrative codes for corroboration only, not a licensed boundary master",
+      "observed_result": "HTTP 503 on initial fetch and one retry",
+      "eligible": false
+    },
+    {
+      "publisher": "DOPA Bureau of Registration Administration",
+      "reference_page": "https://stat.bora.dopa.go.th/new_stat/webPage/statByYear.php",
+      "listed_year_be": 2568,
+      "url": "https://stat.bora.dopa.go.th/new_stat/file/68/stat_t68.txt",
+      "scope": "subdistrict-level aggregate population file; administrative codes for corroboration only, not a licensed boundary master",
+      "observed_result": "HTTP 503 on initial fetch and one retry",
+      "eligible": false
+    },
+    {
+      "publisher": "National Statistical Office",
+      "metadata_api": "https://catalog.nso.go.th/api/3/action/package_search?q=รหัสท้องที่",
+      "dataset": "0210_00_0009",
+      "metadata_modified": "2026-05-21T02:54:23.100476",
+      "url": "https://catalogapi.nso.go.th/api/doc/department/D08/SD08_08/SD08_08_47_22.pdf",
+      "observed_result": "metadata acquired; resource download HTTP 418",
+      "eligible": false
+    }
+  ],
+  "latest_runner_acquisition": {
+    "source_head": "7471151721fbf097a85d3a71d2471611a2db49dd",
+    "workflow_run_id": 40257666157,
+    "workflow_conclusion": "success",
+    "artifact_id": 12623143167,
+    "artifact_digest": "sha256:ea6deedd9f129307792e39373149fccf50bb6180c9faba63889f229dfd9f4358",
+    "artifact_size_bytes": 2834,
+    "result": "acquired_official_corroboration_bytes_primary_master_still_blocked",
+    "attempts": [
+      {
+        "id": "bora_ccaa_page",
+        "url": "https://stat.bora.dopa.go.th/stat/statnew/statMenu/newStat/ccaa.php",
+        "curl_exit": 6,
+        "http_code": "000",
+        "bytes": 0,
+        "sha256": null,
+        "error": "Could not resolve host: stat.bora.dopa.go.th"
+      },
+      {
+        "id": "bora_ccaatt_xlsx",
+        "url": "https://stat.bora.dopa.go.th/dload/ccaatt.xlsx",
+        "curl_exit": 6,
+        "http_code": "000",
+        "bytes": 0,
+        "sha256": null,
+        "error": "Could not resolve host: stat.bora.dopa.go.th"
+      },
+      {
+        "id": "bora_2568_district_text",
+        "url": "https://stat.bora.dopa.go.th/new_stat/file/68/stat_a68.txt",
+        "curl_exit": 6,
+        "http_code": "000",
+        "bytes": 0,
+        "sha256": null,
+        "error": "Could not resolve host: stat.bora.dopa.go.th"
+      },
+      {
+        "id": "bora_2568_subdistrict_text",
+        "url": "https://stat.bora.dopa.go.th/new_stat/file/68/stat_t68.txt",
+        "curl_exit": 6,
+        "http_code": "000",
+        "bytes": 0,
+        "sha256": null,
+        "error": "Could not resolve host: stat.bora.dopa.go.th"
+      },
+      {
+        "id": "bora_registry_installation_plan_pdf",
+        "url": "https://www.bora.dopa.go.th/bora/spt/10050/",
+        "curl_exit": 0,
+        "http_code": "200",
+        "bytes": 232931,
+        "sha256": "d1b7313990eff9ec5990243aed1ef829b5c02e2e6e729c85507639001e182ad9",
+        "text_sha256": "a06270d4b05b5d95ae89177ba0e03728e07fcc0a04477d5ca5a4cc7fb85f6a71",
+        "parser": "pdftotext 24.02.0",
+        "code_4029_seen": true,
+        "wiang_kao_4029_name_match": true,
+        "wiang_kao_4026_name_match": false,
+        "evidence_role": "official_operational_corroboration",
+        "canonical_eligible": false,
+        "effective_url": "https://www.bora.dopa.go.th/wp-content/uploads/2022/02/plan_v26325.pdf",
+        "last_modified": "Sun, 13 Feb 2022 19:21:47 GMT",
+        "etag": "\"38de3-5d7eb3603d94a\"",
+        "content_type": "application/pdf",
+        "freshness_status": "historical_http_last_modified_2022",
+        "raw_payload_redistributed": false
+      }
+    ],
+    "identity_approval": "not_performed",
+    "production_import_allowed": false
+  }
+}

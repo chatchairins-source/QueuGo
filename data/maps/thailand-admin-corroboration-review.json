@@ -1,0 +1,161 @@
+{
+  "execution": "review_only_no_database_write",
+  "checked_date": "2026-10-26",
+  "status": "checksum_pinned_bora_and_current_government_corroboration_support_4029_but_primary_authority_unresolved",
+  "canonical_resolution": "unresolved",
+  "production_import_allowed": false,
+  "conflict": {
+    "name": "เวียงเก่า",
+    "oad_candidate": "4026",
+    "hdx_candidate": "4029",
+    "canonical_code_candidate": null,
+    "canonical_code_approved": false,
+    "resolution": "preserve both source identities; no rewrite, alias, remap or promotion"
+  },
+  "evidence_sources": [
+    {
+      "id": "moi_2019_standard_announcement",
+      "publisher": "Ministry of Interior",
+      "url": "https://moi.go.th/moi/รหัสมาตรฐานเขตการปกครอ/",
+      "source_type": "official_html",
+      "page_published_date": "2019-08-06",
+      "referenced_announcement_date": "2019-04-17",
+      "scope": "MOI announcement for Thailand standard administrative codes and attached province/district/subdistrict/village codes",
+      "row_evidence": false,
+      "checksum_status": "attachment_bytes_unavailable",
+      "freshness_status": "historical_standard_announcement",
+      "canonical_eligible": false
+    },
+    {
+      "id": "bora_birth_registry_fy2557",
+      "publisher": "Department of Provincial Administration / Bureau of Registration Administration",
+      "url": "https://www.bora.dopa.go.th/bora/sbp/9314/",
+      "source_type": "official_pdf",
+      "source_period": "FY2557",
+      "observed_page": 35,
+      "observed_rows": [
+        {
+          "code": "4029",
+          "name": "อำเภอเวียงเก่า",
+          "field": "R-Code"
+        }
+      ],
+      "checksum_status": "raw_pdf_bytes_not_available_for_checksum_in_current_environment",
+      "freshness_status": "historical",
+      "canonical_eligible": false
+    },
+    {
+      "id": "bora_registry_system_installation_plan",
+      "publisher": "Department of Provincial Administration / Bureau of Registration Administration",
+      "url": "https://www.bora.dopa.go.th/bora/spt/10050/",
+      "source_type": "official_pdf",
+      "source_period": "undated_in_retrieved_page",
+      "observed_page": 18,
+      "observed_rows": [
+        {
+          "code": "4029",
+          "name": "อำเภอเวียงเก่า",
+          "province": "ขอนแก่น"
+        }
+      ],
+      "checksum_status": "verified_exact_bytes",
+      "freshness_status": "historical_http_last_modified_2022_primary_scope_unresolved",
+      "canonical_eligible": false,
+      "effective_url": "https://www.bora.dopa.go.th/wp-content/uploads/2022/02/plan_v26325.pdf",
+      "bytes": 232931,
+      "sha256": "d1b7313990eff9ec5990243aed1ef829b5c02e2e6e729c85507639001e182ad9",
+      "text_sha256": "a06270d4b05b5d95ae89177ba0e03728e07fcc0a04477d5ca5a4cc7fb85f6a71",
+      "http_last_modified": "Sun, 13 Feb 2022 19:21:47 GMT",
+      "http_etag": "\"38de3-5d7eb3603d94a\"",
+      "row_evidence_from_same_checksum_pinned_bytes": true
+    },
+    {
+      "id": "dga_catalog_bot_dopa_location_codes",
+      "publisher": "Digital Government Development Agency catalog; dataset organization Bank of Thailand",
+      "url": "https://data.go.th/dataset/ds-3479",
+      "source_type": "government_open_data_metadata",
+      "description": "ข้อมูลรหัสที่ตั้ง (location code) ของกรมการปกครอง",
+      "dataset_id": "057d5232-4029-4d19-932f-ec9fbf041fff",
+      "resource_id": "f469c1e5-7aa3-4467-98ad-dc95ce896c01",
+      "metadata_updated": "2026-05-05",
+      "license": "Creative Commons Attributions",
+      "row_evidence": false,
+      "data_origin": "ระบบฐานข้อมูลกลางของธนาคารแห่งประเทศไทย",
+      "primary_dopa_bytes": false,
+      "checksum_status": "resource_rows_not_retrieved",
+      "freshness_status": "metadata_current_but_underlying_row_version_unresolved",
+      "canonical_eligible": false
+    },
+    {
+      "id": "doae_farmer_registry_wiang_kao_2026_10_26",
+      "publisher": "Department of Agricultural Extension",
+      "url": "https://farmer.doae.go.th/report/report6x/rice_ap/40/29/267_2/",
+      "source_type": "current_government_operational_html",
+      "dataset": "Farmer Registry rice off-season crop year 2567/68 by plot location",
+      "observed_data_date": "2026-10-26",
+      "observed_rows": [
+        {
+          "code": "402900",
+          "admin_type": "district",
+          "name": "เวียงเก่า",
+          "parent_code": "40"
+        },
+        {
+          "code": "402901",
+          "admin_type": "subdistrict",
+          "name": "ในเมือง",
+          "parent_code": "4029"
+        },
+        {
+          "code": "402902",
+          "admin_type": "subdistrict",
+          "name": "เมืองเก่าพัฒนา",
+          "parent_code": "4029"
+        },
+        {
+          "code": "402903",
+          "admin_type": "subdistrict",
+          "name": "เขาน้อย",
+          "parent_code": "4029"
+        }
+      ],
+      "primary_dopa_bytes": false,
+      "checksum_status": "not_checksum_pinned",
+      "freshness_status": "current_government_operational_corroboration",
+      "authority_limit": "Operational DOAE registry, not the DOPA/MOI canonical administrative-code master",
+      "canonical_eligible": false
+    },
+    {
+      "id": "doae_farmer_registry_wiang_kao_2026_10_21",
+      "publisher": "Department of Agricultural Extension",
+      "url": "https://farmer.doae.go.th/report/report6x/rice_pv/40/68_1/",
+      "source_type": "current_government_operational_html",
+      "dataset": "Farmer Registry main-season rice crop year 2568/69 by plot location",
+      "observed_data_date": "2026-10-21",
+      "observed_rows": [
+        {
+          "code": "402900",
+          "admin_type": "district",
+          "name": "เวียงเก่า",
+          "parent_code": "40"
+        }
+      ],
+      "primary_dopa_bytes": false,
+      "checksum_status": "not_checksum_pinned",
+      "freshness_status": "current_government_operational_corroboration",
+      "authority_limit": "Operational DOAE registry, not the DOPA/MOI canonical administrative-code master",
+      "canonical_eligible": false
+    }
+  ],
+  "gates": {
+    "identity_code_correctness": "blocked",
+    "current_primary_reference": "blocked",
+    "source_freshness": "blocked",
+    "license_provenance": "blocked_for_canonical_primary_reference",
+    "postgis_release_acceptance": "not_tested",
+    "current_government_operational_corroboration": "supports_4029_hierarchy",
+    "checksum_pinned_official_bora_corroboration": "supports_4029_not_4026"
+  },
+  "limits": "Checksum-pinned BORA operational PDF bytes and current DOAE operational registry data independently support 4029 for Wiang Kao; current DOAE also supports 402901/402902/402903 under parent 4029. The pinned BORA PDF has HTTP Last-Modified in 2022 and is an operational installation-plan document, not a current/versioned DOPA/MOI canonical code master. Canonical identity, freshness/provenance, geometry hierarchy and Production release gates therefore remain independent and blocked.",
+  "next": "Acquire a current/versioned checksum-pinned primary DOPA/MOI administrative-code payload or equivalent authoritative row-level reference. Then reconcile 4026/4029 and all HDX missing/extra code rows. Do not use DOAE operational corroboration to rewrite OAD codes or release any quarantined geometry."
+}

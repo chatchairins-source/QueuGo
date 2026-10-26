@@ -1,0 +1,23 @@
+{
+  "execution": "review_only_no_database_write",
+  "source": "osm",
+  "source_sha256": "2cc723c57b9a0b4ae25e92ac2fe4f5dad84db4a6dcb8e187a4062c73b562772c",
+  "engine": "Shapely 2.1.2 / GEOS 3.13.1",
+  "summary": {
+    "records": 2044,
+    "invalid": 0
+  },
+  "failures": [],
+  "geometry_validity_gate": "passed",
+  "source_parent_polygon_gate": "not_tested",
+  "production_import_allowed": false,
+  "limits": "Source geometry QA only; does not certify OAD identity/centroids, source freshness, cross-source containment, PostGIS release acceptance or village coverage.",
+  "hosted_evidence": {
+    "source_head": "cd5f74391a8878db03ddffbd4c203040bb77009a",
+    "audit_run_id": 40193873448,
+    "rc_run_id": 40193873429,
+    "conclusion": "success",
+    "artifact_id": 12598394287,
+    "artifact_sha256": "f6ede85c0fcc78526413501a4fa3d139fa0ad1ade23f6e9c6aaeed0e179a5ac2"
+  }
+}

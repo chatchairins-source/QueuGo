@@ -1,0 +1,45 @@
+{
+  "execution": "review_only_no_database_write",
+  "source": "hdx",
+  "source_sha256": "02370dc5bd824563de71fd71cc1ee0b88df717c935a09bd7f15611560ef8bfd1",
+  "engine": "Shapely 2.1.2 / GEOS 3.13.1",
+  "summary": {
+    "ADM0": {
+      "records": 1,
+      "invalid": 0,
+      "outside_parent": 0,
+      "missing_parent": 0
+    },
+    "ADM1": {
+      "records": 77,
+      "invalid": 0,
+      "outside_parent": 0,
+      "missing_parent": 0
+    },
+    "ADM2": {
+      "records": 928,
+      "invalid": 0,
+      "outside_parent": 0,
+      "missing_parent": 0
+    },
+    "ADM3": {
+      "records": 7425,
+      "invalid": 0,
+      "outside_parent": 0,
+      "missing_parent": 0
+    }
+  },
+  "failures": [],
+  "geometry_validity_gate": "passed",
+  "source_parent_polygon_gate": "passed",
+  "production_import_allowed": false,
+  "limits": "Source geometry QA only; does not certify OAD identity/centroids, source freshness, cross-source containment, PostGIS release acceptance or village coverage.",
+  "hosted_evidence": {
+    "source_head": "cd5f74391a8878db03ddffbd4c203040bb77009a",
+    "audit_run_id": 40193873487,
+    "rc_run_id": 40193873429,
+    "conclusion": "success",
+    "artifact_id": 12599351577,
+    "artifact_sha256": "3a539cf0fc86ada8b0004923b587fe878c8993cfcc57c14561e81dadf8f30a89"
+  }
+}

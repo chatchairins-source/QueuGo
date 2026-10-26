@@ -1,0 +1,74 @@
+name: QueueGo Thailand primary admin reference acquisition
+
+on:
+  push:
+    branches:
+      - work-web-queuego-places-osm-admin-boundaries-20261025
+    paths:
+      - '.github/workflows/queuego-thailand-primary-admin-reference.yml'
+      - 'scripts/acquire-thailand-primary-admin-reference.py'
+      - 'tests/primary-admin-reference-inspection.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-thailand-primary-admin-reference-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Verify offline XLSX/text/PDF inspection guards
+        run: python3 tests/primary-admin-reference-inspection.py
+      - name: Ensure deterministic PDF text extractor
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v pdftotext >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends poppler-utils
+          fi
+          command -v pdftotext
+          pdftotext -v
+      - name: Acquire official BORA primary-reference candidates without database access
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/thailand-primary-admin-reference"
+          mkdir -p "$out"
+          python3 scripts/acquire-thailand-primary-admin-reference.py "$out"
+          python3 - "$out/receipt.json" <<'PY'
+          import json,sys
+          r=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert r['execution']=='review_only_no_database_write'
+          assert r['production_import_allowed'] is False
+          assert r['identity_approval']=='not_performed'
+          x=next(s for s in r['sources'] if s['id']=='bora_ccaatt_xlsx')
+          if x.get('retrieved'): assert x.get('inspection',{}).get('valid_xlsx') is True
+          f=next(s for s in r['sources'] if s['id']=='bora_registry_installation_plan_pdf')
+          if f.get('retrieved'):
+              assert f.get('sha256') and f.get('bytes',0)>0
+              inspection=f.get('inspection',{})
+              assert inspection.get('pdf_text_extractable') is True
+              assert inspection.get('code_4029_seen') is True
+              assert inspection.get('wiang_kao_4029_name_match') is True
+              assert inspection.get('wiang_kao_4026_name_match') is False
+              print('BORA operational PDF evidence:',f['bytes'],f['sha256'],inspection.get('text_sha256'))
+          print('primary acquisition status:',r['status'])
+          PY
+      - name: Remove raw downloaded bodies before evidence artifact
+        shell: bash
+        run: find "$RUNNER_TEMP/thailand-primary-admin-reference" -maxdepth 1 -type f -name '*.bin' -delete
+      - name: Preserve headers checksums and bounded inspection receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-thailand-primary-admin-reference
+          path: ${{ runner.temp }}/thailand-primary-admin-reference/
+          if-no-files-found: error
+          compression-level: 9
+          retention-days: 7

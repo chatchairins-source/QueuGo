@@ -1,0 +1,204 @@
+name: QueueGo OSM Thailand admin boundary review
+
+on:
+  push:
+    branches:
+      - work-web-queuego-places-osm-admin-boundaries-20261025
+    paths:
+      - '.github/workflows/queuego-osm-admin-boundaries.yml'
+      - 'scripts/export-osm-admin-boundaries-geojsonseq.py'
+      - 'scripts/stage-osm-admin-boundaries.cjs'
+      - 'scripts/match-osm-admin-boundaries-to-oad.cjs'
+      - 'tests/osm-admin-boundaries-stage.cjs'
+      - 'tests/osm-admin-boundary-match.cjs'
+      - 'scripts/audit-admin-boundary-topology.py'
+      - 'tests/admin-boundary-topology.py'
+      - 'scripts/audit-osm-hdx-quarantine-geometry.py'
+      - 'tests/osm-hdx-quarantine-geometry.py'
+      - 'scripts/audit-hdx-thailand-admin.cjs'
+      - 'scripts/reconcile-thailand-admin-boundaries.cjs'
+      - 'tests/thailand-admin-reconciliation.cjs'
+      - 'data/maps/hdx-thailand-admin-boundary-review.json'
+      - 'data/maps/hdx-thailand-admin-topology-review.json'
+      - 'data/maps/osm-thailand-2026-10-24-bilingual-review.json'
+      - 'data/maps/thailand-admin-reference-acquisition.json'
+      - 'requirements-boundary-topology.txt'
+      - 'requirements-osm-staging.txt'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-osm-admin-boundaries-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PBF_URL: https://download.geofabrik.de/asia/thailand-261024.osm.pbf
+      PBF_MD5: 215e1ff30fe4d4adef2db3d664dab9da
+      PBF_SHA256: e8373240cf0be47cc641f2c8627e674064d8c47f4ff2a11f6a33fcbfc9a50949
+      SNAPSHOT_DATE: '2026-10-24'
+      RETRIEVED_AT: '2026-10-25T10:59:51Z'
+      OAD_COMMIT: eef739a534e26181c86073d69e9aeb527110cf1a
+      OAD_FLAT_BLOB: baa3eb18fb79412e85dcef08059d16f8cf47b317
+      OAD_SUBDISTRICT_BLOB: bd5c49a7e1af578c9e34e32020ddd90eabdc167f
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify boundary staging contracts
+        run: |
+          node tests/osm-admin-boundaries-stage.cjs
+          node tests/osm-admin-boundary-match.cjs
+      - name: Download exact reviewed Thailand PBF
+        shell: bash
+        run: |
+          set -euo pipefail
+          pbf="$RUNNER_TEMP/thailand.osm.pbf"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 5 "$PBF_URL" --output "$pbf"
+          test "$(md5sum "$pbf" | awk '{print $1}')" = "$PBF_MD5"
+          test "$(sha256sum "$pbf" | awk '{print $1}')" = "$PBF_SHA256"
+          test "$(stat -c '%s' "$pbf")" -eq 329280467
+      - name: Export OSM administrative polygons
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/qg-osm-admin-env"
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/pip" install --disable-pip-version-check -r requirements-osm-staging.txt -r requirements-boundary-topology.txt
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" scripts/export-osm-admin-boundaries-geojsonseq.py \
+            "$RUNNER_TEMP/thailand.osm.pbf" "$RUNNER_TEMP/osm-admin.geojsonseq"
+          test -s "$RUNNER_TEMP/osm-admin.geojsonseq"
+      - name: Stage privacy-safe admin boundary review
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/osm-admin-review"
+          node scripts/stage-osm-admin-boundaries.cjs \
+            "$RUNNER_TEMP/osm-admin.geojsonseq" "$out" \
+            "$PBF_URL" "$PBF_SHA256" "$SNAPSHOT_DATE" "$RETRIEVED_AT"
+          node - "$out/osm-th-admin-boundaries-stage-report.json" <<'NODE'
+          const fs=require('node:fs');
+          const r=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(r.execution!=='review_only_no_database_write') throw new Error('must remain review-only');
+          for(const level of ['province','district','subdistrict']){
+            if(!(r.summary?.staged_by_admin_type?.[level]>0)) throw new Error('missing '+level+' boundaries');
+          }
+          NODE
+      - name: Review exact OSM geometry validity with GEOS
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" tests/admin-boundary-topology.py
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" scripts/audit-admin-boundary-topology.py osm \
+            "$RUNNER_TEMP/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq" \
+            "$RUNNER_TEMP/osm-admin-review/osm-topology-review.json"
+      - name: Fetch exact pinned Open Admin Data hierarchy
+        shell: bash
+        run: |
+          set -euo pipefail
+          flat="$RUNNER_TEMP/all-flat.ndjson"
+          subs="$RUNNER_TEMP/all-subdistrict.json"
+          base="https://raw.githubusercontent.com/open-admin-data/thailand-administrative-divisions/$OAD_COMMIT/data"
+          curl --fail --silent --show-error --location --retry 5 "$base/all-flat.ndjson" --output "$flat"
+          curl --fail --silent --show-error --location --retry 5 "$base/all-subdistrict.json" --output "$subs"
+          test "$(git hash-object "$flat")" = "$OAD_FLAT_BLOB"
+          test "$(git hash-object "$subs")" = "$OAD_SUBDISTRICT_BLOB"
+      - name: Match OAD centroids to same-level OSM polygons
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/osm-admin-match"
+          node scripts/match-osm-admin-boundaries-to-oad.cjs \
+            "$RUNNER_TEMP/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq" \
+            "$RUNNER_TEMP/all-flat.ndjson" "$RUNNER_TEMP/all-subdistrict.json" "$out"
+          node - "$out/osm-oad-admin-boundary-match-report.json" <<'NODE'
+          const fs=require('node:fs');
+          const r=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(r.execution!=='review_only_no_database_write') throw new Error('matcher must remain review-only');
+          if(r.hierarchy_gate?.production_import_allowed!==false) throw new Error('audit must never authorize Production import');
+          console.log('Hierarchy coverage gate: '+r.hierarchy_gate.status+' (audit success is not import approval)');
+          if(r.oad_counts.province!==77||r.oad_counts.district!==928||r.oad_counts.subdistrict!==7364) throw new Error('unexpected OAD hierarchy counts');
+          if(r.summary.by_admin_type.province.deterministic!==77) throw new Error('province boundaries must match deterministic 77/77 before any promotion');
+          if(!(r.summary.by_admin_type.district.deterministic>0)) throw new Error('district matcher produced no deterministic coverage');
+          if(!(r.summary.by_admin_type.subdistrict.deterministic>0)) throw new Error('subdistrict matcher produced no deterministic coverage');
+          NODE
+      - name: Check chosen OAD-OSM child polygons against full matched parent polygons
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" scripts/audit-admin-boundary-topology.py osm \
+            "$RUNNER_TEMP/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq" \
+            "$RUNNER_TEMP/osm-admin-match/osm-crosswalk-parent-topology-review.json" \
+            --mapping "$RUNNER_TEMP/osm-admin-match/osm-oad-admin-boundary-mapping.json"
+          node - "$RUNNER_TEMP/osm-admin-match/osm-crosswalk-parent-topology-review.json" <<'NODE'
+          const r=require(process.argv[2]);
+          if(!r.osm_crosswalk_parent_review||r.production_import_allowed!==false) throw Error('review-only crosswalk containment report required');
+          if(r.osm_crosswalk_parent_review.production_import_allowed!==false) throw Error('crosswalk QA cannot authorize import');
+          NODE
+      - name: Reconcile identity topology provenance and freshness gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/thailand-admin-reconciliation.cjs
+          node scripts/reconcile-thailand-admin-boundaries.cjs \
+            data/maps/osm-thailand-2026-10-24-bilingual-review.json \
+            "$RUNNER_TEMP/osm-admin-match/osm-crosswalk-parent-topology-review.json" \
+            "$RUNNER_TEMP/osm-admin-review/osm-topology-review.json" \
+            data/maps/hdx-thailand-admin-boundary-review.json \
+            data/maps/hdx-thailand-admin-topology-review.json \
+            data/maps/thailand-admin-reference-acquisition.json \
+            "$RUNNER_TEMP/osm-admin-match/thailand-admin-reconciliation-review.json"
+          node - "$RUNNER_TEMP/osm-admin-match/thailand-admin-reconciliation-review.json" <<'NODE'
+          const r=require(process.argv[2]);
+          if(r.production_import_allowed!==false||r.release_decision!=='blocked') throw Error('reconciliation must fail closed');
+          if(r.summary.osm_matched_parent_excluded!==9||r.summary.eligible_rows!==0) throw Error('quarantine coverage changed unexpectedly');
+          if(r.summary.osm_excluded_hdx_identity_statuses?.code_name_centroid_match!==7||r.summary.osm_excluded_hdx_identity_statuses?.parent_unresolved!==2) throw Error('unexpected HDX diagnostics for OSM exclusions');
+          if(r.summary.hdx_source_topology_internal_pass_for_all_excluded!==true) throw Error('HDX source-internal topology evidence missing');
+          if(!r.osm_excluded_rows.every(x=>x.status==='quarantined'&&x.eligible===false&&x.cross_source_decision?.geometry_override_allowed===false)) throw Error('cross-source quarantine override detected');
+          if(r.gates.identity_code_correctness.status!=='blocked'||r.gates.postgis_release_acceptance.status!=='not_tested') throw Error('independent release gates were collapsed');
+          NODE
+      - name: Compare quarantined OSM polygons against exact HDX geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" tests/osm-hdx-quarantine-geometry.py
+          hdx_url=$(node -p "require('./scripts/audit-hdx-thailand-admin.cjs').PIN.url")
+          curl --fail --silent --show-error --location --retry 3 --max-time 600 "$hdx_url" --output "$RUNNER_TEMP/hdx-thailand.zip"
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" scripts/audit-osm-hdx-quarantine-geometry.py             "$RUNNER_TEMP/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq"             "$RUNNER_TEMP/osm-admin-match/osm-oad-admin-boundary-mapping.json"             "$RUNNER_TEMP/osm-admin-match/osm-crosswalk-parent-topology-review.json"             "$RUNNER_TEMP/hdx-thailand.zip"             "$RUNNER_TEMP/osm-admin-match/osm-hdx-quarantine-geometry-review.json"
+          "$RUNNER_TEMP/qg-osm-admin-env/bin/python" - "$RUNNER_TEMP/osm-admin-match/osm-hdx-quarantine-geometry-review.json" <<'PY'
+          import json,sys
+          r=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert r['execution']=='review_only_no_database_write'
+          assert r['production_import_allowed'] is False and r['canonical_source_selected'] is False
+          assert r['summary']['quarantined_rows']==9 and r['summary']['eligible_rows']==0
+          assert r['summary']['geometry_override_allowed_rows']==0
+          assert all(x['status']=='quarantined' and not x['eligible'] and not x['geometry_override_allowed'] and not x['canonical_geometry_approved'] for x in r['rows'])
+          assert all(x['source_parent_evidence']['hdx_parent_covers_hdx_child'] is True for x in r['rows'])
+          assert all(x['source_parent_evidence']['osm_parent_covers_osm_child'] is False for x in r['rows'] if x['osm_failure_status']=='outside_parent')
+          print(json.dumps(r['summary'],ensure_ascii=False))
+          PY
+      - name: Upload admin boundary audit artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-osm-thailand-admin-boundaries
+          path: |
+            ${{ runner.temp }}/osm-admin-review/osm-th-admin-boundaries-stage-report.json
+            ${{ runner.temp }}/osm-admin-review/osm-topology-review.json
+            ${{ runner.temp }}/osm-admin-review/osm-th-admin-boundaries.normalized.geojsonseq
+            ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-match-report.json
+            ${{ runner.temp }}/osm-admin-match/osm-crosswalk-parent-topology-review.json
+            ${{ runner.temp }}/osm-admin-match/thailand-admin-reconciliation-review.json
+            ${{ runner.temp }}/osm-admin-match/osm-hdx-quarantine-geometry-review.json
+            ${{ runner.temp }}/osm-admin-match/osm-oad-admin-boundary-mapping.json
+          if-no-files-found: error
+          compression-level: 9
+          retention-days: 7
