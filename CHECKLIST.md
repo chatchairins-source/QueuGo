@@ -1,11 +1,13 @@
-## 2026-10-26 Customer system Back destination parity — IN PROGRESS
+## 2026-10-26 Customer system Back destination parity — DONE (source/test/Native Pilot); process recreation remains open
 
-- Web blueprint: latest fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; current Native successor before this chunk is `cdc9b1a8aa6368902302b0a1cab4806cf2d5111e`, with exact Native Pilot `40275714947` **SUCCESS**. No open PR targets `work-native-web-parity-20261026`.
+- Web blueprint: latest fetched `main=7e036a0735cc49905e9b0a2434492470551a0c9d`; exact tested Native checkpoint `f236094b5535e9d39b37f135f5e24dd17192bed4`, forward from `cdc9b1a8aa6368902302b0a1cab4806cf2d5111e`. No open PR targets `work-native-web-parity-20261026`.
 - Root cause/evidence: Web `index.html` and `customer-features.js` use `history.back()` or explicit parent routes on Cart, Checkout, Map picker, Shop, Promotion, Favorites, Order detail, Market Trip, Laundry order, Chat and Support. Native's root `BackHandler` only handled Favorites, Market cart and Checkout specially, then routed every remaining screen to Home.
 - Bounded change: add one pure back-target resolver used by the existing Android BackHandler; capture current parent for Cart, Orders, Location picker and Promotions; align Cart, Location and Promotion Back controls with those destinations. Shopping mode still collapses before leaving its page. No second navigation stack or business state was introduced.
-- Focused checks: `node tests/native-android-source.cjs` PASS (328); `node tests/native-customer-web-home-parity.cjs` PASS (55); `node tests/native-customer-merchant-push.cjs` PASS; `git diff --check` PASS. Full `npm test` PASS (exit 0) on clean commit `68165b524772b349ab54e24ce7bd29a7289a9255`. Kotlin Back mapping and APK build await exact-head Native Pilot.
+- Focused checks: `node tests/native-android-source.cjs` PASS (328); `node tests/native-customer-web-home-parity.cjs` PASS (55); `node tests/native-customer-merchant-push.cjs` PASS; `git diff --check` PASS. Full `npm test` PASS (exit 0) on source commit `68165b524772b349ab54e24ce7bd29a7289a9255`.
+- Exact-head Native Pilot `40277886837` on `f236094b5535e9d39b37f135f5e24dd17192bed4`: **SUCCESS** — full QueueGo regression, Customer back JUnit and tracking tests, three APK builds, 16 KB packaging, WebView rejection, emulator launch/map/voice lifecycle and evidence upload. APK artifact `12631286228`; emulator evidence artifact `12631351397`.
+- Emulator evidence validates app launch/map/voice lifecycle; it does not exercise every authenticated Back route. Source/JUnit cover target selection. Physical-device parity is not claimed.
 - Scope limit: process-recreation restoration is a separate Customer P1 chunk and remains open. Authenticated Profile visual review still needs an authorized Customer review session.
-- **NEXT:** publish this verified Customer Back tree and pass exact-head Native Pilot/APK/emulator; record the resulting artifacts, then continue process-recreation parity without leaving Customer phase.
+- **NEXT:** make Customer screen restoration survive Android process recreation without reviving detail routes that lack their required server-backed state; add deterministic restore tests and run exact-head Native Pilot. Keep Customer active.
 
 ## 2026-10-26 Customer notification preferences and privacy entry — DONE (source/test/Native Pilot); authenticated review remains open
 
