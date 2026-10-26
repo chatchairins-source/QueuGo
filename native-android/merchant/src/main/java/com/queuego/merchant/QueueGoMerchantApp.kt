@@ -75,6 +75,7 @@ import com.queuego.shared.NativePushDeviceStore
 import com.queuego.shared.nativeLogoutScope
 import com.queuego.shared.QueueGoVoiceCallOverlay
 import com.queuego.shared.NativeVoiceCallController
+import com.queuego.shared.NativeVoicePhase
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
@@ -249,21 +250,50 @@ private fun MerchantShell(
         }
     }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
+    var pendingVoiceOrderId by remember { mutableStateOf<String?>(null) }
     val voicePermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted && pendingVoiceAnswer) {
-            voiceController.answerIncoming(auth)
-        } else if (!granted) {
-            message = "กรุณาอนุญาตไมโครโฟนเพื่อรับสายผ่าน QueueGo"
+        if (granted) {
+            if (pendingVoiceAnswer) {
+                voiceController.answerIncoming(auth)
+            } else {
+                pendingVoiceOrderId?.let { orderId ->
+                    if (voiceController.state.value.phase in setOf(
+                            NativeVoicePhase.RINGING_OUT,
+                            NativeVoicePhase.INCOMING,
+                            NativeVoicePhase.CONNECTING,
+                            NativeVoicePhase.CONNECTED
+                        )
+                    ) {
+                        message = "มีสาย QueueGo ที่กำลังดำเนินอยู่"
+                    } else {
+                        voiceController.startOutgoing(auth, orderId, "customer")
+                    }
+                }
+            }
+        } else {
+            message = "กรุณาอนุญาตไมโครโฟนเพื่อโทรผ่าน QueueGo"
         }
+        pendingVoiceOrderId = null
         pendingVoiceAnswer = false
+    }
+
+    fun startCustomerVoiceCall(orderId: String) {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.startOutgoing(auth, orderId, "customer")
+        } else {
+            pendingVoiceOrderId = orderId
+            pendingVoiceAnswer = false
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     fun answerVoiceCall() {
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             voiceController.answerIncoming(auth)
         } else {
+            pendingVoiceOrderId = null
             pendingVoiceAnswer = true
             voicePermission.launch(Manifest.permission.RECORD_AUDIO)
         }
@@ -674,11 +704,18 @@ private fun MerchantShell(
                     items = orderItems,
                     products = products,
                     busy = busy,
+                    canStartCustomerCall = voiceState.phase !in setOf(
+                        NativeVoicePhase.RINGING_OUT,
+                        NativeVoicePhase.INCOMING,
+                        NativeVoicePhase.CONNECTING,
+                        NativeVoicePhase.CONNECTED
+                    ),
                     onBack = {
                         selectedRiderContext = null
                         screen = "orders"
                     },
                     onAction = { action, reason -> selectedOrder?.let { runAction(it, action, reason) } },
+                    onCallCustomer = { selectedOrder?.let { startCustomerVoiceCall(it.id) } },
                     onAdjustReady = { delta -> selectedOrder?.let { adjustReadyEstimate(it, delta) } },
                     onSaveItems = { draft ->
                         val current = selectedOrder
@@ -1498,8 +1535,10 @@ private fun MerchantOrderDetail(
     items: List<MerchantOrderItem>,
     products: List<MerchantProduct>,
     busy: Boolean,
+    canStartCustomerCall: Boolean,
     onBack: () -> Unit,
     onAction: (String, String?) -> Unit,
+    onCallCustomer: () -> Unit,
     onAdjustReady: (Int) -> Unit,
     onSaveItems: (List<MerchantOrderEditItem>) -> Unit
 ) {
@@ -1549,6 +1588,14 @@ private fun MerchantOrderDetail(
                 Spacer(Modifier.height(8.dp))
                 Text("ที่อยู่จัดส่ง", color = QgMuted, style = MaterialTheme.typography.labelSmall)
                 Text(order.deliveryAddress?.takeIf(String::isNotBlank) ?: "-")
+                if (order.status !in setOf("completed", "delivered", "cancelled", "no_rider_available")) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onCallCustomer,
+                        enabled = !busy && canStartCustomerCall,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("โทรหาลูกค้าผ่าน QueueGo") }
+                }
             }
         }
         Spacer(Modifier.height(10.dp))

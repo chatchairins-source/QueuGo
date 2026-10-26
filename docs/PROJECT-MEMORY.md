@@ -1,3 +1,9 @@
+## 2026-10-26 Native Merchant order-detail QueueGo call
+
+- Web order detail exposes QueueGo voice calling on nonterminal orders. Native Merchant already shared the authenticated voice controller with other roles but lacked its outgoing customer action.
+- The detail action now calls the existing controller with target `customer`, requests microphone permission only when tapped, prevents a concurrent active call, and rechecks active-call state after permission returns. No phone-call fallback, duplicate signaling path, backend change or new call state.
+- Focused Native source 332/0 and existing shared voice UI/call SQL contracts pass. NEXT: commit, clean full regression, sync to the existing Native branch and run exact-head Pilot. Completed-order issue reporting remains open.
+
 ## 2026-10-26 Native Merchant order-detail parity follow-up
 
 - Verified Web blueprint `renderShopOrderModern` against Native `MerchantOrderDetail`: Web provides customer name/address, five delivery stages, item quantity total, and expected Rider cash only after pending/cancelled; Native previously omitted those details and showed cash for every state.

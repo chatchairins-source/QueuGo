@@ -398,6 +398,14 @@ ok(merchantOrderDetailApiSource.includes('select=id,delivery_address,rider_arriv
    merchantOrderDetailSource.includes('order.status !in setOf("pending", "pending_shop", "cancelled")')&&
    merchantOrderDetailSource.includes('"เงินสดที่ Rider จ่ายร้านเมื่อรับสินค้า"'),
    'Merchant order detail must show the Web customer/address/progress/item-count and only show Rider cash when Web does');
+ok(merchantAppSource.includes('voiceController.startOutgoing(auth, orderId, "customer")')&&
+   merchantAppSource.includes('pendingVoiceOrderId')&&
+   merchantAppSource.includes('voicePermission.launch(Manifest.permission.RECORD_AUDIO)')&&
+   merchantAppSource.includes('voiceController.state.value.phase in setOf(')&&
+   merchantOrderDetailSource.includes('onCallCustomer')&&
+   merchantOrderDetailSource.includes('"โทรหาลูกค้าผ่าน QueueGo"')&&
+   merchantOrderDetailSource.includes('"completed", "delivered", "cancelled", "no_rider_available"'),
+   'Merchant order detail must start the existing authenticated QueueGo customer voice call only in active order states');
 ok(source.includes('RiderReadyCard')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve one Ready card and the active job accept countdown');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');

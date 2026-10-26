@@ -5,6 +5,13 @@
 - Clean full `TZ=Asia/Bangkok npm test` on exact source commit `517140355858fb74b2e9593004b5728a22b9ca19`: EXIT 0; Native source 331/0, order state 70/0, stability 106/0, Merchant title 18/0, substitution 32/0, and map QA 28/0. The first uncommitted run was correctly stopped by the release-evidence clean-checkout guard; rerun passed after commit.
 - **NEXT:** run hosted Native Pilot on the current exact source tree and review the Android detail layout on emulator; then continue the Customer page/state audit. Customer-call and completed-order report actions remain open Merchant detail gaps.
 
+## 2026-10-26 Merchant QueueGo customer call parity — IN PROGRESS
+
+- Web order detail invokes the existing QueueGo voice caller while an order is active. Native already has the shared authenticated voice controller and permission flow, but Merchant detail had no outgoing customer-call action.
+- Bounded change: add the Web-labeled call action for nonterminal orders, request `RECORD_AUDIO` only on tap, and reuse the shared controller's existing `startOutgoing(auth, orderId, "customer")`. It disables during another active call and rechecks state after permission returns. No phone-number fallback, new signaling or backend authority.
+- Focused Native source 332/0, shared voice UI and call SQL contracts PASS. Clean full regression and exact hosted Kotlin/APK/emulator validation pending.
+- **NEXT:** commit and run full clean regression, then sync this tree and inspect exact-head Native Pilot. Completed-order issue reporting remains a separate Web parity gap.
+
 ## 2026-10-26 Native Merchant order-detail source checkpoint — exact Pilot NEXT
 
 - Current local Native successor commit: `517140355858fb74b2e9593004b5728a22b9ca19`, descendant of the verified local/remote integration checkpoint; last remote source tree was `5aa83efa7d8b2fac897319fb71b4e9e2dfeadae0`. The exact source diff is Merchant order-detail fields/presentation/tests plus the two parity matrices and continuation docs.
