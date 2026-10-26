@@ -1,3 +1,9 @@
+## 2026-10-26 Merchant POS tracked stock parity — DONE (source + exact-head Native Pilot)
+
+- Native POS parity implementation `6199e8561c7433a7cf95cdb6cb92ff316bec07ba`; checklist successor HEAD `43f98d6cdd05bccfe7e0b0f76998258abaa0c062` with source tree unchanged after that code commit.
+- Exact Native Pilot [40304316009](https://github.com/chatchairins-source/QueuGo/actions/runs/40304316009) on exact HEAD `43f98d6cdd05bccfe7e0b0f76998258abaa0c062` completed SUCCESS: full QueueGo regression, Native source/JUnit gates, all three APK builds, Android 16 KB packaging, WebView rejection, and emulator launch/map/voice lifecycle evidence.
+- **NEXT:** continue the Web Production versus Native Merchant catalog/POS audit for any remaining P1/P0 gaps. After that audit, continue Customer inventory P1/P0 parity; document each bounded result and proceed to the next confirmed gap.
+
 ## 2026-10-26 Merchant POS tracked stock parity — implementation committed; hosted exact-head Pilot pending
 
 - Web Production `merchant/pos-table-v2.js` loads `stock`, `inventory_stock_tracking`, `grocery_master_id`, and `grocery_stock_tracking`; it keeps products visible and disables only the add action when tracking is enabled and stock is zero or below, while displaying remaining stock.
