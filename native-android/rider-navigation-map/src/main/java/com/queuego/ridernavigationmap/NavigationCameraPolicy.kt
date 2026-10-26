@@ -54,7 +54,7 @@ internal fun navigationCameraDecision(
                 accuracyMeters = fix.accuracyMeters
             )
         } else {
-            state.followZoom.coerceIn(14, 20)
+            state.followZoom.coerceIn(14, 20).toDouble()
         }
         return NavigationCameraDecision(
             center = fix.point,
