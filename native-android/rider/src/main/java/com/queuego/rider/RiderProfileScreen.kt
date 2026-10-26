@@ -49,10 +49,12 @@ fun RiderProfileScreen(
     history: List<RiderHistoryOrder>,
     api: QueueGoApi,
     onSnapshot: (RiderSnapshot) -> Unit,
+    onOpenHome: () -> Unit,
     onNavigationSettings: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
-    workSettings: @Composable () -> Unit = {}
+    workSettings: @Composable () -> Unit = {},
+    routeSettings: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -229,7 +231,19 @@ fun RiderProfileScreen(
                 }
             }
             Spacer(Modifier.height(22.dp))
-            RiderProfileSection("การรับงาน") { workSettings() }
+            RiderProfileSection("รูปแบบและประเภทงาน") { workSettings() }
+            Spacer(Modifier.height(10.dp))
+            RiderProfileSection("การรับงาน") {
+                RiderSettingRow(
+                    "สถานะรับงาน",
+                    "จัดการสถานะที่หน้าแรก",
+                    R.drawable.qg_rider_flow_loc,
+                    trailing = { RiderProfilePill(snapshot?.online == true, offlineLabel = "ปิด") },
+                    onClick = onOpenHome
+                )
+                RiderSettingDivider()
+                routeSettings()
+            }
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("บัญชีและช่วยเหลือ") {
                 RiderSettingRow("ตั้งค่าบัญชี", "ชื่อ เบอร์โทร และข้อมูลบัญชี", R.drawable.qg_rider_nav_user, enabled = !busy) {
