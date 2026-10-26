@@ -1,3 +1,13 @@
+## 2026-10-26 Native Customer Web parity — Home category geometry DONE (source/test)
+
+- Stream: Android/Web visual parity, Customer only. Active branch `work-native-web-parity-20261026`; Web blueprint remains pinned to `main=7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Root cause/evidence: after category authority/order parity, Native category tiles were wider than the Web Home contract and allowed labels to wrap. Current Web uses 64 px tile width, 13 px gap, 54 px circle, 25 px icon and 10 px one-line label.
+- Change: Native category tile width is now 64 dp; category labels are single-line/non-wrapping. Existing 54 dp circle, 25 dp icon, 13 dp gap, 10 sp label and all routes are preserved.
+- Implementation HEAD: `693aa1a6ccc3c5abb2155bb3198c53195e75320e`.
+- Test/CI: Native Pilot run `40259408078` **SUCCESS** — full QueueGo regression, Customer Web Home parity gate, source integrity, Kotlin/unit suites, all three APK builds, Android 16 KB packaging, WebView rejection, artifact upload, and emulator launch/map/voice lifecycle all passed.
+- Status: **DONE (source/test)**. Physical-device pixel parity is not claimed.
+- NEXT: continue Customer only. Match bottom navigation geometry to Web: preserve exact labels/order, use Web-equivalent outer padding (home 6 dp / other 4 dp), item padding (3 dp / 2 dp), icon box (24 dp / 22 dp), icon 20 dp, label 10 sp / 9 sp, and remove Android-only fixed row height / oversized line-height. Then run focused parity + exact-head Native Pilot.
+
 ## 2026-10-26 Native Customer Web parity — Home category authority DONE (source/test)
 
 - Stream: Android/Web visual parity. Active branch `work-native-web-parity-20261026`; Web blueprint is current `main=7e036a0735cc49905e9b0a2434492470551a0c9d`. Native successor descends from tested `65918d8ca7dbe720127e1c915a0483c3f209cb01`; no legacy branch, WebView, Longdo or duplicate implementation was introduced.
