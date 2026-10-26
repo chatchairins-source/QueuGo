@@ -871,12 +871,17 @@ private class RiderNavigationMapHolder {
         if (!state.followRider && !explicitRecenter) return
         val renderedBearing = activeMap.cameraPosition.bearing.toFloat()
         val decision = navigationCameraDecision(state, renderedBearing, followPuckBearing = true) ?: return
+        val targetBearing = if (state.followRider) {
+            resolvedRiderPuckHeading(state.rider) ?: decision.bearingDegrees ?: renderedBearing
+        } else {
+            decision.bearingDegrees ?: renderedBearing
+        }
         val pointChanged = lastCameraPoint == null ||
             navigationHaversineMeters(lastCameraPoint!!, decision.center) >=
             navigationCameraMovementThresholdMeters(state.rider?.speedMetersPerSecond)
         val bearingChanged = navigationBearingChangedEnough(
             lastCameraBearing ?: renderedBearing,
-            decision.bearingDegrees,
+            targetBearing,
             CAMERA_BEARING_MIN_DELTA_DEGREES
         )
         val tiltChanged = navigationTiltChangedEnough(
@@ -885,11 +890,6 @@ private class RiderNavigationMapHolder {
         )
         if (!force && !explicitRecenter && !pointChanged && !bearingChanged && !tiltChanged) return
 
-        val targetBearing = if (state.followRider) {
-            resolvedRiderPuckHeading(state.rider) ?: decision.bearingDegrees ?: renderedBearing
-        } else {
-            decision.bearingDegrees ?: renderedBearing
-        }
         val cameraAnimationMs = navigationRotationDurationMillis(
             currentBearing = renderedBearing,
             targetBearing = targetBearing,
