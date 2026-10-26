@@ -10,7 +10,7 @@ private const val ROUTE_BEARING_MAX_OFF_ROUTE_METERS = 25.0
 
 data class NavigationCameraDecision(
     val center: NavigationMapPoint,
-    val zoom: Int,
+    val zoom: Double,
     val bearingDegrees: Float?,
     val tiltDegrees: Float,
     val routeMatch: NavigationRouteMatch?,
@@ -187,24 +187,29 @@ internal fun navigationZoom(
     remainingRouteMeters: Double?,
     accuracyMeters: Float?,
     nextTurnDistanceMeters: Double? = null
-): Int {
-    val base = baseZoom.coerceIn(14, 20)
+): Double {
+    val base = baseZoom.coerceIn(14, 20).toDouble()
+    val speed = speedMetersPerSecond
+        ?.takeIf { it.isFinite() && it >= 0f }
+        ?.toDouble()
     var target = when {
-        remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 19
-        nextTurnDistanceMeters != null && nextTurnDistanceMeters <= 60.0 -> 19
-        nextTurnDistanceMeters != null && nextTurnDistanceMeters <= 150.0 -> 18
-        remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 18
-        speedMetersPerSecond == null -> base
-        speedMetersPerSecond >= 18f -> 15
-        speedMetersPerSecond >= 11f -> 16
-        speedMetersPerSecond >= 5f -> 17
-        speedMetersPerSecond <= 1.5f -> maxOf(base, 18)
-        else -> base
+        remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 19.0
+        remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 18.0
+        speed == null -> base
+        speed <= 0.8 -> maxOf(base, 18.4)
+        speed <= 5.0 -> 18.4 - (speed - 0.8) * (1.4 / 4.2)
+        speed <= 11.0 -> 17.0 - (speed - 5.0) / 6.0
+        speed <= 18.0 -> 16.0 - (speed - 11.0) / 7.0
+        else -> 15.0
     }
+    target = kotlin.math.round(target * 10.0) / 10.0
     if (accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 60f) {
-        target = (target - 1).coerceAtLeast(14)
+        target = maxOf(14.0, target - 1.0)
     }
-    return target.coerceIn(14, 20)
+    // Web does not zoom from next-turn distance independently of route remaining distance.
+    @Suppress("UNUSED_VARIABLE")
+    val ignoredNextTurnDistanceMeters = nextTurnDistanceMeters
+    return target.coerceIn(14.0, 20.0)
 }
 
 internal fun navigationTilt(
@@ -213,15 +218,15 @@ internal fun navigationTilt(
     accuracyMeters: Float?
 ): Float {
     val target = when {
-        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 35f -> 38f
-        remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 45f
-        remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 46f
-        speedMetersPerSecond == null -> 45f
+        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 80f -> 24f
+        remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 28f
+        remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 34f
+        speedMetersPerSecond == null -> 38f
         speedMetersPerSecond >= 18f -> 52f
-        speedMetersPerSecond >= 11f -> 50f
-        speedMetersPerSecond >= 5f -> 48f
-        speedMetersPerSecond >= 2f -> 46f
-        else -> 45f
+        speedMetersPerSecond >= 11f -> 49f
+        speedMetersPerSecond >= 5f -> 45f
+        speedMetersPerSecond >= 2f -> 40f
+        else -> 34f
     }
     return target.coerceIn(0f, 55f)
 }
@@ -231,13 +236,13 @@ internal fun navigationFreeDriveTilt(
     accuracyMeters: Float?
 ): Float {
     val target = when {
-        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 35f -> 38f
-        speedMetersPerSecond == null -> 45f
-        speedMetersPerSecond >= 18f -> 52f
+        accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 80f -> 28f
+        speedMetersPerSecond == null -> 44f
+        speedMetersPerSecond >= 18f -> 53f
         speedMetersPerSecond >= 11f -> 51f
-        speedMetersPerSecond >= 5f -> 49f
-        speedMetersPerSecond >= 2f -> 47f
-        else -> 45f
+        speedMetersPerSecond >= 5f -> 48f
+        speedMetersPerSecond >= 2f -> 44f
+        else -> 40f
     }
     return target.coerceIn(0f, 55f)
 }
@@ -261,7 +266,7 @@ internal fun smoothNavigationTilt(
 internal fun navigationTiltChangedEnough(
     previous: Float?,
     next: Float,
-    minimumDeltaDegrees: Float = 0.75f
+    minimumDeltaDegrees: Float = 0.5f
 ): Boolean {
     if (!next.isFinite()) return false
     if (previous == null || !previous.isFinite()) return true
@@ -442,12 +447,12 @@ internal fun navigationRotationDurationMillis(
     val angleBase: Float
     val angleGain: Float
     when {
-        speed == null -> { minDuration = 650L; maxDuration = 800L; cadenceFactor = 0.90; angleBase = 620f; angleGain = 2.4f }
-        speed >= 18f -> { minDuration = 500L; maxDuration = 620L; cadenceFactor = 0.58; angleBase = 470f; angleGain = 1.6f }
-        speed >= 11f -> { minDuration = 520L; maxDuration = 650L; cadenceFactor = 0.64; angleBase = 490f; angleGain = 1.8f }
-        speed >= 5f -> { minDuration = 540L; maxDuration = 700L; cadenceFactor = 0.72; angleBase = 510f; angleGain = 2.0f }
-        speed >= 2f -> { minDuration = 580L; maxDuration = 760L; cadenceFactor = 0.80; angleBase = 550f; angleGain = 2.2f }
-        else -> { minDuration = 650L; maxDuration = 800L; cadenceFactor = 0.90; angleBase = 620f; angleGain = 2.4f }
+        speed == null -> { minDuration = 420L; maxDuration = 900L; cadenceFactor = 0.90; angleBase = 340f; angleGain = 6.2f }
+        speed >= 18f -> { minDuration = 220L; maxDuration = 460L; cadenceFactor = 0.58; angleBase = 170f; angleGain = 3.7f }
+        speed >= 11f -> { minDuration = 260L; maxDuration = 540L; cadenceFactor = 0.64; angleBase = 200f; angleGain = 4.1f }
+        speed >= 5f -> { minDuration = 310L; maxDuration = 660L; cadenceFactor = 0.72; angleBase = 240f; angleGain = 4.8f }
+        speed >= 2f -> { minDuration = 360L; maxDuration = 760L; cadenceFactor = 0.80; angleBase = 290f; angleGain = 5.4f }
+        else -> { minDuration = 420L; maxDuration = 900L; cadenceFactor = 0.90; angleBase = 340f; angleGain = 6.2f }
     }
     if (currentBearing == null || !currentBearing.isFinite() ||
         targetBearing == null || !targetBearing.isFinite()
@@ -513,9 +518,48 @@ internal fun navigationBearingChangedEnough(
     return delta >= minimumDeltaDegrees.coerceAtLeast(0.5f)
 }
 
-internal fun navigationCameraMovementThresholdMeters(speedMetersPerSecond: Float?): Double = when {
-    speedMetersPerSecond == null -> 1.6
-    speedMetersPerSecond < 1.2f -> 2.4
-    speedMetersPerSecond < 4f -> 0.9
-    else -> 0.45
+internal fun navigationCameraMovementThresholdMeters(speedMetersPerSecond: Float?): Double {
+    @Suppress("UNUSED_VARIABLE")
+    val ignoredSpeedMetersPerSecond = speedMetersPerSecond
+    return 0.8
+}
+
+internal fun navigationScreenAnchorRatio(speedMetersPerSecond: Float?): Double = when {
+    speedMetersPerSecond == null -> 0.68
+    speedMetersPerSecond >= 18f -> 0.76
+    speedMetersPerSecond >= 11f -> 0.74
+    speedMetersPerSecond >= 5f -> 0.72
+    speedMetersPerSecond >= 2f -> 0.69
+    else -> 0.66
+}
+
+internal fun navigationFollowCameraPadding(
+    insets: NavigationViewportInsets,
+    viewportHeightPx: Int,
+    speedMetersPerSecond: Float?
+): DoubleArray {
+    val safe = insets.normalized()
+    val height = viewportHeightPx.coerceAtLeast(1).toDouble()
+    val inset = safe.bottomPx.toDouble().coerceIn(0.0, height * 0.6)
+    val desiredY = maxOf(
+        height * 0.46,
+        minOf(height * navigationScreenAnchorRatio(speedMetersPerSecond), height - inset - 56.0)
+    )
+    val requiredDifference = 2.0 * desiredY - height
+    val baseDifference = safe.topPx.toDouble() - safe.bottomPx.toDouble()
+    val top: Double
+    val bottom: Double
+    if (requiredDifference >= baseDifference) {
+        bottom = safe.bottomPx.toDouble()
+        top = bottom + requiredDifference
+    } else {
+        top = safe.topPx.toDouble()
+        bottom = top - requiredDifference
+    }
+    return doubleArrayOf(
+        safe.leftPx.toDouble(),
+        top.coerceAtLeast(safe.topPx.toDouble()),
+        safe.rightPx.toDouble(),
+        bottom.coerceAtLeast(safe.bottomPx.toDouble())
+    )
 }
