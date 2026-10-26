@@ -116,6 +116,12 @@ ok(
   'Shared remote images must be bounded, sampled before decode and recycled instead of risking all-role OOM'
 );
 ok(
+  sharedDesign.includes('val attempts = if (source.startsWith("https://")) 2 else 1') &&
+  sharedDesign.includes('for (attempt in 0 until attempts)') &&
+  sharedDesign.includes('if (attempt + 1 < attempts) delay(600)'),
+  'Shared HTTPS images may retry one transient failure without unbounded polling'
+);
+ok(
   sharedChatImage.includes('DisposableEffect(bitmap)') &&
   sharedChatImage.includes('owned.recycle()'),
   'Shared chat images must release Bitmap memory when messages leave composition'
