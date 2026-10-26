@@ -111,7 +111,7 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Text("รายได้", fontSize = 26.sp, fontWeight = FontWeight.Bold) }
             Spacer(Modifier.width(64.dp))
         }
-        com.queuego.shared.QueueGoCreditCard(auth.user.id, auth.session.accessToken, "rider")
+        com.queuego.shared.QueueGoCreditInline(auth.user.id, auth.session.accessToken, "rider")
         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, Color(0xFFEEE6E8)), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Row(Modifier.fillMaxWidth().padding(5.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(1 to "วันนี้", 7 to "7 วัน", 30 to "30 วัน").forEach { (value, label) ->
