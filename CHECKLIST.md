@@ -1,3 +1,10 @@
+## 2026-10-26 Merchant order-note presentation — IN PROGRESS (source checkpoint; hosted tests NEXT)
+
+- Artifact 12650270511 at `5a682121d463ce94851a8fc03b591c97667c8550` visibly exposes a marker-only note `__QT_ORDER_STATUS__=completed`. Merchant list directly rendered raw `order.note`; Web stores that protocol line for status compatibility. Rider already had a tested display-only filter for this exact marker.
+- Moved that existing policy unchanged into shared `cleanOrderDisplayNote`; Rider delegates to it and Merchant list now uses it. Raw DTO/API notes, status parsing, cancellation and order writes remain intact. Embedded customer text and unrelated note lines remain visible.
+- Added shared tests for marker-only/null/blank, mixed instructions and embedded/unrelated marker text; existing Rider tests continue to exercise its delegate. Source review confirms one Merchant display call, unchanged filtering policy and no raw parser mutation. Local Android/Kotlin unavailable; exact hosted regression/JVM/capture required before DONE.
+- **NEXT:** inspect exact successor Pilot first confirmed failure, then regenerated Merchant Orders/Products/Home and Rider Home screenshots. Continue Rider Home semantic readiness and remaining Customer Ride map-context audit. Keep Customer credential/physical/release blockers separate.
+
 ## 2026-10-26 Merchant JSON-null category — IN PROGRESS (source checkpoint; JVM/Pilot NEXT)
 
 - Authenticated artifact 12650270511 at `5a682121d463ce94851a8fc03b591c97667c8550` shows literal `null` on a product category. Root cause: `merchantProductFromRow` used `optString`, whose JSON-null string bypassed `ifBlank`. Web uses `p.category ?? p.metadata?.category ?? ''`.

@@ -1544,7 +1544,9 @@ private fun MerchantOrderCard(order: MerchantOrder, onOpen: (MerchantOrder) -> U
             merchantOrderTimeLabel(order.createdAt).takeIf { it.isNotBlank() }?.let {
                 Text(it, color = QgMuted, style = MaterialTheme.typography.labelSmall)
             }
-            if (!order.note.isNullOrBlank()) Text(order.note!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            com.queuego.shared.cleanOrderDisplayNote(order.note)?.let { note ->
+                Text(note, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
