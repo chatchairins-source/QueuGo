@@ -2520,6 +2520,14 @@ private fun RiderHome(
             onGuidance = { navigationGuidance = it }
         )
 
+        if (!activeNavigationWork) {
+            RiderMapWordmark(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 10.dp)
+            )
+        }
+
         if (activeNavigationWork) {
             navigationHud?.let { hud ->
                 RiderManeuverBanner(
@@ -4267,24 +4275,60 @@ private fun RiderSpeedLimitSign(speedLimitKph: Int) {
 }
 
 @Composable
+private fun RiderMapWordmark(modifier: Modifier = Modifier) {
+    Row(
+        modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "Queue",
+            color = Color(0xFF17171B).copy(alpha = 0.46f),
+            fontSize = 11.sp,
+            lineHeight = 12.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-0.3).sp
+        )
+        Text(
+            "Go",
+            color = QgRed.copy(alpha = 0.46f),
+            fontSize = 11.sp,
+            lineHeight = 12.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-0.3).sp
+        )
+    }
+}
+
+@Composable
 private fun RiderBlueprintSpeedPill(speedKph: Int?) {
     Card(
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.size(52.dp),
+        shape = androidx.compose.foundation.shape.CircleShape,
         colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE7E9))
     ) {
-        Row(
-            Modifier.heightIn(min = 44.dp).padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 3.dp, vertical = 5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 speedKph?.coerceIn(0, 199)?.toString() ?: "—",
                 color = Color(0xFF211E20),
-                fontSize = 22.sp,
+                fontSize = 20.sp,
+                lineHeight = 20.sp,
                 fontWeight = FontWeight.Black
             )
-            Text("กม./ชม.", color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "กม./ชม.",
+                color = Color(0xFF8D8589),
+                fontSize = 7.sp,
+                lineHeight = 7.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
     }
 }
