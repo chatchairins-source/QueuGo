@@ -1092,9 +1092,13 @@ private fun CustomerShell(
                             message = "หนึ่งตะกร้าสั่งได้จากร้านเดียว กรุณาสั่งร้านเดิมให้เสร็จก่อน"
                         } else {
                             val existing = cart.find { it.product.id == product.id }
-                            cart = if (existing == null) cart + CartLine(product, 1)
-                            else cart.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
-                            message = "เพิ่มลงตะกร้าแล้ว"
+                            if (existing != null && existing.quantity >= 99) {
+                                message = "เพิ่มได้สูงสุด 99 ชิ้นต่อรายการ"
+                            } else {
+                                cart = if (existing == null) cart + CartLine(product, 1)
+                                else cart.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
+                                message = "เพิ่มลงตะกร้าแล้ว"
+                            }
                         }
                     },
                     onCart = {

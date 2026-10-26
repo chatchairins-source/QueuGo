@@ -1,3 +1,13 @@
+## 2026-10-26 Native three-app parity — latest verified successor and pending P1 work
+
+- Current owner scope is continuous Native Customer/Merchant/Rider parity against Web Production `main=7e036a0735cc49905e9b0a2434492470551a0c9d`, on `work-native-web-parity-20261026`. This latest scope supersedes older map-only work restrictions. Preserve Rider PR #729 ancestry, current QueueGo map authority, existing cash-only/order/audit rules and all inherited capabilities; no overlay or APK publication is requested.
+- Merchant online POS options through `49478a5ca477f84b89d7c004d010da3f991739b1` passed exact Pilot `40309589021`. Offline option snapshots/grouping/review/exact RPC replay in `bbeb3eb9efbcde5c108cb7f514e3020eb679f812` passed exact Pilot `40311664858`. Merchant tracked-stock and inventory adjustments/history are inherited and preserved.
+- Customer Grocery category/50+1 paging, same-offset retry, category/shop generation fences and cache in `f262329d657409fa29bc4129afcabd674bc91244` passed exact Pilot `40313768964`. Each cited Pilot includes full regression/JVM, all three APKs, 16 KB, WebView rejection and emulator lifecycle.
+- This successor adds the bounded signed-in shop 99-unit guard matching Web, guest and cart paths; its exact successor Pilot is NEXT. Native previously could send a three-digit quantity rejected by the cash checkout's two-digit positive qty rule.
+- Confirmed next P1: Native Laundry discovery uses active/enabled raw tables, whose RLS does not enforce Web's accepted-active-Rider eligibility. Reuse `queuego_laundry_customer_catalog` and its nested settings/services, revalidate selected hub through that authority; retain existing checkout/pending request IDs and all financial/state authority.
+- Rider active-job transition and Merchant product structured-option/reduction audits found no additional P1/P0 gap in those inspected capabilities. Web Customer menu-option selection is also absent, so do not add a duplicate or unsupported Customer option flow.
+- **NEXT:** exact successor Pilot for quantity guard; repair only the first confirmed failure, then implement Laundry catalog authority and continue the remaining Customer/Rider audit. Keep CHECKLIST and this memory current. Authenticated visual review, physical GPS/device acceptance, signing/Play and Production cutover remain separate and are not certified by these source/Pilot results.
+
 ## 2026-10-26 Native Merchant completed-order support ticket parity
 
 - Web completed orders alone show `แจ้งปัญหาออเดอร์นี้`, opening the existing QueueGo ticket panel with the current order selected. Native detail lacked this action; profile's Native support chat is a separate behavior.

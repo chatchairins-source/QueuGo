@@ -1,3 +1,21 @@
+## 2026-10-26 Customer signed-in shop quantity cap — IN PROGRESS (bounded source fix; Pilot NEXT)
+
+- Web Production `index.html` refuses another add when a line already has 99 units. Native guest-shop and both cart-plus paths also cap at 99, but signed-in `ShopScreen.onAdd` incremented the quantity without a bound. `QueueGoCartStore` restores at most 99, while checkout sends the in-memory quantity verbatim; SQL `queuego_place_cash_order_core` requires `qty` matching `^[1-9][0-9]?$`. This source mismatch can produce an invalid checkout and inconsistent restored quantity.
+- Added the same 99-unit refusal and Thai limit message to the signed-in shop add path only. Existing pending-checkout guards remain in effect. Bounded source review confirms 98→99 is accepted, while 99 or above is refused; full hosted successor validation is pending.
+- **NEXT:** run/poll Native Pilot on the exact successor HEAD; fix only its first confirmed failure. Then fix the confirmed Customer Laundry catalog P1 below, using the same existing authority as Web.
+
+## 2026-10-26 Customer Laundry eligible-catalog authority — P1 gap confirmed
+
+- Web `customer-laundry.js` calls `queuego_laundry_customer_catalog`. `QueueGo-Laundry-Customer-Catalog.sql` returns only enabled active Laundry shops with active services and at least one accepted active Laundry Rider; it also returns the authoritative settings/services snapshot.
+- Native `CustomerLaundryApi.catalog` instead reads active hubs and enabled pickup/return settings directly, and `services` reads the active service table. `QueueGo-Laundry-v2.sql` hubs RLS allows active hubs, and `QueueGo-Laundry-v1.sql` settings/services RLS allows enabled/active rows without the accepted-Rider condition. Native can therefore expose hubs Web excludes.
+- **NEXT:** after the quantity checkpoint's exact Pilot, switch Native catalog/services discovery to the existing customer-catalog RPC, parse nested settings/services, reject a selected hub absent from the fresh eligible snapshot, and add focused JVM/source coverage. Preserve order submission, pending UUID/body recovery and server state/pricing authority.
+
+## 2026-10-26 Customer Grocery category/page parity — DONE (source/test)
+
+- Source `f262329d657409fa29bc4129afcabd674bc91244`; exact Native Pilot [40313768964](https://github.com/chatchairins-source/QueuGo/actions/runs/40313768964) on that HEAD completed SUCCESS: regression/source/contracts, JVM tests including paging/race/cache cases, three APKs, 16 KB packaging, WebView rejection and emulator launch/map/voice lifecycle.
+- Follow-up audit confirms Web Customer add/checkout also has no selected menu-option payload, so the absence of that payload in Native is not a Production parity gap.
+- **NEXT:** quantity boundary guard and Laundry eligible-catalog parity above, then continue the remaining Customer/Rider source audit. Authenticated visual/physical/release certification remains separate.
+
 ## 2026-10-26 Customer Grocery category/page parity — IN PROGRESS (source/test checkpoint; Pilot NEXT)
 
 - Web Production `main=7e036a0735cc49905e9b0a2434492470551a0c9d`, `catalog/customer-grocery.js`, uses `qg_grocery_customer_categories` and `qg_grocery_customer_page` with category, offset, 50 visible rows and the 51st-row sentinel. The existing SQL in `20261012170449_grocery_master_catalog.sql` filters available Delivery products with positive store price.
