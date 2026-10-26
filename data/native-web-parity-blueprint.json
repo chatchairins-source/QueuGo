@@ -110,6 +110,24 @@
       "bottom_navigation": true,
       "bottom_navigation_selected": "home",
       "home_density": false
+    },
+    "guest_top_bar_geometry": {
+      "home_horizontal_padding_css_px": 16,
+      "home_horizontal_padding_native_dp": 16,
+      "home_vertical_padding_css_px": 10,
+      "home_vertical_padding_native_dp": 10,
+      "compact_horizontal_padding_css_px": 12,
+      "compact_horizontal_padding_native_dp": 12,
+      "compact_vertical_padding_css_px": 6,
+      "compact_vertical_padding_native_dp": 6,
+      "brand_letter_spacing_css_px": -0.4,
+      "brand_letter_spacing_native_sp": -0.4,
+      "login_label": "เข้าสู่ระบบ",
+      "login_color": "red",
+      "login_font_css_px": 13,
+      "login_font_native_sp": 13,
+      "login_font_weight": 700,
+      "login_background": "none"
     }
   }
 }

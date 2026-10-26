@@ -43,6 +43,24 @@ assert.ok(categoryFn.includes('fontSize = ' + tile.label_font_native_sp + '.sp')
 assert.ok(categoryFn.includes('maxLines = 1')&&categoryFn.includes('softWrap = false'),'Native category label must stay on one line like Web nowrap');
 
 const guestSource=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerGuestShell.kt','utf8');
+
+const guestTopBar=blueprint.customer.guest_top_bar_geometry;
+assert.deepEqual(guestTopBar,{
+  home_horizontal_padding_css_px:16,home_horizontal_padding_native_dp:16,
+  home_vertical_padding_css_px:10,home_vertical_padding_native_dp:10,
+  compact_horizontal_padding_css_px:12,compact_horizontal_padding_native_dp:12,
+  compact_vertical_padding_css_px:6,compact_vertical_padding_native_dp:6,
+  brand_letter_spacing_css_px:-0.4,brand_letter_spacing_native_sp:-0.4,
+  login_label:'เข้าสู่ระบบ',login_color:'red',login_font_css_px:13,login_font_native_sp:13,
+  login_font_weight:700,login_background:'none'
+});
+const guestHeader=guestSource.slice(guestSource.indexOf('private fun GuestCustomerTopBar('));
+assert.ok(guestHeader.includes('home: Boolean'),'Guest top bar must know whether Home density applies');
+assert.ok(guestHeader.includes('horizontal = if (home) 16.dp else 12.dp')&&guestHeader.includes('vertical = if (home) 10.dp else 6.dp'),'Guest top bar density must match Web Home and compact pages');
+assert.equal((guestHeader.match(/letterSpacing = \(-0\.4\)\.sp/g)||[]).length,2,'Guest QueueGo wordmark must match Web tracking');
+assert.ok(guestHeader.includes('\"เข้าสู่ระบบ\"')&&guestHeader.includes('color = QgRed')&&guestHeader.includes('fontSize = 13.sp'),'Guest login action must be plain red Web label');
+assert.ok(!guestHeader.includes('background(Color(0xFFFFF0F1)'),'Guest login label must not render a Native-only pink button');
+
 const guestDestinations=blueprint.customer.guest_login_destinations;
 assert.deepEqual(guestDestinations,{
   ride:'home',express:'home',orders:'home',laundry:'home',

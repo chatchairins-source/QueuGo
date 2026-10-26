@@ -282,6 +282,7 @@ internal fun GuestCustomerShell(
                 .background(QgBg)
         ) {
             GuestCustomerTopBar(
+                home = screen == "home",
                 onHome = { screen = "home" },
                 onLogin = { onLogin("home") }
             )
@@ -471,12 +472,16 @@ internal fun GuestCustomerShell(
 
 @Composable
 private fun GuestCustomerTopBar(
+    home: Boolean,
     onHome: () -> Unit,
     onLogin: () -> Unit
 ) {
     Column(Modifier.fillMaxWidth().background(Color(0xF0FFFFFF))) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(
+                horizontal = if (home) 16.dp else 12.dp,
+                vertical = if (home) 10.dp else 6.dp
+            ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(Modifier.clickable(onClick = onHome)) {
@@ -485,6 +490,7 @@ private fun GuestCustomerTopBar(
                     color = Color(0xFF17191D),
                     fontSize = 18.sp,
                     lineHeight = 22.sp,
+                    letterSpacing = (-0.4).sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
@@ -492,18 +498,21 @@ private fun GuestCustomerTopBar(
                     color = QgRed,
                     fontSize = 18.sp,
                     lineHeight = 22.sp,
+                    letterSpacing = (-0.4).sp,
                     fontWeight = FontWeight.ExtraBold
                 )
             }
             Spacer(Modifier.weight(1f))
-            Box(
-                Modifier
-                    .background(Color(0xFFFFF0F1), RoundedCornerShape(12.dp))
+            Text(
+                "เข้าสู่ระบบ",
+                color = QgRed,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
                     .clickable(onClick = onLogin)
-                    .padding(horizontal = 13.dp, vertical = 9.dp)
-            ) {
-                Text("เข้าสู่ระบบ", color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+            )
         }
         HorizontalDivider(thickness = 1.dp, color = Color(0x0D000000))
     }
