@@ -1,3 +1,13 @@
+## 2026-10-26 Native Customer Web parity — Home category authority DONE (source/test)
+
+- Stream: Android/Web visual parity. Active branch `work-native-web-parity-20261026`; Web blueprint is current `main=7e036a0735cc49905e9b0a2434492470551a0c9d`. Native successor descends from tested `65918d8ca7dbe720127e1c915a0483c3f209cb01`; no legacy branch, WebView, Longdo or duplicate implementation was introduced.
+- Root cause/evidence: current Web Customer Home exposes exactly 7 service tiles in order — อาหาร / เครื่องดื่ม / ร้านขายของชำ / ฝากซัก / ตลาดสด / บริการเรียกรถ / ช้อปปิ้ง — while Native exposed an Android-only eighth ส่งด่วน tile and different ordering. Express remains a real capability but is not a Web Home tile.
+- Change: Customer Native Home now renders the same 7 routes/order from an explicit Web-parity list. Express routing and `CustomerExpressScreen` remain intact off Home. A pinned parity blueprint records exact Web source SHA instead of treating the Native branch's older bundled `index.html` as authority. The stale Express regression was reconciled to the same contract.
+- Exact-head implementation: `96e81a0911a90c461bf991c59e042f594e60d654`.
+- Test/CI: Native Pilot run `40258319078` **SUCCESS** — full QueueGo regression, Customer Web Home parity, Express capability regression, source integrity, Kotlin/unit suites, all three APK builds, Android 16 KB packaging, WebView rejection, artifact upload, and emulator launch/map/voice lifecycle all passed.
+- Status: **DONE (source/test)** for Customer Home category authority/order. This does not claim physical-device visual certification.
+- NEXT: continue Customer only. Match category-tile geometry to Web Home blueprint: 64 px/dp tile width and one-line non-wrapping labels while preserving 54 dp circle, 25 dp icon, 13 dp gap, 10 sp label and all routes. Then rerun exact-head Native Pilot before moving to the next Customer visual gap.
+
 ## 2026-10-25 Native Customer checkout QueueGo Places parity — DONE (source/test)
 
 - Implementation HEAD `4e7028be0cfc734828a8762628bb860840176093` extends the reconciled shared Places/Search successor without touching Rider compass/navigation.
