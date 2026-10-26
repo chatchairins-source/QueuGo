@@ -104,7 +104,7 @@ ok(riderLoadingStart>=0&&riderLoginStart>riderLoadingStart&&
    'Rider session restoration must stay interaction-blocking but visually silent without a center spinner');
 ok(riderHome.includes('private fun RiderBlueprintSpeedPill(speedKph: Int?)')&&
    riderHome.includes('RiderBlueprintSpeedPill(reliableSpeedKph)')&&
-   riderHome.includes('Text("กม./ชม."')&&
+   /Text\(\s*"กม\.\/ชม\."/.test(riderHome)&&
    !riderHome.includes('private fun RiderBlueprintBrandPill()'),
    'Rider speed is contextual to navigation; availability belongs only in the Ready card');
 ok(riderHome.includes('shop = offerShopDisplay')&&
