@@ -1,3 +1,11 @@
+## 2026-10-26 Guest protected-action parity — exact-head first failure FIXED (test-only)
+
+- Failing exact HEAD: `3fb69567e4ff5994d3f79d285dfdb014d4112de8`; Native Pilot run `40265752567`.
+- First real failure: full `npm test` reached the new Web-parity guard successfully (`55 checks / 0 failures`) and then failed in `tests/native-android-source.cjs:172`, whose older assertion still required `onLogin("market-cart")` and claimed Guest Market checkout must resume the cart after login.
+- Root cause: stale regression contract. Web main `marketPlaceOrder()` sends an unauthenticated user to login without persisting a Market destination, and Web login preserves only `checkout`; therefore the old test encoded Android-only behavior.
+- Bounded fix: test-only. The source regression now requires Guest Market submit to use `customerGuestPostLoginDestination("market-submit")`, rejects literal `onLogin("market-cart")`, and preserves public Market browse/cart. Runtime implementation from `3fb69567e4ff5994d3f79d285dfdb014d4112de8` is unchanged.
+- **NEXT:** rerun exact-head Native Pilot. If green, mark Guest protected-action policy DONE and proceed to Customer Guest top-bar visual parity. Do not change runtime to satisfy the retired Market-cart expectation.
+
 ## 2026-10-26 Native Customer Web parity — authenticated Laundry global chrome DONE (source/test)
 
 - Implementation HEAD `3becc3b0adef21041773e021c08e84543ccb0f91` restores the Web shell contract for authenticated Laundry without changing Laundry business logic.

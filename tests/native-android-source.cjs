@@ -169,7 +169,12 @@ ok(!customerMarketScreen.includes('height(142.dp)')&&!customerMarketScreen.inclu
 ok(customerMarketScreen.includes('if (!cartPage) {')&&customerMarketScreen.includes('if (cartPage && (cart.isNotEmpty() || checkoutPending))')&&customerMarketScreen.includes('onClick = onOpenCart'),'Market Browse and Cart must separate checkout fields and expose a floating cart route');
 ok(customerMarketScreen.includes('cart.groupBy { it.product.shopId }')&&customerMarketScreen.includes('line.quantity < minOf(99, line.product.availablePacks)'),'Market cart must group shops and cap quantities by available packs');
 ok(!customerMarketScreen.includes('cart.first().product.marketId != m.id) cart = emptyList()'),'Browsing a different market must never destroy a persisted cart');
-ok(source.includes('"market", "market-cart" -> MarketNativeScreen(')&&source.includes('onLogin("market-cart")'),'Guest Market checkout must resume at the same cart after login');
+ok(
+  source.includes('"market", "market-cart" -> MarketNativeScreen(') &&
+  source.includes('onRequireLogin = { onLogin(customerGuestPostLoginDestination("market-submit")) }') &&
+  !source.includes('onLogin("market-cart")'),
+  'Guest Market submit must authenticate then return Home like Web; public Market browse/cart remain available before login'
+);
 
 ok(source.includes('queuego_place_laundry_order_v2'),'Customer native Laundry must use production laundry order RPC');
 ok(source.includes('notifications?select=id,title,message,type,reference_id,is_read,created_at'),'Customer native notifications must use production notifications table');
