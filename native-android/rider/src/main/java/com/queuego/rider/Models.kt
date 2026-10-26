@@ -450,6 +450,22 @@ data class RiderSupplyPlan(
     val windows: List<RiderSupplyWindow>
 )
 
+data class RiderWorkCapabilities(
+    val food: Boolean,
+    val grocery: Boolean,
+    val market: Boolean,
+    val express: Boolean,
+    val ride: Boolean,
+    val bundle: Boolean
+)
+
+data class RiderWorkPreferences(
+    val autoAccept: Boolean,
+    val bundleEnabled: Boolean,
+    val services: Set<String>,
+    val capabilities: RiderWorkCapabilities
+)
+
 data class RiderDestinationPreference(
     val configured: Boolean,
     val enabled: Boolean,

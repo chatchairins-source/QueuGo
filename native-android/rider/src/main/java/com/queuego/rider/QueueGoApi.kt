@@ -250,6 +250,45 @@ internal fun riderDemandZonesFromRpc(raw: Any?): List<RiderDemandZone> {
     }
 }
 
+internal val riderWorkServiceKeys = setOf("food", "grocery", "market", "express", "ride")
+
+internal fun riderWorkPreferencesFromRpc(raw: Any?): RiderWorkPreferences {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    require(row.opt("auto_accept") is Boolean) { "รูปแบบการรับงานอัตโนมัติไม่ถูกต้อง" }
+    require(row.opt("bundle_enabled") is Boolean) { "รูปแบบการรับงานพ่วงไม่ถูกต้อง" }
+    val rawServices = row.optJSONArray("services") ?: error("ไม่พบประเภทบริการที่รับ")
+    val services = buildSet {
+        for (index in 0 until rawServices.length()) {
+            val value = rawServices.optString(index).trim()
+            require(value in riderWorkServiceKeys) { "พบประเภทบริการที่ไม่รองรับ" }
+            add(value)
+        }
+    }
+    require(services.isNotEmpty()) { "ต้องเปิดรับบริการอย่างน้อยหนึ่งประเภท" }
+    val rawCapabilities = row.optJSONObject("capabilities") ?: error("ไม่พบสิทธิ์ประเภทงาน")
+    fun capability(name: String): Boolean {
+        require(rawCapabilities.opt(name) is Boolean) { "รูปแบบสิทธิ์ประเภทงานไม่ถูกต้อง" }
+        return rawCapabilities.getBoolean(name)
+    }
+    return RiderWorkPreferences(
+        autoAccept = row.getBoolean("auto_accept"),
+        bundleEnabled = row.getBoolean("bundle_enabled"),
+        services = services,
+        capabilities = RiderWorkCapabilities(
+            food = capability("food"),
+            grocery = capability("grocery"),
+            market = capability("market"),
+            express = capability("express"),
+            ride = capability("ride"),
+            bundle = capability("bundle")
+        )
+    )
+}
+
 internal fun riderSupplyPlanFromRpc(raw: Any?): RiderSupplyPlan {
     val row = when (raw) {
         is JSONObject -> raw
@@ -1111,6 +1150,39 @@ class QueueGoApi {
                 )
             )
         }
+
+    suspend fun workPreferences(auth: QueueGoAuth): RiderWorkPreferences =
+        withContext(Dispatchers.IO) {
+            riderWorkPreferencesFromRpc(
+                rpc(
+                    "qg_rider_work_preferences",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun saveWorkPreferences(
+        auth: QueueGoAuth,
+        autoAccept: Boolean,
+        bundleEnabled: Boolean,
+        services: Set<String>
+    ): RiderWorkPreferences = withContext(Dispatchers.IO) {
+        require(services.isNotEmpty() && services.all { it in riderWorkServiceKeys }) {
+            "ต้องเปิดรับบริการอย่างน้อยหนึ่งประเภท"
+        }
+        val payload = JSONObject()
+            .put("auto_accept", autoAccept)
+            .put("bundle_enabled", bundleEnabled)
+            .put("services", JSONArray(services.toList().sorted()))
+        riderWorkPreferencesFromRpc(
+            rpc(
+                "qg_rider_work_preferences",
+                auth.session.accessToken,
+                JSONObject().put("p_preferences", payload)
+            )
+        )
+    }
 
     suspend fun demandHeatmap(auth: QueueGoAuth): List<RiderDemandZone> =
         withContext(Dispatchers.IO) {
