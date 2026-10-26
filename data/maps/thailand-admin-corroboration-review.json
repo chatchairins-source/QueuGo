@@ -1,7 +1,7 @@
 {
   "execution": "review_only_no_database_write",
   "checked_date": "2026-10-26",
-  "status": "corroboration_supports_4029_but_current_primary_bytes_unresolved",
+  "status": "current_government_corroboration_supports_4029_hierarchy_but_primary_authority_unresolved",
   "canonical_resolution": "unresolved",
   "production_import_allowed": false,
   "conflict": {
@@ -78,6 +78,66 @@
       "checksum_status": "resource_rows_not_retrieved",
       "freshness_status": "metadata_current_but_underlying_row_version_unresolved",
       "canonical_eligible": false
+    },
+    {
+      "id": "doae_farmer_registry_wiang_kao_2026_10_26",
+      "publisher": "Department of Agricultural Extension",
+      "url": "https://farmer.doae.go.th/report/report6x/rice_ap/40/29/267_2/",
+      "source_type": "current_government_operational_html",
+      "dataset": "Farmer Registry rice off-season crop year 2567/68 by plot location",
+      "observed_data_date": "2026-10-26",
+      "observed_rows": [
+        {
+          "code": "402900",
+          "admin_type": "district",
+          "name": "เวียงเก่า",
+          "parent_code": "40"
+        },
+        {
+          "code": "402901",
+          "admin_type": "subdistrict",
+          "name": "ในเมือง",
+          "parent_code": "4029"
+        },
+        {
+          "code": "402902",
+          "admin_type": "subdistrict",
+          "name": "เมืองเก่าพัฒนา",
+          "parent_code": "4029"
+        },
+        {
+          "code": "402903",
+          "admin_type": "subdistrict",
+          "name": "เขาน้อย",
+          "parent_code": "4029"
+        }
+      ],
+      "primary_dopa_bytes": false,
+      "checksum_status": "not_checksum_pinned",
+      "freshness_status": "current_government_operational_corroboration",
+      "authority_limit": "Operational DOAE registry, not the DOPA/MOI canonical administrative-code master",
+      "canonical_eligible": false
+    },
+    {
+      "id": "doae_farmer_registry_wiang_kao_2026_10_21",
+      "publisher": "Department of Agricultural Extension",
+      "url": "https://farmer.doae.go.th/report/report6x/rice_pv/40/68_1/",
+      "source_type": "current_government_operational_html",
+      "dataset": "Farmer Registry main-season rice crop year 2568/69 by plot location",
+      "observed_data_date": "2026-10-21",
+      "observed_rows": [
+        {
+          "code": "402900",
+          "admin_type": "district",
+          "name": "เวียงเก่า",
+          "parent_code": "40"
+        }
+      ],
+      "primary_dopa_bytes": false,
+      "checksum_status": "not_checksum_pinned",
+      "freshness_status": "current_government_operational_corroboration",
+      "authority_limit": "Operational DOAE registry, not the DOPA/MOI canonical administrative-code master",
+      "canonical_eligible": false
     }
   ],
   "gates": {
@@ -85,8 +145,9 @@
     "current_primary_reference": "blocked",
     "source_freshness": "blocked",
     "license_provenance": "blocked_for_canonical_primary_reference",
-    "postgis_release_acceptance": "not_tested"
+    "postgis_release_acceptance": "not_tested",
+    "current_government_operational_corroboration": "supports_4029_hierarchy"
   },
-  "limits": "These sources are corroboration only. Two official BORA documents show 4029 for Wiang Kao, but one is historical and the other lacks a verified source/version date and checksum. Government catalog metadata is current but is secondary and does not expose checksum-pinned DOPA primary rows here.",
-  "next": "Acquire a current/versioned checksum-pinned primary DOPA/MOI code payload or equivalent authoritative row-level reference; then reconcile 4026/4029 and all HDX missing/extra codes. Keep Production import false until independent identity, freshness, provenance, hierarchy and PostGIS gates pass."
+  "limits": "Official BORA historical/undated documents and current DOAE operational registry data independently use 4029 for Wiang Kao; current DOAE data also uses 402901/402902/402903 as its subdistrict children. This materially strengthens corroboration but is not a checksum-pinned current DOPA/MOI canonical code master. Therefore canonical identity, freshness/provenance, geometry hierarchy and Production release gates remain independent and blocked.",
+  "next": "Acquire a current/versioned checksum-pinned primary DOPA/MOI administrative-code payload or equivalent authoritative row-level reference. Then reconcile 4026/4029 and all HDX missing/extra code rows. Do not use DOAE operational corroboration to rewrite OAD codes or release any quarantined geometry."
 }
