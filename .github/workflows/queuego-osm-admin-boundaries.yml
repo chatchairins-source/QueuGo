@@ -158,6 +158,9 @@ jobs:
           const r=require(process.argv[2]);
           if(r.production_import_allowed!==false||r.release_decision!=='blocked') throw Error('reconciliation must fail closed');
           if(r.summary.osm_matched_parent_excluded!==9||r.summary.eligible_rows!==0) throw Error('quarantine coverage changed unexpectedly');
+          if(r.summary.osm_excluded_hdx_identity_statuses?.code_name_centroid_match!==7||r.summary.osm_excluded_hdx_identity_statuses?.parent_unresolved!==2) throw Error('unexpected HDX diagnostics for OSM exclusions');
+          if(r.summary.hdx_source_topology_internal_pass_for_all_excluded!==true) throw Error('HDX source-internal topology evidence missing');
+          if(!r.osm_excluded_rows.every(x=>x.status==='quarantined'&&x.eligible===false&&x.cross_source_decision?.geometry_override_allowed===false)) throw Error('cross-source quarantine override detected');
           if(r.gates.identity_code_correctness.status!=='blocked'||r.gates.postgis_release_acceptance.status!=='not_tested') throw Error('independent release gates were collapsed');
           NODE
       - name: Upload admin boundary audit artifact
