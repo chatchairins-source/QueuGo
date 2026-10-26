@@ -29,7 +29,9 @@ internal data class PendingRide(val requestId: String, val quoteId: String) {
 internal data class PassengerRide(val id: String, val number: String, val status: String, val riderId: String?,
     val pickup: String, val destination: String, val fare: Double, val riderName: String?,
     val minutes: Double, val km: Double, val riderLat: Double?, val riderLng: Double?,
-    val arrivedPickupAt: String? = null, val arrivedDropoffAt: String? = null) {
+    val arrivedPickupAt: String? = null, val arrivedDropoffAt: String? = null,
+    val pickupLat: Double? = null, val pickupLng: Double? = null,
+    val destinationLat: Double? = null, val destinationLng: Double? = null) {
     val terminal get() = status in listOf("completed", "cancelled", "no_rider_available")
 }
 internal fun parsePassengerRide(o: JSONObject): PassengerRide {
@@ -38,8 +40,20 @@ internal fun parsePassengerRide(o: JSONObject): PassengerRide {
     return PassengerRide(o.getString("id"), nativeOrderNumber(o.optString("order_number")), o.getString("status"), text("rider_id"),
         o.optString("pickup_address"), o.optString("delivery_address"), o.getDouble("fare"), text("rider_name"),
         o.getDouble("duration_minutes"), o.getDouble("distance_km"), point("rider_latitude"), point("rider_longitude"),
-        text("arrived_pickup_at"), text("arrived_dropoff_at"))
+        text("arrived_pickup_at"), text("arrived_dropoff_at"),
+        point("pickup_latitude"), point("pickup_longitude"), point("delivery_latitude"), point("delivery_longitude"))
 }
+internal fun passengerRideMapPoints(ride: PassengerRide): List<QgMapPoint> {
+    if (ride.terminal) return emptyList()
+    fun point(lat: Double?, lng: Double?, color: Int, role: QgMapRole): QgMapPoint? =
+        if (lat == null || lng == null) null else QgMapPoint(lat, lng, color, role).takeIf { it.valid }
+    return listOfNotNull(
+        point(ride.pickupLat, ride.pickupLng, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER),
+        point(ride.destinationLat, ride.destinationLng, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER),
+        point(ride.riderLat, ride.riderLng, 0xFFE6002D.toInt(), QgMapRole.RIDER)
+    )
+}
+
 internal fun passengerRideStatus(ride: PassengerRide): String {
     if (ride.status == "rider_assigned" && !ride.arrivedPickupAt.isNullOrBlank()) return "คนขับถึงจุดรับแล้ว"
     if (ride.status == "in_progress" && !ride.arrivedDropoffAt.isNullOrBlank()) return "ถึงจุดหมายแล้ว"
@@ -150,8 +164,9 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             current.riderName?.let { Text("คนขับ: " + it) }
             if (!current.terminal && current.riderId != null) OutlinedButton(onClick = { onContact(current.id) },enabled = !busy) { Text("ติดต่อคนขับ") }
             Text("เส้นทางที่ประเมิน ${customerNumber(current.km,1)} กม. · เวลาวิ่งประมาณ ${customerNumber(current.minutes,0)} นาที ไม่รวมเวลารอคนขับ")
-            if (!current.terminal && current.riderLat != null && current.riderLng != null) {
-                QgTrackingMap(points = listOf(QgMapPoint(current.riderLat,current.riderLng,0xFFE6002D.toInt(),QgMapRole.RIDER)),modifier = Modifier.fillMaxWidth().height(220.dp))
+            val mapPoints = passengerRideMapPoints(current)
+            if (mapPoints.isNotEmpty()) {
+                QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxWidth().height(220.dp))
             }
             if (current.status == "searching_rider" && current.riderId == null && pending == null) {
                 OutlinedButton(enabled = !busy,onClick = {

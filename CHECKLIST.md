@@ -1,3 +1,11 @@
+## 2026-10-26 Customer Ride authoritative map endpoints — IN PROGRESS (source checkpoint; Pilot NEXT)
+
+- Base `8a70f27dd72a6b2912688a807f58aa3b3af4ca20` exact Pilot 40325237596 passed full regression/source/assets and Kotlin/JVM (including Merchant category/shared-note tests); APK build was running at succession. Authenticated capture 40325237658 built actual Rider/Merchant APKs and began emulator capture. These are relevant gates, not full containing-run SUCCESS or visual acceptance.
+- Confirmed Web gap: `customer-ride.js` active map uses pickup/delivery/Rider coordinates. The existing `queuego_ride_state` RPC already returns all four endpoint coordinates under its account/ownership authority, but Native PassengerRide discarded them and rendered only a Rider point, hiding the entire map before assignment.
+- Added nullable endpoint DTO/parser fields and a pure map-points policy. Existing QgTrackingMap now shows valid real endpoints even before Rider assignment, plus real Rider coordinates when supplied. Same shared Thailand validation rejects missing/partial/invalid pairs. Existing terminal tracking suppression remains; no inferred positions, new map engine, request/cancel/payment or backend changes.
+- Added four focused JVM cases for searching endpoints, assigned Rider/endpoints, invalid/partial/missing pairs, and all terminal states. Source review confirms parser-to-renderer wiring; exact hosted compilation/tests are NEXT.
+- **NEXT:** inspect exact successor first Pilot failure, then actual Home/Orders/Products artifacts from 40325237658. Add a bounded Rider Home content-readiness gate if the original capture race persists. Next source audit: Web aggregate nearby Ride supply, preserving privacy and existing server RPC authority. Customer authenticated/physical/release gates remain separate.
+
 ## 2026-10-26 Merchant order-note presentation — IN PROGRESS (source checkpoint; hosted tests NEXT)
 
 - Artifact 12650270511 at `5a682121d463ce94851a8fc03b591c97667c8550` visibly exposes a marker-only note `__QT_ORDER_STATUS__=completed`. Merchant list directly rendered raw `order.note`; Web stores that protocol line for status compatibility. Rider already had a tested display-only filter for this exact marker.
