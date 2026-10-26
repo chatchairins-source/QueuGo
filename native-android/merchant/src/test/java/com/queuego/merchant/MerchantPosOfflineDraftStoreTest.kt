@@ -88,4 +88,29 @@ class MerchantPosOfflineDraftStoreTest {
             assertEquals(store.deviceId(), MerchantPosOfflineDraftStore(root).deviceId())
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun offlineCatalogPreservesStockAndOptionGroupsForSafeReroute() {
+        val root = Files.createTempDirectory("pos-offline-catalog-options").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val master = UUID.randomUUID().toString()
+            val groups = parsePosProductOptionGroups(JSONArray().put(
+                JSONObject().put("schema", "queuego.menu-options.v1").put("key", "size").put("name", "ขนาด")
+                    .put("type", "single").put("required", true).put("options", JSONArray()
+                        .put(JSONObject().put("key", "normal").put("name", "ธรรมด").put("price_delta", 0)))))
+            val product = PosProduct(UUID.randomUUID().toString(), "เมนู", 35.0, null, true,
+                stock = 0, inventoryStockTracking = true, groceryMasterId = master,
+                groceryStockTracking = true, optionGroups = groups)
+            val store = MerchantPosOfflineDraftStore(root)
+            store.saveCatalog(PosOfflineCatalog(actor, shop, device, "ร้าน", 1L, listOf(product), emptyList()))
+            val restored = store.loadCatalog(actor, device)!!.products.single()
+            assertEquals(0, restored.stock)
+            assertTrue(restored.inventoryStockTracking)
+            assertEquals(master, restored.groceryMasterId)
+            assertTrue(restored.groceryStockTracking)
+            assertEquals(groups, restored.optionGroups)
+        } finally { root.deleteRecursively() }
+    }
 }

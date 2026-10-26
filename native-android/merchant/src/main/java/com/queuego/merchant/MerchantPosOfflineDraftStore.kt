@@ -102,7 +102,12 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 put(JSONObject().put("id", p.id).put("name", p.name.take(200)).put("price", p.price)
                     .put("image", p.image ?: JSONObject.NULL).put("available", p.available)
                     .put("delivery_available", p.deliveryAvailable)
-                    .put("delivery_price", p.deliveryPrice ?: JSONObject.NULL))
+                    .put("delivery_price", p.deliveryPrice ?: JSONObject.NULL)
+                    .put("stock", p.stock)
+                    .put("inventory_stock_tracking", p.inventoryStockTracking)
+                    .put("grocery_master_id", p.groceryMasterId ?: JSONObject.NULL)
+                    .put("grocery_stock_tracking", p.groceryStockTracking)
+                    .put("option_groups", posProductOptionGroupsJson(p.optionGroups)))
             } })
             .put("tables", JSONArray().apply { catalog.tables.forEach { t ->
                 put(JSONObject().put("id", t.id).put("label", t.label.take(100)).put("active", t.active)
@@ -127,7 +132,12 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             val p = array.getJSONObject(i)
             PosProduct(p.getString("id"), p.getString("name"), p.getDouble("price"),
                 if (p.isNull("image")) null else p.getString("image"), p.getBoolean("available"),
-                p.optBoolean("delivery_available", true), if (p.isNull("delivery_price")) null else p.getDouble("delivery_price"))
+                p.optBoolean("delivery_available", true), if (p.isNull("delivery_price")) null else p.getDouble("delivery_price"),
+                stock = p.optInt("stock", 0),
+                inventoryStockTracking = p.optBoolean("inventory_stock_tracking", false),
+                groceryMasterId = if (p.isNull("grocery_master_id")) null else p.optString("grocery_master_id"),
+                groceryStockTracking = p.optBoolean("grocery_stock_tracking", false),
+                optionGroups = parsePosProductOptionGroups(p.optJSONArray("option_groups") ?: JSONArray()))
         } }
         val tables = json.getJSONArray("tables").let { array -> (0 until array.length()).map { i ->
             val t = array.getJSONObject(i)

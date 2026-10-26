@@ -188,6 +188,7 @@ fun MerchantPosScreen(
     var refundReason by rememberSaveable { mutableStateOf("") }
     var priceTarget by remember { mutableStateOf<PosProduct?>(null) }
     var priceText by rememberSaveable { mutableStateOf("") }
+    var optionTarget by remember { mutableStateOf<PosProduct?>(null) }
 
     var tableDialog by remember { mutableStateOf(false) }
     var editingTable by remember { mutableStateOf<PosTable?>(null) }
@@ -382,11 +383,19 @@ fun MerchantPosScreen(
         }
     }
 
-    fun addPosProduct(product: PosProduct) {
+    fun addPosProduct(product: PosProduct, optionsJson: String? = null) {
         if (busy) return
         val online = posNetworkValidated(context)
         if (online && !can("receive_order")) {
             message = "บัญชีนี้ไม่มีสิทธิ์รับออเดอร์"
+            return
+        }
+        if (online && optionsJson == null && product.optionGroups.isNotEmpty()) {
+            optionTarget = product
+            return
+        }
+        if (!online && product.optionGroups.isNotEmpty()) {
+            message = "สินค้านี้มีตัวเลือกสินค้า กรุณาออนไลน์ก่อนเพิ่มลงร่าง"
             return
         }
         if (mode == "DINE_IN" && tableId == null && !noTable) {
@@ -484,7 +493,8 @@ fun MerchantPosScreen(
                     tableId = targetTable,
                     productId = product.id,
                     note = requestNote,
-                    requestId = requestId
+                    requestId = requestId,
+                    optionsJson = optionsJson
                 )
                 // Commit acknowledgement must not be undone by a subsequent refresh failure.
                 selectedBillId = id
@@ -1222,6 +1232,19 @@ fun MerchantPosScreen(
             },
             dismissButton = {
                 TextButton(enabled = !busy, onClick = { cancelOpen = false }) { Text("กลับ") }
+            }
+        )
+    }
+
+    if (optionTarget != null) {
+        val product = optionTarget!!
+        MerchantPosOptionSelectionDialog(
+            product = product,
+            groups = product.optionGroups,
+            onDismiss = { if (!busy) optionTarget = null },
+            onConfirm = { options ->
+                optionTarget = null
+                addPosProduct(product, options.toString())
             }
         )
     }

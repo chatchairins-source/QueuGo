@@ -27,7 +27,8 @@ data class PosProduct(
     val stock: Int = 0,
     val inventoryStockTracking: Boolean = false,
     val groceryMasterId: String? = null,
-    val groceryStockTracking: Boolean = false
+    val groceryStockTracking: Boolean = false,
+    val optionGroups: List<PosProductOptionGroup> = emptyList()
 )
 
 internal fun posProductInventoryTracked(product: PosProduct): Boolean =
@@ -173,7 +174,9 @@ class MerchantPosApi(
             pendingStore.prepare(auth.session.authUserId, intent)
         }
         val raw = try {
-            if (pending.billId == null) {
+            if (pending.optionsJson != null) {
+                http.rpc("pos_add_product_with_options", auth.session.accessToken, pending.optionBody())
+            } else if (pending.billId == null) {
                 val sessionResult = http.rpc("check_active_session", auth.session.accessToken,
                     JSONObject().put("p_session_id", auth.session.sessionId))
                 val active = when (sessionResult) {
@@ -232,7 +235,7 @@ class MerchantPosApi(
             val products = async {
                 val scope = "&shop_id=eq." + http.enc(shopId) + "&order=name.asc"
                 val base = "products?select=id,name,price,pos_price,delivery_price,image,available,pos_available," +
-                    "delivery_available,stock,"
+                    "delivery_available,variants,stock,"
                 try {
                     http.array(http.get(
                         base + "inventory_stock_tracking,grocery_master_id,grocery_stock_tracking" + scope,
@@ -333,7 +336,8 @@ class MerchantPosApi(
                         stock = r.optInt("stock", 0),
                         inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false),
                         groceryMasterId = nullableString(r, "grocery_master_id"),
-                        groceryStockTracking = r.optBoolean("grocery_stock_tracking", false)
+                        groceryStockTracking = r.optBoolean("grocery_stock_tracking", false),
+                        optionGroups = parsePosProductOptionGroups(r.optJSONArray("variants") ?: JSONArray())
                     )
                 )
             }
@@ -380,10 +384,11 @@ class MerchantPosApi(
         tableId: String?,
         productId: String,
         note: String,
-        requestId: String = UUID.randomUUID().toString()
+        requestId: String = UUID.randomUUID().toString(),
+        optionsJson: String? = null
     ): String {
         return submitPendingEdit(auth, PosEditIntent(requestId, currentBillId?.takeIf { it.isNotBlank() },
-            type, tableId, productId, 1, note.trim()))
+            type, tableId, productId, 1, note.trim(), optionsJson))
     }
 
     suspend fun submitOfflineDraft(auth: NativeAuth, draft: PosOfflineDraft): String {

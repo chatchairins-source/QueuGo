@@ -36,6 +36,22 @@ class MerchantPosPendingStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun optionSelectionSurvivesProcessRecreationWithSameRequestPayload() {
+        val root = Files.createTempDirectory("pos-pending-options").toFile()
+        try {
+            val original = intent().copy(billId = null,
+                optionsJson = canonicalPosOptionJson("""{"portion":"special","toppings":["egg","meat"]}"""))
+            val store = MerchantPosPendingStore(root)
+            store.prepare("actor", original)
+            val restored = MerchantPosPendingStore(root).load("actor")!!
+            assertEquals(original, restored)
+            assertEquals(original.requestId, restored.optionBody().getString("p_request"))
+            assertEquals("special", restored.optionBody().getJSONObject("p_options").getString("portion"))
+            assertEquals(2, restored.optionBody().getJSONObject("p_options").getJSONArray("toppings").length())
+            assertFalse(restored.optionBody().has("p_quantity"))
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun newBillSurvivesProcessRecreationWithTheSameRequest() {
         val root = Files.createTempDirectory("pos-pending-test").toFile()
         try {
