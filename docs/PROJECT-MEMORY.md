@@ -1,3 +1,9 @@
+## 2026-10-26 Current authenticated Rider/Merchant capture NEXT
+
+- Readiness `40320797641` at `00f605f08367d97f0bd3c780bacd6950484149a1`: Rider/Merchant pairs present, Customer missing. Explicit `[authenticated-review]` checkpoint messages now run the existing read-only post-login capture on the current owner branch; ordinary pushes check presence only.
+- Review builds reuse Pilot Firebase config. Credential helpers suppress argument-bearing errors/timeouts; YAML, four readiness/privacy and ten helper cases passed before commit.
+- **NEXT:** inspect exact successor capture/Pilot first failures and actual screenshots/metadata; record exact missing Customer secret names. Continue other roles/source work. No login-only, credential-presence, physical or Production-release acceptance claim.
+
 ## 2026-10-26 Current-branch authenticated review readiness
 
 - This checkpoint links the existing authenticated-review credential check to `work-native-web-parity-20261026`, reporting only role presence/missing secret names for Rider/Merchant/Customer. Current parity pushes are presence-only; existing manual/old-review-branch capture behavior remains. No new account/order/dispatch action is triggered by this branch push.

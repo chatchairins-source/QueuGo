@@ -1,3 +1,10 @@
+## 2026-10-26 Current authenticated Rider/Merchant capture — IN PROGRESS
+
+- Exact readiness [40320797641](https://github.com/chatchairins-source/QueuGo/actions/runs/40320797641) on `00f605f08367d97f0bd3c780bacd6950484149a1` reports Rider/Merchant credential pairs present and Customer missing. Presence is not login or visual acceptance.
+- Explicit `[authenticated-review]` owner-branch checkpoints now invoke the existing read-only Rider/Merchant post-login harnesses; ordinary parity pushes remain presence-only. Reused Pilot Firebase preparation before review APK builds.
+- Credential entry now suppresses argument-bearing subprocess failures/timeouts. YAML, four isolated readiness/privacy fixtures and ten credential-entry success/error cases passed before commit; the fixture caught and prevented a temporary generation error before any Git write.
+- **NEXT:** inspect exact successor authenticated review and Native Pilot, fix only first confirmed failures, inspect actual screenshots/metadata, record exact missing Customer secret names and continue unblocked parity work. Login/presence/guest screens do not certify authenticated visual parity.
+
 ## 2026-10-26 Authenticated parity review readiness — IN PROGRESS
 
 - Existing Rider/Merchant authenticated-review workflow only auto-ran on the older review branch. Added the current Native owner branch to its credential-presence check and report per-role Rider/Merchant/Customer readiness plus missing secret names; values never enter logs/artifacts.

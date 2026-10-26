@@ -107,6 +107,13 @@ def capture_profile_dialog(entry,title,name):
     time.sleep(1)
 
 
+def input_credential(value):
+    try:
+        subprocess.run(ADB+["shell","input","text",value],check=True,timeout=30,
+                       stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    except (subprocess.SubprocessError,OSError,ValueError):
+        raise SystemExit("Credential entry failed") from None
+
 def main():
     phone=os.environ.get("QG_RIDER_REVIEW_PHONE","")
     password=os.environ.get("QG_RIDER_REVIEW_PASSWORD","")
@@ -127,8 +134,7 @@ def main():
     for n,value in zip(fields[:2],(phone,password)):
         tap(n)
         # Never print adb input arguments or persist credentials.
-        subprocess.run(ADB+["shell","input","text",value],check=True,timeout=30,
-                       stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        input_credential(value)
     run(["shell","input","keyevent","4"])
     tap_label(nodes(),"เข้าสู่ระบบ")
     labels=("หน้าแรก","ข้อความ","รายได้","โปรไฟล์")
