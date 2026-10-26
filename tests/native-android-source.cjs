@@ -657,7 +657,7 @@ ok(source.includes('MerchantProfileSectionTitle("ข้อมูลร้าน"
 const merchantRevenue=read('merchant/src/main/java/com/queuego/merchant/MerchantRevenueScreen.kt');
 const queueGoCreditCard=read('shared/src/main/java/com/queuego/shared/QueueGoCreditCard.kt');
 const riderEarningsCredit=read('rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt');
-ok(queueGoCreditCard.includes('Text("ใช้ได้ ${money(data.optLong("available_minor"))}")')&&!queueGoCreditCard.includes('เงินจริง')&&!queueGoCreditCard.includes('โปรโมชั่น')&&!queueGoCreditCard.includes('· กันไว้'),'Merchant/Rider native credit surface must show one unified usable balance');
+ok(queueGoCreditCard.includes('"ใช้ได้ ${money(data.optLong("available_minor"))}"')&&!queueGoCreditCard.includes('เงินจริง')&&!queueGoCreditCard.includes('โปรโมชั่น')&&!queueGoCreditCard.includes('· กันไว้'),'Merchant/Rider native credit surface must show one unified usable balance');
 ok(queueGoCreditCard.includes('"topup" to "เพิ่มเครดิต"')&&queueGoCreditCard.includes('"promo" to "เพิ่มเครดิต"'),'Native credit history must not expose paid-vs-admin-credit balance buckets');
 ok(merchantRevenue.includes('QueueGoCreditCard(')&&merchantRevenue.includes('kind = "merchant"')&&riderEarningsCredit.includes('QueueGoCreditCard(auth.user.id, auth.session.accessToken, "rider")'),'Merchant and Rider must reuse the same unified credit component');
 ok(
