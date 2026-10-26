@@ -32,6 +32,22 @@ class MerchantInventoryTrackingTest {
         assertThrows(IllegalArgumentException::class.java) { requireMerchantStockEditAllowed(product, 5) }
         requireMerchantStockEditAllowed(product.copy(inventoryStockTracking = false), 5)
     }
+    @Test fun posStockGateMatchesWebTrackedProductRules() {
+        val genericTracked = PosProduct("g", "สินค้า", 10.0, null, true, stock = 0,
+            inventoryStockTracking = true)
+        assertTrue(posProductInventoryTracked(genericTracked))
+        assertTrue(posProductSoldOut(genericTracked))
+
+        val groceryTracked = PosProduct("m", "ของสด", 10.0, null, true, stock = 0,
+            groceryMasterId = "master", groceryStockTracking = true)
+        assertTrue(posProductInventoryTracked(groceryTracked))
+        assertTrue(posProductSoldOut(groceryTracked))
+
+        assertFalse(posProductInventoryTracked(groceryTracked.copy(groceryMasterId = null)))
+        assertFalse(posProductSoldOut(PosProduct("u", "ไม่ติดตาม", 10.0, null, true, stock = 0)))
+        assertFalse(posProductSoldOut(genericTracked.copy(stock = 3)))
+    }
+
     @Test fun receiptAndHistoryPreserveAuthoritativeMovement() {
         val receipt = merchantInventoryAdjustmentReceipt(JSONObject().put("id", "movement")
             .put("stock_before", 4).put("stock_after", 2).put("replayed", true))

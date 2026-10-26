@@ -1613,13 +1613,21 @@ private fun PosCounterView(
                         Modifier
                             .weight(1f)
                             .padding(bottom = 8.dp)
-                            .clickable(enabled = !busy && canReceive) { onProduct(product) }
+                            .clickable(enabled = !busy && canReceive && !posProductSoldOut(product)) { onProduct(product) }
                     ) {
                         Column {
                             QgRemoteImage(product.image, Modifier.fillMaxWidth().height(82.dp), product.name)
                             Spacer(Modifier.height(5.dp))
                             Text(product.name, fontWeight = FontWeight.ExtraBold, maxLines = 2)
                             Text("฿" + money(product.price), color = QgRed, fontWeight = FontWeight.Black)
+                            if (posProductInventoryTracked(product)) {
+                                Text(
+                                    if (posProductSoldOut(product)) "สินค้าหมดสต็อก · เหลือ 0" else "เหลือ ${product.stock}",
+                                    color = if (posProductSoldOut(product)) QgRed else QgMuted,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                             if (canEditPrice) {
                                 TextButton(onClick = { onEditPrice(product) }, enabled = !busy) {
                                     Text("แก้ราคา", fontSize = 10.sp)

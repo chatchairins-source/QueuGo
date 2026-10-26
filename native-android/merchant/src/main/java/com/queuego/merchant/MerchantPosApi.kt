@@ -3,6 +3,7 @@ package com.queuego.merchant
 import com.queuego.shared.nativeOrderNumber
 
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.QueueGoHttpException
 import com.queuego.shared.nativePosPermissionAllowed
 import com.queuego.shared.QueueGoNativeApi
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +23,19 @@ data class PosProduct(
     val image: String?,
     val available: Boolean,
     val deliveryAvailable: Boolean = true,
-    val deliveryPrice: Double? = null
+    val deliveryPrice: Double? = null,
+    val stock: Int = 0,
+    val inventoryStockTracking: Boolean = false,
+    val groceryMasterId: String? = null,
+    val groceryStockTracking: Boolean = false
 )
+
+internal fun posProductInventoryTracked(product: PosProduct): Boolean =
+    product.inventoryStockTracking ||
+        (!product.groceryMasterId.isNullOrBlank() && product.groceryStockTracking)
+
+internal fun posProductSoldOut(product: PosProduct): Boolean =
+    posProductInventoryTracked(product) && product.stock <= 0
 
 data class PosTable(
     val id: String,
@@ -217,11 +229,25 @@ class MerchantPosApi(
                 "pos_tables?select=id,label,active,qr_token&shop_id=eq." + http.enc(shopId) + "&order=label.asc",
                 auth.session.accessToken
             )) }
-            val products = async { http.array(http.get(
-                "products?select=id,name,price,pos_price,delivery_price,image,available,pos_available,delivery_available" +
-                    "&shop_id=eq." + http.enc(shopId) + "&order=name.asc",
-                auth.session.accessToken
-            )) }
+            val products = async {
+                val scope = "&shop_id=eq." + http.enc(shopId) + "&order=name.asc"
+                val base = "products?select=id,name,price,pos_price,delivery_price,image,available,pos_available," +
+                    "delivery_available,stock,"
+                try {
+                    http.array(http.get(
+                        base + "inventory_stock_tracking,grocery_master_id,grocery_stock_tracking" + scope,
+                        auth.session.accessToken
+                    ))
+                } catch (error: QueueGoHttpException) {
+                    if (error.statusCode != 400 ||
+                        !error.message.orEmpty().contains("inventory_stock_tracking", ignoreCase = true)
+                    ) throw error
+                    http.array(http.get(
+                        base + "grocery_master_id,grocery_stock_tracking" + scope,
+                        auth.session.accessToken
+                    ))
+                }
+            }
             val billColumns = "select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status," +
                 "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at"
             val bills = async { http.array(http.get(
@@ -303,7 +329,11 @@ class MerchantPosApi(
                         } else true,
                         deliveryPrice = if (r.has("delivery_price") && !r.isNull("delivery_price")) {
                             r.optDouble("delivery_price")
-                        } else null
+                        } else null,
+                        stock = r.optInt("stock", 0),
+                        inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false),
+                        groceryMasterId = nullableString(r, "grocery_master_id"),
+                        groceryStockTracking = r.optBoolean("grocery_stock_tracking", false)
                     )
                 )
             }
