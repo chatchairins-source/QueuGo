@@ -7,6 +7,8 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -113,7 +115,10 @@ private fun MerchantShell(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val ordersMutex = remember { Mutex() }
     val notificationsMutex = remember { Mutex() }
-    var screen by remember { mutableStateOf("home") }
+    val routeSaver = Saver<String, String>(
+        save = { merchantRestorableRoute(it) }, restore = { merchantRestorableRoute(it) }
+    )
+    var screen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
     var shop by remember { mutableStateOf<MerchantShop?>(null) }
     var orders by remember { mutableStateOf<List<MerchantOrder>>(emptyList()) }
     var notifications by remember { mutableStateOf<List<MerchantNotification>>(emptyList()) }
@@ -126,7 +131,7 @@ private fun MerchantShell(
     var selectedRiderContext by remember { mutableStateOf<MerchantRiderContext?>(null) }
     var selectedProduct by remember { mutableStateOf<MerchantProduct?>(null) }
     var newProductCategory by remember { mutableStateOf<String?>(null) }
-    var productReturnScreen by remember { mutableStateOf("products") }
+    var productReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("products") }
     var groceryCatalogItems by remember { mutableStateOf<List<MerchantGroceryCatalogItem>>(emptyList()) }
     var groceryCatalogCategories by remember { mutableStateOf<List<String>>(emptyList()) }
     var groceryCatalogQuery by remember { mutableStateOf("") }

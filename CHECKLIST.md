@@ -1,3 +1,19 @@
+## 2026-10-26 Merchant route restoration — IN PROGRESS
+
+- Base: newest parity remote 3e7b5aa17995ab9d1ad93d5b635ffe945b3b5d04; Web main 7e036a0735cc49905e9b0a2434492470551a0c9d.
+- Root cause: Merchant screen and product return route used remember and disappeared after process recreation; selected order/product/shop editor context is not saveable.
+- Bounded change: Compose saved state retains reloadable destinations; detail/editor/catalog routes fall back to Orders/Products/Profile. Existing POS module and backend actions remain authoritative.
+- Focused: native source 328 PASS; three-app stability 106 PASS; diff check PASS. Added deterministic JUnit restoration-policy tests. Full regression, exact-head hosted JUnit/three APKs/emulator still required.
+- **NEXT:** exact-head Native Pilot for Merchant restoration; continue Customer page audit and Rider non-map inventory during CI. No physical-device or authenticated visual PASS claimed.
+
+## 2026-10-26 Owner authorizes Merchant/Rider overlap — IN PROGRESS
+
+- Owner explicitly permits starting Merchant/Rider while Customer CI runs; this supersedes the prior strict app-order restriction for independent work. Shared capability still has one owner.
+- Customer route successor 3e7b5aa: Native Pilot 40283517013 SUCCESS, including full regression/JUnit/three APKs/16 KB/WebView/emulator lifecycle. Full local npm test exit 0. Authenticated route-specific runtime/visual and physical-device evidence remain open.
+- Merchant source inventory started in docs/native-merchant-web-parity-matrix.md against main 7e036a0. Proven first gap: Merchant screen uses remember and loses route on recreation.
+- Rider already persists activeTab; Actions also shows concurrent puck/FOLLOW-heading work. Do not duplicate map implementation; verify its owner/descendant before integrating.
+- **NEXT:** fix Merchant safe route restoration; continue Customer critical-screen audit during CI; inventory Rider non-map surfaces without overlapping active map work.
+
 ## 2026-10-26 Customer route restoration — IN PROGRESS
 
 - Base: exact Native `01df476d08105c2a237fd4bcb94c63496e2cdc29`; Web main `7e036a0735cc49905e9b0a2434492470551a0c9d`. Native Pilot `40281441623` SUCCESS: full regression/JUnit, three APKs, 16 KB, WebView rejection and emulator lifecycle. APK artifact `12631549499`; emulator artifact `12632507538`. This closes the prior capture harness CI blocker.
