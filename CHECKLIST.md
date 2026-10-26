@@ -1,14 +1,17 @@
-## 2026-10-26 Native Rider Web map/navigation parity — IN PROGRESS
+## 2026-10-26 Native Rider Web map/navigation parity — DONE (source/test)
 
-- Parallel stream is isolated from Places/OSM PR #728 and starts from newest verified Native Rider successor PR #710 at `65918d8ca7dbe720127e1c915a0483c3f209cb01`; no older Rider implementation was restored.
-- Root cause: Web and Native were visually and behaviorally divergent because Native used a default MapLibre Rider marker plus separate Kotlin route-match/camera/display-filter policies. Web uses a red directional puck, one speed-aware heading, Rider-puck viewport anchoring, Web-specific pitch/zoom/rotation profiles and route scoring.
-- Native Rider now renders the Web-equivalent `#E6002D` 48px puck with 4px white border and white directional arrow through GeoJSON/CircleLayer/SymbolLayer; the default `MarkerOptions().title("Rider")` presentation is removed. Puck and FOLLOW camera consume the same speed-aware smoothed heading.
-- FOLLOW camera is anchored to the same confidence-bounded Rider presentation point instead of a separate Native look-ahead center. Speed zoom, navigation/free-drive pitch, bearing change gate, rotation duration and bottom-dock/speed viewport anchor are aligned to `queuego-map-web.js`.
-- Native route matching now uses the Web distance + heading + backtrack scoring contract; the Native-only >105 degree hard rejection and forward-jump penalty were removed. Visible Rider presentation no longer passes through the separate Native-only confidence filter; authoritative raw GPS, routing, ETA, reroute and business state remain unchanged.
-- Gesture parity: one-finger pan may enter FREE_PAN; two-finger pinch/rotate/pitch no longer abandons FOLLOW. Existing 8-second free-pan auto-follow remains aligned with Web.
-- Added Rider puck, camera, route-matcher and source-regression guards. Native Pilot workflow now also accepts `fix/native-**` branches so this stream cannot bypass the standard full regression, Kotlin tests, three-APK build, 16 KB packaging and emulator lifecycle gate.
-- Draft PR #729 contains this parity stream. No Production database/data mutation and no Places/OSM source change.
-- **NEXT:** obtain exact-head Native Pilot on the latest PR #729 HEAD. Fix only the first failure if any. After green CI, inspect emulator Rider map evidence; physical-device GPS/road behavior remains a separate acceptance gate.
+- Parallel stream remained isolated from Places/OSM PR #728 and was built from the newest unchanged Native Rider successor PR #710 at `65918d8ca7dbe720127e1c915a0483c3f209cb01`; no older Rider implementation was restored.
+- Evidence-backed root cause: Web and Native had separate Rider presentation/navigation policies. Native still used a default MapLibre Rider marker plus Native-only route-match/camera/display-filter/gesture behavior, while Web uses a branded red directional puck, one speed-aware heading, Rider-puck viewport anchoring and different camera/route scoring.
+- Tested implementation HEAD `09936c6d9d4bccc59d0228ee0011ae7b9903652c` on draft PR #729. Native Rider now uses the Web-equivalent `#E6002D` red puck with 4px white border and white directional arrow, removes the default `MarkerOptions().title("Rider")` presentation, and feeds puck + FOLLOW camera from the same speed-aware smoothed heading.
+- FOLLOW camera now anchors to the same confidence-bounded Rider presentation point rather than a separate Native look-ahead center. Speed zoom, navigation/free-drive pitch, bearing threshold, rotation duration and viewport anchor/bottom-dock padding are aligned to `queuego-map-web.js`.
+- Native route presentation matching now uses the Web distance + heading + backtrack score; the Native-only opposite-heading hard rejection and forward-jump penalty were removed from the visible matcher. The separate experimental Native display-confidence pipeline is disabled in the visible path; authoritative raw GPS/business state/routing remain unchanged.
+- Gesture parity: one-finger pan can enter FREE_PAN; two-finger pinch/rotate/pitch keeps FOLLOW, matching Web ownership. Existing 8-second FREE_PAN auto-follow is preserved.
+- Regression guards were updated so the old default Rider marker cannot be reintroduced. Native Pilot also accepts native fix/PR branches so parity work cannot bypass the standard regression/build/runtime gates.
+- Exact implementation Native Pilot run `40282973410`: **SUCCESS**. Full QueueGo regression, source integrity/contracts, Kotlin unit suites including Rider navigation-map tests, Customer/Merchant/Rider APK builds, Android 16 KB packaging, WebView rejection, APK artifact upload, and Android emulator launch/map/voice lifecycle all passed.
+- Artifacts: `queuego-native-pilot-apks` id `12632823973`; `queuego-rider-native-launch-evidence` id `12633591041`.
+- No Production database/data mutation and no Places/OSM source change.
+- **BLOCKED (physical acceptance only):** emulator/source evidence does not certify real-road GPS, OEM sensor heading, turn behavior or physical-device visual parity.
+- **NEXT:** keep PR #729 as the Native parity successor; perform physical Rider device/road acceptance when available. For further code-only parity, add a shared golden GPS trace contract comparing Web and Kotlin snapped point / heading / route progress / camera / reroute outputs before changing either navigation authority again.
 
 ## 2026-10-25 Native Customer checkout QueueGo Places parity — DONE (source/test)
 
