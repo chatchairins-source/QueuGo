@@ -1,3 +1,9 @@
+## 2026-10-26 Merchant POS option source contract — bounded correction; exact-head Pilot NEXT
+
+- Exact Native Pilot [40306967037](https://github.com/chatchairins-source/QueuGo/actions/runs/40306967037) ran on exact HEAD `d648c0c0446281d7f1c236936590f6abfdc7be37`. It stopped at the first Full QueueGo regression check, `tests/native-android-source.cjs:706`: the contract searched for `optionsJson = optionsJson` in `MerchantPosApi.kt`, although that argument is passed from `MerchantPosScreen.kt`. The implementation's API RPC call and screen payload are present; this is a test source-location error, not an app failure.
+- Corrected only that assertion in `95037130636aab5522e6e088b7f6dbfda88494a7`. This preserves both independent requirements: API calls the existing option-pricing RPC; screen passes the exact options JSON. Static review confirmed the assertion now checks each in its owning source.
+- **NEXT:** run/poll Native Pilot on this checklist successor's exact HEAD. Fix only its first confirmed failure. If all gates pass, implement Merchant offline-draft custom-option parity next.
+
 ## 2026-10-26 Merchant POS custom option selection — source committed; exact-head Pilot pending
 
 - Bounded Native implementation committed as `feef406520de0f912de87e9873aed128b21d508a`: product options parse Web structured and legacy variants, a Compose dialog validates required/min/max/duplicate/unknown selections, and the existing `pos_add_product_with_options` RPC receives the selections with a stable UUID and durable pending replay body.
