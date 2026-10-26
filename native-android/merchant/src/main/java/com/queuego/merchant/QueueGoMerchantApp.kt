@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.merchantRealtimeSubscriptions
 import com.queuego.shared.QgInk
+import com.queuego.shared.QgLine
 import com.queuego.shared.NativeOrderRealtime
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -1579,7 +1580,7 @@ private fun MerchantOrderDetail(
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                             Box(
                                 Modifier.size(16.dp)
-                                    .background(if (index <= stage) QgRed else QgBorder, CircleShape)
+                                    .background(if (index <= stage) QgRed else QgLine, CircleShape)
                             )
                             Text(label, color = if (index <= stage) QgInk else QgMuted, fontSize = 8.sp, lineHeight = 10.sp)
                         }
