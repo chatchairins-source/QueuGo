@@ -67,6 +67,7 @@ fun RiderProfileScreen(
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var showAccountDetails by remember { mutableStateOf(false) }
+    var showExtraTools by remember { mutableStateOf(false) }
     var showSupport by remember { mutableStateOf(false) }
     var showSafety by remember { mutableStateOf(false) }
     var showLearning by remember { mutableStateOf(false) }
@@ -228,84 +229,41 @@ fun RiderProfileScreen(
                 }
             }
             Spacer(Modifier.height(22.dp))
-            RiderProfileSection("บัญชีและเอกสาร") {
-                RiderSettingRow("รถและเอกสาร Rider", "ข้อมูลรถ · สถานะอนุมัติ · เอกสาร", R.drawable.qg_rider_nav_user) {
-                    showAccountDetails = !showAccountDetails
-                }
-            }
-            if (showAccountDetails) {
-                RiderPassengerLicenseCard(auth, api)
-            RiderReverificationCard(
-                auth = auth,
-                api = api,
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            RiderVehicleInspectionCard(
-                auth = auth,
-                api = api,
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            RiderVehiclesCard(
-                auth = auth,
-                api = api,
-                online = snapshot?.online == true,
-                onSelected = {
-                    scope.launch {
-                        try {
-                            onSnapshot(api.riderSnapshot(auth))
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (_: Exception) {
-                            message = "เปลี่ยนรถแล้ว แต่โหลดโปรไฟล์ล่าสุดไม่สำเร็จ"
-                        }
-                    }
-                },
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            RiderDocumentReadinessCard(
-                auth = auth,
-                api = api,
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            RiderInsuranceCard(
-                auth = auth,
-                api = api,
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            RiderBenefitsCard(
-                auth = auth,
-                api = api,
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            }
-            Spacer(Modifier.height(22.dp))
             RiderProfileSection("การรับงาน") { workSettings() }
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("บัญชีและช่วยเหลือ") {
                 RiderSettingRow("ตั้งค่าบัญชี", "ชื่อ เบอร์โทร และข้อมูลบัญชี", R.drawable.qg_rider_nav_user, enabled = !busy) {
-                    name = displayName; phone = displayPhone; editing = true
+                    name = displayName
+                    phone = displayPhone
+                    editing = true
                 }
                 RiderSettingDivider()
                 RiderSettingRow(
-                    "แนะนำบริการและวิธีใช้งาน",
-                    "รับงาน · นำทาง · รับสินค้า · Market · ส่งลูกค้า · ความปลอดภัย",
-                    R.drawable.qg_rider_flow_jobs
-                ) { showLearning = true }
-                RiderSettingDivider()
-                RiderSettingRow("ศูนย์ความปลอดภัย", "เหตุฉุกเฉิน · แพทย์ · ตำรวจ · QueueGo Support", R.drawable.qg_rider_flow_loc) { showSafety = true }
-                RiderSettingDivider()
-                RiderSettingRow("แจ้งปัญหา / ติดตามเรื่อง", "ติดต่อฝ่ายดูแล QueueGo", R.drawable.qg_rider_nav_chat) { showSupport = true }
+                    "แจ้งปัญหา / ติดตามเรื่อง",
+                    "ติดต่อฝ่ายดูแล QueueGo",
+                    R.drawable.qg_rider_nav_chat
+                ) { showSupport = true }
             }
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("การแจ้งเตือน") {
-                RiderSettingRow("การแจ้งเตือนเบื้องหลัง", "รับงานและสถานะสำคัญแม้ไม่ได้เปิดหน้านี้", R.drawable.qg_rider_nav_chat) {
+                RiderSettingRow(
+                    "การแจ้งเตือนเบื้องหลัง",
+                    "รับงานและสถานะสำคัญแม้ไม่ได้เปิดหน้านี้",
+                    R.drawable.qg_rider_nav_chat
+                ) {
                     val intent = if (Build.VERSION.SDK_INT >= 26) Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                         .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                     else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName))
-                    runCatching { context.startActivity(intent) }.onFailure { message = "เปิดการตั้งค่าการแจ้งเตือนไม่สำเร็จ" }
+                    runCatching { context.startActivity(intent) }
+                        .onFailure { message = "เปิดการตั้งค่าการแจ้งเตือนไม่สำเร็จ" }
                 }
                 RiderSettingDivider()
-                RiderSettingRow("ทดสอบการแจ้งเตือน", "ส่งแจ้งเตือนทดสอบหลัง 7 วินาที", R.drawable.qg_rider_nav_chat, enabled = !busy) {
+                RiderSettingRow(
+                    "ทดสอบการแจ้งเตือน",
+                    "ส่งแจ้งเตือนทดสอบหลัง 7 วินาที",
+                    R.drawable.qg_rider_nav_chat,
+                    enabled = !busy
+                ) {
                     busy = true
                     scope.launch {
                         try {
@@ -329,58 +287,165 @@ fun RiderProfileScreen(
                         }
                     }
                 }
-                RiderSettingDivider()
-                RiderSettingRow(
-                    "ผู้ช่วยเสียง Rider",
-                    "อ่านงานใหม่และสถานะสำคัญเป็นเสียงไทย · ไม่ใช้ไมโครโฟน",
-                    R.drawable.qg_rider_nav_chat,
-                    trailing = {
-                        Switch(
-                            checked = voiceAssistantEnabled,
-                            onCheckedChange = { enabled ->
-                                scope.launch {
-                                    RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
-                                    message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
-                                }
-                            }
-                        )
-                    }
-                ) {
-                    val enabled = !voiceAssistantEnabled
-                    scope.launch {
-                        RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
-                        message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
-                    }
-                }
-                RiderSettingDivider()
-            }
-            Spacer(Modifier.height(22.dp))
-            RiderProfileSection("การนำทางและแผนที่") {
-                // Reuse the existing navigation permission/settings entry.
-                RiderSettingRow("ปุ่มลอยกลับ QueueGo", "ใช้ระหว่างเปิด Google Maps เพื่อนำทาง", R.drawable.qg_rider_flow_loc, onClick = onNavigationSettings)
-                RiderSettingDivider()
-            }
-            Spacer(Modifier.height(22.dp))
-            RiderProfileSection("ขั้นสูง") {
-                RiderSettingRow(
-                    "ตรวจสอบระบบ Rider",
-                    "ตรวจ GPS · แจ้งเตือน · อินเทอร์เน็ต · Google Maps · ปุ่มลอย",
-                    R.drawable.qg_rider_flow_loc
-                ) { showDiagnostics = true }
             }
             Spacer(Modifier.height(10.dp))
-            if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
-                "Rider", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
-                BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
             RiderProfileSection("ความเป็นส่วนตัวและบัญชี") {
-                RiderSettingRow("นโยบายความเป็นส่วนตัว", "การใช้ข้อมูลและการลบบัญชี", R.drawable.qg_rider_nav_chat) {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(RIDER_PRIVACY_POLICY_URL)).addCategory(Intent.CATEGORY_BROWSABLE)
-                    runCatching { context.startActivity(intent) }.onFailure { message = "ไม่สามารถเปิดนโยบายความเป็นส่วนตัวได้" }
+                RiderSettingRow(
+                    "นโยบายความเป็นส่วนตัว",
+                    "การใช้ข้อมูลและการลบบัญชี",
+                    R.drawable.qg_rider_nav_chat
+                ) {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(RIDER_PRIVACY_POLICY_URL))
+                        .addCategory(Intent.CATEGORY_BROWSABLE)
+                    runCatching { context.startActivity(intent) }
+                        .onFailure { message = "ไม่สามารถเปิดนโยบายความเป็นส่วนตัวได้" }
                 }
                 RiderSettingDivider()
-                RiderSettingRow("ลบบัญชีถาวร", "ลบ Auth และข้อมูลส่วนบุคคล", R.drawable.qg_rider_flow_back, danger = true) { deleting = true }
+                RiderSettingRow(
+                    "ลบบัญชีถาวร",
+                    "ลบ Auth และข้อมูลส่วนบุคคล",
+                    R.drawable.qg_rider_flow_back,
+                    danger = true
+                ) { deleting = true }
                 RiderSettingDivider()
-                RiderSettingRow("ออกจากระบบ", "ออกจากบัญชีในอุปกรณ์นี้", R.drawable.qg_rider_flow_back, onClick = onLogout)
+                RiderSettingRow(
+                    "ออกจากระบบ",
+                    "ออกจากบัญชีในอุปกรณ์นี้",
+                    R.drawable.qg_rider_flow_back,
+                    onClick = onLogout
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            RiderProfileSection("เพิ่มเติม") {
+                RiderSettingRow(
+                    "เครื่องมือ Rider เพิ่มเติม",
+                    "รถและเอกสาร · วิธีใช้งาน · ความปลอดภัย · ผู้ช่วยเสียง · นำทาง",
+                    R.drawable.qg_rider_flow_jobs,
+                    trailing = {
+                        Text(
+                            if (showExtraTools) "⌃" else "›",
+                            color = Color(0xFFB4ADB1),
+                            fontSize = 21.sp
+                        )
+                    }
+                ) { showExtraTools = !showExtraTools }
+
+                if (showExtraTools) {
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "รถและเอกสาร Rider",
+                        "ข้อมูลรถ · สถานะอนุมัติ · เอกสาร",
+                        R.drawable.qg_rider_nav_user
+                    ) { showAccountDetails = !showAccountDetails }
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "แนะนำบริการและวิธีใช้งาน",
+                        "รับงาน · นำทาง · รับสินค้า · Market · ส่งลูกค้า · ความปลอดภัย",
+                        R.drawable.qg_rider_flow_jobs
+                    ) { showLearning = true }
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "ศูนย์ความปลอดภัย",
+                        "เหตุฉุกเฉิน · แพทย์ · ตำรวจ · QueueGo Support",
+                        R.drawable.qg_rider_flow_loc
+                    ) { showSafety = true }
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "ผู้ช่วยเสียง Rider",
+                        "อ่านงานใหม่และสถานะสำคัญเป็นเสียงไทย · ไม่ใช้ไมโครโฟน",
+                        R.drawable.qg_rider_nav_chat,
+                        trailing = {
+                            Switch(
+                                checked = voiceAssistantEnabled,
+                                onCheckedChange = { enabled ->
+                                    scope.launch {
+                                        RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
+                                        message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
+                                    }
+                                }
+                            )
+                        }
+                    ) {
+                        val enabled = !voiceAssistantEnabled
+                        scope.launch {
+                            RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
+                            message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
+                        }
+                    }
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "ปุ่มลอยกลับ QueueGo",
+                        "ใช้ระหว่างเปิด Google Maps เพื่อนำทาง",
+                        R.drawable.qg_rider_flow_loc,
+                        onClick = onNavigationSettings
+                    )
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "ตรวจสอบระบบ Rider",
+                        "ตรวจ GPS · แจ้งเตือน · อินเทอร์เน็ต · Google Maps · ปุ่มลอย",
+                        R.drawable.qg_rider_flow_loc
+                    ) { showDiagnostics = true }
+                }
+            }
+
+            if (showExtraTools && showAccountDetails) {
+                Spacer(Modifier.height(9.dp))
+                RiderPassengerLicenseCard(auth, api)
+                RiderReverificationCard(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+                RiderVehicleInspectionCard(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+                RiderVehiclesCard(
+                    auth = auth,
+                    api = api,
+                    online = snapshot?.online == true,
+                    onSelected = {
+                        scope.launch {
+                            try {
+                                onSnapshot(api.riderSnapshot(auth))
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                message = "เปลี่ยนรถแล้ว แต่โหลดโปรไฟล์ล่าสุดไม่สำเร็จ"
+                            }
+                        }
+                    },
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+                RiderDocumentReadinessCard(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+                RiderInsuranceCard(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+                RiderBenefitsCard(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+            }
+
+            if (showExtraTools && BuildConfig.DEBUG) {
+                Spacer(Modifier.height(10.dp))
+                com.queuego.shared.QgTestBuildInfo(
+                    "Rider",
+                    BuildConfig.VERSION_NAME,
+                    BuildConfig.VERSION_CODE,
+                    BuildConfig.GIT_SHA,
+                    BuildConfig.BUILT_UTC,
+                    BuildConfig.BUILD_TYPE
+                )
             }
         }
         message?.let {
