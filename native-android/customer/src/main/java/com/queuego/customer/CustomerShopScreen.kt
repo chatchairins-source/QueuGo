@@ -25,7 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -213,6 +215,9 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
     val api = remember { ShopExtrasApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val reviewCache = remember(context.applicationContext) {
+        CustomerShopReviewCache(context.applicationContext)
+    }
     val configuration = LocalConfiguration.current
     val compact = configuration.screenHeightDp < 760
     val narrow = configuration.screenWidthDp <= 420
@@ -227,11 +232,30 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
     var categoryMenu by remember { mutableStateOf(false) }
     LaunchedEffect(reload, auth?.session?.accessToken, shop.id) {
         loadError = false
+        val cachedReviews = withContext(Dispatchers.IO) { reviewCache.read(shop.id) }
+        if (cachedReviews != null) reviews = cachedReviews.value
+
+        var failed = false
         try {
             favorites = if (auth == null) emptyList() else api.favorites(auth)
-            reviews = api.reviews(auth, shop.id)
-        } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { loadError = true }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            failed = true
+        }
+
+        if (cachedReviews?.fresh != true || reload > 0) {
+            try {
+                val freshReviews = api.reviews(auth, shop.id)
+                reviews = freshReviews
+                withContext(Dispatchers.IO) { reviewCache.write(shop.id, freshReviews) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                if (reviews == null) failed = true
+            }
+        }
+        loadError = failed
     }
     fun favorite(kind: String, id: String) {
         val liveAuth = auth
