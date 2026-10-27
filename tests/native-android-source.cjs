@@ -44,6 +44,7 @@ for(const p of [
   'merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantSupportTicketsScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantApi.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantContentCache.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantHoursScreen.kt',
@@ -400,6 +401,15 @@ ok(
   'Merchant media gallery must lazy-render rows instead of decoding the full image library at once'
 );
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
+const merchantContentCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantContentCache.kt');
+ok(
+  merchantContentCacheSource.includes('context.noBackupFilesDir, "merchant_content_cache_v1"') &&
+  merchantContentCacheSource.includes('CachedMerchantContent') &&
+  merchantAppSource.includes('contentCache.read(auth.user.id)') &&
+  merchantAppSource.includes('contentCache.write(auth.user.id, s, freshProducts)') &&
+  merchantAppSource.includes('refreshAll(showLoading = cached == null)'),
+  'Merchant shop and menu content must render from durable local cache before authoritative refresh'
+);
 const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(
   merchantAppSource.includes('runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90) }') &&
