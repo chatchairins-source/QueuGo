@@ -257,13 +257,7 @@ internal fun CustomerShoppingScreen(
         Spacer(Modifier.height(8.dp))
 
         when {
-            loading -> Text(
-                "กำลังโหลดข้อมูล…",
-                color = QgMuted,
-                fontSize = 16.sp,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 35.dp),
-                textAlign = TextAlign.Center
-            )
+            loading -> Unit
             rows.isEmpty() -> Text(
                 "ยังไม่มีร้านในหมวดนี้ที่เปิดให้บริการ",
                 color = QgMuted,
