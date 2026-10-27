@@ -570,8 +570,10 @@ ok(
   customerShopReviewCacheSource.includes('FRESH_MS = 10L * 60L * 1000L') &&
   customerShopForMemory.includes('reviewCache.read(shop.id)') &&
   customerShopForMemory.includes('cachedReviews?.fresh != true || reload > 0') &&
-  customerShopForMemory.includes('reviewCache.write(shop.id, freshReviews)'),
-  'Customer shop reviews must render durable cached rows first and avoid repeated fresh downloads'
+  customerShopForMemory.includes('reviewCache.write(shop.id, freshReviews)') &&
+  customerShopForMemory.includes('if (reviews == null) loadError = true') &&
+  !customerShopForMemory.includes('var failed = false'),
+  'Customer shop reviews must render durable cached rows first and keep favorites failures independent'
 );
 ok(
   customerLaundryContentCacheSource.includes('context.noBackupFilesDir, "customer_laundry_cache_v1"') &&
