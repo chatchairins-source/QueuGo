@@ -15,13 +15,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun MerchantPromotionScreen(
@@ -30,6 +34,10 @@ internal fun MerchantPromotionScreen(
     api: MerchantApi
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val cache = remember(context.applicationContext) {
+        MerchantPromotionCache(context.applicationContext)
+    }
     var rows by remember(shop.id) { mutableStateOf<List<MerchantPromotion>>(emptyList()) }
     var filter by remember { mutableStateOf("all") }
     var loading by remember { mutableStateOf(true) }
@@ -40,11 +48,30 @@ internal fun MerchantPromotionScreen(
     var message by remember { mutableStateOf<String?>(null) }
 
     suspend fun refresh() {
-        loading = true
-        runCatching { api.loadPromotions(auth, shop.id) }
-            .onSuccess { rows = it; message = null }
-            .onFailure { message = it.message ?: "โหลดโปรโมชั่นไม่สำเร็จ" }
-        loading = false
+        loading = rows.isEmpty()
+        if (rows.isEmpty()) {
+            val cached = withContext(Dispatchers.IO) {
+                cache.read(auth.user.id, shop.id)
+            }
+            if (cached.isNotEmpty()) {
+                rows = cached
+                loading = false
+            }
+        }
+        try {
+            val fresh = api.loadPromotions(auth, shop.id)
+            rows = fresh
+            withContext(Dispatchers.IO) {
+                cache.write(auth.user.id, shop.id, fresh)
+            }
+            message = null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            if (rows.isEmpty()) message = failure.message ?: "โหลดโปรโมชั่นไม่สำเร็จ"
+        } finally {
+            loading = false
+        }
     }
 
     LaunchedEffect(shop.id) { refresh() }
