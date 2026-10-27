@@ -166,9 +166,7 @@ private fun MerchantNativeEntryGate(pushTarget: NativePushLaunchTarget?) {
 
     if (!sessionLoaded) {
         QueueGoTheme {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            Box(Modifier.fillMaxSize()) { /* Restore Merchant session silently. */ }
         }
         return
     }
