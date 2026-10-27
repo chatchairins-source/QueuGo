@@ -3,6 +3,7 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 
 const native=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt','utf8');
+const web=fs.readFileSync('index.html','utf8');
 const blueprint=JSON.parse(fs.readFileSync('data/native-web-parity-blueprint.json','utf8'));
 
 assert.equal(blueprint.source_web_ref,'main');
@@ -36,6 +37,20 @@ assert.deepEqual(shopCard,{
   status_padding_vertical_css_px:3,status_padding_vertical_native_dp:3,
   status_font_css_px:9.5,status_font_native_sp:9.5
 });
+
+assert.ok(web.includes('.cats{display:flex;gap:'+tile.gap_css_px+'px;'),'Blueprint category gap must come from current Web CSS');
+assert.ok(web.includes('.cat{flex:0 0 '+tile.tile_width_css_px+'px;'),'Blueprint category width must come from current Web CSS');
+assert.ok(web.includes('.cat i{width:'+tile.circle_css_px+'px;height:'+tile.circle_css_px+'px;'),'Blueprint category circle must come from current Web CSS');
+assert.ok(web.includes('.cat svg{width:'+tile.icon_css_px+'px;'),'Blueprint category icon must come from current Web CSS');
+assert.ok(web.includes('.cat b{display:block;font-size:'+tile.label_font_css_px+'px;'),'Blueprint category label size must come from current Web CSS');
+assert.ok(web.includes('.list{display:flex;flex-direction:column;gap:'+shopCard.list_gap_css_px+'px}'),'Blueprint shop-list gap must come from current Web CSS');
+assert.ok(web.includes('.sc{background:#fff;border:1px solid var(--ln);border-radius:'+shopCard.radius_css_px+'px;padding:'+shopCard.padding_css_px+'px;display:flex;gap:'+shopCard.content_gap_css_px+'px;'),'Blueprint shop-card geometry must come from current Web CSS');
+assert.ok(web.includes('.ph{width:'+shopCard.image_css_px+'px;height:'+shopCard.image_css_px+'px;border-radius:'+shopCard.image_radius_css_px+'px;'),'Blueprint shop image geometry must come from current Web CSS');
+assert.ok(web.includes('@media(max-width:420px){.ph{width:'+shopCard.compact_image_css_px+'px;height:'+shopCard.compact_image_css_px+'px}}'),'Blueprint compact shop image must come from current Web CSS');
+assert.ok(web.includes('.sm{display:flex;flex-wrap:wrap;gap:'+shopCard.meta_gap_css_px+'px;color:var(--mu);font-size:'+shopCard.meta_font_css_px+'px;'),'Blueprint shop metadata size must come from current Web CSS');
+assert.ok(web.includes('.pill{display:inline-flex;align-items:center;font-size:'+shopCard.status_font_css_px+'px;')&&
+  web.includes('padding:'+shopCard.status_padding_vertical_css_px+'px '+shopCard.status_padding_horizontal_css_px+'px;border-radius:999px;margin-top:'+shopCard.status_margin_top_css_px+'px'),
+  'Blueprint shop status pill must come from current Web CSS');
 
 const block=native.match(/private val homeCategories = listOf\(([\s\S]*?)\n\)/);
 assert.ok(block,'Native Customer Home must declare an explicit Web-parity category list');
