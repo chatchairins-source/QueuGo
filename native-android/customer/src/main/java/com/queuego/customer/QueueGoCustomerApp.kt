@@ -35,7 +35,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -135,9 +134,7 @@ fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
 
     if (authRequested == null) {
         QueueGoTheme {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            Box(Modifier.fillMaxSize()) { /* Restore local session silently. */ }
         }
     } else if (authRequested == false) {
         QueueGoTheme {
@@ -838,7 +835,7 @@ private fun CustomerShell(
                         Text("โหลดข้อมูลไม่สำเร็จ", fontWeight = FontWeight.Bold)
                         Text(homeLoadError!!, color = QgMuted, modifier = Modifier.padding(vertical = 8.dp))
                         androidx.compose.material3.Button(onClick = { refresh(showLoading = true) }, enabled = !loading) {
-                            Text(if (loading) "กำลังโหลดข้อมูล…" else "ลองอีกครั้ง")
+                            Text("ลองอีกครั้ง")
                         }
                     }
                 }
@@ -1720,16 +1717,12 @@ internal fun CustomerHome(
                 )
             }
             Spacer(Modifier.height(11.dp))
-            if (loading) {
-                CircularProgressIndicator()
-            } else if (nearbyShops.isEmpty()) {
+            if (!loading && nearbyShops.isEmpty()) {
                 Text("ยังไม่มีร้านค้า", color = QgMuted, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
             }
         }
-        if (!loading) {
-            items(nearbyShops, key = { "home-shop:" + it.id }) { shop ->
-                CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
-            }
+        items(nearbyShops, key = { "home-shop:" + it.id }) { shop ->
+            CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
         }
         item(key = "home-bottom-space") {
             Spacer(Modifier.height(28.dp))
@@ -1900,9 +1893,6 @@ private fun OrdersScreen(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         QgSectionTitle("ออเดอร์ของฉัน", "อาหาร ตลาดสด ฝากซัก และบริการทั้งหมด")
         Spacer(Modifier.height(10.dp))
-        if (loading && orders.isEmpty() && marketTrips.isEmpty() && laundryOrders.isEmpty()) {
-            CircularProgressIndicator()
-        }
         if (orders.isEmpty() && marketTrips.isEmpty() && laundryOrders.isEmpty() && !loading) {
             QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์", color = QgMuted) }
         }
