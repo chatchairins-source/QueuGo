@@ -821,6 +821,7 @@ ok(merchantAppSource.includes('voiceController.startOutgoing(auth, orderId, "cus
    'Merchant order detail must start the existing authenticated QueueGo customer voice call only in active order states');
 const merchantTicketSource=read('merchant/src/main/java/com/queuego/merchant/MerchantSupportTicketsScreen.kt');
 const sharedTicketSource=read('shared/src/main/java/com/queuego/shared/NativeSupportTickets.kt');
+const sharedTicketCacheSource=read('shared/src/main/java/com/queuego/shared/NativeSupportTicketCache.kt');
 ok(merchantOrderDetailSource.includes('merchantOrderCanReportIssue(order.status)')&&
    merchantOrderDetailSource.includes('onReportIssue')&&merchantOrderDetailSource.includes('"แจ้งปัญหาออเดอร์นี้"')&&
    merchantAppSource.includes('screen = "order-report"')&&merchantAppSource.includes('MerchantSupportTicketsScreen(auth, orders, order.id, order.number)'),
@@ -832,6 +833,16 @@ ok(sharedTicketSource.includes('"qg_support_tickets?select=id,category,details,s
    merchantTicketSource.includes('"รายละเอียด"')&&merchantTicketSource.includes('"ส่งเรื่อง"')&&
    merchantTicketSource.includes('"เรื่องที่แจ้งไว้"')&&merchantTicketSource.includes('"ดูหลักฐาน"'),
    'Merchant issue reporting must reuse QueueGo ticket RPC/evidence authority and match Web form/list states');
+ok(
+   sharedTicketCacheSource.includes('context.noBackupFilesDir, "native_support_ticket_cache_v1"')&&
+   sharedTicketCacheSource.includes('FRESH_MS = 60L * 1000L')&&
+   merchantTicketSource.includes('NativeSupportTicketCache(context.applicationContext, "merchant")')&&
+   merchantTicketSource.includes('cache.read(auth.user.id)')&&
+   merchantTicketSource.includes('if (cached.fresh)')&&
+   merchantTicketSource.includes('cache.invalidate(auth.user.id)')&&
+   merchantTicketSource.includes('refresh(force = true)')&&
+   merchantTicketSource.includes('cache.write(auth.user.id, fresh)'),
+   'Merchant support history must reuse fresh shared cache while manual/new-ticket refresh stays server-authoritative');
 ok(source.includes('RiderReadyCard')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve one Ready card and the active job accept countdown');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
