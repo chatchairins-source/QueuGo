@@ -1,3 +1,14 @@
+## 2026-10-27 Rider/Merchant authenticated visual gate — PASS (emulator evidence)
+
+- Final authenticated review run `40428480371` on exact source head `907cc32c0e0e909db14cd06bc6801aab4a3cbe87` completed **SUCCESS** after the Diagnostics QA marker fix. This head is app-source equivalent to the previously green Native source line; the latest change is review-harness-only.
+- Rider artifact `12701142972` (digest `sha256:a30fdbb1fdf32a0111c78fdd2ccf38d1a1a1d16f0fa79869fa1d41dc06e73148`) reports `review_complete: true`, 10 expected/10 captured screens, and `missing_screens: []`: Home map, single Messages inbox, Earnings today/7d/30d, Profile, Support, Learning, Safety and Diagnostics.
+- Merchant artifact `12701356305` (digest `sha256:b1c79ccc0ed47eca3e2a0aff5befba86af378274fdc2880cc988c99f26078bd1`) reports `review_complete: true`, 5 expected/5 captured screens, and `missing_screens: []`: Home, Orders, Products, Promotions and Account.
+- Final Diagnostics screenshot is visually clean and readable. Emulator-only readiness shows 3/5 because Android test image lacks Rider location permission/Google Maps/overlay return; this is environment state, not a UI/layout regression.
+- Visually accepted on emulator: Rider map wordmark/right rail/Ready card, single inbox, inline credit, Profile/work-preference hierarchy, Support/Learning/Safety/Diagnostics; Merchant primary 5-screen surface including bottom outlined `เพิ่มเมนู` and single Promotions header.
+- Review metadata explicitly records `physical_device: false` and no Production order/dispatch mutation. Do **not** claim physical-device certification from this gate.
+- Customer authenticated visual review remains BLOCKED only by the recorded missing Customer review credential pair.
+- **NEXT:** preserve this green visual baseline. Continue only concrete successor gaps or release/physical-device gates; do not re-polish accepted Rider/Merchant screens without new evidence.
+
 ## 2026-10-27 Authenticated Rider diagnostics QA fix — exact Pilot PASS / recapture requested
 
 - Authenticated visual run `40384466162` on `9c553d43acc2e89087be36e07e110dd61a495313` built Rider/Merchant APKs and booted the emulator. Merchant capture completed all 5 expected screens (artifact `12681395969`). Rider captured Home, Messages, Earnings today/7d/30d, Profile, Support, Learning and Safety before the review harness stopped at Diagnostics (artifact `12679849177`).
