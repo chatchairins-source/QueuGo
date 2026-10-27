@@ -535,12 +535,18 @@ ok(
 );
 const customerLaundryContentCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerLaundryContentCache.kt');
 const customerPromotionCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerPromotionCache.kt');
+const customerContentCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerContentCache.kt');
 ok(
   customerPromotionCacheSource.includes('context.noBackupFilesDir, "customer_promotion_cache_v1"') &&
   silentCustomerPromotion.includes('cache.read()') &&
   silentCustomerPromotion.includes('cache.write(fresh)') &&
   silentCustomerPromotion.includes('if (rows.isEmpty()) error = failure.message'),
   'Customer Promotions must render durable cached rows first and refresh in the background'
+);
+ok(
+  !customerContentCacheSource.includes('readPromotions()') &&
+  !customerContentCacheSource.includes('writePromotions('),
+  'Customer Promotions must use one durable cache path only'
 );
 ok(
   customerLaundryContentCacheSource.includes('context.noBackupFilesDir, "customer_laundry_cache_v1"') &&
