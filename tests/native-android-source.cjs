@@ -397,6 +397,8 @@ const silentRiderSafety=read('rider/src/main/java/com/queuego/rider/RiderSafetyS
 const silentCustomerShopping=read('customer/src/main/java/com/queuego/customer/CustomerShoppingScreen.kt');
 const silentCustomerPromotion=read('customer/src/main/java/com/queuego/customer/CustomerPromotionScreen.kt');
 const silentCustomerOrderTracking=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
+const silentCustomerRide=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
+const silentCustomerExpress=read('customer/src/main/java/com/queuego/customer/CustomerExpressScreen.kt');
 const silentMerchantRevenue=read('merchant/src/main/java/com/queuego/merchant/MerchantRevenueScreen.kt');
 const silentMerchantSupport=read('merchant/src/main/java/com/queuego/merchant/MerchantSupportScreen.kt');
 const silentMerchantStock=read('merchant/src/main/java/com/queuego/merchant/MerchantMarketStockScreen.kt');
@@ -433,6 +435,8 @@ ok(
   !silentCustomerShopping.includes('"กำลังโหลดข้อมูล…"') &&
   !silentCustomerPromotion.includes('loading -> CircularProgressIndicator()') &&
   !silentCustomerOrderTracking.includes('"กำลังโหลดรายการ..."') &&
+  !silentCustomerRide.includes('กำลังตรวจสถานะเที่ยวล่าสุด') &&
+  !silentCustomerExpress.includes('กำลังตรวจสถานะ Express ล่าสุด') &&
   !silentMerchantRevenue.includes('CircularProgressIndicator') &&
   !silentMerchantSupport.includes('"กำลังโหลดข้อความ..."') &&
   !silentMerchantStock.includes('loading -> Box(') &&
