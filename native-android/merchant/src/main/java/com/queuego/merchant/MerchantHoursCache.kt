@@ -10,6 +10,7 @@ import java.security.MessageDigest
 internal class MerchantHoursCache(context: Context) {
     companion object {
         private const val MAX_FILE_BYTES = 256L * 1024L
+        private const val FRESH_MS = 5L * 60L * 1000L
     }
 
     private val root = File(context.noBackupFilesDir, "merchant_hours_cache_v1").also {
@@ -49,9 +50,16 @@ internal class MerchantHoursCache(context: Context) {
                     isClosed = row.optBoolean("isClosed", true)
                 )
             }
-            runCatching { file.setLastModified(System.currentTimeMillis()) }
             MerchantHoursState(days, special)
         }.getOrNull()
+    }
+
+    fun fresh(shopId: String): Boolean {
+        if (shopId.isBlank()) return false
+        val file = fileFor(shopId)
+        if (!file.isFile || file.length() !in 1L..MAX_FILE_BYTES) return false
+        val age = System.currentTimeMillis() - file.lastModified()
+        return age in 0L..FRESH_MS
     }
 
     fun write(shopId: String, state: MerchantHoursState) {
