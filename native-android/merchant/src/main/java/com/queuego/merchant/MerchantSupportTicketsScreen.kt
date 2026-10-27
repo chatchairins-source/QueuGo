@@ -39,11 +39,14 @@ import androidx.compose.ui.unit.sp
 import com.queuego.shared.NATIVE_SUPPORT_TICKET_CATEGORIES
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.NativeSupportTicketApi
+import com.queuego.shared.NativeSupportTicketCache
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun MerchantSupportTicketsScreen(
@@ -56,6 +59,9 @@ internal fun MerchantSupportTicketsScreen(
     val context = LocalContext.current
     val api = remember { NativeSupportTicketApi() }
     val scope = rememberCoroutineScope()
+    val cache = remember(context.applicationContext) {
+        NativeSupportTicketCache(context.applicationContext, "merchant")
+    }
     var tickets by remember(auth.user.id) { mutableStateOf(emptyList<com.queuego.shared.NativeSupportTicket>()) }
     var loading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }
@@ -70,15 +76,28 @@ internal fun MerchantSupportTicketsScreen(
     var openingEvidence by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { evidence = it }
 
-    suspend fun refresh() {
-        loading = true
+    suspend fun refresh(force: Boolean = false) {
+        loading = tickets.isEmpty()
+        val cached = if (!force && tickets.isEmpty()) {
+            withContext(Dispatchers.IO) { cache.read(auth.user.id) }
+        } else null
+        if (cached != null) {
+            tickets = cached.rows
+            loading = false
+            if (cached.fresh) {
+                loadError = null
+                return
+            }
+        }
         try {
-            tickets = api.tickets(auth.session.accessToken)
+            val fresh = api.tickets(auth.session.accessToken)
+            tickets = fresh
+            withContext(Dispatchers.IO) { cache.write(auth.user.id, fresh) }
             loadError = null
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {
-            loadError = failure.message ?: "โหลดเรื่องที่แจ้งไม่สำเร็จ"
+            if (tickets.isEmpty()) loadError = failure.message ?: "โหลดเรื่องที่แจ้งไม่สำเร็จ"
         } finally {
             loading = false
         }
@@ -90,7 +109,7 @@ internal fun MerchantSupportTicketsScreen(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             OutlinedButton(onClick = onBack, enabled = !busy) { Text("ย้อนกลับ") }
-            OutlinedButton(onClick = { scope.launch { refresh() } }, enabled = !loading && !busy) { Text("รีเฟรช") }
+            OutlinedButton(onClick = { scope.launch { refresh(force = true) } }, enabled = !loading && !busy) { Text("รีเฟรช") }
         }
         Spacer(Modifier.height(10.dp))
         MerchantPageTitle("ติดต่อฝ่ายดูแล", "แจ้งปัญหาและติดตามสถานะจากระบบ")
@@ -149,7 +168,8 @@ internal fun MerchantSupportTicketsScreen(
                                 details = ""
                                 evidence = null
                                 message = "ส่งเรื่องให้ฝ่ายดูแลแล้ว"
-                                refresh()
+                                withContext(Dispatchers.IO) { cache.invalidate(auth.user.id) }
+                                refresh(force = true)
                             } catch (cancelled: CancellationException) {
                                 throw cancelled
                             } catch (failure: Exception) {
@@ -173,7 +193,7 @@ internal fun MerchantSupportTicketsScreen(
             loading -> Unit
             loadError != null -> Column {
                 Text("โหลดเรื่องที่แจ้งไม่สำเร็จ: $loadError", color = QgRed, modifier = Modifier.padding(vertical = 10.dp))
-                OutlinedButton(onClick = { scope.launch { refresh() } }) { Text("ลองอีกครั้ง") }
+                OutlinedButton(onClick = { scope.launch { refresh(force = true) } }) { Text("ลองอีกครั้ง") }
             }
             tickets.isEmpty() -> Text("ยังไม่มีเรื่องที่แจ้ง", color = QgMuted, modifier = Modifier.padding(vertical = 14.dp))
             else -> tickets.forEach { ticket ->
