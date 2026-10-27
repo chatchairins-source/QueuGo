@@ -899,7 +899,8 @@ private fun CustomerShell(
                                 runCatching { extrasApi.markAllRead(auth) }
                                     .onSuccess {
                                         notifications = notifications.map { it.copy(read = true) }
-                                        message = "อ่านการแจ้งเตือนทั้งหมดแล้ว"
+                                        // Keep successful acknowledgement local; do not show a sticky global banner.
+                                        message = null
                                     }
                                     .onFailure { message = it.message ?: "บันทึกแจ้งเตือนไม่สำเร็จ" }
                                 busy = false

@@ -1,6 +1,9 @@
 package com.queuego.customer
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +18,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,9 +26,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgMuted
@@ -172,22 +179,30 @@ fun CustomerNotificationsScreen(
     onMarkAll: () -> Unit,
     onOpen: (CustomerNotification) -> Unit
 ) {
-    val unreadIds = notifications.asSequence().filterNot { it.read }.map { it.id }.toList()
-    LaunchedEffect(unreadIds) {
-        if (unreadIds.isNotEmpty()) onMarkAll()
-    }
+    // Web preserves the unread badge until the user explicitly marks rows read.
+    // Never invoke onMarkAll merely because this screen is opened.
     Column(
         Modifier.fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(14.dp)
+            .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-            Spacer(Modifier.weight(1f))
-            OutlinedButton(onClick = onMarkAll, enabled = !busy) { Text("อ่านทั้งหมด") }
+            Box(
+                Modifier.size(44.dp)
+                    .background(Color.White, RoundedCornerShape(15.dp))
+                    .border(1.dp, Color(0xFFECEEF2), RoundedCornerShape(15.dp))
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("‹", color = QgRed, fontSize = 32.sp)
+            }
+            Spacer(Modifier.size(12.dp))
+            Text("แจ้งเตือน", modifier = Modifier.weight(1f), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
         }
-        Spacer(Modifier.height(12.dp))
-        QgSectionTitle("แจ้งเตือน", "อัปเดตจากออเดอร์ ร้าน และ Rider")
+        Spacer(Modifier.height(10.dp))
+        TextButton(onClick = onMarkAll, enabled = !busy) {
+            Text("อ่านทั้งหมด", color = QgRed, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
         Spacer(Modifier.height(10.dp))
         if (notifications.isEmpty()) {
             QgCard(Modifier.fillMaxWidth()) {
@@ -197,26 +212,27 @@ fun CustomerNotificationsScreen(
             notifications.forEach { n ->
                 QgCard(
                     Modifier.fillMaxWidth()
-                        .padding(bottom = 8.dp)
+                        .padding(bottom = 10.dp)
                         .clickable { onOpen(n) }
                 ) {
-                    Column {
-                        Row(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(vertical = 8.dp)) {
+                        Text(
+                            com.queuego.shared.nativeOrderNumberInText(n.title),
+                            color = Color(0xFF202226),
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        if (n.message.isNotBlank()) {
+                            Spacer(Modifier.height(6.dp))
                             Text(
-                                if (n.read) com.queuego.shared.nativeOrderNumberInText(n.title)
-                                else "●  " + com.queuego.shared.nativeOrderNumberInText(n.title),
-                                modifier = Modifier.weight(1f),
-                                color = if (n.read) androidx.compose.ui.graphics.Color.Unspecified else QgRed,
-                                fontWeight = FontWeight.ExtraBold
+                                com.queuego.shared.nativeOrderNumberInText(n.message),
+                                color = Color(0xFF30343B),
+                                fontSize = 16.sp
                             )
                         }
-                        if (n.message.isNotBlank()) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(com.queuego.shared.nativeOrderNumberInText(n.message), color = QgMuted)
-                        }
                         if (!n.createdAt.isNullOrBlank()) {
-                            Spacer(Modifier.height(5.dp))
-                            Text(customerThaiDateTime(n.createdAt!!), color = QgMuted, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
+                            Spacer(Modifier.height(6.dp))
+                            Text(customerThaiDateTime(n.createdAt!!), color = QgMuted, fontSize = 13.sp)
                         }
                     }
                 }
@@ -225,7 +241,6 @@ fun CustomerNotificationsScreen(
         Spacer(Modifier.height(24.dp))
     }
 }
-
 
 
 

@@ -1,3 +1,10 @@
+## 2026-10-28 Customer Notifications visual/state parity — IN PROGRESS
+
+- Physical Web/Android side-by-side images showed Android compact top outline buttons, tiny cards and a global red `อ่านการแจ้งเตือนทั้งหมดแล้ว` line not present on Web. Source also automatically invoked mark-all on screen entry, clearing the unread state without an explicit user action.
+- Native Notifications now has a compact back icon/large Web-like heading, red flat `อ่านทั้งหมด` action, legible white cards with expanded title/body/date, no automatic mark-all on page open, and no sticky global success banner after a deliberate mark-all. Existing user-scoped read API remains unchanged.
+- Replaced old source regression that required auto-mark-on-open with an explicit user-action contract.
+- **NEXT:** exact-head Native Pilot, Kotlin/JUnit and physical Android compare vs Web for notification navigation, unread badge and cards. Continue Rider map gestures and three-APK rebuild.
+
 ## 2026-10-28 Customer Ride pinch/rotate/3D gesture regression — IN PROGRESS
 
 - Owner physical screenshots reported difficult pinch-zoom, inability to rotate/tilt map. Exact HEAD `c0bcbf1c` used `QgTrackingMap` with `animateCamera` invoked on every Compose/data update, resetting user zoom/rotation; Web Ride explicitly disabled rotation/tilt.

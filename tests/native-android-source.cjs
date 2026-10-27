@@ -220,8 +220,8 @@ ok(
 ok(source.includes('queuego_place_laundry_order_v2'),'Customer native Laundry must use production laundry order RPC');
 ok(source.includes('notifications?select=id,title,message,type,reference_id,is_read,created_at'),'Customer native notifications must use production notifications table');
 const customerNotifications=read('customer/src/main/java/com/queuego/customer/CustomerExtras.kt');
-ok(customerNotifications.includes('LaunchedEffect(unreadIds)')&&customerNotifications.includes('if (unreadIds.isNotEmpty()) onMarkAll()'),'Opening Customer Notifications must mark currently unread owned rows through the existing action');
-ok(customerNotifications.includes('OutlinedButton(onClick = onMarkAll, enabled = !busy) { Text("อ่านทั้งหมด") }')&&!customerNotifications.includes('if (notifications.any { !it.read })'),'Customer Notifications must always show the Web-parity mark-all control');
+ok(!customerNotifications.includes('LaunchedEffect(unreadIds)')&&!customerNotifications.includes('if (unreadIds.isNotEmpty()) onMarkAll()'),'Customer Notifications must preserve unread state until the owner taps อ่านทั้งหมด or opens an item');
+ok(customerNotifications.includes('TextButton(onClick = onMarkAll, enabled = !busy)')&&customerNotifications.includes('Text("แจ้งเตือน", modifier = Modifier.weight(1f), fontSize = 26.sp')&&source.includes('message = null'),'Customer Notifications must match the Web header/read action and suppress sticky read-success banner');
 ok(customerNotifications.includes('notifications?user_id=eq." + http.enc(auth.user.id) + "&is_read=eq.false'),'Customer mark-all must stay scoped to the authenticated user unread rows');
 ok(source.includes('qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at,evidence_path')&&source.includes('qg_create_ticket'),'Customer native support must use production ticket RPC and load evidence path');
 const customerSupportCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerSupportCache.kt');
