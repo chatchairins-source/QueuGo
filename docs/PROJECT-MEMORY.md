@@ -1,3 +1,9 @@
+## 2026-10-27 Rider Laundry Web/Production authority re-check
+
+- Current `main` and read-only Production state were rechecked during Native parity. Web still loads Rider Laundry mode/invites/active job/pool and calls the dedicated existing Rider Laundry RPCs; Production currently reports Laundry enabled and those RPCs executable by authenticated users. The current main work-preferences RPC intentionally covers Food/Grocery/Market/Express/Ride and does not subsume Laundry.
+- Keep Merchant/shop Laundry's own management state machine separate. Do not introduce a new Rider RPC/schema or add Laundry into general work preferences. Current Production has not applied the repository's pending Rider-RPC retirement in `QueueGo-Laundry-Shop-Transport.sql`; recheck actual Web/backend authority before treating that future retirement as active.
+- Native reconnect implementation is checkpointed at `77eebc1b` on `work-native-web-parity-20261026`. It is now forward-merged with Customer Home density/geometry/proportion/CSS successors through `636c0f53`; focused Rider Laundry, Customer Home and full native source contracts pass. Exact-head Hosted Native Pilot and authenticated visual capture are NEXT. Customer review credentials and physical-device evidence remain separate blockers.
+
 ## 2026-10-26 Customer Ride stop/aggregate marker labels — IN PROGRESS (source checkpoint; exact Pilot NEXT)
 
 - Base `565dbf9b1129074d8ccb1005b70d784862457452` exact Pilot 40329618714 passed regression/source/assets, Kotlin/JVM including all five supply cases, three APKs, 16 KB and WebView rejection; lifecycle was still running at succession. Its readiness-only review is not screenshot acceptance.

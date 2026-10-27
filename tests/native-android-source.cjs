@@ -570,7 +570,7 @@ ok(
   'Rider Messages must match current Web single inbox while native push remains owned by background/profile controls'
 );
 ok(riderEarnings.includes('api.periodSummary(auth, days)')&&riderEarnings.includes('api.cashLedger(auth, from.toString(), to.toString())')&&riderEarnings.includes('"วันนี้"')&&riderEarnings.includes('"7 วัน"')&&riderEarnings.includes('"30 วัน"'),'Rider native earnings must preserve Production periods and ledger source');
-ok(riderProfile.includes('api.updateAccount(auth, name, phone)')&&riderProfile.includes('api.testNativePush(auth)')&&riderProfile.includes('QgAccountDeletionSection')&&!riderProfile.includes('api.setLaundryMode(auth, enabled)')&&!riderProfile.includes('api.respondLaundryInvite(auth, invite.inviteId, true)'),'Rider native profile must preserve Production account, push and deletion controls while shop-managed Laundry stays retired');
+ok(riderProfile.includes('api.updateAccount(auth, name, phone)')&&riderProfile.includes('api.testNativePush(auth)')&&riderProfile.includes('QgAccountDeletionSection')&&riderProfile.includes('RiderLaundryModeControl(')&&riderProfile.includes('api.setLaundryMode(auth, enabled)')&&riderProfile.includes('RiderLaundryInvites(')&&riderProfile.includes('api.respondLaundryInvite(auth, invite.inviteId, accept)'),'Rider native Profile must preserve account, push and deletion controls while matching current Web Laundry mode and invitations through their existing dedicated RPCs');
 ok(
   riderProfile.includes('profilePhotoPicker.launch("image/*")') &&
   riderProfile.includes('riderVehicleLabel(profile?.vehicleType)') &&

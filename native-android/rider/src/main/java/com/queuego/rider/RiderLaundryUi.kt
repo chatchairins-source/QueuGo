@@ -17,6 +17,52 @@ import com.queuego.shared.QgRed
 import com.queuego.shared.QgRedSoft
 
 @Composable
+internal fun RiderLaundryModeControl(
+    featureEnabled: Boolean,
+    modeEnabled: Boolean,
+    busy: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.size(38.dp).background(Color(0xFFFFF0F3), RoundedCornerShape(13.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("ผ้า", color = QgRed, fontWeight = FontWeight.Black, fontSize = 10.sp)
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text("รับงานฝากซัก", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Text(
+                if (featureEnabled) "งานรับ–ส่งผ้าจากร้านที่เข้าร่วม" else "บริการฝากซักยังไม่เปิดใช้งาน",
+                color = QgMuted,
+                fontSize = 9.sp
+            )
+        }
+        Text(
+            if (modeEnabled) "เปิด" else "ปิด",
+            color = if (modeEnabled) QgRed else QgMuted,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Switch(
+            checked = modeEnabled,
+            onCheckedChange = onCheckedChange,
+            enabled = (featureEnabled || modeEnabled) && !busy,
+            modifier = Modifier.padding(start = 5.dp).size(width = 48.dp, height = 32.dp),
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = QgRed,
+                checkedBorderColor = QgRed
+            )
+        )
+    }
+}
+
+@Composable
 internal fun RiderLaundryActiveCard(
     job: RiderLaundryJob,
     busy: Boolean,

@@ -67,6 +67,7 @@ fun RiderProfileScreen(
     var name by remember(auth.user.id) { mutableStateOf(displayName) }
     var phone by remember(auth.user.id) { mutableStateOf(displayPhone) }
     var busy by remember { mutableStateOf(false) }
+    var laundryBusy by remember(auth.user.id) { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var showAccountDetails by remember { mutableStateOf(false) }
     var showExtraTools by remember { mutableStateOf(false) }
@@ -181,6 +182,79 @@ fun RiderProfileScreen(
                 )
                 RiderSettingDivider()
                 routeSettings()
+                if (snapshot?.laundry?.featureEnabled == true || snapshot?.laundry?.modeEnabled == true ||
+                    snapshot?.laundry?.invites.orEmpty().isNotEmpty()) {
+                    RiderSettingDivider()
+                    RiderLaundryModeControl(
+                        featureEnabled = snapshot?.laundry?.featureEnabled == true,
+                        modeEnabled = snapshot?.laundry?.modeEnabled == true,
+                        busy = laundryBusy,
+                        onCheckedChange = { enabled ->
+                            if (!laundryBusy) {
+                                laundryBusy = true
+                                scope.launch {
+                                    try {
+                                        api.setLaundryMode(auth, enabled)
+                                        val refreshed = api.riderSnapshot(auth)
+                                        check(refreshed.laundry.modeEnabled == enabled) {
+                                            "ยังยืนยันการตั้งค่างานฝากซักไม่ได้"
+                                        }
+                                        onSnapshot(refreshed)
+                                        message = if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        val reconciled = runCatching { api.riderSnapshot(auth) }
+                                            .getOrElse { failure ->
+                                                if (failure is CancellationException) throw failure
+                                                null
+                                            }
+                                        if (reconciled != null) onSnapshot(reconciled)
+                                        message = when {
+                                            reconciled?.laundry?.modeEnabled == enabled ->
+                                                if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
+                                            else -> e.message ?: "เปลี่ยนโหมดรับงานฝากซักไม่สำเร็จ"
+                                        }
+                                    } finally {
+                                        laundryBusy = false
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
+                RiderLaundryInvites(
+                    invites = snapshot?.laundry?.invites.orEmpty(),
+                    busy = laundryBusy,
+                    onAction = { invite, accept ->
+                        if (!laundryBusy) {
+                            laundryBusy = true
+                            scope.launch {
+                                try {
+                                    api.respondLaundryInvite(auth, invite.inviteId, accept)
+                                    val refreshed = api.riderSnapshot(auth)
+                                    check(refreshed.laundry.invites.none { it.inviteId == invite.inviteId }) {
+                                        "ยังยืนยันคำตอบคำเชิญไม่ได้"
+                                    }
+                                    onSnapshot(refreshed)
+                                    message = if (accept) "ยอมรับคำเชิญร้านซักแล้ว" else "ปฏิเสธคำเชิญแล้ว"
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    val reconciled = runCatching { api.riderSnapshot(auth) }
+                                        .getOrElse { failure ->
+                                            if (failure is CancellationException) throw failure
+                                            null
+                                        }
+                                    if (reconciled != null) onSnapshot(reconciled)
+                                    message = e.message ?: "ตอบคำเชิญร้านซักไม่สำเร็จ"
+                                } finally {
+                                    laundryBusy = false
+                                }
+                            }
+                        }
+                    }
+                )
             }
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("บัญชีและช่วยเหลือ") {
