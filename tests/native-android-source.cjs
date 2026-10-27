@@ -514,6 +514,16 @@ ok(
   silentPlaceSearch.includes('if (results.isEmpty() && searched && !busy)'),
   'QueueGo Places search must render durable cached results first and avoid repeated fresh downloads'
 );
+const riderBenefitsCacheSource=read('rider/src/main/java/com/queuego/rider/RiderBenefitsCache.kt');
+const riderBenefitsCardSource=read('rider/src/main/java/com/queuego/rider/RiderBenefitsCard.kt');
+ok(
+  riderBenefitsCacheSource.includes('context.noBackupFilesDir, "rider_benefits_cache_v1"') &&
+  riderBenefitsCardSource.includes('cache.read(auth.user.id)') &&
+  riderBenefitsCardSource.includes('cache.write(auth.user.id, fresh)') &&
+  riderBenefitsCardSource.includes('Keep the cached/current rows visible on transient refresh failure') &&
+  !riderBenefitsCardSource.includes('benefits = emptyList()'),
+  'Rider Benefits must render durable user-scoped cached rows first and refresh silently'
+);
 const customerLaundryContentCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerLaundryContentCache.kt');
 const customerPromotionCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerPromotionCache.kt');
 ok(
