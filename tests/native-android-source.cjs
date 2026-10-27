@@ -410,6 +410,14 @@ ok(
   merchantAppSource.includes('refreshAll(showLoading = cached == null)'),
   'Merchant shop and menu content must render from durable local cache before authoritative refresh'
 );
+ok(
+  merchantAppSource.includes('coroutineScope {') &&
+  merchantAppSource.includes('val ordersDeferred = async { api.loadOrders(auth) }') &&
+  merchantAppSource.includes('val productsDeferred = async { api.loadProducts(auth, s.id) }') &&
+  merchantAppSource.includes('val revenueDeferred = async {') &&
+  merchantAppSource.includes('val gpDeferred = async {'),
+  'Merchant initial refresh must parallelize independent server reads instead of serializing the whole dashboard'
+);
 const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(
   merchantAppSource.includes('runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90) }') &&
