@@ -232,8 +232,10 @@ ok(
   customerSupportScreenSource.includes('if (cached.fresh)') &&
   customerSupportScreenSource.includes('cache.invalidate(auth.user.id)') &&
   customerSupportScreenSource.includes('refresh(force = true)') &&
-  customerSupportScreenSource.includes('cache.write(auth.user.id, fresh)'),
-  'Customer Support history must reuse a fresh local snapshot and force server refresh after a new ticket'
+  customerSupportScreenSource.includes('cache.write(auth.user.id, fresh)') &&
+  customerSupportScreenSource.indexOf('refresh(force = true)') <
+    customerSupportScreenSource.lastIndexOf('message = "ส่งเรื่องให้ทีม QueueGo แล้ว"'),
+  'Customer Support history must reuse a fresh local snapshot and preserve submit feedback after forced refresh'
 );
 ok(source.includes('qg_customer_order_context')&&source.includes('CustomerTrackingRider'),'Customer native tracking must use production order context');
 const customerTrackingScreen=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
