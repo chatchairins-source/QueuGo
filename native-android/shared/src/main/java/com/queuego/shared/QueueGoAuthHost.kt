@@ -224,8 +224,9 @@ fun QueueGoAuthHost(
 
     QueueGoTheme {
         when {
-            restoring -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-                CircularProgressIndicator(Modifier.padding(24.dp))
+            restoring -> Column(Modifier.fillMaxSize()) {
+                // Session restoration is intentionally silent. Keep the current surface stable
+                // instead of showing loading chrome for local/network validation.
             }
             recoveryRequired -> Column(
                 Modifier.fillMaxSize().padding(24.dp),
