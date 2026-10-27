@@ -101,8 +101,10 @@ internal class CustomerShopCatalog(private val scope: CoroutineScope) {
     fun openGroceryCached(
         shopId: String,
         loadCached: suspend () -> List<CustomerProduct>,
+        loadCachedCategories: suspend () -> List<String>,
         loadCategories: suspend () -> List<String>,
         fetchPage: suspend (String, Int) -> List<CustomerProduct>,
+        persistCategories: suspend (List<String>) -> Unit,
         persist: suspend (List<CustomerProduct>) -> Unit
     ) {
         val ticket = ++generation
@@ -118,15 +120,43 @@ internal class CustomerShopCatalog(private val scope: CoroutineScope) {
             try {
                 cached = runCatching { loadCached() }.getOrDefault(emptyList())
                     .filter { it.shopId == shopId && it.available && it.price > 0 }
-                if (ticket != generation) return@launch
-                if (cached.isNotEmpty()) mutableState.value = CustomerShopCatalogState(
-                    shopId = shopId, products = cached, grocery = CustomerGroceryPaging())
-                try {
-                    categories = loadCategories().filter { it.isNotBlank() }.distinct()
+                categories = try {
+                    loadCachedCategories().filter { it.isNotBlank() }.map { it.trim() }.distinct().take(200)
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (_: Exception) {
-                    categoriesError = true
+                    emptyList()
+                }
+                if (ticket != generation) return@launch
+                if (cached.isNotEmpty() || categories.isNotEmpty()) mutableState.value = CustomerShopCatalogState(
+                    shopId = shopId, products = cached, loading = false,
+                    grocery = CustomerGroceryPaging(categories = categories))
+                try {
+                    val freshCategories = loadCategories().filter { it.isNotBlank() }
+                        .map { it.trim() }.distinct().take(200)
+                    if (ticket != generation) return@launch
+                    if (freshCategories.isNotEmpty() || categories.isEmpty()) {
+                        categories = freshCategories
+                        categoriesError = false
+                        try {
+                            persistCategories(categories)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            // The server response remains usable if local persistence fails.
+                        }
+                        mutableState.value = mutableState.value.copy(
+                            loading = false,
+                            grocery = (mutableState.value.grocery ?: CustomerGroceryPaging()).copy(
+                                categories = categories,
+                                categoriesError = false
+                            )
+                        )
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    categoriesError = categories.isEmpty()
                 }
                 if (ticket != generation) return@launch
                 val rows = fetchPage("", 0)

@@ -28,6 +28,8 @@ internal class CustomerContentCache(context: Context) {
     companion object {
         private const val MAX_CACHE_FILE_BYTES = 24L * 1024L * 1024L
         private const val MAX_CACHE_TOTAL_BYTES = 96L * 1024L * 1024L
+        private const val MAX_GROCERY_CATEGORIES = 200
+        private const val MAX_GROCERY_CATEGORY_LENGTH = 100
     }
 
     private val root = File(context.noBackupFilesDir, "customer_content_cache_v1").also {
@@ -75,6 +77,32 @@ internal class CustomerContentCache(context: Context) {
         writeJson(productFile(shopId), json)
     }
 
+    fun readGroceryCategories(shopId: String): List<String> {
+        if (shopId.isBlank()) return emptyList()
+        val json = readJson(groceryCategoryFile(shopId)) ?: return emptyList()
+        if (json.optString("shopId") != shopId) return emptyList()
+        return runCatching {
+            val array = json.optJSONArray("categories") ?: return@runCatching emptyList()
+            buildList {
+                for (index in 0 until minOf(array.length(), MAX_GROCERY_CATEGORIES)) {
+                    val category = array.optString(index).trim()
+                    if (category.isNotEmpty() && category.length <= MAX_GROCERY_CATEGORY_LENGTH && category !in this) {
+                        add(category)
+                    }
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun writeGroceryCategories(shopId: String, categories: List<String>) {
+        if (shopId.isBlank() || categories.size > MAX_GROCERY_CATEGORIES ||
+            categories.any { it.isBlank() || it.trim().length > MAX_GROCERY_CATEGORY_LENGTH }) return
+        val json = JSONObject()
+            .put("shopId", shopId)
+            .put("categories", JSONArray().also { array -> categories.distinct().forEach { array.put(it.trim()) } })
+        writeJson(groceryCategoryFile(shopId), json)
+    }
+
     fun readMarket(): CachedCustomerMarket? {
         val json = readJson(File(root, "market.json")) ?: return null
         return runCatching {
@@ -100,6 +128,9 @@ internal class CustomerContentCache(context: Context) {
 
     private fun productFile(shopId: String): File =
         File(root, "products_" + sha256(shopId) + ".json")
+
+    private fun groceryCategoryFile(shopId: String): File =
+        File(root, "grocery_categories_" + sha256(shopId) + ".json")
 
     private fun readJson(file: File): JSONObject? {
         if (!file.isFile || file.length() !in 1L..MAX_CACHE_FILE_BYTES) return null

@@ -580,8 +580,10 @@ private fun CustomerShell(
             shopCatalog.openGroceryCached(
                 shopId = shop.id,
                 loadCached = { withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) } },
+                loadCachedCategories = { withContext(Dispatchers.IO) { contentCache.readGroceryCategories(shop.id) } },
                 loadCategories = { api.loadGroceryCategories(auth, shop.id) },
                 fetchPage = { category, offset -> api.loadGroceryPage(auth, shop.id, category, offset) },
+                persistCategories = { rows -> withContext(Dispatchers.IO) { contentCache.writeGroceryCategories(shop.id, rows) } },
                 persist = { rows -> withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) } }
             )
         } else {
