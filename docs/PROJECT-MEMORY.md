@@ -1,8 +1,9 @@
-## 2026-10-27 Rider authenticated review scroll gate — confirmed harness fix; exact Pilot NEXT
+## 2026-10-27 Rider authenticated review scroll gate — harness/Pilot PASS; capture NEXT
 
 - Latest published descendant is marker commit `08a4a407e9bd3ef3859dafe8e249bf7321a689e1`; exact-head Native Pilot `40442835693` passed. Authenticated review `40442835677` failed once at Android Emulator SDK archive install (`ZipFile unknown archive`); its retry passed SDK/APK/emulator setup and Merchant capture but Rider capture failed twice at `expand_profile_extra_tools()` with `AssertionError: Rider extra tools did not expand`.
 - Inspected actual artifact `12706922669`: Rider Home, Messages, Laundry Profile, Earnings ranges, Profile and Support were captured. Profile has a vertically scrolling screen; source places extra-tools accordion rows below its header. Root cause: harness waited for the inserted first child in the current viewport and did not scroll it into view. Fix is scoped to use `scroll_to_text` for that child after expansion; source guard added. No Rider UI/business state change.
-- **NEXT:** local source guard, whitespace and Python syntax; commit harness/checklist checkpoint; exact-head Native Pilot/Map Engine; after Pilot success, trigger authenticated capture, inspect actual Rider/Merchant screenshots and metadata. Customer auth screenshot remains blocked by the missing review credential pair; physical-device pass is not claimed.
+- Harness/source guard and Python syntax checks passed; commit `a7ceb1adf6de262e825cfab29657dfaeb6e4e96d` fixes the scroll gate. Exact-head PR Native Pilot `40445251350`, push Native Pilot `40445245339`, and Map Engine `40445251349` are SUCCESS.
+- **NEXT:** docs-only `[authenticated-review]` marker on `a7ceb1ad`; inspect its exact-head Pilot and actual Rider/Merchant screenshots/metadata. Customer auth screenshot remains blocked by the missing review credential pair; physical-device pass is not claimed.
 
 ## 2026-10-27 Customer Profile contact parity — source/test/Pilot PASS; authenticated recapture NEXT
 
