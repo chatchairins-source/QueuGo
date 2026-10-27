@@ -1,10 +1,11 @@
-## 2026-10-27 Merchant Market catalog category cache — source checkpoint; exact-head CI NEXT
+## 2026-10-27 Merchant local-first reference categories — exact-head CI PASS
 
-- Parent Native successor HEAD `bc42055124af49e7224ebd7f76af02f030132caa` passed exact PR Native Pilot `40463066053`, push Native Pilot `40463060971`, and Map Engine `40463066031`. PR #730 remains open/draft; Production `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
-- Merchant Market catalog category references now use the owner/shop-scoped bounded durable content cache and refresh once per visible screen lifecycle. Search/page changes no longer refetch the same category list. Cached categories stay visible while the current category list refreshes; product pages and add-to-shop mutation remain server-backed.
-- Retains Customer and Merchant Grocery category caches from the previous checkpoints. Local `node tests/native-android-source.cjs`: 379 checks PASS; `git diff --check` PASS. Gradle is unavailable locally; Kotlin/APK/emulator evidence must come from hosted exact-head Actions.
-- No Production schema/data mutation.
-- **NEXT:** inspect exact-head Native Pilot and Map Engine for the new branch tip; fix only the first confirmed failure. If green, continue the source audit for remaining repeated, non-authoritative reference-data requests while keeping live operational/financial state server-authoritative.
+- Current source HEAD `9e9068429c60ce08b37bc9daa126cc38cbe875e5` on `work-native-web-parity-20261026`. Exact PR Native Pilot `40464819987`, push Native Pilot `40464814881`, and Map Engine `40464819951` all completed SUCCESS. PR #730 remains open/draft; Production main is `7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- The Customer and Merchant Grocery category references and Merchant Market catalog categories now load from a bounded local cache before server refresh. Merchant Market categories refresh once per visible screen lifecycle instead of on every search/page request. Current product pages, prices, availability and add-to-shop/order actions remain server-backed.
+- Exact Native evidence includes full regression, Kotlin unit tests, all three APKs, 16 KB packaging, WebView rejection and emulator launch/map/voice lifecycle. Exact Map Engine runtime PASS. These are CI emulator/source gates, not physical-device or visual-parity certification.
+- Local `node tests/native-android-source.cjs`: 379 checks PASS; `git diff --check` PASS. Gradle is unavailable in this workspace. No Production schema/data mutation.
+- Customer authenticated screenshot review remains blocked by the recorded missing GitHub Actions credentials; Rider/Merchant emulator screenshots do not certify Customer visual parity.
+- **NEXT:** audit the remaining screens for repeated, non-authoritative reference downloads. Cache only display/reference data; keep live order, inventory decision, price, financial and dispatch authority server-backed. Continue the broader authenticated Customer parity work where credentials permit.
 
 ## 2026-10-27 Merchant Grocery category local-first cache — source checkpoint; exact-head CI NEXT
 
