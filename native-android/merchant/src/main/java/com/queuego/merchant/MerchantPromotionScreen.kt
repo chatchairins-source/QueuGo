@@ -8,7 +8,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -151,10 +150,7 @@ internal fun MerchantPromotionScreen(
         }
 
         when {
-            loading && rows.isEmpty() -> Box(
-                Modifier.fillMaxWidth().height(140.dp),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
+            loading && rows.isEmpty() -> Unit
 
             visible.isEmpty() -> Box(
                 Modifier
