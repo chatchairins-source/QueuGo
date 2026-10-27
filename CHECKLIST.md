@@ -1,3 +1,12 @@
+## 2026-10-27 Customer Grocery category local-first cache — exact-head CI in progress
+
+- Current Native successor: `work-native-web-parity-20261026`; source checkpoint `19b1392998e82e41ec3c3c201b9a334ff936b08f`, parent `3585fa937cc2c06112046bf577041a299f88fe01`. PR #730 remains open/draft; `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Confirmed the exact parent Native Pilot run `40458248182` and Map Engine run `40458248211` completed SUCCESS. The branch tip had advanced beyond the older checklist checkpoint before this continuation.
+- Customer grocery category names are now stored in the existing bounded durable content cache, scoped per shop. A cached category list is rendered before fresh categories/products return; fresh nonempty server categories replace and refresh it. This is display/reference data only; current products, price, availability and checkout remain server-authoritative. Guest and signed-in flows use the same behavior.
+- Added a coroutine regression for immediate cached-category display and fresh replacement, plus a source guard. Local `node tests/native-android-source.cjs`: 377 checks PASS; `git diff --check` PASS. Gradle is not installed in this workspace, so Kotlin/APK/emulator evidence is delegated to exact-head Actions.
+- No Production schema/data mutation.
+- **NEXT:** inspect only the first confirmed failure, if any, on exact-head Native Pilot `40461039903` and Map Engine `40461039883`; both are running on the source checkpoint. If green, continue the next safe local-first reference-content gap and keep live order/financial/dispatch state uncached.
+
 ## 2026-10-27 Android local-first cache + silent data refresh — source checkpoint; exact Pilot NEXT
 
 - Current Native successor: `work-native-web-parity-20261026`; checkpoint HEAD `26a9c5ab6042dab897aeaaeeccd388a649d2455b`.
