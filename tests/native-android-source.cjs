@@ -165,6 +165,11 @@ ok(customerMain.includes('QueueGoCustomerApp(')&&customerMain.includes('setConte
 ok(merchantMain.includes('QueueGoMerchantApp(')&&merchantMain.includes('setContent')&&!merchantMain.includes('QueueGoRoleNativeApp'),'Merchant must launch full native app, not role shell');
 ok(source.includes('queuego_place_cash_order'),'Customer native checkout must use production cash-order RPC');
 const customerCartCheckout=read('customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt');
+ok(
+  !customerCartCheckout.includes('if (!mapReady) {\n                            CircularProgressIndicator('),
+  'Customer checkout QueueGo Map readiness must stay visually silent'
+);
+
 ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(115.dp)')&&customerCartCheckout.includes('QgLocationPickerMap')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with checkout QueueGo Map and fixed action dock');
 ok(
   customerCartCheckout.includes('searchPlaces: suspend (String) -> List<QueueGoPlaceSearchResult>') &&
