@@ -602,10 +602,13 @@ const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueG
 const merchantPromotionCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPromotionCache.kt');
 ok(
   merchantPromotionCacheSource.includes('context.noBackupFilesDir, "merchant_promotion_cache_v1"') &&
+  merchantPromotionCacheSource.includes('FRESH_MS = 10L * 60L * 1000L') &&
   silentMerchantPromotion.includes('cache.read(auth.user.id, shop.id)') &&
+  silentMerchantPromotion.includes('if (cached.fresh)') &&
+  silentMerchantPromotion.includes('refresh(force = true)') &&
   silentMerchantPromotion.includes('cache.write(auth.user.id, shop.id, fresh)') &&
   silentMerchantPromotion.includes('if (rows.isEmpty()) message = failure.message'),
-  'Merchant Promotions must render durable cached metadata first and refresh in the background'
+  'Merchant Promotions must reuse fresh cached metadata and force server refresh after create'
 );
 const merchantContentCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantContentCache.kt');
 ok(
