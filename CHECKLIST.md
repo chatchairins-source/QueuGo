@@ -1,3 +1,14 @@
+## 2026-10-28 Android three-app public test download — DONE (build/distribution), physical parity BLOCKED
+
+- Exact APK source: `e35b0bff819fd015e5624fb91c8e18d53919c402`. Native Pilot push `40532373938` and PR `40532384468` both SUCCESS; source/regression, Android Kotlin/JUnit, all three debug APK builds, 16 KB packaging and emulator lifecycle passed. Source code was not rebuilt for distribution.
+- Pinned GitHub Actions APK artifact: `12747471350`, sha256 `05c9c35422b5f03d0a3d21937a039869059e330850b049bd76b7d4db0b6557e8`. The downloaded ZIP passed CRC; all three APK bytes were verified locally and publisher workflow `40597357467` SUCCESS verified artifact provenance, digest and all three `apksigner verify` checks.
+- Public prerelease: https://github.com/chatchairins-source/QueuGo/releases/tag/android-device-test-20261028-e35b0bff
+- Direct Customer: https://github.com/chatchairins-source/QueuGo/releases/download/android-device-test-20261028-e35b0bff/QueueGo-customer-Device-Test-e35b0bff.apk
+- Direct Merchant: https://github.com/chatchairins-source/QueuGo/releases/download/android-device-test-20261028-e35b0bff/QueueGo-merchant-Device-Test-e35b0bff.apk
+- Direct Rider: https://github.com/chatchairins-source/QueuGo/releases/download/android-device-test-20261028-e35b0bff/QueueGo-rider-Device-Test-e35b0bff.apk
+- **BLOCKED (device parity):** authentic Customer/Merchant/Rider on-device comparison against Web Production across tap-to-select map, Rider heading-up/follow/route, Merchant countdown/progress/back, Customer Ride/success banner, POS workflows and Catalog image loading. Debug-signed builds are **not** certified Play release or Production-ready. Do not mark 100% parity without real device evidence.
+- **NEXT:** collect owner physical-device evidence for the nine reported gaps; fix only concrete reproduced failures from latest source HEAD; then rebuild new exact-HEAD three APKs and repeat distribution gate.
+
 ## 2026-10-28 Three-APK exact-source public device-test delivery — IN PROGRESS
 
 - Exact source `e35b0bff819fd015e5624fb91c8e18d53919c402` passed Native Pilot push run `40532373938` and PR run `40532384468` including regression, Kotlin/JUnit, Customer/Merchant/Rider APK build, 16 KB package checks, and emulator lifecycle. Artifact `12747471350`, ZIP SHA-256 `05c9c35422b5f03d0a3d21937a039869059e330850b049bd76b7d4db0b6557e8`, has been downloaded, ZIP CRC-tested, and all three APKs extracted with distinct SHA-256 hashes.
