@@ -32,7 +32,16 @@ ok(screen.includes('Text("เพิ่มสินค้าจากแคตต
 ok(screen.includes('Text("ขายหน้าร้าน"')&&screen.includes('Text("เดลิเวอรี่ลูกค้า"'),'Native catalog cards must expose explicit POS and customer Delivery choices');
 ok(screen.includes('GP " + trimCatalogNumber(gpRate)')&&screen.includes('merchantDeliveryPriceFromStore(storePrice, gpRate)'),'Native catalog must preview Delivery price from the existing GP rule');
 ok(screen.includes('QgRemoteImage('),'Native catalog must render centrally supplied product imagery with the shared image component');
-ok(source.includes('val image: String? = null')&&!source.includes('startsWith("https://images.mango-prod.siammakro.cloud/")'),'Native Makro source rows must not hotlink unapproved source imagery');
+ok(
+  source.includes('MERCHANT_GROCERY_REFERENCE_IMAGE_PREFIX') &&
+  source.includes('merchantGroceryReferenceImage(r.optString("image_url"))'),
+  'Native Merchant source catalog must render pinned-host reference imagery without promoting it to the customer product image'
+);
+ok(
+  web.includes("merchantReferenceImage(r.image_url)") &&
+  web.includes("https://images.mango-prod.siammakro.cloud/"),
+  'Web Merchant source catalog must render the same pinned-host reference imagery'
+);
 ok(screen.includes('remember(item.id, item.productUpdatedAt) { UUID.randomUUID().toString() }'),'Retry-safe request ID must remain stable until the server version changes');
 ok(!screen.includes('ราคาโปร')&&!screen.includes('promo_price'),'Retired Grocery promo-price UI must not return in Native catalog');
 ok(!screen.includes('mock')&&!screen.includes('demo')&&!screen.includes('fake'),'Native Grocery catalog must not ship mock/demo/fake catalog data');

@@ -1,3 +1,10 @@
+## 2026-10-27 Merchant Grocery source images — real merchant-only preview enabled
+
+- The owner/device evidence requires actual Catalog product photos, not an empty box or placeholder. Production `qg_grocery_source_search` has 10,000 active Makro reference-image URLs and the add-to-shop RPC already stores them only as `catalog_preview_image` metadata while keeping `products.image = null`.
+- Web and Native Merchant Catalog now render only the pinned HTTPS host `images.mango-prod.siammakro.cloud` as a merchant-only preview. Arbitrary hosts are rejected. Saving a source item still does not promote the preview into the customer-facing image field.
+- Kotlin and source contracts now verify the pinned-host preview and untrusted-host rejection.
+- **NEXT:** exact-head Native Pilot; fix first confirmed failure, then verify all three APK artifacts.
+
 ## 2026-10-27 Native POS + Grocery catalog parity continuation
 
 - Added the Web POS Delivery/readiness destination to Native POS while retaining counter, tables, kitchen, bills, reports, history, printer and staff capabilities already implemented in Native. POS header now uses the shared compact back control rather than a large standalone button.

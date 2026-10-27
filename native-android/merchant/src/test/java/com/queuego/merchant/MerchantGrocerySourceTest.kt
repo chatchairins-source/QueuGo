@@ -26,12 +26,17 @@ class MerchantGrocerySourceTest {
         assertTrue(page.items.first().deliveryAvailable)
     }
 
-    @Test fun malformedIdentitiesAndUntrustedImagesAreNotRendered() {
+    @Test fun merchantReferenceImagesUseOnlyPinnedCatalogHost() {
         val page = merchantGrocerySourcePage(JSONArray().put(row(""))
-            .put(row("1").put("image_url", "https://untrusted.invalid/p.jpg")))
+            .put(row("1")))
         assertEquals(1, page.items.size)
-        assertNull(page.items.first().image)
+        assertEquals("https://images.mango-prod.siammakro.cloud/product.jpg", page.items.first().image)
         assertFalse(page.hasMore)
+
+        val untrusted = merchantGrocerySourcePage(JSONArray().put(
+            row("2").put("image_url", "https://untrusted.invalid/p.jpg")
+        ))
+        assertNull(untrusted.items.single().image)
     }
 
     @Test fun unpricedDraftsStayOutOfGroceryProducts() {
