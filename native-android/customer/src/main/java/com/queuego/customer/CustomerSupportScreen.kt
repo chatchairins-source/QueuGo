@@ -147,9 +147,9 @@ fun CustomerSupportScreen(
                                 )
                             }.onSuccess {
                                 details = ""
-                                message = "ส่งเรื่องให้ทีม QueueGo แล้ว"
                                 withContext(Dispatchers.IO) { cache.invalidate(auth.user.id) }
                                 refresh(force = true)
+                                message = "ส่งเรื่องให้ทีม QueueGo แล้ว"
                             }.onFailure {
                                 message = it.message ?: "ส่งเรื่องไม่สำเร็จ"
                             }
