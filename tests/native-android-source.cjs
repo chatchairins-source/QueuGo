@@ -516,6 +516,15 @@ ok(
   merchantMediaForMemory.includes('if (rows.isEmpty()) message = it.message'),
   'Merchant media rows must render durable cached content before silent Storage refresh'
 );
+const merchantModuleCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantModuleCache.kt');
+ok(
+  merchantModuleCacheSource.includes('context.noBackupFilesDir, "merchant_module_cache_v1"') &&
+  silentMerchantModules.includes('cache.read(auth.user.id)') &&
+  silentMerchantModules.includes('cache.write(auth.user.id, fresh)') &&
+  silentMerchantModules.includes('enabled = busyKey == null && authoritativeReady') &&
+  silentMerchantModules.includes('if (busyKey == null && authoritativeReady)'),
+  'Merchant module settings may render cached values but actions must wait for authoritative refresh'
+);
 ok(
   merchantAppSource.includes('coroutineScope {') &&
   merchantAppSource.includes('val ordersDeferred = async { api.loadOrders(auth) }') &&
