@@ -1,3 +1,9 @@
+## 2026-10-27 Rider Web-parity reanchor unit contract
+
+- Exact-head Android tracking/unit gate reached 137 Rider navigation tests and failed only because `NavigationViewModeTest` still expected the retired 8-second free-pan timeout. Production Native/Web behavior now reanchors after 110 ms after a navigation gesture, and the controller already returns FOLLOW correctly.
+- Updated the unit contract to the current 110 ms Web-parity policy; product code unchanged.
+- **NEXT:** exact-head Native Pilot; then fix the first remaining Merchant Kotlin compile failure reported after this unit test, rerun, and continue to three-APK build.
+
 ## 2026-10-27 Makro source-image guard updated for pinned Merchant preview
 
 - Exact-head Native Pilot on `b15665a3` passed the updated Grocery image test, then `tests/grocery-makro.cjs` still asserted the retired `image:null` Merchant behavior.
