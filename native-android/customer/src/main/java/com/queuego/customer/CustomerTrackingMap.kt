@@ -125,7 +125,7 @@ fun CustomerTrackingMap(order: CustomerOrder, rider: CustomerTrackingRider?) {
                 when {
                     points.isEmpty() -> "ยังไม่มีพิกัดจริงของออร์เดอร์นี้"
                     timedOut -> "ยังโหลดแผนที่ไม่ได้ กรุณาลองเปิดออเดอร์ใหม่"
-                    !ready -> "กำลังโหลดตำแหน่งล่าสุด"
+                    !ready -> "ตำแหน่งล่าสุด"
                     searching -> "กำลังค้นหา Rider ที่พร้อมรับงานใกล้ร้าน · ระบบจะส่งต่ออัตโนมัติ"
                     !hasRiderLocation -> "รอข้อมูลตำแหน่งจริงจาก Rider"
                     else -> "ตำแหน่งล่าสุด · ${rider?.updatedAt.orEmpty()}" +

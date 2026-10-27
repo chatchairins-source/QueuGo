@@ -570,8 +570,11 @@ private fun MerchantShell(
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             if (screen == "home" || screen == "orders" || screen == "order") {
                 while (true) {
+                    // Initial refreshAll + Realtime join already establish current state.
+                    // Match Web's bounded fallback cadence instead of re-downloading
+                    // the complete Merchant order snapshot every three seconds.
+                    delay(8_000)
                     refreshOrders()
-                    delay(3_000)
                 }
             } else if (screen == "notifications") {
                 while (true) {
@@ -1355,7 +1358,7 @@ private fun DashboardScreen(
     onMarketStock: () -> Unit
 ) {
     val todayOrders = merchantDashboardSummary(orders)
-    val orderCountsLoading = loading && orders.isEmpty()
+    val orderCountsReady = !loading || orders.isNotEmpty()
 
     Column(
         Modifier
@@ -1423,13 +1426,13 @@ private fun DashboardScreen(
         }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMetricCard("ออเดอร์ทั้งหมด", if (orderCountsLoading) "…" else todayOrders.all.toString(), "orders", Modifier.weight(1f))
-            MerchantMetricCard("เสร็จแล้ว", if (orderCountsLoading) "…" else todayOrders.completed.toString(), "clock", Modifier.weight(1f))
+            MerchantMetricCard("ออเดอร์ทั้งหมด", if (orderCountsReady) todayOrders.all.toString() else "—", "orders", Modifier.weight(1f))
+            MerchantMetricCard("เสร็จแล้ว", if (orderCountsReady) todayOrders.completed.toString() else "—", "clock", Modifier.weight(1f))
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMetricCard("กำลังเตรียม", if (orderCountsLoading) "…" else todayOrders.preparing.toString(), "box", Modifier.weight(1f))
-            MerchantMetricCard("ยกเลิก", if (orderCountsLoading) "…" else todayOrders.cancelled.toString(), "close", Modifier.weight(1f))
+            MerchantMetricCard("กำลังเตรียม", if (orderCountsReady) todayOrders.preparing.toString() else "—", "box", Modifier.weight(1f))
+            MerchantMetricCard("ยกเลิก", if (orderCountsReady) todayOrders.cancelled.toString() else "—", "close", Modifier.weight(1f))
         }
 
         Text(

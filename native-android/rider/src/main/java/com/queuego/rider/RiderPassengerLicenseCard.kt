@@ -103,20 +103,21 @@ internal fun RiderPassengerLicenseCard(
     ) {
         Column(Modifier.padding(13.dp)) {
             Text("สิทธิ์รับส่งผู้โดยสาร", fontWeight = FontWeight.Black, fontSize = 14.sp)
-            val detail = when {
-                !loaded -> "กำลังตรวจสิทธิ์…"
-                current?.valid == true && current.status == "pending" ->
-                    "สิทธิ์เดิมยังใช้ได้ · เอกสารต่ออายุใหม่กำลังรอ Admin ตรวจ"
-                current?.valid == true ->
-                    "ใบขับขี่สาธารณะผ่านการตรวจและยังไม่หมดอายุ"
-                current?.status == "pending" ->
-                    "ส่งหลักฐานแล้ว · รอ Admin ตรวจ ก่อนรับเที่ยวผู้โดยสาร"
-                current?.status == "rejected" ->
-                    current.reviewNote ?: "หลักฐานยังไม่ผ่าน กรุณาส่งใบขับขี่สาธารณะใหม่"
-                else ->
-                    "ต้องมีใบขับขี่สาธารณะที่ Admin ตรวจอนุมัติก่อนรับเที่ยวผู้โดยสาร"
+            if (loaded) {
+                val detail = when {
+                    current?.valid == true && current.status == "pending" ->
+                        "สิทธิ์เดิมยังใช้ได้ · เอกสารต่ออายุใหม่กำลังรอ Admin ตรวจ"
+                    current?.valid == true ->
+                        "ใบขับขี่สาธารณะผ่านการตรวจและยังไม่หมดอายุ"
+                    current?.status == "pending" ->
+                        "ส่งหลักฐานแล้ว · รอ Admin ตรวจ ก่อนรับเที่ยวผู้โดยสาร"
+                    current?.status == "rejected" ->
+                        current.reviewNote ?: "หลักฐานยังไม่ผ่าน กรุณาส่งใบขับขี่สาธารณะใหม่"
+                    else ->
+                        "ต้องมีใบขับขี่สาธารณะที่ Admin ตรวจอนุมัติก่อนรับเที่ยวผู้โดยสาร"
+                }
+                Text(detail, color = QgMuted, fontSize = 9.sp, lineHeight = 13.sp, modifier = Modifier.padding(top = 5.dp))
             }
-            Text(detail, color = QgMuted, fontSize = 9.sp, lineHeight = 13.sp, modifier = Modifier.padding(top = 5.dp))
             current?.expiresOn?.let {
                 Text("วันหมดอายุ $it", color = QgMuted, fontSize = 8.5.sp, modifier = Modifier.padding(top = 4.dp))
             }

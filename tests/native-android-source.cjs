@@ -405,6 +405,7 @@ const silentRiderDocuments=read('rider/src/main/java/com/queuego/rider/RiderDocu
 const silentRiderInsurance=read('rider/src/main/java/com/queuego/rider/RiderInsuranceCard.kt');
 const silentRiderVehicles=read('rider/src/main/java/com/queuego/rider/RiderVehiclesCard.kt');
 const silentRiderDestination=read('rider/src/main/java/com/queuego/rider/RiderMyDestinationDialog.kt');
+const silentRiderPassengerLicense=read('rider/src/main/java/com/queuego/rider/RiderPassengerLicenseCard.kt');
 const silentCustomerShopping=read('customer/src/main/java/com/queuego/customer/CustomerShoppingScreen.kt');
 const silentCustomerPromotion=read('customer/src/main/java/com/queuego/customer/CustomerPromotionScreen.kt');
 const silentCustomerOrderTracking=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
@@ -450,6 +451,9 @@ ok(
   !silentRiderInsurance.includes('LinearProgressIndicator') &&
   !silentRiderVehicles.includes('LinearProgressIndicator') &&
   !silentRiderDestination.includes('CircularProgressIndicator') &&
+  !silentRiderPassengerLicense.includes('กำลังตรวจสิทธิ์') &&
+  !silentMerchantApp.includes('if (orderCountsLoading) "…"') &&
+  !customerTrackingMap.includes('กำลังโหลดตำแหน่งล่าสุด') &&
   !silentCustomerShopping.includes('"กำลังโหลดข้อมูล…"') &&
   !silentCustomerPromotion.includes('loading -> CircularProgressIndicator()') &&
   !silentCustomerOrderTracking.includes('"กำลังโหลดรายการ..."') &&
@@ -525,6 +529,11 @@ ok(
   'Merchant Promotions must render durable cached metadata first and refresh in the background'
 );
 const merchantContentCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantContentCache.kt');
+ok(
+  silentMerchantApp.includes('delay(8_000)\n                    refreshOrders()') &&
+  !silentMerchantApp.includes('refreshOrders()\n                    delay(3_000)'),
+  'Merchant foreground fallback must not redownload the full order snapshot every three seconds'
+);
 ok(
   merchantContentCacheSource.includes('context.noBackupFilesDir, "merchant_content_cache_v1"') &&
   merchantContentCacheSource.includes('CachedMerchantContent') &&
