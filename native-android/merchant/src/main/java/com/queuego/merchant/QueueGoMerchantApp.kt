@@ -373,7 +373,7 @@ private fun MerchantShell(
                             .getOrDefault(MerchantTodayRevenue(0, 0.0, 0.0, 0.0))
                     }
                     val gpDeferred = async {
-                        runCatching { api.effectiveGp(auth, s.id) }.getOrDefault(0.0)
+                        runCatching { api.effectiveGp(auth, s.id) }.getOrDefault(-1.0)
                     }
 
                     val freshOrders = ordersDeferred.await()
@@ -991,8 +991,7 @@ private fun MerchantShell(
                                                 product = selectedProduct,
                                                 draft = draft.copy(
                                                     image = image ?: draft.image ?: selectedProduct?.image
-                                                ),
-                                                gpRate = gpRate
+                                                )
                                             )
                                             api.loadProducts(auth, activeShop.id)
                                         }.onSuccess { fresh ->

@@ -142,6 +142,16 @@ class NavigationRouteCoordinatorTest {
         assertEquals(1, rerouted.rerouteVersion)
         assertEquals(customer.id, rerouted.mapState.routes.last().toStopId)
         assertEquals("future-dropoff", rerouted.mapState.routes.last().id)
+
+        now += 3_000L
+        val withinCooldown = coordinator.synchronize(offRouteState)
+        assertEquals(2, provider.calls.size)
+        assertFalse(withinCooldown.rerouted)
+
+        now += 17_000L
+        val cooldownElapsed = coordinator.synchronize(offRouteState)
+        assertEquals(3, provider.calls.size)
+        assertTrue(cooldownElapsed.rerouted)
     }
 
     @Test fun completingPickupPromotesNextStopAndRequestsFreshActiveRoute() = runBlocking {

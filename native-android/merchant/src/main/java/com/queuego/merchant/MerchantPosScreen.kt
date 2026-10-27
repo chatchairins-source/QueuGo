@@ -2021,9 +2021,13 @@ private fun PosReportsView(
                 Column {
                     PosReportLine("ทานที่ร้าน", report.dineIn)
                     PosReportLine("รับกลับ", report.takeaway)
+                    PosReportLine("Delivery", report.delivery)
                     HorizontalDivider()
-                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)
+                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway + report.delivery, true)
                     Text("จำนวนบิล " + report.orders, color = QgMuted, fontSize = 11.sp)
+                    Spacer(Modifier.height(4.dp))
+                    PosReportLine("GP หน้าร้าน", 0.0)
+                    PosReportLine("GP Delivery", report.gp)
                 }
             }
         }

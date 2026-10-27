@@ -90,7 +90,7 @@ class NavigationGuidanceTest {
         assertTrue(cooldownElapsed.shouldReroute)
     }
 
-    @Test fun missedTurnReroutesImmediatelyOnFirstReliableMovingFix() {
+    @Test fun missedTurnStillNeedsThreeSecondsAndTwentySecondCooldown() {
         var now = 50_000L
         val tracker = NavigationProgressTracker(nowMillis = { now })
 
@@ -120,10 +120,33 @@ class NavigationGuidanceTest {
             stop
         )
         assertTrue(missedTurn.offRoute)
-        assertTrue(missedTurn.shouldReroute)
+        assertFalse(missedTurn.shouldReroute)
+
+        now += 2_999L
+        assertFalse(tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.01055),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f
+            ),
+            routeLeg(),
+            stop
+        ).shouldReroute)
+        now += 1L
+        assertTrue(tracker.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.01055),
+                bearingDegrees = 90f,
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 8f
+            ),
+            routeLeg(),
+            stop
+        ).shouldReroute)
     }
 
-    @Test fun passedTurnReroutesBeforeGenericThirtyMeterThreshold() {
+    @Test fun passedTurnWithinThirtyMeterFenceDoesNotReroute() {
         var now = 55_000L
         val tracker = NavigationProgressTracker(nowMillis = { now })
 
@@ -153,7 +176,7 @@ class NavigationGuidanceTest {
         assertTrue(justPastTurn.offRouteMeters!! >= 8.0)
         assertTrue(justPastTurn.offRouteMeters!! < 30.0)
         assertFalse(justPastTurn.offRoute)
-        assertTrue(justPastTurn.shouldReroute)
+        assertFalse(justPastTurn.shouldReroute)
     }
 
     @Test fun stoppedNearMissedTurnStillUsesNormalOffRouteDebounce() {

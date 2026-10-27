@@ -6,6 +6,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.view.animation.LinearInterpolator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -40,10 +41,12 @@ import kotlin.math.abs
 import kotlin.math.hypot
 
 private const val RIDER_MARKER_DEFAULT_ANIMATION_MS = 1_050L
-private const val RIDER_MARKER_MIN_ANIMATION_MS = 420L
-private const val RIDER_MARKER_MAX_ANIMATION_MS = 1_200L
+private const val RIDER_MARKER_MIN_ANIMATION_MS = 260L
+private const val RIDER_MARKER_MAX_ANIMATION_MS = 1_250L
 private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 1.05
 private const val RIDER_MARKER_TELEPORT_METERS = 120.0
+private const val RIDER_ROUTE_ARROW_SPACING_PX = 80.0
+private const val RIDER_ROUTE_ARROW_MAX_COUNT = 128
 private const val CAMERA_BEARING_MIN_DELTA_DEGREES = 0.7f
 private const val CAMERA_ANIMATION_FALLBACK_MS = 560L
 private const val CAMERA_OVERVIEW_ANIMATION_MS = 380
@@ -54,15 +57,10 @@ private const val RIDER_BODY_LAYER_ID = "qg-rider-puck-body"
 private const val RIDER_ARROW_LAYER_ID = "qg-rider-puck-arrow-layer"
 private const val RIDER_ARROW_IMAGE_ID = "qg-rider-puck-arrow"
 private const val STOP_SOURCE_ID = "qg-rider-stops"
-private const val STOP_ACTIVE_HALO_LAYER_ID = "qg-rider-stops-active-halo"
 private const val STOP_SHOP_BODY_LAYER_ID = "qg-rider-stops-shop-body"
+private const val STOP_SHOP_DONE_LAYER_ID = "qg-rider-stops-shop-done"
 private const val STOP_CUSTOMER_BODY_LAYER_ID = "qg-rider-stops-customer-body"
-private const val STOP_SHOP_ICON_LAYER_ID = "qg-rider-stops-shop-icon"
-private const val STOP_CUSTOMER_ICON_LAYER_ID = "qg-rider-stops-customer-icon"
 private const val STOP_SHOP_NUMBER_LAYER_ID = "qg-rider-stops-shop-number"
-private const val STOP_CUSTOMER_NUMBER_LAYER_ID = "qg-rider-stops-customer-number"
-private const val STOP_SHOP_IMAGE_ID = "qg-stop-shop"
-private const val STOP_CUSTOMER_IMAGE_ID = "qg-stop-customer"
 
 internal fun navigationStopMarkerTitle(stop: NavigationMapStop): String = buildString {
     append("จุด ")
@@ -75,12 +73,7 @@ internal fun navigationStopMarkerTitle(stop: NavigationMapStop): String = buildS
     }
 }
 
-internal fun riderMarkerMoveThresholdMeters(speedMetersPerSecond: Float?): Double = when {
-    speedMetersPerSecond == null -> 1.0
-    speedMetersPerSecond < 0.8f -> 1.8
-    speedMetersPerSecond < 3f -> 1.1
-    else -> 0.6
-}
+internal fun riderMarkerMoveThresholdMeters(@Suppress("UNUSED_PARAMETER") speedMetersPerSecond: Float?): Double = 0.01
 
 internal fun shouldMoveRiderMarker(
     previousRenderedFix: NavigationMapFix?,
@@ -114,11 +107,6 @@ internal fun riderMarkerAnimationMillis(
     return (cadenceMillis * RIDER_MARKER_ANIMATION_CADENCE_RATIO)
         .toLong()
         .coerceIn(RIDER_MARKER_MIN_ANIMATION_MS, RIDER_MARKER_MAX_ANIMATION_MS)
-        .coerceAtMost(
-            (cadenceMillis * RIDER_MARKER_ANIMATION_CADENCE_RATIO)
-                .toLong()
-                .coerceAtLeast(0L)
-        )
 }
 
 internal fun navigationRiderDisplayFix(state: RiderNavigationMapState): NavigationMapFix? {
@@ -498,47 +486,52 @@ private class RiderNavigationMapHolder {
     }
 
     private fun renderDirectionArrows(activeMap: MapLibreMap, segment: NavigationRouteSegment) {
-        val length = segment.points.zipWithNext().sumOf { (a, b) -> navigationHaversineMeters(a, b) }
-        if (length < 8.0) return
-        var distance = minOf(30.0, length * 0.6)
+        val projected = segment.points.map { point ->
+            activeMap.projection.toScreenLocation(LatLng(point.latitude, point.longitude))
+        }
+        if (projected.size < 2) return
+        var walkedPixels = 0.0
+        var nextArrowPixels = RIDER_ROUTE_ARROW_SPACING_PX / 2.0
         var count = 0
-        while (distance < length && count < 16) {
-            val tip = navigationPointAtDistance(segment, distance) ?: break
-            val back = navigationPointAtDistance(segment, (distance - 8.0).coerceAtLeast(0.0)) ?: break
-            val t = activeMap.projection.toScreenLocation(LatLng(tip.latitude, tip.longitude))
-            val b = activeMap.projection.toScreenLocation(LatLng(back.latitude, back.longitude))
-            val dx = (t.x - b.x).toDouble()
-            val dy = (t.y - b.y).toDouble()
-            val size = hypot(dx, dy)
-            if (size > 0.5) {
-                val ux = dx / size
-                val uy = dy / size
-                fun wing(side: Double): LatLng = activeMap.projection.fromScreenLocation(
-                    android.graphics.PointF(
-                        (t.x - ux * 9.0 - uy * 6.0 * side).toFloat(),
-                        (t.y - uy * 9.0 + ux * 6.0 * side).toFloat()
-                    )
+        projected.zipWithNext().forEach { (from, to) ->
+            if (count >= RIDER_ROUTE_ARROW_MAX_COUNT) return
+            val dx = (to.x - from.x).toDouble()
+            val dy = (to.y - from.y).toDouble()
+            val segmentPixels = hypot(dx, dy)
+            if (segmentPixels <= 0.5) return@forEach
+            val ux = dx / segmentPixels
+            val uy = dy / segmentPixels
+            while (nextArrowPixels <= walkedPixels + segmentPixels && count < RIDER_ROUTE_ARROW_MAX_COUNT) {
+                val fraction = ((nextArrowPixels - walkedPixels) / segmentPixels).coerceIn(0.0, 1.0)
+                val tipX = from.x + dx * fraction
+                val tipY = from.y + dy * fraction
+                fun screenPoint(x: Double, y: Double): LatLng = activeMap.projection.fromScreenLocation(
+                    android.graphics.PointF(x.toFloat(), y.toFloat())
                 )
+                val left = screenPoint(tipX - ux * 9.0 - uy * 6.0, tipY - uy * 9.0 + ux * 6.0)
+                val tip = screenPoint(tipX, tipY)
+                val right = screenPoint(tipX - ux * 9.0 + uy * 6.0, tipY - uy * 9.0 - ux * 6.0)
                 routeLines += activeMap.addPolyline(
-                    PolylineOptions().addAll(listOf(wing(-1.0), LatLng(tip.latitude, tip.longitude), wing(1.0)))
+                    PolylineOptions().addAll(listOf(left, tip, right))
                         .color(android.graphics.Color.WHITE).width(3.5f)
                 )
+                nextArrowPixels += RIDER_ROUTE_ARROW_SPACING_PX
+                count += 1
             }
-            distance += 65.0
-            count += 1
+            walkedPixels += segmentPixels
         }
     }
 
     private fun stopFeatureCollectionJson(
-        stops: List<NavigationMapStop>,
-        activeId: String?
+        stops: List<NavigationMapStop>
     ): String {
         val features = JSONArray()
         stops.forEach { stop ->
             val properties = JSONObject()
                 .put("sequence", stop.sequence.toString())
                 .put("kind", if (stop.kind == NavigationStopKind.PICKUP) "shop" else "customer")
-                .put("active", stop.id == activeId)
+                .put("numbered", stop.numbered)
+                .put("completed", stop.completed)
                 .put("label", stop.label)
             val coordinates = JSONArray()
                 .put(stop.point.longitude)
@@ -562,42 +555,34 @@ private class RiderNavigationMapHolder {
     private fun ensureStopStyle(activeMap: MapLibreMap): GeoJsonSource? {
         if (stopStyleInitialized) stopSource?.let { return it }
         val style = activeMap.style ?: return null
-        val context = view?.context ?: return null
         val source = GeoJsonSource(
             STOP_SOURCE_ID,
             """{"type":"FeatureCollection","features":[]}"""
         )
         style.addSource(source)
 
-        context.getDrawable(R.drawable.qg_stop_shop)?.let { drawable ->
-            style.addImage(STOP_SHOP_IMAGE_ID, drawable)
-        }
-        context.getDrawable(R.drawable.qg_stop_customer)?.let { drawable ->
-            style.addImage(STOP_CUSTOMER_IMAGE_ID, drawable)
-        }
-
         val shopFilter = Expression.eq(Expression.get("kind"), Expression.literal("shop"))
         val customerFilter = Expression.eq(Expression.get("kind"), Expression.literal("customer"))
-        val activeFilter = Expression.eq(Expression.get("active"), Expression.literal(true))
-
-        style.addLayer(
-            CircleLayer(STOP_ACTIVE_HALO_LAYER_ID, STOP_SOURCE_ID).apply {
-                setFilter(activeFilter)
-                setProperties(
-                    PropertyFactory.circleRadius(28f),
-                    PropertyFactory.circleColor(android.graphics.Color.TRANSPARENT),
-                    PropertyFactory.circleStrokeColor(android.graphics.Color.rgb(230, 0, 45)),
-                    PropertyFactory.circleStrokeWidth(2.5f)
-                )
-            }
-        )
+        val numberedFilter = Expression.eq(Expression.get("numbered"), Expression.literal(true))
+        val completedFilter = Expression.eq(Expression.get("completed"), Expression.literal(true))
         style.addLayer(
             CircleLayer(STOP_SHOP_BODY_LAYER_ID, STOP_SOURCE_ID).apply {
                 setFilter(shopFilter)
                 setProperties(
-                    PropertyFactory.circleRadius(23f),
-                    PropertyFactory.circleColor(android.graphics.Color.WHITE),
-                    PropertyFactory.circleStrokeColor(android.graphics.Color.rgb(230, 0, 45)),
+                    PropertyFactory.circleRadius(10f),
+                    PropertyFactory.circleColor(android.graphics.Color.rgb(22, 163, 74)),
+                    PropertyFactory.circleStrokeColor(android.graphics.Color.WHITE),
+                    PropertyFactory.circleStrokeWidth(3f)
+                )
+            }
+        )
+        style.addLayer(
+            CircleLayer(STOP_SHOP_DONE_LAYER_ID, STOP_SOURCE_ID).apply {
+                setFilter(Expression.all(shopFilter, numberedFilter, completedFilter))
+                setProperties(
+                    PropertyFactory.circleRadius(8f),
+                    PropertyFactory.circleColor(android.graphics.Color.rgb(148, 163, 184)),
+                    PropertyFactory.circleStrokeColor(android.graphics.Color.WHITE),
                     PropertyFactory.circleStrokeWidth(3f)
                 )
             }
@@ -606,58 +591,25 @@ private class RiderNavigationMapHolder {
             CircleLayer(STOP_CUSTOMER_BODY_LAYER_ID, STOP_SOURCE_ID).apply {
                 setFilter(customerFilter)
                 setProperties(
-                    PropertyFactory.circleRadius(23f),
-                    PropertyFactory.circleColor(android.graphics.Color.WHITE),
-                    PropertyFactory.circleStrokeColor(android.graphics.Color.rgb(23, 23, 27)),
+                    PropertyFactory.circleRadius(10f),
+                    PropertyFactory.circleColor(android.graphics.Color.rgb(230, 0, 45)),
+                    PropertyFactory.circleStrokeColor(android.graphics.Color.WHITE),
                     PropertyFactory.circleStrokeWidth(3f)
                 )
             }
         )
         style.addLayer(
-            SymbolLayer(STOP_SHOP_ICON_LAYER_ID, STOP_SOURCE_ID).apply {
-                setFilter(shopFilter)
-                setProperties(
-                    PropertyFactory.iconImage(STOP_SHOP_IMAGE_ID),
-                    PropertyFactory.iconSize(0.74f),
-                    PropertyFactory.iconTranslate(arrayOf(0f, 7f)),
-                    PropertyFactory.iconAllowOverlap(true),
-                    PropertyFactory.iconIgnorePlacement(true)
-                )
-            }
-        )
-        style.addLayer(
-            SymbolLayer(STOP_CUSTOMER_ICON_LAYER_ID, STOP_SOURCE_ID).apply {
-                setFilter(customerFilter)
-                setProperties(
-                    PropertyFactory.iconImage(STOP_CUSTOMER_IMAGE_ID),
-                    PropertyFactory.iconSize(0.74f),
-                    PropertyFactory.iconTranslate(arrayOf(0f, 7f)),
-                    PropertyFactory.iconAllowOverlap(true),
-                    PropertyFactory.iconIgnorePlacement(true)
-                )
-            }
-        )
-        style.addLayer(
             SymbolLayer(STOP_SHOP_NUMBER_LAYER_ID, STOP_SOURCE_ID).apply {
-                setFilter(shopFilter)
-                setProperties(
-                    PropertyFactory.textField(Expression.get("sequence")),
-                    PropertyFactory.textSize(12f),
-                    PropertyFactory.textColor(android.graphics.Color.rgb(230, 0, 45)),
-                    PropertyFactory.textTranslate(arrayOf(0f, -13f)),
-                    PropertyFactory.textAllowOverlap(true),
-                    PropertyFactory.textIgnorePlacement(true)
+                setFilter(
+                    Expression.all(
+                        shopFilter,
+                        Expression.eq(Expression.get("numbered"), Expression.literal(true))
+                    )
                 )
-            }
-        )
-        style.addLayer(
-            SymbolLayer(STOP_CUSTOMER_NUMBER_LAYER_ID, STOP_SOURCE_ID).apply {
-                setFilter(customerFilter)
                 setProperties(
                     PropertyFactory.textField(Expression.get("sequence")),
-                    PropertyFactory.textSize(12f),
-                    PropertyFactory.textColor(android.graphics.Color.rgb(23, 23, 27)),
-                    PropertyFactory.textTranslate(arrayOf(0f, -13f)),
+                    PropertyFactory.textSize(10f),
+                    PropertyFactory.textColor(android.graphics.Color.WHITE),
                     PropertyFactory.textAllowOverlap(true),
                     PropertyFactory.textIgnorePlacement(true)
                 )
@@ -673,14 +625,16 @@ private class RiderNavigationMapHolder {
         state: RiderNavigationMapState,
         force: Boolean
     ) {
-        val activeId = state.resolvedActiveStopId()
-        val stops = state.remainingStops()
-        val signature = 31 * stops.hashCode() + (activeId?.hashCode() ?: 0)
+        val stops = state.stops.asSequence()
+            .filter { it.point.valid && it.id.isNotBlank() && it.sequence > 0 }
+            .sortedWith(compareBy<NavigationMapStop> { it.sequence }.thenBy { it.id })
+            .toList()
+        val signature = stops.hashCode()
         if (!force && signature == lastStopSignature) return
         stopMarkers.toList().forEach { marker -> runCatching { activeMap.removeMarker(marker) } }
         stopMarkers.clear()
         val source = ensureStopStyle(activeMap) ?: return
-        source.setGeoJson(stopFeatureCollectionJson(stops, activeId))
+        source.setGeoJson(stopFeatureCollectionJson(stops))
         stopMutationCount += 1
         lastStopSignature = signature
     }
@@ -821,8 +775,9 @@ private class RiderNavigationMapHolder {
         if (shouldAnimateRiderMarker(fromPoint, displayPoint)) {
             riderAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
                 duration = riderMarkerAnimationMillis(previousTarget, fix)
+                interpolator = LinearInterpolator()
                 addUpdateListener { animation ->
-                    val fraction = animation.animatedFraction
+                    val fraction = navigationCameraEaseInOut(animation.animatedFraction)
                     val t = fraction.toDouble()
                     val point = LatLng(
                         fromPoint.latitude + (displayPoint.latitude - fromPoint.latitude) * t,

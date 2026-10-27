@@ -42,8 +42,8 @@ class NavigationViewModeController(
         return state
     }
 
-    fun onActiveStopChanged(): NavigationViewModeState {
-        if (state.mode == NavigationViewMode.OVERVIEW) {
+    fun onActiveStopChanged(navigationActive: Boolean): NavigationViewModeState {
+        if (!navigationActive && state.mode == NavigationViewMode.OVERVIEW) {
             state = stateFor(NavigationViewMode.FOLLOW)
         }
         return state

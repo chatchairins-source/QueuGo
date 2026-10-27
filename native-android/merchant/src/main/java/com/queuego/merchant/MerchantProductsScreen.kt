@@ -56,13 +56,23 @@ internal fun MerchantProductsScreen(
     onOpenCatalog: () -> Unit
 ) {
     var mode by rememberSaveable { mutableStateOf("all") }
+    var query by rememberSaveable { mutableStateOf("") }
+    var selectedCategory by rememberSaveable { mutableStateOf("") }
+    var categoryMenuOpen by remember { mutableStateOf(false) }
     val hasMasterCatalog = shopCategory == "grocery" || merchantMarketStockPermitted(shopCategory)
     val pricedProducts = merchantPricedProducts(products, shopCategory == "grocery")
-    val rows = remember(pricedProducts, mode) {
+    val categories = remember(pricedProducts) {
+        pricedProducts.map { it.category.ifBlank { "ไม่ระบุหมวด" } }.distinct().sorted()
+    }
+    LaunchedEffect(categories) {
+        if (selectedCategory.isNotBlank() && selectedCategory !in categories) selectedCategory = ""
+    }
+    val rows = remember(pricedProducts, mode, query, selectedCategory) {
         pricedProducts.filter { product ->
-            mode == "all" ||
-                (mode == "on" && product.available) ||
-                (mode == "off" && !product.available)
+            merchantProductMatchesView(product, query, selectedCategory) &&
+                (mode == "all" ||
+                    (mode == "on" && product.available) ||
+                    (mode == "off" && !product.available))
         }
     }
 
@@ -87,6 +97,40 @@ internal fun MerchantProductsScreen(
                 fontSize = 10.sp,
                 modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
             )
+
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("ค้นหาสินค้า...") }
+            )
+            if (shopCategory == "grocery") {
+                Box {
+                    OutlinedButton(
+                        onClick = { categoryMenuOpen = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("หมวดหมู่สินค้า: " + (selectedCategory.ifBlank { "ทุกหมวด" }), maxLines = 1)
+                    }
+                    DropdownMenu(
+                        expanded = categoryMenuOpen,
+                        onDismissRequest = { categoryMenuOpen = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("ทุกหมวด") },
+                            onClick = { selectedCategory = ""; categoryMenuOpen = false }
+                        )
+                        categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(category) },
+                                onClick = { selectedCategory = category; categoryMenuOpen = false }
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(Modifier.height(2.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -251,7 +295,9 @@ internal fun MerchantProductEditorScreen(
     onLoadInventoryHistory: suspend (MerchantProduct, String?, String?) -> MerchantInventoryAdjustmentPage,
     onBack: () -> Unit
 ) {
-    val categories = remember(shop.category, shop.shoppingSubcategories) { merchantProductCategories(shop) }
+    val categories = remember(shop.category, shop.shoppingSubcategories, product?.category, initialCategory) {
+        merchantProductCategories(shop, listOfNotNull(product?.category, initialCategory))
+    }
     val food = merchantIsFoodProductShop(shop)
     val initialOptions = remember(product?.id, product?.variantsJson) {
         merchantRestaurantOptionState(product?.variantsJson ?: "[]")
@@ -269,6 +315,11 @@ internal fun MerchantProductEditorScreen(
         )
     }
     var categoryOpen by remember { mutableStateOf(false) }
+    var newCategoryDialogOpen by remember { mutableStateOf(false) }
+    var newCategoryInput by remember { mutableStateOf("") }
+    var addedCategories by remember(product?.id) { mutableStateOf(emptyList<String>()) }
+    val allowCustomCategory = !food && !merchantIsMarketProductShop(shop) && shop.category.lowercase() != "shopping"
+    val productCategories = remember(categories, addedCategories) { (categories + addedCategories).distinct() }
     var price by remember(product?.id) { mutableStateOf((product?.posPrice ?: product?.price)?.toString().orEmpty()) }
     var stock by remember(product?.id) { mutableStateOf(product?.stock?.toString() ?: "0") }
     var inventoryStockTracking by remember(product?.id) { mutableStateOf(product?.inventoryStockTracking ?: false) }
@@ -297,7 +348,8 @@ internal fun MerchantProductEditorScreen(
     }
 
     val storePrice = price.toDoubleOrNull()
-    val deliveryPrice = storePrice?.let { merchantDeliveryPriceFromStore(it, gpRate) }
+    val gpRateValid = gpRate in 0.0..100.0 && gpRate.isFinite()
+    val deliveryPrice = storePrice?.takeIf { gpRateValid }?.let { merchantDeliveryPriceFromStore(it, gpRate) }
     val restriction = merchantDeliveryRestriction(name, category, description)
     val effectiveDelivery = restriction == "none" && deliveryAvailable
 
@@ -390,7 +442,7 @@ internal fun MerchantProductEditorScreen(
                     expanded = categoryOpen,
                     onDismissRequest = { categoryOpen = false }
                 ) {
-                    categories.forEach { option ->
+                    productCategories.forEach { option ->
                         DropdownMenuItem(
                             text = { Text(option) },
                             onClick = {
@@ -400,7 +452,54 @@ internal fun MerchantProductEditorScreen(
                             }
                         )
                     }
+                    if (allowCustomCategory) {
+                        DropdownMenuItem(
+                            text = { Text("＋ เพิ่มหมวดหมู่ใหม่") },
+                            onClick = {
+                                categoryOpen = false
+                                newCategoryInput = ""
+                                newCategoryDialogOpen = true
+                            }
+                        )
+                    }
                 }
+            }
+
+            if (newCategoryDialogOpen) {
+                AlertDialog(
+                    onDismissRequest = { newCategoryDialogOpen = false },
+                    title = { Text("เพิ่มหมวดหมู่สินค้า") },
+                    text = {
+                        OutlinedTextField(
+                            value = newCategoryInput,
+                            onValueChange = { newCategoryInput = it.take(60) },
+                            label = { Text("ชื่อหมวดหมู่") },
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val clean = newCategoryInput.trim()
+                            when {
+                                clean.isBlank() -> localError = "กรุณากรอกชื่อหมวดหมู่"
+                                productCategories.any { it.equals(clean, ignoreCase = true) } -> {
+                                    category = productCategories.first { it.equals(clean, ignoreCase = true) }
+                                    newCategoryDialogOpen = false
+                                    localError = null
+                                }
+                                else -> {
+                                    addedCategories = addedCategories + clean
+                                    category = clean
+                                    newCategoryDialogOpen = false
+                                    localError = null
+                                }
+                            }
+                        }) { Text("เพิ่ม") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { newCategoryDialogOpen = false }) { Text("ยกเลิก") }
+                    }
+                )
             }
 
             Spacer(Modifier.height(8.dp))
@@ -473,7 +572,8 @@ internal fun MerchantProductEditorScreen(
                     )
                 }
                 Text(
-                    deliveryPrice?.let { "฿" + "%.2f".format(it) } ?: "กรอกราคาหน้าร้าน",
+                    deliveryPrice?.let { "฿" + "%.2f".format(it) }
+                        ?: if (gpRateValid) "กรอกราคาหน้าร้าน" else "โหลดอัตรา GP ไม่สำเร็จ · บันทึกจะตรวจใหม่",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.padding(top = 3.dp)

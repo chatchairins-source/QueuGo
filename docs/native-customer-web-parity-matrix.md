@@ -19,6 +19,19 @@
 
 # Customer Web ↔ Native Android parity matrix
 
+### 2026-10-27 source recheck — shop, menu, cart, and checkout quote
+
+- Rechecked Web `V.shop` / `loadMenu` / `deliveryFeeFor` against Native `ShopScreen` / `CustomerCartScreen` / `CustomerCheckoutScreen` / `CustomerApi.deliveryFee` on the current successor `82ad0058`.
+- Visible menu eligibility, `delivery_price` fallback, unavailable-item handling, cart quantity limit, and distance fee bands (≤5 km ฿30, ≤6 km ฿40, ≤7 km ฿50, then +฿10/km rounded up) agree in source. Checkout continues to submit the expected quote through the existing server-owned order RPC and uses the dedicated location picker; no duplicate Places panel remains on Checkout.
+- Focused source evidence: `node tests/native-customer-checkout-reliability.cjs`, `node tests/native-customer-web-home-parity.cjs`, and `node tests/native-android-source.cjs` PASS. Android compile and authenticated phone-sized paired screenshots are still open.
+- **NEXT:** compare Customer tracking/history and transition/error states against Web, then inspect Merchant POS/reports/call actions. Keep visual and device evidence distinct from source parity.
+
+### 2026-10-27 source recheck — Customer order tracking and chat window
+
+- Compared Web `QGCustomer.renderOrder` / `chatAvailable` with Native `CustomerOrderTrackingScreen`, `CustomerTrackingPolicy`, and `CustomerChatWindow`: active, completed, cancelled, no-Rider, arrived, contact, map visibility and the 30-minute post-completion chat cutoff use the same state conditions. Cancellation remains the existing server RPC; closed-order tracking removes live map points.
+- Native has explicit tracking map and chat-window unit contracts (`CustomerTrackingPolicyTest`, `CustomerChatWindowTest`); JVM execution is unavailable locally because Gradle/Kotlin tooling is absent. Web full-flow tests requiring `jsdom` are unavailable in this checkout.
+- **NEXT:** inspect Merchant POS/reports/call actions against current Web, then continue Merchant order/catalog/settings coverage. Customer paired authenticated screenshots, exact-head Kotlin CI, and physical-device evidence remain open.
+
 ## Evidence baseline
 
 - Web source of truth: fetched `origin/main` at `7e036a0735cc49905e9b0a2434492470551a0c9d`.

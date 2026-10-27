@@ -100,18 +100,35 @@ internal fun merchantIsFoodProductShop(shop: MerchantShop): Boolean =
 internal fun merchantIsMarketProductShop(shop: MerchantShop): Boolean =
     shop.category.lowercase() in setOf("market", "meat", "fish", "vegetable", "fruit")
 
-internal fun merchantProductCategories(shop: MerchantShop): List<String> {
-    if (merchantIsFoodProductShop(shop)) return merchantFoodMenuCategories
-    if (merchantIsMarketProductShop(shop)) return merchantMarketProductCategories
-    if (shop.category.lowercase() == "shopping") {
-        val seen = linkedSetOf<String>()
-        shop.shoppingSubcategories.forEach { key ->
-            merchantShoppingProductGroups[key]?.forEach(seen::add)
+internal fun merchantProductMatchesView(
+    product: MerchantProduct,
+    query: String,
+    selectedCategory: String
+): Boolean {
+    val category = product.category.ifBlank { "ไม่ระบุหมวด" }
+    val term = query.trim()
+    return (selectedCategory.isBlank() || category == selectedCategory) &&
+        (term.isBlank() || product.name.contains(term, ignoreCase = true) || category.contains(term, ignoreCase = true))
+}
+
+internal fun merchantProductCategories(
+    shop: MerchantShop,
+    existingCategories: List<String> = emptyList()
+): List<String> {
+    val defaults = when {
+        merchantIsFoodProductShop(shop) -> merchantFoodMenuCategories
+        merchantIsMarketProductShop(shop) -> merchantMarketProductCategories
+        shop.category.lowercase() == "shopping" -> {
+            val seen = linkedSetOf<String>()
+            shop.shoppingSubcategories.forEach { key ->
+                merchantShoppingProductGroups[key]?.forEach(seen::add)
+            }
+            seen.add("อื่นๆ")
+            if (seen.size > 1) seen.toList() else merchantRetailProductCategories
         }
-        seen.add("อื่นๆ")
-        if (seen.size > 1) return seen.toList()
+        else -> merchantRetailProductCategories
     }
-    return merchantRetailProductCategories
+    return (defaults + existingCategories.filter(String::isNotBlank)).distinct()
 }
 
 internal fun merchantDefaultProductCategory(shop: MerchantShop): String = when (shop.category.lowercase()) {
@@ -119,6 +136,24 @@ internal fun merchantDefaultProductCategory(shop: MerchantShop): String = when (
     "fruit" -> "ผลไม้"
     "fish" -> "ปลา"
     else -> ""
+}
+
+internal fun merchantEffectiveGpRate(raw: Any?): Double {
+    val value = when (raw) {
+        is Number -> raw.toDouble()
+        is JSONObject -> if (raw.has("effective_gp_rate")) raw.opt("effective_gp_rate") else null
+        is JSONArray -> when (val first = raw.opt(0)) {
+            is JSONObject -> if (first.has("effective_gp_rate")) first.opt("effective_gp_rate") else null
+            else -> first
+        }
+        else -> raw
+    }
+    val rate = when (value) {
+        is Number -> value.toDouble()
+        else -> value?.toString()?.toDoubleOrNull()
+    }
+    require(rate != null && rate.isFinite() && rate in 0.0..100.0) { "โหลดอัตรา GP ไม่สำเร็จ" }
+    return rate
 }
 
 data class MerchantToppingOption(

@@ -65,4 +65,11 @@ class RiderWorkPreferencesTest {
         assertEquals(null, riderWorkServicesAfterToggle(setOf("food"), "food", false))
         assertEquals(null, riderWorkServicesAfterToggle(setOf("food"), "unknown", true))
     }
+
+    @Test fun automaticAcceptanceOnlyUsesSelectedServiceAndDefaultsBlankVerticalToFood() {
+        assertTrue(riderAutoAcceptServiceAllowed(setOf("food", "express"), "express"))
+        assertFalse(riderAutoAcceptServiceAllowed(setOf("food"), "ride"))
+        assertTrue(riderAutoAcceptServiceAllowed(setOf("food"), ""))
+        assertFalse(riderAutoAcceptServiceAllowed(null, "food"))
+    }
 }

@@ -1,6 +1,9 @@
 const assert=require('assert');
 const fs=require('fs');
 const app=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
+const passenger=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderPassengerCard.kt','utf8');
+const passengerTest=fs.readFileSync('native-android/rider/src/test/java/com/queuego/rider/RiderPassengerTest.kt','utf8');
+const webRide=fs.readFileSync('rider/rider-ride.js','utf8');
 
 assert(app.includes('fun startQueueGoNavigation(')&&
   app.includes('// Accept is the start of work. Enter QueueGo follow/navigation mode')&&
@@ -38,8 +41,17 @@ assert(proof.includes('"สไลด์เพื่อยืนยันรั�
 
 assert(!app.includes('private fun RiderCollectionScreen('),
   'Removed Rider collection screen must not be reintroduced');
-assert(!app.includes('RiderSlideComplete(')&&app.includes('private fun RiderSwipeCompleteAction('),
+assert(!app.includes('RiderSlideComplete(')&&app.includes('internal fun RiderSwipeCompleteAction('),
   'Rider delivery must use the current cash-gated swipe implementation, not the retired slider');
+assert(passenger.includes('showCashConfirm = true')&&passenger.includes('AlertDialog(')&&
+  passenger.includes('riderPassengerCashConfirmReady(job.customerCash)'),
+  'Passenger Ride completion must match Web with a separate valid-cash confirmation step');
+assert(passenger.includes('RiderSwipeCompleteAction(')&&
+  passenger.includes('onComplete = { onAction(key) }')&&
+  passengerTest.includes('passengerCompletionRequiresAValidCashAmountBeforeTheConfirmationSwipe'),
+  'Passenger Ride must require cash confirmation swipe and cover invalid cash boundaries');
+assert(webRide.includes("mode:'customer',amount:cash")&&webRide.includes('จบเที่ยว · เก็บเงินสด ฿'),
+  'Passenger Ride completion must match the Web-confirmed cash amount and action wording');
 
 require('./native-rider-google-maps-return.cjs');
 require('./native-rider-route-bundle-parity.cjs');

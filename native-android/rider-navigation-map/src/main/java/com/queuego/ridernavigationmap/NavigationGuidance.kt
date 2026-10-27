@@ -4,12 +4,6 @@ import kotlin.math.max
 
 private const val WEAK_GPS_ACCURACY_METERS = 35f
 private const val BASE_OFF_ROUTE_THRESHOLD_METERS = 30.0
-private const val MISSED_MANEUVER_WINDOW_METERS = 90.0
-private const val MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND = 2.0f
-private const val PASSED_MANEUVER_MIN_OFF_ROUTE_METERS = 8.0
-private const val PASSED_MANEUVER_DISTANCE_TOLERANCE_METERS = 18.0
-private const val PASSED_MANEUVER_MAX_ACCURACY_METERS = 20f
-private const val MISSED_MANEUVER_REROUTE_COOLDOWN_MILLIS = 3_000L
 private const val DEFAULT_ARRIVAL_METERS = 28.0
 private const val ARRIVAL_ACCURACY_MULTIPLIER = 1.4
 private const val MAX_ARRIVAL_METERS = 45.0
@@ -41,9 +35,9 @@ class NavigationProgressTracker(
     private var offRouteSinceMillis: Long? = null
     private var lastRerouteAtMillis: Long? = null
 
-    fun reset() {
+    fun reset(clearRerouteCooldown: Boolean = true) {
         offRouteSinceMillis = null
-        lastRerouteAtMillis = null
+        if (clearRerouteCooldown) lastRerouteAtMillis = null
         routeMatcher.reset()
     }
 
@@ -91,48 +85,17 @@ class NavigationProgressTracker(
         } else {
             null
         }
-        val nextTurnCode = next?.first?.turnCode
-        val nextRequiresCourseChange = nextTurnCode != null &&
-            nextTurnCode != 5 &&
-            nextTurnCode != 9
-        val movingSpeed = fix.speedMetersPerSecond
-            ?.takeIf { it.isFinite() && it >= 0f }
-            ?: 0f
-        val nextDistanceMeters = next?.second ?: Double.POSITIVE_INFINITY
-        val passedManeuver = !weakGps &&
-            (accuracy == null || accuracy <= PASSED_MANEUVER_MAX_ACCURACY_METERS) &&
-            movingSpeed >= MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND &&
-            nextRequiresCourseChange &&
-            nextDistanceMeters <= PASSED_MANEUVER_DISTANCE_TOLERANCE_METERS &&
-            match.offRouteMeters >= PASSED_MANEUVER_MIN_OFF_ROUTE_METERS &&
-            match.offRouteMeters <= BASE_OFF_ROUTE_THRESHOLD_METERS
-        // A real missed turn can move beyond the generic 30 m fence on the first fix.
-        // Allow that immediate reroute only when the hybrid matcher has usable heading
-        // evidence; position-only drift/jitter keeps the normal sustained 30 m / 3 s gate.
-        val missedManeuver = passedManeuver || (
-            offRoute &&
-                hybridMatch.headingDeltaDegrees != null &&
-                movingSpeed >= MISSED_MANEUVER_MIN_SPEED_METERS_PER_SECOND &&
-                nextRequiresCourseChange &&
-                nextDistanceMeters <= MISSED_MANEUVER_WINDOW_METERS
-            )
-
         val now = nowMillis()
         if (offRoute) {
             if (offRouteSinceMillis == null) offRouteSinceMillis = now
         } else {
             offRouteSinceMillis = null
         }
-        val requiredCooldown = if (missedManeuver) {
-            MISSED_MANEUVER_REROUTE_COOLDOWN_MILLIS
-        } else {
-            rerouteCooldownMillis
-        }
-        val cooldownSatisfied = lastRerouteAtMillis?.let { now - it >= requiredCooldown } ?: true
+        val cooldownSatisfied = lastRerouteAtMillis?.let { now - it >= rerouteCooldownMillis } ?: true
         val sustainedOffRoute = offRouteSinceMillis?.let { since ->
             now - since >= requiredOffRouteMillis.coerceAtLeast(0L)
         } ?: false
-        val shouldReroute = cooldownSatisfied && (passedManeuver || (offRoute && (missedManeuver || sustainedOffRoute)))
+        val shouldReroute = cooldownSatisfied && offRoute && sustainedOffRoute
         if (shouldReroute) {
             offRouteSinceMillis = null
             lastRerouteAtMillis = now

@@ -5,10 +5,16 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 const api=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantApi.kt','utf8');
 const app=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt','utf8');
 const products=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt','utf8');
+const productModel=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantProductModel.kt','utf8');
+const web=fs.readFileSync('merchant/index.html','utf8');
 const screen=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantGroceryCatalogScreen.kt','utf8');
 const source=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantGrocerySource.kt','utf8');
 
 ok(products.includes('shopCategory == "grocery"'),'Grocery Merchant must branch to Grocery-specific add choices');
+ok(products.includes('value = query')&&products.includes('merchantProductMatchesView(product, query, selectedCategory)')&&productModel.includes('product.name.contains(term, ignoreCase = true)')&&productModel.includes('category.contains(term, ignoreCase = true)'),'Native product list must match Web search by product name or category');
+ok(products.includes('if (shopCategory == "grocery")')&&products.includes('categories.forEach { category ->')&&products.includes('selectedCategory = category'),'Native Grocery list must expose its dynamic category filter');
+ok(web.includes('oninput="qgmProductSearch(this.value)"')&&web.includes('onchange="qgmProductCategory(this.value)"'),'Web product list search and Grocery category-filter behavior remains the parity target');
+ok(web.includes("empty.textContent='ไม่พบสินค้าที่ตรงกับการค้นหา'")&&web.includes("empty.hidden=products.length===0||visible>0"),'Web must show an accessible empty result when product search/filter finds no matches');
 ok(products.includes('Text("เพิ่มสินค้าเอง"')&&products.includes('Text("เพิ่มสินค้าจากแคตตาล็อก"'),'Grocery Merchant must expose both manual and master-catalog add actions');
 ok(app.includes('"catalog", "grocery-catalog" -> "products"'),'Grocery catalog back navigation must return to Products');
 ok(app.includes('screen = "grocery-catalog"')&&app.includes('MerchantGroceryCatalogScreen('),'Merchant app must route Grocery catalog to its Native screen');

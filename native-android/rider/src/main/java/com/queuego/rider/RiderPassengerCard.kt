@@ -11,6 +11,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun RiderPassengerCard(job: RiderJob, busy: Boolean, networkAvailable: Boolean,
     onNavigate: () -> Unit, onChat: () -> Unit, onAction: (String) -> Unit) {
+    var showCashConfirm by remember(job.id) { mutableStateOf(false) }
+    val cashConfirmReady = riderPassengerCashConfirmReady(job.customerCash)
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("รับส่งผู้โดยสาร · " + job.numberLabel, fontWeight = FontWeight.Bold)
@@ -30,11 +32,42 @@ internal fun RiderPassengerCard(job: RiderJob, busy: Boolean, networkAvailable: 
             OutlinedButton(onClick = onChat, enabled = !busy && networkAvailable) { Text("ติดต่อผู้โดยสาร") }
             val action = passengerStageAction(job)
             action?.let { (key,label) ->
-                Button(onClick = { onAction(key) }, enabled = !busy && networkAvailable && (key != "complete" || job.customerCash != null), modifier = Modifier.fillMaxWidth()) { Text(if (busy) "กำลังตรวจผล…" else label) }
+                if (key == "complete") {
+                    Button(onClick = { showCashConfirm = true }, enabled = !busy && networkAvailable && cashConfirmReady, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (busy) "กำลังตรวจผล…" else "จบเที่ยว · เก็บเงินสด ${riderMoneyBaht(job.customerCash)}")
+                    }
+                    if (showCashConfirm) AlertDialog(
+                        onDismissRequest = { if (!busy) showCashConfirm = false },
+                        title = { Text("เก็บเงินจากผู้โดยสาร") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("ยอดที่ต้องเก็บ", style = MaterialTheme.typography.bodyMedium)
+                                Text(riderMoneyBaht(job.customerCash), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                                Text("ตรวจสอบว่าได้รับเงินสดครบตามยอดแล้ว จากนั้นสไลด์เพื่อยืนยันและจบเที่ยว")
+                                RiderSwipeCompleteAction(
+                                    enabled = cashConfirmReady && networkAvailable,
+                                    busy = busy,
+                                    label = "สไลด์เพื่อยืนยันว่าเก็บเงินแล้ว",
+                                    onComplete = { onAction(key) }
+                                )
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { showCashConfirm = false }, enabled = !busy) { Text("กลับ") }
+                        }
+                    )
+                } else {
+                    Button(onClick = { onAction(key) }, enabled = !busy && networkAvailable, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (busy) "กำลังตรวจผล…" else label)
+                    }
+                }
             }
         }
     }
 }
+
+internal fun riderPassengerCashConfirmReady(amount: Double?): Boolean = amount?.let { it.isFinite() && it >= 0.0 } == true
 
 internal fun passengerNavigationLabel(job: RiderJob): String? {
     if (!job.isPassenger) return null

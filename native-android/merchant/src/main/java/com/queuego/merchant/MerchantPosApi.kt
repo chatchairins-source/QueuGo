@@ -93,7 +93,17 @@ data class PosStaff(
 data class PosOwnerDashboard(
     val dineIn: Double,
     val takeaway: Double,
+    val delivery: Double,
+    val gp: Double,
     val orders: Int
+)
+
+internal fun merchantPosOwnerDashboard(raw: JSONObject): PosOwnerDashboard = PosOwnerDashboard(
+    dineIn = raw.optDouble("DINE_IN", 0.0),
+    takeaway = raw.optDouble("TAKEAWAY", 0.0),
+    delivery = raw.optDouble("DELIVERY", 0.0),
+    gp = raw.optDouble("GP", 0.0),
+    orders = raw.optInt("orders", 0)
 )
 
 data class PosHistoryRow(
@@ -565,12 +575,7 @@ class MerchantPosApi(
             auth.session.accessToken,
             JSONObject().put("p_days", days)
         )
-        val o = objectValue(raw)
-        return PosOwnerDashboard(
-            dineIn = o.optDouble("DINE_IN", 0.0),
-            takeaway = o.optDouble("TAKEAWAY", 0.0),
-            orders = o.optInt("orders", 0)
-        )
+        return merchantPosOwnerDashboard(objectValue(raw))
     }
 
     suspend fun history(

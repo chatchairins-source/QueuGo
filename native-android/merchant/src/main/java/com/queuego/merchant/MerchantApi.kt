@@ -830,18 +830,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             auth.session.accessToken,
             JSONObject().put("p_shop_profile_id", shopId)
         )
-        return when (raw) {
-            is Number -> raw.toDouble()
-            is JSONArray -> {
-                val first = raw.opt(0)
-                when (first) {
-                    is Number -> first.toDouble()
-                    is JSONObject -> first.optDouble("effective_gp_rate", 0.0)
-                    else -> first?.toString()?.toDoubleOrNull() ?: 0.0
-                }
-            }
-            else -> raw.toString().toDoubleOrNull() ?: 0.0
-        }
+        return merchantEffectiveGpRate(raw)
     }
 
     // Only reads may retry. A timed-out write must never be replayed automatically.
@@ -1029,8 +1018,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         auth: NativeAuth,
         shopId: String,
         product: MerchantProduct?,
-        draft: MerchantProductDraft,
-        gpRate: Double
+        draft: MerchantProductDraft
     ): MerchantProduct {
         val cleanName = draft.name.trim()
         val cleanDescription = draft.description?.trim()?.takeIf { it.isNotBlank() }
@@ -1043,7 +1031,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         if (product?.groceryMasterId != null) {
             require(!draft.inventoryStockTracking) { "Grocery Master เป็นผู้จัดการการติดตามสต็อกสินค้านี้" }
         }
-        require(gpRate in 0.0..100.0 && gpRate.isFinite()) { "อัตรา GP ไม่ถูกต้อง" }
+        val gpRate = effectiveGp(auth, shopId)
         val variants = runCatching { JSONArray(draft.variantsJson.ifBlank { "[]" }) }
             .getOrElse { throw IllegalArgumentException("ตัวเลือกสินค้าไม่ถูกต้อง") }
         val restriction = merchantDeliveryRestriction(cleanName, cleanCategory, cleanDescription)

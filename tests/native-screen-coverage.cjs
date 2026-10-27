@@ -36,15 +36,21 @@ for(const [role,surfaces] of Object.entries(matrix.roles)){
 const riderHistory=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt','utf8');
 ok(
   riderHistory.includes('api.cashLedger(')&&
-  riderHistory.includes('api.history(auth, 200)')&&
   riderHistory.includes('รายการงานล่าสุด')&&
-  riderHistory.includes('RiderJobHistoryDetail(')&&
-  riderHistory.includes('expandedOrderId')&&
   riderHistory.includes('cashPaidMerchant')&&
   riderHistory.includes('cashCollectedCustomer')&&
-  riderHistory.includes('pickupAddress')&&
-  riderHistory.includes('deliveryAddress'),
-  'Rider history must retain the Production ledger source and expandable real route/cash job details'
+  riderHistory.includes('row.status')&&
+  riderHistory.includes('กำลังดำเนินการ')&&
+  riderHistory.includes('รายได้จากค่าส่ง')&&
+  riderHistory.includes('ค่าส่งที่ได้รับ')&&
+  riderHistory.includes('สุทธิรับ-จ่าย')&&
+  !riderHistory.includes('expandedOrderId')&&
+  !riderHistory.includes('RiderJobHistoryDetail(row = row')&&
+  !riderHistory.includes('api.history(auth, 200)')&&
+  !riderHistory.includes('api.missions(auth)')&&
+  !riderHistory.includes('api.supplyPlan(auth)')&&
+  !riderHistory.includes('api.offerPerformance(auth,'),
+  'Rider earnings recent jobs must match the Web status, fee and compact non-expandable row'
 );
 
 const riderLogin=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderLoginScreen.kt','utf8');

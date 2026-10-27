@@ -23,7 +23,8 @@ data class NavigationMapStop(
     val kind: NavigationStopKind,
     val point: NavigationMapPoint,
     val completed: Boolean = false,
-    val label: String = ""
+    val label: String = "",
+    val numbered: Boolean = false
 )
 
 enum class NavigationRouteStyle { ACTIVE, FUTURE }

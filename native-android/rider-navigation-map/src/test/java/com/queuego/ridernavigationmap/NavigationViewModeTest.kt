@@ -51,12 +51,15 @@ class NavigationViewModeTest {
     }
 
     @Test
-    fun activeStopChangeClosesOverviewButPreservesFreePan() {
+    fun activeStopChangePreservesOverviewAndFreePanUntilWorkEnds() {
         val controller = NavigationViewModeController()
         controller.onOverview()
-        assertEquals(NavigationViewMode.FOLLOW, controller.onActiveStopChanged().mode)
+        assertEquals(NavigationViewMode.OVERVIEW, controller.onActiveStopChanged(navigationActive = true).mode)
 
         controller.onUserGesture()
-        assertEquals(NavigationViewMode.FREE_PAN, controller.onActiveStopChanged().mode)
+        assertEquals(NavigationViewMode.FREE_PAN, controller.onActiveStopChanged(navigationActive = true).mode)
+
+        controller.onOverview()
+        assertEquals(NavigationViewMode.FOLLOW, controller.onActiveStopChanged(navigationActive = false).mode)
     }
 }

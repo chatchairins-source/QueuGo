@@ -2390,6 +2390,7 @@ private fun RiderHome(
         snapshot?.online,
         snapshot?.activeJob?.id,
         snapshot?.laundry?.activeJob?.jobId,
+        workPreferences?.services,
         snapshot?.offeredJob?.id,
         snapshot?.offeredJob?.offerExpiresAt,
         actionBusy,
@@ -2401,6 +2402,9 @@ private fun RiderHome(
             val offer = current.offeredJob ?: return@repeatOnLifecycle
             val key = offer.id + ":" + (offer.offerExpiresAt ?: "")
             if (autoAcceptAttemptKey == key) return@repeatOnLifecycle
+            if (!riderAutoAcceptServiceAllowed(workPreferences?.services, offer.fulfillmentVertical)) {
+                return@repeatOnLifecycle
+            }
             if (!riderAutoAcceptEligible(
                     enabled = riderAutoAcceptAllowedWhileStopping(autoAcceptEnabled, stopAfterWorkPending),
                     networkAvailable = networkAvailable,
@@ -2415,6 +2419,9 @@ private fun RiderHome(
             val latest = snapshot?.offeredJob ?: return@repeatOnLifecycle
             val latestKey = latest.id + ":" + (latest.offerExpiresAt ?: "")
             if (latestKey != key) return@repeatOnLifecycle
+            if (!riderAutoAcceptServiceAllowed(workPreferences?.services, latest.fulfillmentVertical)) {
+                return@repeatOnLifecycle
+            }
             if (!riderAutoAcceptEligible(
                     enabled = riderAutoAcceptAllowedWhileStopping(autoAcceptEnabled, stopAfterWorkPending),
                     networkAvailable = networkAvailable,
@@ -4954,7 +4961,7 @@ private fun VerificationScreen(
 }
 
 @Composable
-private fun RiderSwipeCompleteAction(
+internal fun RiderSwipeCompleteAction(
     enabled: Boolean,
     busy: Boolean,
     label: String,

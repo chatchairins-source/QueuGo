@@ -54,6 +54,9 @@ internal fun riderAutoAcceptEligible(
         !actionBusy &&
         secondsLeft >= RIDER_AUTO_ACCEPT_MIN_SECONDS_LEFT
 
+internal fun riderAutoAcceptServiceAllowed(services: Set<String>?, fulfillmentVertical: String): Boolean =
+    services?.contains(fulfillmentVertical.ifBlank { "food" }) == true
+
 internal fun riderWorkServicesAfterToggle(
     current: Set<String>,
     service: String,

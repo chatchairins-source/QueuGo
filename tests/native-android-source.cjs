@@ -927,7 +927,10 @@ ok(
   riderAcceptanceMode.includes('"รับงานพ่วง"') &&
   riderAcceptanceMode.includes('"ประเภทบริการที่รับ"') &&
   riderAcceptanceMode.includes('"ส่งพัสดุ Express"') &&
-  riderAcceptanceMode.includes('"รับส่งผู้โดยสาร"'),
+  riderAcceptanceMode.includes('"รับส่งผู้โดยสาร"') &&
+  riderAcceptanceMode.includes('internal fun riderAutoAcceptServiceAllowed(') &&
+  riderApp.includes('workPreferences?.services, offer.fulfillmentVertical') &&
+  riderApp.includes('workPreferences?.services, latest.fulfillmentVertical'),
   'Rider Native work preferences must reuse the Web server authority and expose bundle/service choices without local-only toggles'
 );
 ok(riderApp.includes('พร้อมรับงานแล้ว')&&riderApp.includes('คุณจะได้รับงานในพื้นที่ใกล้เคียง'),'Rider idle card must use the approved Ready title and nearby-work subtitle');
@@ -1155,10 +1158,17 @@ ok(
   !riderMap.includes('.title("Rider")') &&
   riderPuckArrow.includes('#FFFFFFFF') &&
   riderPuckArrow.includes('M13.5,2.5 L23.5,23 L13.5,18.2 L3.5,23') &&
-  riderMap.includes('SymbolLayer(STOP_SHOP_ICON_LAYER_ID, STOP_SOURCE_ID)') &&
-  riderMap.includes('SymbolLayer(STOP_CUSTOMER_ICON_LAYER_ID, STOP_SOURCE_ID)') &&
-  riderMap.includes('source.setGeoJson(stopFeatureCollectionJson(stops, activeId))'),
-  'native Rider QueueGo Map must match the Web red directional puck/heading and preserve numbered shop/customer stop layers'
+  riderMap.includes('CircleLayer(STOP_SHOP_BODY_LAYER_ID, STOP_SOURCE_ID)') &&
+  riderMap.includes('CircleLayer(STOP_CUSTOMER_BODY_LAYER_ID, STOP_SOURCE_ID)') &&
+  riderMap.includes('PropertyFactory.circleRadius(10f)') &&
+  riderMap.includes('PropertyFactory.circleColor(android.graphics.Color.rgb(22, 163, 74))') &&
+  riderMap.includes('PropertyFactory.circleColor(android.graphics.Color.rgb(230, 0, 45))') &&
+  riderMap.includes('PropertyFactory.circleColor(android.graphics.Color.rgb(148, 163, 184))') &&
+  riderMap.includes('Expression.get("numbered")') &&
+  riderMap.includes('Expression.get("completed")') &&
+  riderMap.includes('source.setGeoJson(stopFeatureCollectionJson(stops))') &&
+  riderMap.includes('val stops = state.stops.asSequence()'),
+  'native Rider QueueGo Map must match Web stop colors, sizes and completed pickup markers while preserving all stops and the red directional puck'
 );
 const riderCameraPolicy=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationCameraPolicy.kt');
 const riderRouteMatcher=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteMatcher.kt');
@@ -1287,8 +1297,11 @@ const merchantProductModel=read('merchant/src/main/java/com/queuego/merchant/Mer
 const merchantProductsScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt');
 ok(source.includes('products?select=id,name,description,price,delivery_price,image,category,stock,variants,available,pos_available,delivery_available,pos_price,delivery_restriction,inventory_stock_tracking,grocery_master_id,grocery_stock_tracking,metadata'),'Merchant native products must load Production stock/category/variant/channel and inventory-tracking fields');
 ok(source.includes('merchantDeliveryPriceFromStore')&&source.includes('1.0 + rate / 100.0'),'Merchant native Delivery price must add GP to the storefront price like Production web');
+ok(merchantProductModel.includes('merchantEffectiveGpRate(raw: Any?)')&&merchantApiSource.includes('val gpRate = effectiveGp(auth, shopId)')&&merchantProductsScreen.includes('gpRateValid'),'Merchant product save must re-fetch and validate GP instead of saving at 0% after a failed load');
 ok(source.includes('resolution=merge-duplicates')&&source.includes('on_conflict=id'),'Merchant native new-product save must use stable idempotent upsert');
 ok(merchantProductModel.includes('เมนูแนะนำ / เมนูขายดี')&&merchantProductModel.includes('เพิ่มเติม / ท็อปปิ้ง')&&merchantProductModel.includes('ของสดพร้อมปรุง'),'Merchant native product categories must preserve Production food and market catalogs');
+ok(merchantProductModel.includes('existingCategories.filter(String::isNotBlank)')&&merchantProductsScreen.includes('merchantProductCategories(shop, listOfNotNull(product?.category, initialCategory))'),'Merchant native editor must preserve existing Web-created custom product categories when editing');
+ok(merchantProductsScreen.includes('เพิ่มหมวดหมู่ใหม่')&&merchantProductsScreen.includes('addedCategories = addedCategories + clean')&&merchantProductsScreen.includes('allowCustomCategory'),'Merchant native editor must create free-text categories on the same shop types that allow them on Web');
 ok(merchantProductModel.includes('queuego.menu-options.v1')&&merchantProductModel.includes('ธรรมดา')&&merchantProductModel.includes('พิเศษ')&&merchantProductModel.includes('ท็อปปิ้ง'),'Merchant native food editor must preserve structured menu options');
 ok(merchantProductsScreen.includes('จำนวนในสต็อก *')&&merchantProductsScreen.includes('ขายหน้าร้าน')&&merchantProductsScreen.includes('ขาย Delivery')&&merchantProductsScreen.includes('รูปจะเก็บในคลังรูปภาพของร้าน'),'Merchant native product editor must preserve stock, channels and image flow');
 ok(source.includes('"product" ->')&&!source.includes('private fun ProductsScreen('),'Merchant native must remove the legacy inline product implementation');
@@ -1405,7 +1418,11 @@ ok(riderNavigationIntegration.includes('bundleOrders: List<RiderBundleOrder>')&&
 
 const posOnlyApi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt'),posOnlyUi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
 ok(!/PosDelivery|deliveryOrders|pos_delivery_kitchen_action|pos_enable_delivery|QUEUEGO_DELIVERY/.test(posOnlyApi+posOnlyUi),'Native POS must not read, render or mutate Delivery orders');
-ok(!/GP หน้าร้าน|GP Delivery|report\.gp|report\.delivery|optDouble\("GP"/.test(posOnlyApi+posOnlyUi),'Native POS must not render Delivery GP or include its totals');
+ok(posOnlyApi.includes('delivery = raw.optDouble("DELIVERY"')&&posOnlyApi.includes('gp = raw.optDouble("GP"')&&
+  posOnlyUi.includes('PosReportLine("Delivery", report.delivery)')&&
+  posOnlyUi.includes('PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway + report.delivery, true)')&&
+  posOnlyUi.includes('PosReportLine("GP Delivery", report.gp)'),
+  'Native POS owner report must match Web Delivery, total and GP summary fields from the existing server RPC');
 ok(posOnlyApi.includes('&sales_channel=eq.POS&created_at=gte.'),'Native POS history must be scoped to POS at the server');
 
 const sharedNativeApi=read('shared/src/main/java/com/queuego/shared/QueueGoNativeApi.kt');

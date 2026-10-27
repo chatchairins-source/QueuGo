@@ -16,7 +16,7 @@ assert(map.includes('RiderNavigationMapRegistry'));
 assert(map.includes('retainAcrossVisibilityLoss()'));
 assert(map.includes('viewCreatedCount')&&map.includes('mapCreatedCount'));
 assert(map.includes('ValueAnimator.ofFloat(0f, 1f)'));
-assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 1_200L'));
+assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 1_250L'));
 assert(map.includes('navigationCameraDecision('));
 assert(map.includes('CameraUpdateFactory.newCameraPosition'));
 

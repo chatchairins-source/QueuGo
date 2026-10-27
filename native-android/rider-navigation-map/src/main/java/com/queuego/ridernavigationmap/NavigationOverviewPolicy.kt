@@ -12,7 +12,9 @@ data class NavigationOverviewBounds(
 fun navigationOverviewBounds(state: RiderNavigationMapState): NavigationOverviewBounds? {
     val points = buildList {
         state.rider?.point?.takeIf { it.valid }?.let(::add)
-        state.remainingStops().forEach { add(it.point) }
+        state.stops
+            .filter { it.point.valid && it.id.isNotBlank() && it.sequence > 0 }
+            .forEach { add(it.point) }
         state.styledRemainingRoutes().forEach { route ->
             route.points.forEach { point -> if (point.valid) add(point) }
         }
