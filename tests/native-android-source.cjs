@@ -739,12 +739,16 @@ ok(
 );
 ok(
   customerAppForMemory.includes('coroutineScope {') &&
-  customerAppForMemory.includes('val shopsDeferred = async { api.loadShops(auth) }') &&
+  customerAppForMemory.includes('val reuseStaticHome = !showLoading &&') &&
+  customerAppForMemory.includes('val shopsDeferred = if (reuseStaticHome) null else async { api.loadShops(auth) }') &&
   customerAppForMemory.includes('val ordersDeferred = async { api.loadOrders(auth) }') &&
-  customerAppForMemory.includes('val bannersDeferred = async { api.loadHomeBanners(auth) }') &&
+  customerAppForMemory.includes('val bannersDeferred = if (reuseStaticHome) null else async { api.loadHomeBanners(auth) }') &&
+  customerAppForMemory.includes('val serviceBannersDeferred = if (reuseStaticHome) null else async { api.loadServiceBanners(auth) }') &&
+  customerAppForMemory.includes('if (!reuseStaticHome) {') &&
+  customerGuestShell.includes('val reuseStaticHome = !showLoading &&') &&
   customerGuestShell.includes('val shopsDeferred = async { api.loadShopsPublic() }') &&
   customerGuestShell.includes('val serviceBannersDeferred = async { api.loadServiceBannersPublic() }'),
-  'Customer initial refresh must parallelize independent authenticated and guest reads'
+  'Customer refresh must fetch cached public references conditionally while parallelizing required account and initial reference reads'
 );
 const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(
