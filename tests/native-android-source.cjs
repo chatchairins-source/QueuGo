@@ -190,7 +190,7 @@ ok(
   customerCartCheckout.includes('recenterPoint = selected?.takeIf') &&
   source.includes('"checkout" -> CustomerCheckoutScreen(') &&
   source.includes('resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },') &&
-  customerLocationPicker.includes('QgPlaceSearchPanel(') &&
+  read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt').includes('QgPlaceSearchPanel(') &&
   source.includes('"location" -> CustomerLocationPickerScreen(') &&
   source.includes('searchPlaces = { query -> api.searchPlaces(query) }'),
   'Customer checkout matches Web controls while full location picker retains QueueGo Places search'
