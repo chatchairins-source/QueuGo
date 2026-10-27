@@ -596,6 +596,19 @@ ok(
   'Customer shop reviews must render durable cached rows first and keep favorites failures independent'
 );
 ok(
+  customerContentCacheSource.includes('HOME_FRESH_MS = 60L * 1000L') &&
+  customerContentCacheSource.includes('fun homeFresh(): Boolean') &&
+  customerAppForMemory.includes('val reuseStaticHome = !showLoading') &&
+  customerAppForMemory.includes('contentCache.homeFresh()') &&
+  customerAppForMemory.includes('val ordersDeferred = async { api.loadOrders(auth) }') &&
+  customerAppForMemory.includes('val marketTripsDeferred = async') &&
+  customerAppForMemory.includes('val laundryOrdersDeferred = async') &&
+  customerAppForMemory.includes('val notificationsDeferred = async') &&
+  customerGuestShell.includes('val reuseStaticHome = !showLoading') &&
+  customerGuestShell.includes('contentCache.homeFresh()'),
+  'Customer Home must reuse fresh static content while keeping live account reads authoritative'
+);
+ok(
   customerContentCacheSource.includes('PRODUCT_FRESH_MS = 60L * 1000L') &&
   customerContentCacheSource.includes('GROCERY_CATEGORY_FRESH_MS = 10L * 60L * 1000L') &&
   customerAppForMemory.includes('contentCache.productsFresh(shop.id)') &&
