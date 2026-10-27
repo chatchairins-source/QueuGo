@@ -124,6 +124,13 @@ internal fun GuestCustomerShell(
     fun refresh(showLoading: Boolean = shops.isEmpty() && banners.isEmpty()) {
         scope.launch {
             if (showLoading) loading = true
+            val reuseStaticHome = !showLoading &&
+                shops.isNotEmpty() &&
+                withContext(Dispatchers.IO) { contentCache.homeFresh() }
+            if (reuseStaticHome) {
+                loading = false
+                return@launch
+            }
             try {
                 coroutineScope {
                     val shopsDeferred = async { api.loadShopsPublic() }
