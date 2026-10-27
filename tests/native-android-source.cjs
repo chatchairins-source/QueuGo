@@ -191,8 +191,9 @@ ok(
   source.includes('"checkout" -> CustomerCheckoutScreen(') &&
   source.includes('resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },') &&
   read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt').includes('QgPlaceSearchPanel(') &&
-  source.includes('"location" -> CustomerLocationPickerScreen(') &&
-  source.includes('searchPlaces = { query -> api.searchPlaces(query) }'),
+  source.includes('"location" -> CustomerLocationPickerScreen(\n                    location = location,\n                    address = address,\n                    busy = busy,\n                    searchPlaces = { query -> api.searchPlaces(query) },') &&
+  source.includes('"checkout" -> CustomerCheckoutScreen(\n                    pendingCheckout = pendingCheckoutRecord,\n                    cart = cart,') &&
+  source.includes('note = note,\n                    busy = busy,\n                    resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) }'),
   'Customer checkout matches Web controls while full location picker retains QueueGo Places search'
 );
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
