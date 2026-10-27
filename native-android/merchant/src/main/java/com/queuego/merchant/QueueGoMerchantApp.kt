@@ -36,7 +36,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -687,7 +686,7 @@ private fun MerchantShell(
                         Text("โหลดข้อมูลร้านไม่สำเร็จ", fontWeight = FontWeight.Bold)
                         Text(initialLoadError!!, color = QgMuted, modifier = Modifier.padding(vertical = 8.dp))
                         Button(onClick = { scope.launch { refreshAll() } }, enabled = !loading) {
-                            Text(if (loading) "กำลังโหลดข้อมูล…" else "ลองอีกครั้ง")
+                            Text("ลองอีกครั้ง")
                         }
                     }
                 }
@@ -1565,7 +1564,7 @@ private fun MerchantOrdersScreen(orders: List<MerchantOrder>, loading: Boolean, 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         QgSectionTitle("คำสั่งซื้อ", "ดูสถานะและจัดการออเดอร์ของร้าน")
         Spacer(Modifier.height(10.dp))
-        if (loading && orders.isEmpty()) CircularProgressIndicator() else {
+        if (!loading || orders.isNotEmpty()) {
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1695,8 +1694,7 @@ private fun MerchantOrderDetail(
             Column {
                 val itemQuantity = items.sumOf { it.quantity.coerceAtLeast(0) }
                 Text("รายการสินค้า · $itemQuantity ชิ้น", fontWeight = FontWeight.ExtraBold)
-                if (items.isEmpty()) Text("กำลังโหลดรายการ...", color = QgMuted)
-                else items.forEach {
+                if (items.isNotEmpty()) items.forEach {
                     Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                         QgRemoteImage(it.image, Modifier.size(48.dp), it.name, maxDecodeSide = 192)
                         Spacer(Modifier.width(8.dp))
