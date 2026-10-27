@@ -54,6 +54,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.queuego.shared.NativeOrderRealtime
 import com.queuego.shared.customerRealtimeSubscriptions
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import androidx.compose.runtime.getValue
@@ -477,29 +479,46 @@ private fun CustomerShell(
             if (showLoading) loading = true
             liveMutex.withLock {
                 runCatching {
-                    val freshShops = api.loadShops(auth)
-                    val freshOrders = api.loadOrders(auth)
-                    val freshMarketTrips = runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
-                    val freshLaundryOrders = runCatching { laundryApi.orders(auth) }.getOrDefault(emptyList())
-                    val saved = api.loadSavedLocation(auth)
-                    val freshBanners = api.loadHomeBanners(auth)
-                    val freshServiceBanners = api.loadServiceBanners(auth)
-                    val freshNotifications = runCatching { extrasApi.notifications(auth) }.getOrDefault(emptyList())
+                    coroutineScope {
+                        val shopsDeferred = async { api.loadShops(auth) }
+                        val ordersDeferred = async { api.loadOrders(auth) }
+                        val marketTripsDeferred = async {
+                            runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
+                        }
+                        val laundryOrdersDeferred = async {
+                            runCatching { laundryApi.orders(auth) }.getOrDefault(emptyList())
+                        }
+                        val savedLocationDeferred = async { api.loadSavedLocation(auth) }
+                        val bannersDeferred = async { api.loadHomeBanners(auth) }
+                        val serviceBannersDeferred = async { api.loadServiceBanners(auth) }
+                        val notificationsDeferred = async {
+                            runCatching { extrasApi.notifications(auth) }.getOrDefault(emptyList())
+                        }
 
-                    shops = freshShops
-                    orders = freshOrders
-                    marketTrips = freshMarketTrips
-                    laundryOrders = freshLaundryOrders
-                    val selected = preferredCustomerDeliveryLocation(location, saved)
-                    if (selected != null && selected != location) {
-                        location = selected
-                        address = selected.address
-                    }
-                    banners = freshBanners
-                    serviceBanners = freshServiceBanners
-                    notifications = freshNotifications
-                    withContext(Dispatchers.IO) {
-                        contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                        val freshShops = shopsDeferred.await()
+                        val freshOrders = ordersDeferred.await()
+                        val freshMarketTrips = marketTripsDeferred.await()
+                        val freshLaundryOrders = laundryOrdersDeferred.await()
+                        val saved = savedLocationDeferred.await()
+                        val freshBanners = bannersDeferred.await()
+                        val freshServiceBanners = serviceBannersDeferred.await()
+                        val freshNotifications = notificationsDeferred.await()
+
+                        shops = freshShops
+                        orders = freshOrders
+                        marketTrips = freshMarketTrips
+                        laundryOrders = freshLaundryOrders
+                        val selected = preferredCustomerDeliveryLocation(location, saved)
+                        if (selected != null && selected != location) {
+                            location = selected
+                            address = selected.address
+                        }
+                        banners = freshBanners
+                        serviceBanners = freshServiceBanners
+                        notifications = freshNotifications
+                        withContext(Dispatchers.IO) {
+                            contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                        }
                     }
                     homeLoadError = null
                     message = null
