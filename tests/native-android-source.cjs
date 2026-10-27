@@ -394,6 +394,11 @@ const silentRiderEarnings=read('rider/src/main/java/com/queuego/rider/RiderEarni
 const silentRiderMessages=read('rider/src/main/java/com/queuego/rider/RiderMessagesScreen.kt');
 const silentRiderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
 const silentRiderSafety=read('rider/src/main/java/com/queuego/rider/RiderSafetyScreen.kt');
+const silentRiderBenefits=read('rider/src/main/java/com/queuego/rider/RiderBenefitsCard.kt');
+const silentRiderDocuments=read('rider/src/main/java/com/queuego/rider/RiderDocumentReadinessCard.kt');
+const silentRiderInsurance=read('rider/src/main/java/com/queuego/rider/RiderInsuranceCard.kt');
+const silentRiderVehicles=read('rider/src/main/java/com/queuego/rider/RiderVehiclesCard.kt');
+const silentRiderDestination=read('rider/src/main/java/com/queuego/rider/RiderMyDestinationDialog.kt');
 const silentCustomerShopping=read('customer/src/main/java/com/queuego/customer/CustomerShoppingScreen.kt');
 const silentCustomerPromotion=read('customer/src/main/java/com/queuego/customer/CustomerPromotionScreen.kt');
 const silentCustomerOrderTracking=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
@@ -432,6 +437,11 @@ ok(
   !silentRiderSupport.includes('Text("กำลังโหลด…", color = QgMuted') &&
   !silentRiderSafety.includes('!emergencyLoaded -> CircularProgressIndicator') &&
   !silentRiderSafety.includes('!fatigueLoaded -> CircularProgressIndicator') &&
+  !silentRiderBenefits.includes('LinearProgressIndicator') &&
+  !silentRiderDocuments.includes('LinearProgressIndicator') &&
+  !silentRiderInsurance.includes('LinearProgressIndicator') &&
+  !silentRiderVehicles.includes('LinearProgressIndicator') &&
+  !silentRiderDestination.includes('CircularProgressIndicator') &&
   !silentCustomerShopping.includes('"กำลังโหลดข้อมูล…"') &&
   !silentCustomerPromotion.includes('loading -> CircularProgressIndicator()') &&
   !silentCustomerOrderTracking.includes('"กำลังโหลดรายการ..."') &&
