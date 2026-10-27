@@ -1187,6 +1187,16 @@ ok(customerMarketScreen.includes('คำนวณจากราคาที่�
 ok(customerMarketScreen.includes('LifecycleResumeEffect(actorId)')&&customerMarketScreen.includes('if (hasResumed) reload++')&&customerMarketScreen.includes('old.quantity < minOf(99, p.availablePacks)'), 'Market foreground recovery must refresh authoritative data and additions must obey the Production RPC 99-pack cap');
 const specialTracking=fs.readFileSync(path.join(root,'customer/src/main/java/com/queuego/customer/QueueGoSpecialTracking.kt'),'utf8');
 ok(specialTracking.includes('api.trip(auth, trip.id)')&&specialTracking.includes('api.order(auth, order.id)')&&specialTracking.includes('repeatOnLifecycle(Lifecycle.State.STARTED)')&&specialTracking.includes('catch (cancelled: CancellationException) { throw cancelled }'),'Market/Laundry detail must read authoritative owner/id snapshots and suspend polling in background');
+ok(
+  specialTracking.includes('var shopsLoaded by remember(auth.user.id, trip.id)') &&
+  specialTracking.includes('if (!shopsLoaded)') &&
+  specialTracking.includes('var eventsLoaded by remember(auth.user.id, order.id)') &&
+  specialTracking.includes('if (!eventsLoaded || fresh.summary.status != previousStatus)') &&
+  !specialTracking.includes('"กำลังโหลดการติดตาม..."') &&
+  !specialTracking.includes('"กำลังโหลดร้านในทริป..."') &&
+  !specialTracking.includes('?: "รอโหลด"'),
+  'Market/Laundry tracking must avoid repeated reference/history downloads and must not show data-loading placeholders'
+);
 ok(specialTracking.includes('d.actualQuantity')&&specialTracking.includes('d.pickupFee')&&specialTracking.includes('d.returnFee')&&specialTracking.includes('งานนี้ถูกยกเลิก'),'Laundry details must preserve snapshot pricing/quantity/fees and explicit cancellation');
 ok(marketApi.includes('qg_customer_cancel_market_order')&&specialTracking.includes('ยกเลิก Market Trip')&&specialTracking.includes('current.multiShopFee')&&specialTracking.includes('onTrackChild(child.id)'),'Market Trip must preserve current Web cancellation/tracking actions and server fee snapshots');
 ok(source.includes('if (authRequested == false) {\n        QueueGoTheme {\n        GuestCustomerShell('),'Customer guest screens must use the existing Production-red QueueGoTheme');
