@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,7 +22,10 @@ import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgLine
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun MerchantModulesScreen(
@@ -33,17 +37,39 @@ internal fun MerchantModulesScreen(
     onLaundry: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    var modules by remember { mutableStateOf<List<MerchantModule>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    val cache = remember(context.applicationContext) {
+        MerchantModuleCache(context.applicationContext)
+    }
+    var modules by remember(auth.user.id) { mutableStateOf<List<MerchantModule>>(emptyList()) }
+    var loading by remember(auth.user.id) { mutableStateOf(true) }
+    var authoritativeReady by remember(auth.user.id) { mutableStateOf(false) }
     var busyKey by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
 
     suspend fun refresh() {
-        loading = true
-        runCatching { api.loadModules(auth) }
-            .onSuccess { modules = it; message = null }
-            .onFailure { message = it.message ?: "โหลดการตั้งค่าไม่สำเร็จ" }
-        loading = false
+        loading = modules.isEmpty()
+        authoritativeReady = false
+        if (modules.isEmpty()) {
+            val cached = withContext(Dispatchers.IO) { cache.read(auth.user.id) }
+            if (cached.isNotEmpty()) {
+                modules = cached
+                loading = false
+            }
+        }
+        try {
+            val fresh = api.loadModules(auth)
+            modules = fresh
+            withContext(Dispatchers.IO) { cache.write(auth.user.id, fresh) }
+            authoritativeReady = true
+            message = null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            if (modules.isEmpty()) message = failure.message ?: "โหลดการตั้งค่าไม่สำเร็จ"
+        } finally {
+            loading = false
+        }
     }
 
     LaunchedEffect(auth.user.id) { refresh() }
@@ -100,7 +126,7 @@ internal fun MerchantModulesScreen(
             )
         }
 
-        if (!loading) {
+        if (!loading && (modules.isNotEmpty() || authoritativeReady)) {
             merchantModuleCatalog.forEach { (key, label) ->
                 val row = modules.find { it.key == key }
                     ?: MerchantModule(null, key, "disabled", null, null)
@@ -124,13 +150,16 @@ internal fun MerchantModulesScreen(
                     }
                     OutlinedButton(
                         onClick = {
-                            if (busyKey == null) {
+                            if (busyKey == null && authoritativeReady) {
                                 busyKey = key
                                 scope.launch {
                                     runCatching { api.cycleModule(auth, key, row) }
                                         .onSuccess { saved ->
                                             modules = modules
                                                 .filterNot { it.key == key } + saved
+                                            withContext(Dispatchers.IO) {
+                                                cache.write(auth.user.id, modules)
+                                            }
                                             message = "$label → ${merchantModuleStatusLabel(saved.status)}"
                                         }
                                         .onFailure {
@@ -141,7 +170,7 @@ internal fun MerchantModulesScreen(
                                 }
                             }
                         },
-                        enabled = busyKey == null,
+                        enabled = busyKey == null && authoritativeReady,
                         modifier = Modifier.height(40.dp)
                     ) {
                         if (busyKey == key) {
