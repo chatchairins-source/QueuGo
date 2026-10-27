@@ -461,6 +461,14 @@ ok(
   'Merchant media gallery must lazy-render rows instead of decoding the full image library at once'
 );
 const customerLaundryContentCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerLaundryContentCache.kt');
+const customerPromotionCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerPromotionCache.kt');
+ok(
+  customerPromotionCacheSource.includes('context.noBackupFilesDir, "customer_promotion_cache_v1"') &&
+  silentCustomerPromotion.includes('cache.read()') &&
+  silentCustomerPromotion.includes('cache.write(fresh)') &&
+  silentCustomerPromotion.includes('if (rows.isEmpty()) error = failure.message'),
+  'Customer Promotions must render durable cached rows first and refresh in the background'
+);
 ok(
   customerLaundryContentCacheSource.includes('context.noBackupFilesDir, "customer_laundry_cache_v1"') &&
   silentCustomerLaundry.includes('contentCache.read()') &&
