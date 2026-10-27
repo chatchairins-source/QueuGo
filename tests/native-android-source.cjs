@@ -417,6 +417,7 @@ const silentMerchantMarket=read('merchant/src/main/java/com/queuego/merchant/Mer
 const silentMerchantPos=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
 const silentRiderEarnings=read('rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt');
 const silentRiderMessages=read('rider/src/main/java/com/queuego/rider/RiderMessagesScreen.kt');
+const silentRiderChat=read('rider/src/main/java/com/queuego/rider/RiderChat.kt');
 const silentRiderNotifications=read('rider/src/main/java/com/queuego/rider/RiderNotificationCenter.kt');
 const silentRiderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
 const silentRiderSafety=read('rider/src/main/java/com/queuego/rider/RiderSafetyScreen.kt');
@@ -470,6 +471,7 @@ ok(
   !silentMerchantPos.includes('if (report == null) {\n            CircularProgressIndicator()') &&
   !silentRiderEarnings.includes('กำลังโหลด') &&
   !silentRiderMessages.includes('กำลังโหลดข้อความ') &&
+  !silentRiderChat.includes('กำลังตรวจสอบสิทธิ์แชท') &&
   !silentRiderNotifications.includes('กำลังโหลดแจ้งเตือน') &&
   !silentRiderSupport.includes('Text("กำลังโหลด…", color = QgMuted') &&
   !silentRiderSafety.includes('!emergencyLoaded -> CircularProgressIndicator') &&
