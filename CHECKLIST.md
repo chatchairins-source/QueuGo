@@ -2,8 +2,9 @@
 
 - Verified the newest `work-native-web-parity-20261026` successor is `938ff733300bd9c1560829dfbebb5013c3db2898`; `origin/main` is `7e036a0735cc49905e9b0a2434492470551a0c9d`. PR #730 remains open/draft. The current source HEAD is `e2f44f20183e9abdec06e32042437a2314299182`, a fast-forward descendant of that successor.
 - Exact-parent Native Pilot run `40482744827` passed all regression, Kotlin/JUnit, three-APK build and 16 KB packaging steps and published artifact `queuego-native-pilot-apks` (artifact `12723717869`). Newer local commits still need their own exact-HEAD CI build before those APKs can be treated as the tonight test build.
+- First exact-head Pilot on published tree `67b7e8e01137ff41620dc9e66e8067ff3ed88aba` stopped in Full QueueGo regression at `tests/merchant-routing.cjs:9`: the assertion still expected the retired CSV suffix `เงินสดค่าสินค้าที่ร้านได้รับ,สถานะ GP` after the report now emits credit GP and legacy GP columns. Updated that assertion to the current CSV header; product behavior was not the failing assertion.
 - Focused current checks pass: Native source 409, Grocery catalog 28, Merchant product editor 8, Merchant revenue parity 8, product reliability 41; Customer/Merchant/Rider inline scripts 35/35 parse. Full `npm test` is BLOCKED at its first test by missing `jsdom`. Local Android build is BLOCKED because this checkout has no Gradle wrapper or Gradle.
-- **NEXT:** publish the verified descendant to `work-native-web-parity-20261026`, inspect only the first exact-HEAD Native Pilot failure if any, then download/verify the three APK artifact and continue Merchant POS/settings plus Customer/Rider parity. Target owner testing before midnight; physical-device acceptance remains pending.
+- **NEXT:** publish the corrected regression guard to `work-native-web-parity-20261026`, inspect the next exact-head Native Pilot result, then download/verify the three APK artifact and continue Merchant POS/settings plus Customer/Rider parity. Target owner testing before midnight; physical-device acceptance remains pending.
 
 ## 2026-10-27 Merchant Delivery price parity — stale/default GP save fixed
 
