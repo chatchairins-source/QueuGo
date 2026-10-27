@@ -203,15 +203,7 @@ fun LaundryNativeScreen(
         }
         Spacer(Modifier.height(14.dp))
         when {
-            loading -> Row(
-                Modifier.fillMaxWidth().padding(vertical = 28.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(9.dp))
-                Text("กำลังโหลดร้านซัก...", color = QgMuted)
-            }
+            loading -> Unit
             catalogFailed -> OutlinedButton(onClick = { catalogReload++ }) { Text("ลองโหลดร้านอีกครั้ง") }
             catalog?.featureEnabled == false -> QgCard(Modifier.fillMaxWidth()) {
                 Column {
@@ -253,7 +245,7 @@ fun LaundryNativeScreen(
                 Spacer(Modifier.height(8.dp))
 
                 if (servicesLoading) {
-                    CircularProgressIndicator()
+                    // Refresh silently; keep the selected shop surface stable.
                 } else if (servicesFailed) {
                     OutlinedButton(onClick = { servicesReload++ }) { Text("ลองโหลดบริการอีกครั้ง") }
                 } else if (services.isEmpty()) {
