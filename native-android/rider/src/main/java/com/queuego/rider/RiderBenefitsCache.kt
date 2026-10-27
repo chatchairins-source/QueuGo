@@ -6,6 +6,11 @@ import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
 
+internal data class CachedRiderBenefits(
+    val rows: List<RiderBenefit>,
+    val fresh: Boolean
+)
+
 /**
  * Durable display-only cache for Rider Benefits.
  *
@@ -17,26 +22,29 @@ internal class RiderBenefitsCache(context: Context) {
         private const val MAX_FILE_BYTES = 512L * 1024L
         private const val MAX_ROWS = 100
         private const val MAX_TEXT = 2_000
+        private const val FRESH_MS = 30L * 60L * 1000L
     }
 
     private val root = File(context.noBackupFilesDir, "rider_benefits_cache_v1").also {
         runCatching { it.mkdirs() }
     }
 
-    fun read(userId: String): List<RiderBenefit> {
-        if (userId.isBlank()) return emptyList()
+    fun read(userId: String): CachedRiderBenefits? {
+        if (userId.isBlank()) return null
         val file = fileFor(userId)
-        if (!file.isFile || file.length() !in 1L..MAX_FILE_BYTES) return emptyList()
+        if (!file.isFile || file.length() !in 1L..MAX_FILE_BYTES) return null
         return runCatching {
             val root = JSONObject(file.readText(Charsets.UTF_8))
-            if (root.optString("userId") != userId) return@runCatching emptyList()
-            val rows = root.optJSONArray("benefits") ?: return@runCatching emptyList()
-            buildList {
-                for (index in 0 until minOf(rows.length(), MAX_ROWS)) {
-                    rows.optJSONObject(index)?.toBenefit()?.let(::add)
+            if (root.optString("userId") != userId) return@runCatching null
+            val source = root.optJSONArray("benefits") ?: JSONArray()
+            val rows = buildList {
+                for (index in 0 until minOf(source.length(), MAX_ROWS)) {
+                    source.optJSONObject(index)?.toBenefit()?.let(::add)
                 }
-            }.also { runCatching { file.setLastModified(System.currentTimeMillis()) } }
-        }.onFailure { runCatching { file.delete() } }.getOrDefault(emptyList())
+            }
+            val age = System.currentTimeMillis() - file.lastModified()
+            CachedRiderBenefits(rows = rows, fresh = age in 0L..FRESH_MS)
+        }.onFailure { runCatching { file.delete() } }.getOrNull()
     }
 
     fun write(userId: String, rows: List<RiderBenefit>) {
