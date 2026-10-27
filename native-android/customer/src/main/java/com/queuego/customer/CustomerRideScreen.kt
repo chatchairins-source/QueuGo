@@ -6,10 +6,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -118,7 +120,6 @@ private class PassengerApi(private val http: QueueGoNativeApi = QueueGoNativeApi
 internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocation?, cartStore: CustomerCartStore, initialOrderId: String? = null, onContact: (String) -> Unit, onBack: () -> Unit) {
     val api = remember { PassengerApi() }
     val customerApi = remember { CustomerApi() }
-    val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scope = rememberCoroutineScope()
     val mutex = remember(auth.user.id) { Mutex() }
@@ -136,35 +137,41 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     var enabled by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+
     suspend fun refresh() {
         val recent = api.state(auth)
-        val current = if (selected != null && recent.none { it.id == selected }) api.state(auth,selected) + recent else recent
-        rides = current
-        current.firstOrNull { !it.terminal }?.let { selected = it.id }
+        val all = if (selected != null && recent.none { it.id == selected }) api.state(auth, selected) + recent else recent
+        rides = all
+        all.firstOrNull { !it.terminal }?.let { selected = it.id }
         val config = api.config(auth)
         enabled = config.optBoolean("enabled") && config.optBoolean("configured")
     }
-    LaunchedEffect(auth.user.id,auth.session.accessToken,lifecycle) {
+
+    LaunchedEffect(auth.user.id, auth.session.accessToken, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 try {
                     mutex.withLock {
                         pending = withContext(Dispatchers.IO) { journal.read() }
-                        recovery.reconcile { api.state(auth,it.requestId).singleOrNull() }?.let { selected = it.id }
+                        recovery.reconcile { api.state(auth, it.requestId).singleOrNull() }?.let { selected = it.id }
                         pending = withContext(Dispatchers.IO) { journal.read() }
-                        refresh(); backendConfirmed = true; loaded = true
+                        refresh()
+                        backendConfirmed = true
+                        loaded = true
                     }
                     error = null
-                } catch (e: CancellationException) { throw e }
-                catch (e: Exception) {
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
                     loaded = true
                     enabled = false
                     error = if (backendConfirmed) e.message ?: "รอเชื่อมต่อเพื่ออ่านสถานะเที่ยว" else null
                 }
-                delay(5000)
+                delay(5_000)
             }
         }
     }
+
     val current = rides.firstOrNull { it.id == selected }
     val supplyPickup = pickup
     var supply by remember(auth.user.id, supplyPickup?.latitude, supplyPickup?.longitude) {
@@ -174,109 +181,255 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
         mutableLongStateOf(0L)
     }
     val canReadSupply = current == null && picker == null && pending == null && loaded && enabled && !busy
-    LaunchedEffect(auth.user.id, auth.session.accessToken, lifecycle,
-        supplyPickup?.latitude, supplyPickup?.longitude, canReadSupply) {
+    LaunchedEffect(
+        auth.user.id, auth.session.accessToken, lifecycle,
+        supplyPickup?.latitude, supplyPickup?.longitude, canReadSupply
+    ) {
         if (!canReadSupply || supplyPickup == null ||
-            !QgMapPoint(supplyPickup.latitude, supplyPickup.longitude, 0).valid) return@LaunchedEffect
+            !QgMapPoint(supplyPickup.latitude, supplyPickup.longitude, 0).valid
+        ) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
-                val waitMillis = passengerRideSupplyWaitMillis(supplyReadAt, android.os.SystemClock.elapsedRealtime())
+                val waitMillis = passengerRideSupplyWaitMillis(
+                    supplyReadAt,
+                    android.os.SystemClock.elapsedRealtime()
+                )
                 if (waitMillis > 0L) delay(waitMillis)
                 currentCoroutineContext().ensureActive()
                 supplyReadAt = android.os.SystemClock.elapsedRealtime()
-                val next = try { api.supply(auth, supplyPickup) }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { PassengerRideSupply() }
+                val next = try {
+                    api.supply(auth, supplyPickup)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    PassengerRideSupply()
+                }
                 currentCoroutineContext().ensureActive()
                 supply = next
             }
         }
     }
+
     val frozen = busy || pending != null || current?.terminal == false
     val editing = picker
     if (editing != null && !frozen) {
         val original = if (editing == "pickup") pickup else destination
-        CustomerLocationPickerScreen(location = original, address = original?.address.orEmpty(), busy = false,
+        CustomerLocationPickerScreen(
+            location = original,
+            address = original?.address.orEmpty(),
+            busy = false,
             searchPlaces = { query -> customerApi.searchPlaces(query) },
-            resolveAddress = { lat,lng -> customerApi.reverseGeocode(lat,lng) },
-            onSave = { if (editing == "pickup") pickup = it else destination = it; quote = null; picker = null },
-            onBack = { picker = null })
+            resolveAddress = { lat, lng -> customerApi.reverseGeocode(lat, lng) },
+            onSave = {
+                if (editing == "pickup") pickup = it else destination = it
+                quote = null
+                picker = null
+            },
+            onBack = { picker = null }
+        )
         return
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        TextButton(onClick = onBack, enabled = !busy) { Text("กลับ") }
-        Text("รับส่งผู้โดยสาร",style = MaterialTheme.typography.headlineSmall,fontWeight = FontWeight.Bold)
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (current != null) {
-            Text(current.number,fontWeight = FontWeight.Bold)
-            Text(passengerRideStatus(current))
-            Text("จุดรับ: " + current.pickup);Text("จุดหมาย: " + current.destination)
-            Text("ค่าโดยสารเงินสด " + customerBaht(current.fare),fontWeight = FontWeight.Bold)
-            current.riderName?.let { Text("คนขับ: " + it) }
-            if (!current.terminal && current.riderId != null) OutlinedButton(onClick = { onContact(current.id) },enabled = !busy) { Text("ติดต่อคนขับ") }
-            Text("เส้นทางที่ประเมิน ${customerNumber(current.km,1)} กม. · เวลาวิ่งประมาณ ${customerNumber(current.minutes,0)} นาที ไม่รวมเวลารอคนขับ")
-            val mapPoints = passengerRideMapPoints(current)
-            if (mapPoints.isNotEmpty()) {
-                QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxWidth().height(220.dp))
-            }
-            if (current.status == "searching_rider" && current.riderId == null && pending == null) {
-                OutlinedButton(enabled = !busy,onClick = {
-                    busy = true; scope.launch {
-                        try { mutex.withLock { api.cancel(auth,current.id);refresh() } }
-                        catch (e: CancellationException) { throw e }
-                        catch (e: Exception) { error = e.message ?: "ยกเลิกไม่ได้ กรุณาตรวจสถานะ" }
-                        finally { busy = false }
-                    }
-                }) { Text("ยกเลิกการเรียกรถ") }
-            }
-            if (current.terminal && pending == null) Button(onClick = { selected = null;quote = null },enabled = !busy) { Text("เรียกรถเที่ยวใหม่") }
-        } else {
-            if (loaded && !enabled) Text("บริการเรียกรถยังไม่เปิดให้ใช้ในขณะนี้")
-            QgTrackingMap(
-                points = listOfNotNull(
-                    pickup?.let { QgMapPoint(it.latitude, it.longitude, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER, "รับ") },
-                    destination?.let { QgMapPoint(it.latitude, it.longitude, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER, "ส่ง") }
-                ) + supply.clusters.map { it.point },
-                modifier = Modifier.fillMaxWidth().height(245.dp)
-            )
-            if (pickup != null) {
-                Text(if (supply.nearbyCount > 0)
-                    "มี Rider พร้อมรับงานใกล้จุดรับ ${supply.nearbyCount} คน"
-                    else "ยังไม่พบ Rider พร้อมรับงานในระยะ 8 กม.")
-                Text("ตำแหน่งบนแผนที่เป็นแบบกลุ่มโดยประมาณ", style = MaterialTheme.typography.bodySmall)
-            }
-            OutlinedButton(enabled = loaded && enabled && !frozen,onClick = { picker = "pickup" }) { Text("จุดรับ: " + (pickup?.address ?: "เลือกบนแผนที่")) }
-            OutlinedButton(enabled = loaded && enabled && !frozen,onClick = { picker = "destination" }) { Text("จุดหมาย: " + (destination?.address ?: "เลือกบนแผนที่")) }
-            if (quote == null && pending == null) Button(enabled = loaded && enabled && !frozen && pickup != null && destination != null,onClick = {
-                busy = true; scope.launch {
-                    try { quote = api.quote(auth,requireNotNull(pickup),requireNotNull(destination));error = null }
-                    catch (e: CancellationException) { throw e }
-                    catch (e: Exception) { error = e.message ?: "ยังประเมินเส้นทางไม่ได้" }
-                    finally { busy = false }
-                }
-            }) { Text(if (busy) "กำลังตรวจเส้นทาง…" else "ดูค่าโดยสาร") }
-            quote?.let { price ->
-                Text("ค่าโดยสารเงินสด " + customerBaht(price.getDouble("fare")),fontWeight = FontWeight.Bold)
-                Text("เวลาวิ่งประมาณ ${customerNumber(price.getDouble("duration_minutes"),0)} นาที ไม่รวมเวลารอคนขับ")
-            }
+
+    val mapPoints = if (current != null) {
+        listOfNotNull(
+            current.pickupLat?.let { lat -> current.pickupLng?.let { lng ->
+                QgMapPoint(lat, lng, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER, "รับ")
+            }},
+            current.destinationLat?.let { lat -> current.destinationLng?.let { lng ->
+                QgMapPoint(lat, lng, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER, "ส่ง")
+            }},
+            if (!current.terminal) current.riderLat?.let { lat -> current.riderLng?.let { lng ->
+                QgMapPoint(lat, lng, 0xFFE6002D.toInt(), QgMapRole.RIDER)
+            }} else null
+        )
+    } else {
+        listOfNotNull(
+            pickup?.let { QgMapPoint(it.latitude, it.longitude, 0xFF1677FF.toInt(), QgMapRole.CUSTOMER, "รับ") },
+            destination?.let { QgMapPoint(it.latitude, it.longitude, 0xFFE6002D.toInt(), QgMapRole.CUSTOMER, "ส่ง") }
+        ) + supply.clusters.map { it.point }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize())
+
+        Surface(
+            modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            tonalElevation = 3.dp
+        ) {
+            QgIconButton(icon = "back", onClick = onBack)
         }
-        if (pending != null || current == null && quote != null) Button(enabled = loaded && !busy,onClick = {
-            busy = true; scope.launch {
-                try {
-                    mutex.withLock {
-                        val receipt = recovery.submit(
-                            create = { PendingRide(UUID.randomUUID().toString(),requireNotNull(quote).getString("quote_id")) },
-                            send = { api.request(auth,it) }, recover = { api.state(auth,it.requestId).singleOrNull() },
-                            definitiveRejection = { it is QueueGoHttpException && it.statusCode in listOf(400,422) })
-                        selected = receipt.id;refresh();quote = null;error = null
+
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .heightIn(max = 430.dp)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                Text("รับส่งผู้โดยสาร", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+
+                if (current != null) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(current.number, fontWeight = FontWeight.Black)
+                            Text(passengerRideStatus(current), color = QgRed, fontWeight = FontWeight.Bold)
+                        }
+                        Text(customerBaht(current.fare), color = QgRed, fontWeight = FontWeight.Black)
                     }
-                } catch (e: CancellationException) { throw e }
-                catch (e: Exception) { error = e.message ?: "ยังยืนยันผลไม่ได้ กรุณาตรวจอีกครั้ง" }
-                finally { busy = false;pending = withContext(Dispatchers.IO) { journal.read() } }
+                    Text("จุดรับ · " + current.pickup, fontWeight = FontWeight.Bold)
+                    Text("จุดหมาย · " + current.destination, fontWeight = FontWeight.Bold)
+                    Text(
+                        "ประมาณ ${customerNumber(current.km,1)} กม. · ${customerNumber(current.minutes,0)} นาที",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = QgMuted
+                    )
+                    current.riderName?.let { Text("คนขับ · $it", fontWeight = FontWeight.Bold) }
+
+                    if (!current.terminal && current.riderId != null) {
+                        OutlinedButton(
+                            onClick = { onContact(current.id) },
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("ติดต่อคนขับ") }
+                    }
+                    if (current.status == "searching_rider" && current.riderId == null && pending == null) {
+                        OutlinedButton(
+                            enabled = !busy,
+                            onClick = {
+                                busy = true
+                                scope.launch {
+                                    try {
+                                        mutex.withLock { api.cancel(auth, current.id); refresh() }
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        error = e.message ?: "ยกเลิกไม่ได้ กรุณาตรวจสถานะ"
+                                    } finally {
+                                        busy = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("ยกเลิกการเรียกรถ") }
+                    }
+                    if (current.terminal && pending == null) {
+                        Button(
+                            onClick = { selected = null; quote = null },
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("เรียกรถเที่ยวใหม่") }
+                    }
+                } else {
+                    if (loaded && !enabled) {
+                        Text("บริการเรียกรถยังไม่เปิดให้ใช้ในขณะนี้", color = QgMuted)
+                    }
+                    if (pickup != null) {
+                        Text(
+                            if (supply.nearbyCount > 0)
+                                "มี Rider พร้อมรับงานใกล้จุดรับ ${supply.nearbyCount} คน"
+                            else "ยังไม่พบ Rider พร้อมรับงานในระยะ 8 กม.",
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text("ตำแหน่ง Rider บนแผนที่เป็นกลุ่มโดยประมาณ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                    }
+                    OutlinedButton(
+                        enabled = loaded && enabled && !frozen,
+                        onClick = { picker = "pickup" },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("จุดรับ · " + (pickup?.address ?: "แตะแผนที่เพื่อเลือก")) }
+                    OutlinedButton(
+                        enabled = loaded && enabled && !frozen,
+                        onClick = { picker = "destination" },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("จุดหมาย · " + (destination?.address ?: "แตะแผนที่เพื่อเลือก")) }
+
+                    if (quote == null && pending == null) {
+                        Button(
+                            enabled = loaded && enabled && !frozen && pickup != null && destination != null,
+                            onClick = {
+                                busy = true
+                                scope.launch {
+                                    try {
+                                        quote = api.quote(auth, requireNotNull(pickup), requireNotNull(destination))
+                                        error = null
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        error = e.message ?: "ยังประเมินเส้นทางไม่ได้"
+                                    } finally {
+                                        busy = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(if (busy) "กำลังตรวจเส้นทาง…" else "ดูค่าโดยสาร") }
+                    }
+                    quote?.let { price ->
+                        Text(
+                            "ค่าโดยสารเงินสด " + customerBaht(price.getDouble("fare")),
+                            color = QgRed,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            "เวลาวิ่งประมาณ ${customerNumber(price.getDouble("duration_minutes"),0)} นาที ไม่รวมเวลารอคนขับ",
+                            color = QgMuted,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+
+                if (pending != null || current == null && quote != null) {
+                    Button(
+                        enabled = loaded && !busy,
+                        onClick = {
+                            busy = true
+                            scope.launch {
+                                try {
+                                    mutex.withLock {
+                                        val receipt = recovery.submit(
+                                            create = {
+                                                PendingRide(
+                                                    UUID.randomUUID().toString(),
+                                                    requireNotNull(quote).getString("quote_id")
+                                                )
+                                            },
+                                            send = { api.request(auth, it) },
+                                            recover = { api.state(auth, it.requestId).singleOrNull() },
+                                            definitiveRejection = {
+                                                it is QueueGoHttpException && it.statusCode in listOf(400, 422)
+                                            }
+                                        )
+                                        selected = receipt.id
+                                        refresh()
+                                        quote = null
+                                        error = null
+                                    }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    error = e.message ?: "ยังยืนยันผลไม่ได้ กรุณาตรวจอีกครั้ง"
+                                } finally {
+                                    busy = false
+                                    pending = withContext(Dispatchers.IO) { journal.read() }
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (pending != null) "ตรวจผลคำขอเดิม / ลองอีกครั้ง" else "เรียกรถ")
+                    }
+                }
             }
-        }) { Text(if (pending != null) "ตรวจผลคำขอเดิม / ลองอีกครั้ง" else "เรียกรถ") }
-        if (current == null && pending == null) rides.filter { it.terminal }.take(5).forEach { old ->
-            TextButton(onClick = { selected = old.id }) { Text(old.number + " · " + customerBaht(old.fare)) }
         }
     }
 }

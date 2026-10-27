@@ -628,7 +628,19 @@ private fun MerchantShell(
                         else -> "อัปเดตสถานะแล้ว"
                     }
                     orders = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
-                    selectedOrder = orders.find { it.id == order.id } ?: order.copy(status = result.status)
+                    val refreshed = orders.find { it.id == order.id }
+                    selectedOrder = if (refreshed != null) {
+                        refreshed.copy(
+                            preparingAt = refreshed.preparingAt ?: result.preparingAt,
+                            readyAt = refreshed.readyAt ?: result.readyAt
+                        )
+                    } else {
+                        order.copy(
+                            status = result.status,
+                            preparingAt = result.preparingAt ?: order.preparingAt,
+                            readyAt = result.readyAt ?: order.readyAt
+                        )
+                    }
                 }
                 .onFailure { message = it.message ?: "เปลี่ยนสถานะไม่สำเร็จ" }
             busy = false
@@ -1652,17 +1664,26 @@ private fun MerchantOrderDetail(
 ) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    var preparingFallbackStart by remember(order?.id) { mutableLongStateOf(0L) }
     var cancelOpen by remember(order?.id) { mutableStateOf(false) }
     var editOpen by remember(order?.id) { mutableStateOf(false) }
-    LaunchedEffect(order?.status, order?.preparingAt) {
-        while (order?.status == "preparing") {
+    LaunchedEffect(order?.id, order?.status, order?.preparingAt) {
+        if (order?.status != "preparing") {
+            preparingFallbackStart = 0L
+            return@LaunchedEffect
+        }
+        val serverStart = runCatching { Instant.parse(order.preparingAt ?: "").toEpochMilli() }.getOrNull()
+        if (serverStart == null && preparingFallbackStart <= 0L) {
+            preparingFallbackStart = System.currentTimeMillis()
+        }
+        while (order.status == "preparing") {
             now = System.currentTimeMillis()
             delay(1_000)
         }
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-        Spacer(Modifier.height(12.dp))
+        QgIconButton(icon = "back", onClick = onBack)
+        Spacer(Modifier.height(10.dp))
         if (order == null) {
             Text("ไม่พบออเดอร์")
             return
@@ -1675,14 +1696,34 @@ private fun MerchantOrderDetail(
             QgCard(Modifier.fillMaxWidth()) {
                 val stageLabels = listOf("ออเดอร์เข้า", "ร้านรับ", "เตรียมสินค้า", "กำลังจัดส่ง", "สำเร็จ")
                 val stage = merchantOrderProgressStage(order.status)
-                Row(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                     stageLabels.forEachIndexed { index, label ->
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(
-                                Modifier.size(16.dp)
-                                    .background(if (index <= stage) QgRed else QgLine, CircleShape)
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    Modifier.weight(1f).height(2.dp).background(
+                                        if (index == 0) Color.Transparent
+                                        else if (index <= stage) QgRed else QgLine
+                                    )
+                                )
+                                Box(
+                                    Modifier.size(16.dp)
+                                        .background(if (index <= stage) QgRed else QgLine, CircleShape)
+                                )
+                                Box(
+                                    Modifier.weight(1f).height(2.dp).background(
+                                        if (index == stageLabels.lastIndex) Color.Transparent
+                                        else if (index < stage) QgRed else QgLine
+                                    )
+                                )
+                            }
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                label,
+                                color = if (index <= stage) QgInk else QgMuted,
+                                fontSize = 8.sp,
+                                lineHeight = 10.sp
                             )
-                            Text(label, color = if (index <= stage) QgInk else QgMuted, fontSize = 8.sp, lineHeight = 10.sp)
                         }
                     }
                 }
@@ -1858,7 +1899,12 @@ private fun MerchantOrderDetail(
                 ) { Text("ยกเลิกออเดอร์") }
             }
             "preparing" -> {
-                val left = readinessLeft(order.readyEstimateAt, order.preparingAt, now)
+                val left = readinessLeft(
+                    order.readyEstimateAt,
+                    order.preparingAt,
+                    preparingFallbackStart.takeIf { it > 0L },
+                    now
+                )
                 Button(
                     onClick = { onAction("ready", null) },
                     enabled = !busy,
@@ -2658,9 +2704,17 @@ private fun MerchantReadyEstimateControls(
     }
 }
 
-private fun readinessLeft(readyEstimateAt: String?, preparingAt: String?, now: Long): Int {
+private fun readinessLeft(
+    readyEstimateAt: String?,
+    preparingAt: String?,
+    fallbackPreparingAt: Long?,
+    now: Long
+): Int {
+    val started = runCatching { Instant.parse(preparingAt ?: "").toEpochMilli() }.getOrNull()
+        ?: fallbackPreparingAt
+        ?: now
     val target = runCatching { Instant.parse(readyEstimateAt ?: "").toEpochMilli() }.getOrNull()
-        ?: (runCatching { Instant.parse(preparingAt ?: "").toEpochMilli() }.getOrNull() ?: now) + 20 * 60 * 1000L
+        ?: started + 20 * 60 * 1000L
     return (((target - now).coerceAtLeast(0L) + 999L) / 1000L).toInt()
 }
 

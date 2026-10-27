@@ -2611,29 +2611,6 @@ private fun RiderHome(
             }
         }
 
-        if (snapshot?.online == true || activeNavigationWork) {
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(
-                        end = 10.dp,
-                        top = when {
-                            activeNavigationWork && navigationCustomerNote != null -> 180.dp
-                            activeNavigationWork && navigationHud != null -> 132.dp
-                            else -> 12.dp
-                        }
-                    )
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    navigationSpeedLimitKph?.let { RiderSpeedLimitSign(it) }
-                    RiderBlueprintSpeedPill(reliableSpeedKph)
-                }
-            }
-        }
-
         if (activeNavigationWork && (restReminderDue || unexpectedStopDue)) {
             Column(
                 modifier = Modifier
@@ -2762,88 +2739,90 @@ private fun RiderHome(
         }
 
 
-        Card(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 64.dp, end = 10.dp)
-                .size(44.dp)
-                .clickable {
-                    when {
-                        !hasLocationPermission(context) -> {
-                            pendingMapRecenter = true
-                            ensureLocationPermission()
+        if (snapshot?.online == true || activeNavigationWork) {
+            val toolBottomPadding = with(navigationDensity) { navigationBottomInsetPx.toDp() } + 8.dp
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 10.dp, bottom = toolBottomPadding),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    navigationSpeedLimitKph?.let { RiderSpeedLimitSign(it) }
+                    RiderBlueprintSpeedPill(reliableSpeedKph)
+                }
+                Card(
+                    modifier = Modifier.size(44.dp).clickable {
+                        when {
+                            !hasLocationPermission(context) -> {
+                                pendingMapRecenter = true
+                                ensureLocationPermission()
+                            }
+                            else -> {
+                                routeOverviewActive = false
+                                recenterSignal += 1
+                                actionMessage = "กำลังหาตำแหน่ง"
+                            }
                         }
-                        else -> {
-                            routeOverviewActive = false
-                            recenterSignal += 1
-                            actionMessage = "กำลังหาตำแหน่ง"
+                    },
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        QgIcon("location", Modifier.size(23.dp), QgRed)
+                    }
+                }
+                if (activeNavigationWork) {
+                    Card(
+                        modifier = Modifier.size(44.dp).clickable {
+                            routeOverviewActive = true
+                            overviewSignal += 1
+                        },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            QgIcon("route", Modifier.size(23.dp), QgRed)
                         }
                     }
-                },
-            shape = androidx.compose.foundation.shape.CircleShape,
-            colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                QgIcon("location", Modifier.size(23.dp), QgRed)
-            }
-        }
-
-        Card(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 116.dp, end = 10.dp)
-                .size(44.dp)
-                .clickable {
-                    if (activeNavigationWork) {
-                        routeOverviewActive = true
-                        overviewSignal += 1
-                    } else {
-                        actionMessage = "ยังไม่มีเส้นทางให้ดูทั้งหมด"
+                }
+                Card(
+                    modifier = Modifier.size(44.dp).clickable { compassResetSignal += 1 },
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Canvas(Modifier.size(23.dp)) {
+                            val cx = size.width / 2f
+                            val cy = size.height / 2f
+                            val north = Path().apply {
+                                moveTo(cx, size.height * 0.08f)
+                                lineTo(size.width * 0.68f, cy)
+                                lineTo(cx, size.height * 0.43f)
+                                lineTo(size.width * 0.32f, cy)
+                                close()
+                            }
+                            val south = Path().apply {
+                                moveTo(cx, size.height * 0.92f)
+                                lineTo(size.width * 0.68f, cy)
+                                lineTo(cx, size.height * 0.57f)
+                                lineTo(size.width * 0.32f, cy)
+                                close()
+                            }
+                            drawPath(north, color = QgRed)
+                            drawPath(south, color = Color(0xFFFFA3B4))
+                        }
                     }
-                },
-            shape = androidx.compose.foundation.shape.CircleShape,
-            colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                QgIcon("route", Modifier.size(23.dp), QgRed)
-            }
-        }
-
-        Card(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 168.dp, end = 10.dp)
-                .size(44.dp)
-                .clickable { compassResetSignal += 1 },
-            shape = androidx.compose.foundation.shape.CircleShape,
-            colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Canvas(Modifier.size(23.dp)) {
-                    val cx = size.width / 2f
-                    val cy = size.height / 2f
-                    val north = Path().apply {
-                        moveTo(cx, size.height * 0.08f)
-                        lineTo(size.width * 0.68f, cy)
-                        lineTo(cx, size.height * 0.43f)
-                        lineTo(size.width * 0.32f, cy)
-                        close()
-                    }
-                    val south = Path().apply {
-                        moveTo(cx, size.height * 0.92f)
-                        lineTo(size.width * 0.68f, cy)
-                        lineTo(cx, size.height * 0.57f)
-                        lineTo(size.width * 0.32f, cy)
-                        close()
-                    }
-                    drawPath(north, color = QgRed)
-                    drawPath(south, color = Color(0xFFFFA3B4))
                 }
             }
         }
@@ -4885,7 +4864,7 @@ private fun VerificationScreen(
                     modifier = Modifier.fillMaxWidth().height(54.dp),
                     shape = RoundedCornerShape(18.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = if (pickup && !expressMode && !marketPickupMode && photoReady) Color(0xFF159947) else Color(0xFFF04455),
+                        containerColor = Color(0xFFF04455),
                         disabledContainerColor = Color(0xFFDAD4D6)
                     )
                 ) {

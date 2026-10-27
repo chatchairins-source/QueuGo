@@ -449,7 +449,7 @@ private fun CustomerShell(
         note = ""
         selectedOrder = order
         orderItems = emptyList()
-        message = "สั่งซื้อสำเร็จ · " + order.number
+        message = null
         pendingCheckoutRecord = null
         checkoutPending = false
         screen = "order"
