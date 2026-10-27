@@ -420,6 +420,9 @@ const silentRiderMessages=read('rider/src/main/java/com/queuego/rider/RiderMessa
 const silentRiderNotifications=read('rider/src/main/java/com/queuego/rider/RiderNotificationCenter.kt');
 const silentRiderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
 const silentRiderSafety=read('rider/src/main/java/com/queuego/rider/RiderSafetyScreen.kt');
+const silentRiderSafetyReports=read('rider/src/main/java/com/queuego/rider/RiderSafetyReportOverview.kt');
+const silentRiderEvidence=read('rider/src/main/java/com/queuego/rider/RiderEvidencePreview.kt');
+const silentRiderOrderDetails=read('rider/src/main/java/com/queuego/rider/RiderOrderDetailsSheet.kt');
 const silentRiderBenefits=read('rider/src/main/java/com/queuego/rider/RiderBenefitsCard.kt');
 const silentRiderDocuments=read('rider/src/main/java/com/queuego/rider/RiderDocumentReadinessCard.kt');
 const silentRiderInsurance=read('rider/src/main/java/com/queuego/rider/RiderInsuranceCard.kt');
@@ -467,6 +470,9 @@ ok(
   !silentRiderSupport.includes('Text("กำลังโหลด…", color = QgMuted') &&
   !silentRiderSafety.includes('!emergencyLoaded -> CircularProgressIndicator') &&
   !silentRiderSafety.includes('!fatigueLoaded -> CircularProgressIndicator') &&
+  !silentRiderSafetyReports.includes('LinearProgressIndicator') &&
+  !silentRiderEvidence.includes('CircularProgressIndicator()') &&
+  !silentRiderOrderDetails.includes('"กำลังโหลดรายการ…"') &&
   !silentRiderBenefits.includes('LinearProgressIndicator') &&
   !silentRiderAcceptance.includes('กำลังโหลดการรับงาน') &&
   !silentRiderDocuments.includes('LinearProgressIndicator') &&
