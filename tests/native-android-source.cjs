@@ -468,6 +468,7 @@ ok(
   !silentRiderSafety.includes('!emergencyLoaded -> CircularProgressIndicator') &&
   !silentRiderSafety.includes('!fatigueLoaded -> CircularProgressIndicator') &&
   !silentRiderBenefits.includes('LinearProgressIndicator') &&
+  !silentRiderAcceptance.includes('กำลังโหลดการรับงาน') &&
   !silentRiderDocuments.includes('LinearProgressIndicator') &&
   !silentRiderInsurance.includes('LinearProgressIndicator') &&
   !silentRiderVehicles.includes('LinearProgressIndicator') &&
