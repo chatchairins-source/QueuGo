@@ -207,7 +207,6 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
         TextButton(onClick = onBack, enabled = !busy) { Text("กลับ") }
         Text("รับส่งผู้โดยสาร",style = MaterialTheme.typography.headlineSmall,fontWeight = FontWeight.Bold)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (!loaded) Text("กำลังตรวจสถานะเที่ยวล่าสุด…")
         if (current != null) {
             Text(current.number,fontWeight = FontWeight.Bold)
             Text(passengerRideStatus(current))
