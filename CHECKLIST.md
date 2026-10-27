@@ -1,3 +1,12 @@
+## 2026-10-27 Authenticated Rider diagnostics QA fix — exact Pilot PASS / recapture requested
+
+- Authenticated visual run `40384466162` on `9c553d43acc2e89087be36e07e110dd61a495313` built Rider/Merchant APKs and booted the emulator. Merchant capture completed all 5 expected screens (artifact `12681395969`). Rider captured Home, Messages, Earnings today/7d/30d, Profile, Support, Learning and Safety before the review harness stopped at Diagnostics (artifact `12679849177`).
+- First confirmed review failure was QA-only, not app UI: the harness waited for exact title `สถานะจริงของโทรศัพท์เครื่องนี้`, but the actual Diagnostics title is `ตรวจสอบระบบ Rider`; that phrase only appears inside subtitle copy `ตรวจจากสถานะจริงของโทรศัพท์เครื่องนี้`.
+- Fixed only the review expectation at `d675e581444fb45542623ffdf5a0d83803ca6ecd`. Comparison to `9c553d43...` confirms exactly one QA-script line changed and no app source/Kotlin/Android runtime changed.
+- Exact `d675e581...` Native Pilot PR run `40426213523` completed SUCCESS and Map Engine PR run `40426213522` completed SUCCESS, covering regression/source, tracking/JVM, all three APKs, Android 16 KB packaging, WebView rejection, and emulator launch/map/voice lifecycle.
+- Visual inspection of the partial Rider artifact found no concrete regression in Home map/right rail/Ready card, single Messages inbox, inline Earnings credit, Profile/work preferences, Support, Learning or Safety. Merchant Products/Promotions remain visually clean.
+- **NEXT:** rerun the existing authenticated Rider/Merchant capture on this app-equivalent successor and require Rider 10/10 plus Merchant 5/5 screenshots. Inspect Diagnostics and record final visual evidence. Customer authenticated review remains blocked on the recorded missing Customer review credential pair.
+
 ## 2026-10-27 Authenticated Rider dialog QA fix — exact Pilot PASS / recapture requested
 
 - Fresh authenticated review `40380709805` on app-source checkpoint `1fd0e69ceecea6a960e988937ccf000f224cc319` built Rider/Merchant APKs and booted the emulator. Merchant capture completed all 5 expected screens; artifact `12679216073`. Rider captured Home, Messages, Earnings today/7d/30d, Profile and Support before the review script failed.
