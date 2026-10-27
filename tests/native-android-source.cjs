@@ -482,6 +482,16 @@ ok(
   !merchantMediaForMemory.includes('rows.chunked(3).forEach'),
   'Merchant media gallery must lazy-render rows instead of decoding the full image library at once'
 );
+const placeSearchCacheSource=read('shared/src/main/java/com/queuego/shared/QueueGoPlaceSearchCache.kt');
+ok(
+  placeSearchCacheSource.includes('context.noBackupFilesDir, "queuego_place_search_cache_v1"') &&
+  placeSearchCacheSource.includes('FRESH_MS = 7L * 24L * 60L * 60L * 1000L') &&
+  silentPlaceSearch.includes('cache.read(normalized)') &&
+  silentPlaceSearch.includes('if (cached.fresh)') &&
+  silentPlaceSearch.includes('cache.write(normalized, fresh)') &&
+  silentPlaceSearch.includes('if (results.isEmpty() && searched && !busy)'),
+  'QueueGo Places search must render durable cached results first and avoid repeated fresh downloads'
+);
 const customerLaundryContentCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerLaundryContentCache.kt');
 const customerPromotionCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerPromotionCache.kt');
 ok(
