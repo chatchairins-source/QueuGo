@@ -139,16 +139,36 @@ internal fun MerchantMediaScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val cache = remember(context.applicationContext) {
+        MerchantMediaCache(context.applicationContext)
+    }
     var rows by remember { mutableStateOf<List<MerchantMediaItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var uploading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
     suspend fun refresh() {
-        loading = true
+        loading = rows.isEmpty()
+        if (rows.isEmpty()) {
+            val cached = withContext(Dispatchers.IO) {
+                cache.read(auth.session.authUserId)
+            }
+            if (cached.isNotEmpty()) {
+                rows = cached
+                loading = false
+            }
+        }
         runCatching { loadMerchantMedia(auth) }
-            .onSuccess { rows = it; message = null }
-            .onFailure { message = it.message ?: "โหลดคลังรูปไม่สำเร็จ" }
+            .onSuccess { fresh ->
+                rows = fresh
+                withContext(Dispatchers.IO) {
+                    cache.write(auth.session.authUserId, fresh)
+                }
+                message = null
+            }
+            .onFailure {
+                if (rows.isEmpty()) message = it.message ?: "โหลดคลังรูปไม่สำเร็จ"
+            }
         loading = false
     }
 
