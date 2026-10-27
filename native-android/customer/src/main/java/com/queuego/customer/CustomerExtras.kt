@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -155,6 +156,10 @@ fun CustomerNotificationsScreen(
     onMarkAll: () -> Unit,
     onOpen: (CustomerNotification) -> Unit
 ) {
+    val unreadIds = notifications.asSequence().filterNot { it.read }.map { it.id }.toList()
+    LaunchedEffect(unreadIds) {
+        if (unreadIds.isNotEmpty()) onMarkAll()
+    }
     Column(
         Modifier.fillMaxSize()
             .verticalScroll(rememberScrollState())
@@ -163,9 +168,7 @@ fun CustomerNotificationsScreen(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
             Spacer(Modifier.weight(1f))
-            if (notifications.any { !it.read }) {
-                OutlinedButton(onClick = onMarkAll, enabled = !busy) { Text("อ่านทั้งหมด") }
-            }
+            OutlinedButton(onClick = onMarkAll, enabled = !busy) { Text("อ่านทั้งหมด") }
         }
         Spacer(Modifier.height(12.dp))
         QgSectionTitle("แจ้งเตือน", "อัปเดตจากออเดอร์ ร้าน และ Rider")
