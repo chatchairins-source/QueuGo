@@ -734,7 +734,7 @@ internal fun MerchantProductEditorScreen(
                                 } catch (failure: Exception) { inventoryError = failure.message ?: "โหลดประวัติเพิ่มไม่สำเร็จ" }
                                 finally { inventoryBusy = false }
                             }
-                        }) { Text(if (inventoryBusy) "กำลังโหลด…" else "โหลดประวัติเพิ่ม") }
+                        }) { Text("โหลดประวัติเพิ่ม") }
                     }
                     if (!inventoryError.isNullOrBlank()) Text(inventoryError!!, color = QgRed, fontSize = 10.sp)
                 }
