@@ -516,6 +516,15 @@ ok(
   merchantMediaForMemory.includes('if (rows.isEmpty()) message = it.message'),
   'Merchant media rows must render durable cached content before silent Storage refresh'
 );
+const merchantPromotionSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt');
+const merchantPromotionCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPromotionCache.kt');
+ok(
+  merchantPromotionCacheSource.includes('context.noBackupFilesDir, "merchant_promotion_cache_v1"') &&
+  merchantPromotionSource.includes('cache.read(auth.user.id, shop.id)') &&
+  merchantPromotionSource.includes('cache.write(auth.user.id, shop.id, fresh)') &&
+  merchantPromotionSource.includes('if (rows.isEmpty()) message = failure.message'),
+  'Merchant promotions must render durable cached rows before silent authoritative refresh'
+);
 ok(
   merchantAppSource.includes('coroutineScope {') &&
   merchantAppSource.includes('val ordersDeferred = async { api.loadOrders(auth) }') &&
