@@ -91,10 +91,7 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
         }
         Spacer(Modifier.height(10.dp))
 
-        if (loading && current == null) {
-            Text("กำลังโหลด...", color = QgMuted)
-            return
-        }
+        if (loading && current == null) return
         if (current == null) {
             QgCard(Modifier.fillMaxWidth()) { Text("โหลดข้อมูลไม่สำเร็จ", color = QgRed) }
             return
