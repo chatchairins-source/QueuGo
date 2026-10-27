@@ -40,13 +40,16 @@ internal fun RiderBenefitsCard(
     var loaded by remember(auth.user.id) { mutableStateOf(false) }
 
     LaunchedEffect(auth.user.id, auth.session.accessToken) {
-        if (benefits.isEmpty()) {
-            val cached = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val cached = if (benefits.isEmpty()) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 cache.read(auth.user.id)
             }
-            if (cached.isNotEmpty()) {
-                benefits = cached
-                loaded = true
+        } else null
+        if (cached != null) {
+            benefits = cached.rows
+            loaded = true
+            if (cached.fresh) {
+                return@LaunchedEffect
             }
         }
         try {
