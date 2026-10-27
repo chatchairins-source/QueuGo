@@ -147,15 +147,19 @@ internal fun MerchantMediaScreen(
     var uploading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    suspend fun refresh() {
+    suspend fun refresh(force: Boolean = false) {
         loading = rows.isEmpty()
-        if (rows.isEmpty()) {
-            val cached = withContext(Dispatchers.IO) {
+        val cached = if (!force && rows.isEmpty()) {
+            withContext(Dispatchers.IO) {
                 cache.read(auth.session.authUserId)
             }
-            if (cached.isNotEmpty()) {
-                rows = cached
-                loading = false
+        } else null
+        if (cached != null) {
+            rows = cached.rows
+            loading = false
+            if (cached.fresh) {
+                message = null
+                return
             }
         }
         runCatching { loadMerchantMedia(auth) }
@@ -182,7 +186,7 @@ internal fun MerchantMediaScreen(
                     uploadMerchantImage(context, auth, uri, "gallery")
                 }.onSuccess {
                     message = "เก็บรูปในคลังแล้ว"
-                    refresh()
+                    refresh(force = true)
                 }.onFailure {
                     message = "อัปโหลดไม่สำเร็จ: " + (it.message ?: "เกิดข้อผิดพลาด")
                 }
