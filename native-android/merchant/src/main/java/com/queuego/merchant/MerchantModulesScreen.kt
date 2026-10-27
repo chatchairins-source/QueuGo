@@ -100,12 +100,7 @@ internal fun MerchantModulesScreen(
             )
         }
 
-        if (loading) {
-            Box(
-                Modifier.fillMaxWidth().height(140.dp),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
-        } else {
+        if (!loading) {
             merchantModuleCatalog.forEach { (key, label) ->
                 val row = modules.find { it.key == key }
                     ?: MerchantModule(null, key, "disabled", null, null)
