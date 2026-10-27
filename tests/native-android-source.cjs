@@ -223,7 +223,7 @@ const customerNotifications=read('customer/src/main/java/com/queuego/customer/Cu
 ok(customerNotifications.includes('LaunchedEffect(unreadIds)')&&customerNotifications.includes('if (unreadIds.isNotEmpty()) onMarkAll()'),'Opening Customer Notifications must mark currently unread owned rows through the existing action');
 ok(customerNotifications.includes('OutlinedButton(onClick = onMarkAll, enabled = !busy) { Text("อ่านทั้งหมด") }')&&!customerNotifications.includes('if (notifications.any { !it.read })'),'Customer Notifications must always show the Web-parity mark-all control');
 ok(customerNotifications.includes('notifications?user_id=eq." + http.enc(auth.user.id) + "&is_read=eq.false'),'Customer mark-all must stay scoped to the authenticated user unread rows');
-ok(source.includes('qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at')&&source.includes('qg_create_ticket'),'Customer native support must use production ticket RPC');
+ok(source.includes('qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at,evidence_path')&&source.includes('qg_create_ticket'),'Customer native support must use production ticket RPC and load evidence path');
 const customerSupportCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerSupportCache.kt');
 const customerSupportScreenSource=read('customer/src/main/java/com/queuego/customer/CustomerSupportScreen.kt');
 ok(
@@ -234,9 +234,14 @@ ok(
   customerSupportScreenSource.includes('cache.invalidate(auth.user.id)') &&
   customerSupportScreenSource.includes('refresh(force = true)') &&
   customerSupportScreenSource.includes('cache.write(auth.user.id, fresh)') &&
+  customerSupportCacheSource.includes('evidencePath') &&
+  customerSupportScreenSource.includes('NativeSupportTicketApi()') &&
+  customerSupportScreenSource.includes('customerEvidencePathBelongsTo(path, auth.session.authUserId)') &&
+  customerSupportScreenSource.includes('"ดูรูปหลักฐาน"') &&
+  customerSupportScreenSource.includes('"/storage/v1/object/sign/qg-evidence/"') &&
   customerSupportScreenSource.indexOf('refresh(force = true)') <
     customerSupportScreenSource.lastIndexOf('message = "ส่งเรื่องให้ทีม QueueGo แล้ว"'),
-  'Customer Support history must reuse a fresh local snapshot and preserve submit feedback after forced refresh'
+  'Customer Support history must cache and open account-owned evidence with a signed URL while preserving submit feedback after forced refresh'
 );
 ok(source.includes('qg_customer_order_context')&&source.includes('CustomerTrackingRider'),'Customer native tracking must use production order context');
 const customerTrackingScreen=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');

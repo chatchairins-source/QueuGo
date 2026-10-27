@@ -1,5 +1,7 @@
 package com.queuego.customer
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.NativeSupportTicketApi
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
@@ -44,6 +47,7 @@ fun CustomerSupportScreen(
     onBack: () -> Unit
 ) {
     val api = remember { CustomerExtrasApi() }
+    val evidenceApi = remember { NativeSupportTicketApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val cache = remember(context.applicationContext) {
@@ -55,6 +59,7 @@ fun CustomerSupportScreen(
     var details by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var openingEvidenceId by remember { mutableStateOf<String?>(null) }
 
     suspend fun refresh(force: Boolean = false) {
         val cached = if (!force && tickets.isEmpty()) {
@@ -186,6 +191,47 @@ fun CustomerSupportScreen(
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(ticket.details)
+                        ticket.evidencePath?.takeIf { it.isNotBlank() }?.let { path ->
+                            Spacer(Modifier.height(7.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    if (openingEvidenceId != null) return@OutlinedButton
+                                    if (!customerEvidencePathBelongsTo(path, auth.session.authUserId)) {
+                                        message = "ลิงก์หลักฐานไม่ถูกต้อง"
+                                        return@OutlinedButton
+                                    }
+                                    openingEvidenceId = ticket.id
+                                    message = null
+                                    scope.launch {
+                                        try {
+                                            val signedUrl = evidenceApi.signedEvidenceUrl(
+                                                auth.session.accessToken,
+                                                path
+                                            )
+                                            val uri = Uri.parse(signedUrl)
+                                            require(uri.scheme == "https" && uri.host ==
+                                                Uri.parse(QueueGoNativeApi.BASE_URL).host &&
+                                                uri.path.orEmpty().startsWith("/storage/v1/object/sign/qg-evidence/")) {
+                                                "ลิงก์หลักฐานไม่ถูกต้อง"
+                                            }
+                                            context.startActivity(
+                                                Intent(Intent.ACTION_VIEW, uri)
+                                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            )
+                                        } catch (cancelled: CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = failure.message ?: "เปิดหลักฐานไม่สำเร็จ"
+                                        } finally {
+                                            openingEvidenceId = null
+                                        }
+                                    }
+                                },
+                                enabled = openingEvidenceId == null
+                            ) {
+                                Text(if (openingEvidenceId == ticket.id) "กำลังเปิด..." else "ดูรูปหลักฐาน")
+                            }
+                        }
                         if (!ticket.adminNote.isNullOrBlank()) {
                             Spacer(Modifier.height(7.dp))
                             HorizontalDivider()
@@ -199,6 +245,13 @@ fun CustomerSupportScreen(
         }
         Spacer(Modifier.height(24.dp))
     }
+}
+
+private fun customerEvidencePathBelongsTo(path: String, userId: String): Boolean {
+    if (userId.isBlank() || !path.startsWith("$userId/")) return false
+    val objectName = path.removePrefix("$userId/")
+    return Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(jpg|png|webp)")
+        .matches(objectName)
 }
 
 private val supportCategories = listOf(

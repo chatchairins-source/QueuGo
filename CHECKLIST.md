@@ -1968,3 +1968,8 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Updated the Customer source contract for both notification and support timestamp usage. Local `node tests/native-android-source.cjs`: 405 checks PASS; `git diff --check` PASS.
 - Predecessor Native Pilot `40480117757` and Map Engine `40480117472` are still pending/in progress, without a reported failure. Latest published HEAD before this delta was `ead21d9cb49d3784dc6c320f285f22704919a574`, exact Native run `40480268978` and Map run `40480269102` pending.
 - **NEXT:** publish this bounded parity delta and inspect exact-head Native Pilot + Map Engine. Continue the Customer parity matrix and preserve actual authenticated screenshot/device gates.
+
+## 2026-10-27 Customer Support evidence parity — implementation checkpoint
+- Web Customer Support history exposes `ดูรูปหลักฐาน` for tickets with `evidence_path`. Native now selects and caches that field, exposes the same action, and requests a 300-second signed URL through the existing shared Support API.
+- Before requesting the URL, Native requires the object path to match the signed-in customer's Supabase Auth UUID folder and a UUID-named JPG/PNG/WebP object. Before handing off to Android, it accepts only HTTPS URLs from the configured Supabase host with the private `qg-evidence` signed-object route.
+- Updated source contracts to cover the query, cache persistence, ownership check, signed URL flow and visible action. Verification and exact-head CI are in progress.

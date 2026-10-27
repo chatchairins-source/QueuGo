@@ -82,6 +82,7 @@ internal class CustomerSupportCache(context: Context) {
         .put("orderId", orderId ?: JSONObject.NULL)
         .put("adminNote", adminNote?.take(MAX_TEXT) ?: JSONObject.NULL)
         .put("createdAt", createdAt ?: JSONObject.NULL)
+        .put("evidencePath", evidencePath?.take(MAX_TEXT) ?: JSONObject.NULL)
 
     private fun JSONObject.toTicket(): CustomerSupportTicket? {
         val id = text("id") ?: return null
@@ -95,7 +96,8 @@ internal class CustomerSupportCache(context: Context) {
             status = status,
             orderId = text("orderId"),
             adminNote = text("adminNote"),
-            createdAt = text("createdAt")
+            createdAt = text("createdAt"),
+            evidencePath = text("evidencePath")
         )
     }
 

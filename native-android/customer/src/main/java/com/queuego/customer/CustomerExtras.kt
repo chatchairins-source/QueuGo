@@ -56,7 +56,8 @@ data class CustomerSupportTicket(
     val status: String,
     val orderId: String?,
     val adminNote: String?,
-    val createdAt: String?
+    val createdAt: String?,
+    val evidencePath: String?
 )
 
 class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
@@ -98,7 +99,7 @@ class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
     suspend fun supportTickets(auth: NativeAuth): List<CustomerSupportTicket> {
         val rows = http.array(
             http.get(
-                "qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at" +
+                "qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at,evidence_path" +
                     "&user_id=eq." + http.enc(auth.user.id) +
                     "&order=created_at.desc&limit=30",
                 auth.session.accessToken
@@ -115,7 +116,8 @@ class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
                         status = r.optString("status"),
                         orderId = r.optString("order_id").takeIf { it.isNotBlank() && it != "null" },
                         adminNote = r.optString("admin_note").takeIf { it.isNotBlank() && it != "null" },
-                        createdAt = r.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
+                        createdAt = r.optString("created_at").takeIf { it.isNotBlank() && it != "null" },
+                        evidencePath = r.optString("evidence_path").takeIf { it.isNotBlank() && it != "null" }
                     )
                 )
             }
