@@ -645,11 +645,15 @@ ok(
 const merchantHoursCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantHoursCache.kt');
 ok(
   merchantHoursCacheSource.includes('context.noBackupFilesDir, "merchant_hours_cache_v1"') &&
+  merchantHoursCacheSource.includes('FRESH_MS = 5L * 60L * 1000L') &&
+  merchantHoursCacheSource.includes('fun fresh(shopId: String): Boolean') &&
+  silentMerchantHours.includes('cache.fresh(shop.id)') &&
+  silentMerchantHours.includes('if (cacheFresh)') &&
   silentMerchantHours.includes('cache.read(shop.id, today)') &&
   silentMerchantHours.includes('cache.write(shop.id, state)') &&
   silentMerchantHours.includes('cache.write(shop.id, MerchantHoursState(days, special))') &&
   silentMerchantHours.includes('if (cached == null) message = it.message'),
-  'Merchant business hours must render durable cached settings first and refresh silently'
+  'Merchant business hours must reuse fresh durable settings and refresh stale data silently'
 );
 const merchantMediaCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaCache.kt');
 ok(
