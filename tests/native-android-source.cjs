@@ -594,6 +594,15 @@ ok(
   'Customer shop catalogs must reuse short-lived local cache without bypassing Grocery pagination authority'
 );
 ok(
+  customerContentCacheSource.includes('MARKET_FRESH_MS = 60L * 1000L') &&
+  silentCustomerMarket.includes('contentCache.marketFresh()') &&
+  silentCustomerMarket.includes('val canReuseStatic = staticCacheFresh') &&
+  silentCustomerMarket.includes('if (!canReuseStatic) {') &&
+  silentCustomerMarket.includes('activeTrip = if (auth == null) null else api.activeTrip(auth)') &&
+  silentCustomerMarket.includes('pricing = api.loadPricing(auth)'),
+  'Customer Market must reuse fresh static catalog data while keeping trip and pricing reads authoritative'
+);
+ok(
   customerLaundryContentCacheSource.includes('context.noBackupFilesDir, "customer_laundry_cache_v1"') &&
   customerLaundryContentCacheSource.includes('FRESH_MS = 5L * 60L * 1000L') &&
   silentCustomerLaundry.includes('contentCache.read()') &&
