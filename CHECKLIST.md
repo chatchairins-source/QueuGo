@@ -1933,3 +1933,11 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Parent Favorites exact-head Native Pilot `40478110875` and Map Engine `40478110860` were still running at checkpoint time; Native was in Full QueueGo regression and Map Engine in Dependencies and regression. No failure observed yet.
 - No Production data, pricing, dispatch, or backend authority changed.
 - **NEXT:** inspect parent exact-head runs, publish this bounded source successor and run exact-head Native Pilot + Map Engine. Then continue the remaining Customer Shop/menu/cart parity matrix; do not claim visual/device acceptance without its evidence.
+
+## 2026-10-27 Customer tracking Thai timestamp parity — source checkpoint; exact-head CI NEXT
+- Continued the Production Web `customer-features.js` vs Native Customer Shop/menu/cart/tracking audit. Shop review summary and product rows are present in both; Web's menu request does not select category fields, so the apparent Web category filter renders no category options. Cart image/name/price/quantity/remove/subtotal/checkout hierarchy is present in both.
+- Confirmed a real tracking display mismatch: Web formats `statusTime` using Thai locale `toLocaleString('th-TH')`, while Native omitted the Buddhist year and seconds. Native now formats day/month/year, 24-hour time and seconds with `ThaiBuddhistChronology` in Asia/Bangkok.
+- Source guard now checks both usable shop-phone action availability and Thai timestamp precision. Local `node tests/native-android-source.cjs`: 401 checks PASS; `git diff --check` PASS.
+- Exact current source predecessor Native Pilot `40478683739` is queued; predecessor Map Engine `40478683750` is running dependencies. Parent Native Pilot `40478110875` has passed regression, source/SQL contracts and tracking JVM tests and is building the three APKs. Parent Map Engine `40478110860` passed.
+- No Production records, financial authority, inventory decisions, dispatch logic or backend data changed.
+- **NEXT:** publish this bounded source successor and inspect its exact-head Native Pilot + Map Engine. Continue only from the first confirmed failure; preserve Customer screenshot and physical-device gates as open until their evidence exists.

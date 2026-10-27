@@ -33,6 +33,7 @@ import com.queuego.shared.QgRemoteImage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.chrono.ThaiBuddhistChronology
 import java.util.Locale
 
 @Composable
@@ -750,7 +751,8 @@ private fun customerTrackingTime(order: CustomerOrder, visibleStatus: String): S
     } ?: return "-"
     return runCatching {
         val formatter = DateTimeFormatter
-            .ofPattern("d MMM HH:mm", Locale("th", "TH"))
+            .ofPattern("d/M/yyyy HH:mm:ss", Locale.forLanguageTag("th-TH"))
+            .withChronology(ThaiBuddhistChronology.INSTANCE)
             .withZone(ZoneId.of("Asia/Bangkok"))
         formatter.format(Instant.parse(raw))
     }.getOrDefault(raw.take(16).replace('T', ' '))
