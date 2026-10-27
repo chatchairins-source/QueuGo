@@ -1,3 +1,11 @@
+## 2026-10-27 Customer Checkout Web parity — source checkpoint; exact-head CI NEXT
+
+- Parent Native successor HEAD: `e0fcd4009d7b1e02ae642a33d97c82ade42d5e34`; PR #730 remains open/draft; Production Web remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Source audit confirmed Web Checkout has the QueueGo map, GPS action, delivery address and note; the picker attaches Places with `searchControl:false`. Removed the extra Places search panel from Native Checkout so the visible control order matches Web. The dedicated Native location picker retains Places search; map pin/GPS, reverse-geocoded address, note, fee, and server submit/recovery remain.
+- Updated `tests/native-android-source.cjs` to guard this UI contract and its retained Location Picker search. Updated Customer parity matrix and PROJECT-MEMORY. No Web/backend/schema/business-authority changes.
+- Source commit `e0fcd4009d7b1e02ae642a33d97c82ade42d5e34` has PR Native Pilot `40472086491`, push Native Pilot `40472081080`, and PR Map Engine `40472086542` queued; Rider authenticated review readiness is PASS, not screenshot acceptance.
+- **NEXT:** inspect exact-head Pilot and Map Engine first confirmed failure only. Continue Customer Shop/menu/cart and checkout/tracking source and visual comparisons; Customer authenticated credentials and physical-device checks remain open.
+
 ## 2026-10-27 Preserve Native exact-head gate runs — source checkpoint; exact-head CI NEXT
 
 - Parent Native successor HEAD: `c1fa9f5a63f880446bda5c2c0a146a05fb615aaa`; PR #730 remains open/draft; Production `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
