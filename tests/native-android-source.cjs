@@ -579,11 +579,13 @@ ok(
 );
 ok(
   customerLaundryContentCacheSource.includes('context.noBackupFilesDir, "customer_laundry_cache_v1"') &&
+  customerLaundryContentCacheSource.includes('FRESH_MS = 5L * 60L * 1000L') &&
   silentCustomerLaundry.includes('contentCache.read()') &&
+  silentCustomerLaundry.includes('if (cached.fresh)') &&
   silentCustomerLaundry.includes('contentCache.write(fresh)') &&
   silentCustomerLaundry.includes('catalog?.servicesByHub?.get(hub.id).orEmpty()') &&
   !silentCustomerLaundry.includes('api.services(auth, hub.id)'),
-  'Customer Laundry catalog must render local-first and must not redownload the full catalog when choosing a shop'
+  'Customer Laundry catalog must render local-first and avoid repeated fresh catalog downloads'
 );
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
 const merchantPromotionCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPromotionCache.kt');
