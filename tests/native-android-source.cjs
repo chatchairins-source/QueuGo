@@ -383,6 +383,39 @@ ok(
   !customerShopForMemory.includes('products.forEach { product ->'),
   'Customer shop product images must lazy-render instead of allocating the entire catalog at once'
 );
+
+const silentCustomerMarket=read('customer/src/main/java/com/queuego/customer/QueueGoMarketScreen.kt');
+const silentCustomerLaundry=read('customer/src/main/java/com/queuego/customer/QueueGoLaundryScreen.kt');
+const silentMerchantApp=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
+const silentMerchantGrocery=read('merchant/src/main/java/com/queuego/merchant/MerchantGroceryCatalogScreen.kt');
+const silentMerchantMarket=read('merchant/src/main/java/com/queuego/merchant/MerchantMarketCatalogScreen.kt');
+const silentMerchantPos=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
+const silentRiderEarnings=read('rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt');
+const silentRiderMessages=read('rider/src/main/java/com/queuego/rider/RiderMessagesScreen.kt');
+const silentRiderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
+const silentRoleShell=read('shared/src/main/java/com/queuego/shared/QueueGoRoleNativeApp.kt');
+ok(
+  !customerAppForMemory.includes('"กำลังโหลดข้อมูล…"') &&
+  !customerAppForMemory.includes('if (loading) {\n                CircularProgressIndicator()') &&
+  !customerShopForMemory.includes('LinearProgressIndicator') &&
+  !customerShopForMemory.includes('"กำลังโหลดสินค้า…"') &&
+  !silentCustomerMarket.includes('loading -> CircularProgressIndicator()') &&
+  !silentCustomerMarket.includes('cartPage && loading) CircularProgressIndicator()') &&
+  !silentCustomerLaundry.includes('"กำลังโหลดร้านซัก..."') &&
+  !silentCustomerLaundry.includes('servicesLoading) {\n                    CircularProgressIndicator()') &&
+  !silentMerchantApp.includes('"กำลังโหลดข้อมูล…"') &&
+  !silentMerchantApp.includes('if (loading && orders.isEmpty()) CircularProgressIndicator()') &&
+  !silentMerchantApp.includes('"กำลังโหลดรายการ..."') &&
+  !silentMerchantGrocery.includes('กำลังโหลดแคตตาล็อก') &&
+  !silentMerchantGrocery.includes('CircularProgressIndicator') &&
+  !silentMerchantMarket.includes('LinearProgressIndicator') &&
+  !silentMerchantPos.includes('if (report == null) {\n            CircularProgressIndicator()') &&
+  !silentRiderEarnings.includes('กำลังโหลด') &&
+  !silentRiderMessages.includes('กำลังโหลดข้อความ') &&
+  !silentRiderSupport.includes('Text("กำลังโหลด…", color = QgMuted') &&
+  !silentRoleShell.includes('CircularProgressIndicator(Modifier.padding(24.dp))'),
+  'Native data refresh must stay visually silent while cached/current content remains on screen'
+);
 ok(
   customerSearchForMemory.includes('LazyColumn(') &&
   customerSearchForMemory.includes('items(rows, key = { "search-shop:" + it.id })') &&
