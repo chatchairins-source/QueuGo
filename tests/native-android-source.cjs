@@ -487,6 +487,15 @@ ok(
   merchantAppSource.includes('refreshAll(showLoading = cached == null)'),
   'Merchant shop and menu content must render from durable local cache before authoritative refresh'
 );
+const merchantHoursCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantHoursCache.kt');
+ok(
+  merchantHoursCacheSource.includes('context.noBackupFilesDir, "merchant_hours_cache_v1"') &&
+  silentMerchantHours.includes('cache.read(shop.id, today)') &&
+  silentMerchantHours.includes('cache.write(shop.id, state)') &&
+  silentMerchantHours.includes('cache.write(shop.id, MerchantHoursState(days, special))') &&
+  silentMerchantHours.includes('if (cached == null) message = it.message'),
+  'Merchant business hours must render durable cached settings first and refresh silently'
+);
 ok(
   merchantAppSource.includes('coroutineScope {') &&
   merchantAppSource.includes('val ordersDeferred = async { api.loadOrders(auth) }') &&
