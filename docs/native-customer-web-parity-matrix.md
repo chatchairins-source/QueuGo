@@ -1,3 +1,9 @@
+## 2026-10-27 Native source regression follow-up — cache-aware guard; exact-head CI NEXT
+
+- The rerun on the checkout parity checkpoint fixed the early-reference error, then Full QueueGo regression exposed a stale source assertion at `tests/native-android-source.cjs:740`. It still required unconditional shop/banner downloads even though the current Native Customer refresh deliberately reuses a fresh Home cache and skips those static requests.
+- Updated the guard to require cache freshness gating for shops/banners/service banners, preserve parallel order refresh, and retain Guest Home's parallel initial read path. This keeps the newer download-reduction behavior while aligning source contracts to it. Checkout UI change remains unchanged.
+- **NEXT:** inspect the new exact-head Native Pilot regression result; then continue compile, APK, packaging, and emulator checks. No APK or visual acceptance claim until those gates finish.
+
 ## 2026-10-27 Checkout parity guard correction — regression source fix; exact-head CI NEXT
 
 - Parent Native source included `e0fcd4009d7b1e02ae642a33d97c82ade42d5e34`, which removed the extra Checkout Places field while retaining Places in the dedicated Customer Location Picker.
