@@ -1,3 +1,14 @@
+## 2026-10-27 Android local-first cache + silent data refresh — source checkpoint; exact Pilot NEXT
+
+- Current Native successor: `work-native-web-parity-20261026`; checkpoint HEAD `26a9c5ab6042dab897aeaaeeccd388a649d2455b`.
+- Owner rule restored as an Android-wide UX contract: data refresh must be visually silent. Existing/cached content stays on screen; data-loading spinners/progress chrome are removed. Action progress such as login/save/upload/checkout remains explicit.
+- Shared remote images now use durable app storage under `noBackupFilesDir` instead of expiring from Android cache every 24 hours; the bounded disk LRU remains. Existing legacy cached images migrate forward when read.
+- Customer already had durable Home/shop/Market content cache; Merchant now has durable local-first shop/menu cache. Rider retains its durable home snapshot. Live orders, finance and dispatch remain server-authoritative and are not converted into stale durable decision state.
+- Customer Laundry had a confirmed duplicate-download path: choosing a hub called `api.services()`, which fetched the full laundry catalog again although the first catalog already includes `servicesByHub`. Added durable laundry catalog cache, load-cache-first/background-refresh, and direct service reuse from the current catalog. Hub selection no longer redownloads the catalog.
+- Silent-refresh regression coverage now includes Customer primary/Market/Laundry/Shopping/Promotions/tracking, Merchant primary/Catalog/POS/Revenue/Support/Stock/Media/Modules/Tickets/Laundry/Hours/Setup Map, Rider Earnings/Messages/Support/Safety, and shared role-shell loading chrome.
+- Exact-head Rider authenticated review is green at the latest observed checkpoint; exact Native Pilot/Map CI for the final successor is still pending. No Production data/schema mutation was made.
+- **NEXT:** inspect exact-head Native Pilot first confirmed failure only. If green, continue durable caching for remaining safe static/reference content without persisting live order/financial/dispatch authority. Keep Customer authenticated visual review and physical-device/GPS/release gates separate.
+
 ## 2026-10-27 Customer Notifications page-entry parity — source/test/CI PASS; authenticated Rider/Merchant recapture NEXT
 
 - Source commit `869da7a219d74dea05d6b598f02021fdd8b142e1` is the latest fetched descendant on `work-native-web-parity-20261026`; `origin/main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`. Exact-head PR Native Pilot `40450263531`, push Native Pilot `40450259446`, and Map Engine `40450263616` all completed SUCCESS. Native gates include regression, Kotlin/JVM, three APK builds, 16 KB packaging, WebView rejection and Android emulator launch/map/voice lifecycle.
