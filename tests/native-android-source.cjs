@@ -568,9 +568,11 @@ ok(
 );
 const merchantContentCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantContentCache.kt');
 ok(
-  silentMerchantApp.includes('delay(8_000)\n                    refreshOrders()') &&
+  silentMerchantApp.includes('delay(15_000)\n                    refreshOrders()') &&
+  silentMerchantApp.includes('refreshNotifications()\n                    delay(30_000)') &&
+  !silentMerchantApp.includes('message = "กำลังเชื่อมต่อเพื่อเปิดรายการจากการแจ้งเตือน"') &&
   !silentMerchantApp.includes('refreshOrders()\n                    delay(3_000)'),
-  'Merchant foreground fallback must not redownload the full order snapshot every three seconds'
+  'Merchant Realtime must remain primary while foreground order/notification recovery polls stay infrequent and visually silent'
 );
 ok(
   merchantContentCacheSource.includes('context.noBackupFilesDir, "merchant_content_cache_v1"') &&
