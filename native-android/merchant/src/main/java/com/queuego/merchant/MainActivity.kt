@@ -715,11 +715,10 @@ private fun MerchantNativeAuthentication(
                     ) {
                         OutlinedButton(
                             onClick = ::requestMarkets,
-                            enabled = !busy,
+                            enabled = !busy && !findingMarkets,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            if (findingMarkets) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            else Text("ใช้พิกัดร้านนี้และค้นหาตลาดใกล้ฉัน")
+                            Text("ใช้พิกัดร้านนี้และค้นหาตลาดใกล้ฉัน")
                         }
                         Spacer(Modifier.height(7.dp))
                         markets.take(5).forEach { market ->
