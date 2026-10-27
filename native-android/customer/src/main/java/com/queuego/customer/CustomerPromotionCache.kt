@@ -5,10 +5,16 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
+internal data class CachedCustomerPromotions(
+    val rows: List<CustomerPromotion>,
+    val fresh: Boolean
+)
+
 /** Durable local-first cache for public Customer promotions. */
 internal class CustomerPromotionCache(context: Context) {
     companion object {
         private const val MAX_FILE_BYTES = 1024L * 1024L
+        private const val FRESH_MS = 10L * 60L * 1000L
     }
 
     private val root = File(context.noBackupFilesDir, "customer_promotion_cache_v1").also {
@@ -16,15 +22,15 @@ internal class CustomerPromotionCache(context: Context) {
     }
     private val file = File(root, "promotions.json")
 
-    fun read(): List<CustomerPromotion> {
-        if (!file.isFile || file.length() !in 1L..MAX_FILE_BYTES) return emptyList()
+    fun read(): CachedCustomerPromotions? {
+        if (!file.isFile || file.length() !in 1L..MAX_FILE_BYTES) return null
         val json = runCatching { JSONObject(file.readText(Charsets.UTF_8)) }
             .onFailure { runCatching { file.delete() } }
-            .getOrNull() ?: return emptyList()
-        val rows = json.optJSONArray("rows") ?: JSONArray()
-        return buildList {
-            for (index in 0 until rows.length()) {
-                val row = rows.optJSONObject(index) ?: continue
+            .getOrNull() ?: return null
+        val source = json.optJSONArray("rows") ?: JSONArray()
+        val rows = buildList {
+            for (index in 0 until source.length()) {
+                val row = source.optJSONObject(index) ?: continue
                 val shopId = row.optString("shopId")
                 if (shopId.isBlank()) continue
                 add(
@@ -37,6 +43,8 @@ internal class CustomerPromotionCache(context: Context) {
                 )
             }
         }
+        val age = System.currentTimeMillis() - file.lastModified()
+        return CachedCustomerPromotions(rows = rows, fresh = age in 0L..FRESH_MS)
     }
 
     fun write(rows: List<CustomerPromotion>) {
