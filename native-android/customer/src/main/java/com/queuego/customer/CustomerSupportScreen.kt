@@ -177,6 +177,13 @@ fun CustomerSupportScreen(
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(supportStatus(ticket.status), color = QgMuted)
+                        ticket.createdAt?.takeIf { it.isNotBlank() }?.let { createdAt ->
+                            Text(
+                                customerThaiDateTime(createdAt),
+                                color = QgMuted,
+                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall
+                            )
+                        }
                         Spacer(Modifier.height(4.dp))
                         Text(ticket.details)
                         if (!ticket.adminNote.isNullOrBlank()) {

@@ -205,7 +205,7 @@ fun CustomerNotificationsScreen(
                         }
                         if (!n.createdAt.isNullOrBlank()) {
                             Spacer(Modifier.height(5.dp))
-                            Text(customerNotificationDate(n.createdAt!!), color = QgMuted, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
+                            Text(customerThaiDateTime(n.createdAt!!), color = QgMuted, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -218,7 +218,7 @@ fun CustomerNotificationsScreen(
 
 
 
-private fun customerNotificationDate(value: String): String = runCatching {
+internal fun customerThaiDateTime(value: String): String = runCatching {
     DateTimeFormatter.ofPattern("d/M/yyyy HH:mm:ss", Locale.forLanguageTag("th-TH"))
         .withChronology(ThaiBuddhistChronology.INSTANCE)
         .withZone(ZoneId.of("Asia/Bangkok"))

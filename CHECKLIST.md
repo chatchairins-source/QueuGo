@@ -1962,3 +1962,9 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Added a source guard for the Web-aligned timestamp and retained the previous title/message order-number normalization. Local `node tests/native-android-source.cjs`: 405 checks PASS; `git diff --check` PASS.
 - Previous exact-head Native Pilot `40479861625` completed regression/source checks and has reached Tracking coordinate and terminal-state JVM tests; exact-head Map Engine `40479861694` was queued. Latest published HEAD `6a9012914873d5dce1aa998ad69e3611decdbf16` has Native Pilot `40480117757` and Map Engine `40480117472` pending. No failures reported.
 - **NEXT:** publish the timestamp parity delta and inspect its exact-head Native Pilot + Map Engine. Continue from the first confirmed failure and the remaining Customer parity checklist.
+
+## 2026-10-27 Customer Support ticket timestamp parity — source checkpoint; exact-head CI NEXT
+- Extended the Thai timestamp formatter introduced for Customer Notifications to the Native Support ticket history. Production Web displays each ticket's `created_at` under its status; Native now does the same with Thai Buddhist year, seconds and Bangkok time while retaining a raw-value fallback.
+- Updated the Customer source contract for both notification and support timestamp usage. Local `node tests/native-android-source.cjs`: 405 checks PASS; `git diff --check` PASS.
+- Predecessor Native Pilot `40480117757` and Map Engine `40480117472` are still pending/in progress, without a reported failure. Latest published HEAD before this delta was `ead21d9cb49d3784dc6c320f285f22704919a574`, exact Native run `40480268978` and Map run `40480269102` pending.
+- **NEXT:** publish this bounded parity delta and inspect exact-head Native Pilot + Map Engine. Continue the Customer parity matrix and preserve actual authenticated screenshot/device gates.
