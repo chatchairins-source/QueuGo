@@ -11,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -103,19 +102,7 @@ internal fun MerchantGroceryCatalogScreen(
                 OutlinedButton(onClick = onRetry, enabled = !loading && !busy) { Text("ลองโหลดอีกครั้ง") }
             }
 
-            if (loading) {
-                Row(
-                    Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text("กำลังโหลดแคตตาล็อก…", color = QgMuted, fontSize = 10.sp)
-                }
-            } else {
-                Spacer(Modifier.height(10.dp))
-            }
+            Spacer(Modifier.height(10.dp))
         }
 
         if (!loading && error == null && items.isEmpty()) {
