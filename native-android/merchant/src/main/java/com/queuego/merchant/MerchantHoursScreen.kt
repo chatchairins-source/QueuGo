@@ -107,81 +107,75 @@ internal fun MerchantHoursScreen(
             }
         }
 
-        if (loading) {
-            Box(
-                Modifier.fillMaxWidth().height(140.dp),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
-        } else {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Color.White, RoundedCornerShape(16.dp))
-                    .border(1.dp, QgLine, RoundedCornerShape(16.dp))
-                    .padding(12.dp)
-            ) {
-                days.forEach { day ->
-                    MerchantHoursDayRow(
-                        name = merchantDayNames.getOrElse(day.weekday) { "วัน" },
-                        value = day,
-                        onChange = { changed ->
-                            days = days.map { if (it.weekday == changed.weekday) changed else it }
-                        }
-                    )
-                    if (day.weekday != 6) {
-                        Spacer(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(QgLine)
-                        )
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(16.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+                .padding(12.dp)
+        ) {
+            days.forEach { day ->
+                MerchantHoursDayRow(
+                    name = merchantDayNames.getOrElse(day.weekday) { "วัน" },
+                    value = day,
+                    onChange = { changed ->
+                        days = days.map { if (it.weekday == changed.weekday) changed else it }
                     }
-                }
-
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    "วันหยุดหรือเวลาพิเศษ",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.ExtraBold
                 )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = specialDay,
-                    onValueChange = { specialDay = it.take(10) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("วันที่ YYYY-MM-DD") },
-                    singleLine = true
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = specialClosed,
-                        onCheckedChange = { specialClosed = it }
-                    )
-                    Text("ปิดทั้งวัน", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = specialOpen,
-                        onValueChange = { specialOpen = it.take(5) },
-                        modifier = Modifier.weight(1f),
-                        enabled = !specialClosed,
-                        label = { Text("เปิด") },
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = specialClose,
-                        onValueChange = { specialClose = it.take(5) },
-                        modifier = Modifier.weight(1f),
-                        enabled = !specialClosed,
-                        label = { Text("ปิด") },
-                        singleLine = true
+                if (day.weekday != 6) {
+                    Spacer(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(QgLine)
                     )
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "วันหยุดหรือเวลาพิเศษ",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = specialDay,
+                onValueChange = { specialDay = it.take(10) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("วันที่ YYYY-MM-DD") },
+                singleLine = true
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = specialClosed,
+                    onCheckedChange = { specialClosed = it }
+                )
+                Text("ปิดทั้งวัน", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = specialOpen,
+                    onValueChange = { specialOpen = it.take(5) },
+                    modifier = Modifier.weight(1f),
+                    enabled = !specialClosed,
+                    label = { Text("เปิด") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = specialClose,
+                    onValueChange = { specialClose = it.take(5) },
+                    modifier = Modifier.weight(1f),
+                    enabled = !specialClosed,
+                    label = { Text("ปิด") },
+                    singleLine = true
+                )
+            }
         }
+
 
         if (!message.isNullOrBlank()) {
             Text(
