@@ -1,3 +1,10 @@
+## 2026-10-27 Checkout parity guard correction — regression source fix; exact-head CI NEXT
+
+- Parent Native source included `e0fcd4009d7b1e02ae642a33d97c82ade42d5e34`, which removed the extra Checkout Places field while retaining Places in the dedicated Customer Location Picker.
+- Exact Native Pilot push `40472155179` reached Full QueueGo regression and failed at `tests/native-android-source.cjs:193`: the new assertion referenced `customerLocationPicker` before its later declaration. Earlier regression contracts passed; no APK or Kotlin source failure was reached.
+- Corrected the guard to read `CustomerLocationPicker.kt` inline at the assertion site. This preserves the check that Checkout has no Places panel and the dedicated picker keeps it. No product logic change in this correction.
+- **NEXT:** inspect exact-head Native Pilot Full QueueGo regression first; if green, continue Kotlin/JVM, APK, packaging and emulator gates. Customer authenticated screenshot and physical-device status remain open.
+
 ## 2026-10-27 Customer Checkout Web parity — source checkpoint; exact-head CI NEXT
 
 - Parent Native successor HEAD: `e0fcd4009d7b1e02ae642a33d97c82ade42d5e34`; PR #730 remains open/draft; Production Web remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
