@@ -143,13 +143,22 @@ class NavigationRouteCoordinatorTest {
         assertEquals(customer.id, rerouted.mapState.routes.last().toStopId)
         assertEquals("future-dropoff", rerouted.mapState.routes.last().id)
 
+        // The replacement route starts at the rider's current GPS fix. Move to a
+        // point away from that new leg before asserting another off-route reroute.
+        val offReplacementRouteState = rerouted.mapState.copy(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(12.9960, 100.0070),
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 6f
+            )
+        )
         now += 3_000L
-        val withinCooldown = coordinator.synchronize(offRouteState)
+        val withinCooldown = coordinator.synchronize(offReplacementRouteState)
         assertEquals(2, provider.calls.size)
         assertFalse(withinCooldown.rerouted)
 
         now += 17_000L
-        val cooldownElapsed = coordinator.synchronize(offRouteState)
+        val cooldownElapsed = coordinator.synchronize(offReplacementRouteState)
         assertEquals(3, provider.calls.size)
         assertTrue(cooldownElapsed.rerouted)
     }
