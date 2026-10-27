@@ -89,11 +89,14 @@ fun LaundryNativeScreen(
         catalogFailed = false
         checkoutPending = withContext(Dispatchers.IO) { journal.hasPending() }
 
-        if (catalogReload == 0 && catalog == null) {
-            val cached = withContext(Dispatchers.IO) { contentCache.read() }
-            if (cached != null) {
-                catalog = cached
-                loading = false
+        val cached = if (catalogReload == 0 && catalog == null) {
+            withContext(Dispatchers.IO) { contentCache.read() }
+        } else null
+        if (cached != null) {
+            catalog = cached.value
+            loading = false
+            if (cached.fresh) {
+                return@LaunchedEffect
             }
         }
 
