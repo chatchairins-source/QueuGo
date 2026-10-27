@@ -129,14 +129,23 @@ class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         ticketId: String,
         orderId: String?,
         category: String,
-        details: String
+        details: String,
+        evidencePath: String? = null
     ) {
+        val existing = http.array(
+            http.get(
+                "qg_support_tickets?select=id&user_id=eq." + http.enc(auth.user.id) +
+                    "&id=eq." + http.enc(ticketId) + "&limit=1",
+                auth.session.accessToken
+            )
+        )
+        if (existing.length() > 0) return
         val body = JSONObject()
             .put("p_ticket_id", ticketId)
             .put("p_order_id", orderId ?: JSONObject.NULL)
             .put("p_category", category)
             .put("p_details", details.trim())
-            .put("p_evidence_path", JSONObject.NULL)
+            .put("p_evidence_path", evidencePath ?: JSONObject.NULL)
         val raw = http.rpc("qg_create_ticket", auth.session.accessToken, body)
         val confirmed = when (raw) {
             is String -> raw

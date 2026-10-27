@@ -243,6 +243,17 @@ ok(
     customerSupportScreenSource.lastIndexOf('message = "ส่งเรื่องให้ทีม QueueGo แล้ว"'),
   'Customer Support history must cache and open account-owned evidence with a signed URL while preserving submit feedback after forced refresh'
 );
+ok(
+  customerSupportScreenSource.includes('ActivityResultContracts.OpenDocument()') &&
+  customerSupportScreenSource.includes('evidenceApi.uploadEvidence(') &&
+  customerSupportScreenSource.includes('pendingTicketId ?: UUID.randomUUID().toString()') &&
+  customerSupportScreenSource.includes('orders.take(30)') &&
+  read('customer/src/main/java/com/queuego/customer/CustomerExtras.kt').includes('"p_evidence_path", evidencePath ?: JSONObject.NULL') &&
+  read('customer/src/main/java/com/queuego/customer/CustomerExtras.kt').includes('qg_support_tickets?select=id&user_id=eq.') &&
+  customerSupportScreenSource.includes('"rider" to "ติดต่อเกี่ยวกับไรเดอร์"') &&
+  customerSupportScreenSource.includes('"merchant" to "ติดต่อเกี่ยวกับร้าน"'),
+  'Customer Support submit must match Web optional evidence upload, 30-order selector and same-ticket retry check'
+);
 ok(source.includes('qg_customer_order_context')&&source.includes('CustomerTrackingRider'),'Customer native tracking must use production order context');
 const customerTrackingScreen=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
 ok((source.includes('"order" -> CustomerOrderTrackingScreen')||(source.includes('selectedOrder?.fulfillmentVertical == "ride"')&&source.includes('else CustomerOrderTrackingScreen(')))&&customerTrackingScreen.includes('"สถานะล่าสุด"')&&customerTrackingScreen.includes('"ส่งไปที่"')&&customerTrackingScreen.includes('CustomerTrackingProgress(stage)')&&customerTrackingScreen.includes('"Rider ของคุณ"')&&customerTrackingScreen.includes('"รายการสินค้า"')&&customerTrackingScreen.includes('"ยอดรวม"'),'Customer native tracking must preserve Production order-detail hierarchy');

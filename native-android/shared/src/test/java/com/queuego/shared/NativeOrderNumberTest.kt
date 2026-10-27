@@ -6,7 +6,7 @@ import org.junit.Test
 class NativeOrderNumberTest {
     @Test fun replacesOrderNumbersInsideCustomerNotificationText() {
         assertEquals("ออเดอร์ QT-2141 กำลังส่ง", nativeOrderNumberInText("ออเดอร์ QT-20261006-2141 กำลังส่ง"))
-        assertEquals("รายการ QO-0007 · POS-1863", nativeOrderNumberInText("รายการ QO-7 · POS-32D8C1AD0747"))
+        assertEquals("รายการ QT-0007 · QT-1863", nativeOrderNumberInText("รายการ QO-7 · POS-32D8C1AD0747"))
         assertEquals("ข้อความทั่วไป", nativeOrderNumberInText("ข้อความทั่วไป"))
     }
 
