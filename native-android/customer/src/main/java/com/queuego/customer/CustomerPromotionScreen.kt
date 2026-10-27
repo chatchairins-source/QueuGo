@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgCard
@@ -27,6 +28,8 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QueueGoNativeApi
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal data class CustomerPromotion(
     val shopId: String,
@@ -64,19 +67,32 @@ internal fun CustomerPromotionScreen(
     onOpenShop: (String) -> Unit
 ) {
     val api = remember { CustomerPromotionApi() }
+    val context = LocalContext.current
+    val cache = remember(context.applicationContext) {
+        CustomerPromotionCache(context.applicationContext)
+    }
     var loading by remember { mutableStateOf(true) }
     var rows by remember { mutableStateOf<List<CustomerPromotion>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        loading = true
+        loading = rows.isEmpty()
+        if (rows.isEmpty()) {
+            val cached = withContext(Dispatchers.IO) { cache.read() }
+            if (cached.isNotEmpty()) {
+                rows = cached
+                loading = false
+            }
+        }
         try {
-            rows = api.publicPromotions()
+            val fresh = api.publicPromotions()
+            rows = fresh
+            withContext(Dispatchers.IO) { cache.write(fresh) }
             error = null
         } catch (failure: CancellationException) {
             throw failure
         } catch (failure: Exception) {
-            error = failure.message ?: "โหลดโปรโมชั่นไม่สำเร็จ"
+            if (rows.isEmpty()) error = failure.message ?: "โหลดโปรโมชั่นไม่สำเร็จ"
         } finally {
             loading = false
         }
