@@ -1,0 +1,126 @@
+name: Publish QueueGo Android device-test APK links e35b0bf
+on:
+  push:
+    branches: [work-native-test-apk-link-e35b0bf-20261027]
+    paths: [.github/workflows/publish-native-test-apks-e35b0bf.yml]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: queuego-device-test-links-20261027-e35b0bf
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: chatchairins-source/QueuGo
+      SOURCE_SHA: e35b0bff819fd015e5624fb91c8e18d53919c402
+      PILOT_RUN: '40532384468'
+      MAP_RUN: '40532384381'
+      ARTIFACT_ID: '12746054865'
+      ARTIFACT_SHA256: 3a8c3458181b8bc9effe7270edf5750b35b8a68fe7d9fcfc6985d8c71975cb40
+      RELEASE_TAG: android-device-test-20261027-e35b0bf
+    steps:
+      - name: Require successful exact-head Native Pilot and Map Engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/$PILOT_RUN" > pilot.json
+          jq -e --arg source "$SOURCE_SHA" '.head_sha == $source and .status == "completed" and .conclusion == "success"' pilot.json
+
+          gh api "repos/$GH_REPO/actions/runs/$MAP_RUN" > map.json
+          jq -e --arg source "$SOURCE_SHA" '.head_sha == $source and .status == "completed" and .conclusion == "success"' map.json
+
+          gh api "repos/$GH_REPO/actions/artifacts/$ARTIFACT_ID" > artifact.json
+          jq -e --arg source "$SOURCE_SHA" --arg digest "sha256:$ARTIFACT_SHA256" --argjson run "$PILOT_RUN" \
+            '.expired == false and .workflow_run.head_sha == $source and .workflow_run.id == $run and .name == "queuego-native-pilot-apks" and .digest == $digest' artifact.json
+
+      - name: Download and verify exact tested APK artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/artifacts/$ARTIFACT_ID/zip" > native.zip
+          echo "$ARTIFACT_SHA256  native.zip" | sha256sum -c -
+          unzip -q native.zip -d extracted
+
+          mkdir -p bundle
+          customer="$(find extracted -type f -name customer-debug.apk -print -quit)"
+          merchant="$(find extracted -type f -name merchant-debug.apk -print -quit)"
+          rider="$(find extracted -type f -name rider-debug.apk -print -quit)"
+          test -f "$customer"
+          test -f "$merchant"
+          test -f "$rider"
+
+          cp "$customer" bundle/QueueGo-Customer-e35b0bf.apk
+          cp "$merchant" bundle/QueueGo-Merchant-e35b0bf.apk
+          cp "$rider" bundle/QueueGo-Rider-e35b0bf.apk
+
+          signer="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$signer"
+          for apk in bundle/*.apk; do
+            "$signer" verify --verbose --print-certs "$apk" >> bundle/APK-SIGNATURES.txt
+          done
+
+          (cd bundle && sha256sum *.apk > SHA256SUMS.txt)
+          cat > bundle/README.txt <<'README'
+          QueueGo Android device-test APKs — 27 October 2026
+
+          Customer: QueueGo-Customer-e35b0bf.apk
+          Merchant: QueueGo-Merchant-e35b0bf.apk
+          Rider: QueueGo-Rider-e35b0bf.apk
+
+          Exact APKs from Native Pilot run 40532384468.
+          Exact Map Engine run 40532384381.
+          Exact source: e35b0bff819fd015e5624fb91c8e18d53919c402
+
+          Native regression, Kotlin/JUnit, three-APK build, 16 KB packaging,
+          Reject WebView, Android emulator lifecycle and Map Engine gates passed.
+
+          These are debug-signed device-test builds, not Play Store release builds.
+          README
+
+          (cd bundle && zip -q ../QueueGo-All-Apps-e35b0bf.zip *.apk README.txt SHA256SUMS.txt APK-SIGNATURES.txt)
+          sha256sum QueueGo-All-Apps-e35b0bf.zip > QueueGo-All-Apps-e35b0bf.zip.sha256
+
+      - name: Publish public direct download links
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing to overwrite." >&2
+            exit 1
+          fi
+
+          cat > notes.md <<'NOTES'
+          QueueGo Android device-test builds after the 27 October parity batch.
+
+          Exact source: e35b0bff819fd015e5624fb91c8e18d53919c402
+          Native Pilot: 40532384468 — SUCCESS
+          Map Engine: 40532384381 — SUCCESS
+          Artifact: 12746054865
+
+          Included fixes cover the owner-reported Android parity batch: tap-to-select map locations,
+          Rider navigation/follow controls, Merchant preparation countdown/progress/back behavior,
+          Rider primary CTA color, Customer Ride map-first layout, stale Customer success banner,
+          Merchant POS parity surfaces and Merchant Catalog reference images.
+
+          The APKs are copied byte-for-byte from the verified CI artifact and are not rebuilt here.
+
+          These are debug-signed testing builds, not Play Store release builds. Physical-device
+          visual/road acceptance remains the final owner test.
+          NOTES
+
+          gh release create "$RELEASE_TAG" \
+            bundle/QueueGo-Customer-e35b0bf.apk \
+            bundle/QueueGo-Merchant-e35b0bf.apk \
+            bundle/QueueGo-Rider-e35b0bf.apk \
+            bundle/SHA256SUMS.txt \
+            QueueGo-All-Apps-e35b0bf.zip \
+            QueueGo-All-Apps-e35b0bf.zip.sha256 \
+            --target "$SOURCE_SHA" \
+            --prerelease \
+            --title "QueueGo Android device test — 2026-10-27 — e35b0bf" \
+            --notes-file notes.md
