@@ -558,7 +558,7 @@ private fun MerchantShell(
         } catch (failure: kotlinx.coroutines.CancellationException) {
             throw failure
         } catch (_: Exception) {
-            message = "กำลังเชื่อมต่อเพื่อเปิดรายการจากการแจ้งเตือน"
+            message = null
             delay(3_000)
             pushRetrySignal += 1
         }
@@ -584,13 +584,13 @@ private fun MerchantShell(
                     // Initial refreshAll + Realtime join already establish current state.
                     // Match Web's bounded fallback cadence instead of re-downloading
                     // the complete Merchant order snapshot every three seconds.
-                    delay(8_000)
+                    delay(15_000)
                     refreshOrders()
                 }
             } else if (screen == "notifications") {
                 while (true) {
                     refreshNotifications()
-                    delay(10_000)
+                    delay(30_000)
                 }
             }
         }
