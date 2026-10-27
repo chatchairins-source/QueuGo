@@ -32,6 +32,7 @@ internal class CustomerContentCache(context: Context) {
         private const val MAX_GROCERY_CATEGORY_LENGTH = 100
         private const val PRODUCT_FRESH_MS = 60L * 1000L
         private const val GROCERY_CATEGORY_FRESH_MS = 10L * 60L * 1000L
+        private const val MARKET_FRESH_MS = 60L * 1000L
     }
 
     private val root = File(context.noBackupFilesDir, "customer_content_cache_v1").also {
@@ -133,6 +134,9 @@ internal class CustomerContentCache(context: Context) {
             .put("catalog", JSONArray().also { array -> catalog.forEach { array.put(it.toJson()) } })
         writeJson(File(root, "market.json"), json)
     }
+
+    fun marketFresh(): Boolean =
+        isFresh(File(root, "market.json"), MARKET_FRESH_MS)
 
     private fun productFile(shopId: String): File =
         File(root, "products_" + sha256(shopId) + ".json")
