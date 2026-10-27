@@ -57,21 +57,25 @@ internal fun MerchantMarketCatalogScreen(
     }
     LaunchedEffect(auth.user.id, shop.id, auth.session.accessToken) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            val cached = withContext(Dispatchers.IO) {
-                contentCache.readMarketCatalogCategories(auth.user.id, shop.id)
+            val cachedState = withContext(Dispatchers.IO) {
+                contentCache.readMarketCatalogCategories(auth.user.id, shop.id) to
+                    contentCache.marketCatalogCategoriesFresh(auth.user.id, shop.id)
             }
+            val cached = cachedState.first
             if (cached.isNotEmpty()) categories = cached
-            try {
-                val fresh = api.marketCatalogCategories(auth).map { it.trim() }
-                    .filter { it.isNotEmpty() }.distinct().take(200)
-                categories = fresh
-                withContext(Dispatchers.IO) {
-                    contentCache.writeMarketCatalogCategories(auth.user.id, shop.id, fresh)
+            if (!cachedState.second) {
+                try {
+                    val fresh = api.marketCatalogCategories(auth).map { it.trim() }
+                        .filter { it.isNotEmpty() }.distinct().take(200)
+                    categories = fresh
+                    withContext(Dispatchers.IO) {
+                        contentCache.writeMarketCatalogCategories(auth.user.id, shop.id, fresh)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Keep the cached reference list visible while the catalog page refreshes.
                 }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                // Keep the cached reference list visible while the catalog page refreshes.
             }
             awaitCancellation()
         }
