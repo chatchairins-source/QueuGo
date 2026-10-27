@@ -1,3 +1,9 @@
+## 2026-10-28 Three-APK exact-source public device-test delivery — IN PROGRESS
+
+- Exact source `e35b0bff819fd015e5624fb91c8e18d53919c402` passed Native Pilot push run `40532373938` and PR run `40532384468` including regression, Kotlin/JUnit, Customer/Merchant/Rider APK build, 16 KB package checks, and emulator lifecycle. Artifact `12747471350`, ZIP SHA-256 `05c9c35422b5f03d0a3d21937a039869059e330850b049bd76b7d4db0b6557e8`, has been downloaded, ZIP CRC-tested, and all three APKs extracted with distinct SHA-256 hashes.
+- Added a fail-closed, one-off public **device-test** publisher for exact existing APK bytes, requiring successful source run and artifact digest plus per-APK `apksigner verify` before publishing individual downloadable assets under prerelease tag `android-device-test-20261028-e35b0bff`. Does not modify Production/backend or relax certified release gates.
+- **NEXT:** inspect the publisher Actions job, verify real public HTTPS release asset URLs; do not claim Production parity without owner physical testing and authenticated screenshots.
+
 ## 2026-10-27 Merchant countdown Kotlin compile fix
 
 - Exact-head Android unit gate exposed a missing Compose runtime import after the stable preparation fallback timer was added. `mutableLongStateOf` was used by Merchant order detail but not imported; the remaining timer/signature compiler messages were cascades from that unresolved state type.
