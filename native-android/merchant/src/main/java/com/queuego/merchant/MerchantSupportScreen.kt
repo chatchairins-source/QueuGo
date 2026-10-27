@@ -105,10 +105,10 @@ private fun MerchantSupportRoom(auth: NativeAuth, onBack: () -> Unit) {
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            if (loading) {
-                Text("กำลังโหลดข้อความ...", color = QgMuted)
-            } else if (messages.isEmpty() && error.isNullOrBlank()) {
-                Text("ยังไม่มีข้อความ เริ่มพิมพ์ถึงทีม QueueGo ด้านล่างได้เลย", color = QgMuted)
+            if (messages.isEmpty()) {
+                if (!loading && error.isNullOrBlank()) {
+                    Text("ยังไม่มีข้อความ เริ่มพิมพ์ถึงทีม QueueGo ด้านล่างได้เลย", color = QgMuted)
+                }
             } else {
                 messages.forEach { message ->
                     val mine = message.senderUserId == auth.user.id
