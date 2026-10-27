@@ -33,16 +33,32 @@ internal fun RiderBenefitsCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val cache = remember(context.applicationContext) {
+        RiderBenefitsCache(context.applicationContext)
+    }
     var benefits by remember(auth.user.id) { mutableStateOf<List<RiderBenefit>>(emptyList()) }
     var loaded by remember(auth.user.id) { mutableStateOf(false) }
 
     LaunchedEffect(auth.user.id, auth.session.accessToken) {
+        if (benefits.isEmpty()) {
+            val cached = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                cache.read(auth.user.id)
+            }
+            if (cached.isNotEmpty()) {
+                benefits = cached
+                loaded = true
+            }
+        }
         try {
-            benefits = api.benefits(auth)
+            val fresh = api.benefits(auth)
+            benefits = fresh
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                cache.write(auth.user.id, fresh)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            benefits = emptyList()
+            // Keep the cached/current rows visible on transient refresh failure.
         } finally {
             loaded = true
         }
