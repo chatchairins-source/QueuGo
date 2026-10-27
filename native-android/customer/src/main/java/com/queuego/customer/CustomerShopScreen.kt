@@ -235,13 +235,13 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
         val cachedReviews = withContext(Dispatchers.IO) { reviewCache.read(shop.id) }
         if (cachedReviews != null) reviews = cachedReviews.value
 
-        var failed = false
         try {
             favorites = if (auth == null) emptyList() else api.favorites(auth)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            failed = true
+            // Favorites are independent account state. A transient favorites read must
+            // not mark an already-cached public review section as failed.
         }
 
         if (cachedReviews?.fresh != true || reload > 0) {
@@ -252,10 +252,9 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                if (reviews == null) failed = true
+                if (reviews == null) loadError = true
             }
         }
-        loadError = failed
     }
     fun favorite(kind: String, id: String) {
         val liveAuth = auth
