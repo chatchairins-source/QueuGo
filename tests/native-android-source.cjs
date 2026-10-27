@@ -1005,6 +1005,16 @@ ok(
   'Rider Profile must keep the current Web core section order and collapse Native-only tools below it'
 );
 ok(riderSupport.includes('qg_support_tickets?select=id,category,details,status,order_id,created_at,admin_note,evidence_path')&&riderSupport.includes('"qg_create_ticket"')&&riderSupport.includes('/storage/v1/object/qg-evidence/')&&riderSupport.includes('/storage/v1/object/sign/qg-evidence/')&&riderSupport.includes('"expiresIn", 300')&&riderSupport.includes('"ดูหลักฐาน"'),'Rider native support must reuse Production ticket RPC/table, private evidence bucket and signed evidence viewer');
+ok(
+  sharedTicketCacheSource.includes('FRESH_MS = 60L * 1000L') &&
+  riderSupport.includes('NativeSupportTicketCache(context.applicationContext, "rider")') &&
+  riderSupport.includes('cache.read(auth.user.id)') &&
+  riderSupport.includes('if (cached.fresh)') &&
+  riderSupport.includes('cache.invalidate(auth.user.id)') &&
+  riderSupport.includes('refresh(force = true)') &&
+  riderSupport.includes('cache.write(auth.user.id, fresh.map { it.toNativeSupportTicket() })'),
+  'Rider support history must reuse fresh shared cache while new-ticket refresh stays server-authoritative'
+);
 ok(riderApi.includes('qg_rider_cash_ledger')&&riderApi.includes('/rest/v1/users?auth_user_id=eq.')&&riderApi.includes('/rest/v1/rider_profiles?user_id=eq.'),'Rider native profile and earnings must reuse Production ownership APIs');
 ok(nativeRootGradle.includes('com.google.gms.google-services')&&gradle.includes('com.google.firebase:firebase-bom:35.0.0')&&gradle.includes('com.google.firebase:firebase-messaging'),'Rider native must compile with current Firebase Messaging transport');
 ok(riderManifest.includes('.QueueGoRiderMessagingService')&&riderManifest.includes('com.google.firebase.MESSAGING_EVENT')&&riderManifest.includes('queuego_orders'),'Rider native manifest must register FCM service and order channel');
