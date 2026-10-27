@@ -1,10 +1,11 @@
-## 2026-10-27 Customer Profile contact parity — source checkpoint; exact Pilot NEXT
+## 2026-10-27 Customer Profile contact parity — source/test/Pilot PASS; authenticated recapture NEXT
 
 - Repository source of truth is `origin/main` `7e036a0735cc49905e9b0a2434492470551a0c9d`, open/draft PR #730, newest Native successor `6de3a93eb92a304ea9eb574aea17247339ac9ccd`. Exact PR/push Native Pilot (`40439224823`, `40439220389`) and Map Engine (`40439224755`) completed SUCCESS on that prior head.
 - Web Profile displays `phone || email`. Production `public.users` has `phone` and no `email`; Native reuses the own-user `phone` read plus authenticated Supabase Auth email fallback. No new backend call, schema, mutation or authority. Customer phone/email are persisted only within the existing encrypted role session; synthetic `@auth.queuetech.local` is hidden.
-- Source changes cover Customer Profile contact UI, Auth model/read, encrypted session persistence, and focused precedence/blank/synthetic-email JVM tests. Local source guard passes 358 checks and `git diff --check` passes. Hosted Kotlin/APK/runtime validation is NEXT.
+- Source commit `de32099c8c540b6fb22dfd1632ef2871048529fc` covers Customer Profile contact UI, Auth model/read, encrypted session persistence, and focused precedence/blank/synthetic-email JVM tests. Local source guard passes 358 checks and `git diff --check` passes. Exact-head PR/push Native Pilot `40441166424`/`40441160644` and Map Engine `40441166419` all completed SUCCESS, including Kotlin/JVM, three APKs, 16 KB, WebView rejection and emulator lifecycle. No physical-device claim.
 - Customer screenshot acceptance remains blocked by missing `QG_CUSTOMER_REVIEW_PHONE` and `QG_CUSTOMER_REVIEW_PASSWORD`; readiness-only is not visual acceptance. Physical-device acceptance is not claimed.
-- **NEXT:** commit this bounded change and docs on the newest successor, then run exact-head Pilot/Map Engine; trigger `[authenticated-review]` after the source Pilot is green, inspect Rider/Merchant screenshots and continue other unblocked source audits.
+- Readiness-only review `40441160801` succeeded on `de32099c` with capture skipped because no marker was present. Customer review remains blocked by absent `QG_CUSTOMER_REVIEW_PHONE`/`QG_CUSTOMER_REVIEW_PASSWORD`.
+- **NEXT:** publish a docs-only `[authenticated-review]` marker checkpoint on `de32099c`; inspect that exact-head Pilot and Rider/Merchant artifacts, then continue unblocked Customer source parity.
 
 ## 2026-10-27 Customer Profile cleanup; latest Pilot and authenticated capture PASS
 
