@@ -54,6 +54,7 @@ fun MarketTripDetailScreen(
     val api = remember { CustomerMarketApi() }
     val scope = rememberCoroutineScope()
     var shops by remember(auth.user.id, trip.id) { mutableStateOf<List<MarketShop>>(emptyList()) }
+    var shopsLoaded by remember(auth.user.id, trip.id) { mutableStateOf(false) }
     var cancelling by remember { mutableStateOf(false) }
     var confirmCancel by remember { mutableStateOf(false) }
     var children by remember { mutableStateOf<List<MarketTripChild>>(emptyList()) }
@@ -73,7 +74,13 @@ fun MarketTripDetailScreen(
                     else {
                         current = fresh
                         children = api.tripChildren(auth, trip.id)
-                        shops = api.loadShops(auth)
+                        if (!shopsLoaded) {
+                            runCatching { api.loadShops(auth) }
+                                .onSuccess {
+                                    shops = it
+                                    shopsLoaded = true
+                                }
+                        }
                         error = null
                     }
                 } catch (cancelled: CancellationException) { throw cancelled }
@@ -115,7 +122,7 @@ fun MarketTripDetailScreen(
             OutlinedButton(enabled = !cancelling && !trackingBusy, onClick = { confirmCancel = true }) { Text("ยกเลิก Market Trip") }
         }
         children.firstOrNull { it.status.lowercase() !in setOf("completed", "cancelled") }?.let { child ->
-            OutlinedButton(enabled = !cancelling && !trackingBusy, onClick = { onTrackChild(child.id) }) { Text(if (trackingBusy) "กำลังโหลดการติดตาม..." else "ติดตาม Rider / ติดต่อ") }
+            OutlinedButton(enabled = !cancelling && !trackingBusy, onClick = { onTrackChild(child.id) }) { Text("ติดตาม Rider / ติดต่อ") }
         }
         Spacer(Modifier.height(12.dp))
         QgCard(Modifier.fillMaxWidth()) {
@@ -134,7 +141,7 @@ fun MarketTripDetailScreen(
             Column {
                 Text("ร้านในทริป", fontWeight = FontWeight.ExtraBold)
                 if (children.isEmpty()) {
-                    Text(error ?: "กำลังโหลดร้านในทริป...", color = QgMuted)
+                    error?.let { Text(it, color = QgMuted) }
                 } else children.forEach { child ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                         Column(Modifier.weight(1f)) {
@@ -152,9 +159,9 @@ fun MarketTripDetailScreen(
         QgCard(Modifier.fillMaxWidth()) {
             Column {
                 Text("สรุปค่าใช้จ่าย", fontWeight = FontWeight.ExtraBold)
-                SpecialSummary("ค่าสินค้า", current.subtotal?.let(::specialMoney) ?: "รอโหลด")
-                SpecialSummary("ค่ารอบ/จัดส่ง", current.deliveryFee?.let(::specialMoney) ?: "รอโหลด")
-                SpecialSummary("ค่ารับหลายร้าน", current.multiShopFee?.let(::specialMoney) ?: "รอโหลด")
+                SpecialSummary("ค่าสินค้า", current.subtotal?.let(::specialMoney) ?: "—")
+                SpecialSummary("ค่ารอบ/จัดส่ง", current.deliveryFee?.let(::specialMoney) ?: "—")
+                SpecialSummary("ค่ารับหลายร้าน", current.multiShopFee?.let(::specialMoney) ?: "—")
                 SpecialSummary("รวม", specialMoney(current.total))
             }
         }
@@ -170,6 +177,7 @@ fun LaundryOrderDetailScreen(
 ) {
     val api = remember { CustomerLaundryApi() }
     var events by remember { mutableStateOf<List<LaundryEvent>>(emptyList()) }
+    var eventsLoaded by remember(auth.user.id, order.id) { mutableStateOf(false) }
     var current by remember(auth.user.id, order.id) { mutableStateOf(order) }
     var details by remember(auth.user.id, order.id) { mutableStateOf<LaundryOrderDetails?>(null) }
     var error by remember(auth.user.id, order.id) { mutableStateOf<String?>(null) }
@@ -185,9 +193,16 @@ fun LaundryOrderDetailScreen(
                     missing = fresh == null
                     if (fresh == null) { details = null; events = emptyList(); error = "ไม่พบงานฝากซักของบัญชีนี้" }
                     else {
+                        val previousStatus = current.status
                         current = fresh.summary
                         details = fresh
-                        events = api.events(auth, order.id)
+                        if (!eventsLoaded || fresh.summary.status != previousStatus) {
+                            runCatching { api.events(auth, order.id) }
+                                .onSuccess {
+                                    events = it
+                                    eventsLoaded = true
+                                }
+                        }
                         error = null
                     }
                 } catch (cancelled: CancellationException) { throw cancelled }
