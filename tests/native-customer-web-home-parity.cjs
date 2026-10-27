@@ -13,12 +13,28 @@ const nearbyCategories=blueprint.customer.home.nearby_shop_categories;
 assert.deepEqual(nearbyCategories,['food','cafe']);
 const tile=blueprint.customer.home.category_tile;
 assert.deepEqual(tile,{
-  tile_width_css_px:64,tile_width_native_dp:64,
-  gap_css_px:13,gap_native_dp:13,
-  circle_css_px:54,circle_native_dp:54,
-  icon_css_px:25,icon_native_dp:25,
-  label_font_css_px:10,label_font_native_sp:10,
+  tile_width_css_px:58,tile_width_native_dp:58,
+  gap_css_px:9,gap_native_dp:9,
+  circle_css_px:48,circle_native_dp:48,
+  icon_css_px:22,icon_native_dp:22,
+  label_font_css_px:9.5,label_font_native_sp:9.5,
   label_nowrap:true
+});
+const shopCard=blueprint.customer.home.shop_card;
+assert.deepEqual(shopCard,{
+  radius_css_px:16,radius_native_dp:16,
+  list_gap_css_px:7,list_gap_native_dp:7,
+  padding_css_px:8,padding_native_dp:8,
+  image_css_px:78,image_native_dp:78,
+  compact_image_css_px:72,compact_image_native_dp:72,
+  image_radius_css_px:13,image_radius_native_dp:13,
+  content_gap_css_px:9,content_gap_native_dp:9,
+  meta_gap_css_px:5,meta_gap_native_dp:5,
+  meta_font_css_px:10.5,meta_font_native_sp:10.5,
+  status_margin_top_css_px:5,status_margin_top_native_dp:5,
+  status_padding_horizontal_css_px:6,status_padding_horizontal_native_dp:6,
+  status_padding_vertical_css_px:3,status_padding_vertical_native_dp:3,
+  status_font_css_px:9.5,status_font_native_sp:9.5
 });
 
 const block=native.match(/private val homeCategories = listOf\(([\s\S]*?)\n\)/);
@@ -38,12 +54,24 @@ assert.ok(native.includes('"express" -> CustomerExpressScreen('),'Express capabi
 assert.ok(native.includes('"express" -> screen = "express"'),'Express routing must remain intact for existing entry points');
 const categoryFn=native.slice(native.indexOf('private fun CustomerCategoryButton('),native.indexOf('@Composable\nprivate fun CustomerBlueprintShopCard'));
 assert.ok(categoryFn.includes('.width(' + tile.tile_width_native_dp + '.dp)'),'Native category tile width must match Web Home');
-assert.ok(categoryFn.includes('horizontalArrangement = Arrangement.spacedBy(13.dp)')===false,'Category button owns width only; row gap remains in Customer Home');
+assert.ok(!categoryFn.includes('horizontalArrangement = Arrangement.spacedBy('),'Category button owns width only; row gap remains in Customer Home');
 assert.ok(native.includes('horizontalArrangement = Arrangement.spacedBy(' + tile.gap_native_dp + '.dp)'),'Native Home category gap must match Web Home');
 assert.ok(categoryFn.includes('.size(' + tile.circle_native_dp + '.dp)'),'Native category circle must match Web Home');
 assert.ok(categoryFn.includes('QgIcon(icon, Modifier.size(' + tile.icon_native_dp + '.dp), QgRed)'),'Native category icon must match Web Home');
 assert.ok(categoryFn.includes('fontSize = ' + tile.label_font_native_sp + '.sp'),'Native category label font must match Web Home');
 assert.ok(categoryFn.includes('maxLines = 1')&&categoryFn.includes('softWrap = false'),'Native category label must stay on one line like Web nowrap');
+
+const shopCardFn=native.slice(native.indexOf('private fun CustomerBlueprintShopCard('),native.indexOf('internal fun customerDistanceKm'));
+assert.ok(shopCardFn.includes('val radius = RoundedCornerShape(' + shopCard.radius_native_dp + '.dp)'),'Native Home shop card radius must match Web');
+assert.ok(shopCardFn.includes('.padding(bottom = ' + shopCard.list_gap_native_dp + '.dp)'),'Native Home shop list gap must match Web');
+assert.ok(shopCardFn.includes('.padding(' + shopCard.padding_native_dp + '.dp)'),'Native Home shop card padding must match Web');
+assert.ok(shopCardFn.includes('if (compact) Modifier.size(' + shopCard.compact_image_native_dp + '.dp) else Modifier.size(' + shopCard.image_native_dp + '.dp)'),'Native Home shop image size must match Web phone/desktop geometry');
+assert.ok(shopCardFn.includes('cornerRadius = ' + shopCard.image_radius_native_dp + '.dp'),'Native Home shop image radius must match Web');
+assert.ok(shopCardFn.includes('Spacer(Modifier.width(' + shopCard.content_gap_native_dp + '.dp))'),'Native Home shop image/copy gap must match Web');
+assert.ok(shopCardFn.includes('Arrangement.spacedBy(' + shopCard.meta_gap_native_dp + '.dp)'),'Native Home shop metadata gap must match Web');
+assert.equal((shopCardFn.match(/fontSize = 10\.5\.sp/g)||[]).length,2,'Native Home shop metadata font must match Web');
+assert.ok(shopCardFn.includes('.padding(horizontal = ' + shopCard.status_padding_horizontal_native_dp + '.dp, vertical = ' + shopCard.status_padding_vertical_native_dp + '.dp)'),'Native Home shop status pill padding must match Web');
+assert.ok(shopCardFn.includes('fontSize = ' + shopCard.status_font_native_sp + '.sp'),'Native Home shop status font must match Web');
 
 const guestSource=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerGuestShell.kt','utf8');
 
