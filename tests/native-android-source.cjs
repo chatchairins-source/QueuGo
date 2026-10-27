@@ -431,6 +431,8 @@ const silentRiderDestination=read('rider/src/main/java/com/queuego/rider/RiderMy
 const silentRiderPassengerLicense=read('rider/src/main/java/com/queuego/rider/RiderPassengerLicenseCard.kt');
 const silentCustomerShopping=read('customer/src/main/java/com/queuego/customer/CustomerShoppingScreen.kt');
 const silentCustomerPromotion=read('customer/src/main/java/com/queuego/customer/CustomerPromotionScreen.kt');
+const silentCustomerChat=read('customer/src/main/java/com/queuego/customer/CustomerChat.kt');
+const silentCustomerReview=read('customer/src/main/java/com/queuego/customer/CustomerReview.kt');
 const silentCustomerOrderTracking=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
 const silentCustomerRide=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
 const silentCustomerExpress=read('customer/src/main/java/com/queuego/customer/CustomerExpressScreen.kt');
@@ -484,6 +486,8 @@ ok(
   !customerTrackingMap.includes('กำลังโหลดตำแหน่งล่าสุด') &&
   !silentCustomerShopping.includes('"กำลังโหลดข้อมูล…"') &&
   !silentCustomerPromotion.includes('loading -> CircularProgressIndicator()') &&
+  !silentCustomerChat.includes('กำลังตรวจสอบสิทธิ์แชท') &&
+  !silentCustomerReview.includes('กำลังโหลดรีวิว') &&
   !silentCustomerOrderTracking.includes('"กำลังโหลดรายการ..."') &&
   !silentCustomerRide.includes('กำลังตรวจสถานะเที่ยวล่าสุด') &&
   !silentCustomerExpress.includes('กำลังตรวจสถานะ Express ล่าสุด') &&
