@@ -140,6 +140,13 @@ ok(
   'Shared chat images must release Bitmap memory when messages leave composition'
 );
 ok(
+  sharedChatImage.includes('context.noBackupFilesDir, "queuego_chat_images_v1"') &&
+  sharedChatImage.includes('readNativeChatImageCache(context, source) ?: run') &&
+  sharedChatImage.includes('writeNativeChatImageCache(context, source, it)') &&
+  !sharedChatImage.includes('else CircularProgressIndicator()'),
+  'Shared chat HTTPS images must reuse durable private cache and load without spinner chrome'
+);
+ok(
   merchantImageUploadForMemory.includes('inJustDecodeBounds = true') &&
   merchantImageUploadForMemory.includes('inSampleSize = sample') &&
   merchantImageUploadForMemory.indexOf('inJustDecodeBounds = true') <
@@ -410,6 +417,7 @@ const silentMerchantMarket=read('merchant/src/main/java/com/queuego/merchant/Mer
 const silentMerchantPos=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
 const silentRiderEarnings=read('rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt');
 const silentRiderMessages=read('rider/src/main/java/com/queuego/rider/RiderMessagesScreen.kt');
+const silentRiderNotifications=read('rider/src/main/java/com/queuego/rider/RiderNotificationCenter.kt');
 const silentRiderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
 const silentRiderSafety=read('rider/src/main/java/com/queuego/rider/RiderSafetyScreen.kt');
 const silentRiderBenefits=read('rider/src/main/java/com/queuego/rider/RiderBenefitsCard.kt');
@@ -455,6 +463,7 @@ ok(
   !silentMerchantPos.includes('if (report == null) {\n            CircularProgressIndicator()') &&
   !silentRiderEarnings.includes('กำลังโหลด') &&
   !silentRiderMessages.includes('กำลังโหลดข้อความ') &&
+  !silentRiderNotifications.includes('กำลังโหลดแจ้งเตือน') &&
   !silentRiderSupport.includes('Text("กำลังโหลด…", color = QgMuted') &&
   !silentRiderSafety.includes('!emergencyLoaded -> CircularProgressIndicator') &&
   !silentRiderSafety.includes('!fatigueLoaded -> CircularProgressIndicator') &&
