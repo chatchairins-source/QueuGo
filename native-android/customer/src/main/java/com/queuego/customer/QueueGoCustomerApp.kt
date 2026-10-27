@@ -1992,11 +1992,6 @@ private fun ProfileScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp, vertical = 4.dp)
     ) {
-        if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
-            "Customer", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
-            BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE
-        )
-
         CustomerProfileHero(auth.user.name)
 
         CustomerProfileSection("บัญชีและการใช้งาน") {

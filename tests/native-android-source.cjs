@@ -293,7 +293,8 @@ ok(
 );
 ok(
   !customerAppForMemory.includes('Text("QueueGo Production"') &&
-  !customerAppForMemory.includes('บัญชีนี้ใช้ Session และ RLS ของระบบจริง'),
+  !customerAppForMemory.includes('บัญชีนี้ใช้ Session และ RLS ของระบบจริง') &&
+  !customerAppForMemory.includes('if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo('),
   'Customer Profile must not expose internal Production/session/RLS implementation copy'
 );
 ok(
