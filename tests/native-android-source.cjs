@@ -129,6 +129,12 @@ ok(
   'Shared downloaded images must survive normal cache cleanup and must not expire every 24 hours'
 );
 ok(
+  merchantMainForExit.includes('Restore Merchant session silently.') &&
+  merchantMainForExit.includes('Box(Modifier.fillMaxSize())') &&
+  !merchantMainForExit.includes('Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {\n                CircularProgressIndicator()'),
+  'Merchant entry must restore the saved session without showing loading chrome'
+);
+ok(
   sharedChatImage.includes('DisposableEffect(bitmap)') &&
   sharedChatImage.includes('owned.recycle()'),
   'Shared chat images must release Bitmap memory when messages leave composition'
