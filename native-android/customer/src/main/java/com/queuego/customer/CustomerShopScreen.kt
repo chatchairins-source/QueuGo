@@ -33,8 +33,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private data class ShopFavorite(val id: String, val shop: String, val product: String)
-private data class ShopReview(val name: String, val rating: Int, val comment: String, val date: String)
-private data class ShopReviews(val count: Int, val average: Double, val items: List<ShopReview>)
+internal data class ShopReview(val name: String, val rating: Int, val comment: String, val date: String)
+internal data class ShopReviews(val count: Int, val average: Double, val items: List<ShopReview>)
 
 // These are the same table and RPC used by Production customer-features.js.
 private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
