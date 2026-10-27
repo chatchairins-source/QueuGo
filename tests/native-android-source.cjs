@@ -555,10 +555,12 @@ const customerContentCacheSource=read('customer/src/main/java/com/queuego/custom
 const customerShopReviewCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerShopReviewCache.kt');
 ok(
   customerPromotionCacheSource.includes('context.noBackupFilesDir, "customer_promotion_cache_v1"') &&
+  customerPromotionCacheSource.includes('FRESH_MS = 10L * 60L * 1000L') &&
   silentCustomerPromotion.includes('cache.read()') &&
+  silentCustomerPromotion.includes('if (cached.fresh)') &&
   silentCustomerPromotion.includes('cache.write(fresh)') &&
   silentCustomerPromotion.includes('if (rows.isEmpty()) error = failure.message'),
-  'Customer Promotions must render durable cached rows first and refresh in the background'
+  'Customer Promotions must render durable cached rows first and avoid repeated fresh downloads'
 );
 ok(
   !customerContentCacheSource.includes('readPromotions()') &&
