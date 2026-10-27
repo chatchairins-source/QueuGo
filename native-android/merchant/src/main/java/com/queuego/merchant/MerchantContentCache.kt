@@ -23,6 +23,7 @@ internal class MerchantContentCache(context: Context) {
         private const val MAX_TOTAL_BYTES = 72L * 1024L * 1024L
         private const val MAX_GROCERY_CATEGORIES = 200
         private const val MAX_GROCERY_CATEGORY_LENGTH = 100
+        private const val CATEGORY_FRESH_MS = 10L * 60L * 1000L
     }
 
     private val root = File(context.noBackupFilesDir, "merchant_content_cache_v1").also {
@@ -51,12 +52,15 @@ internal class MerchantContentCache(context: Context) {
         val existing = readJson(target)
         if (existing?.optJSONObject("shop")?.optString("id") == shop.id) {
             listOf(
-                "groceryCategoryShopId" to "groceryCategories",
-                "marketCatalogCategoryShopId" to "marketCatalogCategories"
-            ).forEach { (shopKey, categoriesKey) ->
+                Triple("groceryCategoryShopId", "groceryCategories", "groceryCategoriesUpdatedAt"),
+                Triple("marketCatalogCategoryShopId", "marketCatalogCategories", "marketCatalogCategoriesUpdatedAt")
+            ).forEach { (shopKey, categoriesKey, updatedAtKey) ->
                 if (existing.optString(shopKey) == shop.id) {
                     val values = existing.optJSONArray(categoriesKey)
-                    if (values != null) json.put(shopKey, shop.id).put(categoriesKey, values)
+                    if (values != null) {
+                        json.put(shopKey, shop.id).put(categoriesKey, values)
+                        existing.optLong(updatedAtKey, 0L).takeIf { it > 0L }?.let { json.put(updatedAtKey, it) }
+                    }
                 }
             }
         }
@@ -67,13 +71,21 @@ internal class MerchantContentCache(context: Context) {
         readCategoryReference(ownerId, shopId, "groceryCategoryShopId", "groceryCategories")
 
     fun writeGroceryCategories(ownerId: String, shopId: String, categories: List<String>) =
-        writeCategoryReference(ownerId, shopId, "groceryCategoryShopId", "groceryCategories", categories)
+        writeCategoryReference(ownerId, shopId, "groceryCategoryShopId", "groceryCategories",
+            "groceryCategoriesUpdatedAt", categories)
+
+    fun groceryCategoriesFresh(ownerId: String, shopId: String): Boolean =
+        categoryReferenceFresh(ownerId, shopId, "groceryCategoryShopId", "groceryCategoriesUpdatedAt")
 
     fun readMarketCatalogCategories(ownerId: String, shopId: String): List<String> =
         readCategoryReference(ownerId, shopId, "marketCatalogCategoryShopId", "marketCatalogCategories")
 
     fun writeMarketCatalogCategories(ownerId: String, shopId: String, categories: List<String>) =
-        writeCategoryReference(ownerId, shopId, "marketCatalogCategoryShopId", "marketCatalogCategories", categories)
+        writeCategoryReference(ownerId, shopId, "marketCatalogCategoryShopId", "marketCatalogCategories",
+            "marketCatalogCategoriesUpdatedAt", categories)
+
+    fun marketCatalogCategoriesFresh(ownerId: String, shopId: String): Boolean =
+        categoryReferenceFresh(ownerId, shopId, "marketCatalogCategoryShopId", "marketCatalogCategoriesUpdatedAt")
 
     private fun readCategoryReference(
         ownerId: String,
@@ -99,11 +111,27 @@ internal class MerchantContentCache(context: Context) {
     }
 
     @Synchronized
+    private fun categoryReferenceFresh(
+        ownerId: String,
+        shopId: String,
+        shopKey: String,
+        updatedAtKey: String
+    ): Boolean {
+        if (ownerId.isBlank() || shopId.isBlank()) return false
+        val json = readJson(fileFor(ownerId)) ?: return false
+        if (json.optString(shopKey) != shopId ||
+            json.optJSONObject("shop")?.optString("id") != shopId) return false
+        val updatedAt = json.optLong(updatedAtKey, 0L)
+        val age = System.currentTimeMillis() - updatedAt
+        return updatedAt > 0L && age in 0L..CATEGORY_FRESH_MS
+    }
+
     private fun writeCategoryReference(
         ownerId: String,
         shopId: String,
         shopKey: String,
         categoriesKey: String,
+        updatedAtKey: String,
         categories: List<String>
     ) {
         if (ownerId.isBlank() || shopId.isBlank() || categories.size > MAX_GROCERY_CATEGORIES ||
@@ -115,6 +143,7 @@ internal class MerchantContentCache(context: Context) {
             .put(categoriesKey, JSONArray().also { array ->
                 categories.map { it.trim() }.distinct().forEach { array.put(it) }
             })
+            .put(updatedAtKey, System.currentTimeMillis())
         writeJson(target, json)
     }
 
