@@ -95,7 +95,6 @@ internal fun MerchantMarketCatalogScreen(
             Text(it, color = MaterialTheme.colorScheme.error)
             OutlinedButton(onClick = { refresh++ }, enabled = !saving && !loading) { Text("ลองโหลด / ตรวจรายการค้างอีกครั้ง") }
         }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         val selection = selected
         if (selection == null) {
             OutlinedTextField(value = search, onValueChange = { search = it.take(100) }, label = { Text("ค้นหาสินค้า") },
