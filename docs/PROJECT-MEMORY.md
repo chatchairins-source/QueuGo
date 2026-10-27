@@ -1,3 +1,11 @@
+## 2026-10-27 Customer checkout visual parity — source change; exact-head verification NEXT
+
+- Parent successor HEAD `4065d5e3beed921610baf367bdf2ea4ec7d35e44`; PR #730 remains open/draft; Web Production source remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Current Web `V.checkout` renders the QueueGo map, GPS action, delivery address and note, without a Places search panel; `initLocationPicker` attaches Places with `searchControl:false`. Native Checkout had added a separate `QgPlaceSearchPanel` before the map, changing visible hierarchy and duplicating search already available on the full location picker.
+- Removed only the extra Checkout search field and its unused callback. The full Customer Location Picker keeps QueueGo Places search; checkout retains map selection, GPS, reverse geocoding, address/note editing, fee calculation and server-authoritative submit/recovery.
+- Updated source guard to prevent Places search returning to Checkout while verifying it remains in the dedicated Location Picker. No Web, backend, schema, or business-authority changes.
+- **NEXT:** run source regression and exact-head Native Pilot; inspect Customer checkout phone capture against current Web when authorized Customer capture is available. Customer authenticated credentials and physical-device evidence remain separate blockers.
+
 ## 2026-10-27 Rider/Merchant authenticated capture PASS; Customer Notifications source audit NEXT
 
 - Current exact descendant `92bf10a2cfdc2a9c585c76989d32b7dce528523b` passed PR/push Native Pilot (`40446858417`, `40446853549`), Map Engine (`40446858313`), and authenticated Rider/Merchant capture (`40446853492`). Rider artifact `12708029912` has 11/11 screens; Merchant `12708139641` has 5/5. Exact-head metadata has no missing screens, `physical_device:false`, no Production order/dispatch writes and `visual_parity_certified:false`. Actual images were inspected; no new Rider/Merchant mismatch.

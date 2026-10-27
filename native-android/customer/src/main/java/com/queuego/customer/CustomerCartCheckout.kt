@@ -33,9 +33,6 @@ import com.queuego.shared.QgLine
 import com.queuego.shared.QgLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
-import com.queuego.shared.QgPlaceSearchPanel
-import com.queuego.shared.QueueGoPlaceSearchResult
-import com.queuego.shared.queueGoPlaceLabel
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
 import kotlinx.coroutines.delay
@@ -153,7 +150,6 @@ internal fun CustomerCheckoutScreen(
     address: String,
     note: String,
     busy: Boolean,
-    searchPlaces: suspend (String) -> List<QueueGoPlaceSearchResult>,
     resolveAddress: suspend (Double, Double) -> String?,
     onBack: () -> Unit,
     onGps: () -> Unit,
@@ -254,26 +250,6 @@ internal fun CustomerCheckoutScreen(
                     Text(shop?.name ?: "ร้านค้า", fontWeight = FontWeight.ExtraBold)
                     Spacer(Modifier.height(4.dp))
                     Text("ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo", color = QgMuted, fontSize = 11.sp)
-                    Spacer(Modifier.height(10.dp))
-
-                    QgPlaceSearchPanel(
-                        enabled = !busy,
-                        search = searchPlaces,
-                        onSelect = { result ->
-                            val label = queueGoPlaceLabel(result)
-                            val next = CustomerLocation(
-                                result.latitude,
-                                result.longitude,
-                                label
-                            )
-                            selected = next
-                            lastAutoAddress = label
-                            onAddress(label)
-                            onLocationChange(next)
-                            recenterToken++
-                        }
-                    )
-
                     Spacer(Modifier.height(10.dp))
 
                     Box(

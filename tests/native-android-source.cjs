@@ -184,14 +184,16 @@ ok(
 
 ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(115.dp)')&&customerCartCheckout.includes('QgLocationPickerMap')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with checkout QueueGo Map and fixed action dock');
 ok(
-  customerCartCheckout.includes('searchPlaces: suspend (String) -> List<QueueGoPlaceSearchResult>') &&
-  customerCartCheckout.includes('QgPlaceSearchPanel(') &&
-  customerCartCheckout.indexOf('QgPlaceSearchPanel(') < customerCartCheckout.indexOf('QgLocationPickerMap(') &&
-  customerCartCheckout.includes('lastAutoAddress = label') &&
+  !customerCartCheckout.includes('QgPlaceSearchPanel(') &&
+  !customerCartCheckout.includes('searchPlaces: suspend') &&
+  customerCartCheckout.includes('QgLocationPickerMap(') &&
   customerCartCheckout.includes('recenterPoint = selected?.takeIf') &&
   source.includes('"checkout" -> CustomerCheckoutScreen(') &&
-  source.includes('busy = busy,\n                    searchPlaces = { query -> api.searchPlaces(query) },\n                    resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },'),
-  'Customer checkout place search must use shared QueueGo Places outside the map canvas'
+  source.includes('resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },') &&
+  customerLocationPicker.includes('QgPlaceSearchPanel(') &&
+  source.includes('"location" -> CustomerLocationPickerScreen(') &&
+  source.includes('searchPlaces = { query -> api.searchPlaces(query) }'),
+  'Customer checkout matches Web controls while full location picker retains QueueGo Places search'
 );
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
 ok(customerCartCheckout.includes('checkoutPending: Boolean')&&customerCartCheckout.includes('enabled = !checkoutPending')&&customerCartCheckout.includes('pendingCheckout: PendingCustomerCheckout?')&&customerCartCheckout.includes('p_expected_delivery_fee'),'Customer pending checkout must lock cart edits and render the persisted Production quote');
