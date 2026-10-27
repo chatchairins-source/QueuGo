@@ -125,9 +125,7 @@ internal fun RiderSafetyReportOverviewCard(
             )
 
             when {
-                !loaded -> {
-                    LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 10.dp))
-                }
+                !loaded -> Unit
                 loadError -> {
                     Text(
                         "โหลดสถานะรายงานไม่สำเร็จ กรุณาลองเปิดศูนย์ความปลอดภัยใหม่",

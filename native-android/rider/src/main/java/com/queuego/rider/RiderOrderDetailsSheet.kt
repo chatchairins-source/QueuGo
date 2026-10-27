@@ -62,7 +62,7 @@ internal fun RiderOrderDetailsSheet(auth: QueueGoAuth, job: RiderJob, api: Queue
             Spacer(Modifier.height(11.dp))
             when {
                 error != null -> Text(error!!, color = MaterialTheme.colorScheme.error)
-                items == null -> Text("กำลังโหลดรายการ…", color = QgMuted, fontSize = 12.sp)
+                items == null -> Unit
                 else -> {
                     val rows = items.orEmpty()
                     Row(Modifier.fillMaxWidth().background(Color(0xFFFAF6F7), RoundedCornerShape(14.dp)).padding(10.dp)) {
