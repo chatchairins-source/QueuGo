@@ -33,6 +33,11 @@ import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QueueGoNativeApi
 import org.json.JSONObject
+import java.time.Instant
+import java.time.ZoneId
+import java.time.chrono.ThaiBuddhistChronology
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 data class CustomerNotification(
     val id: String,
@@ -200,7 +205,7 @@ fun CustomerNotificationsScreen(
                         }
                         if (!n.createdAt.isNullOrBlank()) {
                             Spacer(Modifier.height(5.dp))
-                            Text(n.createdAt!!, color = QgMuted, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
+                            Text(customerNotificationDate(n.createdAt!!), color = QgMuted, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -211,3 +216,11 @@ fun CustomerNotificationsScreen(
 }
 
 
+
+
+private fun customerNotificationDate(value: String): String = runCatching {
+    DateTimeFormatter.ofPattern("d/M/yyyy HH:mm:ss", Locale.forLanguageTag("th-TH"))
+        .withChronology(ThaiBuddhistChronology.INSTANCE)
+        .withZone(ZoneId.of("Asia/Bangkok"))
+        .format(Instant.parse(value))
+}.getOrDefault(value)

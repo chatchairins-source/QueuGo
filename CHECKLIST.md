@@ -1956,3 +1956,9 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Local Customer/Merchant/Rider source contract: 404 checks PASS; `git diff --check` PASS. No database values are rewritten.
 - Exact predecessor Native Pilot `40479861625` is currently in Full QueueGo regression; Map Engine `40479861694` is queued. Previous Native Pilot `40478110875` completed successfully through emulator lifecycle and evidence upload. No failure observed.
 - **NEXT:** publish this bounded successor, confirm exact-head Native Pilot + Map Engine, then continue Customer screen parity. Keep any visual/authenticated or physical-device claims tied to actual evidence.
+
+## 2026-10-27 Customer notification timestamp parity — source checkpoint; exact-head CI NEXT
+- Continued the Customer notification comparison. Web formats `created_at` with Thai-locale `toLocaleString('th-TH')`; Native displayed the raw ISO string. Native now formats day/month/Buddhist year plus 24-hour time and seconds in Asia/Bangkok, with the original value as parse-failure fallback.
+- Added a source guard for the Web-aligned timestamp and retained the previous title/message order-number normalization. Local `node tests/native-android-source.cjs`: 405 checks PASS; `git diff --check` PASS.
+- Previous exact-head Native Pilot `40479861625` completed regression/source checks and has reached Tracking coordinate and terminal-state JVM tests; exact-head Map Engine `40479861694` was queued. Latest published HEAD `6a9012914873d5dce1aa998ad69e3611decdbf16` has Native Pilot `40480117757` and Map Engine `40480117472` pending. No failures reported.
+- **NEXT:** publish the timestamp parity delta and inspect its exact-head Native Pilot + Map Engine. Continue from the first confirmed failure and the remaining Customer parity checklist.
