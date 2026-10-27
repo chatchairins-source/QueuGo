@@ -352,7 +352,7 @@ fun RiderSupportScreen(
         if (ticketLoadError != null) {
             Text(ticketLoadError!!, color = QgRed, fontSize = 12.sp)
         } else if (tickets == null) {
-            Text("กำลังโหลด…", color = QgMuted, fontSize = 12.sp)
+            // Load existing tickets silently.
         } else if (tickets.orEmpty().isEmpty()) {
             Text("ยังไม่มีเรื่องที่แจ้ง", color = QgMuted, fontSize = 12.sp)
         } else {
