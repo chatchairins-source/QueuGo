@@ -209,8 +209,6 @@ fun MarketNativeScreen(
         loading = false
     }
 
-    LaunchedEffect(cartPage) { if (cartPage) reload++ }
-
     LaunchedEffect(cart, restoredCart, checkoutPending) {
         if (restoredCart && !checkoutPending) {
             withContext(Dispatchers.IO) { cartStore.save(cart) }
