@@ -34,7 +34,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private data class ShopFavorite(val id: String, val shop: String, val product: String)
+internal data class ShopFavorite(val id: String, val shop: String, val product: String)
 internal data class ShopReview(val name: String, val rating: Int, val comment: String, val date: String)
 internal data class ShopReviews(val count: Int, val average: Double, val items: List<ShopReview>)
 
