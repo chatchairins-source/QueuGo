@@ -122,6 +122,12 @@ ok(
   'Shared HTTPS images may retry one transient failure without unbounded polling'
 );
 ok(
+  sharedDesign.includes('context.noBackupFilesDir, "queuego_remote_images_v2"') &&
+  sharedDesign.includes('legacyQueueGoRemoteImageCacheDir') &&
+  !sharedDesign.includes('QG_REMOTE_IMAGE_DISK_CACHE_TTL_MS'),
+  'Shared downloaded images must survive normal cache cleanup and must not expire every 24 hours'
+);
+ok(
   sharedChatImage.includes('DisposableEffect(bitmap)') &&
   sharedChatImage.includes('owned.recycle()'),
   'Shared chat images must release Bitmap memory when messages leave composition'
