@@ -77,11 +77,15 @@ internal fun CustomerPromotionScreen(
 
     LaunchedEffect(Unit) {
         loading = rows.isEmpty()
-        if (rows.isEmpty()) {
-            val cached = withContext(Dispatchers.IO) { cache.read() }
-            if (cached.isNotEmpty()) {
-                rows = cached
-                loading = false
+        val cached = if (rows.isEmpty()) {
+            withContext(Dispatchers.IO) { cache.read() }
+        } else null
+        if (cached != null) {
+            rows = cached.rows
+            loading = false
+            if (cached.fresh) {
+                error = null
+                return@LaunchedEffect
             }
         }
         try {
