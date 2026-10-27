@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgRed
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -123,14 +125,19 @@ internal fun GuestCustomerShell(
         scope.launch {
             if (showLoading) loading = true
             try {
-                val freshShops = api.loadShopsPublic()
-                val freshBanners = api.loadHomeBannersPublic()
-                val freshServiceBanners = api.loadServiceBannersPublic()
-                shops = freshShops
-                banners = freshBanners
-                serviceBanners = freshServiceBanners
-                withContext(Dispatchers.IO) {
-                    contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                coroutineScope {
+                    val shopsDeferred = async { api.loadShopsPublic() }
+                    val bannersDeferred = async { api.loadHomeBannersPublic() }
+                    val serviceBannersDeferred = async { api.loadServiceBannersPublic() }
+                    val freshShops = shopsDeferred.await()
+                    val freshBanners = bannersDeferred.await()
+                    val freshServiceBanners = serviceBannersDeferred.await()
+                    shops = freshShops
+                    banners = freshBanners
+                    serviceBanners = freshServiceBanners
+                    withContext(Dispatchers.IO) {
+                        contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                    }
                 }
                 message = null
             } catch (failure: CancellationException) {
