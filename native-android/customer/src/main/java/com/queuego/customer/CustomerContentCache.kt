@@ -33,6 +33,7 @@ internal class CustomerContentCache(context: Context) {
         private const val PRODUCT_FRESH_MS = 60L * 1000L
         private const val GROCERY_CATEGORY_FRESH_MS = 10L * 60L * 1000L
         private const val MARKET_FRESH_MS = 60L * 1000L
+        private const val HOME_FRESH_MS = 60L * 1000L
     }
 
     private val root = File(context.noBackupFilesDir, "customer_content_cache_v1").also {
@@ -65,6 +66,9 @@ internal class CustomerContentCache(context: Context) {
             )
         writeJson(File(root, "home.json"), json)
     }
+
+    fun homeFresh(): Boolean =
+        isFresh(File(root, "home.json"), HOME_FRESH_MS)
 
     fun readProducts(shopId: String): List<CustomerProduct> {
         val json = readJson(productFile(shopId)) ?: return emptyList()
