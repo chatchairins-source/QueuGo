@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.queuego.shared.NativeSupportTicket
+import com.queuego.shared.NativeSupportTicketCache
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QueueGoNativeApi
@@ -66,6 +68,12 @@ data class RiderSupportTicket(
     val adminNote: String?,
     val evidencePath: String?
 )
+
+private fun RiderSupportTicket.toNativeSupportTicket(): NativeSupportTicket =
+    NativeSupportTicket(id, category, details, status, orderId, createdAt, adminNote, evidencePath)
+
+private fun NativeSupportTicket.toRiderSupportTicket(): RiderSupportTicket =
+    RiderSupportTicket(id, category, details, status, orderId, createdAt, adminNote, evidencePath)
 
 private class RiderSupportApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun tickets(auth: QueueGoAuth): List<RiderSupportTicket> {
@@ -221,6 +229,9 @@ fun RiderSupportScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val api = remember { RiderSupportApi() }
+    val cache = remember(context.applicationContext) {
+        NativeSupportTicketCache(context.applicationContext, "rider")
+    }
     var tickets by remember { mutableStateOf<List<RiderSupportTicket>?>(null) }
     var ticketLoadError by remember { mutableStateOf<String?>(null) }
     var selectedOrder by remember { mutableStateOf<String?>(null) }
@@ -237,16 +248,32 @@ fun RiderSupportScreen(
         evidence = it
     }
 
-    suspend fun refresh() {
-        tickets = api.tickets(auth)
-        ticketLoadError = null
-    }
-
-    LaunchedEffect(auth.session.accessToken) {
-        try { refresh() } catch (e: CancellationException) { throw e } catch (e: Exception) {
-            ticketLoadError = e.message ?: "โหลดเรื่องที่แจ้งไม่สำเร็จ"
+    suspend fun refresh(force: Boolean = false) {
+        val cached = if (!force && tickets == null) {
+            withContext(Dispatchers.IO) { cache.read(auth.user.id) }
+        } else null
+        if (cached != null) {
+            tickets = cached.rows.map { it.toRiderSupportTicket() }
+            if (cached.fresh) {
+                ticketLoadError = null
+                return
+            }
+        }
+        try {
+            val fresh = api.tickets(auth)
+            tickets = fresh
+            withContext(Dispatchers.IO) {
+                cache.write(auth.user.id, fresh.map { it.toNativeSupportTicket() })
+            }
+            ticketLoadError = null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (tickets == null) ticketLoadError = e.message ?: "โหลดเรื่องที่แจ้งไม่สำเร็จ"
         }
     }
+
+    LaunchedEffect(auth.user.id, auth.session.accessToken) { refresh() }
 
     LaunchedEffect(message) { if (message != null) { delay(4_000); message = null } }
     val maxHeight = (LocalConfiguration.current.screenHeightDp * .9f).dp
@@ -327,7 +354,8 @@ fun RiderSupportScreen(
                             runCatching {
                                 val path = evidence?.let { api.uploadEvidence(context, auth, it) }
                                 api.create(auth, selectedOrder, category, details, path)
-                                refresh()
+                                withContext(Dispatchers.IO) { cache.invalidate(auth.user.id) }
+                                refresh(force = true)
                             }.onSuccess {
                                 details = ""
                                 evidence = null
