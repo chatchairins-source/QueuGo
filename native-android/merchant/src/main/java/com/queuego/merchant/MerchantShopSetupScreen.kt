@@ -271,7 +271,7 @@ internal fun MerchantShopSetupScreen(
         ) {
             Text("ปักพิกัดร้าน", color = androidx.compose.ui.graphics.Color(0xFF183D32), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
             Text(
-                "เลื่อนแผนที่ให้หมุดอยู่ตรงหน้าร้าน แล้วกดบันทึก",
+                "แตะบนแผนที่ตรงหน้าร้านเพื่อปักหมุด แล้วกดบันทึก",
                 color = androidx.compose.ui.graphics.Color(0xFF708A7D),
                 fontSize = 11.sp,
                 lineHeight = 16.sp,
@@ -289,7 +289,7 @@ internal fun MerchantShopSetupScreen(
                     recenterPoint = currentPoint,
                     recenterToken = recenterToken,
                     modifier = Modifier.fillMaxSize(),
-                    onCenterChanged = {
+                    onPointSelected = {
                         latitude = it.latitude
                         longitude = it.longitude
                         addressLockedByUser = false

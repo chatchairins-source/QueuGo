@@ -68,6 +68,8 @@ private const val QUEUEGO_WEB_BASEMAP_LAYER = "queuego-web-basemap-layer"
 private const val QUEUEGO_WEB_BASEMAP_TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 private const val QUEUEGO_TRACKING_SOURCE = "queuego-tracking"
 private const val QUEUEGO_TRACKING_LAYER = "queuego-tracking-points"
+private const val QUEUEGO_LOCATION_PICKER_SOURCE = "queuego-location-picker"
+private const val QUEUEGO_LOCATION_PICKER_LAYER = "queuego-location-picker-point"
 
 fun queueGoMapServiceBaseUrl(context: Context): String? = runCatching {
     context.packageManager
@@ -350,14 +352,40 @@ private class QueueGoLocationPickerHolder {
     var resumed = false
     var destroyed = false
     var lastRecenterToken: Int? = null
-    var suppressNextIdle = false
-    var onCenterChanged: (QgMapPoint) -> Unit = {}
+    var selectedPoint: QgMapPoint? = null
+    var onPointSelected: (QgMapPoint) -> Unit = {}
+
+    fun renderSelectedPoint(point: QgMapPoint?) {
+        selectedPoint = point?.takeIf { it.valid }
+        val style = map?.style ?: return
+        val features = FeatureCollection.fromFeatures(
+            selectedPoint?.let {
+                listOf(Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude)))
+            } ?: emptyList()
+        )
+        val source = style.getSource(QUEUEGO_LOCATION_PICKER_SOURCE)
+        if (source is GeoJsonSource) {
+            source.setGeoJson(features)
+        } else if (source == null) {
+            style.addSource(GeoJsonSource(QUEUEGO_LOCATION_PICKER_SOURCE, features))
+            style.addLayer(
+                CircleLayer(QUEUEGO_LOCATION_PICKER_LAYER, QUEUEGO_LOCATION_PICKER_SOURCE)
+                    .withProperties(
+                        circleColor("#E62E46"),
+                        circleRadius(7f),
+                        PropertyFactory.circleStrokeColor("#FFFFFF"),
+                        PropertyFactory.circleStrokeWidth(2.5f)
+                    )
+            )
+        }
+    }
 
     fun recenter(point: QgMapPoint?, token: Int) {
         val active = map ?: return
-        if (point?.valid != true || lastRecenterToken == token) return
+        if (point?.valid != true) return
+        renderSelectedPoint(point)
+        if (lastRecenterToken == token) return
         lastRecenterToken = token
-        suppressNextIdle = true
         active.animateCamera(
             CameraUpdateFactory.newLatLngZoom(
                 LatLng(point.latitude, point.longitude),
@@ -409,15 +437,15 @@ fun QgLocationPickerMap(
     recenterPoint: QgMapPoint?,
     recenterToken: Int,
     modifier: Modifier = Modifier,
-    onCenterChanged: (QgMapPoint) -> Unit,
+    onPointSelected: (QgMapPoint) -> Unit,
     onReady: (Boolean) -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val currentCenterChanged = rememberUpdatedState(onCenterChanged)
+    val currentPointSelected = rememberUpdatedState(onPointSelected)
     val currentReady = rememberUpdatedState(onReady)
     val holder = remember { QueueGoLocationPickerHolder() }
-    holder.onCenterChanged = { currentCenterChanged.value(it) }
+    holder.onPointSelected = { currentPointSelected.value(it) }
     val sourceUri = remember(context.packageName) { queueGoMapVectorSourceUri(context) }
 
     Box(modifier) {
@@ -450,20 +478,17 @@ fun QgLocationPickerMap(
                                 )
                                 .zoom(if (start != null || queueGoDebugMapArchive(ctx) != null) 16.0 else 6.0)
                                 .build()
-                            map.addOnCameraIdleListener {
-                                if (holder.destroyed) return@addOnCameraIdleListener
-                                if (holder.suppressNextIdle) {
-                                    holder.suppressNextIdle = false
-                                    return@addOnCameraIdleListener
-                                }
-                                val target = map.cameraPosition.target
-                                    ?: return@addOnCameraIdleListener
-                                QgMapPoint(target.latitude, target.longitude, 0)
-                                    .takeIf { it.valid }
-                                    ?.let(holder.onCenterChanged)
+                            map.addOnMapClickListener { target ->
+                                if (holder.destroyed) return@addOnMapClickListener false
+                                val point = QgMapPoint(target.latitude, target.longitude, 0)
+                                if (!point.valid) return@addOnMapClickListener false
+                                holder.renderSelectedPoint(point)
+                                holder.onPointSelected(point)
+                                true
                             }
                             map.setStyle(queueGoMapStyle(sourceUri)) {
                                 holder.lastRecenterToken = recenterToken
+                                holder.renderSelectedPoint(start)
                                 currentReady.value(true)
                             }
                         }
@@ -474,12 +499,6 @@ fun QgLocationPickerMap(
                 update = {
                     holder.recenter(recenterPoint, recenterToken)
                 }
-            )
-            Box(
-                Modifier
-                    .align(Alignment.Center)
-                    .size(12.dp)
-                    .background(QgRed, CircleShape)
             )
         }
     }

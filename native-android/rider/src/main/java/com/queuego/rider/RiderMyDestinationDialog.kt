@@ -180,7 +180,7 @@ internal fun RiderMyDestinationDialog(
                         recenterPoint = selected,
                         recenterToken = recenterToken,
                         modifier = Modifier.fillMaxSize(),
-                        onCenterChanged = { point ->
+                        onPointSelected = { point ->
                             selected = point
                             if (draftLabel == lastAutoLabel) draftLabel = ""
                         },

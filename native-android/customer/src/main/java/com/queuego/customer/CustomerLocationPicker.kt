@@ -251,7 +251,7 @@ internal fun CustomerLocationPickerScreen(
                     recenterPoint = externalPoint,
                     recenterToken = recenterToken,
                     modifier = Modifier.fillMaxSize(),
-                    onCenterChanged = { point ->
+                    onPointSelected = { point ->
                         draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
                     },
                     onReady = { mapReady = it; if (it) mapFailed = false }

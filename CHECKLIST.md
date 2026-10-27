@@ -1,3 +1,10 @@
+## 2026-10-27 Customer/Shared map tap-to-select — source fix published; exact-head CI NEXT
+
+- Physical-device Customer checkout evidence showed the location picker still used the old camera-center model: moving the map changed the selected coordinate while a fixed red dot stayed at the viewport center. Root cause is the shared `QgLocationPickerMap` using `addOnCameraIdleListener` as the selection authority and a Compose center-dot overlay.
+- Updated the shared picker to make an explicit MapLibre map tap the only manual selection action. A tap now selects that exact latitude/longitude, renders the red/white selected-point layer at the tapped coordinate, and notifies Customer checkout/location picker, Merchant shop setup, and Rider personal destination through `onPointSelected`. Pan/zoom alone no longer mutates the selected coordinate. GPS/search recenter still moves both camera and selected marker.
+- Updated Merchant copy from “เลื่อนแผนที่ให้หมุด…” to “แตะบนแผนที่…” and added a source contract preventing the camera-idle/fixed-center behavior from returning.
+- **NEXT:** run exact-head Native Pilot/Customer Kotlin source gates. If successful, rebuild Customer APK and re-test on the physical Android device by tapping several visible map points and confirming the marker, Lat/Lng, and reverse-geocoded address all follow the tap.
+
 Warning: truncated output (original token count: 92227)
 Total output lines: 2112
 

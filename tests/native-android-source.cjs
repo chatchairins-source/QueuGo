@@ -298,6 +298,19 @@ ok(
   sharedQueueGoMap.includes('holder.destroy()'),
   'Customer/Merchant shared QueueGo MapLibre picker lifecycle must follow lifecycle ownership and destroy the MapView'
 );
+ok(
+  sharedQueueGoMap.includes('map.addOnMapClickListener { target ->') &&
+  sharedQueueGoMap.includes('holder.renderSelectedPoint(point)') &&
+  sharedQueueGoMap.includes('holder.onPointSelected(point)') &&
+  sharedQueueGoMap.includes('CircleLayer(QUEUEGO_LOCATION_PICKER_LAYER, QUEUEGO_LOCATION_PICKER_SOURCE)') &&
+  !sharedQueueGoMap.includes('map.addOnCameraIdleListener') &&
+  !sharedQueueGoMap.includes('.align(Alignment.Center)\n                    .size(12.dp)') &&
+  customerCartCheckout.includes('onPointSelected = { point ->') &&
+  customerLocationPicker.includes('onPointSelected = { point ->') &&
+  merchantShopSetup.includes('onPointSelected = {') &&
+  merchantShopSetup.includes('แตะบนแผนที่ตรงหน้าร้านเพื่อปักหมุด แล้วกดบันทึก'),
+  'Shared QueueGo location picker must select the tapped coordinate and move the red marker there instead of selecting the camera center'
+);
 ok(customerAuthScreen.includes('CustomerBottomNavigation(screen = "login", cartCount = guestCartCount)')&&customerAuthScreen.includes('Spacer(Modifier.height(92.dp))'),'Customer native auth must preserve the Production web fixed four-tab navigation and 92dp content clearance');
 ok(customerAuthScreen.includes('.windowInsetsPadding(WindowInsets.statusBars)')&&customerAuthScreen.includes('padding(horizontal = 12.dp, vertical = 6.dp)')&&customerAuthScreen.includes('.widthIn(max = 720.dp)'),'Customer native auth top bar must preserve Production web safe-area, compact spacing and 720px content width');
 ok(customerAuthScreen.includes('.onFocusChanged { focused = it.isFocused }')&&customerAuthScreen.includes('if (focused) QgRed else QgLine')&&customerAuthScreen.includes('cursorBrush = SolidColor(QgRed)'),'Customer native auth inputs must preserve Production web red focus treatment');

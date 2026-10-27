@@ -266,7 +266,7 @@ internal fun CustomerCheckoutScreen(
                                 ?.let { QgMapPoint(it.latitude, it.longitude, 0) },
                             recenterToken = recenterToken,
                             modifier = Modifier.fillMaxSize(),
-                            onCenterChanged = { point ->
+                            onPointSelected = { point ->
                                 val next = CustomerLocation(point.latitude, point.longitude, address)
                                 selected = next
                                 onLocationChange(next)
