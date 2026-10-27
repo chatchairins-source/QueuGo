@@ -5,6 +5,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
+internal data class CachedLaundryCatalog(
+    val value: LaundryCatalog,
+    val fresh: Boolean
+)
+
 /**
  * Durable local-first cache for the Customer laundry catalog.
  *
@@ -14,6 +19,7 @@ import java.io.File
 internal class CustomerLaundryContentCache(context: Context) {
     companion object {
         private const val MAX_FILE_BYTES = 4L * 1024L * 1024L
+        private const val FRESH_MS = 5L * 60L * 1000L
     }
 
     private val root = File(context.noBackupFilesDir, "customer_laundry_cache_v1").also {
@@ -21,12 +27,14 @@ internal class CustomerLaundryContentCache(context: Context) {
     }
     private val file = File(root, "catalog.json")
 
-    fun read(): LaundryCatalog? {
+    fun read(): CachedLaundryCatalog? {
         if (!file.isFile || file.length() !in 1L..MAX_FILE_BYTES) return null
         val json = runCatching { JSONObject(file.readText(Charsets.UTF_8)) }
             .onFailure { runCatching { file.delete() } }
             .getOrNull() ?: return null
-        return runCatching { decode(json) }.getOrNull()
+        val value = runCatching { decode(json) }.getOrNull() ?: return null
+        val age = System.currentTimeMillis() - file.lastModified()
+        return CachedLaundryCatalog(value = value, fresh = age in 0L..FRESH_MS)
     }
 
     fun write(catalog: LaundryCatalog) {
