@@ -223,6 +223,18 @@ ok(customerNotifications.includes('LaunchedEffect(unreadIds)')&&customerNotifica
 ok(customerNotifications.includes('OutlinedButton(onClick = onMarkAll, enabled = !busy) { Text("อ่านทั้งหมด") }')&&!customerNotifications.includes('if (notifications.any { !it.read })'),'Customer Notifications must always show the Web-parity mark-all control');
 ok(customerNotifications.includes('notifications?user_id=eq." + http.enc(auth.user.id) + "&is_read=eq.false'),'Customer mark-all must stay scoped to the authenticated user unread rows');
 ok(source.includes('qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at')&&source.includes('qg_create_ticket'),'Customer native support must use production ticket RPC');
+const customerSupportCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerSupportCache.kt');
+const customerSupportScreenSource=read('customer/src/main/java/com/queuego/customer/CustomerSupportScreen.kt');
+ok(
+  customerSupportCacheSource.includes('context.noBackupFilesDir, "customer_support_cache_v1"') &&
+  customerSupportCacheSource.includes('FRESH_MS = 60L * 1000L') &&
+  customerSupportScreenSource.includes('cache.read(auth.user.id)') &&
+  customerSupportScreenSource.includes('if (cached.fresh)') &&
+  customerSupportScreenSource.includes('cache.invalidate(auth.user.id)') &&
+  customerSupportScreenSource.includes('refresh(force = true)') &&
+  customerSupportScreenSource.includes('cache.write(auth.user.id, fresh)'),
+  'Customer Support history must reuse a fresh local snapshot and force server refresh after a new ticket'
+);
 ok(source.includes('qg_customer_order_context')&&source.includes('CustomerTrackingRider'),'Customer native tracking must use production order context');
 const customerTrackingScreen=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
 ok((source.includes('"order" -> CustomerOrderTrackingScreen')||(source.includes('selectedOrder?.fulfillmentVertical == "ride"')&&source.includes('else CustomerOrderTrackingScreen(')))&&customerTrackingScreen.includes('"สถานะล่าสุด"')&&customerTrackingScreen.includes('"ส่งไปที่"')&&customerTrackingScreen.includes('CustomerTrackingProgress(stage)')&&customerTrackingScreen.includes('"Rider ของคุณ"')&&customerTrackingScreen.includes('"รายการสินค้า"')&&customerTrackingScreen.includes('"ยอดรวม"'),'Customer native tracking must preserve Production order-detail hierarchy');
