@@ -122,15 +122,23 @@ fun MarketNativeScreen(
         loading = markets.isEmpty() && shops.isEmpty() && catalog.isEmpty()
         loadFailed = false
         checkoutPending = withContext(Dispatchers.IO) { cartStore.hasPendingCheckout() }
+        val staticCacheFresh = withContext(Dispatchers.IO) { contentCache.marketFresh() }
         runCatching {
-            val m = if (auth == null) api.loadMarketsPublic() else api.loadMarkets(auth)
-            val freshShops = if (auth == null) api.loadShopsPublic() else api.loadShops(auth)
-            val freshCatalog = if (auth == null) api.loadCatalogPublic() else api.loadCatalog(auth)
-            markets = m
-            shops = freshShops
-            catalog = freshCatalog
-            withContext(Dispatchers.IO) {
-                contentCache.writeMarket(m, freshShops, freshCatalog)
+            var m = markets
+            var freshShops = shops
+            var freshCatalog = catalog
+            val canReuseStatic = staticCacheFresh &&
+                (m.isNotEmpty() || freshShops.isNotEmpty() || freshCatalog.isNotEmpty())
+            if (!canReuseStatic) {
+                m = if (auth == null) api.loadMarketsPublic() else api.loadMarkets(auth)
+                freshShops = if (auth == null) api.loadShopsPublic() else api.loadShops(auth)
+                freshCatalog = if (auth == null) api.loadCatalogPublic() else api.loadCatalog(auth)
+                markets = m
+                shops = freshShops
+                catalog = freshCatalog
+                withContext(Dispatchers.IO) {
+                    contentCache.writeMarket(m, freshShops, freshCatalog)
+                }
             }
             if (!restoredCart) {
                 fun restore(saved: List<MarketCartStore.Saved>): List<MarketCartLine> =
