@@ -325,7 +325,7 @@ fun MarketNativeScreen(
         Spacer(Modifier.height(8.dp))
 
         when {
-            loading -> CircularProgressIndicator()
+            loading -> Unit
             marketShops.isEmpty() -> QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่พบร้านในตลาดนี้", color = QgMuted) }
             else -> marketShops.forEach { s ->
                 val count = catalog.count { it.shopId == s.id && it.marketId == selectedMarket && it.availablePacks > 0 }
@@ -394,7 +394,6 @@ fun MarketNativeScreen(
 
         } // Browse: checkout fields belong only to market-cart.
 
-        if (cartPage && loading) CircularProgressIndicator()
         if (cartPage && !loading && cart.isEmpty() && !checkoutPending) {
             Text("ตะกร้าตลาดสดว่าง", color = QgMuted, modifier = Modifier.padding(vertical = 24.dp))
             Button(onClick = onBrowse, modifier = Modifier.fillMaxWidth()) { Text("เลือกสินค้าในตลาด") }
