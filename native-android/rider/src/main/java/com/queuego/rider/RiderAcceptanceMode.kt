@@ -92,18 +92,18 @@ internal fun RiderWorkPreferencesControl(
 ) {
     Column(modifier.fillMaxWidth()) {
         if (preferences == null) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        if (error == null) "กำลังโหลดการรับงาน…" else "โหลดการรับงานไม่ได้",
-                        color = Color(0xFF211E20),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    if (error != null) {
+            if (error != null) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "โหลดการรับงานไม่ได้",
+                            color = Color(0xFF211E20),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black
+                        )
                         Text(
                             error,
                             color = QgMuted,
@@ -112,8 +112,6 @@ internal fun RiderWorkPreferencesControl(
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
-                }
-                if (error != null) {
                     TextButton(onClick = onRetry, enabled = !busy) {
                         Text("ลองใหม่", color = QgRed, fontWeight = FontWeight.Bold)
                     }
