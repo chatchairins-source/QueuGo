@@ -30,6 +30,8 @@ internal class CustomerContentCache(context: Context) {
         private const val MAX_CACHE_TOTAL_BYTES = 96L * 1024L * 1024L
         private const val MAX_GROCERY_CATEGORIES = 200
         private const val MAX_GROCERY_CATEGORY_LENGTH = 100
+        private const val PRODUCT_FRESH_MS = 60L * 1000L
+        private const val GROCERY_CATEGORY_FRESH_MS = 10L * 60L * 1000L
     }
 
     private val root = File(context.noBackupFilesDir, "customer_content_cache_v1").also {
@@ -77,6 +79,9 @@ internal class CustomerContentCache(context: Context) {
         writeJson(productFile(shopId), json)
     }
 
+    fun productsFresh(shopId: String): Boolean =
+        isFresh(productFile(shopId), PRODUCT_FRESH_MS)
+
     fun readGroceryCategories(shopId: String): List<String> {
         if (shopId.isBlank()) return emptyList()
         val json = readJson(groceryCategoryFile(shopId)) ?: return emptyList()
@@ -102,6 +107,9 @@ internal class CustomerContentCache(context: Context) {
             .put("categories", JSONArray().also { array -> categories.distinct().forEach { array.put(it.trim()) } })
         writeJson(groceryCategoryFile(shopId), json)
     }
+
+    fun groceryCategoriesFresh(shopId: String): Boolean =
+        isFresh(groceryCategoryFile(shopId), GROCERY_CATEGORY_FRESH_MS)
 
     fun readMarket(): CachedCustomerMarket? {
         val json = readJson(File(root, "market.json")) ?: return null
@@ -137,6 +145,12 @@ internal class CustomerContentCache(context: Context) {
         return runCatching { JSONObject(file.readText(Charsets.UTF_8)) }
             .onFailure { runCatching { file.delete() } }
             .getOrNull()
+    }
+
+    private fun isFresh(file: File, maxAgeMs: Long): Boolean {
+        if (!file.isFile || file.length() !in 1L..MAX_CACHE_FILE_BYTES) return false
+        val age = System.currentTimeMillis() - file.lastModified()
+        return age in 0L..maxAgeMs
     }
 
     private fun writeJson(target: File, json: JSONObject) {
