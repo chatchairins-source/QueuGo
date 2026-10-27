@@ -211,7 +211,12 @@ internal fun GuestCustomerShell(
                 shopId = shop.id,
                 loadCached = { withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) } },
                 loadCachedCategories = { withContext(Dispatchers.IO) { contentCache.readGroceryCategories(shop.id) } },
-                loadCategories = { api.loadGroceryCategories(null, shop.id) },
+                loadCategories = {
+                    val cachedCategories = withContext(Dispatchers.IO) { contentCache.readGroceryCategories(shop.id) }
+                    val cacheFresh = withContext(Dispatchers.IO) { contentCache.groceryCategoriesFresh(shop.id) }
+                    if (cachedCategories.isNotEmpty() && cacheFresh) cachedCategories
+                    else api.loadGroceryCategories(null, shop.id)
+                },
                 fetchPage = { category, offset -> api.loadGroceryPage(null, shop.id, category, offset) },
                 persistCategories = { rows -> withContext(Dispatchers.IO) { contentCache.writeGroceryCategories(shop.id, rows) } },
                 persist = { rows -> withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) } }
@@ -222,7 +227,12 @@ internal fun GuestCustomerShell(
                 loadCached = {
                     withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
                 },
-                fetch = { api.loadProductsPublic(shop.id) },
+                fetch = {
+                    val cachedProducts = withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+                    val cacheFresh = withContext(Dispatchers.IO) { contentCache.productsFresh(shop.id) }
+                    if (cachedProducts.isNotEmpty() && cacheFresh) cachedProducts
+                    else api.loadProductsPublic(shop.id)
+                },
                 persist = { rows ->
                     withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
                 }
