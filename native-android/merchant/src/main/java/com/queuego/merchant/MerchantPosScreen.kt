@@ -828,13 +828,7 @@ fun MerchantPosScreen(
 
         if (snap == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (snapshotLoading) {
-                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        repeat(4) {
-                            Box(Modifier.fillMaxWidth().height(64.dp).background(QgMuted.copy(alpha = 0.12f), RoundedCornerShape(12.dp)))
-                        }
-                    }
-                } else {
+                if (!snapshotLoading) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("ยังโหลดข้อมูล POS ไม่สำเร็จ", color = QgMuted)
                         Spacer(Modifier.height(8.dp))
@@ -2022,9 +2016,7 @@ private fun PosReportsView(
             }
         }
         Spacer(Modifier.height(9.dp))
-        if (report == null) {
-            CircularProgressIndicator()
-        } else {
+        if (report != null) {
             QgCard(Modifier.fillMaxWidth()) {
                 Column {
                     PosReportLine("ทานที่ร้าน", report.dineIn)
