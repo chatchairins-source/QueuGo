@@ -615,6 +615,14 @@ ok(
   'Merchant initial refresh must parallelize independent server reads instead of serializing the whole dashboard'
 );
 ok(
+  !customerAppForMemory.includes('"กำลังเปิดออเดอร์..."') &&
+  customerAppForMemory.includes('delay(30_000)') &&
+  customerAppForMemory.includes('delay(8_000)') &&
+  customerAppForMemory.includes('Push + Realtime are primary. Poll only as a low-frequency recovery path.') &&
+  customerAppForMemory.includes('Realtime owns normal updates; this is only a foreground recovery poll.'),
+  'Customer foreground recovery must stay silent and must not redownload notification/order snapshots every 3-8 seconds'
+);
+ok(
   customerAppForMemory.includes('coroutineScope {') &&
   customerAppForMemory.includes('val shopsDeferred = async { api.loadShops(auth) }') &&
   customerAppForMemory.includes('val ordersDeferred = async { api.loadOrders(auth) }') &&
