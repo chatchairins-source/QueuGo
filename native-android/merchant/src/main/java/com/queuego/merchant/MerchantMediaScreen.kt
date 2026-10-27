@@ -226,12 +226,7 @@ internal fun MerchantMediaScreen(
         }
 
         when {
-            loading -> item(key = "media-loading") {
-                Box(
-                    Modifier.fillMaxWidth().height(160.dp),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
-            }
+            loading -> Unit
 
             rows.isEmpty() -> item(key = "media-empty") {
                 Box(
