@@ -1910,3 +1910,11 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Added the same debug-only map archive to Native Pilot capture so its map lifecycle is exercised instead of recorded as blocked.
 - Screenshot evidence status: **not captured yet**. The repository Actions secrets `QG_RIDER_REVIEW_PHONE` and `QG_RIDER_REVIEW_PASSWORD` must exist before the authenticated job can run. The current GitHub connector cannot create Actions secrets.
 - NEXT: configure those two repository secrets, then rerun the Rider authenticated review workflow and inspect the four screenshot artifacts. Until then, login and all post-login screens remain unverified.
+## 2026-10-27 Native local-first cache checkpoint — exact-head Pilot PASS
+
+- Current successor branch `work-native-web-parity-20261026`, source HEAD `cd94ffcf23c232d5ffaa1053180ae6ff9aa6a9fc`; PR #730 remains open/draft. The branch tip is unchanged from the inspected exact HEAD and descends from the current PR base and the earlier Native rebuild successor.
+- Exact-head Native Pilot run `40473824690` (#4486) completed SUCCESS: Full QueueGo regression, tracking coordinate/terminal-state Kotlin tests, Customer/Merchant/Rider APK builds, Android 16 KB packaging, WebView rejection and emulator launch/map/voice lifecycle all passed. Exact-head Map Engine run `40473824733` (#535) also completed SUCCESS.
+- Local `node tests/native-android-source.cjs`: 398 checks PASS. Existing local-first coverage persists safe Customer/Merchant content, shared remote images and bounded reference caches; routine data refresh stays visually silent. Orders, prices, stock decisions, balances and dispatch remain server-authoritative. No Production writes.
+- This is CI/emulator and source evidence; it does not certify authenticated Customer screenshots, physical Android devices, road/GPS behavior or release readiness. Customer authenticated screenshots remain blocked by the recorded missing review credentials.
+- **NEXT:** audit remaining Customer/Merchant/Rider remote reads for repeated downloads of non-authoritative display/reference data. Record each exact callsite and trigger; cache only a confirmed repeatable gap, and keep live order/financial/inventory/dispatch decisions server-authoritative. Run exact-head Native Pilot after each source change.
+
