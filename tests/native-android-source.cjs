@@ -578,6 +578,17 @@ ok(
   'Customer shop reviews must render durable cached rows first and keep favorites failures independent'
 );
 ok(
+  customerContentCacheSource.includes('PRODUCT_FRESH_MS = 60L * 1000L') &&
+  customerContentCacheSource.includes('GROCERY_CATEGORY_FRESH_MS = 10L * 60L * 1000L') &&
+  customerAppForMemory.includes('contentCache.productsFresh(shop.id)') &&
+  customerGuestShell.includes('contentCache.productsFresh(shop.id)') &&
+  customerAppForMemory.includes('contentCache.groceryCategoriesFresh(shop.id)') &&
+  customerGuestShell.includes('contentCache.groceryCategoriesFresh(shop.id)') &&
+  customerAppForMemory.includes('fetchPage = { category, offset -> api.loadGroceryPage(auth, shop.id, category, offset) }') &&
+  customerGuestShell.includes('fetchPage = { category, offset -> api.loadGroceryPage(null, shop.id, category, offset) }'),
+  'Customer shop catalogs must reuse short-lived local cache without bypassing Grocery pagination authority'
+);
+ok(
   customerLaundryContentCacheSource.includes('context.noBackupFilesDir, "customer_laundry_cache_v1"') &&
   customerLaundryContentCacheSource.includes('FRESH_MS = 5L * 60L * 1000L') &&
   silentCustomerLaundry.includes('contentCache.read()') &&
