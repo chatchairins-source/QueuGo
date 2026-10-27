@@ -339,9 +339,7 @@ internal fun CustomerOrderTrackingScreen(
                 )
             }
             Spacer(Modifier.height(5.dp))
-            if (items.isEmpty()) {
-                Text("กำลังโหลดรายการ...", color = QgMuted, fontSize = 11.sp)
-            } else {
+            if (items.isNotEmpty()) {
                 items.forEachIndexed { index, item ->
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 8.dp),
