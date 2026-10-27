@@ -2022,7 +2022,8 @@ private fun ProfileScreen(
     ) {
         CustomerProfileHero(
             auth.user.name,
-            customerProfileContact(auth.user.customerPhone, auth.user.customerEmail)
+            customerProfileContact(auth.user.customerPhone, auth.user.customerEmail),
+            auth.user.customerPhoto
         )
 
         CustomerProfileSection("บัญชีและการใช้งาน") {
@@ -2129,7 +2130,7 @@ private fun ProfileScreen(
 }
 
 @Composable
-private fun CustomerProfileHero(name: String, contact: String?) {
+private fun CustomerProfileHero(name: String, contact: String?, photo: String?) {
     val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "Q"
     Row(
         Modifier
@@ -2138,18 +2139,27 @@ private fun CustomerProfileHero(name: String, contact: String?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        val safePhoto = photo?.trim()?.takeIf {
+            it.startsWith("https://", ignoreCase = true) ||
+                (it.length <= 32_768 && it.matches(Regex("(?i)^data:image/(jpeg|png|webp);base64,[a-z0-9+/=]+$")))
+        }
         Box(
             Modifier
                 .size(60.dp)
-                .background(androidx.compose.ui.graphics.Color(0xFFE9EAEC), RoundedCornerShape(20.dp)),
+                .clip(RoundedCornerShape(20.dp))
+                .background(androidx.compose.ui.graphics.Color(0xFFE9EAEC)),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                initial,
-                color = androidx.compose.ui.graphics.Color(0xFF989DA5),
-                fontSize = 22.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
+            if (safePhoto != null) {
+                QgRemoteImage(safePhoto, Modifier.fillMaxSize(), fallback = initial, cornerRadius = 20.dp)
+            } else {
+                Text(
+                    initial,
+                    color = androidx.compose.ui.graphics.Color(0xFF989DA5),
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
         }
         Column(Modifier.weight(1f)) {
             Text(

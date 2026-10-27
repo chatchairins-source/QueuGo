@@ -7,7 +7,8 @@ data class NativeUser(
     val role: String,
     val status: String,
     val customerPhone: String? = null,
-    val customerEmail: String? = null
+    val customerEmail: String? = null,
+    val customerPhoto: String? = null
 )
 
 data class NativeSession(

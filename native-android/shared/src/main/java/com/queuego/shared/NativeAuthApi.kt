@@ -502,7 +502,7 @@ class NativeAuthApi(
         val authUserId = authUser.getString("id")
         val rows = requestArray(
             "GET",
-            "/rest/v1/users?select=id,name,role,status,auth_user_id,phone&auth_user_id=eq." + enc(authUserId),
+            "/rest/v1/users?select=id,name,role,status,auth_user_id,phone,metadata&auth_user_id=eq." + enc(authUserId),
             token
         )
         if (rows.length() == 0) throw NativeSessionInvalidException("ไม่พบบัญชี QueueGo")
@@ -538,6 +538,12 @@ class NativeAuthApi(
                 authUser.optString("email").trim().takeIf {
                     expectedRole == "customer" && it.isNotBlank() &&
                         !it.endsWith("@auth.queuetech.local", ignoreCase = true)
+                },
+                row.optJSONObject("metadata")?.takeIf { expectedRole == "customer" }?.let { metadata ->
+                    sequenceOf("profileImage", "profile_image", "avatarUrl")
+                        .map { metadata.optString(it).trim() }
+                        .firstOrNull { it.startsWith("https://", ignoreCase = true) ||
+                            (it.length <= 32_768 && it.matches(Regex("(?i)^data:image/(jpeg|png|webp);base64,[a-z0-9+/=]+$"))) }
                 }
             )
         )
@@ -587,7 +593,8 @@ class NativeAuthApi(
                     row.optString("role"),
                     row.optString("status"),
                     row.optString("phone").trim().takeIf { expectedRole == "customer" && it.isNotBlank() },
-                    liveAuth.user.customerEmail.takeIf { expectedRole == "customer" }
+                    liveAuth.user.customerEmail.takeIf { expectedRole == "customer" },
+                    liveAuth.user.customerPhoto.takeIf { expectedRole == "customer" }
                 )
             )
         }

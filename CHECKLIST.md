@@ -1941,3 +1941,11 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Exact current source predecessor Native Pilot `40478683739` is queued; predecessor Map Engine `40478683750` is running dependencies. Parent Native Pilot `40478110875` has passed regression, source/SQL contracts and tracking JVM tests and is building the three APKs. Parent Map Engine `40478110860` passed.
 - No Production records, financial authority, inventory decisions, dispatch logic or backend data changed.
 - **NEXT:** publish this bounded source successor and inspect its exact-head Native Pilot + Map Engine. Continue only from the first confirmed failure; preserve Customer screenshot and physical-device gates as open until their evidence exists.
+
+## 2026-10-27 Customer Profile photo parity — source checkpoint; exact-head CI NEXT
+- Continued Customer Web Production parity review and found Web Profile renders `users.metadata.profileImage`, `profile_image`, or `avatarUrl`; Native Profile showed only an initial even when metadata contained a safe image.
+- Native sign-in now reads the existing `metadata` column for Customer role, accepts HTTPS or small JPEG/PNG/WebP base64 image data, carries it in the existing encrypted role-session store, and renders it in the 60 dp profile hero with the same initial fallback. Session restore remains backward-compatible when no photo is stored.
+- Extended source contracts for metadata keys, encrypted session persistence, and Web-aligned Profile rendering. Local `node tests/native-android-source.cjs`: 402 checks PASS; `git diff --check` PASS.
+- Timestamp/contact source HEAD `5ca0bc5419ffb18ff4ab266a7d57d8bfe2d0b4ac` has Native Pilot `40479003024` queued and Map Engine `40479003003` in progress. Parent Native Pilot `40478110875` passed three APK builds, 16 KB packaging and WebView rejection and is still on Android emulator lifecycle; parent Map Engine `40478683750` passed all jobs.
+- No Production data or operational authority changed.
+- **NEXT:** publish this source successor and inspect exact-head Native Pilot + Map Engine; fix only the first confirmed failure. Continue remaining Customer parity after the gate while keeping screenshot and physical-device acceptance distinct.
