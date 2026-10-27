@@ -162,11 +162,10 @@ fun RiderMessagesScreen(
             modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth())
         Spacer(Modifier.height(12.dp))
 
-        if (loading || !error.isNullOrBlank() || rows.isEmpty()) {
+        if (!loading && (!error.isNullOrBlank() || rows.isEmpty())) {
             Column(Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(vertical = 30.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(if (loading) "กำลังโหลดข้อความ..." else error ?: "ยังไม่มีการสนทนา",
-                    color = Color(0xFF8A8387))
+                Text(error ?: "ยังไม่มีการสนทนา", color = Color(0xFF8A8387))
                 if (!error.isNullOrBlank()) {
                     TextButton(onClick = { loading = true; error = null; retry++ }) { Text("ลองใหม่") }
                 }
