@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -28,13 +28,58 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 private const val CHAT_IMAGE_LIMIT = 5 * 1024 * 1024
 private const val CHAT_IMAGE_MAX_BASE64_CHARS = ((CHAT_IMAGE_LIMIT + 2) / 3) * 4
 private const val CHAT_IMAGE_MAX_SIDE = 1280
+private const val CHAT_IMAGE_DISK_CACHE_MAX_BYTES = 64L * 1024L * 1024L
 private val chatImageDecodeGate = Semaphore(2)
+
+private fun nativeChatImageCacheName(source: String): String =
+    MessageDigest.getInstance("SHA-256")
+        .digest(source.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
+
+private fun nativeChatImageCacheDir(context: android.content.Context): File =
+    File(context.noBackupFilesDir, "queuego_chat_images_v1").also { runCatching { it.mkdirs() } }
+
+private fun readNativeChatImageCache(context: android.content.Context, source: String): ByteArray? {
+    val file = File(nativeChatImageCacheDir(context), nativeChatImageCacheName(source))
+    if (!file.isFile || file.length() !in 1L..CHAT_IMAGE_LIMIT.toLong()) return null
+    return runCatching {
+        file.inputStream().use { it.readChatImage() }.also {
+            runCatching { file.setLastModified(System.currentTimeMillis()) }
+        }
+    }.getOrNull()
+}
+
+private fun writeNativeChatImageCache(context: android.content.Context, source: String, bytes: ByteArray) {
+    if (bytes.isEmpty() || bytes.size > CHAT_IMAGE_LIMIT) return
+    val directory = nativeChatImageCacheDir(context)
+    val target = File(directory, nativeChatImageCacheName(source))
+    val temp = File(directory, target.name + ".tmp")
+    runCatching {
+        temp.outputStream().use { it.write(bytes) }
+        if (!temp.renameTo(target)) {
+            target.outputStream().use { it.write(bytes) }
+            temp.delete()
+        }
+        target.setLastModified(System.currentTimeMillis())
+        var total = directory.listFiles()?.filter { it.isFile && !it.name.endsWith(".tmp") }
+            ?.sumOf { it.length().coerceAtLeast(0L) } ?: 0L
+        if (total > CHAT_IMAGE_DISK_CACHE_MAX_BYTES) {
+            for (file in directory.listFiles().orEmpty().filter { it.isFile && !it.name.endsWith(".tmp") }.sortedBy { it.lastModified() }) {
+                if (total <= CHAT_IMAGE_DISK_CACHE_MAX_BYTES * 3L / 4L) break
+                val size = file.length().coerceAtLeast(0L)
+                if (runCatching { file.delete() }.getOrDefault(false)) total -= size
+            }
+        }
+    }.onFailure { runCatching { temp.delete() } }
+}
 
 private fun InputStream.readChatImage(limit: Int = CHAT_IMAGE_LIMIT): ByteArray {
     val result = ByteArrayOutputStream()
@@ -95,6 +140,7 @@ suspend fun prepareNativeChatImage(resolver: ContentResolver, uri: Uri, allowedM
 
 @Composable
 fun NativeChatImage(source: String) {
+    val context = LocalContext.current.applicationContext
     var bitmap by remember(source) { mutableStateOf<Bitmap?>(null) }
     var failed by remember(source) { mutableStateOf(false) }
     LaunchedEffect(source) {
@@ -115,10 +161,18 @@ fun NativeChatImage(source: String) {
                         }
                     } else {
                         require(source.startsWith("https://")) { "ลิงก์รูปภาพไม่ถูกต้อง" }
-                        val connection = URL(source).openConnection() as HttpURLConnection
-                        connection.connectTimeout = 10000
-                        connection.readTimeout = 10000
-                        try { connection.inputStream.use { it.readChatImage() } } finally { connection.disconnect() }
+                        readNativeChatImageCache(context, source) ?: run {
+                            val connection = URL(source).openConnection() as HttpURLConnection
+                            connection.connectTimeout = 10000
+                            connection.readTimeout = 10000
+                            try {
+                                connection.inputStream.use { it.readChatImage() }.also {
+                                    writeNativeChatImageCache(context, source, it)
+                                }
+                            } finally {
+                                connection.disconnect()
+                            }
+                        }
                     }
                     decodeChatImage(bytes)
                 }
@@ -137,6 +191,6 @@ fun NativeChatImage(source: String) {
         val image = bitmap
         if (image != null) Image(image.asImageBitmap(), "รูปที่ส่งในแชต",
             Modifier.fillMaxWidth().heightIn(max = 320.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Fit)
-        else if (failed) Text("เปิดรูปไม่สำเร็จ") else CircularProgressIndicator()
+        else if (failed) Text("เปิดรูปไม่สำเร็จ")
     }
 }
