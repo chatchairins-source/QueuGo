@@ -500,6 +500,7 @@ ok(
   authenticatedReviewCapture.includes('any(node_exact(n,title) and rect(n) for n in xs)') &&
   authenticatedReviewCapture.includes('not any(node_exact(n,title) and rect(n) for n in xs)') &&
   authenticatedReviewCapture.includes('laundry_profile=scroll_to_text("รับงานฝากซัก")') &&
+  authenticatedReviewCapture.includes('expanded=scroll_to_text("แนะนำบริการและวิธีใช้งาน")') &&
   authenticatedReviewCapture.includes('"profile_laundry","08-learning-center"') &&
   authenticatedReviewCapture.includes('shot("03-profile-laundry")') &&
   !authenticatedReviewCapture.includes('node_contains(n,title)'),

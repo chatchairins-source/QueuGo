@@ -95,10 +95,10 @@ def expand_profile_extra_tools():
         return
     ns=scroll_to_text("เครื่องมือ Rider เพิ่มเติม")
     tap_label(ns,"เครื่องมือ Rider เพิ่มเติม")
-    expanded=wait(
-        lambda xs:any(n.get("text","").strip()=="แนะนำบริการและวิธีใช้งาน" and rect(n) for n in xs),
-        15
-    )
+    # Expansion inserts these rows below the current scroll viewport. Scroll
+    # the child into view before treating its absence from UIAutomator as a
+    # failed toggle.
+    expanded=scroll_to_text("แนะนำบริการและวิธีใช้งาน")
     assert expanded, "Rider extra tools did not expand"
     time.sleep(1)
 
