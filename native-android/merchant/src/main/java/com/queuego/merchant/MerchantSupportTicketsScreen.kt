@@ -170,7 +170,7 @@ internal fun MerchantSupportTicketsScreen(
         Spacer(Modifier.height(18.dp))
         Text("เรื่องที่แจ้งไว้", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         when {
-            loading -> Text("กำลังโหลด...", color = QgMuted, modifier = Modifier.padding(vertical = 14.dp))
+            loading -> Unit
             loadError != null -> Column {
                 Text("โหลดเรื่องที่แจ้งไม่สำเร็จ: $loadError", color = QgRed, modifier = Modifier.padding(vertical = 10.dp))
                 OutlinedButton(onClick = { scope.launch { refresh() } }) { Text("ลองอีกครั้ง") }
