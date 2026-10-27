@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -97,7 +96,7 @@ internal fun CustomerPromotionScreen(
         Spacer(Modifier.height(10.dp))
 
         when {
-            loading -> CircularProgressIndicator()
+            loading -> Unit
             error != null -> Text(error!!, color = QgRed)
             rows.isEmpty() -> Text("ยังไม่มีโปรโมชั่นที่เปิดใช้งาน", color = QgMuted)
             else -> rows.forEach { promotion ->
