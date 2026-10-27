@@ -201,7 +201,7 @@ def main():
     for entry,title,name in (
         ("แนะนำบริการและวิธีใช้งาน","ศูนย์เรียนรู้ Rider","08-learning-center"),
         ("ศูนย์ความปลอดภัย","กรณีฉุกเฉิน","09-safety-center"),
-        ("ตรวจสอบระบบ Rider","ตรวจสอบระบบ Rider","11-diagnostics"),
+        ("ตรวจสอบระบบ Rider","ตรวจจากสถานะจริงของโทรศัพท์เครื่องนี้","11-diagnostics"),
     ):
         capture_profile_dialog(entry,title,name)
     expected_screens=(
