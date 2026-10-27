@@ -4,6 +4,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class NativeOrderNumberTest {
+    @Test fun replacesOrderNumbersInsideCustomerNotificationText() {
+        assertEquals("ออเดอร์ QT-2141 กำลังส่ง", nativeOrderNumberInText("ออเดอร์ QT-20261006-2141 กำลังส่ง"))
+        assertEquals("รายการ QO-0007 · POS-1863", nativeOrderNumberInText("รายการ QO-7 · POS-32D8C1AD0747"))
+        assertEquals("ข้อความทั่วไป", nativeOrderNumberInText("ข้อความทั่วไป"))
+    }
+
     @Test fun followsProductionLegacyAndCurrentOrderNumbers() {
         val fixtures = mapOf(
             "QT-20261006-2141" to "QT-2141", "QT-001" to "QT-0001",

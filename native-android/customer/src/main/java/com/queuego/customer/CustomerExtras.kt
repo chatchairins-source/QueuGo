@@ -187,7 +187,8 @@ fun CustomerNotificationsScreen(
                     Column {
                         Row(Modifier.fillMaxWidth()) {
                             Text(
-                                if (n.read) n.title else "●  " + n.title,
+                                if (n.read) com.queuego.shared.nativeOrderNumberInText(n.title)
+                                else "●  " + com.queuego.shared.nativeOrderNumberInText(n.title),
                                 modifier = Modifier.weight(1f),
                                 color = if (n.read) androidx.compose.ui.graphics.Color.Unspecified else QgRed,
                                 fontWeight = FontWeight.ExtraBold
@@ -195,7 +196,7 @@ fun CustomerNotificationsScreen(
                         }
                         if (n.message.isNotBlank()) {
                             Spacer(Modifier.height(4.dp))
-                            Text(n.message, color = QgMuted)
+                            Text(com.queuego.shared.nativeOrderNumberInText(n.message), color = QgMuted)
                         }
                         if (!n.createdAt.isNullOrBlank()) {
                             Spacer(Modifier.height(5.dp))

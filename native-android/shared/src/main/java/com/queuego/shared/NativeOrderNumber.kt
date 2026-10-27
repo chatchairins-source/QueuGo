@@ -21,3 +21,9 @@ fun nativeOrderNumber(raw: String?): String {
     }
     return "QT-" + numeric.toString().padStart(4, '0')
 }
+
+
+/** Replaces visible legacy/current order references in notification text like Production Web does. */
+fun nativeOrderNumberInText(value: String?): String =
+    Regex("\\b(?:QT|QO)-[0-9]{8}-[A-Z0-9]{1,4}\\b|\\b(?:QT|QO)-[A-Z0-9]{1,4}\\b|\\bLW-[0-9]{8}-[0-9]{6}-[A-Z0-9]{4}\\b|\\b(?:POS|QR)-[0-9A-F]{4,}\\b", RegexOption.IGNORE_CASE)
+        .replace(value.orEmpty()) { match -> nativeOrderNumber(match.value) }

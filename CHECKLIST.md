@@ -1949,3 +1949,10 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - Timestamp/contact source HEAD `5ca0bc5419ffb18ff4ab266a7d57d8bfe2d0b4ac` has Native Pilot `40479003024` queued and Map Engine `40479003003` in progress. Parent Native Pilot `40478110875` passed three APK builds, 16 KB packaging and WebView rejection and is still on Android emulator lifecycle; parent Map Engine `40478683750` passed all jobs.
 - No Production data or operational authority changed.
 - **NEXT:** publish this source successor and inspect exact-head Native Pilot + Map Engine; fix only the first confirmed failure. Continue remaining Customer parity after the gate while keeping screenshot and physical-device acceptance distinct.
+
+## 2026-10-27 Customer notification order-number parity — source checkpoint; exact-head CI NEXT
+- Continued the same Web Production parity audit. Web `renderNotifications` normalizes legacy/current order identifiers in every notification title and message with `QueueGoOrderNumber.replaceInText`; Native previously displayed raw strings.
+- Added shared `nativeOrderNumberInText` using the existing Production-compatible number parser, and apply it to the Customer notification title and message only at display time. Added regression fixtures for current, legacy POS and QO references plus a scoped source contract.
+- Local Customer/Merchant/Rider source contract: 404 checks PASS; `git diff --check` PASS. No database values are rewritten.
+- Exact predecessor Native Pilot `40479861625` is currently in Full QueueGo regression; Map Engine `40479861694` is queued. Previous Native Pilot `40478110875` completed successfully through emulator lifecycle and evidence upload. No failure observed.
+- **NEXT:** publish this bounded successor, confirm exact-head Native Pilot + Map Engine, then continue Customer screen parity. Keep any visual/authenticated or physical-device claims tied to actual evidence.
