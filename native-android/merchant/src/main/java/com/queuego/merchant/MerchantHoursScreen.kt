@@ -76,10 +76,15 @@ internal fun MerchantHoursScreen(
 
     LaunchedEffect(shop.id) {
         loading = true
+        val cacheFresh = withContext(Dispatchers.IO) { cache.fresh(shop.id) }
         val cached = withContext(Dispatchers.IO) { cache.read(shop.id, today) }
         if (cached != null) {
             applyHoursState(cached)
             loading = false
+            if (cacheFresh) {
+                message = null
+                return@LaunchedEffect
+            }
         }
         runCatching { api.loadBusinessHours(auth, shop.id, today) }
             .onSuccess { state ->
