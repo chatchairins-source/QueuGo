@@ -495,6 +495,15 @@ ok(
   merchantAppSource.includes('val gpDeferred = async {'),
   'Merchant initial refresh must parallelize independent server reads instead of serializing the whole dashboard'
 );
+ok(
+  customerAppForMemory.includes('coroutineScope {') &&
+  customerAppForMemory.includes('val shopsDeferred = async { api.loadShops(auth) }') &&
+  customerAppForMemory.includes('val ordersDeferred = async { api.loadOrders(auth) }') &&
+  customerAppForMemory.includes('val bannersDeferred = async { api.loadHomeBanners(auth) }') &&
+  customerGuestShell.includes('val shopsDeferred = async { api.loadShopsPublic() }') &&
+  customerGuestShell.includes('val serviceBannersDeferred = async { api.loadServiceBannersPublic() }'),
+  'Customer initial refresh must parallelize independent authenticated and guest reads'
+);
 const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(
   merchantAppSource.includes('runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90) }') &&
