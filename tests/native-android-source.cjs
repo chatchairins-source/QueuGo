@@ -1439,7 +1439,12 @@ ok(riderNavigationIntegration.includes('bundleOrders: List<RiderBundleOrder>')&&
    'Rider Native QueueGo navigation must render every live Route Bundle stop with stable pickup-then-drop numbering');
 
 const posOnlyApi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt'),posOnlyUi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
-ok(!/PosDelivery|deliveryOrders|pos_delivery_kitchen_action|pos_enable_delivery|QUEUEGO_DELIVERY/.test(posOnlyApi+posOnlyUi),'Native POS must not read, render or mutate Delivery orders');
+ok(!/deliveryOrders|pos_delivery_kitchen_action|QUEUEGO_DELIVERY/.test(posOnlyApi+posOnlyUi),
+  'Native POS must not read, render or mutate Delivery orders as POS bills');
+ok(posOnlyUi.includes('"delivery" -> PosDeliveryView(')&&
+  posOnlyUi.includes('merchantApi.enableDelivery(auth)')&&
+  posOnlyUi.includes('ใช้หน้าร้าน POS ต่อได้เสมอ · ตรวจความพร้อมก่อนเปิดรับ Delivery'),
+  'Native POS may expose the Web Delivery readiness/configuration surface without mixing Delivery orders into POS bills');
 ok(posOnlyApi.includes('delivery = raw.optDouble("DELIVERY"')&&posOnlyApi.includes('gp = raw.optDouble("GP"')&&
   posOnlyUi.includes('PosReportLine("Delivery", report.delivery)')&&
   posOnlyUi.includes('PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway + report.delivery, true)')&&
