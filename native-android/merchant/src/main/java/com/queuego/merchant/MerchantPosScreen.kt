@@ -72,6 +72,7 @@ import com.queuego.shared.QueueGoHttpException
 import com.queuego.shared.NativeRealtimeSubscription
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgGreen
+import com.queuego.shared.QgIconButton
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
@@ -111,6 +112,7 @@ fun MerchantPosScreen(
 ) {
     val context = LocalContext.current
     val api = remember { MerchantPosApi(MerchantPosPendingStore(context.noBackupFilesDir.resolve("queuego-pos-edit-pending"))) }
+    val merchantApi = remember { MerchantApi() }
     val offlineDraftStore = remember { MerchantPosOfflineDraftStore(context.noBackupFilesDir.resolve("queuego-pos-offline-drafts")) }
     val realtime = remember { NativeOrderRealtime() }
     val refreshMutex = remember { Mutex() }
@@ -140,6 +142,8 @@ fun MerchantPosScreen(
     var networkValidated by remember { mutableStateOf(false) }
     var confirmDraftSubmit by remember { mutableStateOf(false) }
     var confirmDraftDiscard by remember { mutableStateOf(false) }
+    var deliveryShop by remember(auth.user.id) { mutableStateOf<MerchantShop?>(null) }
+    var deliveryLoading by remember(auth.user.id) { mutableStateOf(false) }
 
     LaunchedEffect(auth.session.authUserId, busy) {
         if (!busy) {
@@ -734,6 +738,16 @@ fun MerchantPosScreen(
     val selectedBill = openBills.firstOrNull { it.id == selectedBillId }
     val kitchenEnabled = snap?.shopCategory == "food" || snap?.shopCategory == "cafe"
 
+    LaunchedEffect(view, snap?.shopId, auth.session.accessToken) {
+        if (view == "delivery" && snap?.owner == true) {
+            deliveryLoading = true
+            runCatching { merchantApi.loadShop(auth) }
+                .onSuccess { deliveryShop = it }
+                .onFailure { message = it.message ?: "โหลดสถานะ Delivery ไม่สำเร็จ" }
+            deliveryLoading = false
+        }
+    }
+
     LaunchedEffect(snap?.shopCategory) {
         if (!kitchenEnabled && view == "kitchen") view = "counter"
     }
@@ -743,7 +757,7 @@ fun MerchantPosScreen(
             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(onClick = onBack, enabled = !busy) { Text(backLabel) }
+            QgIconButton(icon = "back", onClick = onBack)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text("QueueGo หน้าร้าน", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
@@ -1061,6 +1075,30 @@ fun MerchantPosScreen(
                     onType = {
                         historyType = it
                         historyTypeMenu = false
+                    }
+                )
+
+                "delivery" -> PosDeliveryView(
+                    snapshot = snap,
+                    shop = deliveryShop,
+                    loading = deliveryLoading,
+                    busy = busy,
+                    onEnable = {
+                        if (!busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching {
+                                    merchantApi.enableDelivery(auth)
+                                    merchantApi.loadShop(auth)
+                                }.onSuccess { fresh ->
+                                    deliveryShop = fresh
+                                    message = "เปิด Delivery แล้ว"
+                                }.onFailure {
+                                    message = it.message ?: "เปิด Delivery ไม่สำเร็จ"
+                                }
+                                busy = false
+                            }
+                        }
                     }
                 )
 
@@ -1497,10 +1535,13 @@ private fun PosTabs(current: String, owner: Boolean, kitchenEnabled: Boolean, on
         add("tables" to "โต๊ะ")
         if (kitchenEnabled) add("kitchen" to "ครัว")
         add("bills" to "คิดเงิน")
-        add("printer" to "เครื่องพิมพ์")
         if (owner) {
             add("reports" to "ยอดขาย")
             add("history" to "ประวัติ")
+            add("delivery" to "Delivery")
+        }
+        add("printer" to "เครื่องพิมพ์")
+        if (owner) {
             add("staff" to "พนักงาน")
         }
     }
@@ -2204,6 +2245,91 @@ private fun PosStaffView(
             QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีพนักงาน", color = QgMuted) }
         }
         Spacer(Modifier.height(28.dp))
+    }
+}
+
+@Composable
+private fun PosDeliveryView(
+    snapshot: PosSnapshot,
+    shop: MerchantShop?,
+    loading: Boolean,
+    busy: Boolean,
+    onEnable: () -> Unit
+) {
+    val menuReady = snapshot.products.any { product ->
+        product.deliveryAvailable &&
+            (product.deliveryPrice ?: product.price).let { it.isFinite() && it >= 0.0 }
+    }
+    val checks = listOf(
+        "ข้อมูลร้าน" to !shop?.name.isNullOrBlank(),
+        "ที่อยู่และพิกัด" to (
+            !shop?.address.isNullOrBlank() &&
+                shop?.latitude?.isFinite() == true &&
+                shop.longitude?.isFinite() == true
+            ),
+        "เมนูและราคา" to menuReady,
+        "เวลาเปิดร้าน" to (!shop?.openTime.isNullOrBlank() && !shop?.closeTime.isNullOrBlank()),
+        "อนุมัติร้าน" to (shop?.status == "active")
+    )
+    val ready = checks.all { it.second }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        QgSectionTitle(
+            "QueueGo Delivery",
+            "ใช้หน้าร้าน POS ต่อได้เสมอ · ตรวจความพร้อมก่อนเปิดรับ Delivery"
+        )
+        if (loading && shop == null) {
+            QgCard(Modifier.fillMaxWidth()) { Text("กำลังตรวจข้อมูลร้าน…", color = QgMuted) }
+        }
+        checks.forEach { (label, complete) ->
+            QgCard(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (complete) "✓" else "○",
+                        color = if (complete) QgRed else QgMuted,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp
+                    )
+                    Spacer(Modifier.width(9.dp))
+                    Text(label, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                    Text(
+                        if (complete) "พร้อมแล้ว" else "ยังไม่พร้อม",
+                        color = if (complete) QgRed else QgMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+        QgCard(Modifier.fillMaxWidth()) {
+            Column {
+                Text("สถานะรับ Delivery", color = QgMuted, fontSize = 10.sp)
+                Text(
+                    if (shop?.deliveryEnabled == true) "เปิด" else "ปิด",
+                    color = if (shop?.deliveryEnabled == true) QgRed else QgMuted,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
+        if (shop?.deliveryEnabled != true) {
+            Button(
+                onClick = onEnable,
+                enabled = ready && !busy && !loading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (busy) "กำลังเปิด Delivery…" else "เปิด Delivery เมื่อพร้อม", fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Text(
+                "ข้อมูลพร้อมสำหรับ Delivery · จัดการเปิด/ปิดรับงานจากหน้าหลักร้าน",
+                color = QgMuted,
+                fontSize = 11.sp
+            )
+        }
     }
 }
 

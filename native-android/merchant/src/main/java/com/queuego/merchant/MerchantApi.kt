@@ -327,6 +327,13 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         )
     }
 
+    suspend fun enableDelivery(auth: NativeAuth): MerchantShop {
+        http.rpc("pos_enable_delivery", auth.session.accessToken, JSONObject())
+        return loadShop(auth)?.also {
+            check(it.deliveryEnabled) { "Server ยังไม่ยืนยันการเปิด Delivery" }
+        } ?: error("ไม่พบร้านหลังเปิด Delivery")
+    }
+
     suspend fun saveShopSetup(
         auth: NativeAuth,
         shop: MerchantShop,

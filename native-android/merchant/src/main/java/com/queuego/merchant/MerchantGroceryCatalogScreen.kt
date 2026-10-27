@@ -205,13 +205,45 @@ private fun MerchantGroceryCatalogCard(
             .padding(10.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
-            QgRemoteImage(
-                source = item.image,
-                modifier = Modifier.size(width = 112.dp, height = 144.dp),
-                fallback = item.name,
-                cornerRadius = 12.dp,
-                maxDecodeSide = 384
-            )
+            if (!item.image.isNullOrBlank()) {
+                QgRemoteImage(
+                    source = item.image,
+                    modifier = Modifier.size(width = 112.dp, height = 144.dp),
+                    fallback = item.name,
+                    cornerRadius = 12.dp,
+                    maxDecodeSide = 384
+                )
+            } else {
+                Box(
+                    Modifier
+                        .size(width = 112.dp, height = 144.dp)
+                        .background(Color(0xFFFFF4F6), RoundedCornerShape(12.dp))
+                        .border(1.dp, Color(0xFFF3D4DA), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            (item.brand.ifBlank { item.name }).take(2).uppercase(),
+                            color = QgRed,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            item.brand.ifBlank { item.category.ifBlank { "QueueGo" } },
+                            color = QgMuted,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2
+                        )
+                        Text(
+                            "รูปจริงรอการอนุมัติ",
+                            color = QgMuted,
+                            fontSize = 8.sp,
+                            modifier = Modifier.padding(top = 5.dp)
+                        )
+                    }
+                }
+            }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(item.name, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)

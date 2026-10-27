@@ -1,3 +1,9 @@
+## 2026-10-27 Native POS + Grocery catalog parity continuation
+
+- Added the Web POS Delivery/readiness destination to Native POS while retaining counter, tables, kitchen, bills, reports, history, printer and staff capabilities already implemented in Native. POS header now uses the shared compact back control rather than a large standalone button.
+- Grocery source catalog no longer renders an empty white image slab when no rights-approved image exists. Approved product photos still render normally; source-only rows show an explicit QueueGo placeholder and remain prohibited from hotlinking provenance-only `image_url` values.
+- **NEXT:** exact-head Native Pilot. Fix the first confirmed failure only; once green, build and publish fresh Customer/Merchant/Rider device-test APKs from that exact head.
+
 ## 2026-10-27 Tonight parity batch — stale Rider control guard corrected
 
 - Exact-head Native Pilot on `c4cd3c9a` passed all earlier regression checks and then failed only because `tests/native-android-source.cjs` still required the retired top-right Rider control rail. The current product code intentionally moves recenter / route overview / compass to the lower-right stack above the measured job dock, matching the owner/Web navigation layout direction.
