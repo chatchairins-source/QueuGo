@@ -108,7 +108,7 @@ fun MarketNativeScreen(
         onPauseOrDispose { }
     }
 
-    LaunchedEffect(actorId, location?.latitude, location?.longitude, reload) {
+    LaunchedEffect(actorId, reload) {
         if (!cacheHydrated) {
             val cached = withContext(Dispatchers.IO) { contentCache.readMarket() }
             if (cached != null) {

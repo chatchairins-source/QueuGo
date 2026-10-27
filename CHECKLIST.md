@@ -1,3 +1,12 @@
+## 2026-10-27 Customer Market GPS refresh deduplication — source checkpoint; exact-head CI NEXT
+
+- Parent Native successor HEAD: `c32b37d333556f2dce7a50f60d4233cbf0d71c7d`; PR #730 remains open/draft; Production `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Confirmed root cause in `QueueGoMarketScreen.kt`: the main market-data `LaunchedEffect` depended on latitude/longitude while loading the complete markets, shops, and catalog sets. GPS updates therefore cancelled/restarted all three remote reads despite the local cache being hydrated.
+- Removed location coordinates from that refresh key. Cache-first display remains; account changes and explicit/lifecycle refresh still reload. Active trip, pricing, availability and checkout remain server-backed. Added a source guard for the request trigger.
+- Exact-parent Native Pilot and Map Engine runs were cancelled during emulator lifecycle capture as the successor advanced; Rider authenticated review succeeded. Run both release gates on this source commit. No Production schema/data mutation.
+- Customer authenticated screenshot review remains blocked by missing Actions credentials; emulator CI does not certify physical-device or visual parity.
+- **NEXT:** inspect exact-head Native Pilot first. Fix only its first confirmed failure; if it passes, continue auditing remaining repeated, non-authoritative reference downloads.
+
 ## 2026-10-27 Merchant local-first reference categories — exact-head CI PASS
 
 - Current source HEAD `9e9068429c60ce08b37bc9daa126cc38cbe875e5` on `work-native-web-parity-20261026`. Exact PR Native Pilot `40464819987`, push Native Pilot `40464814881`, and Map Engine `40464819951` all completed SUCCESS. PR #730 remains open/draft; Production main is `7e036a0735cc49905e9b0a2434492470551a0c9d`.
