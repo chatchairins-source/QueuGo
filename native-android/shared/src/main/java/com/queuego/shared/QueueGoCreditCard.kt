@@ -311,7 +311,7 @@ fun QueueGoCreditCard(
                             }
                         }
                         Text(
-                            if (data == null) "กำลังโหลด..." else "ใช้ได้ ${money(data.optLong("available_minor"))}",
+                            if (data == null) "—" else "ใช้ได้ ${money(data.optLong("available_minor"))}",
                             fontSize = 25.sp,
                             lineHeight = 29.sp,
                             fontWeight = FontWeight.Black,
