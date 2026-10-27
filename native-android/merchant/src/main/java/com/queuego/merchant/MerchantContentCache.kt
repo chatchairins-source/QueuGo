@@ -47,15 +47,45 @@ internal class MerchantContentCache(context: Context) {
         val json = JSONObject()
             .put("shop", shop.toJson())
             .put("products", JSONArray().also { array -> products.forEach { array.put(it.toJson()) } })
-        writeJson(fileFor(ownerId), json)
+        val target = fileFor(ownerId)
+        val existing = readJson(target)
+        if (existing?.optJSONObject("shop")?.optString("id") == shop.id) {
+            listOf(
+                "groceryCategoryShopId" to "groceryCategories",
+                "marketCatalogCategoryShopId" to "marketCatalogCategories"
+            ).forEach { (shopKey, categoriesKey) ->
+                if (existing.optString(shopKey) == shop.id) {
+                    val values = existing.optJSONArray(categoriesKey)
+                    if (values != null) json.put(shopKey, shop.id).put(categoriesKey, values)
+                }
+            }
+        }
+        writeJson(target, json)
     }
 
-    fun readGroceryCategories(ownerId: String, shopId: String): List<String> {
+    fun readGroceryCategories(ownerId: String, shopId: String): List<String> =
+        readCategoryReference(ownerId, shopId, "groceryCategoryShopId", "groceryCategories")
+
+    fun writeGroceryCategories(ownerId: String, shopId: String, categories: List<String>) =
+        writeCategoryReference(ownerId, shopId, "groceryCategoryShopId", "groceryCategories", categories)
+
+    fun readMarketCatalogCategories(ownerId: String, shopId: String): List<String> =
+        readCategoryReference(ownerId, shopId, "marketCatalogCategoryShopId", "marketCatalogCategories")
+
+    fun writeMarketCatalogCategories(ownerId: String, shopId: String, categories: List<String>) =
+        writeCategoryReference(ownerId, shopId, "marketCatalogCategoryShopId", "marketCatalogCategories", categories)
+
+    private fun readCategoryReference(
+        ownerId: String,
+        shopId: String,
+        shopKey: String,
+        categoriesKey: String
+    ): List<String> {
         if (ownerId.isBlank() || shopId.isBlank()) return emptyList()
         val json = readJson(fileFor(ownerId)) ?: return emptyList()
-        if (json.optString("groceryCategoryShopId") != shopId ||
+        if (json.optString(shopKey) != shopId ||
             json.optJSONObject("shop")?.optString("id") != shopId) return emptyList()
-        val categories = json.optJSONArray("groceryCategories") ?: return emptyList()
+        val categories = json.optJSONArray(categoriesKey) ?: return emptyList()
         return runCatching {
             buildList {
                 for (index in 0 until minOf(categories.length(), MAX_GROCERY_CATEGORIES)) {
@@ -69,14 +99,20 @@ internal class MerchantContentCache(context: Context) {
     }
 
     @Synchronized
-    fun writeGroceryCategories(ownerId: String, shopId: String, categories: List<String>) {
+    private fun writeCategoryReference(
+        ownerId: String,
+        shopId: String,
+        shopKey: String,
+        categoriesKey: String,
+        categories: List<String>
+    ) {
         if (ownerId.isBlank() || shopId.isBlank() || categories.size > MAX_GROCERY_CATEGORIES ||
             categories.any { it.isBlank() || it.trim().length > MAX_GROCERY_CATEGORY_LENGTH }) return
         val target = fileFor(ownerId)
         val json = readJson(target) ?: return
         if (json.optJSONObject("shop")?.optString("id") != shopId) return
-        json.put("groceryCategoryShopId", shopId)
-            .put("groceryCategories", JSONArray().also { array ->
+        json.put(shopKey, shopId)
+            .put(categoriesKey, JSONArray().also { array ->
                 categories.map { it.trim() }.distinct().forEach { array.put(it) }
             })
         writeJson(target, json)

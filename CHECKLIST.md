@@ -1,3 +1,11 @@
+## 2026-10-27 Merchant Market catalog category cache — source checkpoint; exact-head CI NEXT
+
+- Parent Native successor HEAD `bc42055124af49e7224ebd7f76af02f030132caa` passed exact PR Native Pilot `40463066053`, push Native Pilot `40463060971`, and Map Engine `40463066031`. PR #730 remains open/draft; Production `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Merchant Market catalog category references now use the owner/shop-scoped bounded durable content cache and refresh once per visible screen lifecycle. Search/page changes no longer refetch the same category list. Cached categories stay visible while the current category list refreshes; product pages and add-to-shop mutation remain server-backed.
+- Retains Customer and Merchant Grocery category caches from the previous checkpoints. Local `node tests/native-android-source.cjs`: 379 checks PASS; `git diff --check` PASS. Gradle is unavailable locally; Kotlin/APK/emulator evidence must come from hosted exact-head Actions.
+- No Production schema/data mutation.
+- **NEXT:** inspect exact-head Native Pilot and Map Engine for the new branch tip; fix only the first confirmed failure. If green, continue the source audit for remaining repeated, non-authoritative reference-data requests while keeping live operational/financial state server-authoritative.
+
 ## 2026-10-27 Merchant Grocery category local-first cache — source checkpoint; exact-head CI NEXT
 
 - Parent exact Native successor HEAD: `dcfcc43273548874ba48ee266b067c981486ba8a`. Before this change, Native Pilot run `40461138799` and Map Engine run `40461134860` both completed SUCCESS on exact parent HEAD. PR #730 remains open/draft; Production `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
