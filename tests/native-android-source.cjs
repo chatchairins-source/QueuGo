@@ -424,6 +424,7 @@ const silentRiderSafetyReports=read('rider/src/main/java/com/queuego/rider/Rider
 const silentRiderEvidence=read('rider/src/main/java/com/queuego/rider/RiderEvidencePreview.kt');
 const silentRiderOrderDetails=read('rider/src/main/java/com/queuego/rider/RiderOrderDetailsSheet.kt');
 const silentRiderBenefits=read('rider/src/main/java/com/queuego/rider/RiderBenefitsCard.kt');
+const silentRiderAcceptance=read('rider/src/main/java/com/queuego/rider/RiderAcceptanceMode.kt');
 const silentRiderDocuments=read('rider/src/main/java/com/queuego/rider/RiderDocumentReadinessCard.kt');
 const silentRiderInsurance=read('rider/src/main/java/com/queuego/rider/RiderInsuranceCard.kt');
 const silentRiderVehicles=read('rider/src/main/java/com/queuego/rider/RiderVehiclesCard.kt');
