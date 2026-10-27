@@ -1,3 +1,10 @@
+## 2026-10-27 Grocery image regression updated for Merchant-only pinned previews
+
+- Exact-head Native Pilot on `c22c7859` passed Ride and 411 Native source checks, then failed `tests/grocery-images.cjs` because that legacy assertion still required Merchant source rows to force `image:null`.
+- The current owner-approved behavior intentionally renders Merchant-only reference images from the single pinned HTTPS host `images.mango-prod.siammakro.cloud`; customer-facing approved-image projection remains rights-gated and unchanged.
+- Updated the regression to require the pinned-host sanitizer and source-row preview while continuing to reject the old global-preview mechanism and customer promotion.
+- **NEXT:** inspect exact-head Native Pilot/Map Engine; fix first confirmed failure only, then continue Kotlin/JUnit, three APKs, 16 KB packaging, emulator lifecycle, artifact verification and public device-test links.
+
 ## 2026-10-27 Catalog image contract path correction
 
 - The Merchant reference-image implementation is in `merchant/grocery-catalog.js`, but the new regression assertion accidentally searched `merchant/index.html`. Corrected the test fixture path; product code is unchanged.

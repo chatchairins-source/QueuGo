@@ -14,5 +14,8 @@ eq(rightsMigration.includes("case when m.image_status='approved' then nullif(btr
 eq(rightsMigration.includes("coalesce(nullif(btrim(m.image),''), nullif(btrim(m.image_source),'')) as image"),false);
 const merchantUi=fs.readFileSync('merchant/grocery-catalog.js','utf8');
 eq(merchantUi.includes('QG_GROCERY_PREVIEW_IMAGES?.[r.id]'),false);
-eq(merchantUi.includes("display_name:r.title_th,image:null"),true);
+eq(merchantUi.includes("const merchantReferenceImage=url=>"),true);
+eq(merchantUi.includes("https://images.mango-prod.siammakro.cloud/"),true);
+eq(merchantUi.includes("image:merchantReferenceImage(r.image_url)"),true);
+eq(merchantUi.includes("display_name:r.title_th,image:null"),false);
 console.log(JSON.stringify({checks,failures:0,scope:'image identity, rights-gated projection and no unapproved source hotlink; no Production images written'}));
