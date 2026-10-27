@@ -208,11 +208,7 @@ fun CustomerReviewCard(
                 Spacer(Modifier.height(5.dp))
                 Text(message!!, color = QgRed)
             }
-            if (!loaded) {
-                Spacer(Modifier.height(6.dp))
-                Text("กำลังโหลดรีวิว...", color = QgMuted)
-                return@Column
-            }
+            if (!loaded) return@Column
 
             val current = review
             if (current != null && !editing) {
