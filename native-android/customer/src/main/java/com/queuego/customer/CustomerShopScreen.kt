@@ -116,11 +116,18 @@ internal fun CustomerFavoritesScreen(
         if (cachedHome != null) shops = cachedHome.shops
 
         val cachedShopIds = shops.mapTo(HashSet()) { it.id }
+        val cachedProductIds = products.mapTo(HashSet()) { it.id }
+        val requiredProductIds = favorites.mapNotNullTo(HashSet()) { it.product.takeIf(String::isNotBlank) }
         val requiredShopIds = buildSet {
             favorites.mapNotNullTo(this) { it.shop.takeIf(String::isNotBlank) }
             products.mapTo(this) { it.shopId }
         }
-        if (!force && cached?.fresh == true && requiredShopIds.all { it in cachedShopIds }) return
+        if (
+            !force &&
+            cached?.fresh == true &&
+            requiredProductIds.all { it in cachedProductIds } &&
+            requiredShopIds.all { it in cachedShopIds }
+        ) return
 
         try {
             val freshFavorites = api.favorites(auth)
@@ -255,6 +262,9 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
     val reviewCache = remember(context.applicationContext) {
         CustomerShopReviewCache(context.applicationContext)
     }
+    val favoritesCache = remember(context.applicationContext) {
+        CustomerFavoritesCache(context.applicationContext)
+    }
     val configuration = LocalConfiguration.current
     val compact = configuration.screenHeightDp < 760
     val narrow = configuration.screenWidthDp <= 420
@@ -273,7 +283,19 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
         if (cachedReviews != null) reviews = cachedReviews.value
 
         try {
-            favorites = if (auth == null) emptyList() else api.favorites(auth)
+            if (auth == null) {
+                favorites = emptyList()
+            } else {
+                val cachedFavorites = withContext(Dispatchers.IO) { favoritesCache.read(auth.user.id) }
+                if (cachedFavorites != null) favorites = cachedFavorites.favorites
+                if (cachedFavorites?.fresh != true) {
+                    val freshFavorites = api.favorites(auth)
+                    favorites = freshFavorites
+                    withContext(Dispatchers.IO) {
+                        favoritesCache.write(auth.user.id, freshFavorites, cachedFavorites?.products.orEmpty())
+                    }
+                }
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -303,7 +325,15 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
         if (identity in busyFavorites) return
         busyFavorites = busyFavorites + identity
         scope.launch {
-            try { api.toggle(liveAuth, kind, id); favorites = api.favorites(liveAuth) }
+            try {
+                val cachedBefore = withContext(Dispatchers.IO) { favoritesCache.read(liveAuth.user.id) }
+                api.toggle(liveAuth, kind, id)
+                val freshFavorites = api.favorites(liveAuth)
+                favorites = freshFavorites
+                withContext(Dispatchers.IO) {
+                    favoritesCache.write(liveAuth.user.id, freshFavorites, cachedBefore?.products.orEmpty())
+                }
+            }
             catch (e: CancellationException) { throw e }
             catch (_: Exception) { actionError = "บันทึกรายการโปรดไม่สำเร็จ" }
             finally { busyFavorites = busyFavorites - identity }
