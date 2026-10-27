@@ -314,9 +314,8 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
                     }
                     Spacer(Modifier.height(6.dp))
                     when {
-                        productsLoading -> LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 18.dp))
                         productsError != null -> Text("$productsError · ลองอีกครั้ง", Modifier.fillMaxWidth().clickable(onClick = onRetryProducts).padding(35.dp), color = QgRed)
-                        products.isEmpty() -> Text(if (groceryPaging != null) "ยังไม่มีสินค้าที่เปิดขาย" else "ยังไม่มีเมนู", Modifier.fillMaxWidth().padding(35.dp), color = QgMuted)
+                        !productsLoading && products.isEmpty() -> Text(if (groceryPaging != null) "ยังไม่มีสินค้าที่เปิดขาย" else "ยังไม่มีเมนู", Modifier.fillMaxWidth().padding(35.dp), color = QgMuted)
                     }
                 }
             }
@@ -343,7 +342,7 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
                         onClick = onGroceryMore,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 8.dp)
                     ) { Text(when {
-                        groceryPaging.loadingMore -> "กำลังโหลดสินค้า…"
+                        groceryPaging.loadingMore -> "โหลดสินค้าเพิ่มเติม"
                         groceryPaging.error != null -> "ลองโหลดสินค้าอีกครั้ง"
                         else -> "โหลดสินค้าเพิ่มเติม"
                     }) }
@@ -353,7 +352,6 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
                 Column(Modifier.offset(y = (-18).dp).padding(horizontal = inset).padding(top = 10.dp).clip(RoundedCornerShape(16.dp)).background(Color.White).padding(horizontal = 13.dp, vertical = 12.dp)) {
                     Text("รีวิวจากลูกค้า", fontSize = 18.sp, lineHeight = 21.6.sp, fontWeight = FontWeight.Bold)
                     if (loadError) Text("โหลดข้อมูลไม่สำเร็จ · ลองอีกครั้ง", fontSize = 11.sp, color = QgRed, modifier = Modifier.padding(top = 9.dp).clickable { reload++ })
-                    else if (reviews == null) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 9.dp))
                     reviews?.let { data ->
                         Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                             Text("★ " + String.format(Locale.US, "%.1f", data.average), fontSize = 14.sp, fontWeight = FontWeight.Bold)
