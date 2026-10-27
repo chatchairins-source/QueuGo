@@ -37,8 +37,8 @@
   ].concat(supply.clusters.map(c=>({xy:c.xy,color:'#e6002d',label:String(c.count),count:c.count})))).filter(row=>row.xy);
   const valid=points.filter(row=>row.xy);const center=valid[0]?.xy||[100.5,15.5];
   try{
-   trackingMap=new maplibregl.Map({container:host,style:qgQueueGoPickerStyle(),center,zoom:valid.length>1?12:14,minZoom:5,maxZoom:19,attributionControl:false,dragRotate:false,pitchWithRotate:false});
-   trackingMap.touchZoomRotate.disableRotation();trackingMap.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),'top-left');
+   trackingMap=new maplibregl.Map({container:host,style:qgQueueGoPickerStyle(),center,zoom:valid.length>1?12:14,minZoom:5,maxZoom:19,attributionControl:false,dragRotate:true,pitchWithRotate:true});
+   trackingMap.addControl(new maplibregl.NavigationControl({showCompass:true,visualizePitch:true}),'top-left');
    const map=trackingMap;
    map.on('load',()=>{
     if(trackingMap!==map)return;

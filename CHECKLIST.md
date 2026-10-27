@@ -1,3 +1,9 @@
+## 2026-10-28 Customer Ride pinch/rotate/3D gesture regression — IN PROGRESS
+
+- Owner physical screenshots reported difficult pinch-zoom, inability to rotate/tilt map. Exact HEAD `c0bcbf1c` used `QgTrackingMap` with `animateCamera` invoked on every Compose/data update, resetting user zoom/rotation; Web Ride explicitly disabled rotation/tilt.
+- Native shared tracking map now fits the first valid points **once** and renders subsequent rider/supply point changes without camera animation; enables MapLibre pinch/scroll/rotate/tilt and simultaneous scaling/rotation. Web Customer Ride tracking map now enables rotation, pitch and compass as well, preserving a common gesture contract. Added source test that blocks regression.
+- **NEXT:** run exact-HEAD Native Pilot and Web Ride source tests, fix first confirmed failure, then physical-device verify manual pinch zoom, two-finger rotate and 3D tilt during Rider updates and publish new APKs only after passing build gates.
+
 ## 2026-10-28 Android three-app public test download — DONE (build/distribution), physical parity BLOCKED
 
 - Exact APK source: `e35b0bff819fd015e5624fb91c8e18d53919c402`. Native Pilot push `40532373938` and PR `40532384468` both SUCCESS; source/regression, Android Kotlin/JUnit, all three debug APK builds, 16 KB packaging and emulator lifecycle passed. Source code was not rebuilt for distribution.

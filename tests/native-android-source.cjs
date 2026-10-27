@@ -1506,4 +1506,14 @@ ok(customerLaundryCatalogApi.includes('"queuego_laundry_customer_catalog"')&&cus
 const customerRideArrivalSource=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
 ok(customerRideArrivalSource.includes('text("arrived_pickup_at")')&&customerRideArrivalSource.includes('text("arrived_dropoff_at")')&&customerRideArrivalSource.includes('Text(passengerRideStatus(current)'),'Native Customer Ride must render arrival-derived status from the existing server state');
 
+ok(
+  sharedQueueGoMap.includes('if (!hasSetInitialViewport && lastPoints.isNotEmpty())') &&
+  sharedQueueGoMap.includes('map.uiSettings.isZoomGesturesEnabled = true') &&
+  sharedQueueGoMap.includes('map.uiSettings.isRotateGesturesEnabled = true') &&
+  sharedQueueGoMap.includes('map.uiSettings.isTiltGesturesEnabled = true') &&
+  sharedQueueGoMap.includes('map.uiSettings.setDisableRotateWhenScaling(false)') &&
+  read('../customer-ride.js').includes('dragRotate:true,pitchWithRotate:true') &&
+  !read('../customer-ride.js').includes('trackingMap.touchZoomRotate.disableRotation()'),
+  'Customer Ride map must preserve user zoom/rotate/tilt after marker updates and match Web gesture controls'
+);
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));

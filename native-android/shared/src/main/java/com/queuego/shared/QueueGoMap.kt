@@ -172,6 +172,7 @@ private class QueueGoTrackingMapHolder {
     var resumed = false
     var destroyed = false
     var lastPoints: List<QgMapPoint> = emptyList()
+    private var hasSetInitialViewport = false
     private val labelImages = mutableMapOf<String, Triple<QgMapRole, Int, String>>()
 
     fun render(points: List<QgMapPoint>) {
@@ -220,25 +221,25 @@ private class QueueGoTrackingMapHolder {
                 )
             }
         }
-        lastPoints.firstOrNull()?.let { point ->
+        // Once an initial valid map position is chosen, user gestures own the camera.
+        // Ride GPS/supply updates must redraw markers, never reset manual zoom/tilt.
+        if (!hasSetInitialViewport && lastPoints.isNotEmpty()) {
+            hasSetInitialViewport = true
+            val activeMap = map ?: return
             if (lastPoints.size == 1) {
-                map?.animateCamera(
+                val point = lastPoints.first()
+                activeMap.moveCamera(
                     CameraUpdateFactory.newLatLngZoom(
-                        LatLng(point.latitude, point.longitude),
-                        16.0
-                    ),
-                    350
+                        LatLng(point.latitude, point.longitude), 16.0
+                    )
                 )
             } else {
                 val bounds = org.maplibre.android.geometry.LatLngBounds.Builder().apply {
                     lastPoints.forEach { include(LatLng(it.latitude, it.longitude)) }
                 }.build()
-                map?.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 48), 350)
+                activeMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 48))
             }
-        } ?: map?.animateCamera(
-            CameraUpdateFactory.newLatLngZoom(LatLng(14.9918756, 103.0994795), 11.0),
-            0
-        )
+        }
     }
 
     fun start() {
@@ -273,6 +274,7 @@ private class QueueGoTrackingMapHolder {
         view?.onDestroy()
         labelImages.clear()
         lastPoints = emptyList()
+        hasSetInitialViewport = false
         destroyed = true
         map = null
         view = null
@@ -312,6 +314,12 @@ fun QgTrackingMap(
                     holder.map = map
                     map.uiSettings.isLogoEnabled = false
                     map.uiSettings.isAttributionEnabled = true
+                    // QueueGo Ride: pinch zoom, two-finger rotate and two-finger 3D tilt.
+                    map.uiSettings.isZoomGesturesEnabled = true
+                    map.uiSettings.isScrollGesturesEnabled = true
+                    map.uiSettings.isRotateGesturesEnabled = true
+                    map.uiSettings.isTiltGesturesEnabled = true
+                    map.uiSettings.setDisableRotateWhenScaling(false)
                     map.setStyle(queueGoMapStyle(sourceUri)) {
                         holder.render(points)
                         currentReady.value(true)
