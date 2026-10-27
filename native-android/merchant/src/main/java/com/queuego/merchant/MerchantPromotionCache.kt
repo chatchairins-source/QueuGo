@@ -6,26 +6,32 @@ import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
 
+internal data class CachedMerchantPromotions(
+    val rows: List<MerchantPromotion>,
+    val fresh: Boolean
+)
+
 /** Durable local-first cache for read-heavy Merchant promotion metadata. */
 internal class MerchantPromotionCache(context: Context) {
     companion object {
         private const val MAX_FILE_BYTES = 2L * 1024L * 1024L
+        private const val FRESH_MS = 10L * 60L * 1000L
     }
 
     private val root = File(context.noBackupFilesDir, "merchant_promotion_cache_v1").also {
         runCatching { it.mkdirs() }
     }
 
-    fun read(ownerId: String, shopId: String): List<MerchantPromotion> {
+    fun read(ownerId: String, shopId: String): CachedMerchantPromotions? {
         val file = fileFor(ownerId, shopId)
-        if (!file.isFile || file.length() !in 1L..MAX_FILE_BYTES) return emptyList()
+        if (!file.isFile || file.length() !in 1L..MAX_FILE_BYTES) return null
         val json = runCatching { JSONObject(file.readText(Charsets.UTF_8)) }
             .onFailure { runCatching { file.delete() } }
-            .getOrNull() ?: return emptyList()
-        val rows = json.optJSONArray("rows") ?: JSONArray()
-        return buildList {
-            for (index in 0 until rows.length()) {
-                val row = rows.optJSONObject(index) ?: continue
+            .getOrNull() ?: return null
+        val source = json.optJSONArray("rows") ?: JSONArray()
+        val rows = buildList {
+            for (index in 0 until source.length()) {
+                val row = source.optJSONObject(index) ?: continue
                 val id = row.optString("id")
                 if (id.isBlank()) continue
                 val budget = row.optDouble("maxBudget", 0.0)
@@ -43,6 +49,8 @@ internal class MerchantPromotionCache(context: Context) {
                 )
             }
         }
+        val age = System.currentTimeMillis() - file.lastModified()
+        return CachedMerchantPromotions(rows = rows, fresh = age in 0L..FRESH_MS)
     }
 
     fun write(ownerId: String, shopId: String, rows: List<MerchantPromotion>) {
