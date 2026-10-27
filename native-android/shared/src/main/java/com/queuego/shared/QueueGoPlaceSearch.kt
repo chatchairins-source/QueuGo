@@ -22,11 +22,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @Composable
 fun QgPlaceSearchPanel(
@@ -34,6 +37,8 @@ fun QgPlaceSearchPanel(
     search: suspend (String) -> List<QueueGoPlaceSearchResult>,
     onSelect: (QueueGoPlaceSearchResult) -> Unit
 ) {
+    val context = LocalContext.current.applicationContext
+    val cache = remember(context) { QueueGoPlaceSearchCache(context) }
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<QueueGoPlaceSearchResult>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
@@ -55,16 +60,40 @@ fun QgPlaceSearchPanel(
             return@LaunchedEffect
         }
         delay(300)
-        busy = true
-        searched = false
-        try {
-            results = search(normalized).take(8)
+        val cached = withContext(Dispatchers.IO) {
+            runCatching { cache.read(normalized) }.getOrNull()
+        }
+        if (cached != null) {
+            results = cached.results.take(8)
             searched = true
+            if (cached.fresh) {
+                busy = false
+                return@LaunchedEffect
+            }
+        } else {
+            searched = false
+        }
+
+        busy = true
+        try {
+            val fresh = search(normalized).take(8)
+            if (fresh.isNotEmpty()) {
+                results = fresh
+                searched = true
+                withContext(Dispatchers.IO) {
+                    runCatching { cache.write(normalized, fresh) }
+                }
+            } else if (cached == null) {
+                results = emptyList()
+                searched = true
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            results = emptyList()
-            searched = true
+            if (cached == null) {
+                results = emptyList()
+                searched = true
+            }
         } finally {
             busy = false
         }
@@ -87,8 +116,8 @@ fun QgPlaceSearchPanel(
             singleLine = true,
             label = { Text("ค้นหาสถานที่ ถนน ตำบล อำเภอ จังหวัด") },
         )
-        if (query.trim().length >= 2 && !busy) {
-            if (results.isEmpty() && searched) {
+        if (query.trim().length >= 2) {
+            if (results.isEmpty() && searched && !busy) {
                 Text(
                     "ไม่พบสถานที่จาก QueueGo Places",
                     color = QgMuted,
