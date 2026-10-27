@@ -11,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -182,43 +181,18 @@ internal fun MerchantRevenueScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        when {
-            loading && rows.isEmpty() -> Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(220.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = RevenueRed)
-            }
-
-            else -> {
-                RevenueHeroCard(
-                    cash = totalCash,
-                    caption = revenueRangeCaption(rangeMode, selectedDate, rangeDays)
-                )
-                Spacer(Modifier.height(8.dp))
-                RevenueMetricRow(
-                    orderCount = totalOrders,
-                    grossSales = totalSales,
-                    gp = totalGp,
-                    cash = totalCash
-                )
-            }
-        }
-
-        if (loading && rows.isNotEmpty()) {
+        if (!loading || rows.isNotEmpty()) {
+            RevenueHeroCard(
+                cash = totalCash,
+                caption = revenueRangeCaption(rangeMode, selectedDate, rangeDays)
+            )
             Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    strokeWidth = 2.dp,
-                    color = RevenueRed
-                )
-            }
+            RevenueMetricRow(
+                orderCount = totalOrders,
+                grossSales = totalSales,
+                gp = totalGp,
+                cash = totalCash
+            )
         }
 
         if (totalLegacyGp > 0.0) {
