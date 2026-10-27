@@ -96,6 +96,8 @@ import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -351,22 +353,45 @@ private fun MerchantShell(
         loading = showLoading
         runCatching {
             val s = api.loadShop(auth)
-            orders = api.loadOrders(auth)
-            notifications = runCatching { api.loadNotifications(auth) }.getOrDefault(emptyList())
-            knownPendingIds = orders.filter { it.status == "pending" }.map { it.id }.toSet()
             shop = s
-            if (s != null) {
-                val freshProducts = api.loadProducts(auth, s.id)
-                products = freshProducts
-                withContext(Dispatchers.IO) {
-                    contentCache.write(auth.user.id, s, freshProducts)
+            coroutineScope {
+                val ordersDeferred = async { api.loadOrders(auth) }
+                val notificationsDeferred = async {
+                    runCatching { api.loadNotifications(auth) }.getOrDefault(emptyList())
                 }
-                readiness = api.readiness(auth, s.id)
-                shopOpen = runCatching { api.shopOpenState(auth, s.id) }.getOrDefault(true)
-                val today = LocalDate.now(ZoneId.of("Asia/Bangkok")).toString()
-                todayRevenue = runCatching { api.todayRevenue(auth, today) }.getOrDefault(MerchantTodayRevenue(0, 0.0, 0.0, 0.0))
-                gpRate = runCatching { api.effectiveGp(auth, s.id) }.getOrDefault(0.0)
+                if (s == null) {
+                    orders = ordersDeferred.await()
+                    notifications = notificationsDeferred.await()
+                } else {
+                    val productsDeferred = async { api.loadProducts(auth, s.id) }
+                    val readinessDeferred = async { api.readiness(auth, s.id) }
+                    val openDeferred = async {
+                        runCatching { api.shopOpenState(auth, s.id) }.getOrDefault(true)
+                    }
+                    val today = LocalDate.now(ZoneId.of("Asia/Bangkok")).toString()
+                    val revenueDeferred = async {
+                        runCatching { api.todayRevenue(auth, today) }
+                            .getOrDefault(MerchantTodayRevenue(0, 0.0, 0.0, 0.0))
+                    }
+                    val gpDeferred = async {
+                        runCatching { api.effectiveGp(auth, s.id) }.getOrDefault(0.0)
+                    }
+
+                    val freshOrders = ordersDeferred.await()
+                    val freshProducts = productsDeferred.await()
+                    orders = freshOrders
+                    notifications = notificationsDeferred.await()
+                    products = freshProducts
+                    readiness = readinessDeferred.await()
+                    shopOpen = openDeferred.await()
+                    todayRevenue = revenueDeferred.await()
+                    gpRate = gpDeferred.await()
+                    withContext(Dispatchers.IO) {
+                        contentCache.write(auth.user.id, s, freshProducts)
+                    }
+                }
             }
+            knownPendingIds = orders.filter { it.status == "pending" }.map { it.id }.toSet()
             initialLoadError = null
         }.onFailure {
             if (it is kotlinx.coroutines.CancellationException) throw it
