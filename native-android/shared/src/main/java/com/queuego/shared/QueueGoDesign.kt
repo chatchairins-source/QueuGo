@@ -427,7 +427,6 @@ private const val QG_REMOTE_IMAGE_MAX_BASE64_CHARS = ((QG_REMOTE_IMAGE_MAX_BYTES
 private const val QG_REMOTE_IMAGE_MAX_SIDE = 1280
 private const val QG_REMOTE_IMAGE_MEMORY_CACHE_KB = 16 * 1024
 private const val QG_REMOTE_IMAGE_DISK_CACHE_MAX_BYTES = 96L * 1024L * 1024L
-private const val QG_REMOTE_IMAGE_DISK_CACHE_TTL_MS = 24L * 60L * 60L * 1000L
 private val qgRemoteImageDecodeGate = Semaphore(3)
 private val qgRemoteImageByteCache = object : LruCache<String, ByteArray>(QG_REMOTE_IMAGE_MEMORY_CACHE_KB) {
     override fun sizeOf(key: String, value: ByteArray): Int =
@@ -440,24 +439,36 @@ private fun queueGoRemoteImageCacheName(source: String): String =
         .joinToString("") { "%02x".format(it) }
 
 private fun queueGoRemoteImageCacheDir(context: android.content.Context): File =
-    File(context.cacheDir, "queuego_remote_images").also { runCatching { it.mkdirs() } }
+    File(context.noBackupFilesDir, "queuego_remote_images_v2").also { runCatching { it.mkdirs() } }
+
+private fun legacyQueueGoRemoteImageCacheDir(context: android.content.Context): File =
+    File(context.cacheDir, "queuego_remote_images")
 
 private fun readQueueGoRemoteImageCache(
     context: android.content.Context,
     source: String
 ): ByteArray? {
     qgRemoteImageByteCache.get(source)?.let { return it }
-    val file = File(queueGoRemoteImageCacheDir(context), queueGoRemoteImageCacheName(source))
-    if (!file.isFile || file.length() !in 1L..QG_REMOTE_IMAGE_MAX_BYTES.toLong()) return null
-    val age = System.currentTimeMillis() - file.lastModified()
-    if (age !in 0L..QG_REMOTE_IMAGE_DISK_CACHE_TTL_MS) {
-        runCatching { file.delete() }
-        return null
+    val cacheName = queueGoRemoteImageCacheName(source)
+    val durable = File(queueGoRemoteImageCacheDir(context), cacheName)
+    val legacy = File(legacyQueueGoRemoteImageCacheDir(context), cacheName)
+    val file = when {
+        durable.isFile && durable.length() in 1L..QG_REMOTE_IMAGE_MAX_BYTES.toLong() -> durable
+        legacy.isFile && legacy.length() in 1L..QG_REMOTE_IMAGE_MAX_BYTES.toLong() -> {
+            runCatching {
+                legacy.copyTo(durable, overwrite = true)
+                legacy.delete()
+                durable
+            }.getOrElse { legacy }
+        }
+        else -> return null
     }
     return runCatching {
         file.inputStream().use { it.readQueueGoImageLimited() }
             .also {
                 qgRemoteImageByteCache.put(source, it)
+                // Access time drives bounded LRU pruning. A downloaded image remains usable
+                // until storage pressure evicts it or the server gives the app a new URL.
                 runCatching { file.setLastModified(System.currentTimeMillis()) }
             }
     }.getOrNull()
