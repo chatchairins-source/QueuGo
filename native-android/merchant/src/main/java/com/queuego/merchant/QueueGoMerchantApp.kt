@@ -95,8 +95,10 @@ import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -157,6 +159,9 @@ private fun MerchantShell(
     var handledPushEventId by remember { mutableStateOf<Long?>(null) }
     var pushRetrySignal by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
+    val contentCache = remember(context.applicationContext) {
+        MerchantContentCache(context.applicationContext)
+    }
     val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
     val voiceState by voiceController.state.collectAsState()
     DisposableEffect(voiceController) { onDispose { voiceController.close() } }
@@ -342,8 +347,8 @@ private fun MerchantShell(
         selectedOrder = null
     }
 
-    suspend fun refreshAll() {
-        loading = true
+    suspend fun refreshAll(showLoading: Boolean = shop == null && products.isEmpty()) {
+        loading = showLoading
         runCatching {
             val s = api.loadShop(auth)
             orders = api.loadOrders(auth)
@@ -351,7 +356,11 @@ private fun MerchantShell(
             knownPendingIds = orders.filter { it.status == "pending" }.map { it.id }.toSet()
             shop = s
             if (s != null) {
-                products = api.loadProducts(auth, s.id)
+                val freshProducts = api.loadProducts(auth, s.id)
+                products = freshProducts
+                withContext(Dispatchers.IO) {
+                    contentCache.write(auth.user.id, s, freshProducts)
+                }
                 readiness = api.readiness(auth, s.id)
                 shopOpen = runCatching { api.shopOpenState(auth, s.id) }.getOrDefault(true)
                 val today = LocalDate.now(ZoneId.of("Asia/Bangkok")).toString()
@@ -477,7 +486,15 @@ private fun MerchantShell(
         }
     }
 
-    LaunchedEffect(auth.user.id) { refreshAll() }
+    LaunchedEffect(auth.user.id, contentCache) {
+        val cached = withContext(Dispatchers.IO) { contentCache.read(auth.user.id) }
+        if (cached != null) {
+            shop = cached.shop
+            products = cached.products
+            loading = false
+        }
+        refreshAll(showLoading = cached == null)
+    }
     LaunchedEffect(pushTarget?.eventId, loading, pushRetrySignal, auth.session.accessToken) {
         val target = pushTarget ?: return@LaunchedEffect
         if (loading || handledPushEventId == target.eventId) return@LaunchedEffect
