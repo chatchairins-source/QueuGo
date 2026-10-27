@@ -479,8 +479,11 @@ private fun CustomerShell(
             if (showLoading) loading = true
             liveMutex.withLock {
                 runCatching {
+                    val reuseStaticHome = !showLoading &&
+                        shops.isNotEmpty() &&
+                        withContext(Dispatchers.IO) { contentCache.homeFresh() }
                     coroutineScope {
-                        val shopsDeferred = async { api.loadShops(auth) }
+                        val shopsDeferred = if (reuseStaticHome) null else async { api.loadShops(auth) }
                         val ordersDeferred = async { api.loadOrders(auth) }
                         val marketTripsDeferred = async {
                             runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
@@ -489,22 +492,18 @@ private fun CustomerShell(
                             runCatching { laundryApi.orders(auth) }.getOrDefault(emptyList())
                         }
                         val savedLocationDeferred = async { api.loadSavedLocation(auth) }
-                        val bannersDeferred = async { api.loadHomeBanners(auth) }
-                        val serviceBannersDeferred = async { api.loadServiceBanners(auth) }
+                        val bannersDeferred = if (reuseStaticHome) null else async { api.loadHomeBanners(auth) }
+                        val serviceBannersDeferred = if (reuseStaticHome) null else async { api.loadServiceBanners(auth) }
                         val notificationsDeferred = async {
                             runCatching { extrasApi.notifications(auth) }.getOrDefault(emptyList())
                         }
 
-                        val freshShops = shopsDeferred.await()
                         val freshOrders = ordersDeferred.await()
                         val freshMarketTrips = marketTripsDeferred.await()
                         val freshLaundryOrders = laundryOrdersDeferred.await()
                         val saved = savedLocationDeferred.await()
-                        val freshBanners = bannersDeferred.await()
-                        val freshServiceBanners = serviceBannersDeferred.await()
                         val freshNotifications = notificationsDeferred.await()
 
-                        shops = freshShops
                         orders = freshOrders
                         marketTrips = freshMarketTrips
                         laundryOrders = freshLaundryOrders
@@ -513,11 +512,18 @@ private fun CustomerShell(
                             location = selected
                             address = selected.address
                         }
-                        banners = freshBanners
-                        serviceBanners = freshServiceBanners
                         notifications = freshNotifications
-                        withContext(Dispatchers.IO) {
-                            contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+
+                        if (!reuseStaticHome) {
+                            val freshShops = requireNotNull(shopsDeferred).await()
+                            val freshBanners = requireNotNull(bannersDeferred).await()
+                            val freshServiceBanners = requireNotNull(serviceBannersDeferred).await()
+                            shops = freshShops
+                            banners = freshBanners
+                            serviceBanners = freshServiceBanners
+                            withContext(Dispatchers.IO) {
+                                contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                            }
                         }
                     }
                     homeLoadError = null
