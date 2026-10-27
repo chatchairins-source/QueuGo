@@ -643,6 +643,15 @@ ok(
   merchantMediaForMemory.includes('if (rows.isEmpty()) message = it.message'),
   'Merchant media rows must render durable cached content before silent Storage refresh'
 );
+ok(
+  merchantMediaCacheSource.includes('context.noBackupFilesDir, "merchant_media_cache_v1"') &&
+  merchantMediaCacheSource.includes('FRESH_MS = 10L * 60L * 1000L') &&
+  merchantMediaForMemory.includes('cache.read(auth.session.authUserId)') &&
+  merchantMediaForMemory.includes('if (cached.fresh)') &&
+  merchantMediaForMemory.includes('refresh(force = true)') &&
+  merchantMediaForMemory.includes('cache.write(auth.session.authUserId, fresh)'),
+  'Merchant media rows must reuse fresh durable cache and force Storage refresh after upload'
+);
 const merchantModuleCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantModuleCache.kt');
 ok(
   merchantModuleCacheSource.includes('context.noBackupFilesDir, "merchant_module_cache_v1"') &&
