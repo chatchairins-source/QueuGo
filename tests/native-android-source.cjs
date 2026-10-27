@@ -499,6 +499,14 @@ ok(
   silentMerchantHours.includes('if (cached == null) message = it.message'),
   'Merchant business hours must render durable cached settings first and refresh silently'
 );
+const merchantMediaCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaCache.kt');
+ok(
+  merchantMediaCacheSource.includes('context.noBackupFilesDir, "merchant_media_cache_v1"') &&
+  merchantMediaForMemory.includes('cache.read(auth.session.authUserId)') &&
+  merchantMediaForMemory.includes('cache.write(auth.session.authUserId, fresh)') &&
+  merchantMediaForMemory.includes('if (rows.isEmpty()) message = it.message'),
+  'Merchant media rows must render durable cached content before silent Storage refresh'
+);
 ok(
   merchantAppSource.includes('coroutineScope {') &&
   merchantAppSource.includes('val ordersDeferred = async { api.loadOrders(auth) }') &&
