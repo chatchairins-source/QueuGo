@@ -126,6 +126,18 @@ internal class CustomerContentCache(context: Context) {
         writeJson(File(root, "market.json"), json)
     }
 
+    fun readPromotions(): List<CustomerPromotion> {
+        val json = readJson(File(root, "promotions.json")) ?: return emptyList()
+        return runCatching { json.optJSONArray("promotions").toCustomerPromotions() }
+            .getOrDefault(emptyList())
+    }
+
+    fun writePromotions(promotions: List<CustomerPromotion>) {
+        val json = JSONObject()
+            .put("promotions", JSONArray().also { array -> promotions.forEach { array.put(it.toJson()) } })
+        writeJson(File(root, "promotions.json"), json)
+    }
+
     private fun productFile(shopId: String): File =
         File(root, "products_" + sha256(shopId) + ".json")
 
@@ -385,3 +397,22 @@ private fun JSONArray?.toMarketProducts(): List<MarketProduct> = objects().mapNo
         availablePacks = row.optInt("availablePacks", 0).coerceAtLeast(0)
     )
 }.toList()
+
+
+private fun CustomerPromotion.toJson(): JSONObject = JSONObject()
+    .put("shopId", shopId)
+    .put("shopName", shopName)
+    .put("title", title)
+    .put("description", description)
+
+private fun JSONArray?.toCustomerPromotions(): List<CustomerPromotion> =
+    objects().mapNotNull { row ->
+        val shopId = row.optString("shopId")
+        if (shopId.isBlank()) return@mapNotNull null
+        CustomerPromotion(
+            shopId = shopId,
+            shopName = row.optString("shopName").ifBlank { "ร้านค้า" },
+            title = row.optString("title").ifBlank { "โปรโมชั่น" },
+            description = row.optString("description")
+        )
+    }.toList()
