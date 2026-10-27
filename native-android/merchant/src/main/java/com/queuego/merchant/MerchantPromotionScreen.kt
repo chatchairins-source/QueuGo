@@ -47,15 +47,19 @@ internal fun MerchantPromotionScreen(
     var days by remember { mutableStateOf("7") }
     var message by remember { mutableStateOf<String?>(null) }
 
-    suspend fun refresh() {
+    suspend fun refresh(force: Boolean = false) {
         loading = rows.isEmpty()
-        if (rows.isEmpty()) {
-            val cached = withContext(Dispatchers.IO) {
+        val cached = if (!force && rows.isEmpty()) {
+            withContext(Dispatchers.IO) {
                 cache.read(auth.user.id, shop.id)
             }
-            if (cached.isNotEmpty()) {
-                rows = cached
-                loading = false
+        } else null
+        if (cached != null) {
+            rows = cached.rows
+            loading = false
+            if (cached.fresh) {
+                message = null
+                return
             }
         }
         try {
@@ -153,7 +157,7 @@ internal fun MerchantPromotionScreen(
                                     days = "7"
                                     creating = false
                                     message = "ส่งคำขอโปรโมชั่นแล้ว"
-                                    refresh()
+                                    refresh(force = true)
                                 }.onFailure {
                                     message = it.message ?: "บันทึกโปรโมชั่นไม่สำเร็จ"
                                 }
