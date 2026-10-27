@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -87,9 +86,6 @@ fun QgPlaceSearchPanel(
             enabled = enabled,
             singleLine = true,
             label = { Text("ค้นหาสถานที่ ถนน ตำบล อำเภอ จังหวัด") },
-            trailingIcon = {
-                if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            }
         )
         if (query.trim().length >= 2 && !busy) {
             if (results.isEmpty() && searched) {
