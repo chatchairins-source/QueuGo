@@ -460,6 +460,15 @@ ok(
   !merchantMediaForMemory.includes('rows.chunked(3).forEach'),
   'Merchant media gallery must lazy-render rows instead of decoding the full image library at once'
 );
+const customerLaundryContentCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerLaundryContentCache.kt');
+ok(
+  customerLaundryContentCacheSource.includes('context.noBackupFilesDir, "customer_laundry_cache_v1"') &&
+  silentCustomerLaundry.includes('contentCache.read()') &&
+  silentCustomerLaundry.includes('contentCache.write(fresh)') &&
+  silentCustomerLaundry.includes('catalog?.servicesByHub?.get(hub.id).orEmpty()') &&
+  !silentCustomerLaundry.includes('api.services(auth, hub.id)'),
+  'Customer Laundry catalog must render local-first and must not redownload the full catalog when choosing a shop'
+);
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
 const merchantContentCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantContentCache.kt');
 ok(
