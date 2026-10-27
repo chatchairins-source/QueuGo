@@ -128,7 +128,8 @@ internal fun riderNavigationStops(
         lat: Double?,
         lon: Double?,
         completed: Boolean,
-        label: String
+        label: String,
+        numbered: Boolean = false
     ) {
         if (blockedByUnknownPendingStop) return
         val point = validNavigationPoint(lat, lon)
@@ -142,7 +143,8 @@ internal fun riderNavigationStops(
             kind = kind,
             point = point,
             completed = completed,
-            label = label
+            label = label,
+            numbered = numbered
         )
     }
 
