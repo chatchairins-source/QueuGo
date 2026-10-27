@@ -404,6 +404,8 @@ const silentMerchantMedia=read('merchant/src/main/java/com/queuego/merchant/Merc
 const silentMerchantModules=read('merchant/src/main/java/com/queuego/merchant/MerchantModulesScreen.kt');
 const silentMerchantTickets=read('merchant/src/main/java/com/queuego/merchant/MerchantSupportTicketsScreen.kt');
 const silentMerchantLaundry=read('merchant/src/main/java/com/queuego/merchant/MerchantLaundryScreen.kt');
+const silentMerchantHours=read('merchant/src/main/java/com/queuego/merchant/MerchantHoursScreen.kt');
+const silentMerchantSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
 const silentRoleShell=read('shared/src/main/java/com/queuego/shared/QueueGoRoleNativeApp.kt');
 ok(
   !customerAppForMemory.includes('"กำลังโหลดข้อมูล…"') &&
@@ -436,6 +438,8 @@ ok(
   !silentMerchantModules.includes('if (loading) {') &&
   !silentMerchantTickets.includes('loading -> Text("กำลังโหลด..."') &&
   !silentMerchantLaundry.includes('Text("กำลังโหลด..."') &&
+  !silentMerchantHours.includes('if (loading) {\n            Box(') &&
+  !silentMerchantSetup.includes('if (!mapReady) {\n                    CircularProgressIndicator(') &&
   !silentRoleShell.includes('CircularProgressIndicator(Modifier.padding(24.dp))'),
   'Native data refresh must stay visually silent while cached/current content remains on screen'
 );
