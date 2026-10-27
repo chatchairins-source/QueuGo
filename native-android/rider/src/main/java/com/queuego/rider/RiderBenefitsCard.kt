@@ -64,7 +64,7 @@ internal fun RiderBenefitsCard(
             )
 
             when {
-                !loaded -> LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 9.dp))
+                !loaded -> Unit
                 benefits.isEmpty() -> Text(
                     "ยังไม่มีสิทธิประโยชน์ที่เปิดใช้งาน",
                     color = QgMuted,
