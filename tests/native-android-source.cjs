@@ -483,8 +483,11 @@ ok(
   authenticatedReviewCapture.includes('def node_exact(n,marker):') &&
   authenticatedReviewCapture.includes('any(node_exact(n,title) and rect(n) for n in xs)') &&
   authenticatedReviewCapture.includes('not any(node_exact(n,title) and rect(n) for n in xs)') &&
+  authenticatedReviewCapture.includes('laundry_profile=scroll_to_text("รับงานฝากซัก")') &&
+  authenticatedReviewCapture.includes('"profile_laundry","08-learning-center"') &&
+  authenticatedReviewCapture.includes('shot("03-profile-laundry")') &&
   !authenticatedReviewCapture.includes('node_contains(n,title)'),
-  'Rider authenticated Profile-dialog capture must use exact dialog titles so underlying Profile subtitles cannot fake open/close state'
+  'Rider authenticated review must capture the Web-backed Laundry Profile control and use exact dialog titles so underlying subtitles cannot fake open/close state'
 );
 ok(riderApi.includes('qg_get_my_rider_offer')&&!riderApi.includes('rpcArray("get_rider_delivery_pool"'),'Rider native must show only the server-selected live offer, never a shared delivery pool');
 ok(riderApi.includes('qg_rider_decline_offer')&&riderApi.includes('qg_rider_action_once'),'Rider native offer accept/decline must stay on guarded Production RPCs');

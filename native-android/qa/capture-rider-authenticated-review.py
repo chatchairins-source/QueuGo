@@ -190,6 +190,12 @@ def main():
     tap_label(nodes(),"โปรไฟล์")
     time.sleep(3)
     screens.append({"screen":"profile",**shot("07-profile")})
+    # Capture the Web-backed general work toggle separately from the collapsed
+    # native-only tools so authenticated review covers the current Rider surface.
+    laundry_profile=scroll_to_text("รับงานฝากซัก")
+    assert any(n.get("text","").strip()=="รับงานฝากซัก" and rect(n) for n in laundry_profile), \
+        "Current Web Laundry mode control is not visible in Rider Profile"
+    screens.append({"screen":"profile_laundry",**shot("03-profile-laundry")})
     # Support is part of the core Web-aligned Profile and sits above the collapsed
     # Native-only tools. Capture it before scrolling down to expand extras.
     capture_profile_dialog(
@@ -207,7 +213,7 @@ def main():
     expected_screens=(
       "home_map","messages_chat",
       "earnings_today","05-earnings-7-days","06-earnings-30-days",
-      "profile","08-learning-center","09-safety-center","10-support","11-diagnostics",
+      "profile","profile_laundry","08-learning-center","09-safety-center","10-support","11-diagnostics",
     )
     captured={item["screen"] for item in screens}
     missing_screens=[name for name in expected_screens if name not in captured]
@@ -219,7 +225,7 @@ def main():
       "android_api":run(["shell","getprop","ro.build.version.sdk"],capture_output=True,text=True).stdout.strip(),
       "viewport_px":"1080x2280","screens":screens,"physical_device":False,
       "production_order_or_dispatch_mutations":False,"visual_parity_certified":False,
-      "scope":"Authenticated Rider Home map, messages, earnings and profile; no job actions",
+      "scope":"Authenticated Rider Home map, messages, earnings, profile and Laundry work toggle; no job actions",
       "expected_screens":list(expected_screens),
       "missing_screens":missing_screens,
       "review_complete":not missing_screens,
