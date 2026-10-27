@@ -1101,12 +1101,15 @@ ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
    !riderJobDock.includes('AndroidView')&&riderApp.includes('recenterSignal'),
    'Rider job dock must expand/collapse over retained map, preserve targeted offer visibility, leave the idle Ready card without a duplicate collapse header and measure camera inset including bottom navigation');
 ok(
+   riderApp.includes('.align(Alignment.BottomEnd)') &&
+   riderApp.includes('.padding(end = 10.dp, bottom = toolBottomPadding)') &&
+   riderApp.includes('QgIcon("location", Modifier.size(23.dp), QgRed)') &&
+   riderApp.includes('if (activeNavigationWork) {') &&
    riderApp.includes('QgIcon("route", Modifier.size(23.dp), QgRed)') &&
-   riderApp.includes('actionMessage = "ยังไม่มีเส้นทางให้ดูทั้งหมด"') &&
-   riderApp.includes('.padding(top = 168.dp, end = 10.dp)') &&
    riderApp.includes('routeOverviewActive = true') &&
-   riderApp.includes('overviewSignal += 1'),
-   'Rider map right rail must expose Web-parity overview between recenter and the lower compass');
+   riderApp.includes('overviewSignal += 1') &&
+   riderApp.includes('modifier = Modifier.size(44.dp).clickable { compassResetSignal += 1 }'),
+   'Rider map controls must expose Web-parity recenter, overview and compass in the lower-right stack above the measured job dock');
 ok(
    riderApp.includes('private fun RiderMapWordmark(') &&
    riderApp.includes('if (!activeNavigationWork) {') &&

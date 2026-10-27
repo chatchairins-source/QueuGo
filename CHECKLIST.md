@@ -1,3 +1,9 @@
+## 2026-10-27 Tonight parity batch — stale Rider control guard corrected
+
+- Exact-head Native Pilot on `c4cd3c9a` passed all earlier regression checks and then failed only because `tests/native-android-source.cjs` still required the retired top-right Rider control rail. The current product code intentionally moves recenter / route overview / compass to the lower-right stack above the measured job dock, matching the owner/Web navigation layout direction.
+- Corrected the source contract to require the lower-right measured stack instead of reverting product UI.
+- **NEXT:** inspect exact-head Native Pilot; then continue the remaining owner-reported batch: Rider camera policy/CTA color, Catalog imagery, POS parity, and APK build/artifact verification.
+
 ## 2026-10-27 Customer/Shared map tap-to-select — source fix published; exact-head CI NEXT
 
 - Physical-device Customer checkout evidence showed the location picker still used the old camera-center model: moving the map changed the selected coordinate while a fixed red dot stayed at the viewport center. Root cause is the shared `QgLocationPickerMap` using `addOnCameraIdleListener` as the selection authority and a Compose center-dot overlay.
