@@ -1,3 +1,9 @@
+## 2026-10-27 Makro source-image guard updated for pinned Merchant preview
+
+- Exact-head Native Pilot on `b15665a3` passed the updated Grocery image test, then `tests/grocery-makro.cjs` still asserted the retired `image:null` Merchant behavior.
+- Updated that guard to require the pinned Merchant-only preview path and the single allowed Makro image host. Customer-facing image rights projection remains unchanged.
+- **NEXT:** inspect exact-head Native Pilot/Map Engine; fix first confirmed failure only, then continue Kotlin/JUnit, three APKs, 16 KB packaging, emulator lifecycle, artifact verification and public device-test links.
+
 ## 2026-10-27 Grocery image regression updated for Merchant-only pinned previews
 
 - Exact-head Native Pilot on `c22c7859` passed Ride and 411 Native source checks, then failed `tests/grocery-images.cjs` because that legacy assertion still required Merchant source rows to force `image:null`.
