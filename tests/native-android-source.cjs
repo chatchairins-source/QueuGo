@@ -246,6 +246,7 @@ ok(customerTrackingScreen.includes('d/M/yyyy HH:mm:ss')&&customerTrackingScreen.
 const nativeAuthApi=read('shared/src/main/java/com/queuego/shared/NativeAuthApi.kt');
 const nativeProfile=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
 ok(nativeAuthApi.includes('profileImage')&&nativeAuthApi.includes('profile_image')&&nativeAuthApi.includes('avatarUrl')&&nativeProfile.includes('auth.user.customerPhoto')&&nativeProfile.includes('QgRemoteImage(safePhoto'),'Customer profile must display Web metadata profile images with a text fallback');
+ok((nativeAuthApi.match(/customerProfilePhoto\(\)/g)||[]).length>=2&&nativeAuthApi.includes('status,phone,metadata&auth_user_id=eq.'),'Customer profile image metadata must refresh for existing authenticated sessions');
 ok(customerTrackingScreen.includes('size(46.dp)')&&customerTrackingScreen.includes('RoundedCornerShape(20.dp)')&&customerTrackingScreen.includes('fontSize = 22.sp')&&customerTrackingScreen.includes('"แจ้งปัญหา"'),'Customer native tracking must preserve Production rider, hero, total and support proportions');
 const customerTrackingMap=read('customer/src/main/java/com/queuego/customer/CustomerTrackingMap.kt');
 ok(customerTrackingMap.includes('RoundedCornerShape(18.dp)')&&customerTrackingMap.includes('.padding(10.dp)')&&customerTrackingMap.includes('Color(0xFF20B46D)')&&customerTrackingMap.includes('fontSize = 9.sp'),'Customer native tracking map card must preserve Production radius, padding and live-location indicator');

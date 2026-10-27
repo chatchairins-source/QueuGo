@@ -539,12 +539,7 @@ class NativeAuthApi(
                     expectedRole == "customer" && it.isNotBlank() &&
                         !it.endsWith("@auth.queuetech.local", ignoreCase = true)
                 },
-                row.optJSONObject("metadata")?.takeIf { expectedRole == "customer" }?.let { metadata ->
-                    sequenceOf("profileImage", "profile_image", "avatarUrl")
-                        .map { metadata.optString(it).trim() }
-                        .firstOrNull { it.startsWith("https://", ignoreCase = true) ||
-                            (it.length <= 32_768 && it.matches(Regex("(?i)^data:image/(jpeg|png|webp);base64,[a-z0-9+/=]+$"))) }
-                }
+                row.optJSONObject("metadata")?.takeIf { expectedRole == "customer" }?.customerProfilePhoto()
             )
         )
     }
@@ -576,7 +571,7 @@ class NativeAuthApi(
             if (!valid) throw NativeSessionInvalidException("Session นี้ไม่ได้ใช้งานบนอุปกรณ์นี้แล้ว")
             val rows = requestArray(
                 "GET",
-                "/rest/v1/users?select=id,name,role,status,phone&auth_user_id=eq." + enc(liveAuth.session.authUserId),
+                "/rest/v1/users?select=id,name,role,status,phone,metadata&auth_user_id=eq." + enc(liveAuth.session.authUserId),
                 liveAuth.session.accessToken
             )
             if (rows.length() == 0) throw NativeSessionInvalidException("ไม่พบบัญชี QueueGo")
@@ -594,7 +589,7 @@ class NativeAuthApi(
                     row.optString("status"),
                     row.optString("phone").trim().takeIf { expectedRole == "customer" && it.isNotBlank() },
                     liveAuth.user.customerEmail.takeIf { expectedRole == "customer" },
-                    liveAuth.user.customerPhoto.takeIf { expectedRole == "customer" }
+                    row.optJSONObject("metadata")?.takeIf { expectedRole == "customer" }?.customerProfilePhoto()
                 )
             )
         }
@@ -709,3 +704,12 @@ class NativeAuthApi(
     private fun enc(value: String): String =
         URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
 }
+
+
+private fun JSONObject.customerProfilePhoto(): String? =
+    sequenceOf("profileImage", "profile_image", "avatarUrl")
+        .map { optString(it).trim() }
+        .firstOrNull {
+            it.startsWith("https://", ignoreCase = true) ||
+                (it.length <= 32_768 && it.matches(Regex("(?i)^data:image/(jpeg|png|webp);base64,[a-z0-9+/=]+$")))
+        }
