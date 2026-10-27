@@ -490,9 +490,7 @@ private fun RiderChatRoom(
 
         val mod = moderation
         when {
-            mod == null -> QgCard(Modifier.fillMaxWidth()) {
-                Text("กำลังตรวจสอบสิทธิ์แชท...", color = QgMuted)
-            }
+            mod == null -> Unit
             !mod.accepted -> QgCard(Modifier.fillMaxWidth()) {
                 Column {
                     Text("กติกาการแชท QueueGo", fontWeight = FontWeight.Black)
