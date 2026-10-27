@@ -404,6 +404,7 @@ const silentMerchantMedia=read('merchant/src/main/java/com/queuego/merchant/Merc
 const silentMerchantModules=read('merchant/src/main/java/com/queuego/merchant/MerchantModulesScreen.kt');
 const silentMerchantTickets=read('merchant/src/main/java/com/queuego/merchant/MerchantSupportTicketsScreen.kt');
 const silentMerchantLaundry=read('merchant/src/main/java/com/queuego/merchant/MerchantLaundryScreen.kt');
+const silentMerchantPromotion=read('merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt');
 const silentMerchantHours=read('merchant/src/main/java/com/queuego/merchant/MerchantHoursScreen.kt');
 const silentMerchantSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
 const silentRoleShell=read('shared/src/main/java/com/queuego/shared/QueueGoRoleNativeApp.kt');
@@ -481,6 +482,14 @@ ok(
   'Customer Laundry catalog must render local-first and must not redownload the full catalog when choosing a shop'
 );
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
+const merchantPromotionCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPromotionCache.kt');
+ok(
+  merchantPromotionCacheSource.includes('context.noBackupFilesDir, "merchant_promotion_cache_v1"') &&
+  silentMerchantPromotion.includes('cache.read(auth.user.id, shop.id)') &&
+  silentMerchantPromotion.includes('cache.write(auth.user.id, shop.id, fresh)') &&
+  silentMerchantPromotion.includes('if (rows.isEmpty()) message = failure.message'),
+  'Merchant Promotions must render durable cached metadata first and refresh in the background'
+);
 const merchantContentCacheSource=read('merchant/src/main/java/com/queuego/merchant/MerchantContentCache.kt');
 ok(
   merchantContentCacheSource.includes('context.noBackupFilesDir, "merchant_content_cache_v1"') &&
