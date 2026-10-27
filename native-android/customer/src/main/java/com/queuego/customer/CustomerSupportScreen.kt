@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.NativeAuth
@@ -29,7 +30,10 @@ import com.queuego.shared.QgCard
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgSectionTitle
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 @Composable
@@ -41,6 +45,10 @@ fun CustomerSupportScreen(
 ) {
     val api = remember { CustomerExtrasApi() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val cache = remember(context.applicationContext) {
+        CustomerSupportCache(context.applicationContext)
+    }
     var tickets by remember { mutableStateOf<List<CustomerSupportTicket>>(emptyList()) }
     var selectedOrderId by remember { mutableStateOf(initialOrderId ?: "") }
     var category by remember { mutableStateOf("other") }
@@ -48,11 +56,26 @@ fun CustomerSupportScreen(
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    fun refresh() {
-        scope.launch {
-            runCatching { api.supportTickets(auth) }
-                .onSuccess { tickets = it }
-                .onFailure { message = it.message ?: "โหลดรายการช่วยเหลือไม่สำเร็จ" }
+    suspend fun refresh(force: Boolean = false) {
+        val cached = if (!force && tickets.isEmpty()) {
+            withContext(Dispatchers.IO) { cache.read(auth.user.id) }
+        } else null
+        if (cached != null) {
+            tickets = cached.rows
+            if (cached.fresh) {
+                message = null
+                return
+            }
+        }
+        try {
+            val fresh = api.supportTickets(auth)
+            tickets = fresh
+            withContext(Dispatchers.IO) { cache.write(auth.user.id, fresh) }
+            message = null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            if (tickets.isEmpty()) message = failure.message ?: "โหลดรายการช่วยเหลือไม่สำเร็จ"
         }
     }
 
@@ -125,7 +148,8 @@ fun CustomerSupportScreen(
                             }.onSuccess {
                                 details = ""
                                 message = "ส่งเรื่องให้ทีม QueueGo แล้ว"
-                                refresh()
+                                withContext(Dispatchers.IO) { cache.invalidate(auth.user.id) }
+                                refresh(force = true)
                             }.onFailure {
                                 message = it.message ?: "ส่งเรื่องไม่สำเร็จ"
                             }
