@@ -59,6 +59,9 @@ fun QgPlaceSearchPanel(
             busy = false
             return@LaunchedEffect
         }
+        results = emptyList()
+        searched = false
+        busy = true
         delay(300)
         val cached = withContext(Dispatchers.IO) {
             runCatching { cache.read(normalized) }.getOrNull()
