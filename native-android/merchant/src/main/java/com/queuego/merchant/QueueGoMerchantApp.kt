@@ -411,9 +411,20 @@ private fun MerchantShell(
         groceryCatalogError = null
         try {
             if (groceryCatalogCategories.isEmpty()) {
+                val cachedCategories = withContext(Dispatchers.IO) {
+                    contentCache.readGroceryCategories(owner, activeShop.id)
+                }
+                if (!current()) return
+                if (cachedCategories.isNotEmpty()) {
+                    groceryCatalogCategories = cachedCategories
+                    groceryCatalogLoading = false
+                }
                 val categories = api.groceryCatalogCategories(auth, activeShop.id)
                 if (!current()) return
                 groceryCatalogCategories = categories
+                withContext(Dispatchers.IO) {
+                    contentCache.writeGroceryCategories(owner, activeShop.id, categories)
+                }
             }
             val page = api.groceryCatalogPage(auth, activeShop.id, groceryCatalogQuery,
                 groceryCatalogCategory, groceryCatalogMode, groceryCatalogOffset)

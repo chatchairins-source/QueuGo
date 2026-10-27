@@ -21,6 +21,8 @@ internal class MerchantContentCache(context: Context) {
     companion object {
         private const val MAX_FILE_BYTES = 24L * 1024L * 1024L
         private const val MAX_TOTAL_BYTES = 72L * 1024L * 1024L
+        private const val MAX_GROCERY_CATEGORIES = 200
+        private const val MAX_GROCERY_CATEGORY_LENGTH = 100
     }
 
     private val root = File(context.noBackupFilesDir, "merchant_content_cache_v1").also {
@@ -30,10 +32,7 @@ internal class MerchantContentCache(context: Context) {
     fun read(ownerId: String): CachedMerchantContent? {
         if (ownerId.isBlank()) return null
         val file = fileFor(ownerId)
-        if (!file.isFile || file.length() !in 1L..MAX_FILE_BYTES) return null
-        val json = runCatching { JSONObject(file.readText(Charsets.UTF_8)) }
-            .onFailure { runCatching { file.delete() } }
-            .getOrNull() ?: return null
+        val json = readJson(file) ?: return null
         return runCatching {
             val shop = json.optJSONObject("shop")?.toMerchantShop() ?: return@runCatching null
             val products = json.optJSONArray("products").toMerchantProducts()
@@ -42,6 +41,7 @@ internal class MerchantContentCache(context: Context) {
         }.getOrNull()
     }
 
+    @Synchronized
     fun write(ownerId: String, shop: MerchantShop, products: List<MerchantProduct>) {
         if (ownerId.isBlank()) return
         val json = JSONObject()
@@ -50,8 +50,47 @@ internal class MerchantContentCache(context: Context) {
         writeJson(fileFor(ownerId), json)
     }
 
+    fun readGroceryCategories(ownerId: String, shopId: String): List<String> {
+        if (ownerId.isBlank() || shopId.isBlank()) return emptyList()
+        val json = readJson(fileFor(ownerId)) ?: return emptyList()
+        if (json.optString("groceryCategoryShopId") != shopId ||
+            json.optJSONObject("shop")?.optString("id") != shopId) return emptyList()
+        val categories = json.optJSONArray("groceryCategories") ?: return emptyList()
+        return runCatching {
+            buildList {
+                for (index in 0 until minOf(categories.length(), MAX_GROCERY_CATEGORIES)) {
+                    val value = categories.optString(index).trim()
+                    if (value.isNotEmpty() && value.length <= MAX_GROCERY_CATEGORY_LENGTH && value !in this) {
+                        add(value)
+                    }
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    @Synchronized
+    fun writeGroceryCategories(ownerId: String, shopId: String, categories: List<String>) {
+        if (ownerId.isBlank() || shopId.isBlank() || categories.size > MAX_GROCERY_CATEGORIES ||
+            categories.any { it.isBlank() || it.trim().length > MAX_GROCERY_CATEGORY_LENGTH }) return
+        val target = fileFor(ownerId)
+        val json = readJson(target) ?: return
+        if (json.optJSONObject("shop")?.optString("id") != shopId) return
+        json.put("groceryCategoryShopId", shopId)
+            .put("groceryCategories", JSONArray().also { array ->
+                categories.map { it.trim() }.distinct().forEach { array.put(it) }
+            })
+        writeJson(target, json)
+    }
+
     private fun fileFor(ownerId: String): File =
         File(root, sha256(ownerId) + ".json")
+
+    private fun readJson(file: File): JSONObject? {
+        if (!file.isFile || file.length() !in 1L..MAX_FILE_BYTES) return null
+        return runCatching { JSONObject(file.readText(Charsets.UTF_8)) }
+            .onFailure { runCatching { file.delete() } }
+            .getOrNull()
+    }
 
     private fun writeJson(target: File, json: JSONObject) {
         val bytes = json.toString().toByteArray(Charsets.UTF_8)

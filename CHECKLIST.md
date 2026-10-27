@@ -1,3 +1,11 @@
+## 2026-10-27 Merchant Grocery category local-first cache — source checkpoint; exact-head CI NEXT
+
+- Parent exact Native successor HEAD: `dcfcc43273548874ba48ee266b067c981486ba8a`. Before this change, Native Pilot run `40461138799` and Map Engine run `40461134860` both completed SUCCESS on exact parent HEAD. PR #730 remains open/draft; Production `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Merchant Grocery master-catalog category names are now read from and written to the existing owner-scoped durable content file, with the shop ID checked both ways and a 200-row/100-character bound. Cached categories appear before server refresh. Fresh server categories replace them; catalog item pages remain online/server-backed and no inventory, price, finance, order, or dispatch authority is cached.
+- Customer's per-shop Grocery category cache from the preceding checkpoint remains in the same successor. Local `node tests/native-android-source.cjs`: 378 checks PASS; `git diff --check` PASS. Gradle is unavailable locally; Kotlin, APK and emulator gates must come from hosted exact-head Actions.
+- No Production schema/data mutation.
+- **NEXT:** inspect exact-head Native Pilot and Map Engine for the new branch tip. Fix only the first confirmed failing step. If green, continue auditing the remaining bounded reference-data downloads; keep operational state server-authoritative.
+
 ## 2026-10-27 Customer Grocery category local-first cache — exact-head CI in progress
 
 - Current Native successor: `work-native-web-parity-20261026`; source checkpoint `19b1392998e82e41ec3c3c201b9a334ff936b08f`, parent `3585fa937cc2c06112046bf577041a299f88fe01`. PR #730 remains open/draft; `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
