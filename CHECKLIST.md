@@ -453,3 +453,14 @@ Total output lines: 2112
 - Overview bounds now include completed pickup pins as Web does, so gray finished Market stops remain within the framed route. A source and Kotlin unit case covers the bounds.
 - Ported Native's OSM speed-limit sign to Web using only valid `osm:maxspeed` intervals from the same QueueGo route response. It follows route progress, stays hidden for offer previews/weak GPS/off-route fixes, and is placed beside the live speed pill. Rider inline-script parsing and the map/navigation source suites pass; authenticated visual placement and Kotlin/APK execution remain unverified.
 - **NEXT:** check the Native guidance cue/arrival thresholds and compare them with Web route progress, then examine authenticated paired device output when exact-head build access is restored.
+
+## 2026-10-27 Market navigation cancelled-stop sequence correction
+- IN PROGRESS: recovered newest remote successor `3b0a3fd981b450ec517074e40af3ba4d8bfada87` on PR #730; no newer containing remote branch found.
+- Exact Native Pilot `40513651567` passed full regression and compilation, then failed its sole Rider JVM assertion `RiderNavigationIntegrationTest.marketStopsPreservePickupOrderBeforeCustomer` at line 87 (325 Rider tests, one failure). Pickup numbering excluded CANCELLED shops but dropoff numbering used the unfiltered count, producing [1,2,4] instead of [1,2,3].
+- Fixed the existing navigation-stop builder to reuse the filtered pickup list for dropoff rank. Existing behavioral assertions are unchanged; completed pickup visibility, cancelled-stop exclusion and server dispatch authority are preserved.
+- Local navigation module and route-bundle contracts PASS; three-app source 409/409 PASS; diff check PASS. Local Gradle/Android SDK unavailable; exact-head JVM/APK evidence remains pending.
+- NEXT: publish this strict descendant and inspect exact-head Native Pilot + Map Engine; fix first confirmed failure. Then inspect three-app APK artifacts and remaining map/parity gates. Physical-device and authenticated visual acceptance remain unverified.
+
+- BLOCKED (publication): local fix commit `bd1efb65` is complete, but automatic approval review rejected push to `chatchairins-source/QueuGo` / `work-native-web-parity-20261026`, citing no explicit authorization to export potentially sensitive source to an unverified destination. No alternate write path attempted. Required unblock: explicit owner approval for publishing this bounded fix/checkpoint to that existing repository branch; then recheck remote HEAD before pushing and run exact-head CI.
+
+- Publication unblock: owner explicitly confirmed publishing this fix to the existing repository/branch in this session. Git CLI lacks a credential; use the connected GitHub API with a strict parent/ref check. Exact-head CI remains NEXT.

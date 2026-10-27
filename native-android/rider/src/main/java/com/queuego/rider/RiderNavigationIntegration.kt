@@ -209,7 +209,8 @@ internal fun riderNavigationStops(
             }
         }
     } else if (job.marketOrderId != null) {
-        marketPickups.filter { it.status.uppercase() != "CANCELLED" }.forEachIndexed { index, pickup ->
+        val visiblePickups = marketPickups.filter { it.status.uppercase() != "CANCELLED" }
+        visiblePickups.forEachIndexed { index, pickup ->
             add(
                 id = "pickup:" + pickup.pickupId,
                 sequence = index + 1,
@@ -223,7 +224,7 @@ internal fun riderNavigationStops(
         }
         add(
             id = "drop:" + job.id,
-            sequence = marketPickups.size + 1,
+            sequence = visiblePickups.size + 1,
             kind = NavigationStopKind.DROPOFF,
             lat = job.deliveryLat,
             lon = job.deliveryLng,
