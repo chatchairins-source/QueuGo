@@ -265,6 +265,13 @@ ok(
 ok(source.includes('CustomerTopAction(')&&source.includes('R.drawable.qg_nav_bag')&&source.includes('R.drawable.qg_top_bell')&&source.includes('R.drawable.qg_top_user'),'Customer top actions must remain exact icon-first web vectors');
 const merchantMainSource=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
 ok(
+  !merchantMainSource.includes('if (findingMarkets) CircularProgressIndicator') &&
+  merchantMainSource.includes('enabled = !busy && !findingMarkets') &&
+  merchantMainSource.includes('Text("ใช้พิกัดร้านนี้และค้นหาตลาดใกล้ฉัน")'),
+  'Merchant registration market lookup must stay visually silent while preventing duplicate requests'
+);
+
+ok(
   merchantMainSource.includes('withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }') &&
   merchantMainSource.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)') &&
   merchantMainSource.includes('delay(5_000)') &&
