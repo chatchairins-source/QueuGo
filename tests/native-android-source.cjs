@@ -548,11 +548,13 @@ const riderBenefitsCacheSource=read('rider/src/main/java/com/queuego/rider/Rider
 const riderBenefitsCardSource=read('rider/src/main/java/com/queuego/rider/RiderBenefitsCard.kt');
 ok(
   riderBenefitsCacheSource.includes('context.noBackupFilesDir, "rider_benefits_cache_v1"') &&
+  riderBenefitsCacheSource.includes('FRESH_MS = 30L * 60L * 1000L') &&
   riderBenefitsCardSource.includes('cache.read(auth.user.id)') &&
+  riderBenefitsCardSource.includes('if (cached.fresh)') &&
   riderBenefitsCardSource.includes('cache.write(auth.user.id, fresh)') &&
   riderBenefitsCardSource.includes('Keep the cached/current rows visible on transient refresh failure') &&
   !riderBenefitsCardSource.includes('benefits = emptyList()'),
-  'Rider Benefits must render durable user-scoped cached rows first and refresh silently'
+  'Rider Benefits must render fresh durable cache first and avoid repeated server downloads'
 );
 const customerLaundryContentCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerLaundryContentCache.kt');
 const customerPromotionCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerPromotionCache.kt');
