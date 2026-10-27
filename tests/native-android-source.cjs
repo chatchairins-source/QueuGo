@@ -404,6 +404,8 @@ const silentCustomerPromotion=read('customer/src/main/java/com/queuego/customer/
 const silentCustomerOrderTracking=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
 const silentCustomerRide=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
 const silentCustomerExpress=read('customer/src/main/java/com/queuego/customer/CustomerExpressScreen.kt');
+const silentCustomerLocation=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
+const silentPlaceSearch=read('shared/src/main/java/com/queuego/shared/QueueGoPlaceSearch.kt');
 const silentMerchantRevenue=read('merchant/src/main/java/com/queuego/merchant/MerchantRevenueScreen.kt');
 const silentMerchantSupport=read('merchant/src/main/java/com/queuego/merchant/MerchantSupportScreen.kt');
 const silentMerchantStock=read('merchant/src/main/java/com/queuego/merchant/MerchantMarketStockScreen.kt');
@@ -447,6 +449,8 @@ ok(
   !silentCustomerOrderTracking.includes('"กำลังโหลดรายการ..."') &&
   !silentCustomerRide.includes('กำลังตรวจสถานะเที่ยวล่าสุด') &&
   !silentCustomerExpress.includes('กำลังตรวจสถานะ Express ล่าสุด') &&
+  !silentCustomerLocation.includes('modifier = Modifier.align(Alignment.Center).size(28.dp)') &&
+  !silentPlaceSearch.includes('if (busy) CircularProgressIndicator(Modifier.size(18.dp)') &&
   !silentMerchantRevenue.includes('CircularProgressIndicator') &&
   !silentMerchantSupport.includes('"กำลังโหลดข้อความ..."') &&
   !silentMerchantStock.includes('loading -> Box(') &&
