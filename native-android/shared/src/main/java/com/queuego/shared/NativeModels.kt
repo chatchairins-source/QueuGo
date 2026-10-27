@@ -5,7 +5,9 @@ data class NativeUser(
     val authUserId: String,
     val name: String,
     val role: String,
-    val status: String
+    val status: String,
+    val customerPhone: String? = null,
+    val customerEmail: String? = null
 )
 
 data class NativeSession(

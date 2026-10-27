@@ -298,7 +298,9 @@ ok(
   'Customer Profile must not expose internal Production/session/RLS implementation copy'
 );
 ok(
-  customerAppForMemory.includes('private fun CustomerProfileHero(name: String)') &&
+  customerAppForMemory.includes('customerProfileContact(auth.user.customerPhone, auth.user.customerEmail)') &&
+  customerAppForMemory.includes('private fun CustomerProfileHero(name: String, contact: String?)') &&
+  customerAppForMemory.includes('if (!contact.isNullOrBlank())') &&
   customerAppForMemory.includes('.size(60.dp)') &&
   customerAppForMemory.includes('RoundedCornerShape(20.dp)') &&
   customerAppForMemory.includes('"บัญชีลูกค้า"') &&
@@ -311,6 +313,19 @@ ok(
   /ProfileDestination\(\s*"ออกจากระบบ",\s*logout/.test(customerAppForMemory) &&
   customerAppForMemory.includes('QgAccountDeletionSection('),
   'Customer Profile must keep the current Web compact hero/grouped-row hierarchy while preserving account deletion authority'
+);
+const nativeAuthForCustomerContact=read('shared/src/main/java/com/queuego/shared/NativeAuthApi.kt');
+const nativeSessionStoreForCustomerContact=read('shared/src/main/java/com/queuego/shared/SecureRoleSessionStore.kt');
+const customerProfileContactForParity=read('customer/src/main/java/com/queuego/customer/CustomerProfileContact.kt');
+ok(
+  nativeAuthForCustomerContact.includes('select=id,name,role,status,auth_user_id,phone') &&
+  nativeAuthForCustomerContact.includes('!it.endsWith("@auth.queuetech.local", ignoreCase = true)') &&
+  nativeSessionStoreForCustomerContact.includes('.put("customerPhone", auth.user.customerPhone)') &&
+  nativeSessionStoreForCustomerContact.includes('.put("customerEmail", auth.user.customerEmail)') &&
+  customerProfileContactForParity.includes('phone?.trim()?.takeIf { it.isNotBlank() }') &&
+  customerProfileContactForParity.includes('email?.trim()?.takeIf {') &&
+  customerProfileContactForParity.includes('!it.endsWith("@auth.queuetech.local", ignoreCase = true)'),
+  'Customer Profile contact must reuse RLS-protected user phone/Auth email and hide synthetic phone-login addresses'
 );
 const customerPushForMemory=read('customer/src/main/java/com/queuego/customer/CustomerPush.kt');
 const customerWebFeaturesForMemory=fs.readFileSync(path.resolve(__dirname,'../customer-features.js'),'utf8');

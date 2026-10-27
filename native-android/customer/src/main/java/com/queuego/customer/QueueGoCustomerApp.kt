@@ -1992,7 +1992,10 @@ private fun ProfileScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp, vertical = 4.dp)
     ) {
-        CustomerProfileHero(auth.user.name)
+        CustomerProfileHero(
+            auth.user.name,
+            customerProfileContact(auth.user.customerPhone, auth.user.customerEmail)
+        )
 
         CustomerProfileSection("บัญชีและการใช้งาน") {
             ProfileDestination("ที่อยู่จัดส่ง", onAddress)
@@ -2098,7 +2101,7 @@ private fun ProfileScreen(
 }
 
 @Composable
-private fun CustomerProfileHero(name: String) {
+private fun CustomerProfileHero(name: String, contact: String?) {
     val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "Q"
     Row(
         Modifier
@@ -2129,6 +2132,15 @@ private fun CustomerProfileHero(name: String) {
                 fontWeight = FontWeight.Black,
                 maxLines = 1
             )
+            if (!contact.isNullOrBlank()) {
+                Text(
+                    contact,
+                    color = QgMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
             Text(
                 "บัญชีลูกค้า",
                 color = androidx.compose.ui.graphics.Color(0xFF0A9660),

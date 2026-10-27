@@ -498,10 +498,11 @@ class NativeAuthApi(
     ): NativeAuth = withContext(Dispatchers.IO) {
         val auth = passwordGrant(identifier, password)
         val token = auth.getString("access_token")
-        val authUserId = auth.getJSONObject("user").getString("id")
+        val authUser = auth.getJSONObject("user")
+        val authUserId = authUser.getString("id")
         val rows = requestArray(
             "GET",
-            "/rest/v1/users?select=id,name,role,status,auth_user_id&auth_user_id=eq." + enc(authUserId),
+            "/rest/v1/users?select=id,name,role,status,auth_user_id,phone&auth_user_id=eq." + enc(authUserId),
             token
         )
         if (rows.length() == 0) throw NativeSessionInvalidException("ไม่พบบัญชี QueueGo")
@@ -532,7 +533,12 @@ class NativeAuthApi(
                 authUserId,
                 row.optString("name").ifBlank { "QueueGo" },
                 row.optString("role"),
-                row.optString("status")
+                row.optString("status"),
+                row.optString("phone").trim().takeIf { expectedRole == "customer" && it.isNotBlank() },
+                authUser.optString("email").trim().takeIf {
+                    expectedRole == "customer" && it.isNotBlank() &&
+                        !it.endsWith("@auth.queuetech.local", ignoreCase = true)
+                }
             )
         )
     }
@@ -564,7 +570,7 @@ class NativeAuthApi(
             if (!valid) throw NativeSessionInvalidException("Session นี้ไม่ได้ใช้งานบนอุปกรณ์นี้แล้ว")
             val rows = requestArray(
                 "GET",
-                "/rest/v1/users?select=id,name,role,status&auth_user_id=eq." + enc(liveAuth.session.authUserId),
+                "/rest/v1/users?select=id,name,role,status,phone&auth_user_id=eq." + enc(liveAuth.session.authUserId),
                 liveAuth.session.accessToken
             )
             if (rows.length() == 0) throw NativeSessionInvalidException("ไม่พบบัญชี QueueGo")
@@ -579,7 +585,9 @@ class NativeAuthApi(
                     liveAuth.session.authUserId,
                     row.optString("name").ifBlank { "QueueGo" },
                     row.optString("role"),
-                    row.optString("status")
+                    row.optString("status"),
+                    row.optString("phone").trim().takeIf { expectedRole == "customer" && it.isNotBlank() },
+                    liveAuth.user.customerEmail.takeIf { expectedRole == "customer" }
                 )
             )
         }
