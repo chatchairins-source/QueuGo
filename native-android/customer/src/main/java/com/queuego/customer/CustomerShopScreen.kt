@@ -92,25 +92,61 @@ internal fun CustomerFavoritesScreen(
     val api = remember { ShopExtrasApi() }
     val customerApi = remember { CustomerApi() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val contentCache = remember(context.applicationContext) {
+        CustomerContentCache(context.applicationContext)
+    }
+    val favoritesCache = remember(context.applicationContext) {
+        CustomerFavoritesCache(context.applicationContext)
+    }
     var favorites by remember(auth.user.id) { mutableStateOf<List<ShopFavorite>>(emptyList()) }
     var shops by remember(auth.user.id) { mutableStateOf<List<CustomerShop>>(emptyList()) }
     var products by remember(auth.user.id) { mutableStateOf<List<CustomerProduct>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    suspend fun load() {
+    suspend fun load(force: Boolean = false) {
         error = null
+        val cached = withContext(Dispatchers.IO) { favoritesCache.read(auth.user.id) }
+        val cachedHome = withContext(Dispatchers.IO) { contentCache.readHome() }
+        if (cached != null) {
+            favorites = cached.favorites
+            products = cached.products
+        }
+        if (cachedHome != null) shops = cachedHome.shops
+
+        val cachedShopIds = shops.mapTo(HashSet()) { it.id }
+        val requiredShopIds = buildSet {
+            favorites.mapNotNullTo(this) { it.shop.takeIf(String::isNotBlank) }
+            products.mapTo(this) { it.shopId }
+        }
+        if (!force && cached?.fresh == true && requiredShopIds.all { it in cachedShopIds }) return
+
         try {
             val freshFavorites = api.favorites(auth)
-            val freshShops = customerApi.loadShops(auth)
-            val freshProducts = api.availableFavoriteProducts(auth, freshFavorites.map { it.product }.filter { it.isNotBlank() })
+            val productIds = freshFavorites.map { it.product }.filter { it.isNotBlank() }
+            val freshProducts = api.availableFavoriteProducts(auth, productIds)
+            val requiredFreshShopIds = buildSet {
+                freshFavorites.mapNotNullTo(this) { it.shop.takeIf(String::isNotBlank) }
+                freshProducts.mapTo(this) { it.shopId }
+            }
+            val homeShops = cachedHome?.shops.orEmpty()
+            val homeShopIds = homeShops.mapTo(HashSet()) { it.id }
+            val freshShops = if (requiredFreshShopIds.all { it in homeShopIds }) {
+                homeShops
+            } else {
+                customerApi.loadShops(auth)
+            }
             favorites = freshFavorites
             shops = freshShops
             products = freshProducts
+            withContext(Dispatchers.IO) {
+                favoritesCache.write(auth.user.id, freshFavorites, freshProducts)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            error = "โหลดรายการโปรดไม่สำเร็จ กรุณาลองใหม่"
+            if (cached == null) error = "โหลดรายการโปรดไม่สำเร็จ กรุณาลองใหม่"
         }
     }
     LaunchedEffect(auth.user.id) { load() }
@@ -173,7 +209,8 @@ internal fun CustomerFavoritesScreen(
                                         try {
                                             api.toggle(auth, if (favorite.shop.isNotBlank()) "shop" else "product",
                                                 favorite.shop.ifBlank { favorite.product })
-                                            load()
+                                            withContext(Dispatchers.IO) { favoritesCache.invalidate(auth.user.id) }
+                                            load(force = true)
                                         } catch (e: CancellationException) {
                                             throw e
                                         } catch (_: Exception) {
