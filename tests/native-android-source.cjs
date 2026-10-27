@@ -393,6 +393,17 @@ const silentMerchantPos=read('merchant/src/main/java/com/queuego/merchant/Mercha
 const silentRiderEarnings=read('rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt');
 const silentRiderMessages=read('rider/src/main/java/com/queuego/rider/RiderMessagesScreen.kt');
 const silentRiderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
+const silentRiderSafety=read('rider/src/main/java/com/queuego/rider/RiderSafetyScreen.kt');
+const silentCustomerShopping=read('customer/src/main/java/com/queuego/customer/CustomerShoppingScreen.kt');
+const silentCustomerPromotion=read('customer/src/main/java/com/queuego/customer/CustomerPromotionScreen.kt');
+const silentCustomerOrderTracking=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
+const silentMerchantRevenue=read('merchant/src/main/java/com/queuego/merchant/MerchantRevenueScreen.kt');
+const silentMerchantSupport=read('merchant/src/main/java/com/queuego/merchant/MerchantSupportScreen.kt');
+const silentMerchantStock=read('merchant/src/main/java/com/queuego/merchant/MerchantMarketStockScreen.kt');
+const silentMerchantMedia=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
+const silentMerchantModules=read('merchant/src/main/java/com/queuego/merchant/MerchantModulesScreen.kt');
+const silentMerchantTickets=read('merchant/src/main/java/com/queuego/merchant/MerchantSupportTicketsScreen.kt');
+const silentMerchantLaundry=read('merchant/src/main/java/com/queuego/merchant/MerchantLaundryScreen.kt');
 const silentRoleShell=read('shared/src/main/java/com/queuego/shared/QueueGoRoleNativeApp.kt');
 ok(
   !customerAppForMemory.includes('"กำลังโหลดข้อมูล…"') &&
@@ -413,6 +424,18 @@ ok(
   !silentRiderEarnings.includes('กำลังโหลด') &&
   !silentRiderMessages.includes('กำลังโหลดข้อความ') &&
   !silentRiderSupport.includes('Text("กำลังโหลด…", color = QgMuted') &&
+  !silentRiderSafety.includes('!emergencyLoaded -> CircularProgressIndicator') &&
+  !silentRiderSafety.includes('!fatigueLoaded -> CircularProgressIndicator') &&
+  !silentCustomerShopping.includes('"กำลังโหลดข้อมูล…"') &&
+  !silentCustomerPromotion.includes('loading -> CircularProgressIndicator()') &&
+  !silentCustomerOrderTracking.includes('"กำลังโหลดรายการ..."') &&
+  !silentMerchantRevenue.includes('CircularProgressIndicator') &&
+  !silentMerchantSupport.includes('"กำลังโหลดข้อความ..."') &&
+  !silentMerchantStock.includes('loading -> Box(') &&
+  !silentMerchantMedia.includes('loading -> item(key = "media-loading")') &&
+  !silentMerchantModules.includes('if (loading) {') &&
+  !silentMerchantTickets.includes('loading -> Text("กำลังโหลด..."') &&
+  !silentMerchantLaundry.includes('Text("กำลังโหลด..."') &&
   !silentRoleShell.includes('CircularProgressIndicator(Modifier.padding(24.dp))'),
   'Native data refresh must stay visually silent while cached/current content remains on screen'
 );
