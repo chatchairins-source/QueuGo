@@ -1,3 +1,9 @@
+## 2026-10-27 Merchant countdown Kotlin compile fix
+
+- Exact-head Android unit gate exposed a missing Compose runtime import after the stable preparation fallback timer was added. `mutableLongStateOf` was used by Merchant order detail but not imported; the remaining timer/signature compiler messages were cascades from that unresolved state type.
+- Added only the missing `androidx.compose.runtime.mutableLongStateOf` import. Countdown logic and Web-parity behavior are unchanged.
+- **NEXT:** exact-head Native Pilot; verify Rider navigation tests and Merchant compile, then continue to three-APK build and packaging.
+
 ## 2026-10-27 Rider Web-parity reanchor unit contract
 
 - Exact-head Android tracking/unit gate reached 137 Rider navigation tests and failed only because `NavigationViewModeTest` still expected the retired 8-second free-pan timeout. Production Native/Web behavior now reanchors after 110 ms after a navigation gesture, and the controller already returns FOLLOW correctly.
