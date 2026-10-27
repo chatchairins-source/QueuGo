@@ -5,9 +5,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderRefreshCadenceTest {
-    @Test fun onlineAndActiveStatesKeepCriticalFallbackCadence() {
+    @Test fun activeStatesStayCriticalWhileOnlineIdleBacksOff() {
         assertEquals(
-            RIDER_REFRESH_CRITICAL_MS,
+            RIDER_REFRESH_ONLINE_IDLE_MS,
             riderSnapshotPollIntervalMs(
                 networkAvailable = true,
                 online = true,
@@ -54,6 +54,7 @@ class RiderRefreshCadenceTest {
                 hasOffer = true
             )
         )
+        assertTrue(RIDER_REFRESH_ONLINE_IDLE_MS in 5_000L..10_000L)
         assertTrue(RIDER_REFRESH_NO_NETWORK_MS <= 15_000L)
         assertTrue(RIDER_REFRESH_OFFLINE_IDLE_MS <= 15_000L)
     }
