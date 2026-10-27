@@ -1,3 +1,9 @@
+## 2026-10-28 Ride gesture CI first failure repaired
+
+- First confirmed regression failure of `2465b5da` was in `tests/native-android-source.cjs`, which still required the old Buriram fallback viewport and did not recognize the new one-time camera initialization. Both Native Pilot and Map Engine stopped at that same stale guard.
+- Set the shared Ride preview initial camera to a neutral Thailand viewport (15.5, 100.5; zoom 6) until the first valid points are available, then fit once. Replaced stale Buriram/repeated-camera test with a guard ensuring no user gesture hijack on rider marker updates.
+- **NEXT:** rerun exact-HEAD CI and fix the first confirmed failure, then build/verify new APK and validate physical two-finger zoom/rotate/tilt and Customer Notifications parity.
+
 ## 2026-10-28 Customer Notifications visual/state parity — IN PROGRESS
 
 - Physical Web/Android side-by-side images showed Android compact top outline buttons, tiny cards and a global red `อ่านการแจ้งเตือนทั้งหมดแล้ว` line not present on Web. Source also automatically invoked mark-all on screen entry, clearing the unread state without an explicit user action.

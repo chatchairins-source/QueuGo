@@ -1154,7 +1154,7 @@ ok(
   'Customer native Ride request must keep the QueueGo map full-screen, dock the controls over it, and keep terminal trip history out of the primary Ride surface'
 );
 const sharedMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
-ok(sharedMap.includes('newLatLngBounds(bounds, 48)')&&sharedMap.includes('LatLng(14.9918756, 103.0994795)'),'Native tracking preview must frame both selected Ride stops and use the Buriram pilot viewport when empty');
+ok(sharedMap.includes('newLatLngBounds(bounds, 48)')&&sharedMap.includes('if (!hasSetInitialViewport && lastPoints.isNotEmpty())')&&sharedMap.includes('LatLng(15.5, 100.5)')&&!sharedMap.includes('lastPoints.firstOrNull()?.let { point ->'),'Native Ride map must frame stops once and never reset user gesture zoom/rotation on marker updates');
 ok(
   sharedMap.includes('https://tile.openstreetmap.org/{z}/{x}/{y}.png') &&
   sharedMap.includes('RasterSource(QUEUEGO_WEB_BASEMAP_SOURCE') &&

@@ -320,6 +320,12 @@ fun QgTrackingMap(
                     map.uiSettings.isRotateGesturesEnabled = true
                     map.uiSettings.isTiltGesturesEnabled = true
                     map.uiSettings.setDisableRotateWhenScaling(false)
+                    // Initial neutral Thailand viewport; the first valid Rider/pickup point
+                    // frames once without hijacking user gestures on subsequent updates.
+                    map.cameraPosition = CameraPosition.Builder()
+                        .target(LatLng(15.5, 100.5))
+                        .zoom(6.0)
+                        .build()
                     map.setStyle(queueGoMapStyle(sourceUri)) {
                         holder.render(points)
                         currentReady.value(true)
