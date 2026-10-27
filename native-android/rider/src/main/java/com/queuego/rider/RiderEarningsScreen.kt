@@ -124,7 +124,7 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
         }
         when {
             summaryError != null -> RiderEarnError(summaryError!!)
-            summary == null -> RiderEarnLoading("กำลังโหลดสรุปงาน…")
+            summary == null -> RiderEarnLoading()
             else -> {
                 val s = summary!!
                 Spacer(Modifier.height(12.dp))
@@ -187,7 +187,7 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
         }
         when {
             supplyPlanError != null -> RiderEarnError(supplyPlanError!!)
-            supplyPlan == null -> RiderEarnLoading("กำลังโหลดช่วงเวลางาน…")
+            supplyPlan == null -> RiderEarnLoading()
             supplyPlan?.ready != true -> {
                 Spacer(Modifier.height(12.dp))
                 RiderEarningsCard {
@@ -269,7 +269,7 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
         }
         when {
             offerPerformanceError != null -> RiderEarnError(offerPerformanceError!!)
-            offerPerformance == null -> RiderEarnLoading("กำลังโหลดสถิติข้อเสนอ…")
+            offerPerformance == null -> RiderEarnLoading()
             offerPerformance!!.offered <= 0 -> {
                 Spacer(Modifier.height(12.dp))
                 RiderEarningsCard {
@@ -335,7 +335,7 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
         }
         when {
             ledgerError != null -> RiderEarnError(ledgerError!!)
-            ledger == null -> RiderEarnLoading("กำลังโหลดบัญชีเงินสด…")
+            ledger == null -> RiderEarnLoading()
             else -> {
                 val rows = ledger.orEmpty()
                 Spacer(Modifier.height(12.dp))
@@ -604,9 +604,9 @@ private fun RiderEarnSectionTitle(title: String, count: String) {
 }
 
 @Composable
-private fun RiderEarnLoading(message: String) {
-    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 28.dp), contentAlignment = Alignment.Center) {
-        Text(message, color = Color(0xFF8A8387), fontSize = 12.sp)
+private fun RiderEarnLoading(message: String? = null) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (message.isNullOrBlank()) 1.dp else 28.dp), contentAlignment = Alignment.Center) {
+        if (!message.isNullOrBlank()) Text(message, color = Color(0xFF8A8387), fontSize = 12.sp)
     }
 }
 
