@@ -552,6 +552,7 @@ ok(
 const customerLaundryContentCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerLaundryContentCache.kt');
 const customerPromotionCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerPromotionCache.kt');
 const customerContentCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerContentCache.kt');
+const customerShopReviewCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerShopReviewCache.kt');
 ok(
   customerPromotionCacheSource.includes('context.noBackupFilesDir, "customer_promotion_cache_v1"') &&
   silentCustomerPromotion.includes('cache.read()') &&
@@ -563,6 +564,14 @@ ok(
   !customerContentCacheSource.includes('readPromotions()') &&
   !customerContentCacheSource.includes('writePromotions('),
   'Customer Promotions must use one durable cache path only'
+);
+ok(
+  customerShopReviewCacheSource.includes('context.noBackupFilesDir, "customer_shop_review_cache_v1"') &&
+  customerShopReviewCacheSource.includes('FRESH_MS = 10L * 60L * 1000L') &&
+  customerShopForMemory.includes('reviewCache.read(shop.id)') &&
+  customerShopForMemory.includes('cachedReviews?.fresh != true || reload > 0') &&
+  customerShopForMemory.includes('reviewCache.write(shop.id, freshReviews)'),
+  'Customer shop reviews must render durable cached rows first and avoid repeated fresh downloads'
 );
 ok(
   customerLaundryContentCacheSource.includes('context.noBackupFilesDir, "customer_laundry_cache_v1"') &&
