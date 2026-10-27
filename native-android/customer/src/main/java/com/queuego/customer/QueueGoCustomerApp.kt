@@ -726,7 +726,7 @@ private fun CustomerShell(
     }
     LaunchedEffect(pendingNotification, auth.user.id, auth.session.accessToken, lifecycle) {
         val target = pendingNotification ?: return@LaunchedEffect
-        message = "กำลังเปิดออเดอร์..."
+        message = null
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (pendingNotification == target) {
                 try {
@@ -768,7 +768,8 @@ private fun CustomerShell(
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 refreshNotifications()
-                delay(8_000)
+                // Push + Realtime are primary. Poll only as a low-frequency recovery path.
+                delay(30_000)
             }
         }
     }
@@ -808,7 +809,8 @@ private fun CustomerShell(
                 while (true) {
                     refreshOrders()
                     if (screen == "order" && selectedOrder?.trackingClosed() == true) break
-                    delay(3_000)
+                    // Realtime owns normal updates; this is only a foreground recovery poll.
+                    delay(8_000)
                 }
             }
         }
