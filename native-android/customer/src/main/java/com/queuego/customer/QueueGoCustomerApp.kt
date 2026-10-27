@@ -1690,7 +1690,7 @@ internal fun CustomerHome(
                 Modifier
                     .horizontalScroll(rememberScrollState())
                     .padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 5.dp),
-                horizontalArrangement = Arrangement.spacedBy(13.dp)
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
                 homeCategories.forEach { (key, label) ->
                     CustomerCategoryButton(key = key, label = label, onClick = { onCategory(key) })
@@ -1755,13 +1755,13 @@ private fun CustomerCategoryButton(
     }
     Column(
         Modifier
-            .width(64.dp)
+            .width(58.dp)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             Modifier
-                .size(54.dp)
+                .size(48.dp)
                 .shadow(
                     elevation = 4.dp,
                     shape = CircleShape,
@@ -1774,15 +1774,15 @@ private fun CustomerCategoryButton(
                 .border(1.dp, QgLine, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            QgIcon(icon, Modifier.size(25.dp), QgRed)
+            QgIcon(icon, Modifier.size(22.dp), QgRed)
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             label,
             color = androidx.compose.ui.graphics.Color(0xFF3A3D42),
             fontWeight = FontWeight.Bold,
-            fontSize = 10.sp,
-            lineHeight = 12.sp,
+            fontSize = 9.5.sp,
+            lineHeight = 11.sp,
             maxLines = 1,
             softWrap = false,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -1796,11 +1796,11 @@ private fun CustomerBlueprintShopCard(
     onClick: () -> Unit
 ) {
     val compact = LocalConfiguration.current.screenWidthDp <= 420
-    val radius = RoundedCornerShape(18.dp)
+    val radius = RoundedCornerShape(16.dp)
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(bottom = 10.dp)
+            .padding(bottom = 7.dp)
             .shadow(
                 elevation = 4.dp,
                 shape = radius,
@@ -1812,16 +1812,16 @@ private fun CustomerBlueprintShopCard(
             .background(androidx.compose.ui.graphics.Color.White)
             .border(1.dp, QgLine, radius)
             .clickable(onClick = onClick)
-            .padding(10.dp),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         QgRemoteImage(
             source = shop.logo ?: shop.cover,
-            modifier = if (compact) Modifier.size(82.dp) else Modifier.size(92.dp),
+            modifier = if (compact) Modifier.size(72.dp) else Modifier.size(78.dp),
             fallback = shop.name,
-            cornerRadius = 14.dp
+            cornerRadius = 13.dp
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 shop.name,
@@ -1831,26 +1831,26 @@ private fun CustomerBlueprintShopCard(
                 lineHeight = 19.sp,
                 maxLines = 1
             )
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
                     categoryLabel(shop.category),
                     color = QgMuted,
-                    fontSize = 11.sp,
-                    lineHeight = 14.sp,
+                    fontSize = 10.5.sp,
+                    lineHeight = 13.sp,
                     maxLines = 1
                 )
                 if (!shop.openTime.isNullOrBlank()) {
                     Text(
                         shop.openTime + "–" + (shop.closeTime ?: ""),
                         color = QgMuted,
-                        fontSize = 11.sp,
-                        lineHeight = 14.sp,
+                        fontSize = 10.5.sp,
+                        lineHeight = 13.sp,
                         maxLines = 1
                     )
                 }
             }
-            Spacer(Modifier.height(7.dp))
+            Spacer(Modifier.height(5.dp))
             Box(
                 Modifier
                     .clip(CircleShape)
@@ -1858,15 +1858,15 @@ private fun CustomerBlueprintShopCard(
                         if (shop.open) androidx.compose.ui.graphics.Color(0xFFEAF9F3)
                         else androidx.compose.ui.graphics.Color(0xFFF1F1F2)
                     )
-                    .padding(horizontal = 7.dp, vertical = 4.dp)
+                    .padding(horizontal = 6.dp, vertical = 3.dp)
             ) {
                 Text(
                     if (shop.open) "เปิดอยู่" else "ปิดอยู่",
                     color = if (shop.open) androidx.compose.ui.graphics.Color(0xFF0A9660)
                     else androidx.compose.ui.graphics.Color(0xFF777777),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
-                    lineHeight = 12.sp
+                    fontSize = 9.5.sp,
+                    lineHeight = 11.sp
                 )
             }
         }
