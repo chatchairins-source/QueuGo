@@ -1504,6 +1504,6 @@ ok(customerLaundryCatalogApi.includes('"queuego_laundry_customer_catalog"')&&cus
 
 
 const customerRideArrivalSource=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
-ok(customerRideArrivalSource.includes('text("arrived_pickup_at")')&&customerRideArrivalSource.includes('text("arrived_dropoff_at")')&&customerRideArrivalSource.includes('Text(passengerRideStatus(current))'),'Native Customer Ride must render arrival timestamps from the existing server state');
+ok(customerRideArrivalSource.includes('text("arrived_pickup_at")')&&customerRideArrivalSource.includes('text("arrived_dropoff_at")')&&customerRideArrivalSource.includes('Text(passengerRideStatus(current)'),'Native Customer Ride must render arrival-derived status from the existing server state');
 
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
