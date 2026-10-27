@@ -1,3 +1,8 @@
+## 2026-10-27 Catalog image contract path correction
+
+- The Merchant reference-image implementation is in `merchant/grocery-catalog.js`, but the new regression assertion accidentally searched `merchant/index.html`. Corrected the test fixture path; product code is unchanged.
+- **NEXT:** exact-head Native Pilot/Map Engine; fix first confirmed failure only, then three-APK artifact verification.
+
 ## 2026-10-27 Merchant Grocery source images — real merchant-only preview enabled
 
 - The owner/device evidence requires actual Catalog product photos, not an empty box or placeholder. Production `qg_grocery_source_search` has 10,000 active Makro reference-image URLs and the add-to-shop RPC already stores them only as `catalog_preview_image` metadata while keeping `products.image = null`.

@@ -7,6 +7,7 @@ const app=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/mer
 const products=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt','utf8');
 const productModel=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantProductModel.kt','utf8');
 const web=fs.readFileSync('merchant/index.html','utf8');
+const catalogWeb=fs.readFileSync('merchant/grocery-catalog.js','utf8');
 const screen=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantGroceryCatalogScreen.kt','utf8');
 const source=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantGrocerySource.kt','utf8');
 
@@ -38,8 +39,8 @@ ok(
   'Native Merchant source catalog must render pinned-host reference imagery without promoting it to the customer product image'
 );
 ok(
-  web.includes("merchantReferenceImage(r.image_url)") &&
-  web.includes("https://images.mango-prod.siammakro.cloud/"),
+  catalogWeb.includes("merchantReferenceImage(r.image_url)") &&
+  catalogWeb.includes("https://images.mango-prod.siammakro.cloud/"),
   'Web Merchant source catalog must render the same pinned-host reference imagery'
 );
 ok(screen.includes('remember(item.id, item.productUpdatedAt) { UUID.randomUUID().toString() }'),'Retry-safe request ID must remain stable until the server version changes');
