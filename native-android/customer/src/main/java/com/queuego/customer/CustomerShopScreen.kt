@@ -190,27 +190,36 @@ internal fun CustomerFavoritesScreen(
                     val label = shop?.name ?: product?.name ?: "รายการนี้ยังไม่พร้อมให้บริการ"
                     QgCard(Modifier.fillMaxWidth()) {
                         Row(
-                            Modifier.fillMaxWidth().clickable(enabled = destinationShop != null) {
-                                destinationShop?.let(onOpenShop)
-                            }.padding(12.dp),
+                            Modifier.fillMaxWidth().padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            if (product != null) {
-                                QgRemoteImage(product.image, Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)), product.name)
-                            } else if (shop != null) {
-                                QgRemoteImage(shop.logo, Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)), shop.name)
-                            }
                             Column(Modifier.weight(1f)) {
-                                Text(label, fontWeight = FontWeight.Bold)
-                                when {
-                                    product != null -> Text("฿" + "%.0f".format(product.deliveryPrice), color = QgMuted)
-                                    shop != null -> Text(shopCategory(shop.category), color = QgMuted)
+                                Text(
+                                    label,
+                                    color = QgRed,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable(enabled = destinationShop != null) {
+                                        destinationShop?.let(onOpenShop)
+                                    }
+                                )
+                                if (product != null) {
+                                    Text(
+                                        "฿" + "%.0f".format(product.deliveryPrice),
+                                        color = QgInk,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
                                 }
                             }
-                            TextButton(
-                                enabled = !busy,
-                                onClick = {
+                            ShopIcon(
+                                R.drawable.qg_shop_heart_filled,
+                                "นำออกจากรายการโปรด",
+                                Modifier.size(32.dp),
+                                QgRed,
+                                enabled = !busy
+                            ) {
                                     busy = true
                                     scope.launch {
                                         try {
@@ -227,7 +236,6 @@ internal fun CustomerFavoritesScreen(
                                         }
                                     }
                                 }
-                            ) { Text("นำออก", color = QgRed) }
                         }
                     }
                 }

@@ -1918,3 +1918,11 @@ Every row remains BLOCKED until actual evidence is attached; emulator/source che
 - This is CI/emulator and source evidence; it does not certify authenticated Customer screenshots, physical Android devices, road/GPS behavior or release readiness. Customer authenticated screenshots remain blocked by the recorded missing review credentials.
 - **NEXT:** audit remaining Customer/Merchant/Rider remote reads for repeated downloads of non-authoritative display/reference data. Record each exact callsite and trigger; cache only a confirmed repeatable gap, and keep live order/financial/inventory/dispatch decisions server-authoritative. Run exact-head Native Pilot after each source change.
 
+
+## 2026-10-27 Customer Favorites Web parity — source checkpoint; exact-head Pilot NEXT
+
+- Current successor branch parent: `5680a9d4d8d490061efc18df89fce43a042fff8c` (PR #730). Source audit of Production Web `origin/main` confirmed Favorites renders the item name, product price when applicable, and a filled heart removal control; it does not render product/shop thumbnails or shop-category metadata.
+- Native Favorites had added thumbnails, shop-category text, and a text `นำออก` button. Updated the screen to match the Web row content and red heart action, keeping existing authenticated favorite toggle, stale local cache, unavailable-item removal, and shop navigation behavior.
+- Added a scoped source contract for the Web-aligned row. Local `node tests/native-android-source.cjs`: 399 checks PASS; `git diff --check` PASS. No business authority or Production data changed.
+- Exact parent Native Pilot run `40475975171` and Map Engine run `40475975073` are being inspected; parent Pilot has reached emulator lifecycle without a confirmed failure. Do not treat parent CI as validation of this new source change.
+- **NEXT:** commit this bounded source chunk, inspect terminal results for the parent exact-head Native Pilot/Map Engine, then publish this successor and run exact-head Native Pilot for the new commit. Continue the Customer Shop/menu/cart parity matrix after the source gate.

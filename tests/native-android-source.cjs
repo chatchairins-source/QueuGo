@@ -318,6 +318,9 @@ ok(
 const customerShopForMemory=read('customer/src/main/java/com/queuego/customer/CustomerShopScreen.kt');
 const customerSearchForMemory=read('customer/src/main/java/com/queuego/customer/CustomerSearchScreen.kt');
 const customerAppForMemory=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
+const customerFavoritesStart=customerShopForMemory.indexOf('internal fun CustomerFavoritesScreen(');
+const customerShopScreenStart=customerShopForMemory.indexOf('@Composable\ninternal fun ShopScreen(', customerFavoritesStart);
+const customerFavoritesUi=customerShopForMemory.slice(customerFavoritesStart, customerShopScreenStart);
 ok(
   customerAppForMemory.includes('"favorites" -> CustomerFavoritesScreen(') &&
   customerAppForMemory.includes('customerSystemBackTarget(') &&
@@ -327,6 +330,14 @@ ok(
   customerShopForMemory.includes('"รายการนี้ยังไม่พร้อมให้บริการ"') &&
   customerShopForMemory.includes('api.toggle(auth, if (favorite.shop.isNotBlank()) "shop" else "product"'),
   'Customer Favorites must read the existing Production authority, retain unavailable entries for removal, and return to Profile'
+);
+ok(
+  customerFavoritesUi.includes('R.drawable.qg_shop_heart_filled') &&
+  customerFavoritesUi.includes('"นำออกจากรายการโปรด"') &&
+  !customerFavoritesUi.includes('QgRemoteImage(') &&
+  !customerFavoritesUi.includes('shopCategory(shop.category)') &&
+  !customerFavoritesUi.includes('Text("นำออก", color = QgRed)'),
+  'Customer Favorites must match Web name/price/heart rows without added thumbnails or shop metadata'
 );
 const customerBackNavigation=read('customer/src/main/java/com/queuego/customer/CustomerBackNavigation.kt');
 ok(
