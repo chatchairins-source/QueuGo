@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -298,12 +297,6 @@ internal fun CustomerCheckoutScreen(
                             },
                             onReady = { mapReady = it }
                         )
-                        if (!mapReady) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.align(Alignment.Center).size(26.dp),
-                                strokeWidth = 2.dp
-                            )
-                        }
                     }
 
                     Spacer(Modifier.height(10.dp))
