@@ -296,12 +296,6 @@ internal fun MerchantShopSetupScreen(
                     },
                     onReady = { mapReady = it }
                 )
-                if (!mapReady) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center).size(28.dp),
-                        strokeWidth = 2.dp
-                    )
-                }
             }
             Spacer(Modifier.height(10.dp))
             OutlinedButton(onClick = onGps, modifier = Modifier.height(38.dp)) {
