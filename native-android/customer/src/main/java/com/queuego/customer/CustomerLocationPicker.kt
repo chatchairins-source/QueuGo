@@ -257,22 +257,15 @@ internal fun CustomerLocationPickerScreen(
                     onReady = { mapReady = it; if (it) mapFailed = false }
                 )
             }
-            if (!mapReady) {
-                if (mapFailed) {
-                    Column(
-                        Modifier.align(Alignment.Center).padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("โหลด QueueGo Map ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่", color = QgMuted)
-                        TextButton(onClick = { mapAttempt++; mapReady = false; mapFailed = false }) {
-                            Text("ลองโหลดแผนที่อีกครั้ง")
-                        }
+            if (!mapReady && mapFailed) {
+                Column(
+                    Modifier.align(Alignment.Center).padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("โหลด QueueGo Map ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่", color = QgMuted)
+                    TextButton(onClick = { mapAttempt++; mapReady = false; mapFailed = false }) {
+                        Text("ลองโหลดแผนที่อีกครั้ง")
                     }
-                } else {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center).size(28.dp),
-                        strokeWidth = 2.dp
-                    )
                 }
             }
         }
