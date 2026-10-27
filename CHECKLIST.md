@@ -1,3 +1,11 @@
+## 2026-10-27 Preserve Native exact-head gate runs — source checkpoint; exact-head CI NEXT
+
+- Parent Native successor HEAD: `c1fa9f5a63f880446bda5c2c0a146a05fb615aaa`; PR #730 remains open/draft; Production `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Confirmed why exact-head Native Pilot and Map Engine runs repeatedly ended cancelled while the successor advanced: both workflow concurrency groups used `cancel-in-progress: true`. Changed both to preserve the active run and leave the newest pending run queued. Added a source guard for both workflow policies.
+- CI scheduling only; no product behavior change. Cancelled runs did not establish a source failure. No Production data/schema mutation.
+- Customer authenticated visual review remains blocked by missing Actions credentials; emulator CI does not certify physical-device or visual parity.
+- **NEXT:** inspect exact-head Native Pilot and Map Engine on this source commit. Fix only the first confirmed failure, then continue the Customer P1 parity matrix.
+
 ## 2026-10-27 Customer Market GPS refresh deduplication — source checkpoint; exact-head CI NEXT
 
 - Parent Native successor HEAD: `c32b37d333556f2dce7a50f60d4233cbf0d71c7d`; PR #730 remains open/draft; Production `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.

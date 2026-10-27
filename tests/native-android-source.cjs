@@ -3,6 +3,11 @@ const root=path.resolve(__dirname,'..','native-android');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
+const nativePilotWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/build-native-rider-pilot.yml'),'utf8');
+const mapEngineWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/queuego-map-engine-buriram.yml'),'utf8');
+ok(nativePilotWorkflow.includes('group: queuego-native-${{ github.ref }}')&&nativePilotWorkflow.includes('cancel-in-progress: false')&&mapEngineWorkflow.includes('group: queuego-map-engine-${{ github.ref }}')&&mapEngineWorkflow.includes('cancel-in-progress: false'),'Native Pilot and Map Engine exact-head jobs must finish when the successor advances, while newer work waits');
+
+
 for(const p of [
   'settings.gradle.kts',
   'build.gradle.kts',
