@@ -193,7 +193,7 @@ internal fun CustomerOrderTrackingScreen(
                 ) {
                     if (
                         order.status.lowercase() !in setOf("pending", "searching_rider") &&
-                        context?.shop != null
+                        context?.shop?.phone?.any { it.isDigit() || it == '+' } == true
                     ) {
                         CustomerTrackingAction(
                             label = "ติดต่อร้าน",
