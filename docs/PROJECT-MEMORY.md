@@ -1,11 +1,14 @@
-## 2026-10-27 Customer Profile cleanup; exact Pilot PASS
+## 2026-10-27 Customer Profile cleanup; latest Pilot and authenticated capture PASS
 
 - Latest published Native source before this continuation: `9f6d54f81416cee63fc4b44987e42cc8fe39e446`; PR #730 is open/draft. Latest `origin/main` is `7e036a0735cc49905e9b0a2434492470551a0c9d`. No newer Native successor was found after fetch.
 - Exact `9f6d54f8` PR Pilot `40433753021`, push Pilot `40433747432`, and Map Engine `40433753070` are SUCCESS. Authenticated read-only run `40433747486` captured Rider 11/11 (artifact `12703387135`) and Merchant 5/5 (artifact `12703103639`); actual `profile_laundry` screenshot was inspected and is visually clean. Metadata is emulator-only, no Production order/dispatch mutation, and not a visual parity certification.
 - Customer authenticated capture is still blocked by missing `QG_CUSTOMER_REVIEW_PHONE` and `QG_CUSTOMER_REVIEW_PASSWORD`. Do not claim Customer screenshot acceptance or physical-device PASS.
 - Customer Profile had a DEBUG-only `ข้อมูลเวอร์ชันทดสอบ` control, absent from Web Production, exposing version/build/Git SHA metadata on the user-facing Profile. Removed that control only; shared diagnostics remain for other roles and isolated instrumentation. Native source contracts pass 357/0; diff check passes.
-- Exact docs checkpoint `72eb8c45d28cf730955a144c24b3f3fab5f42b55` passed Native Pilot `40435861715` and Map Engine `40435861671`, including regression/source, Kotlin/JVM, all three APKs, 16 KB packaging, WebView rejection and emulator lifecycle. No failed step; not a physical-device pass.
-- **NEXT:** trigger the existing read-only Rider/Merchant authenticated capture now that exact-head Pilot is green, inspect actual screenshots and metadata, then continue Customer source parity while Customer credentials remain blocked.
+- On `72eb8c45`, PR Pilot `40435861715` and Map Engine `40435861671` passed. Push Pilot `40435855531` failed only while `sdkmanager` unpacked the downloaded emulator archive (`ZipFile unknown archive`); preceding source/JVM/APK/16 KB/WebView gates passed. This is an infrastructure download failure, not an app-source failure.
+- Exact successor `f8145b87502d9b1c108b1dad4e26440421377911` passed PR Pilot `40437689163`, push Pilot `40437684464`, and Map Engine `40437689276`, including emulator lifecycle. Authenticated read-only run `40437684481` captured Rider 11/11 (artifact `12704589704`) and Merchant 5/5 (artifact `12705111401`). Actual screenshots were inspected; no new Rider/Merchant mismatch was found. Metadata is exact-head, emulator-only, no Production dispatch/order mutation, and not a visual certification.
+- Readiness artifact `12705165067` records Customer secrets missing: `QG_CUSTOMER_REVIEW_PHONE` and `QG_CUSTOMER_REVIEW_PASSWORD`; Customer authenticated screenshots remain blocked.
+- Source audit found Web Profile displays `users.phone || users.email || Auth email`, while Native passes only the name and `NativeUser` has neither contact field. Keep existing backend/RLS authority, persist only the existing contact values securely, and suppress synthetic `@auth.queuetech.local` emails.
+- **NEXT:** trace and add that existing Customer contact line to Native Profile with focused coverage, then run exact-head Pilot. Customer screenshot acceptance stays blocked until both recorded secrets are supplied.
 
 ## 2026-10-27 Rider Laundry Web/Production authority re-check
 
