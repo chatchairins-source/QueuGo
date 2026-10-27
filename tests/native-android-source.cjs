@@ -560,6 +560,7 @@ const customerLaundryContentCacheSource=read('customer/src/main/java/com/queuego
 const customerPromotionCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerPromotionCache.kt');
 const customerContentCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerContentCache.kt');
 const customerShopReviewCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerShopReviewCache.kt');
+const customerFavoritesCacheSource=read('customer/src/main/java/com/queuego/customer/CustomerFavoritesCache.kt');
 ok(
   customerPromotionCacheSource.includes('context.noBackupFilesDir, "customer_promotion_cache_v1"') &&
   customerPromotionCacheSource.includes('FRESH_MS = 10L * 60L * 1000L') &&
@@ -573,6 +574,16 @@ ok(
   !customerContentCacheSource.includes('readPromotions()') &&
   !customerContentCacheSource.includes('writePromotions('),
   'Customer Promotions must use one durable cache path only'
+);
+ok(
+  customerFavoritesCacheSource.includes('context.noBackupFilesDir, "customer_favorites_cache_v1"') &&
+  customerFavoritesCacheSource.includes('FRESH_MS = 60L * 1000L') &&
+  customerShopForMemory.includes('favoritesCache.read(auth.user.id)') &&
+  customerShopForMemory.includes('requiredProductIds.all { it in cachedProductIds }') &&
+  customerShopForMemory.includes('favoritesCache.write(auth.user.id, freshFavorites, freshProducts)') &&
+  customerShopForMemory.includes('favoritesCache.write(liveAuth.user.id, freshFavorites, cachedBefore?.products.orEmpty())') &&
+  customerShopForMemory.includes('load(force = true)'),
+  'Customer Favorites must reuse a short-lived user-scoped snapshot and invalidate after mutations'
 );
 ok(
   customerShopReviewCacheSource.includes('context.noBackupFilesDir, "customer_shop_review_cache_v1"') &&
