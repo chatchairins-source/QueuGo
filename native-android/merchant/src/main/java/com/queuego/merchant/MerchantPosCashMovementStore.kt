@@ -43,7 +43,9 @@ internal class MerchantPosCashMovementStore(context: Context) {
     }
 
     fun save(pending: PosCashMovementPending): Boolean {
-        if (load(pending.shopId, pending.actorId) != null) return false
+        // Fail closed even if a previously persisted intent became unreadable.
+        // Never overwrite an unknown cash request key with a new financial mutation.
+        if (prefs.contains(key(pending.shopId, pending.actorId))) return false
         return prefs.edit().putString(key(pending.shopId, pending.actorId),
             JSONObject().put("shop_id", pending.shopId)
                 .put("actor_id", pending.actorId)

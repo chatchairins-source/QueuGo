@@ -1,3 +1,9 @@
+## 2026-10-28 Native POS cash ledger fail-closed pending-store hardening
+
+- During exact-head review, found a safety edge case: `save` only blocked an existing pending request when JSON decoding succeeded. Corrupt persisted bytes could otherwise be overwritten with a fresh request UUID, risking duplicate cash records after a network timeout.
+- Now fails closed for **any existing persisted key**, including unreadable contents, before creating another transaction. No Production RPC or financial data touched. Added source guard.
+- **NEXT:** exact-head Kotlin + Map Engine verification, then test normal payment, cash-in/out and same-key retry on real tablet; if pending JSON is corrupt, handle it via audited recovery rather than automatic replacement.
+
 ## 2026-10-28 Native FULL POS register cash-in/out — durable idempotent request (pending exact-head CI)
 
 - Added Android register cash-in/out under `กะรับเงิน` only when cashier has a live server-confirmed shift. Uses existing Production `pos_record_cash_movement` RPC, not a new ledger.

@@ -1427,7 +1427,8 @@ ok(
   merchantPosScreen.includes('shopId = snap.shopId') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosShiftHistory.kt').includes('ตรวจรายการเดิมด้วยรหัสเดิม') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosCashMovementStore.kt').includes('request_id') &&
-  read('merchant/src/main/java/com/queuego/merchant/MerchantPosCashMovementStore.kt').includes('.commit()'),
+  read('merchant/src/main/java/com/queuego/merchant/MerchantPosCashMovementStore.kt').includes('.commit()') &&
+  read('merchant/src/main/java/com/queuego/merchant/MerchantPosCashMovementStore.kt').includes('prefs.contains(key(pending.shopId, pending.actorId))'),
   'Merchant POS cash-in/out must persist exact retry intent and validate server receipt'
 );
 
