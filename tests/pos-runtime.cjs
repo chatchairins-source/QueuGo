@@ -1,5 +1,15 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert'),{JSDOM}=require('jsdom');
 const root=path.resolve(__dirname,'..');
+const webPosSource=fs.readFileSync(path.join(root,'merchant/pos-table-v2.js'),'utf8');
+assert(webPosSource.includes("rpc('pos_current_shift'") &&
+  webPosSource.includes("rpc('pos_open_shift'") &&
+  webPosSource.includes("rpc('pos_close_shift'") &&
+  webPosSource.includes('state.orders.filter(active).map(o=>') &&
+  webPosSource.includes("const billPayable=o=>!kitchenRequired()") &&
+  webPosSource.includes("await window.qgPosLoadShift();if(state.cashShift?.open!==true)") &&
+  !webPosSource.includes("state.orders.filter(o=>active(o)&&['READY','SERVED'].includes(o.kitchen_status))"),
+  'Web POS must support Production register shifts and list all unpaid POS bills');
+
 const tick=()=>new Promise(r=>setImmediate(r));
 (async()=>{let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
 function boot(){const d=new JSDOM('<div id="app"></div>',{url:'https://queuego.test/merchant/#pos',runScripts:'outside-only',pretendToBeVisual:true}),w=d.window;w.toast=()=>{};w.qtSessionRead=()=>({authUserId:'actor',accessToken:'token'});w.qtGetAccessToken=async()=>'token';w.crypto.randomUUID=()=>crypto.randomUUID();w.QT_SUPABASE_CONFIG={URL:'https://test.invalid',KEY:'fixture'};w.AbortSignal=AbortSignal;return {d,w,eval:file=>vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),d.getInternalVMContext())}}

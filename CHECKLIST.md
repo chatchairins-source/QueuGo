@@ -1,3 +1,10 @@
+## 2026-10-28 Merchant Web POS cash-register parity — open/close shifts and non-kitchen settlement (IN PROGRESS)
+
+- Verified Production requires `pos_current_shift` / `pos_open_shift` before `pos_take_payment`, and Web `merchant/pos-table-v2.js` lacked this UI while filtering all unpaid bills by kitchen READY/SERVED, breaking grocery/non-kitchen cashier. The native fix uses same RPCs; this Web change restores a single server authority.
+- Web POS now reads authoritative shop category, hides Kitchen tab where irrelevant, renders all unpaid POS bills with ready/waiting status, and exposes current cash shift, opening float 0 or chosen amount, expected cash, counted cash and confirmation to close shift. Counter and cashier preflight ensure an authenticated open shift before invoking the unchanged `pos_take_payment`. Server permissions and settlement invariants remain final authority, and no shift opens silently.
+- Updated `tests/pos-runtime.cjs` source contract. Web behavior needs browser E2E with authenticated cashier and production deployment; Native APK pending latest-head CI. Do not call either Production done based on source changes only.
+- **NEXT:** exact-head Map Engine and Native Pilot; repair first failure, then test full cash flow on Android tablet and Web (open shift → create bill → collect cash → close bill → receipt). Continue broader FULL Option gap audit (cash in/out, barcode/product codes, shift history, inventory ledger, item sales).
+
 ## 2026-10-28 exact-head CI first failure: legacy bill-list Kitchen filter assertion
 
 - Map Engine `40630499304` / job `122625490655` failed first at `tests/native-android-source.cjs:1248`: assertion required old `bills = openBills.filter { !kitchenEnabled || READY/SERVED }`. This hid unpaid POS orders instead of showing them with status, while Production permits direct settlement for non-kitchen shops.
