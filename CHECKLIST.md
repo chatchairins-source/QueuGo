@@ -1,3 +1,8 @@
+## 2026-10-28 exact-head Map Engine first failure — stale Rider demand marker assertions fixed (IN PROGRESS)
+- Exact head `4f9b91b74a46155a142115e94789c3afeb6acecf` failed Map Engine run `40624833834`, job `122607140703`, first failing `Dependencies and regression` step: `tests/native-three-app-stability.cjs:656` still demanded `demandMarkers.clear()` after the Web-parity source removed native-only demand map annotations.
+- Corrected the **two** stale lifecycle assertions to require absence of `demandMarkers` and retention of `lastDemandSignature = null`. Kotlin/product code unchanged in this follow-up. No source-test runtime/Gradle/physical-device PASS claimed yet.
+- **NEXT:** require fresh exact-HEAD Native Pilot + Map Engine green; fix only first newly confirmed failure; continue black receipt preview diagnosis and three-app same-HEAD APK gate. Do not distribute the older e35b0bff ZIP as current.
+
 ## 2026-10-28 Rider native-only work-area map pin removal — IN PROGRESS (exact-head CI NEXT)
 
 - Audited the controlling Native successor `35332cf49ea5c45b30e8ed44e798a4df3a7e9540` in PR #730 against `rider/index.html`. Android alone created clickable MapLibre demand-level markers with work-area popup text, the source of the extra owner-observed map label; Web Rider has no equivalent map marker. This does not prove or fix the separate oversized floating card.
