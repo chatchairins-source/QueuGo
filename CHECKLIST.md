@@ -1,3 +1,9 @@
+## 2026-10-28 exact-head CI first failure: legacy bill-list Kitchen filter assertion
+
+- Map Engine `40630499304` / job `122625490655` failed first at `tests/native-android-source.cjs:1248`: assertion required old `bills = openBills.filter { !kitchenEnabled || READY/SERVED }`. This hid unpaid POS orders instead of showing them with status, while Production permits direct settlement for non-kitchen shops.
+- Changed **only** old source assertion to require complete open-bill visibility and readiness gating in checkout while preserving counter action policy. No financial mutation, Kotlin behavior, or RLS changes in this follow-up.
+- **NEXT:** inspect exact new HEAD Map Engine and Native Pilot; fix first confirmed failure, then test actual cashier shift and payment closure on a real owner/cashier account. FULL Option feature parity remains incomplete pending inventory/register/report/printing audit.
+
 ## 2026-10-28 P0 Merchant POS Full Option cashier/shift gap — source fix pending exact-head CI
 
 - Owner reports POS cannot calculate/close bills and asks where FULL Option went. Audited live Production Supabase (read-only) and real Native/Web source: Production `pos_take_payment` requires an open cashier `pos_register_shifts` row for the authenticated cashier. Production exposes `pos_current_shift`, `pos_open_shift`, `pos_close_shift`; Android has no UI/API wiring for these. Observed zero currently open shifts at audit time (not sufficient to identify specific user account). Native `PosBillsView` also filtered ALL bills by `kitchen_status in READY/SERVED` for food/cafe only but Native non-food category detection can be missing/incorrect. Explicit non-kitchen eligibility is enforced by the server.
