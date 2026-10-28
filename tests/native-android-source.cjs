@@ -1407,7 +1407,9 @@ ok(
   merchantPosScreen.includes('PosChoiceButton("ทั้งหมด", selectedCategory == "all")') &&
   merchantPosScreen.includes('onCategory(category)') &&
   merchantPosScreen.includes('selectedCategory == "all" || it.category?.trim() == selectedCategory') &&
-  merchantPosScreen.includes('LaunchedEffect(snap?.shopId) { selectedPosCategory = "all" }') &&
+  merchantPosScreen.includes('LaunchedEffect(snap?.shopId) {') &&
+  merchantPosScreen.includes('selectedPosCategory = "all"') &&
+  merchantPosScreen.includes('scannedProduct = null') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt').includes('.put("category", p.category ?: JSONObject.NULL)') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt').includes('!p.has("category") || p.isNull("category")'),
   'Native FULL POS must preserve Production product categories across filtering, identity switches and offline cache'

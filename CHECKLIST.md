@@ -1,3 +1,9 @@
+## 2026-10-28 exact-head POS FULL CI first failure — stale shop category reset source test
+
+- HEAD `981aa4277e0f214110d26173671b55ac8d1a8073` Native Pilot run `40634661409` and Map Engine run `40634661414` both stopped at `tests/native-android-source.cjs:1403` in initial regression: the test demanded the prior single-line `LaunchedEffect(snap?.shopId) { selectedPosCategory = "all" }`. The actual Android code correctly expands this shop-switch effect to clear barcode preview, scan status and code entry while retaining category reset.
+- Fixed **only** the stale source string assertion to require shop reset, category reset and cleared scanned result. Did not change Kotlin, barcode API, checkout, payment, database or Web.
+- **NEXT:** exact HEAD Map Engine + Native Pilot CI first failure, build three APK from same HEAD if green. Test real tablet scan / barcode management and cashier cash-close flows; report only verified device features.
+
 ## 2026-10-28 Native POS FULL — counter barcode/SKU lookup with guarded add-to-bill (IN PROGRESS)
 
 - Native Counter now has compact barcode/SKU input (compatible with keyboard-style scanners and manual entry), reads current store's `pos_product_code_lookup` Production RPC and confirms a matching live POS catalog product before allowing an explicit `เพิ่มเข้าบิล` action.
