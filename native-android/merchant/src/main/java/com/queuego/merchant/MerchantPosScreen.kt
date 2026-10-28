@@ -211,6 +211,7 @@ fun MerchantPosScreen(
 
     var reportDays by rememberSaveable { mutableStateOf(1) }
     var report by remember { mutableStateOf<PosOwnerDashboard?>(null) }
+    var itemSalesReport by remember { mutableStateOf<PosItemSalesReport?>(null) }
 
     var historyDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var historyType by rememberSaveable { mutableStateOf("ALL") }
@@ -720,8 +721,13 @@ fun MerchantPosScreen(
 
     LaunchedEffect(view, reportDays, snapshot?.shopId) {
         if (view == "reports" && snapshot?.owner == true) {
+            report = null
+            itemSalesReport = null
             report = runCatching { api.ownerDashboard(auth, reportDays) }
                 .onFailure { message = it.message ?: "โหลดรายงานไม่สำเร็จ" }
+                .getOrNull()
+            itemSalesReport = runCatching { api.ownerItemSales(auth, reportDays) }
+                .onFailure { message = it.message ?: "โหลดยอดขายรายสินค้าไม่สำเร็จ" }
                 .getOrNull()
         }
     }
@@ -1173,6 +1179,7 @@ fun MerchantPosScreen(
                     snapshot = snap,
                     days = reportDays,
                     report = report,
+                    itemSalesReport = itemSalesReport,
                     busy = busy,
                     onDays = { reportDays = it },
                     onRefund = { bill ->
@@ -2492,6 +2499,7 @@ private fun PosReportsView(
     snapshot: PosSnapshot,
     days: Int,
     report: PosOwnerDashboard?,
+    itemSalesReport: PosItemSalesReport?,
     busy: Boolean,
     onDays: (Int) -> Unit,
     onRefund: (PosBill) -> Unit
@@ -2520,6 +2528,34 @@ private fun PosReportsView(
                     PosReportLine("GP Delivery", report.gp)
                 }
             }
+        }
+
+        Spacer(Modifier.height(14.dp))
+        QgSectionTitle("สินค้าขายดี", "ยอดขายรายสินค้า POS · ตามช่วงเวลาที่เลือก")
+        if (itemSalesReport == null) {
+            Text("กำลังโหลดสรุปยอดขายรายสินค้า", color = QgMuted, fontSize = 12.sp)
+        } else if (itemSalesReport.items.isEmpty()) {
+            QgCard(Modifier.fillMaxWidth()) {
+                Text("ยังไม่มีรายการสินค้าที่ชำระแล้วในช่วงนี้", color = QgMuted)
+            }
+        } else {
+            itemSalesReport.items.forEach { item ->
+                QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(item.name, fontWeight = FontWeight.Bold)
+                        Row(Modifier.fillMaxWidth()) {
+                            Text("ขาย " + item.quantity.toString() + " · " +
+                                item.bills + " บิล", modifier = Modifier.weight(1f),
+                                color = QgMuted, fontSize = 12.sp)
+                            Text("฿" + money(item.sales), color = QgRed,
+                                fontWeight = FontWeight.ExtraBold)
+                        }
+                    }
+                }
+            }
+            Text("แสดง " + itemSalesReport.items.size + " จาก " +
+                itemSalesReport.itemCount + " รายการ",
+                color = QgMuted, fontSize = 11.sp)
         }
 
         Spacer(Modifier.height(14.dp))

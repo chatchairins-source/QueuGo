@@ -111,6 +111,18 @@ data class PosStaff(
     )
 }
 
+data class PosItemSalesRow(
+    val name: String,
+    val quantity: Double,
+    val bills: Int,
+    val sales: Double
+)
+
+data class PosItemSalesReport(
+    val itemCount: Int,
+    val items: List<PosItemSalesRow>
+)
+
 data class PosOwnerDashboard(
     val dineIn: Double,
     val takeaway: Double,
@@ -703,6 +715,31 @@ class MerchantPosApi(
             JSONObject().put("p_days", days)
         )
         return merchantPosOwnerDashboard(objectValue(raw))
+    }
+
+    suspend fun ownerItemSales(auth: NativeAuth, days: Int): PosItemSalesReport {
+        require(days in setOf(1, 7, 30)) { "ช่วงรายงานไม่ถูกต้อง" }
+        val raw = objectValue(http.rpc(
+            "pos_owner_item_sales",
+            auth.session.accessToken,
+            JSONObject().put("p_days", days)
+        ))
+        val rows = raw.optJSONArray("items") ?: JSONArray()
+        val items = buildList {
+            for (i in 0 until rows.length()) {
+                val row = rows.optJSONObject(i) ?: continue
+                add(PosItemSalesRow(
+                    name = row.optString("item_name").ifBlank { "(ไม่ระบุชื่อ)" },
+                    quantity = row.optDouble("quantity", 0.0),
+                    bills = row.optInt("bills", 0),
+                    sales = row.optDouble("sales", 0.0)
+                ))
+            }
+        }
+        return PosItemSalesReport(
+            itemCount = raw.optInt("item_count", items.size),
+            items = items
+        )
     }
 
     suspend fun history(

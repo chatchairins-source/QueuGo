@@ -1,3 +1,9 @@
+## 2026-10-28 Native POS FULL — restore Production item sales reporting (read-only)
+
+- Current Web FULL POS displays per-item sales from `pos_owner_item_sales(p_days)`. Native Dashboard displayed only overall totals and paid bills. Production function inspected read-only: returns `{days,item_count,items:[{item_name,quantity,bills,sales}]}` scoped to current owner shop and paid POS orders.
+- Added owner-only Native RPC read for 1/7/30 days, typed item counts and per-product paid revenue, and dedicated `สินค้าขายดี` section in POS reports. No local counterfeit calculations, server writes, new permissions or transaction paths. Existing overall report / refund logic preserved.
+- Source test added. **NEXT:** check latest exact-head CI and fix first confirmed failure before further features. Physical Android screenshot parity and actual owner report data verification required. Barcode and audited cash-register movement E2E remain open.
+
 ## 2026-10-28 Native POS cash ledger fail-closed pending-store hardening
 
 - During exact-head review, found a safety edge case: `save` only blocked an existing pending request when JSON decoding succeeded. Corrupt persisted bytes could otherwise be overwritten with a fresh request UUID, risking duplicate cash records after a network timeout.
