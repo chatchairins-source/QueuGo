@@ -1,3 +1,9 @@
+## 2026-10-28 Merchant POS Full Option — restore Native cashier shift history (read-only)
+
+- Exact Native successor parent `77e052f5a45d1993b0a9a9cf22db9c8da25e5fe0` already passed Map Engine + three-APK Native Pilot. Current Production Web FULL POS shows a dedicated cash-register shift history from `pos_register_shift_history(p_limit)`; Native only showed the live shift on the `คิดเงิน` panel, with no history.
+- Added a Native **กะรับเงิน** tab for actors authorized `view_sales` or `close_bill`, wired to the existing server-authoritative `pos_register_shift_history` RPC. Cashier role can also see current shift from `pos_current_shift`; other report-only staff never invoke an unauthorized current-shift RPC. Shows actual cashier, opened/closed timestamps, opening cash, expected cash, counted cash and variance. Read-only: no financial mutation, fake data or new database capability.
+- Added source test. **NEXT:** exact-head Map Engine/Native Pilot Kotlin compile and runtime first failure; then implement cash movements with durable idempotency or fix payment acceptance, leaving Production until owner device test. POS FULL barcode and item reports still pending.
+
 ## 2026-10-28 exact-head CI: Merchant POS login stays on POS after sign-in
 
 - Map Engine run `40631653765` / `122629176218` reached `tests/merchant-routing.cjs:7` and expected navigation `dashboard` after owner sign-in while the current Web main `qtShopDoLogin` intentionally returns to POS if login was triggered from `#pos`. The mock already verified a successful shop session `saved[0].role==='shop'`; failure was the retired route expectation.

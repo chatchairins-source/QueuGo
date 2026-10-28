@@ -905,6 +905,7 @@ fun MerchantPosScreen(
             current = view,
             owner = snap.owner,
             kitchenEnabled = kitchenEnabled,
+            cashierEnabled = can("close_bill") || can("view_sales"),
             onSelect = {
                 view = it
                 message = null
@@ -1160,6 +1161,12 @@ fun MerchantPosScreen(
                     }
                 )
 
+
+                "shifts" -> MerchantPosShiftHistoryScreen(
+                    auth = auth,
+                    api = api,
+                    canCashier = can("close_bill")
+                )
 
                 "reports" -> PosReportsView(
                     snapshot = snap,
@@ -1638,12 +1645,19 @@ private fun PosOfflineDraftPanel(
 }
 
 @Composable
-private fun PosTabs(current: String, owner: Boolean, kitchenEnabled: Boolean, onSelect: (String) -> Unit) {
+private fun PosTabs(
+    current: String,
+    owner: Boolean,
+    kitchenEnabled: Boolean,
+    cashierEnabled: Boolean,
+    onSelect: (String) -> Unit
+) {
     val tabs = buildList {
         add("counter" to "＋ รับออเดอร์")
         add("tables" to "โต๊ะ")
         if (kitchenEnabled) add("kitchen" to "ครัว")
         add("bills" to "คิดเงิน")
+        if (cashierEnabled) add("shifts" to "กะรับเงิน")
         if (owner) {
             add("reports" to "ยอดขาย")
             add("history" to "ประวัติ")

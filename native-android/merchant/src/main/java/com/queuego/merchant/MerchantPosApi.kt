@@ -46,6 +46,17 @@ data class PosTable(
     val qrToken: String? = null
 )
 
+data class PosShiftHistory(
+    val id: String,
+    val cashierName: String,
+    val openedAt: String,
+    val closedAt: String?,
+    val openingFloat: Double,
+    val expectedCash: Double?,
+    val countedCash: Double?,
+    val variance: Double?
+)
+
 data class PosCashShift(
     val open: Boolean,
     val expectedCash: Double?,
@@ -464,6 +475,37 @@ class MerchantPosApi(
     // Never manufacture an open shift from a local cache or auto-open one at checkout.
     suspend fun currentCashShift(auth: NativeAuth): PosCashShift =
         parseCashShift(http.rpc("pos_current_shift", auth.session.accessToken, JSONObject()))
+
+    suspend fun shiftHistory(auth: NativeAuth, limit: Int = 20): List<PosShiftHistory> {
+        val raw = http.rpc(
+            "pos_register_shift_history", auth.session.accessToken,
+            JSONObject().put("p_limit", limit.coerceIn(1, 50))
+        )
+        val rows = when (raw) {
+            is JSONArray -> raw
+            is JSONObject -> raw.optJSONArray("pos_register_shift_history")
+                ?: raw.optJSONArray("history") ?: JSONArray()
+            is String -> runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
+            else -> JSONArray()
+        }
+        return buildList {
+            for (index in 0 until rows.length()) {
+                val row = rows.optJSONObject(index) ?: continue
+                val id = row.optString("id")
+                if (id.isBlank()) continue
+                add(PosShiftHistory(
+                    id = id,
+                    cashierName = row.optString("cashier_name").ifBlank { "แคชเชียร์" },
+                    openedAt = row.optString("opened_at"),
+                    closedAt = nullableString(row, "closed_at"),
+                    openingFloat = row.optDouble("opening_float", 0.0),
+                    expectedCash = nullableDouble(row, "expected_cash"),
+                    countedCash = nullableDouble(row, "counted_cash"),
+                    variance = nullableDouble(row, "variance")
+                ))
+            }
+        }
+    }
 
     suspend fun openCashShift(auth: NativeAuth, openingFloat: Double): PosCashShift {
         require(openingFloat.isFinite() && openingFloat in 0.0..999999999.0) {

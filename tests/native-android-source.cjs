@@ -1412,6 +1412,15 @@ ok(
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt').includes('!p.has("category") || p.isNull("category")'),
   'Native FULL POS must preserve Production product categories across filtering, identity switches and offline cache'
 );
+ok(
+  merchantPosApi.includes('http.rpc(\n            "pos_register_shift_history"') &&
+  merchantPosScreen.includes('add("shifts" to "กะรับเงิน")') &&
+  merchantPosScreen.includes('"shifts" -> MerchantPosShiftHistoryScreen(') &&
+  merchantPosScreen.includes('cashierEnabled = can("close_bill") || can("view_sales")') &&
+  require('node:fs').readFileSync(require('node:path').join(root, 'merchant/src/main/java/com/queuego/merchant/MerchantPosShiftHistory.kt'), 'utf8').includes('api.shiftHistory(auth, 20)'),
+  'Merchant POS must expose read-only Production register shift history to authorized users'
+);
+
 const merchantPosPending=read('merchant/src/main/java/com/queuego/merchant/MerchantPosPendingStore.kt');
 const merchantPosDraftStore=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt');
 ok(merchantPosApi.includes('inventory_stock_tracking,grocery_master_id,grocery_stock_tracking')&&merchantPosApi.includes('stock = r.optInt("stock", 0)')&&merchantPosApi.includes('inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false)')&&merchantPosApi.includes('groceryMasterId = nullableString(r, "grocery_master_id")')&&merchantPosApi.includes('groceryStockTracking = r.optBoolean("grocery_stock_tracking", false)'),'Merchant native POS must load Web Production stock and generic/Grocery tracking inputs');
