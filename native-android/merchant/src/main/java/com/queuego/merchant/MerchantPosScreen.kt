@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -1546,20 +1549,24 @@ private fun PosTabs(current: String, owner: Boolean, kitchenEnabled: Boolean, on
         }
     }
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         tabs.forEach { (key, label) ->
             if (key == current) {
                 Button(
                     onClick = { onSelect(key) },
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp)
-                ) { Text(label, fontSize = 11.sp) }
+                    modifier = Modifier.heightIn(min = 46.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 10.dp)
+                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
             } else {
                 OutlinedButton(
                     onClick = { onSelect(key) },
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp)
-                ) { Text(label, fontSize = 11.sp) }
+                    modifier = Modifier.heightIn(min = 46.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 10.dp)
+                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
             }
         }
     }
@@ -1830,58 +1837,217 @@ private fun PosTablesView(
     onQr: (PosTable) -> Unit,
     onDelete: (PosTable) -> Unit
 ) {
-    val open = snapshot.bills.filter { it.open }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            QgSectionTitle("โต๊ะ", "จัดการโต๊ะและ QR Code สำหรับสั่งอาหาร")
-            Spacer(Modifier.weight(1f))
-            if (canManage) Button(onClick = onAdd, enabled = !busy) { Text("＋ เพิ่มโต๊ะ") }
-        }
-        Spacer(Modifier.height(10.dp))
-        snapshot.tables.forEach { table ->
-            val bill = open.firstOrNull { it.tableId == table.id }
-            QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(table.label, fontWeight = FontWeight.Black)
-                            Text(
-                                bill?.let { "มีออเดอร์ · " + it.number }
-                                    ?: if (table.active) "ว่าง" else "ปิดใช้งาน",
-                                color = QgMuted,
-                                fontSize = 11.sp
-                            )
-                        }
-                        Button(onClick = { onOpen(table) }, enabled = table.active || bill != null) {
-                            Text(if (bill == null) "เปิดโต๊ะ" else "เปิดบิล")
+    val openBills = snapshot.bills.filter { it.open }
+    val occupiedCount = snapshot.tables.count { table ->
+        openBills.any { it.tableId == table.id }
+    }
+    val availableCount = snapshot.tables.count { table ->
+        table.active && openBills.none { it.tableId == table.id }
+    }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // QgSectionTitle uses fillMaxWidth. Putting it inside a Row previously
+        // measured the title at full width, clipping "เพิ่มโต๊ะ" off the tablet.
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            color = Color.White,
+            shadowElevation = 1.dp
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("จัดการโต๊ะ", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("เปิดโต๊ะ รับออเดอร์ และ QR Code",
+                            fontSize = 12.sp, color = QgMuted)
+                    }
+                    if (canManage) {
+                        Button(
+                            onClick = onAdd,
+                            enabled = !busy,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                        ) {
+                            Text("＋ เพิ่มโต๊ะ", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(onClick = { onQr(table) }, enabled = canManage && !busy) {
-                            Text("ดู QR Code")
-                        }
-                        if (canManage) {
-                            OutlinedButton(onClick = { onEdit(table) }, enabled = !busy) {
-                                Text("แก้ไข")
+                }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(
+                        Triple("ทั้งหมด", snapshot.tables.size, Color(0xFF343941)),
+                        Triple("ว่าง", availableCount, Color(0xFF18835B)),
+                        Triple("มีบิล", occupiedCount, QgRed)
+                    ).forEach { (label, count, tone) ->
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFFF7F8FA)
+                        ) {
+                            Column(
+                                Modifier.padding(vertical = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(count.toString(), fontSize = 21.sp,
+                                    color = tone, fontWeight = FontWeight.ExtraBold)
+                                Text(label, fontSize = 11.sp, color = QgMuted)
                             }
-                            OutlinedButton(
-                                onClick = { onDelete(table) },
-                                enabled = !busy && bill == null
-                            ) { Text("ลบโต๊ะ") }
                         }
                     }
                 }
             }
         }
+
         if (snapshot.tables.isEmpty()) {
-            QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีโต๊ะที่ตั้งไว้", color = QgMuted) }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("ยังไม่มีโต๊ะ", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("เริ่มด้วยการเพิ่มหมายเลขโต๊ะ แล้วเปิดรับออเดอร์หรือสร้าง QR Code",
+                        color = QgMuted, fontSize = 12.sp)
+                    if (canManage) {
+                        Button(onClick = onAdd, enabled = !busy,
+                            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                        ) { Text("＋ เพิ่มโต๊ะแรก") }
+                    }
+                }
+            }
+        } else {
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val columnCount = if (maxWidth >= 650.dp) 2 else 1
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    snapshot.tables.chunked(columnCount).forEach { rowTables ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            rowTables.forEach { table ->
+                                val bill = openBills.firstOrNull { it.tableId == table.id }
+                                val status = when {
+                                    bill != null -> "มีออเดอร์ · " + bill.number
+                                    table.active -> "พร้อมรับออเดอร์"
+                                    else -> "ปิดใช้งาน"
+                                }
+                                Surface(
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = Color.White,
+                                    shadowElevation = 1.dp,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp, Color(0xFFE9EBEF)
+                                    )
+                                ) {
+                                    Column(
+                                        Modifier.fillMaxWidth().padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(table.label, fontSize = 18.sp,
+                                                    fontWeight = FontWeight.ExtraBold)
+                                                Text(status, fontSize = 11.sp,
+                                                    color = if (bill != null) QgRed else QgMuted)
+                                            }
+                                            Surface(
+                                                shape = RoundedCornerShape(100.dp),
+                                                color = when {
+                                                    bill != null -> Color(0xFFFFE9ED)
+                                                    table.active -> Color(0xFFE6F6EE)
+                                                    else -> Color(0xFFF1F2F4)
+                                                }
+                                            ) {
+                                                Text(
+                                                    when {
+                                                        bill != null -> "ไม่ว่าง"
+                                                        table.active -> "ว่าง"
+                                                        else -> "ปิด"
+                                                    },
+                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                    color = if (bill != null) QgRed
+                                                        else if (table.active) Color(0xFF18835B)
+                                                        else QgMuted,
+                                                    fontSize = 11.sp, fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                        Button(
+                                            onClick = { onOpen(table) },
+                                            enabled = (table.active || bill != null) && !busy,
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                                        ) {
+                                            Text(if (bill == null) "เปิดโต๊ะ" else "ดูบิล " + bill.number,
+                                                fontWeight = FontWeight.Bold)
+                                        }
+                                        if (canManage) {
+                                            Row(
+                                                Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                OutlinedButton(
+                                                    onClick = { onQr(table) },
+                                                    enabled = !busy,
+                                                    modifier = Modifier.weight(1f),
+                                                    contentPadding = PaddingValues(horizontal = 4.dp)
+                                                ) { Text("QR Code", fontSize = 12.sp) }
+                                                OutlinedButton(
+                                                    onClick = { onEdit(table) },
+                                                    enabled = !busy,
+                                                    modifier = Modifier.weight(1f),
+                                                    contentPadding = PaddingValues(horizontal = 4.dp)
+                                                ) { Text("แก้ไข", fontSize = 12.sp) }
+                                                TextButton(
+                                                    onClick = { onDelete(table) },
+                                                    enabled = !busy && bill == null,
+                                                    modifier = Modifier.weight(1f),
+                                                    contentPadding = PaddingValues(horizontal = 4.dp)
+                                                ) { Text("ลบ", color = QgRed, fontSize = 12.sp) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (columnCount == 2 && rowTables.size == 1) {
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            }
         }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onNoTable, modifier = Modifier.fillMaxWidth()) {
-            Text("＋ รับออเดอร์แบบไม่ระบุโต๊ะ")
+
+        OutlinedButton(
+            onClick = onNoTable,
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text("＋ รับออเดอร์แบบไม่ระบุโต๊ะ", fontWeight = FontWeight.SemiBold)
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
     }
 }
 

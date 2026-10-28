@@ -1362,6 +1362,18 @@ ok(source.includes('pauseShop(')&&source.includes('30 นาที')&&source.inc
 const merchantPosApi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt');
 const merchantPosScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
 const merchantPosOptions=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOptions.kt');
+ok(
+  merchantPosScreen.includes('private fun PosTablesView(') &&
+  merchantPosScreen.includes('BoxWithConstraints(Modifier.fillMaxWidth())') &&
+  merchantPosScreen.includes('if (maxWidth >= 650.dp) 2 else 1') &&
+  merchantPosScreen.includes('snapshot.tables.chunked(columnCount)') &&
+  merchantPosScreen.includes('if (canManage) {\n                        Button(') &&
+  merchantPosScreen.includes('Text("＋ เพิ่มโต๊ะ"') &&
+  merchantPosScreen.includes('api.saveTable(auth, id, tableLabel, tableActive)') &&
+  !merchantPosScreen.includes('QgSectionTitle("โต๊ะ", "จัดการโต๊ะและ QR Code สำหรับสั่งอาหาร")'),
+  'Merchant POS table-add must be visible and use the real create-table RPC in tablet/phone layouts'
+);
+
 const merchantPosPending=read('merchant/src/main/java/com/queuego/merchant/MerchantPosPendingStore.kt');
 const merchantPosDraftStore=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt');
 ok(merchantPosApi.includes('inventory_stock_tracking,grocery_master_id,grocery_stock_tracking')&&merchantPosApi.includes('stock = r.optInt("stock", 0)')&&merchantPosApi.includes('inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false)')&&merchantPosApi.includes('groceryMasterId = nullableString(r, "grocery_master_id")')&&merchantPosApi.includes('groceryStockTracking = r.optBoolean("grocery_stock_tracking", false)'),'Merchant native POS must load Web Production stock and generic/Grocery tracking inputs');

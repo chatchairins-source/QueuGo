@@ -1,3 +1,10 @@
+## 2026-10-28 Merchant POS tablet — hidden Add Table button root cause and responsive visual repair (IN PROGRESS)
+
+- Owner's seven real tablet photos show POS typography/actions far too small, large empty regions, and no visible `เพิ่มโต๊ะ` button even though existing tables 1/2 expose QR/edit/delete. Read newest successor source and confirmed root cause: `PosTablesView` placed shared `QgSectionTitle` (internally `Modifier.fillMaxWidth()`) inside a horizontal `Row`, consuming the full width and clipping the sibling add button on a tablet. `canManage = can("manage_staff")` remains the existing server-authorized owner/staff gate.
+- Replaced the header with a weighted title column plus prominent red 48dp `＋ เพิ่มโต๊ะ` action, visible on tablet and phone. Added occupied/available/total table summaries, legible table cards, 2-column responsive layout for >=650dp, larger controls and empty-state create action. Increased POS tab tap targets and labels. Existing Open Table, QR, edit, delete, and `api.saveTable` creation remain wired as before. No fake tables or new authority.
+- Added source regression asserting visible add, no full-width title-row collision, responsive layout and existing server create API. Source-only checkpoint pending exact-head Native Pilot (Kotlin/APK) and Map Engine; owner real-device visual and functional creation/reopen tests required before marking DONE.
+- **NEXT:** inspect exact-head CI first failure; then test add table on Samsung tablet, create/refresh/reopen table, QR, dine-in bill and delete permissions. Continue POS consistency for other tabs after evidence.
+
 ## 2026-10-28 exact-head Map Engine first regression: legacy 115dp Checkout height assertion — test-only fix
 
 - Source HEAD `9b24d6ef73edb844d233902ed7b0146f7e2e7fbb` Map Engine `40626760052` / job `122613435467` first failed `Dependencies and regression` in `tests/native-android-source.cjs:185`: the old test requires `height(115.dp)` while intentional Web/Android Checkout map layout uses bounded `checkoutMapHeight`.
