@@ -21,7 +21,6 @@ import com.queuego.shared.queueGoMapStyle
 import com.queuego.shared.queueGoMapVectorSourceUri
 import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.Marker
-import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.annotations.Polyline
 import org.maplibre.android.annotations.PolylineOptions
 import org.maplibre.android.camera.CameraPosition
@@ -205,7 +204,6 @@ private class RiderNavigationMapHolder {
     private val stopMarkers = mutableListOf<Marker>()
     private var stopSource: GeoJsonSource? = null
     private var stopStyleInitialized = false
-    private val demandMarkers = mutableListOf<Marker>()
     private var renderPassCount = 0
     private var routeLayerRebuildCount = 0
     private var routeGeometryUpdateCount = 0
@@ -411,7 +409,7 @@ private class RiderNavigationMapHolder {
         renderPassCount += 1
         renderRoutes(activeMap, state, force)
         renderStops(activeMap, state, force)
-        renderDemand(activeMap, state, force)
+        renderDemand(state, force)
         renderRider(activeMap, state)
         renderCamera(activeMap, state, force)
         publishDiagnostics()
@@ -657,23 +655,11 @@ private class RiderNavigationMapHolder {
         lastStopSignature = signature
     }
 
-    private fun renderDemand(
-        activeMap: MapLibreMap,
-        state: RiderNavigationMapState,
-        force: Boolean
-    ) {
-        val zones = state.renderableDemandZones()
-        val signature = zones.hashCode()
+    // Web Rider has no demand-zone pins or tooltips on the navigation map.
+    // Preserve demand updates for non-map features without obscuring the rider/route.
+    private fun renderDemand(state: RiderNavigationMapState, force: Boolean) {
+        val signature = state.renderableDemandZones().hashCode()
         if (!force && signature == lastDemandSignature) return
-        demandMarkers.toList().forEach { marker -> runCatching { activeMap.removeMarker(marker) } }
-        demandMarkers.clear()
-        zones.forEach { zone ->
-            demandMarkers += activeMap.addMarker(
-                MarkerOptions()
-                    .position(LatLng(zone.point.latitude, zone.point.longitude))
-                    .title("พื้นที่งานระดับ " + zone.level)
-            )
-        }
         demandMutationCount += 1
         lastDemandSignature = signature
     }
@@ -964,7 +950,6 @@ private class RiderNavigationMapHolder {
         stopMarkers.clear()
         stopSource = null
         stopStyleInitialized = false
-        demandMarkers.clear()
         riderSource = null
         riderStyleInitialized = false
         lastRenderedRiderPosition = null

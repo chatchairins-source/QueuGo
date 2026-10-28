@@ -43,7 +43,11 @@ assert(!/LongdoNavigationRouteClient|riderLongdoNavigationKey/i.test(integration
 assert(map.includes('org.maplibre.android.maps.MapView'));
 assert(map.includes('MapLibre.getInstance'));
 assert(map.includes('CameraUpdateFactory.newCameraPosition'));
-assert(map.includes('MarkerOptions()')&&map.includes('PolylineOptions()'));
+assert(map.includes('PolylineOptions()'));
+// Web Rider has no native-only work-demand pin/bubble obstructing navigation.
+assert(map.includes('private fun renderDemand(state: RiderNavigationMapState, force: Boolean)'));
+assert(!map.includes('demandMarkers') && !map.includes('MarkerOptions()'));
+assert(!map.includes('.title("พื้นที่งานระดับ "'));
 assert(map.includes('RiderNavigationMapRegistry'));
 assert(map.includes('holder.retainAcrossVisibilityLoss()'));
 assert(map.includes('MotionEvent.ACTION_MOVE'));

@@ -1,3 +1,10 @@
+## 2026-10-28 Rider native-only work-area map pin removal — IN PROGRESS (exact-head CI NEXT)
+
+- Audited the controlling Native successor `35332cf49ea5c45b30e8ed44e798a4df3a7e9540` in PR #730 against `rider/index.html`. Android alone created clickable MapLibre demand-level markers with work-area popup text, the source of the extra owner-observed map label; Web Rider has no equivalent map marker. This does not prove or fix the separate oversized floating card.
+- Removed only these Native-only demand-marker annotations; underlying demand-zone data, route, GPS, work assignment and non-map recommendations remain intact. Map diagnostics retain demand-data change accounting. Updated the Rider navigation source contract to prevent the Web-parity regression.
+- Source invariants verified before publication; full npm/Gradle/APK and Android device tests **not yet certified** for this change.
+- **NEXT:** exact-head Native Pilot and Map Engine on the new SHA; repair the first confirmed failure, then inspect the black receipt-photo preview and remaining floating-card discrepancy with actual Android image evidence. Previous e35b0bff APKs do not contain this change.
+
 ## 2026-10-28 OWNER SINGLE-QUEUE: all reported and unfinished Android Web parity — P0/P1 OPEN until physical acceptance
 
 This is the **one controlling unresolved-device list** for Customer / Merchant / Rider. User explicitly requires inclusion of unfinished fixes, regressions, and items merely committed/CI-green but not proven functional on a real Android device. Exact source inspected at `2144a5e340d3130d3108b56cfc0608cfa2ee7ba5`; Native Pilot `40622365522` and Map Engine `40622367200` are green. Earlier published APKs/ZIP are from `e35b0bff` and **do not contain** subsequent native fixes. DO NOT mark all-parity DONE or re-send an older APK as evidence.
