@@ -6,6 +6,19 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.graphics.Bitmap
+import android.graphics.Paint
+import android.graphics.RectF
+import android.os.Bundle
+import android.os.CancellationSignal
+import android.os.ParcelFileDescriptor
+import android.print.PageRange
+import android.print.PrintAttributes
+import android.print.PrintDocumentAdapter
+import android.print.PrintDocumentInfo
+import android.print.PrintManager
+import android.print.pdf.PrintedPdfDocument
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -144,6 +157,35 @@ fun MerchantPosScreen(
     var selectedPosCategory by rememberSaveable { mutableStateOf("all") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var pendingQrBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var qrActionMessage by remember { mutableStateOf<String?>(null) }
+    val qrSaveLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("image/png")
+    ) { uri ->
+        val bitmap = pendingQrBitmap
+        pendingQrBitmap = null
+        if (uri != null && bitmap != null) {
+            scope.launch(Dispatchers.IO) {
+                val result = runCatching {
+                    val output = context.contentResolver.openOutputStream(uri)
+                        ?: error("ไม่สามารถเปิดไฟล์สำหรับบันทึก QR Code")
+                    output.use { stream ->
+                        check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                            "สร้างไฟล์ PNG ไม่สำเร็จ"
+                        }
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    val resultText = result.fold(
+                        onSuccess = { "บันทึก QR Code แล้ว" },
+                        onFailure = { "บันทึก QR Code ไม่สำเร็จ: " + (it.message ?: "ข้อผิดพลาด") }
+                    )
+                    qrActionMessage = resultText
+                    message = resultText
+                }
+            }
+        }
+    }
     var pendingEdit by remember { mutableStateOf<PosEditIntent?>(null) }
     var pendingEditError by remember { mutableStateOf<String?>(null) }
     var offlineDraft by remember { mutableStateOf<PosOfflineDraft?>(null) }
@@ -460,6 +502,7 @@ fun MerchantPosScreen(
             try {
                 val createdId = api.saveTable(auth, id, normalizedLabel, active)
                 savedId = createdId
+                tableDialog = false
                 if (id == null) {
                     try {
                         qrToken = api.rotateTableQr(auth, createdId)
@@ -507,6 +550,7 @@ fun MerchantPosScreen(
                     }
                     if (candidates.size == 1) {
                         val candidate = candidates.single()
+                        tableDialog = false
                         var confirmedToken = candidate.qrToken
                         if (confirmedToken.isNullOrBlank()) {
                             try {
@@ -528,6 +572,7 @@ fun MerchantPosScreen(
                                 (qrError?.let { " · " + it } ?: " · ตรวจสอบโต๊ะก่อนลองสร้าง QR อีกครั้ง")
                         }
                     } else {
+                        tableDialog = false
                         message = "ผลบันทึกโต๊ะยังไม่ชัดเจน กรุณาโหลดรายการโต๊ะและตรวจสอบก่อนสร้างซ้ำ: " +
                             (failure.message ?: "ข้อผิดพลาด")
                     }
@@ -1768,7 +1813,6 @@ fun MerchantPosScreen(
                         val id = editingTable?.id
                         val label = tableLabel
                         val active = tableActive
-                        tableDialog = false
                         savePosTable(id, label, active)
                     }
                 ) { Text("บันทึกโต๊ะ") }
@@ -1871,9 +1915,56 @@ fun MerchantPosScreen(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText("QueueGo table QR", link))
-                                message = "คัดลอกลิงก์ QR Code แล้ว"
+                                qrActionMessage = "คัดลอกลิงก์ QR Code แล้ว"
+                                message = qrActionMessage
                             }
                         ) { Text("คัดลอกลิงก์") }
+                        Spacer(Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    if (bitmap != null) {
+                                        pendingQrBitmap = bitmap
+                                        qrSaveLauncher.launch(tableQrFileName(snap.shopName, table.label))
+                                    }
+                                },
+                                enabled = bitmap != null && !busy,
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp)
+                            ) { Text("บันทึก QR", fontSize = 12.sp) }
+                            OutlinedButton(
+                                onClick = {
+                                    if (bitmap == null) {
+                                        qrActionMessage = "ยังสร้าง QR Code ไม่สำเร็จ"
+                                    } else {
+                                        val result = runCatching {
+                                            printTableQr(context, snap.shopName + " · " + table.label, bitmap)
+                                        }
+                                        qrActionMessage = result.fold(
+                                            onSuccess = { "เปิดหน้าพิมพ์ QR Code แล้ว" },
+                                            onFailure = {
+                                                "เปิดหน้าพิมพ์ QR Code ไม่สำเร็จ: " +
+                                                    (it.message ?: "ข้อผิดพลาด")
+                                            }
+                                        )
+                                    }
+                                    message = qrActionMessage
+                                },
+                                enabled = bitmap != null && !busy,
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp)
+                            ) { Text("พิมพ์ QR", fontSize = 12.sp) }
+                        }
+                        qrActionMessage?.let { actionMessage ->
+                            Text(
+                                actionMessage,
+                                color = if (actionMessage.contains("ไม่สำเร็จ")) QgRed else QgMuted,
+                                fontSize = 11.sp
+                            )
+                        }
                     }
                 }
             },
@@ -3240,6 +3331,93 @@ private fun historyTypeLabel(row: PosHistoryRow): String = when {
     row.type == "DINE_IN" -> "ทานที่ร้าน"
     row.type == "TAKEAWAY" -> "รับกลับ"
     else -> row.type
+}
+
+private fun tableQrFileName(shopName: String, tableLabel: String): String {
+    val raw = "QueueGo-" + shopName + "-" + tableLabel + "-QR"
+    val safe = raw.map { ch ->
+        if (ch.isLetterOrDigit() || ch == '-' || ch == '_') ch else '-'
+    }.joinToString("").trim('-').take(90)
+    return (safe.ifBlank { "QueueGo-Table-QR" }) + ".png"
+}
+
+private fun printTableQr(context: Context, title: String, bitmap: Bitmap) {
+    val printManager = context.getSystemService(Context.PRINT_SERVICE) as? PrintManager
+        ?: error("อุปกรณ์นี้ไม่มีบริการพิมพ์")
+    val safeJobName = title.map { ch ->
+        if (ch.isLetterOrDigit() || ch == '-' || ch == '_') ch else '-'
+    }.joinToString("").trim('-').take(60).ifBlank { "QueueGo-Table-QR" }
+    val defaultAttributes = PrintAttributes.Builder()
+        .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+        .setResolution(PrintAttributes.Resolution("queuego-qr-300dpi", "QueueGo QR", 300, 300))
+        .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+        .build()
+    var currentAttributes = defaultAttributes
+    printManager.print(
+        safeJobName,
+        object : PrintDocumentAdapter() {
+            override fun onLayout(
+                oldAttributes: PrintAttributes?,
+                newAttributes: PrintAttributes,
+                cancellationSignal: CancellationSignal,
+                callback: LayoutResultCallback,
+                extras: Bundle?
+            ) {
+                if (cancellationSignal.isCanceled) {
+                    callback.onLayoutCancelled()
+                    return
+                }
+                currentAttributes = newAttributes
+                val info = PrintDocumentInfo.Builder("$safeJobName.pdf")
+                    .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
+                    .setPageCount(1)
+                    .build()
+                callback.onLayoutFinished(info, true)
+            }
+
+            override fun onWrite(
+                pages: Array<out PageRange>,
+                destination: ParcelFileDescriptor,
+                cancellationSignal: CancellationSignal,
+                callback: WriteResultCallback
+            ) {
+                if (cancellationSignal.isCanceled) {
+                    callback.onWriteCancelled()
+                    return
+                }
+                val document = PrintedPdfDocument(context, currentAttributes)
+                try {
+                    val page = document.startPage(1)
+                    val pageWidth = page.info.pageWidth.toFloat()
+                    val pageHeight = page.info.pageHeight.toFloat()
+                    val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        textSize = 20f
+                        textAlign = Paint.Align.CENTER
+                    }
+                    page.canvas.drawText(title.take(56), pageWidth / 2f, pageHeight * 0.22f, titlePaint)
+                    val size = minOf(pageWidth, pageHeight) * 0.52f
+                    val left = (pageWidth - size) / 2f
+                    val top = pageHeight * 0.29f
+                    page.canvas.drawBitmap(
+                        bitmap,
+                        null,
+                        RectF(left, top, left + size, top + size),
+                        Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+                    )
+                    document.finishPage(page)
+                    ParcelFileDescriptor.AutoCloseOutputStream(destination).use { output ->
+                        document.writeTo(output)
+                    }
+                    callback.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
+                } catch (failure: Exception) {
+                    callback.onWriteFailed(failure.message ?: "พิมพ์ QR Code ไม่สำเร็จ")
+                } finally {
+                    document.close()
+                }
+            }
+        },
+        defaultAttributes
+    )
 }
 
 private fun tableQrLink(token: String): String =

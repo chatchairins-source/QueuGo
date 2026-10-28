@@ -1,3 +1,10 @@
+## 2026-10-28 Native Merchant POS P1 — QR PNG save/print parity (IN PROGRESS)
+
+- Previous table-create chunk: commit `c4501523c6208202ee7d59ce6ce13615439a6359`; parent `e15b9b5c0a10e755e80cb302ab13f1c9a6a1da4b`. Map Engine run `40647812433` is `success`. Native Pilot push run `40647806064` and PR run `40647812316` are `success` / `success` at this checkpoint; source regression, Kotlin tests, APK build, 16 KB and WebView gates passed before the emulator launch step. Artifact `12798194645` contains three Debug APKs built with Build Info SHA `c4501523c6208202ee7d59ce6ce13615439a6359`; it is an intermediate reference, not the final bundle.
+- Web Production `merchant/pos-table-v2.js` supports copy, PNG download and print for table QR. Native previously supported only copy. The new change adds PNG saving through Android's document picker and QR printing through the Android system print UI; receipt printing remains on the existing Print Bridge.
+- Table save form now closes only after a confirmed save or after an uncertain result has been reconciled; known server rejections keep the form open. Unknown results close the form and require a read-only reload before the user can try again.
+- **NEXT:** inspect the first CI failure on this commit, if any, and fix it before another feature. Then bring the POS sales report into Web parity (cash sales, discounts, refunds, voids, average ticket, change vs previous period, hourly rows and CSV export); do not mix Delivery/GP into POS-only totals. Actual cashier acceptance against a non-production test backend or a physical device is still outstanding.
+
 ## 2026-10-28 Native Merchant POS P0 — table-create and QR recovery parity (IN PROGRESS)
 
 - Baseline verified: Web Production on `main` at `7e036a0735cc49905e9b0a2434492470551a0c9d`; authoritative table UI `merchant/pos-table-v2.js` blob `5bff3b5981b5eb1ae2d25f3d1f5095f66f52bc2a`. Native work continues on PR #730 / `work-native-web-parity-20261026` from exact predecessor `e15b9b5c0a10e755e80cb302ab13f1c9a6a1da4b`; PR #641 is an older separate release-source branch, not a descendant successor.

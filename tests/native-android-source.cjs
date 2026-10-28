@@ -1386,8 +1386,14 @@ ok(
   merchantPosScreen.includes('qrTable = serverTable ?: table.copy(qrToken = token)') &&
   merchantPosScreen.includes('if (table.qrToken.isNullOrBlank())') &&
   merchantPosScreen.includes('snap.bills.any { it.tableId == table.id }') &&
+  merchantPosScreen.includes('ActivityResultContracts.CreateDocument("image/png")') &&
+  merchantPosScreen.includes('qrSaveLauncher.launch(tableQrFileName(snap.shopName, table.label))') &&
+  merchantPosScreen.includes('private fun printTableQr(context: Context, title: String, bitmap: Bitmap)') &&
+  merchantPosScreen.includes('PrintedPdfDocument(context, currentAttributes)') &&
+  merchantPosScreen.includes('Text("บันทึก QR"') &&
+  merchantPosScreen.includes('Text("พิมพ์ QR"') &&
   !merchantPosScreen.includes('QgSectionTitle("โต๊ะ", "จัดการโต๊ะและ QR Code สำหรับสั่งอาหาร")'),
-  'Merchant POS table creation must reconcile server state, create/open its QR, and guard table deletion against order history'
+  'Merchant POS table create/QR must reconcile server state, prevent history deletion, and support PNG save/system print'
 );
 
 ok(
