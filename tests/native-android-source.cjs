@@ -1467,6 +1467,19 @@ ok(
   'Native POS scan/typed barcode lookup must be server-authoritative and preserve bill context'
 );
 
+ok(
+  merchantPosApi.includes('posPaymentReceiptMatches(objectValue(raw), billId, method, cashReceived)') &&
+  merchantPosApi.includes('suspend fun paymentConfirmed(') &&
+  merchantPosApi.includes('payment_status') && merchantPosApi.includes('bill_status') &&
+  merchantPosApi.includes('actual.isFinite()') &&
+  !merchantPosApi.includes('return scalarId(raw) ?: billId') &&
+  merchantPosScreen.includes('api.paymentConfirmed(auth, bill.id, method, cash)') &&
+  merchantPosScreen.includes('suspend fun showConfirmedPayment()') &&
+  merchantPosScreen.includes('refreshError: Exception') &&
+  merchantPosScreen.includes('ก่อนกดยืนยันซ้ำ'),
+  'Native POS must validate the paid receipt and reconcile timeout without duplicate payment'
+);
+
 const merchantPosPending=read('merchant/src/main/java/com/queuego/merchant/MerchantPosPendingStore.kt');
 const merchantPosDraftStore=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt');
 ok(merchantPosApi.includes('inventory_stock_tracking,grocery_master_id,grocery_stock_tracking')&&merchantPosApi.includes('stock = r.optInt("stock", 0)')&&merchantPosApi.includes('inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false)')&&merchantPosApi.includes('groceryMasterId = nullableString(r, "grocery_master_id")')&&merchantPosApi.includes('groceryStockTracking = r.optBoolean("grocery_stock_tracking", false)'),'Merchant native POS must load Web Production stock and generic/Grocery tracking inputs');

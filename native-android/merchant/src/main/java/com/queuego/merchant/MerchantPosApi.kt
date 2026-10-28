@@ -81,6 +81,20 @@ data class PosCashShift(
     val cashOutTotal: Double? = null
 )
 
+// Only a PAID + CLOSED bill for the same method and tender can acknowledge the checkout.
+internal fun posPaymentReceiptMatches(
+    order: JSONObject?, id: String, method: String, cashReceived: Double?
+): Boolean {
+    if (order == null || order.optString("id") != id ||
+        order.optString("payment_status") != "PAID" ||
+        order.optString("bill_status") != "CLOSED" ||
+        order.optString("payment_method") != method) return false
+    if (method != "cash") return true
+    val actual = order.optDouble("cash_tendered", Double.NaN)
+    return actual.isFinite() && cashReceived != null && cashReceived.isFinite() &&
+        kotlin.math.abs(actual - cashReceived) < 0.005
+}
+
 data class PosBill(
     val id: String,
     val number: String,
@@ -623,7 +637,23 @@ class MerchantPosApi(
                 .put("p_method", method)
                 .put("p_cash_received", if (method == "cash") cashReceived ?: JSONObject.NULL else JSONObject.NULL)
         )
-        return scalarId(raw) ?: billId
+        check(posPaymentReceiptMatches(objectValue(raw), billId, method, cashReceived)) {
+            "Server ยังไม่ยืนยันการชำระเงิน กรุณาตรวจสถานะบิลเดิมก่อนกดรับเงินซ้ำ"
+        }
+        return billId
+    }
+
+    // Read only. An RPC timeout can occur AFTER the server committed the cash payment.
+    // Reconcile the exact request against the authoritative paid order, never send another charge.
+    suspend fun paymentConfirmed(
+        auth: NativeAuth, billId: String, method: String, cashReceived: Double?
+    ): Boolean {
+        val rows = http.array(http.get(
+            "orders?select=id,sales_channel,payment_status,bill_status,payment_method,cash_tendered" +
+                "&id=eq." + http.enc(billId) + "&sales_channel=eq.POS&limit=1",
+            auth.session.accessToken
+        ))
+        return posPaymentReceiptMatches(rows.optJSONObject(0), billId, method, cashReceived)
     }
 
     suspend fun takeCash(auth: NativeAuth, billId: String, received: Double): String =

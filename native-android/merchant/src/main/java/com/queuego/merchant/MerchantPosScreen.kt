@@ -1223,19 +1223,44 @@ fun MerchantPosScreen(
                             } else {
                                 busy = true
                                 scope.launch {
-                                    try {
-                                        api.takePayment(auth, bill.id, method, cash)
-                                        val change = if (method == "cash" && cash != null) {
-                                            " · เงินทอน ฿" + money(cash - bill.total)
-                                        } else ""
+                                    val change = if (method == "cash" && cash != null) {
+                                        " · เงินทอน ฿" + money(cash - bill.total)
+                                    } else ""
+                                    suspend fun showConfirmedPayment() {
                                         selectedBillId = null
                                         cashReceived = ""
                                         message = "ปิดบิลแล้ว" + change
-                                        refreshSnapshot(null)
+                                        // The payment was committed before this refresh. A read failure
+                                        // must never be shown as a failed cash transaction.
+                                        try {
+                                            refreshSnapshot(null)
+                                        } catch (cancelled: CancellationException) {
+                                            throw cancelled
+                                        } catch (refreshError: Exception) {
+                                            message = "ปิดบิลแล้ว" + change +
+                                                " · แต่โหลดข้อมูลใหม่ไม่สำเร็จ กรุณากดโหลดใหม่"
+                                        }
+                                    }
+                                    try {
+                                        api.takePayment(auth, bill.id, method, cash)
+                                        showConfirmedPayment()
                                     } catch (cancelled: CancellationException) {
                                         throw cancelled
-                                    } catch (failure: Exception) {
-                                        message = failure.message ?: "ปิดบิลไม่สำเร็จ"
+                                    } catch (paymentError: Exception) {
+                                        // Never retry a payment RPC automatically after an uncertain response.
+                                        // First read the paid bill with the SAME method/tender values.
+                                        val settled = try {
+                                            api.paymentConfirmed(auth, bill.id, method, cash)
+                                        } catch (cancelled: CancellationException) {
+                                            throw cancelled
+                                        } catch (_: Exception) { false }
+                                        if (settled) {
+                                            showConfirmedPayment()
+                                        } else {
+                                            message = "ยังไม่ทราบผลรับเงิน: " +
+                                                (paymentError.message ?: "การเชื่อมต่อไม่สำเร็จ") +
+                                                " · กรุณาโหลดข้อมูลและตรวจประวัติบิลเดิมก่อนกดยืนยันซ้ำ"
+                                        }
                                     } finally {
                                         busy = false
                                     }
