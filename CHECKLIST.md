@@ -1,3 +1,11 @@
+## 2026-10-28 Native Merchant POS P0 — table-create and QR recovery parity (IN PROGRESS)
+
+- Baseline verified: Web Production on `main` at `7e036a0735cc49905e9b0a2434492470551a0c9d`; authoritative table UI `merchant/pos-table-v2.js` blob `5bff3b5981b5eb1ae2d25f3d1f5095f66f52bc2a`. Native work continues on PR #730 / `work-native-web-parity-20261026` from exact predecessor `e15b9b5c0a10e755e80cb302ab13f1c9a6a1da4b`; PR #641 is an older separate release-source branch, not a descendant successor.
+- Evidence-backed gap: Web creates a table then opens its server-backed QR; Native saved the table but did not open/create its QR automatically. Native QR action also offered a rotate button even when a QR already existed, unlike Web, and Native table delete only blocked currently open bills while Web rejects any table with order history.
+- Bounded change: Native table create now calls existing `pos_save_table`, then existing `qg_table_rotate_qr`, refreshes the shop snapshot and opens the confirmed QR. If the RPC response is uncertain, it reconciles by reading the table list and never blindly repeats the same create/QR write. Opening a table with no QR triggers the existing QR RPC; an existing QR is not rotated by a default dialog action. Table delete now explains the history restriction and does not send a delete RPC for a table referenced by a bill.
+- No Supabase Production mutation, new RPC, new printer, or duplicate table/payment system. Source regression added; exact-head CI after this chunk is pending.
+- **NEXT:** inspect the first failure in exact-head Native Pilot / Map Engine CI; fix it before new features. Then close remaining QR save/print parity and produce three APKs + ZIP from the same green HEAD. Physical cashier acceptance remains BLOCKED until an actual Android device tests open shift → create table/bill → cash tender/change → PAID/CLOSED → receipt and timeout reconciliation.
+
 ## 2026-10-28 exact-head CI first confirmed failure — obsolete refresh error assertion (test-only)
 
 - Native Pilot run `40638508067`, job `122650947357`, failed first at `tests/native-android-source.cjs:1470`. Its old contract requires literal `refreshError: Exception` in the payment closure branch.

@@ -403,6 +403,143 @@ fun MerchantPosScreen(
         }
     }
 
+    // QR rotation is a write. Reconcile its exact token with a read-only snapshot
+    // after an uncertain response; never rotate a second time automatically.
+    fun createTableQr(table: PosTable) {
+        if (busy) return
+        qrTable = table
+        busy = true
+        message = null
+        scope.launch {
+            try {
+                val token = api.rotateTableQr(auth, table.id)
+                refreshSnapshot(selectedBillId)
+                val refreshed = snapshot?.tables?.firstOrNull { it.id == table.id }
+                val serverTable = refreshed?.takeIf { !it.qrToken.isNullOrBlank() }
+                qrTable = serverTable ?: table.copy(qrToken = token)
+                message = if (serverTable != null) {
+                    "สร้าง QR Code แล้ว"
+                } else {
+                    "เซิร์ฟเวอร์ยืนยัน QR Code แล้ว แต่โหลดรายการโต๊ะล่าสุดไม่สำเร็จ กรุณาโหลด POS ใหม่"
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                // The RPC may have committed before timing out. Check the existing table
+                // once and keep the same token if the server already created it.
+                refreshSnapshot(selectedBillId)
+                val refreshed = snapshot?.tables?.firstOrNull { it.id == table.id }
+                if (!refreshed?.qrToken.isNullOrBlank()) {
+                    qrTable = refreshed
+                    message = "QR Code ยืนยันจากเซิร์ฟเวอร์แล้ว"
+                } else {
+                    qrTable = refreshed ?: table
+                    message = "ยังยืนยันผลการสร้าง QR Code ไม่ได้ กรุณาตรวจสอบโต๊ะก่อนลองใหม่: " +
+                        (failure.message ?: "ข้อผิดพลาด")
+                }
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun savePosTable(id: String?, label: String, active: Boolean) {
+        if (busy) return
+        if (pendingEdit != null || pendingEditError != null) {
+            message = "กรุณากดตรวจรายการ POS ค้างก่อนทำรายการอื่น"
+            return
+        }
+        val normalizedLabel = label.trim()
+        val previousIds = snapshot?.tables?.map { it.id }?.toSet().orEmpty()
+        busy = true
+        message = null
+        scope.launch {
+            var savedId: String? = null
+            var qrToken: String? = null
+            var qrError: String? = null
+            try {
+                val createdId = api.saveTable(auth, id, normalizedLabel, active)
+                savedId = createdId
+                if (id == null) {
+                    try {
+                        qrToken = api.rotateTableQr(auth, createdId)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (failure: Exception) {
+                        qrError = failure.message ?: "สร้าง QR Code ไม่สำเร็จ"
+                    }
+                }
+                refreshSnapshot(selectedBillId)
+                val refreshed = snapshot?.tables?.firstOrNull { it.id == createdId }
+                if (id == null) {
+                    val serverTableWithQr = refreshed?.takeIf {
+                        !it.qrToken.isNullOrBlank() && (qrToken == null || it.qrToken == qrToken)
+                    }
+                    val createdTable = when {
+                        serverTableWithQr != null -> serverTableWithQr
+                        qrToken != null -> PosTable(createdId, normalizedLabel, active, qrToken)
+                        else -> refreshed ?: PosTable(createdId, normalizedLabel, active, null)
+                    }
+                    qrTable = createdTable
+                    message = when {
+                        !createdTable.qrToken.isNullOrBlank() -> "สร้างโต๊ะและ QR Code แล้ว"
+                        refreshed != null -> "สร้างโต๊ะแล้ว แต่ QR Code ยังไม่พร้อม" +
+                            (qrError?.let { " · " + it } ?: " · กดสร้าง QR Code เพื่อลองอีกครั้ง")
+                        else -> "เซิร์ฟเวอร์ยืนยันการสร้างโต๊ะแล้ว แต่โหลดรายการล่าสุดไม่สำเร็จ กรุณากดโหลด POS ใหม่ก่อนสร้างซ้ำ"
+                    }
+                } else {
+                    message = if (refreshed?.label == normalizedLabel && refreshed.active == active) {
+                        "บันทึกโต๊ะแล้ว"
+                    } else {
+                        "เซิร์ฟเวอร์บันทึกโต๊ะแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ กรุณากดโหลด POS ใหม่ก่อนลองซ้ำ"
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                // Do not repeat a timed-out create. First read the shop's tables and
+                // reconcile a newly visible table with this exact label.
+                val knownRejection = failure is QueueGoHttpException && failure.statusCode in 400..499
+                if (id == null && savedId == null && !knownRejection) {
+                    refreshSnapshot(selectedBillId)
+                    val candidates = snapshot?.tables.orEmpty().filter {
+                        it.id !in previousIds && it.label.trim().equals(normalizedLabel, ignoreCase = true)
+                    }
+                    if (candidates.size == 1) {
+                        val candidate = candidates.single()
+                        var confirmedToken = candidate.qrToken
+                        if (confirmedToken.isNullOrBlank()) {
+                            try {
+                                confirmedToken = api.rotateTableQr(auth, candidate.id)
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (qrFailure: Exception) {
+                                qrError = qrFailure.message ?: "สร้าง QR Code ไม่สำเร็จ"
+                            }
+                            refreshSnapshot(selectedBillId)
+                        }
+                        val latest = snapshot?.tables?.firstOrNull { it.id == candidate.id }
+                        qrTable = latest?.takeIf { !it.qrToken.isNullOrBlank() }
+                            ?: PosTable(candidate.id, candidate.label, candidate.active, confirmedToken)
+                        message = if (!qrTable?.qrToken.isNullOrBlank()) {
+                            "สร้างโต๊ะและ QR Code ยืนยันจากเซิร์ฟเวอร์แล้ว"
+                        } else {
+                            "ยืนยันว่าโต๊ะถูกสร้างแล้ว แต่ QR Code ยังไม่พร้อม" +
+                                (qrError?.let { " · " + it } ?: " · ตรวจสอบโต๊ะก่อนลองสร้าง QR อีกครั้ง")
+                        }
+                    } else {
+                        message = "ผลบันทึกโต๊ะยังไม่ชัดเจน กรุณาโหลดรายการโต๊ะและตรวจสอบก่อนสร้างซ้ำ: " +
+                            (failure.message ?: "ข้อผิดพลาด")
+                    }
+                } else {
+                    message = failure.message ?: "บันทึกโต๊ะไม่สำเร็จ"
+                }
+            } finally {
+                busy = false
+            }
+        }
+    }
+
     fun addPosProduct(product: PosProduct, optionsJson: String? = null) {
         if (busy) return
         val online = posNetworkValidated(context)
@@ -1120,10 +1257,17 @@ fun MerchantPosScreen(
                         tableActive = table.active
                         tableDialog = true
                     },
-                    onQr = { qrTable = it },
+                    onQr = { table ->
+                        qrTable = table
+                        if (table.qrToken.isNullOrBlank()) createTableQr(table)
+                    },
                     onDelete = { table ->
-                        runMutation("ลบ " + table.label + " แล้ว", null) {
-                            api.deleteTable(auth, table.id)
+                        if (snap.bills.any { it.tableId == table.id }) {
+                            message = "โต๊ะนี้มีประวัติออเดอร์แล้ว ลบไม่ได้ กรุณาแก้ไขโต๊ะแล้วปิดใช้งานแทน"
+                        } else {
+                            runMutation("ลบ " + table.label + " แล้ว", null) {
+                                api.deleteTable(auth, table.id)
+                            }
                         }
                     }
                 )
@@ -1622,13 +1766,10 @@ fun MerchantPosScreen(
                     enabled = !busy && tableLabel.trim().isNotEmpty(),
                     onClick = {
                         val id = editingTable?.id
+                        val label = tableLabel
+                        val active = tableActive
                         tableDialog = false
-                        runMutation(
-                            if (id == null) "สร้างโต๊ะแล้ว" else "บันทึกโต๊ะแล้ว",
-                            selectedBillId
-                        ) {
-                            api.saveTable(auth, id, tableLabel, tableActive)
-                        }
+                        savePosTable(id, label, active)
                     }
                 ) { Text("บันทึกโต๊ะ") }
             },
@@ -1737,14 +1878,12 @@ fun MerchantPosScreen(
                 }
             },
             confirmButton = {
-                TextButton(
-                    enabled = !busy,
-                    onClick = {
-                        runMutation(if (table.qrToken == null) "สร้าง QR Code แล้ว" else "สร้าง QR Code ใหม่แล้ว") {
-                            api.rotateTableQr(auth, table.id)
-                        }
-                    }
-                ) { Text(if (table.qrToken == null) "สร้าง QR Code" else "สร้าง QR ใหม่") }
+                if (table.qrToken.isNullOrBlank()) {
+                    TextButton(
+                        enabled = !busy,
+                        onClick = { createTableQr(table) }
+                    ) { Text("สร้าง QR Code") }
+                }
             },
             dismissButton = {
                 TextButton(enabled = !busy, onClick = { qrTable = null }) { Text("ปิด") }
@@ -2441,7 +2580,7 @@ private fun PosTablesView(
                                                 ) { Text("แก้ไข", fontSize = 12.sp) }
                                                 TextButton(
                                                     onClick = { onDelete(table) },
-                                                    enabled = !busy && bill == null,
+                                                    enabled = !busy,
                                                     modifier = Modifier.weight(1f),
                                                     contentPadding = PaddingValues(horizontal = 4.dp)
                                                 ) { Text("ลบ", color = QgRed, fontSize = 12.sp) }

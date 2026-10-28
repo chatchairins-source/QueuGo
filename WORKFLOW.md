@@ -123,6 +123,14 @@ Never recreate work from memory when a repository checkpoint exists.
 - Separate `source/test ready` from `ready to launch`.
 - Preserve cash-only business rules unless a newer owner-approved Source of Truth changes them.
 
+## Native Merchant POS table and payment safety
+
+- Use the current Web Production POS on `main` as the parity oracle; reuse existing Production RPCs, RLS and permission checks.
+- A cash payment is confirmed only by the server-authoritative `PAID` + `CLOSED` bill and matching method/tender. A read/refresh failure is not a payment failure and must never trigger an automatic second payment request.
+- After an uncertain table-create or QR RPC response, read the current shop snapshot to reconcile; do not blindly repeat the write. Creating a table should immediately attempt its existing table-QR RPC and open the resulting server-backed QR.
+- Do not delete a table that has POS order history. Explain that it must be edited/deactivated instead; preserve the existing shop-scoped table and QR functions.
+- Keep receipts tied to a confirmed paid bill and print through the existing HTTPS Print Bridge. Do not add a second receipt printer or alter Production money/ledger data for testing.
+
 ## Reporting after each chunk
 
 Report only:

@@ -1379,9 +1379,15 @@ ok(
   merchantPosScreen.includes('snapshot.tables.chunked(columnCount)') &&
   merchantPosScreen.includes('if (canManage) {\n                        Button(') &&
   merchantPosScreen.includes('Text("＋ เพิ่มโต๊ะ"') &&
-  merchantPosScreen.includes('api.saveTable(auth, id, tableLabel, tableActive)') &&
+  merchantPosScreen.includes('fun savePosTable(id: String?, label: String, active: Boolean)') &&
+  merchantPosScreen.includes('api.saveTable(auth, id, normalizedLabel, active)') &&
+  merchantPosScreen.includes('api.rotateTableQr(auth, createdId)') &&
+  merchantPosScreen.includes('fun createTableQr(table: PosTable)') &&
+  merchantPosScreen.includes('qrTable = serverTable ?: table.copy(qrToken = token)') &&
+  merchantPosScreen.includes('if (table.qrToken.isNullOrBlank())') &&
+  merchantPosScreen.includes('snap.bills.any { it.tableId == table.id }') &&
   !merchantPosScreen.includes('QgSectionTitle("โต๊ะ", "จัดการโต๊ะและ QR Code สำหรับสั่งอาหาร")'),
-  'Merchant POS table-add must be visible and use the real create-table RPC in tablet/phone layouts'
+  'Merchant POS table creation must reconcile server state, create/open its QR, and guard table deletion against order history'
 );
 
 ok(
