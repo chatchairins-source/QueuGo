@@ -13,7 +13,10 @@ assert(asset('qg_marker_pickup')!==asset('qg_marker_dropoff'));
 assert(asset('qg_rider_current_location')!==asset('qg_marker_pickup'));
 
 assert(nav.includes('org.maplibre.android.maps.MapView'));
-assert(nav.includes('MarkerOptions()')&&nav.includes('PolylineOptions()'));
+assert(nav.includes('PolylineOptions()'));
+// Web-parity map uses styled GeoJSON stop markers, never the retired native demand pins.
+assert(nav.includes('GeoJsonSource('));
+assert(!nav.includes('MarkerOptions()') && !nav.includes('demandMarkers'));
 assert(nav.includes('GeoJsonSource(')&&nav.includes('CircleLayer(STOP_SHOP_BODY_LAYER_ID, STOP_SOURCE_ID)'));
 assert(nav.includes('CircleLayer(STOP_CUSTOMER_BODY_LAYER_ID, STOP_SOURCE_ID)'));
 assert(nav.includes('textField(Expression.get("sequence"))'));

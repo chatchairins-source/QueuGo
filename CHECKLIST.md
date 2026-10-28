@@ -1,3 +1,8 @@
+## 2026-10-28 exact-head Map Engine next first failure — obsolete MarkerOptions contract repaired (IN PROGRESS)
+- Head `c54a0a991640ef74ad64cd3fe63d75a444642de2` Map Engine run `40625105793`, job `122608043753`, first confirmed failure in `Dependencies and regression`: `tests/native-map-marker-design.cjs:16` still required legacy `MarkerOptions()` after removing native-only demand pins. Current actual shop/customer pins are already GeoJSON+CircleLayer and routes use PolylineOptions.
+- Changed only that stale source assertion to require GeoJSON marker renderer and absence of MapLibre MarkerOptions/demandMarkers. No production app logic changed.
+- **NEXT:** obtain exact-head Native Pilot and Map Engine, repair first newly confirmed failure only; inspect signed/debug three-APK artifact from current HEAD after green; physical gestures and receipt preview remain BLOCKED on real-device evidence.
+
 ## 2026-10-28 exact-head Map Engine first failure — stale Rider demand marker assertions fixed (IN PROGRESS)
 - Exact head `4f9b91b74a46155a142115e94789c3afeb6acecf` failed Map Engine run `40624833834`, job `122607140703`, first failing `Dependencies and regression` step: `tests/native-three-app-stability.cjs:656` still demanded `demandMarkers.clear()` after the Web-parity source removed native-only demand map annotations.
 - Corrected the **two** stale lifecycle assertions to require absence of `demandMarkers` and retention of `lastDemandSignature = null`. Kotlin/product code unchanged in this follow-up. No source-test runtime/Gradle/physical-device PASS claimed yet.
