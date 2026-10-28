@@ -129,6 +129,8 @@ fun MerchantPosScreen(
     var snapshotActorId by remember { mutableStateOf<String?>(null) }
     var snapshotLoading by remember { mutableStateOf(true) }
     var selectedBillId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Only an authenticated, refreshed PAID + CLOSED bill may be previewed or printed.
+    var receiptDialogBillId by rememberSaveable { mutableStateOf<String?>(null) }
     var view by rememberSaveable { mutableStateOf("counter") }
     var mode by rememberSaveable { mutableStateOf("TAKEAWAY") }
     var tableId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -1229,16 +1231,32 @@ fun MerchantPosScreen(
                                     suspend fun showConfirmedPayment() {
                                         selectedBillId = null
                                         cashReceived = ""
-                                        message = "ปิดบิลแล้ว" + change
-                                        // The payment was committed before this refresh. A read failure
-                                        // must never be shown as a failed cash transaction.
+                                        // This refresh handles most read errors internally and may
+                                        // overwrite message without throwing. Report the CONFIRMED
+                                        // payment last, not a stale refresh error.
                                         try {
                                             refreshSnapshot(null)
                                         } catch (cancelled: CancellationException) {
                                             throw cancelled
-                                        } catch (refreshError: Exception) {
+                                        } catch (_: Exception) {
+                                            // The cash payment is already confirmed.
+                                        }
+                                        val verified = snapshot?.bills?.firstOrNull {
+                                            it.id == bill.id &&
+                                                it.paymentStatus == "PAID" &&
+                                                it.billStatus == "CLOSED" &&
+                                                it.paymentMethod == method &&
+                                                (method != "cash" ||
+                                                    (cash != null && it.cashTendered != null &&
+                                                        kotlin.math.abs(it.cashTendered - cash) < 0.005))
+                                        }
+                                        if (verified != null) {
+                                            receiptDialogBillId = verified.id
+                                            message = "ปิดบิลแล้ว" + change
+                                        } else {
+                                            receiptDialogBillId = null
                                             message = "ปิดบิลแล้ว" + change +
-                                                " · แต่โหลดข้อมูลใหม่ไม่สำเร็จ กรุณากดโหลดใหม่"
+                                                " · แต่ยังโหลดใบเสร็จล่าสุดไม่ได้ กรุณากดโหลดใหม่"
                                         }
                                     }
                                     try {
@@ -1618,6 +1636,67 @@ fun MerchantPosScreen(
                 TextButton(enabled = !busy, onClick = { tableDialog = false }) { Text("กลับ") }
             }
         )
+    }
+
+    if (receiptDialogBillId != null && snap != null) {
+        val paid = snap.bills.firstOrNull {
+            it.id == receiptDialogBillId &&
+                it.paymentStatus == "PAID" &&
+                it.billStatus == "CLOSED"
+        }
+        if (paid != null) {
+            val receiptPrintKey = merchantReceiptPrintKey(snap, paid)
+            AlertDialog(
+                onDismissRequest = { if (!busy) receiptDialogBillId = null },
+                title = { Text("ใบเสร็จรับเงิน · " + paid.number) },
+                text = {
+                    Column(
+                        Modifier.fillMaxWidth().heightIn(max = 420.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("บิลนี้รับชำระและปิดจากเซิร์ฟเวอร์แล้ว",
+                            color = QgGreen, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        SelectionContainer {
+                            Text(merchantReceiptTicket(snap, paid), fontSize = 13.sp)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = !busy && pendingPrintCount == 0,
+                        onClick = {
+                            if (printerSettings.bridgeUrl.isBlank() || receiptPrintKey == null) {
+                                receiptDialogBillId = null
+                                view = "printer"
+                                message = "ตั้งค่า HTTPS Print Bridge ก่อนพิมพ์ใบเสร็จ"
+                            } else {
+                                sendToPrinter(
+                                    settings = printerSettings,
+                                    type = "receipt",
+                                    text = merchantReceiptTicket(snap, paid),
+                                    printedKey = receiptPrintKey,
+                                    billId = paid.id,
+                                    force = true,
+                                    successMessage = "พิมพ์ใบเสร็จแล้ว · " + paid.number
+                                )
+                                receiptDialogBillId = null
+                            }
+                        }
+                    ) {
+                        Text(
+                            if (printerSettings.bridgeUrl.isBlank()) "ตั้งค่าเครื่องพิมพ์"
+                            else "พิมพ์ใบเสร็จ"
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(enabled = !busy, onClick = { receiptDialogBillId = null }) {
+                        Text("ปิด")
+                    }
+                }
+            )
+        }
     }
 
     if (qrTable != null && snap != null) {

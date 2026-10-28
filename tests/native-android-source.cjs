@@ -1480,6 +1480,20 @@ ok(
   'Native POS must validate the paid receipt and reconcile timeout without duplicate payment'
 );
 
+ok(
+  merchantPosScreen.includes('var receiptDialogBillId by rememberSaveable') &&
+  merchantPosScreen.includes('val verified = snapshot?.bills?.firstOrNull') &&
+  merchantPosScreen.includes('receiptDialogBillId = verified.id') &&
+  merchantPosScreen.includes('message = "ปิดบิลแล้ว" + change +') &&
+  merchantPosScreen.includes('it.paymentStatus == "PAID"') &&
+  merchantPosScreen.includes('it.billStatus == "CLOSED"') &&
+  merchantPosScreen.includes('merchantReceiptTicket(snap, paid)') &&
+  merchantPosScreen.includes('merchantReceiptPrintKey(snap, paid)') &&
+  merchantPosScreen.includes('type = "receipt"') &&
+  merchantPosScreen.includes('force = true'),
+  'Merchant native POS must preserve confirmed cash closure across refresh failure and show server-paid receipt via existing printer'
+);
+
 const merchantPosPending=read('merchant/src/main/java/com/queuego/merchant/MerchantPosPendingStore.kt');
 const merchantPosDraftStore=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt');
 ok(merchantPosApi.includes('inventory_stock_tracking,grocery_master_id,grocery_stock_tracking')&&merchantPosApi.includes('stock = r.optInt("stock", 0)')&&merchantPosApi.includes('inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false)')&&merchantPosApi.includes('groceryMasterId = nullableString(r, "grocery_master_id")')&&merchantPosApi.includes('groceryStockTracking = r.optBoolean("grocery_stock_tracking", false)'),'Merchant native POS must load Web Production stock and generic/Grocery tracking inputs');
