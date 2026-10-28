@@ -1,3 +1,9 @@
+## 2026-10-28 exact-head Map Engine Rider road-display stale marker assertion — IN PROGRESS
+
+- On exact HEAD `5a456495f6c76943a7b0c1b4e3470d798b062047`, Map Engine `40625287818` / job `122608629362` failed the first regression in `tests/native-rider-road-display.cjs:21`: the test still expected `demandMarkers.clear()` after intentional Native-only demand-pin removal.
+- Replaced only the retired marker-container assertion with absence-of-container and lifecycle signature-reset guards. Route geometry, Rider runtime and Production are untouched by this test-only patch.
+- **NEXT:** rerun Native Pilot + Map Engine at new exact HEAD. Fix first confirmed red check, then review three-app APK artifact and device parity. Real photo/gesture/merchant POS acceptance remains open.
+
 ## 2026-10-28 exact-head Map Engine next first failure — obsolete MarkerOptions contract repaired (IN PROGRESS)
 - Head `c54a0a991640ef74ad64cd3fe63d75a444642de2` Map Engine run `40625105793`, job `122608043753`, first confirmed failure in `Dependencies and regression`: `tests/native-map-marker-design.cjs:16` still required legacy `MarkerOptions()` after removing native-only demand pins. Current actual shop/customer pins are already GeoJSON+CircleLayer and routes use PolylineOptions.
 - Changed only that stale source assertion to require GeoJSON marker renderer and absence of MapLibre MarkerOptions/demandMarkers. No production app logic changed.
