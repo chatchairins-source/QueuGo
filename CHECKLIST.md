@@ -1,3 +1,10 @@
+## 2026-10-28 exact-head CI first confirmed failure — obsolete refresh error assertion (test-only)
+
+- Native Pilot run `40638508067`, job `122650947357`, failed first at `tests/native-android-source.cjs:1470`. Its old contract requires literal `refreshError: Exception` in the payment closure branch.
+- In the prior bounded payment fix, `refreshSnapshot` catches errors **internally**. The payment-result view now verifies a server-paid snapshot after calling refresh and replaces any swallowed read error with a confirmed paid result or a paid-with-receipt-still-loading message. A literal `refreshError` catch was removed intentionally; the regression must assert the server paid receipt and exact tender instead.
+- Changed only this stale test source assertion; it now requires `val verified = snapshot?.bills?.firstOrNull` plus `receiptDialogBillId = verified.id`, retaining `paymentConfirmed` and no duplicate-payment checks. Production, Kotlin behavior, and financial data unchanged.
+- **NEXT:** exact-head Map Engine/Native Pilot first failure; then three same-head debug-test APKs and authenticated physical Merchant checkout validation. Release signing remains gated on certified evidence.
+
 ## 2026-10-28 Native Merchant POS P0 — preserve paid confirmation after swallowed refresh errors; preview verified receipt
 
 - Exact predecessor `ee8bf7449b3f956e2cc337fea0df6291339d4141` passed both Map Engine CI `40636782133` and Native Pilot CI `40636782098` with three debug-test APKs. CI artifact `12794051734` (debug only) verified and locally repackaged as `QueueGo-Android-POS-Test-3-Apps-ee8bf744.zip`.

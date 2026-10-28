@@ -1475,7 +1475,8 @@ ok(
   !merchantPosApi.includes('return scalarId(raw) ?: billId') &&
   merchantPosScreen.includes('api.paymentConfirmed(auth, bill.id, method, cash)') &&
   merchantPosScreen.includes('suspend fun showConfirmedPayment()') &&
-  merchantPosScreen.includes('refreshError: Exception') &&
+  merchantPosScreen.includes('val verified = snapshot?.bills?.firstOrNull') &&
+  merchantPosScreen.includes('receiptDialogBillId = verified.id') &&
   merchantPosScreen.includes('ก่อนกดยืนยันซ้ำ'),
   'Native POS must validate the paid receipt and reconcile timeout without duplicate payment'
 );
