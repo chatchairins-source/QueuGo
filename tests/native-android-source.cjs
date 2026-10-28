@@ -1421,6 +1421,16 @@ ok(
   'Merchant POS must expose read-only Production register shift history to authorized users'
 );
 
+ok(
+  merchantPosApi.includes('"pos_record_cash_movement"') &&
+  merchantPosApi.includes('receipt.optString("event_type") == type') &&
+  merchantPosScreen.includes('shopId = snap.shopId') &&
+  read('merchant/src/main/java/com/queuego/merchant/MerchantPosShiftHistory.kt').includes('ตรวจรายการเดิมด้วยรหัสเดิม') &&
+  read('merchant/src/main/java/com/queuego/merchant/MerchantPosCashMovementStore.kt').includes('request_id') &&
+  read('merchant/src/main/java/com/queuego/merchant/MerchantPosCashMovementStore.kt').includes('.commit()'),
+  'Merchant POS cash-in/out must persist exact retry intent and validate server receipt'
+);
+
 const merchantPosPending=read('merchant/src/main/java/com/queuego/merchant/MerchantPosPendingStore.kt');
 const merchantPosDraftStore=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt');
 ok(merchantPosApi.includes('inventory_stock_tracking,grocery_master_id,grocery_stock_tracking')&&merchantPosApi.includes('stock = r.optInt("stock", 0)')&&merchantPosApi.includes('inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false)')&&merchantPosApi.includes('groceryMasterId = nullableString(r, "grocery_master_id")')&&merchantPosApi.includes('groceryStockTracking = r.optBoolean("grocery_stock_tracking", false)'),'Merchant native POS must load Web Production stock and generic/Grocery tracking inputs');

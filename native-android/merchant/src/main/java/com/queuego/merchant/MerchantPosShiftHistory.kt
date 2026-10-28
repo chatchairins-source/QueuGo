@@ -15,6 +15,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
+import java.util.UUID
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,9 +62,20 @@ private fun posHistoryTimestamp(value: String?): String {
 internal fun MerchantPosShiftHistoryScreen(
     auth: NativeAuth,
     api: MerchantPosApi,
-    canCashier: Boolean
+    canCashier: Boolean,
+    shopId: String
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val movementStore = remember(context) { MerchantPosCashMovementStore(context) }
+    val actorId = auth.session.authUserId
+    var pendingMovement by remember(actorId, shopId) {
+        mutableStateOf(movementStore.load(shopId, actorId))
+    }
+    var movementAmount by rememberSaveable(actorId, shopId) { mutableStateOf("") }
+    var movementReason by rememberSaveable(actorId, shopId) { mutableStateOf("") }
+    var movementBusy by remember(actorId, shopId) { mutableStateOf(false) }
+    var movementMessage by remember(actorId, shopId) { mutableStateOf<String?>(null) }
     var loading by remember(auth.session.authUserId) { mutableStateOf(true) }
     var history by remember(auth.session.authUserId) {
         mutableStateOf<List<PosShiftHistory>>(emptyList())
@@ -83,7 +100,59 @@ internal fun MerchantPosShiftHistoryScreen(
         }
     }
 
-    LaunchedEffect(auth.session.authUserId, canCashier) { refresh() }
+    fun submitMovement(pending: PosCashMovementPending) {
+        if (movementBusy) return
+        movementBusy = true
+        movementMessage = "กำลังตรวจบันทึกเงินสดกับเซิร์ฟเวอร์"
+        scope.launch {
+            try {
+                api.recordCashMovement(
+                    auth, pending.type, pending.amount, pending.reason, pending.requestId
+                )
+                if (movementStore.clear(pending)) {
+                    pendingMovement = null
+                    movementAmount = ""
+                    movementReason = ""
+                    movementMessage = "บันทึกเงินสดสำเร็จแล้ว"
+                } else {
+                    movementMessage = "Server ยืนยันรายการแล้ว แต่เครื่องยังเก็บรหัสค้าง กรุณาตรวจอีกครั้ง"
+                }
+                refresh()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                movementMessage = "ยังไม่ทราบผลรายการ กรุณากดตรวจรายการเดิม: " +
+                    (failure.message ?: "เชื่อมต่อไม่สำเร็จ")
+                // Keep the exact request UUID and values for an idempotent manual retry.
+            } finally {
+                movementBusy = false
+            }
+        }
+    }
+
+    fun createMovement(type: String) {
+        if (movementBusy || pendingMovement != null) return
+        val amount = movementAmount.toDoubleOrNull()
+        val reason = movementReason.trim()
+        val validDecimals = movementAmount.matches(Regex("^\\d+(\\.\\d{1,2})?$"))
+        if (!validDecimals || amount == null || !amount.isFinite() ||
+            amount < 0.01 || amount > 999999999.0 || reason.length !in 5..500) {
+            movementMessage = "กรุณากรอกจำนวนเงิน (ทศนิยมไม่เกิน 2 ตำแหน่ง) และเหตุผลอย่างน้อย 5 ตัวอักษร"
+            return
+        }
+        val request = PosCashMovementPending(
+            shopId, actorId, UUID.randomUUID().toString(), type, amount, reason
+        )
+        if (!movementStore.save(request)) {
+            movementMessage = "บันทึกรหัสรายการบนเครื่องไม่สำเร็จ ห้ามสร้างรายการใหม่"
+            pendingMovement = movementStore.load(shopId, actorId)
+            return
+        }
+        pendingMovement = request
+        submitMovement(request)
+    }
+
+    LaunchedEffect(auth.session.authUserId, canCashier, shopId) { refresh() }
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState()).padding(16.dp),
@@ -112,6 +181,63 @@ internal fun MerchantPosShiftHistoryScreen(
                     }
                     Text("เปิดหรือปิดกะได้จากแท็บคิดเงิน",
                         color = QgMuted, fontSize = 12.sp)
+                    if (currentShift?.open == true) {
+                        Text("เงินเข้า " + posHistoryAmount(currentShift?.cashInTotal) +
+                            " · เงินออก " + posHistoryAmount(currentShift?.cashOutTotal),
+                            color = QgMuted, fontSize = 12.sp)
+                        Text("บันทึกเงินสดระหว่างกะ",
+                            fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        if (pendingMovement != null) {
+                            Text("มีรายการรอการยืนยัน ห้ามสร้างรายการใหม่",
+                                color = QgRed, fontSize = 12.sp)
+                            Text(
+                                (if (pendingMovement?.type == "cash_in") "เงินเข้า" else "เงินออก") +
+                                    " " + posHistoryAmount(pendingMovement?.amount) +
+                                    " · " + pendingMovement?.reason.orEmpty(),
+                                color = QgMuted, fontSize = 12.sp
+                            )
+                            Button(
+                                onClick = { pendingMovement?.let(::submitMovement) },
+                                enabled = !movementBusy && !loading,
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("ตรวจรายการเดิมด้วยรหัสเดิม") }
+                        } else {
+                            OutlinedTextField(
+                                movementAmount,
+                                onValueChange = { movementAmount = it },
+                                label = { Text("จำนวนเงิน (บาท)") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                movementReason,
+                                onValueChange = { movementReason = it.take(500) },
+                                label = { Text("เหตุผลเงินเข้า/ออก") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { createMovement("cash_in") },
+                                    enabled = !movementBusy && !loading,
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("เงินเข้า") }
+                                OutlinedButton(
+                                    onClick = { createMovement("cash_out") },
+                                    enabled = !movementBusy && !loading,
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("เงินออก") }
+                            }
+                        }
+                        if (movementMessage != null) {
+                            Text(movementMessage.orEmpty(),
+                                color = if (pendingMovement == null) Color(0xFF15803D) else QgRed,
+                                fontSize = 12.sp)
+                        }
+                    }
                 }
             }
         }

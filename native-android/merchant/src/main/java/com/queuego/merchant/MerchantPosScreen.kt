@@ -1165,7 +1165,8 @@ fun MerchantPosScreen(
                 "shifts" -> MerchantPosShiftHistoryScreen(
                     auth = auth,
                     api = api,
-                    canCashier = can("close_bill")
+                    canCashier = can("close_bill"),
+                    shopId = snap.shopId
                 )
 
                 "reports" -> PosReportsView(

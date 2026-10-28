@@ -1,3 +1,10 @@
+## 2026-10-28 Native FULL POS register cash-in/out — durable idempotent request (pending exact-head CI)
+
+- Added Android register cash-in/out under `กะรับเงิน` only when cashier has a live server-confirmed shift. Uses existing Production `pos_record_cash_movement` RPC, not a new ledger.
+- Before each cash mutation, stores actor/shop-scoped exact UUID + type + amount + reason synchronously on the device; a timed-out result retains the same payload and the UI offers **ตรวจรายการเดิมด้วยรหัสเดิม** instead of generating a second cash entry. Confirms returned server receipt (id, event type, signed amount, reason) before clearing pending. No automatic retry, no offline transaction, no fake success. Cash-in/out amounts and reasons validated according to Production function.
+- Displays server current-shift cash-in/cash-out totals. Source regression added; Production DB and existing POS bill/payment RPCs unchanged.
+- **NEXT:** exact HEAD Native Pilot + Map Engine first confirmed failure; exercise retry after timeout and reopen app on real device; verify cashier shift and ledger. Continue FULL barcode and item sales gap. Do not mark financially complete on source tests alone.
+
 ## 2026-10-28 Merchant POS Full Option — restore Native cashier shift history (read-only)
 
 - Exact Native successor parent `77e052f5a45d1993b0a9a9cf22db9c8da25e5fe0` already passed Map Engine + three-APK Native Pilot. Current Production Web FULL POS shows a dedicated cash-register shift history from `pos_register_shift_history(p_limit)`; Native only showed the live shift on the `คิดเงิน` panel, with no history.

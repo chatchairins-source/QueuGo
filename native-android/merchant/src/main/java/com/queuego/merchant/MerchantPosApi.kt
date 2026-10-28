@@ -61,7 +61,9 @@ data class PosCashShift(
     val open: Boolean,
     val expectedCash: Double?,
     val openingFloat: Double?,
-    val cashierName: String?
+    val cashierName: String?,
+    val cashInTotal: Double? = null,
+    val cashOutTotal: Double? = null
 )
 
 data class PosBill(
@@ -531,6 +533,38 @@ class MerchantPosApi(
         return result
     }
 
+    suspend fun recordCashMovement(
+        auth: NativeAuth,
+        type: String,
+        amount: Double,
+        reason: String,
+        requestId: String
+    ): String {
+        requireNoPendingEdit(auth)
+        require(type == "cash_in" || type == "cash_out") { "ประเภทเงินเข้าออกไม่ถูกต้อง" }
+        require(amount.isFinite() && amount in 0.01..999999999.0 &&
+            kotlin.math.abs(amount * 100 - kotlin.math.round(amount * 100)) < 0.00001) {
+            "จำนวนเงินต้องมากกว่า 0 และไม่เกิน 2 ตำแหน่งทศนิยม"
+        }
+        require(reason.trim().length in 5..500) { "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร" }
+        require(runCatching { UUID.fromString(requestId) }.isSuccess) { "รหัสรายการไม่ถูกต้อง" }
+        val receipt = objectValue(http.rpc(
+            "pos_record_cash_movement",
+            auth.session.accessToken,
+            JSONObject().put("p_type", type).put("p_amount", amount)
+                .put("p_reason", reason.trim()).put("p_request", requestId)
+        ))
+        val eventId = receipt.optString("id")
+        val recordedAmount = receipt.optDouble("amount", Double.NaN)
+        val signed = if (type == "cash_out") -amount else amount
+        check(eventId.isNotBlank() && receipt.optString("event_type") == type &&
+            receipt.optString("reason") == reason.trim() &&
+            recordedAmount.isFinite() && kotlin.math.abs(recordedAmount - signed) < 0.001) {
+            "Server ยังไม่ยืนยันผลเงินเข้าออก กรุณาตรวจรายการเดิม"
+        }
+        return eventId
+    }
+
     private fun parseCashShift(raw: Any): PosCashShift {
         val value = objectValue(raw)
         require(value.has("open")) { "Server ไม่ส่งสถานะกะรับเงิน" }
@@ -538,7 +572,9 @@ class MerchantPosApi(
             open = value.optBoolean("open"),
             expectedCash = nullableDouble(value, "expected_cash"),
             openingFloat = nullableDouble(value, "opening_float"),
-            cashierName = nullableString(value, "cashier_name")
+            cashierName = nullableString(value, "cashier_name"),
+            cashInTotal = nullableDouble(value, "cash_in_total"),
+            cashOutTotal = nullableDouble(value, "cash_out_total")
         )
     }
 
