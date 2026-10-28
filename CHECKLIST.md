@@ -1,3 +1,10 @@
+## 2026-10-28 exact-head Web FULL POS first CI: obsolete Merchant login mock (test only)
+
+- Exact HEAD `b463606cb15e53a8d2b57160eaa6872050712e72` Map Engine `40631473005` / `122628600353` failed `tests/merchant-routing.cjs` at `saved[0].role`. The test still mocked `qtLoadOwnSupabaseUser` / `qtUserFromRow` but controlling Production POS main `qtShopDoLogin` now calls `qtLoadOwnMerchantIdentity` and requires mapped shopProfileId. This mismatch is a **test stub** deficiency, not evidence of Production login failure.
+- Added current `qtLoadOwnMerchantIdentity` stub composed from the existing mutable `profile` and active staff fixtures, including authoritative profile and shop identity. Preserved admin reject, POS staff, merchant login, deleted account and inactive staff contract tests.
+- No Production JS, Kotlin, RLS, auth, store or backend behavior changed in this follow-up.
+- **NEXT:** check exact-head Map Engine + Native Pilot; fix first confirmed regression; then restore Native POS category filters and remaining Web Production FULL features by gap-based parity; test cashier payments on device before release.
+
 ## 2026-10-28 P0 FULL POS provenance root cause — preserve current Web main feature set
 
 - User reported FULL Option vanished. Compared latest Web `main` POS assets with Native successor. They are **different lineages**, not equivalent UI: `main` `merchant/pos-table-v2.js` retains product category filters, cashier shifts, cash movements, shift history, barcode code scan/management, per-item sales reports, offline draft support and option controls; Native branch's older JS had none of most of those and did not load `pos-offline-drafts.js`. Main JS length ~410 lines vs old Native-branch Web JS ~286; main POS CSS ~38k vs old ~11k. This was the main reason FULL Option was absent from the Native successor's copied Web source.
