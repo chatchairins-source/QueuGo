@@ -1,3 +1,11 @@
+## 2026-10-28 Customer Checkout map touch-target height parity — IN PROGRESS (exact-head CI NEXT)
+
+- Confirmed Customer Web Checkout and Native Checkout both hard-coded a 115 px/dp tall selectable map. The same app's dedicated Location screen already allows 240–400 dp. A 115 px checkout viewport constrains precision when the user must tap a coordinate, especially with zoom controls.
+- Both checkout surfaces now use an equivalent screen-relative height: 28% of viewport, bounded to 200–300 CSS px / Android dp. This keeps a usable tap area on phones while limiting tablet overflow. Native composes the height from `LocalConfiguration`; Web uses CSS `clamp`.
+- No data, routing, location selection authority, fare/order mutation or address rules changed. Added a Web/Native source contract to prevent the 115 px/dp regression.
+- Previous exact HEAD `4c5785590cdefa5f2a8e54b2b55f412645a516ec` Map Engine success and Native Pilot still pending on shared runner at time of change; do not claim latest-head APK/build green without its own evidence.
+- **NEXT:** verify this exact HEAD Map Engine + Native Pilot, fix first confirmed failure, then physically test tap-select on Customer Checkout and dedicated Location screen in phone/tablet layouts. Resume Rider receipt photo and Merchant POS owner acceptance thereafter.
+
 ## 2026-10-28 Web Customer address picker tap-to-pin alignment — IN PROGRESS (exact-head CI NEXT)
 
 - Confirmed Web `index.html/initLocationPicker` still bound `moveend` to automatic coordinate selection and offered `เลือกตรงกลาง`; Native Customer already selects only an actual map tap. This caused a behavioral parity gap for address/checkout selection.

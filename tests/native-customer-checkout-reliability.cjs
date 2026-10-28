@@ -5,6 +5,8 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 const app=read('native-android/customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
 const store=read('native-android/customer/src/main/java/com/queuego/customer/CustomerCartStore.kt');
 const recovery=read('native-android/customer/src/main/java/com/queuego/customer/CustomerCheckoutRecovery.kt');
+const checkout=read('native-android/customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt');
+const web=read('index.html');
 
 const start=app.indexOf('fun showPlacedOrder(order: CustomerOrder)');
 const end=app.indexOf('\n    LaunchedEffect(',start);
@@ -30,4 +32,12 @@ ok(store.includes('if ((boundedPref("cart", CUSTOMER_CART_MAX_JSON_CHARS) ?: "[]
 ok(recovery.includes('runCatching { withContext(Dispatchers.IO) { journal.complete(pending) } }'),'post-commit local cleanup must stay non-fatal and off Main');
 ok(recovery.includes('val pending = withContext(Dispatchers.IO) { journal.read() } ?: return null')&&recovery.includes('val receipt = recover(pending) ?: return null'),'pending journal must remain recoverable after local cleanup failure without reading durable state on Main');
 
+ok(checkout.includes('val checkoutMapHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.28f)') &&
+   checkout.includes('.coerceIn(200.dp, 300.dp)') &&
+   checkout.includes('.height(checkoutMapHeight)') &&
+   !checkout.includes('.height(115.dp)'),
+   'Native Customer checkout map must be touch-usable and responsive on mobile/tablet');
+ok(web.includes('id="checkout-pin-map" class="mapbox" style="height:clamp(200px,28dvh,300px)') &&
+   !web.includes('id="checkout-pin-map" class="mapbox" style="height:115px'),
+   'Web checkout must share the same touch-usable responsive map height');
 console.log(JSON.stringify({checks,failures:0,scope:'Native Customer confirmed-order cart clearing and durable checkout recovery'}));

@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -177,6 +178,8 @@ internal fun CustomerCheckoutScreen(
     }
     var recenterToken by remember { mutableStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
+    val checkoutMapHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.28f)
+        .coerceIn(200.dp, 300.dp)
     var lastAutoAddress by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(location?.latitude, location?.longitude) {
@@ -255,7 +258,7 @@ internal fun CustomerCheckoutScreen(
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .height(115.dp)
+                            .height(checkoutMapHeight)
                             .clip(RoundedCornerShape(15.dp))
                             .background(Color(0xFFF0F1F2))
                             .border(1.dp, QgLine, RoundedCornerShape(15.dp))
