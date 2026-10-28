@@ -28,7 +28,8 @@ data class PosProduct(
     val inventoryStockTracking: Boolean = false,
     val groceryMasterId: String? = null,
     val groceryStockTracking: Boolean = false,
-    val optionGroups: List<PosProductOptionGroup> = emptyList()
+    val optionGroups: List<PosProductOptionGroup> = emptyList(),
+    val category: String? = null
 )
 
 internal fun posProductInventoryTracked(product: PosProduct): Boolean =
@@ -251,7 +252,7 @@ class MerchantPosApi(
             )) }
             val products = async {
                 val scope = "&shop_id=eq." + http.enc(shopId) + "&order=name.asc"
-                val base = "products?select=id,name,price,pos_price,delivery_price,image,available,pos_available," +
+                val base = "products?select=id,name,category,price,pos_price,delivery_price,image,available,pos_available," +
                     "delivery_available,variants,stock,"
                 try {
                     http.array(http.get(
@@ -354,7 +355,8 @@ class MerchantPosApi(
                         inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false),
                         groceryMasterId = nullableString(r, "grocery_master_id"),
                         groceryStockTracking = r.optBoolean("grocery_stock_tracking", false),
-                        optionGroups = parsePosProductOptionGroups(r.optJSONArray("variants") ?: JSONArray())
+                        optionGroups = parsePosProductOptionGroups(r.optJSONArray("variants") ?: JSONArray()),
+                        category = nullableString(r, "category")?.trim()?.takeIf { it.isNotEmpty() }
                     )
                 )
             }

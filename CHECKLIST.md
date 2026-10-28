@@ -1,3 +1,10 @@
+## 2026-10-28 Native Merchant POS FULL category parity from current Web Production
+
+- Current `main` Web FULL POS supports product category filtering combined with text search; Native successor lacked `products.category` in `PosProduct`, snapshot query, counter UI and offline catalog. Restored category as optional field using the existing Production products column (no new schema).
+- POS now shows an "ทั้งหมด" and actual distinct category chip row, combines category+text filters, resets category on shop switch or vanished category, preserves null/uncategorized products under All, and serializes optional category into the same actor/device-scoped offline catalog. Older cached catalogs with missing category remain readable. No fake products or stock changes.
+- Added source regression. Exact-head Kotlin/unit/CI and real Android tablet acceptance are pending. Web controls authoritative in `main`; no cherry-pick of outdated UI code.
+- **NEXT:** inspect exact-head CI first failure. Then continue POS FULL Option gaps for Native cashier register cash movements, barcode/code management, item sales and shift history; run same-head Native 3 APK pilot and merchant cashier/order/table acceptance.
+
 ## 2026-10-28 exact-head Web FULL POS first CI: obsolete Merchant login mock (test only)
 
 - Exact HEAD `b463606cb15e53a8d2b57160eaa6872050712e72` Map Engine `40631473005` / `122628600353` failed `tests/merchant-routing.cjs` at `saved[0].role`. The test still mocked `qtLoadOwnSupabaseUser` / `qtUserFromRow` but controlling Production POS main `qtShopDoLogin` now calls `qtLoadOwnMerchantIdentity` and requires mapped shopProfileId. This mismatch is a **test stub** deficiency, not evidence of Production login failure.

@@ -110,7 +110,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                     .put("inventory_stock_tracking", p.inventoryStockTracking)
                     .put("grocery_master_id", p.groceryMasterId ?: JSONObject.NULL)
                     .put("grocery_stock_tracking", p.groceryStockTracking)
-                    .put("option_groups", posProductOptionGroupsJson(p.optionGroups)))
+                    .put("option_groups", posProductOptionGroupsJson(p.optionGroups))
+                    .put("category", p.category ?: JSONObject.NULL))
             } })
             .put("tables", JSONArray().apply { catalog.tables.forEach { t ->
                 put(JSONObject().put("id", t.id).put("label", t.label.take(100)).put("active", t.active)
@@ -140,7 +141,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 inventoryStockTracking = p.optBoolean("inventory_stock_tracking", false),
                 groceryMasterId = if (p.isNull("grocery_master_id")) null else p.optString("grocery_master_id"),
                 groceryStockTracking = p.optBoolean("grocery_stock_tracking", false),
-                optionGroups = parsePosProductOptionGroups(p.optJSONArray("option_groups") ?: JSONArray()))
+                optionGroups = parsePosProductOptionGroups(p.optJSONArray("option_groups") ?: JSONArray()),
+                category = if (!p.has("category") || p.isNull("category")) null else p.optString("category"))
         } }
         val tables = json.getJSONArray("tables").let { array -> (0 until array.length()).map { i ->
             val t = array.getJSONObject(i)

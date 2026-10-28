@@ -135,6 +135,7 @@ fun MerchantPosScreen(
     var noTable by rememberSaveable { mutableStateOf(false) }
     var note by rememberSaveable { mutableStateOf("") }
     var search by rememberSaveable { mutableStateOf("") }
+    var selectedPosCategory by rememberSaveable { mutableStateOf("all") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var pendingEdit by remember { mutableStateOf<PosEditIntent?>(null) }
@@ -745,6 +746,13 @@ fun MerchantPosScreen(
     val openBills = snap?.bills?.filter { it.open }.orEmpty()
     val selectedBill = openBills.firstOrNull { it.id == selectedBillId }
     val kitchenEnabled = snap?.shopCategory == "food" || snap?.shopCategory == "cafe"
+    LaunchedEffect(snap?.shopId) { selectedPosCategory = "all" }
+    LaunchedEffect(snap?.products) {
+        val current = selectedPosCategory
+        if (current != "all" && snap?.products?.none { it.category?.trim() == current } != false) {
+            selectedPosCategory = "all"
+        }
+    }
 
     LaunchedEffect(view, snap?.shopId, auth.session.accessToken) {
         if (view == "bills" && snap != null && can("close_bill")) {
@@ -913,6 +921,7 @@ fun MerchantPosScreen(
                     noTable = noTable,
                     note = note,
                     search = search,
+                    selectedCategory = selectedPosCategory,
                     busy = busy,
                     pendingCreate = pendingPosRequestId != null,
                     canReceive = can("receive_order") || !networkValidated,
@@ -945,6 +954,7 @@ fun MerchantPosScreen(
                     },
                     onNote = { note = it.take(500) },
                     onSearch = { search = it },
+                    onCategory = { selectedPosCategory = it },
                     onProduct = ::addPosProduct,
                     onRetryPending = ::retryPendingPosCreate,
                     onReduce = { line ->
@@ -1678,6 +1688,7 @@ private fun PosCounterView(
     noTable: Boolean,
     note: String,
     search: String,
+    selectedCategory: String,
     busy: Boolean,
     pendingCreate: Boolean,
     canReceive: Boolean,
@@ -1693,6 +1704,7 @@ private fun PosCounterView(
     onNoTable: () -> Unit,
     onNote: (String) -> Unit,
     onSearch: (String) -> Unit,
+    onCategory: (String) -> Unit,
     onProduct: (PosProduct) -> Unit,
     onRetryPending: () -> Unit,
     onReduce: (PosLine) -> Unit,
@@ -1761,6 +1773,22 @@ private fun PosCounterView(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+        val menuCategories = snapshot.products.mapNotNull { product ->
+            product.category?.trim()?.takeIf { it.isNotBlank() }
+        }.distinct()
+        if (menuCategories.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text("หมวดหมู่", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                PosChoiceButton("ทั้งหมด", selectedCategory == "all") { onCategory("all") }
+                menuCategories.forEach { category ->
+                    PosChoiceButton(category, selectedCategory == category) { onCategory(category) }
+                }
+            }
+        }
         Spacer(Modifier.height(7.dp))
         OutlinedTextField(
             note,
@@ -1773,7 +1801,8 @@ private fun PosCounterView(
         QgSectionTitle("เมนูสินค้า", if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล" else selectedBill.number)
         Spacer(Modifier.height(8.dp))
         val products = snapshot.products.filter {
-            search.isBlank() || it.name.contains(search.trim(), ignoreCase = true)
+            (selectedCategory == "all" || it.category?.trim() == selectedCategory) &&
+                (search.isBlank() || it.name.contains(search.trim(), ignoreCase = true))
         }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val menuColumns = when {
