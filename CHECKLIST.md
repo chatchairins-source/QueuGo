@@ -1,3 +1,9 @@
+## 2026-10-28 exact-head CI: Merchant POS login stays on POS after sign-in
+
+- Map Engine run `40631653765` / `122629176218` reached `tests/merchant-routing.cjs:7` and expected navigation `dashboard` after owner sign-in while the current Web main `qtShopDoLogin` intentionally returns to POS if login was triggered from `#pos`. The mock already verified a successful shop session `saved[0].role==='shop'`; failure was the retired route expectation.
+- Updated **only** the obsolete expected destination from dashboard to POS. Preserved real owner/admin/staff role checks; no app login or backend changes.
+- **NEXT:** exact-head CI first error; afterwards test Native Merchant cashier shift/payment and FULL POS category parity on Android tablet. Do not mark DONE until verified.
+
 ## 2026-10-28 Native Merchant POS FULL category parity from current Web Production
 
 - Current `main` Web FULL POS supports product category filtering combined with text search; Native successor lacked `products.category` in `PosProduct`, snapshot query, counter UI and offline catalog. Restored category as optional field using the existing Production products column (no new schema).
