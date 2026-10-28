@@ -45,6 +45,13 @@ data class PosTable(
     val qrToken: String? = null
 )
 
+data class PosCashShift(
+    val open: Boolean,
+    val expectedCash: Double?,
+    val openingFloat: Double?,
+    val cashierName: String?
+)
+
 data class PosBill(
     val id: String,
     val number: String,
@@ -448,6 +455,46 @@ class MerchantPosApi(
             "pos_cancel_bill",
             auth.session.accessToken,
             JSONObject().put("p_order", billId).put("p_reason", reason.trim())
+        )
+    }
+
+    // Production cash-register RPCs are cashier-scoped and server-authoritative.
+    // Never manufacture an open shift from a local cache or auto-open one at checkout.
+    suspend fun currentCashShift(auth: NativeAuth): PosCashShift =
+        parseCashShift(http.rpc("pos_current_shift", auth.session.accessToken, JSONObject()))
+
+    suspend fun openCashShift(auth: NativeAuth, openingFloat: Double): PosCashShift {
+        require(openingFloat.isFinite() && openingFloat in 0.0..999999999.0) {
+            "เงินสดต้นกะไม่ถูกต้อง"
+        }
+        val result = parseCashShift(http.rpc(
+            "pos_open_shift", auth.session.accessToken,
+            JSONObject().put("p_opening_float", openingFloat).put("p_note", "")
+        ))
+        require(result.open) { "Server ยังไม่ยืนยันการเปิดกะ" }
+        return result
+    }
+
+    suspend fun closeCashShift(auth: NativeAuth, countedCash: Double): PosCashShift {
+        require(countedCash.isFinite() && countedCash in 0.0..999999999.0) {
+            "ยอดเงินสดที่นับไม่ถูกต้อง"
+        }
+        val result = parseCashShift(http.rpc(
+            "pos_close_shift", auth.session.accessToken,
+            JSONObject().put("p_counted_cash", countedCash).put("p_note", "")
+        ))
+        require(!result.open) { "Server ยังไม่ยืนยันการปิดกะ" }
+        return result
+    }
+
+    private fun parseCashShift(raw: Any): PosCashShift {
+        val value = objectValue(raw)
+        require(value.has("open")) { "Server ไม่ส่งสถานะกะรับเงิน" }
+        return PosCashShift(
+            open = value.optBoolean("open"),
+            expectedCash = nullableDouble(value, "expected_cash"),
+            openingFloat = nullableDouble(value, "opening_float"),
+            cashierName = nullableString(value, "cashier_name")
         )
     }
 

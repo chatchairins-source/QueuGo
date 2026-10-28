@@ -1384,6 +1384,22 @@ ok(
   'Merchant POS table-add must be visible and use the real create-table RPC in tablet/phone layouts'
 );
 
+ok(
+  merchantPosApi.includes('http.rpc("pos_current_shift"') &&
+  merchantPosApi.includes('"pos_open_shift"') &&
+  merchantPosApi.includes('"pos_close_shift"') &&
+  merchantPosApi.includes('"pos_take_payment"') &&
+  merchantPosScreen.includes('bills = openBills,') &&
+  merchantPosScreen.includes('if (cashShift?.open != true)') &&
+  merchantPosScreen.includes('api.openCashShift(auth, opening)') &&
+  merchantPosScreen.includes('api.closeCashShift(auth, counted)') &&
+  merchantPosScreen.includes('!showKitchenStatus || selected.kitchenStatus in setOf("READY", "SERVED")') &&
+  merchantPosScreen.includes('เงินสดต้นกะ (บาท)') &&
+  merchantPosScreen.includes('รับพอดี ฿') &&
+  merchantPosScreen.includes('api.takePayment(auth, bill.id, method, cash)'),
+  'Merchant Native POS cashier must expose real register shift and non-kitchen bill settlement'
+);
+
 const merchantPosPending=read('merchant/src/main/java/com/queuego/merchant/MerchantPosPendingStore.kt');
 const merchantPosDraftStore=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt');
 ok(merchantPosApi.includes('inventory_stock_tracking,grocery_master_id,grocery_stock_tracking')&&merchantPosApi.includes('stock = r.optInt("stock", 0)')&&merchantPosApi.includes('inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false)')&&merchantPosApi.includes('groceryMasterId = nullableString(r, "grocery_master_id")')&&merchantPosApi.includes('groceryStockTracking = r.optBoolean("grocery_stock_tracking", false)'),'Merchant native POS must load Web Production stock and generic/Grocery tracking inputs');

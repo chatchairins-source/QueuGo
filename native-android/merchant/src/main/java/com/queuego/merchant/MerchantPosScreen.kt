@@ -186,6 +186,11 @@ fun MerchantPosScreen(
     var paymentMethod by rememberSaveable { mutableStateOf("cash") }
     var paymentMethodMenu by remember { mutableStateOf(false) }
     var cashReceived by rememberSaveable { mutableStateOf("") }
+    var cashShift by remember(auth.session.authUserId) { mutableStateOf<PosCashShift?>(null) }
+    var cashShiftError by remember(auth.session.authUserId) { mutableStateOf<String?>(null) }
+    var cashShiftPending by remember { mutableStateOf(false) }
+    var openingCash by rememberSaveable { mutableStateOf("0") }
+    var countedCash by rememberSaveable { mutableStateOf("") }
 
     var discountOpen by remember { mutableStateOf(false) }
     var discountText by rememberSaveable { mutableStateOf("") }
@@ -742,6 +747,38 @@ fun MerchantPosScreen(
     val kitchenEnabled = snap?.shopCategory == "food" || snap?.shopCategory == "cafe"
 
     LaunchedEffect(view, snap?.shopId, auth.session.accessToken) {
+        if (view == "bills" && snap != null && can("close_bill")) {
+            cashShift = null
+            cashShiftError = null
+            try {
+                cashShift = api.currentCashShift(auth)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                cashShiftError = failure.message ?: "ตรวจสอบกะรับเงินไม่สำเร็จ"
+            }
+        }
+    }
+
+    fun reloadCashShift() {
+        if (cashShiftPending) return
+        cashShiftPending = true
+        scope.launch {
+            try {
+                cashShift = api.currentCashShift(auth)
+                cashShiftError = null
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                cashShift = null
+                cashShiftError = failure.message ?: "ตรวจสอบกะรับเงินไม่สำเร็จ"
+            } finally {
+                cashShiftPending = false
+            }
+        }
+    }
+
+    LaunchedEffect(view, snap?.shopId, auth.session.accessToken) {
         if (view == "delivery" && snap?.owner == true) {
             deliveryLoading = true
             runCatching { merchantApi.loadShop(auth) }
@@ -1006,7 +1043,7 @@ fun MerchantPosScreen(
                 )
 
                 "bills" -> PosBillsView(
-                    bills = openBills.filter { !kitchenEnabled || it.kitchenStatus in setOf("READY", "SERVED") },
+                    bills = openBills,
                     showKitchenStatus = kitchenEnabled,
                     selected = selectedBill,
                     paymentMethod = paymentMethod,
@@ -1014,6 +1051,61 @@ fun MerchantPosScreen(
                     cashReceived = cashReceived,
                     busy = busy,
                     canClose = can("close_bill"),
+                    shift = cashShift,
+                    shiftError = cashShiftError,
+                    shiftPending = cashShiftPending,
+                    openingCash = openingCash,
+                    countedCash = countedCash,
+                    onOpeningCash = { openingCash = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                    onCountedCash = { countedCash = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                    onReloadShift = ::reloadCashShift,
+                    onOpenShift = {
+                        val opening = openingCash.toDoubleOrNull()
+                        if (cashShiftPending || busy) Unit
+                        else if (opening == null || !opening.isFinite() || opening < 0) {
+                            message = "ระบุเงินสดต้นกะให้ถูกต้อง (ใส่ 0 ได้)"
+                        } else {
+                            cashShiftPending = true
+                            scope.launch {
+                                try {
+                                    cashShift = api.openCashShift(auth, opening)
+                                    cashShiftError = null
+                                    message = "เปิดกะรับเงินแล้ว"
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (failure: Exception) {
+                                    cashShiftError = failure.message ?: "ผลเปิดกะยังไม่แน่ชัด"
+                                    cashShift = runCatching { api.currentCashShift(auth) }.getOrNull()
+                                } finally {
+                                    cashShiftPending = false
+                                }
+                            }
+                        }
+                    },
+                    onCloseShift = {
+                        val counted = countedCash.toDoubleOrNull()
+                        if (cashShiftPending || busy) Unit
+                        else if (counted == null || !counted.isFinite() || counted < 0) {
+                            message = "กรอกยอดเงินสดที่นับจริงก่อนปิดกะ"
+                        } else {
+                            cashShiftPending = true
+                            scope.launch {
+                                try {
+                                    cashShift = api.closeCashShift(auth, counted)
+                                    cashShiftError = null
+                                    countedCash = ""
+                                    message = "ปิดกะรับเงินแล้ว"
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (failure: Exception) {
+                                    cashShiftError = failure.message ?: "ผลปิดกะยังไม่แน่ชัด"
+                                    cashShift = runCatching { api.currentCashShift(auth) }.getOrNull()
+                                } finally {
+                                    cashShiftPending = false
+                                }
+                            }
+                        }
+                    },
                     onSelect = { selectedBillId = it.id },
                     onPaymentMenu = { paymentMethodMenu = it },
                     onPaymentMethod = {
@@ -1025,9 +1117,13 @@ fun MerchantPosScreen(
                     onPay = {
                         val bill = selectedBill
                         val method = paymentMethod
-                        if (!busy && bill != null && can("close_bill")) {
+                        if (!busy && !cashShiftPending && bill != null && can("close_bill")) {
                             val cash = if (method == "cash") cashReceived.toDoubleOrNull() else null
-                            if (method == "cash" && (cash == null || !cash.isFinite() || cash < bill.total)) {
+                            if (cashShift?.open != true) {
+                                message = "ต้องเปิดกะรับเงินก่อนคิดเงิน"
+                            } else if (kitchenEnabled && bill.kitchenStatus !in setOf("READY", "SERVED")) {
+                                message = "รอครัวพร้อมก่อนคิดเงิน"
+                            } else if (method == "cash" && (cash == null || !cash.isFinite() || cash < bill.total)) {
                                 message = "เงินสดที่รับต้องไม่น้อยกว่ายอดบิล"
                             } else {
                                 busy = true
@@ -2153,43 +2249,156 @@ private fun PosBillsView(
     cashReceived: String,
     busy: Boolean,
     canClose: Boolean,
+    shift: PosCashShift?,
+    shiftError: String?,
+    shiftPending: Boolean,
+    openingCash: String,
+    countedCash: String,
+    onOpeningCash: (String) -> Unit,
+    onCountedCash: (String) -> Unit,
+    onReloadShift: () -> Unit,
+    onOpenShift: () -> Unit,
+    onCloseShift: () -> Unit,
     onSelect: (PosBill) -> Unit,
     onPaymentMenu: (Boolean) -> Unit,
     onPaymentMethod: (String) -> Unit,
     onCash: (String) -> Unit,
     onPay: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("บิลรอคิดเงิน")
-        Spacer(Modifier.height(8.dp))
-        if (bills.isEmpty()) {
-            QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีบิลรอชำระ", color = QgMuted) }
-        } else bills.forEach { bill ->
-            QgCard(
-                Modifier.fillMaxWidth().padding(bottom = 7.dp).clickable { onSelect(bill) }
+    val canPaySelected = selected != null &&
+        (!showKitchenStatus || selected.kitchenStatus in setOf("READY", "SERVED"))
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        QgSectionTitle("คิดเงินและปิดบิล", "รับชำระตามบิลจริง · บันทึกกับ QueueGo POS")
+        if (canClose) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(18.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE6E8ED))
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(bill.number, fontWeight = FontWeight.Black)
-                        if (showKitchenStatus) Text(bill.kitchenStatus, color = QgMuted, fontSize = 11.sp)
+                Column(
+                    Modifier.fillMaxWidth().padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("กะรับเงิน", fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.weight(1f))
+                        Text(
+                            if (shift?.open == true) "เปิดอยู่"
+                            else if (shiftError != null) "ตรวจสอบไม่สำเร็จ"
+                            else if (shift == null) "กำลังตรวจสอบ"
+                            else "ยังไม่เปิดกะ",
+                            color = if (shift?.open == true) Color(0xFF14804A) else QgRed,
+                            fontWeight = FontWeight.Bold, fontSize = 12.sp
+                        )
                     }
-                    Text("฿" + money(bill.total), color = QgRed, fontWeight = FontWeight.Black)
+                    if (shiftError != null) {
+                        Text(shiftError, color = QgRed, fontSize = 12.sp)
+                        OutlinedButton(onClick = onReloadShift, enabled = !shiftPending && !busy) {
+                            Text("ตรวจสอบกะอีกครั้ง")
+                        }
+                    }
+                    if (shift != null && !shift.open) {
+                        Text("เริ่มกะรับเงินก่อนปิดบิล (ไม่มีเงินทอนต้นกะให้ใส่ 0)",
+                            fontSize = 12.sp, color = QgMuted)
+                        OutlinedTextField(
+                            openingCash, onOpeningCash,
+                            label = { Text("เงินสดต้นกะ (บาท)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true, modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = onOpenShift,
+                            enabled = !busy && !shiftPending,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                        ) { Text("เปิดกะรับเงิน", fontWeight = FontWeight.Bold) }
+                    }
+                    if (shift?.open == true) {
+                        Text(
+                            "เงินสดที่ควรมีในกะ ฿" +
+                                money(shift.expectedCash ?: shift.openingFloat ?: 0.0),
+                            fontWeight = FontWeight.Bold, fontSize = 13.sp
+                        )
+                        OutlinedTextField(
+                            countedCash, onCountedCash,
+                            label = { Text("นับเงินสดจริงเพื่อปิดกะ") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true, modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedButton(
+                            onClick = onCloseShift,
+                            enabled = !busy && !shiftPending && countedCash.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp)
+                        ) { Text("ปิดกะและบันทึกยอดนับจริง") }
+                    }
+                }
+            }
+        } else {
+            Text("บัญชีนี้ไม่มีสิทธิ์คิดเงิน โปรดใช้บัญชีเจ้าของร้านหรือแคชเชียร์",
+                color = QgRed, fontSize = 12.sp)
+        }
+
+        Text("บิลรอคิดเงิน", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+        if (bills.isEmpty()) {
+            QgCard(Modifier.fillMaxWidth()) {
+                Text("ยังไม่มีบิลรอชำระ", color = QgMuted)
+            }
+        } else {
+            bills.forEach { bill ->
+                val ready = !showKitchenStatus || bill.kitchenStatus in setOf("READY", "SERVED")
+                Surface(
+                    modifier = Modifier.fillMaxWidth().clickable { onSelect(bill) },
+                    color = if (selected?.id == bill.id) Color(0xFFFFF2F4) else Color.White,
+                    shape = RoundedCornerShape(14.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp, if (selected?.id == bill.id) QgRed else Color(0xFFE9EAEE)
+                    )
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(bill.number, fontWeight = FontWeight.ExtraBold)
+                            Text(
+                                if (ready) "พร้อมคิดเงิน" else "รอครัวพร้อม · " + bill.kitchenStatus,
+                                color = if (ready) Color(0xFF14804A) else QgMuted,
+                                fontSize = 12.sp
+                            )
+                        }
+                        Text("฿" + money(bill.total),
+                            color = QgRed, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                    }
                 }
             }
         }
 
         if (selected != null && selected in bills) {
-            Spacer(Modifier.height(12.dp))
-            QgCard(Modifier.fillMaxWidth()) {
-                Column {
-                    Text("คิดเงิน · " + selected.number, fontWeight = FontWeight.Black)
-                    Text("ยอดที่ต้องรับ", color = QgMuted)
-                    Text("฿" + money(selected.total), color = QgRed, fontWeight = FontWeight.Black, fontSize = 28.sp)
-                    Spacer(Modifier.height(8.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("คิดเงิน · " + selected.number, fontWeight = FontWeight.ExtraBold)
+                    Text("ยอดรับชำระ", fontSize = 12.sp, color = QgMuted)
+                    Text("฿" + money(selected.total), color = QgRed,
+                        fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
+                    if (!canPaySelected) {
+                        Text("บิลร้านอาหาร/คาเฟ่ต้องพร้อมจากครัวก่อนรับเงิน",
+                            color = QgRed, fontSize = 12.sp)
+                    }
                     Box {
                         OutlinedButton(
                             onClick = { onPaymentMenu(true) },
-                            enabled = canClose && !busy,
+                            enabled = canClose && !busy && canPaySelected && shift?.open == true,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(posPaymentMethods.firstOrNull { it.first == paymentMethod }?.second ?: paymentMethod)
@@ -2201,32 +2410,36 @@ private fun PosBillsView(
                         }
                     }
                     if (paymentMethod == "cash") {
-                        Spacer(Modifier.height(7.dp))
                         OutlinedTextField(
-                            cashReceived,
-                            onCash,
-                            label = { Text("รับเงินสด") },
+                            cashReceived, onCash,
+                            label = { Text("เงินสดที่รับ (บาท)") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            singleLine = true, modifier = Modifier.fillMaxWidth()
                         )
+                        OutlinedButton(
+                            onClick = { onCash(money(selected.total)) },
+                            enabled = canClose && !busy && canPaySelected && shift?.open == true
+                        ) { Text("รับพอดี ฿" + money(selected.total)) }
                         val cash = cashReceived.toDoubleOrNull()
                         Text(
                             "เงินทอน " + if (cash == null) "—" else "฿" + money((cash - selected.total).coerceAtLeast(0.0)),
-                            color = QgMuted,
-                            fontSize = 12.sp
+                            color = QgMuted, fontSize = 12.sp
                         )
                     }
-                    Spacer(Modifier.height(8.dp))
                     Button(
                         onClick = onPay,
-                        enabled = canClose && !busy,
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        enabled = canClose && !busy && !shiftPending && shift?.open == true && canPaySelected,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = QgRed)
                     ) { Text("ยืนยันรับเงินและปิดบิล", fontWeight = FontWeight.Bold) }
+                    if (shift?.open != true) {
+                        Text("ต้องเปิดกะรับเงินด้านบนก่อนจึงจะปิดบิลได้",
+                            fontSize = 12.sp, color = QgRed)
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
     }
 }
 
