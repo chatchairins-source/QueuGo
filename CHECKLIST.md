@@ -1,3 +1,11 @@
+## 2026-10-28 Native Merchant POS P0 — reconcile cashier-shift RPC timeouts (IN PROGRESS)
+
+- Successor HEAD before this chunk: `98defb7a657dd872ad6aea617766b8b5fa14b1a9`; PR #730 / `work-native-web-parity-20261026`. Exact-head Map Engine run `40650534289` and Native Android Pilot run `40650534308` both succeeded. Pilot artifact `12799851173` contains Customer, Merchant and Rider **Debug** APKs from that same HEAD.
+- Root cause: open/close shift handlers treated any RPC exception as an error even if the server committed the operation and the response was lost. Opening only read the current shift without checking the requested opening float; closing only read the current shift and did not verify the exact closed shift/count from server history. This could leave the UI showing an error after a successful shift operation and make the cashier uncertain whether to repeat it.
+- Bounded fix: after uncertain responses, use read-only Production RPCs to reconcile the exact opening float, or the original shift ID + closed history + exact counted cash. Never automatically resend the open/close mutation. A mismatch or failed read remains explicitly unresolved.
+- No Production writes, schema changes, new RPCs, or payment-path changes. New Kotlin regression tests cover matching and mismatched reconciliation cases.
+- **NEXT:** run exact-head Native Pilot + Map Engine CI; fix the first confirmed failure. Then verify artifact Build Info / APK metadata and create a SHA-256 bundle. Real cashier acceptance (open shift → create table/bill → tender/change → server PAID/CLOSED → receipt; forced timeout/recovery) remains BLOCKED until a non-production backend/device run is available.
+
 ## 2026-10-28 Native Merchant POS P1 — Web report parity (IN PROGRESS)
 
 - Previous QR chunk commit: `867959a838695b66d295414ce4d97ddb8ab4d0d0`. Source integrity and Kotlin unit tests passed; Build APKs, 16 KB page-size check and WebView gate passed in the Native Pilot PR run `40649529851`. Map Engine run `40649529798` passed. Emulator launch was still running at this checkpoint, so full Native Pilot CI is not yet marked green.

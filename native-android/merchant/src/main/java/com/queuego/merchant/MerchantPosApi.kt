@@ -57,6 +57,29 @@ data class PosShiftHistory(
     val variance: Double?
 )
 
+// Read-only reconciliation after an uncertain shift RPC. Never repeat the mutation
+// just because the response or a subsequent refresh was lost.
+internal fun posOpenShiftMatches(shift: PosCashShift?, requestedOpening: Double): Boolean =
+    shift?.open == true &&
+        shift.openingFloat != null &&
+        requestedOpening.isFinite() &&
+        kotlin.math.abs(shift.openingFloat - requestedOpening) < 0.005
+
+internal fun posCloseShiftMatches(
+    currentShift: PosCashShift?,
+    history: List<PosShiftHistory>,
+    shiftId: String?,
+    requestedCountedCash: Double
+): Boolean {
+    if (currentShift?.open != false || shiftId.isNullOrBlank() || !requestedCountedCash.isFinite()) {
+        return false
+    }
+    val closed = history.firstOrNull { it.id == shiftId } ?: return false
+    val counted = closed.countedCash ?: return false
+    return !closed.closedAt.isNullOrBlank() &&
+        kotlin.math.abs(counted - requestedCountedCash) < 0.005
+}
+
 data class PosCodeLookup(
     val productId: String,
     val name: String,
@@ -78,7 +101,8 @@ data class PosCashShift(
     val openingFloat: Double?,
     val cashierName: String?,
     val cashInTotal: Double? = null,
-    val cashOutTotal: Double? = null
+    val cashOutTotal: Double? = null,
+    val id: String? = null
 )
 
 // Only a PAID + CLOSED bill for the same method and tender can acknowledge the checkout.
@@ -654,7 +678,8 @@ class MerchantPosApi(
             openingFloat = nullableDouble(value, "opening_float"),
             cashierName = nullableString(value, "cashier_name"),
             cashInTotal = nullableDouble(value, "cash_in_total"),
-            cashOutTotal = nullableDouble(value, "cash_out_total")
+            cashOutTotal = nullableDouble(value, "cash_out_total"),
+            id = nullableString(value, "id")
         )
     }
 

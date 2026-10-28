@@ -1382,8 +1382,15 @@ fun MerchantPosScreen(
                                 } catch (cancelled: CancellationException) {
                                     throw cancelled
                                 } catch (failure: Exception) {
-                                    cashShiftError = failure.message ?: "ผลเปิดกะยังไม่แน่ชัด"
-                                    cashShift = runCatching { api.currentCashShift(auth) }.getOrNull()
+                                    val reconciled = runCatching { api.currentCashShift(auth) }.getOrNull()
+                                    cashShift = reconciled
+                                    if (posOpenShiftMatches(reconciled, opening)) {
+                                        cashShiftError = null
+                                        message = "เปิดกะรับเงินแล้ว · ยืนยันจากเซิร์ฟเวอร์หลังการเชื่อมต่อสะดุด"
+                                    } else {
+                                        cashShiftError = failure.message ?: "ผลเปิดกะยังไม่แน่ชัด"
+                                        message = "ยังยืนยันผลเปิดกะไม่ได้ · ตรวจสอบกะอีกครั้งก่อนลองทำรายการซ้ำ"
+                                    }
                                 } finally {
                                     cashShiftPending = false
                                 }
@@ -1396,6 +1403,7 @@ fun MerchantPosScreen(
                         else if (counted == null || !counted.isFinite() || counted < 0) {
                             message = "กรอกยอดเงินสดที่นับจริงก่อนปิดกะ"
                         } else {
+                            val closingShiftId = cashShift?.id
                             cashShiftPending = true
                             scope.launch {
                                 try {
@@ -1406,8 +1414,18 @@ fun MerchantPosScreen(
                                 } catch (cancelled: CancellationException) {
                                     throw cancelled
                                 } catch (failure: Exception) {
-                                    cashShiftError = failure.message ?: "ผลปิดกะยังไม่แน่ชัด"
-                                    cashShift = runCatching { api.currentCashShift(auth) }.getOrNull()
+                                    val reconciled = runCatching { api.currentCashShift(auth) }.getOrNull()
+                                    val history = if (closingShiftId.isNullOrBlank()) emptyList() else
+                                        runCatching { api.shiftHistory(auth, 50) }.getOrNull().orEmpty()
+                                    cashShift = reconciled
+                                    if (posCloseShiftMatches(reconciled, history, closingShiftId, counted)) {
+                                        cashShiftError = null
+                                        countedCash = ""
+                                        message = "ปิดกะรับเงินแล้ว · ยืนยันยอดจากประวัติเซิร์ฟเวอร์"
+                                    } else {
+                                        cashShiftError = failure.message ?: "ผลปิดกะยังไม่แน่ชัด"
+                                        message = "ยังยืนยันผลปิดกะไม่ได้ · ตรวจสอบกะและประวัติก่อนทำรายการซ้ำ"
+                                    }
                                 } finally {
                                     cashShiftPending = false
                                 }
