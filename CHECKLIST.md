@@ -1,3 +1,11 @@
+## 2026-10-28 Web Customer address picker tap-to-pin alignment — IN PROGRESS (exact-head CI NEXT)
+
+- Confirmed Web `index.html/initLocationPicker` still bound `moveend` to automatic coordinate selection and offered `เลือกตรงกลาง`; Native Customer already selects only an actual map tap. This caused a behavioral parity gap for address/checkout selection.
+- Web Customer picker now selects the exact tapped `lngLat` on a generic map click; pan/zoom no longer changes the address. Tapping a rendered QueueGo Places feature defers to its precise Places callback rather than overriding it with screen-click coordinates. GPS and initial point selection remain supported.
+- Removed the extra center-choice button, changed the visible hint to `แตะบนแผนที่เพื่อปักหมุดสีแดง`, and updated the Customer lifecycle regression to exercise tap selection, no pan selection, teardown safety and GPS. Merchant picker remains unchanged in this chunk.
+- Code invariants checked before publication. No claim of real-phone tap/GPS verification or Web Production deploy.
+- **NEXT:** inspect exact-head Native Pilot + Map Engine, fix first confirmed failure only, then test both Customer location and checkout on phone/tablet; continue the same-head APK build and Rider photo-preview investigation.
+
 ## 2026-10-28 exact-head Map Engine Rider road-display stale marker assertion — IN PROGRESS
 
 - On exact HEAD `5a456495f6c76943a7b0c1b4e3470d798b062047`, Map Engine `40625287818` / job `122608629362` failed the first regression in `tests/native-rider-road-display.cjs:21`: the test still expected `demandMarkers.clear()` after intentional Native-only demand-pin removal.
