@@ -1,3 +1,10 @@
+## 2026-10-28 exact-head Map Engine first regression: legacy 115dp Checkout height assertion — test-only fix
+
+- Source HEAD `9b24d6ef73edb844d233902ed7b0146f7e2e7fbb` Map Engine `40626760052` / job `122613435467` first failed `Dependencies and regression` in `tests/native-android-source.cjs:185`: the old test requires `height(115.dp)` while intentional Web/Android Checkout map layout uses bounded `checkoutMapHeight`.
+- Updated **only** this stale Native source test to require `height(checkoutMapHeight)` and `.coerceIn(200.dp, 300.dp)`; retained the existing cart vs checkout, real QueueGo Map, production RPC and action-dock assertions.
+- No Kotlin, Web map, backend or financial logic changed in this follow-up.
+- **NEXT:** inspect exact new HEAD Map Engine and Native Pilot and fix first confirmed failure. If green, obtain and validate three same-HEAD APK artifacts; physical map tap, Rider photo-preview and POS parity remain OPEN.
+
 ## 2026-10-28 Customer Checkout map touch-target height parity — IN PROGRESS (exact-head CI NEXT)
 
 - Confirmed Customer Web Checkout and Native Checkout both hard-coded a 115 px/dp tall selectable map. The same app's dedicated Location screen already allows 240–400 dp. A 115 px checkout viewport constrains precision when the user must tap a coordinate, especially with zoom controls.

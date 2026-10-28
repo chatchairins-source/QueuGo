@@ -182,7 +182,7 @@ ok(
   'Customer checkout QueueGo Map readiness must stay visually silent'
 );
 
-ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(115.dp)')&&customerCartCheckout.includes('QgLocationPickerMap')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with checkout QueueGo Map and fixed action dock');
+ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(checkoutMapHeight)')&&customerCartCheckout.includes('.coerceIn(200.dp, 300.dp)')&&customerCartCheckout.includes('QgLocationPickerMap')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with checkout QueueGo Map and fixed action dock');
 ok(
   !customerCartCheckout.includes('QgPlaceSearchPanel(') &&
   !customerCartCheckout.includes('searchPlaces: suspend') &&
