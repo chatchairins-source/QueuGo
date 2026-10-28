@@ -129,6 +129,7 @@ Never recreate work from memory when a repository checkpoint exists.
 - A cash payment is confirmed only by the server-authoritative `PAID` + `CLOSED` bill and matching method/tender. A read/refresh failure is not a payment failure and must never trigger an automatic second payment request.
 - After an uncertain table-create or QR RPC response, read the current shop snapshot to reconcile; do not blindly repeat the write. Creating a table should immediately attempt its existing table-QR RPC and open the resulting server-backed QR.
 - Do not delete a table that has POS order history. Explain that it must be edited/deactivated instead; preserve the existing shop-scoped table and QR functions.
+- POS-only reports must use the existing Web Production dashboard/item-sales RPCs, include average ticket, cash sales, discounts, refunds, voids, comparison percentage, hourly rows and product sales, and export those same server-backed rows as UTF-8 CSV with spreadsheet-formula escaping. POS totals are dine-in + takeaway only; do not mix Delivery or GP into POS-only totals.
 - Keep receipts tied to a confirmed paid bill and print through the existing HTTPS Print Bridge. Table QR PNG saving uses Android's document picker; QR printing uses the Android system print dialog to match Web `window.print`, without replacing or duplicating receipt printing. Do not alter Production money/ledger data for testing.
 
 ## Reporting after each chunk

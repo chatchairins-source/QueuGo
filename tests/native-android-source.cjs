@@ -1613,10 +1613,20 @@ ok(posOnlyUi.includes('"delivery" -> PosDeliveryView(')&&
   posOnlyUi.includes('ใช้หน้าร้าน POS ต่อได้เสมอ · ตรวจความพร้อมก่อนเปิดรับ Delivery'),
   'Native POS may expose the Web Delivery readiness/configuration surface without mixing Delivery orders into POS bills');
 ok(posOnlyApi.includes('delivery = raw.optDouble("DELIVERY"')&&posOnlyApi.includes('gp = raw.optDouble("GP"')&&
-  posOnlyUi.includes('PosReportLine("Delivery", report.delivery)')&&
-  posOnlyUi.includes('PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway + report.delivery, true)')&&
-  posOnlyUi.includes('PosReportLine("GP Delivery", report.gp)'),
-  'Native POS owner report must match Web Delivery, total and GP summary fields from the existing server RPC');
+  posOnlyApi.includes('averageTicket = raw.optDouble("average_ticket"')&&
+  posOnlyApi.includes('cashSales = raw.optDouble("cash_sales"')&&
+  posOnlyApi.includes('hourlySales = if (hourlyRows == null)')&&
+  posOnlyUi.includes('PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)')&&
+  posOnlyUi.includes('PosReportLine("รับเงินสด", report.cashSales)')&&
+  posOnlyUi.includes('PosReportLine("ส่วนลด", report.discounts)')&&
+  posOnlyUi.includes('PosReportLine("คืนเงิน", report.refunds)')&&
+  posOnlyUi.includes('report.hourlySales.forEach')&&
+  posOnlyUi.includes('buildPosReportCsv(report, itemSalesReport)')&&
+  posOnlyUi.includes('ActivityResultContracts.CreateDocument("text/csv")')&&
+  posOnlyUi.includes('Text("ส่งออก CSV"')&&
+  !posOnlyUi.includes('PosReportLine("Delivery", report.delivery)')&&
+  !posOnlyUi.includes('PosReportLine("GP Delivery", report.gp)'),
+  'Native POS report must match Web POS metrics/hourly/CSV and exclude Delivery/GP from POS totals');
 ok(posOnlyApi.includes('&sales_channel=eq.POS&created_at=gte.'),'Native POS history must be scoped to POS at the server');
 
 const sharedNativeApi=read('shared/src/main/java/com/queuego/shared/QueueGoNativeApi.kt');

@@ -157,6 +157,28 @@ fun MerchantPosScreen(
     var selectedPosCategory by rememberSaveable { mutableStateOf("all") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var pendingReportCsv by remember { mutableStateOf<String?>(null) }
+    val reportCsvLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        val csv = pendingReportCsv
+        pendingReportCsv = null
+        if (uri != null && csv != null) {
+            scope.launch(Dispatchers.IO) {
+                val result = runCatching {
+                    val output = context.contentResolver.openOutputStream(uri)
+                        ?: error("ไม่สามารถเปิดไฟล์สำหรับบันทึกรายงาน POS")
+                    output.use { stream -> stream.write(csv.toByteArray(Charsets.UTF_8)) }
+                }
+                withContext(Dispatchers.Main) {
+                    message = result.fold(
+                        onSuccess = { "บันทึกรายงาน POS CSV แล้ว" },
+                        onFailure = { "บันทึก CSV ไม่สำเร็จ: " + (it.message ?: "ข้อผิดพลาด") }
+                    )
+                }
+            }
+        }
+    }
     var pendingQrBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var qrActionMessage by remember { mutableStateOf<String?>(null) }
     val qrSaveLauncher = rememberLauncherForActivityResult(
@@ -1502,6 +1524,10 @@ fun MerchantPosScreen(
                     onRefund = { bill ->
                         refundTarget = bill
                         refundReason = ""
+                    },
+                    onExportCsv = { csv ->
+                        pendingReportCsv = csv
+                        reportCsvLauncher.launch("queuego-pos-sales-${reportDays}d.csv")
                     }
                 )
 
@@ -2971,6 +2997,51 @@ private fun PosBillsView(
     }
 }
 
+internal fun posReportCsvCell(value: Any?): String {
+    val raw = value?.toString().orEmpty()
+    val startsFormula = raw.firstOrNull()?.let { ch ->
+        ch == '=' || ch == '+' || ch == '-' || ch == '@' || ch == '\t' || ch == '\r'
+    } == true
+    val safe = if (startsFormula) "'" + raw else raw
+    return "\"" + safe.replace("\"", "\"\"") + "\""
+}
+
+internal fun buildPosReportCsv(
+    report: PosOwnerDashboard,
+    itemSalesReport: PosItemSalesReport
+): String {
+    val rows = mutableListOf<List<Any?>>()
+    rows.add(listOf("รายงาน POS", "ค่า"))
+    rows.add(listOf("ทานที่ร้าน", report.dineIn))
+    rows.add(listOf("รับกลับ", report.takeaway))
+    rows.add(listOf("ยอดขายรวม", report.dineIn + report.takeaway))
+    rows.add(listOf("จำนวนบิล", report.orders))
+    rows.add(listOf("เฉลี่ยต่อบิล", report.averageTicket))
+    rows.add(listOf("รับเงินสด", report.cashSales))
+    rows.add(listOf("ส่วนลด", report.discounts))
+    rows.add(listOf("คืนเงิน", report.refunds))
+    rows.add(listOf("ยกเลิกบิล", report.voids))
+    rows.add(listOf("เทียบช่วงก่อน (%)", report.changePercent ?: ""))
+    rows.add(emptyList<Any?>())
+    rows.add(listOf("ยอดขายรายชั่วโมง"))
+    rows.add(listOf("ชั่วโมง", "จำนวนบิล", "ยอดขาย"))
+    report.hourlySales.forEach { hourly ->
+        rows.add(listOf(
+            hourly.hour.toString().padStart(2, '0') + ":00",
+            hourly.bills,
+            hourly.sales
+        ))
+    }
+    rows.add(emptyList<Any?>())
+    rows.add(listOf("สินค้า", "จำนวน", "จำนวนบิล", "ยอดขาย (บาท)"))
+    itemSalesReport.items.forEach { item ->
+        rows.add(listOf(item.name, item.quantity, item.bills, item.sales))
+    }
+    return "\uFEFF" + rows.joinToString("\r\n") { row ->
+        row.joinToString(",") { posReportCsvCell(it) }
+    }
+}
+
 @Composable
 private fun PosReportsView(
     snapshot: PosSnapshot,
@@ -2979,7 +3050,8 @@ private fun PosReportsView(
     itemSalesReport: PosItemSalesReport?,
     busy: Boolean,
     onDays: (Int) -> Unit,
-    onRefund: (PosBill) -> Unit
+    onRefund: (PosBill) -> Unit,
+    onExportCsv: (String) -> Unit
 ) {
     val paid = snapshot.bills.filter { it.paymentStatus == "PAID" }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
@@ -2992,23 +3064,63 @@ private fun PosReportsView(
         }
         Spacer(Modifier.height(9.dp))
         if (report != null) {
+            val changeLabel = report.changePercent?.let {
+                (if (it > 0) "+" else "") + it.toString() + "%"
+            } ?: "ไม่มีข้อมูลช่วงก่อน"
             QgCard(Modifier.fillMaxWidth()) {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     PosReportLine("ทานที่ร้าน", report.dineIn)
                     PosReportLine("รับกลับ", report.takeaway)
-                    PosReportLine("Delivery", report.delivery)
                     HorizontalDivider()
-                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway + report.delivery, true)
+                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)
                     Text("จำนวนบิล " + report.orders, color = QgMuted, fontSize = 11.sp)
-                    Spacer(Modifier.height(4.dp))
-                    PosReportLine("GP หน้าร้าน", 0.0)
-                    PosReportLine("GP Delivery", report.gp)
+                    PosReportLine("เฉลี่ยต่อบิล", report.averageTicket)
+                    PosReportLine("รับเงินสด", report.cashSales)
+                    PosReportLine("ส่วนลด", report.discounts)
+                    PosReportLine("คืนเงิน", report.refunds)
+                    Text("ยกเลิกบิล " + report.voids, color = QgMuted, fontSize = 11.sp)
+                    Text("เทียบช่วงก่อน: " + changeLabel, color = QgMuted, fontSize = 11.sp)
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+            QgSectionTitle("ยอดขายรายชั่วโมง")
+            Spacer(Modifier.height(7.dp))
+            if (report.hourlySales.isEmpty()) {
+                Text("ยังไม่มีรายการขายรายชั่วโมงในช่วงนี้", color = QgMuted, fontSize = 12.sp)
+            } else {
+                report.hourlySales.forEach { hourly ->
+                    QgCard(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(hourly.hour.toString().padStart(2, '0') + ":00",
+                                modifier = Modifier.weight(0.7f), fontWeight = FontWeight.Bold)
+                            Text(hourly.bills.toString() + " บิล",
+                                modifier = Modifier.weight(0.7f), color = QgMuted, fontSize = 12.sp)
+                            Text("฿" + money(hourly.sales),
+                                modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
 
         Spacer(Modifier.height(14.dp))
-        QgSectionTitle("สินค้าขายดี", "ยอดขายรายสินค้า POS · ตามช่วงเวลาที่เลือก")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Column(Modifier.weight(1f)) {
+                QgSectionTitle("สินค้าขายดี", "ยอดขายรายสินค้า POS · ตามช่วงเวลาที่เลือก")
+            }
+            if (report != null && itemSalesReport != null && itemSalesReport.items.isNotEmpty()) {
+                OutlinedButton(
+                    onClick = { onExportCsv(buildPosReportCsv(report, itemSalesReport)) },
+                    enabled = !busy,
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) { Text("ส่งออก CSV", fontSize = 11.sp) }
+            }
+        }
         if (itemSalesReport == null) {
             Text("กำลังโหลดสรุปยอดขายรายสินค้า", color = QgMuted, fontSize = 12.sp)
         } else if (itemSalesReport.items.isEmpty()) {

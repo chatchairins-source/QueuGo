@@ -1,3 +1,10 @@
+## 2026-10-28 Native Merchant POS P1 — Web report parity (IN PROGRESS)
+
+- Previous QR chunk commit: `867959a838695b66d295414ce4d97ddb8ab4d0d0`. Source integrity and Kotlin unit tests passed; Build APKs, 16 KB page-size check and WebView gate passed in the Native Pilot PR run `40649529851`. Map Engine run `40649529798` passed. Emulator launch was still running at this checkpoint, so full Native Pilot CI is not yet marked green.
+- Web Production `merchant/pos-table-v2.js` CSV export contains POS dine-in/takeaway totals, order count, average ticket, cash sales, discounts, refunds, voids, comparison percent, hourly rows and product rows. Native previously discarded those server fields, omitted hourly rows/CSV, and mixed Delivery/GP into the POS-only report.
+- This change parses the existing RPC fields, renders the Web POS metrics and hourly rows, exports the same live report/item-sales data through Android's document picker as UTF-8 CSV, protects spreadsheet formula cells, and removes Delivery/GP from POS-only totals. No new RPC or Production data mutation.
+- **NEXT:** inspect the first failure on the new exact-head CI and fix it before more features; then package APKs from the newest green Push run, verify Build Info SHA + file hashes, and continue with non-production cashier-flow/device acceptance. Do not claim the real cashier workflow was tested without a test backend or physical device.
+
 ## 2026-10-28 Native Merchant POS P1 — QR PNG save/print parity (IN PROGRESS)
 
 - Previous table-create chunk: commit `c4501523c6208202ee7d59ce6ce13615439a6359`; parent `e15b9b5c0a10e755e80cb302ab13f1c9a6a1da4b`. Map Engine run `40647812433` is `success`. Native Pilot push run `40647806064` and PR run `40647812316` are `success` / `success` at this checkpoint; source regression, Kotlin tests, APK build, 16 KB and WebView gates passed before the emulator launch step. Artifact `12798194645` contains three Debug APKs built with Build Info SHA `c4501523c6208202ee7d59ce6ce13615439a6359`; it is an intermediate reference, not the final bundle.

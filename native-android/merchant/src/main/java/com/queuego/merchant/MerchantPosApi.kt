@@ -152,21 +152,60 @@ data class PosItemSalesReport(
     val items: List<PosItemSalesRow>
 )
 
+data class PosHourlySalesRow(
+    val hour: Int,
+    val bills: Int,
+    val sales: Double
+)
+
 data class PosOwnerDashboard(
     val dineIn: Double,
     val takeaway: Double,
     val delivery: Double,
     val gp: Double,
-    val orders: Int
+    val orders: Int,
+    val averageTicket: Double = 0.0,
+    val cashSales: Double = 0.0,
+    val discounts: Double = 0.0,
+    val refunds: Double = 0.0,
+    val voids: Int = 0,
+    val changePercent: Double? = null,
+    val hourlySales: List<PosHourlySalesRow> = emptyList()
 )
 
-internal fun merchantPosOwnerDashboard(raw: JSONObject): PosOwnerDashboard = PosOwnerDashboard(
-    dineIn = raw.optDouble("DINE_IN", 0.0),
-    takeaway = raw.optDouble("TAKEAWAY", 0.0),
-    delivery = raw.optDouble("DELIVERY", 0.0),
-    gp = raw.optDouble("GP", 0.0),
-    orders = raw.optInt("orders", 0)
-)
+internal fun merchantPosOwnerDashboard(raw: JSONObject): PosOwnerDashboard {
+    val hourlyRows = raw.optJSONArray("hourly_sales")
+    return PosOwnerDashboard(
+        dineIn = raw.optDouble("DINE_IN", 0.0),
+        takeaway = raw.optDouble("TAKEAWAY", 0.0),
+        delivery = raw.optDouble("DELIVERY", 0.0),
+        gp = raw.optDouble("GP", 0.0),
+        orders = raw.optInt("orders", 0),
+        averageTicket = raw.optDouble("average_ticket", 0.0),
+        cashSales = raw.optDouble("cash_sales", 0.0),
+        discounts = raw.optDouble("discounts", 0.0),
+        refunds = raw.optDouble("refunds", 0.0),
+        voids = raw.optInt("voids", 0),
+        changePercent = if (raw.has("change_percent") && !raw.isNull("change_percent")) {
+            raw.optDouble("change_percent")
+        } else {
+            null
+        },
+        hourlySales = if (hourlyRows == null) {
+            emptyList()
+        } else {
+            (0 until hourlyRows.length()).mapNotNull { index ->
+                hourlyRows.optJSONObject(index)?.let { row ->
+                    PosHourlySalesRow(
+                        hour = row.optInt("hour"),
+                        bills = row.optInt("bills"),
+                        sales = row.optDouble("sales", 0.0)
+                    )
+                }
+            }
+        }
+    )
+}
 
 data class PosHistoryRow(
     val id: String,
