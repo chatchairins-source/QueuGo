@@ -53,9 +53,9 @@ fun CustomerTrackingMap(order: CustomerOrder, rider: CustomerTrackingRider?) {
     }
     val config = LocalConfiguration.current
     val mapHeight = when {
-        config.screenHeightDp < 760 -> 145.dp
-        config.screenWidthDp <= 420 -> 160.dp
-        else -> 178.dp
+        config.screenHeightDp < 760 -> 205.dp
+        config.screenWidthDp <= 420 -> 225.dp
+        else -> 260.dp
     }
     Column(
         Modifier
@@ -113,6 +113,18 @@ fun CustomerTrackingMap(order: CustomerOrder, rider: CustomerTrackingRider?) {
                 Text("ยังไม่มีพิกัดจริง", color = QgMuted, fontSize = 10.sp)
             }
         }
+        Spacer(Modifier.height(10.dp))
+        // Always show what each marker means, including when the Rider has not
+        // shared a valid location yet. Do not imply a fictitious Rider coordinate.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CustomerTrackingMarkerLegend("ร้าน · รับ", QgRed, Modifier.weight(1f))
+            CustomerTrackingMarkerLegend("ไรเดอร์", QgRed, Modifier.weight(1f), visible = hasRiderLocation && !searching)
+            CustomerTrackingMarkerLegend("ลูกค้า · ส่ง", Color(0xFF007F99), Modifier.weight(1f))
+        }
         Spacer(Modifier.height(7.dp))
         val updated = runCatching { Instant.parse(rider?.updatedAt).toEpochMilli() }.getOrNull()
         Row(
@@ -139,4 +151,34 @@ fun CustomerTrackingMap(order: CustomerOrder, rider: CustomerTrackingRider?) {
         if (timedOut) TextButton(onClick = { ready = false; timedOut = false; attempt++ }) { Text("ลองใหม่") }
     }
     Spacer(Modifier.height(8.dp))
+}
+
+@Composable
+private fun CustomerTrackingMarkerLegend(
+    title: String,
+    markerColor: Color,
+    modifier: Modifier = Modifier,
+    visible: Boolean = true
+) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFF7F8FA))
+            .padding(horizontal = 6.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.size(9.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(if (visible) markerColor else Color(0xFFB5BBC3))
+        )
+        Text(
+            title,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 11.sp,
+            color = if (visible) Color(0xFF202226) else QgMuted,
+            maxLines = 1
+        )
+    }
 }

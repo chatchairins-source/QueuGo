@@ -267,6 +267,18 @@ ok(nativeAuthApi.includes('profileImage')&&nativeAuthApi.includes('profile_image
 ok((nativeAuthApi.match(/customerProfilePhoto\(\)/g)||[]).length>=2&&nativeAuthApi.includes('status,phone,metadata&auth_user_id=eq.'),'Customer profile image metadata must refresh for existing authenticated sessions');
 ok(customerTrackingScreen.includes('size(46.dp)')&&customerTrackingScreen.includes('RoundedCornerShape(20.dp)')&&customerTrackingScreen.includes('fontSize = 22.sp')&&customerTrackingScreen.includes('"แจ้งปัญหา"'),'Customer native tracking must preserve Production rider, hero, total and support proportions');
 const customerTrackingMap=read('customer/src/main/java/com/queuego/customer/CustomerTrackingMap.kt');
+const customerTrackingPolicy=read('customer/src/main/java/com/queuego/customer/CustomerTrackingPolicy.kt');
+ok(
+  customerTrackingPolicy.includes('"ร้านค้า · รับ"') &&
+  customerTrackingPolicy.includes('"ลูกค้า · ส่ง"') &&
+  customerTrackingPolicy.includes('"ไรเดอร์"') &&
+  customerTrackingMap.includes('CustomerTrackingMarkerLegend("ร้าน · รับ"') &&
+  customerTrackingMap.includes('CustomerTrackingMarkerLegend("ไรเดอร์"') &&
+  customerTrackingMap.includes('CustomerTrackingMarkerLegend("ลูกค้า · ส่ง"') &&
+  customerTrackingMap.includes('else -> 260.dp'),
+  'Customer order tracking map must identify Merchant pickup, Rider position and Customer dropoff with distinct labeled markers and visible legend'
+);
+
 ok(customerTrackingMap.includes('RoundedCornerShape(18.dp)')&&customerTrackingMap.includes('.padding(10.dp)')&&customerTrackingMap.includes('Color(0xFF20B46D)')&&customerTrackingMap.includes('fontSize = 9.sp'),'Customer native tracking map card must preserve Production radius, padding and live-location indicator');
 ok(!/private fun OrderTrackingScreen\(/.test(source),'legacy generic Customer tracking screen must stay removed');
 ok(source.includes('qg_customer_cancel_order'),'Customer native cancellation must use production RPC');

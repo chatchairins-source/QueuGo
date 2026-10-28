@@ -1,3 +1,11 @@
+## 2026-10-28 Customer live order map actor / stop identity — P0 fix pending exact-HEAD CI
+
+- Owner device photo of QT-4626 shows three colored dots with no indication which is the merchant/pickup, Rider, or customer/dropoff; map height was only 145–178 dp.
+- Customer tracking point authority now carries explicit role labels (ร้านค้า · รับ / ไรเดอร์ / ลูกค้า · ส่ง) into the shared MapLibre role-specific marker artwork. The unassigned/searching state does not invent a Rider marker.
+- Enlarged the live tracking map and added an always-visible 3-part legend; gray Rider legend correctly indicates no valid Rider position. No changes to coordinate source, RLS, or dispatch.
+- Added Kotlin assertions and Native source regression for labels and visibility.
+- **NEXT:** check exact-HEAD Native Pilot and Map Engine. Fix first confirmed failure. On successful build, generate new Customer debug APK and test QT live tracking in Android portrait/tablet. Do not treat CI-only marker visuals as proof of physical-device parity.
+
 ## 2026-10-28 Rider camera gestures + remove redundant pickup confirmation — code fix pending exact-HEAD CI
 
 - Owner physical evidence: Rider map could not zoom, rotate or tilt like the Web while navigating. Root causes confirmed at source: multi-touch was explicitly *not* reported as a user gesture; 110 ms FREE_PAN auto-follow preempted finger input; MapLibre interaction flags were not explicitly enabled; route-aware camera bearing was overwritten with raw puck bearing; manual input during initial GPS acquisition was forced back to FOLLOW.
