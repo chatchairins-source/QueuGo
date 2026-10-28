@@ -293,13 +293,23 @@ private class RiderNavigationMapHolder {
                         multiTouchGesture = false
                     }
                     MotionEvent.ACTION_POINTER_DOWN -> {
-                        // Match Web: pinch / rotate / pitch are temporary transforms and
-                        // must not abandon FOLLOW. Only a deliberate one-finger pan does.
-                        if (event.pointerCount >= 2) multiTouchGesture = true
+                        // A two-finger transform must own the camera until the rider
+                        // finishes interacting. FOLLOW may resume after idle timeout.
+                        if (event.pointerCount >= 2) {
+                            multiTouchGesture = true
+                            if (!gestureReported) {
+                                gestureReported = true
+                                onUserGesture()
+                            }
+                        }
                     }
                     MotionEvent.ACTION_MOVE -> {
                         if (event.pointerCount >= 2) {
                             multiTouchGesture = true
+                            if (!gestureReported) {
+                                gestureReported = true
+                                onUserGesture()
+                            }
                         } else if (
                             !multiTouchGesture &&
                             !gestureReported &&
@@ -314,6 +324,9 @@ private class RiderNavigationMapHolder {
                     }
                     MotionEvent.ACTION_UP,
                     MotionEvent.ACTION_CANCEL -> {
+                        // Start the idle timer after fingers are lifted, not when the
+                        // gesture began, so a long pinch/rotate is never cut short.
+                        if (gestureReported) onUserGesture()
                         gestureReported = false
                         multiTouchGesture = false
                     }
@@ -326,6 +339,11 @@ private class RiderNavigationMapHolder {
                 mapCreatedCount += 1
                 // QueueGo renders one branded compass in the Rider tool stack.
                 readyMap.uiSettings.isCompassEnabled = false
+                readyMap.uiSettings.isZoomGesturesEnabled = true
+                readyMap.uiSettings.isScrollGesturesEnabled = true
+                readyMap.uiSettings.isRotateGesturesEnabled = true
+                readyMap.uiSettings.isTiltGesturesEnabled = true
+                readyMap.uiSettings.setDisableRotateWhenScaling(false)
                 // Match the Web presentation: no MapLibre logo watermark, but keep
                 // source attribution visible.
                 readyMap.uiSettings.isLogoEnabled = false
@@ -842,12 +860,11 @@ private class RiderNavigationMapHolder {
             state.recenterRequest != lastAppliedRecenterRequest
         if (!state.followRider && !explicitRecenter) return
         val renderedBearing = activeMap.cameraPosition.bearing.toFloat()
-        val decision = navigationCameraDecision(state, renderedBearing, followPuckBearing = true) ?: return
-        val targetBearing = if (state.followRider) {
-            resolvedRiderPuckHeading(state.rider) ?: decision.bearingDegrees ?: renderedBearing
-        } else {
-            decision.bearingDegrees ?: renderedBearing
-        }
+        // The route-aware camera decision already blends the matched road course,
+        // GNSS bearing and previous camera heading. Do not overwrite it with the
+        // raw puck heading or active turns will point the camera off-route.
+        val decision = navigationCameraDecision(state, renderedBearing) ?: return
+        val targetBearing = decision.bearingDegrees ?: renderedBearing
         // Web FOLLOW anchors the camera on the exact presentation puck, then shifts that
         // anchor down the viewport according to speed and the bottom dock. Do the same here
         // instead of centering the route look-ahead point as a separate Native policy.

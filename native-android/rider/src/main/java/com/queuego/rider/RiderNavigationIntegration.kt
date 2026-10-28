@@ -663,16 +663,12 @@ internal fun QueueGoRiderNavigationMap(
         onMapReady = onMapReady,
         compassResetSignal = compassResetSignal,
         onUserGesture = {
-            if (riderFix?.point?.valid == true) {
-                viewModeState = viewModeController.onUserGesture()
-                pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
-                userGestureEpoch += 1
-            } else {
-                // A startup gesture before the first live GPS fix must not strand the
-                // Rider in FREE_PAN. Keep FOLLOW ownership until a real fix exists.
-                viewModeState = viewModeController.onRecenter()
-                pendingViewModePersistence = NavigationViewMode.FOLLOW.name
-            }
+            // Manual gestures must work even while GPS acquires its first fix.
+            // With an active job FOLLOW returns after the real idle grace period;
+            // otherwise the rider can keep their chosen map perspective.
+            viewModeState = viewModeController.onUserGesture()
+            pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
+            userGestureEpoch += 1
         },
         onCameraChanged = { camera ->
             pendingCameraPersistence = doubleArrayOf(

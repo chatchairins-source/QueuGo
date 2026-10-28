@@ -1,6 +1,8 @@
 package com.queuego.ridernavigationmap
 
-const val NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS = 110L
+// Manual zoom/rotate/tilt needs enough idle time before the navigation camera
+// resumes FOLLOW; 110 ms stole multi-touch gestures from the rider.
+const val NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS = 8_000L
 
 enum class NavigationViewMode {
     FOLLOW,

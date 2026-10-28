@@ -36,7 +36,7 @@ class NavigationViewModeTest {
 
         assertEquals(NavigationViewMode.FOLLOW, state.mode)
         assertFalse(state.recenterVisible)
-        assertEquals(110L, NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS)
+        assertEquals(8_000L, NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS)
     }
 
     @Test

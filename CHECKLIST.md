@@ -1,3 +1,11 @@
+## 2026-10-28 Rider camera gestures + remove redundant pickup confirmation — code fix pending exact-HEAD CI
+
+- Owner physical evidence: Rider map could not zoom, rotate or tilt like the Web while navigating. Root causes confirmed at source: multi-touch was explicitly *not* reported as a user gesture; 110 ms FREE_PAN auto-follow preempted finger input; MapLibre interaction flags were not explicitly enabled; route-aware camera bearing was overwritten with raw puck bearing; manual input during initial GPS acquisition was forced back to FOLLOW.
+- Native Rider map now explicitly enables pinch/scroll/rotate/tilt plus simultaneous zoom/rotate. A two-finger gesture enters FREE_PAN, the idle timer starts once fingers are lifted, and active navigation returns to FOLLOW only after 8 s idle or immediate user recenter. Initial GPS acquisition does not block manual map gestures. The FOLLOW camera uses the already smoothed route/GNSS bearing decision; zoom/tilt remain governed by NavigationCameraPolicy.
+- Removed the duplicate `ได้รับอาหารแล้วใช่ไหม?` popup and its green CTA from the photographed Food pickup path. The proof/photo quality requirement and the existing single server-backed pickup action remain; after acceptable evidence the Rider button calls `onConfirm` directly.
+- Updated source and Kotlin tests to protect these behaviors.
+- **NEXT:** exact-head Native Pilot and Map Engine; first confirmed failure only; verify active navigation pan/zoom/rotate/tilt and confirmed pickup on physical Android. After CI passes, publish new APKs from this exact source, never distribute old e35b0bff as fixed.
+
 ## 2026-10-28 Ride gesture CI first failure repaired
 
 - First confirmed regression failure of `2465b5da` was in `tests/native-android-source.cjs`, which still required the old Buriram fallback viewport and did not recognize the new one-time camera initialization. Both Native Pilot and Map Engine stopped at that same stale guard.

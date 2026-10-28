@@ -1209,7 +1209,17 @@ ok(
   !riderRouteMatcher.includes('forwardJump') &&
   riderNavigationIntegrationForParity.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false') &&
   riderMap.includes('MotionEvent.ACTION_POINTER_DOWN') &&
-  riderMap.includes('if (event.pointerCount >= 2) multiTouchGesture = true'),
+  riderMap.includes('multiTouchGesture = true') &&
+  riderMap.includes('readyMap.uiSettings.isZoomGesturesEnabled = true') &&
+  riderMap.includes('readyMap.uiSettings.isRotateGesturesEnabled = true') &&
+  riderMap.includes('readyMap.uiSettings.isTiltGesturesEnabled = true') &&
+  riderMap.includes('readyMap.uiSettings.setDisableRotateWhenScaling(false)') &&
+  riderMap.includes('if (gestureReported) onUserGesture()') &&
+  riderMap.includes('val decision = navigationCameraDecision(state, renderedBearing)') &&
+  !riderMap.includes('followPuckBearing = true') &&
+  riderNavigationIntegrationForParity.includes('viewModeState = viewModeController.onUserGesture()') &&
+  riderNavigationIntegrationForParity.includes('NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS') &&
+  !riderApp.includes('showPickupConfirmation'),
   'Native Rider FOLLOW, route matching, visible GPS path and gestures must stay locked to Web navigation behavior'
 );
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');

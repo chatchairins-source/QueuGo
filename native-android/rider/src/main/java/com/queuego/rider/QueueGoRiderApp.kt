@@ -4606,7 +4606,6 @@ private fun VerificationScreen(
     val pickup = mode == "pickup" || mode == "expressPickup"
     val marketPickupMode = mode == "marketPickup"
     var previewQuality by remember(photoUri) { mutableStateOf<RiderEvidenceQuality?>(null) }
-    var showPickupConfirmation by remember(mode, job.id, photoUri) { mutableStateOf(false) }
     val previewReady = previewQuality?.acceptable == true
     val photoReady = photoUri != null
     val deliveryReady = if (expressMode) {
@@ -4855,11 +4854,7 @@ private fun VerificationScreen(
                 )
             } else {
                 Button(
-                    onClick = when {
-                        !photoReady -> onCamera
-                        pickup && !expressMode && !marketPickupMode -> ({ showPickupConfirmation = true })
-                        else -> onConfirm
-                    },
+                    onClick = if (!photoReady) onCamera else onConfirm,
                     enabled = !busy && if (photoReady) deliveryReady else true,
                     modifier = Modifier.fillMaxWidth().height(54.dp),
                     shape = RoundedCornerShape(18.dp),
@@ -4888,54 +4883,7 @@ private fun VerificationScreen(
             }
         }
 
-        if (showPickupConfirmation) {
-            Dialog(
-                onDismissRequest = { if (!busy) showPickupConfirmation = false },
-                properties = DialogProperties(dismissOnBackPress = !busy, dismissOnClickOutside = !busy)
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().widthIn(max = 430.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ) {
-                    Column(Modifier.padding(18.dp)) {
-                        Text(
-                            "ได้รับอาหารแล้วใช่ไหม?",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color(0xFF211E20)
-                        )
-                        Text(
-                            "ตรวจว่ารายการครบและเก็บรูปใบเสร็จไว้แล้ว ก่อนเริ่มนำส่งให้ลูกค้า",
-                            modifier = Modifier.padding(top = 6.dp),
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
-                            color = QgMuted
-                        )
-                        Button(
-                            onClick = {
-                                showPickupConfirmation = false
-                                onConfirm()
-                            },
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(52.dp).padding(top = 14.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF159947))
-                        ) {
-                            Text("ใช่ ได้รับแล้ว", fontWeight = FontWeight.Black)
-                        }
-                        OutlinedButton(
-                            onClick = { showPickupConfirmation = false },
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(50.dp).padding(top = 8.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Text("ไม่ กำลังรออยู่", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
+
     }
 }
 
