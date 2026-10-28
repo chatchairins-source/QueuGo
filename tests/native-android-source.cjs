@@ -1363,6 +1363,16 @@ const merchantPosApi=read('merchant/src/main/java/com/queuego/merchant/MerchantP
 const merchantPosScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
 const merchantPosOptions=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOptions.kt');
 ok(
+  merchantPosScreen.includes('maxWidth >= 980.dp -> 4') &&
+  merchantPosScreen.includes('maxWidth >= 620.dp -> 3') &&
+  merchantPosScreen.includes('products.chunked(menuColumns)') &&
+  merchantPosScreen.includes('repeat(menuColumns - row.size)') &&
+  merchantPosScreen.includes('!posProductSoldOut(product)') &&
+  merchantPosScreen.includes('onProduct(product)'),
+  'Merchant POS product grid must adapt to phone/tablet while keeping real purchase guards'
+);
+
+ok(
   merchantPosScreen.includes('private fun PosTablesView(') &&
   merchantPosScreen.includes('BoxWithConstraints(Modifier.fillMaxWidth())') &&
   merchantPosScreen.includes('if (maxWidth >= 650.dp) 2 else 1') &&

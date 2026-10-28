@@ -1,3 +1,11 @@
+## 2026-10-28 Merchant POS counter product grid — responsive phone/tablet visuals (IN PROGRESS)
+
+- Owner's real Android tablet counter screenshot displayed only two oversized product cards despite a wide screen. Source in `PosCounterView` hard-coded `products.chunked(2)` regardless of viewport.
+- Counter now renders 2 columns on compact phones, 3 on >=620dp and 4 on >=980dp, with bounded photo heights, stronger price typography, readable edit-price action and consistent card min heights. This modifies presentation only: product availability, stock guards, real selection, bill creation, server checkout and permissions stay unchanged.
+- Added source regression for responsive thresholds and preserved click/stock guard. No mock/demo products.
+- Parent table-create visibility fix at `d205e7b167453d3591f38f1840e2e47899cff4fc` is on exact-head CI; this successor must receive its own Native Pilot/Map gate. Actual Samsung tablet visual comparison, real POS table creation and order/payment acceptance are still required.
+- **NEXT:** check exact-head CI first confirmed failure; then verify the POS table-add control, tablet grid, QR and server-backed create/open/close flows with authenticated device evidence. Do not distribute an old APK as fixed.
+
 ## 2026-10-28 Merchant POS tablet — hidden Add Table button root cause and responsive visual repair (IN PROGRESS)
 
 - Owner's seven real tablet photos show POS typography/actions far too small, large empty regions, and no visible `เพิ่มโต๊ะ` button even though existing tables 1/2 expose QR/edit/delete. Read newest successor source and confirmed root cause: `PosTablesView` placed shared `QgSectionTitle` (internally `Modifier.fillMaxWidth()`) inside a horizontal `Row`, consuming the full width and clipping the sibling add button on a tablet. `canManage = can("manage_staff")` remains the existing server-authorized owner/staff gate.

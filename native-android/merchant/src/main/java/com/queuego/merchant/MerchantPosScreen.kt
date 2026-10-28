@@ -1679,37 +1679,63 @@ private fun PosCounterView(
         val products = snapshot.products.filter {
             search.isBlank() || it.name.contains(search.trim(), ignoreCase = true)
         }
-        products.chunked(2).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { product ->
-                    QgCard(
-                        Modifier
-                            .weight(1f)
-                            .padding(bottom = 8.dp)
-                            .clickable(enabled = !busy && canReceive && !posProductSoldOut(product)) { onProduct(product) }
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val menuColumns = when {
+                maxWidth >= 980.dp -> 4
+                maxWidth >= 620.dp -> 3
+                else -> 2
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                products.chunked(menuColumns).forEach { row ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.Top
                     ) {
-                        Column {
-                            QgRemoteImage(product.image, Modifier.fillMaxWidth().height(82.dp), product.name)
-                            Spacer(Modifier.height(5.dp))
-                            Text(product.name, fontWeight = FontWeight.ExtraBold, maxLines = 2)
-                            Text("฿" + money(product.price), color = QgRed, fontWeight = FontWeight.Black)
-                            if (posProductInventoryTracked(product)) {
-                                Text(
-                                    if (posProductSoldOut(product)) "สินค้าหมดสต็อก · เหลือ 0" else "เหลือ ${product.stock}",
-                                    color = if (posProductSoldOut(product)) QgRed else QgMuted,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            if (canEditPrice) {
-                                TextButton(onClick = { onEditPrice(product) }, enabled = !busy) {
-                                    Text("แก้ราคา", fontSize = 10.sp)
+                        row.forEach { product ->
+                            QgCard(
+                                Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 176.dp)
+                                    .clickable(enabled = !busy && canReceive && !posProductSoldOut(product)) { onProduct(product) }
+                            ) {
+                                Column {
+                                    QgRemoteImage(
+                                        product.image,
+                                        Modifier.fillMaxWidth().height(if (menuColumns >= 3) 100.dp else 106.dp),
+                                        product.name
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        product.name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        maxLines = 2
+                                    )
+                                    Text("฿" + money(product.price),
+                                        color = QgRed, fontSize = 16.sp,
+                                        fontWeight = FontWeight.ExtraBold)
+                                    if (posProductInventoryTracked(product)) {
+                                        Text(
+                                            if (posProductSoldOut(product)) "สินค้าหมดสต็อก · เหลือ 0" else "เหลือ ${product.stock}",
+                                            color = if (posProductSoldOut(product)) QgRed else QgMuted,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    if (canEditPrice) {
+                                        TextButton(onClick = { onEditPrice(product) }, enabled = !busy) {
+                                            Text("แก้ราคา", fontSize = 12.sp)
+                                        }
+                                    }
                                 }
                             }
                         }
+                        repeat(menuColumns - row.size) {
+                            Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
         if (products.isEmpty()) {
