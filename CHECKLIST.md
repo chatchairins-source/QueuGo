@@ -1,3 +1,10 @@
+## 2026-10-28 Native POS FULL — counter barcode/SKU lookup with guarded add-to-bill (IN PROGRESS)
+
+- Native Counter now has compact barcode/SKU input (compatible with keyboard-style scanners and manual entry), reads current store's `pos_product_code_lookup` Production RPC and confirms a matching live POS catalog product before allowing an explicit `เพิ่มเข้าบิล` action.
+- Guards offline lookup, shop/actor/selected bill/mode/table context changes during asynchronous lookup, unavailable or POS-disabled products, sold-out stock and pending idempotent order creation. Uses existing `addPosProduct` action for option selection, stock checks and server-authoritative order creation; no second order implementation and no automatic duplicate scan insertion.
+- Management tab and code save/remove from predecessor retained. Source tests added; camera scanning, auto-add-on-scanner-enter and real device barcode acceptance NOT claimed.
+- **NEXT:** exact-head CI first confirmed failure and Kotlin compile. Resolve any source test first, then real tablet POS cashier cash-close and code lookup + create-bill acceptance on same-head APK.
+
 ## 2026-10-28 Native POS FULL — barcode/SKU management from existing Production RPC (IN PROGRESS)
 
 - Exact Native successor parent `78ca5284939dc309a0306c98141a086230082be5`. Current Web FULL POS has shop-scoped Barcode/SKU administration, but Android POS had no code management tab or API adapter.

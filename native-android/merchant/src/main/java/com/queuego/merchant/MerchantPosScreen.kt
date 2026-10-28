@@ -135,6 +135,10 @@ fun MerchantPosScreen(
     var noTable by rememberSaveable { mutableStateOf(false) }
     var note by rememberSaveable { mutableStateOf("") }
     var search by rememberSaveable { mutableStateOf("") }
+    var scannedCode by rememberSaveable { mutableStateOf("") }
+    var scannedProduct by remember(auth.session.authUserId) { mutableStateOf<PosProduct?>(null) }
+    var scanStatus by remember(auth.session.authUserId) { mutableStateOf<String?>(null) }
+    var scanLoading by remember(auth.session.authUserId) { mutableStateOf(false) }
     var selectedPosCategory by rememberSaveable { mutableStateOf("all") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -752,7 +756,15 @@ fun MerchantPosScreen(
     val openBills = snap?.bills?.filter { it.open }.orEmpty()
     val selectedBill = openBills.firstOrNull { it.id == selectedBillId }
     val kitchenEnabled = snap?.shopCategory == "food" || snap?.shopCategory == "cafe"
-    LaunchedEffect(snap?.shopId) { selectedPosCategory = "all" }
+    LaunchedEffect(snap?.shopId) {
+        selectedPosCategory = "all"
+        scannedProduct = null
+        scanStatus = null
+        scannedCode = ""
+    }
+    LaunchedEffect(mode, tableId, selectedBillId) {
+        scannedProduct = null
+    }
     LaunchedEffect(snap?.products) {
         val current = selectedPosCategory
         if (current != "all" && snap?.products?.none { it.category?.trim() == current } != false) {
@@ -962,6 +974,71 @@ fun MerchantPosScreen(
                     },
                     onNote = { note = it.take(500) },
                     onSearch = { search = it },
+                    barcode = scannedCode,
+                    barcodeMatched = scannedProduct,
+                    barcodeStatus = scanStatus,
+                    barcodeLoading = scanLoading,
+                    onBarcodeChange = { next ->
+                        scannedCode = next.take(64)
+                        scannedProduct = null
+                        scanStatus = null
+                    },
+                    onBarcodeLookup = {
+                        val code = scannedCode.trim()
+                        if (!busy && !scanLoading && code.isNotBlank()) {
+                            val originalShop = snap.shopId
+                            val originalBill = selectedBillId
+                            val originalMode = mode
+                            val originalTable = tableId
+                            val originalActor = auth.session.authUserId
+                            scanLoading = true
+                            scannedProduct = null
+                            scanStatus = null
+                            scope.launch {
+                                try {
+                                    if (!posNetworkValidated(context)) {
+                                        scanStatus = "ค้นหาบาร์โค้ดต้องเชื่อมต่ออินเทอร์เน็ต"
+                                    } else {
+                                        val match = api.lookupProductCode(auth, code)
+                                        if (snapshot?.shopId == originalShop &&
+                                            auth.session.authUserId == originalActor &&
+                                            selectedBillId == originalBill &&
+                                            mode == originalMode && tableId == originalTable &&
+                                            view == "counter" && scannedCode.trim() == code) {
+                                            val product = snap.products.firstOrNull { it.id == match?.productId }
+                                            when {
+                                                match == null -> scanStatus = "ไม่พบรหัสสินค้านี้ในร้าน"
+                                                !match.available || !match.posAvailable ->
+                                                    scanStatus = "สินค้านี้ปิดขายหน้าร้าน"
+                                                product == null ->
+                                                    scanStatus = "พบรหัสแล้ว แต่เมนูร้านยังไม่ตรง กรุณาโหลดข้อมูลใหม่"
+                                                posProductSoldOut(product) ->
+                                                    scanStatus = "สินค้าหมดสต็อก · ไม่สามารถเพิ่มเข้าบิล"
+                                                else -> {
+                                                    scannedProduct = product
+                                                    scanStatus = "พบ " + product.name + " · ตรวจสอบก่อนเพิ่มเข้าบิล"
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (failure: Exception) {
+                                    scanStatus = failure.message ?: "ค้นหารหัสสินค้าไม่สำเร็จ"
+                                } finally {
+                                    scanLoading = false
+                                }
+                            }
+                        }
+                    },
+                    onBarcodeAdd = { product ->
+                        if (!busy && !scanLoading && scannedProduct?.id == product.id) {
+                            scannedProduct = null
+                            scannedCode = ""
+                            scanStatus = null
+                            addPosProduct(product)
+                        }
+                    },
                     onCategory = { selectedPosCategory = it },
                     onProduct = ::addPosProduct,
                     onRetryPending = ::retryPendingPosCreate,
@@ -1721,6 +1798,10 @@ private fun PosCounterView(
     note: String,
     search: String,
     selectedCategory: String,
+    barcode: String,
+    barcodeMatched: PosProduct?,
+    barcodeStatus: String?,
+    barcodeLoading: Boolean,
     busy: Boolean,
     pendingCreate: Boolean,
     canReceive: Boolean,
@@ -1736,6 +1817,9 @@ private fun PosCounterView(
     onNoTable: () -> Unit,
     onNote: (String) -> Unit,
     onSearch: (String) -> Unit,
+    onBarcodeChange: (String) -> Unit,
+    onBarcodeLookup: () -> Unit,
+    onBarcodeAdd: (PosProduct) -> Unit,
     onCategory: (String) -> Unit,
     onProduct: (PosProduct) -> Unit,
     onRetryPending: () -> Unit,
@@ -1805,6 +1889,55 @@ private fun PosCounterView(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                barcode,
+                onBarcodeChange,
+                label = { Text("บาร์โค้ด / SKU") },
+                placeholder = { Text("พิมพ์หรือใช้เครื่องสแกน") },
+                singleLine = true,
+                enabled = !busy && !barcodeLoading,
+                modifier = Modifier.weight(1f)
+            )
+            Button(
+                onClick = onBarcodeLookup,
+                enabled = !busy && !barcodeLoading && barcode.isNotBlank() && canReceive &&
+                    !pendingCreate,
+                colors = ButtonDefaults.buttonColors(containerColor = QgRed),
+                modifier = Modifier.heightIn(min = 50.dp)
+            ) { Text("ค้นหา") }
+        }
+        if (barcodeStatus != null) {
+            Text(barcodeStatus, fontSize = 12.sp,
+                color = if (barcodeMatched == null) QgRed else Color(0xFF15803D))
+        }
+        if (barcodeMatched != null) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFF5F7F9)
+            ) {
+                Row(
+                    Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(barcodeMatched.name, modifier = Modifier.weight(1f),
+                        fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = { onBarcodeAdd(barcodeMatched) },
+                        enabled = !busy && !pendingCreate && canReceive &&
+                            !posProductSoldOut(barcodeMatched),
+                        colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                    ) { Text("เพิ่มเข้าบิล") }
+                }
+            }
+        }
         val menuCategories = snapshot.products.mapNotNull { product ->
             product.category?.trim()?.takeIf { it.isNotBlank() }
         }.distinct()
