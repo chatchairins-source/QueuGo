@@ -1441,6 +1441,18 @@ ok(
   'Merchant Native FULL POS must preserve current Web Production per-item sales report'
 );
 
+ok(
+  merchantPosApi.includes('"pos_product_codes_for_shop"') &&
+  merchantPosApi.includes('"pos_product_code_save"') &&
+  merchantPosApi.includes('"pos_product_code_remove"') &&
+  merchantPosScreen.includes('add("codes" to "บาร์โค้ด/SKU")') &&
+  merchantPosScreen.includes('codesEnabled = can("manage_staff")') &&
+  merchantPosScreen.includes('"codes" -> MerchantPosCodesScreen(') &&
+  read('merchant/src/main/java/com/queuego/merchant/MerchantPosCodesScreen.kt').includes('api.saveProductCode(auth, product.id, codeType, codeText)') &&
+  read('merchant/src/main/java/com/queuego/merchant/MerchantPosCodesScreen.kt').includes('api.removeProductCode(auth, target.id)'),
+  'Native POS barcode/SKU management must reuse Production shop-scoped RPC and manage_staff permission'
+);
+
 const merchantPosPending=read('merchant/src/main/java/com/queuego/merchant/MerchantPosPendingStore.kt');
 const merchantPosDraftStore=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt');
 ok(merchantPosApi.includes('inventory_stock_tracking,grocery_master_id,grocery_stock_tracking')&&merchantPosApi.includes('stock = r.optInt("stock", 0)')&&merchantPosApi.includes('inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false)')&&merchantPosApi.includes('groceryMasterId = nullableString(r, "grocery_master_id")')&&merchantPosApi.includes('groceryStockTracking = r.optBoolean("grocery_stock_tracking", false)'),'Merchant native POS must load Web Production stock and generic/Grocery tracking inputs');

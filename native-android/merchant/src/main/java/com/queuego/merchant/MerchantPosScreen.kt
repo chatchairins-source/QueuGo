@@ -912,6 +912,7 @@ fun MerchantPosScreen(
             owner = snap.owner,
             kitchenEnabled = kitchenEnabled,
             cashierEnabled = can("close_bill") || can("view_sales"),
+            codesEnabled = can("manage_staff"),
             onSelect = {
                 view = it
                 message = null
@@ -1167,6 +1168,13 @@ fun MerchantPosScreen(
                     }
                 )
 
+
+                "codes" -> MerchantPosCodesScreen(
+                    auth = auth,
+                    api = api,
+                    shopId = snap.shopId,
+                    products = snap.products
+                )
 
                 "shifts" -> MerchantPosShiftHistoryScreen(
                     auth = auth,
@@ -1658,6 +1666,7 @@ private fun PosTabs(
     owner: Boolean,
     kitchenEnabled: Boolean,
     cashierEnabled: Boolean,
+    codesEnabled: Boolean,
     onSelect: (String) -> Unit
 ) {
     val tabs = buildList {
@@ -1666,6 +1675,7 @@ private fun PosTabs(
         if (kitchenEnabled) add("kitchen" to "ครัว")
         add("bills" to "คิดเงิน")
         if (cashierEnabled) add("shifts" to "กะรับเงิน")
+        if (codesEnabled) add("codes" to "บาร์โค้ด/SKU")
         if (owner) {
             add("reports" to "ยอดขาย")
             add("history" to "ประวัติ")

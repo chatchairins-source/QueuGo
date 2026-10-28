@@ -1,3 +1,10 @@
+## 2026-10-28 Native POS FULL — barcode/SKU management from existing Production RPC (IN PROGRESS)
+
+- Exact Native successor parent `78ca5284939dc309a0306c98141a086230082be5`. Current Web FULL POS has shop-scoped Barcode/SKU administration, but Android POS had no code management tab or API adapter.
+- Added authorized `บาร์โค้ด/SKU` tab for actors with `manage_staff`, reusing existing `pos_product_codes_for_shop`, `pos_product_code_save`, and `pos_product_code_remove` RPCs with existing server checks. Product chosen explicitly from current store catalog; client validates barcode 8–14 digits or SKU syntax before server validation. Lists saved codes and confirms delete; no duplicate backend or synthetic catalog.
+- Regression guards presence of exact RPCs and managed tab. The existing Server remains sole authority for shop ownership, collisions, auditing and permissions. This does not yet implement the counter barcode *scan/add* workflow; that remains NEXT.
+- **NEXT:** exact-head CI first confirmed failure, then integrate barcode lookup into existing counter add-product flow with duplicate guards; test cash-register real-device close and barcode SKU on Samsung tablet before marking FULL parity.
+
 ## 2026-10-28 Native POS FULL — restore Production item sales reporting (read-only)
 
 - Current Web FULL POS displays per-item sales from `pos_owner_item_sales(p_days)`. Native Dashboard displayed only overall totals and paid bills. Production function inspected read-only: returns `{days,item_count,items:[{item_name,quantity,bills,sales}]}` scoped to current owner shop and paid POS orders.

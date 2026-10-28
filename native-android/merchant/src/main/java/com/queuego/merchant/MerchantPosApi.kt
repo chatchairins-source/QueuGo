@@ -57,6 +57,14 @@ data class PosShiftHistory(
     val variance: Double?
 )
 
+data class PosProductCode(
+    val id: String,
+    val productId: String,
+    val productName: String,
+    val type: String,
+    val code: String
+)
+
 data class PosCashShift(
     val open: Boolean,
     val expectedCash: Double?,
@@ -640,6 +648,73 @@ class MerchantPosApi(
             auth.session.accessToken,
             JSONObject().put("p_product", productId).put("p_price", price)
         )
+    }
+
+    // Reuse the same shop-scoped, permission-checked POS product code RPCs as Web.
+    suspend fun productCodes(auth: NativeAuth): List<PosProductCode> {
+        val raw = http.rpc("pos_product_codes_for_shop", auth.session.accessToken, JSONObject())
+        val arr = when (raw) {
+            is JSONArray -> raw
+            is String -> JSONArray(raw)
+            is JSONObject -> raw.optJSONArray("pos_product_codes_for_shop")
+                ?: raw.optJSONArray("data")
+                ?: error("Server ส่งข้อมูลรหัสสินค้าไม่ถูกต้อง")
+            else -> error("Server ส่งข้อมูลรหัสสินค้าไม่ถูกต้อง")
+        }
+        return buildList {
+            for (index in 0 until arr.length()) {
+                val row = arr.optJSONObject(index) ?: error("ข้อมูลรหัสสินค้าผิดรูปแบบ")
+                val id = row.optString("id")
+                val product = row.optString("product_id")
+                require(id.isNotBlank() && product.isNotBlank()) { "รหัสสินค้าจาก Server ไม่ครบ" }
+                add(PosProductCode(
+                    id = id, productId = product,
+                    productName = row.optString("product_name"),
+                    type = row.optString("code_type"),
+                    code = row.optString("code")
+                ))
+            }
+        }
+    }
+
+    suspend fun saveProductCode(auth: NativeAuth, productId: String, type: String, code: String): String {
+        requireNoPendingEdit(auth)
+        val value = code.trim().uppercase(java.util.Locale.ROOT)
+        require(type in setOf("barcode", "sku")) { "ประเภทรหัสสินค้าไม่ถูกต้อง" }
+        require(value.length in 1..64 &&
+            (if (type == "barcode") value.matches(Regex("[0-9]{8,14}"))
+            else value.matches(Regex("[A-Z0-9][A-Z0-9._/-]{0,63}")))) {
+            "บาร์โค้ดต้องเป็นเลข 8–14 หลัก หรือ SKU ใช้อักษรอังกฤษ ตัวเลข . _ / -"
+        }
+        val raw = http.rpc(
+            "pos_product_code_save", auth.session.accessToken,
+            JSONObject().put("p_product", productId)
+                .put("p_code_type", type).put("p_code", value)
+        )
+        val result = objectValue(raw)
+        val id = result.optString("id")
+        check(id.isNotBlank() &&
+            result.optString("product_id") == productId &&
+            result.optString("code_type") == type &&
+            result.optString("code") == value) {
+            "Server ยังไม่ยืนยันบันทึกรหัสสินค้า กรุณาตรวจรายการเดิม"
+        }
+        return id
+    }
+
+    suspend fun removeProductCode(auth: NativeAuth, id: String) {
+        requireNoPendingEdit(auth)
+        val raw = http.rpc(
+            "pos_product_code_remove", auth.session.accessToken,
+            JSONObject().put("p_id", id)
+        )
+        val success = when (raw) {
+            is Boolean -> raw
+            is JSONObject -> raw.optBoolean("pos_product_code_remove", false)
+            is JSONArray -> raw.optBoolean(0, false)
+            else -> raw.toString() == "true"
+        }
+        check(success) { "Server ยังไม่ยืนยันการลบรหัสสินค้า กรุณาโหลดรายการใหม่" }
     }
 
     suspend fun saveTable(
