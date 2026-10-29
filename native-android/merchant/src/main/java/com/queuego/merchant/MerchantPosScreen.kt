@@ -1158,6 +1158,8 @@ fun MerchantPosScreen(
                     canCancel = can("cancel_bill"),
                     canClose = can("close_bill"),
                     canEditPrice = can("edit_price"),
+                    canManageTables = can("manage_staff"),
+                    onManageTables = { view = "tables" },
                     onMode = { next ->
                         mode = next
                         tableId = null
@@ -2190,6 +2192,8 @@ private fun PosCounterView(
     canCancel: Boolean,
     canClose: Boolean,
     canEditPrice: Boolean,
+    canManageTables: Boolean,
+    onManageTables: () -> Unit,
     onMode: (String) -> Unit,
     onTable: (String) -> Unit,
     onNoTable: () -> Unit,
@@ -2238,6 +2242,15 @@ private fun PosCounterView(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PosChoiceButton("ทานที่ร้าน", mode == "DINE_IN", Modifier.weight(1f)) { onMode("DINE_IN") }
             PosChoiceButton("รับกลับ", mode == "TAKEAWAY", Modifier.weight(1f)) { onMode("TAKEAWAY") }
+        }
+        if (mode == "DINE_IN" && canManageTables) {
+            OutlinedButton(
+                onClick = onManageTables,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("จัดการโต๊ะ · เพิ่มโต๊ะ / แก้ไข / QR Code")
+            }
         }
 
         if (mode == "DINE_IN") {
