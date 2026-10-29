@@ -283,7 +283,7 @@ fun MerchantPosScreen(
     var report by remember { mutableStateOf<PosOwnerDashboard?>(null) }
     var itemSalesReport by remember { mutableStateOf<PosItemSalesReport?>(null) }
     var reportLoadError by remember { mutableStateOf<String?>(null) }
-    var reportReloadKey by remember { mutableIntStateOf(0) }
+    var reportReloadKey by remember { mutableStateOf(0) }
 
     var historyDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var historyType by rememberSaveable { mutableStateOf("ALL") }
