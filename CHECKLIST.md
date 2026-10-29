@@ -809,3 +809,13 @@ Total output lines: 2112
 - BLOCKED (publication): local fix commit `bd1efb65` is complete, but automatic approval review rejected push to `chatchairins-source/QueuGo` / `work-native-web-parity-20261026`, citing no explicit authorization to export potentially sensitive source to an unverified destination. No alternate write path attempted. Required unblock: explicit owner approval for publishing this bounded fix/checkpoint to that existing repository branch; then recheck remote HEAD before pushing and run exact-head CI.
 
 - Publication unblock: owner explicitly confirmed publishing this fix to the existing repository/branch in this session. Git CLI lacks a credential; use the connected GitHub API with a strict parent/ref check. Exact-head CI remains NEXT.
+
+
+## 2026-10-29 Native Merchant POS cash-in/out controls — exact-head CI pending
+
+- Compared current Web Production POS shift UI with the Native Merchant POS implementation. The existing Native API already exposes the authoritative `pos_record_cash_movement` RPC, and the server returns cash-in/out totals, but the Native cashier screen did not expose those controls.
+- Added Native controls for cash-in and cash-out during an open shift, with positive two-decimal amount validation, a required reason, and display of server-provided cash-in/out totals alongside expected till balance.
+- Uncertain responses retain the same request UUID and payload for idempotent retry. Pending retries are scoped to the same authenticated actor and shop; retries remain available after a shift closes so a previously committed movement can be reconciled without creating a second movement.
+- Added source regression coverage and enabled automatic Native POS CI on `work-native-pos-cash-movements-20261029`. Draft stacked PR #733 targets the cash-tender guard branch and must not merge before PR #732 is merged.
+- Verification status at documentation time: Native POS CI and Native Android Pilot are running/queued for exact HEAD. No APK generated; no Production data changed. Still required: exact-head green CI/Pilot, then authenticated cashier acceptance on a real device for cash-in/out, uncertain retry, shift close/history, and expected balance.
+- Next: inspect the first failing exact-head check if any, fix only confirmed regressions, and wait for the latest SHA's CI/Pilot before producing artifacts.
