@@ -74,6 +74,8 @@ create trigger pos_apply_tax_snapshot
 before insert or update of subtotal,discount_amount,sales_channel,pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot
 on public.orders for each row execute function public.pos_apply_tax_snapshot();
 
+grant select on public.pos_tax_settings to authenticated;
+
 revoke all on function public.pos_save_tax_settings(boolean,numeric,boolean,text,text,text) from public,anon;
 grant execute on function public.pos_save_tax_settings(boolean,numeric,boolean,text,text,text) to authenticated;
 revoke all on function public.pos_apply_tax_snapshot() from public,anon,authenticated;
