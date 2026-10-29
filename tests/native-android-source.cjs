@@ -1373,6 +1373,14 @@ ok(
 );
 
 ok(
+  merchantPosScreen.includes('canManageTables = can("manage_staff")') &&
+  merchantPosScreen.includes('onManageTables = { view = "tables" }') &&
+  merchantPosScreen.includes('if (mode == "DINE_IN" && canManageTables)') &&
+  merchantPosScreen.includes('Text("จัดการโต๊ะ · เพิ่มโต๊ะ / แก้ไข / QR Code")'),
+  'Merchant POS counter must provide a visible route to table management for authorized owners/staff'
+);
+
+ok(
   merchantPosScreen.includes('private fun PosTablesView(') &&
   merchantPosScreen.includes('BoxWithConstraints(Modifier.fillMaxWidth())') &&
   merchantPosScreen.includes('if (maxWidth >= 650.dp) 2 else 1') &&
