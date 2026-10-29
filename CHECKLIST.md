@@ -1,3 +1,10 @@
+## 2026-10-29 Native Merchant POS P1 — make POS-only report total explicit
+
+- Successor HEAD at start: `ae315af6eb57da72c0946c8647ac73f5b3c8ec90` on PR #730 / `work-native-web-parity-20261026`; exact-head Map Engine and Native Android Pilot runs `40673866352` and `40673866506` both SUCCESS. Three-app Debug APK artifact `12809797569` is available from that same HEAD.
+- Web POS report shows dine-in and takeaway POS totals; Android already uses the Production `pos_owner_dashboard` / `pos_owner_item_sales` RPCs and renders cash sales, discounts, refunds, voids, average ticket, period comparison, hourly sales, item sales and CSV export.
+- This bounded parity correction labels the combined figure explicitly `ยอดขายรวม POS` and documents that delivery orders / delivery GP are excluded, preventing cashiers/owners from confusing POS-only revenue with delivery totals. It updates the source regression to the exact UI label. No backend or financial logic changed.
+- **NEXT:** run exact-head Native Pilot + Map Engine CI and resolve the first confirmed failure. If green, download and inspect the exact-head three APK artifact, validate checksums/build metadata, and continue Web-vs-Native POS parity audit. Real cashier acceptance on a physical device/non-production backend remains unverified; do not claim end-to-end payment acceptance.
+
 ## 2026-10-28 Native Merchant POS P0 — reconcile cashier-shift RPC timeouts (IN PROGRESS)
 
 - Successor HEAD before this chunk: `98defb7a657dd872ad6aea617766b8b5fa14b1a9`; PR #730 / `work-native-web-parity-20261026`. Exact-head Map Engine run `40650534289` and Native Android Pilot run `40650534308` both succeeded. Pilot artifact `12799851173` contains Customer, Merchant and Rider **Debug** APKs from that same HEAD.

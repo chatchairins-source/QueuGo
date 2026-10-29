@@ -1616,7 +1616,7 @@ ok(posOnlyApi.includes('delivery = raw.optDouble("DELIVERY"')&&posOnlyApi.includ
   posOnlyApi.includes('averageTicket = raw.optDouble("average_ticket"')&&
   posOnlyApi.includes('cashSales = raw.optDouble("cash_sales"')&&
   posOnlyApi.includes('hourlySales = if (hourlyRows == null)')&&
-  posOnlyUi.includes('PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)')&&
+  posOnlyUi.includes('PosReportLine("ยอดขายรวม POS", report.dineIn + report.takeaway, true)')&&
   posOnlyUi.includes('PosReportLine("รับเงินสด", report.cashSales)')&&
   posOnlyUi.includes('PosReportLine("ส่วนลด", report.discounts)')&&
   posOnlyUi.includes('PosReportLine("คืนเงิน", report.refunds)')&&

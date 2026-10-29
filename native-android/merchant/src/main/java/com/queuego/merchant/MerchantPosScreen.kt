@@ -3090,7 +3090,8 @@ private fun PosReportsView(
                     PosReportLine("ทานที่ร้าน", report.dineIn)
                     PosReportLine("รับกลับ", report.takeaway)
                     HorizontalDivider()
-                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)
+                    // POS totals exclude Delivery and GP.
+                    PosReportLine("ยอดขายรวม POS", report.dineIn + report.takeaway, true)
                     Text("จำนวนบิล " + report.orders, color = QgMuted, fontSize = 11.sp)
                     PosReportLine("เฉลี่ยต่อบิล", report.averageTicket)
                     PosReportLine("รับเงินสด", report.cashSales)
