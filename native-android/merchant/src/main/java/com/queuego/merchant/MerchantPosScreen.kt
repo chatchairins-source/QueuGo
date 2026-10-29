@@ -268,6 +268,8 @@ fun MerchantPosScreen(
     var pendingCashMovementAmount by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingCashMovementReason by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingCashMovementRequestId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingCashMovementShopId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingCashMovementActorId by rememberSaveable { mutableStateOf<String?>(null) }
 
     var discountOpen by remember { mutableStateOf(false) }
     var discountText by rememberSaveable { mutableStateOf("") }
@@ -1019,6 +1021,10 @@ fun MerchantPosScreen(
     fun recordCashMovement(type: String) {
         if (cashShiftPending || busy) return
         val retrying = pendingCashMovementRequestId != null
+        if (retrying && (pendingCashMovementShopId != snap?.shopId || pendingCashMovementActorId != auth.session.authUserId)) {
+            message = "รายการเงินสดค้างเป็นของร้านหรือบัญชีเดิม กรุณากลับไปร้านเดิมและบัญชีเดิมเพื่อตรวจรายการก่อน"
+            return
+        }
         val actualType = if (retrying) pendingCashMovementType else type
         if (actualType !in setOf("cash_in", "cash_out")) {
             message = "ประเภทรายการเงินสดไม่ถูกต้อง"
@@ -1044,6 +1050,8 @@ fun MerchantPosScreen(
             pendingCashMovementType = actualType
             pendingCashMovementAmount = amountText
             pendingCashMovementReason = reasonText.trim()
+            pendingCashMovementShopId = snap?.shopId
+            pendingCashMovementActorId = auth.session.authUserId
             pendingCashMovementRequestId = it
         }
         cashShiftPending = true
@@ -1056,6 +1064,8 @@ fun MerchantPosScreen(
                 pendingCashMovementAmount = null
                 pendingCashMovementReason = null
                 pendingCashMovementRequestId = null
+                pendingCashMovementShopId = null
+                pendingCashMovementActorId = null
                 cashMovementAmount = ""
                 cashMovementReason = ""
                 message = if (actualType == "cash_in") "บันทึกเงินเข้าแล้ว" else "บันทึกเงินออกแล้ว"
