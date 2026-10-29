@@ -818,3 +818,11 @@ Total output lines: 2112
 - Verified exact-head artifact `12876749370` belongs to run `40826734607`, includes Customer/Merchant/Rider Debug APKs, passes ZIP integrity, and its SHA-256 matches GitHub artifact digest `4725abe06edec28f44090c8e06c2c41f44f57225479d0103e961d544aa1602ae`.
 - POS source audit confirms the POS screen has a visible back icon in its own header and the table QR / cash receipt workflows remain in the same screen. The current PR has broad native parity scope; do not claim every screen's visible header/back is fully normalized from the centralized hardware-back handler alone.
 - **NEXT:** continue a bounded Web-vs-Native Merchant POS visual/functional audit; verify table → bill → cash tender/change → server-confirmed PAID + CLOSED → receipt on a non-production backend/device. Keep authenticated real-device acceptance BLOCKED until evidence exists. Do not mutate Production financial data.
+
+
+## 2026-10-29 Native Merchant — unify visible back actions with shared route policy (IN PROGRESS)
+
+- Successor HEAD: `234b66a6bdf67d728f9e127d7cbf5896903b162e` on PR #730. Prior exact-head Native Pilot run `40826734607` and Map Engine run `40826734473` passed for `eb8e62ac5920916e3b73251645f11cfdd1bdde17`; those results do not certify the newer navigation commits.
+- Evidence-backed mismatch: hardware Back used `merchantBackRoute`, while explicit screen buttons used duplicated literal destinations. In particular, Order Support/Report returned to the selected order through its visible callback, but the shared policy sent hardware Back to Profile. Updated the policy to return to Order, added regression expectation, and routed Merchant visible back callbacks through the shared policy. Process-restoration remains intentionally different for `order-report` because its selected order cannot safely be reconstructed after process death.
+- CI for the new HEAD has not yet appeared in the commit-associated run list; exact-head Native Pilot/Map Engine validation remains pending. Do not reuse the previous HEAD's green result as evidence for this commit.
+- **NEXT:** confirm PR mergeability and exact-head CI; fix any first failure. Then continue the POS Web-vs-Native audit and only mark device/payment acceptance complete when tested with a non-production backend and real device.
