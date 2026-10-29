@@ -1397,6 +1397,8 @@ ok(
   merchantPosScreen.includes('pendingCashMovementRequestId ?: UUID.randomUUID().toString()') &&
   merchantPosScreen.includes('pendingCashMovementShopId != snap?.shopId') &&
   merchantPosScreen.includes('pendingCashMovementActorId != auth.session.authUserId') &&
+  merchantPosScreen.includes('cashShift?.open != true && !retrying') &&
+  merchantPosScreen.includes('cashMovementPending && shift?.open != true') &&
   merchantPosScreen.includes('ตรวจรายการเดิม'),
   'Native POS must expose shift cash-in/out totals and retry uncertain movements with the same request key scoped to shop and actor'
 );
