@@ -18,7 +18,8 @@ internal fun merchantRestorableRoute(route: String): String = when (route) {
  */
 internal fun merchantBackRoute(route: String, productReturnRoute: String = "products"): String = when (route) {
     "home" -> "home"
-    "shop-setup", "hours", "support", "order-report" -> "profile"
+    "shop-setup", "hours", "support" -> "profile"
+    "order-report" -> "order"
     "notifications", "media", "modules", "market-stock", "pos", "laundry",
     "revenue", "promotions", "orders", "products", "profile" -> "home"
     "catalog", "grocery-catalog", "market-catalog" -> "products"
