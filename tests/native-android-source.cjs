@@ -1755,5 +1755,8 @@ ok(posTaxCheckoutMigration.includes('create or replace function public.pos_apply
 ok(posTaxCheckoutMigration.includes('new.pos_tax_registration_snapshot := v_settings.tax_registration_number'),'Tax registration details must be snapshotted on each new POS bill');
 ok(posTaxCheckoutMigration.includes('round(v_net * v_rate / (1 + v_rate),2)'),'Tax-inclusive prices must extract tax from the customer total');
 ok(posTaxCheckoutMigration.includes('new.total_amount := v_net + v_tax'),'Tax-exclusive prices must add tax to the customer total');
+ok(posTaxCheckoutMigration.includes('alter table public.orders drop constraint if exists pos_channel_integrity_check'),'Tax checkout must replace the legacy POS total constraint');
+ok(posTaxCheckoutMigration.includes('total_amount = greatest(subtotal-discount_amount,0) + coalesce(pos_tax_amount,0)'),'Tax-exclusive totals must remain valid under the POS integrity constraint');
+ok(posTaxCheckoutMigration.includes('else total_amount = subtotal-discount_amount'),'Tax-disabled and tax-inclusive POS bills must preserve existing total integrity');
 ok(posTaxCheckoutMigration.includes('before insert or update of subtotal,discount_amount,sales_channel'),'Tax must recalculate when bill subtotal or discount changes');
 ok(posTaxCheckoutMigration.includes('revoke all on function public.pos_apply_tax_snapshot() from public,anon,authenticated'),'Clients must not call the internal tax trigger function');
