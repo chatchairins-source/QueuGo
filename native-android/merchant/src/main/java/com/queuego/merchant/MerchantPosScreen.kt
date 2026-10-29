@@ -951,7 +951,7 @@ fun MerchantPosScreen(
                     taxRateText = "%.2f".format(java.util.Locale.US, loaded.ratePercent)
                     taxSettingsLoaded = true
                 }
-                .onFailure { message = it.message ?: "โหลดการตั้งค่าภาษีไม่สำเร็จ" }
+                .onFailure {\n                    taxSettingsLoaded = true\n                    message = it.message ?: "โหลดการตั้งค่าภาษีไม่สำเร็จ"\n                }
         }
     }
 
