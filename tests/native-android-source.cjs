@@ -1381,6 +1381,14 @@ ok(
 );
 
 ok(
+  merchantPosScreen.includes('val cashTenderValid = paymentMethod != "cash"') &&
+  merchantPosScreen.includes('&& cashTenderValid') &&
+  merchantPosScreen.includes('if (cashReceived.isNotBlank() && !cashTenderValid)') &&
+  merchantPosScreen.includes('เงินสดที่รับต้องไม่น้อยกว่ายอดบิล'),
+  'Merchant POS must disable cash settlement until tender covers the bill and show the short-cash reason'
+);
+
+ok(
   merchantPosScreen.includes('private fun PosTablesView(') &&
   merchantPosScreen.includes('BoxWithConstraints(Modifier.fillMaxWidth())') &&
   merchantPosScreen.includes('if (maxWidth >= 650.dp) 2 else 1') &&
