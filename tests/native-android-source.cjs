@@ -1389,6 +1389,21 @@ ok(
 );
 
 ok(
+  merchantPosApi.includes('suspend fun recordCashMovement(') &&
+  merchantPosApi.includes('"pos_record_cash_movement"') &&
+  merchantPosScreen.includes('api.recordCashMovement(auth, actualType!!, amount, reasonText.trim(), requestId)') &&
+  merchantPosScreen.includes('cashInTotal ?: 0.0') &&
+  merchantPosScreen.includes('cashOutTotal ?: 0.0') &&
+  merchantPosScreen.includes('pendingCashMovementRequestId ?: UUID.randomUUID().toString()') &&
+  merchantPosScreen.includes('pendingCashMovementShopId != snap?.shopId') &&
+  merchantPosScreen.includes('pendingCashMovementActorId != auth.session.authUserId') &&
+  merchantPosScreen.includes('cashShift?.open != true && !retrying') &&
+  merchantPosScreen.includes('cashMovementPending && shift?.open != true') &&
+  merchantPosScreen.includes('ตรวจรายการเดิม'),
+  'Native POS must expose shift cash-in/out totals and retry uncertain movements with the same request key scoped to shop and actor'
+);
+
+ok(
   merchantPosScreen.includes('private fun PosTablesView(') &&
   merchantPosScreen.includes('BoxWithConstraints(Modifier.fillMaxWidth())') &&
   merchantPosScreen.includes('if (maxWidth >= 650.dp) 2 else 1') &&
