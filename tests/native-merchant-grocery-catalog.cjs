@@ -4,6 +4,7 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const api=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantApi.kt','utf8');
 const app=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt','utf8');
+const routePolicy=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantRouteRestoration.kt','utf8');
 const products=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt','utf8');
 const productModel=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantProductModel.kt','utf8');
 const web=fs.readFileSync('merchant/index.html','utf8');
@@ -17,7 +18,7 @@ ok(products.includes('if (shopCategory == "grocery")')&&products.includes('categ
 ok(web.includes('oninput="qgmProductSearch(this.value)"')&&web.includes('onchange="qgmProductCategory(this.value)"'),'Web product list search and Grocery category-filter behavior remains the parity target');
 ok(web.includes("empty.textContent='ไม่พบสินค้าที่ตรงกับการค้นหา'")&&web.includes("empty.hidden=products.length===0||visible>0"),'Web must show an accessible empty result when product search/filter finds no matches');
 ok(products.includes('Text("เพิ่มสินค้าเอง"')&&products.includes('Text("เพิ่มสินค้าจากแคตตาล็อก"'),'Grocery Merchant must expose both manual and master-catalog add actions');
-ok(app.includes('"catalog", "grocery-catalog" -> "products"'),'Grocery catalog back navigation must return to Products');
+ok(routePolicy.includes('"catalog", "grocery-catalog", "market-catalog" -> "products"') && routePolicy.includes('"product" -> productReturnRoute'),'Grocery catalog and product editor back navigation must use the centralized route policy');
 ok(app.includes('screen = "grocery-catalog"')&&app.includes('MerchantGroceryCatalogScreen('),'Merchant app must route Grocery catalog to its Native screen');
 ok(app.includes('api.saveGroceryCatalogItem(')&&app.includes('api.loadProducts(auth, activeShop.id)'),'Catalog save must refresh the real Merchant product list after server confirmation');
 
