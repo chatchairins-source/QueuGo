@@ -1,3 +1,9 @@
+## 2026-10-29 Native Merchant POS P1 — report retry compile gate
+
+- Report loading failure/retry UI is committed in `ec298f6915ae328614c7875d967fcb4bc4eb29e0`; exact-head Native Pilot exposed a Kotlin compile error: `mutableIntStateOf` is unavailable in this module. Map Engine passed on that HEAD.
+- Corrected retry counter state to use the module's existing `mutableStateOf(0)` API in commit `4f13214bf426cf55c9af5a95980a709e8d1dacec`. No payment/backend behavior changed.
+- **NEXT:** run exact-head Native Pilot + Map Engine CI; resolve first confirmed failure. If green, inspect exact-head APK artifact and continue the Web-vs-Native POS parity audit. Physical cashier/payment acceptance remains unverified.
+
 ## 2026-10-29 Native Merchant POS P1 — make POS-only report total explicit
 
 - Successor HEAD at start: `ae315af6eb57da72c0946c8647ac73f5b3c8ec90` on PR #730 / `work-native-web-parity-20261026`; exact-head Map Engine and Native Android Pilot runs `40673866352` and `40673866506` both SUCCESS. Three-app Debug APK artifact `12809797569` is available from that same HEAD.
