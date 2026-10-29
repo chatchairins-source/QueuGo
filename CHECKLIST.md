@@ -1,3 +1,10 @@
+## 2026-10-29 Native Merchant POS P0 — make table management discoverable from counter (IN PROGRESS)
+
+- Successor base verified: PR #730 / `work-native-web-parity-20261026` at `ae315af6eb57da72c0946c8647ac73f5b3c8ec90`; new isolated branch `work-native-pos-counter-table-access-20261029` preserves that exact HEAD and does not reset or overwrite it.
+- Evidence: the Native POS already had a table-management screen and add-table dialog, but the main `＋ รับออเดอร์` counter screen only showed table selection; users had to discover the separate `โต๊ะ` tab. Added a clearly labeled `จัดการโต๊ะ · เพิ่มโต๊ะ / แก้ไข / QR Code` action on the dine-in counter, gated by the same existing owner/staff permission used by the table screen. It navigates to the existing server-backed table screen; it does not add a duplicate table implementation or bypass permissions.
+- Added a native source regression assertion requiring this entry point.
+- **NEXT:** open a PR targeting the current successor branch; run exact-head Native Android Pilot and Map Engine CI; fix first confirmed failure. Then audit why the user's installed build still appears unchanged and verify artifact commit/build metadata before delivering another APK. Cashier end-to-end against non-production backend / real device remains unverified; no claim that payment/close-bill is now fixed.
+
 ## 2026-10-28 Native Merchant POS P0 — reconcile cashier-shift RPC timeouts (IN PROGRESS)
 
 - Successor HEAD before this chunk: `98defb7a657dd872ad6aea617766b8b5fa14b1a9`; PR #730 / `work-native-web-parity-20261026`. Exact-head Map Engine run `40650534289` and Native Android Pilot run `40650534308` both succeeded. Pilot artifact `12799851173` contains Customer, Merchant and Rider **Debug** APKs from that same HEAD.
