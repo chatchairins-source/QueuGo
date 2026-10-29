@@ -1030,7 +1030,7 @@ fun MerchantPosScreen(
             message = "ประเภทรายการเงินสดไม่ถูกต้อง"
             return
         }
-        if (cashShift?.open != true) {
+        if (cashShift?.open != true && !retrying) {
             message = "ต้องเปิดกะรับเงินก่อนบันทึกเงินเข้าออก"
             return
         }
@@ -2971,6 +2971,17 @@ private fun PosBillsView(
                         OutlinedButton(onClick = onReloadShift, enabled = !shiftPending && !busy) {
                             Text("ตรวจสอบกะอีกครั้ง")
                         }
+                    }
+                    if (cashMovementPending && shift?.open != true) {
+                        Text(
+                            "รายการเงินสดเดิมยังไม่ยืนยัน อย่าสร้างรายการใหม่ ให้ตรวจรายการเดิมด้วยรหัสคำขอเดิม",
+                            color = QgRed, fontSize = 12.sp
+                        )
+                        Button(
+                            onClick = { onCashMovement(pendingCashMovementType ?: "cash_in") },
+                            enabled = !shiftPending && !busy,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp)
+                        ) { Text("ตรวจรายการเดิม") }
                     }
                     if (shift != null && !shift.open) {
                         Text("เริ่มกะรับเงินก่อนปิดบิล (ไม่มีเงินทอนต้นกะให้ใส่ 0)",
