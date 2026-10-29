@@ -2994,6 +2994,9 @@ private fun PosBillsView(
                             }
                         }
                     }
+                    val cash = cashReceived.toDoubleOrNull()
+                    val cashTenderValid = paymentMethod != "cash" ||
+                        (cash != null && cash.isFinite() && cash >= selected.total)
                     if (paymentMethod == "cash") {
                         OutlinedTextField(
                             cashReceived, onCash,
@@ -3005,15 +3008,17 @@ private fun PosBillsView(
                             onClick = { onCash(money(selected.total)) },
                             enabled = canClose && !busy && canPaySelected && shift?.open == true
                         ) { Text("รับพอดี ฿" + money(selected.total)) }
-                        val cash = cashReceived.toDoubleOrNull()
                         Text(
-                            "เงินทอน " + if (cash == null) "—" else "฿" + money((cash - selected.total).coerceAtLeast(0.0)),
+                            "เงินทอน " + if (cash == null || !cash.isFinite()) "—" else "฿" + money((cash - selected.total).coerceAtLeast(0.0)),
                             color = QgMuted, fontSize = 12.sp
                         )
+                        if (cashReceived.isNotBlank() && !cashTenderValid) {
+                            Text("เงินสดที่รับต้องไม่น้อยกว่ายอดบิล", color = QgRed, fontSize = 12.sp)
+                        }
                     }
                     Button(
                         onClick = onPay,
-                        enabled = canClose && !busy && !shiftPending && shift?.open == true && canPaySelected,
+                        enabled = canClose && !busy && !shiftPending && shift?.open == true && canPaySelected && cashTenderValid,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = QgRed)
                     ) { Text("ยืนยันรับเงินและปิดบิล", fontWeight = FontWeight.Bold) }
