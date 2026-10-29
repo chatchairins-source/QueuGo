@@ -1,0 +1,63 @@
+name: QueueGo Native POS CI
+
+on:
+  pull_request:
+    branches:
+      - work-native-pos-counter-table-access-20261029
+    paths:
+      - 'native-android/**'
+      - 'tests/native-android-source.cjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/native-pos-ci.yml'
+  push:
+    branches:
+      - work-native-pos-counter-table-access-20261029
+      - work-native-pos-cash-tender-guard-20261029
+    paths:
+      - 'native-android/**'
+      - 'tests/native-android-source.cjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/native-pos-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-native-pos-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-pos-regression:
+    name: Native POS regression and repository tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run full repository regression suite
+        run: npm test
+
+      - name: Confirm cash tender guard in Merchant POS source
+        if: github.event_name == 'pull_request' || github.ref_name == 'work-native-pos-cash-tender-guard-20261029'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f tests/native-android-source.cjs
+          grep -q 'cashTenderValid' native-android/merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt
+          grep -q 'เงินสดที่รับต้องไม่น้อยกว่ายอดบิล' native-android/merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt
