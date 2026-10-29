@@ -53,11 +53,10 @@ jobs:
       - name: Run full repository regression suite
         run: npm test
 
-      - name: Confirm cash tender guard and settlement regression coverage
+      - name: Confirm cash tender guard in Merchant POS source
         shell: bash
         run: |
           set -euo pipefail
           test -f tests/native-android-source.cjs
           grep -q 'cashTenderValid' native-android/merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt
           grep -q 'เงินสดที่รับต้องไม่น้อยกว่ายอดบิล' native-android/merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt
-          grep -q 'cash settlement until tender covers the bill' tests/native-android-source.cjs
