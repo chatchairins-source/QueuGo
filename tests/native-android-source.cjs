@@ -1742,6 +1742,12 @@ ok(merchantPosApiSource.includes('"pos_save_tax_settings"'),'Merchant POS tax se
 const merchantPosTaxScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
 ok(merchantPosTaxScreen.includes('"tax" -> PosTaxSettingsView(') && merchantPosTaxScreen.includes('add("tax" to "ภาษี POS")'),'Owner must have a native POS tax settings screen');
 ok(merchantPosTaxScreen.includes('ราคารวมภาษีแล้ว') && merchantPosTaxScreen.includes('ราคายังไม่รวมภาษี'),'POS tax screen must explain inclusive and exclusive pricing');
+ok(merchantPosApiSource.includes('taxEnabledSnapshot = r.optBoolean("pos_tax_enabled_snapshot", false)'),'POS bills must parse the stored tax-enabled snapshot');
+ok(merchantPosApiSource.includes('taxAmount = nullableDouble(r, "pos_tax_amount")'),'POS bills must parse the stored tax amount');
+const merchantPrinterSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPrinter.kt');
+ok(merchantPrinterSource.includes('if (receipt && bill.taxEnabledSnapshot)'),'Receipts must use the immutable tax snapshot, not current shop settings');
+ok(merchantPrinterSource.includes('"มูลค่าก่อนภาษี "') && merchantPrinterSource.includes('"ภาษี "'),'POS receipts must print taxable base and tax breakdown');
+
 ok(merchantPosApiSource.includes('pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_taxable_base,pos_tax_amount'),'POS bills must load immutable tax snapshots for receipts');
 const merchantPrinterSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPrinter.kt');
 ok(merchantPrinterSource.includes('มูลค่าก่อนภาษี') && merchantPrinterSource.includes('bill.taxAmount'),'POS receipts must print tax breakdown from saved bill snapshots');
