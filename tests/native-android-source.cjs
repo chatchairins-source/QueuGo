@@ -1735,3 +1735,13 @@ ok(merchantPosApiSource.includes('amountSatang: Long') && merchantPosApiSource.i
 ok(merchantPosApiSource.includes('pricesIncludeTax: Boolean'),'POS tax math must distinguish tax-inclusive and tax-exclusive prices');
 ok(merchantPosApiSource.includes('ratePercent.isFinite() && ratePercent in 0.0..100.0'),'POS tax math must reject invalid tax rates');
 ok(merchantPosApiSource.includes('Math.addExact(amountSatang, tax)'),'POS tax-exclusive total must detect integer overflow');
+
+
+// POS tax schema remains additive and does not silently change live bill totals.
+const posTaxMigration=fs.readFileSync(path.join(__dirname,'../QueueGo-POS-Tax-Foundation-Migration.sql'),'utf8');
+ok(posTaxMigration.includes('create table if not exists public.pos_tax_settings'),'POS tax settings table must be defined');
+ok(posTaxMigration.includes('tax_enabled boolean not null default false'),'Tax must default off for existing shops');
+ok(posTaxMigration.includes('prices_include_tax boolean not null default true'),'Tax-inclusive pricing must be configurable');
+ok(posTaxMigration.includes('pos_tax_amount numeric(12,2)'),'POS bill must have a tax snapshot field');
+ok(posTaxMigration.includes('revoke insert, update, delete on public.pos_tax_settings from anon, authenticated'),'Tax settings must not permit direct client writes');
+ok(posTaxMigration.includes('does not change live checkout totals'),'Migration must not claim live checkout integration before server RPC support');
