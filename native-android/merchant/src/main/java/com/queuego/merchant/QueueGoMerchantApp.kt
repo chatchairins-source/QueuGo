@@ -692,7 +692,7 @@ private fun MerchantShell(
             MerchantTopBar(
                 screen = screen,
                 unreadCount = notifications.count { !it.isRead },
-                onHome = { screen = "home" },
+                onHome = { screen = merchantBackRoute(screen, productReturnScreen) },
                 onNotifications = { screen = "notifications" }
             )
             if (!message.isNullOrBlank()) {
@@ -869,7 +869,7 @@ private fun MerchantShell(
                                         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
                                         catch (_: Exception) { message = "บันทึกแล้ว แต่ยังโหลดรายการในร้านไม่ได้" }
                                     }
-                                }, onBack = { screen = "products" })
+                                }, onBack = { screen = merchantBackRoute(screen, productReturnScreen) })
                         }
                     } else Text("หน้านี้ใช้สำหรับร้านตลาด เนื้อ ปลา ผัก หรือผลไม้", color = QgMuted)
                 }
@@ -939,7 +939,7 @@ private fun MerchantShell(
                                     }
                                 }
                             },
-                            onBack = { screen = "products" }
+                            onBack = { screen = merchantBackRoute(screen, productReturnScreen) }
                         )
                     }
                 }
@@ -965,7 +965,7 @@ private fun MerchantShell(
                                 productReturnScreen = "catalog"
                                 screen = "product"
                             },
-                            onBack = { screen = "products" }
+                            onBack = { screen = merchantBackRoute(screen, productReturnScreen) }
                         )
                     }
                 }
@@ -1057,13 +1057,13 @@ private fun MerchantShell(
                         )
                     }
                 }
-                "pos" -> MerchantPosScreen(auth = auth, onBack = { screen = "home" })
+                "pos" -> MerchantPosScreen(auth = auth, onBack = { screen = merchantBackRoute(screen, productReturnScreen) })
                 "laundry" -> MerchantLaundryScreen(auth)
                 "revenue" -> MerchantRevenueScreen(
                     auth = auth,
                     api = api,
                     shopName = shop?.name.orEmpty(),
-                    onBack = { screen = "home" },
+                    onBack = { screen = merchantBackRoute(screen, productReturnScreen) },
                     onSettings = { screen = "profile" }
                 )
                 "promotions" -> {
@@ -1082,7 +1082,7 @@ private fun MerchantShell(
                 }
                 "notifications" -> MerchantNotificationsScreen(
                     notifications = notifications,
-                    onBack = { screen = "home" },
+                    onBack = { screen = merchantBackRoute(screen, productReturnScreen) },
                     onMarkAllRead = {
                         if (notifications.any { !it.isRead }) {
                             notifications = notifications.map { it.copy(isRead = true) }
@@ -1146,14 +1146,14 @@ private fun MerchantShell(
                 "modules" -> MerchantModulesScreen(
                     auth = auth,
                     api = api,
-                    onBack = { screen = "home" },
+                    onBack = { screen = merchantBackRoute(screen, productReturnScreen) },
                     onSetup = { screen = "shop-setup" },
                     onHours = { screen = "hours" },
                     onLaundry = { screen = "laundry" }
                 )
-                "support" -> MerchantSupportScreen(auth) { screen = "profile" }
+                "support" -> MerchantSupportScreen(auth) { screen = merchantBackRoute(screen, productReturnScreen) }
                 "order-report" -> selectedOrder?.let { order ->
-                    MerchantSupportTicketsScreen(auth, orders, order.id, order.number) { screen = "order" }
+                    MerchantSupportTicketsScreen(auth, orders, order.id, order.number) { screen = merchantBackRoute(screen, productReturnScreen) }
                 } ?: run { screen = "orders" }
                 "profile" -> MerchantProfileScreen(
                     auth = auth,
@@ -1189,7 +1189,7 @@ private fun MerchantShell(
                             auth = auth,
                             shop = activeShop,
                             api = api,
-                            onBack = { screen = "profile" },
+                            onBack = { screen = merchantBackRoute(screen, productReturnScreen) },
                             onSaved = {
                                 scope.launch {
                                     shop = runCatching { api.loadShop(auth) }.getOrDefault(shop)
