@@ -337,15 +337,7 @@ private fun MerchantShell(
     }
 
     BackHandler(enabled = screen != "home") {
-        screen = when (screen) {
-            "shop-setup", "hours", "support" -> "profile"
-            "notifications", "media", "modules", "market-stock" -> "home"
-            "catalog", "grocery-catalog" -> "products"
-            "market-catalog" -> "products"
-            "product" -> productReturnScreen
-            "order" -> "orders"
-            else -> "home"
-        }
+        screen = merchantBackRoute(screen, productReturnScreen)
         selectedOrder = null
     }
 
