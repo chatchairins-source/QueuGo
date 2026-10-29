@@ -206,7 +206,7 @@ private fun merchantPrintTicket(snapshot: PosSnapshot, bill: PosBill, lines: Lis
                     merchantPrinterMoney(bill.taxAmount ?: 0.0))
             }
             if (bill.discount > 0) appendLine("ส่วนลด " + merchantPrinterMoney(bill.discount))
-            appendLine("ยอดสุทธิ " + merchantPrinterMoney(bill.total))
+            appendLine((if (bill.taxEnabledSnapshot) "ยอดสุทธิ " else "รวม ") + merchantPrinterMoney(bill.total))
             if (!bill.paymentMethod.isNullOrBlank()) appendLine("ชำระ " + bill.paymentMethod)
             if (bill.paymentMethod == "cash") {
                 appendLine("รับเงิน " + merchantPrinterMoney(bill.cashTendered ?: 0.0))
