@@ -74,6 +74,35 @@ create trigger pos_apply_tax_snapshot
 before insert or update of subtotal,discount_amount,sales_channel,pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot
 on public.orders for each row execute function public.pos_apply_tax_snapshot();
 
+-- POS's original integrity check assumed every bill total excluded tax.
+-- Extend it so tax-exclusive bills can add tax while tax-disabled and tax-inclusive
+-- bills retain the established totals. Delivery integrity remains unchanged.
+alter table public.orders drop constraint if exists pos_channel_integrity_check;
+alter table public.orders add constraint pos_channel_integrity_check check (
+  (
+    order_type in ('DINE_IN','TAKEAWAY')
+    and sales_channel='POS'
+    and customer_id is null
+    and rider_id is null
+    and delivery_fee=0
+    and gp_rate=0
+    and gp_amount=0
+    and subtotal>=0
+    and (
+      case
+        when pos_tax_enabled_snapshot is true and pos_prices_include_tax_snapshot is false
+          then total_amount = greatest(subtotal-discount_amount,0) + coalesce(pos_tax_amount,0)
+        else total_amount = subtotal-discount_amount
+      end
+    )
+  )
+  or (
+    order_type not in ('DINE_IN','TAKEAWAY')
+    and sales_channel is distinct from 'POS'
+    and discount_amount=0
+  )
+);
+
 grant select on public.pos_tax_settings to authenticated;
 
 revoke all on function public.pos_save_tax_settings(boolean,numeric,boolean,text,text,text) from public,anon;
