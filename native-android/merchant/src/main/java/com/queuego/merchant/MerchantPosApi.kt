@@ -925,10 +925,11 @@ class MerchantPosApi(
     }
 
     suspend fun loadTaxSettings(auth: NativeAuth): PosTaxSettings {
+        val shopId = scalarText(http.rpc("pos_my_shop", auth.session.accessToken, JSONObject()))
+        require(shopId.isNotBlank() && shopId != "null") { "ไม่พบร้านสำหรับตั้งค่าภาษี" }
         val raw = http.get(
             "pos_tax_settings?select=tax_enabled,tax_rate,prices_include_tax,tax_registration_number,tax_branch_code,tax_invoice_address&shop_id=eq." +
-                http.enc(http.rpc("pos_my_shop", auth.session.accessToken, JSONObject()).toString().trim('"')) +
-                "&limit=1",
+                http.enc(shopId) + "&limit=1",
             auth.session.accessToken
         )
         val rows = http.array(raw)
