@@ -201,11 +201,14 @@ private fun merchantPrintTicket(snapshot: PosSnapshot, bill: PosBill, lines: Lis
         if (receipt) {
             appendLine(separator)
             if (bill.taxEnabledSnapshot) {
+                appendLine("ยอดก่อนส่วนลด " + merchantPrinterMoney(bill.subtotal))
+            }
+            if (bill.discount > 0) appendLine("ส่วนลด " + merchantPrinterMoney(bill.discount))
+            if (bill.taxEnabledSnapshot) {
                 appendLine("มูลค่าก่อนภาษี " + merchantPrinterMoney(bill.taxableBase ?: (bill.total - (bill.taxAmount ?: 0.0))))
                 appendLine("ภาษี " + String.format(java.util.Locale.US, "%.2f%%", bill.taxRateSnapshot ?: 0.0) + " " +
                     merchantPrinterMoney(bill.taxAmount ?: 0.0))
             }
-            if (bill.discount > 0) appendLine("ส่วนลด " + merchantPrinterMoney(bill.discount))
             appendLine((if (bill.taxEnabledSnapshot) "ยอดสุทธิ " else "รวม ") + merchantPrinterMoney(bill.total))
             if (!bill.paymentMethod.isNullOrBlank()) appendLine("ชำระ " + bill.paymentMethod)
             if (bill.paymentMethod == "cash") {
