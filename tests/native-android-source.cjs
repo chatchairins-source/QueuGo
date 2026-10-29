@@ -1735,6 +1735,14 @@ ok(merchantPosApiSource.includes('amountSatang: Long') && merchantPosApiSource.i
 ok(merchantPosApiSource.includes('pricesIncludeTax: Boolean'),'POS tax math must distinguish tax-inclusive and tax-exclusive prices');
 ok(merchantPosApiSource.includes('ratePercent.isFinite() && ratePercent in 0.0..100.0'),'POS tax math must reject invalid tax rates');
 ok(merchantPosApiSource.includes('Math.addExact(amountSatang, tax)'),'POS tax-exclusive total must detect integer overflow');
+ok(merchantPosApiSource.includes('suspend fun loadTaxSettings(auth: NativeAuth): PosTaxSettings'),'Merchant POS must load server-owned tax settings');
+ok(merchantPosApiSource.includes('suspend fun saveTaxSettings(auth: NativeAuth, settings: PosTaxSettings)'),'Merchant POS must save tax settings through the owner RPC');
+ok(merchantPosApiSource.includes('"pos_save_tax_settings"'),'Merchant POS tax settings must use the protected server RPC');
+
+const merchantPosTaxScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
+ok(merchantPosTaxScreen.includes('"tax" -> PosTaxSettingsView(') && merchantPosTaxScreen.includes('add("tax" to "ภาษี POS")'),'Owner must have a native POS tax settings screen');
+ok(merchantPosTaxScreen.includes('ราคารวมภาษีแล้ว') && merchantPosTaxScreen.includes('ราคายังไม่รวมภาษี'),'POS tax screen must explain inclusive and exclusive pricing');
+
 
 
 // POS tax schema remains additive and does not silently change live bill totals.
