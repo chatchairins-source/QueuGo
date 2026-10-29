@@ -18,9 +18,11 @@ on:
       - work-native-pos-counter-table-access-20261029
       - work-native-pos-cash-tender-guard-20261029
       - work-native-pos-cash-movements-20261029
+      - work-native-pos-tax-foundation-20261029
     paths:
       - 'native-android/**'
       - 'tests/native-android-source.cjs'
+      - 'QueueGo-POS-Tax-Foundation-Migration.sql'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/native-pos-ci.yml'
