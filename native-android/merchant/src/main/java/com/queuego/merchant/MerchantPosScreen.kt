@@ -282,6 +282,8 @@ fun MerchantPosScreen(
     var reportDays by rememberSaveable { mutableStateOf(1) }
     var report by remember { mutableStateOf<PosOwnerDashboard?>(null) }
     var itemSalesReport by remember { mutableStateOf<PosItemSalesReport?>(null) }
+    var reportLoadError by remember { mutableStateOf<String?>(null) }
+    var reportReloadKey by remember { mutableIntStateOf(0) }
 
     var historyDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var historyType by rememberSaveable { mutableStateOf("ALL") }
@@ -929,16 +931,22 @@ fun MerchantPosScreen(
         }
     }
 
-    LaunchedEffect(view, reportDays, snapshot?.shopId) {
+    LaunchedEffect(view, reportDays, snapshot?.shopId, reportReloadKey) {
         if (view == "reports" && snapshot?.owner == true) {
             report = null
             itemSalesReport = null
-            report = runCatching { api.ownerDashboard(auth, reportDays) }
+            reportLoadError = null
+            val dashboard = runCatching { api.ownerDashboard(auth, reportDays) }
                 .onFailure { message = it.message ?: "โหลดรายงานไม่สำเร็จ" }
                 .getOrNull()
-            itemSalesReport = runCatching { api.ownerItemSales(auth, reportDays) }
+            val items = runCatching { api.ownerItemSales(auth, reportDays) }
                 .onFailure { message = it.message ?: "โหลดยอดขายรายสินค้าไม่สำเร็จ" }
                 .getOrNull()
+            report = dashboard
+            itemSalesReport = items
+            if (dashboard == null || items == null) {
+                reportLoadError = "โหลดรายงานได้ไม่ครบ กรุณาตรวจการเชื่อมต่อแล้วลองใหม่"
+            }
         }
     }
 
@@ -1537,7 +1545,9 @@ fun MerchantPosScreen(
                     days = reportDays,
                     report = report,
                     itemSalesReport = itemSalesReport,
+                    loadError = reportLoadError,
                     busy = busy,
+                    onRetry = { reportReloadKey += 1 },
                     onDays = { reportDays = it },
                     onRefund = { bill ->
                         refundTarget = bill
@@ -3066,7 +3076,9 @@ private fun PosReportsView(
     days: Int,
     report: PosOwnerDashboard?,
     itemSalesReport: PosItemSalesReport?,
+    loadError: String?,
     busy: Boolean,
+    onRetry: () -> Unit,
     onDays: (Int) -> Unit,
     onRefund: (PosBill) -> Unit,
     onExportCsv: (String) -> Unit
@@ -3081,6 +3093,17 @@ private fun PosReportsView(
             }
         }
         Spacer(Modifier.height(9.dp))
+        if (loadError != null) {
+            QgCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(loadError, color = QgRed)
+                    OutlinedButton(onClick = onRetry, enabled = !busy) {
+                        Text("ลองโหลดรายงานอีกครั้ง")
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
         if (report != null) {
             val changeLabel = report.changePercent?.let {
                 (if (it > 0) "+" else "") + it.toString() + "%"
