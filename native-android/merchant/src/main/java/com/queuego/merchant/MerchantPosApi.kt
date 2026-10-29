@@ -1117,3 +1117,39 @@ class MerchantPosApi(
 
     private fun orderNumber(raw: String?, id: String): String = nativeOrderNumber(raw)
 }
+
+
+// Tax math foundation: operate on integer satang to avoid floating-point drift.
+// Persisted shop settings and server-side checkout integration are required before
+// this helper may be used to change a real bill total.
+internal data class PosTaxBreakdown(
+    val taxableBaseSatang: Long,
+    val taxSatang: Long,
+    val totalSatang: Long
+)
+
+internal fun calculatePosTaxBreakdown(
+    amountSatang: Long,
+    ratePercent: Double,
+    pricesIncludeTax: Boolean
+): PosTaxBreakdown {
+    require(amountSatang >= 0L) { "Taxable amount cannot be negative" }
+    require(ratePercent.isFinite() && ratePercent in 0.0..100.0) { "Tax rate must be between 0 and 100" }
+
+    val rate = ratePercent / 100.0
+    return if (pricesIncludeTax) {
+        val tax = kotlin.math.round(amountSatang.toDouble() * rate / (1.0 + rate)).toLong()
+        PosTaxBreakdown(
+            taxableBaseSatang = amountSatang - tax,
+            taxSatang = tax,
+            totalSatang = amountSatang
+        )
+    } else {
+        val tax = kotlin.math.round(amountSatang.toDouble() * rate).toLong()
+        PosTaxBreakdown(
+            taxableBaseSatang = amountSatang,
+            taxSatang = tax,
+            totalSatang = Math.addExact(amountSatang, tax)
+        )
+    }
+}
