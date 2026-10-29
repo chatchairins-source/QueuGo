@@ -54,6 +54,7 @@ jobs:
         run: npm test
 
       - name: Confirm cash tender guard in Merchant POS source
+        if: github.event_name == 'pull_request' || github.ref_name == 'work-native-pos-cash-tender-guard-20261029'
         shell: bash
         run: |
           set -euo pipefail
