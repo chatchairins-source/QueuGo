@@ -1135,13 +1135,13 @@ private fun MerchantShell(
                             auth = auth,
                             shop = activeShop,
                             api = api,
-                            onBack = { screen = "home" }
+                            onBack = { screen = merchantBackRoute(screen, productReturnScreen) }
                         )
                     }
                 }
                 "media" -> MerchantMediaScreen(
                     auth = auth,
-                    onBack = { screen = "home" }
+                    onBack = { screen = merchantBackRoute(screen, productReturnScreen) }
                 )
                 "modules" -> MerchantModulesScreen(
                     auth = auth,
@@ -1269,7 +1269,7 @@ private fun MerchantShell(
                                     }
                                 }
                             },
-                            onBack = { screen = "profile" }
+                            onBack = { screen = merchantBackRoute(screen, productReturnScreen) }
                         )
                     }
                 }
