@@ -136,7 +136,15 @@ data class PosBill(
     val paidAt: String? = null,
     val subtotal: Double = 0.0,
     val createdAt: String? = null,
-    val staffId: String? = null
+    val staffId: String? = null,
+    val taxEnabledSnapshot: Boolean = false,
+    val taxRateSnapshot: Double? = null,
+    val pricesIncludeTaxSnapshot: Boolean? = null,
+    val taxableBase: Double? = null,
+    val taxAmount: Double? = null,
+    val taxRegistrationSnapshot: String? = null,
+    val taxBranchSnapshot: String? = null,
+    val taxAddressSnapshot: String? = null
 ) {
     val open: Boolean get() = paymentStatus == "UNPAID" && status != "cancelled"
 }
@@ -396,7 +404,9 @@ class MerchantPosApi(
                 }
             }
             val billColumns = "select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status," +
-                "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at"
+                "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at," +
+                "pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_taxable_base,pos_tax_amount," +
+                "pos_tax_registration_snapshot,pos_tax_branch_snapshot,pos_tax_address_snapshot"
             val bills = async { http.array(http.get(
                 "orders?$billColumns&shop_id=eq." + http.enc(shopId) +
                     "&sales_channel=eq.POS&order=created_at.desc&limit=200",
@@ -1100,7 +1110,15 @@ class MerchantPosApi(
         paidAt = nullableString(r, "paid_at"),
         subtotal = r.optDouble("subtotal", 0.0),
         createdAt = nullableString(r, "created_at"),
-        staffId = nullableString(r, "staff_id")
+        staffId = nullableString(r, "staff_id"),
+        taxEnabledSnapshot = r.optBoolean("pos_tax_enabled_snapshot", false),
+        taxRateSnapshot = nullableDouble(r, "pos_tax_rate_snapshot"),
+        pricesIncludeTaxSnapshot = if (r.has("pos_prices_include_tax_snapshot") && !r.isNull("pos_prices_include_tax_snapshot")) r.optBoolean("pos_prices_include_tax_snapshot") else null,
+        taxableBase = nullableDouble(r, "pos_taxable_base"),
+        taxAmount = nullableDouble(r, "pos_tax_amount"),
+        taxRegistrationSnapshot = nullableString(r, "pos_tax_registration_snapshot"),
+        taxBranchSnapshot = nullableString(r, "pos_tax_branch_snapshot"),
+        taxAddressSnapshot = nullableString(r, "pos_tax_address_snapshot")
     )
 
     private fun nullableString(o: JSONObject, key: String): String? =
