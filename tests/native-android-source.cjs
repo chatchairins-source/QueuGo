@@ -1745,3 +1745,15 @@ ok(posTaxMigration.includes('prices_include_tax boolean not null default true'),
 ok(posTaxMigration.includes('pos_tax_amount numeric(12,2)'),'POS bill must have a tax snapshot field');
 ok(posTaxMigration.includes('revoke insert, update, delete on public.pos_tax_settings from anon, authenticated'),'Tax settings must not permit direct client writes');
 ok(posTaxMigration.includes('does not change live checkout totals'),'Migration must not claim live checkout integration before server RPC support');
+
+
+// POS tax checkout integration must calculate tax on the server and preserve per-bill snapshots.
+const posTaxCheckoutMigration=fs.readFileSync(path.join(__dirname,'../QueueGo-POS-Tax-Checkout-Integration-Migration.sql'),'utf8');
+ok(posTaxCheckoutMigration.includes('create or replace function public.pos_save_tax_settings('),'POS tax settings must be saved through an owner-authorized RPC');
+ok(posTaxCheckoutMigration.includes('not public.pos_is_owner()'), 'Only the POS shop owner may change tax settings');
+ok(posTaxCheckoutMigration.includes('create or replace function public.pos_apply_tax_snapshot()'),'POS tax must be calculated by a server-side trigger');
+ok(posTaxCheckoutMigration.includes('new.pos_tax_registration_snapshot := v_settings.tax_registration_number'),'Tax registration details must be snapshotted on each new POS bill');
+ok(posTaxCheckoutMigration.includes('round(v_net * v_rate / (1 + v_rate),2)'),'Tax-inclusive prices must extract tax from the customer total');
+ok(posTaxCheckoutMigration.includes('new.total_amount := v_net + v_tax'),'Tax-exclusive prices must add tax to the customer total');
+ok(posTaxCheckoutMigration.includes('before insert or update of subtotal,discount_amount,sales_channel'),'Tax must recalculate when bill subtotal or discount changes');
+ok(posTaxCheckoutMigration.includes('revoke all on function public.pos_apply_tax_snapshot() from public,anon,authenticated'),'Clients must not call the internal tax trigger function');
