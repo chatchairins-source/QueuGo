@@ -242,6 +242,15 @@ data class PosHistoryRow(
     val staffId: String?
 )
 
+data class PosTaxSettings(
+    val enabled: Boolean = false,
+    val ratePercent: Double = 7.0,
+    val pricesIncludeTax: Boolean = true,
+    val registrationNumber: String? = null,
+    val branchCode: String? = null,
+    val invoiceAddress: String? = null
+)
+
 data class PosSnapshot(
     val shopId: String,
     val shopName: String,
@@ -902,6 +911,43 @@ class MerchantPosApi(
                 .put("p_user", userId)
                 .put("p_role", role)
                 .put("p_active", active)
+        )
+    }
+
+    suspend fun loadTaxSettings(auth: NativeAuth): PosTaxSettings {
+        val raw = http.get(
+            "pos_tax_settings?select=tax_enabled,tax_rate,prices_include_tax,tax_registration_number,tax_branch_code,tax_invoice_address&shop_id=eq." +
+                http.enc(http.rpc("pos_my_shop", auth.session.accessToken, JSONObject()).toString().trim('"')) +
+                "&limit=1",
+            auth.session.accessToken
+        )
+        val rows = http.array(raw)
+        val row = rows.optJSONObject(0) ?: return PosTaxSettings()
+        return PosTaxSettings(
+            enabled = row.optBoolean("tax_enabled", false),
+            ratePercent = row.optDouble("tax_rate", 7.0),
+            pricesIncludeTax = row.optBoolean("prices_include_tax", true),
+            registrationNumber = row.optString("tax_registration_number").takeUnless { it == "null" },
+            branchCode = row.optString("tax_branch_code").takeUnless { it == "null" },
+            invoiceAddress = row.optString("tax_invoice_address").takeUnless { it == "null" }
+        )
+    }
+
+    suspend fun saveTaxSettings(auth: NativeAuth, settings: PosTaxSettings) {
+        require(settings.ratePercent.isFinite() && settings.ratePercent in 0.0..100.0) { "อัตราภาษีต้องอยู่ระหว่าง 0–100%" }
+        require(settings.registrationNumber.orEmpty().length <= 30) { "เลขประจำตัวผู้เสียภาษียาวเกินไป" }
+        require(settings.branchCode.orEmpty().length <= 20) { "รหัสสาขายาวเกินไป" }
+        require(settings.invoiceAddress.orEmpty().length <= 1000) { "ที่อยู่ยาวเกินไป" }
+        http.rpc(
+            "pos_save_tax_settings",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_tax_enabled", settings.enabled)
+                .put("p_tax_rate", settings.ratePercent)
+                .put("p_prices_include_tax", settings.pricesIncludeTax)
+                .put("p_registration_number", settings.registrationNumber ?: JSONObject.NULL)
+                .put("p_branch_code", settings.branchCode ?: JSONObject.NULL)
+                .put("p_invoice_address", settings.invoiceAddress ?: JSONObject.NULL)
         )
     }
 
