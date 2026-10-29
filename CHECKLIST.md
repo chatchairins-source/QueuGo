@@ -819,3 +819,9 @@ Total output lines: 2112
 - Added source regression coverage and enabled automatic Native POS CI on `work-native-pos-cash-movements-20261029`. Draft stacked PR #733 targets the cash-tender guard branch and must not merge before PR #732 is merged.
 - Verification status at documentation time: Native POS CI and Native Android Pilot are running/queued for exact HEAD. No APK generated; no Production data changed. Still required: exact-head green CI/Pilot, then authenticated cashier acceptance on a real device for cash-in/out, uncertain retry, shift close/history, and expected balance.
 - Next: inspect the first failing exact-head check if any, fix only confirmed regressions, and wait for the latest SHA's CI/Pilot before producing artifacts.
+
+
+## 2026-10-29 Native POS cash-movement follow-up CI receipt
+
+- Repository regression suite passed on code HEAD `5c19eed527bf5ffdf116a2975252991e962fbb28` in Native POS CI run `40850750130`: https://github.com/chatchairins-source/QueuGo/actions/runs/40850750130. The cash-tender assertion step was skipped by its branch condition, although the full `npm test` suite passed; corrected that condition on the cash-movement branch so the assertion runs there too.
+- Current workflow fix commit: `2cf9a7b9a4ee3bb9c0e6355a2ff527c63890c529`. **NEXT:** wait for latest exact-HEAD Native POS CI and Native Android Pilot; inspect any first failure and fix before promoting PR #733 from Draft. No APK created.
