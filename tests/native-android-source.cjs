@@ -1725,3 +1725,13 @@ ok(
   'Customer Ride map must preserve user zoom/rotate/tilt after marker updates and match Web gesture controls'
 );
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
+
+
+// POS tax calculation foundation must use integer satang and distinguish tax-inclusive/exclusive prices.
+const merchantPosApiSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt');
+ok(merchantPosApiSource.includes('data class PosTaxBreakdown('),'POS tax breakdown model must exist');
+ok(merchantPosApiSource.includes('internal fun calculatePosTaxBreakdown('),'POS tax calculator must exist');
+ok(merchantPosApiSource.includes('amountSatang: Long') && merchantPosApiSource.includes('taxableBaseSatang: Long') && merchantPosApiSource.includes('taxSatang: Long'),'POS tax math must use integer satang');
+ok(merchantPosApiSource.includes('pricesIncludeTax: Boolean'),'POS tax math must distinguish tax-inclusive and tax-exclusive prices');
+ok(merchantPosApiSource.includes('ratePercent.isFinite() && ratePercent in 0.0..100.0'),'POS tax math must reject invalid tax rates');
+ok(merchantPosApiSource.includes('Math.addExact(amountSatang, tax)'),'POS tax-exclusive total must detect integer overflow');
