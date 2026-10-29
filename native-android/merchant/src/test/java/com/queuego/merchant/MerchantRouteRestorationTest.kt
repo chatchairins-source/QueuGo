@@ -30,7 +30,7 @@ class MerchantRouteRestorationTest {
             "profile" to "home", "shop-setup" to "profile", "hours" to "profile",
             "catalog" to "products", "grocery-catalog" to "products",
             "market-catalog" to "products", "product" to "products",
-            "order" to "orders", "order-report" to "profile", "unknown-route" to "home"
+            "order" to "orders", "order-report" to "order", "unknown-route" to "home"
         )
         expected.forEach { (route, parent) ->
             assertEquals("Back destination for $route", parent, merchantBackRoute(route))
