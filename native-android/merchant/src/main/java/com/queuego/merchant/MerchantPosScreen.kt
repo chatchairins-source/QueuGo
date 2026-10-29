@@ -262,6 +262,12 @@ fun MerchantPosScreen(
     var cashShiftPending by remember { mutableStateOf(false) }
     var openingCash by rememberSaveable { mutableStateOf("0") }
     var countedCash by rememberSaveable { mutableStateOf("") }
+    var cashMovementAmount by rememberSaveable { mutableStateOf("") }
+    var cashMovementReason by rememberSaveable { mutableStateOf("") }
+    var pendingCashMovementType by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingCashMovementAmount by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingCashMovementReason by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingCashMovementRequestId by rememberSaveable { mutableStateOf<String?>(null) }
 
     var discountOpen by remember { mutableStateOf(false) }
     var discountText by rememberSaveable { mutableStateOf("") }
@@ -1010,6 +1016,62 @@ fun MerchantPosScreen(
         }
     }
 
+    fun recordCashMovement(type: String) {
+        if (cashShiftPending || busy) return
+        val retrying = pendingCashMovementRequestId != null
+        val actualType = if (retrying) pendingCashMovementType else type
+        if (actualType !in setOf("cash_in", "cash_out")) {
+            message = "ประเภทรายการเงินสดไม่ถูกต้อง"
+            return
+        }
+        if (cashShift?.open != true) {
+            message = "ต้องเปิดกะรับเงินก่อนบันทึกเงินเข้าออก"
+            return
+        }
+        val amountText = if (retrying) pendingCashMovementAmount.orEmpty() else cashMovementAmount
+        val reasonText = if (retrying) pendingCashMovementReason.orEmpty() else cashMovementReason.trim()
+        val amount = amountText.toDoubleOrNull()
+        if (amount == null || !amount.isFinite() || amount <= 0 ||
+            kotlin.math.abs(amount * 100 - kotlin.math.round(amount * 100)) >= 0.00001) {
+            message = "จำนวนเงินต้องมากกว่า 0 และไม่เกิน 2 ตำแหน่งทศนิยม"
+            return
+        }
+        if (reasonText.trim().length !in 5..500) {
+            message = "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร"
+            return
+        }
+        val requestId = pendingCashMovementRequestId ?: UUID.randomUUID().toString().also {
+            pendingCashMovementType = actualType
+            pendingCashMovementAmount = amountText
+            pendingCashMovementReason = reasonText.trim()
+            pendingCashMovementRequestId = it
+        }
+        cashShiftPending = true
+        scope.launch {
+            try {
+                api.recordCashMovement(auth, actualType!!, amount, reasonText.trim(), requestId)
+                cashShift = api.currentCashShift(auth)
+                cashShiftError = null
+                pendingCashMovementType = null
+                pendingCashMovementAmount = null
+                pendingCashMovementReason = null
+                pendingCashMovementRequestId = null
+                cashMovementAmount = ""
+                cashMovementReason = ""
+                message = if (actualType == "cash_in") "บันทึกเงินเข้าแล้ว" else "บันทึกเงินออกแล้ว"
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                runCatching { api.currentCashShift(auth) }.onSuccess { cashShift = it }
+                cashShiftError = "ยังยืนยันรายการเงินเข้าออกไม่ได้ · ตรวจรายการเดิมก่อนส่งซ้ำ"
+                message = failure.message ?: cashShiftError.orEmpty()
+                // Keep the exact request id and payload so retry is idempotent.
+            } finally {
+                cashShiftPending = false
+            }
+        }
+    }
+
     LaunchedEffect(view, snap?.shopId, auth.session.accessToken) {
         if (view == "delivery" && snap?.owner == true) {
             deliveryLoading = true
@@ -1366,6 +1428,13 @@ fun MerchantPosScreen(
                     shiftPending = cashShiftPending,
                     openingCash = openingCash,
                     countedCash = countedCash,
+                    cashMovementAmount = cashMovementAmount,
+                    cashMovementReason = cashMovementReason,
+                    pendingCashMovementType = pendingCashMovementType,
+                    cashMovementPending = pendingCashMovementRequestId != null,
+                    onCashMovementAmount = { cashMovementAmount = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                    onCashMovementReason = { cashMovementReason = it.take(500) },
+                    onCashMovement = ::recordCashMovement,
                     onOpeningCash = { openingCash = it.filter { ch -> ch.isDigit() || ch == '.' } },
                     onCountedCash = { countedCash = it.filter { ch -> ch.isDigit() || ch == '.' } },
                     onReloadShift = ::reloadCashShift,
@@ -2839,6 +2908,13 @@ private fun PosBillsView(
     shiftPending: Boolean,
     openingCash: String,
     countedCash: String,
+    cashMovementAmount: String,
+    cashMovementReason: String,
+    pendingCashMovementType: String?,
+    cashMovementPending: Boolean,
+    onCashMovementAmount: (String) -> Unit,
+    onCashMovementReason: (String) -> Unit,
+    onCashMovement: (String) -> Unit,
     onOpeningCash: (String) -> Unit,
     onCountedCash: (String) -> Unit,
     onReloadShift: () -> Unit,
@@ -2908,6 +2984,54 @@ private fun PosBillsView(
                                 money(shift.expectedCash ?: shift.openingFloat ?: 0.0),
                             fontWeight = FontWeight.Bold, fontSize = 13.sp
                         )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column(Modifier.weight(1f)) {
+                                Text("เงินเข้า", color = QgMuted, fontSize = 12.sp)
+                                Text("฿" + money(shift.cashInTotal ?: 0.0), fontWeight = FontWeight.Bold)
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text("เงินออก", color = QgMuted, fontSize = 12.sp)
+                                Text("฿" + money(shift.cashOutTotal ?: 0.0), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Text("บันทึกเงินสดระหว่างกะ", fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            cashMovementAmount, onCashMovementAmount,
+                            label = { Text("จำนวนเงินเข้า/ออก (บาท)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            enabled = !shiftPending && !busy && !cashMovementPending,
+                            singleLine = true, modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            cashMovementReason, onCashMovementReason,
+                            label = { Text("เหตุผล (อย่างน้อย 5 ตัวอักษร)") },
+                            enabled = !shiftPending && !busy && !cashMovementPending,
+                            singleLine = true, modifier = Modifier.fillMaxWidth()
+                        )
+                        if (cashMovementPending) {
+                            Text(
+                                "มีรายการ " + (if (pendingCashMovementType == "cash_in") "เงินเข้า" else "เงินออก") + " ที่ยังไม่ยืนยัน ใช้ปุ่มตรวจรายการเดิมเพื่อส่งคำขอเดิมอย่างปลอดภัย",
+                                color = QgRed, fontSize = 12.sp
+                            )
+                            Button(
+                                onClick = { onCashMovement(pendingCashMovementType ?: "cash_in") },
+                                enabled = !shiftPending && !busy,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp)
+                            ) { Text("ตรวจรายการเดิม") }
+                        } else {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = { onCashMovement("cash_in") },
+                                    enabled = !shiftPending && !busy,
+                                    modifier = Modifier.weight(1f).heightIn(min = 46.dp)
+                                ) { Text("เงินเข้า") }
+                                OutlinedButton(
+                                    onClick = { onCashMovement("cash_out") },
+                                    enabled = !shiftPending && !busy,
+                                    modifier = Modifier.weight(1f).heightIn(min = 46.dp)
+                                ) { Text("เงินออก") }
+                            }
+                        }
                         OutlinedTextField(
                             countedCash, onCountedCash,
                             label = { Text("นับเงินสดจริงเพื่อปิดกะ") },
