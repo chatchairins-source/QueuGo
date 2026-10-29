@@ -208,13 +208,13 @@ internal fun RiderNotificationCenter(
             }
         }
 
-        if (loading || !error.isNullOrBlank() || rows.isEmpty()) {
+        if (!loading && (!error.isNullOrBlank() || rows.isEmpty())) {
             Column(
                 Modifier.fillMaxWidth().padding(vertical = 30.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    if (loading) "กำลังโหลดแจ้งเตือน..." else error ?: "ยังไม่มีแจ้งเตือน",
+                    error ?: "ยังไม่มีแจ้งเตือน",
                     color = Color(0xFF8A8387)
                 )
                 if (!error.isNullOrBlank()) {
@@ -227,7 +227,7 @@ internal fun RiderNotificationCenter(
                     ) { Text("ลองใหม่") }
                 }
             }
-        } else {
+        } else if (!loading) {
             rows.forEachIndexed { index, row ->
                 if (index > 0) Spacer(Modifier.height(7.dp))
                 Card(

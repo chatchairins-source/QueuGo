@@ -36,6 +36,7 @@ internal fun MerchantMarketCatalogScreen(
     val pending = remember(auth.user.id, shop.id) {
         MerchantMarketCatalogPendingStore(File(context.noBackupFilesDir, "market-catalog-pending"), auth.user.id, shop.id)
     }
+    val contentCache = remember(context.applicationContext) { MerchantContentCache(context.applicationContext) }
     var query by rememberSaveable { mutableStateOf("") }
     var search by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf("") }
@@ -54,6 +55,31 @@ internal fun MerchantMarketCatalogScreen(
         delay(300)
         if (!saving && search.trim() != query) { query = search.trim(); offset = 0 }
     }
+    LaunchedEffect(auth.user.id, shop.id, auth.session.accessToken) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            val cachedState = withContext(Dispatchers.IO) {
+                contentCache.readMarketCatalogCategories(auth.user.id, shop.id) to
+                    contentCache.marketCatalogCategoriesFresh(auth.user.id, shop.id)
+            }
+            val cached = cachedState.first
+            if (cached.isNotEmpty()) categories = cached
+            if (!cachedState.second) {
+                try {
+                    val fresh = api.marketCatalogCategories(auth).map { it.trim() }
+                        .filter { it.isNotEmpty() }.distinct().take(200)
+                    categories = fresh
+                    withContext(Dispatchers.IO) {
+                        contentCache.writeMarketCatalogCategories(auth.user.id, shop.id, fresh)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Keep the cached reference list visible while the catalog page refreshes.
+                }
+            }
+            awaitCancellation()
+        }
+    }
     LaunchedEffect(query, category, offset, refresh, auth.session.accessToken) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             loading = true
@@ -68,11 +94,9 @@ internal fun MerchantMarketCatalogScreen(
                     onSaved()
                 }
                 coroutineScope {
-                    val categoryRead = async { api.marketCatalogCategories(auth) }
                     val pageRead = async { api.marketCatalogPage(auth, shop.id, query, category, offset) }
                     val rateRead = async { try { api.effectiveGp(auth, shop.id) } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { null } }
                     val page = pageRead.await()
-                    categories = categoryRead.await()
                     items = page.items
                     more = page.hasMore
                     rate = rateRead.await()
@@ -95,7 +119,6 @@ internal fun MerchantMarketCatalogScreen(
             Text(it, color = MaterialTheme.colorScheme.error)
             OutlinedButton(onClick = { refresh++ }, enabled = !saving && !loading) { Text("ลองโหลด / ตรวจรายการค้างอีกครั้ง") }
         }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         val selection = selected
         if (selection == null) {
             OutlinedTextField(value = search, onValueChange = { search = it.take(100) }, label = { Text("ค้นหาสินค้า") },

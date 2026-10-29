@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,7 +31,9 @@ import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgLine
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -46,6 +49,10 @@ internal fun MerchantHoursScreen(
     onSaved: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val cache = remember(context.applicationContext) {
+        MerchantHoursCache(context.applicationContext)
+    }
     val today = remember { LocalDate.now(ZoneId.of("Asia/Bangkok")).toString() }
     var days by remember(shop.id) {
         mutableStateOf((0..6).map { MerchantBusinessDay(it, "06:00", "22:00", false) })
@@ -58,20 +65,36 @@ internal fun MerchantHoursScreen(
     var saving by remember(shop.id) { mutableStateOf(false) }
     var message by remember(shop.id) { mutableStateOf<String?>(null) }
 
+    fun applyHoursState(state: MerchantHoursState) {
+        days = state.days
+        val special = state.special
+        specialDay = special?.day.orEmpty()
+        specialClosed = special?.isClosed ?: true
+        specialOpen = special?.opensAt ?: "06:00"
+        specialClose = special?.closesAt ?: "22:00"
+    }
+
     LaunchedEffect(shop.id) {
         loading = true
+        val cacheFresh = withContext(Dispatchers.IO) { cache.fresh(shop.id) }
+        val cached = withContext(Dispatchers.IO) { cache.read(shop.id, today) }
+        if (cached != null) {
+            applyHoursState(cached)
+            loading = false
+            if (cacheFresh) {
+                message = null
+                return@LaunchedEffect
+            }
+        }
         runCatching { api.loadBusinessHours(auth, shop.id, today) }
             .onSuccess { state ->
-                days = state.days
-                state.special?.let {
-                    specialDay = it.day.orEmpty()
-                    specialClosed = it.isClosed
-                    specialOpen = it.opensAt
-                    specialClose = it.closesAt
-                }
+                applyHoursState(state)
+                withContext(Dispatchers.IO) { cache.write(shop.id, state) }
                 message = null
             }
-            .onFailure { message = it.message ?: "โหลดเวลาทำการไม่สำเร็จ" }
+            .onFailure {
+                if (cached == null) message = it.message ?: "โหลดเวลาทำการไม่สำเร็จ"
+            }
         loading = false
     }
 
@@ -107,81 +130,75 @@ internal fun MerchantHoursScreen(
             }
         }
 
-        if (loading) {
-            Box(
-                Modifier.fillMaxWidth().height(140.dp),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
-        } else {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Color.White, RoundedCornerShape(16.dp))
-                    .border(1.dp, QgLine, RoundedCornerShape(16.dp))
-                    .padding(12.dp)
-            ) {
-                days.forEach { day ->
-                    MerchantHoursDayRow(
-                        name = merchantDayNames.getOrElse(day.weekday) { "วัน" },
-                        value = day,
-                        onChange = { changed ->
-                            days = days.map { if (it.weekday == changed.weekday) changed else it }
-                        }
-                    )
-                    if (day.weekday != 6) {
-                        Spacer(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(QgLine)
-                        )
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(16.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+                .padding(12.dp)
+        ) {
+            days.forEach { day ->
+                MerchantHoursDayRow(
+                    name = merchantDayNames.getOrElse(day.weekday) { "วัน" },
+                    value = day,
+                    onChange = { changed ->
+                        days = days.map { if (it.weekday == changed.weekday) changed else it }
                     }
-                }
-
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    "วันหยุดหรือเวลาพิเศษ",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.ExtraBold
                 )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = specialDay,
-                    onValueChange = { specialDay = it.take(10) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("วันที่ YYYY-MM-DD") },
-                    singleLine = true
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = specialClosed,
-                        onCheckedChange = { specialClosed = it }
-                    )
-                    Text("ปิดทั้งวัน", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = specialOpen,
-                        onValueChange = { specialOpen = it.take(5) },
-                        modifier = Modifier.weight(1f),
-                        enabled = !specialClosed,
-                        label = { Text("เปิด") },
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = specialClose,
-                        onValueChange = { specialClose = it.take(5) },
-                        modifier = Modifier.weight(1f),
-                        enabled = !specialClosed,
-                        label = { Text("ปิด") },
-                        singleLine = true
+                if (day.weekday != 6) {
+                    Spacer(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(QgLine)
                     )
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "วันหยุดหรือเวลาพิเศษ",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = specialDay,
+                onValueChange = { specialDay = it.take(10) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("วันที่ YYYY-MM-DD") },
+                singleLine = true
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = specialClosed,
+                    onCheckedChange = { specialClosed = it }
+                )
+                Text("ปิดทั้งวัน", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = specialOpen,
+                    onValueChange = { specialOpen = it.take(5) },
+                    modifier = Modifier.weight(1f),
+                    enabled = !specialClosed,
+                    label = { Text("เปิด") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = specialClose,
+                    onValueChange = { specialClose = it.take(5) },
+                    modifier = Modifier.weight(1f),
+                    enabled = !specialClosed,
+                    label = { Text("ปิด") },
+                    singleLine = true
+                )
+            }
         }
+
 
         if (!message.isNullOrBlank()) {
             Text(
@@ -212,7 +229,12 @@ internal fun MerchantHoursScreen(
                             closesAt = specialClose,
                             isClosed = specialClosed
                         )
-                        runCatching { api.saveBusinessHours(auth, days, special) }
+                        runCatching {
+                            api.saveBusinessHours(auth, days, special)
+                            withContext(Dispatchers.IO) {
+                                cache.write(shop.id, MerchantHoursState(days, special))
+                            }
+                        }
                             .onSuccess {
                                 message = "บันทึกเวลาทำการแล้ว"
                                 onSaved()

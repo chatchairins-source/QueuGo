@@ -356,7 +356,7 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
 
         val mod = moderation
         when {
-            mod == null -> QgCard(Modifier.fillMaxWidth()) { Text("กำลังตรวจสอบสิทธิ์แชท...", color = QgMuted) }
+            mod == null -> Unit
             !mod.accepted -> {
                 QgCard(Modifier.fillMaxWidth()) {
                     Column {

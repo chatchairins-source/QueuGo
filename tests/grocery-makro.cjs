@@ -52,7 +52,8 @@ ok(importer.includes('qg_admin_grocery_source_finalize'),'source importer finali
 ok(merchant.includes("qg_grocery_source_search"),'Merchant add mode searches source catalog');
 ok(merchant.includes("qg_grocery_source_add_to_shop"),'Merchant adds only selected source product');
 ok(merchant.includes('ค้นหาชื่อสินค้า ยี่ห้อ หรือบาร์โค้ด'),'Merchant exposes 10k name/brand/barcode search');
-ok(merchant.includes('display_name:r.title_th,image:null'),'Merchant source search keeps Makro image URL as provenance only and does not hotlink unapproved imagery');
+ok(merchant.includes('display_name:r.title_th,image:merchantReferenceImage(r.image_url)'),'Merchant source search renders only the pinned merchant-only Makro reference image');
+ok(merchant.includes("https://images.mango-prod.siammakro.cloud/"),'Merchant source preview pins the approved reference host instead of accepting arbitrary imagery');
 
 ok(workflow.includes('sync-makro-dry-branded.cjs'),'CI builds Makro source snapshot');
 ok(workflow.includes('artifacts/makro-catalog/makro-grocery-branded.json'),'CI uploads generated snapshot as artifact');

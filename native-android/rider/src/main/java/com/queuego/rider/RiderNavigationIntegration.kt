@@ -54,7 +54,7 @@ private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = false
 // Web is the presentation blueprint. Keep the experimental Native-only filter out of the
 // visible path so both platforms consume the same raw fix + route-match presentation rules.
 private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false
-// Ready/online Home follows Rider heading while staying flat; active work owns perspective.
+// Idle Home stays north-up like Web; active work owns navigation camera follow/perspective.
 private const val RIDER_CAMERA_SMOOTHNESS_TEST_MODE = false
 
 private fun riderQueueGoMapServiceBaseUrl(context: Context): String? = runCatching {
@@ -104,10 +104,9 @@ private fun riderLastKnownPresentationCamera(context: Context): NavigationMapCam
 internal fun riderNavigationAutoFollow(
     navigationActive: Boolean,
     viewMode: NavigationViewMode,
-    online: Boolean = false,
     smoothnessTestMode: Boolean = false
 ): Boolean {
-    return (navigationActive || online || smoothnessTestMode) && viewMode == NavigationViewMode.FOLLOW
+    return (navigationActive || smoothnessTestMode) && viewMode == NavigationViewMode.FOLLOW
 }
 
 internal fun riderNavigationStops(
@@ -129,7 +128,8 @@ internal fun riderNavigationStops(
         lat: Double?,
         lon: Double?,
         completed: Boolean,
-        label: String
+        label: String,
+        numbered: Boolean = false
     ) {
         if (blockedByUnknownPendingStop) return
         val point = validNavigationPoint(lat, lon)
@@ -143,7 +143,8 @@ internal fun riderNavigationStops(
             kind = kind,
             point = point,
             completed = completed,
-            label = label
+            label = label,
+            numbered = numbered
         )
     }
 
@@ -208,7 +209,8 @@ internal fun riderNavigationStops(
             }
         }
     } else if (job.marketOrderId != null) {
-        marketPickups.forEachIndexed { index, pickup ->
+        val visiblePickups = marketPickups.filter { it.status.uppercase() != "CANCELLED" }
+        visiblePickups.forEachIndexed { index, pickup ->
             add(
                 id = "pickup:" + pickup.pickupId,
                 sequence = index + 1,
@@ -216,12 +218,13 @@ internal fun riderNavigationStops(
                 lat = pickup.latitude,
                 lon = pickup.longitude,
                 completed = pickup.done,
-                label = pickup.shopName
+                label = pickup.shopName,
+                numbered = true
             )
         }
         add(
             id = "drop:" + job.id,
-            sequence = marketPickups.size + 1,
+            sequence = visiblePickups.size + 1,
             kind = NavigationStopKind.DROPOFF,
             lat = job.deliveryLat,
             lon = job.deliveryLng,
@@ -369,19 +372,18 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
     val navigationActive = stops.any { !it.completed && it.point.valid }
-    val perspectiveCameraEnabled = navigationActive || online || RIDER_CAMERA_SMOOTHNESS_TEST_MODE
+    val perspectiveCameraEnabled = navigationActive || RIDER_CAMERA_SMOOTHNESS_TEST_MODE
     val followRider = riderNavigationAutoFollow(
         navigationActive = navigationActive,
         viewMode = viewModeState.mode,
-        online = online,
         smoothnessTestMode = RIDER_CAMERA_SMOOTHNESS_TEST_MODE
     )
     val riderFix by RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()
 
-    LaunchedEffect(navigationActive, online) {
-        // Going online or receiving work starts heading-follow. Manual pan still switches
-        // the view mode until the Rider explicitly recenters or availability/work changes.
-        if (navigationActive || online || RIDER_CAMERA_SMOOTHNESS_TEST_MODE) {
+    LaunchedEffect(navigationActive) {
+        // Receiving work starts heading-follow. Online availability alone leaves the
+        // idle Home camera north-up, matching Web; manual pan stays owned by the Rider.
+        if (navigationActive || RIDER_CAMERA_SMOOTHNESS_TEST_MODE) {
             viewModeState = viewModeController.onRecenter()
             pendingViewModePersistence = NavigationViewMode.FOLLOW.name
         }
@@ -441,7 +443,7 @@ internal fun QueueGoRiderNavigationMap(
             latitude = activeStop?.point?.latitude,
             longitude = activeStop?.point?.longitude
         )
-        val next = viewModeController.onActiveStopChanged()
+        val next = viewModeController.onActiveStopChanged(navigationActive)
         viewModeState = next
         if (next.mode != NavigationViewMode.OVERVIEW) {
             pendingViewModePersistence = next.mode.name
@@ -661,16 +663,12 @@ internal fun QueueGoRiderNavigationMap(
         onMapReady = onMapReady,
         compassResetSignal = compassResetSignal,
         onUserGesture = {
-            if (riderFix?.point?.valid == true) {
-                viewModeState = viewModeController.onUserGesture()
-                pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
-                userGestureEpoch += 1
-            } else {
-                // A startup gesture before the first live GPS fix must not strand the
-                // Rider in FREE_PAN. Keep FOLLOW ownership until a real fix exists.
-                viewModeState = viewModeController.onRecenter()
-                pendingViewModePersistence = NavigationViewMode.FOLLOW.name
-            }
+            // Manual gestures must work even while GPS acquires its first fix.
+            // With an active job FOLLOW returns after the real idle grace period;
+            // otherwise the rider can keep their chosen map perspective.
+            viewModeState = viewModeController.onUserGesture()
+            pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
+            userGestureEpoch += 1
         },
         onCameraChanged = { camera ->
             pendingCameraPersistence = doubleArrayOf(

@@ -70,7 +70,7 @@ internal fun RiderDocumentReadinessCard(
             )
 
             if (!loaded) {
-                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 9.dp))
+                // Refresh silently; do not flash loading chrome over cached/profile content.
             } else if (readiness == null) {
                 Text(
                     "โหลดสถานะเอกสารไม่สำเร็จ",

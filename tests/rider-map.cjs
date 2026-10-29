@@ -12,7 +12,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(activeRouteFn.includes("if(isOfferPreview&&!riderRouteCache)focusRiderNavigation"),true);
  eq(activeRouteFn.includes('followNavigationCamera?.(map,pos,riderRouteGeometry'),false);
  eq(source.includes('Route rendering owns geometry only. GPS Follow is the single camera writer.'),true);
- eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.laundryJob||S.openJobs?.[0]?.order)}'),true);
+ eq(source.includes('function qgNavigationCameraShouldRun(){return !!(S.activeOrder||S.openJobs?.[0]?.order)}'),true);
  eq(source.includes('syncRiderNavigationCameraMode();'),true);
  eq(source.includes('data-qg-rider-puck="true"'),true);
  eq(source.includes("'route': '<svg class=\"ico\""),true);
@@ -64,7 +64,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(source.includes("rotationAlignment:'map'"),true);
 
  let now=100000,requests=[],gate=null,serial=0;
- const timers=new Map(),routeAdds=[],routeRemoves=[],fits=[],destroyed=[],badge={style:{}},label={textContent:''};
+ const timers=new Map(),routeAdds=[],routeRemoves=[],fits=[],destroyed=[],badge={style:{}},label={textContent:''},speedLimit={hidden:true,textContent:'',setAttribute(name,value){this[name]=value}};
  const map={id:'queuego-map'};
  const cameraModes=[],cameraFollows=[];
  const Q={
@@ -85,11 +85,11 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
   activeOrder:{id:'o',status:'assigned',pickup_latitude:13.1,pickup_longitude:100.1,delivery_latitude:13.2,delivery_longitude:100.2},
   routeOverlays:[],jobMarkers:[],watchId:null
  };
- const routeResponse={routes:[{distance:1200,duration:240,route_id:'qg-route-1',geometry:{type:'LineString',coordinates:[[100,13],[100.1,13.1]]}}]};
+ const routeResponse={routes:[{distance:1200,duration:240,route_id:'qg-route-1',geometry:{type:'LineString',coordinates:[[100,13],[100.1,13.1]]},maxspeed_intervals:[{start_geometry_m:0,end_geometry_m:600,maxspeed_kph:50,maxspeed_raw:'50',source:'osm:maxspeed'}]}]};
  const routeService={call:async(action,body,options)=>{requests.push({action,body,options});if(gate)return gate.promise;return routeResponse}};
  const ctx=vm.createContext({
   S,window:{QueueGoMapWeb:Q,QueueGoMapService:routeService},Date:class extends Date{static now(){return now}},Promise,AbortController,Number,String,JSON,encodeURIComponent,
-  document:{hidden:false,getElementById:id=>id==='route-badge'?badge:label},
+  document:{hidden:false,getElementById:id=>id==='route-badge'?badge:id==='qg-speed-limit'?speedLimit:label},
   navigator:{onLine:true},
   riderSessionMatches:s=>s===S.session,statusFromRow:o=>o.status,haversineKm:(a,b,c,d)=>Math.hypot(a-c,b-d)*111,
   setTimeout:f=>{timers.set(++serial,f);return serial},clearTimeout:id=>timers.delete(id)
@@ -140,6 +140,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  eq(routeAdds.map(x=>[x.style.color,x.style.width]),[['#ffffff',16],['#e6002d',12]]);
  eq(routeAdds[0].line,routeAdds[1].line);
  eq(S.routeOverlays.length,2);
+ eq(run('riderRouteCache.speedLimits[0].kph'),50);
  eq(label.textContent,'ไปร้าน • 1.2 กม. • 4 นาที');
  eq(timers.size,0);
 

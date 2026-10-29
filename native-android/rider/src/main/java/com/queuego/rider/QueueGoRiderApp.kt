@@ -599,23 +599,47 @@ private fun RiderHome(
         if (snapshot == null && cachedSnapshot != null) snapshot = cachedSnapshot
     }
     var dispatchPreferencesHydrated by remember(auth.user.id) { mutableStateOf(false) }
+    var workPreferences by remember(auth.user.id) { mutableStateOf<RiderWorkPreferences?>(null) }
+    var workPreferencesBusy by remember(auth.user.id) { mutableStateOf(false) }
+    var workPreferencesError by remember(auth.user.id) { mutableStateOf<String?>(null) }
     var autoAcceptEnabled by rememberSaveable(auth.user.id) { mutableStateOf(false) }
     var autoAcceptAttemptKey by rememberSaveable(auth.user.id) {
         mutableStateOf<String?>(null)
     }
     var stopAfterWorkPending by rememberSaveable(auth.user.id) { mutableStateOf(false) }
 
-    LaunchedEffect(auth.user.id, acceptanceModeStore, stopAfterWorkStore) {
-        try {
-            val restoredAutoAccept = acceptanceModeStore.autoAcceptEnabled(auth.user.id)
-            val restoredStopAfterWork = stopAfterWorkStore.pending(auth.user.id)
-            autoAcceptEnabled = restoredAutoAccept
-            stopAfterWorkPending = restoredStopAfterWork
+    LaunchedEffect(auth.user.id, auth.session.accessToken, acceptanceModeStore, stopAfterWorkStore) {
+        dispatchPreferencesHydrated = false
+        stopAfterWorkPending = try {
+            stopAfterWorkStore.pending(auth.user.id)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
+            false
+        }
+        try {
+            val restored = api.workPreferences(auth)
+            dispatchPreferenceWriteMutex.withLock {
+                acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, restored.autoAccept)
+            }
+            workPreferences = restored
+            autoAcceptEnabled = restored.autoAccept
+            workPreferencesError = null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            workPreferences = null
             autoAcceptEnabled = false
-            stopAfterWorkPending = false
+            workPreferencesError = "ตรวจอินเทอร์เน็ตแล้วลองใหม่"
+            try {
+                dispatchPreferenceWriteMutex.withLock {
+                    acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, false)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Fail closed in memory even when the cache cannot be updated.
+            }
         } finally {
             dispatchPreferencesHydrated = true
         }
@@ -680,6 +704,58 @@ private fun RiderHome(
     var consecutiveSnapshotFailures by remember(auth.user.id) { mutableIntStateOf(0) }
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
+
+    fun retryWorkPreferences() {
+        if (workPreferencesBusy) return
+        workPreferencesBusy = true
+        scope.launch {
+            try {
+                val restored = api.workPreferences(auth)
+                dispatchPreferenceWriteMutex.withLock {
+                    acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, restored.autoAccept)
+                }
+                workPreferences = restored
+                autoAcceptEnabled = restored.autoAccept
+                workPreferencesError = null
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                workPreferences = null
+                autoAcceptEnabled = false
+                workPreferencesError = "ตรวจอินเทอร์เน็ตแล้วลองใหม่"
+            } finally {
+                workPreferencesBusy = false
+            }
+        }
+    }
+
+    fun saveWorkPreferences(nextAutoAccept: Boolean, nextBundleEnabled: Boolean, nextServices: Set<String>) {
+        if (workPreferencesBusy || workPreferences == null) return
+        workPreferencesBusy = true
+        scope.launch {
+            try {
+                val acknowledged = api.saveWorkPreferences(
+                    auth = auth,
+                    autoAccept = nextAutoAccept,
+                    bundleEnabled = nextBundleEnabled,
+                    services = nextServices
+                )
+                dispatchPreferenceWriteMutex.withLock {
+                    acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, acknowledged.autoAccept)
+                }
+                workPreferences = acknowledged
+                autoAcceptEnabled = acknowledged.autoAccept
+                workPreferencesError = null
+                actionMessage = "บันทึกการรับงานแล้ว"
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                actionMessage = e.message ?: "บันทึกการรับงานไม่สำเร็จ"
+            } finally {
+                workPreferencesBusy = false
+            }
+        }
+    }
 
     suspend fun persistCommittedSnapshot(value: RiderSnapshot) {
         val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -891,7 +967,6 @@ private fun RiderHome(
     var handledPushEventId by remember(auth.user.id) { mutableStateOf<Long?>(null) }
     var activeTab by rememberSaveable(auth.user.id) { mutableStateOf("home") }
     var activeTabHydrated by remember(auth.user.id) { mutableStateOf(false) }
-    var messageSection by rememberSaveable(auth.user.id) { mutableStateOf("chat") }
     LaunchedEffect(auth.user.id) {
         val savedTab = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             pushStore.loadActiveTab(auth.user.id)
@@ -962,16 +1037,12 @@ private fun RiderHome(
     val badgeTracker = remember(auth.user.id, auth.session.sessionId) { RiderMessageBadgeTracker(auth.user.id) }
     val badgeApi = remember { RiderMessageBadgeApi() }
     var unreadMessages by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
-    var unreadNotifications by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
-    val notificationCenterApi = remember(auth.user.id, auth.session.sessionId) {
-        RiderNotificationCenterApi()
-    }
     var messageNotice by remember(auth.user.id, auth.session.sessionId) { mutableStateOf<String?>(null) }
     var messageNoticeVersion by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
     val badgeActive by rememberUpdatedState(snapshot?.activeJob?.id)
     val badgeHistory by rememberUpdatedState(recentHistory)
     val badgeChat by rememberUpdatedState(chatJob?.id)
-    val badgeInbox by rememberUpdatedState(activeTab == "chat" && messageSection == "chat")
+    val badgeInbox by rememberUpdatedState(activeTab == "chat")
     LaunchedEffect(auth.user.id, auth.session.sessionId, auth.session.accessToken, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
@@ -1004,29 +1075,14 @@ private fun RiderHome(
             }
         }
     }
-    LaunchedEffect(auth.user.id, auth.session.sessionId, auth.session.accessToken, lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) {
-                try {
-                    unreadNotifications = notificationCenterApi.unreadCount(auth)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    // Preserve the last server-confirmed badge count during transient failures.
-                }
-                delay(30_000L)
-            }
-        }
-    }
-
     LaunchedEffect(messageNoticeVersion) {
         if (messageNotice != null) {
             delay(3_800)
             messageNotice = null
         }
     }
-    LaunchedEffect(chatJob?.id, activeTab, messageSection, auth.user.id) {
-        if (activeTab == "chat" && messageSection == "chat") {
+    LaunchedEffect(chatJob?.id, activeTab, auth.user.id) {
+        if (activeTab == "chat") {
             badgeSeenStore.markSeen(auth.user.id, System.currentTimeMillis())
         }
         if (chatJob != null) unreadMessages = 0
@@ -2048,13 +2104,6 @@ private fun RiderHome(
                     auth = auth,
                     activeJob = snapshot?.activeJob,
                     history = recentHistory,
-                    section = messageSection,
-                    onSectionChange = { messageSection = it },
-                    onNotificationUnreadChanged = { unreadNotifications = it.coerceAtLeast(0) },
-                    onOpenNotificationReference = { reference ->
-                        activeTab = "home"
-                        pendingPushReference = reference
-                    },
                     onOpenChat = { chatJob = it },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -2070,34 +2119,22 @@ private fun RiderHome(
                     history = recentHistory,
                     api = api,
                     onSnapshot = { snapshot = it },
+                    onOpenHome = { activeTab = "home" },
                     onNavigationSettings = { configureReturnControl() },
                     workSettings = {
-                        RiderAcceptanceModeControl(
-                            autoAcceptEnabled = autoAcceptEnabled,
-                            enabled = dispatchPreferencesHydrated && !actionBusy,
-                            onAutoAcceptChanged = { enabled ->
-                                autoAcceptEnabled = enabled
-                                scope.launch {
-                                    try {
-                                        dispatchPreferenceWriteMutex.withLock {
-                                            acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
-                                        }
-                                    } catch (cancelled: CancellationException) {
-                                        throw cancelled
-                                    } catch (_: Exception) {
-                                        actionMessage = "บันทึกโหมดรับงานไม่สำเร็จ"
-                                    }
-                                }
-                                actionMessage = if (enabled) {
-                                    "เปิดรับงานอัตโนมัติแล้ว"
-                                } else {
-                                    "เปลี่ยนเป็นเลือกงานเองแล้ว"
-                                }
-                            },
-                            modifier = Modifier.padding(top = 8.dp)
+                        RiderWorkPreferencesControl(
+                            preferences = workPreferences,
+                            busy = workPreferencesBusy || !dispatchPreferencesHydrated,
+                            error = workPreferencesError,
+                            onRetry = ::retryWorkPreferences,
+                            onChange = ::saveWorkPreferences,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
-
-                        RiderSettingDestinationRow(enabled = destinationLoaded && !actionBusy) { showDestination = true }
+                    },
+                    routeSettings = {
+                        RiderSettingDestinationRow(
+                            enabled = destinationLoaded && !actionBusy && !workPreferencesBusy
+                        ) { showDestination = true }
                     },
                     onLogout = onLogout,
                     modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 748.dp).fillMaxSize()
@@ -2113,7 +2150,7 @@ private fun RiderHome(
             }
             RiderBottomNavigation(
                 activeTab = activeTab,
-                unreadMessages = (unreadMessages + unreadNotifications).coerceAtMost(99),
+                unreadMessages = unreadMessages.coerceAtMost(99),
                 onSelect = { activeTab = it },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
@@ -2353,6 +2390,7 @@ private fun RiderHome(
         snapshot?.online,
         snapshot?.activeJob?.id,
         snapshot?.laundry?.activeJob?.jobId,
+        workPreferences?.services,
         snapshot?.offeredJob?.id,
         snapshot?.offeredJob?.offerExpiresAt,
         actionBusy,
@@ -2364,6 +2402,9 @@ private fun RiderHome(
             val offer = current.offeredJob ?: return@repeatOnLifecycle
             val key = offer.id + ":" + (offer.offerExpiresAt ?: "")
             if (autoAcceptAttemptKey == key) return@repeatOnLifecycle
+            if (!riderAutoAcceptServiceAllowed(workPreferences?.services, offer.fulfillmentVertical)) {
+                return@repeatOnLifecycle
+            }
             if (!riderAutoAcceptEligible(
                     enabled = riderAutoAcceptAllowedWhileStopping(autoAcceptEnabled, stopAfterWorkPending),
                     networkAvailable = networkAvailable,
@@ -2378,6 +2419,9 @@ private fun RiderHome(
             val latest = snapshot?.offeredJob ?: return@repeatOnLifecycle
             val latestKey = latest.id + ":" + (latest.offerExpiresAt ?: "")
             if (latestKey != key) return@repeatOnLifecycle
+            if (!riderAutoAcceptServiceAllowed(workPreferences?.services, latest.fulfillmentVertical)) {
+                return@repeatOnLifecycle
+            }
             if (!riderAutoAcceptEligible(
                     enabled = riderAutoAcceptAllowedWhileStopping(autoAcceptEnabled, stopAfterWorkPending),
                     networkAvailable = networkAvailable,
@@ -2547,6 +2591,14 @@ private fun RiderHome(
             onGuidance = { navigationGuidance = it }
         )
 
+        if (!activeNavigationWork) {
+            RiderMapWordmark(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 10.dp)
+            )
+        }
+
         if (activeNavigationWork) {
             navigationHud?.let { hud ->
                 RiderManeuverBanner(
@@ -2556,29 +2608,6 @@ private fun RiderHome(
                         .align(Alignment.TopCenter)
                         .padding(horizontal = 10.dp, vertical = 8.dp)
                 )
-            }
-        }
-
-        if (snapshot?.online == true || activeNavigationWork) {
-            Box(
-                Modifier
-                    .align(Alignment.TopStart)
-                    .padding(
-                        start = 12.dp,
-                        top = when {
-                            activeNavigationWork && navigationCustomerNote != null -> 180.dp
-                            activeNavigationWork && navigationHud != null -> 132.dp
-                            else -> 12.dp
-                        }
-                    )
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    navigationSpeedLimitKph?.let { RiderSpeedLimitSign(it) }
-                    RiderBlueprintSpeedPill(reliableSpeedKph)
-                }
             }
         }
 
@@ -2710,65 +2739,90 @@ private fun RiderHome(
         }
 
 
-        Card(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 64.dp, end = 10.dp)
-                .size(44.dp)
-                .clickable {
-                    when {
-                        !hasLocationPermission(context) -> {
-                            pendingMapRecenter = true
-                            ensureLocationPermission()
+        if (snapshot?.online == true || activeNavigationWork) {
+            val toolBottomPadding = with(navigationDensity) { navigationBottomInsetPx.toDp() } + 8.dp
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 10.dp, bottom = toolBottomPadding),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    navigationSpeedLimitKph?.let { RiderSpeedLimitSign(it) }
+                    RiderBlueprintSpeedPill(reliableSpeedKph)
+                }
+                Card(
+                    modifier = Modifier.size(44.dp).clickable {
+                        when {
+                            !hasLocationPermission(context) -> {
+                                pendingMapRecenter = true
+                                ensureLocationPermission()
+                            }
+                            else -> {
+                                routeOverviewActive = false
+                                recenterSignal += 1
+                                actionMessage = "กำลังหาตำแหน่ง"
+                            }
                         }
-                        else -> {
-                            routeOverviewActive = false
-                            recenterSignal += 1
-                            actionMessage = "กำลังหาตำแหน่ง"
+                    },
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        QgIcon("location", Modifier.size(23.dp), QgRed)
+                    }
+                }
+                if (activeNavigationWork) {
+                    Card(
+                        modifier = Modifier.size(44.dp).clickable {
+                            routeOverviewActive = true
+                            overviewSignal += 1
+                        },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            QgIcon("route", Modifier.size(23.dp), QgRed)
                         }
                     }
-                },
-            shape = androidx.compose.foundation.shape.CircleShape,
-            colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                QgIcon("location", Modifier.size(23.dp), QgRed)
-            }
-        }
-
-        Card(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 116.dp, end = 10.dp)
-                .size(44.dp)
-                .clickable { compassResetSignal += 1 },
-            shape = androidx.compose.foundation.shape.CircleShape,
-            colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Canvas(Modifier.size(23.dp)) {
-                    val cx = size.width / 2f
-                    val cy = size.height / 2f
-                    val north = Path().apply {
-                        moveTo(cx, size.height * 0.08f)
-                        lineTo(size.width * 0.68f, cy)
-                        lineTo(cx, size.height * 0.43f)
-                        lineTo(size.width * 0.32f, cy)
-                        close()
+                }
+                Card(
+                    modifier = Modifier.size(44.dp).clickable { compassResetSignal += 1 },
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Canvas(Modifier.size(23.dp)) {
+                            val cx = size.width / 2f
+                            val cy = size.height / 2f
+                            val north = Path().apply {
+                                moveTo(cx, size.height * 0.08f)
+                                lineTo(size.width * 0.68f, cy)
+                                lineTo(cx, size.height * 0.43f)
+                                lineTo(size.width * 0.32f, cy)
+                                close()
+                            }
+                            val south = Path().apply {
+                                moveTo(cx, size.height * 0.92f)
+                                lineTo(size.width * 0.68f, cy)
+                                lineTo(cx, size.height * 0.57f)
+                                lineTo(size.width * 0.32f, cy)
+                                close()
+                            }
+                            drawPath(north, color = QgRed)
+                            drawPath(south, color = Color(0xFFFFA3B4))
+                        }
                     }
-                    val south = Path().apply {
-                        moveTo(cx, size.height * 0.92f)
-                        lineTo(size.width * 0.68f, cy)
-                        lineTo(cx, size.height * 0.57f)
-                        lineTo(size.width * 0.32f, cy)
-                        close()
-                    }
-                    drawPath(north, color = QgRed)
-                    drawPath(south, color = Color(0xFFFFA3B4))
                 }
             }
         }
@@ -3291,7 +3345,7 @@ private fun RiderHome(
 
         RiderBottomNavigation(
             activeTab = activeTab,
-            unreadMessages = (unreadMessages + unreadNotifications).coerceAtMost(99),
+            unreadMessages = unreadMessages.coerceAtMost(99),
             onSelect = { activeTab = it },
             modifier = Modifier.align(Alignment.BottomCenter)
         )
@@ -4271,24 +4325,60 @@ private fun RiderSpeedLimitSign(speedLimitKph: Int) {
 }
 
 @Composable
+private fun RiderMapWordmark(modifier: Modifier = Modifier) {
+    Row(
+        modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "Queue",
+            color = Color(0xFF17171B).copy(alpha = 0.46f),
+            fontSize = 11.sp,
+            lineHeight = 12.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-0.3).sp
+        )
+        Text(
+            "Go",
+            color = QgRed.copy(alpha = 0.46f),
+            fontSize = 11.sp,
+            lineHeight = 12.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-0.3).sp
+        )
+    }
+}
+
+@Composable
 private fun RiderBlueprintSpeedPill(speedKph: Int?) {
     Card(
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.size(52.dp),
+        shape = androidx.compose.foundation.shape.CircleShape,
         colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE7E9))
     ) {
-        Row(
-            Modifier.heightIn(min = 44.dp).padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 3.dp, vertical = 5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 speedKph?.coerceIn(0, 199)?.toString() ?: "—",
                 color = Color(0xFF211E20),
-                fontSize = 22.sp,
+                fontSize = 20.sp,
+                lineHeight = 20.sp,
                 fontWeight = FontWeight.Black
             )
-            Text("กม./ชม.", color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "กม./ชม.",
+                color = Color(0xFF8D8589),
+                fontSize = 7.sp,
+                lineHeight = 7.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
     }
 }
@@ -4296,28 +4386,50 @@ private fun RiderBlueprintSpeedPill(speedKph: Int?) {
 @Composable
 private fun RiderReadyCard(online: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Card(
-        Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 20.dp),
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(10.dp).background(
-                if (online) Color(0xFF12A651) else Color(0xFFA2A2A7),
-                androidx.compose.foundation.shape.CircleShape))
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                Modifier
+                    .size(8.dp)
+                    .background(
+                        if (online) Color(0xFF12A651) else Color(0xFFA2A2A7),
+                        androidx.compose.foundation.shape.CircleShape
+                    )
+            )
             Column(Modifier.weight(1f)) {
-                Text(if (online) "พร้อมรับงานแล้ว" else "ยังไม่พร้อมรับงาน",
-                    fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold)
-                Text(if (online) "คุณจะได้รับงานในพื้นที่ใกล้เคียง" else "เปิดเพื่อเริ่มรับงาน",
-                    fontSize = 13.sp, lineHeight = 19.sp, color = QgMuted,
-                    modifier = Modifier.padding(top = 3.dp))
+                Text(
+                    if (online) "พร้อมรับงานแล้ว" else "ยังไม่พร้อมรับงาน",
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    if (online) "คุณจะได้รับงานในพื้นที่ใกล้เคียง" else "เปิดเพื่อเริ่มรับงาน",
+                    fontSize = 9.sp,
+                    lineHeight = 13.sp,
+                    color = QgMuted,
+                    modifier = Modifier.padding(top = 1.dp)
+                )
             }
             androidx.compose.material3.Switch(
-                checked = online, onCheckedChange = onCheckedChange, enabled = enabled,
+                checked = online,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
                 modifier = Modifier.semantics { contentDescription = "พร้อมรับงาน" },
-                colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = QgRed,
-                    checkedThumbColor = Color.White))
+                colors = androidx.compose.material3.SwitchDefaults.colors(
+                    checkedTrackColor = QgRed,
+                    checkedThumbColor = Color.White
+                )
+            )
         }
     }
 }
@@ -4494,7 +4606,6 @@ private fun VerificationScreen(
     val pickup = mode == "pickup" || mode == "expressPickup"
     val marketPickupMode = mode == "marketPickup"
     var previewQuality by remember(photoUri) { mutableStateOf<RiderEvidenceQuality?>(null) }
-    var showPickupConfirmation by remember(mode, job.id, photoUri) { mutableStateOf(false) }
     val previewReady = previewQuality?.acceptable == true
     val photoReady = photoUri != null
     val deliveryReady = if (expressMode) {
@@ -4743,16 +4854,12 @@ private fun VerificationScreen(
                 )
             } else {
                 Button(
-                    onClick = when {
-                        !photoReady -> onCamera
-                        pickup && !expressMode && !marketPickupMode -> ({ showPickupConfirmation = true })
-                        else -> onConfirm
-                    },
+                    onClick = if (!photoReady) onCamera else onConfirm,
                     enabled = !busy && if (photoReady) deliveryReady else true,
                     modifier = Modifier.fillMaxWidth().height(54.dp),
                     shape = RoundedCornerShape(18.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = if (pickup && !expressMode && !marketPickupMode && photoReady) Color(0xFF159947) else Color(0xFFF04455),
+                        containerColor = Color(0xFFF04455),
                         disabledContainerColor = Color(0xFFDAD4D6)
                     )
                 ) {
@@ -4776,59 +4883,12 @@ private fun VerificationScreen(
             }
         }
 
-        if (showPickupConfirmation) {
-            Dialog(
-                onDismissRequest = { if (!busy) showPickupConfirmation = false },
-                properties = DialogProperties(dismissOnBackPress = !busy, dismissOnClickOutside = !busy)
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().widthIn(max = 430.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ) {
-                    Column(Modifier.padding(18.dp)) {
-                        Text(
-                            "ได้รับอาหารแล้วใช่ไหม?",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color(0xFF211E20)
-                        )
-                        Text(
-                            "ตรวจว่ารายการครบและเก็บรูปใบเสร็จไว้แล้ว ก่อนเริ่มนำส่งให้ลูกค้า",
-                            modifier = Modifier.padding(top = 6.dp),
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
-                            color = QgMuted
-                        )
-                        Button(
-                            onClick = {
-                                showPickupConfirmation = false
-                                onConfirm()
-                            },
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(52.dp).padding(top = 14.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF159947))
-                        ) {
-                            Text("ใช่ ได้รับแล้ว", fontWeight = FontWeight.Black)
-                        }
-                        OutlinedButton(
-                            onClick = { showPickupConfirmation = false },
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(50.dp).padding(top = 8.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Text("ไม่ กำลังรออยู่", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
+
     }
 }
 
 @Composable
-private fun RiderSwipeCompleteAction(
+internal fun RiderSwipeCompleteAction(
     enabled: Boolean,
     busy: Boolean,
     label: String,

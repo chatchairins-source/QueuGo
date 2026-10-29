@@ -89,10 +89,27 @@ def scroll_to_text(label):
         time.sleep(0.5)
     raise SystemExit("Read-only Rider profile entry not visible: "+label)
 
+def expand_profile_extra_tools():
+    ns=nodes()
+    if any(n.get("text","").strip()=="แนะนำบริการและวิธีใช้งาน" and rect(n) for n in ns):
+        return
+    ns=scroll_to_text("เครื่องมือ Rider เพิ่มเติม")
+    tap_label(ns,"เครื่องมือ Rider เพิ่มเติม")
+    # Expansion inserts these rows below the current scroll viewport. Scroll
+    # the child into view before treating its absence from UIAutomator as a
+    # failed toggle.
+    expanded=scroll_to_text("แนะนำบริการและวิธีใช้งาน")
+    assert expanded, "Rider extra tools did not expand"
+    time.sleep(1)
+
+
+def node_exact(n,marker):
+    return n.get("text","").strip()==marker or n.get("content-desc","").strip()==marker
+
 def capture_profile_dialog(entry,title,name):
     ns=scroll_to_text(entry)
     tap_label(ns,entry)
-    ns=wait(lambda xs:any(title in n.get("text","") for n in xs),20)
+    ns=wait(lambda xs:any(node_exact(n,title) and rect(n) for n in xs),20)
     assert ns, "Rider read-only profile screen did not open: "+title
     screens.append({"screen":name,**shot(name)})
     closes=[n for n in ns if (n.get("text","").strip()=="ปิด" or n.get("content-desc","").strip() in ("ปิด","ปิดหน้าต่าง","Close")) and rect(n)]
@@ -102,10 +119,30 @@ def capture_profile_dialog(entry,title,name):
     else:
         # Some read-only dialogs expose only a drawn X icon without accessibility text.
         run(["shell","input","keyevent","4"])
-    closed=wait(lambda xs:not any(title in n.get("text","") for n in xs),15)
+    closed=wait(lambda xs:not any(node_exact(n,title) and rect(n) for n in xs),15)
     assert closed, "Read-only Rider profile screen did not close: "+title
     time.sleep(1)
 
+
+def home_ready(ns):
+    visible=[n for n in ns if rect(n)]
+    texts={n.get("text","").strip() for n in visible}
+    descriptions={n.get("content-desc","").strip() for n in visible}
+    tabs={"หน้าแรก","ข้อความ","รายได้","โปรไฟล์"}
+    content_ready=(
+        "พร้อมรับงาน" in descriptions
+        or "การ์ดไรเดอร์ กดหรือลากเพื่อเปิดและย่อ" in descriptions
+        or "บัญชียังไม่พร้อมรับงาน" in texts
+        or any(t.startswith("รับงาน · ") for t in texts)
+    )
+    return tabs.issubset(texts) and content_ready
+
+def input_credential(value):
+    try:
+        subprocess.run(ADB+["shell","input","text",value],check=True,timeout=30,
+                       stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    except (subprocess.SubprocessError,OSError,ValueError):
+        raise SystemExit("Credential entry failed") from None
 
 def main():
     phone=os.environ.get("QG_RIDER_REVIEW_PHONE","")
@@ -127,26 +164,17 @@ def main():
     for n,value in zip(fields[:2],(phone,password)):
         tap(n)
         # Never print adb input arguments or persist credentials.
-        subprocess.run(ADB+["shell","input","text",value],check=True,timeout=30,
-                       stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        input_credential(value)
     run(["shell","input","keyevent","4"])
     tap_label(nodes(),"เข้าสู่ระบบ")
     labels=("หน้าแรก","ข้อความ","รายได้","โปรไฟล์")
-    ns=wait(lambda xs:all(any(n.get("text","").strip()==t for n in xs) for t in labels),90)
-    if not ns: raise SystemExit("Login did not reach active Rider Home; no login screenshot was saved")
+    ns=wait(home_ready,90)
+    if not ns: raise SystemExit("Rider Home content did not become ready; no loading screenshot was saved")
     global screens
     screens=[{"screen":"home_map",**shot("01-home-map")}]
     tap_label(nodes(),"ข้อความ")
     time.sleep(4)
     screens.append({"screen":"messages_chat",**shot("02-messages-chat")})
-    ns=nodes()
-    if any(n.get("text","").strip()=="แจ้งเตือน" and rect(n) for n in ns):
-        tap_label(ns,"แจ้งเตือน")
-        time.sleep(3)
-        screens.append({"screen":"messages_notifications",**shot("03-messages-notifications")})
-        tap_label(nodes(),"แชต")
-        time.sleep(1)
-
     tap_label(nodes(),"รายได้")
     time.sleep(4)
     screens.append({"screen":"earnings_today",**shot("04-earnings-today")})
@@ -162,17 +190,30 @@ def main():
     tap_label(nodes(),"โปรไฟล์")
     time.sleep(3)
     screens.append({"screen":"profile",**shot("07-profile")})
+    # Capture the Web-backed general work toggle separately from the collapsed
+    # native-only tools so authenticated review covers the current Rider surface.
+    laundry_profile=scroll_to_text("รับงานฝากซัก")
+    assert any(n.get("text","").strip()=="รับงานฝากซัก" and rect(n) for n in laundry_profile), \
+        "Current Web Laundry mode control is not visible in Rider Profile"
+    screens.append({"screen":"profile_laundry",**shot("03-profile-laundry")})
+    # Support is part of the core Web-aligned Profile and sits above the collapsed
+    # Native-only tools. Capture it before scrolling down to expand extras.
+    capture_profile_dialog(
+        "แจ้งปัญหา / ติดตามเรื่อง",
+        "ติดต่อฝ่ายดูแล",
+        "10-support"
+    )
+    expand_profile_extra_tools()
     for entry,title,name in (
         ("แนะนำบริการและวิธีใช้งาน","ศูนย์เรียนรู้ Rider","08-learning-center"),
         ("ศูนย์ความปลอดภัย","กรณีฉุกเฉิน","09-safety-center"),
-        ("แจ้งปัญหา / ติดตามเรื่อง","แจ้งปัญหาและติดตามสถานะจากระบบ","10-support"),
-        ("ตรวจสอบระบบ Rider","สถานะจริงของโทรศัพท์เครื่องนี้","11-diagnostics"),
+        ("ตรวจสอบระบบ Rider","ตรวจจากสถานะจริงของโทรศัพท์เครื่องนี้","11-diagnostics"),
     ):
         capture_profile_dialog(entry,title,name)
     expected_screens=(
-      "home_map","messages_chat","messages_notifications",
+      "home_map","messages_chat",
       "earnings_today","05-earnings-7-days","06-earnings-30-days",
-      "profile","08-learning-center","09-safety-center","10-support","11-diagnostics",
+      "profile","profile_laundry","08-learning-center","09-safety-center","10-support","11-diagnostics",
     )
     captured={item["screen"] for item in screens}
     missing_screens=[name for name in expected_screens if name not in captured]
@@ -184,7 +225,7 @@ def main():
       "android_api":run(["shell","getprop","ro.build.version.sdk"],capture_output=True,text=True).stdout.strip(),
       "viewport_px":"1080x2280","screens":screens,"physical_device":False,
       "production_order_or_dispatch_mutations":False,"visual_parity_certified":False,
-      "scope":"Authenticated Rider Home map, messages, earnings and profile; no job actions",
+      "scope":"Authenticated Rider Home map, messages, earnings, profile and Laundry work toggle; no job actions",
       "expected_screens":list(expected_screens),
       "missing_screens":missing_screens,
       "review_complete":not missing_screens,

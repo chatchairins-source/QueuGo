@@ -295,9 +295,9 @@ class NavigationCameraPolicyTest {
         assertTrue(!navigationTiltChangedEnough(34f, 34.4f))
     }
 
-    @Test fun nextTurnDistanceDoesNotForkFromWebSpeedZoomAuthority() {
+    @Test fun speedZoomUsesWebThresholdsAndIgnoresIndependentNextTurnDistance() {
         assertEquals(
-            15.3,
+            16.0,
             navigationZoom(
                 baseZoom = 17,
                 speedMetersPerSecond = 16f,
@@ -308,7 +308,7 @@ class NavigationCameraPolicyTest {
             0.001
         )
         assertEquals(
-            15.3,
+            16.0,
             navigationZoom(
                 baseZoom = 17,
                 speedMetersPerSecond = 16f,
@@ -318,6 +318,9 @@ class NavigationCameraPolicyTest {
             ),
             0.001
         )
+        assertEquals(15.0, navigationZoom(17, 18f, 2_000.0, 4f), 0.001)
+        assertEquals(17.0, navigationZoom(17, 8f, 2_000.0, 4f), 0.001)
+        assertEquals(18.0, navigationZoom(17, 1.5f, 2_000.0, 4f), 0.001)
     }
 
     @Test fun approachingDestinationZoomsInEvenWhenMovingFast() {
@@ -398,7 +401,7 @@ class NavigationCameraPolicyTest {
         val decision = navigationCameraDecision(state, previousBearingDegrees = 90f)!!
         assertTrue(decision.bearingDegrees!! in 89f..91f)
         assertEquals(0f, decision.tiltDegrees, 0.001f)
-        assertEquals(16.5, decision.zoom, 0.001)
+        assertEquals(17.0, decision.zoom, 0.001)
         assertEquals(state.rider!!.point, decision.center)
     }
 

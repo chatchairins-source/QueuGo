@@ -63,9 +63,7 @@ data class RiderShopDisplay(
     val shopLogo: String?
 )
 
-internal fun cleanRiderOrderNote(note: String?): String? = note?.lineSequence()
-    ?.filter { it.isNotEmpty() && !it.startsWith("__QT_ORDER_STATUS__=") }
-    ?.joinToString("\n")?.trim()?.takeIf { it.isNotEmpty() }
+internal fun cleanRiderOrderNote(note: String?): String? = com.queuego.shared.cleanOrderDisplayNote(note)
 
 data class MarketPickup(
     val pickupId: String,
@@ -450,6 +448,22 @@ data class RiderSupplyPlan(
     val sourceDays: Int,
     val forecast: Boolean,
     val windows: List<RiderSupplyWindow>
+)
+
+data class RiderWorkCapabilities(
+    val food: Boolean,
+    val grocery: Boolean,
+    val market: Boolean,
+    val express: Boolean,
+    val ride: Boolean,
+    val bundle: Boolean
+)
+
+data class RiderWorkPreferences(
+    val autoAccept: Boolean,
+    val bundleEnabled: Boolean,
+    val services: Set<String>,
+    val capabilities: RiderWorkCapabilities
 )
 
 data class RiderDestinationPreference(

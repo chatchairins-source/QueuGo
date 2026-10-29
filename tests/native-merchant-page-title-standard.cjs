@@ -10,7 +10,6 @@ const checks=[
  ['MerchantMediaScreen.kt','"คลังรูปภาพร้าน"'],
  ['MerchantHoursScreen.kt','"เวลาทำการและวันหยุด"'],
  ['MerchantProductsScreen.kt','"สินค้าและเมนู"'],
- ['MerchantPromotionScreen.kt','"โปรโมชั่น"'],
  ['MerchantPosScreen.kt','"QueueGo หน้าร้าน"'],
  ['MerchantMarketStockScreen.kt','"สินค้าและสต๊อกตลาด"'],
  ['MerchantShopSetupScreen.kt','"แก้ไขข้อมูลร้าน"'],
@@ -25,6 +24,9 @@ for(const [file,title] of checks){
 }
 assert(!read('MerchantRevenueScreen.kt').includes('fontSize = 22.sp'),'Merchant revenue title must not remain oversized');
 assert(read('MerchantRevenueScreen.kt').includes('fontSize = MerchantPageTitleSize')&&read('MerchantRevenueScreen.kt').includes('lineHeight = 23.sp'),'Merchant report title must match the shared 19sp/23sp page-title rhythm');
+const merchantShell=read('QueueGoMerchantApp.kt');
+assert(merchantShell.includes('if (screen == "promotions") "โปรโมชั่น" else null'),'Merchant Promotions title must be owned by the single shell top bar');
+assert(merchantShell.includes('fontSize = MerchantPageTitleSize'),'Merchant Promotions shell top bar must use the shared Merchant title scale');
 assert(read('MerchantSupportScreen.kt').includes('MerchantPageTitle("ข้อความถึงแอดมิน"'),'Support must use Merchant page-title component');
 assert(read('MerchantLaundryScreen.kt').includes('MerchantPageTitle("ฝากซัก"'),'Laundry must use Merchant page-title component');
 assert(read('QueueGoMerchantApp.kt').includes('fontSize = MerchantPageTitleSize'),'Merchant Account title must use the shared page-title scale');

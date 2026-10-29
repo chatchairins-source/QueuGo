@@ -108,7 +108,7 @@ fun MarketNativeScreen(
         onPauseOrDispose { }
     }
 
-    LaunchedEffect(actorId, location?.latitude, location?.longitude, reload) {
+    LaunchedEffect(actorId, reload) {
         if (!cacheHydrated) {
             val cached = withContext(Dispatchers.IO) { contentCache.readMarket() }
             if (cached != null) {
@@ -122,15 +122,23 @@ fun MarketNativeScreen(
         loading = markets.isEmpty() && shops.isEmpty() && catalog.isEmpty()
         loadFailed = false
         checkoutPending = withContext(Dispatchers.IO) { cartStore.hasPendingCheckout() }
+        val staticCacheFresh = withContext(Dispatchers.IO) { contentCache.marketFresh() }
         runCatching {
-            val m = if (auth == null) api.loadMarketsPublic() else api.loadMarkets(auth)
-            val freshShops = if (auth == null) api.loadShopsPublic() else api.loadShops(auth)
-            val freshCatalog = if (auth == null) api.loadCatalogPublic() else api.loadCatalog(auth)
-            markets = m
-            shops = freshShops
-            catalog = freshCatalog
-            withContext(Dispatchers.IO) {
-                contentCache.writeMarket(m, freshShops, freshCatalog)
+            var m = markets
+            var freshShops = shops
+            var freshCatalog = catalog
+            val canReuseStatic = staticCacheFresh &&
+                (m.isNotEmpty() || freshShops.isNotEmpty() || freshCatalog.isNotEmpty())
+            if (!canReuseStatic) {
+                m = if (auth == null) api.loadMarketsPublic() else api.loadMarkets(auth)
+                freshShops = if (auth == null) api.loadShopsPublic() else api.loadShops(auth)
+                freshCatalog = if (auth == null) api.loadCatalogPublic() else api.loadCatalog(auth)
+                markets = m
+                shops = freshShops
+                catalog = freshCatalog
+                withContext(Dispatchers.IO) {
+                    contentCache.writeMarket(m, freshShops, freshCatalog)
+                }
             }
             if (!restoredCart) {
                 fun restore(saved: List<MarketCartStore.Saved>): List<MarketCartLine> =
@@ -208,8 +216,6 @@ fun MarketNativeScreen(
         }.onFailure { if (it is CancellationException) throw it; loadFailed = true; message = it.message ?: "โหลดตลาดสดไม่สำเร็จ" }
         loading = false
     }
-
-    LaunchedEffect(cartPage) { if (cartPage) reload++ }
 
     LaunchedEffect(cart, restoredCart, checkoutPending) {
         if (restoredCart && !checkoutPending) {
@@ -325,7 +331,7 @@ fun MarketNativeScreen(
         Spacer(Modifier.height(8.dp))
 
         when {
-            loading -> CircularProgressIndicator()
+            loading -> Unit
             marketShops.isEmpty() -> QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่พบร้านในตลาดนี้", color = QgMuted) }
             else -> marketShops.forEach { s ->
                 val count = catalog.count { it.shopId == s.id && it.marketId == selectedMarket && it.availablePacks > 0 }
@@ -394,7 +400,6 @@ fun MarketNativeScreen(
 
         } // Browse: checkout fields belong only to market-cart.
 
-        if (cartPage && loading) CircularProgressIndicator()
         if (cartPage && !loading && cart.isEmpty() && !checkoutPending) {
             Text("ตะกร้าตลาดสดว่าง", color = QgMuted, modifier = Modifier.padding(vertical = 24.dp))
             Button(onClick = onBrowse, modifier = Modifier.fillMaxWidth()) { Text("เลือกสินค้าในตลาด") }

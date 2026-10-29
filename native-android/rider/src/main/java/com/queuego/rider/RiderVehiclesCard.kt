@@ -107,7 +107,7 @@ internal fun RiderVehiclesCard(
             }
 
             if (!loaded) {
-                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
+                // Refresh silently; preserve the existing profile surface without loader chrome.
             } else if (vehicles.isEmpty()) {
                 Text("ยังไม่มีข้อมูลรถ", color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 10.dp))
             } else {

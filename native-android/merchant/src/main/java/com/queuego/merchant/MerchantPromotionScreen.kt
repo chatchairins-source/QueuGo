@@ -8,7 +8,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -16,22 +15,29 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun MerchantPromotionScreen(
     auth: NativeAuth,
     shop: MerchantShop,
-    api: MerchantApi,
-    onBack: () -> Unit
+    api: MerchantApi
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val cache = remember(context.applicationContext) {
+        MerchantPromotionCache(context.applicationContext)
+    }
     var rows by remember(shop.id) { mutableStateOf<List<MerchantPromotion>>(emptyList()) }
     var filter by remember { mutableStateOf("all") }
     var loading by remember { mutableStateOf(true) }
@@ -41,12 +47,35 @@ internal fun MerchantPromotionScreen(
     var days by remember { mutableStateOf("7") }
     var message by remember { mutableStateOf<String?>(null) }
 
-    suspend fun refresh() {
-        loading = true
-        runCatching { api.loadPromotions(auth, shop.id) }
-            .onSuccess { rows = it; message = null }
-            .onFailure { message = it.message ?: "โหลดโปรโมชั่นไม่สำเร็จ" }
-        loading = false
+    suspend fun refresh(force: Boolean = false) {
+        loading = rows.isEmpty()
+        val cached = if (!force && rows.isEmpty()) {
+            withContext(Dispatchers.IO) {
+                cache.read(auth.user.id, shop.id)
+            }
+        } else null
+        if (cached != null) {
+            rows = cached.rows
+            loading = false
+            if (cached.fresh) {
+                message = null
+                return
+            }
+        }
+        try {
+            val fresh = api.loadPromotions(auth, shop.id)
+            rows = fresh
+            withContext(Dispatchers.IO) {
+                cache.write(auth.user.id, shop.id, fresh)
+            }
+            message = null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            if (rows.isEmpty()) message = failure.message ?: "โหลดโปรโมชั่นไม่สำเร็จ"
+        } finally {
+            loading = false
+        }
     }
 
     LaunchedEffect(shop.id) { refresh() }
@@ -61,19 +90,7 @@ internal fun MerchantPromotionScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp)
     ) {
-        Row(
-            Modifier.padding(top = 6.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedButton(
-                onClick = onBack,
-                modifier = Modifier.height(38.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)
-            ) { Text("กลับ") }
-            Spacer(Modifier.width(10.dp))
-            Text("โปรโมชั่น", fontSize = MerchantPageTitleSize, fontWeight = FontWeight.ExtraBold)
-        }
-
+        Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             PromotionFilter("ทั้งหมด", "all", filter) { filter = it }
             PromotionFilter("กำลังใช้งาน", "active", filter) { filter = it }
@@ -140,7 +157,7 @@ internal fun MerchantPromotionScreen(
                                     days = "7"
                                     creating = false
                                     message = "ส่งคำขอโปรโมชั่นแล้ว"
-                                    refresh()
+                                    refresh(force = true)
                                 }.onFailure {
                                     message = it.message ?: "บันทึกโปรโมชั่นไม่สำเร็จ"
                                 }
@@ -164,10 +181,7 @@ internal fun MerchantPromotionScreen(
         }
 
         when {
-            loading && rows.isEmpty() -> Box(
-                Modifier.fillMaxWidth().height(140.dp),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
+            loading && rows.isEmpty() -> Unit
 
             visible.isEmpty() -> Box(
                 Modifier

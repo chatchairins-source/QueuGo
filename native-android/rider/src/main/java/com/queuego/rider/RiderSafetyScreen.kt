@@ -271,7 +271,7 @@ internal fun RiderSafetyScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 when {
-                    !emergencyLoaded -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    !emergencyLoaded -> Unit
                     emergencyContact?.configured == true &&
                         !emergencyContact?.name.isNullOrBlank() &&
                         !emergencyContact?.phone.isNullOrBlank() -> {
@@ -351,7 +351,7 @@ internal fun RiderSafetyScreen(
             Column(Modifier.padding(14.dp)) {
                 Text("เวลาทำงานและการพัก", fontWeight = FontWeight.Black, fontSize = 14.sp)
                 when {
-                    !fatigueLoaded -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    !fatigueLoaded -> Unit
                     fatigueStatus == null -> Text(
                         "ยังโหลดเวลาทำงานไม่ได้",
                         color = QgMuted,

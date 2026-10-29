@@ -193,10 +193,7 @@ internal fun MerchantMarketStockScreen(
         }
 
         when {
-            loading -> Box(
-                Modifier.fillMaxWidth().height(150.dp),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
+            loading -> Unit
 
             state.products.isEmpty() -> Text(
                 "ยังไม่มีสินค้าในตลาด กด “เพิ่มสินค้า” เพื่อเริ่มขาย",

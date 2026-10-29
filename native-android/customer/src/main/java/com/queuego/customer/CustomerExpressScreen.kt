@@ -246,7 +246,6 @@ internal fun CustomerExpressScreen(
         Text("ส่งด่วน 1 จุดรับ · 1 จุดส่ง · ชำระเงินสด", style = MaterialTheme.typography.bodySmall)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-        if (!loaded) Text("กำลังตรวจสถานะ Express ล่าสุด…")
         if (current != null) {
             Text(current.number, fontWeight = FontWeight.Bold)
             Text(

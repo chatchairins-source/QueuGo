@@ -6,6 +6,19 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.graphics.Bitmap
+import android.graphics.Paint
+import android.graphics.RectF
+import android.os.Bundle
+import android.os.CancellationSignal
+import android.os.ParcelFileDescriptor
+import android.print.PageRange
+import android.print.PrintAttributes
+import android.print.PrintDocumentAdapter
+import android.print.PrintDocumentInfo
+import android.print.PrintManager
+import android.print.pdf.PrintedPdfDocument
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,6 +26,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,6 +37,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -72,6 +88,7 @@ import com.queuego.shared.QueueGoHttpException
 import com.queuego.shared.NativeRealtimeSubscription
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgGreen
+import com.queuego.shared.QgIconButton
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
@@ -111,6 +128,7 @@ fun MerchantPosScreen(
 ) {
     val context = LocalContext.current
     val api = remember { MerchantPosApi(MerchantPosPendingStore(context.noBackupFilesDir.resolve("queuego-pos-edit-pending"))) }
+    val merchantApi = remember { MerchantApi() }
     val offlineDraftStore = remember { MerchantPosOfflineDraftStore(context.noBackupFilesDir.resolve("queuego-pos-offline-drafts")) }
     val realtime = remember { NativeOrderRealtime() }
     val refreshMutex = remember { Mutex() }
@@ -124,14 +142,72 @@ fun MerchantPosScreen(
     var snapshotActorId by remember { mutableStateOf<String?>(null) }
     var snapshotLoading by remember { mutableStateOf(true) }
     var selectedBillId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Only an authenticated, refreshed PAID + CLOSED bill may be previewed or printed.
+    var receiptDialogBillId by rememberSaveable { mutableStateOf<String?>(null) }
     var view by rememberSaveable { mutableStateOf("counter") }
     var mode by rememberSaveable { mutableStateOf("TAKEAWAY") }
     var tableId by rememberSaveable { mutableStateOf<String?>(null) }
     var noTable by rememberSaveable { mutableStateOf(false) }
     var note by rememberSaveable { mutableStateOf("") }
     var search by rememberSaveable { mutableStateOf("") }
+    var scannedCode by rememberSaveable { mutableStateOf("") }
+    var scannedProduct by remember(auth.session.authUserId) { mutableStateOf<PosProduct?>(null) }
+    var scanStatus by remember(auth.session.authUserId) { mutableStateOf<String?>(null) }
+    var scanLoading by remember(auth.session.authUserId) { mutableStateOf(false) }
+    var selectedPosCategory by rememberSaveable { mutableStateOf("all") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var pendingReportCsv by remember { mutableStateOf<String?>(null) }
+    val reportCsvLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        val csv = pendingReportCsv
+        pendingReportCsv = null
+        if (uri != null && csv != null) {
+            scope.launch(Dispatchers.IO) {
+                val result = runCatching {
+                    val output = context.contentResolver.openOutputStream(uri)
+                        ?: error("ไม่สามารถเปิดไฟล์สำหรับบันทึกรายงาน POS")
+                    output.use { stream -> stream.write(csv.toByteArray(Charsets.UTF_8)) }
+                }
+                withContext(Dispatchers.Main) {
+                    message = result.fold(
+                        onSuccess = { "บันทึกรายงาน POS CSV แล้ว" },
+                        onFailure = { "บันทึก CSV ไม่สำเร็จ: " + (it.message ?: "ข้อผิดพลาด") }
+                    )
+                }
+            }
+        }
+    }
+    var pendingQrBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var qrActionMessage by remember { mutableStateOf<String?>(null) }
+    val qrSaveLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("image/png")
+    ) { uri ->
+        val bitmap = pendingQrBitmap
+        pendingQrBitmap = null
+        if (uri != null && bitmap != null) {
+            scope.launch(Dispatchers.IO) {
+                val result = runCatching {
+                    val output = context.contentResolver.openOutputStream(uri)
+                        ?: error("ไม่สามารถเปิดไฟล์สำหรับบันทึก QR Code")
+                    output.use { stream ->
+                        check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                            "สร้างไฟล์ PNG ไม่สำเร็จ"
+                        }
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    val resultText = result.fold(
+                        onSuccess = { "บันทึก QR Code แล้ว" },
+                        onFailure = { "บันทึก QR Code ไม่สำเร็จ: " + (it.message ?: "ข้อผิดพลาด") }
+                    )
+                    qrActionMessage = resultText
+                    message = resultText
+                }
+            }
+        }
+    }
     var pendingEdit by remember { mutableStateOf<PosEditIntent?>(null) }
     var pendingEditError by remember { mutableStateOf<String?>(null) }
     var offlineDraft by remember { mutableStateOf<PosOfflineDraft?>(null) }
@@ -140,6 +216,8 @@ fun MerchantPosScreen(
     var networkValidated by remember { mutableStateOf(false) }
     var confirmDraftSubmit by remember { mutableStateOf(false) }
     var confirmDraftDiscard by remember { mutableStateOf(false) }
+    var deliveryShop by remember(auth.user.id) { mutableStateOf<MerchantShop?>(null) }
+    var deliveryLoading by remember(auth.user.id) { mutableStateOf(false) }
 
     LaunchedEffect(auth.session.authUserId, busy) {
         if (!busy) {
@@ -179,6 +257,11 @@ fun MerchantPosScreen(
     var paymentMethod by rememberSaveable { mutableStateOf("cash") }
     var paymentMethodMenu by remember { mutableStateOf(false) }
     var cashReceived by rememberSaveable { mutableStateOf("") }
+    var cashShift by remember(auth.session.authUserId) { mutableStateOf<PosCashShift?>(null) }
+    var cashShiftError by remember(auth.session.authUserId) { mutableStateOf<String?>(null) }
+    var cashShiftPending by remember { mutableStateOf(false) }
+    var openingCash by rememberSaveable { mutableStateOf("0") }
+    var countedCash by rememberSaveable { mutableStateOf("") }
 
     var discountOpen by remember { mutableStateOf(false) }
     var discountText by rememberSaveable { mutableStateOf("") }
@@ -188,6 +271,7 @@ fun MerchantPosScreen(
     var refundReason by rememberSaveable { mutableStateOf("") }
     var priceTarget by remember { mutableStateOf<PosProduct?>(null) }
     var priceText by rememberSaveable { mutableStateOf("") }
+    var optionTarget by remember { mutableStateOf<PosProduct?>(null) }
 
     var tableDialog by remember { mutableStateOf(false) }
     var editingTable by remember { mutableStateOf<PosTable?>(null) }
@@ -197,6 +281,9 @@ fun MerchantPosScreen(
 
     var reportDays by rememberSaveable { mutableStateOf(1) }
     var report by remember { mutableStateOf<PosOwnerDashboard?>(null) }
+    var itemSalesReport by remember { mutableStateOf<PosItemSalesReport?>(null) }
+    var reportLoadError by remember { mutableStateOf<String?>(null) }
+    var reportReloadKey by remember { mutableStateOf(0) }
 
     var historyDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var historyType by rememberSaveable { mutableStateOf("ALL") }
@@ -382,11 +469,155 @@ fun MerchantPosScreen(
         }
     }
 
-    fun addPosProduct(product: PosProduct) {
+    // QR rotation is a write. Reconcile its exact token with a read-only snapshot
+    // after an uncertain response; never rotate a second time automatically.
+    fun createTableQr(table: PosTable) {
+        if (busy) return
+        qrTable = table
+        busy = true
+        message = null
+        scope.launch {
+            try {
+                val token = api.rotateTableQr(auth, table.id)
+                refreshSnapshot(selectedBillId)
+                val refreshed = snapshot?.tables?.firstOrNull { it.id == table.id }
+                val serverTable = refreshed?.takeIf { !it.qrToken.isNullOrBlank() }
+                qrTable = serverTable ?: table.copy(qrToken = token)
+                message = if (serverTable != null) {
+                    "สร้าง QR Code แล้ว"
+                } else {
+                    "เซิร์ฟเวอร์ยืนยัน QR Code แล้ว แต่โหลดรายการโต๊ะล่าสุดไม่สำเร็จ กรุณาโหลด POS ใหม่"
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                // The RPC may have committed before timing out. Check the existing table
+                // once and keep the same token if the server already created it.
+                refreshSnapshot(selectedBillId)
+                val refreshed = snapshot?.tables?.firstOrNull { it.id == table.id }
+                if (!refreshed?.qrToken.isNullOrBlank()) {
+                    qrTable = refreshed
+                    message = "QR Code ยืนยันจากเซิร์ฟเวอร์แล้ว"
+                } else {
+                    qrTable = refreshed ?: table
+                    message = "ยังยืนยันผลการสร้าง QR Code ไม่ได้ กรุณาตรวจสอบโต๊ะก่อนลองใหม่: " +
+                        (failure.message ?: "ข้อผิดพลาด")
+                }
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun savePosTable(id: String?, label: String, active: Boolean) {
+        if (busy) return
+        if (pendingEdit != null || pendingEditError != null) {
+            message = "กรุณากดตรวจรายการ POS ค้างก่อนทำรายการอื่น"
+            return
+        }
+        val normalizedLabel = label.trim()
+        val previousIds = snapshot?.tables?.map { it.id }?.toSet().orEmpty()
+        busy = true
+        message = null
+        scope.launch {
+            var savedId: String? = null
+            var qrToken: String? = null
+            var qrError: String? = null
+            try {
+                val createdId = api.saveTable(auth, id, normalizedLabel, active)
+                savedId = createdId
+                tableDialog = false
+                if (id == null) {
+                    try {
+                        qrToken = api.rotateTableQr(auth, createdId)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (failure: Exception) {
+                        qrError = failure.message ?: "สร้าง QR Code ไม่สำเร็จ"
+                    }
+                }
+                refreshSnapshot(selectedBillId)
+                val refreshed = snapshot?.tables?.firstOrNull { it.id == createdId }
+                if (id == null) {
+                    val serverTableWithQr = refreshed?.takeIf {
+                        !it.qrToken.isNullOrBlank() && (qrToken == null || it.qrToken == qrToken)
+                    }
+                    val createdTable = when {
+                        serverTableWithQr != null -> serverTableWithQr
+                        qrToken != null -> PosTable(createdId, normalizedLabel, active, qrToken)
+                        else -> refreshed ?: PosTable(createdId, normalizedLabel, active, null)
+                    }
+                    qrTable = createdTable
+                    message = when {
+                        !createdTable.qrToken.isNullOrBlank() -> "สร้างโต๊ะและ QR Code แล้ว"
+                        refreshed != null -> "สร้างโต๊ะแล้ว แต่ QR Code ยังไม่พร้อม" +
+                            (qrError?.let { " · " + it } ?: " · กดสร้าง QR Code เพื่อลองอีกครั้ง")
+                        else -> "เซิร์ฟเวอร์ยืนยันการสร้างโต๊ะแล้ว แต่โหลดรายการล่าสุดไม่สำเร็จ กรุณากดโหลด POS ใหม่ก่อนสร้างซ้ำ"
+                    }
+                } else {
+                    message = if (refreshed?.label == normalizedLabel && refreshed.active == active) {
+                        "บันทึกโต๊ะแล้ว"
+                    } else {
+                        "เซิร์ฟเวอร์บันทึกโต๊ะแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ กรุณากดโหลด POS ใหม่ก่อนลองซ้ำ"
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                // Do not repeat a timed-out create. First read the shop's tables and
+                // reconcile a newly visible table with this exact label.
+                val knownRejection = failure is QueueGoHttpException && failure.statusCode in 400..499
+                if (id == null && savedId == null && !knownRejection) {
+                    refreshSnapshot(selectedBillId)
+                    val candidates = snapshot?.tables.orEmpty().filter {
+                        it.id !in previousIds && it.label.trim().equals(normalizedLabel, ignoreCase = true)
+                    }
+                    if (candidates.size == 1) {
+                        val candidate = candidates.single()
+                        tableDialog = false
+                        var confirmedToken = candidate.qrToken
+                        if (confirmedToken.isNullOrBlank()) {
+                            try {
+                                confirmedToken = api.rotateTableQr(auth, candidate.id)
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (qrFailure: Exception) {
+                                qrError = qrFailure.message ?: "สร้าง QR Code ไม่สำเร็จ"
+                            }
+                            refreshSnapshot(selectedBillId)
+                        }
+                        val latest = snapshot?.tables?.firstOrNull { it.id == candidate.id }
+                        qrTable = latest?.takeIf { !it.qrToken.isNullOrBlank() }
+                            ?: PosTable(candidate.id, candidate.label, candidate.active, confirmedToken)
+                        message = if (!qrTable?.qrToken.isNullOrBlank()) {
+                            "สร้างโต๊ะและ QR Code ยืนยันจากเซิร์ฟเวอร์แล้ว"
+                        } else {
+                            "ยืนยันว่าโต๊ะถูกสร้างแล้ว แต่ QR Code ยังไม่พร้อม" +
+                                (qrError?.let { " · " + it } ?: " · ตรวจสอบโต๊ะก่อนลองสร้าง QR อีกครั้ง")
+                        }
+                    } else {
+                        tableDialog = false
+                        message = "ผลบันทึกโต๊ะยังไม่ชัดเจน กรุณาโหลดรายการโต๊ะและตรวจสอบก่อนสร้างซ้ำ: " +
+                            (failure.message ?: "ข้อผิดพลาด")
+                    }
+                } else {
+                    message = failure.message ?: "บันทึกโต๊ะไม่สำเร็จ"
+                }
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun addPosProduct(product: PosProduct, optionsJson: String? = null) {
         if (busy) return
         val online = posNetworkValidated(context)
         if (online && !can("receive_order")) {
             message = "บัญชีนี้ไม่มีสิทธิ์รับออเดอร์"
+            return
+        }
+        if (optionsJson == null && product.optionGroups.isNotEmpty()) {
+            optionTarget = product
             return
         }
         if (mode == "DINE_IN" && tableId == null && !noTable) {
@@ -394,7 +625,7 @@ fun MerchantPosScreen(
             return
         }
 
-        if (!online) {
+        if (!online || offlineDraft != null || offlineCatalogOnly) {
             val snap = snapshot
             val device = draftDeviceId
             if (snap == null || snapshotActorId != auth.session.authUserId || device == null) {
@@ -423,12 +654,12 @@ fun MerchantPosScreen(
                             auth.session.authUserId, snap.shopId, device, targetType, targetTable,
                             System.currentTimeMillis(), emptyList()
                         )
+                        val candidate = posOfflineDraftItem(product, optionsJson)
                         val current = draft.items.toMutableList()
-                        val index = current.indexOfFirst { it.productId == product.id }
+                        val index = current.indexOfFirst { it.productId == candidate.productId && it.optionsJson == candidate.optionsJson }
                         if (index >= 0) current[index] = current[index].copy(quantity = current[index].quantity + 1,
                             requestIds = emptyList())
-                        else current.add(PosOfflineDraftItem(product.id, product.name,
-                            product.price, 1))
+                        else current.add(candidate)
                         offlineDraftStore.save(draft.copy(items = current))
                     }
                     offlineDraft = withContext(Dispatchers.IO) {
@@ -439,10 +670,6 @@ fun MerchantPosScreen(
                     message = failure.message ?: "บันทึกร่างออฟไลน์ไม่สำเร็จ"
                 }
             }
-            return
-        }
-        if (offlineDraft != null) {
-            message = "ส่งหรือลบร่างออฟไลน์ก่อนเพิ่มสินค้าในบิลจริง"
             return
         }
 
@@ -484,7 +711,8 @@ fun MerchantPosScreen(
                     tableId = targetTable,
                     productId = product.id,
                     note = requestNote,
-                    requestId = requestId
+                    requestId = requestId,
+                    optionsJson = optionsJson
                 )
                 // Commit acknowledgement must not be undone by a subsequent refresh failure.
                 selectedBillId = id
@@ -550,6 +778,12 @@ fun MerchantPosScreen(
         val products = draft.items.map { item -> snap.products.firstOrNull { it.id == item.productId } }
         if (products.any { it == null || !it.available }) {
             message = "มีสินค้าที่ไม่พร้อมขายในขณะนี้ กรุณาออนไลน์และตรวจร่างอีกครั้ง"
+            return
+        }
+        try {
+            draft.items.forEachIndexed { index, item -> posOfflineDraftItem(products[index]!!, item.optionsJson) }
+        } catch (failure: Exception) {
+            message = failure.message ?: "มีตัวเลือกสินค้าที่ไม่มีหรือไม่ครบ กรุณาตรวจร่างอีกครั้ง"
             return
         }
         if (draft.type == "DINE_IN" && draft.tableId != null && snap.tables.none { it.id == draft.tableId && it.active }) {
@@ -697,11 +931,22 @@ fun MerchantPosScreen(
         }
     }
 
-    LaunchedEffect(view, reportDays, snapshot?.shopId) {
+    LaunchedEffect(view, reportDays, snapshot?.shopId, reportReloadKey) {
         if (view == "reports" && snapshot?.owner == true) {
-            report = runCatching { api.ownerDashboard(auth, reportDays) }
+            report = null
+            itemSalesReport = null
+            reportLoadError = null
+            val dashboard = runCatching { api.ownerDashboard(auth, reportDays) }
                 .onFailure { message = it.message ?: "โหลดรายงานไม่สำเร็จ" }
                 .getOrNull()
+            val items = runCatching { api.ownerItemSales(auth, reportDays) }
+                .onFailure { message = it.message ?: "โหลดยอดขายรายสินค้าไม่สำเร็จ" }
+                .getOrNull()
+            report = dashboard
+            itemSalesReport = items
+            if (dashboard == null || items == null) {
+                reportLoadError = "โหลดรายงานได้ไม่ครบ กรุณาตรวจการเชื่อมต่อแล้วลองใหม่"
+            }
         }
     }
 
@@ -725,6 +970,63 @@ fun MerchantPosScreen(
     val openBills = snap?.bills?.filter { it.open }.orEmpty()
     val selectedBill = openBills.firstOrNull { it.id == selectedBillId }
     val kitchenEnabled = snap?.shopCategory == "food" || snap?.shopCategory == "cafe"
+    LaunchedEffect(snap?.shopId) {
+        selectedPosCategory = "all"
+        scannedProduct = null
+        scanStatus = null
+        scannedCode = ""
+    }
+    LaunchedEffect(mode, tableId, selectedBillId) {
+        scannedProduct = null
+    }
+    LaunchedEffect(snap?.products) {
+        val current = selectedPosCategory
+        if (current != "all" && snap?.products?.none { it.category?.trim() == current } != false) {
+            selectedPosCategory = "all"
+        }
+    }
+
+    LaunchedEffect(view, snap?.shopId, auth.session.accessToken) {
+        if (view == "bills" && snap != null && can("close_bill")) {
+            cashShift = null
+            cashShiftError = null
+            try {
+                cashShift = api.currentCashShift(auth)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                cashShiftError = failure.message ?: "ตรวจสอบกะรับเงินไม่สำเร็จ"
+            }
+        }
+    }
+
+    fun reloadCashShift() {
+        if (cashShiftPending) return
+        cashShiftPending = true
+        scope.launch {
+            try {
+                cashShift = api.currentCashShift(auth)
+                cashShiftError = null
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                cashShift = null
+                cashShiftError = failure.message ?: "ตรวจสอบกะรับเงินไม่สำเร็จ"
+            } finally {
+                cashShiftPending = false
+            }
+        }
+    }
+
+    LaunchedEffect(view, snap?.shopId, auth.session.accessToken) {
+        if (view == "delivery" && snap?.owner == true) {
+            deliveryLoading = true
+            runCatching { merchantApi.loadShop(auth) }
+                .onSuccess { deliveryShop = it }
+                .onFailure { message = it.message ?: "โหลดสถานะ Delivery ไม่สำเร็จ" }
+            deliveryLoading = false
+        }
+    }
 
     LaunchedEffect(snap?.shopCategory) {
         if (!kitchenEnabled && view == "kitchen") view = "counter"
@@ -735,7 +1037,7 @@ fun MerchantPosScreen(
             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(onClick = onBack, enabled = !busy) { Text(backLabel) }
+            QgIconButton(icon = "back", onClick = onBack)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text("QueueGo หน้าร้าน", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
@@ -820,13 +1122,7 @@ fun MerchantPosScreen(
 
         if (snap == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (snapshotLoading) {
-                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        repeat(4) {
-                            Box(Modifier.fillMaxWidth().height(64.dp).background(QgMuted.copy(alpha = 0.12f), RoundedCornerShape(12.dp)))
-                        }
-                    }
-                } else {
+                if (!snapshotLoading) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("ยังโหลดข้อมูล POS ไม่สำเร็จ", color = QgMuted)
                         Spacer(Modifier.height(8.dp))
@@ -841,6 +1137,8 @@ fun MerchantPosScreen(
             current = view,
             owner = snap.owner,
             kitchenEnabled = kitchenEnabled,
+            cashierEnabled = can("close_bill") || can("view_sales"),
+            codesEnabled = can("manage_staff"),
             onSelect = {
                 view = it
                 message = null
@@ -857,6 +1155,7 @@ fun MerchantPosScreen(
                     noTable = noTable,
                     note = note,
                     search = search,
+                    selectedCategory = selectedPosCategory,
                     busy = busy,
                     pendingCreate = pendingPosRequestId != null,
                     canReceive = can("receive_order") || !networkValidated,
@@ -889,6 +1188,72 @@ fun MerchantPosScreen(
                     },
                     onNote = { note = it.take(500) },
                     onSearch = { search = it },
+                    barcode = scannedCode,
+                    barcodeMatched = scannedProduct,
+                    barcodeStatus = scanStatus,
+                    barcodeLoading = scanLoading,
+                    onBarcodeChange = { next ->
+                        scannedCode = next.take(64)
+                        scannedProduct = null
+                        scanStatus = null
+                    },
+                    onBarcodeLookup = {
+                        val code = scannedCode.trim()
+                        if (!busy && !scanLoading && code.isNotBlank()) {
+                            val originalShop = snap.shopId
+                            val originalBill = selectedBillId
+                            val originalMode = mode
+                            val originalTable = tableId
+                            val originalActor = auth.session.authUserId
+                            scanLoading = true
+                            scannedProduct = null
+                            scanStatus = null
+                            scope.launch {
+                                try {
+                                    if (!posNetworkValidated(context)) {
+                                        scanStatus = "ค้นหาบาร์โค้ดต้องเชื่อมต่ออินเทอร์เน็ต"
+                                    } else {
+                                        val match = api.lookupProductCode(auth, code)
+                                        if (snapshot?.shopId == originalShop &&
+                                            auth.session.authUserId == originalActor &&
+                                            selectedBillId == originalBill &&
+                                            mode == originalMode && tableId == originalTable &&
+                                            view == "counter" && scannedCode.trim() == code) {
+                                            val product = snap.products.firstOrNull { it.id == match?.productId }
+                                            when {
+                                                match == null -> scanStatus = "ไม่พบรหัสสินค้านี้ในร้าน"
+                                                !match.available || !match.posAvailable ->
+                                                    scanStatus = "สินค้านี้ปิดขายหน้าร้าน"
+                                                product == null ->
+                                                    scanStatus = "พบรหัสแล้ว แต่เมนูร้านยังไม่ตรง กรุณาโหลดข้อมูลใหม่"
+                                                posProductSoldOut(product) ->
+                                                    scanStatus = "สินค้าหมดสต็อก · ไม่สามารถเพิ่มเข้าบิล"
+                                                else -> {
+                                                    scannedProduct = product
+                                                    scanStatus = "พบ " + product.name + " · ตรวจสอบก่อนเพิ่มเข้าบิล"
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (failure: Exception) {
+                                    scanStatus = failure.message ?: "ค้นหารหัสสินค้าไม่สำเร็จ"
+                                } finally {
+                                    scanLoading = false
+                                }
+                            }
+                        }
+                    },
+                    onBarcodeAdd = { product ->
+                        if (!busy && !scanLoading && scannedProduct?.id == product.id) {
+                            scannedProduct = null
+                            scannedCode = ""
+                            scanStatus = null
+                            addPosProduct(product)
+                        }
+                    },
+                    onCategory = { selectedPosCategory = it },
                     onProduct = ::addPosProduct,
                     onRetryPending = ::retryPendingPosCreate,
                     onReduce = { line ->
@@ -967,10 +1332,17 @@ fun MerchantPosScreen(
                         tableActive = table.active
                         tableDialog = true
                     },
-                    onQr = { qrTable = it },
+                    onQr = { table ->
+                        qrTable = table
+                        if (table.qrToken.isNullOrBlank()) createTableQr(table)
+                    },
                     onDelete = { table ->
-                        runMutation("ลบ " + table.label + " แล้ว", null) {
-                            api.deleteTable(auth, table.id)
+                        if (snap.bills.any { it.tableId == table.id }) {
+                            message = "โต๊ะนี้มีประวัติออเดอร์แล้ว ลบไม่ได้ กรุณาแก้ไขโต๊ะแล้วปิดใช้งานแทน"
+                        } else {
+                            runMutation("ลบ " + table.label + " แล้ว", null) {
+                                api.deleteTable(auth, table.id)
+                            }
                         }
                     }
                 )
@@ -987,7 +1359,7 @@ fun MerchantPosScreen(
                 )
 
                 "bills" -> PosBillsView(
-                    bills = openBills.filter { !kitchenEnabled || it.kitchenStatus in setOf("READY", "SERVED") },
+                    bills = openBills,
                     showKitchenStatus = kitchenEnabled,
                     selected = selectedBill,
                     paymentMethod = paymentMethod,
@@ -995,6 +1367,79 @@ fun MerchantPosScreen(
                     cashReceived = cashReceived,
                     busy = busy,
                     canClose = can("close_bill"),
+                    shift = cashShift,
+                    shiftError = cashShiftError,
+                    shiftPending = cashShiftPending,
+                    openingCash = openingCash,
+                    countedCash = countedCash,
+                    onOpeningCash = { openingCash = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                    onCountedCash = { countedCash = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                    onReloadShift = ::reloadCashShift,
+                    onOpenShift = {
+                        val opening = openingCash.toDoubleOrNull()
+                        if (cashShiftPending || busy) Unit
+                        else if (opening == null || !opening.isFinite() || opening < 0) {
+                            message = "ระบุเงินสดต้นกะให้ถูกต้อง (ใส่ 0 ได้)"
+                        } else {
+                            cashShiftPending = true
+                            scope.launch {
+                                try {
+                                    cashShift = api.openCashShift(auth, opening)
+                                    cashShiftError = null
+                                    message = "เปิดกะรับเงินแล้ว"
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (failure: Exception) {
+                                    val reconciled = runCatching { api.currentCashShift(auth) }.getOrNull()
+                                    cashShift = reconciled
+                                    if (posOpenShiftMatches(reconciled, opening)) {
+                                        cashShiftError = null
+                                        message = "เปิดกะรับเงินแล้ว · ยืนยันจากเซิร์ฟเวอร์หลังการเชื่อมต่อสะดุด"
+                                    } else {
+                                        cashShiftError = failure.message ?: "ผลเปิดกะยังไม่แน่ชัด"
+                                        message = "ยังยืนยันผลเปิดกะไม่ได้ · ตรวจสอบกะอีกครั้งก่อนลองทำรายการซ้ำ"
+                                    }
+                                } finally {
+                                    cashShiftPending = false
+                                }
+                            }
+                        }
+                    },
+                    onCloseShift = {
+                        val counted = countedCash.toDoubleOrNull()
+                        if (cashShiftPending || busy) Unit
+                        else if (counted == null || !counted.isFinite() || counted < 0) {
+                            message = "กรอกยอดเงินสดที่นับจริงก่อนปิดกะ"
+                        } else {
+                            val closingShiftId = cashShift?.id
+                            cashShiftPending = true
+                            scope.launch {
+                                try {
+                                    cashShift = api.closeCashShift(auth, counted)
+                                    cashShiftError = null
+                                    countedCash = ""
+                                    message = "ปิดกะรับเงินแล้ว"
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (failure: Exception) {
+                                    val reconciled = runCatching { api.currentCashShift(auth) }.getOrNull()
+                                    val history = if (closingShiftId.isNullOrBlank()) emptyList() else
+                                        runCatching { api.shiftHistory(auth, 50) }.getOrNull().orEmpty()
+                                    cashShift = reconciled
+                                    if (posCloseShiftMatches(reconciled, history, closingShiftId, counted)) {
+                                        cashShiftError = null
+                                        countedCash = ""
+                                        message = "ปิดกะรับเงินแล้ว · ยืนยันยอดจากประวัติเซิร์ฟเวอร์"
+                                    } else {
+                                        cashShiftError = failure.message ?: "ผลปิดกะยังไม่แน่ชัด"
+                                        message = "ยังยืนยันผลปิดกะไม่ได้ · ตรวจสอบกะและประวัติก่อนทำรายการซ้ำ"
+                                    }
+                                } finally {
+                                    cashShiftPending = false
+                                }
+                            }
+                        }
+                    },
                     onSelect = { selectedBillId = it.id },
                     onPaymentMenu = { paymentMethodMenu = it },
                     onPaymentMethod = {
@@ -1006,26 +1451,71 @@ fun MerchantPosScreen(
                     onPay = {
                         val bill = selectedBill
                         val method = paymentMethod
-                        if (!busy && bill != null && can("close_bill")) {
+                        if (!busy && !cashShiftPending && bill != null && can("close_bill")) {
                             val cash = if (method == "cash") cashReceived.toDoubleOrNull() else null
-                            if (method == "cash" && (cash == null || !cash.isFinite() || cash < bill.total)) {
+                            if (cashShift?.open != true) {
+                                message = "ต้องเปิดกะรับเงินก่อนคิดเงิน"
+                            } else if (kitchenEnabled && bill.kitchenStatus !in setOf("READY", "SERVED")) {
+                                message = "รอครัวพร้อมก่อนคิดเงิน"
+                            } else if (method == "cash" && (cash == null || !cash.isFinite() || cash < bill.total)) {
                                 message = "เงินสดที่รับต้องไม่น้อยกว่ายอดบิล"
                             } else {
                                 busy = true
                                 scope.launch {
-                                    try {
-                                        api.takePayment(auth, bill.id, method, cash)
-                                        val change = if (method == "cash" && cash != null) {
-                                            " · เงินทอน ฿" + money(cash - bill.total)
-                                        } else ""
+                                    val change = if (method == "cash" && cash != null) {
+                                        " · เงินทอน ฿" + money(cash - bill.total)
+                                    } else ""
+                                    suspend fun showConfirmedPayment() {
                                         selectedBillId = null
                                         cashReceived = ""
-                                        message = "ปิดบิลแล้ว" + change
-                                        refreshSnapshot(null)
+                                        // This refresh handles most read errors internally and may
+                                        // overwrite message without throwing. Report the CONFIRMED
+                                        // payment last, not a stale refresh error.
+                                        try {
+                                            refreshSnapshot(null)
+                                        } catch (cancelled: CancellationException) {
+                                            throw cancelled
+                                        } catch (_: Exception) {
+                                            // The cash payment is already confirmed.
+                                        }
+                                        val verified = snapshot?.bills?.firstOrNull {
+                                            it.id == bill.id &&
+                                                it.paymentStatus == "PAID" &&
+                                                it.billStatus == "CLOSED" &&
+                                                it.paymentMethod == method &&
+                                                (method != "cash" ||
+                                                    (cash != null && it.cashTendered != null &&
+                                                        kotlin.math.abs(it.cashTendered - cash) < 0.005))
+                                        }
+                                        if (verified != null) {
+                                            receiptDialogBillId = verified.id
+                                            message = "ปิดบิลแล้ว" + change
+                                        } else {
+                                            receiptDialogBillId = null
+                                            message = "ปิดบิลแล้ว" + change +
+                                                " · แต่ยังโหลดใบเสร็จล่าสุดไม่ได้ กรุณากดโหลดใหม่"
+                                        }
+                                    }
+                                    try {
+                                        api.takePayment(auth, bill.id, method, cash)
+                                        showConfirmedPayment()
                                     } catch (cancelled: CancellationException) {
                                         throw cancelled
-                                    } catch (failure: Exception) {
-                                        message = failure.message ?: "ปิดบิลไม่สำเร็จ"
+                                    } catch (paymentError: Exception) {
+                                        // Never retry a payment RPC automatically after an uncertain response.
+                                        // First read the paid bill with the SAME method/tender values.
+                                        val settled = try {
+                                            api.paymentConfirmed(auth, bill.id, method, cash)
+                                        } catch (cancelled: CancellationException) {
+                                            throw cancelled
+                                        } catch (_: Exception) { false }
+                                        if (settled) {
+                                            showConfirmedPayment()
+                                        } else {
+                                            message = "ยังไม่ทราบผลรับเงิน: " +
+                                                (paymentError.message ?: "การเชื่อมต่อไม่สำเร็จ") +
+                                                " · กรุณาโหลดข้อมูลและตรวจประวัติบิลเดิมก่อนกดยืนยันซ้ำ"
+                                        }
                                     } finally {
                                         busy = false
                                     }
@@ -1036,15 +1526,36 @@ fun MerchantPosScreen(
                 )
 
 
+                "codes" -> MerchantPosCodesScreen(
+                    auth = auth,
+                    api = api,
+                    shopId = snap.shopId,
+                    products = snap.products
+                )
+
+                "shifts" -> MerchantPosShiftHistoryScreen(
+                    auth = auth,
+                    api = api,
+                    canCashier = can("close_bill"),
+                    shopId = snap.shopId
+                )
+
                 "reports" -> PosReportsView(
                     snapshot = snap,
                     days = reportDays,
                     report = report,
+                    itemSalesReport = itemSalesReport,
+                    loadError = reportLoadError,
                     busy = busy,
+                    onRetry = { reportReloadKey += 1 },
                     onDays = { reportDays = it },
                     onRefund = { bill ->
                         refundTarget = bill
                         refundReason = ""
+                    },
+                    onExportCsv = { csv ->
+                        pendingReportCsv = csv
+                        reportCsvLauncher.launch("queuego-pos-sales-${reportDays}d.csv")
                     }
                 )
 
@@ -1059,6 +1570,30 @@ fun MerchantPosScreen(
                     onType = {
                         historyType = it
                         historyTypeMenu = false
+                    }
+                )
+
+                "delivery" -> PosDeliveryView(
+                    snapshot = snap,
+                    shop = deliveryShop,
+                    loading = deliveryLoading,
+                    busy = busy,
+                    onEnable = {
+                        if (!busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching {
+                                    merchantApi.enableDelivery(auth)
+                                    merchantApi.loadShop(auth)
+                                }.onSuccess { fresh ->
+                                    deliveryShop = fresh
+                                    message = "เปิด Delivery แล้ว"
+                                }.onFailure {
+                                    message = it.message ?: "เปิด Delivery ไม่สำเร็จ"
+                                }
+                                busy = false
+                            }
+                        }
                     }
                 )
 
@@ -1226,6 +1761,20 @@ fun MerchantPosScreen(
         )
     }
 
+    if (optionTarget != null) {
+        val product = optionTarget!!
+        MerchantPosOptionSelectionDialog(
+            product = product,
+            groups = product.optionGroups,
+            confirmLabel = if (posNetworkValidated(context) && offlineDraft == null && !offlineCatalogOnly) "เพิ่มลงบิล" else "เพิ่มลงร่าง",
+            onDismiss = { if (!busy) optionTarget = null },
+            onConfirm = { options ->
+                optionTarget = null
+                addPosProduct(product, options.toString())
+            }
+        )
+    }
+
     if (refundTarget != null) {
         val bill = refundTarget!!
         AlertDialog(
@@ -1316,13 +1865,9 @@ fun MerchantPosScreen(
                     enabled = !busy && tableLabel.trim().isNotEmpty(),
                     onClick = {
                         val id = editingTable?.id
-                        tableDialog = false
-                        runMutation(
-                            if (id == null) "สร้างโต๊ะแล้ว" else "บันทึกโต๊ะแล้ว",
-                            selectedBillId
-                        ) {
-                            api.saveTable(auth, id, tableLabel, tableActive)
-                        }
+                        val label = tableLabel
+                        val active = tableActive
+                        savePosTable(id, label, active)
                     }
                 ) { Text("บันทึกโต๊ะ") }
             },
@@ -1330,6 +1875,67 @@ fun MerchantPosScreen(
                 TextButton(enabled = !busy, onClick = { tableDialog = false }) { Text("กลับ") }
             }
         )
+    }
+
+    if (receiptDialogBillId != null && snap != null) {
+        val paid = snap.bills.firstOrNull {
+            it.id == receiptDialogBillId &&
+                it.paymentStatus == "PAID" &&
+                it.billStatus == "CLOSED"
+        }
+        if (paid != null) {
+            val receiptPrintKey = merchantReceiptPrintKey(snap, paid)
+            AlertDialog(
+                onDismissRequest = { if (!busy) receiptDialogBillId = null },
+                title = { Text("ใบเสร็จรับเงิน · " + paid.number) },
+                text = {
+                    Column(
+                        Modifier.fillMaxWidth().heightIn(max = 420.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("บิลนี้รับชำระและปิดจากเซิร์ฟเวอร์แล้ว",
+                            color = QgGreen, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        SelectionContainer {
+                            Text(merchantReceiptTicket(snap, paid), fontSize = 13.sp)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = !busy && pendingPrintCount == 0,
+                        onClick = {
+                            if (printerSettings.bridgeUrl.isBlank() || receiptPrintKey == null) {
+                                receiptDialogBillId = null
+                                view = "printer"
+                                message = "ตั้งค่า HTTPS Print Bridge ก่อนพิมพ์ใบเสร็จ"
+                            } else {
+                                sendToPrinter(
+                                    settings = printerSettings,
+                                    type = "receipt",
+                                    text = merchantReceiptTicket(snap, paid),
+                                    printedKey = receiptPrintKey,
+                                    billId = paid.id,
+                                    force = true,
+                                    successMessage = "พิมพ์ใบเสร็จแล้ว · " + paid.number
+                                )
+                                receiptDialogBillId = null
+                            }
+                        }
+                    ) {
+                        Text(
+                            if (printerSettings.bridgeUrl.isBlank()) "ตั้งค่าเครื่องพิมพ์"
+                            else "พิมพ์ใบเสร็จ"
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(enabled = !busy, onClick = { receiptDialogBillId = null }) {
+                        Text("ปิด")
+                    }
+                }
+            )
+        }
     }
 
     if (qrTable != null && snap != null) {
@@ -1363,21 +1969,66 @@ fun MerchantPosScreen(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText("QueueGo table QR", link))
-                                message = "คัดลอกลิงก์ QR Code แล้ว"
+                                qrActionMessage = "คัดลอกลิงก์ QR Code แล้ว"
+                                message = qrActionMessage
                             }
                         ) { Text("คัดลอกลิงก์") }
+                        Spacer(Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    if (bitmap != null) {
+                                        pendingQrBitmap = bitmap
+                                        qrSaveLauncher.launch(tableQrFileName(snap.shopName, table.label))
+                                    }
+                                },
+                                enabled = bitmap != null && !busy,
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp)
+                            ) { Text("บันทึก QR", fontSize = 12.sp) }
+                            OutlinedButton(
+                                onClick = {
+                                    if (bitmap == null) {
+                                        qrActionMessage = "ยังสร้าง QR Code ไม่สำเร็จ"
+                                    } else {
+                                        val result = runCatching {
+                                            printTableQr(context, snap.shopName + " · " + table.label, bitmap)
+                                        }
+                                        qrActionMessage = result.fold(
+                                            onSuccess = { "เปิดหน้าพิมพ์ QR Code แล้ว" },
+                                            onFailure = {
+                                                "เปิดหน้าพิมพ์ QR Code ไม่สำเร็จ: " +
+                                                    (it.message ?: "ข้อผิดพลาด")
+                                            }
+                                        )
+                                    }
+                                    message = qrActionMessage
+                                },
+                                enabled = bitmap != null && !busy,
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp)
+                            ) { Text("พิมพ์ QR", fontSize = 12.sp) }
+                        }
+                        qrActionMessage?.let { actionMessage ->
+                            Text(
+                                actionMessage,
+                                color = if (actionMessage.contains("ไม่สำเร็จ")) QgRed else QgMuted,
+                                fontSize = 11.sp
+                            )
+                        }
                     }
                 }
             },
             confirmButton = {
-                TextButton(
-                    enabled = !busy,
-                    onClick = {
-                        runMutation(if (table.qrToken == null) "สร้าง QR Code แล้ว" else "สร้าง QR Code ใหม่แล้ว") {
-                            api.rotateTableQr(auth, table.id)
-                        }
-                    }
-                ) { Text(if (table.qrToken == null) "สร้าง QR Code" else "สร้าง QR ใหม่") }
+                if (table.qrToken.isNullOrBlank()) {
+                    TextButton(
+                        enabled = !busy,
+                        onClick = { createTableQr(table) }
+                    ) { Text("สร้าง QR Code") }
+                }
             },
             dismissButton = {
                 TextButton(enabled = !busy, onClick = { qrTable = null }) { Text("ปิด") }
@@ -1388,12 +2039,12 @@ fun MerchantPosScreen(
     if (confirmDraftSubmit && offlineDraft != null && snap != null) {
         val draft = offlineDraft!!
         val products = draft.items.mapNotNull { item ->
-            snap.products.firstOrNull { it.id == item.productId }?.let { item to it }
+            snap.products.firstOrNull { it.id == item.productId }?.let { product ->
+                runCatching { item to posOfflineDraftItem(product, item.optionsJson) }.getOrNull()
+            }
         }
-        val changed = products.filter { (item, product) ->
-            item.nameSnapshot != product.name || kotlin.math.abs(item.priceSnapshot - product.price) >= 0.005
-        }
-        val total = products.sumOf { (item, product) -> product.price * item.quantity }
+        val changed = products.filter { (item, current) -> posOfflineDraftLineChanged(item, current) }
+        val total = products.sumOf { (item, current) -> current.priceSnapshot * item.quantity }
         AlertDialog(
             onDismissRequest = { if (!busy) confirmDraftSubmit = false },
             title = { Text("ตรวจร่างก่อนสร้างบิล") },
@@ -1402,13 +2053,16 @@ fun MerchantPosScreen(
                     Text("ส่งรายการไปตรวจสอบราคาและสิทธิ์บนเซิร์ฟเวอร์หรือไม่? จะสร้างบิลจริงเท่านั้น ยังไม่ชำระเงินและไม่ส่งเข้าครัว")
                     Spacer(Modifier.height(8.dp))
                     Text("ยอดจากราคาปัจจุบัน: ฿${money(total)}", fontWeight = FontWeight.Bold)
-                    changed.forEach { (item, product) ->
-                        Text("${item.nameSnapshot} → ${product.name} · ฿${money(item.priceSnapshot)} → ฿${money(product.price)}", fontSize = 12.sp)
+                    products.filter { it.second.optionLabel.isNotBlank() }.forEach { (item, current) ->
+                        Text("${item.nameSnapshot} × ${item.quantity} · ${current.optionLabel}", fontSize = 12.sp)
+                    }
+                    changed.forEach { (item, current) ->
+                        Text("${item.nameSnapshot} → ${current.nameSnapshot} · ฿${money(item.priceSnapshot)} → ฿${money(current.priceSnapshot)}", fontSize = 12.sp)
                     }
                 }
             },
             confirmButton = {
-                TextButton(enabled = !busy, onClick = ::commitReviewedDraft) { Text("ส่งเป็นบิลจริง") }
+                TextButton(enabled = !busy && products.size == draft.items.size, onClick = ::commitReviewedDraft) { Text("ส่งเป็นบิลจริง") }
             },
             dismissButton = {
                 TextButton(enabled = !busy, onClick = { confirmDraftSubmit = false }) { Text("กลับไปตรวจร่าง") }
@@ -1438,27 +2092,33 @@ private fun PosOfflineDraftPanel(
     onSubmit: () -> Unit,
     onDiscard: () -> Unit
 ) {
-    val currentProducts = draft.items.map { item -> item to snapshot?.products?.firstOrNull { it.id == item.productId } }
+    val currentProducts = draft.items.map { item ->
+        item to snapshot?.products?.firstOrNull { it.id == item.productId }?.let { product ->
+            runCatching { posOfflineDraftItem(product, item.optionsJson) }.getOrNull()
+        }
+    }
     val pending = draft.items.any { it.requestIds.isNotEmpty() }
-    val changes = currentProducts.count { (item, product) ->
-        product != null && (item.nameSnapshot != product.name || kotlin.math.abs(item.priceSnapshot - product.price) >= 0.005)
+    val valid = currentProducts.all { it.second != null }
+    val changes = currentProducts.count { (item, current) ->
+        current != null && posOfflineDraftLineChanged(item, current)
     }
     QgCard(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("ร่างตะกร้าบนอุปกรณ์นี้", fontWeight = FontWeight.Black)
             Text(if (online) "ออนไลน์ · ตรวจสินค้าและราคาปัจจุบันก่อนส่ง" else "ออฟไลน์ · ยังไม่สร้างบิล ไม่ชำระเงิน และไม่ส่งเข้าครัว",
                 color = if (online) QgGreen else QgRed, fontSize = 12.sp)
-            draft.items.take(4).forEach { item ->
-                val product = snapshot?.products?.firstOrNull { it.id == item.productId }
+            currentProducts.take(4).forEach { (item, current) ->
                 Text("${item.nameSnapshot} × ${item.quantity}" +
-                    if (product != null && (item.nameSnapshot != product.name || kotlin.math.abs(item.priceSnapshot - product.price) >= 0.005))
-                        " · ปัจจุบัน ${product.name} ฿${money(product.price)}" else " · ฿${money(item.priceSnapshot)}",
+                    if (current != null && posOfflineDraftLineChanged(item, current))
+                        " · ปัจจุบัน ${current.nameSnapshot} ฿${money(current.priceSnapshot)}" else " · ฿${money(item.priceSnapshot)}",
                     fontSize = 12.sp)
+                if (item.optionLabel.isNotBlank()) Text(item.optionLabel, fontSize = 11.sp, color = QgMuted)
             }
             if (draft.items.size > 4) Text("และอีก ${draft.items.size - 4} รายการ", color = QgMuted, fontSize = 11.sp)
             if (changes > 0) Text("มี ${changes} รายการที่ชื่อหรือราคาเปลี่ยน · ตรวจทานก่อนส่ง", color = QgRed, fontSize = 11.sp)
+            if (online && !valid) Text("มีสินค้าหรือตัวเลือกที่ไม่พร้อมขาย กรุณาตรวจร่างอีกครั้ง", color = QgRed, fontSize = 11.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(enabled = enabled && online && snapshot != null, onClick = onSubmit) { Text("ตรวจและส่งเมื่อออนไลน์") }
+                Button(enabled = enabled && online && snapshot != null && valid, onClick = onSubmit) { Text("ตรวจและส่งเมื่อออนไลน์") }
                 OutlinedButton(enabled = !pending, onClick = onDiscard) { Text(if (pending) "ตรวจผลก่อนลบ" else "ลบร่าง") }
             }
         }
@@ -1466,34 +2126,50 @@ private fun PosOfflineDraftPanel(
 }
 
 @Composable
-private fun PosTabs(current: String, owner: Boolean, kitchenEnabled: Boolean, onSelect: (String) -> Unit) {
+private fun PosTabs(
+    current: String,
+    owner: Boolean,
+    kitchenEnabled: Boolean,
+    cashierEnabled: Boolean,
+    codesEnabled: Boolean,
+    onSelect: (String) -> Unit
+) {
     val tabs = buildList {
         add("counter" to "＋ รับออเดอร์")
         add("tables" to "โต๊ะ")
         if (kitchenEnabled) add("kitchen" to "ครัว")
         add("bills" to "คิดเงิน")
-        add("printer" to "เครื่องพิมพ์")
+        if (cashierEnabled) add("shifts" to "กะรับเงิน")
+        if (codesEnabled) add("codes" to "บาร์โค้ด/SKU")
         if (owner) {
             add("reports" to "ยอดขาย")
             add("history" to "ประวัติ")
+            add("delivery" to "Delivery")
+        }
+        add("printer" to "เครื่องพิมพ์")
+        if (owner) {
             add("staff" to "พนักงาน")
         }
     }
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         tabs.forEach { (key, label) ->
             if (key == current) {
                 Button(
                     onClick = { onSelect(key) },
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp)
-                ) { Text(label, fontSize = 11.sp) }
+                    modifier = Modifier.heightIn(min = 46.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 10.dp)
+                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
             } else {
                 OutlinedButton(
                     onClick = { onSelect(key) },
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp)
-                ) { Text(label, fontSize = 11.sp) }
+                    modifier = Modifier.heightIn(min = 46.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 10.dp)
+                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
             }
         }
     }
@@ -1509,6 +2185,11 @@ private fun PosCounterView(
     noTable: Boolean,
     note: String,
     search: String,
+    selectedCategory: String,
+    barcode: String,
+    barcodeMatched: PosProduct?,
+    barcodeStatus: String?,
+    barcodeLoading: Boolean,
     busy: Boolean,
     pendingCreate: Boolean,
     canReceive: Boolean,
@@ -1524,6 +2205,10 @@ private fun PosCounterView(
     onNoTable: () -> Unit,
     onNote: (String) -> Unit,
     onSearch: (String) -> Unit,
+    onBarcodeChange: (String) -> Unit,
+    onBarcodeLookup: () -> Unit,
+    onBarcodeAdd: (PosProduct) -> Unit,
+    onCategory: (String) -> Unit,
     onProduct: (PosProduct) -> Unit,
     onRetryPending: () -> Unit,
     onReduce: (PosLine) -> Unit,
@@ -1592,6 +2277,71 @@ private fun PosCounterView(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                barcode,
+                onBarcodeChange,
+                label = { Text("บาร์โค้ด / SKU") },
+                placeholder = { Text("พิมพ์หรือใช้เครื่องสแกน") },
+                singleLine = true,
+                enabled = !busy && !barcodeLoading,
+                modifier = Modifier.weight(1f)
+            )
+            Button(
+                onClick = onBarcodeLookup,
+                enabled = !busy && !barcodeLoading && barcode.isNotBlank() && canReceive &&
+                    !pendingCreate,
+                colors = ButtonDefaults.buttonColors(containerColor = QgRed),
+                modifier = Modifier.heightIn(min = 50.dp)
+            ) { Text("ค้นหา") }
+        }
+        if (barcodeStatus != null) {
+            Text(barcodeStatus, fontSize = 12.sp,
+                color = if (barcodeMatched == null) QgRed else Color(0xFF15803D))
+        }
+        if (barcodeMatched != null) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFF5F7F9)
+            ) {
+                Row(
+                    Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(barcodeMatched.name, modifier = Modifier.weight(1f),
+                        fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = { onBarcodeAdd(barcodeMatched) },
+                        enabled = !busy && !pendingCreate && canReceive &&
+                            !posProductSoldOut(barcodeMatched),
+                        colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                    ) { Text("เพิ่มเข้าบิล") }
+                }
+            }
+        }
+        val menuCategories = snapshot.products.mapNotNull { product ->
+            product.category?.trim()?.takeIf { it.isNotBlank() }
+        }.distinct()
+        if (menuCategories.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text("หมวดหมู่", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                PosChoiceButton("ทั้งหมด", selectedCategory == "all") { onCategory("all") }
+                menuCategories.forEach { category ->
+                    PosChoiceButton(category, selectedCategory == category) { onCategory(category) }
+                }
+            }
+        }
         Spacer(Modifier.height(7.dp))
         OutlinedTextField(
             note,
@@ -1604,31 +2354,66 @@ private fun PosCounterView(
         QgSectionTitle("เมนูสินค้า", if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล" else selectedBill.number)
         Spacer(Modifier.height(8.dp))
         val products = snapshot.products.filter {
-            search.isBlank() || it.name.contains(search.trim(), ignoreCase = true)
+            (selectedCategory == "all" || it.category?.trim() == selectedCategory) &&
+                (search.isBlank() || it.name.contains(search.trim(), ignoreCase = true))
         }
-        products.chunked(2).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { product ->
-                    QgCard(
-                        Modifier
-                            .weight(1f)
-                            .padding(bottom = 8.dp)
-                            .clickable(enabled = !busy && canReceive) { onProduct(product) }
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val menuColumns = when {
+                maxWidth >= 980.dp -> 4
+                maxWidth >= 620.dp -> 3
+                else -> 2
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                products.chunked(menuColumns).forEach { row ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.Top
                     ) {
-                        Column {
-                            QgRemoteImage(product.image, Modifier.fillMaxWidth().height(82.dp), product.name)
-                            Spacer(Modifier.height(5.dp))
-                            Text(product.name, fontWeight = FontWeight.ExtraBold, maxLines = 2)
-                            Text("฿" + money(product.price), color = QgRed, fontWeight = FontWeight.Black)
-                            if (canEditPrice) {
-                                TextButton(onClick = { onEditPrice(product) }, enabled = !busy) {
-                                    Text("แก้ราคา", fontSize = 10.sp)
+                        row.forEach { product ->
+                            QgCard(
+                                Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 176.dp)
+                                    .clickable(enabled = !busy && canReceive && !posProductSoldOut(product)) { onProduct(product) }
+                            ) {
+                                Column {
+                                    QgRemoteImage(
+                                        product.image,
+                                        Modifier.fillMaxWidth().height(if (menuColumns >= 3) 100.dp else 106.dp),
+                                        product.name
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        product.name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        maxLines = 2
+                                    )
+                                    Text("฿" + money(product.price),
+                                        color = QgRed, fontSize = 16.sp,
+                                        fontWeight = FontWeight.ExtraBold)
+                                    if (posProductInventoryTracked(product)) {
+                                        Text(
+                                            if (posProductSoldOut(product)) "สินค้าหมดสต็อก · เหลือ 0" else "เหลือ ${product.stock}",
+                                            color = if (posProductSoldOut(product)) QgRed else QgMuted,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    if (canEditPrice) {
+                                        TextButton(onClick = { onEditPrice(product) }, enabled = !busy) {
+                                            Text("แก้ราคา", fontSize = 12.sp)
+                                        }
+                                    }
                                 }
                             }
                         }
+                        repeat(menuColumns - row.size) {
+                            Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
         if (products.isEmpty()) {
@@ -1756,58 +2541,217 @@ private fun PosTablesView(
     onQr: (PosTable) -> Unit,
     onDelete: (PosTable) -> Unit
 ) {
-    val open = snapshot.bills.filter { it.open }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            QgSectionTitle("โต๊ะ", "จัดการโต๊ะและ QR Code สำหรับสั่งอาหาร")
-            Spacer(Modifier.weight(1f))
-            if (canManage) Button(onClick = onAdd, enabled = !busy) { Text("＋ เพิ่มโต๊ะ") }
-        }
-        Spacer(Modifier.height(10.dp))
-        snapshot.tables.forEach { table ->
-            val bill = open.firstOrNull { it.tableId == table.id }
-            QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(table.label, fontWeight = FontWeight.Black)
-                            Text(
-                                bill?.let { "มีออเดอร์ · " + it.number }
-                                    ?: if (table.active) "ว่าง" else "ปิดใช้งาน",
-                                color = QgMuted,
-                                fontSize = 11.sp
-                            )
-                        }
-                        Button(onClick = { onOpen(table) }, enabled = table.active || bill != null) {
-                            Text(if (bill == null) "เปิดโต๊ะ" else "เปิดบิล")
+    val openBills = snapshot.bills.filter { it.open }
+    val occupiedCount = snapshot.tables.count { table ->
+        openBills.any { it.tableId == table.id }
+    }
+    val availableCount = snapshot.tables.count { table ->
+        table.active && openBills.none { it.tableId == table.id }
+    }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // QgSectionTitle uses fillMaxWidth. Putting it inside a Row previously
+        // measured the title at full width, clipping "เพิ่มโต๊ะ" off the tablet.
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            color = Color.White,
+            shadowElevation = 1.dp
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("จัดการโต๊ะ", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("เปิดโต๊ะ รับออเดอร์ และ QR Code",
+                            fontSize = 12.sp, color = QgMuted)
+                    }
+                    if (canManage) {
+                        Button(
+                            onClick = onAdd,
+                            enabled = !busy,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                        ) {
+                            Text("＋ เพิ่มโต๊ะ", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(onClick = { onQr(table) }, enabled = canManage && !busy) {
-                            Text("ดู QR Code")
-                        }
-                        if (canManage) {
-                            OutlinedButton(onClick = { onEdit(table) }, enabled = !busy) {
-                                Text("แก้ไข")
+                }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(
+                        Triple("ทั้งหมด", snapshot.tables.size, Color(0xFF343941)),
+                        Triple("ว่าง", availableCount, Color(0xFF18835B)),
+                        Triple("มีบิล", occupiedCount, QgRed)
+                    ).forEach { (label, count, tone) ->
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFFF7F8FA)
+                        ) {
+                            Column(
+                                Modifier.padding(vertical = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(count.toString(), fontSize = 21.sp,
+                                    color = tone, fontWeight = FontWeight.ExtraBold)
+                                Text(label, fontSize = 11.sp, color = QgMuted)
                             }
-                            OutlinedButton(
-                                onClick = { onDelete(table) },
-                                enabled = !busy && bill == null
-                            ) { Text("ลบโต๊ะ") }
                         }
                     }
                 }
             }
         }
+
         if (snapshot.tables.isEmpty()) {
-            QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีโต๊ะที่ตั้งไว้", color = QgMuted) }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("ยังไม่มีโต๊ะ", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("เริ่มด้วยการเพิ่มหมายเลขโต๊ะ แล้วเปิดรับออเดอร์หรือสร้าง QR Code",
+                        color = QgMuted, fontSize = 12.sp)
+                    if (canManage) {
+                        Button(onClick = onAdd, enabled = !busy,
+                            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                        ) { Text("＋ เพิ่มโต๊ะแรก") }
+                    }
+                }
+            }
+        } else {
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val columnCount = if (maxWidth >= 650.dp) 2 else 1
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    snapshot.tables.chunked(columnCount).forEach { rowTables ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            rowTables.forEach { table ->
+                                val bill = openBills.firstOrNull { it.tableId == table.id }
+                                val status = when {
+                                    bill != null -> "มีออเดอร์ · " + bill.number
+                                    table.active -> "พร้อมรับออเดอร์"
+                                    else -> "ปิดใช้งาน"
+                                }
+                                Surface(
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = Color.White,
+                                    shadowElevation = 1.dp,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp, Color(0xFFE9EBEF)
+                                    )
+                                ) {
+                                    Column(
+                                        Modifier.fillMaxWidth().padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(table.label, fontSize = 18.sp,
+                                                    fontWeight = FontWeight.ExtraBold)
+                                                Text(status, fontSize = 11.sp,
+                                                    color = if (bill != null) QgRed else QgMuted)
+                                            }
+                                            Surface(
+                                                shape = RoundedCornerShape(100.dp),
+                                                color = when {
+                                                    bill != null -> Color(0xFFFFE9ED)
+                                                    table.active -> Color(0xFFE6F6EE)
+                                                    else -> Color(0xFFF1F2F4)
+                                                }
+                                            ) {
+                                                Text(
+                                                    when {
+                                                        bill != null -> "ไม่ว่าง"
+                                                        table.active -> "ว่าง"
+                                                        else -> "ปิด"
+                                                    },
+                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                    color = if (bill != null) QgRed
+                                                        else if (table.active) Color(0xFF18835B)
+                                                        else QgMuted,
+                                                    fontSize = 11.sp, fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                        Button(
+                                            onClick = { onOpen(table) },
+                                            enabled = (table.active || bill != null) && !busy,
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                                        ) {
+                                            Text(if (bill == null) "เปิดโต๊ะ" else "ดูบิล " + bill.number,
+                                                fontWeight = FontWeight.Bold)
+                                        }
+                                        if (canManage) {
+                                            Row(
+                                                Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                OutlinedButton(
+                                                    onClick = { onQr(table) },
+                                                    enabled = !busy,
+                                                    modifier = Modifier.weight(1f),
+                                                    contentPadding = PaddingValues(horizontal = 4.dp)
+                                                ) { Text("QR Code", fontSize = 12.sp) }
+                                                OutlinedButton(
+                                                    onClick = { onEdit(table) },
+                                                    enabled = !busy,
+                                                    modifier = Modifier.weight(1f),
+                                                    contentPadding = PaddingValues(horizontal = 4.dp)
+                                                ) { Text("แก้ไข", fontSize = 12.sp) }
+                                                TextButton(
+                                                    onClick = { onDelete(table) },
+                                                    enabled = !busy,
+                                                    modifier = Modifier.weight(1f),
+                                                    contentPadding = PaddingValues(horizontal = 4.dp)
+                                                ) { Text("ลบ", color = QgRed, fontSize = 12.sp) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (columnCount == 2 && rowTables.size == 1) {
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            }
         }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onNoTable, modifier = Modifier.fillMaxWidth()) {
-            Text("＋ รับออเดอร์แบบไม่ระบุโต๊ะ")
+
+        OutlinedButton(
+            onClick = onNoTable,
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text("＋ รับออเดอร์แบบไม่ระบุโต๊ะ", fontWeight = FontWeight.SemiBold)
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
     }
 }
 
@@ -1887,43 +2831,156 @@ private fun PosBillsView(
     cashReceived: String,
     busy: Boolean,
     canClose: Boolean,
+    shift: PosCashShift?,
+    shiftError: String?,
+    shiftPending: Boolean,
+    openingCash: String,
+    countedCash: String,
+    onOpeningCash: (String) -> Unit,
+    onCountedCash: (String) -> Unit,
+    onReloadShift: () -> Unit,
+    onOpenShift: () -> Unit,
+    onCloseShift: () -> Unit,
     onSelect: (PosBill) -> Unit,
     onPaymentMenu: (Boolean) -> Unit,
     onPaymentMethod: (String) -> Unit,
     onCash: (String) -> Unit,
     onPay: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("บิลรอคิดเงิน")
-        Spacer(Modifier.height(8.dp))
-        if (bills.isEmpty()) {
-            QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีบิลรอชำระ", color = QgMuted) }
-        } else bills.forEach { bill ->
-            QgCard(
-                Modifier.fillMaxWidth().padding(bottom = 7.dp).clickable { onSelect(bill) }
+    val canPaySelected = selected != null &&
+        (!showKitchenStatus || selected.kitchenStatus in setOf("READY", "SERVED"))
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        QgSectionTitle("คิดเงินและปิดบิล", "รับชำระตามบิลจริง · บันทึกกับ QueueGo POS")
+        if (canClose) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(18.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE6E8ED))
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(bill.number, fontWeight = FontWeight.Black)
-                        if (showKitchenStatus) Text(bill.kitchenStatus, color = QgMuted, fontSize = 11.sp)
+                Column(
+                    Modifier.fillMaxWidth().padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("กะรับเงิน", fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.weight(1f))
+                        Text(
+                            if (shift?.open == true) "เปิดอยู่"
+                            else if (shiftError != null) "ตรวจสอบไม่สำเร็จ"
+                            else if (shift == null) "กำลังตรวจสอบ"
+                            else "ยังไม่เปิดกะ",
+                            color = if (shift?.open == true) Color(0xFF14804A) else QgRed,
+                            fontWeight = FontWeight.Bold, fontSize = 12.sp
+                        )
                     }
-                    Text("฿" + money(bill.total), color = QgRed, fontWeight = FontWeight.Black)
+                    if (shiftError != null) {
+                        Text(shiftError, color = QgRed, fontSize = 12.sp)
+                        OutlinedButton(onClick = onReloadShift, enabled = !shiftPending && !busy) {
+                            Text("ตรวจสอบกะอีกครั้ง")
+                        }
+                    }
+                    if (shift != null && !shift.open) {
+                        Text("เริ่มกะรับเงินก่อนปิดบิล (ไม่มีเงินทอนต้นกะให้ใส่ 0)",
+                            fontSize = 12.sp, color = QgMuted)
+                        OutlinedTextField(
+                            openingCash, onOpeningCash,
+                            label = { Text("เงินสดต้นกะ (บาท)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true, modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = onOpenShift,
+                            enabled = !busy && !shiftPending,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                        ) { Text("เปิดกะรับเงิน", fontWeight = FontWeight.Bold) }
+                    }
+                    if (shift?.open == true) {
+                        Text(
+                            "เงินสดที่ควรมีในกะ ฿" +
+                                money(shift.expectedCash ?: shift.openingFloat ?: 0.0),
+                            fontWeight = FontWeight.Bold, fontSize = 13.sp
+                        )
+                        OutlinedTextField(
+                            countedCash, onCountedCash,
+                            label = { Text("นับเงินสดจริงเพื่อปิดกะ") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true, modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedButton(
+                            onClick = onCloseShift,
+                            enabled = !busy && !shiftPending && countedCash.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp)
+                        ) { Text("ปิดกะและบันทึกยอดนับจริง") }
+                    }
+                }
+            }
+        } else {
+            Text("บัญชีนี้ไม่มีสิทธิ์คิดเงิน โปรดใช้บัญชีเจ้าของร้านหรือแคชเชียร์",
+                color = QgRed, fontSize = 12.sp)
+        }
+
+        Text("บิลรอคิดเงิน", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+        if (bills.isEmpty()) {
+            QgCard(Modifier.fillMaxWidth()) {
+                Text("ยังไม่มีบิลรอชำระ", color = QgMuted)
+            }
+        } else {
+            bills.forEach { bill ->
+                val ready = !showKitchenStatus || bill.kitchenStatus in setOf("READY", "SERVED")
+                Surface(
+                    modifier = Modifier.fillMaxWidth().clickable { onSelect(bill) },
+                    color = if (selected?.id == bill.id) Color(0xFFFFF2F4) else Color.White,
+                    shape = RoundedCornerShape(14.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp, if (selected?.id == bill.id) QgRed else Color(0xFFE9EAEE)
+                    )
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(bill.number, fontWeight = FontWeight.ExtraBold)
+                            Text(
+                                if (ready) "พร้อมคิดเงิน" else "รอครัวพร้อม · " + bill.kitchenStatus,
+                                color = if (ready) Color(0xFF14804A) else QgMuted,
+                                fontSize = 12.sp
+                            )
+                        }
+                        Text("฿" + money(bill.total),
+                            color = QgRed, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                    }
                 }
             }
         }
 
         if (selected != null && selected in bills) {
-            Spacer(Modifier.height(12.dp))
-            QgCard(Modifier.fillMaxWidth()) {
-                Column {
-                    Text("คิดเงิน · " + selected.number, fontWeight = FontWeight.Black)
-                    Text("ยอดที่ต้องรับ", color = QgMuted)
-                    Text("฿" + money(selected.total), color = QgRed, fontWeight = FontWeight.Black, fontSize = 28.sp)
-                    Spacer(Modifier.height(8.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("คิดเงิน · " + selected.number, fontWeight = FontWeight.ExtraBold)
+                    Text("ยอดรับชำระ", fontSize = 12.sp, color = QgMuted)
+                    Text("฿" + money(selected.total), color = QgRed,
+                        fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
+                    if (!canPaySelected) {
+                        Text("บิลร้านอาหาร/คาเฟ่ต้องพร้อมจากครัวก่อนรับเงิน",
+                            color = QgRed, fontSize = 12.sp)
+                    }
                     Box {
                         OutlinedButton(
                             onClick = { onPaymentMenu(true) },
-                            enabled = canClose && !busy,
+                            enabled = canClose && !busy && canPaySelected && shift?.open == true,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(posPaymentMethods.firstOrNull { it.first == paymentMethod }?.second ?: paymentMethod)
@@ -1935,32 +2992,81 @@ private fun PosBillsView(
                         }
                     }
                     if (paymentMethod == "cash") {
-                        Spacer(Modifier.height(7.dp))
                         OutlinedTextField(
-                            cashReceived,
-                            onCash,
-                            label = { Text("รับเงินสด") },
+                            cashReceived, onCash,
+                            label = { Text("เงินสดที่รับ (บาท)") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            singleLine = true, modifier = Modifier.fillMaxWidth()
                         )
+                        OutlinedButton(
+                            onClick = { onCash(money(selected.total)) },
+                            enabled = canClose && !busy && canPaySelected && shift?.open == true
+                        ) { Text("รับพอดี ฿" + money(selected.total)) }
                         val cash = cashReceived.toDoubleOrNull()
                         Text(
                             "เงินทอน " + if (cash == null) "—" else "฿" + money((cash - selected.total).coerceAtLeast(0.0)),
-                            color = QgMuted,
-                            fontSize = 12.sp
+                            color = QgMuted, fontSize = 12.sp
                         )
                     }
-                    Spacer(Modifier.height(8.dp))
                     Button(
                         onClick = onPay,
-                        enabled = canClose && !busy,
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                        enabled = canClose && !busy && !shiftPending && shift?.open == true && canPaySelected,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = QgRed)
                     ) { Text("ยืนยันรับเงินและปิดบิล", fontWeight = FontWeight.Bold) }
+                    if (shift?.open != true) {
+                        Text("ต้องเปิดกะรับเงินด้านบนก่อนจึงจะปิดบิลได้",
+                            fontSize = 12.sp, color = QgRed)
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
+    }
+}
+
+internal fun posReportCsvCell(value: Any?): String {
+    val raw = value?.toString().orEmpty()
+    val startsFormula = raw.firstOrNull()?.let { ch ->
+        ch == '=' || ch == '+' || ch == '-' || ch == '@' || ch == '\t' || ch == '\r'
+    } == true
+    val safe = if (startsFormula) "'" + raw else raw
+    return "\"" + safe.replace("\"", "\"\"") + "\""
+}
+
+internal fun buildPosReportCsv(
+    report: PosOwnerDashboard,
+    itemSalesReport: PosItemSalesReport
+): String {
+    val rows = mutableListOf<List<Any?>>()
+    rows.add(listOf("รายงาน POS", "ค่า"))
+    rows.add(listOf("ทานที่ร้าน", report.dineIn))
+    rows.add(listOf("รับกลับ", report.takeaway))
+    rows.add(listOf("ยอดขายรวม", report.dineIn + report.takeaway))
+    rows.add(listOf("จำนวนบิล", report.orders))
+    rows.add(listOf("เฉลี่ยต่อบิล", report.averageTicket))
+    rows.add(listOf("รับเงินสด", report.cashSales))
+    rows.add(listOf("ส่วนลด", report.discounts))
+    rows.add(listOf("คืนเงิน", report.refunds))
+    rows.add(listOf("ยกเลิกบิล", report.voids))
+    rows.add(listOf("เทียบช่วงก่อน (%)", report.changePercent ?: ""))
+    rows.add(emptyList<Any?>())
+    rows.add(listOf("ยอดขายรายชั่วโมง"))
+    rows.add(listOf("ชั่วโมง", "จำนวนบิล", "ยอดขาย"))
+    report.hourlySales.forEach { hourly ->
+        rows.add(listOf(
+            hourly.hour.toString().padStart(2, '0') + ":00",
+            hourly.bills,
+            hourly.sales
+        ))
+    }
+    rows.add(emptyList<Any?>())
+    rows.add(listOf("สินค้า", "จำนวน", "จำนวนบิล", "ยอดขาย (บาท)"))
+    itemSalesReport.items.forEach { item ->
+        rows.add(listOf(item.name, item.quantity, item.bills, item.sales))
+    }
+    return "\uFEFF" + rows.joinToString("\r\n") { row ->
+        row.joinToString(",") { posReportCsvCell(it) }
     }
 }
 
@@ -1969,9 +3075,13 @@ private fun PosReportsView(
     snapshot: PosSnapshot,
     days: Int,
     report: PosOwnerDashboard?,
+    itemSalesReport: PosItemSalesReport?,
+    loadError: String?,
     busy: Boolean,
+    onRetry: () -> Unit,
     onDays: (Int) -> Unit,
-    onRefund: (PosBill) -> Unit
+    onRefund: (PosBill) -> Unit,
+    onExportCsv: (String) -> Unit
 ) {
     val paid = snapshot.bills.filter { it.paymentStatus == "PAID" }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
@@ -1983,18 +3093,100 @@ private fun PosReportsView(
             }
         }
         Spacer(Modifier.height(9.dp))
-        if (report == null) {
-            CircularProgressIndicator()
-        } else {
+        if (loadError != null) {
             QgCard(Modifier.fillMaxWidth()) {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(loadError, color = QgRed)
+                    OutlinedButton(onClick = onRetry, enabled = !busy) {
+                        Text("ลองโหลดรายงานอีกครั้ง")
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        if (report != null) {
+            val changeLabel = report.changePercent?.let {
+                (if (it > 0) "+" else "") + it.toString() + "%"
+            } ?: "ไม่มีข้อมูลช่วงก่อน"
+            QgCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     PosReportLine("ทานที่ร้าน", report.dineIn)
                     PosReportLine("รับกลับ", report.takeaway)
                     HorizontalDivider()
-                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)
+                    // POS totals exclude Delivery and GP.
+                    PosReportLine("ยอดขายรวม POS", report.dineIn + report.takeaway, true)
                     Text("จำนวนบิล " + report.orders, color = QgMuted, fontSize = 11.sp)
+                    PosReportLine("เฉลี่ยต่อบิล", report.averageTicket)
+                    PosReportLine("รับเงินสด", report.cashSales)
+                    PosReportLine("ส่วนลด", report.discounts)
+                    PosReportLine("คืนเงิน", report.refunds)
+                    Text("ยกเลิกบิล " + report.voids, color = QgMuted, fontSize = 11.sp)
+                    Text("เทียบช่วงก่อน: " + changeLabel, color = QgMuted, fontSize = 11.sp)
                 }
             }
+
+            Spacer(Modifier.height(14.dp))
+            QgSectionTitle("ยอดขายรายชั่วโมง")
+            Spacer(Modifier.height(7.dp))
+            if (report.hourlySales.isEmpty()) {
+                Text("ยังไม่มีรายการขายรายชั่วโมงในช่วงนี้", color = QgMuted, fontSize = 12.sp)
+            } else {
+                report.hourlySales.forEach { hourly ->
+                    QgCard(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(hourly.hour.toString().padStart(2, '0') + ":00",
+                                modifier = Modifier.weight(0.7f), fontWeight = FontWeight.Bold)
+                            Text(hourly.bills.toString() + " บิล",
+                                modifier = Modifier.weight(0.7f), color = QgMuted, fontSize = 12.sp)
+                            Text("฿" + money(hourly.sales),
+                                modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Column(Modifier.weight(1f)) {
+                QgSectionTitle("สินค้าขายดี", "ยอดขายรายสินค้า POS · ตามช่วงเวลาที่เลือก")
+            }
+            if (report != null && itemSalesReport != null && itemSalesReport.items.isNotEmpty()) {
+                OutlinedButton(
+                    onClick = { onExportCsv(buildPosReportCsv(report, itemSalesReport)) },
+                    enabled = !busy,
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) { Text("ส่งออก CSV", fontSize = 11.sp) }
+            }
+        }
+        if (itemSalesReport == null) {
+            Text("กำลังโหลดสรุปยอดขายรายสินค้า", color = QgMuted, fontSize = 12.sp)
+        } else if (itemSalesReport.items.isEmpty()) {
+            QgCard(Modifier.fillMaxWidth()) {
+                Text("ยังไม่มีรายการสินค้าที่ชำระแล้วในช่วงนี้", color = QgMuted)
+            }
+        } else {
+            itemSalesReport.items.forEach { item ->
+                QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(item.name, fontWeight = FontWeight.Bold)
+                        Row(Modifier.fillMaxWidth()) {
+                            Text("ขาย " + item.quantity.toString() + " · " +
+                                item.bills + " บิล", modifier = Modifier.weight(1f),
+                                color = QgMuted, fontSize = 12.sp)
+                            Text("฿" + money(item.sales), color = QgRed,
+                                fontWeight = FontWeight.ExtraBold)
+                        }
+                    }
+                }
+            }
+            Text("แสดง " + itemSalesReport.items.size + " จาก " +
+                itemSalesReport.itemCount + " รายการ",
+                color = QgMuted, fontSize = 11.sp)
         }
 
         Spacer(Modifier.height(14.dp))
@@ -2173,6 +3365,91 @@ private fun PosStaffView(
 }
 
 @Composable
+private fun PosDeliveryView(
+    snapshot: PosSnapshot,
+    shop: MerchantShop?,
+    loading: Boolean,
+    busy: Boolean,
+    onEnable: () -> Unit
+) {
+    val menuReady = snapshot.products.any { product ->
+        product.deliveryAvailable &&
+            (product.deliveryPrice ?: product.price).let { it.isFinite() && it >= 0.0 }
+    }
+    val checks = listOf(
+        "ข้อมูลร้าน" to !shop?.name.isNullOrBlank(),
+        "ที่อยู่และพิกัด" to (
+            !shop?.address.isNullOrBlank() &&
+                shop?.latitude?.isFinite() == true &&
+                shop.longitude?.isFinite() == true
+            ),
+        "เมนูและราคา" to menuReady,
+        "เวลาเปิดร้าน" to (!shop?.openTime.isNullOrBlank() && !shop?.closeTime.isNullOrBlank()),
+        "อนุมัติร้าน" to (shop?.status == "active")
+    )
+    val ready = checks.all { it.second }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        QgSectionTitle(
+            "QueueGo Delivery",
+            "ใช้หน้าร้าน POS ต่อได้เสมอ · ตรวจความพร้อมก่อนเปิดรับ Delivery"
+        )
+        if (loading && shop == null) {
+            QgCard(Modifier.fillMaxWidth()) { Text("กำลังตรวจข้อมูลร้าน…", color = QgMuted) }
+        }
+        checks.forEach { (label, complete) ->
+            QgCard(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (complete) "✓" else "○",
+                        color = if (complete) QgRed else QgMuted,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp
+                    )
+                    Spacer(Modifier.width(9.dp))
+                    Text(label, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                    Text(
+                        if (complete) "พร้อมแล้ว" else "ยังไม่พร้อม",
+                        color = if (complete) QgRed else QgMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+        QgCard(Modifier.fillMaxWidth()) {
+            Column {
+                Text("สถานะรับ Delivery", color = QgMuted, fontSize = 10.sp)
+                Text(
+                    if (shop?.deliveryEnabled == true) "เปิด" else "ปิด",
+                    color = if (shop?.deliveryEnabled == true) QgRed else QgMuted,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
+        if (shop?.deliveryEnabled != true) {
+            Button(
+                onClick = onEnable,
+                enabled = ready && !busy && !loading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (busy) "กำลังเปิด Delivery…" else "เปิด Delivery เมื่อพร้อม", fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Text(
+                "ข้อมูลพร้อมสำหรับ Delivery · จัดการเปิด/ปิดรับงานจากหน้าหลักร้าน",
+                color = QgMuted,
+                fontSize = 11.sp
+            )
+        }
+    }
+}
+
+@Composable
 private fun PosChoiceButton(
     label: String,
     selected: Boolean,
@@ -2208,6 +3485,93 @@ private fun historyTypeLabel(row: PosHistoryRow): String = when {
     row.type == "DINE_IN" -> "ทานที่ร้าน"
     row.type == "TAKEAWAY" -> "รับกลับ"
     else -> row.type
+}
+
+private fun tableQrFileName(shopName: String, tableLabel: String): String {
+    val raw = "QueueGo-" + shopName + "-" + tableLabel + "-QR"
+    val safe = raw.map { ch ->
+        if (ch.isLetterOrDigit() || ch == '-' || ch == '_') ch else '-'
+    }.joinToString("").trim('-').take(90)
+    return (safe.ifBlank { "QueueGo-Table-QR" }) + ".png"
+}
+
+private fun printTableQr(context: Context, title: String, bitmap: Bitmap) {
+    val printManager = context.getSystemService(Context.PRINT_SERVICE) as? PrintManager
+        ?: error("อุปกรณ์นี้ไม่มีบริการพิมพ์")
+    val safeJobName = title.map { ch ->
+        if (ch.isLetterOrDigit() || ch == '-' || ch == '_') ch else '-'
+    }.joinToString("").trim('-').take(60).ifBlank { "QueueGo-Table-QR" }
+    val defaultAttributes = PrintAttributes.Builder()
+        .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+        .setResolution(PrintAttributes.Resolution("queuego-qr-300dpi", "QueueGo QR", 300, 300))
+        .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+        .build()
+    var currentAttributes = defaultAttributes
+    printManager.print(
+        safeJobName,
+        object : PrintDocumentAdapter() {
+            override fun onLayout(
+                oldAttributes: PrintAttributes?,
+                newAttributes: PrintAttributes,
+                cancellationSignal: CancellationSignal,
+                callback: LayoutResultCallback,
+                extras: Bundle?
+            ) {
+                if (cancellationSignal.isCanceled) {
+                    callback.onLayoutCancelled()
+                    return
+                }
+                currentAttributes = newAttributes
+                val info = PrintDocumentInfo.Builder("$safeJobName.pdf")
+                    .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
+                    .setPageCount(1)
+                    .build()
+                callback.onLayoutFinished(info, true)
+            }
+
+            override fun onWrite(
+                pages: Array<out PageRange>,
+                destination: ParcelFileDescriptor,
+                cancellationSignal: CancellationSignal,
+                callback: WriteResultCallback
+            ) {
+                if (cancellationSignal.isCanceled) {
+                    callback.onWriteCancelled()
+                    return
+                }
+                val document = PrintedPdfDocument(context, currentAttributes)
+                try {
+                    val page = document.startPage(1)
+                    val pageWidth = page.info.pageWidth.toFloat()
+                    val pageHeight = page.info.pageHeight.toFloat()
+                    val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        textSize = 20f
+                        textAlign = Paint.Align.CENTER
+                    }
+                    page.canvas.drawText(title.take(56), pageWidth / 2f, pageHeight * 0.22f, titlePaint)
+                    val size = minOf(pageWidth, pageHeight) * 0.52f
+                    val left = (pageWidth - size) / 2f
+                    val top = pageHeight * 0.29f
+                    page.canvas.drawBitmap(
+                        bitmap,
+                        null,
+                        RectF(left, top, left + size, top + size),
+                        Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+                    )
+                    document.finishPage(page)
+                    ParcelFileDescriptor.AutoCloseOutputStream(destination).use { output ->
+                        document.writeTo(output)
+                    }
+                    callback.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
+                } catch (failure: Exception) {
+                    callback.onWriteFailed(failure.message ?: "พิมพ์ QR Code ไม่สำเร็จ")
+                } finally {
+                    document.close()
+                }
+            }
+        },
+        defaultAttributes
+    )
 }
 
 private fun tableQrLink(token: String): String =

@@ -97,7 +97,7 @@ fun QueueGoRoleNativeApp(expectedRole: String, appTitle: String, roleLabel: Stri
                 restoring -> Column(
                     Modifier.padding(insets).fillMaxSize(),
                     verticalArrangement = Arrangement.Center
-                ) { CircularProgressIndicator(Modifier.padding(24.dp)) }
+                ) { /* Restore silently; cached/native content should never flash a loading spinner. */ }
 
                 auth == null -> Login(
                     Modifier.padding(insets), appTitle, roleLabel, busy, error

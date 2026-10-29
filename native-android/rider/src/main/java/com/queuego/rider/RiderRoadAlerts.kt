@@ -159,7 +159,7 @@ internal fun RiderNearbyRoadAlertsCard(
                     color = QgMuted,
                     fontSize = 9.sp
                 )
-                !loaded -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                !loaded -> Unit
                 alerts.isEmpty() && error == null -> Text(
                     "ยังไม่มีแจ้งเตือนถนนที่ยืนยันแล้วใกล้ตำแหน่งนี้",
                     color = QgMuted,

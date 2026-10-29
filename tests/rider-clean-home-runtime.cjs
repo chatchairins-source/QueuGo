@@ -32,6 +32,6 @@ resolveRead([{id:'rp',metadata:{online:false,available:false}}]);await staleRead
 const native=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 eq(native.includes('RiderBlueprintTopBar('),false);eq(native.includes('Text("เปิดรับงาน",'),false);eq(native.includes('Text("ปิดรับงาน",'),false);
 const home=native.slice(native.indexOf('BoxWithConstraints('),native.indexOf('private fun RiderReadyCard'));
-eq(home.includes('RiderAcceptanceModeControl('),false);eq(home.includes('RiderHomeActionCards('),false);eq(native.includes('workSettings = {\n                        RiderAcceptanceModeControl('),true);
+eq(home.includes('RiderWorkPreferencesControl('),false);eq(home.includes('RiderHomeActionCards('),false);eq(/workSettings\s*=\s*\{\s*RiderWorkPreferencesControl\(/.test(native),true);
 console.log(JSON.stringify({checks,failures:0,scope:'actual Home DOM/switch acknowledgement, coalescing, rollback, session fencing, current job preservation and Native single-control placement; isolated only'}));
 })().catch(e=>{console.error(e);process.exit(1)});

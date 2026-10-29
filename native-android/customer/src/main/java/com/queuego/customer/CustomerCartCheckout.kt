@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -26,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,9 +34,6 @@ import com.queuego.shared.QgLine
 import com.queuego.shared.QgLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
-import com.queuego.shared.QgPlaceSearchPanel
-import com.queuego.shared.QueueGoPlaceSearchResult
-import com.queuego.shared.queueGoPlaceLabel
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
 import kotlinx.coroutines.delay
@@ -154,7 +151,6 @@ internal fun CustomerCheckoutScreen(
     address: String,
     note: String,
     busy: Boolean,
-    searchPlaces: suspend (String) -> List<QueueGoPlaceSearchResult>,
     resolveAddress: suspend (Double, Double) -> String?,
     onBack: () -> Unit,
     onGps: () -> Unit,
@@ -182,6 +178,8 @@ internal fun CustomerCheckoutScreen(
     }
     var recenterToken by remember { mutableStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
+    val checkoutMapHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.28f)
+        .coerceIn(200.dp, 300.dp)
     var lastAutoAddress by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(location?.latitude, location?.longitude) {
@@ -257,30 +255,10 @@ internal fun CustomerCheckoutScreen(
                     Text("ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo", color = QgMuted, fontSize = 11.sp)
                     Spacer(Modifier.height(10.dp))
 
-                    QgPlaceSearchPanel(
-                        enabled = !busy,
-                        search = searchPlaces,
-                        onSelect = { result ->
-                            val label = queueGoPlaceLabel(result)
-                            val next = CustomerLocation(
-                                result.latitude,
-                                result.longitude,
-                                label
-                            )
-                            selected = next
-                            lastAutoAddress = label
-                            onAddress(label)
-                            onLocationChange(next)
-                            recenterToken++
-                        }
-                    )
-
-                    Spacer(Modifier.height(10.dp))
-
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .height(115.dp)
+                            .height(checkoutMapHeight)
                             .clip(RoundedCornerShape(15.dp))
                             .background(Color(0xFFF0F1F2))
                             .border(1.dp, QgLine, RoundedCornerShape(15.dp))
@@ -291,19 +269,13 @@ internal fun CustomerCheckoutScreen(
                                 ?.let { QgMapPoint(it.latitude, it.longitude, 0) },
                             recenterToken = recenterToken,
                             modifier = Modifier.fillMaxSize(),
-                            onCenterChanged = { point ->
+                            onPointSelected = { point ->
                                 val next = CustomerLocation(point.latitude, point.longitude, address)
                                 selected = next
                                 onLocationChange(next)
                             },
                             onReady = { mapReady = it }
                         )
-                        if (!mapReady) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.align(Alignment.Center).size(26.dp),
-                                strokeWidth = 2.dp
-                            )
-                        }
                     }
 
                     Spacer(Modifier.height(10.dp))

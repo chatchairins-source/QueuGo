@@ -34,6 +34,9 @@ class SecureRoleSessionStore(private val context: Context, private val roleKey: 
             .put("name", auth.user.name)
             .put("role", auth.user.role)
             .put("status", auth.user.status)
+            .put("customerPhone", auth.user.customerPhone)
+            .put("customerEmail", auth.user.customerEmail)
+            .put("customerPhoto", auth.user.customerPhoto)
             .toString()
         require(json.toByteArray(Charsets.UTF_8).size <= SECURE_ROLE_SESSION_MAX_PLAINTEXT_BYTES) {
             "Session มีขนาดใหญ่เกินกำหนด"
@@ -66,7 +69,10 @@ class SecureRoleSessionStore(private val context: Context, private val roleKey: 
                     o.getString("authUserId"),
                     o.optString("name").ifBlank { "QueueGo" },
                     o.getString("role"),
-                    o.optString("status")
+                    o.optString("status"),
+                    o.optString("customerPhone").takeIf { it.isNotBlank() && it != "null" },
+                    o.optString("customerEmail").takeIf { it.isNotBlank() && it != "null" },
+                    o.optString("customerPhoto").takeIf { it.isNotBlank() && it != "null" }
                 )
             )
         }.getOrElse {

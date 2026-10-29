@@ -26,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -52,10 +53,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgLine
 import com.queuego.shared.QgLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
+import com.queuego.shared.QgRed
 import com.queuego.shared.QgPlaceSearchPanel
 import com.queuego.shared.QueueGoPlaceSearchResult
 import com.queuego.shared.queueGoPlaceLabel
@@ -182,15 +185,15 @@ internal fun CustomerLocationPickerScreen(
             .padding(horizontal = 12.dp)
     ) {
         Row(
-            Modifier.padding(top = 8.dp, bottom = 10.dp),
+            Modifier.padding(top = 8.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(13.dp))
                     .background(Color.White)
-                    .border(1.dp, QgLine, RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFFECEEF2), RoundedCornerShape(13.dp))
                     .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
@@ -201,15 +204,21 @@ internal fun CustomerLocationPickerScreen(
                     modifier = Modifier.size(20.dp)
                 )
             }
-            Spacer(Modifier.size(8.dp))
-            Text("เลือกที่อยู่จัดส่ง", fontWeight = FontWeight.ExtraBold)
+            Spacer(Modifier.size(10.dp))
+            Column {
+                Text(
+                    "เลือกที่อยู่จัดส่ง",
+                    color = Color(0xFF17191D),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 19.sp
+                )
+                Text(
+                    "เลือกตำแหน่งบน QueueGo Map หรือใช้ GPS ปัจจุบัน",
+                    color = QgMuted,
+                    fontSize = 11.sp
+                )
+            }
         }
-
-        Text(
-            "ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง",
-            color = QgMuted
-        )
-        Spacer(Modifier.height(10.dp))
 
         QgPlaceSearchPanel(
             enabled = !busy,
@@ -232,9 +241,9 @@ internal fun CustomerLocationPickerScreen(
                 .fillMaxWidth()
                 .height(mapHeight)
                 .semantics { stateDescription = if (mapReady) "แผนที่พร้อมใช้งาน" else "กำลังโหลดแผนที่" }
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(20.dp))
                 .background(Color(0xFFF0F1F2))
-                .border(1.dp, QgLine, RoundedCornerShape(14.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(20.dp))
         ) {
             key(mapAttempt) {
                 QgLocationPickerMap(
@@ -242,46 +251,84 @@ internal fun CustomerLocationPickerScreen(
                     recenterPoint = externalPoint,
                     recenterToken = recenterToken,
                     modifier = Modifier.fillMaxSize(),
-                    onCenterChanged = { point ->
+                    onPointSelected = { point ->
                         draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
                     },
                     onReady = { mapReady = it; if (it) mapFailed = false }
                 )
             }
-            if (!mapReady) {
-                if (mapFailed) {
-                    Column(
-                        Modifier.align(Alignment.Center).padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("โหลด QueueGo Map ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่", color = QgMuted)
-                        TextButton(onClick = { mapAttempt++; mapReady = false; mapFailed = false }) {
-                            Text("ลองโหลดแผนที่อีกครั้ง")
-                        }
+            if (!mapReady && mapFailed) {
+                Column(
+                    Modifier.align(Alignment.Center).padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("โหลด QueueGo Map ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่", color = QgMuted)
+                    TextButton(onClick = { mapAttempt++; mapReady = false; mapFailed = false }) {
+                        Text("ลองโหลดแผนที่อีกครั้ง")
                     }
-                } else {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center).size(28.dp),
-                        strokeWidth = 2.dp
-                    )
                 }
             }
         }
 
         Spacer(Modifier.height(12.dp))
-        OutlinedButton(onClick = ::requestGps, enabled = !gpsBusy && !busy) {
-            Text(if (gpsBusy) "กำลังอ่านตำแหน่ง GPS…" else "ใช้ตำแหน่ง GPS ปัจจุบัน")
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(66.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, Color(0xFFE4E7EC), RoundedCornerShape(16.dp))
+                .clickable(enabled = !gpsBusy && !busy, onClick = ::requestGps)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(21.dp))
+                    .background(Color(0xFFFFF0F2)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.qg_home_pin),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = QgRed
+                )
+            }
+            Spacer(Modifier.size(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (gpsBusy) "กำลังอ่านตำแหน่ง GPS…" else "ใช้ตำแหน่ง GPS ปัจจุบัน",
+                    color = Color(0xFF17191D),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    "ค้นหาตำแหน่งของคุณบนแผนที่",
+                    color = QgMuted,
+                    fontSize = 11.sp
+                )
+            }
+            Text("›", color = Color(0xFF6F7680), fontSize = 28.sp)
         }
-        gpsMessage?.let { Text(it, color = QgMuted) }
+        gpsMessage?.let {
+            Text(
+                it,
+                color = QgMuted,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 6.dp, start = 2.dp)
+            )
+        }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
-            selected?.let { "Lat: %.6f · Lng: %.6f".format(it.latitude, it.longitude) }
-                ?: "Lat: -- · Lng: --",
-            color = QgMuted
+            "ที่อยู่จัดส่ง",
+            color = Color(0xFF777E88),
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 12.sp
         )
-
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = draftAddress,
             onValueChange = {
@@ -289,7 +336,8 @@ internal fun CustomerLocationPickerScreen(
             },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
-            label = { Text("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต") }
+            placeholder = { Text("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต", color = QgMuted) },
+            shape = RoundedCornerShape(15.dp)
         )
 
         Spacer(Modifier.height(12.dp))
@@ -298,7 +346,9 @@ internal fun CustomerLocationPickerScreen(
                 selected?.let { onSave(it.copy(address = draftAddress.trim())) }
             },
             enabled = !busy && selected != null && draftAddress.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(52.dp)
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(15.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
         ) {
             if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
             else Text("บันทึกที่อยู่นี้", fontWeight = FontWeight.ExtraBold)

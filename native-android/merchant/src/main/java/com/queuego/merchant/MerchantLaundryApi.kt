@@ -97,43 +97,7 @@ class MerchantLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
             }
         }
 
-        val contacts = if (hubId == null) JSONArray() else http.array(http.rpc(
-            "queuego_laundry_shop_contacts", auth.session.accessToken, JSONObject().put("p_hub_id", hubId)))
-        val contactByOrder = (0 until contacts.length()).mapNotNull { contacts.optJSONObject(it) }
-            .associateBy { it.optString("order_id") }
-        val orders = if (hubId == null) emptyList() else {
-            val rows = http.array(http.get(
-                "laundry_orders?select=id,order_number,status,service_name_snapshot,pricing_type_snapshot,estimated_quantity,actual_quantity,estimated_total_amount,final_total_amount,pickup_address,note,pickup_staff_name,return_staff_name,pickup_latitude,pickup_longitude,gp_rate_snapshot,platform_fee_amount,shop_net_amount" +
-                    "&hub_id=eq." + http.enc(hubId) + "&order=created_at.desc&limit=100",
-                auth.session.accessToken
-            ))
-            buildList {
-                for (i in 0 until rows.length()) {
-                    val r = rows.optJSONObject(i) ?: continue
-                    val id = r.optString("id")
-                    if (id.isBlank()) continue
-                    add(MerchantLaundryOrder(
-                        id,
-                        merchantLaundryNumber(r.optString("order_number"), id),
-                        r.optString("status"),
-                        r.optString("service_name_snapshot").ifBlank { "บริการฝากซัก" },
-                        r.optString("pricing_type_snapshot").takeIf { it.isNotBlank() && it != "null" },
-                        r.optDoubleNullable("estimated_quantity"),
-                        r.optDoubleNullable("actual_quantity"),
-                        r.optDoubleNullable("estimated_total_amount"),
-                        r.optDoubleNullable("final_total_amount"),
-                        r.optString("pickup_address").takeIf { it.isNotBlank() && it != "null" },
-                        r.optString("note").takeIf { it.isNotBlank() && it != "null" },
-                        r.optString("pickup_staff_name").takeIf { it.isNotBlank() && it != "null" },
-                        r.optString("return_staff_name").takeIf { it.isNotBlank() && it != "null" },
-                        r.optDoubleNullable("pickup_latitude"), r.optDoubleNullable("pickup_longitude"),
-                        contactByOrder[id]?.optString("customer_name")?.takeIf { it.isNotBlank() && it != "null" },
-                        contactByOrder[id]?.optString("customer_phone")?.takeIf { it.isNotBlank() && it != "null" },
-                        r.optDouble("gp_rate_snapshot", 0.10), r.optDoubleNullable("platform_fee_amount"), r.optDoubleNullable("shop_net_amount")
-                    ))
-                }
-            }
-        }
+        val orders = if (hubId == null) emptyList() else loadOrders(auth, hubId)
 
         return MerchantLaundryState(
             feature,
@@ -150,6 +114,57 @@ class MerchantLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
             services,
             orders
         )
+    }
+
+    suspend fun loadOrders(auth: NativeAuth, hubId: String): List<MerchantLaundryOrder> {
+        if (hubId.isBlank()) return emptyList()
+        val contacts = http.array(
+            http.rpc(
+                "queuego_laundry_shop_contacts",
+                auth.session.accessToken,
+                JSONObject().put("p_hub_id", hubId)
+            )
+        )
+        val contactByOrder = (0 until contacts.length()).mapNotNull { contacts.optJSONObject(it) }
+            .associateBy { it.optString("order_id") }
+        val rows = http.array(
+            http.get(
+                "laundry_orders?select=id,order_number,status,service_name_snapshot,pricing_type_snapshot,estimated_quantity,actual_quantity,estimated_total_amount,final_total_amount,pickup_address,note,pickup_staff_name,return_staff_name,pickup_latitude,pickup_longitude,gp_rate_snapshot,platform_fee_amount,shop_net_amount" +
+                    "&hub_id=eq." + http.enc(hubId) + "&order=created_at.desc&limit=100",
+                auth.session.accessToken
+            )
+        )
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                val id = r.optString("id")
+                if (id.isBlank()) continue
+                add(
+                    MerchantLaundryOrder(
+                        id = id,
+                        number = merchantLaundryNumber(r.optString("order_number"), id),
+                        status = r.optString("status"),
+                        serviceName = r.optString("service_name_snapshot").ifBlank { "บริการฝากซัก" },
+                        pricingType = r.optString("pricing_type_snapshot").takeIf { it.isNotBlank() && it != "null" },
+                        estimatedQuantity = r.optDoubleNullable("estimated_quantity"),
+                        actualQuantity = r.optDoubleNullable("actual_quantity"),
+                        estimatedTotal = r.optDoubleNullable("estimated_total_amount"),
+                        finalTotal = r.optDoubleNullable("final_total_amount"),
+                        pickupAddress = r.optString("pickup_address").takeIf { it.isNotBlank() && it != "null" },
+                        note = r.optString("note").takeIf { it.isNotBlank() && it != "null" },
+                        pickupStaffName = r.optString("pickup_staff_name").takeIf { it.isNotBlank() && it != "null" },
+                        returnStaffName = r.optString("return_staff_name").takeIf { it.isNotBlank() && it != "null" },
+                        latitude = r.optDoubleNullable("pickup_latitude"),
+                        longitude = r.optDoubleNullable("pickup_longitude"),
+                        customerName = contactByOrder[id]?.optString("customer_name")?.takeIf { it.isNotBlank() && it != "null" },
+                        customerPhone = contactByOrder[id]?.optString("customer_phone")?.takeIf { it.isNotBlank() && it != "null" },
+                        gpRate = r.optDouble("gp_rate_snapshot", 0.10),
+                        platformFee = r.optDoubleNullable("platform_fee_amount"),
+                        shopNet = r.optDoubleNullable("shop_net_amount")
+                    )
+                )
+            }
+        }
     }
 
     suspend fun setup(auth: NativeAuth) {

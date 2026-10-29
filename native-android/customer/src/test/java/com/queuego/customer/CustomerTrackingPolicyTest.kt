@@ -20,6 +20,12 @@ class CustomerTrackingPolicyTest {
         assertEquals(0xFFE6002D.toInt(), points[0].color)
         assertEquals(0xFF007F99.toInt(), points[1].color)
         assertNotEquals(points[0].color, points[1].color)
+        assertEquals(listOf("ร้านค้า · รับ", "ลูกค้า · ส่ง", "ไรเดอร์"), points.map { it.label })
+    }
+    @Test fun trackingLabelsNeverAssignRiderToUnacceptedOrder() {
+        val points = customerTrackingPoints(order("searching_rider"), rider)
+        assertEquals(listOf("ร้านค้า · รับ", "ลูกค้า · ส่ง"), points.map { it.label })
+        assertFalse(points.any { it.role == QgMapRole.RIDER })
     }
     @Test fun closedOrdersNeverExposeMapPointsEvenWithCachedRiderCoordinates() {
         listOf("completed", "cancelled", "no_rider_available", "COMPLETED").forEach {

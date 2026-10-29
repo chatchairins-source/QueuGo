@@ -28,6 +28,12 @@ internal class CustomerContentCache(context: Context) {
     companion object {
         private const val MAX_CACHE_FILE_BYTES = 24L * 1024L * 1024L
         private const val MAX_CACHE_TOTAL_BYTES = 96L * 1024L * 1024L
+        private const val MAX_GROCERY_CATEGORIES = 200
+        private const val MAX_GROCERY_CATEGORY_LENGTH = 100
+        private const val PRODUCT_FRESH_MS = 60L * 1000L
+        private const val GROCERY_CATEGORY_FRESH_MS = 10L * 60L * 1000L
+        private const val MARKET_FRESH_MS = 60L * 1000L
+        private const val HOME_FRESH_MS = 60L * 1000L
     }
 
     private val root = File(context.noBackupFilesDir, "customer_content_cache_v1").also {
@@ -61,6 +67,9 @@ internal class CustomerContentCache(context: Context) {
         writeJson(File(root, "home.json"), json)
     }
 
+    fun homeFresh(): Boolean =
+        isFresh(File(root, "home.json"), HOME_FRESH_MS)
+
     fun readProducts(shopId: String): List<CustomerProduct> {
         val json = readJson(productFile(shopId)) ?: return emptyList()
         return runCatching { json.optJSONArray("products").toCustomerProducts(shopId) }
@@ -74,6 +83,38 @@ internal class CustomerContentCache(context: Context) {
             .put("products", JSONArray().also { array -> products.forEach { array.put(it.toJson()) } })
         writeJson(productFile(shopId), json)
     }
+
+    fun productsFresh(shopId: String): Boolean =
+        isFresh(productFile(shopId), PRODUCT_FRESH_MS)
+
+    fun readGroceryCategories(shopId: String): List<String> {
+        if (shopId.isBlank()) return emptyList()
+        val json = readJson(groceryCategoryFile(shopId)) ?: return emptyList()
+        if (json.optString("shopId") != shopId) return emptyList()
+        return runCatching {
+            val array = json.optJSONArray("categories") ?: return@runCatching emptyList()
+            buildList {
+                for (index in 0 until minOf(array.length(), MAX_GROCERY_CATEGORIES)) {
+                    val category = array.optString(index).trim()
+                    if (category.isNotEmpty() && category.length <= MAX_GROCERY_CATEGORY_LENGTH && category !in this) {
+                        add(category)
+                    }
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun writeGroceryCategories(shopId: String, categories: List<String>) {
+        if (shopId.isBlank() || categories.size > MAX_GROCERY_CATEGORIES ||
+            categories.any { it.isBlank() || it.trim().length > MAX_GROCERY_CATEGORY_LENGTH }) return
+        val json = JSONObject()
+            .put("shopId", shopId)
+            .put("categories", JSONArray().also { array -> categories.distinct().forEach { array.put(it.trim()) } })
+        writeJson(groceryCategoryFile(shopId), json)
+    }
+
+    fun groceryCategoriesFresh(shopId: String): Boolean =
+        isFresh(groceryCategoryFile(shopId), GROCERY_CATEGORY_FRESH_MS)
 
     fun readMarket(): CachedCustomerMarket? {
         val json = readJson(File(root, "market.json")) ?: return null
@@ -98,14 +139,26 @@ internal class CustomerContentCache(context: Context) {
         writeJson(File(root, "market.json"), json)
     }
 
+    fun marketFresh(): Boolean =
+        isFresh(File(root, "market.json"), MARKET_FRESH_MS)
+
     private fun productFile(shopId: String): File =
         File(root, "products_" + sha256(shopId) + ".json")
+
+    private fun groceryCategoryFile(shopId: String): File =
+        File(root, "grocery_categories_" + sha256(shopId) + ".json")
 
     private fun readJson(file: File): JSONObject? {
         if (!file.isFile || file.length() !in 1L..MAX_CACHE_FILE_BYTES) return null
         return runCatching { JSONObject(file.readText(Charsets.UTF_8)) }
             .onFailure { runCatching { file.delete() } }
             .getOrNull()
+    }
+
+    private fun isFresh(file: File, maxAgeMs: Long): Boolean {
+        if (!file.isFile || file.length() !in 1L..MAX_CACHE_FILE_BYTES) return false
+        val age = System.currentTimeMillis() - file.lastModified()
+        return age in 0L..maxAgeMs
     }
 
     private fun writeJson(target: File, json: JSONObject) {
@@ -354,3 +407,4 @@ private fun JSONArray?.toMarketProducts(): List<MarketProduct> = objects().mapNo
         availablePacks = row.optInt("availablePacks", 0).coerceAtLeast(0)
     )
 }.toList()
+

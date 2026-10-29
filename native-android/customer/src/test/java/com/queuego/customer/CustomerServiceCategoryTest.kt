@@ -48,6 +48,21 @@ class CustomerServiceCategoryTest {
         )
     }
 
+
+    @Test fun categoryRowsUseExactWebPublicCategoryValues() {
+        fun shop(id: String, category: String) = CustomerShop(
+            id, id, category, null, null, null, null, null, true
+        )
+        val rows = listOf(
+            shop("food", "food"), shop("restaurant", "restaurant"),
+            shop("cafe", "cafe"), shop("drink", "drink"), shop("beverage", "beverage"),
+            shop("grocery", "grocery"), shop("convenience", "convenience")
+        )
+        assertEquals(listOf("food"), serviceCategoryRows("food", rows, null).map { it.id })
+        assertEquals(listOf("cafe"), serviceCategoryRows("cafe", rows, null).map { it.id })
+        assertEquals(listOf("grocery"), serviceCategoryRows("grocery", rows, null).map { it.id })
+    }
+
     @Test fun blankOrUnsupportedImageUsesTheWebsBundledPhoto() {
         fun banner(image: String?) = ServiceBanner("food", image, null, null, true)
         assertNull(webBannerImage(null))

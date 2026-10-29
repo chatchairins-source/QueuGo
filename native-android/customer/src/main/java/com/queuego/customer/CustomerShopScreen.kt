@@ -25,16 +25,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private data class ShopFavorite(val id: String, val shop: String, val product: String)
-private data class ShopReview(val name: String, val rating: Int, val comment: String, val date: String)
-private data class ShopReviews(val count: Int, val average: Double, val items: List<ShopReview>)
+internal data class ShopFavorite(val id: String, val shop: String, val product: String)
+internal data class ShopReview(val name: String, val rating: Int, val comment: String, val date: String)
+internal data class ShopReviews(val count: Int, val average: Double, val items: List<ShopReview>)
 
 // These are the same table and RPC used by Production customer-features.js.
 private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
@@ -52,6 +54,25 @@ private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeAp
         if (rows.length() > 0) http.delete("qg_customer_favorites?id=eq." + http.enc(rows.getJSONObject(0).getString("id")) + "&$owner", auth.session.accessToken)
         else http.post("qg_customer_favorites", auth.session.accessToken, JSONObject().put("user_id", auth.user.id).put("${kind}_id", id))
     }
+    suspend fun availableFavoriteProducts(auth: NativeAuth, ids: List<String>): List<CustomerProduct> {
+        if (ids.isEmpty()) return emptyList()
+        val selected = ids.distinct().joinToString(",") { http.enc(it) }
+        val rows = http.array(http.get(
+            "products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available" +
+                "&available=eq.true&id=in.($selected)",
+            auth.session.accessToken
+        ))
+        return (0 until rows.length()).mapNotNull { index -> rows.optJSONObject(index)?.let { row ->
+            CustomerProduct(
+                row.optString("id"), row.optString("shop_id"), row.optString("name").ifBlank { "สินค้า" },
+                row.optString("description").takeIf { row.has("description") && !row.isNull("description") },
+                row.optDouble("price", 0.0),
+                row.optDouble("delivery_price", row.optDouble("price", 0.0)),
+                row.optString("image").takeIf { row.has("image") && !row.isNull("image") },
+                row.optBoolean("available", true)
+            )
+        } }
+    }
     suspend fun reviews(auth: NativeAuth?, shop: String): ShopReviews {
         val data = http.obj(http.rpc("qg_public_shop_reviews", auth?.session?.accessToken, JSONObject().put("p_shop_id", shop)))
         val rows = data.optJSONArray("items")
@@ -63,15 +84,177 @@ private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeAp
 }
 
 @Composable
+internal fun CustomerFavoritesScreen(
+    auth: NativeAuth,
+    onBack: () -> Unit,
+    onOpenShop: (CustomerShop) -> Unit
+) {
+    val api = remember { ShopExtrasApi() }
+    val customerApi = remember { CustomerApi() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val contentCache = remember(context.applicationContext) {
+        CustomerContentCache(context.applicationContext)
+    }
+    val favoritesCache = remember(context.applicationContext) {
+        CustomerFavoritesCache(context.applicationContext)
+    }
+    var favorites by remember(auth.user.id) { mutableStateOf<List<ShopFavorite>>(emptyList()) }
+    var shops by remember(auth.user.id) { mutableStateOf<List<CustomerShop>>(emptyList()) }
+    var products by remember(auth.user.id) { mutableStateOf<List<CustomerProduct>>(emptyList()) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    suspend fun load(force: Boolean = false) {
+        error = null
+        val cached = withContext(Dispatchers.IO) { favoritesCache.read(auth.user.id) }
+        val cachedHome = withContext(Dispatchers.IO) { contentCache.readHome() }
+        if (cached != null) {
+            favorites = cached.favorites
+            products = cached.products
+        }
+        if (cachedHome != null) shops = cachedHome.shops
+
+        val cachedShopIds = shops.mapTo(HashSet()) { it.id }
+        val cachedProductIds = products.mapTo(HashSet()) { it.id }
+        val requiredProductIds = favorites.mapNotNullTo(HashSet()) { it.product.takeIf(String::isNotBlank) }
+        val requiredShopIds = buildSet {
+            favorites.mapNotNullTo(this) { it.shop.takeIf(String::isNotBlank) }
+            products.mapTo(this) { it.shopId }
+        }
+        if (
+            !force &&
+            cached?.fresh == true &&
+            requiredProductIds.all { it in cachedProductIds } &&
+            requiredShopIds.all { it in cachedShopIds }
+        ) return
+
+        try {
+            val freshFavorites = api.favorites(auth)
+            val productIds = freshFavorites.map { it.product }.filter { it.isNotBlank() }
+            val freshProducts = api.availableFavoriteProducts(auth, productIds)
+            val requiredFreshShopIds = buildSet {
+                freshFavorites.mapNotNullTo(this) { it.shop.takeIf(String::isNotBlank) }
+                freshProducts.mapTo(this) { it.shopId }
+            }
+            val homeShops = cachedHome?.shops.orEmpty()
+            val homeShopIds = homeShops.mapTo(HashSet()) { it.id }
+            val freshShops = if (requiredFreshShopIds.all { it in homeShopIds }) {
+                homeShops
+            } else {
+                customerApi.loadShops(auth)
+            }
+            favorites = freshFavorites
+            shops = freshShops
+            products = freshProducts
+            withContext(Dispatchers.IO) {
+                favoritesCache.write(auth.user.id, freshFavorites, freshProducts)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            if (cached == null) error = "โหลดรายการโปรดไม่สำเร็จ กรุณาลองใหม่"
+        }
+    }
+    LaunchedEffect(auth.user.id) { load() }
+
+    Column(Modifier.fillMaxSize().background(QgBg)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onBack) { Text("กลับ") }
+            Text("รายการโปรด", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleLarge)
+        }
+        when {
+            error != null -> Column(
+                Modifier.fillMaxWidth().padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(error!!, color = QgMuted)
+                TextButton(onClick = { scope.launch { load() } }) { Text("ลองอีกครั้ง") }
+            }
+            favorites.isEmpty() -> Text(
+                "ยังไม่มีรายการโปรด",
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                color = QgMuted
+            )
+            else -> LazyColumn(
+                Modifier.fillMaxSize().padding(horizontal = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(favorites, key = { it.id }) { favorite ->
+                    val shop = shops.firstOrNull { it.id == favorite.shop }
+                    val product = products.firstOrNull { it.id == favorite.product }
+                    val destinationShop = shop ?: product?.let { item -> shops.firstOrNull { it.id == item.shopId } }
+                    val label = shop?.name ?: product?.name ?: "รายการนี้ยังไม่พร้อมให้บริการ"
+                    QgCard(Modifier.fillMaxWidth()) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    label,
+                                    color = QgRed,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable(enabled = destinationShop != null) {
+                                        destinationShop?.let(onOpenShop)
+                                    }
+                                )
+                                if (product != null) {
+                                    Text(
+                                        "฿" + "%.0f".format(product.deliveryPrice),
+                                        color = QgInk,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
+                            ShopIcon(
+                                R.drawable.qg_shop_heart_filled,
+                                "นำออกจากรายการโปรด",
+                                Modifier.size(32.dp),
+                                QgRed,
+                                enabled = !busy
+                            ) {
+                                    busy = true
+                                    scope.launch {
+                                        try {
+                                            api.toggle(auth, if (favorite.shop.isNotBlank()) "shop" else "product",
+                                                favorite.shop.ifBlank { favorite.product })
+                                            withContext(Dispatchers.IO) { favoritesCache.invalidate(auth.user.id) }
+                                            load(force = true)
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (_: Exception) {
+                                            error = "นำรายการออกจากรายการโปรดไม่สำเร็จ"
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun ShopScreen(auth: NativeAuth?, shop: CustomerShop?, products: List<CustomerProduct>, cart: List<CartLine>,
     productsLoading: Boolean, productsError: String?, onRetryProducts: () -> Unit,
     onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit,
-    onRequireLogin: () -> Unit = {}) {
+    onRequireLogin: () -> Unit = {}, groceryPaging: CustomerGroceryPaging? = null,
+    onGroceryCategory: (String) -> Unit = {}, onGroceryMore: () -> Unit = {}) {
     if (shop == null) { Text("ไม่พบร้านค้า", Modifier.padding(35.dp), color = QgMuted); return }
     // Guest and signed-in shop views use the same Production-derived renderer.
     key(auth?.user?.id ?: "guest", shop.id) {
         ShopBody(auth, shop, products, cart, productsLoading, productsError, onRetryProducts,
-            onBack, onAdd, onCart, onRequireLogin)
+            onBack, onAdd, onCart, onRequireLogin, groceryPaging, onGroceryCategory, onGroceryMore)
     }
 }
 
@@ -79,10 +262,17 @@ internal fun ShopScreen(auth: NativeAuth?, shop: CustomerShop?, products: List<C
 private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<CustomerProduct>, cart: List<CartLine>,
     productsLoading: Boolean, productsError: String?, onRetryProducts: () -> Unit,
     onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit,
-    onRequireLogin: () -> Unit) {
+    onRequireLogin: () -> Unit, groceryPaging: CustomerGroceryPaging?,
+    onGroceryCategory: (String) -> Unit, onGroceryMore: () -> Unit) {
     val api = remember { ShopExtrasApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val reviewCache = remember(context.applicationContext) {
+        CustomerShopReviewCache(context.applicationContext)
+    }
+    val favoritesCache = remember(context.applicationContext) {
+        CustomerFavoritesCache(context.applicationContext)
+    }
     val configuration = LocalConfiguration.current
     val compact = configuration.screenHeightDp < 760
     val narrow = configuration.screenWidthDp <= 420
@@ -94,13 +284,44 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
     var busyFavorites by remember { mutableStateOf<Set<String>>(emptySet()) }
     var expanded by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
+    var categoryMenu by remember { mutableStateOf(false) }
     LaunchedEffect(reload, auth?.session?.accessToken, shop.id) {
         loadError = false
+        val cachedReviews = withContext(Dispatchers.IO) { reviewCache.read(shop.id) }
+        if (cachedReviews != null) reviews = cachedReviews.value
+
         try {
-            favorites = if (auth == null) emptyList() else api.favorites(auth)
-            reviews = api.reviews(auth, shop.id)
-        } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { loadError = true }
+            if (auth == null) {
+                favorites = emptyList()
+            } else {
+                val cachedFavorites = withContext(Dispatchers.IO) { favoritesCache.read(auth.user.id) }
+                if (cachedFavorites != null) favorites = cachedFavorites.favorites
+                if (cachedFavorites?.fresh != true) {
+                    val freshFavorites = api.favorites(auth)
+                    favorites = freshFavorites
+                    withContext(Dispatchers.IO) {
+                        favoritesCache.write(auth.user.id, freshFavorites, cachedFavorites?.products.orEmpty())
+                    }
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Favorites are independent account state. A transient favorites read must
+            // not mark an already-cached public review section as failed.
+        }
+
+        if (cachedReviews?.fresh != true || reload > 0) {
+            try {
+                val freshReviews = api.reviews(auth, shop.id)
+                reviews = freshReviews
+                withContext(Dispatchers.IO) { reviewCache.write(shop.id, freshReviews) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                if (reviews == null) loadError = true
+            }
+        }
     }
     fun favorite(kind: String, id: String) {
         val liveAuth = auth
@@ -112,7 +333,15 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
         if (identity in busyFavorites) return
         busyFavorites = busyFavorites + identity
         scope.launch {
-            try { api.toggle(liveAuth, kind, id); favorites = api.favorites(liveAuth) }
+            try {
+                val cachedBefore = withContext(Dispatchers.IO) { favoritesCache.read(liveAuth.user.id) }
+                api.toggle(liveAuth, kind, id)
+                val freshFavorites = api.favorites(liveAuth)
+                favorites = freshFavorites
+                withContext(Dispatchers.IO) {
+                    favoritesCache.write(liveAuth.user.id, freshFavorites, cachedBefore?.products.orEmpty())
+                }
+            }
             catch (e: CancellationException) { throw e }
             catch (_: Exception) { actionError = "บันทึกรายการโปรดไม่สำเร็จ" }
             finally { busyFavorites = busyFavorites - identity }
@@ -161,12 +390,30 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
             }
             item(key = "product-heading") {
                 Column(Modifier.offset(y = (-18).dp)) {
+                    if (groceryPaging != null) {
+                        Box(Modifier.padding(horizontal = inset, vertical = 8.dp)) {
+                            OutlinedButton(
+                                enabled = !productsLoading && !groceryPaging.loadingMore,
+                                onClick = { categoryMenu = true }
+                            ) { Text("หมวดสินค้า · " + groceryPaging.category.ifBlank { "ทั้งหมด" }) }
+                            DropdownMenu(expanded = categoryMenu, onDismissRequest = { categoryMenu = false }) {
+                                (listOf("" to "ทั้งหมด") + groceryPaging.categories.map { it to it }).forEach { (key, title) ->
+                                    DropdownMenuItem(text = { Text(title) }, onClick = {
+                                        categoryMenu = false
+                                        onGroceryCategory(key)
+                                    })
+                                }
+                            }
+                        }
+                        if (groceryPaging.categoriesError) Text("โหลดหมวดไม่สำเร็จ · ลองอีกครั้ง",
+                            color = QgRed, modifier = Modifier.padding(horizontal = inset).clickable(onClick = onRetryProducts))
+                    } else {
                     Text("ทั้งหมด", color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = inset + 6.dp, vertical = 12.dp))
+                    }
                     Spacer(Modifier.height(6.dp))
                     when {
-                        productsLoading -> LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 18.dp))
                         productsError != null -> Text("$productsError · ลองอีกครั้ง", Modifier.fillMaxWidth().clickable(onClick = onRetryProducts).padding(35.dp), color = QgRed)
-                        products.isEmpty() -> Text("ยังไม่มีเมนู", Modifier.fillMaxWidth().padding(35.dp), color = QgMuted)
+                        !productsLoading && products.isEmpty() -> Text(if (groceryPaging != null) "ยังไม่มีสินค้าที่เปิดขาย" else "ยังไม่มีเมนู", Modifier.fillMaxWidth().padding(35.dp), color = QgMuted)
                     }
                 }
             }
@@ -186,11 +433,23 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
                     HorizontalDivider(color = QgLine)
                 }
             }
+            if (groceryPaging != null && (groceryPaging.hasMore || groceryPaging.loadingMore || groceryPaging.error != null)) {
+                item(key = "grocery-more") {
+                    Button(
+                        enabled = !productsLoading && !groceryPaging.loadingMore,
+                        onClick = onGroceryMore,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 8.dp)
+                    ) { Text(when {
+                        groceryPaging.loadingMore -> "โหลดสินค้าเพิ่มเติม"
+                        groceryPaging.error != null -> "ลองโหลดสินค้าอีกครั้ง"
+                        else -> "โหลดสินค้าเพิ่มเติม"
+                    }) }
+                }
+            }
             item(key = "shop-reviews") {
                 Column(Modifier.offset(y = (-18).dp).padding(horizontal = inset).padding(top = 10.dp).clip(RoundedCornerShape(16.dp)).background(Color.White).padding(horizontal = 13.dp, vertical = 12.dp)) {
                     Text("รีวิวจากลูกค้า", fontSize = 18.sp, lineHeight = 21.6.sp, fontWeight = FontWeight.Bold)
                     if (loadError) Text("โหลดข้อมูลไม่สำเร็จ · ลองอีกครั้ง", fontSize = 11.sp, color = QgRed, modifier = Modifier.padding(top = 9.dp).clickable { reload++ })
-                    else if (reviews == null) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 9.dp))
                     reviews?.let { data ->
                         Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                             Text("★ " + String.format(Locale.US, "%.1f", data.average), fontSize = 14.sp, fontWeight = FontWeight.Bold)

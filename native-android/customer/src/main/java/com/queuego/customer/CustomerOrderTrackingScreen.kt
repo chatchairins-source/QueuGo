@@ -33,6 +33,7 @@ import com.queuego.shared.QgRemoteImage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.chrono.ThaiBuddhistChronology
 import java.util.Locale
 
 @Composable
@@ -193,7 +194,7 @@ internal fun CustomerOrderTrackingScreen(
                 ) {
                     if (
                         order.status.lowercase() !in setOf("pending", "searching_rider") &&
-                        context?.shop != null
+                        context?.shop?.phone?.any { it.isDigit() || it == '+' } == true
                     ) {
                         CustomerTrackingAction(
                             label = "ติดต่อร้าน",
@@ -339,9 +340,7 @@ internal fun CustomerOrderTrackingScreen(
                 )
             }
             Spacer(Modifier.height(5.dp))
-            if (items.isEmpty()) {
-                Text("กำลังโหลดรายการ...", color = QgMuted, fontSize = 11.sp)
-            } else {
+            if (items.isNotEmpty()) {
                 items.forEachIndexed { index, item ->
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -752,7 +751,8 @@ private fun customerTrackingTime(order: CustomerOrder, visibleStatus: String): S
     } ?: return "-"
     return runCatching {
         val formatter = DateTimeFormatter
-            .ofPattern("d MMM HH:mm", Locale("th", "TH"))
+            .ofPattern("d/M/yyyy HH:mm:ss", Locale.forLanguageTag("th-TH"))
+            .withChronology(ThaiBuddhistChronology.INSTANCE)
             .withZone(ZoneId.of("Asia/Bangkok"))
         formatter.format(Instant.parse(raw))
     }.getOrDefault(raw.take(16).replace('T', ' '))

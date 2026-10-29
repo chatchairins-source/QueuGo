@@ -9,12 +9,17 @@ fun CustomerOrder.trackingClosed(): Boolean = status.lowercase() in
 fun customerTrackingPoints(order: CustomerOrder, rider: CustomerTrackingRider?): List<QgMapPoint> {
     if (order.trackingClosed()) return emptyList()
     return buildList {
-        fun point(lat: Double?, lon: Double?, color: Int, role: QgMapRole) {
-            if (lat != null && lon != null) QgMapPoint(lat, lon, color, role).takeIf { it.valid }?.let { add(it) }
+        // Map markers identify the actor *and* the delivery stop, not just a color.
+        // In this delivery flow the merchant is the pickup and customer is dropoff.
+        fun point(lat: Double?, lon: Double?, color: Int, role: QgMapRole, label: String) {
+            if (lat != null && lon != null) QgMapPoint(lat, lon, color, role, label)
+                .takeIf { it.valid }?.let { add(it) }
         }
-        point(order.pickupLatitude, order.pickupLongitude, 0xFFE6002D.toInt(), QgMapRole.MERCHANT)
-        point(order.deliveryLatitude, order.deliveryLongitude, 0xFF007F99.toInt(), QgMapRole.CUSTOMER)
-        if (order.status != "searching_rider") point(rider?.latitude, rider?.longitude, 0xFFE6002D.toInt(), QgMapRole.RIDER)
+        point(order.pickupLatitude, order.pickupLongitude, 0xFFE6002D.toInt(), QgMapRole.MERCHANT, "ร้านค้า · รับ")
+        point(order.deliveryLatitude, order.deliveryLongitude, 0xFF007F99.toInt(), QgMapRole.CUSTOMER, "ลูกค้า · ส่ง")
+        if (!order.status.equals("searching_rider", ignoreCase = true)) {
+            point(rider?.latitude, rider?.longitude, 0xFFE6002D.toInt(), QgMapRole.RIDER, "ไรเดอร์")
+        }
     }
 }
 

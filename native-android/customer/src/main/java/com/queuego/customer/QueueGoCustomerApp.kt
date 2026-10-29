@@ -35,13 +35,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.key
 import androidx.compose.runtime.DisposableEffect
@@ -54,12 +54,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.queuego.shared.NativeOrderRealtime
 import com.queuego.shared.customerRealtimeSubscriptions
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -101,20 +104,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-private val categories = listOf(
-    "all" to "ทั้งหมด",
+// Web main is the visual/navigation blueprint for Customer Home.
+// Keep Express capability in the app, but do not surface an extra Home tile that
+// does not exist on Web.
+private val homeCategories = listOf(
     "food" to "อาหาร",
     "cafe" to "เครื่องดื่ม",
     "grocery" to "ร้านขายของชำ",
     "laundry" to "ฝากซัก",
     "market" to "ตลาดสด",
-    "shopping" to "ช้อปปิ้ง",
     "ride" to "บริการเรียกรถ",
-    "express" to "ส่งด่วน"
+    "shopping" to "ช้อปปิ้ง"
 )
 
-private val homeDedicatedMarketCategories =
-    setOf("market", "fresh", "fresh_market", "meat", "fish", "vegetable", "fruit")
+private val homeNearbyShopCategories = setOf("food", "cafe")
+internal const val CUSTOMER_PRIVACY_POLICY_URL = "https://chatchairins-source.github.io/QueuGo/docs/privacy.html"
 
 @Composable
 fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
@@ -132,9 +136,7 @@ fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
 
     if (authRequested == null) {
         QueueGoTheme {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            Box(Modifier.fillMaxSize()) { /* Restore local session silently. */ }
         }
     } else if (authRequested == false) {
         QueueGoTheme {
@@ -205,31 +207,98 @@ private fun CustomerShell(
     val pushStore = remember { NativePushDeviceStore(context, "customer") }
     val pushApi = remember { NativePushApi() }
     val pushLogoutScope = remember(context) { nativeLogoutScope(context, scope) }
-    var pushPermissionRequested by remember(auth.user.id) { mutableStateOf(false) }
+    var pushEnabled by remember(auth.user.id) {
+        mutableStateOf(customerPushEnabled(context, auth.user.id))
+    }
+    var arrivalSoundEnabled by remember(auth.user.id) {
+        mutableStateOf(customerArrivalSoundEnabled(context, auth.user.id))
+    }
+    var pushBusy by remember(auth.user.id) { mutableStateOf(false) }
+    var notificationMessage by remember(auth.user.id) { mutableStateOf<String?>(null) }
     val pushPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            scope.launch { runCatching { syncCustomerNativePush(context, auth) } }
+            scope.launch {
+                pushBusy = true
+                runCatching { syncCustomerNativePush(context, auth) }
+                    .onSuccess { synced ->
+                        if (synced) {
+                            setCustomerPushEnabled(context, auth.user.id, true)
+                            pushEnabled = true
+                            notificationMessage = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                        } else notificationMessage = "บริการแจ้งเตือนยังไม่พร้อม กรุณาลองอีกครั้ง"
+                    }
+                    .onFailure { notificationMessage = it.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ" }
+                pushBusy = false
+            }
+        } else {
+            notificationMessage = "ยังไม่ได้อนุญาตการแจ้งเตือนจาก Android"
+        }
+    }
+    fun toggleCustomerPush() {
+        if (pushBusy) return
+        if (pushEnabled) {
+            pushBusy = true
+            scope.launch {
+                disableCustomerNativePush(context, auth)
+                setCustomerPushEnabled(context, auth.user.id, false)
+                pushEnabled = false
+                pushBusy = false
+                notificationMessage = "ปิดการแจ้งเตือนเบื้องหลังแล้ว"
+            }
+            return
+        }
+        if (!customerFirebaseConfigured(context)) {
+            notificationMessage = "บริการแจ้งเตือนยังไม่พร้อม"
+            return
+        }
+        if (
+            Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        scope.launch {
+            pushBusy = true
+            runCatching { syncCustomerNativePush(context, auth) }
+                .onSuccess { synced ->
+                    if (synced) {
+                        setCustomerPushEnabled(context, auth.user.id, true)
+                        pushEnabled = true
+                        notificationMessage = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                    } else notificationMessage = "บริการแจ้งเตือนยังไม่พร้อม กรุณาลองอีกครั้ง"
+                }
+                .onFailure { notificationMessage = it.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ" }
+            pushBusy = false
+        }
+    }
+    fun testCustomerPush() {
+        if (pushBusy) return
+        if (!pushEnabled) {
+            notificationMessage = "เปิดการแจ้งเตือนเบื้องหลังก่อนทดสอบ"
+            return
+        }
+        pushBusy = true
+        notificationMessage = "ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย"
+        scope.launch {
+            runCatching { pushApi.test(auth) }
+                .onFailure { notificationMessage = it.message ?: "ทดสอบแจ้งเตือนไม่สำเร็จ" }
+            pushBusy = false
         }
     }
     fun logoutWithPushCleanup() {
+        setCustomerPushEnabled(context, auth.user.id, false)
         pushLogoutScope.launch {
             runCatching { pushApi.unsubscribe(auth, pushStore.deviceId()) }
         }
         logout()
     }
     LaunchedEffect(auth.user.id, auth.session.accessToken, auth.session.sessionId) {
-        if (!customerFirebaseConfigured(context)) return@LaunchedEffect
-        ensureCustomerNotificationChannel(context)
-        if (
-            Build.VERSION.SDK_INT < 33 ||
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        ) {
-            runCatching { syncCustomerNativePush(context, auth) }
-        } else if (!pushPermissionRequested) {
-            pushPermissionRequested = true
-            pushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        if (!customerPushEnabled(context, auth.user.id)) {
+            // Remove registrations created by versions that subscribed at login.
+            disableCustomerNativePush(context, auth)
         }
     }
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
@@ -239,10 +308,17 @@ private fun CustomerShell(
     }
     val guestCartStore = remember { CustomerCartStore(context, "guest") }
 
-    var screen by remember(auth.user.id) { mutableStateOf(initialScreen) }
-    var shopReturnScreen by remember { mutableStateOf("home") }
-    var category by remember { mutableStateOf("all") }
-    var shoppingMode by remember { mutableStateOf("all") }
+    val routeSaver = Saver<String, String>(
+        save = { customerRestorableRoute(it) }, restore = { customerRestorableRoute(it) }
+    )
+    var screen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf(initialScreen) }
+    var shopReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var cartReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var ordersReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var locationReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var promotionReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var category by rememberSaveable(auth.user.id) { mutableStateOf("all") }
+    var shoppingMode by rememberSaveable(auth.user.id) { mutableStateOf("all") }
     var shops by remember { mutableStateOf<List<CustomerShop>>(emptyList()) }
     var orders by remember { mutableStateOf<List<CustomerOrder>>(emptyList()) }
     var marketTrips by remember { mutableStateOf<List<MarketTripSummary>>(emptyList()) }
@@ -271,6 +347,7 @@ private fun CustomerShell(
     var note by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
+    var homeLoadError by remember(auth.user.id) { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var pendingVoiceCall by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
@@ -372,7 +449,7 @@ private fun CustomerShell(
         note = ""
         selectedOrder = order
         orderItems = emptyList()
-        message = "สั่งซื้อสำเร็จ · " + order.number
+        message = null
         pendingCheckoutRecord = null
         checkoutPending = false
         screen = "order"
@@ -402,35 +479,59 @@ private fun CustomerShell(
             if (showLoading) loading = true
             liveMutex.withLock {
                 runCatching {
-                    val freshShops = api.loadShops(auth)
-                    val freshOrders = api.loadOrders(auth)
-                    val freshMarketTrips = runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
-                    val freshLaundryOrders = runCatching { laundryApi.orders(auth) }.getOrDefault(emptyList())
-                    val saved = api.loadSavedLocation(auth)
-                    val freshBanners = api.loadHomeBanners(auth)
-                    val freshServiceBanners = api.loadServiceBanners(auth)
-                    val freshNotifications = runCatching { extrasApi.notifications(auth) }.getOrDefault(emptyList())
+                    val reuseStaticHome = !showLoading &&
+                        shops.isNotEmpty() &&
+                        withContext(Dispatchers.IO) { contentCache.homeFresh() }
+                    coroutineScope {
+                        val shopsDeferred = if (reuseStaticHome) null else async { api.loadShops(auth) }
+                        val ordersDeferred = async { api.loadOrders(auth) }
+                        val marketTripsDeferred = async {
+                            runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
+                        }
+                        val laundryOrdersDeferred = async {
+                            runCatching { laundryApi.orders(auth) }.getOrDefault(emptyList())
+                        }
+                        val savedLocationDeferred = async { api.loadSavedLocation(auth) }
+                        val bannersDeferred = if (reuseStaticHome) null else async { api.loadHomeBanners(auth) }
+                        val serviceBannersDeferred = if (reuseStaticHome) null else async { api.loadServiceBanners(auth) }
+                        val notificationsDeferred = async {
+                            runCatching { extrasApi.notifications(auth) }.getOrDefault(emptyList())
+                        }
 
-                    shops = freshShops
-                    orders = freshOrders
-                    marketTrips = freshMarketTrips
-                    laundryOrders = freshLaundryOrders
-                    val selected = preferredCustomerDeliveryLocation(location, saved)
-                    if (selected != null && selected != location) {
-                        location = selected
-                        address = selected.address
+                        val freshOrders = ordersDeferred.await()
+                        val freshMarketTrips = marketTripsDeferred.await()
+                        val freshLaundryOrders = laundryOrdersDeferred.await()
+                        val saved = savedLocationDeferred.await()
+                        val freshNotifications = notificationsDeferred.await()
+
+                        orders = freshOrders
+                        marketTrips = freshMarketTrips
+                        laundryOrders = freshLaundryOrders
+                        val selected = preferredCustomerDeliveryLocation(location, saved)
+                        if (selected != null && selected != location) {
+                            location = selected
+                            address = selected.address
+                        }
+                        notifications = freshNotifications
+
+                        if (!reuseStaticHome) {
+                            val freshShops = requireNotNull(shopsDeferred).await()
+                            val freshBanners = requireNotNull(bannersDeferred).await()
+                            val freshServiceBanners = requireNotNull(serviceBannersDeferred).await()
+                            shops = freshShops
+                            banners = freshBanners
+                            serviceBanners = freshServiceBanners
+                            withContext(Dispatchers.IO) {
+                                contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                            }
+                        }
                     }
-                    banners = freshBanners
-                    serviceBanners = freshServiceBanners
-                    notifications = freshNotifications
-                    withContext(Dispatchers.IO) {
-                        contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
-                    }
+                    homeLoadError = null
                     message = null
                 }.onFailure {
                     if (it is CancellationException) throw it
                     if (shops.isEmpty() && banners.isEmpty()) {
-                        message = it.message ?: "โหลดข้อมูลไม่สำเร็จ"
+                        homeLoadError = it.message ?: "เชื่อมต่อไม่ได้"
                     }
                 }
             }
@@ -439,19 +540,29 @@ private fun CustomerShell(
     }
 
     BackHandler(enabled = screen != "home") {
-        if (screen == "market-cart") {
-            screen = "market"
-        } else if (screen == "checkout") {
-            screen = "cart"
-        } else if (screen == "shopping" && shoppingMode != "all") {
+        if (screen == "shopping" && shoppingMode != "all") {
             shoppingMode = "all"
         } else {
-            screen = "home"
-            selectedOrder = null
-            trackingContext = null
-            selectedMarketTrip = null
-            selectedLaundryOrder = null
-            selectedShop = null
+            val destination = customerSystemBackTarget(
+                screen = screen,
+                shopReturnScreen = shopReturnScreen,
+                cartReturnScreen = cartReturnScreen,
+                ordersReturnScreen = ordersReturnScreen,
+                locationReturnScreen = locationReturnScreen,
+                promotionReturnScreen = promotionReturnScreen,
+                supportHasOrder = supportInitialOrderId != null,
+                hasSelectedOrder = selectedOrder != null,
+            )
+            if (destination != null) {
+                screen = destination
+                if (destination == "home") {
+                    selectedOrder = null
+                    trackingContext = null
+                    selectedMarketTrip = null
+                    selectedLaundryOrder = null
+                    selectedShop = null
+                }
+            }
         }
     }
 
@@ -471,16 +582,38 @@ private fun CustomerShell(
         shopReturnScreen = returnTo
         selectedShop = shop
         screen = "shop"
-        shopCatalog.openCached(
-            shopId = shop.id,
-            loadCached = {
-                withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
-            },
-            fetch = { api.loadProducts(auth, shop.id) },
-            persist = { rows ->
-                withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
-            }
-        )
+        if (shop.category == "grocery") {
+            shopCatalog.openGroceryCached(
+                shopId = shop.id,
+                loadCached = { withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) } },
+                loadCachedCategories = { withContext(Dispatchers.IO) { contentCache.readGroceryCategories(shop.id) } },
+                loadCategories = {
+                    val cachedCategories = withContext(Dispatchers.IO) { contentCache.readGroceryCategories(shop.id) }
+                    val cacheFresh = withContext(Dispatchers.IO) { contentCache.groceryCategoriesFresh(shop.id) }
+                    if (cachedCategories.isNotEmpty() && cacheFresh) cachedCategories
+                    else api.loadGroceryCategories(auth, shop.id)
+                },
+                fetchPage = { category, offset -> api.loadGroceryPage(auth, shop.id, category, offset) },
+                persistCategories = { rows -> withContext(Dispatchers.IO) { contentCache.writeGroceryCategories(shop.id, rows) } },
+                persist = { rows -> withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) } }
+            )
+        } else {
+            shopCatalog.openCached(
+                shopId = shop.id,
+                loadCached = {
+                    withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+                },
+                fetch = {
+                    val cachedProducts = withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+                    val cacheFresh = withContext(Dispatchers.IO) { contentCache.productsFresh(shop.id) }
+                    if (cachedProducts.isNotEmpty() && cacheFresh) cachedProducts
+                    else api.loadProducts(auth, shop.id)
+                },
+                persist = { rows ->
+                    withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
+                }
+            )
+        }
     }
 
     fun openHomeBannerLink(raw: String) {
@@ -491,11 +624,23 @@ private fun CustomerShell(
             when {
                 route.isBlank() || route == "home" -> screen = "home"
                 route == "search" -> screen = "search"
-                route == "cart" -> screen = "cart"
-                route == "orders" -> screen = "orders"
-                route == "map" -> screen = "location"
+                route == "cart" -> {
+                    cartReturnScreen = screen
+                    screen = "cart"
+                }
+                route == "orders" -> {
+                    ordersReturnScreen = screen
+                    screen = "orders"
+                }
+                route == "map" -> {
+                    locationReturnScreen = screen
+                    screen = "location"
+                }
                 route == "market" || route == "market-cart" -> screen = route
-                route == "promotion" -> screen = "promotion"
+                route == "promotion" -> {
+                    promotionReturnScreen = screen
+                    screen = "promotion"
+                }
                 route == "laundry" -> screen = "laundry"
                 route == "shopping" -> {
                     shoppingMode = "all"
@@ -597,7 +742,7 @@ private fun CustomerShell(
     }
     LaunchedEffect(pendingNotification, auth.user.id, auth.session.accessToken, lifecycle) {
         val target = pendingNotification ?: return@LaunchedEffect
-        message = "กำลังเปิดออเดอร์..."
+        message = null
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (pendingNotification == target) {
                 try {
@@ -639,7 +784,8 @@ private fun CustomerShell(
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 refreshNotifications()
-                delay(8_000)
+                // Push + Realtime are primary. Poll only as a low-frequency recovery path.
+                delay(30_000)
             }
         }
     }
@@ -679,7 +825,8 @@ private fun CustomerShell(
                 while (true) {
                     refreshOrders()
                     if (screen == "order" && selectedOrder?.trackingClosed() == true) break
-                    delay(3_000)
+                    // Realtime owns normal updates; this is only a foreground recovery poll.
+                    delay(8_000)
                 }
             }
         }
@@ -689,7 +836,11 @@ private fun CustomerShell(
         Scaffold(
         containerColor = QgBg,
         bottomBar = {
-            if (screen != "laundry") CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) { screen = it }
+        CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) {
+            if (it == "cart" && screen != "cart") cartReturnScreen = screen
+            if (it == "orders" && screen != "orders") ordersReturnScreen = screen
+            screen = it
+        }
         }
     ) { insets ->
         Column(
@@ -697,12 +848,15 @@ private fun CustomerShell(
                 .padding(insets)
                 .background(QgBg)
         ) {
-            if (screen != "laundry") CustomerTopBar(
+            CustomerTopBar(
                 home = screen == "home",
                 cartCount = cart.sumOf { it.quantity },
                 unreadCount = notifications.count { !it.read },
                 onHome = { screen = "home" },
-                onCart = { screen = "cart" },
+                onCart = {
+                    if (screen != "cart") cartReturnScreen = screen
+                    screen = "cart"
+                },
                 onNotifications = { screen = "notifications" },
                 onProfile = { screen = "profile" }
             )
@@ -714,7 +868,17 @@ private fun CustomerShell(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
-            when (screen) {
+            if (homeLoadError != null && screen in setOf("home", "search", "category", "shopping")) {
+                QgCard(Modifier.fillMaxWidth().padding(14.dp)) {
+                    Column {
+                        Text("โหลดข้อมูลไม่สำเร็จ", fontWeight = FontWeight.Bold)
+                        Text(homeLoadError!!, color = QgMuted, modifier = Modifier.padding(vertical = 8.dp))
+                        androidx.compose.material3.Button(onClick = { refresh(showLoading = true) }, enabled = !loading) {
+                            Text("ลองอีกครั้ง")
+                        }
+                    }
+                }
+            } else when (screen) {
                 "search" -> CustomerSearchScreen(
                     shops = shops,
                     location = location,
@@ -735,7 +899,8 @@ private fun CustomerShell(
                                 runCatching { extrasApi.markAllRead(auth) }
                                     .onSuccess {
                                         notifications = notifications.map { it.copy(read = true) }
-                                        message = "อ่านการแจ้งเตือนทั้งหมดแล้ว"
+                                        // Keep successful acknowledgement local; do not show a sticky global banner.
+                                        message = null
                                     }
                                     .onFailure { message = it.message ?: "บันทึกแจ้งเตือนไม่สำเร็จ" }
                                 busy = false
@@ -764,7 +929,10 @@ private fun CustomerShell(
                     location = location,
                     deliveryAddress = address,
                     shops = shops,
-                    onLocation = { screen = "location" },
+                    onLocation = {
+                        locationReturnScreen = screen
+                        screen = "location"
+                    },
                     onSearch = { screen = "search" },
                     onCategory = {
                         when (it) {
@@ -837,7 +1005,7 @@ private fun CustomerShell(
                             }
                         }
                     },
-                    onBack = { screen = "home" }
+                    onBack = { screen = locationReturnScreen }
                 )
                 "category" -> ServiceCategoryScreen(
                     loading = loading,
@@ -936,7 +1104,7 @@ private fun CustomerShell(
                     onBannerLink = ::openHomeBannerLink
                 )
                 "promotion" -> CustomerPromotionScreen(
-                    onBack = { screen = "home" },
+                    onBack = { screen = promotionReturnScreen },
                     onOpenShop = { shopId ->
                         shops.find { it.id == shopId }?.let { openShopFromHome(it, "promotion") }
                     }
@@ -947,7 +1115,10 @@ private fun CustomerShell(
                     products = catalogState.products,
                     productsLoading = catalogState.loading,
                     productsError = catalogState.error,
-                    onRetryProducts = { selectedShop?.let { shop -> shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) } } },
+                    groceryPaging = catalogState.grocery,
+                    onGroceryCategory = shopCatalog::selectGroceryCategory,
+                    onGroceryMore = shopCatalog::loadGroceryMore,
+                    onRetryProducts = { selectedShop?.let { openShopFromHome(it, shopReturnScreen) } },
                     cart = cart,
                     onBack = { screen = shopReturnScreen },
                     onAdd = { product ->
@@ -958,18 +1129,25 @@ private fun CustomerShell(
                             message = "หนึ่งตะกร้าสั่งได้จากร้านเดียว กรุณาสั่งร้านเดิมให้เสร็จก่อน"
                         } else {
                             val existing = cart.find { it.product.id == product.id }
-                            cart = if (existing == null) cart + CartLine(product, 1)
-                            else cart.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
-                            message = "เพิ่มลงตะกร้าแล้ว"
+                            if (existing != null && existing.quantity >= 99) {
+                                message = "เพิ่มได้สูงสุด 99 ชิ้นต่อรายการ"
+                            } else {
+                                cart = if (existing == null) cart + CartLine(product, 1)
+                                else cart.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
+                                message = "เพิ่มลงตะกร้าแล้ว"
+                            }
                         }
                     },
-                    onCart = { screen = "cart" }
+                    onCart = {
+                        cartReturnScreen = "shop"
+                        screen = "cart"
+                    }
                 )
                 "cart" -> CustomerCartScreen(
                     cart = cart,
                     busy = busy,
                     checkoutPending = checkoutPending,
-                    onBack = { screen = "home" },
+                    onBack = { screen = cartReturnScreen },
                     onMinus = { id ->
                         if (!checkoutPending) cart = cart.mapNotNull {
                             if (it.product.id != id) it
@@ -1033,7 +1211,6 @@ private fun CustomerShell(
                     address = address,
                     note = note,
                     busy = busy,
-                    searchPlaces = { query -> api.searchPlaces(query) },
                     resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },
                     onBack = { screen = "cart" },
                     onGps = {
@@ -1249,11 +1426,46 @@ private fun CustomerShell(
                         supportInitialOrderId = null
                     }
                 )
+                "favorites" -> CustomerFavoritesScreen(
+                    auth = auth,
+                    onBack = { screen = "profile" },
+                    onOpenShop = { shop -> openShopFromHome(shop, "favorites") }
+                )
                 "profile" -> ProfileScreen(
                     auth = auth,
+                    onAddress = {
+                        locationReturnScreen = "profile"
+                        screen = "location"
+                    },
+                    onOrders = {
+                        ordersReturnScreen = "profile"
+                        screen = "orders"
+                    },
+                    onNotifications = { screen = "notifications" },
+                    onFavorites = { screen = "favorites" },
+                    onPromotions = {
+                        promotionReturnScreen = "profile"
+                        screen = "promotion"
+                    },
                     onSupport = {
                         supportInitialOrderId = null
                         screen = "support"
+                    },
+                    pushEnabled = pushEnabled,
+                    pushBusy = pushBusy,
+                    arrivalSoundEnabled = arrivalSoundEnabled,
+                    notificationMessage = notificationMessage,
+                    onTogglePush = ::toggleCustomerPush,
+                    onTestPush = ::testCustomerPush,
+                    onToggleArrivalSound = {
+                        val next = !arrivalSoundEnabled
+                        setCustomerArrivalSoundEnabled(context, auth.user.id, next)
+                        arrivalSoundEnabled = next
+                    },
+                    onPrivacy = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(CUSTOMER_PRIVACY_POLICY_URL)))
+                        }.onFailure { notificationMessage = "เปิดนโยบายความเป็นส่วนตัวไม่สำเร็จ" }
                     },
                     logout = ::logoutWithPushCleanup
                 )
@@ -1423,8 +1635,7 @@ internal fun CustomerHome(
 
     val nearbyShops = remember(shops, location) {
         val eligible = shops.filter { shop ->
-            val key = shop.category.lowercase()
-            key != "grocery" && key != "shopping" && key !in homeDedicatedMarketCategories
+            shop.category.lowercase() in homeNearbyShopCategories
         }
         if (location == null) eligible
         else eligible.sortedBy { customerDistanceKm(location, it) }
@@ -1515,9 +1726,9 @@ internal fun CustomerHome(
                 Modifier
                     .horizontalScroll(rememberScrollState())
                     .padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 5.dp),
-                horizontalArrangement = Arrangement.spacedBy(13.dp)
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
-                categories.filter { it.first != "all" }.forEach { (key, label) ->
+                homeCategories.forEach { (key, label) ->
                     CustomerCategoryButton(key = key, label = label, onClick = { onCategory(key) })
                 }
             }
@@ -1545,16 +1756,12 @@ internal fun CustomerHome(
                 )
             }
             Spacer(Modifier.height(11.dp))
-            if (loading) {
-                CircularProgressIndicator()
-            } else if (nearbyShops.isEmpty()) {
+            if (!loading && nearbyShops.isEmpty()) {
                 Text("ยังไม่มีร้านค้า", color = QgMuted, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
             }
         }
-        if (!loading) {
-            items(nearbyShops, key = { "home-shop:" + it.id }) { shop ->
-                CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
-            }
+        items(nearbyShops, key = { "home-shop:" + it.id }) { shop ->
+            CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
         }
         item(key = "home-bottom-space") {
             Spacer(Modifier.height(28.dp))
@@ -1580,13 +1787,13 @@ private fun CustomerCategoryButton(
     }
     Column(
         Modifier
-            .width(72.dp)
+            .width(58.dp)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             Modifier
-                .size(54.dp)
+                .size(48.dp)
                 .shadow(
                     elevation = 4.dp,
                     shape = CircleShape,
@@ -1599,16 +1806,17 @@ private fun CustomerCategoryButton(
                 .border(1.dp, QgLine, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            QgIcon(icon, Modifier.size(25.dp), QgRed)
+            QgIcon(icon, Modifier.size(22.dp), QgRed)
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             label,
             color = androidx.compose.ui.graphics.Color(0xFF3A3D42),
             fontWeight = FontWeight.Bold,
-            fontSize = 10.sp,
-            lineHeight = 12.sp,
-            maxLines = 2,
+            fontSize = 9.5.sp,
+            lineHeight = 11.sp,
+            maxLines = 1,
+            softWrap = false,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
@@ -1620,11 +1828,11 @@ private fun CustomerBlueprintShopCard(
     onClick: () -> Unit
 ) {
     val compact = LocalConfiguration.current.screenWidthDp <= 420
-    val radius = RoundedCornerShape(18.dp)
+    val radius = RoundedCornerShape(16.dp)
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(bottom = 10.dp)
+            .padding(bottom = 7.dp)
             .shadow(
                 elevation = 4.dp,
                 shape = radius,
@@ -1636,16 +1844,16 @@ private fun CustomerBlueprintShopCard(
             .background(androidx.compose.ui.graphics.Color.White)
             .border(1.dp, QgLine, radius)
             .clickable(onClick = onClick)
-            .padding(10.dp),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         QgRemoteImage(
             source = shop.logo ?: shop.cover,
-            modifier = if (compact) Modifier.size(82.dp) else Modifier.size(92.dp),
+            modifier = if (compact) Modifier.size(72.dp) else Modifier.size(78.dp),
             fallback = shop.name,
-            cornerRadius = 14.dp
+            cornerRadius = 13.dp
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 shop.name,
@@ -1655,26 +1863,26 @@ private fun CustomerBlueprintShopCard(
                 lineHeight = 19.sp,
                 maxLines = 1
             )
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
                     categoryLabel(shop.category),
                     color = QgMuted,
-                    fontSize = 11.sp,
-                    lineHeight = 14.sp,
+                    fontSize = 10.5.sp,
+                    lineHeight = 13.sp,
                     maxLines = 1
                 )
                 if (!shop.openTime.isNullOrBlank()) {
                     Text(
                         shop.openTime + "–" + (shop.closeTime ?: ""),
                         color = QgMuted,
-                        fontSize = 11.sp,
-                        lineHeight = 14.sp,
+                        fontSize = 10.5.sp,
+                        lineHeight = 13.sp,
                         maxLines = 1
                     )
                 }
             }
-            Spacer(Modifier.height(7.dp))
+            Spacer(Modifier.height(5.dp))
             Box(
                 Modifier
                     .clip(CircleShape)
@@ -1682,15 +1890,15 @@ private fun CustomerBlueprintShopCard(
                         if (shop.open) androidx.compose.ui.graphics.Color(0xFFEAF9F3)
                         else androidx.compose.ui.graphics.Color(0xFFF1F1F2)
                     )
-                    .padding(horizontal = 7.dp, vertical = 4.dp)
+                    .padding(horizontal = 6.dp, vertical = 3.dp)
             ) {
                 Text(
                     if (shop.open) "เปิดอยู่" else "ปิดอยู่",
                     color = if (shop.open) androidx.compose.ui.graphics.Color(0xFF0A9660)
                     else androidx.compose.ui.graphics.Color(0xFF777777),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
-                    lineHeight = 12.sp
+                    fontSize = 9.5.sp,
+                    lineHeight = 11.sp
                 )
             }
         }
@@ -1724,9 +1932,6 @@ private fun OrdersScreen(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         QgSectionTitle("ออเดอร์ของฉัน", "อาหาร ตลาดสด ฝากซัก และบริการทั้งหมด")
         Spacer(Modifier.height(10.dp))
-        if (loading && orders.isEmpty() && marketTrips.isEmpty() && laundryOrders.isEmpty()) {
-            CircularProgressIndicator()
-        }
         if (orders.isEmpty() && marketTrips.isEmpty() && laundryOrders.isEmpty() && !loading) {
             QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์", color = QgMuted) }
         }
@@ -1792,40 +1997,315 @@ private fun OrdersScreen(
 @Composable
 private fun ProfileScreen(
     auth: NativeAuth,
+    onAddress: () -> Unit,
+    onOrders: () -> Unit,
+    onNotifications: () -> Unit,
+    onFavorites: () -> Unit,
+    onPromotions: () -> Unit,
     onSupport: () -> Unit,
+    pushEnabled: Boolean,
+    pushBusy: Boolean,
+    arrivalSoundEnabled: Boolean,
+    notificationMessage: String?,
+    onTogglePush: () -> Unit,
+    onTestPush: () -> Unit,
+    onToggleArrivalSound: () -> Unit,
+    onPrivacy: () -> Unit,
     logout: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
-            "Customer", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
-            BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
-        QgSectionTitle("บัญชีของฉัน")
-        Spacer(Modifier.height(12.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text(auth.user.name, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                Text("สถานะบัญชี: " + auth.user.status, color = QgMuted)
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text("QueueGo Production", fontWeight = FontWeight.ExtraBold)
-                Text("บัญชีนี้ใช้ Session และ RLS ของระบบจริง", color = QgMuted)
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) {
-            Text("ติดต่อฝ่ายช่วยเหลือ")
-        }
-        Spacer(Modifier.height(10.dp))
-        QgAccountDeletionSection(
-            accessToken = auth.session.accessToken,
-            onDeleted = logout,
-            pendingChatUserId = auth.user.id
+    var showDeletion by remember { mutableStateOf(false) }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 4.dp)
+    ) {
+        CustomerProfileHero(
+            auth.user.name,
+            customerProfileContact(auth.user.customerPhone, auth.user.customerEmail),
+            auth.user.customerPhoto
         )
-        Spacer(Modifier.height(18.dp))
-        OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth()) { Text("ออกจากระบบ") }
+
+        CustomerProfileSection("บัญชีและการใช้งาน") {
+            ProfileDestination("ที่อยู่จัดส่ง", onAddress)
+            CustomerProfileDivider()
+            ProfileDestination("ออเดอร์ของฉัน", onOrders)
+            CustomerProfileDivider()
+            ProfileDestination("การแจ้งเตือน", onNotifications)
+            CustomerProfileDivider()
+            ProfileDestination("รายการโปรด", onFavorites)
+            CustomerProfileDivider()
+            ProfileDestination("โปรโมชั่นจากร้าน", onPromotions)
+            CustomerProfileDivider()
+            ProfileDestination("ติดต่อฝ่ายช่วยเหลือ", onSupport)
+        }
+
+        Spacer(Modifier.height(10.dp))
+        CustomerProfileSection("การแจ้งเตือน") {
+            ProfileSwitch(
+                title = "เสียงแจ้งเตือนเมื่อ Rider ถึง",
+                subtitle = "เสียงเตือนเมื่อ Rider มาถึงจุดส่ง",
+                checked = arrivalSoundEnabled,
+                enabled = !pushBusy,
+                onCheckedChange = { onToggleArrivalSound() }
+            )
+            CustomerProfileDivider()
+            ProfileSwitch(
+                title = "การแจ้งเตือนเบื้องหลัง",
+                subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดแอป",
+                checked = pushEnabled,
+                enabled = !pushBusy,
+                onCheckedChange = { onTogglePush() }
+            )
+            CustomerProfileDivider()
+            ProfileDestination(
+                "ทดสอบการแจ้งเตือน",
+                onTestPush,
+                enabled = !pushBusy,
+                detail = "ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง"
+            )
+        }
+        if (!notificationMessage.isNullOrBlank()) {
+            Text(
+                notificationMessage,
+                color = QgMuted,
+                fontSize = 9.5.sp,
+                lineHeight = 13.sp,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+            )
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 7.dp)
+                .background(androidx.compose.ui.graphics.Color(0xFFF7F7F8), RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                "การชำระเงิน",
+                color = androidx.compose.ui.graphics.Color(0xFF5D6269),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "ชำระเงินสดเมื่อรับสินค้า",
+                color = androidx.compose.ui.graphics.Color(0xFF737980),
+                fontSize = 9.5.sp
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        CustomerProfileSection("ความเป็นส่วนตัวและบัญชี") {
+            ProfileDestination("นโยบายความเป็นส่วนตัว", onPrivacy)
+            CustomerProfileDivider()
+            ProfileDestination(
+                "ลบบัญชีถาวร",
+                { showDeletion = true },
+                detail = "ลบ Auth และข้อมูลส่วนบุคคล",
+                danger = true
+            )
+            CustomerProfileDivider()
+            ProfileDestination("ออกจากระบบ", logout)
+        }
+
+        if (showDeletion) {
+            Spacer(Modifier.height(10.dp))
+            QgAccountDeletionSection(
+                accessToken = auth.session.accessToken,
+                onDeleted = logout,
+                pendingChatUserId = auth.user.id
+            )
+            OutlinedButton(
+                onClick = { showDeletion = false },
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+            ) {
+                Text("ปิด")
+            }
+        }
+
+        Spacer(Modifier.height(30.dp))
+    }
+}
+
+@Composable
+private fun CustomerProfileHero(name: String, contact: String?, photo: String?) {
+    val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "Q"
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        val safePhoto = photo?.trim()?.takeIf {
+            it.startsWith("https://", ignoreCase = true) ||
+                (it.length <= 32_768 && it.matches(Regex("(?i)^data:image/(jpeg|png|webp);base64,[a-z0-9+/=]+$")))
+        }
+        Box(
+            Modifier
+                .size(60.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(androidx.compose.ui.graphics.Color(0xFFE9EAEC)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (safePhoto != null) {
+                QgRemoteImage(safePhoto, Modifier.fillMaxSize(), fallback = initial, cornerRadius = 20.dp)
+            } else {
+                Text(
+                    initial,
+                    color = androidx.compose.ui.graphics.Color(0xFF989DA5),
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                name.ifBlank { "ลูกค้า" },
+                color = androidx.compose.ui.graphics.Color(0xFF17171B),
+                fontSize = 20.sp,
+                lineHeight = 23.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+            if (!contact.isNullOrBlank()) {
+                Text(
+                    contact,
+                    color = QgMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            Text(
+                "บัญชีลูกค้า",
+                color = androidx.compose.ui.graphics.Color(0xFF0A9660),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier
+                    .padding(top = 5.dp)
+                    .background(androidx.compose.ui.graphics.Color(0xFFE9FAF2), RoundedCornerShape(99.dp))
+                    .padding(horizontal = 7.dp, vertical = 3.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CustomerProfileSection(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            title,
+            color = androidx.compose.ui.graphics.Color(0xFF777D85),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(start = 2.dp, bottom = 6.dp)
+        )
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(androidx.compose.ui.graphics.Color.White, RoundedCornerShape(16.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun CustomerProfileDivider() {
+    HorizontalDivider(color = QgLine)
+}
+
+@Composable
+private fun ProfileSwitch(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = androidx.compose.ui.graphics.Color(0xFF211E20),
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                subtitle,
+                color = androidx.compose.ui.graphics.Color(0xFF8A8F96),
+                fontSize = 9.5.sp,
+                lineHeight = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+private fun ProfileDestination(
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    detail: String? = null,
+    danger: Boolean = false
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                label,
+                color = if (danger) androidx.compose.ui.graphics.Color(0xFFD92F3E)
+                    else androidx.compose.ui.graphics.Color(0xFF211E20),
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (!detail.isNullOrBlank()) {
+                Text(
+                    detail,
+                    color = androidx.compose.ui.graphics.Color(0xFF8A8F96),
+                    fontSize = 9.5.sp,
+                    lineHeight = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+        Text(
+            "›",
+            color = androidx.compose.ui.graphics.Color(0xFFAFB3B9),
+            fontSize = 22.sp,
+            lineHeight = 22.sp
+        )
     }
 }
 

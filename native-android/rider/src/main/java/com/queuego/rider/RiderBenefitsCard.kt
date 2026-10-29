@@ -33,16 +33,35 @@ internal fun RiderBenefitsCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val cache = remember(context.applicationContext) {
+        RiderBenefitsCache(context.applicationContext)
+    }
     var benefits by remember(auth.user.id) { mutableStateOf<List<RiderBenefit>>(emptyList()) }
     var loaded by remember(auth.user.id) { mutableStateOf(false) }
 
     LaunchedEffect(auth.user.id, auth.session.accessToken) {
+        val cached = if (benefits.isEmpty()) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                cache.read(auth.user.id)
+            }
+        } else null
+        if (cached != null) {
+            benefits = cached.rows
+            loaded = true
+            if (cached.fresh) {
+                return@LaunchedEffect
+            }
+        }
         try {
-            benefits = api.benefits(auth)
+            val fresh = api.benefits(auth)
+            benefits = fresh
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                cache.write(auth.user.id, fresh)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            benefits = emptyList()
+            // Keep the cached/current rows visible on transient refresh failure.
         } finally {
             loaded = true
         }
@@ -64,7 +83,7 @@ internal fun RiderBenefitsCard(
             )
 
             when {
-                !loaded -> LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 9.dp))
+                !loaded -> Unit
                 benefits.isEmpty() -> Text(
                     "ยังไม่มีสิทธิประโยชน์ที่เปิดใช้งาน",
                     color = QgMuted,

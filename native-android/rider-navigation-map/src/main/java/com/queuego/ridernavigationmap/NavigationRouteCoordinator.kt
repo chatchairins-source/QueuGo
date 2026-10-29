@@ -131,7 +131,9 @@ class NavigationRouteCoordinator(
                 visibleProgressMeters = 0.0
                 routeChanged = true
                 rerouted = true
-                progressTracker.reset()
+                // Reset route progress against the replacement geometry but retain the
+                // Web-matched 20-second reroute cooldown for this active stop.
+                progressTracker.reset(clearRerouteCooldown = false)
                 guidance = progressTracker.update(fix, replacement, activeStop)
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error

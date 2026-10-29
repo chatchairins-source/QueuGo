@@ -11,7 +11,7 @@ permissions:
   actions: read
 concurrency:
   group: queuego-map-engine-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   buriram-runtime:
     runs-on: ubuntu-24.04

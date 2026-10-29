@@ -52,7 +52,7 @@ class NavigationOverviewPolicyTest {
     }
 
     @Test
-    fun completedStopsDoNotExpandOverview() {
+    fun completedStopsRemainInsideOverviewWithTheirMapPins() {
         val state = RiderNavigationMapState(
             stops = listOf(
                 NavigationMapStop(
@@ -74,8 +74,10 @@ class NavigationOverviewPolicyTest {
         val bounds = navigationOverviewBounds(state)
 
         assertNotNull(bounds)
-        assertEquals(15.0, bounds!!.center.latitude, 0.000001)
-        assertEquals(103.0, bounds.center.longitude, 0.000001)
+        assertEquals(10.0, bounds!!.south, 0.000001)
+        assertEquals(15.0, bounds.north, 0.000001)
+        assertEquals(100.0, bounds.west, 0.000001)
+        assertEquals(103.0, bounds.east, 0.000001)
     }
     @Test
     fun bottomJobCardShiftsOverviewCenterUpAndZoomsOut() {

@@ -836,7 +836,7 @@ function initLocationPicker(containerId,lat,lng,onChange,options={}){
   const selectInitial=options.selectInitial!==false;
   if(!host||typeof maplibregl==="undefined"){
     toast("QueueGo Map ยังไม่พร้อม กรุณาลองใหม่");
-    return {map:null,destroy(){},locate(){toast("QueueGo Map ยังไม่พร้อม กรุณาลองใหม่")},selectCenter(){return false}};
+    return {map:null,destroy(){},locate(){toast("QueueGo Map ยังไม่พร้อม กรุณาลองใหม่")}};
   }
   try{customerPickerMap?.remove?.()}catch{}
   host.replaceChildren();
@@ -864,21 +864,25 @@ function initLocationPicker(containerId,lat,lng,onChange,options={}){
     if(notify)onChange(lat,lng);
     return true;
   };
-  const syncCenter=()=>{
-    if(disposed)return false;
-    const p=map.getCenter();
-    return p&&qgIsValidCoordinate(p.lat,p.lng,true)?setPoint(p.lat,p.lng,true):false;
+  const onMapTap=event=>{
+    if(disposed||!event?.lngLat)return;
+    // Place features have their own precise selection callback. Do not replace
+    // that result with the approximate pixel clicked on the same place symbol.
+    try{
+      if(map.getLayer?.("qg-public-places")&&
+         map.queryRenderedFeatures?.(event.point,{layers:["qg-public-places"]})?.length)return;
+    }catch{}
+    setPoint(event.lngLat.lat,event.lngLat.lng,true);
   };
   const selectPlace=p=>{if(!disposed)setPoint(p.lat,p.lng,true)};
   window.QueueGoMapWeb?.attachPlaces?.(map,{onSelect:selectPlace,searchControl:true});
   map.on("load",()=>{if(disposed)return;if(hasInitial&&selectInitial)setPoint(viewLat,viewLng,true)});
-  map.on("moveend",syncCenter);
+  map.on("click",onMapTap);
   return {
     map,
-    selectCenter:syncCenter,
     destroy(){
       if(disposed)return;disposed=true;
-      try{map.off("moveend",syncCenter)}catch{}
+      try{map.off("click",onMapTap)}catch{}
       try{marker?.remove()}catch{}
       try{map.remove()}catch{}
       if(customerPickerMap===map)customerPickerMap=null;
@@ -913,7 +917,7 @@ async function openCustomerLocationPicker(){
    '<section class="card" style="padding:14px 14px 16px;border-radius:24px;border:1px solid #eceef2;background:#fff;box-shadow:0 12px 32px rgba(24,32,48,.06)">'+
     '<div style="position:relative">'+
      '<div id="customer-location-map" class="mapbox" style="height:330px;border-radius:20px;overflow:hidden;background:#eef1f4"></div>'+
-     '<button type="button" id="customer-select-center" style="position:absolute;right:12px;bottom:12px;min-height:42px;padding:0 14px;border:1px solid #e0e3e8;border-radius:999px;background:rgba(255,255,255,.96);color:#343941;font-weight:800;box-shadow:0 5px 18px rgba(17,24,39,.12)">เลือกตรงกลาง</button>'+
+     '<p style="position:absolute;left:12px;bottom:12px;max-width:calc(100% - 24px);margin:0;border-radius:12px;background:rgba(255,255,255,.94);padding:6px 10px;color:#343941;font-size:12px;font-weight:700;pointer-events:none">แตะบนแผนที่เพื่อปักหมุดสีแดง</p>'+
     '</div>'+
     '<button type="button" id="customer-gps" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;margin-top:14px;padding:12px;border:1px solid #e4e7ec;border-radius:17px;background:#fff;color:#ef233c">'+
      '<span style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff0f2;color:#ef233c;flex:none">'+ico('pin',20)+'</span>'+
@@ -922,7 +926,7 @@ async function openCustomerLocationPicker(){
     '</button>'+
     '<div style="margin:14px 2px 7px;color:#8b929d;font-size:13px;font-weight:800">ที่อยู่จัดส่ง</div>'+
     '<textarea id="customer-address-input" maxlength="500" placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต" style="box-sizing:border-box;width:100%;min-height:92px;resize:none;border:1px solid #dfe3e8;border-radius:17px;background:#fff;padding:14px;font:inherit;font-size:16px;line-height:1.5;color:#16181c;outline:none">'+esc(currentPos?.address||'')+'</textarea>'+
-    '<div id="customer-location-status" class="sm" style="margin:7px 2px 0;color:#8a9099">เลื่อนแผนที่หรือใช้ GPS เพื่อเลือกพิกัด</div>'+
+    '<div id="customer-location-status" class="sm" style="margin:7px 2px 0;color:#8a9099">แตะจุดบนแผนที่หรือใช้ GPS เพื่อเลือกพิกัด</div>'+
     '<button class="prim" style="min-height:58px;margin-top:14px;border-radius:18px;font-size:18px;font-weight:900;box-shadow:0 10px 24px rgba(239,35,60,.20)" onclick="saveCustomerLocationPicker()">'+ico('pin',20)+'<span style="margin-left:7px">บันทึกที่อยู่นี้</span></button>'+
    '</section>','home');
   let picked=currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)?{lat:Number(currentPos.lat),lng:Number(currentPos.lng)}:null;
@@ -938,9 +942,6 @@ async function openCustomerLocationPicker(){
   },{selectInitial:true});
   window.__customerPickedLocation=()=>picked;
   $('customer-gps').onclick=()=>customerLocationPicker?.locate();
-  $('customer-select-center').onclick=()=>{
-    if(!customerLocationPicker?.selectCenter?.())toast('ยังอ่านจุดกึ่งกลางแผนที่ไม่ได้ กรุณาลองเลื่อนแผนที่อีกครั้ง');
-  };
   const picker=customerLocationPicker;
   setTimeout(()=>{
     if(customerLocationPicker!==picker)return;
@@ -1266,7 +1267,7 @@ V.checkout=async(_,ticket=routeVersion)=>{
   const catalog=new Map(menu.map(p=>[String(p.id),p])),unavailable=[];let changed=false;
   for(const item of cart.items){const product=catalog.get(String(item.id)),price=Number(product?.delivery_price??product?.price);if(!product||product.available===false||product.delivery_available===false||!Number.isFinite(price)||price<0){unavailable.push(item.name);continue}if(item.price!==price){item.price=price;changed=true}}
   if(changed)saveCart();
-  renderCheckout(`<div class="card" style="margin-top:0"><b>${esc(s.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p>${changed?'<p role="status">ราคาสินค้ามีการเปลี่ยนแปลง ยอดด้านล่างเป็นราคาล่าสุด กรุณาตรวจสอบก่อนยืนยัน</p>':''}${unavailable.length?`<p role="alert">รายการที่ยังสั่งไม่ได้: ${unavailable.map(esc).join(', ')}</p><button class="lk" onclick="go('cart')">กลับไปแก้ตะกร้า</button>`:''}<div id="checkout-pin-map" class="mapbox" style="height:115px;margin-top:10px"></div><button style="margin-top:10px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="checkoutPicker&&checkoutPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="co-lat">--</span> · Lng: <span id="co-lng">--</span></div><label for="delivery-address">ที่อยู่จัดส่ง</label><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง">${esc(currentPos?.address||'')}</textarea><label for="checkout-note">หมายเหตุสำหรับร้าน</label><textarea class="ta" id="checkout-note" maxlength="500" placeholder="รายละเอียดเพิ่มเติมสำหรับร้าน (ถ้ามี)" oninput="setCheckoutNote(this.value)">${esc(cart.note||'')}</textarea></div>`,cartTotal(),null,unavailable.length>0);
+  renderCheckout(`<div class="card" style="margin-top:0"><b>${esc(s.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p>${changed?'<p role="status">ราคาสินค้ามีการเปลี่ยนแปลง ยอดด้านล่างเป็นราคาล่าสุด กรุณาตรวจสอบก่อนยืนยัน</p>':''}${unavailable.length?`<p role="alert">รายการที่ยังสั่งไม่ได้: ${unavailable.map(esc).join(', ')}</p><button class="lk" onclick="go('cart')">กลับไปแก้ตะกร้า</button>`:''}<div id="checkout-pin-map" class="mapbox" style="height:clamp(200px,28dvh,300px);margin-top:10px"></div><button style="margin-top:10px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="checkoutPicker&&checkoutPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="co-lat">--</span> · Lng: <span id="co-lng">--</span></div><label for="delivery-address">ที่อยู่จัดส่ง</label><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง">${esc(currentPos?.address||'')}</textarea><label for="checkout-note">หมายเหตุสำหรับร้าน</label><textarea class="ta" id="checkout-note" maxlength="500" placeholder="รายละเอียดเพิ่มเติมสำหรับร้าน (ถ้ามี)" oninput="setCheckoutNote(this.value)">${esc(cart.note||'')}</textarea></div>`,cartTotal(),null,unavailable.length>0);
   let picked=currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)?{lat:currentPos.lat,lng:currentPos.lng}:null,locationVersion=0,lastAutoAddress=null;
   const showTotal=loc=>{if(!loc)return;const fee=deliveryFeeFor(s,loc);$('checkout-delivery-fee').textContent=baht(fee);$('checkout-total').textContent=baht(cartTotal()+fee)};showTotal(picked);
   checkoutPicker=initLocationPicker('checkout-pin-map',picked?.lat,picked?.lng,async(lat,lng)=>{picked={lat,lng};showTotal(picked);currentPos={...currentPos,lat,lng};$('co-lat').textContent=lat.toFixed(6);$('co-lng').textContent=lng.toFixed(6);const version=++locationVersion,field=$('delivery-address'),previous=field.value;if(previous&&previous!==lastAutoAddress)return;const t=await qtReverseGeocodeCustomer(lat,lng);if(t&&version===locationVersion&&field.isConnected&&field.value===previous){field.value=t;lastAutoAddress=t;currentPos.address=t}});

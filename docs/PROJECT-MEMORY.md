@@ -1,3 +1,201 @@
+## 2026-10-27 Checkout Places call-site compile fix — source correction; exact-head CI NEXT
+
+- Native Pilot run `40472996941` passed Full QueueGo regression and source/asset checks, then failed Kotlin compilation at `QueueGoCustomerApp.kt:1006,1212`. Exact compiler errors: Location Picker was missing required `searchPlaces`; Checkout still passed the removed `searchPlaces` parameter.
+- Cause was the prior edit removing the first matching callback in the app file, which belonged to Location Picker. Restored Places callback to Location Picker, removed it from Checkout, and strengthened source guard to assert each call site separately. Checkout map/GPS/location/note remain unchanged.
+- **NEXT:** inspect exact-head Kotlin compile and tracking JUnit result, then APK, 16 KB and emulator lifecycle; no APK or visual-completion claim yet.
+
+## 2026-10-27 Native source regression follow-up — cache-aware guard; exact-head CI NEXT
+
+- The rerun on the checkout parity checkpoint fixed the early-reference error, then Full QueueGo regression exposed a stale source assertion at `tests/native-android-source.cjs:740`. It still required unconditional shop/banner downloads even though the current Native Customer refresh deliberately reuses a fresh Home cache and skips those static requests.
+- Updated the guard to require cache freshness gating for shops/banners/service banners, preserve parallel order refresh, and retain Guest Home's parallel initial read path. This keeps the newer download-reduction behavior while aligning source contracts to it. Checkout UI change remains unchanged.
+- **NEXT:** inspect the new exact-head Native Pilot regression result; then continue compile, APK, packaging, and emulator checks. No APK or visual acceptance claim until those gates finish.
+
+## 2026-10-27 Checkout parity guard correction — regression source fix; exact-head CI NEXT
+
+- Parent Native source included `e0fcd4009d7b1e02ae642a33d97c82ade42d5e34`, which removed the extra Checkout Places field while retaining Places in the dedicated Customer Location Picker.
+- Exact Native Pilot push `40472155179` reached Full QueueGo regression and failed at `tests/native-android-source.cjs:193`: the new assertion referenced `customerLocationPicker` before its later declaration. Earlier regression contracts passed; no APK or Kotlin source failure was reached.
+- Corrected the guard to read `CustomerLocationPicker.kt` inline at the assertion site. This preserves the check that Checkout has no Places panel and the dedicated picker keeps it. No product logic change in this correction.
+- **NEXT:** inspect exact-head Native Pilot Full QueueGo regression first; if green, continue Kotlin/JVM, APK, packaging and emulator gates. Customer authenticated screenshot and physical-device status remain open.
+
+## 2026-10-27 Customer checkout visual parity — source change; exact-head verification NEXT
+
+- Parent successor HEAD `4065d5e3beed921610baf367bdf2ea4ec7d35e44`; PR #730 remains open/draft; Web Production source remains `7e036a0735cc49905e9b0a2434492470551a0c9d`.
+- Current Web `V.checkout` renders the QueueGo map, GPS action, delivery address and note, without a Places search panel; `initLocationPicker` attaches Places with `searchControl:false`. Native Checkout had added a separate `QgPlaceSearchPanel` before the map, changing visible hierarchy and duplicating search already available on the full location picker.
+- Removed only the extra Checkout search field and its unused callback. The full Customer Location Picker keeps QueueGo Places search; checkout retains map selection, GPS, reverse geocoding, address/note editing, fee calculation and server-authoritative submit/recovery.
+- Updated source guard to prevent Places search returning to Checkout while verifying it remains in the dedicated Location Picker. No Web, backend, schema, or business-authority changes.
+- **NEXT:** run source regression and exact-head Native Pilot; inspect Customer checkout phone capture against current Web when authorized Customer capture is available. Customer authenticated credentials and physical-device evidence remain separate blockers.
+
+## 2026-10-27 Rider/Merchant authenticated capture PASS; Customer Notifications source audit NEXT
+
+- Current exact descendant `92bf10a2cfdc2a9c585c76989d32b7dce528523b` passed PR/push Native Pilot (`40446858417`, `40446853549`), Map Engine (`40446858313`), and authenticated Rider/Merchant capture (`40446853492`). Rider artifact `12708029912` has 11/11 screens; Merchant `12708139641` has 5/5. Exact-head metadata has no missing screens, `physical_device:false`, no Production order/dispatch writes and `visual_parity_certified:false`. Actual images were inspected; no new Rider/Merchant mismatch.
+- The first Rider capture attempts on predecessor `08a4a407` exposed a QA harness viewport bug; source confirmed the accordion inserts children below the visible viewport. Commit `a7ceb1ad` scrolls to the inserted child before asserting expansion. Exact-head capture now passes. An earlier Emulator SDK archive `ZipFile unknown archive` was transient; retry passed.
+- **NEXT:** audit and align Customer Notifications page-entry read behavior to current Web (`renderNotifications` marks all read on open and always shows the action) using existing `CustomerExtrasApi.markAllRead` authority. Customer authenticated screenshots remain blocked by the missing credential pair; physical-device pass is not claimed.
+
+## 2026-10-27 Customer Profile contact parity — source/test/Pilot PASS; authenticated recapture NEXT
+
+- Repository source of truth is `origin/main` `7e036a0735cc49905e9b0a2434492470551a0c9d`, open/draft PR #730, newest Native successor `6de3a93eb92a304ea9eb574aea17247339ac9ccd`. Exact PR/push Native Pilot (`40439224823`, `40439220389`) and Map Engine (`40439224755`) completed SUCCESS on that prior head.
+- Web Profile displays `phone || email`. Production `public.users` has `phone` and no `email`; Native reuses the own-user `phone` read plus authenticated Supabase Auth email fallback. No new backend call, schema, mutation or authority. Customer phone/email are persisted only within the existing encrypted role session; synthetic `@auth.queuetech.local` is hidden.
+- Source commit `de32099c8c540b6fb22dfd1632ef2871048529fc` covers Customer Profile contact UI, Auth model/read, encrypted session persistence, and focused precedence/blank/synthetic-email JVM tests. Local source guard passes 358 checks and `git diff --check` passes. Exact-head PR/push Native Pilot `40441166424`/`40441160644` and Map Engine `40441166419` all completed SUCCESS, including Kotlin/JVM, three APKs, 16 KB, WebView rejection and emulator lifecycle. No physical-device claim.
+- Customer screenshot acceptance remains blocked by missing `QG_CUSTOMER_REVIEW_PHONE` and `QG_CUSTOMER_REVIEW_PASSWORD`; readiness-only is not visual acceptance. Physical-device acceptance is not claimed.
+- Readiness-only review `40441160801` succeeded on `de32099c` with capture skipped because no marker was present. Customer review remains blocked by absent `QG_CUSTOMER_REVIEW_PHONE`/`QG_CUSTOMER_REVIEW_PASSWORD`.
+- **NEXT:** publish a docs-only `[authenticated-review]` marker checkpoint on `de32099c`; inspect that exact-head Pilot and Rider/Merchant artifacts, then continue unblocked Customer source parity.
+
+## 2026-10-27 Customer Profile cleanup; latest Pilot and authenticated capture PASS
+
+- Latest published Native source before this continuation: `9f6d54f81416cee63fc4b44987e42cc8fe39e446`; PR #730 is open/draft. Latest `origin/main` is `7e036a0735cc49905e9b0a2434492470551a0c9d`. No newer Native successor was found after fetch.
+- Exact `9f6d54f8` PR Pilot `40433753021`, push Pilot `40433747432`, and Map Engine `40433753070` are SUCCESS. Authenticated read-only run `40433747486` captured Rider 11/11 (artifact `12703387135`) and Merchant 5/5 (artifact `12703103639`); actual `profile_laundry` screenshot was inspected and is visually clean. Metadata is emulator-only, no Production order/dispatch mutation, and not a visual parity certification.
+- Customer authenticated capture is still blocked by missing `QG_CUSTOMER_REVIEW_PHONE` and `QG_CUSTOMER_REVIEW_PASSWORD`. Do not claim Customer screenshot acceptance or physical-device PASS.
+- Customer Profile had a DEBUG-only `ข้อมูลเวอร์ชันทดสอบ` control, absent from Web Production, exposing version/build/Git SHA metadata on the user-facing Profile. Removed that control only; shared diagnostics remain for other roles and isolated instrumentation. Native source contracts pass 357/0; diff check passes.
+- On `72eb8c45`, PR Pilot `40435861715` and Map Engine `40435861671` passed. Push Pilot `40435855531` failed only while `sdkmanager` unpacked the downloaded emulator archive (`ZipFile unknown archive`); preceding source/JVM/APK/16 KB/WebView gates passed. This is an infrastructure download failure, not an app-source failure.
+- Exact successor `f8145b87502d9b1c108b1dad4e26440421377911` passed PR Pilot `40437689163`, push Pilot `40437684464`, and Map Engine `40437689276`, including emulator lifecycle. Authenticated read-only run `40437684481` captured Rider 11/11 (artifact `12704589704`) and Merchant 5/5 (artifact `12705111401`). Actual screenshots were inspected; no new Rider/Merchant mismatch was found. Metadata is exact-head, emulator-only, no Production dispatch/order mutation, and not a visual certification.
+- Readiness artifact `12705165067` records Customer secrets missing: `QG_CUSTOMER_REVIEW_PHONE` and `QG_CUSTOMER_REVIEW_PASSWORD`; Customer authenticated screenshots remain blocked.
+- Source audit found Web Profile displays `users.phone || users.email || Auth email`, while Native passes only the name and `NativeUser` has neither contact field. Keep existing backend/RLS authority, persist only the existing contact values securely, and suppress synthetic `@auth.queuetech.local` emails.
+- **NEXT:** trace and add that existing Customer contact line to Native Profile with focused coverage, then run exact-head Pilot. Customer screenshot acceptance stays blocked until both recorded secrets are supplied.
+
+## 2026-10-27 Rider Laundry Web/Production authority re-check
+
+- Current `main` and read-only Production state were rechecked during Native parity. Web still loads Rider Laundry mode/invites/active job/pool and calls the dedicated existing Rider Laundry RPCs; Production currently reports Laundry enabled and those RPCs executable by authenticated users. The current main work-preferences RPC intentionally covers Food/Grocery/Market/Express/Ride and does not subsume Laundry.
+- Keep Merchant/shop Laundry's own management state machine separate. Do not introduce a new Rider RPC/schema or add Laundry into general work preferences. Current Production has not applied the repository's pending Rider-RPC retirement in `QueueGo-Laundry-Shop-Transport.sql`; recheck actual Web/backend authority before treating that future retirement as active.
+- Native reconnect implementation `77eebc1b` is forward-merged with Customer Home density/geometry/proportion/CSS successors through `636c0f53`. Exact app-source head `8f17026a0c909691b1f194484ac38aaba6634646` passed Native Pilot `40430819774` and Map Engine `40430819796`. Authenticated review `40432384271` captured Rider 10/10 and Merchant 5/5 on `61be1798`; all captured surfaces are visually clean, but Profile's first screenshot did not include the new below-fold Laundry control. The review harness now captures that control separately. Exact Pilot `40432391503` and Map Engine `40432391569` on `61be1798` passed, as did authenticated capture. Physical-device evidence remains separate.
+
+## 2026-10-26 Customer Ride stop/aggregate marker labels — IN PROGRESS (source checkpoint; exact Pilot NEXT)
+
+- Base `565dbf9b1129074d8ccb1005b70d784862457452` exact Pilot 40329618714 passed regression/source/assets, Kotlin/JVM including all five supply cases, three APKs, 16 KB and WebView rejection; lifecycle was still running at succession. Its readiness-only review is not screenshot acceptance.
+- Confirmed label gap: Web `rideStopMarkerElement` labels endpoints รับ/ส่ง and `rideClusterMarkerElement` shows a motorcycle plus aggregate count. Existing shared tracking renderer rendered only unlabelled circles and ignored roles for these markers.
+- Added optional QgMapPoint label, used only by Ride endpoints/aggregate cells. Shared renderer adds native bitmap-backed MapLibre symbol layers for labelled pins/count pills, preserving the existing circle path for unlabelled points and live Rider. No new map engine, glyph endpoint, location inference or raw Rider query.
+- Motorcycle outline is extracted once from existing QgIcon geometry and reused by Compose/map bitmaps. Local geometry comparison confirms all eight line segments/two circles exactly unchanged. Bitmap text is trimmed/bounded; marker images are cached by role/color/label and reused by slot. Existing map lifecycle/source/fit bounds authority stays intact.
+- Extended Ride JVM cases assert endpoint labels, live-Rider absence of label and exact aggregate count label. Local Kotlin/Android SDK unavailable; new renderer compile/runtime and Customer authenticated visual review remain pending, not certified by source inspection.
+- **NEXT:** inspect exact successor Pilot's first confirmed failure; complete all final gates. Reuse already verified Rider/Merchant capture at d65652e for specific fixes, then inspect any needed successor shared-design capture. Customer live visual review remains BLOCKED on recorded secret pair; source audit can continue. Native marker proportions/fonts still require actual Customer visual comparison before full parity certification.
+
+## 2026-10-26 Customer Ride nearby aggregate supply — IN PROGRESS (source checkpoint; exact Pilot NEXT)
+
+- **DONE (checkpoint):** `d65652edc3e70bd43bb0f91edf3320c9f9f0bf3e` full exact Native Pilot [40327540508](https://github.com/chatchairins-source/QueuGo/actions/runs/40327540508) completed SUCCESS: regression/source/assets, Kotlin/JVM, all three APKs, 16 KB, WebView rejection, emulator launch/map/voice/lifecycle. Exact authenticated review [40327540246](https://github.com/chatchairins-source/QueuGo/actions/runs/40327540246) also SUCCESS.
+- Verified 11 Rider/5 Merchant capture metadata with that exact HEAD. Rider artifact 12653940162 ZIP SHA256 `ef15dafa9b811eb5631cef24fd35cfc952d3b0638ffdee04da14c2e095b8e1ff` shows actual Ready card/switch on Home. Merchant artifact 12653321038 SHA256 `75663b9ec00437e2e23734a37b5d4470a0d35ff448b177f5cc218f20d025dcd5` confirms loaded Home metrics, no raw status note and no null category. These specific defects are visually verified; all-screen Production parity and physical GPS/device certification remain separate.
+- **Confirmed source gap:** Web prebooking Ride calls `queuego_customer_ride_supply` and shows nearby count/approximate cells; Native had no equivalent read/UI. Reused that existing authenticated aggregate RPC only. No preassignment Rider identity/raw-profile query, inferred position, backend migration or Production write.
+- Added nearby-count/approximate-cluster parsing and prebooking UI using existing QgTrackingMap. Cluster acceptance requires valid shared Thailand coordinates, approximate flag and count >=2; bounded to existing server's 12 cells. Explicit approximate-position hint matches Web. Cluster count retained for subsequent marker-label visual parity.
+- Polling is foreground-only and keyed to account/token/pickup/preview eligibility; it pauses for picker/busy/pending/current-trip states. Same-coordinate attempt timestamp survives effect restarts, preserving >=15-second request spacing; cancellation/ensureActive prevents stale results. Pickup changes reset count/cells.
+- Added five JVM cases for throttle boundaries/restarts, one-nearby/no-singleton-marker, aggregate eligibility/coordinates, malformed/empty data and 12-cell bound. Local Kotlin unavailable; hosted compilation/execution NEXT. Source comparison verifies pending request body, quote/request/cancel and checkout/recovery suffix byte-identical to parent.
+- **NEXT:** inspect exact successor first Pilot failure only; complete latest-head full Pilot. Then close remaining Ride marker-label/count visual gap using existing map renderer, and continue Customer authenticated review when `QG_CUSTOMER_REVIEW_PHONE`/`QG_CUSTOMER_REVIEW_PASSWORD` exist. Continue other unblocked audits without claiming release/physical acceptance.
+
+## 2026-10-26 Exact authenticated-review framework readiness failure — IN PROGRESS
+
+- Exact source `04842b15fc794dad4dda964f9d2811e3b67feaf9` Pilot 40326293414 passed regression/source/assets, Kotlin/JVM (including Ride endpoint cases), all three APKs, 16 KB and WebView rejection; artifact upload/runtime remained in progress at this checkpoint. No containing-run SUCCESS yet.
+- Exact review 40326293619 failed before login: Rider `am start` exited 224, then Merchant `wm size` exited 20 with `Can't find service: window`. APK compilation succeeded. Underlying guest-system loss/restart cause is unproven; this is not evidence of a Rider app-source crash.
+- Confirmed harness gap: boot gate accepted one `sys.boot_completed=1` sample without checking Android activity/window/package services. It now requires boot plus all three exact `Service ...: found` responses for three consecutive samples, resetting on absence. Five actual Bash readiness fixtures (boot, each missing service, CRLF/not-found rejection) and workflow YAML parse passed locally.
+- Merchant app-equivalent artifact 12651860532 from exact review 40325237658 at `8a70f27` has verified ZIP SHA256 `a9fe6ff4c03635c5862ec2acb9cd21ef7866acb24c367b221e4c7a5e0eb2698e` and matching metadata. Visual inspection confirms loaded Home numbers, no status protocol line in Orders, and no literal null category in Products. Five-screen capture complete; full visual parity/physical certification remains false.
+- **NEXT:** rerun exact successor review/Pilot; inspect first actual failure only and obtain Rider Home content-ready screenshot. If system services disappear again, collect framework diagnostics before changing app source. Finish final latest-head emulator lifecycle, then implement/audit Web nearby Ride aggregate supply. Customer authenticated credential and release/physical blockers remain separate.
+
+## 2026-10-26 Rider Home capture content readiness — IN PROGRESS
+
+- The initial 5a68212 artifact captured Home navigation/map before snapshot-owned content appeared. Source confirms tabs exist independently of snapshot; idle Ready card only exists after a nonnull snapshot, and active-job dock has an existing semantic header. The original harness waited only for the tabs.
+- The harness now requires visible navigation plus a visible Ready switch, active-job dock header, offer action or inactive-account explanation. Navigation-only/loading/error-only Home fails without being saved as complete. Unsupported content also fails rather than receiving false acceptance. No toggle, claim or order action is performed.
+- Eight isolated selector fixtures, capture wiring and Python syntax passed locally: idle, active dock, offer, inactive account, loading, error-only, missing tab and hidden anchor.
+- Base Ride endpoint source `e6264171eca0b33a009be6aeddcf24bc8c6484b8` exact Pilot 40326100567 is queued/pending; no compile/pass claim for that chunk yet. Authenticated review 40325237658 at app-equivalent Rider/Merchant source 8a70f27 is still running; review 40326100479 is presence-only and must not be called screenshot acceptance.
+- **NEXT:** allow this exact successor Pilot and marker-triggered authenticated review to finish without further source pushes; fix only first confirmed failure, inspect actual Merchant loaded Home/Orders/Products and Rider Home images plus exact metadata. Then continue nearby Ride aggregate-supply parity. Customer authenticated credentials and physical/release gates remain separate.
+
+## 2026-10-26 Customer Ride authoritative map endpoints — IN PROGRESS (source checkpoint; Pilot NEXT)
+
+- Base `8a70f27dd72a6b2912688a807f58aa3b3af4ca20` exact Pilot 40325237596 passed full regression/source/assets and Kotlin/JVM (including Merchant category/shared-note tests); APK build was running at succession. Authenticated capture 40325237658 built actual Rider/Merchant APKs and began emulator capture. These are relevant gates, not full containing-run SUCCESS or visual acceptance.
+- Confirmed Web gap: `customer-ride.js` active map uses pickup/delivery/Rider coordinates. The existing `queuego_ride_state` RPC already returns all four endpoint coordinates under its account/ownership authority, but Native PassengerRide discarded them and rendered only a Rider point, hiding the entire map before assignment.
+- Added nullable endpoint DTO/parser fields and a pure map-points policy. Existing QgTrackingMap now shows valid real endpoints even before Rider assignment, plus real Rider coordinates when supplied. Same shared Thailand validation rejects missing/partial/invalid pairs. Existing terminal tracking suppression remains; no inferred positions, new map engine, request/cancel/payment or backend changes.
+- Added four focused JVM cases for searching endpoints, assigned Rider/endpoints, invalid/partial/missing pairs, and all terminal states. Source review confirms parser-to-renderer wiring; exact hosted compilation/tests are NEXT.
+- **NEXT:** inspect exact successor first Pilot failure, then actual Home/Orders/Products artifacts from 40325237658. Add a bounded Rider Home content-readiness gate if the original capture race persists. Next source audit: Web aggregate nearby Ride supply, preserving privacy and existing server RPC authority. Customer authenticated/physical/release gates remain separate.
+
+## 2026-10-26 Merchant order-note presentation — IN PROGRESS (source checkpoint; hosted tests NEXT)
+
+- Artifact 12650270511 at `5a682121d463ce94851a8fc03b591c97667c8550` visibly exposes a marker-only note `__QT_ORDER_STATUS__=completed`. Merchant list directly rendered raw `order.note`; Web stores that protocol line for status compatibility. Rider already had a tested display-only filter for this exact marker.
+- Moved that existing policy unchanged into shared `cleanOrderDisplayNote`; Rider delegates to it and Merchant list now uses it. Raw DTO/API notes, status parsing, cancellation and order writes remain intact. Embedded customer text and unrelated note lines remain visible.
+- Added shared tests for marker-only/null/blank, mixed instructions and embedded/unrelated marker text; existing Rider tests continue to exercise its delegate. Source review confirms one Merchant display call, unchanged filtering policy and no raw parser mutation. Local Android/Kotlin unavailable; exact hosted regression/JVM/capture required before DONE.
+- **NEXT:** inspect exact successor Pilot first confirmed failure, then regenerated Merchant Orders/Products/Home and Rider Home screenshots. Continue Rider Home semantic readiness and remaining Customer Ride map-context audit. Keep Customer credential/physical/release blockers separate.
+
+## 2026-10-26 Merchant JSON-null category — IN PROGRESS (source checkpoint; JVM/Pilot NEXT)
+
+- Authenticated artifact 12650270511 at `5a682121d463ce94851a8fc03b591c97667c8550` shows literal `null` on a product category. Root cause: `merchantProductFromRow` used `optString`, whose JSON-null string bypassed `ifBlank`. Web uses `p.category ?? p.metadata?.category ?? ''`.
+- Reused existing nullable JSON helper for category and metadata fallback. Current explicit category and existing blank fallback remain; no stock/pricing/order changes. Parser made internal for four focused JVM cases: JSON-null metadata fallback, both-null, explicit priority, missing/blank.
+- Local Kotlin toolchain is unavailable; JVM execution and source regression are pending exact successor hosted Pilot. No runtime fix claim yet.
+- **NEXT:** inspect exact successor Pilot first failure only; inspect regenerated authenticated screenshots after source gates. Continue Rider Home readiness and Merchant note-display investigation. Customer authenticated review remains blocked by the two recorded missing secret names.
+
+## 2026-10-26 Authenticated screenshot timing checkpoint — IN PROGRESS
+
+- Exact Native Pilot [40321700728](https://github.com/chatchairins-source/QueuGo/actions/runs/40321700728) at `5a682121d463ce94851a8fc03b591c97667c8550` completed SUCCESS, including regression/JVM, three APKs, 16 KB, WebView rejection and emulator lifecycle.
+- Exact authenticated review 40321700647 logged in and captured 11 Rider/5 Merchant screens; metadata source HEAD matched. This is evidence capture, not visual certification or physical acceptance.
+- Confirmed capture defect: Merchant Home was saved immediately after its navigation label appeared, while the four metrics still rendered loading ellipses. The harness now waits for all five tabs, all four metric labels and no visible loading ellipsis; timeout fails without saving a loading Home. Six isolated readiness fixtures, wiring and Python syntax passed before commit.
+- **BLOCKED (Customer authenticated review):** missing GitHub Actions secret names `QG_CUSTOMER_REVIEW_PHONE`, `QG_CUSTOMER_REVIEW_PASSWORD`; provide these through the existing secret mechanism to unlock. No values requested in logs.
+- **NEXT:** inspect exact successor capture/Pilot; inspect Rider Home loading versus dock readiness, then fix Merchant displayed protocol note and JSON-null product category after verifying Web/source behavior. Preserve raw order state authority and continue unblocked work.
+
+## 2026-10-26 Current authenticated Rider/Merchant capture NEXT
+
+- Readiness `40320797641` at `00f605f08367d97f0bd3c780bacd6950484149a1`: Rider/Merchant pairs present, Customer missing. Explicit `[authenticated-review]` checkpoint messages now run the existing read-only post-login capture on the current owner branch; ordinary pushes check presence only.
+- Review builds reuse Pilot Firebase config. Credential helpers suppress argument-bearing errors/timeouts; YAML, four readiness/privacy and ten helper cases passed before commit.
+- **NEXT:** inspect exact successor capture/Pilot first failures and actual screenshots/metadata; record exact missing Customer secret names. Continue other roles/source work. No login-only, credential-presence, physical or Production-release acceptance claim.
+
+## 2026-10-26 Current-branch authenticated review readiness
+
+- This checkpoint links the existing authenticated-review credential check to `work-native-web-parity-20261026`, reporting only role presence/missing secret names for Rider/Merchant/Customer. Current parity pushes are presence-only; existing manual/old-review-branch capture behavior remains. No new account/order/dispatch action is triggered by this branch push.
+- YAML and four isolated role-presence/privacy cases passed before commit. Native app source is identical to `f5cb1f4273739fea360e671a6b3eb8cedf922cfa`; its exact Native Pilot `40318997253` had passed relevant compile/test/APK/packaging gates, with emulator lifecycle pending at succession. No full containing-run SUCCESS claim yet.
+- **NEXT:** read the successor's credential readiness and final Native Pilot. If credentials are missing, record exact secret names and evidence, then continue other unblocked parity work. If available, continue authorized read-only authenticated review using current source. Physical/release gates stay separate.
+
+## 2026-10-26 Customer Ride arrival-state source checkpoint
+
+- This successor adds Web-aligned arrived-pickup/destination labels by retaining `arrived_pickup_at`/`arrived_dropoff_at` in PassengerRide. Arrival-only values now change DTO equality; terminal/unrelated statuses ignore stale timestamps. JVM and source wiring cases added. Quote/request/cancel, cash and pending UUID/body authority are preserved.
+- Parent Laundry `48e2d1f17191913321dcc24eebac8300e4c9c34e` passed exact Pilot `40317526297` full regression/source/JVM/Kotlin gates; APK/runtime may be superseded. Quantity `5f54120` containing run was cancelled after its recorded regression/JVM/APK/packaging gates, not a full SUCCESS. Grocery `f262329` full exact Pilot remains SUCCESS.
+- **NEXT:** inspect exact successor Pilot first failure only; finish all final latest-head APK/16KB/WebView/emulator gates. Then consolidate the current source P0/P1 audit and explicitly retain authenticated visual, physical GPS/device, signing/Play and Production cutover as external gates. No overlay or APK publication is requested.
+
+## 2026-10-26 Customer Laundry authority; Ride arrival-state NEXT
+
+- Base quantity guard `5f5412016889e0835ef805593a55056b2d668e3e` passed exact Pilot `40315822728` regression/source/JVM/Kotlin/APK/16KB/WebView gates; emulator may be superseded. Grocery `f262329d657409fa29bc4129afcabd674bc91244` passed full exact Pilot `40313768964`. Do not call the partial quantity run a full SUCCESS.
+- This successor changes Laundry discovery to Web's `queuego_laundry_customer_catalog`, including its eligible hub/settings/services snapshot and fresh selected-hub eligibility check. Raw active/enabled table discovery lacked accepted-active-Rider filtering. JVM/source tests added; exact successor compile/test is NEXT. Orders/checkout/events/pending-body code is unchanged.
+- Confirmed next P1: PassengerRide omits `arrived_pickup_at`/`arrived_dropoff_at`, which Web uses for arrival labels inside unchanged coarse statuses. Include them in the DTO/parser and pure label policy, test arrival-only equality and terminal/stale fields, preserve quote/request/cancel/cash/journal authority.
+- **NEXT:** inspect exact successor relevant gates, fix only first confirmed failure, then implement Ride arrival-state parity and complete all gates on the final latest descendant. No overlay, APK publication, Production mutation or physical/authenticated visual certification is implied.
+
+## 2026-10-26 Native three-app parity — latest verified successor and pending P1 work
+
+- Current owner scope is continuous Native Customer/Merchant/Rider parity against Web Production `main=7e036a0735cc49905e9b0a2434492470551a0c9d`, on `work-native-web-parity-20261026`. This latest scope supersedes older map-only work restrictions. Preserve Rider PR #729 ancestry, current QueueGo map authority, existing cash-only/order/audit rules and all inherited capabilities; no overlay or APK publication is requested.
+- Merchant online POS options through `49478a5ca477f84b89d7c004d010da3f991739b1` passed exact Pilot `40309589021`. Offline option snapshots/grouping/review/exact RPC replay in `bbeb3eb9efbcde5c108cb7f514e3020eb679f812` passed exact Pilot `40311664858`. Merchant tracked-stock and inventory adjustments/history are inherited and preserved.
+- Customer Grocery category/50+1 paging, same-offset retry, category/shop generation fences and cache in `f262329d657409fa29bc4129afcabd674bc91244` passed exact Pilot `40313768964`. Each cited Pilot includes full regression/JVM, all three APKs, 16 KB, WebView rejection and emulator lifecycle.
+- This successor adds the bounded signed-in shop 99-unit guard matching Web, guest and cart paths; its exact successor Pilot is NEXT. Native previously could send a three-digit quantity rejected by the cash checkout's two-digit positive qty rule.
+- Confirmed next P1: Native Laundry discovery uses active/enabled raw tables, whose RLS does not enforce Web's accepted-active-Rider eligibility. Reuse `queuego_laundry_customer_catalog` and its nested settings/services, revalidate selected hub through that authority; retain existing checkout/pending request IDs and all financial/state authority.
+- Rider active-job transition and Merchant product structured-option/reduction audits found no additional P1/P0 gap in those inspected capabilities. Web Customer menu-option selection is also absent, so do not add a duplicate or unsupported Customer option flow.
+- **NEXT:** exact successor Pilot for quantity guard; repair only the first confirmed failure, then implement Laundry catalog authority and continue the remaining Customer/Rider audit. Keep CHECKLIST and this memory current. Authenticated visual review, physical GPS/device acceptance, signing/Play and Production cutover remain separate and are not certified by these source/Pilot results.
+
+## 2026-10-26 Native Merchant completed-order support ticket parity
+
+- Web completed orders alone show `แจ้งปัญหาออเดอร์นี้`, opening the existing QueueGo ticket panel with the current order selected. Native detail lacked this action; profile's Native support chat is a separate behavior.
+- Commit `8827b2b5` adds completed-only entry, ticket form/list/status/evidence flow and order selection. Shared `NativeSupportTicketApi` uses the existing Web `qg_create_ticket`, `qg_support_tickets`, and `qg-evidence` APIs; no migration, refund or GP-slip implementation. `db9d00c5` fixes first hosted compile failure in Merchant progress UI (`CircleShape` import; replace nonexistent `QgText` with shared `QgInk`).
+- Source contracts 336/0; full `TZ=Asia/Bangkok npm test` passes on exact source tree `fe6d8fa4`, map QA 28/0. Pilot `40296378388` failed before this fix; exact run for the new tree is pending sync. **NEXT:** Customer cart/checkout/order parity while Pilot runs.
+
+## 2026-10-26 Native Customer category filter parity
+
+- Web `main=7e036a0` uses exact `public_category` filters for Food/Cafe/Grocery. Native reads that same field but previously admitted extra aliases (`restaurant`, `drink`, `beverage`, `convenience`), changing category eligibility and empty/count states.
+- Fix at `ef5799bc`: strict canonical category match only, preserving location sort and all other views. Added Kotlin unit coverage for canonical inclusion and alias exclusion, plus a source parity guard. Focused parity 55/0, Native source 332/0, full `TZ=Asia/Bangkok npm test` pass; post-test map QA 28/0.
+- Pilot `40295299296` on `966ebb75` exposed missing `androidx.compose.ui.draw.clip` import in the Guest header at Kotlin compile. Fix commit `991ff3e8` resolves it; clean full regression passes on tree `25a0b28f`. Exact successor Pilot `40296040683` on `d9c66383` is in progress. **NEXT:** continue Customer shop/product detail/cart audit, then checkout/order states.
+
+## 2026-10-26 Native Customer Guest top-bar parity
+
+- Web `index.html` uses Home 16/10 padding, compact 12/6, `QueueGo` letter spacing -0.4, and a plain red Guest login label. Native had reused Home density and a pink pill on all Guest routes.
+- Fix at `39f3bf8a`: route-aware spacing, exact wordmark tracking and plain red label with a transparent padded tap target. Focused Customer parity 55/0 and Native source 332/0 pass; full `TZ=Asia/Bangkok npm test` passes, post-test map QA 28/0.
+- Remote exact-tree checkpoint `966ebb75`; Native Pilot `40295299296` is pending/running. **NEXT:** close the exact public-category filter mismatch in Food/Cafe/Grocery based on current Web source, then continue Customer screen/state inventory.
+
+## 2026-10-26 Native Merchant order-detail QueueGo call
+
+- Web order detail exposes QueueGo voice calling on nonterminal orders. Native Merchant already shared the authenticated voice controller with other roles but lacked its outgoing customer action.
+- The detail action now calls the existing controller with target `customer`, requests microphone permission only when tapped, prevents a concurrent active call, and rechecks active-call state after permission returns. No phone-call fallback, duplicate signaling path, backend change or new call state.
+- Source commit `a92d75f2`; full `TZ=Asia/Bangkok npm test` passes on exact tree `520f64f7` (Native source 332/0; map QA 28/0). Remote exact-tree checkpoint `adc08ab8` has Pilot `40294781492` running. Completed-order issue reporting remains open; continue Customer inventory while CI runs.
+
+## 2026-10-26 Native Merchant order-detail parity follow-up (source/full regression done)
+
+- Verified Web blueprint `renderShopOrderModern` against Native `MerchantOrderDetail`: Web provides customer name/address, five delivery stages, item quantity total, and expected Rider cash only after pending/cancelled; Native previously omitted those details and showed cash for every state.
+- Current bounded Native change uses the existing authenticated orders RLS query to read delivery_address and adds a pure progress-stage policy. It does not add payment confirmation, backend API or new state authority. Focused source/stability/order-state/substitution checks pass. Full local regression first stopped at the intentional release-evidence clean-checkout guard while this chunk was uncommitted.
+- Clean exact-tree `TZ=Asia/Bangkok npm test` on `517140355858fb74b2e9593004b5728a22b9ca19` EXIT 0 (Native source 331/0, order-state 70/0, three-app stability 106/0 and post-test map QA 28/0). Local Android SDK/Gradle wrapper are absent, so hosted Pilot is required for JUnit/APKs/emulator.
+- NEXT: fast-forward the current source tree to the existing remote Native successor via GitHub connector, verify tree equality, and inspect exact-head Pilot CI. Customer-call and completed-order report actions remain independent Merchant detail parity gaps.
+
+## 2026-10-26 Native three-app Web parity continuation
+
+- Current Native successor: `work-native-web-parity-20261026` at `b66b6a3b1b2a83613ed9984a7dc8e900135f0b07`, a descendant of fetched remote checkpoint `ed3a29ae`; current Web `main` remains `7e036a0735cc49905e9b0a2434492470551a0c9d`. The integrated line preserves Rider map/navigation PR #729. Older open PR #710 is not the current Native head.
+- Current source checkpoint includes Customer initial-load retry and safe route restoration, Merchant initial-load retry, safe route restoration, Web-aligned dashboard status summaries and order filter/search, and Rider same-period earnings retry. Do not recreate those capabilities.
+- Exact local full regression on this HEAD: `TZ=Asia/Bangkok npm test` EXIT 0; Native source 330/0 and post-test map-field QA 28/0. No Production writes. Exact-head hosted Kotlin/JUnit, three APK, 16 KB and emulator/map lifecycle evidence is still required.
+- NEXT: push the verified fast-forward descendant and inspect its Native Pilot CI. Fix only its first actual failure; meanwhile continue Merchant order-detail/catalog comparison and independent Customer/Rider non-map parity checks. Authenticated visual review, physical device/GPS, Play Console and production release are separate gates.
+
 ## 2026-10-23 Current owner scope: map only; recovery cancelled
 
 - Latest owner instruction: ไม่ต้องกู้แล้วปรับแค่เรื่องแผนที่. Do not continue whole-file/module timestamp recovery. Native recovery PR #658 is closed without merge. Initial recovery snapshots are historical references only.

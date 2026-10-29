@@ -201,8 +201,6 @@ internal fun RiderEvidencePreview(
             )
         } ?: if (failed) {
             Text("เปิดรูปไม่สำเร็จ กรุณาถ่ายใหม่")
-        } else {
-            CircularProgressIndicator()
-        }
+        } else Unit
     }
 }

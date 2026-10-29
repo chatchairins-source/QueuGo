@@ -71,7 +71,6 @@ internal fun RiderMyDestinationDialog(
     }
     var lastAutoLabel by remember { mutableStateOf<String?>(null) }
     var recenterToken by remember { mutableIntStateOf(0) }
-    var mapReady by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
@@ -181,18 +180,12 @@ internal fun RiderMyDestinationDialog(
                         recenterPoint = selected,
                         recenterToken = recenterToken,
                         modifier = Modifier.fillMaxSize(),
-                        onCenterChanged = { point ->
+                        onPointSelected = { point ->
                             selected = point
                             if (draftLabel == lastAutoLabel) draftLabel = ""
                         },
-                        onReady = { mapReady = it }
+                        onReady = { }
                     )
-                    if (!mapReady) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.align(Alignment.Center).size(28.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
                 }
 
                 if (gpsPoint != null) {

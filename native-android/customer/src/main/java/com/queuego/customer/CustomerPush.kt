@@ -28,6 +28,30 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 internal const val CUSTOMER_NOTIFICATION_CHANNEL = "queuego_orders_v2"
+internal const val CUSTOMER_ARRIVAL_SOUND_CHANNEL = "queuego_arrival_sound_v1"
+internal const val CUSTOMER_ARRIVAL_SILENT_CHANNEL = "queuego_arrival_silent_v1"
+private const val CUSTOMER_PUSH_PREFS = "queuego_customer_notification_preferences"
+
+internal fun customerPushEnabled(context: Context, userId: String): Boolean =
+    context.getSharedPreferences(CUSTOMER_PUSH_PREFS, Context.MODE_PRIVATE)
+        .getBoolean("push_enabled_$userId", false)
+
+internal fun setCustomerPushEnabled(context: Context, userId: String, enabled: Boolean) {
+    context.getSharedPreferences(CUSTOMER_PUSH_PREFS, Context.MODE_PRIVATE)
+        .edit().putBoolean("push_enabled_$userId", enabled).apply()
+}
+
+internal fun customerArrivalSoundEnabled(context: Context, userId: String): Boolean =
+    context.getSharedPreferences(CUSTOMER_PUSH_PREFS, Context.MODE_PRIVATE)
+        .getBoolean("arrival_sound_$userId", false)
+
+internal fun setCustomerArrivalSoundEnabled(context: Context, userId: String, enabled: Boolean) {
+    context.getSharedPreferences(CUSTOMER_PUSH_PREFS, Context.MODE_PRIVATE)
+        .edit().putBoolean("arrival_sound_$userId", enabled).apply()
+}
+
+internal fun customerArrivalNotification(title: String, body: String): Boolean =
+    (title + " " + body).contains(Regex("มาถึง|ถึงจุดส่ง"))
 
 internal fun ensureCustomerNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -43,6 +67,28 @@ internal fun ensureCustomerNotificationChannel(context: Context) {
             description = "ออเดอร์ สถานะการจัดส่ง แชต และสายเรียกเข้า QueueGo"
             enableVibration(true)
             setSound(sound, attributes)
+        }
+    )
+    manager.createNotificationChannel(
+        NotificationChannel(
+            CUSTOMER_ARRIVAL_SOUND_CHANNEL,
+            "Rider ถึงแล้ว (มีเสียง)",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "เสียงเตือนเมื่อ Rider มาถึงจุดส่ง"
+            enableVibration(true)
+            setSound(sound, attributes)
+        }
+    )
+    manager.createNotificationChannel(
+        NotificationChannel(
+            CUSTOMER_ARRIVAL_SILENT_CHANNEL,
+            "Rider ถึงแล้ว (ไม่มีเสียง)",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "แจ้งเตือนเมื่อ Rider มาถึงจุดส่งโดยไม่มีเสียง"
+            enableVibration(true)
+            setSound(null, null)
         }
     )
 }
@@ -85,6 +131,7 @@ class QueueGoCustomerMessagingService : FirebaseMessagingService() {
         if (token.length < 16) return
         val sessionStore = SecureRoleSessionStore(applicationContext, "customer")
         val cached = sessionStore.load() ?: return
+        if (!customerPushEnabled(applicationContext, cached.user.id)) return
         serviceScope.launch {
             runCatching {
                 val auth = NativeAuthApi().validate(cached, "customer") { sessionStore.save(it) }
@@ -103,6 +150,7 @@ class QueueGoCustomerMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         val cached = SecureRoleSessionStore(applicationContext, "customer").load() ?: return
         if (cached.user.role != "customer" || cached.user.status != "active") return
+        if (!customerPushEnabled(this, cached.user.id)) return
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
@@ -124,7 +172,11 @@ class QueueGoCustomerMessagingService : FirebaseMessagingService() {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = NotificationCompat.Builder(this, CUSTOMER_NOTIFICATION_CHANNEL)
+        val notificationChannel = if (customerArrivalNotification(title, body)) {
+            if (customerArrivalSoundEnabled(this, cached.user.id)) CUSTOMER_ARRIVAL_SOUND_CHANNEL
+            else CUSTOMER_ARRIVAL_SILENT_CHANNEL
+        } else CUSTOMER_NOTIFICATION_CHANNEL
+        val notification = NotificationCompat.Builder(this, notificationChannel)
             .setSmallIcon(R.drawable.qg_notification)
             .setContentTitle(title.take(80))
             .setContentText(body.take(220))

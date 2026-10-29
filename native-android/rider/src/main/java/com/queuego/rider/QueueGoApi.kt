@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -248,6 +249,117 @@ internal fun riderDemandZonesFromRpc(raw: Any?): List<RiderDemandZone> {
             add(RiderDemandZone(latitude, longitude, level, windowHours))
         }
     }
+}
+
+internal val riderWorkServiceKeys = setOf("food", "grocery", "market", "express", "ride")
+
+internal fun riderWorkPreferencesFromRpc(raw: Any?): RiderWorkPreferences {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    require(row.opt("auto_accept") is Boolean) { "รูปแบบการรับงานอัตโนมัติไม่ถูกต้อง" }
+    require(row.opt("bundle_enabled") is Boolean) { "รูปแบบการรับงานพ่วงไม่ถูกต้อง" }
+    val rawServices = row.optJSONArray("services") ?: error("ไม่พบประเภทบริการที่รับ")
+    val services = buildSet {
+        for (index in 0 until rawServices.length()) {
+            val value = rawServices.optString(index).trim()
+            require(value in riderWorkServiceKeys) { "พบประเภทบริการที่ไม่รองรับ" }
+            add(value)
+        }
+    }
+    require(services.isNotEmpty()) { "ต้องเปิดรับบริการอย่างน้อยหนึ่งประเภท" }
+    val rawCapabilities = row.optJSONObject("capabilities") ?: error("ไม่พบสิทธิ์ประเภทงาน")
+    fun capability(name: String): Boolean {
+        require(rawCapabilities.opt(name) is Boolean) { "รูปแบบสิทธิ์ประเภทงานไม่ถูกต้อง" }
+        return rawCapabilities.getBoolean(name)
+    }
+    return RiderWorkPreferences(
+        autoAccept = row.getBoolean("auto_accept"),
+        bundleEnabled = row.getBoolean("bundle_enabled"),
+        services = services,
+        capabilities = RiderWorkCapabilities(
+            food = capability("food"),
+            grocery = capability("grocery"),
+            market = capability("market"),
+            express = capability("express"),
+            ride = capability("ride"),
+            bundle = capability("bundle")
+        )
+    )
+}
+
+internal fun riderLaundryStateFromRpc(raw: Any?): RiderLaundryState {
+    val root = raw as? JSONObject ?: return RiderLaundryState()
+    val invitesJson = root.optJSONArray("invites") ?: JSONArray()
+    val invites = buildList {
+        for (i in 0 until invitesJson.length()) {
+            val row = invitesJson.optJSONObject(i) ?: continue
+            val inviteId = row.optString("invite_id")
+            if (inviteId.isBlank()) continue
+            add(
+                RiderLaundryInvite(
+                    inviteId = inviteId,
+                    hubId = row.optString("hub_id"),
+                    hubName = row.optString("hub_name").ifBlank { "ร้านฝากซัก" },
+                    shopName = row.optString("shop_name").ifBlank { "ร้านฝากซัก" },
+                    status = row.optString("status"),
+                    createdAt = row.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
+                )
+            )
+        }
+    }
+
+    fun jobs(name: String): List<RiderLaundryJob> {
+        val rows = root.optJSONArray(name) ?: JSONArray()
+        val fallbackStatus = if (name == "pool") "waiting" else "assigned"
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val row = rows.optJSONObject(i) ?: continue
+                val jobId = row.optString("job_id")
+                val laundryOrderId = row.optString("laundry_order_id")
+                if (jobId.isBlank() || laundryOrderId.isBlank()) continue
+                fun text(key: String): String? = row.optString(key).takeIf { it.isNotBlank() && it != "null" }
+                fun number(key: String): Double? = if (!row.has(key) || row.isNull(key)) null
+                    else row.optDouble(key).takeIf { it.isFinite() }
+                add(
+                    RiderLaundryJob(
+                        jobId = jobId,
+                        laundryOrderId = laundryOrderId,
+                        orderNumber = text("order_number"),
+                        leg = row.optString("leg").ifBlank { "pickup" },
+                        jobStatus = row.optString("job_status").ifBlank { fallbackStatus },
+                        orderStatus = text("order_status"),
+                        hubId = text("hub_id"),
+                        hubName = text("hub_name"),
+                        shopName = text("shop_name"),
+                        serviceName = text("service_name"),
+                        actualQuantity = number("actual_quantity"),
+                        pricingType = text("pricing_type"),
+                        jobFee = number("job_fee") ?: 0.0,
+                        fromAddress = text("from_address"),
+                        fromLatitude = number("from_latitude"),
+                        fromLongitude = number("from_longitude"),
+                        toAddress = text("to_address"),
+                        toLatitude = number("to_latitude"),
+                        toLongitude = number("to_longitude"),
+                        customerAmount = number("customer_amount"),
+                        actualKg = number("actual_kg"),
+                        createdAt = text("created_at")
+                    )
+                )
+            }
+        }
+    }
+
+    return RiderLaundryState(
+        featureEnabled = root.optBoolean("feature_enabled", false),
+        modeEnabled = root.optBoolean("mode_enabled", false),
+        invites = invites,
+        activeJob = jobs("active_jobs").firstOrNull(),
+        pool = jobs("pool")
+    )
 }
 
 internal fun riderSupplyPlanFromRpc(raw: Any?): RiderSupplyPlan {
@@ -1112,6 +1224,39 @@ class QueueGoApi {
             )
         }
 
+    suspend fun workPreferences(auth: QueueGoAuth): RiderWorkPreferences =
+        withContext(Dispatchers.IO) {
+            riderWorkPreferencesFromRpc(
+                rpc(
+                    "qg_rider_work_preferences",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun saveWorkPreferences(
+        auth: QueueGoAuth,
+        autoAccept: Boolean,
+        bundleEnabled: Boolean,
+        services: Set<String>
+    ): RiderWorkPreferences = withContext(Dispatchers.IO) {
+        require(services.isNotEmpty() && services.all { it in riderWorkServiceKeys }) {
+            "ต้องเปิดรับบริการอย่างน้อยหนึ่งประเภท"
+        }
+        val payload = JSONObject()
+            .put("auto_accept", autoAccept)
+            .put("bundle_enabled", bundleEnabled)
+            .put("services", JSONArray(services.toList().sorted()))
+        riderWorkPreferencesFromRpc(
+            rpc(
+                "qg_rider_work_preferences",
+                auth.session.accessToken,
+                JSONObject().put("p_preferences", payload)
+            )
+        )
+    }
+
     suspend fun demandHeatmap(auth: QueueGoAuth): List<RiderDemandZone> =
         withContext(Dispatchers.IO) {
             riderDemandZonesFromRpc(
@@ -1698,9 +1843,15 @@ class QueueGoApi {
                 }
             }
         }
-        // Laundry transport is shop-managed. General QueueGo Riders receive no
-        // Laundry pool/invite/active-job state from the retired platform-Rider RPCs.
-        val laundry = RiderLaundryState()
+        // Laundry remains a separate, feature-gated service authority. Keep it
+        // outside qg_rider_work_preferences and use its existing owner-scoped RPC.
+        val laundry = try {
+            readLaundryState(auth.session.accessToken)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            RiderLaundryState()
+        }
         val deliveryReturn = runCatching { activeDeliveryReturn(auth) }.getOrNull()
 
         val profileInfo = RiderProfileInfo(
@@ -2432,77 +2583,7 @@ class QueueGoApi {
     }
 
     private fun readLaundryState(token: String): RiderLaundryState {
-        val root = rpc("queuego_laundry_rider_state", token, JSONObject()) as? JSONObject
-            ?: return RiderLaundryState()
-
-        val invitesJson = root.optJSONArray("invites") ?: JSONArray()
-        val invites = buildList {
-            for (i in 0 until invitesJson.length()) {
-                val row = invitesJson.optJSONObject(i) ?: continue
-                val inviteId = row.optString("invite_id")
-                if (inviteId.isBlank()) continue
-                add(
-                    RiderLaundryInvite(
-                        inviteId = inviteId,
-                        hubId = row.optString("hub_id"),
-                        hubName = row.optString("hub_name").ifBlank { "ร้านฝากซัก" },
-                        shopName = row.optString("shop_name").ifBlank { "ร้านฝากซัก" },
-                        status = row.optString("status"),
-                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
-                    )
-                )
-            }
-        }
-
-        fun jobs(name: String): List<RiderLaundryJob> {
-            val rows = root.optJSONArray(name) ?: JSONArray()
-            val fallbackStatus = if (name == "pool") "waiting" else "assigned"
-            return buildList {
-                for (i in 0 until rows.length()) {
-                    val row = rows.optJSONObject(i) ?: continue
-                    parseLaundryJob(row, fallbackStatus)?.let { add(it) }
-                }
-            }
-        }
-
-        return RiderLaundryState(
-            featureEnabled = root.optBoolean("feature_enabled", false),
-            modeEnabled = root.optBoolean("mode_enabled", false),
-            invites = invites,
-            activeJob = jobs("active_jobs").firstOrNull(),
-            pool = jobs("pool")
-        )
-    }
-
-    private fun parseLaundryJob(row: JSONObject, fallbackStatus: String): RiderLaundryJob? {
-        val jobId = row.optString("job_id")
-        val laundryOrderId = row.optString("laundry_order_id")
-        if (jobId.isBlank() || laundryOrderId.isBlank()) return null
-        fun text(name: String): String? = row.optString(name).takeIf { it.isNotBlank() && it != "null" }
-        return RiderLaundryJob(
-            jobId = jobId,
-            laundryOrderId = laundryOrderId,
-            orderNumber = text("order_number"),
-            leg = row.optString("leg").ifBlank { "pickup" },
-            jobStatus = row.optString("job_status").ifBlank { fallbackStatus },
-            orderStatus = text("order_status"),
-            hubId = text("hub_id"),
-            hubName = text("hub_name"),
-            shopName = text("shop_name"),
-            serviceName = text("service_name"),
-            actualQuantity = row.doubleOrNull("actual_quantity"),
-            pricingType = text("pricing_type"),
-            jobFee = row.doubleOrZero("job_fee"),
-            fromAddress = text("from_address"),
-            fromLatitude = row.doubleOrNull("from_latitude"),
-            fromLongitude = row.doubleOrNull("from_longitude"),
-            toAddress = text("to_address"),
-            toLatitude = row.doubleOrNull("to_latitude"),
-            toLongitude = row.doubleOrNull("to_longitude"),
-            customerAmount = row.doubleOrNull("customer_amount"),
-            actualKg = row.doubleOrNull("actual_kg"),
-            createdAt = text("created_at")
-        )
+        return riderLaundryStateFromRpc(rpc("queuego_laundry_rider_state", token, JSONObject()))
     }
 
     private fun parseJob(o: JSONObject) = RiderJob(

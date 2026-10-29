@@ -36,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -44,13 +45,24 @@ import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgRed
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
+ * Web main preserves a post-login destination only for checkout.
+ * Every other protected Guest action authenticates and lands on Home.
+ */
+internal fun customerGuestPostLoginDestination(route: String): String {
+    val root = route.trim().removePrefix("#").trimStart('/').substringBefore('/').substringBefore('?')
+    return if (root == "checkout") "checkout" else "home"
+}
+
+/**
  * Production web allows anonymous Home/category/search/shop/cart/market/map/promotion browsing.
- * Protected checkout/orders/laundry/favorites route to the same native Customer authentication.
+ * Protected actions route to the same native Customer authentication.
  */
 @Composable
 internal fun GuestCustomerShell(
@@ -112,15 +124,27 @@ internal fun GuestCustomerShell(
     fun refresh(showLoading: Boolean = shops.isEmpty() && banners.isEmpty()) {
         scope.launch {
             if (showLoading) loading = true
+            val reuseStaticHome = !showLoading &&
+                shops.isNotEmpty() &&
+                withContext(Dispatchers.IO) { contentCache.homeFresh() }
+            if (reuseStaticHome) {
+                loading = false
+                return@launch
+            }
             try {
-                val freshShops = api.loadShopsPublic()
-                val freshBanners = api.loadHomeBannersPublic()
-                val freshServiceBanners = api.loadServiceBannersPublic()
-                shops = freshShops
-                banners = freshBanners
-                serviceBanners = freshServiceBanners
-                withContext(Dispatchers.IO) {
-                    contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                coroutineScope {
+                    val shopsDeferred = async { api.loadShopsPublic() }
+                    val bannersDeferred = async { api.loadHomeBannersPublic() }
+                    val serviceBannersDeferred = async { api.loadServiceBannersPublic() }
+                    val freshShops = shopsDeferred.await()
+                    val freshBanners = bannersDeferred.await()
+                    val freshServiceBanners = serviceBannersDeferred.await()
+                    shops = freshShops
+                    banners = freshBanners
+                    serviceBanners = freshServiceBanners
+                    withContext(Dispatchers.IO) {
+                        contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                    }
                 }
                 message = null
             } catch (failure: CancellationException) {
@@ -183,22 +207,44 @@ internal fun GuestCustomerShell(
 
     fun openShop(shop: CustomerShop, from: String) {
         if (shop.category.lowercase() == "laundry") {
-            onLogin("home")
+            onLogin(customerGuestPostLoginDestination("laundry"))
             return
         }
         returnScreen = from
         selectedShop = shop
         screen = "shop"
-        shopCatalog.openCached(
-            shopId = shop.id,
-            loadCached = {
-                withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
-            },
-            fetch = { api.loadProductsPublic(shop.id) },
-            persist = { rows ->
-                withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
-            }
-        )
+        if (shop.category == "grocery") {
+            shopCatalog.openGroceryCached(
+                shopId = shop.id,
+                loadCached = { withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) } },
+                loadCachedCategories = { withContext(Dispatchers.IO) { contentCache.readGroceryCategories(shop.id) } },
+                loadCategories = {
+                    val cachedCategories = withContext(Dispatchers.IO) { contentCache.readGroceryCategories(shop.id) }
+                    val cacheFresh = withContext(Dispatchers.IO) { contentCache.groceryCategoriesFresh(shop.id) }
+                    if (cachedCategories.isNotEmpty() && cacheFresh) cachedCategories
+                    else api.loadGroceryCategories(null, shop.id)
+                },
+                fetchPage = { category, offset -> api.loadGroceryPage(null, shop.id, category, offset) },
+                persistCategories = { rows -> withContext(Dispatchers.IO) { contentCache.writeGroceryCategories(shop.id, rows) } },
+                persist = { rows -> withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) } }
+            )
+        } else {
+            shopCatalog.openCached(
+                shopId = shop.id,
+                loadCached = {
+                    withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+                },
+                fetch = {
+                    val cachedProducts = withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+                    val cacheFresh = withContext(Dispatchers.IO) { contentCache.productsFresh(shop.id) }
+                    if (cachedProducts.isNotEmpty() && cacheFresh) cachedProducts
+                    else api.loadProductsPublic(shop.id)
+                },
+                persist = { rows ->
+                    withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
+                }
+            )
+        }
     }
 
     fun openBannerLink(raw: String) {
@@ -210,9 +256,8 @@ internal fun GuestCustomerShell(
                 route.isBlank() || route == "home" -> screen = "home"
                 route == "search" -> screen = "search"
                 route == "cart" -> screen = "cart"
-                route == "orders" || route == "laundry" || route == "checkout" -> onLogin(
-                    if (route == "checkout") "checkout" else "home"
-                )
+                route in setOf("orders", "laundry", "checkout", "ride", "express") ->
+                    onLogin(customerGuestPostLoginDestination(route))
                 route == "map" -> screen = "location"
                 route == "market" || route == "market-cart" -> screen = route
                 route == "promotion" -> screen = "promotion"
@@ -232,6 +277,7 @@ internal fun GuestCustomerShell(
                     val id = route.substringAfter("shop/").substringBefore('/')
                     shops.find { it.id == id }?.let { openShop(it, "home") }
                 }
+                else -> onLogin(customerGuestPostLoginDestination(route))
             }
             return
         }
@@ -260,7 +306,7 @@ internal fun GuestCustomerShell(
         bottomBar = {
             CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) { target ->
                 when (target) {
-                    "orders" -> onLogin("home")
+                    "orders" -> onLogin(customerGuestPostLoginDestination("orders"))
                     else -> screen = target
                 }
             }
@@ -273,6 +319,7 @@ internal fun GuestCustomerShell(
                 .background(QgBg)
         ) {
             GuestCustomerTopBar(
+                home = screen == "home",
                 onHome = { screen = "home" },
                 onLogin = { onLogin("home") }
             )
@@ -296,9 +343,9 @@ internal fun GuestCustomerShell(
                     onSearch = { screen = "search" },
                     onCategory = { selected ->
                         when (selected) {
-                            "ride" -> onLogin("ride")
+                            "ride" -> onLogin(customerGuestPostLoginDestination("ride"))
                             "market" -> screen = "market"
-                            "laundry" -> onLogin("home")
+                            "laundry" -> onLogin(customerGuestPostLoginDestination("laundry"))
                             "shopping" -> {
                                 shoppingMode = "all"
                                 screen = "shopping"
@@ -381,11 +428,10 @@ internal fun GuestCustomerShell(
                     cart = cart,
                     productsLoading = catalogState.loading,
                     productsError = catalogState.error,
-                    onRetryProducts = {
-                        selectedShop?.let { shop ->
-                            shopCatalog.open(shop.id) { api.loadProductsPublic(shop.id) }
-                        }
-                    },
+                    groceryPaging = catalogState.grocery,
+                    onGroceryCategory = shopCatalog::selectGroceryCategory,
+                    onGroceryMore = shopCatalog::loadGroceryMore,
+                    onRetryProducts = { selectedShop?.let { openShop(it, returnScreen) } },
                     onBack = { screen = returnScreen },
                     onAdd = { product ->
                         val currentShop = cart.firstOrNull()?.product?.shopId
@@ -403,7 +449,7 @@ internal fun GuestCustomerShell(
                         }
                     },
                     onCart = { screen = "cart" },
-                    onRequireLogin = { onLogin("home") }
+                    onRequireLogin = { onLogin(customerGuestPostLoginDestination("shop-action")) }
                 )
 
                 "cart" -> CustomerCartScreen(
@@ -425,7 +471,7 @@ internal fun GuestCustomerShell(
                         }
                     },
                     onRemove = { id -> cart = cart.filterNot { it.product.id == id } },
-                    onCheckout = { onLogin("checkout") }
+                    onCheckout = { onLogin(customerGuestPostLoginDestination("checkout")) }
                 )
 
                 "market", "market-cart" -> MarketNativeScreen(
@@ -443,7 +489,7 @@ internal fun GuestCustomerShell(
                     serviceBanner = serviceBanners["market"],
                     onBack = { screen = "home" },
                     onDone = { _ -> screen = "home" },
-                    onRequireLogin = { onLogin("market-cart") },
+                    onRequireLogin = { onLogin(customerGuestPostLoginDestination("market-submit")) },
                     onBannerLink = ::openBannerLink
                 )
 
@@ -462,12 +508,16 @@ internal fun GuestCustomerShell(
 
 @Composable
 private fun GuestCustomerTopBar(
+    home: Boolean,
     onHome: () -> Unit,
     onLogin: () -> Unit
 ) {
     Column(Modifier.fillMaxWidth().background(Color(0xF0FFFFFF))) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(
+                horizontal = if (home) 16.dp else 12.dp,
+                vertical = if (home) 10.dp else 6.dp
+            ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(Modifier.clickable(onClick = onHome)) {
@@ -476,6 +526,7 @@ private fun GuestCustomerTopBar(
                     color = Color(0xFF17191D),
                     fontSize = 18.sp,
                     lineHeight = 22.sp,
+                    letterSpacing = (-0.4).sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
@@ -483,18 +534,21 @@ private fun GuestCustomerTopBar(
                     color = QgRed,
                     fontSize = 18.sp,
                     lineHeight = 22.sp,
+                    letterSpacing = (-0.4).sp,
                     fontWeight = FontWeight.ExtraBold
                 )
             }
             Spacer(Modifier.weight(1f))
-            Box(
-                Modifier
-                    .background(Color(0xFFFFF0F1), RoundedCornerShape(12.dp))
+            Text(
+                "เข้าสู่ระบบ",
+                color = QgRed,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
                     .clickable(onClick = onLogin)
-                    .padding(horizontal = 13.dp, vertical = 9.dp)
-            ) {
-                Text("เข้าสู่ระบบ", color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+            )
         }
         HorizontalDivider(thickness = 1.dp, color = Color(0x0D000000))
     }

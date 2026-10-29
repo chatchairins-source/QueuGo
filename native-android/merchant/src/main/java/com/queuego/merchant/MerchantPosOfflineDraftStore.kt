@@ -14,7 +14,10 @@ data class PosOfflineDraftItem(
     val nameSnapshot: String,
     val priceSnapshot: Double,
     val quantity: Int,
-    val requestIds: List<String> = emptyList()
+    val requestIds: List<String> = emptyList(),
+    val basePriceSnapshot: Double = priceSnapshot,
+    val optionsJson: String = "{}",
+    val optionLabel: String = ""
 )
 
 data class PosOfflineDraft(
@@ -102,7 +105,13 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 put(JSONObject().put("id", p.id).put("name", p.name.take(200)).put("price", p.price)
                     .put("image", p.image ?: JSONObject.NULL).put("available", p.available)
                     .put("delivery_available", p.deliveryAvailable)
-                    .put("delivery_price", p.deliveryPrice ?: JSONObject.NULL))
+                    .put("delivery_price", p.deliveryPrice ?: JSONObject.NULL)
+                    .put("stock", p.stock)
+                    .put("inventory_stock_tracking", p.inventoryStockTracking)
+                    .put("grocery_master_id", p.groceryMasterId ?: JSONObject.NULL)
+                    .put("grocery_stock_tracking", p.groceryStockTracking)
+                    .put("option_groups", posProductOptionGroupsJson(p.optionGroups))
+                    .put("category", p.category ?: JSONObject.NULL))
             } })
             .put("tables", JSONArray().apply { catalog.tables.forEach { t ->
                 put(JSONObject().put("id", t.id).put("label", t.label.take(100)).put("active", t.active)
@@ -127,7 +136,13 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             val p = array.getJSONObject(i)
             PosProduct(p.getString("id"), p.getString("name"), p.getDouble("price"),
                 if (p.isNull("image")) null else p.getString("image"), p.getBoolean("available"),
-                p.optBoolean("delivery_available", true), if (p.isNull("delivery_price")) null else p.getDouble("delivery_price"))
+                p.optBoolean("delivery_available", true), if (p.isNull("delivery_price")) null else p.getDouble("delivery_price"),
+                stock = p.optInt("stock", 0),
+                inventoryStockTracking = p.optBoolean("inventory_stock_tracking", false),
+                groceryMasterId = if (p.isNull("grocery_master_id")) null else p.optString("grocery_master_id"),
+                groceryStockTracking = p.optBoolean("grocery_stock_tracking", false),
+                optionGroups = parsePosProductOptionGroups(p.optJSONArray("option_groups") ?: JSONArray()),
+                category = if (!p.has("category") || p.isNull("category")) null else p.optString("category"))
         } }
         val tables = json.getJSONArray("tables").let { array -> (0 until array.length()).map { i ->
             val t = array.getJSONObject(i)
@@ -172,7 +187,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         .put("items", JSONArray().apply { d.items.forEach { i ->
             put(JSONObject().put("product_id", i.productId).put("name", i.nameSnapshot)
                 .put("price", i.priceSnapshot).put("quantity", i.quantity)
-                .put("request_ids", JSONArray(i.requestIds)))
+                .put("base_price", i.basePriceSnapshot).put("options", JSONObject(i.optionsJson))
+                .put("option_label", i.optionLabel).put("request_ids", JSONArray(i.requestIds)))
         } })
 
     private fun decode(j: JSONObject): PosOfflineDraft {
@@ -185,7 +201,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 val requests = item.getJSONArray("request_ids")
                 PosOfflineDraftItem(item.getString("product_id"), item.getString("name"),
                     item.getDouble("price"), item.getInt("quantity"),
-                    (0 until requests.length()).map(requests::getString))
+                    (0 until requests.length()).map(requests::getString),
+                    basePriceSnapshot = item.optDouble("base_price", item.getDouble("price")),
+                    optionsJson = canonicalPosOptionJson((item.optJSONObject("options") ?: JSONObject()).toString()),
+                    optionLabel = item.optString("option_label", ""))
             })
     }
 
@@ -200,6 +219,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             requireUuid(item.productId)
             require(item.nameSnapshot.isNotBlank() && item.nameSnapshot.length <= 200)
             require(item.priceSnapshot.isFinite() && item.priceSnapshot >= 0)
+            require(item.basePriceSnapshot.isFinite() && item.basePriceSnapshot >= 0)
+            require(item.optionsJson.length <= 5000 && canonicalPosOptionJson(item.optionsJson) == item.optionsJson)
+            require(item.optionLabel.length <= 1000)
             require(item.quantity in 1..99)
             require(item.requestIds.size in setOf(0, item.quantity))
             item.requestIds.forEach(::requireUuid)

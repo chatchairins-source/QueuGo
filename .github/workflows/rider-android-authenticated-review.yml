@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - work-native-rider-auth-review-20261024
+      - work-native-web-parity-20261026
 
 permissions:
   contents: read
@@ -20,16 +21,35 @@ jobs:
         env:
           QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
           QG_RIDER_REVIEW_PASSWORD: ${{ secrets.QG_RIDER_REVIEW_PASSWORD }}
+          QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
+          QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
+          QG_CUSTOMER_REVIEW_PHONE: ${{ secrets.QG_CUSTOMER_REVIEW_PHONE }}
+          QG_CUSTOMER_REVIEW_PASSWORD: ${{ secrets.QG_CUSTOMER_REVIEW_PASSWORD }}
         run: |
-          mkdir -p artifacts/rider-authenticated-review
-          if [ -n "$QG_RIDER_REVIEW_PHONE" ] && [ -n "$QG_RIDER_REVIEW_PASSWORD" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-            printf '{"status":"ready","screenshots":"pending"}\n' > artifacts/rider-authenticated-review/status.json
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            printf '{"status":"skipped","reason":"Repository Actions secrets QG_RIDER_REVIEW_PHONE and QG_RIDER_REVIEW_PASSWORD are not configured"}\n' > artifacts/rider-authenticated-review/status.json
-            echo "::warning::Authenticated Rider capture skipped; configure the two repository Actions secrets"
-          fi
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          roles = {}
+          for role in ("RIDER", "MERCHANT", "CUSTOMER"):
+              names = [f"QG_{role}_REVIEW_PHONE", f"QG_{role}_REVIEW_PASSWORD"]
+              missing = [name for name in names if not os.environ.get(name)]
+              roles[role.lower()] = {"ready": not missing, "missing_secret_names": missing}
+              print(role + "_review_credentials=" + ("present" if not missing else "missing"))
+              if missing:
+                  print(role + "_missing_secret_names=" + ",".join(missing))
+          ready = roles["rider"]["ready"]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("ready=" + str(ready).lower() + "\n")
+          capture_requested = (os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+              or os.environ.get("GITHUB_REF_NAME") == "work-native-rider-auth-review-20261024")
+          report = {"status": "ready" if ready else "skipped",
+              "scope": "credential presence only; not authenticated visual acceptance",
+              "roles": roles, "capture_requested": capture_requested,
+              "screenshots": "pending" if ready and capture_requested else "not_run"}
+          target = Path("artifacts/rider-authenticated-review/status.json")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(json.dumps(report, indent=2) + "\n")
+          PY
       - name: Save review readiness
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -39,7 +59,7 @@ jobs:
 
   capture:
     needs: credential-check
-    if: needs.credential-check.outputs.ready == 'true'
+    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -59,6 +79,43 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: '9.6.0'
+      - name: Prepare native Firebase configs
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:-}" ]; then
+            echo "::warning::Firebase config secret is absent; native Rider APK will build without physical background-push certification"
+            exit 0
+          fi
+          umask 077
+          tmp="$(mktemp)"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$tmp"
+          QG_FIREBASE_CONFIG="$tmp" python3 - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+          p=Path(os.environ['QG_FIREBASE_CONFIG'])
+          data=json.loads(p.read_text())
+          packages={
+              c.get('client_info',{}).get('android_client_info',{}).get('package_name')
+              for c in (data.get('client') or [])
+          }
+          targets={
+              'com.queuego.customer': Path('native-android/customer/google-services.json'),
+              'com.queuego.merchant': Path('native-android/merchant/google-services.json'),
+              'com.queuego.rider': Path('native-android/rider/google-services.json'),
+          }
+          if 'com.queuego.rider' not in packages:
+              raise SystemExit('::error::Firebase config has no com.queuego.rider Android client')
+          for package,target in targets.items():
+              if package in packages:
+                  shutil.copyfile(p,target)
+                  os.chmod(target,0o600)
+                  print(f'Native Firebase config: {package} valid')
+              else:
+                  print(f'::warning::Firebase config has no {package} Android client; that app will build without physical background-push certification')
+          PY
+          rm -f "$tmp"
       - name: Build actual Rider and Merchant debug APKs
         run: gradle -p native-android :rider:assembleDebug :merchant:assembleDebug --no-build-cache --stacktrace
       - name: Enable runner-only Android acceleration
@@ -82,8 +139,20 @@ jobs:
             -accel on -no-window -no-snapshot -no-audio -no-boot-anim -gpu swiftshader \
             -memory 2048 -cores 2 > "$RUNNER_TEMP/queuego-rider-review-emulator.log" 2>&1 &
           timeout 90s "$adb" -s emulator-5554 wait-for-device
+          review_framework_ready() {
+            [ "$("$adb" -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = "1" ] &&
+            [ "$("$adb" -s emulator-5554 shell service check activity | tr -d '\r')" = "Service activity: found" ] &&
+            [ "$("$adb" -s emulator-5554 shell service check window | tr -d '\r')" = "Service window: found" ] &&
+            [ "$("$adb" -s emulator-5554 shell service check package | tr -d '\r')" = "Service package: found" ]
+          }
+          stable_samples=0
           for attempt in $(seq 1 90); do
-            if [ "$("$adb" -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; then exit 0; fi
+            if review_framework_ready; then
+              stable_samples=$((stable_samples + 1))
+              if [ "$stable_samples" -ge 3 ]; then exit 0; fi
+            else
+              stable_samples=0
+            fi
             sleep 5
           done
           cat "$RUNNER_TEMP/queuego-rider-review-emulator.log"

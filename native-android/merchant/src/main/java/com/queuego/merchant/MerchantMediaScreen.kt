@@ -139,16 +139,40 @@ internal fun MerchantMediaScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val cache = remember(context.applicationContext) {
+        MerchantMediaCache(context.applicationContext)
+    }
     var rows by remember { mutableStateOf<List<MerchantMediaItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var uploading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    suspend fun refresh() {
-        loading = true
+    suspend fun refresh(force: Boolean = false) {
+        loading = rows.isEmpty()
+        val cached = if (!force && rows.isEmpty()) {
+            withContext(Dispatchers.IO) {
+                cache.read(auth.session.authUserId)
+            }
+        } else null
+        if (cached != null) {
+            rows = cached.rows
+            loading = false
+            if (cached.fresh) {
+                message = null
+                return
+            }
+        }
         runCatching { loadMerchantMedia(auth) }
-            .onSuccess { rows = it; message = null }
-            .onFailure { message = it.message ?: "โหลดคลังรูปไม่สำเร็จ" }
+            .onSuccess { fresh ->
+                rows = fresh
+                withContext(Dispatchers.IO) {
+                    cache.write(auth.session.authUserId, fresh)
+                }
+                message = null
+            }
+            .onFailure {
+                if (rows.isEmpty()) message = it.message ?: "โหลดคลังรูปไม่สำเร็จ"
+            }
         loading = false
     }
 
@@ -162,7 +186,7 @@ internal fun MerchantMediaScreen(
                     uploadMerchantImage(context, auth, uri, "gallery")
                 }.onSuccess {
                     message = "เก็บรูปในคลังแล้ว"
-                    refresh()
+                    refresh(force = true)
                 }.onFailure {
                     message = "อัปโหลดไม่สำเร็จ: " + (it.message ?: "เกิดข้อผิดพลาด")
                 }
@@ -226,12 +250,7 @@ internal fun MerchantMediaScreen(
         }
 
         when {
-            loading -> item(key = "media-loading") {
-                Box(
-                    Modifier.fillMaxWidth().height(160.dp),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
-            }
+            loading -> Unit
 
             rows.isEmpty() -> item(key = "media-empty") {
                 Box(

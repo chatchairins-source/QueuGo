@@ -420,8 +420,9 @@ ok(
   riderRoot.includes('if (!dispatchPreferencesHydrated) return@LaunchedEffect') &&
   riderRoot.includes('dispatchPreferenceWriteMutex = remember(auth.user.id) { Mutex() }') &&
   riderRoot.includes('dispatchPreferenceWriteMutex.withLock') &&
-  riderRoot.includes('enabled = dispatchPreferencesHydrated && !actionBusy'),
-  'Rider dispatch automation must wait for preference restore and serialize preference writes before Auto Accept/Stop-after-work can act'
+  riderRoot.includes('busy = workPreferencesBusy || !dispatchPreferencesHydrated') &&
+  riderRoot.includes('acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, acknowledged.autoAccept)'),
+  'Rider dispatch automation must wait for server preference hydration and serialize acknowledged preference writes before Auto Accept/Stop-after-work can act'
 );
 
 const riderChat=read('rider/src/main/java/com/queuego/rider/RiderChat.kt');
@@ -570,6 +571,9 @@ ok(
   launchQa.includes('"send-trim-memory", pkg, "RUNNING_CRITICAL"') &&
   launchQa.includes('"send-trim-memory", pkg, "COMPLETE"') &&
   launchQa.includes('adb + ["shell", "am", "kill", pkg]') &&
+  launchQa.includes('adb + ["root"]') &&
+  launchQa.includes('"adb-root-sigkill"') &&
+  !launchQa.includes('"run-as", pkg, "kill", "-9"') &&
   launchQa.includes('verify_three_role_system_kill_recovery()'),
   'Android emulator lifecycle evidence must exercise Customer/Merchant/Rider background system-kill and cold recreation'
 );
@@ -654,7 +658,8 @@ ok(
   riderNavigationMapRuntime.includes('riderAnimator?.cancel()') &&
   riderNavigationMapRuntime.includes('routeLines.clear()') &&
   riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
-  riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
+  !riderNavigationMapRuntime.includes('demandMarkers') &&
+  riderNavigationMapRuntime.includes('lastDemandSignature = null') &&
   riderNavigationMapRuntime.includes('riderSource = null') &&
   riderNavigationMapRuntime.includes('riderStyleInitialized = false') &&
   riderNavigationMapRuntime.includes('lastRenderedRiderPosition = null') &&
@@ -682,7 +687,8 @@ const legacyRiderLongdoMapPath=path.join(root,'rider/src/main/java/com/queuego/r
 ok(
   !fs.existsSync(legacyRiderLongdoMapPath) &&
   riderNavigationMapRuntime.includes('stopMarkers.clear()') &&
-  riderNavigationMapRuntime.includes('demandMarkers.clear()') &&
+  !riderNavigationMapRuntime.includes('demandMarkers') &&
+  riderNavigationMapRuntime.includes('lastDemandSignature = null') &&
   riderNavigationMapRuntime.includes('riderSource = null') &&
   riderNavigationMapRuntime.includes('lastRenderedRiderPosition = null') &&
   riderNavigationMapRuntime.includes('riderPuckHeading = null') &&

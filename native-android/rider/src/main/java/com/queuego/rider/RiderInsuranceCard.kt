@@ -69,7 +69,7 @@ internal fun RiderInsuranceCard(
             )
 
             when {
-                !loaded -> LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 9.dp))
+                !loaded -> Unit
                 policies.isEmpty() -> Text(
                     "ยังไม่มีกรมธรรม์ที่บันทึกใน QueueGo",
                     color = QgMuted,

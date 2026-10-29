@@ -1,5 +1,9 @@
 package com.queuego.customer
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,14 +26,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.NativeSupportTicketApi
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgSectionTitle
+import com.queuego.shared.QueueGoNativeApi
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 @Composable
@@ -40,19 +50,51 @@ fun CustomerSupportScreen(
     onBack: () -> Unit
 ) {
     val api = remember { CustomerExtrasApi() }
+    val evidenceApi = remember { NativeSupportTicketApi() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val cache = remember(context.applicationContext) {
+        CustomerSupportCache(context.applicationContext)
+    }
     var tickets by remember { mutableStateOf<List<CustomerSupportTicket>>(emptyList()) }
     var selectedOrderId by remember { mutableStateOf(initialOrderId ?: "") }
     var category by remember { mutableStateOf("other") }
     var details by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var openingEvidenceId by remember { mutableStateOf<String?>(null) }
+    var selectedEvidenceUri by remember { mutableStateOf<Uri?>(null) }
+    var uploadedEvidenceUri by remember { mutableStateOf<Uri?>(null) }
+    var uploadedEvidencePath by remember { mutableStateOf<String?>(null) }
+    var pendingTicketId by remember { mutableStateOf<String?>(null) }
+    val evidencePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            selectedEvidenceUri = uri
+            uploadedEvidenceUri = null
+            uploadedEvidencePath = null
+        }
+    }
 
-    fun refresh() {
-        scope.launch {
-            runCatching { api.supportTickets(auth) }
-                .onSuccess { tickets = it }
-                .onFailure { message = it.message ?: "โหลดรายการช่วยเหลือไม่สำเร็จ" }
+    suspend fun refresh(force: Boolean = false) {
+        val cached = if (!force && tickets.isEmpty()) {
+            withContext(Dispatchers.IO) { cache.read(auth.user.id) }
+        } else null
+        if (cached != null) {
+            tickets = cached.rows
+            if (cached.fresh) {
+                message = null
+                return
+            }
+        }
+        try {
+            val fresh = api.supportTickets(auth)
+            tickets = fresh
+            withContext(Dispatchers.IO) { cache.write(auth.user.id, fresh) }
+            message = null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            if (tickets.isEmpty()) message = failure.message ?: "โหลดรายการช่วยเหลือไม่สำเร็จ"
         }
     }
 
@@ -74,13 +116,15 @@ fun CustomerSupportScreen(
                 Row(Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = { selectedOrderId = "" },
+                        enabled = pendingTicketId == null,
                         modifier = Modifier.fillMaxWidth()
                     ) { Text(if (selectedOrderId.isBlank()) "✓ เรื่องทั่วไป" else "เรื่องทั่วไป") }
                 }
-                orders.take(10).forEach { order ->
+                orders.take(30).forEach { order ->
                     Spacer(Modifier.height(5.dp))
                     OutlinedButton(
                         onClick = { selectedOrderId = order.id },
+                        enabled = pendingTicketId == null,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text((if (selectedOrderId == order.id) "✓ " else "") + order.number)
@@ -92,6 +136,7 @@ fun CustomerSupportScreen(
                     Spacer(Modifier.height(5.dp))
                     OutlinedButton(
                         onClick = { category = key },
+                        enabled = pendingTicketId == null,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text((if (category == key) "✓ " else "") + label)
@@ -104,28 +149,61 @@ fun CustomerSupportScreen(
                     label = { Text("รายละเอียดปัญหา") },
                     minLines = 4,
                     maxLines = 8,
+                    enabled = pendingTicketId == null,
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { evidencePicker.launch(arrayOf("image/jpeg", "image/png", "image/webp")) },
+                    enabled = pendingTicketId == null,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(selectedEvidenceUri?.lastPathSegment?.substringAfterLast('/')?.take(48)
+                        ?: "เลือกรูปหลักฐาน (ไม่เกิน 5 MB)")
+                }
                 Spacer(Modifier.height(10.dp))
                 Button(
                     onClick = {
                         if (busy || details.trim().length < 10) return@Button
+                        val submittedDetails = details
+                        val submittedOrderId = selectedOrderId.ifBlank { null }
+                        val submittedCategory = category
+                        val submittedEvidenceUri = selectedEvidenceUri
+                        val ticketId = pendingTicketId ?: UUID.randomUUID().toString()
+                        pendingTicketId = ticketId
                         busy = true
                         message = null
-                        val ticketId = UUID.randomUUID().toString()
                         scope.launch {
                             runCatching {
+                                val evidencePath = if (submittedEvidenceUri == null) null else {
+                                    if (uploadedEvidenceUri == submittedEvidenceUri) uploadedEvidencePath
+                                    else evidenceApi.uploadEvidence(
+                                        context,
+                                        auth.session.authUserId,
+                                        auth.session.accessToken,
+                                        submittedEvidenceUri
+                                    ).also {
+                                        uploadedEvidenceUri = submittedEvidenceUri
+                                        uploadedEvidencePath = it
+                                    }
+                                }
                                 api.createSupportTicket(
                                     auth = auth,
                                     ticketId = ticketId,
-                                    orderId = selectedOrderId.ifBlank { null },
-                                    category = category,
-                                    details = details
+                                    orderId = submittedOrderId,
+                                    category = submittedCategory,
+                                    details = submittedDetails,
+                                    evidencePath = evidencePath
                                 )
                             }.onSuccess {
                                 details = ""
+                                selectedEvidenceUri = null
+                                uploadedEvidenceUri = null
+                                uploadedEvidencePath = null
+                                pendingTicketId = null
+                                withContext(Dispatchers.IO) { cache.invalidate(auth.user.id) }
+                                refresh(force = true)
                                 message = "ส่งเรื่องให้ทีม QueueGo แล้ว"
-                                refresh()
                             }.onFailure {
                                 message = it.message ?: "ส่งเรื่องไม่สำเร็จ"
                             }
@@ -135,7 +213,11 @@ fun CustomerSupportScreen(
                     enabled = !busy && details.trim().length >= 10,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (busy) "กำลังส่ง..." else "ส่งเรื่องให้ทีมงาน")
+                    Text(when {
+                        busy -> "กำลังส่ง..."
+                        pendingTicketId != null -> "ตรวจผลคำร้องเดิม"
+                        else -> "ส่งเรื่องให้ทีมงาน"
+                    })
                 }
             }
         }
@@ -153,8 +235,56 @@ fun CustomerSupportScreen(
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(supportStatus(ticket.status), color = QgMuted)
+                        ticket.createdAt?.takeIf { it.isNotBlank() }?.let { createdAt ->
+                            Text(
+                                customerThaiDateTime(createdAt),
+                                color = QgMuted,
+                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall
+                            )
+                        }
                         Spacer(Modifier.height(4.dp))
                         Text(ticket.details)
+                        ticket.evidencePath?.takeIf { it.isNotBlank() }?.let { path ->
+                            Spacer(Modifier.height(7.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    if (openingEvidenceId != null) return@OutlinedButton
+                                    if (!customerEvidencePathBelongsTo(path, auth.session.authUserId)) {
+                                        message = "ลิงก์หลักฐานไม่ถูกต้อง"
+                                        return@OutlinedButton
+                                    }
+                                    openingEvidenceId = ticket.id
+                                    message = null
+                                    scope.launch {
+                                        try {
+                                            val signedUrl = evidenceApi.signedEvidenceUrl(
+                                                auth.session.accessToken,
+                                                path
+                                            )
+                                            val uri = Uri.parse(signedUrl)
+                                            require(uri.scheme == "https" && uri.host ==
+                                                Uri.parse(QueueGoNativeApi.BASE_URL).host &&
+                                                uri.path.orEmpty().startsWith("/storage/v1/object/sign/qg-evidence/")) {
+                                                "ลิงก์หลักฐานไม่ถูกต้อง"
+                                            }
+                                            context.startActivity(
+                                                Intent(Intent.ACTION_VIEW, uri)
+                                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            )
+                                        } catch (cancelled: CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = failure.message ?: "เปิดหลักฐานไม่สำเร็จ"
+                                        } finally {
+                                            openingEvidenceId = null
+                                        }
+                                    }
+                                },
+                                enabled = openingEvidenceId == null
+                            ) {
+                                Text(if (openingEvidenceId == ticket.id) "กำลังเปิด..." else "ดูรูปหลักฐาน")
+                            }
+                        }
                         if (!ticket.adminNote.isNullOrBlank()) {
                             Spacer(Modifier.height(7.dp))
                             HorizontalDivider()
@@ -170,12 +300,19 @@ fun CustomerSupportScreen(
     }
 }
 
+private fun customerEvidencePathBelongsTo(path: String, userId: String): Boolean {
+    if (userId.isBlank() || !path.startsWith("$userId/")) return false
+    val objectName = path.removePrefix("$userId/")
+    return Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(jpg|png|webp)")
+        .matches(objectName)
+}
+
 private val supportCategories = listOf(
     "missing_item" to "สินค้าไม่ครบ",
     "wrong_item" to "สินค้าไม่ตรงรายการ",
     "damaged_food" to "สินค้ามีปัญหา",
-    "rider" to "เกี่ยวกับ Rider",
-    "merchant" to "เกี่ยวกับร้านค้า",
+    "rider" to "ติดต่อเกี่ยวกับไรเดอร์",
+    "merchant" to "ติดต่อเกี่ยวกับร้าน",
     "payment" to "การชำระเงิน",
     "other" to "เรื่องอื่น ๆ"
 )

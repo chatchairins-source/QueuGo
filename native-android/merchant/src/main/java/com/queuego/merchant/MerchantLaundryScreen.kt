@@ -59,10 +59,15 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
     var message by remember(auth.user.id) { mutableStateOf<String?>(null) }
     var loadError by remember(auth.user.id) { mutableStateOf<String?>(null) }
 
-    suspend fun readLatest(showLoading: Boolean) = readMutex.withLock {
+    suspend fun readLatest(showLoading: Boolean, full: Boolean = true) = readMutex.withLock {
         if (showLoading) loading = true
         try {
-            state = api.load(auth)
+            val current = state
+            state = if (full || current?.hubId == null) {
+                api.load(auth)
+            } else {
+                current.copy(orders = api.loadOrders(auth, current.hubId))
+            }
             loadError = null
             if (showLoading) message = null
         } catch (e: CancellationException) { throw e }
@@ -70,13 +75,20 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
         finally { loading = false }
     }
 
-    suspend fun reload() = readLatest(true)
+    suspend fun reload() = readLatest(true, full = true)
+    suspend fun reloadOrders() = readLatest(false, full = false)
 
     LaunchedEffect(auth.user.id, auth.session.accessToken, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var recoveryTick = 0
             while (true) {
-                if (!busy) readLatest(state == null)
-                delay(5_000)
+                if (!busy) {
+                    val current = state
+                    val fullRefresh = current == null || current.hubId == null || recoveryTick % 4 == 0
+                    readLatest(current == null, full = fullRefresh)
+                }
+                recoveryTick += 1
+                delay(15_000)
             }
         }
     }
@@ -91,10 +103,7 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
         }
         Spacer(Modifier.height(10.dp))
 
-        if (loading && current == null) {
-            Text("กำลังโหลด...", color = QgMuted)
-            return
-        }
+        if (loading && current == null) return
         if (current == null) {
             QgCard(Modifier.fillMaxWidth()) { Text("โหลดข้อมูลไม่สำเร็จ", color = QgRed) }
             return
@@ -184,7 +193,7 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
                     scope.launch {
                         try {
                             runCatching { api.orderAction(auth, order.id, action, qty, note, order.status, staff) }
-                                .onSuccess { reload(); message = "อัปเดตงานฝากซักแล้ว" }
+                                .onSuccess { reloadOrders(); message = "อัปเดตงานฝากซักแล้ว" }
                                 .onFailure { if (it is CancellationException) throw it; message = it.message }
                         } finally { busy = false }
                     }

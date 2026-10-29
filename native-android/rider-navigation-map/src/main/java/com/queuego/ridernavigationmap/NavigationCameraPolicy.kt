@@ -196,13 +196,12 @@ internal fun navigationZoom(
         remainingRouteMeters != null && remainingRouteMeters <= 60.0 -> 19.0
         remainingRouteMeters != null && remainingRouteMeters <= 180.0 -> 18.0
         speed == null -> base
-        speed <= 0.8 -> maxOf(base, 18.4)
-        speed <= 5.0 -> 18.4 - (speed - 0.8) * (1.4 / 4.2)
-        speed <= 11.0 -> 17.0 - (speed - 5.0) / 6.0
-        speed <= 18.0 -> 16.0 - (speed - 11.0) / 7.0
-        else -> 15.0
+        speed >= 18.0 -> 15.0
+        speed >= 11.0 -> 16.0
+        speed >= 5.0 -> 17.0
+        speed <= 1.5 -> maxOf(base, 18.0)
+        else -> base
     }
-    target = kotlin.math.round(target * 10.0) / 10.0
     if (accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters > 60f) {
         target = maxOf(14.0, target - 1.0)
     }

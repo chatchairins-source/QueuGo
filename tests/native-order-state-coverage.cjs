@@ -43,7 +43,7 @@ ok(!customerApi.includes('status=in.(arrived')&&!customerApi.includes(',arrived'
 // Merchant
 ok(merchantApi.includes('val riderArrivedCustomerAt: String? = null'),
   'Merchant order model must carry customer arrival timestamp');
-ok(merchantApi.includes('orders?select=id,rider_arrived_customer_at,merchant_ready_estimate_at,merchant_ready_revision&id=in.('),
+ok(merchantApi.includes('orders?select=id,delivery_address,rider_arrived_customer_at,merchant_ready_estimate_at,merchant_ready_revision&id=in.('),
   'Merchant must enrich arrival and readiness from the existing authenticated orders RLS path');
 ok(merchantApi.includes('riderArrivedCustomerAt = arrivals[order.id]') &&
    merchantApi.includes('readyEstimateAt = readyAt[order.id]') &&

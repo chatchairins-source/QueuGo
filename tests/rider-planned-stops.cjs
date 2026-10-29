@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 const source=fs.readFileSync('rider/index.html','utf8');
-const start=source.indexOf('function qgBundleNextOrder('),end=source.indexOf('async function qgLoadLaundryRiderState(',start);
+const start=source.indexOf('function qgBundleNextOrder('),end=source.indexOf('async function readRiderSnapshot(',start);
 assert(start>=0&&end>start,'current Rider bundle-next selector must be locatable');
 const context=vm.createContext({S:{bundleOrders:[]},statusFromRow:o=>o.status});
 vm.runInContext(source.slice(start,end),context);

@@ -762,7 +762,7 @@ def verify_three_role_system_kill_recovery():
         # ActivityManager kill is asynchronous and on some AOSP emulator builds a
         # WebView/renderer binding can keep the debuggable app process alive even
         # after HOME + COMPLETE trim. Poll first. If it is still alive, deliver
-        # SIGKILL as the app UID via run-as. This models abrupt LMK/process death
+        # SIGKILL through the emulator's root adbd. This models abrupt LMK/process death
         # without force-stop semantics, so the subsequent start still exercises
         # ordinary cold recreation rather than Android's stopped-package state.
         kill_mode = "am-kill"
@@ -772,15 +772,25 @@ def verify_three_role_system_kill_recovery():
             time.sleep(0.25)
             remaining = package_pids_optional(pkg)
         if remaining:
-            kill_mode = "run-as-sigkill"
+            # run-as cannot signal a sibling app process on current Android
+            # emulator SELinux policies (runas_app -> untrusted_app is denied).
+            # The AOSP CI AVD supports root adbd, so use it only for this
+            # emulator-only abrupt-death fallback. Keep the PID disappearance
+            # assertion below; this still exercises a real cold process restart.
+            kill_mode = "adb-root-sigkill"
+            root_adbd = subprocess.run(
+                adb + ["root"], capture_output=True, text=True, timeout=20
+            )
+            kill_attempts.append({"mode": "adb-root", "returncode": root_adbd.returncode,
+                                  "stdout": root_adbd.stdout, "stderr": root_adbd.stderr})
+            if root_adbd.returncode == 0:
+                subprocess.run(adb + ["wait-for-device"], capture_output=True, text=True, timeout=30)
             for pid in remaining:
-                killed = subprocess.run(
-                    adb + ["shell", "run-as", pkg, "kill", "-9", str(pid)],
-                    capture_output=True,
-                    text=True,
-                    timeout=15,
-                )
-                kill_attempts.append({"mode": "run-as-sigkill", "pid": pid, "returncode": killed.returncode,
+                if root_adbd.returncode != 0:
+                    break
+                killed = subprocess.run(adb + ["shell", "kill", "-9", str(pid)],
+                                        capture_output=True, text=True, timeout=15)
+                kill_attempts.append({"mode": "adb-root-sigkill", "pid": pid, "returncode": killed.returncode,
                                       "stdout": killed.stdout, "stderr": killed.stderr})
             kill_deadline = time.time() + 5
             observed = package_pids_optional(pkg)

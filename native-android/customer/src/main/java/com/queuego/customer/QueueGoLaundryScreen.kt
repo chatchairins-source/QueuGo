@@ -67,6 +67,9 @@ fun LaundryNativeScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val journal = remember(auth.user.id) { LaundryCheckoutJournal(context, auth.user.id) }
+    val contentCache = remember(context.applicationContext) {
+        CustomerLaundryContentCache(context.applicationContext)
+    }
     val checkout = remember(auth.user.id) { CustomerCheckoutRecovery<PendingLaundryCheckout, org.json.JSONObject>(journal) }
     var checkoutPending by remember(auth.user.id) { mutableStateOf(false) }
     var catalog by remember { mutableStateOf<LaundryCatalog?>(null) }
@@ -79,47 +82,61 @@ fun LaundryNativeScreen(
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var catalogFailed by remember { mutableStateOf(false) }
-    var servicesLoading by remember { mutableStateOf(false) }
-    var servicesFailed by remember { mutableStateOf(false) }
     var catalogReload by remember { mutableStateOf(0) }
-    var servicesReload by remember { mutableStateOf(0) }
 
     LaunchedEffect(auth.user.id, catalogReload) {
-        loading = true
+        loading = catalog == null
         catalogFailed = false
         checkoutPending = withContext(Dispatchers.IO) { journal.hasPending() }
+
+        val cached = if (catalogReload == 0 && catalog == null) {
+            withContext(Dispatchers.IO) { contentCache.read() }
+        } else null
+        if (cached != null) {
+            catalog = cached.value
+            loading = false
+            if (cached.fresh) {
+                return@LaunchedEffect
+            }
+        }
+
         runCatching { api.catalog(auth) }
-            .onSuccess { catalog = it }
-            .onFailure { if (it is CancellationException) throw it; catalogFailed = true; message = it.message ?: "โหลดบริการฝากซักไม่สำเร็จ" }
+            .onSuccess { fresh ->
+                catalog = fresh
+                withContext(Dispatchers.IO) { contentCache.write(fresh) }
+                val selectedId = selectedHub?.id
+                if (selectedId != null) {
+                    val refreshedHub = fresh.hubs.firstOrNull { it.id == selectedId }
+                    if (refreshedHub == null) {
+                        selectedHub = null
+                        services = emptyList()
+                        selectedService = null
+                    } else {
+                        selectedHub = refreshedHub
+                        services = fresh.servicesByHub[selectedId].orEmpty()
+                        selectedService = selectedService?.let { old ->
+                            services.firstOrNull { it.id == old.id }
+                        } ?: services.firstOrNull()
+                    }
+                }
+                message = null
+            }
+            .onFailure {
+                if (it is CancellationException) throw it
+                if (catalog == null) {
+                    catalogFailed = true
+                    message = it.message ?: "โหลดบริการฝากซักไม่สำเร็จ"
+                }
+            }
         loading = false
     }
 
     fun chooseHub(hub: LaundryHub) {
         if (busy || checkoutPending) return
         selectedHub = hub
-        services = emptyList()
-        selectedService = null
+        services = catalog?.servicesByHub?.get(hub.id).orEmpty()
+        selectedService = services.firstOrNull()
         quantity = ""
-    }
-
-    // Changing shops cancels the old read before another shop can own its result.
-    LaunchedEffect(auth.user.id, selectedHub?.id, servicesReload) {
-        val hub = selectedHub ?: return@LaunchedEffect
-        servicesLoading = true
-        servicesFailed = false
-        services = emptyList()
-        selectedService = null
-        try {
-            services = api.services(auth, hub.id)
-            selectedService = services.firstOrNull()
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (e: Exception) {
-            servicesFailed = true
-            message = e.message ?: "โหลดบริการของร้านไม่สำเร็จ"
-        } finally {
-            servicesLoading = false
-        }
     }
 
     fun submitCheckout() {
@@ -203,15 +220,7 @@ fun LaundryNativeScreen(
         }
         Spacer(Modifier.height(14.dp))
         when {
-            loading -> Row(
-                Modifier.fillMaxWidth().padding(vertical = 28.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(9.dp))
-                Text("กำลังโหลดร้านซัก...", color = QgMuted)
-            }
+            loading -> Unit
             catalogFailed -> OutlinedButton(onClick = { catalogReload++ }) { Text("ลองโหลดร้านอีกครั้ง") }
             catalog?.featureEnabled == false -> QgCard(Modifier.fillMaxWidth()) {
                 Column {
@@ -252,11 +261,7 @@ fun LaundryNativeScreen(
                 QgSectionTitle(selectedHub!!.name, "เลือกบริการ")
                 Spacer(Modifier.height(8.dp))
 
-                if (servicesLoading) {
-                    CircularProgressIndicator()
-                } else if (servicesFailed) {
-                    OutlinedButton(onClick = { servicesReload++ }) { Text("ลองโหลดบริการอีกครั้ง") }
-                } else if (services.isEmpty()) {
+                if (services.isEmpty()) {
                     QgCard(Modifier.fillMaxWidth()) { Text("ร้านนี้ยังไม่มีบริการที่เปิดขาย", color = QgMuted) }
                 } else services.forEach { service ->
                     QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable {
@@ -349,7 +354,7 @@ fun LaundryNativeScreen(
                 Spacer(Modifier.height(10.dp))
                 Button(
                     onClick = { submitCheckout() },
-                    enabled = !busy && !checkoutPending && !servicesLoading && !servicesFailed && selectedService != null && location != null && address.isNotBlank(),
+                    enabled = !busy && !checkoutPending && selectedService != null && location != null && address.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().height(56.dp)
                 ) {
                     if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)

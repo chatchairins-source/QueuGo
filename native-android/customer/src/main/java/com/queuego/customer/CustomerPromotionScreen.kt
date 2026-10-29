@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgCard
@@ -28,6 +28,8 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QueueGoNativeApi
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal data class CustomerPromotion(
     val shopId: String,
@@ -65,19 +67,36 @@ internal fun CustomerPromotionScreen(
     onOpenShop: (String) -> Unit
 ) {
     val api = remember { CustomerPromotionApi() }
+    val context = LocalContext.current
+    val cache = remember(context.applicationContext) {
+        CustomerPromotionCache(context.applicationContext)
+    }
     var loading by remember { mutableStateOf(true) }
     var rows by remember { mutableStateOf<List<CustomerPromotion>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        loading = true
+        loading = rows.isEmpty()
+        val cached = if (rows.isEmpty()) {
+            withContext(Dispatchers.IO) { cache.read() }
+        } else null
+        if (cached != null) {
+            rows = cached.rows
+            loading = false
+            if (cached.fresh) {
+                error = null
+                return@LaunchedEffect
+            }
+        }
         try {
-            rows = api.publicPromotions()
+            val fresh = api.publicPromotions()
+            rows = fresh
+            withContext(Dispatchers.IO) { cache.write(fresh) }
             error = null
         } catch (failure: CancellationException) {
             throw failure
         } catch (failure: Exception) {
-            error = failure.message ?: "โหลดโปรโมชั่นไม่สำเร็จ"
+            if (rows.isEmpty()) error = failure.message ?: "โหลดโปรโมชั่นไม่สำเร็จ"
         } finally {
             loading = false
         }
@@ -97,7 +116,7 @@ internal fun CustomerPromotionScreen(
         Spacer(Modifier.height(10.dp))
 
         when {
-            loading -> CircularProgressIndicator()
+            loading -> Unit
             error != null -> Text(error!!, color = QgRed)
             rows.isEmpty() -> Text("ยังไม่มีโปรโมชั่นที่เปิดใช้งาน", color = QgMuted)
             else -> rows.forEach { promotion ->

@@ -80,13 +80,18 @@ class RiderNavigationIntegrationTest {
     @Test fun marketStopsPreservePickupOrderBeforeCustomer() {
         val pickups = listOf(
             MarketPickup("p1", "PICKED_UP", "ร้าน A", null, 10.0, 14.98, 103.08),
-            MarketPickup("p2", "READY", "ร้าน B", null, 20.0, 14.99, 103.09)
+            MarketPickup("p2", "READY", "ร้าน B", null, 20.0, 14.99, 103.09),
+            MarketPickup("p-cancelled", "CANCELLED", "ยกเลิก", null, 0.0, 15.01, 103.10)
         )
         val stops = riderNavigationStops(job(marketOrderId = "market-1"), pickups, emptyList())
         assertEquals(listOf(1, 2, 3), stops.map { it.sequence })
         assertTrue(stops[0].completed)
         assertFalse(stops[1].completed)
+        assertTrue(stops[0].numbered)
+        assertTrue(stops[1].numbered)
         assertEquals(NavigationStopKind.DROPOFF, stops[2].kind)
+        assertFalse(stops[2].numbered)
+        assertFalse(stops.any { it.id == "pickup:p-cancelled" })
     }
 
     @Test fun unknownPendingPickupBlocksRoutingPastIt() {
@@ -95,16 +100,10 @@ class RiderNavigationIntegrationTest {
         assertTrue(stops.isEmpty())
     }
 
-    @Test fun offlineIdleMapStaysManualUntilOnlineOrWorkExists() {
+    @Test fun idleMapStaysManualUntilNavigationWorkExists() {
         assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.FOLLOW))
         assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.FREE_PAN))
         assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.OVERVIEW))
-    }
-
-    @Test fun onlineReadyMapFollowsHeadingButStillRespectsManualPan() {
-        assertTrue(riderNavigationAutoFollow(false, NavigationViewMode.FOLLOW, online = true))
-        assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.FREE_PAN, online = true))
-        assertFalse(riderNavigationAutoFollow(false, NavigationViewMode.OVERVIEW, online = true))
     }
 
     @Test fun activeJobStartsFollowCameraButRespectsManualPan() {

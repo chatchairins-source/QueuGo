@@ -31,4 +31,12 @@ class RiderPassengerTest {
         assertEquals(before.customerCash,after.customerCash)
         assertEquals(before.deliveryFee,after.deliveryFee)
     }
+    @Test fun passengerCompletionRequiresAValidCashAmountBeforeTheConfirmationSwipe() {
+        assertTrue(riderPassengerCashConfirmReady(0.0))
+        assertTrue(riderPassengerCashConfirmReady(50.0))
+        assertFalse(riderPassengerCashConfirmReady(null))
+        assertFalse(riderPassengerCashConfirmReady(-1.0))
+        assertFalse(riderPassengerCashConfirmReady(Double.NaN))
+        assertFalse(riderPassengerCashConfirmReady(Double.POSITIVE_INFINITY))
+    }
 }

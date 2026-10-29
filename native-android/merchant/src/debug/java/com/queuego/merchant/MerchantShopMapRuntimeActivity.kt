@@ -25,7 +25,7 @@ class MerchantShopMapRuntimeActivity : ComponentActivity() {
                     recenterPoint = null,
                     recenterToken = 0,
                     modifier = Modifier.fillMaxSize(),
-                    onCenterChanged = {},
+                    onPointSelected = {},
                     onReady = { ready -> if (ready) mapReady.countDown() }
                 )
             }

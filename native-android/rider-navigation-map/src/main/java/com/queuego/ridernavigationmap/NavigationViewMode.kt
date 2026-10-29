@@ -1,5 +1,7 @@
 package com.queuego.ridernavigationmap
 
+// Manual zoom/rotate/tilt needs enough idle time before the navigation camera
+// resumes FOLLOW; 110 ms stole multi-touch gestures from the rider.
 const val NAVIGATION_FREE_PAN_AUTO_FOLLOW_MS = 8_000L
 
 enum class NavigationViewMode {
@@ -42,8 +44,8 @@ class NavigationViewModeController(
         return state
     }
 
-    fun onActiveStopChanged(): NavigationViewModeState {
-        if (state.mode == NavigationViewMode.OVERVIEW) {
+    fun onActiveStopChanged(navigationActive: Boolean): NavigationViewModeState {
+        if (!navigationActive && state.mode == NavigationViewMode.OVERVIEW) {
             state = stateFor(NavigationViewMode.FOLLOW)
         }
         return state

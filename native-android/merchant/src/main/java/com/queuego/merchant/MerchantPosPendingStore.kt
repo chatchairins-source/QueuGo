@@ -16,11 +16,23 @@ data class PosEditIntent(
     val tableId: String?,
     val productId: String,
     val quantity: Int,
-    val note: String
+    val note: String,
+    val optionsJson: String? = null
 ) {
-    fun body(): JSONObject = JSONObject().put("p_request", requestId).put("p_order", billId ?: JSONObject.NULL)
-        .put("p_type", type).put("p_table", tableId ?: JSONObject.NULL)
-        .put("p_product", productId).put("p_quantity", quantity).put("p_note", note)
+    fun body(): JSONObject {
+        val payload = JSONObject().put("p_request", requestId).put("p_order", billId ?: JSONObject.NULL)
+            .put("p_type", type).put("p_table", tableId ?: JSONObject.NULL)
+            .put("p_product", productId).put("p_quantity", quantity).put("p_note", note)
+        optionsJson?.let { payload.put("p_options", JSONObject(it)) }
+        return payload
+    }
+
+    fun optionBody(): JSONObject {
+        require(optionsJson != null) { "ไม่พบตัวเลือกของรายการ POS ค้าง" }
+        return JSONObject().put("p_order", billId ?: JSONObject.NULL).put("p_type", type)
+            .put("p_table", tableId ?: JSONObject.NULL).put("p_product", productId)
+            .put("p_note", note).put("p_options", JSONObject(optionsJson)).put("p_request", requestId)
+    }
 }
 
 /** One unresolved edit per authenticated actor; caller supplies an app-private no-backup root. */
@@ -43,7 +55,8 @@ class MerchantPosPendingStore(private val root: File) {
         require(UUID.fromString(request).toString() == request)
         return PosEditIntent(request, if (body.isNull("p_order")) null else body.getString("p_order"), body.getString("p_type"),
             if (body.isNull("p_table")) null else body.getString("p_table"),
-            body.getString("p_product"), body.getInt("p_quantity"), body.getString("p_note"))
+            body.getString("p_product"), body.getInt("p_quantity"), body.getString("p_note"),
+            body.optJSONObject("p_options")?.let { canonicalPosOptionJson(it.toString()) })
             .also(::validate)
     }
 
@@ -81,6 +94,10 @@ class MerchantPosPendingStore(private val root: File) {
         require(intent.quantity in setOf(-1, 1))
         require(intent.billId != null || intent.quantity == 1)
         require(intent.note.length <= 500 && intent.note == intent.note.trim())
+        intent.optionsJson?.let {
+            require(intent.quantity == 1)
+            require(it.length <= 5000 && canonicalPosOptionJson(it) == it)
+        }
         require(intent.type != "TAKEAWAY" || intent.tableId == null)
     }
 }

@@ -3,6 +3,7 @@ package com.queuego.merchant
 import com.queuego.shared.nativeOrderNumber
 
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.QueueGoHttpException
 import com.queuego.shared.nativePosPermissionAllowed
 import com.queuego.shared.QueueGoNativeApi
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +23,21 @@ data class PosProduct(
     val image: String?,
     val available: Boolean,
     val deliveryAvailable: Boolean = true,
-    val deliveryPrice: Double? = null
+    val deliveryPrice: Double? = null,
+    val stock: Int = 0,
+    val inventoryStockTracking: Boolean = false,
+    val groceryMasterId: String? = null,
+    val groceryStockTracking: Boolean = false,
+    val optionGroups: List<PosProductOptionGroup> = emptyList(),
+    val category: String? = null
 )
+
+internal fun posProductInventoryTracked(product: PosProduct): Boolean =
+    product.inventoryStockTracking ||
+        (!product.groceryMasterId.isNullOrBlank() && product.groceryStockTracking)
+
+internal fun posProductSoldOut(product: PosProduct): Boolean =
+    posProductInventoryTracked(product) && product.stock <= 0
 
 data class PosTable(
     val id: String,
@@ -31,6 +45,79 @@ data class PosTable(
     val active: Boolean,
     val qrToken: String? = null
 )
+
+data class PosShiftHistory(
+    val id: String,
+    val cashierName: String,
+    val openedAt: String,
+    val closedAt: String?,
+    val openingFloat: Double,
+    val expectedCash: Double?,
+    val countedCash: Double?,
+    val variance: Double?
+)
+
+// Read-only reconciliation after an uncertain shift RPC. Never repeat the mutation
+// just because the response or a subsequent refresh was lost.
+internal fun posOpenShiftMatches(shift: PosCashShift?, requestedOpening: Double): Boolean =
+    shift?.open == true &&
+        shift.openingFloat != null &&
+        requestedOpening.isFinite() &&
+        kotlin.math.abs(shift.openingFloat - requestedOpening) < 0.005
+
+internal fun posCloseShiftMatches(
+    currentShift: PosCashShift?,
+    history: List<PosShiftHistory>,
+    shiftId: String?,
+    requestedCountedCash: Double
+): Boolean {
+    if (currentShift?.open != false || shiftId.isNullOrBlank() || !requestedCountedCash.isFinite()) {
+        return false
+    }
+    val closed = history.firstOrNull { it.id == shiftId } ?: return false
+    val counted = closed.countedCash ?: return false
+    return !closed.closedAt.isNullOrBlank() &&
+        kotlin.math.abs(counted - requestedCountedCash) < 0.005
+}
+
+data class PosCodeLookup(
+    val productId: String,
+    val name: String,
+    val available: Boolean,
+    val posAvailable: Boolean
+)
+
+data class PosProductCode(
+    val id: String,
+    val productId: String,
+    val productName: String,
+    val type: String,
+    val code: String
+)
+
+data class PosCashShift(
+    val open: Boolean,
+    val expectedCash: Double?,
+    val openingFloat: Double?,
+    val cashierName: String?,
+    val cashInTotal: Double? = null,
+    val cashOutTotal: Double? = null,
+    val id: String? = null
+)
+
+// Only a PAID + CLOSED bill for the same method and tender can acknowledge the checkout.
+internal fun posPaymentReceiptMatches(
+    order: JSONObject?, id: String, method: String, cashReceived: Double?
+): Boolean {
+    if (order == null || order.optString("id") != id ||
+        order.optString("payment_status") != "PAID" ||
+        order.optString("bill_status") != "CLOSED" ||
+        order.optString("payment_method") != method) return false
+    if (method != "cash") return true
+    val actual = order.optDouble("cash_tendered", Double.NaN)
+    return actual.isFinite() && cashReceived != null && cashReceived.isFinite() &&
+        kotlin.math.abs(actual - cashReceived) < 0.005
+}
 
 data class PosBill(
     val id: String,
@@ -77,11 +164,72 @@ data class PosStaff(
     )
 }
 
+data class PosItemSalesRow(
+    val name: String,
+    val quantity: Double,
+    val bills: Int,
+    val sales: Double
+)
+
+data class PosItemSalesReport(
+    val itemCount: Int,
+    val items: List<PosItemSalesRow>
+)
+
+data class PosHourlySalesRow(
+    val hour: Int,
+    val bills: Int,
+    val sales: Double
+)
+
 data class PosOwnerDashboard(
     val dineIn: Double,
     val takeaway: Double,
-    val orders: Int
+    val delivery: Double,
+    val gp: Double,
+    val orders: Int,
+    val averageTicket: Double = 0.0,
+    val cashSales: Double = 0.0,
+    val discounts: Double = 0.0,
+    val refunds: Double = 0.0,
+    val voids: Int = 0,
+    val changePercent: Double? = null,
+    val hourlySales: List<PosHourlySalesRow> = emptyList()
 )
+
+internal fun merchantPosOwnerDashboard(raw: JSONObject): PosOwnerDashboard {
+    val hourlyRows = raw.optJSONArray("hourly_sales")
+    return PosOwnerDashboard(
+        dineIn = raw.optDouble("DINE_IN", 0.0),
+        takeaway = raw.optDouble("TAKEAWAY", 0.0),
+        delivery = raw.optDouble("DELIVERY", 0.0),
+        gp = raw.optDouble("GP", 0.0),
+        orders = raw.optInt("orders", 0),
+        averageTicket = raw.optDouble("average_ticket", 0.0),
+        cashSales = raw.optDouble("cash_sales", 0.0),
+        discounts = raw.optDouble("discounts", 0.0),
+        refunds = raw.optDouble("refunds", 0.0),
+        voids = raw.optInt("voids", 0),
+        changePercent = if (raw.has("change_percent") && !raw.isNull("change_percent")) {
+            raw.optDouble("change_percent")
+        } else {
+            null
+        },
+        hourlySales = if (hourlyRows == null) {
+            emptyList()
+        } else {
+            (0 until hourlyRows.length()).mapNotNull { index ->
+                hourlyRows.optJSONObject(index)?.let { row ->
+                    PosHourlySalesRow(
+                        hour = row.optInt("hour"),
+                        bills = row.optInt("bills"),
+                        sales = row.optDouble("sales", 0.0)
+                    )
+                }
+            }
+        }
+    )
+}
 
 data class PosHistoryRow(
     val id: String,
@@ -161,7 +309,9 @@ class MerchantPosApi(
             pendingStore.prepare(auth.session.authUserId, intent)
         }
         val raw = try {
-            if (pending.billId == null) {
+            if (pending.optionsJson != null) {
+                http.rpc("pos_add_product_with_options", auth.session.accessToken, pending.optionBody())
+            } else if (pending.billId == null) {
                 val sessionResult = http.rpc("check_active_session", auth.session.accessToken,
                     JSONObject().put("p_session_id", auth.session.sessionId))
                 val active = when (sessionResult) {
@@ -217,11 +367,25 @@ class MerchantPosApi(
                 "pos_tables?select=id,label,active,qr_token&shop_id=eq." + http.enc(shopId) + "&order=label.asc",
                 auth.session.accessToken
             )) }
-            val products = async { http.array(http.get(
-                "products?select=id,name,price,pos_price,delivery_price,image,available,pos_available,delivery_available" +
-                    "&shop_id=eq." + http.enc(shopId) + "&order=name.asc",
-                auth.session.accessToken
-            )) }
+            val products = async {
+                val scope = "&shop_id=eq." + http.enc(shopId) + "&order=name.asc"
+                val base = "products?select=id,name,category,price,pos_price,delivery_price,image,available,pos_available," +
+                    "delivery_available,variants,stock,"
+                try {
+                    http.array(http.get(
+                        base + "inventory_stock_tracking,grocery_master_id,grocery_stock_tracking" + scope,
+                        auth.session.accessToken
+                    ))
+                } catch (error: QueueGoHttpException) {
+                    if (error.statusCode != 400 ||
+                        !error.message.orEmpty().contains("inventory_stock_tracking", ignoreCase = true)
+                    ) throw error
+                    http.array(http.get(
+                        base + "grocery_master_id,grocery_stock_tracking" + scope,
+                        auth.session.accessToken
+                    ))
+                }
+            }
             val billColumns = "select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status," +
                 "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at"
             val bills = async { http.array(http.get(
@@ -303,7 +467,13 @@ class MerchantPosApi(
                         } else true,
                         deliveryPrice = if (r.has("delivery_price") && !r.isNull("delivery_price")) {
                             r.optDouble("delivery_price")
-                        } else null
+                        } else null,
+                        stock = r.optInt("stock", 0),
+                        inventoryStockTracking = r.optBoolean("inventory_stock_tracking", false),
+                        groceryMasterId = nullableString(r, "grocery_master_id"),
+                        groceryStockTracking = r.optBoolean("grocery_stock_tracking", false),
+                        optionGroups = parsePosProductOptionGroups(r.optJSONArray("variants") ?: JSONArray()),
+                        category = nullableString(r, "category")?.trim()?.takeIf { it.isNotEmpty() }
                     )
                 )
             }
@@ -350,10 +520,11 @@ class MerchantPosApi(
         tableId: String?,
         productId: String,
         note: String,
-        requestId: String = UUID.randomUUID().toString()
+        requestId: String = UUID.randomUUID().toString(),
+        optionsJson: String? = null
     ): String {
         return submitPendingEdit(auth, PosEditIntent(requestId, currentBillId?.takeIf { it.isNotBlank() },
-            type, tableId, productId, 1, note.trim()))
+            type, tableId, productId, 1, note.trim(), optionsJson))
     }
 
     suspend fun submitOfflineDraft(auth: NativeAuth, draft: PosOfflineDraft): String {
@@ -363,7 +534,7 @@ class MerchantPosApi(
         val items = JSONArray().apply {
             draft.items.forEach { item ->
                 put(JSONObject().put("product_id", item.productId).put("quantity", item.quantity)
-                    .put("options", JSONObject()).put("request_ids", JSONArray(item.requestIds)))
+                    .put("options", JSONObject(item.optionsJson)).put("request_ids", JSONArray(item.requestIds)))
             }
         }
         val raw = http.rpc("pos_submit_offline_draft", auth.session.accessToken,
@@ -406,6 +577,112 @@ class MerchantPosApi(
         )
     }
 
+    // Production cash-register RPCs are cashier-scoped and server-authoritative.
+    // Never manufacture an open shift from a local cache or auto-open one at checkout.
+    suspend fun currentCashShift(auth: NativeAuth): PosCashShift =
+        parseCashShift(http.rpc("pos_current_shift", auth.session.accessToken, JSONObject()))
+
+    suspend fun shiftHistory(auth: NativeAuth, limit: Int = 20): List<PosShiftHistory> {
+        val raw = http.rpc(
+            "pos_register_shift_history", auth.session.accessToken,
+            JSONObject().put("p_limit", limit.coerceIn(1, 50))
+        )
+        val rows = when (raw) {
+            is JSONArray -> raw
+            is JSONObject -> raw.optJSONArray("pos_register_shift_history")
+                ?: raw.optJSONArray("history") ?: JSONArray()
+            is String -> runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
+            else -> JSONArray()
+        }
+        return buildList {
+            for (index in 0 until rows.length()) {
+                val row = rows.optJSONObject(index) ?: continue
+                val id = row.optString("id")
+                if (id.isBlank()) continue
+                add(PosShiftHistory(
+                    id = id,
+                    cashierName = row.optString("cashier_name").ifBlank { "แคชเชียร์" },
+                    openedAt = row.optString("opened_at"),
+                    closedAt = nullableString(row, "closed_at"),
+                    openingFloat = row.optDouble("opening_float", 0.0),
+                    expectedCash = nullableDouble(row, "expected_cash"),
+                    countedCash = nullableDouble(row, "counted_cash"),
+                    variance = nullableDouble(row, "variance")
+                ))
+            }
+        }
+    }
+
+    suspend fun openCashShift(auth: NativeAuth, openingFloat: Double): PosCashShift {
+        require(openingFloat.isFinite() && openingFloat in 0.0..999999999.0) {
+            "เงินสดต้นกะไม่ถูกต้อง"
+        }
+        val result = parseCashShift(http.rpc(
+            "pos_open_shift", auth.session.accessToken,
+            JSONObject().put("p_opening_float", openingFloat).put("p_note", "")
+        ))
+        require(result.open) { "Server ยังไม่ยืนยันการเปิดกะ" }
+        return result
+    }
+
+    suspend fun closeCashShift(auth: NativeAuth, countedCash: Double): PosCashShift {
+        require(countedCash.isFinite() && countedCash in 0.0..999999999.0) {
+            "ยอดเงินสดที่นับไม่ถูกต้อง"
+        }
+        val result = parseCashShift(http.rpc(
+            "pos_close_shift", auth.session.accessToken,
+            JSONObject().put("p_counted_cash", countedCash).put("p_note", "")
+        ))
+        require(!result.open) { "Server ยังไม่ยืนยันการปิดกะ" }
+        return result
+    }
+
+    suspend fun recordCashMovement(
+        auth: NativeAuth,
+        type: String,
+        amount: Double,
+        reason: String,
+        requestId: String
+    ): String {
+        requireNoPendingEdit(auth)
+        require(type == "cash_in" || type == "cash_out") { "ประเภทเงินเข้าออกไม่ถูกต้อง" }
+        require(amount.isFinite() && amount in 0.01..999999999.0 &&
+            kotlin.math.abs(amount * 100 - kotlin.math.round(amount * 100)) < 0.00001) {
+            "จำนวนเงินต้องมากกว่า 0 และไม่เกิน 2 ตำแหน่งทศนิยม"
+        }
+        require(reason.trim().length in 5..500) { "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร" }
+        require(runCatching { UUID.fromString(requestId) }.isSuccess) { "รหัสรายการไม่ถูกต้อง" }
+        val receipt = objectValue(http.rpc(
+            "pos_record_cash_movement",
+            auth.session.accessToken,
+            JSONObject().put("p_type", type).put("p_amount", amount)
+                .put("p_reason", reason.trim()).put("p_request", requestId)
+        ))
+        val eventId = receipt.optString("id")
+        val recordedAmount = receipt.optDouble("amount", Double.NaN)
+        val signed = if (type == "cash_out") -amount else amount
+        check(eventId.isNotBlank() && receipt.optString("event_type") == type &&
+            receipt.optString("reason") == reason.trim() &&
+            recordedAmount.isFinite() && kotlin.math.abs(recordedAmount - signed) < 0.001) {
+            "Server ยังไม่ยืนยันผลเงินเข้าออก กรุณาตรวจรายการเดิม"
+        }
+        return eventId
+    }
+
+    private fun parseCashShift(raw: Any): PosCashShift {
+        val value = objectValue(raw)
+        require(value.has("open")) { "Server ไม่ส่งสถานะกะรับเงิน" }
+        return PosCashShift(
+            open = value.optBoolean("open"),
+            expectedCash = nullableDouble(value, "expected_cash"),
+            openingFloat = nullableDouble(value, "opening_float"),
+            cashierName = nullableString(value, "cashier_name"),
+            cashInTotal = nullableDouble(value, "cash_in_total"),
+            cashOutTotal = nullableDouble(value, "cash_out_total"),
+            id = nullableString(value, "id")
+        )
+    }
+
     suspend fun takePayment(
         auth: NativeAuth,
         billId: String,
@@ -424,7 +701,23 @@ class MerchantPosApi(
                 .put("p_method", method)
                 .put("p_cash_received", if (method == "cash") cashReceived ?: JSONObject.NULL else JSONObject.NULL)
         )
-        return scalarId(raw) ?: billId
+        check(posPaymentReceiptMatches(objectValue(raw), billId, method, cashReceived)) {
+            "Server ยังไม่ยืนยันการชำระเงิน กรุณาตรวจสถานะบิลเดิมก่อนกดรับเงินซ้ำ"
+        }
+        return billId
+    }
+
+    // Read only. An RPC timeout can occur AFTER the server committed the cash payment.
+    // Reconcile the exact request against the authoritative paid order, never send another charge.
+    suspend fun paymentConfirmed(
+        auth: NativeAuth, billId: String, method: String, cashReceived: Double?
+    ): Boolean {
+        val rows = http.array(http.get(
+            "orders?select=id,sales_channel,payment_status,bill_status,payment_method,cash_tendered" +
+                "&id=eq." + http.enc(billId) + "&sales_channel=eq.POS&limit=1",
+            auth.session.accessToken
+        ))
+        return posPaymentReceiptMatches(rows.optJSONObject(0), billId, method, cashReceived)
     }
 
     suspend fun takeCash(auth: NativeAuth, billId: String, received: Double): String =
@@ -456,6 +749,95 @@ class MerchantPosApi(
             auth.session.accessToken,
             JSONObject().put("p_product", productId).put("p_price", price)
         )
+    }
+
+    // Reuse the same shop-scoped, permission-checked POS product code RPCs as Web.
+    suspend fun lookupProductCode(auth: NativeAuth, rawCode: String): PosCodeLookup? {
+        val code = rawCode.trim().uppercase(java.util.Locale.ROOT)
+        require(code.length in 1..64) { "รหัสสินค้าต้องยาว 1–64 ตัวอักษร" }
+        val raw = http.rpc(
+            "pos_product_code_lookup", auth.session.accessToken,
+            JSONObject().put("p_code", code)
+        )
+        if (raw == JSONObject.NULL) return null
+        val obj = objectValue(raw)
+        if (obj.length() == 0) return null
+        val productId = obj.optString("product_id")
+        require(productId.isNotBlank() && obj.optString("code") == code) {
+            "Server ส่งรหัสสินค้าไม่ตรงกับที่ค้นหา"
+        }
+        return PosCodeLookup(
+            productId = productId,
+            name = obj.optString("name"),
+            available = obj.optBoolean("available", false),
+            posAvailable = obj.optBoolean("pos_available", false)
+        )
+    }
+
+    suspend fun productCodes(auth: NativeAuth): List<PosProductCode> {
+        val raw = http.rpc("pos_product_codes_for_shop", auth.session.accessToken, JSONObject())
+        val arr = when (raw) {
+            is JSONArray -> raw
+            is String -> JSONArray(raw)
+            is JSONObject -> raw.optJSONArray("pos_product_codes_for_shop")
+                ?: raw.optJSONArray("data")
+                ?: error("Server ส่งข้อมูลรหัสสินค้าไม่ถูกต้อง")
+            else -> error("Server ส่งข้อมูลรหัสสินค้าไม่ถูกต้อง")
+        }
+        return buildList {
+            for (index in 0 until arr.length()) {
+                val row = arr.optJSONObject(index) ?: error("ข้อมูลรหัสสินค้าผิดรูปแบบ")
+                val id = row.optString("id")
+                val product = row.optString("product_id")
+                require(id.isNotBlank() && product.isNotBlank()) { "รหัสสินค้าจาก Server ไม่ครบ" }
+                add(PosProductCode(
+                    id = id, productId = product,
+                    productName = row.optString("product_name"),
+                    type = row.optString("code_type"),
+                    code = row.optString("code")
+                ))
+            }
+        }
+    }
+
+    suspend fun saveProductCode(auth: NativeAuth, productId: String, type: String, code: String): String {
+        requireNoPendingEdit(auth)
+        val value = code.trim().uppercase(java.util.Locale.ROOT)
+        require(type in setOf("barcode", "sku")) { "ประเภทรหัสสินค้าไม่ถูกต้อง" }
+        require(value.length in 1..64 &&
+            (if (type == "barcode") value.matches(Regex("[0-9]{8,14}"))
+            else value.matches(Regex("[A-Z0-9][A-Z0-9._/-]{0,63}")))) {
+            "บาร์โค้ดต้องเป็นเลข 8–14 หลัก หรือ SKU ใช้อักษรอังกฤษ ตัวเลข . _ / -"
+        }
+        val raw = http.rpc(
+            "pos_product_code_save", auth.session.accessToken,
+            JSONObject().put("p_product", productId)
+                .put("p_code_type", type).put("p_code", value)
+        )
+        val result = objectValue(raw)
+        val id = result.optString("id")
+        check(id.isNotBlank() &&
+            result.optString("product_id") == productId &&
+            result.optString("code_type") == type &&
+            result.optString("code") == value) {
+            "Server ยังไม่ยืนยันบันทึกรหัสสินค้า กรุณาตรวจรายการเดิม"
+        }
+        return id
+    }
+
+    suspend fun removeProductCode(auth: NativeAuth, id: String) {
+        requireNoPendingEdit(auth)
+        val raw = http.rpc(
+            "pos_product_code_remove", auth.session.accessToken,
+            JSONObject().put("p_id", id)
+        )
+        val success = when (raw) {
+            is Boolean -> raw
+            is JSONObject -> raw.optBoolean("pos_product_code_remove", false)
+            is JSONArray -> raw.optBoolean(0, false)
+            else -> raw.toString() == "true"
+        }
+        check(success) { "Server ยังไม่ยืนยันการลบรหัสสินค้า กรุณาโหลดรายการใหม่" }
     }
 
     suspend fun saveTable(
@@ -530,11 +912,31 @@ class MerchantPosApi(
             auth.session.accessToken,
             JSONObject().put("p_days", days)
         )
-        val o = objectValue(raw)
-        return PosOwnerDashboard(
-            dineIn = o.optDouble("DINE_IN", 0.0),
-            takeaway = o.optDouble("TAKEAWAY", 0.0),
-            orders = o.optInt("orders", 0)
+        return merchantPosOwnerDashboard(objectValue(raw))
+    }
+
+    suspend fun ownerItemSales(auth: NativeAuth, days: Int): PosItemSalesReport {
+        require(days in setOf(1, 7, 30)) { "ช่วงรายงานไม่ถูกต้อง" }
+        val raw = objectValue(http.rpc(
+            "pos_owner_item_sales",
+            auth.session.accessToken,
+            JSONObject().put("p_days", days)
+        ))
+        val rows = raw.optJSONArray("items") ?: JSONArray()
+        val items = buildList {
+            for (i in 0 until rows.length()) {
+                val row = rows.optJSONObject(i) ?: continue
+                add(PosItemSalesRow(
+                    name = row.optString("item_name").ifBlank { "(ไม่ระบุชื่อ)" },
+                    quantity = row.optDouble("quantity", 0.0),
+                    bills = row.optInt("bills", 0),
+                    sales = row.optDouble("sales", 0.0)
+                ))
+            }
+        }
+        return PosItemSalesReport(
+            itemCount = raw.optInt("item_count", items.size),
+            items = items
         )
     }
 

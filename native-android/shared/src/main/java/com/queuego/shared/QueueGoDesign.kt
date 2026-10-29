@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -365,13 +366,12 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 line(.18f,.40f,.43f,.52f); line(.68f,.40f,.43f,.52f); line(.43f,.52f,.43f,.72f)
                 line(.68f,.56f,.88f,.56f); line(.79f,.46f,.88f,.56f); line(.79f,.66f,.88f,.56f)
             }
-            "motorcycle" -> {
-                drawCircle(color, w*.13f, Offset(w*.25f,h*.67f), style=stroke)
-                drawCircle(color, w*.13f, Offset(w*.75f,h*.67f), style=stroke)
-                line(.38f,.67f,.55f,.67f); line(.55f,.67f,.63f,.46f); line(.63f,.46f,.46f,.46f)
-                line(.46f,.46f,.38f,.33f); line(.38f,.33f,.25f,.33f)
-                line(.55f,.67f,.42f,.46f); line(.63f,.46f,.75f,.67f); line(.58f,.29f,.71f,.29f)
-            }
+            "motorcycle" -> qgMotorcycleGeometry(
+                drawLine = { x1, y1, x2, y2 -> line(x1, y1, x2, y2) },
+                drawCircle = { cx, cy, radius ->
+                    drawCircle(color, w * radius, Offset(w * cx, h * cy), style = stroke)
+                }
+            )
             "tag" -> {
                 line(.83f,.54f,.54f,.83f); line(.54f,.83f,.17f,.46f)
                 line(.17f,.46f,.17f,.17f); line(.17f,.17f,.46f,.17f)
@@ -427,7 +427,6 @@ private const val QG_REMOTE_IMAGE_MAX_BASE64_CHARS = ((QG_REMOTE_IMAGE_MAX_BYTES
 private const val QG_REMOTE_IMAGE_MAX_SIDE = 1280
 private const val QG_REMOTE_IMAGE_MEMORY_CACHE_KB = 16 * 1024
 private const val QG_REMOTE_IMAGE_DISK_CACHE_MAX_BYTES = 96L * 1024L * 1024L
-private const val QG_REMOTE_IMAGE_DISK_CACHE_TTL_MS = 24L * 60L * 60L * 1000L
 private val qgRemoteImageDecodeGate = Semaphore(3)
 private val qgRemoteImageByteCache = object : LruCache<String, ByteArray>(QG_REMOTE_IMAGE_MEMORY_CACHE_KB) {
     override fun sizeOf(key: String, value: ByteArray): Int =
@@ -440,24 +439,36 @@ private fun queueGoRemoteImageCacheName(source: String): String =
         .joinToString("") { "%02x".format(it) }
 
 private fun queueGoRemoteImageCacheDir(context: android.content.Context): File =
-    File(context.cacheDir, "queuego_remote_images").also { runCatching { it.mkdirs() } }
+    File(context.noBackupFilesDir, "queuego_remote_images_v2").also { runCatching { it.mkdirs() } }
+
+private fun legacyQueueGoRemoteImageCacheDir(context: android.content.Context): File =
+    File(context.cacheDir, "queuego_remote_images")
 
 private fun readQueueGoRemoteImageCache(
     context: android.content.Context,
     source: String
 ): ByteArray? {
     qgRemoteImageByteCache.get(source)?.let { return it }
-    val file = File(queueGoRemoteImageCacheDir(context), queueGoRemoteImageCacheName(source))
-    if (!file.isFile || file.length() !in 1L..QG_REMOTE_IMAGE_MAX_BYTES.toLong()) return null
-    val age = System.currentTimeMillis() - file.lastModified()
-    if (age !in 0L..QG_REMOTE_IMAGE_DISK_CACHE_TTL_MS) {
-        runCatching { file.delete() }
-        return null
+    val cacheName = queueGoRemoteImageCacheName(source)
+    val durable = File(queueGoRemoteImageCacheDir(context), cacheName)
+    val legacy = File(legacyQueueGoRemoteImageCacheDir(context), cacheName)
+    val file = when {
+        durable.isFile && durable.length() in 1L..QG_REMOTE_IMAGE_MAX_BYTES.toLong() -> durable
+        legacy.isFile && legacy.length() in 1L..QG_REMOTE_IMAGE_MAX_BYTES.toLong() -> {
+            runCatching {
+                legacy.copyTo(durable, overwrite = true)
+                legacy.delete()
+                durable
+            }.getOrElse { legacy }
+        }
+        else -> return null
     }
     return runCatching {
         file.inputStream().use { it.readQueueGoImageLimited() }
             .also {
                 qgRemoteImageByteCache.put(source, it)
+                // Access time drives bounded LRU pruning. A downloaded image remains usable
+                // until storage pressure evicts it or the server gives the app a new URL.
                 runCatching { file.setLastModified(System.currentTimeMillis()) }
             }
     }.getOrNull()
@@ -543,48 +554,56 @@ fun QgRemoteImage(
         image = if (source.isNullOrBlank()) {
             null
         } else {
-            try {
-                withContext(Dispatchers.IO) {
-                    qgRemoteImageDecodeGate.withPermit {
-                        val bytes = qgRemoteImageByteCache.get(source) ?: if (source.startsWith("data:image/")) {
-                            val comma = source.indexOf(',')
-                            require(comma in 1..128) { "รูปมีรูปแบบไม่ถูกต้อง" }
-                            val encodedLength = source.length - comma - 1
-                            require(encodedLength in 1..QG_REMOTE_IMAGE_MAX_BASE64_CHARS) {
-                                "รูปมีขนาดใหญ่เกินกำหนด"
-                            }
-                            Base64.decode(source.substring(comma + 1), Base64.DEFAULT).also {
-                                require(it.size <= QG_REMOTE_IMAGE_MAX_BYTES) { "รูปมีขนาดใหญ่เกินกำหนด" }
-                                qgRemoteImageByteCache.put(source, it)
-                            }
-                        } else {
-                            require(source.startsWith("https://")) { "ลิงก์รูปไม่ถูกต้อง" }
-                            readQueueGoRemoteImageCache(context, source) ?: run {
-                                val connection = URL(source).openConnection() as HttpURLConnection
-                                connection.connectTimeout = 10_000
-                                connection.readTimeout = 10_000
-                                connection.useCaches = true
-                                try {
-                                    val declared = connection.contentLengthLong
-                                    require(declared <= 0L || declared <= QG_REMOTE_IMAGE_MAX_BYTES) {
-                                        "รูปมีขนาดใหญ่เกินกำหนด"
-                                    }
-                                    connection.inputStream.use { it.readQueueGoImageLimited() }.also {
-                                        writeQueueGoRemoteImageCache(context, source, it)
-                                    }
-                                } finally {
-                                    connection.disconnect()
+            suspend fun loadOnce(): Bitmap? = withContext(Dispatchers.IO) {
+                qgRemoteImageDecodeGate.withPermit {
+                    val bytes = qgRemoteImageByteCache.get(source) ?: if (source.startsWith("data:image/")) {
+                        val comma = source.indexOf(',')
+                        require(comma in 1..128) { "รูปมีรูปแบบไม่ถูกต้อง" }
+                        val encodedLength = source.length - comma - 1
+                        require(encodedLength in 1..QG_REMOTE_IMAGE_MAX_BASE64_CHARS) {
+                            "รูปมีขนาดใหญ่เกินกำหนด"
+                        }
+                        Base64.decode(source.substring(comma + 1), Base64.DEFAULT).also {
+                            require(it.size <= QG_REMOTE_IMAGE_MAX_BYTES) { "รูปมีขนาดใหญ่เกินกำหนด" }
+                            qgRemoteImageByteCache.put(source, it)
+                        }
+                    } else {
+                        require(source.startsWith("https://")) { "ลิงก์รูปไม่ถูกต้อง" }
+                        readQueueGoRemoteImageCache(context, source) ?: run {
+                            val connection = URL(source).openConnection() as HttpURLConnection
+                            connection.connectTimeout = 10_000
+                            connection.readTimeout = 10_000
+                            connection.useCaches = true
+                            try {
+                                val declared = connection.contentLengthLong
+                                require(declared <= 0L || declared <= QG_REMOTE_IMAGE_MAX_BYTES) {
+                                    "รูปมีขนาดใหญ่เกินกำหนด"
                                 }
+                                connection.inputStream.use { it.readQueueGoImageLimited() }.also {
+                                    writeQueueGoRemoteImageCache(context, source, it)
+                                }
+                            } finally {
+                                connection.disconnect()
                             }
                         }
-                        decodeQueueGoRemoteImage(bytes, maxDecodeSide)
                     }
+                    decodeQueueGoRemoteImage(bytes, maxDecodeSide)
                 }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                null
             }
+
+            val attempts = if (source.startsWith("https://")) 2 else 1
+            var loaded: Bitmap? = null
+            for (attempt in 0 until attempts) {
+                try {
+                    loaded = loadOnce()
+                    break
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    if (attempt + 1 < attempts) delay(600)
+                }
+            }
+            loaded
         }
     }
 

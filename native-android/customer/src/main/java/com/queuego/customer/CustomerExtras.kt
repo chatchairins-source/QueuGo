@@ -1,6 +1,9 @@
 package com.queuego.customer
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,15 +18,20 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgMuted
@@ -32,6 +40,11 @@ import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QueueGoNativeApi
 import org.json.JSONObject
+import java.time.Instant
+import java.time.ZoneId
+import java.time.chrono.ThaiBuddhistChronology
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 data class CustomerNotification(
     val id: String,
@@ -50,7 +63,8 @@ data class CustomerSupportTicket(
     val status: String,
     val orderId: String?,
     val adminNote: String?,
-    val createdAt: String?
+    val createdAt: String?,
+    val evidencePath: String?
 )
 
 class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
@@ -92,7 +106,7 @@ class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
     suspend fun supportTickets(auth: NativeAuth): List<CustomerSupportTicket> {
         val rows = http.array(
             http.get(
-                "qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at" +
+                "qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at,evidence_path" +
                     "&user_id=eq." + http.enc(auth.user.id) +
                     "&order=created_at.desc&limit=30",
                 auth.session.accessToken
@@ -109,7 +123,8 @@ class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
                         status = r.optString("status"),
                         orderId = r.optString("order_id").takeIf { it.isNotBlank() && it != "null" },
                         adminNote = r.optString("admin_note").takeIf { it.isNotBlank() && it != "null" },
-                        createdAt = r.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
+                        createdAt = r.optString("created_at").takeIf { it.isNotBlank() && it != "null" },
+                        evidencePath = r.optString("evidence_path").takeIf { it.isNotBlank() && it != "null" }
                     )
                 )
             }
@@ -121,14 +136,23 @@ class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         ticketId: String,
         orderId: String?,
         category: String,
-        details: String
+        details: String,
+        evidencePath: String? = null
     ) {
+        val existing = http.array(
+            http.get(
+                "qg_support_tickets?select=id&user_id=eq." + http.enc(auth.user.id) +
+                    "&id=eq." + http.enc(ticketId) + "&limit=1",
+                auth.session.accessToken
+            )
+        )
+        if (existing.length() > 0) return
         val body = JSONObject()
             .put("p_ticket_id", ticketId)
             .put("p_order_id", orderId ?: JSONObject.NULL)
             .put("p_category", category)
             .put("p_details", details.trim())
-            .put("p_evidence_path", JSONObject.NULL)
+            .put("p_evidence_path", evidencePath ?: JSONObject.NULL)
         val raw = http.rpc("qg_create_ticket", auth.session.accessToken, body)
         val confirmed = when (raw) {
             is String -> raw
@@ -155,20 +179,30 @@ fun CustomerNotificationsScreen(
     onMarkAll: () -> Unit,
     onOpen: (CustomerNotification) -> Unit
 ) {
+    // Web preserves the unread badge until the user explicitly marks rows read.
+    // Never invoke onMarkAll merely because this screen is opened.
     Column(
         Modifier.fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(14.dp)
+            .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-            Spacer(Modifier.weight(1f))
-            if (notifications.any { !it.read }) {
-                OutlinedButton(onClick = onMarkAll, enabled = !busy) { Text("อ่านทั้งหมด") }
+            Box(
+                Modifier.size(44.dp)
+                    .background(Color.White, RoundedCornerShape(15.dp))
+                    .border(1.dp, Color(0xFFECEEF2), RoundedCornerShape(15.dp))
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("‹", color = QgRed, fontSize = 32.sp)
             }
+            Spacer(Modifier.size(12.dp))
+            Text("แจ้งเตือน", modifier = Modifier.weight(1f), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
         }
-        Spacer(Modifier.height(12.dp))
-        QgSectionTitle("แจ้งเตือน", "อัปเดตจากออเดอร์ ร้าน และ Rider")
+        Spacer(Modifier.height(10.dp))
+        TextButton(onClick = onMarkAll, enabled = !busy) {
+            Text("อ่านทั้งหมด", color = QgRed, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
         Spacer(Modifier.height(10.dp))
         if (notifications.isEmpty()) {
             QgCard(Modifier.fillMaxWidth()) {
@@ -178,25 +212,27 @@ fun CustomerNotificationsScreen(
             notifications.forEach { n ->
                 QgCard(
                     Modifier.fillMaxWidth()
-                        .padding(bottom = 8.dp)
+                        .padding(bottom = 10.dp)
                         .clickable { onOpen(n) }
                 ) {
-                    Column {
-                        Row(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(vertical = 8.dp)) {
+                        Text(
+                            com.queuego.shared.nativeOrderNumberInText(n.title),
+                            color = Color(0xFF202226),
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        if (n.message.isNotBlank()) {
+                            Spacer(Modifier.height(6.dp))
                             Text(
-                                if (n.read) n.title else "●  " + n.title,
-                                modifier = Modifier.weight(1f),
-                                color = if (n.read) androidx.compose.ui.graphics.Color.Unspecified else QgRed,
-                                fontWeight = FontWeight.ExtraBold
+                                com.queuego.shared.nativeOrderNumberInText(n.message),
+                                color = Color(0xFF30343B),
+                                fontSize = 16.sp
                             )
                         }
-                        if (n.message.isNotBlank()) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(n.message, color = QgMuted)
-                        }
                         if (!n.createdAt.isNullOrBlank()) {
-                            Spacer(Modifier.height(5.dp))
-                            Text(n.createdAt!!, color = QgMuted, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
+                            Spacer(Modifier.height(6.dp))
+                            Text(customerThaiDateTime(n.createdAt!!), color = QgMuted, fontSize = 13.sp)
                         }
                     }
                 }
@@ -207,3 +243,10 @@ fun CustomerNotificationsScreen(
 }
 
 
+
+internal fun customerThaiDateTime(value: String): String = runCatching {
+    DateTimeFormatter.ofPattern("d/M/yyyy HH:mm:ss", Locale.forLanguageTag("th-TH"))
+        .withChronology(ThaiBuddhistChronology.INSTANCE)
+        .withZone(ZoneId.of("Asia/Bangkok"))
+        .format(Instant.parse(value))
+}.getOrDefault(value)

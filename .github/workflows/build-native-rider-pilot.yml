@@ -97,7 +97,7 @@ permissions:
 
 concurrency:
   group: queuego-native-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 # Pilot APKs use the already deployed QueueGo Map endpoint used by the Customer
 # Web map. Production release builds still require an explicit validated URL.

@@ -49,10 +49,12 @@ fun RiderProfileScreen(
     history: List<RiderHistoryOrder>,
     api: QueueGoApi,
     onSnapshot: (RiderSnapshot) -> Unit,
+    onOpenHome: () -> Unit,
     onNavigationSettings: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
-    workSettings: @Composable () -> Unit = {}
+    workSettings: @Composable () -> Unit = {},
+    routeSettings: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -65,8 +67,10 @@ fun RiderProfileScreen(
     var name by remember(auth.user.id) { mutableStateOf(displayName) }
     var phone by remember(auth.user.id) { mutableStateOf(displayPhone) }
     var busy by remember { mutableStateOf(false) }
+    var laundryBusy by remember(auth.user.id) { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var showAccountDetails by remember { mutableStateOf(false) }
+    var showExtraTools by remember { mutableStateOf(false) }
     var showSupport by remember { mutableStateOf(false) }
     var showSafety by remember { mutableStateOf(false) }
     var showLearning by remember { mutableStateOf(false) }
@@ -96,24 +100,6 @@ fun RiderProfileScreen(
             }
         }
     }
-    var ratingSummary by remember(auth.user.id) { mutableStateOf<RiderRatingSummary?>(null) }
-    var complimentSummary by remember(auth.user.id) { mutableStateOf<RiderComplimentSummary?>(null) }
-    LaunchedEffect(auth.user.id, auth.session.accessToken) {
-        ratingSummary = try {
-            api.ratingSummary(auth)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
-        complimentSummary = try {
-            api.complimentSummary(auth)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
-    }
     LaunchedEffect(message) {
         if (message != null) { delay(4_000); message = null }
     }
@@ -132,180 +118,178 @@ fun RiderProfileScreen(
                     Text("QueueGo", color = QgRed, fontSize = 9.sp, fontWeight = FontWeight.Black)
                 }
             }
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(1.dp, Color(0xFFEEE6E8)), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                Row(Modifier.fillMaxWidth().padding(if (smallScreen) 10.dp else 12.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        QgRemoteImage(
-                            source = profile?.profilePhoto,
-                            modifier = Modifier
-                                .size(if (smallScreen) 52.dp else 58.dp)
-                                .clickable(enabled = !busy, role = Role.Button) {
-                                    profilePhotoPicker.launch("image/*")
-                                },
-                            fallback = displayName,
-                            cornerRadius = if (smallScreen) 16.dp else 18.dp
-                        )
-                        TextButton(
-                            onClick = { profilePhotoPicker.launch("image/*") },
-                            enabled = !busy,
-                            contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp),
-                            modifier = Modifier.height(26.dp)
-                        ) {
-                            Text(
-                                when {
-                                    busy -> "กำลังบันทึก"
-                                    profile?.profilePhoto.isNullOrBlank() -> "เพิ่มรูป"
-                                    else -> "เปลี่ยนรูป"
-                                },
-                                color = QgRed,
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, Color(0xFFEEE6E8)),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(if (smallScreen) 10.dp else 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(11.dp)
+                ) {
+                    QgRemoteImage(
+                        source = profile?.profilePhoto,
+                        modifier = Modifier
+                            .size(if (smallScreen) 52.dp else 58.dp)
+                            .clickable(enabled = !busy, role = Role.Button) {
+                                profilePhotoPicker.launch("image/*")
+                            },
+                        fallback = displayName,
+                        cornerRadius = if (smallScreen) 16.dp else 18.dp
+                    )
                     Column(Modifier.weight(1f)) {
-                        Text(displayName, fontWeight = FontWeight.Bold, fontSize = if (smallScreen) 17.sp else 19.sp)
-                        if (profile?.profilePhoto.isNullOrBlank()) {
-                            Text(
-                                "เพิ่มรูปเพื่อให้ลูกค้าและร้านค้าจำ Rider ได้",
-                                color = Color(0xFF9A6B00),
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 3.dp)
-                            )
-                        }
-                        Text(displayPhone.ifBlank { "-" }, color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                        Text(
+                            displayName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (smallScreen) 17.sp else 19.sp,
+                            maxLines = 1
+                        )
+                        Text(
+                            displayPhone.ifBlank { "-" },
+                            color = QgMuted,
+                            fontSize = 10.sp,
+                            modifier = Modifier.padding(top = 3.dp),
+                            maxLines = 1
+                        )
                         val vehicle = riderVehicleLabel(profile?.vehicleType)
                         val plate = profile?.vehiclePlate?.takeIf { it.isNotBlank() }
-                        Text(vehicle + (plate?.let { " · $it" } ?: " · QueueGo Rider"), color = Color(0xFF746A6E), fontSize = 8.5.sp,
-                            modifier = Modifier.padding(top = 5.dp).background(Color(0xFFF7F3F4), RoundedCornerShape(99.dp)).padding(horizontal = 7.dp, vertical = 4.dp))
-                        if (!profile?.vehicleVerifiedAt.isNullOrBlank() || profile?.vehicleStatus.equals("verified", true)) {
-                            Text(
-                                "ยืนยันข้อมูลรถแล้ว",
-                                color = Color(0xFF12845E),
-                                fontSize = 8.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-                        }
-                        ratingSummary?.let { rating ->
-                            val label = if (rating.count > 0 && rating.average != null) {
-                                "★ " + "%.1f".format(rating.average) + " · " + rating.count + " รีวิว"
-                            } else {
-                                "ยังไม่มีคะแนนจากลูกค้า"
-                            }
-                            Text(
-                                label,
-                                color = if (rating.count > 0) Color(0xFFD59A00) else QgMuted,
-                                fontSize = 9.sp,
-                                fontWeight = if (rating.count > 0) FontWeight.Black else FontWeight.Medium,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-                        }
-                        complimentSummary?.takeIf { it.total > 0 && it.items.isNotEmpty() }?.let { summary ->
-                            val visible = summary.items.take(if (smallScreen) 2 else 3)
-                            Row(
-                                Modifier.padding(top = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                visible.forEach { item ->
-                                    Text(
-                                        riderComplimentLabel(item.key) + " " + item.count,
-                                        color = Color(0xFF6E5C15),
-                                        fontSize = 8.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier
-                                            .background(Color(0xFFFFF7D6), RoundedCornerShape(99.dp))
-                                            .padding(horizontal = 6.dp, vertical = 3.dp)
-                                    )
-                                }
-                            }
-                        }
+                        Text(
+                            vehicle + (plate?.let { " · $it" } ?: " · QueueGo Rider"),
+                            color = Color(0xFF746A6E),
+                            fontSize = 8.5.sp,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .padding(top = 5.dp)
+                                .background(Color(0xFFF7F3F4), RoundedCornerShape(99.dp))
+                                .padding(horizontal = 7.dp, vertical = 4.dp)
+                        )
                     }
                     RiderProfilePill(snapshot?.online == true)
                 }
             }
             Spacer(Modifier.height(22.dp))
-            RiderProfileSection("บัญชีและเอกสาร") {
-                RiderSettingRow("รถและเอกสาร Rider", "ข้อมูลรถ · สถานะอนุมัติ · เอกสาร", R.drawable.qg_rider_nav_user) {
-                    showAccountDetails = !showAccountDetails
+            RiderProfileSection("รูปแบบและประเภทงาน") { workSettings() }
+            Spacer(Modifier.height(10.dp))
+            RiderProfileSection("การรับงาน") {
+                RiderSettingRow(
+                    "สถานะรับงาน",
+                    "จัดการสถานะที่หน้าแรก",
+                    R.drawable.qg_rider_flow_loc,
+                    trailing = { RiderProfilePill(snapshot?.online == true, offlineLabel = "ปิด") },
+                    onClick = onOpenHome
+                )
+                RiderSettingDivider()
+                routeSettings()
+                if (snapshot?.laundry?.featureEnabled == true || snapshot?.laundry?.modeEnabled == true ||
+                    snapshot?.laundry?.invites.orEmpty().isNotEmpty()) {
+                    RiderSettingDivider()
+                    RiderLaundryModeControl(
+                        featureEnabled = snapshot?.laundry?.featureEnabled == true,
+                        modeEnabled = snapshot?.laundry?.modeEnabled == true,
+                        busy = laundryBusy,
+                        onCheckedChange = { enabled ->
+                            if (!laundryBusy) {
+                                laundryBusy = true
+                                scope.launch {
+                                    try {
+                                        api.setLaundryMode(auth, enabled)
+                                        val refreshed = api.riderSnapshot(auth)
+                                        check(refreshed.laundry.modeEnabled == enabled) {
+                                            "ยังยืนยันการตั้งค่างานฝากซักไม่ได้"
+                                        }
+                                        onSnapshot(refreshed)
+                                        message = if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        val reconciled = runCatching { api.riderSnapshot(auth) }
+                                            .getOrElse { failure ->
+                                                if (failure is CancellationException) throw failure
+                                                null
+                                            }
+                                        if (reconciled != null) onSnapshot(reconciled)
+                                        message = when {
+                                            reconciled?.laundry?.modeEnabled == enabled ->
+                                                if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
+                                            else -> e.message ?: "เปลี่ยนโหมดรับงานฝากซักไม่สำเร็จ"
+                                        }
+                                    } finally {
+                                        laundryBusy = false
+                                    }
+                                }
+                            }
+                        }
+                    )
                 }
-            }
-            if (showAccountDetails) {
-                RiderPassengerLicenseCard(auth, api)
-            RiderReverificationCard(
-                auth = auth,
-                api = api,
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            RiderVehicleInspectionCard(
-                auth = auth,
-                api = api,
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            RiderVehiclesCard(
-                auth = auth,
-                api = api,
-                online = snapshot?.online == true,
-                onSelected = {
-                    scope.launch {
-                        try {
-                            onSnapshot(api.riderSnapshot(auth))
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (_: Exception) {
-                            message = "เปลี่ยนรถแล้ว แต่โหลดโปรไฟล์ล่าสุดไม่สำเร็จ"
+                RiderLaundryInvites(
+                    invites = snapshot?.laundry?.invites.orEmpty(),
+                    busy = laundryBusy,
+                    onAction = { invite, accept ->
+                        if (!laundryBusy) {
+                            laundryBusy = true
+                            scope.launch {
+                                try {
+                                    api.respondLaundryInvite(auth, invite.inviteId, accept)
+                                    val refreshed = api.riderSnapshot(auth)
+                                    check(refreshed.laundry.invites.none { it.inviteId == invite.inviteId }) {
+                                        "ยังยืนยันคำตอบคำเชิญไม่ได้"
+                                    }
+                                    onSnapshot(refreshed)
+                                    message = if (accept) "ยอมรับคำเชิญร้านซักแล้ว" else "ปฏิเสธคำเชิญแล้ว"
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    val reconciled = runCatching { api.riderSnapshot(auth) }
+                                        .getOrElse { failure ->
+                                            if (failure is CancellationException) throw failure
+                                            null
+                                        }
+                                    if (reconciled != null) onSnapshot(reconciled)
+                                    message = e.message ?: "ตอบคำเชิญร้านซักไม่สำเร็จ"
+                                } finally {
+                                    laundryBusy = false
+                                }
+                            }
                         }
                     }
-                },
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            RiderDocumentReadinessCard(
-                auth = auth,
-                api = api,
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            RiderInsuranceCard(
-                auth = auth,
-                api = api,
-                modifier = Modifier.padding(top = 9.dp)
-            )
-            RiderBenefitsCard(
-                auth = auth,
-                api = api,
-                modifier = Modifier.padding(top = 9.dp)
-            )
+                )
             }
-            Spacer(Modifier.height(22.dp))
-            RiderProfileSection("การรับงาน") { workSettings() }
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("บัญชีและช่วยเหลือ") {
                 RiderSettingRow("ตั้งค่าบัญชี", "ชื่อ เบอร์โทร และข้อมูลบัญชี", R.drawable.qg_rider_nav_user, enabled = !busy) {
-                    name = displayName; phone = displayPhone; editing = true
+                    name = displayName
+                    phone = displayPhone
+                    editing = true
                 }
                 RiderSettingDivider()
                 RiderSettingRow(
-                    "แนะนำบริการและวิธีใช้งาน",
-                    "รับงาน · นำทาง · รับสินค้า · Market · ส่งลูกค้า · ความปลอดภัย",
-                    R.drawable.qg_rider_flow_jobs
-                ) { showLearning = true }
-                RiderSettingDivider()
-                RiderSettingRow("ศูนย์ความปลอดภัย", "เหตุฉุกเฉิน · แพทย์ · ตำรวจ · QueueGo Support", R.drawable.qg_rider_flow_loc) { showSafety = true }
-                RiderSettingDivider()
-                RiderSettingRow("แจ้งปัญหา / ติดตามเรื่อง", "ติดต่อฝ่ายดูแล QueueGo", R.drawable.qg_rider_nav_chat) { showSupport = true }
+                    "แจ้งปัญหา / ติดตามเรื่อง",
+                    "ติดต่อฝ่ายดูแล QueueGo",
+                    R.drawable.qg_rider_nav_chat
+                ) { showSupport = true }
             }
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("การแจ้งเตือน") {
-                RiderSettingRow("การแจ้งเตือนเบื้องหลัง", "รับงานและสถานะสำคัญแม้ไม่ได้เปิดหน้านี้", R.drawable.qg_rider_nav_chat) {
+                RiderSettingRow(
+                    "การแจ้งเตือนเบื้องหลัง",
+                    "รับงานและสถานะสำคัญแม้ไม่ได้เปิดหน้านี้",
+                    R.drawable.qg_rider_nav_chat
+                ) {
                     val intent = if (Build.VERSION.SDK_INT >= 26) Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                         .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                     else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName))
-                    runCatching { context.startActivity(intent) }.onFailure { message = "เปิดการตั้งค่าการแจ้งเตือนไม่สำเร็จ" }
+                    runCatching { context.startActivity(intent) }
+                        .onFailure { message = "เปิดการตั้งค่าการแจ้งเตือนไม่สำเร็จ" }
                 }
                 RiderSettingDivider()
-                RiderSettingRow("ทดสอบการแจ้งเตือน", "ส่งแจ้งเตือนทดสอบหลัง 7 วินาที", R.drawable.qg_rider_nav_chat, enabled = !busy) {
+                RiderSettingRow(
+                    "ทดสอบการแจ้งเตือน",
+                    "ส่งแจ้งเตือนทดสอบหลัง 7 วินาที",
+                    R.drawable.qg_rider_nav_chat,
+                    enabled = !busy
+                ) {
                     busy = true
                     scope.launch {
                         try {
@@ -329,58 +313,165 @@ fun RiderProfileScreen(
                         }
                     }
                 }
-                RiderSettingDivider()
-                RiderSettingRow(
-                    "ผู้ช่วยเสียง Rider",
-                    "อ่านงานใหม่และสถานะสำคัญเป็นเสียงไทย · ไม่ใช้ไมโครโฟน",
-                    R.drawable.qg_rider_nav_chat,
-                    trailing = {
-                        Switch(
-                            checked = voiceAssistantEnabled,
-                            onCheckedChange = { enabled ->
-                                scope.launch {
-                                    RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
-                                    message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
-                                }
-                            }
-                        )
-                    }
-                ) {
-                    val enabled = !voiceAssistantEnabled
-                    scope.launch {
-                        RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
-                        message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
-                    }
-                }
-                RiderSettingDivider()
-            }
-            Spacer(Modifier.height(22.dp))
-            RiderProfileSection("การนำทางและแผนที่") {
-                // Reuse the existing navigation permission/settings entry.
-                RiderSettingRow("ปุ่มลอยกลับ QueueGo", "ใช้ระหว่างเปิด Google Maps เพื่อนำทาง", R.drawable.qg_rider_flow_loc, onClick = onNavigationSettings)
-                RiderSettingDivider()
-            }
-            Spacer(Modifier.height(22.dp))
-            RiderProfileSection("ขั้นสูง") {
-                RiderSettingRow(
-                    "ตรวจสอบระบบ Rider",
-                    "ตรวจ GPS · แจ้งเตือน · อินเทอร์เน็ต · Google Maps · ปุ่มลอย",
-                    R.drawable.qg_rider_flow_loc
-                ) { showDiagnostics = true }
             }
             Spacer(Modifier.height(10.dp))
-            if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
-                "Rider", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
-                BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
             RiderProfileSection("ความเป็นส่วนตัวและบัญชี") {
-                RiderSettingRow("นโยบายความเป็นส่วนตัว", "การใช้ข้อมูลและการลบบัญชี", R.drawable.qg_rider_nav_chat) {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(RIDER_PRIVACY_POLICY_URL)).addCategory(Intent.CATEGORY_BROWSABLE)
-                    runCatching { context.startActivity(intent) }.onFailure { message = "ไม่สามารถเปิดนโยบายความเป็นส่วนตัวได้" }
+                RiderSettingRow(
+                    "นโยบายความเป็นส่วนตัว",
+                    "การใช้ข้อมูลและการลบบัญชี",
+                    R.drawable.qg_rider_nav_chat
+                ) {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(RIDER_PRIVACY_POLICY_URL))
+                        .addCategory(Intent.CATEGORY_BROWSABLE)
+                    runCatching { context.startActivity(intent) }
+                        .onFailure { message = "ไม่สามารถเปิดนโยบายความเป็นส่วนตัวได้" }
                 }
                 RiderSettingDivider()
-                RiderSettingRow("ลบบัญชีถาวร", "ลบ Auth และข้อมูลส่วนบุคคล", R.drawable.qg_rider_flow_back, danger = true) { deleting = true }
+                RiderSettingRow(
+                    "ลบบัญชีถาวร",
+                    "ลบ Auth และข้อมูลส่วนบุคคล",
+                    R.drawable.qg_rider_flow_back,
+                    danger = true
+                ) { deleting = true }
                 RiderSettingDivider()
-                RiderSettingRow("ออกจากระบบ", "ออกจากบัญชีในอุปกรณ์นี้", R.drawable.qg_rider_flow_back, onClick = onLogout)
+                RiderSettingRow(
+                    "ออกจากระบบ",
+                    "ออกจากบัญชีในอุปกรณ์นี้",
+                    R.drawable.qg_rider_flow_back,
+                    onClick = onLogout
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            RiderProfileSection("เพิ่มเติม") {
+                RiderSettingRow(
+                    "เครื่องมือ Rider เพิ่มเติม",
+                    "รถและเอกสาร · วิธีใช้งาน · ความปลอดภัย · ผู้ช่วยเสียง · นำทาง",
+                    R.drawable.qg_rider_flow_jobs,
+                    trailing = {
+                        Text(
+                            if (showExtraTools) "⌃" else "›",
+                            color = Color(0xFFB4ADB1),
+                            fontSize = 21.sp
+                        )
+                    }
+                ) { showExtraTools = !showExtraTools }
+
+                if (showExtraTools) {
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "รถและเอกสาร Rider",
+                        "ข้อมูลรถ · สถานะอนุมัติ · เอกสาร",
+                        R.drawable.qg_rider_nav_user
+                    ) { showAccountDetails = !showAccountDetails }
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "แนะนำบริการและวิธีใช้งาน",
+                        "รับงาน · นำทาง · รับสินค้า · Market · ส่งลูกค้า · ความปลอดภัย",
+                        R.drawable.qg_rider_flow_jobs
+                    ) { showLearning = true }
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "ศูนย์ความปลอดภัย",
+                        "เหตุฉุกเฉิน · แพทย์ · ตำรวจ · QueueGo Support",
+                        R.drawable.qg_rider_flow_loc
+                    ) { showSafety = true }
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "ผู้ช่วยเสียง Rider",
+                        "อ่านงานใหม่และสถานะสำคัญเป็นเสียงไทย · ไม่ใช้ไมโครโฟน",
+                        R.drawable.qg_rider_nav_chat,
+                        trailing = {
+                            Switch(
+                                checked = voiceAssistantEnabled,
+                                onCheckedChange = { enabled ->
+                                    scope.launch {
+                                        RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
+                                        message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
+                                    }
+                                }
+                            )
+                        }
+                    ) {
+                        val enabled = !voiceAssistantEnabled
+                        scope.launch {
+                            RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
+                            message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
+                        }
+                    }
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "ปุ่มลอยกลับ QueueGo",
+                        "ใช้ระหว่างเปิด Google Maps เพื่อนำทาง",
+                        R.drawable.qg_rider_flow_loc,
+                        onClick = onNavigationSettings
+                    )
+                    RiderSettingDivider()
+                    RiderSettingRow(
+                        "ตรวจสอบระบบ Rider",
+                        "ตรวจ GPS · แจ้งเตือน · อินเทอร์เน็ต · Google Maps · ปุ่มลอย",
+                        R.drawable.qg_rider_flow_loc
+                    ) { showDiagnostics = true }
+                }
+            }
+
+            if (showExtraTools && showAccountDetails) {
+                Spacer(Modifier.height(9.dp))
+                RiderPassengerLicenseCard(auth, api)
+                RiderReverificationCard(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+                RiderVehicleInspectionCard(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+                RiderVehiclesCard(
+                    auth = auth,
+                    api = api,
+                    online = snapshot?.online == true,
+                    onSelected = {
+                        scope.launch {
+                            try {
+                                onSnapshot(api.riderSnapshot(auth))
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                message = "เปลี่ยนรถแล้ว แต่โหลดโปรไฟล์ล่าสุดไม่สำเร็จ"
+                            }
+                        }
+                    },
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+                RiderDocumentReadinessCard(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+                RiderInsuranceCard(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+                RiderBenefitsCard(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+            }
+
+            if (showExtraTools && BuildConfig.DEBUG) {
+                Spacer(Modifier.height(10.dp))
+                com.queuego.shared.QgTestBuildInfo(
+                    "Rider",
+                    BuildConfig.VERSION_NAME,
+                    BuildConfig.VERSION_CODE,
+                    BuildConfig.GIT_SHA,
+                    BuildConfig.BUILT_UTC,
+                    BuildConfig.BUILD_TYPE
+                )
             }
         }
         message?.let {
@@ -492,9 +583,22 @@ fun RiderProfileScreen(
 @Composable
 private fun RiderProfileSection(title: String, content: @Composable () -> Unit) {
     Column {
-        Text(title, color = Color(0xFF898287), fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp))
+        Text(
+            title,
+            color = Color(0xFF898287),
+            fontWeight = FontWeight.Black,
+            fontSize = 9.sp,
+            letterSpacing = 0.2.sp,
+            modifier = Modifier.padding(horizontal = 2.dp)
+        )
         Spacer(Modifier.height(5.dp))
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Card(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFFEEE6E8)),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
             Column { content() }
         }
     }
@@ -504,14 +608,42 @@ private fun RiderProfileSection(title: String, content: @Composable () -> Unit) 
 private fun RiderSettingRow(title: String, detail: String, icon: Int, enabled: Boolean = true, green: Boolean = false,
     danger: Boolean = false, trailing: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
     val color = if (danger) QgRed else if (green) Color(0xFF14A35C) else Color(0xFF777177)
-    Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-        .padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-        Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) {
-            Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+    val iconBackground = when {
+        danger -> Color(0xFFFFF0F3)
+        green -> Color(0xFFEDF9F2)
+        else -> Color(0xFFF7F4F5)
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        Box(
+            Modifier
+                .size(34.dp)
+                .background(iconBackground, RoundedCornerShape(11.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (danger) QgRed else Color(0xFF211E20), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            Text(detail, color = Color(0xFF8A8387), fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(
+                title,
+                color = if (danger) QgRed else Color(0xFF211E20),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                detail,
+                color = Color(0xFF8A8387),
+                fontSize = 8.5.sp,
+                lineHeight = 12.sp,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
         if (trailing != null) trailing() else Text("›", color = Color(0xFFB4ADB1), fontSize = 21.sp)
     }

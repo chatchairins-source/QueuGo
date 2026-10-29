@@ -7,6 +7,8 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,7 +26,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -32,7 +36,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -48,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,6 +64,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.merchantRealtimeSubscriptions
+import com.queuego.shared.QgInk
+import com.queuego.shared.QgLine
 import com.queuego.shared.NativeOrderRealtime
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -72,6 +78,7 @@ import com.queuego.shared.NativePushDeviceStore
 import com.queuego.shared.nativeLogoutScope
 import com.queuego.shared.QueueGoVoiceCallOverlay
 import com.queuego.shared.NativeVoiceCallController
+import com.queuego.shared.NativeVoicePhase
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
@@ -88,8 +95,12 @@ import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -113,7 +124,10 @@ private fun MerchantShell(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val ordersMutex = remember { Mutex() }
     val notificationsMutex = remember { Mutex() }
-    var screen by remember { mutableStateOf("home") }
+    val routeSaver = Saver<String, String>(
+        save = { merchantRestorableRoute(it) }, restore = { merchantRestorableRoute(it) }
+    )
+    var screen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
     var shop by remember { mutableStateOf<MerchantShop?>(null) }
     var orders by remember { mutableStateOf<List<MerchantOrder>>(emptyList()) }
     var notifications by remember { mutableStateOf<List<MerchantNotification>>(emptyList()) }
@@ -126,7 +140,7 @@ private fun MerchantShell(
     var selectedRiderContext by remember { mutableStateOf<MerchantRiderContext?>(null) }
     var selectedProduct by remember { mutableStateOf<MerchantProduct?>(null) }
     var newProductCategory by remember { mutableStateOf<String?>(null) }
-    var productReturnScreen by remember { mutableStateOf("products") }
+    var productReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("products") }
     var groceryCatalogItems by remember { mutableStateOf<List<MerchantGroceryCatalogItem>>(emptyList()) }
     var groceryCatalogCategories by remember { mutableStateOf<List<String>>(emptyList()) }
     var groceryCatalogQuery by remember { mutableStateOf("") }
@@ -141,11 +155,15 @@ private fun MerchantShell(
     var orderItems by remember { mutableStateOf<List<MerchantOrderItem>>(emptyList()) }
     var gpRate by remember { mutableStateOf(0.0) }
     var loading by remember { mutableStateOf(true) }
+    var initialLoadError by remember(auth.user.id) { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var handledPushEventId by remember { mutableStateOf<Long?>(null) }
     var pushRetrySignal by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
+    val contentCache = remember(context.applicationContext) {
+        MerchantContentCache(context.applicationContext)
+    }
     val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
     val voiceState by voiceController.state.collectAsState()
     DisposableEffect(voiceController) { onDispose { voiceController.close() } }
@@ -242,21 +260,50 @@ private fun MerchantShell(
         }
     }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
+    var pendingVoiceOrderId by remember { mutableStateOf<String?>(null) }
     val voicePermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted && pendingVoiceAnswer) {
-            voiceController.answerIncoming(auth)
-        } else if (!granted) {
-            message = "กรุณาอนุญาตไมโครโฟนเพื่อรับสายผ่าน QueueGo"
+        if (granted) {
+            if (pendingVoiceAnswer) {
+                voiceController.answerIncoming(auth)
+            } else {
+                pendingVoiceOrderId?.let { orderId ->
+                    if (voiceController.state.value.phase in setOf(
+                            NativeVoicePhase.RINGING_OUT,
+                            NativeVoicePhase.INCOMING,
+                            NativeVoicePhase.CONNECTING,
+                            NativeVoicePhase.CONNECTED
+                        )
+                    ) {
+                        message = "มีสาย QueueGo ที่กำลังดำเนินอยู่"
+                    } else {
+                        voiceController.startOutgoing(auth, orderId, "customer")
+                    }
+                }
+            }
+        } else {
+            message = "กรุณาอนุญาตไมโครโฟนเพื่อโทรผ่าน QueueGo"
         }
+        pendingVoiceOrderId = null
         pendingVoiceAnswer = false
+    }
+
+    fun startCustomerVoiceCall(orderId: String) {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.startOutgoing(auth, orderId, "customer")
+        } else {
+            pendingVoiceOrderId = orderId
+            pendingVoiceAnswer = false
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     fun answerVoiceCall() {
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             voiceController.answerIncoming(auth)
         } else {
+            pendingVoiceOrderId = null
             pendingVoiceAnswer = true
             voicePermission.launch(Manifest.permission.RECORD_AUDIO)
         }
@@ -290,35 +337,59 @@ private fun MerchantShell(
     }
 
     BackHandler(enabled = screen != "home") {
-        screen = when (screen) {
-            "shop-setup", "hours", "support" -> "profile"
-            "notifications", "media", "modules", "market-stock" -> "home"
-            "catalog", "grocery-catalog" -> "products"
-            "market-catalog" -> "products"
-            "product" -> productReturnScreen
-            "order" -> "orders"
-            else -> "home"
-        }
+        screen = merchantBackRoute(screen, productReturnScreen)
         selectedOrder = null
     }
 
-    suspend fun refreshAll() {
-        loading = true
+    suspend fun refreshAll(showLoading: Boolean = shop == null && products.isEmpty()) {
+        loading = showLoading
         runCatching {
             val s = api.loadShop(auth)
-            orders = api.loadOrders(auth)
-            notifications = runCatching { api.loadNotifications(auth) }.getOrDefault(emptyList())
-            knownPendingIds = orders.filter { it.status == "pending" }.map { it.id }.toSet()
             shop = s
-            if (s != null) {
-                products = api.loadProducts(auth, s.id)
-                readiness = api.readiness(auth, s.id)
-                shopOpen = runCatching { api.shopOpenState(auth, s.id) }.getOrDefault(true)
-                val today = LocalDate.now(ZoneId.of("Asia/Bangkok")).toString()
-                todayRevenue = runCatching { api.todayRevenue(auth, today) }.getOrDefault(MerchantTodayRevenue(0, 0.0, 0.0, 0.0))
-                gpRate = runCatching { api.effectiveGp(auth, s.id) }.getOrDefault(0.0)
+            coroutineScope {
+                val ordersDeferred = async { api.loadOrders(auth) }
+                val notificationsDeferred = async {
+                    runCatching { api.loadNotifications(auth) }.getOrDefault(emptyList())
+                }
+                if (s == null) {
+                    orders = ordersDeferred.await()
+                    notifications = notificationsDeferred.await()
+                } else {
+                    val productsDeferred = async { api.loadProducts(auth, s.id) }
+                    val readinessDeferred = async { api.readiness(auth, s.id) }
+                    val openDeferred = async {
+                        runCatching { api.shopOpenState(auth, s.id) }.getOrDefault(true)
+                    }
+                    val today = LocalDate.now(ZoneId.of("Asia/Bangkok")).toString()
+                    val revenueDeferred = async {
+                        runCatching { api.todayRevenue(auth, today) }
+                            .getOrDefault(MerchantTodayRevenue(0, 0.0, 0.0, 0.0))
+                    }
+                    val gpDeferred = async {
+                        runCatching { api.effectiveGp(auth, s.id) }.getOrDefault(-1.0)
+                    }
+
+                    val freshOrders = ordersDeferred.await()
+                    val freshProducts = productsDeferred.await()
+                    orders = freshOrders
+                    notifications = notificationsDeferred.await()
+                    products = freshProducts
+                    readiness = readinessDeferred.await()
+                    shopOpen = openDeferred.await()
+                    todayRevenue = revenueDeferred.await()
+                    gpRate = gpDeferred.await()
+                    withContext(Dispatchers.IO) {
+                        contentCache.write(auth.user.id, s, freshProducts)
+                    }
+                }
             }
-        }.onFailure { message = it.message ?: "โหลดข้อมูลร้านไม่สำเร็จ" }
+            knownPendingIds = orders.filter { it.status == "pending" }.map { it.id }.toSet()
+            initialLoadError = null
+        }.onFailure {
+            if (it is kotlinx.coroutines.CancellationException) throw it
+            if (shop == null) initialLoadError = it.message ?: "เชื่อมต่อไม่ได้"
+            else message = it.message ?: "โหลดข้อมูลร้านไม่สำเร็จ"
+        }
         loading = false
     }
 
@@ -333,9 +404,24 @@ private fun MerchantShell(
         groceryCatalogError = null
         try {
             if (groceryCatalogCategories.isEmpty()) {
-                val categories = api.groceryCatalogCategories(auth, activeShop.id)
+                val cachedState = withContext(Dispatchers.IO) {
+                    contentCache.readGroceryCategories(owner, activeShop.id) to
+                        contentCache.groceryCategoriesFresh(owner, activeShop.id)
+                }
                 if (!current()) return
-                groceryCatalogCategories = categories
+                val cachedCategories = cachedState.first
+                if (cachedCategories.isNotEmpty()) {
+                    groceryCatalogCategories = cachedCategories
+                    groceryCatalogLoading = false
+                }
+                if (!cachedState.second) {
+                    val categories = api.groceryCatalogCategories(auth, activeShop.id)
+                    if (!current()) return
+                    groceryCatalogCategories = categories
+                    withContext(Dispatchers.IO) {
+                        contentCache.writeGroceryCategories(owner, activeShop.id, categories)
+                    }
+                }
             }
             val page = api.groceryCatalogPage(auth, activeShop.id, groceryCatalogQuery,
                 groceryCatalogCategory, groceryCatalogMode, groceryCatalogOffset)
@@ -432,7 +518,15 @@ private fun MerchantShell(
         }
     }
 
-    LaunchedEffect(auth.user.id) { refreshAll() }
+    LaunchedEffect(auth.user.id, contentCache) {
+        val cached = withContext(Dispatchers.IO) { contentCache.read(auth.user.id) }
+        if (cached != null) {
+            shop = cached.shop
+            products = cached.products
+            loading = false
+        }
+        refreshAll(showLoading = cached == null)
+    }
     LaunchedEffect(pushTarget?.eventId, loading, pushRetrySignal, auth.session.accessToken) {
         val target = pushTarget ?: return@LaunchedEffect
         if (loading || handledPushEventId == target.eventId) return@LaunchedEffect
@@ -461,7 +555,7 @@ private fun MerchantShell(
         } catch (failure: kotlinx.coroutines.CancellationException) {
             throw failure
         } catch (_: Exception) {
-            message = "กำลังเชื่อมต่อเพื่อเปิดรายการจากการแจ้งเตือน"
+            message = null
             delay(3_000)
             pushRetrySignal += 1
         }
@@ -484,13 +578,16 @@ private fun MerchantShell(
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             if (screen == "home" || screen == "orders" || screen == "order") {
                 while (true) {
+                    // Initial refreshAll + Realtime join already establish current state.
+                    // Match Web's bounded fallback cadence instead of re-downloading
+                    // the complete Merchant order snapshot every three seconds.
+                    delay(15_000)
                     refreshOrders()
-                    delay(3_000)
                 }
             } else if (screen == "notifications") {
                 while (true) {
                     refreshNotifications()
-                    delay(10_000)
+                    delay(30_000)
                 }
             }
         }
@@ -524,7 +621,19 @@ private fun MerchantShell(
                         else -> "อัปเดตสถานะแล้ว"
                     }
                     orders = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
-                    selectedOrder = orders.find { it.id == order.id } ?: order.copy(status = result.status)
+                    val refreshed = orders.find { it.id == order.id }
+                    selectedOrder = if (refreshed != null) {
+                        refreshed.copy(
+                            preparingAt = refreshed.preparingAt ?: result.preparingAt,
+                            readyAt = refreshed.readyAt ?: result.readyAt
+                        )
+                    } else {
+                        order.copy(
+                            status = result.status,
+                            preparingAt = result.preparingAt ?: order.preparingAt,
+                            readyAt = result.readyAt ?: order.readyAt
+                        )
+                    }
                 }
                 .onFailure { message = it.message ?: "เปลี่ยนสถานะไม่สำเร็จ" }
             busy = false
@@ -581,8 +690,9 @@ private fun MerchantShell(
     ) { insets ->
         Column(Modifier.fillMaxSize().padding(insets).background(QgBg)) {
             MerchantTopBar(
+                screen = screen,
                 unreadCount = notifications.count { !it.isRead },
-                onHome = { screen = "home" },
+                onHome = { screen = merchantBackRoute(screen, productReturnScreen) },
                 onNotifications = { screen = "notifications" }
             )
             if (!message.isNullOrBlank()) {
@@ -593,13 +703,22 @@ private fun MerchantShell(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
-            when (screen) {
+            if (initialLoadError != null) {
+                QgCard(Modifier.fillMaxWidth().padding(14.dp)) {
+                    Column {
+                        Text("โหลดข้อมูลร้านไม่สำเร็จ", fontWeight = FontWeight.Bold)
+                        Text(initialLoadError!!, color = QgMuted, modifier = Modifier.padding(vertical = 8.dp))
+                        Button(onClick = { scope.launch { refreshAll() } }, enabled = !loading) {
+                            Text("ลองอีกครั้ง")
+                        }
+                    }
+                }
+            } else when (screen) {
                 "home" -> DashboardScreen(
                     shop = shop,
                     orders = orders,
                     loading = loading,
                     shopOpen = shopOpen,
-                    revenue = todayRevenue,
                     busy = busy,
                     onToggleOpen = { next ->
                         val currentShop = shop
@@ -631,11 +750,6 @@ private fun MerchantShell(
                             }
                         }
                     },
-                    onOpen = {
-                        selectedOrder = it
-                        orderItems = emptyList()
-                        screen = "order"
-                    },
                     onPos = { screen = "pos" },
                     onOrders = { screen = "orders" },
                     onProducts = { screen = "products" },
@@ -658,11 +772,19 @@ private fun MerchantShell(
                     items = orderItems,
                     products = products,
                     busy = busy,
+                    canStartCustomerCall = voiceState.phase !in setOf(
+                        NativeVoicePhase.RINGING_OUT,
+                        NativeVoicePhase.INCOMING,
+                        NativeVoicePhase.CONNECTING,
+                        NativeVoicePhase.CONNECTED
+                    ),
                     onBack = {
                         selectedRiderContext = null
                         screen = "orders"
                     },
+                    onReportIssue = { if (selectedOrder?.let { merchantOrderCanReportIssue(it.status) } == true) screen = "order-report" },
                     onAction = { action, reason -> selectedOrder?.let { runAction(it, action, reason) } },
+                    onCallCustomer = { selectedOrder?.let { startCustomerVoiceCall(it.id) } },
                     onAdjustReady = { delta -> selectedOrder?.let { adjustReadyEstimate(it, delta) } },
                     onSaveItems = { draft ->
                         val current = selectedOrder
@@ -747,7 +869,7 @@ private fun MerchantShell(
                                         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
                                         catch (_: Exception) { message = "บันทึกแล้ว แต่ยังโหลดรายการในร้านไม่ได้" }
                                     }
-                                }, onBack = { screen = "products" })
+                                }, onBack = { screen = merchantBackRoute(screen, productReturnScreen) })
                         }
                     } else Text("หน้านี้ใช้สำหรับร้านตลาด เนื้อ ปลา ผัก หรือผลไม้", color = QgMuted)
                 }
@@ -817,7 +939,7 @@ private fun MerchantShell(
                                     }
                                 }
                             },
-                            onBack = { screen = "products" }
+                            onBack = { screen = merchantBackRoute(screen, productReturnScreen) }
                         )
                     }
                 }
@@ -843,7 +965,7 @@ private fun MerchantShell(
                                 productReturnScreen = "catalog"
                                 screen = "product"
                             },
-                            onBack = { screen = "products" }
+                            onBack = { screen = merchantBackRoute(screen, productReturnScreen) }
                         )
                     }
                 }
@@ -874,8 +996,7 @@ private fun MerchantShell(
                                                 product = selectedProduct,
                                                 draft = draft.copy(
                                                     image = image ?: draft.image ?: selectedProduct?.image
-                                                ),
-                                                gpRate = gpRate
+                                                )
                                             )
                                             api.loadProducts(auth, activeShop.id)
                                         }.onSuccess { fresh ->
@@ -893,6 +1014,20 @@ private fun MerchantShell(
                                         busy = false
                                     }
                                 }
+                            },
+                            onAdjustInventory = { intent ->
+                                if (busy) error("กำลังบันทึกสินค้า")
+                                busy = true
+                                try {
+                                    val receipt = api.adjustInventoryStock(auth, intent)
+                                    val fresh = api.loadProducts(auth, activeShop.id)
+                                    products = fresh
+                                    selectedProduct = fresh.firstOrNull { it.id == intent.productId } ?: selectedProduct
+                                    receipt
+                                } finally { busy = false }
+                            },
+                            onLoadInventoryHistory = { product, beforeAt, beforeId ->
+                                api.loadInventoryAdjustmentHistory(auth, product.id, beforeAt, beforeId)
                             },
                             onDelete = { product ->
                                 if (!busy) {
@@ -922,13 +1057,13 @@ private fun MerchantShell(
                         )
                     }
                 }
-                "pos" -> MerchantPosScreen(auth = auth, onBack = { screen = "home" })
+                "pos" -> MerchantPosScreen(auth = auth, onBack = { screen = merchantBackRoute(screen, productReturnScreen) })
                 "laundry" -> MerchantLaundryScreen(auth)
                 "revenue" -> MerchantRevenueScreen(
                     auth = auth,
                     api = api,
                     shopName = shop?.name.orEmpty(),
-                    onBack = { screen = "home" },
+                    onBack = { screen = merchantBackRoute(screen, productReturnScreen) },
                     onSettings = { screen = "profile" }
                 )
                 "promotions" -> {
@@ -941,14 +1076,13 @@ private fun MerchantShell(
                         MerchantPromotionScreen(
                             auth = auth,
                             shop = activeShop,
-                            api = api,
-                            onBack = { screen = "home" }
+                            api = api
                         )
                     }
                 }
                 "notifications" -> MerchantNotificationsScreen(
                     notifications = notifications,
-                    onBack = { screen = "home" },
+                    onBack = { screen = merchantBackRoute(screen, productReturnScreen) },
                     onMarkAllRead = {
                         if (notifications.any { !it.isRead }) {
                             notifications = notifications.map { it.copy(isRead = true) }
@@ -1001,27 +1135,29 @@ private fun MerchantShell(
                             auth = auth,
                             shop = activeShop,
                             api = api,
-                            onBack = { screen = "home" }
+                            onBack = { screen = merchantBackRoute(screen, productReturnScreen) }
                         )
                     }
                 }
                 "media" -> MerchantMediaScreen(
                     auth = auth,
-                    onBack = { screen = "home" }
+                    onBack = { screen = merchantBackRoute(screen, productReturnScreen) }
                 )
                 "modules" -> MerchantModulesScreen(
                     auth = auth,
                     api = api,
-                    onBack = { screen = "home" },
+                    onBack = { screen = merchantBackRoute(screen, productReturnScreen) },
                     onSetup = { screen = "shop-setup" },
                     onHours = { screen = "hours" },
                     onLaundry = { screen = "laundry" }
                 )
-                "support" -> MerchantSupportScreen(auth) { screen = "profile" }
+                "support" -> MerchantSupportScreen(auth) { screen = merchantBackRoute(screen, productReturnScreen) }
+                "order-report" -> selectedOrder?.let { order ->
+                    MerchantSupportTicketsScreen(auth, orders, order.id, order.number) { screen = merchantBackRoute(screen, productReturnScreen) }
+                } ?: run { screen = "orders" }
                 "profile" -> MerchantProfileScreen(
                     auth = auth,
                     shop = shop,
-                    readiness = readiness,
                     shopOpen = shopOpen,
                     onSetup = {
                         setupLogoUri = null
@@ -1032,7 +1168,6 @@ private fun MerchantShell(
                     onHours = { screen = "hours" },
                     onProducts = { screen = "products" },
                     onModules = { screen = "modules" },
-                    onNotifications = { screen = "notifications" },
                     pushBusy = pushActionBusy,
                     onEnableBackgroundNotifications = {
                         launchMerchantPushProfileAction(false)
@@ -1054,7 +1189,7 @@ private fun MerchantShell(
                             auth = auth,
                             shop = activeShop,
                             api = api,
-                            onBack = { screen = "profile" },
+                            onBack = { screen = merchantBackRoute(screen, productReturnScreen) },
                             onSaved = {
                                 scope.launch {
                                     shop = runCatching { api.loadShop(auth) }.getOrDefault(shop)
@@ -1134,7 +1269,7 @@ private fun MerchantShell(
                                     }
                                 }
                             },
-                            onBack = { screen = "profile" }
+                            onBack = { screen = merchantBackRoute(screen, productReturnScreen) }
                         )
                     }
                 }
@@ -1154,12 +1289,40 @@ private fun MerchantShell(
     }
 }
 
+internal fun merchantTopBarTitle(screen: String): String? =
+    if (screen == "promotions") "โปรโมชั่น" else null
+
 @Composable
 private fun MerchantTopBar(
+    screen: String,
     unreadCount: Int,
     onHome: () -> Unit,
     onNotifications: () -> Unit
 ) {
+    val title = merchantTopBarTitle(screen)
+    if (title != null) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(Color(0xFAFFFFFF))
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .height(40.dp)
+        ) {
+            QgIconButton(
+                icon = "back",
+                modifier = Modifier.align(Alignment.CenterStart),
+                onClick = onHome
+            )
+            Text(
+                title,
+                modifier = Modifier.align(Alignment.Center),
+                color = Color(0xFF17191D),
+                fontSize = MerchantPageTitleSize,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+        return
+    }
     Row(
         Modifier
             .fillMaxWidth()
@@ -1200,11 +1363,9 @@ private fun DashboardScreen(
     orders: List<MerchantOrder>,
     loading: Boolean,
     shopOpen: Boolean,
-    revenue: MerchantTodayRevenue,
     busy: Boolean,
     onToggleOpen: (Boolean) -> Unit,
     onPause: (Int) -> Unit,
-    onOpen: (MerchantOrder) -> Unit,
     onPos: () -> Unit,
     onOrders: () -> Unit,
     onProducts: () -> Unit,
@@ -1215,9 +1376,8 @@ private fun DashboardScreen(
     onSupport: () -> Unit,
     onMarketStock: () -> Unit
 ) {
-    val incoming = orders.filter {
-        it.status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "preparing", "ready")
-    }
+    val todayOrders = merchantDashboardSummary(orders)
+    val orderCountsReady = !loading || orders.isNotEmpty()
 
     Column(
         Modifier
@@ -1256,15 +1416,6 @@ private fun DashboardScreen(
                 }
             }
 
-            if (!shop.cover.isNullOrBlank()) {
-                Spacer(Modifier.height(2.dp))
-                QgRemoteImage(
-                    shop.cover,
-                    Modifier.fillMaxWidth().height(128.dp),
-                    shop.name,
-                    maxDecodeSide = 512
-                )
-            }
         }
 
         if (shop != null) {
@@ -1280,25 +1431,31 @@ private fun DashboardScreen(
             }
         }
 
-        Text(
-            "ภาพรวมวันนี้",
-            modifier = Modifier.padding(horizontal = 2.dp, vertical = 14.dp),
-            fontWeight = FontWeight.ExtraBold,
-            style = MaterialTheme.typography.titleMedium
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "สรุปออเดอร์วันนี้",
+                modifier = Modifier.weight(1f),
+                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(merchantDashboardDateLabel(), color = QgMuted, style = MaterialTheme.typography.labelSmall)
+        }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMetricCard("ออเดอร์", revenue.orderCount.toString(), "orders", Modifier.weight(1f))
-            MerchantMetricCard("ยอดขาย", "฿" + "%.0f".format(revenue.grossSales), "bag", Modifier.weight(1f))
+            MerchantMetricCard("ออเดอร์ทั้งหมด", if (orderCountsReady) todayOrders.all.toString() else "—", "orders", Modifier.weight(1f))
+            MerchantMetricCard("เสร็จแล้ว", if (orderCountsReady) todayOrders.completed.toString() else "—", "clock", Modifier.weight(1f))
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMetricCard("เงินสดรับ", "฿" + "%.0f".format(revenue.cashReceived), "store", Modifier.weight(1f))
-            MerchantMetricCard("GP ที่หักจากเครดิต", "฿" + "%.0f".format(revenue.gpAmount), "orders", Modifier.weight(1f))
+            MerchantMetricCard("กำลังเตรียม", if (orderCountsReady) todayOrders.preparing.toString() else "—", "box", Modifier.weight(1f))
+            MerchantMetricCard("ยกเลิก", if (orderCountsReady) todayOrders.cancelled.toString() else "—", "close", Modifier.weight(1f))
         }
 
         Text(
-            "จัดการร้าน",
+            "เมนูหลัก",
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 14.dp),
             fontWeight = FontWeight.ExtraBold,
             style = MaterialTheme.typography.titleMedium
@@ -1331,16 +1488,6 @@ private fun DashboardScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        QgSectionTitle("ออเดอร์ที่ต้องจัดการ", "รับ → เตรียม → พร้อมส่ง")
-        Spacer(Modifier.height(10.dp))
-        when {
-            loading && orders.isEmpty() -> CircularProgressIndicator()
-            incoming.isEmpty() -> QgCard(Modifier.fillMaxWidth()) {
-                Text("ยังไม่มีออเดอร์ที่ต้องจัดการ", color = QgMuted)
-            }
-            else -> incoming.take(6).forEach { MerchantOrderCard(it, onOpen) }
-        }
         Spacer(Modifier.height(28.dp))
     }
 }
@@ -1426,12 +1573,47 @@ private fun MerchantMenuTile(
 
 @Composable
 private fun MerchantOrdersScreen(orders: List<MerchantOrder>, loading: Boolean, onOpen: (MerchantOrder) -> Unit) {
+    var selectedFilter by rememberSaveable { mutableStateOf("all") }
+    var query by rememberSaveable { mutableStateOf("") }
+    val filters = listOf(
+        "all" to "ทั้งหมด", "pending" to "รอรับ", "preparing" to "กำลังเตรียม",
+        "searching" to "กำลังหาไรเดอร์", "delivering" to "กำลังส่ง", "done" to "สำเร็จ"
+    )
+    val visibleOrders = orders.filter { order ->
+        (selectedFilter == "all" || merchantOrderFilterBucket(order.status, order.riderArrivedCustomerAt) == selectedFilter) &&
+            merchantOrderSearchMatches(order, query)
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("ออเดอร์", "รับ → เตรียม → พร้อมส่ง")
+        QgSectionTitle("คำสั่งซื้อ", "ดูสถานะและจัดการออเดอร์ของร้าน")
         Spacer(Modifier.height(10.dp))
-        if (loading && orders.isEmpty()) CircularProgressIndicator()
-        else if (orders.isEmpty()) QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์", color = QgMuted) }
-        else orders.forEach { MerchantOrderCard(it, onOpen) }
+        if (!loading || orders.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                filters.forEach { (filter, label) ->
+                    if (selectedFilter == filter) Button(onClick = { selectedFilter = filter }) {
+                        Text(label, fontSize = 11.sp)
+                    } else OutlinedButton(onClick = { selectedFilter = filter }) {
+                        Text(label, fontSize = 11.sp)
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                leadingIcon = { QgIcon("search", Modifier.size(18.dp), QgMuted) },
+                placeholder = { Text("ค้นหาด้วยเลขออเดอร์ หรือชื่อลูกค้า") }
+            )
+            Spacer(Modifier.height(10.dp))
+            if (orders.isEmpty()) {
+                QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีคำสั่งซื้อ", color = QgMuted) }
+            } else if (visibleOrders.isEmpty()) {
+                QgCard(Modifier.fillMaxWidth()) { Text("ไม่พบคำสั่งซื้อ", color = QgMuted) }
+            } else visibleOrders.forEach { MerchantOrderCard(it, onOpen) }
+        }
         Spacer(Modifier.height(30.dp))
     }
 }
@@ -1446,8 +1628,14 @@ private fun MerchantOrderCard(order: MerchantOrder, onOpen: (MerchantOrder) -> U
                 QgStatusPill(merchantStatus(order.status, order.riderArrivedCustomerAt), order.status !in setOf("cancelled", "no_rider_available"))
             }
             Spacer(Modifier.height(6.dp))
-            Text("ยอดสินค้า ฿" + "%.0f".format(order.subtotal), fontWeight = FontWeight.Bold)
-            if (!order.note.isNullOrBlank()) Text(order.note!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            Text("ลูกค้า: " + (order.customerName ?: "ลูกค้า"), color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            Text("${order.itemCount} รายการ • ฿" + "%.0f".format(order.subtotal), fontWeight = FontWeight.Bold)
+            merchantOrderTimeLabel(order.createdAt).takeIf { it.isNotBlank() }?.let {
+                Text(it, color = QgMuted, style = MaterialTheme.typography.labelSmall)
+            }
+            com.queuego.shared.cleanOrderDisplayNote(order.note)?.let { note ->
+                Text(note, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
@@ -1459,24 +1647,36 @@ private fun MerchantOrderDetail(
     items: List<MerchantOrderItem>,
     products: List<MerchantProduct>,
     busy: Boolean,
+    canStartCustomerCall: Boolean,
     onBack: () -> Unit,
+    onReportIssue: () -> Unit,
     onAction: (String, String?) -> Unit,
+    onCallCustomer: () -> Unit,
     onAdjustReady: (Int) -> Unit,
     onSaveItems: (List<MerchantOrderEditItem>) -> Unit
 ) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    var preparingFallbackStart by remember(order?.id) { mutableLongStateOf(0L) }
     var cancelOpen by remember(order?.id) { mutableStateOf(false) }
     var editOpen by remember(order?.id) { mutableStateOf(false) }
-    LaunchedEffect(order?.status, order?.preparingAt) {
-        while (order?.status == "preparing") {
+    LaunchedEffect(order?.id, order?.status, order?.preparingAt) {
+        if (order?.status != "preparing") {
+            preparingFallbackStart = 0L
+            return@LaunchedEffect
+        }
+        val serverStart = runCatching { Instant.parse(order.preparingAt ?: "").toEpochMilli() }.getOrNull()
+        if (serverStart == null && preparingFallbackStart <= 0L) {
+            preparingFallbackStart = System.currentTimeMillis()
+        }
+        while (order.status == "preparing") {
             now = System.currentTimeMillis()
             delay(1_000)
         }
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-        Spacer(Modifier.height(12.dp))
+        QgIconButton(icon = "back", onClick = onBack)
+        Spacer(Modifier.height(10.dp))
         if (order == null) {
             Text("ไม่พบออเดอร์")
             return
@@ -1484,12 +1684,68 @@ private fun MerchantOrderDetail(
         Text(order.number, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(6.dp))
         QgStatusPill(merchantStatus(order.status, order.riderArrivedCustomerAt), order.status !in setOf("cancelled", "no_rider_available"))
+        if (merchantOrderShowsProgress(order.status)) {
+            Spacer(Modifier.height(12.dp))
+            QgCard(Modifier.fillMaxWidth()) {
+                val stageLabels = listOf("ออเดอร์เข้า", "ร้านรับ", "เตรียมสินค้า", "กำลังจัดส่ง", "สำเร็จ")
+                val stage = merchantOrderProgressStage(order.status)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    stageLabels.forEachIndexed { index, label ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    Modifier.weight(1f).height(2.dp).background(
+                                        if (index == 0) Color.Transparent
+                                        else if (index <= stage) QgRed else QgLine
+                                    )
+                                )
+                                Box(
+                                    Modifier.size(16.dp)
+                                        .background(if (index <= stage) QgRed else QgLine, CircleShape)
+                                )
+                                Box(
+                                    Modifier.weight(1f).height(2.dp).background(
+                                        if (index == stageLabels.lastIndex) Color.Transparent
+                                        else if (index < stage) QgRed else QgLine
+                                    )
+                                )
+                            }
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                label,
+                                color = if (index <= stage) QgInk else QgMuted,
+                                fontSize = 8.sp,
+                                lineHeight = 10.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
         QgCard(Modifier.fillMaxWidth()) {
             Column {
-                Text("รายการสินค้า", fontWeight = FontWeight.ExtraBold)
-                if (items.isEmpty()) Text("กำลังโหลดรายการ...", color = QgMuted)
-                else items.forEach {
+                Text("ลูกค้า", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                Text(order.customerName?.takeIf(String::isNotBlank) ?: "ลูกค้า", fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text("ที่อยู่จัดส่ง", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                Text(order.deliveryAddress?.takeIf(String::isNotBlank) ?: "-")
+                if (order.status !in setOf("completed", "delivered", "cancelled", "no_rider_available")) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onCallCustomer,
+                        enabled = !busy && canStartCustomerCall,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("โทรหาลูกค้าผ่าน QueueGo") }
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        QgCard(Modifier.fillMaxWidth()) {
+            Column {
+                val itemQuantity = items.sumOf { it.quantity.coerceAtLeast(0) }
+                Text("รายการสินค้า · $itemQuantity ชิ้น", fontWeight = FontWeight.ExtraBold)
+                if (items.isNotEmpty()) items.forEach {
                     Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                         QgRemoteImage(it.image, Modifier.size(48.dp), it.name, maxDecodeSide = 192)
                         Spacer(Modifier.width(8.dp))
@@ -1505,11 +1761,13 @@ private fun MerchantOrderDetail(
             }
         }
         Spacer(Modifier.height(10.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text("ยอดที่ร้านได้รับจาก Rider", color = QgMuted)
-                Text("฿" + "%.0f".format(order.subtotal), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineMedium)
-                Text("แสดงยอดเงินสดเท่านั้น ไม่มีขั้นตอนยืนยันรับเงินซ้ำ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+        if (order.status !in setOf("pending", "pending_shop", "cancelled")) {
+            QgCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Text("ยอดที่ร้านได้รับจาก Rider", color = QgMuted)
+                    Text("฿" + "%.0f".format(order.subtotal), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineMedium)
+                    Text("เงินสดที่ Rider จ่ายร้านเมื่อรับสินค้า", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
         rider?.let { assignedRider ->
@@ -1634,7 +1892,12 @@ private fun MerchantOrderDetail(
                 ) { Text("ยกเลิกออเดอร์") }
             }
             "preparing" -> {
-                val left = readinessLeft(order.readyEstimateAt, order.preparingAt, now)
+                val left = readinessLeft(
+                    order.readyEstimateAt,
+                    order.preparingAt,
+                    preparingFallbackStart.takeIf { it > 0L },
+                    now
+                )
                 Button(
                     onClick = { onAction("ready", null) },
                     enabled = !busy,
@@ -1673,6 +1936,14 @@ private fun MerchantOrderDetail(
             "no_rider_available" -> QgCard(Modifier.fillMaxWidth()) {
                 Text("ไม่พบ Rider · ออเดอร์สิ้นสุดแล้ว", color = QgMuted, fontWeight = FontWeight.ExtraBold)
             }
+        }
+        if (merchantOrderCanReportIssue(order.status)) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onReportIssue,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("แจ้งปัญหาออเดอร์นี้") }
         }
         Spacer(Modifier.height(30.dp))
     }
@@ -2047,23 +2318,27 @@ private fun MerchantCancelGuard(
     )
 }
 
+private const val MERCHANT_PRIVACY_POLICY_URL =
+    "https://chatchairins-source.github.io/QueuGo/docs/privacy.html"
+
 @Composable
 private fun MerchantProfileScreen(
     auth: NativeAuth,
     shop: MerchantShop?,
-    readiness: ShopReadiness?,
     shopOpen: Boolean,
     onSetup: () -> Unit,
     onHours: () -> Unit,
     onProducts: () -> Unit,
     onModules: () -> Unit,
-    onNotifications: () -> Unit,
     pushBusy: Boolean,
     onEnableBackgroundNotifications: () -> Unit,
     onTestNotification: () -> Unit,
     onSupport: () -> Unit,
     logout: () -> Unit
 ) {
+    val context = LocalContext.current
+    var showDeletion by remember { mutableStateOf(false) }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -2169,46 +2444,9 @@ private fun MerchantProfileScreen(
             )
         }
 
-        if (readiness != null) {
-            Spacer(Modifier.height(12.dp))
-            MerchantProfileSectionTitle("ความพร้อมร้าน")
-            MerchantProfileCard {
-                val labels = listOf(
-                    "shop_info" to "ข้อมูลร้าน",
-                    "storefront_image" to "รูปหน้าร้าน",
-                    "cover_image" to "รูปหน้าปก",
-                    "location" to "ตำแหน่งร้าน",
-                    "catalog" to "สินค้า/บริการ"
-                )
-                labels.forEachIndexed { index, (key, label) ->
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(label, Modifier.weight(1f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        val ready = readiness.checks.optBoolean(key, false)
-                        Text(
-                            if (ready) "พร้อม" else "ยังไม่ครบ",
-                            color = if (ready) QgGreen else QgRed,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
-                    if (index != labels.lastIndex) HorizontalDivider(color = Color(0xFFECEEF1))
-                }
-            }
-        }
-
         Spacer(Modifier.height(12.dp))
         MerchantProfileSectionTitle("การแจ้งเตือน")
         MerchantProfileCard {
-            MerchantProfileActionRow(
-                icon = "bell",
-                title = "ศูนย์การแจ้งเตือน",
-                subtitle = "ดูออเดอร์ สถานะระบบ และข่าวสารของร้าน",
-                onClick = onNotifications
-            )
-            HorizontalDivider(color = Color(0xFFECEEF1))
             MerchantProfileActionRow(
                 icon = "bell",
                 title = "การแจ้งเตือนเบื้องหลัง",
@@ -2227,6 +2465,34 @@ private fun MerchantProfileScreen(
         }
 
         Spacer(Modifier.height(12.dp))
+        MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
+        MerchantProfileCard {
+            MerchantProfileActionRow(
+                icon = "gear",
+                title = "นโยบายความเป็นส่วนตัว",
+                subtitle = "ข้อมูลเกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคล"
+            ) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(MERCHANT_PRIVACY_POLICY_URL))
+                    .addCategory(Intent.CATEGORY_BROWSABLE)
+                runCatching { context.startActivity(intent) }
+            }
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "back",
+                title = "ลบบัญชีถาวร",
+                subtitle = "ลบบัญชีและข้อมูลร้านตามขั้นตอนที่กำหนด",
+                danger = true
+            ) { showDeletion = true }
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "back",
+                title = "ออกจากระบบ",
+                subtitle = "ออกจากบัญชีร้านค้าบนอุปกรณ์นี้",
+                onClick = logout
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
         MerchantProfileSectionTitle("ช่วยเหลือ")
         MerchantProfileCard {
             MerchantProfileActionRow(
@@ -2237,20 +2503,32 @@ private fun MerchantProfileScreen(
             )
         }
 
-        Spacer(Modifier.height(12.dp))
-        if (BuildConfig.DEBUG) com.queuego.shared.QgTestBuildInfo(
-            "Merchant", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
-            BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE)
-        MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
-        QgAccountDeletionSection(
-            accessToken = auth.session.accessToken,
-            onDeleted = logout
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth().height(46.dp)) {
-            Text("ออกจากระบบ", fontWeight = FontWeight.Bold)
+        if (BuildConfig.DEBUG) {
+            Spacer(Modifier.height(12.dp))
+            com.queuego.shared.QgTestBuildInfo(
+                "Merchant", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
+                BuildConfig.GIT_SHA, BuildConfig.BUILT_UTC, BuildConfig.BUILD_TYPE
+            )
         }
         Spacer(Modifier.height(28.dp))
+    }
+
+    if (showDeletion) {
+        AlertDialog(
+            onDismissRequest = { showDeletion = false },
+            text = {
+                QgAccountDeletionSection(
+                    accessToken = auth.session.accessToken,
+                    onDeleted = logout
+                )
+            },
+            confirmButton = {},
+            dismissButton = {
+                OutlinedButton(onClick = { showDeletion = false }) {
+                    Text("ปิด")
+                }
+            }
+        )
     }
 }
 
@@ -2308,6 +2586,7 @@ private fun MerchantProfileActionRow(
     title: String,
     subtitle: String,
     primary: Boolean = false,
+    danger: Boolean = false,
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -2322,7 +2601,7 @@ private fun MerchantProfileActionRow(
             Modifier
                 .size(34.dp)
                 .background(
-                    if (primary) Color(0xFFFFF0F3) else Color(0xFFF6F7F8),
+                    if (primary || danger) Color(0xFFFFF0F3) else Color(0xFFF6F7F8),
                     RoundedCornerShape(11.dp)
                 ),
             contentAlignment = Alignment.Center
@@ -2330,14 +2609,14 @@ private fun MerchantProfileActionRow(
             QgIcon(
                 icon,
                 Modifier.size(17.dp),
-                if (primary) QgRed else Color(0xFF737982)
+                if (primary || danger) QgRed else Color(0xFF737982)
             )
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 title,
-                color = if (primary) Color(0xFFD90D2D) else Color(0xFF202329),
+                color = if (primary || danger) Color(0xFFD90D2D) else Color(0xFF202329),
                 fontSize = 12.5.sp,
                 fontWeight = FontWeight.ExtraBold
             )
@@ -2369,15 +2648,15 @@ private fun merchantStatus(status: String, riderArrivedCustomerAt: String? = nul
         !riderArrivedCustomerAt.isNullOrBlank()
     ) return "Rider ถึงลูกค้าแล้ว"
     return when (normalized) {
-        "pending" -> "ออเดอร์ใหม่"
-        "accepted" -> "รับแล้ว"
-        "searching_rider" -> "กำลังหา Rider"
-        "rider_assigned", "assigned" -> "Rider รับงานแล้ว"
+        "pending", "pending_shop" -> "รอรับ"
+        "accepted", "shop_accepted" -> "ร้านรับออเดอร์แล้ว"
+        "searching_rider" -> "กำลังค้นหาไรเดอร์"
+        "rider_to_shop", "rider_assigned", "assigned" -> "Rider กำลังมารับสินค้า"
         "preparing" -> "กำลังเตรียม"
-        "ready" -> "พร้อมส่ง"
+        "ready", "waiting_rider" -> "พร้อมให้ Rider รับ"
         "picked_up" -> "Rider รับสินค้าแล้ว"
         "in_progress", "delivering", "rider_to_customer" -> "กำลังจัดส่ง"
-        "completed" -> "สำเร็จ"
+        "completed", "delivered" -> "จัดส่งสำเร็จ"
         "cancelled" -> "ยกเลิก"
         "no_rider_available" -> "ไม่พบ Rider"
         else -> status
@@ -2418,9 +2697,17 @@ private fun MerchantReadyEstimateControls(
     }
 }
 
-private fun readinessLeft(readyEstimateAt: String?, preparingAt: String?, now: Long): Int {
+private fun readinessLeft(
+    readyEstimateAt: String?,
+    preparingAt: String?,
+    fallbackPreparingAt: Long?,
+    now: Long
+): Int {
+    val started = runCatching { Instant.parse(preparingAt ?: "").toEpochMilli() }.getOrNull()
+        ?: fallbackPreparingAt
+        ?: now
     val target = runCatching { Instant.parse(readyEstimateAt ?: "").toEpochMilli() }.getOrNull()
-        ?: (runCatching { Instant.parse(preparingAt ?: "").toEpochMilli() }.getOrNull() ?: now) + 20 * 60 * 1000L
+        ?: started + 20 * 60 * 1000L
     return (((target - now).coerceAtLeast(0L) + 999L) / 1000L).toInt()
 }
 

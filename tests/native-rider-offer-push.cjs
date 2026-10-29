@@ -38,7 +38,7 @@ const path=require('path');
   const edge=fs.readFileSync('supabase/functions/queuego-push/index.ts','utf8');
   assert(edge.includes("offer.data.rider_id!==profile.data.id"));
   assert(edge.includes('created<offered'));
-  assert(edge.includes('message:riderMessage||{'),'Existing other-role notification payload must remain');
+  assert(/message:riderMessage\|\|\(customerAndroid\?\{[\s\S]*?\}:\{\s*token:deviceToken,\s*notification:\{/.test(edge),'Existing other-role notification payload must remain behind the Customer Android data-only branch');
   assert(edge.includes("user.role==='rider'?buildRiderEventMessage"),'Other-role payload remains on the existing transport path');
   assert(edge.includes("if(user.role==='rider'&&!riderMessage)return 204"),'Incomplete Rider recipient/session metadata must never fall back to notification payload');
   const riderPush=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderPush.kt','utf8');
