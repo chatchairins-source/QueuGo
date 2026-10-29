@@ -809,3 +809,12 @@ Total output lines: 2112
 - BLOCKED (publication): local fix commit `bd1efb65` is complete, but automatic approval review rejected push to `chatchairins-source/QueuGo` / `work-native-web-parity-20261026`, citing no explicit authorization to export potentially sensitive source to an unverified destination. No alternate write path attempted. Required unblock: explicit owner approval for publishing this bounded fix/checkpoint to that existing repository branch; then recheck remote HEAD before pushing and run exact-head CI.
 
 - Publication unblock: owner explicitly confirmed publishing this fix to the existing repository/branch in this session. Git CLI lacks a credential; use the connected GitHub API with a strict parent/ref check. Exact-head CI remains NEXT.
+
+
+## 2026-10-29 Native Merchant POS — centralized back policy regression gate
+
+- Successor HEAD: `eb8e62ac5920916e3b73251645f11cfdd1bdde17` on PR #730 / `work-native-web-parity-20261026`. Exact-head Native Android Pilot run `40826734607` and Map Engine run `40826734473` both completed SUCCESS.
+- Root cause: the grocery catalog source regression asserted an inline route expression after Merchant back navigation was centralized in `MerchantRouteRestoration.kt`; this stale assertion failed against the intended new architecture. Updated the regression to assert the centralized catalog/product return policy.
+- Verified exact-head artifact `12876749370` belongs to run `40826734607`, includes Customer/Merchant/Rider Debug APKs, passes ZIP integrity, and its SHA-256 matches GitHub artifact digest `4725abe06edec28f44090c8e06c2c41f44f57225479d0103e961d544aa1602ae`.
+- POS source audit confirms the POS screen has a visible back icon in its own header and the table QR / cash receipt workflows remain in the same screen. The current PR has broad native parity scope; do not claim every screen's visible header/back is fully normalized from the centralized hardware-back handler alone.
+- **NEXT:** continue a bounded Web-vs-Native Merchant POS visual/functional audit; verify table → bill → cash tender/change → server-confirmed PAID + CLOSED → receipt on a non-production backend/device. Keep authenticated real-device acceptance BLOCKED until evidence exists. Do not mutate Production financial data.
