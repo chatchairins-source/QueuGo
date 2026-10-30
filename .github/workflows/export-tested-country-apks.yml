@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: queuego-export-tested-country-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   export-tested-role-apks:
@@ -59,6 +59,31 @@ jobs:
                   'scope': 'Unmodified test APK redistribution; no Production certification'
               }, indent=2) + '\n')
           PY
+      - name: Stage bounded transfer pieces without altering any APK bytes
+        run: |
+          python3 - <<'PYCODE'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          for role in ('customer', 'merchant', 'rider'):
+              directory = root / 'role-export' / role
+              metadata = json.loads((directory / 'TESTED-SOURCE.json').read_text())
+              apk = next(directory.glob('*.apk'))
+              pieces = []
+              with apk.open('rb') as source:
+                  while block := source.read(64 * 1024 * 1024):
+                      index = len(pieces)
+                      target = root / 'role-parts' / role / f'{index:02d}'
+                      target.mkdir(parents=True, exist_ok=True)
+                      name = f'part-{index:02d}.bin'
+                      (target / name).write_bytes(block)
+                      pieces.append({'index': index, 'name': name, 'bytes': len(block), 'sha256': hashlib.sha256(block).hexdigest()})
+              assert len(pieces) == 8
+              metadata['parts'] = pieces
+              metadata['apk_filename'] = apk.name
+              for piece in pieces:
+                  (root / 'role-parts' / role / f"{piece['index']:02d}" / 'PARTS.json').write_text(json.dumps(metadata, indent=2) + '\n')
+          PYCODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: queuego-tested-customer-apk
@@ -76,4 +101,172 @@ jobs:
           name: queuego-tested-rider-apk
           path: ${{ runner.temp }}/role-export/rider/
           compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-customer-part-00
+          path: ${{ runner.temp }}/role-parts/customer/00/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-customer-part-01
+          path: ${{ runner.temp }}/role-parts/customer/01/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-customer-part-02
+          path: ${{ runner.temp }}/role-parts/customer/02/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-customer-part-03
+          path: ${{ runner.temp }}/role-parts/customer/03/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-customer-part-04
+          path: ${{ runner.temp }}/role-parts/customer/04/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-customer-part-05
+          path: ${{ runner.temp }}/role-parts/customer/05/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-customer-part-06
+          path: ${{ runner.temp }}/role-parts/customer/06/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-customer-part-07
+          path: ${{ runner.temp }}/role-parts/customer/07/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-merchant-part-00
+          path: ${{ runner.temp }}/role-parts/merchant/00/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-merchant-part-01
+          path: ${{ runner.temp }}/role-parts/merchant/01/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-merchant-part-02
+          path: ${{ runner.temp }}/role-parts/merchant/02/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-merchant-part-03
+          path: ${{ runner.temp }}/role-parts/merchant/03/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-merchant-part-04
+          path: ${{ runner.temp }}/role-parts/merchant/04/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-merchant-part-05
+          path: ${{ runner.temp }}/role-parts/merchant/05/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-merchant-part-06
+          path: ${{ runner.temp }}/role-parts/merchant/06/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-merchant-part-07
+          path: ${{ runner.temp }}/role-parts/merchant/07/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-rider-part-00
+          path: ${{ runner.temp }}/role-parts/rider/00/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-rider-part-01
+          path: ${{ runner.temp }}/role-parts/rider/01/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-rider-part-02
+          path: ${{ runner.temp }}/role-parts/rider/02/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-rider-part-03
+          path: ${{ runner.temp }}/role-parts/rider/03/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-rider-part-04
+          path: ${{ runner.temp }}/role-parts/rider/04/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-rider-part-05
+          path: ${{ runner.temp }}/role-parts/rider/05/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-rider-part-06
+          path: ${{ runner.temp }}/role-parts/rider/06/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-rider-part-07
+          path: ${{ runner.temp }}/role-parts/rider/07/
+          compression-level: 0
+          retention-days: 1
           if-no-files-found: error

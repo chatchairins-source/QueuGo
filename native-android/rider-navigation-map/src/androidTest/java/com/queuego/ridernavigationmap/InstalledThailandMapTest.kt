@@ -15,6 +15,7 @@ class InstalledThailandMapTest {
         InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
     ).bufferedReader().use { it.readText() }
 
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 29)
     @Test fun installedCountryArchivePaintsRoadsInMultipleRegions() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -73,21 +74,28 @@ class InstalledThailandMapTest {
                 screenshot.outputStream().use {
                     assertTrue(instrumentation.uiAutomation.takeScreenshot().compress(Bitmap.CompressFormat.PNG, 100, it))
                 }
-                // Gradle removes the test APK and its private external directory
-                // after execution. Copy generated evidence before that cleanup.
-                // UiAutomation uses Runtime.exec, not a shell interpreter: do
-                // not pass shell operators or shell quotes as literal arguments.
-                shell("mkdir -p /sdcard/Download/QueueGoOfflineEvidence")
-                shell("cp ${screenshot.absolutePath} /sdcard/Download/QueueGoOfflineEvidence/$name.png")
-                val retainedBytes = shell("stat -c %s /sdcard/Download/QueueGoOfflineEvidence/$name.png").trim().toLongOrNull()
-                assertEquals("Screenshot bytes were not retained outside test-app data", screenshot.length(), retainedBytes ?: -1L)
+                // Scoped-storage API keeps generated public evidence after UTP
+                // removes the test APK, without shell access to private app data.
+                val resolver = context.contentResolver
+                val values = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, "$name.png")
+                    put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                    put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/QueueGoOfflineEvidence/")
+                    put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+                val uri = requireNotNull(resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
+                resolver.openOutputStream(uri).use { target ->
+                    screenshot.inputStream().use { source ->
+                        assertEquals(screenshot.length(), source.copyTo(requireNotNull(target)))
+                    }
+                }
+                resolver.update(uri, android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
+                }, null, null)
+                resolver.openFileDescriptor(uri, "r").use {
+                    assertEquals("Retained screenshot size differs", screenshot.length(), requireNotNull(it).statSize)
+                }
                 if (offlineRequired) assertNull(context.getSystemService(android.net.ConnectivityManager::class.java).activeNetwork)
-            }
-            if (offlineRequired) {
-                // Evidence path is already checked by exact PNG lengths above.
-                File(context.getExternalFilesDir(null), "offline-map-evidence/connectivity.txt")
-                    .writeText(shell("dumpsys connectivity"))
-                shell("cp ${File(context.getExternalFilesDir(null), "offline-map-evidence/connectivity.txt").absolutePath} /sdcard/Download/QueueGoOfflineEvidence/connectivity.txt")
             }
         }
     }

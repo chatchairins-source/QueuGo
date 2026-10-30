@@ -108,8 +108,10 @@ with (log_dir / "emulator.log").open("w") as log:
             print(result.stderr)
         if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
             # Shared test-owned output survives Gradle uninstalling its test APK.
-            pulled = subprocess.run(adb + ["pull", "/sdcard/Download/QueueGoOfflineEvidence", str(log_dir / "country-screenshots")], capture_output=True, text=True, timeout=60)
+            pulled = subprocess.run(adb + ["pull", "/sdcard/Pictures/QueueGoOfflineEvidence", str(log_dir / "country-screenshots")], capture_output=True, text=True, timeout=60)
             (log_dir / "screenshot-transfer.txt").write_text(pulled.stdout + pulled.stderr)
+            connectivity = subprocess.run(adb + ["shell", "dumpsys", "connectivity"], capture_output=True, text=True, check=True, timeout=15)
+            (log_dir / "offline-connectivity-after-tests.txt").write_text(connectivity.stdout)
         if result.returncode != 0:
             raise SystemExit("Navigation-map connected Android test failed")
         if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
