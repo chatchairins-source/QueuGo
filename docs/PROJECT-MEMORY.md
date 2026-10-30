@@ -1,3 +1,11 @@
+## 2026-10-30 Native Merchant login — Web shadow and focus treatment (IN PROGRESS)
+
+- Successor parent `002a83a1a44cb4e8751d1174cb768caeca4a8874` continues the green POS safety head. Existing authenticated review `41005707232` has passed Merchant credential readiness and is building the real apps; its screenshots are the before-change baseline, not final certification.
+- Evidence: actual Production Web login inspected in browser and current `qg-login-v08` CSS specify a primary-button shadow `0 6px 18px rgba(231,9,43,.13)`, panel shadow `0 -8px 24px rgba(0,0,0,.05)` and focused-input 3px red halo. Actual Native phone/tablet login PNGs from green baseline artifact `12955096018` plus Compose source show these treatments missing.
+- Add those same shape/color/radius/offset/spread values through native Compose dropShadow (available in existing Compose dependencies). Focused inputs retain a white fill and existing red border; button disabled shadow follows existing 65% opacity. Preserve layout, assets, text, Auth callbacks and POS/backend code.
+- Local Native source/diff checks pending at checkpoint; exact-head Kotlin/build and before/after screenshots required. This is one bounded visual correction, not complete Merchant visual parity.
+- NEXT: inspect exact-head authenticated Web/Native phone/tablet captures, fix capture failures first, then compare primary tabs and POS and correct the first confirmed layout difference. Do not claim visual parity until actual after-change images are inspected.
+
 ## 2026-10-30 Merchant Native visual parity — real Web/Android comparison (IN PROGRESS)
 
 - Owner explicitly requires the Native Merchant appearance to match actual Production Web `https://chatchairins-source.github.io/QueuGo/merchant/`, including POS, mobile and tablet. This is now the active UI workstream; preserve Kotlin/Jetpack Compose and all current POS financial recovery changes.
