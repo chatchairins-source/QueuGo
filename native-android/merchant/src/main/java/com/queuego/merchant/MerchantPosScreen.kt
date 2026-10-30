@@ -2286,28 +2286,30 @@ private fun PosTabs(
         }
     }
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         tabs.forEach { (key, label) ->
             if (key == current) {
                 Button(
                     onClick = { onSelect(key) },
-                    modifier = Modifier.heightIn(min = 46.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 10.dp)
-                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF181B20), contentColor = Color.White),
+                    modifier = Modifier.widthIn(min = 88.dp).heightIn(min = 40.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 13.dp, vertical = 9.dp)
+                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
             } else {
-                OutlinedButton(
+                TextButton(
                     onClick = { onSelect(key) },
-                    modifier = Modifier.heightIn(min = 46.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 10.dp)
-                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF626A75)),
+                    modifier = Modifier.widthIn(min = 88.dp).heightIn(min = 40.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 13.dp, vertical = 9.dp)
+                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
             }
         }
     }
-    HorizontalDivider()
+    HorizontalDivider(color = Color(0xFFE7E9EE))
 }
 
 @Composable

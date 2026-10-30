@@ -1,3 +1,11 @@
+## 2026-10-30 Native Merchant POS — remove duplicate chrome; match Web tabs (IN PROGRESS)
+
+- Successor base `166761d2c5ba1e57d01a3b79526a6aacdd52c114` preserves login visual changes and the tablet-capture recovery. The owner visual instruction remains active; no financial/backend work is substituted for appearance.
+- Evidence: real Native phone POS image in baseline artifact `12955502227` shows a dashboard QueueGo/bell bar above a second POS back/title/reload header. Production `merchant/pos-table-v2.js` shell owns one full-page POS header. Current Production CSS uses dark #181b20 selected tabs, transparent #626a75 inactive tabs without outlines, min-width 88px/min-height 40px, 10px corners, 13px bold labels and 4px gaps. Native showed red active/outlined inactive 46dp/14dp tabs.
+- Hide only the outer MerchantTopBar on the existing POS route; keep POS's own header/back/reload and the brand/bell bar on other routes. Match the POS tab color, border treatment and dimensions to the Web CSS without changing tab list, permissions or callbacks. Existing category/cart/payment/offline recovery remains untouched.
+- Local source/diff checks pending at checkpoint; exact-head Kotlin/build and after-image capture required. Before-change source already compiled successfully in review `41006159308`; its old tablet harness failure is addressed in the parent, not an application-build failure.
+- NEXT: inspect current phone/tablet Web/Native captures, fix the first capture or visual failure, then continue counter layout/product cards and other Merchant screens. Do not report complete visual parity from these bounded changes alone.
+
 ## 2026-10-30 Merchant visual capture — first confirmed tablet harness failure (IN PROGRESS)
 
 - Latest UI successor: `9ace1b2cc5c5971071ac74cab4a7c159a9ae4c5e`, preserves the Web-derived login correction. Before-change review run `41005707232`, job `123900036743`, built successfully and saved 9 real Native PNGs (login, five primary phone screens, POS counter/tables/cashier) in artifact `12955502227`.
