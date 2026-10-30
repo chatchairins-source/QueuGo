@@ -53,6 +53,18 @@ assert(map.includes('holder.retainAcrossVisibilityLoss()'));
 assert(map.includes('MotionEvent.ACTION_MOVE'));
 assert(map.includes('currentUserGesture.value()'));
 assert(map.includes('navigationCameraDecision('));
+// The Android camera must follow the existing QueueGo Web gesture contract:
+// two-finger transforms preserve FOLLOW, one-finger pan enters FREE_PAN.
+assert(webMap.includes('reanchorNavigationAfterGesture(map)'));
+assert(webMap.includes('state.manualZoomUntil=Date.now()+12000'));
+assert(viewMode.includes('navigationTouchOwnsFollow(pointerCount: Int, multiTouchStarted: Boolean)'));
+assert(viewMode.includes('NAVIGATION_TRANSFORM_REANCHOR_MS = 110L'));
+assert(viewMode.includes('NAVIGATION_MANUAL_ZOOM_HOLD_MS = 12_000L'));
+assert(map.includes('navigationTouchOwnsFollow(event.pointerCount, multiTouchGesture)'));
+assert(map.includes('if (transformGestureActive) return'));
+assert(map.includes('SystemClock.elapsedRealtime() < manualZoomUntilElapsed'));
+assert(map.includes('mapView.postDelayed({'));
+assert(map.includes('renderCamera(it, lastState, force = true)'));
 assert(map.includes('navigationOverviewViewportDecision('));
 assert(camera.includes('speed >= 18.0 -> 15.0')&&camera.includes('speed >= 11.0 -> 16.0')&&
   camera.includes('speed >= 5.0 -> 17.0')&&camera.includes('speed <= 1.5 -> maxOf(base, 18.0)'));
