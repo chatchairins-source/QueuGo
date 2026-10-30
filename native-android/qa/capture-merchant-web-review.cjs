@@ -5,13 +5,15 @@ const BASE='https://chatchairins-source.github.io/QueuGo/merchant/';
 const API='pkypiqhlrmzocysgeqew.supabase.co';
 const READ_RPCS=new Set(['queuego_shop_readiness','effective_gp_rate','get_my_shop_orders',
   'merchant_revenue_days','pos_my_shop','pos_is_owner','pos_current_shift',
-  'pos_register_shift_history','pos_owner_dashboard','pos_owner_item_sales','pos_product_codes_for_shop']);
+  'pos_register_shift_history','pos_owner_dashboard','pos_owner_item_sales','pos_product_codes_for_shop','queuego_credit_summary']);
+// Existing normal sign-in ownership handshake; no business mutation or privilege changes.
+const AUTH_RPCS=new Set(['claim_active_session']);
 function allowedRequest(method,url,body){
   const u=new URL(url);
   if(['GET','HEAD','OPTIONS'].includes(method))return true;
   if(method!=='POST'||u.hostname!==API)return false;
   if(u.pathname==='/auth/v1/token')return ['password','refresh_token'].includes(u.searchParams.get('grant_type'));
-  if(u.pathname.startsWith('/rest/v1/rpc/'))return READ_RPCS.has(u.pathname.slice('/rest/v1/rpc/'.length));
+  if(u.pathname.startsWith('/rest/v1/rpc/')){const name=u.pathname.slice('/rest/v1/rpc/'.length);return READ_RPCS.has(name)||AUTH_RPCS.has(name)}
   if(u.pathname==='/functions/v1/queuego-credit'){
     try{return JSON.parse(body||'{}').action==='summary'}catch{return false}
   }
@@ -64,7 +66,7 @@ async function main(){
     fs.writeFileSync(path.join(out,'metadata.json'),JSON.stringify({source_head:process.env.GITHUB_SHA,
       production_url:BASE,captured_at_utc:new Date().toISOString(),screens,blocked_mutations:blocked,
       physical_device:false,visual_parity_certified:false,production_business_mutations:false,
-      scope:'Real deployed Merchant Web screenshots; ordinary Auth sign-in and allowlisted reads only'},null,2));
+      scope:'Real deployed Merchant Web screenshots; ordinary Auth sign-in/session claim and allowlisted reads only'},null,2));
     console.log('Merchant Production Web review: '+screens.length+' screenshots; no business writes allowed');
   }catch{
     // Safe diagnostics only: no credential fields, tokens, response bodies or URLs with query strings.

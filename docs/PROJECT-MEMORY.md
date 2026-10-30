@@ -1,3 +1,11 @@
+## 2026-10-30 Merchant visual review — real session collision and missing Thai glyphs (IN PROGRESS)
+
+- Latest app/UI successor: `92b5996e8805103e25f04a129d5b6f731a6fcecc`; Native POS CI push `41007905597` and PR `41007914631` SUCCESS. Login, POS chrome and bottom-navigation corrections are preserved.
+- Actual diagnostic PNG `tablet-back-blocker.png` from run `41006986955` / artifact `12956795518` shows signed-out Login, not an observed broken Back control. Multiple authenticated review jobs overlapped using the same Merchant credentials. Production claim_active_session definition inspected read-only: it replaces the one user_active_sessions row per auth.uid(); Native validate checks that same active session and clears a displaced login. Serialise the existing review workflow with one shared concurrency group; do not weaken Auth/RLS/session validation. Drain older pre-lock runs before starting the next shared-account capture.
+- Web baseline artifact `12955664939` contains actual phone primary/POS and tablet primary screenshots, but Thai glyphs are missing on the runner. Install official runner Noto core fonts and verify Noto Sans Thai before capture; do not treat tofu text as an app font bug.
+- Safe failure diagnostics also prove the Web request guard blocked the site's normal claim_active_session handshake and read-only queuego_credit_summary RPC. Both definitions inspected read-only. Permit only that existing authenticated session handshake plus the summary read; keep financial/settings/order/shift writes and session revocation blocked. Native capture finishes before Web signs in to the same account.
+- Local syntax, request policy, action pinning and Native source checks pending at checkpoint. NEXT: after old shared-account jobs finish, run the serialised exact-head phone/tablet review, inspect real Thai Web/Native images, then continue confirmed visual differences. No full visual-parity claim and no Production schema/business mutation.
+
 ## 2026-10-30 Merchant bottom navigation — current Web dimensions and selected icon (IN PROGRESS)
 
 - Latest successor `3f9a69692cb33b45cb7f54adc9e2e560638912cf` preserves login and POS visual fixes. Git grep confirms QgBottomNav has exactly one application caller: QueueGoMerchantApp. Customer and Rider use separate existing renderers; no duplicate navigation system is introduced.

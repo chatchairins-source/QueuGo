@@ -8,6 +8,12 @@ on:
       - work-native-web-parity-20261026
       - work-native-pos-tax-foundation-20261029
 
+# All runs reuse the same existing review account. Production enforces one
+# active session, so parallel workers must never displace each other's login.
+concurrency:
+  group: queuego-authenticated-review-accounts
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
@@ -179,6 +185,12 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
+      - name: Install Thai glyphs for the Production Web oracle
+        if: always() && contains(github.event.head_commit.message, '[merchant-visual-review]')
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-core
+          fc-match 'Noto Sans Thai'
       - name: Capture actual Production Merchant Web views
         if: always() && contains(github.event.head_commit.message, '[merchant-visual-review]')
         env:
