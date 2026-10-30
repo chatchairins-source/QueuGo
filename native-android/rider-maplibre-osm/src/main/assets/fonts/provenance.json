@@ -1,0 +1,13 @@
+{
+  "source_commit": "028c18f713baecad011301ff7a69acc39bcc2ae7",
+  "source": "https://github.com/protomaps/basemaps-assets",
+  "license": "SIL Open Font License 1.1",
+  "files": {
+    "Noto Sans Regular/0-255.pbf": "62c6d49b15fa836eb6aa45e259c7ca6762f44b011b09e47776efbe4a6db1b397",
+    "Noto Sans Regular/256-511.pbf": "2eca7561f9f566bcacfda5dd04fb5880baec1328ec0f5484678289a13994de8a",
+    "Noto Sans Regular/512-767.pbf": "6abc80badad0e823e228ab739515be257c8b33bc68bb077dd873030e9b2d143a",
+    "Noto Sans Regular/3584-3839.pbf": "6ddbd10873186e1bdd270232b64819587edc06e1d8432baa2a163ace2331bd61",
+    "Noto Sans Regular/8192-8447.pbf": "8ea977a587352fe31b4159ffdbc9a40be79056f2472017c742ea1e4a931864b9",
+    "OFL.txt": "7713cfc8e3c36d5ec4aa3d6cffe7500a1b3310f8a86d914b8ea09c2a9dee7c2d"
+  }
+}

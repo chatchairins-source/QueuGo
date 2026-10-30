@@ -84,9 +84,16 @@ with (log_dir / "emulator.log").open("w") as log:
 
         # Exercise actual Android interpolation; animator_duration_scale=0 would
         # bypass the marker animation and conceal overlap/jank regressions.
+        if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
+            run(adb + ["shell", "settings", "put", "global", "airplane_mode_on", "1"])
+            run(adb + ["shell", "svc", "wifi", "disable"])
+            run(adb + ["shell", "svc", "data", "disable"])
+            state = subprocess.run(adb + ["shell", "dumpsys", "connectivity"], capture_output=True, text=True, check=True)
+            (log_dir / "offline-connectivity.txt").write_text(state.stdout)
         result = subprocess.run(
             [gradle, "-p", "native-android",
              ":rider-navigation-map:connectedDebugAndroidTest",
+             "-Pandroid.testInstrumentationRunnerArguments.offlineRequired=" + ("true" if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1" else "false"),
              "--no-build-cache", "--stacktrace"],
             cwd=repo,
             capture_output=True,
@@ -99,6 +106,9 @@ with (log_dir / "emulator.log").open("w") as log:
             print(result.stderr)
         if result.returncode != 0:
             raise SystemExit("Navigation-map connected Android test failed")
+        if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
+            # Instrumentation's target package is the isolated navigation library.
+            run(adb + ["pull", "/sdcard/Android/data/com.queuego.ridernavigationmap.test/files/offline-map-evidence", str(log_dir / "country-screenshots")])
         print("QUEUEGO_NAVIGATION_MAP_RUNTIME_PASS")
     finally:
         try:

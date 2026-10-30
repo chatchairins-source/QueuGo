@@ -184,6 +184,22 @@ jobs:
         run: node tests/native-launcher-assets.cjs
       - name: Verify Production category banner assets
         run: node tests/native-category-assets.cjs
+      - name: Build and bundle pinned nationwide offline map
+        if: ${{ startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') }}
+        env:
+          QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
+          QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261029.osm.pbf
+        run: |
+          set -euo pipefail
+          mkdir -p "$QG_MAP_DATA_DIR"
+          curl --fail --location --retry 2 "$QG_THAILAND_PBF_URL" -o "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
+          echo "0f26968be9675bbdadaab232d19cafb4464e6535a73afe5eee4afd94b43825c6  $QG_MAP_DATA_DIR/thailand-latest.osm.pbf" | sha256sum -c -
+          bash native-android/qa/build-thailand-shortbread-pmtiles.sh
+          archive="$QG_MAP_DATA_DIR/thailand-shortbread.pmtiles"
+          python3 native-android/qa/prepare-thailand-map-assets.py "$archive" "$RUNNER_TEMP/queuego-offline-assets" \
+            --expected-sha256 "$(sha256sum "$archive" | cut -d ' ' -f 1)" \
+            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-10-29
+          echo "QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/queuego-offline-assets" >> "$GITHUB_ENV"
       - name: Tracking coordinate and terminal-state unit tests
         run: gradle -p native-android :shared:testDebugUnitTest :merchant:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest --no-build-cache --stacktrace
       - name: Build three native APKs
@@ -229,6 +245,21 @@ jobs:
           path: artifacts/native-rider-launch/
           if-no-files-found: warn
           retention-days: 14
+      - name: Test installed country archive and camera without internet
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        timeout-minutes: 20
+        env:
+          QG_NAV_RUNTIME_OFFLINE: '1'
+        run: python3 native-android/qa/run-rider-navigation-map-runtime.py
+      - name: Save nationwide offline evidence
+        if: ${{ always() && env.QG_OFFLINE_MAP_ASSETS != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-thailand-offline-evidence
+          path: |
+            artifacts/rider-navigation-map-runtime/
+            native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
+          if-no-files-found: warn
       # Mission 2026-10-10: incomplete builds and evidence remain internal.
       # Public APK/AAB delivery requires the full three-role Release Gate.
 

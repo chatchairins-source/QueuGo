@@ -7,18 +7,20 @@ android {
     compileSdk = 36
     defaultConfig { minSdk = 26 }
     buildFeatures { compose = true }
-    // Build-time delivery only: the installed app never downloads this archive.
-    // Directory must contain maps/thailand-shortbread.pmtiles, prepared by QA.
-    providers.environmentVariable("QG_OFFLINE_MAP_ASSETS").orNull?.let { assetsRoot ->
-        require(file("$assetsRoot/maps/thailand-shortbread.pmtiles").isFile) {
-            "QG_OFFLINE_MAP_ASSETS has no nationwide Shortbread archive"
-        }
-        sourceSets.getByName("main").assets.srcDir(assetsRoot)
-    }
     androidResources { noCompress += "pmtiles" }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+// Use the variant source API: AGP 9.4's legacy library sourceSets accessor
+// performs an invalid AndroidLibrarySourceSet cast when configured here.
+providers.environmentVariable("QG_OFFLINE_MAP_ASSETS").orNull?.let { assetsRoot ->
+    require(file("$assetsRoot/maps/thailand-shortbread.pmtiles").isFile) {
+        "QG_OFFLINE_MAP_ASSETS has no nationwide Shortbread archive"
+    }
+    androidComponents.onVariants { variant ->
+        variant.sources.assets?.addStaticSourceDirectory(assetsRoot)
     }
 }
 dependencies {

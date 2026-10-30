@@ -31,6 +31,9 @@ val verifyNativeReleaseGate = tasks.register<Exec>("verifyNativeReleaseGate") {
 subprojects {
     pluginManager.withPlugin("com.android.application") {
         extensions.configure<ApplicationExtension> {
+            // PMTiles uses random byte-range reads from the APK. Compressing a
+            // nationwide archive would require inflating it to serve tile reads.
+            androidResources.noCompress += "pmtiles"
             buildFeatures.buildConfig = true
             defaultConfig {
                 buildConfigField("String", "GIT_SHA", "\"$nativeSourceSha\"")

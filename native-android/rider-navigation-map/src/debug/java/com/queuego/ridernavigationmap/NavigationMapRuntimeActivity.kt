@@ -12,6 +12,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import org.maplibre.android.maps.MapView
 import java.util.concurrent.CountDownLatch
+import com.queuego.shared.queueGoMapVectorSourceUri
+import org.maplibre.android.maps.MapLibreMap
 
 class NavigationMapRuntimeActivity : ComponentActivity() {
     val mapReady = CountDownLatch(1)
@@ -35,7 +37,9 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
                     stateKey = "runtime-session",
                     state = mapState.value,
                     modifier = Modifier.fillMaxSize(),
-                    mapSourceUri = "asset://queuego-nav-runtime-tilejson.json",
+                    mapSourceUri = if (intent.getBooleanExtra("installedThailandMap", false)) {
+                        queueGoMapVectorSourceUri(this)
+                    } else "asset://queuego-nav-runtime-tilejson.json",
                     onMapReady = { if (it) mapReady.countDown() },
                     onUserGesture = { userGestureCount += 1 },
                     onDiagnostics = { latestDiagnostics = it }
@@ -151,6 +155,22 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
     }
 
     fun hasMapView(): Boolean = findMapView(window.decorView) != null
+
+    fun inspectMap(callback: (MapLibreMap) -> Unit) {
+        requireNotNull(findMapView(window.decorView)).getMapAsync(callback)
+    }
+
+    fun showCountryPosition(latitude: Double, longitude: Double) {
+        mapState.value = mapState.value.copy(
+            stops = emptyList(), routes = emptyList(), activeStopId = null,
+            followRider = true, perspectiveCameraEnabled = true,
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(latitude, longitude), bearingDegrees = 0f,
+                accuracyMeters = 5f, speedMetersPerSecond = 0f,
+                elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+            )
+        )
+    }
 
     fun mapViewIdentity(): Int =
         System.identityHashCode(requireNotNull(findMapView(window.decorView)))
