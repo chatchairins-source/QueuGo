@@ -16,6 +16,33 @@ import java.security.SecureRandom
 import java.net.SocketTimeoutException
 import java.util.UUID
 
+// Tax rollout is additive. A backend without the reviewed migration must still
+// serve its existing POS bills; never suppress auth, network or unrelated errors.
+private const val posBillTaxColumns =
+    "pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_taxable_base,pos_tax_amount," +
+        "pos_tax_registration_snapshot,pos_tax_branch_snapshot,pos_tax_address_snapshot"
+
+internal suspend fun readPosBillsWithTaxCompatibility(
+    baseColumns: String,
+    scope: String,
+    read: suspend (String) -> JSONArray
+): JSONArray {
+    return try {
+        read("orders?$baseColumns,$posBillTaxColumns$scope")
+    } catch (error: QueueGoHttpException) {
+        val message = error.message.orEmpty()
+        val missingTaxColumn = posBillTaxColumns.split(',').any { column ->
+            Regex("column (?:orders\\.)?" + column + " does not exist", RegexOption.IGNORE_CASE)
+                .containsMatchIn(message) ||
+                message.equals("Could not find the '$column' column of 'orders' in the schema cache", ignoreCase = true)
+        }
+        if (error.statusCode != 400 || !missingTaxColumn) throw error
+        // Read-only retry with identical shop/channel/status filters. Paid totals
+        // remain those returned by the server, never recalculated on the client.
+        read("orders?$baseColumns$scope")
+    }
+}
+
 data class PosProduct(
     val id: String,
     val name: String,
@@ -404,19 +431,16 @@ class MerchantPosApi(
                 }
             }
             val billColumns = "select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status," +
-                "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at," +
-                "pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_taxable_base,pos_tax_amount," +
-                "pos_tax_registration_snapshot,pos_tax_branch_snapshot,pos_tax_address_snapshot"
-            val bills = async { http.array(http.get(
-                "orders?$billColumns&shop_id=eq." + http.enc(shopId) +
-                    "&sales_channel=eq.POS&order=created_at.desc&limit=200",
-                auth.session.accessToken
-            )) }
-            val openBills = async { http.array(http.get(
-                "orders?$billColumns&shop_id=eq." + http.enc(shopId) +
-                    "&sales_channel=eq.POS&payment_status=eq.UNPAID&status=neq.cancelled&order=created_at.desc",
-                auth.session.accessToken
-            )) }
+                "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at"
+            val bills = async { readPosBillsWithTaxCompatibility(
+                billColumns,
+                "&shop_id=eq." + http.enc(shopId) + "&sales_channel=eq.POS&order=created_at.desc&limit=200"
+            ) { query -> http.array(http.get(query, auth.session.accessToken)) } }
+            val openBills = async { readPosBillsWithTaxCompatibility(
+                billColumns,
+                "&shop_id=eq." + http.enc(shopId) +
+                    "&sales_channel=eq.POS&payment_status=eq.UNPAID&status=neq.cancelled&order=created_at.desc"
+            ) { query -> http.array(http.get(query, auth.session.accessToken)) } }
             val staff = async { http.array(http.get(
                 "pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active" +
                     "&shop_id=eq." + http.enc(shopId),

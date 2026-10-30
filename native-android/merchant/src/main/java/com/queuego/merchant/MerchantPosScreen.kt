@@ -941,9 +941,9 @@ fun MerchantPosScreen(
         }
     }
 
-    LaunchedEffect(snapshot?.shopId, snapshot?.owner) {
+    LaunchedEffect(view, snapshot?.shopId, snapshot?.owner) {
         val current = snapshot
-        if (current?.owner == true) {
+        if (view == "tax" && current?.owner == true) {
             taxSettingsLoaded = false
             runCatching { api.loadTaxSettings(auth) }
                 .onSuccess { loaded ->
@@ -952,8 +952,9 @@ fun MerchantPosScreen(
                     taxSettingsLoaded = true
                 }
                 .onFailure {
-                    taxSettingsLoaded = true
-                    message = it.message ?: "โหลดการตั้งค่าภาษีไม่สำเร็จ"
+                    taxSettingsLoaded = false
+                    message = "โหลดการตั้งค่าภาษีไม่สำเร็จ · ยังบันทึกการตั้งค่าไม่ได้: " +
+                        (it.message ?: "กรุณาลองใหม่")
                 }
         }
     }

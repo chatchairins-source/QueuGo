@@ -1777,4 +1777,14 @@ ok(posTaxCheckoutMigration.includes('else total_amount = subtotal-discount_amoun
 ok(posTaxCheckoutMigration.includes('before insert or update of subtotal,discount_amount,sales_channel'),'Tax must recalculate when bill subtotal or discount changes');
 ok(posTaxCheckoutMigration.includes('revoke all on function public.pos_apply_tax_snapshot() from public,anon,authenticated'),'Clients must not call the internal tax trigger function');
 
+// Both historical and open bill reads must survive only the missing optional tax schema.
+ok((merchantPosApiSource.match(/async \{ readPosBillsWithTaxCompatibility\(/g) || []).length === 2,
+  'POS history and open bills must share the narrowly scoped tax read compatibility path');
+ok(merchantPosApiSource.includes('error.statusCode != 400 || !missingTaxColumn') &&
+  merchantPosApiSource.includes('read("orders?$baseColumns$scope")'),
+  'Tax schema fallback must preserve scope and propagate auth/network/unrelated failures');
+ok(merchantPosTaxScreen.includes('if (view == "tax" && current?.owner == true)') &&
+  merchantPosTaxScreen.includes('.onFailure {\n                    taxSettingsLoaded = false'),
+  'Unavailable tax settings must not interrupt POS entry or enable saving unloaded defaults');
+
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
