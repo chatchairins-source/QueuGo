@@ -10,6 +10,7 @@ import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.content.pm.ApplicationInfo
 import java.io.File
+import com.queuego.ridermaplibreosm.ShortbreadVillageStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -87,6 +88,14 @@ private fun queueGoDebugMapArchive(context: Context): File? = queueGoDebugMapArc
 )
 
 fun queueGoMapVectorSourceUri(context: Context): String? {
+    // A bundled nationwide archive takes precedence over both CI data and HTTP.
+    // Read only its header here; MapLibre reads tile ranges directly from the APK.
+    val bundled = runCatching {
+        context.assets.open("maps/thailand-shortbread.pmtiles").use { input ->
+            queueGoPmTilesV3Header(input)
+        }
+    }.getOrDefault(false)
+    if (bundled) return "pmtiles://asset://maps/thailand-shortbread.pmtiles"
     // Only adb run-as on a debuggable APK can provision this real-data CI archive.
     // Release builds continue to require the configured HTTPS service.
     queueGoDebugMapArchive(context)?.let { return "pmtiles://file://${it.absolutePath}" }
@@ -96,6 +105,11 @@ fun queueGoMapVectorSourceUri(context: Context): String? {
 }
 
 fun queueGoMapStyle(sourceUri: String): Style.Builder {
+    // Local archives must draw their own geometry. Registering a vector source
+    // under an HTTP-only raster layer does not provide an offline basemap.
+    if (sourceUri.startsWith("pmtiles://file://") || sourceUri.startsWith("pmtiles://asset://")) {
+        return ShortbreadVillageStyle.builder(sourceUri)
+    }
     // Web is the visual source of truth. Native registers the same OSM raster
     // presentation used by queuego-map-web.js so Customer/Merchant/Rider no
     // longer render a separate Shortbread-looking basemap.

@@ -7,12 +7,22 @@ android {
     compileSdk = 36
     defaultConfig { minSdk = 26 }
     buildFeatures { compose = true }
+    // Build-time delivery only: the installed app never downloads this archive.
+    // Directory must contain maps/thailand-shortbread.pmtiles, prepared by QA.
+    providers.environmentVariable("QG_OFFLINE_MAP_ASSETS").orNull?.let { assetsRoot ->
+        require(file("$assetsRoot/maps/thailand-shortbread.pmtiles").isFile) {
+            "QG_OFFLINE_MAP_ASSETS has no nationwide Shortbread archive"
+        }
+        sourceSets.getByName("main").assets.srcDir(assetsRoot)
+    }
+    androidResources { noCompress += "pmtiles" }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
 dependencies {
+    implementation(project(":rider-maplibre-osm"))
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
