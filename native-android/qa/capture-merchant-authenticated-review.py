@@ -98,7 +98,7 @@ def main():
     login_screen=shot("phone-login") if os.environ.get("QG_MERCHANT_VISUAL_PARITY")=="1" else None
     by_description={n.get("content-desc","").strip():n for n in ns if rect(n)}
     fields=[by_description.get("เบอร์โทรศัพท์ / อีเมล"),by_description.get("รหัสผ่าน")]
-    if not all(fields):
+    if any(field is None for field in fields):
         fields=sorted([n for n in ns if n.get("class")=="android.widget.EditText" and rect(n)],
                       key=lambda n:rect(n)[1])
     if len(fields)<2: raise SystemExit("Merchant login fields are inaccessible to Android UI automation")
@@ -120,9 +120,24 @@ def main():
         capture_pos(screens,"phone-")
         run(["shell","wm","size","1600x2560"])
         run(["shell","wm","density","240"])
-        time.sleep(5)
-        run(["shell","input","keyevent","4"])
-        assert wait(home_ready,90), "Tablet Merchant home did not finish loading"
+        # Density changes recreate the Activity. Never send Back while Auth/
+        # Activity restoration is still running, or from an already restored Home.
+        ns=wait(lambda xs:any(n.get("text", "").strip() in ("＋ รับออเดอร์","หน้าหลัก") and rect(n) for n in xs),90)
+        if not ns:
+            shot("tablet-restoration-blocker")
+            raise AssertionError("Tablet Merchant Activity did not restore a known screen")
+        if any(n.get("text", "").strip()=="＋ รับออเดอร์" and rect(n) for n in ns):
+            run(["shell","input","keyevent","4"])
+            ns=wait(lambda xs:any(n.get("text", "").strip()=="หน้าหลัก" and rect(n) for n in xs),90)
+        if not ns:
+            shot("tablet-back-blocker")
+            raise AssertionError("Tablet Merchant did not expose primary navigation")
+        tap_label(ns,"หน้าหลัก")
+        for _ in range(3):
+            run(["shell","input","swipe","500","700","500","1800","300"])
+        if not wait(home_ready,90):
+            shot("tablet-home-blocker")
+            raise AssertionError("Tablet Merchant home did not finish loading")
         screens.append({"screen":"tablet-home","account":"merchant-test","read_only":True,**shot("tablet-home")})
         for label,name in (("คำสั่งซื้อ","orders"),("สินค้า","products"),("โปรโมชั่น","promotions"),("บัญชี","profile")):
             tap_label(nodes(),label)

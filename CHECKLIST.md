@@ -1,3 +1,11 @@
+## 2026-10-30 Merchant visual capture — first confirmed tablet harness failure (IN PROGRESS)
+
+- Latest UI successor: `9ace1b2cc5c5971071ac74cab4a7c159a9ae4c5e`, preserves the Web-derived login correction. Before-change review run `41005707232`, job `123900036743`, built successfully and saved 9 real Native PNGs (login, five primary phone screens, POS counter/tables/cashier) in artifact `12955502227`.
+- First failure: `capture-merchant-authenticated-review.py` line 125 waited for Tablet Home after an unconditional Back issued 5 seconds after wm size/density changes. The harness never established whether Activity/Auth restoration had finished or whether Home had already restored; the final tablet state was not captured. Do not declare this an app Back bug from that evidence.
+- Fix the harness to wait for visible POS or primary navigation, send Back only from confirmed POS, select Home explicitly, scroll to its summary and save a diagnostic PNG on failure. Replace ambiguous XML-element truthiness with explicit None checks.
+- Let Production Web capture/dependency setup run independently after a Native capture failure so one failed surface cannot erase the other baseline. Failed Web review saves only stage and blocked method/path diagnostics, never credential fields/tokens/body contents.
+- NEXT: exact-head captures, inspect actual phone/tablet Web and Native images, then correct the first confirmed Compose layout mismatch. Login shadow/focus correction still requires its own after-image/build evidence; no full visual-parity claim.
+
 ## 2026-10-30 Native Merchant login — Web shadow and focus treatment (IN PROGRESS)
 
 - Successor parent `002a83a1a44cb4e8751d1174cb768caeca4a8874` continues the green POS safety head. Existing authenticated review `41005707232` has passed Merchant credential readiness and is building the real apps; its screenshots are the before-change baseline, not final certification.

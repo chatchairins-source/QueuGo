@@ -175,12 +175,12 @@ jobs:
           QG_MERCHANT_VISUAL_PARITY: ${{ contains(github.event.head_commit.message, '[merchant-visual-review]') && '1' || '0' }}
         run: python3 native-android/qa/capture-merchant-authenticated-review.py
       - name: Set up Web visual review dependencies
-        if: contains(github.event.head_commit.message, '[merchant-visual-review]')
+        if: always() && contains(github.event.head_commit.message, '[merchant-visual-review]')
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
       - name: Capture actual Production Merchant Web views
-        if: contains(github.event.head_commit.message, '[merchant-visual-review]')
+        if: always() && contains(github.event.head_commit.message, '[merchant-visual-review]')
         env:
           QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
           QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}

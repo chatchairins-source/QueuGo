@@ -66,7 +66,12 @@ async function main(){
       physical_device:false,visual_parity_certified:false,production_business_mutations:false,
       scope:'Real deployed Merchant Web screenshots; ordinary Auth sign-in and allowlisted reads only'},null,2));
     console.log('Merchant Production Web review: '+screens.length+' screenshots; no business writes allowed');
-  }catch{console.error('Merchant Production Web review failed at stage: '+stage);process.exitCode=1}
+  }catch{
+    // Safe diagnostics only: no credential fields, tokens, response bodies or URLs with query strings.
+    fs.writeFileSync(path.join(out,'failure.json'),JSON.stringify({source_head:process.env.GITHUB_SHA,
+      stage,blocked_mutations:blocked,captured_screens:screens.map(x=>x.file)},null,2));
+    console.error('Merchant Production Web review failed at stage: '+stage);process.exitCode=1
+  }
   finally{await browser.close()}
 }
 module.exports={allowedRequest};
