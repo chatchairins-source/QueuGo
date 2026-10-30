@@ -104,11 +104,11 @@ with (log_dir / "emulator.log").open("w") as log:
         print(result.stdout)
         if result.stderr:
             print(result.stderr)
-        if result.returncode != 0:
-            raise SystemExit("Navigation-map connected Android test failed")
         if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
             # Instrumentation's target package is the isolated navigation library.
             run(adb + ["pull", "/sdcard/Android/data/com.queuego.ridernavigationmap.test/files/offline-map-evidence", str(log_dir / "country-screenshots")])
+        if result.returncode != 0:
+            raise SystemExit("Navigation-map connected Android test failed")
         print("QUEUEGO_NAVIGATION_MAP_RUNTIME_PASS")
     finally:
         try:

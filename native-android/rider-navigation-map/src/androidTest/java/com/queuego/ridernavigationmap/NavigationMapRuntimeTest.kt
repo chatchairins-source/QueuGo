@@ -146,7 +146,13 @@ class NavigationMapRuntimeTest {
             scenario.onActivity { it.dispatchDragOnMap() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             scenario.onActivity {
-                assertEquals(1, it.userGestureCount)
+                // Existing production contract: suspend FOLLOW at drag start,
+                // then restart the idle grace period when fingers are lifted.
+                assertEquals(2, it.userGestureCount)
+                it.dispatchTapOnMap()
+                assertEquals("A tap must not restart the manual-pan timer", 2, it.userGestureCount)
+                it.dispatchDragOnMap()
+                assertEquals("Each drag must report exactly start and finish", 4, it.userGestureCount)
             }
         }
     }
