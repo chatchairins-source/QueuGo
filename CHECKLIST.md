@@ -1,3 +1,11 @@
+## 2026-10-30 Native Merchant POS exact-head regression recovery — IN PROGRESS
+
+- Stream: CLOSE NATIVE MERCHANT POS FULL PARITY. Clean checkout; newest fetched Native successor `dde90e26e77b76200a05240beeeb719341c316f6` on existing PR #735 / `work-native-pos-tax-foundation-20261029`. Git ancestry confirms cash-movements HEAD `9ca88a2f4da4796d015933a43ed310c653b2043b` is its ancestor. Web oracle remains main `7e036a0735cc49905e9b0a2434492470551a0c9d`; no reset/overlay or Production writes.
+- Confirmed first failure: exact-head Native POS CI run `40886152464`, job `123490456770`, cannot parse `tests/native-android-source.cjs` because receipt-tax guards redeclare `const merchantPrinterSource`. Reproduced locally before editing.
+- Removed only the second declaration, retaining every receipt/tax assertion. Moved the success/count output after all tax guards so a late assertion cannot follow a misleading PASS summary.
+- Local evidence: `node tests/native-android-source.cjs` PASS 462/0; `git diff --check` PASS. Full repository regression, hosted exact-head CI and Android build remain pending. No APK supplied and no full-parity/release claim.
+- NEXT: run full clean-checkout regression and exact-head Native POS / Android Pilot; repair first confirmed failure. Then audit tax integration and remaining payment/offline parity against Web and actual backend authority before live rollout. Physical cashier acceptance and release signing remain separate gates.
+
 ## 2026-10-29 Native Merchant POS P0 — make table management discoverable from counter (IN PROGRESS)
 
 - Successor base verified: PR #730 / `work-native-web-parity-20261026` at `ae315af6eb57da72c0946c8647ac73f5b3c8ec90`; new isolated branch `work-native-pos-counter-table-access-20261029` preserves that exact HEAD and does not reset or overwrite it.

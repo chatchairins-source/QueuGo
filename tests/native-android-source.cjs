@@ -1724,7 +1724,6 @@ ok(
   !read('../customer-ride.js').includes('trackingMap.touchZoomRotate.disableRotation()'),
   'Customer Ride map must preserve user zoom/rotate/tilt after marker updates and match Web gesture controls'
 );
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
 
 
 // POS tax calculation foundation must use integer satang and distinguish tax-inclusive/exclusive prices.
@@ -1749,7 +1748,6 @@ ok(merchantPrinterSource.includes('if (receipt && bill.taxEnabledSnapshot)'),'Re
 ok(merchantPrinterSource.includes('"มูลค่าก่อนภาษี "') && merchantPrinterSource.includes('"ภาษี "'),'POS receipts must print taxable base and tax breakdown');
 
 ok(merchantPosApiSource.includes('pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_taxable_base,pos_tax_amount'),'POS bills must load immutable tax snapshots for receipts');
-const merchantPrinterSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPrinter.kt');
 ok(merchantPrinterSource.includes('มูลค่าก่อนภาษี') && merchantPrinterSource.includes('bill.taxAmount'),'POS receipts must print tax breakdown from saved bill snapshots');
 ok(merchantPrinterSource.includes('bill.taxRegistrationSnapshot'),'POS receipts must use tax registration data snapshotted on the bill');
 
@@ -1778,3 +1776,5 @@ ok(posTaxCheckoutMigration.includes('total_amount = greatest(subtotal-discount_a
 ok(posTaxCheckoutMigration.includes('else total_amount = subtotal-discount_amount'),'Tax-disabled and tax-inclusive POS bills must preserve existing total integrity');
 ok(posTaxCheckoutMigration.includes('before insert or update of subtotal,discount_amount,sales_channel'),'Tax must recalculate when bill subtotal or discount changes');
 ok(posTaxCheckoutMigration.includes('revoke all on function public.pos_apply_tax_snapshot() from public,anon,authenticated'),'Clients must not call the internal tax trigger function');
+
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
