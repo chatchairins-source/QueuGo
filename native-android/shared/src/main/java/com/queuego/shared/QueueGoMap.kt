@@ -105,32 +105,8 @@ fun queueGoMapVectorSourceUri(context: Context): String? {
 }
 
 fun queueGoMapStyle(sourceUri: String): Style.Builder {
-    // Local archives must draw their own geometry. Registering a vector source
-    // under an HTTP-only raster layer does not provide an offline basemap.
-    if (sourceUri.startsWith("pmtiles://file://") || sourceUri.startsWith("pmtiles://asset://")) {
-        return ShortbreadVillageStyle.builder(sourceUri)
-    }
-    // Web is the visual source of truth. Native registers the same OSM raster
-    // presentation used by queuego-map-web.js so Customer/Merchant/Rider no
-    // longer render a separate Shortbread-looking basemap.
-    //
-    // Keep the QueueGo-hosted vector source registered for QueueGo-owned map
-    // capabilities and future overlays, but do not paint a second competing
-    // basemap underneath/above the Web-parity raster layer.
-    val webTiles = TileSet("2.2.0", QUEUEGO_WEB_BASEMAP_TILE).apply {
-        attribution = "© OpenStreetMap contributors"
-    }
-    return Style.Builder()
-        .withSource(RasterSource(QUEUEGO_WEB_BASEMAP_SOURCE, webTiles, 256))
-        .withSource(VectorSource(QUEUEGO_VECTOR_SOURCE, sourceUri))
-        .withLayer(
-            BackgroundLayer("queuego-background").withProperties(
-                backgroundColor("#f3f0e8")
-            )
-        )
-        .withLayer(
-            RasterLayer(QUEUEGO_WEB_BASEMAP_LAYER, QUEUEGO_WEB_BASEMAP_SOURCE)
-        )
+    // Use QueueGo Map vector rendering for both hosted and packaged tiles.
+    return ShortbreadVillageStyle.builder(sourceUri)
 }
 
 private fun Context.lifecycleOwnerOrNull(): LifecycleOwner? = when (this) {
