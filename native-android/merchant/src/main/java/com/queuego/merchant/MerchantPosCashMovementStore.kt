@@ -1,6 +1,7 @@
 package com.queuego.merchant
 
 import android.content.Context
+import android.content.SharedPreferences
 import org.json.JSONObject
 import java.util.UUID
 
@@ -15,10 +16,10 @@ internal data class PosCashMovementPending(
     val reason: String
 )
 
-internal class MerchantPosCashMovementStore(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences(
+internal class MerchantPosCashMovementStore(private val prefs: SharedPreferences) {
+    constructor(context: Context) : this(context.applicationContext.getSharedPreferences(
         "queuego-pos-cash-movement-v1", Context.MODE_PRIVATE
-    )
+    ))
     private fun key(shopId: String, actorId: String): String = "pending:${shopId}:${actorId}"
 
     fun load(shopId: String, actorId: String): PosCashMovementPending? {

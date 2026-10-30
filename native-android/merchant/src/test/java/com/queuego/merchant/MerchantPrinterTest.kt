@@ -42,6 +42,29 @@ class MerchantPrinterTest {
         assertNull(merchantReceiptPrintKey(snapshot(refunded), refunded))
         assertNull(merchantKitchenPrintKey(snapshot(refunded), refunded))
     }
+    @Test fun receiptPrintsTaxAndRegistrationFromImmutableBillSnapshot() {
+        val taxed = bill.copy(
+            paymentStatus = "PAID",
+            taxEnabledSnapshot = true,
+            taxRateSnapshot = 7.0,
+            pricesIncludeTaxSnapshot = true,
+            taxableBase = 84.11,
+            taxAmount = 5.89,
+            taxRegistrationSnapshot = "0123456789012",
+            taxBranchSnapshot = "00000",
+            taxAddressSnapshot = "ที่อยู่ร้าน"
+        )
+        val text = merchantReceiptTicket(snapshot(taxed), taxed)
+
+        assertTrue(text.contains("เลขผู้เสียภาษี 0123456789012"))
+        assertTrue(text.contains("สาขา 00000"))
+        assertTrue(text.contains("ที่อยู่ร้าน"))
+        assertTrue(text.contains("มูลค่าก่อนภาษี 84.11 ฿"))
+        assertTrue(text.contains("ภาษี 7.00% 5.89 ฿"))
+        assertTrue(text.contains("ยอดสุทธิ 90.00 ฿"))
+        assertFalse(text.contains("รวม 90.00 ฿"))
+    }
+
     @Test fun printHistoryRetainsTheMostRecentJobsAfterRestoreAndClockCorrection() {
         val old = (0..299).associate { "receipt:$it" to it.toLong() }
         val next = merchantPrintHistory(old, "receipt:new", 10L)

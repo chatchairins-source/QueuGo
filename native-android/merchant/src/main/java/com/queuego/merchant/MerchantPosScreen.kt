@@ -19,6 +19,7 @@ import android.print.PrintManager
 import android.print.pdf.PrintedPdfDocument
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,6 +70,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -129,6 +136,7 @@ fun MerchantPosScreen(
     val context = LocalContext.current
     val api = remember { MerchantPosApi(MerchantPosPendingStore(context.noBackupFilesDir.resolve("queuego-pos-edit-pending"))) }
     val merchantApi = remember { MerchantApi() }
+    val cashMovementStore = remember(context) { MerchantPosCashMovementStore(context) }
     val offlineDraftStore = remember { MerchantPosOfflineDraftStore(context.noBackupFilesDir.resolve("queuego-pos-offline-drafts")) }
     val realtime = remember { NativeOrderRealtime() }
     val refreshMutex = remember { Mutex() }
@@ -264,12 +272,15 @@ fun MerchantPosScreen(
     var countedCash by rememberSaveable { mutableStateOf("") }
     var cashMovementAmount by rememberSaveable { mutableStateOf("") }
     var cashMovementReason by rememberSaveable { mutableStateOf("") }
-    var pendingCashMovementType by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCashMovementAmount by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCashMovementReason by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCashMovementRequestId by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCashMovementShopId by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCashMovementActorId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingCashMovement by remember(auth.session.authUserId, snapshot?.shopId) {
+        mutableStateOf(snapshot?.shopId?.let { cashMovementStore.load(it, auth.session.authUserId) })
+    }
+    val pendingCashMovementType = pendingCashMovement?.type
+    val pendingCashMovementAmount = pendingCashMovement?.amount?.toString()
+    val pendingCashMovementReason = pendingCashMovement?.reason
+    val pendingCashMovementRequestId = pendingCashMovement?.requestId
+    val pendingCashMovementShopId = pendingCashMovement?.shopId
+    val pendingCashMovementActorId = pendingCashMovement?.actorId
 
     var discountOpen by remember { mutableStateOf(false) }
     var discountText by rememberSaveable { mutableStateOf("") }
@@ -290,6 +301,10 @@ fun MerchantPosScreen(
     var reportDays by rememberSaveable { mutableStateOf(1) }
     var report by remember { mutableStateOf<PosOwnerDashboard?>(null) }
     var itemSalesReport by remember { mutableStateOf<PosItemSalesReport?>(null) }
+    var taxSettings by remember { mutableStateOf(PosTaxSettings()) }
+    var taxRateText by rememberSaveable { mutableStateOf("7.00") }
+    var taxSettingsLoaded by remember { mutableStateOf(false) }
+
 
     var historyDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var historyType by rememberSaveable { mutableStateOf("ALL") }
@@ -830,15 +845,10 @@ fun MerchantPosScreen(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                // Keep the same draft and request IDs after a timeout; server replay is atomic.
-                if (failure is QueueGoHttpException && failure.statusCode in 400..499) {
-                    val rejected = draft.copy(items = draft.items.map { it.copy(requestIds = emptyList()) })
-                    runCatching { withContext(Dispatchers.IO) { offlineDraftStore.save(rejected) } }
-                        .onSuccess { offlineDraft = rejected }
-                    message = (failure.message ?: "เซิร์ฟเวอร์ปฏิเสธร่าง") + " · ไม่มีบิลถูกสร้าง แก้ร่างแล้วลองใหม่ได้"
-                } else {
-                    message = (failure.message ?: "ส่งร่างไม่สำเร็จ") + " · เก็บร่างและรหัสเดิมไว้ให้ลองใหม่"
-                }
+                // Even a 4xx retry can follow an earlier successful commit whose
+                // response was lost. Preserve the exact persisted payload/hash.
+                message = (failure.message ?: "ส่งร่างไม่สำเร็จ") +
+                    " · ยังยืนยันผลไม่ได้ เก็บร่างและรหัสเดิมไว้ตรวจรายการเดิมเมื่อออนไลน์"
             } finally {
                 busy = false
             }
@@ -934,6 +944,24 @@ fun MerchantPosScreen(
                     successMessage = "พิมพ์ใบเสร็จอัตโนมัติแล้ว · " + bill.number
                 )
             }
+        }
+    }
+
+    LaunchedEffect(view, snapshot?.shopId, snapshot?.owner) {
+        val current = snapshot
+        if (view == "tax" && current?.owner == true) {
+            taxSettingsLoaded = false
+            runCatching { api.loadTaxSettings(auth) }
+                .onSuccess { loaded ->
+                    taxSettings = loaded
+                    taxRateText = "%.2f".format(java.util.Locale.US, loaded.ratePercent)
+                    taxSettingsLoaded = true
+                }
+                .onFailure {
+                    taxSettingsLoaded = false
+                    message = "โหลดการตั้งค่าภาษีไม่สำเร็จ · ยังบันทึกการตั้งค่าไม่ได้: " +
+                        (it.message ?: "กรุณาลองใหม่")
+                }
         }
     }
 
@@ -1037,37 +1065,44 @@ fun MerchantPosScreen(
         val amountText = if (retrying) pendingCashMovementAmount.orEmpty() else cashMovementAmount
         val reasonText = if (retrying) pendingCashMovementReason.orEmpty() else cashMovementReason.trim()
         val amount = amountText.toDoubleOrNull()
-        if (amount == null || !amount.isFinite() || amount <= 0 ||
+        if (amount == null || !amount.isFinite() || amount <= 0 || amount > 999999999.0 ||
             kotlin.math.abs(amount * 100 - kotlin.math.round(amount * 100)) >= 0.00001) {
-            message = "จำนวนเงินต้องมากกว่า 0 และไม่เกิน 2 ตำแหน่งทศนิยม"
+            message = "จำนวนเงินต้องมากกว่า 0 ไม่เกิน 999,999,999 บาท และไม่เกิน 2 ตำแหน่งทศนิยม"
             return
         }
         if (reasonText.trim().length !in 5..500) {
             message = "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร"
             return
         }
-        val requestId = pendingCashMovementRequestId ?: UUID.randomUUID().toString().also {
-            pendingCashMovementType = actualType
-            pendingCashMovementAmount = amountText
-            pendingCashMovementReason = reasonText.trim()
-            pendingCashMovementShopId = snap?.shopId
-            pendingCashMovementActorId = auth.session.authUserId
-            pendingCashMovementRequestId = it
+        val shopId = snap?.shopId ?: return
+        val requestId = pendingCashMovementRequestId ?: UUID.randomUUID().toString()
+        val request = PosCashMovementPending(
+            shopId, auth.session.authUserId, requestId, actualType!!, amount, reasonText.trim()
+        )
+        // Reuse the same durable store as the shift-history screen. Another tab's
+        // pending intent (or unreadable stored bytes) must block a fresh request.
+        val stored = cashMovementStore.load(shopId, auth.session.authUserId)
+        if (stored != request && !cashMovementStore.save(request)) {
+            pendingCashMovement = cashMovementStore.load(shopId, auth.session.authUserId)
+            message = "มีรายการเงินสดค้างหรือบันทึกรหัสไม่สำเร็จ · ตรวจรายการเดิมก่อนสร้างรายการใหม่"
+            return
         }
+        pendingCashMovement = request
         cashShiftPending = true
         scope.launch {
             try {
-                api.recordCashMovement(auth, actualType!!, amount, reasonText.trim(), requestId)
-                cashShift = api.currentCashShift(auth)
-                cashShiftError = null
-                pendingCashMovementType = null
-                pendingCashMovementAmount = null
-                pendingCashMovementReason = null
-                pendingCashMovementRequestId = null
-                pendingCashMovementShopId = null
-                pendingCashMovementActorId = null
+                api.recordCashMovement(auth, request.type, request.amount, request.reason, request.requestId)
+                if (!cashMovementStore.clear(request)) {
+                    message = "Server ยืนยันรายการแล้ว แต่เครื่องยังเก็บรหัสค้าง กรุณาตรวจรายการเดิม"
+                    return@launch
+                }
+                pendingCashMovement = null
                 cashMovementAmount = ""
                 cashMovementReason = ""
+                // A refresh failure after the receipt must not imply the cash write failed.
+                runCatching { api.currentCashShift(auth) }
+                    .onSuccess { cashShift = it; cashShiftError = null }
+                    .onFailure { cashShiftError = "บันทึกเงินสดสำเร็จ แต่ยังโหลดสถานะกะไม่ได้" }
                 message = if (actualType == "cash_in") "บันทึกเงินเข้าแล้ว" else "บันทึกเงินออกแล้ว"
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -1668,6 +1703,40 @@ fun MerchantPosScreen(
                     }
                 )
 
+                "tax" -> PosTaxSettingsView(
+                    settings = taxSettings,
+                    rateText = taxRateText,
+                    busy = busy || !taxSettingsLoaded,
+                    onEnabled = { taxSettings = taxSettings.copy(enabled = it) },
+                    onRate = { taxRateText = it },
+                    onPricesIncludeTax = { taxSettings = taxSettings.copy(pricesIncludeTax = it) },
+                    onRegistration = { taxSettings = taxSettings.copy(registrationNumber = it) },
+                    onBranch = { taxSettings = taxSettings.copy(branchCode = it) },
+                    onAddress = { taxSettings = taxSettings.copy(invoiceAddress = it) },
+                    onSave = {
+                        val rate = taxRateText.toDoubleOrNull()
+                        if (rate == null || !rate.isFinite() || rate !in 0.0..100.0) {
+                            message = "อัตราภาษีต้องอยู่ระหว่าง 0–100%"
+                        } else {
+                            scope.launch {
+                                busy = true
+                                runCatching {
+                                    val next = taxSettings.copy(ratePercent = rate)
+                                    api.saveTaxSettings(auth, next)
+                                    api.loadTaxSettings(auth)
+                                }.onSuccess {
+                                    taxSettings = it
+                                    taxRateText = "%.2f".format(java.util.Locale.US, it.ratePercent)
+                                    message = "บันทึกการตั้งค่าภาษีแล้ว"
+                                }.onFailure {
+                                    message = it.message ?: "บันทึกการตั้งค่าภาษีไม่สำเร็จ"
+                                }
+                                busy = false
+                            }
+                        }
+                    }
+                )
+
                 "printer" -> MerchantPrinterScreen(
                     snapshot = snap,
                     settings = printerSettings,
@@ -2217,34 +2286,59 @@ private fun PosTabs(
             add("history" to "ประวัติ")
             add("delivery" to "Delivery")
         }
+        if (owner) add("tax" to "ภาษี POS")
         add("printer" to "เครื่องพิมพ์")
         if (owner) {
             add("staff" to "พนักงาน")
         }
     }
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        tabs.forEach { (key, label) ->
-            if (key == current) {
-                Button(
-                    onClick = { onSelect(key) },
-                    modifier = Modifier.heightIn(min = 46.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 10.dp)
-                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
-            } else {
-                OutlinedButton(
-                    onClick = { onSelect(key) },
-                    modifier = Modifier.heightIn(min = 46.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 10.dp)
-                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Use the final light-theme + mobile overrides, not the earlier dark rule.
+        val mobile = maxWidth <= 650.dp
+        val narrow = maxWidth <= 700.dp
+        val shape = RoundedCornerShape(if (mobile) 9.dp else 10.dp)
+        val tabHeight = if (mobile) 36.dp else if (narrow) 38.dp else 40.dp
+        val labelSize = if (mobile) 12.sp else 13.sp
+        val labelLine = if (mobile) 14.4.sp else 15.6.sp
+        val padding = PaddingValues(horizontal = if (mobile) 10.dp else if (narrow) 11.dp else 13.dp,
+            vertical = if (mobile) 7.dp else if (narrow) 8.dp else 9.dp)
+        Row(
+            Modifier.fillMaxWidth().background(if (mobile) Color(0xFFF7F8FA) else Color(0xFFF6F7F9))
+                .horizontalScroll(rememberScrollState()).padding(start = 10.dp, end = 10.dp,
+                    top = if (mobile) 5.dp else 7.dp, bottom = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (mobile) 2.dp else 4.dp)
+        ) {
+            tabs.forEach { (key, label) ->
+                val active = key == current
+                val tabModifier = Modifier.widthIn(min = if (narrow) 0.dp else 88.dp).heightIn(min = tabHeight)
+                    .then(if (active && !mobile) Modifier.dropShadow(shape,
+                        Shadow(radius = 5.dp, color = Color(0xFF20242A).copy(alpha = 0.08f), offset = DpOffset(0.dp, 1.dp))) else Modifier)
+                    .clip(shape)
+                    .drawWithContent {
+                        drawContent()
+                        if (active && mobile) {
+                            val stroke = 2.dp.toPx()
+                            drawLine(Color(0xFFED163D), Offset(0f, size.height - stroke / 2),
+                                Offset(size.width, size.height - stroke / 2), strokeWidth = stroke)
+                        }
+                    }
+                if (active) {
+                    Button(onClick = { onSelect(key) }, modifier = tabModifier, shape = shape,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White,
+                            contentColor = if (mobile) Color(0xFFD20B32) else Color(0xFFED163D)),
+                        border = if (mobile) null else BorderStroke(1.dp, Color(0xFFF0D5DA)),
+                        contentPadding = padding
+                    ) { Text(label, fontSize = labelSize, lineHeight = labelLine, fontWeight = FontWeight.Bold) }
+                } else {
+                    TextButton(onClick = { onSelect(key) }, modifier = tabModifier, shape = shape,
+                        colors = ButtonDefaults.textButtonColors(contentColor = if (mobile) Color(0xFF737B86) else Color(0xFF6B7280)),
+                        contentPadding = padding
+                    ) { Text(label, fontSize = labelSize, lineHeight = labelLine, fontWeight = FontWeight.Bold) }
+                }
             }
         }
     }
-    HorizontalDivider()
+    HorizontalDivider(color = Color(0xFFE8EBEF))
 }
 
 @Composable
@@ -3220,6 +3314,84 @@ internal fun buildPosReportCsv(
     }
     return "\uFEFF" + rows.joinToString("\r\n") { row ->
         row.joinToString(",") { posReportCsvCell(it) }
+    }
+}
+
+@Composable
+private fun PosTaxSettingsView(
+    settings: PosTaxSettings,
+    rateText: String,
+    busy: Boolean,
+    onEnabled: (Boolean) -> Unit,
+    onRate: (String) -> Unit,
+    onPricesIncludeTax: (Boolean) -> Unit,
+    onRegistration: (String) -> Unit,
+    onBranch: (String) -> Unit,
+    onAddress: (String) -> Unit,
+    onSave: () -> Unit
+) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+        QgSectionTitle("ภาษี POS", "ตั้งค่าร้าน · ใช้กับบิล POS ใหม่เท่านั้น")
+        Spacer(Modifier.height(8.dp))
+        QgCard(Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = settings.enabled, onCheckedChange = onEnabled, enabled = !busy)
+                Column(Modifier.weight(1f)) {
+                    Text("เปิดใช้ภาษี", fontWeight = FontWeight.Bold)
+                    Text("ค่าเริ่มต้นปิดไว้ ไม่เปลี่ยนบิลเก่า", color = QgMuted, fontSize = 12.sp)
+                }
+            }
+            OutlinedTextField(
+                value = rateText, onValueChange = onRate, enabled = !busy,
+                label = { Text("อัตราภาษี (%)") }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(6.dp))
+            Text("รูปแบบราคาหน้าร้าน", fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = settings.pricesIncludeTax, onClick = { onPricesIncludeTax(true) }, enabled = !busy)
+                Column(Modifier.weight(1f)) {
+                    Text("ราคารวมภาษีแล้ว")
+                    Text("ยอดที่ลูกค้าเห็นคงเดิม และแยกยอดภาษีในบิล", color = QgMuted, fontSize = 11.sp)
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = !settings.pricesIncludeTax, onClick = { onPricesIncludeTax(false) }, enabled = !busy)
+                Column(Modifier.weight(1f)) {
+                    Text("ราคายังไม่รวมภาษี")
+                    Text("ระบบบวกภาษีเพิ่มจากยอดหลังหักส่วนลด", color = QgMuted, fontSize = 11.sp)
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        QgCard(Modifier.fillMaxWidth()) {
+            Text("ข้อมูลใบกำกับภาษี", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = settings.registrationNumber.orEmpty(), onValueChange = onRegistration,
+                enabled = !busy, label = { Text("เลขประจำตัวผู้เสียภาษี") },
+                singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = settings.branchCode.orEmpty(), onValueChange = onBranch,
+                enabled = !busy, label = { Text("รหัสสาขา เช่น 00000") },
+                singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = settings.invoiceAddress.orEmpty(), onValueChange = onAddress,
+                enabled = !busy, label = { Text("ที่อยู่สำหรับใบกำกับภาษี") },
+                modifier = Modifier.fillMaxWidth(), minLines = 2
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Button(onClick = onSave, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+            Text(if (busy) "กำลังบันทึก…" else "บันทึกการตั้งค่าภาษี")
+        }
+        Text(
+            "รายละเอียดภาษีในใบเสร็จและรายงานต้องอ่านจากข้อมูลที่บันทึกไว้ในบิล ณ เวลาขาย",
+            color = QgMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }
 

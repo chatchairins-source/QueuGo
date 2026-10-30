@@ -1,3 +1,98 @@
+## 2026-10-30 Native POS tabs — correct final CSS cascade (IN PROGRESS)
+
+- Successor parent `e82ae91604de1c9a30437cbeb85ca683f0e49184` retains all UI and financial safety work, and serialises the existing shared-account visual review with real Thai fonts.
+- Corrected a source-reading mistake: the earlier #181b20 rule is overridden by the later "light professional correction — no black primary surfaces" and <=650px compact rail rules. Actual Production phone PNG `phone-pos-counter.png` in artifact `12955664939` confirms a white selected tab with red text/bottom inset line. Missing Thai glyphs in that old runner do not affect this color/shape evidence.
+- Native tabs now follow the FINAL cascade: white/red bordered/shadowed selection on wider screens; <=650dp 36dp/12sp compact selection with 2dp red underline, 9dp corners and 2dp gaps; 650–700dp retains the existing 38dp narrow sizing. No black active surface. Keep every tab, permission and callback; do not undo the single-header or bottom-nav corrections.
+- NEXT: exact-head Kotlin/source/CI and serialised real-account phone/tablet screenshots with Thai glyphs. Inspect actual after images before reporting visual parity; continue counter/other Merchant differences from evidence, not intermediate CSS declarations.
+
+## 2026-10-30 Merchant visual review — real session collision and missing Thai glyphs (IN PROGRESS)
+
+- Latest app/UI successor: `92b5996e8805103e25f04a129d5b6f731a6fcecc`; Native POS CI push `41007905597` and PR `41007914631` SUCCESS. Login, POS chrome and bottom-navigation corrections are preserved.
+- Actual diagnostic PNG `tablet-back-blocker.png` from run `41006986955` / artifact `12956795518` shows signed-out Login, not an observed broken Back control. Multiple authenticated review jobs overlapped using the same Merchant credentials. Production claim_active_session definition inspected read-only: it replaces the one user_active_sessions row per auth.uid(); Native validate checks that same active session and clears a displaced login. Serialise the existing review workflow with one shared concurrency group; do not weaken Auth/RLS/session validation. Drain older pre-lock runs before starting the next shared-account capture.
+- Web baseline artifact `12955664939` contains actual phone primary/POS and tablet primary screenshots, but Thai glyphs are missing on the runner. Install official runner Noto core fonts and verify Noto Sans Thai before capture; do not treat tofu text as an app font bug.
+- Safe failure diagnostics also prove the Web request guard blocked the site's normal claim_active_session handshake and read-only queuego_credit_summary RPC. Both definitions inspected read-only. Permit only that existing authenticated session handshake plus the summary read; keep financial/settings/order/shift writes and session revocation blocked. Native capture finishes before Web signs in to the same account.
+- Local syntax, request policy, action pinning and Native source checks pending at checkpoint. NEXT: after old shared-account jobs finish, run the serialised exact-head phone/tablet review, inspect real Thai Web/Native images, then continue confirmed visual differences. No full visual-parity claim and no Production schema/business mutation.
+
+## 2026-10-30 Merchant bottom navigation — current Web dimensions and selected icon (IN PROGRESS)
+
+- Latest successor `3f9a69692cb33b45cb7f54adc9e2e560638912cf` preserves login and POS visual fixes. Git grep confirms QgBottomNav has exactly one application caller: QueueGoMerchantApp. Customer and Rider use separate existing renderers; no duplicate navigation system is introduced.
+- Evidence: actual Native profile PNG `05-profile.png` from artifact `12955502227` shows the compact 58dp bar with no selected icon background. Current main/served Web `.qgm-bottom` CSS specifies 72px height, max-width 620px centered on tablet, 42x34px icon container, #ffedf0 selected background, 23px icon, 10px label, #e7092b selected and #8f97a2 inactive colors.
+- Update the existing Merchant-only-used component to those dimensions/colors while preserving all item keys, labels and onSelect callbacks. Replace the obsolete 58dp source contract with the current Web navigation contract. No auth, backend, data, payment or route behavior change.
+- NEXT: exact-head build/source regression and actual phone/tablet captures. Inspect complete primary-tab and POS images; do not infer full visual parity from source values alone. Tablet/Web capture recovery remains under verification in the existing review pipeline.
+
+## 2026-10-30 Native Merchant POS — remove duplicate chrome; match Web tabs (IN PROGRESS)
+
+- Successor base `166761d2c5ba1e57d01a3b79526a6aacdd52c114` preserves login visual changes and the tablet-capture recovery. The owner visual instruction remains active; no financial/backend work is substituted for appearance.
+- Evidence: real Native phone POS image in baseline artifact `12955502227` shows a dashboard QueueGo/bell bar above a second POS back/title/reload header. Production `merchant/pos-table-v2.js` shell owns one full-page POS header. Current Production CSS uses dark #181b20 selected tabs, transparent #626a75 inactive tabs without outlines, min-width 88px/min-height 40px, 10px corners, 13px bold labels and 4px gaps. Native showed red active/outlined inactive 46dp/14dp tabs.
+- Hide only the outer MerchantTopBar on the existing POS route; keep POS's own header/back/reload and the brand/bell bar on other routes. Match the POS tab color, border treatment and dimensions to the Web CSS without changing tab list, permissions or callbacks. Existing category/cart/payment/offline recovery remains untouched.
+- Local source/diff checks pending at checkpoint; exact-head Kotlin/build and after-image capture required. Before-change source already compiled successfully in review `41006159308`; its old tablet harness failure is addressed in the parent, not an application-build failure.
+- NEXT: inspect current phone/tablet Web/Native captures, fix the first capture or visual failure, then continue counter layout/product cards and other Merchant screens. Do not report complete visual parity from these bounded changes alone.
+
+## 2026-10-30 Merchant visual capture — first confirmed tablet harness failure (IN PROGRESS)
+
+- Latest UI successor: `9ace1b2cc5c5971071ac74cab4a7c159a9ae4c5e`, preserves the Web-derived login correction. Before-change review run `41005707232`, job `123900036743`, built successfully and saved 9 real Native PNGs (login, five primary phone screens, POS counter/tables/cashier) in artifact `12955502227`.
+- First failure: `capture-merchant-authenticated-review.py` line 125 waited for Tablet Home after an unconditional Back issued 5 seconds after wm size/density changes. The harness never established whether Activity/Auth restoration had finished or whether Home had already restored; the final tablet state was not captured. Do not declare this an app Back bug from that evidence.
+- Fix the harness to wait for visible POS or primary navigation, send Back only from confirmed POS, select Home explicitly, scroll to its summary and save a diagnostic PNG on failure. Replace ambiguous XML-element truthiness with explicit None checks.
+- Let Production Web capture/dependency setup run independently after a Native capture failure so one failed surface cannot erase the other baseline. Failed Web review saves only stage and blocked method/path diagnostics, never credential fields/tokens/body contents.
+- NEXT: exact-head captures, inspect actual phone/tablet Web and Native images, then correct the first confirmed Compose layout mismatch. Login shadow/focus correction still requires its own after-image/build evidence; no full visual-parity claim.
+
+## 2026-10-30 Native Merchant login — Web shadow and focus treatment (IN PROGRESS)
+
+- Successor parent `002a83a1a44cb4e8751d1174cb768caeca4a8874` continues the green POS safety head. Existing authenticated review `41005707232` has passed Merchant credential readiness and is building the real apps; its screenshots are the before-change baseline, not final certification.
+- Evidence: actual Production Web login inspected in browser and current `qg-login-v08` CSS specify a primary-button shadow `0 6px 18px rgba(231,9,43,.13)`, panel shadow `0 -8px 24px rgba(0,0,0,.05)` and focused-input 3px red halo. Actual Native phone/tablet login PNGs from green baseline artifact `12955096018` plus Compose source show these treatments missing.
+- Add those same shape/color/radius/offset/spread values through native Compose dropShadow (available in existing Compose dependencies). Focused inputs retain a white fill and existing red border; button disabled shadow follows existing 65% opacity. Preserve layout, assets, text, Auth callbacks and POS/backend code.
+- Local Native source/diff checks pending at checkpoint; exact-head Kotlin/build and before/after screenshots required. This is one bounded visual correction, not complete Merchant visual parity.
+- NEXT: inspect exact-head authenticated Web/Native phone/tablet captures, fix capture failures first, then compare primary tabs and POS and correct the first confirmed layout difference. Do not claim visual parity until actual after-change images are inspected.
+
+## 2026-10-30 Merchant Native visual parity — real Web/Android comparison (IN PROGRESS)
+
+- Owner explicitly requires the Native Merchant appearance to match actual Production Web `https://chatchairins-source.github.io/QueuGo/merchant/`, including POS, mobile and tablet. This is now the active UI workstream; preserve Kotlin/Jetpack Compose and all current POS financial recovery changes.
+- Clean successor base: `b64d5d9c4d28d2f50e7bc085f3668a0254b1474d`. Exact push Native Pilot `41002046757` and POS CI `41002046760` SUCCESS; all three actual Debug APKs verified to contain that source SHA, artifact ZIP digest verified. No reset, legacy branch or overwritten uncommitted work.
+- Live Web login inspected in browser: actual merchant photo, white rounded login panel, red controls and max-width 520px layout. Browser session is signed out, so authenticated visual parity cannot be certified from this page alone.
+- Extend the EXISTING secret-backed authenticated-review workflow to this newest POS successor with `[merchant-visual-review]`. Merchant-only requests use the existing Merchant credential readiness, skip unrelated Rider capture, and capture Native POS counter/tables/cashier plus the primary Merchant tabs on phone/tablet. Add real Production Web capture using the same existing account and logical phone/tablet viewports. Never inject a fake login/session or business data.
+- Web capture permits ordinary Auth sign-in/refresh plus explicitly allowlisted reads; blocks order, payment, shift, cash, settings and other business writes. Credentials are neither logged nor saved into screenshots; artifacts retain the existing 7-day policy. Metadata remains emulator-only and visual_parity_certified=false until actual images are inspected.
+- Local Python/JS syntax, request-policy checks, Native source 467/0, action pinning 98/0 and diff check PASS. Hosted screenshot capture/build evidence pending; no UI similarity completion claim yet.
+- NEXT: inspect exact-head authenticated Web/Native screenshots; fix the first evidence-backed visual mismatch in existing Compose screens, then recapture phone/tablet. Keep backend/business behavior and new POS safety fixes intact. Continue across Merchant screens rather than returning to unrelated feature work.
+
+## 2026-10-30 Native POS cashier preflight — reject server-invalid amount before durable save (IN PROGRESS)
+
+- Parent `fac788661fa8e602dbf22c543f1c4ffa941293b8`: full local npm test EXIT 0; exact-head Native POS CI push `41001504935` and PR `41001511432` SUCCESS. Android Pilot still queued behind predecessor builds.
+- Follow-up review: the cashier input accepted amounts above the existing `recordCashMovement` maximum 999999999.0, whereas shift-history and API reject them. With durable preparation, such an invalid request could otherwise be persisted before local API validation and remain permanently unresolved despite never being sent.
+- Align cashier preflight to the existing maximum before durable persistence; retain all prior decimal/positive checks. Add source assertion requiring validation before save. No backend, business limit, ledger or Production change.
+- NEXT: latest exact-head JVM/build/Native Pilot and first confirmed failure; then scope matrix acceptance gates. No full-parity/release claim.
+
+## 2026-10-30 Native/Web POS P0 — preserve offline draft identity after 4xx retry (IN PROGRESS)
+
+- Parent `e54714eccdd8ee10a468ba0fa48afd7f9f6d7fa2` is the latest fetched Native successor, existing PR #735; main Web oracle unchanged. Full local npm test on the cash-store chunk exited 0.
+- Production `pos_submit_offline_draft` definition inspected read-only: it locks the scoped request and hashes the full item payload, including per-unit request IDs. Both clients cleared those IDs after any 4xx. Reproduced real Web runtime sequence: server commit/lost response → retry 401 → stored IDs become empty. That changes the immutable payload and unlocks editing/deletion despite a possible existing bill.
+- Both clients now preserve durable draft and exact IDs on every uncertain failure. No automatic resubmit, replacement request, payment, backend schema or Production write. New actual Web runtime regression covers exact-payload replay, 401, blocked edit/delete, and one server bill.
+- Local evidence: POS runtime 99/0; Native source 466/0; diff check PASS. Exact-head full regression/JVM/build/hosted CI pending. Source parity matrix and remaining gates recorded in `docs/native-merchant-pos-parity-20261030.md`.
+- NEXT: exact-head Native POS/Android Pilot first failure, then authenticated cashier/process-kill acceptance and remaining matrix blockers. VAT Production schema/RPC absent; offline currently supports drafts rather than paid checkout. No full-parity or release claim.
+
+## 2026-10-30 Native Merchant POS P0 — cashier cash movements share durable pending store (IN PROGRESS)
+
+- Parent `cf62cfae0fd9072fa1b4af5bbf71f20307b68079` is the latest fetched Native successor on PR #735. Source regression recovery parent `c962ea7c` passed Native POS CI push `41000094234` and PR `41000098909`; full local `npm test` exited 0. Latest tax-compatibility head has its own CI queued/running, not certified from the parent.
+- Root cause: the new cashier cash-in/out entry point used six `rememberSaveable` fields only, while existing shift-history cash controls already use `MerchantPosCashMovementStore`. A cold launch can lose the new screen's idempotency UUID, and switching entry points can create a new request while an earlier result is unknown.
+- Both entry points now use the existing shop/actor-scoped durable store. Cashier restores its exact UUID/type/amount/reason, persists before any RPC, blocks replacement (including unreadable stored data), and clears only after a matching server receipt. A failed follow-up shift read preserves successful financial acknowledgement. No new ledger/RPC/store or Production write.
+- Added SharedPreferences-injected JVM store tests for reopening/cross-entry-point restore, actor/shop isolation, mismatched acknowledgement, failed durable write/clear and corrupt pending bytes. Source tests require durable cashier integration. Local source checks 465/0 and diff check pass; JVM/build/hosted exact-head CI pending.
+- NEXT: inspect exact-head Native POS and Android Pilot, repair first confirmed failure, then finish the POS scope matrix and remaining unblocked parity work. No APK/release/full-parity claim; device cashier timeout/process-kill acceptance remains required.
+
+## 2026-10-30 Native Merchant POS P0 — undeployed optional tax schema breaks bill loading (IN PROGRESS)
+
+- Parent `c962ea7c67c47c3cb4ce5ecc2290b40177dfd815` is the published descendant of `dde90e26` on existing PR #735. No uncommitted work was overwritten; local unpublished checkpoint `50d7829d` has the same tree as published `c962ea7c`.
+- Read-only Production information_schema audit on `pkypiqhlrmzocysgeqew` confirms `orders` has existing subtotal/total_amount/discount_amount/sales_channel but none of the new tax columns, and no `public.pos_tax_settings` columns. The latest Native POS snapshot unconditionally selects these undeployed fields in both bill reads, so the request fails before rendering the POS snapshot. No schema/payment/Production mutation performed.
+- Fix: attempt full tax snapshot reads first; retry only HTTP 400 identifying one of the exact optional tax columns as absent, using identical shop/POS/status/order scope with established bill columns. Auth, timeout, server, unrelated column errors and second-read failure propagate. Server totals are never recomputed; migrated servers keep all tax snapshots. Tax settings load only on entering the owner tax tab, and failure disables saving instead of allowing default settings to overwrite unseen server state.
+- Added JVM execution tests for migrated and unmigrated responses, exact read scope, preserved totals, no fake tax fields, auth/network failures and bounded retry. Source contracts verify both snapshot reads use this helper and tax settings fail closed. Local native source checks and diff check pass; JVM/build/exact-head CI pending.
+- NEXT: inspect exact-head Native POS and Android Pilot; fix first confirmed failure. Continue full POS parity audit (offline drafts/sync, settlement, receipt, tax checkout) against Web main and real backend. Tax migrations are NOT applied; tax production readiness, authenticated cashier/device acceptance and signing remain unverified.
+
+## 2026-10-30 Native Merchant POS exact-head regression recovery — IN PROGRESS
+
+- Stream: CLOSE NATIVE MERCHANT POS FULL PARITY. Clean checkout; newest fetched Native successor `dde90e26e77b76200a05240beeeb719341c316f6` on existing PR #735 / `work-native-pos-tax-foundation-20261029`. Git ancestry confirms cash-movements HEAD `9ca88a2f4da4796d015933a43ed310c653b2043b` is its ancestor. Web oracle remains main `7e036a0735cc49905e9b0a2434492470551a0c9d`; no reset/overlay or Production writes.
+- Confirmed first failure: exact-head Native POS CI run `40886152464`, job `123490456770`, cannot parse `tests/native-android-source.cjs` because receipt-tax guards redeclare `const merchantPrinterSource`. Reproduced locally before editing.
+- Removed only the second declaration, retaining every receipt/tax assertion. Moved the success/count output after all tax guards so a late assertion cannot follow a misleading PASS summary.
+- Local evidence: `node tests/native-android-source.cjs` PASS 462/0; `git diff --check` PASS. Full repository regression, hosted exact-head CI and Android build remain pending. No APK supplied and no full-parity/release claim.
+- NEXT: run full clean-checkout regression and exact-head Native POS / Android Pilot; repair first confirmed failure. Then audit tax integration and remaining payment/offline parity against Web and actual backend authority before live rollout. Physical cashier acceptance and release signing remain separate gates.
+
 ## 2026-10-29 Native Merchant POS P0 — make table management discoverable from counter (IN PROGRESS)
 
 - Successor base verified: PR #730 / `work-native-web-parity-20261026` at `ae315af6eb57da72c0946c8647ac73f5b3c8ec90`; new isolated branch `work-native-pos-counter-table-access-20261029` preserves that exact HEAD and does not reset or overwrite it.

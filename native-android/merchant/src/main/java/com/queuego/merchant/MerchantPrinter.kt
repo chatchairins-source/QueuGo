@@ -183,6 +183,11 @@ private fun merchantPrintTicket(snapshot: PosSnapshot, bill: PosBill, lines: Lis
     return buildString {
         appendLine("QueueGo")
         appendLine(snapshot.shopName)
+        if (receipt && bill.taxEnabledSnapshot) {
+            bill.taxRegistrationSnapshot?.takeIf { it.isNotBlank() }?.let { appendLine("เลขผู้เสียภาษี " + it) }
+            bill.taxBranchSnapshot?.takeIf { it.isNotBlank() }?.let { appendLine("สาขา " + it) }
+            bill.taxAddressSnapshot?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
+        }
         appendLine(if (receipt) "ใบเสร็จรับเงิน" else "ใบเข้าครัว")
         appendLine(separator)
         appendLine(bill.number)
@@ -195,8 +200,16 @@ private fun merchantPrintTicket(snapshot: PosSnapshot, bill: PosBill, lines: Lis
         }
         if (receipt) {
             appendLine(separator)
-            appendLine("รวม " + merchantPrinterMoney(bill.total))
+            if (bill.taxEnabledSnapshot) {
+                appendLine("ยอดก่อนส่วนลด " + merchantPrinterMoney(bill.subtotal))
+            }
             if (bill.discount > 0) appendLine("ส่วนลด " + merchantPrinterMoney(bill.discount))
+            if (bill.taxEnabledSnapshot) {
+                appendLine("มูลค่าก่อนภาษี " + merchantPrinterMoney(bill.taxableBase ?: (bill.total - (bill.taxAmount ?: 0.0))))
+                appendLine("ภาษี " + String.format(java.util.Locale.US, "%.2f%%", bill.taxRateSnapshot ?: 0.0) + " " +
+                    merchantPrinterMoney(bill.taxAmount ?: 0.0))
+            }
+            appendLine((if (bill.taxEnabledSnapshot) "ยอดสุทธิ " else "รวม ") + merchantPrinterMoney(bill.total))
             if (!bill.paymentMethod.isNullOrBlank()) appendLine("ชำระ " + bill.paymentMethod)
             if (bill.paymentMethod == "cash") {
                 appendLine("รับเงิน " + merchantPrinterMoney(bill.cashTendered ?: 0.0))

@@ -16,6 +16,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
@@ -114,13 +117,20 @@ fun MerchantProductionLogin(
                 layout(placeable.width, (placeable.height - overlap).coerceAtLeast(0)) {
                     placeable.placeRelative(0, -overlap)
                 }
-            }.background(Color.White, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            }.dropShadow(
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                shadow = Shadow(radius = 24.dp, color = Color.Black.copy(alpha = 0.05f), offset = DpOffset(0.dp, (-8).dp))
+            ).background(Color.White, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .padding(start = side, end = side, top = if (short) 16.dp else 24.dp, bottom = if (short) 12.dp else 20.dp)) {
                 MerchantLoginField(loginId, onLoginId, "เบอร์โทรศัพท์ / อีเมล", false, true, busy, short, {}, onLogin)
                 Spacer(Modifier.height(if (short) 8.dp else 12.dp))
                 MerchantLoginField(password, onPassword, "รหัสผ่าน", true, passwordVisible, busy, short, onTogglePassword, onLogin)
                 Spacer(Modifier.height((if (short) 8 else 12).dp + 6.dp))
-                Button(onClick = onLogin, enabled = !busy, modifier = Modifier.fillMaxWidth().height(if (short) 48.dp else 54.dp),
+                Button(onClick = onLogin, enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().height(if (short) 48.dp else 54.dp)
+                        .dropShadow(shape = RoundedCornerShape(13.dp),
+                            shadow = Shadow(radius = 18.dp, color = MerchantLoginRed.copy(alpha = if (busy) 0.0845f else 0.13f),
+                                offset = DpOffset(0.dp, 6.dp))),
                     shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = MerchantLoginRed,
                         disabledContainerColor = MerchantLoginRed.copy(alpha = 0.65f), disabledContentColor = Color.White),
                     contentPadding = PaddingValues(horizontal = 6.dp, vertical = 1.dp)) {
@@ -166,6 +176,9 @@ private fun MerchantLoginField(value: String, change: (String) -> Unit, hint: St
     var focused by remember { mutableStateOf(false) }
     val focus = LocalFocusManager.current
     Row(Modifier.fillMaxWidth().height(if (short) 46.dp else 54.dp)
+        .then(if (focused) Modifier.dropShadow(shape = RoundedCornerShape(13.dp),
+            shadow = Shadow(radius = 0.dp, spread = 3.dp, color = MerchantLoginRed.copy(alpha = 0.10f))) else Modifier)
+        .background(Color.White, RoundedCornerShape(13.dp))
         .border(1.dp, if (focused) MerchantLoginRed else Color(0xFFDCE0E5), RoundedCornerShape(13.dp))
         .padding(horizontal = 15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         MerchantLoginInputIcon(secret, Modifier.size(19.dp))

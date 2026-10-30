@@ -1234,7 +1234,9 @@ ok(
   !riderApp.includes('showPickupConfirmation'),
   'Native Rider FOLLOW, route matching, visible GPS path and gestures must stay locked to Web navigation behavior'
 );
-ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
+ok(source.includes('QgBottomNav')&&source.includes('.height(72.dp)')&&
+  source.includes('widthIn(max = 620.dp)')&&source.includes('size(width = 42.dp, height = 34.dp)')&&source.includes('Color(0xFFFFEDF0)'),
+  'Merchant bottom navigation must match current Web height, centered tablet width and selected icon container');
 
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
 ok(source.includes('pos_my_shop')&&source.includes('pos_create_bill_once')&&source.includes('pos_edit_bill')&&source.includes('pos_bill_action')&&source.includes('pos_take_payment'),'Merchant native POS must reuse production POS RPCs');
@@ -1391,10 +1393,14 @@ ok(
 ok(
   merchantPosApi.includes('suspend fun recordCashMovement(') &&
   merchantPosApi.includes('"pos_record_cash_movement"') &&
-  merchantPosScreen.includes('api.recordCashMovement(auth, actualType!!, amount, reasonText.trim(), requestId)') &&
+  merchantPosScreen.includes('api.recordCashMovement(auth, request.type, request.amount, request.reason, request.requestId)') &&
   merchantPosScreen.includes('cashInTotal ?: 0.0') &&
   merchantPosScreen.includes('cashOutTotal ?: 0.0') &&
   merchantPosScreen.includes('pendingCashMovementRequestId ?: UUID.randomUUID().toString()') &&
+  merchantPosScreen.includes('cashMovementStore.load(it, auth.session.authUserId)') &&
+  merchantPosScreen.includes('stored != request && !cashMovementStore.save(request)') &&
+  merchantPosScreen.includes('if (!cashMovementStore.clear(request))') &&
+  !merchantPosScreen.includes('var pendingCashMovementRequestId by rememberSaveable') &&
   merchantPosScreen.includes('pendingCashMovementShopId != snap?.shopId') &&
   merchantPosScreen.includes('pendingCashMovementActorId != auth.session.authUserId') &&
   merchantPosScreen.includes('cashShift?.open != true && !retrying') &&
@@ -1724,4 +1730,75 @@ ok(
   !read('../customer-ride.js').includes('trackingMap.touchZoomRotate.disableRotation()'),
   'Customer Ride map must preserve user zoom/rotate/tilt after marker updates and match Web gesture controls'
 );
+
+
+// POS tax calculation foundation must use integer satang and distinguish tax-inclusive/exclusive prices.
+const merchantPosApiSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt');
+ok(merchantPosApiSource.includes('data class PosTaxBreakdown('),'POS tax breakdown model must exist');
+ok(merchantPosApiSource.includes('internal fun calculatePosTaxBreakdown('),'POS tax calculator must exist');
+ok(merchantPosApiSource.includes('amountSatang: Long') && merchantPosApiSource.includes('taxableBaseSatang: Long') && merchantPosApiSource.includes('taxSatang: Long'),'POS tax math must use integer satang');
+ok(merchantPosApiSource.includes('pricesIncludeTax: Boolean'),'POS tax math must distinguish tax-inclusive and tax-exclusive prices');
+ok(merchantPosApiSource.includes('ratePercent.isFinite() && ratePercent in 0.0..100.0'),'POS tax math must reject invalid tax rates');
+ok(merchantPosApiSource.includes('Math.addExact(amountSatang, tax)'),'POS tax-exclusive total must detect integer overflow');
+ok(merchantPosApiSource.includes('suspend fun loadTaxSettings(auth: NativeAuth): PosTaxSettings'),'Merchant POS must load server-owned tax settings');
+ok(merchantPosApiSource.includes('suspend fun saveTaxSettings(auth: NativeAuth, settings: PosTaxSettings)'),'Merchant POS must save tax settings through the owner RPC');
+ok(merchantPosApiSource.includes('"pos_save_tax_settings"'),'Merchant POS tax settings must use the protected server RPC');
+
+const merchantPosTaxScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
+ok(merchantPosTaxScreen.includes('"tax" -> PosTaxSettingsView(') && merchantPosTaxScreen.includes('add("tax" to "ภาษี POS")'),'Owner must have a native POS tax settings screen');
+ok(merchantPosTaxScreen.includes('ราคารวมภาษีแล้ว') && merchantPosTaxScreen.includes('ราคายังไม่รวมภาษี'),'POS tax screen must explain inclusive and exclusive pricing');
+ok(merchantPosApiSource.includes('taxEnabledSnapshot = r.optBoolean("pos_tax_enabled_snapshot", false)'),'POS bills must parse the stored tax-enabled snapshot');
+ok(merchantPosApiSource.includes('taxAmount = nullableDouble(r, "pos_tax_amount")'),'POS bills must parse the stored tax amount');
+const merchantPrinterSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPrinter.kt');
+ok(merchantPrinterSource.includes('if (receipt && bill.taxEnabledSnapshot)'),'Receipts must use the immutable tax snapshot, not current shop settings');
+ok(merchantPrinterSource.includes('"มูลค่าก่อนภาษี "') && merchantPrinterSource.includes('"ภาษี "'),'POS receipts must print taxable base and tax breakdown');
+
+ok(merchantPosApiSource.includes('pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_taxable_base,pos_tax_amount'),'POS bills must load immutable tax snapshots for receipts');
+ok(merchantPrinterSource.includes('มูลค่าก่อนภาษี') && merchantPrinterSource.includes('bill.taxAmount'),'POS receipts must print tax breakdown from saved bill snapshots');
+ok(merchantPrinterSource.includes('bill.taxRegistrationSnapshot'),'POS receipts must use tax registration data snapshotted on the bill');
+
+
+
+// POS tax schema remains additive and does not silently change live bill totals.
+const posTaxMigration=fs.readFileSync(path.join(__dirname,'../QueueGo-POS-Tax-Foundation-Migration.sql'),'utf8');
+ok(posTaxMigration.includes('create table if not exists public.pos_tax_settings'),'POS tax settings table must be defined');
+ok(posTaxMigration.includes('tax_enabled boolean not null default false'),'Tax must default off for existing shops');
+ok(posTaxMigration.includes('prices_include_tax boolean not null default true'),'Tax-inclusive pricing must be configurable');
+ok(posTaxMigration.includes('pos_tax_amount numeric(12,2)'),'POS bill must have a tax snapshot field');
+ok(posTaxMigration.includes('revoke insert, update, delete on public.pos_tax_settings from anon, authenticated'),'Tax settings must not permit direct client writes');
+ok(posTaxMigration.includes('does not change live checkout totals'),'Migration must not claim live checkout integration before server RPC support');
+
+
+// POS tax checkout integration must calculate tax on the server and preserve per-bill snapshots.
+const posTaxCheckoutMigration=fs.readFileSync(path.join(__dirname,'../QueueGo-POS-Tax-Checkout-Integration-Migration.sql'),'utf8');
+ok(posTaxCheckoutMigration.includes('create or replace function public.pos_save_tax_settings('),'POS tax settings must be saved through an owner-authorized RPC');
+ok(posTaxCheckoutMigration.includes('not public.pos_is_owner()'), 'Only the POS shop owner may change tax settings');
+ok(posTaxCheckoutMigration.includes('create or replace function public.pos_apply_tax_snapshot()'),'POS tax must be calculated by a server-side trigger');
+ok(posTaxCheckoutMigration.includes('new.pos_tax_registration_snapshot := v_settings.tax_registration_number'),'Tax registration details must be snapshotted on each new POS bill');
+ok(posTaxCheckoutMigration.includes('round(v_net * v_rate / (1 + v_rate),2)'),'Tax-inclusive prices must extract tax from the customer total');
+ok(posTaxCheckoutMigration.includes('new.total_amount := v_net + v_tax'),'Tax-exclusive prices must add tax to the customer total');
+ok(posTaxCheckoutMigration.includes('alter table public.orders drop constraint if exists pos_channel_integrity_check'),'Tax checkout must replace the legacy POS total constraint');
+ok(posTaxCheckoutMigration.includes('total_amount = greatest(subtotal-discount_amount,0) + coalesce(pos_tax_amount,0)'),'Tax-exclusive totals must remain valid under the POS integrity constraint');
+ok(posTaxCheckoutMigration.includes('else total_amount = subtotal-discount_amount'),'Tax-disabled and tax-inclusive POS bills must preserve existing total integrity');
+ok(posTaxCheckoutMigration.includes('before insert or update of subtotal,discount_amount,sales_channel'),'Tax must recalculate when bill subtotal or discount changes');
+ok(posTaxCheckoutMigration.includes('revoke all on function public.pos_apply_tax_snapshot() from public,anon,authenticated'),'Clients must not call the internal tax trigger function');
+
+// Both historical and open bill reads must survive only the missing optional tax schema.
+ok((merchantPosApiSource.match(/async \{ readPosBillsWithTaxCompatibility\(/g) || []).length === 2,
+  'POS history and open bills must share the narrowly scoped tax read compatibility path');
+ok(merchantPosApiSource.includes('error.statusCode != 400 || !missingTaxColumn') &&
+  merchantPosApiSource.includes('read("orders?$baseColumns$scope")'),
+  'Tax schema fallback must preserve scope and propagate auth/network/unrelated failures');
+ok(merchantPosTaxScreen.includes('if (view == "tax" && current?.owner == true)') &&
+  merchantPosTaxScreen.includes('.onFailure {\n                    taxSettingsLoaded = false'),
+  'Unavailable tax settings must not interrupt POS entry or enable saving unloaded defaults');
+
+ok(!merchantPosScreen.includes('it.copy(requestIds = emptyList())') &&
+  !merchantPosScreen.includes('ไม่มีบิลถูกสร้าง แก้ร่างแล้วลองใหม่ได้'),
+  'Uncertain offline draft retries must preserve durable per-unit IDs even after HTTP 4xx');
+
+ok(merchantPosScreen.indexOf('amount > 999999999.0') >= 0 &&
+  merchantPosScreen.indexOf('amount > 999999999.0') < merchantPosScreen.indexOf('!cashMovementStore.save(request)'),
+  'Cashier must reject amounts outside RPC bounds before persisting an unreplayable cash intent');
+
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));

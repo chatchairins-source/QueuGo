@@ -697,12 +697,16 @@ private fun MerchantShell(
         }
     ) { insets ->
         Column(Modifier.fillMaxSize().padding(insets).background(QgBg)) {
-            MerchantTopBar(
-                screen = screen,
-                unreadCount = notifications.count { !it.isRead },
-                onHome = { screen = "home" },
-                onNotifications = { screen = "notifications" }
-            )
+            // Production POS owns its full-page header; do not stack the Merchant
+            // dashboard brand/bell bar above the existing POS back/reload header.
+            if (screen != "pos") {
+                MerchantTopBar(
+                    screen = screen,
+                    unreadCount = notifications.count { !it.isRead },
+                    onHome = { screen = "home" },
+                    onNotifications = { screen = "notifications" }
+                )
+            }
             if (!message.isNullOrBlank()) {
                 Text(
                     message!!,

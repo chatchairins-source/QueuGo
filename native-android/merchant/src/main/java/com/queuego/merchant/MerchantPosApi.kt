@@ -16,6 +16,33 @@ import java.security.SecureRandom
 import java.net.SocketTimeoutException
 import java.util.UUID
 
+// Tax rollout is additive. A backend without the reviewed migration must still
+// serve its existing POS bills; never suppress auth, network or unrelated errors.
+private const val posBillTaxColumns =
+    "pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_taxable_base,pos_tax_amount," +
+        "pos_tax_registration_snapshot,pos_tax_branch_snapshot,pos_tax_address_snapshot"
+
+internal suspend fun readPosBillsWithTaxCompatibility(
+    baseColumns: String,
+    scope: String,
+    read: suspend (String) -> JSONArray
+): JSONArray {
+    return try {
+        read("orders?$baseColumns,$posBillTaxColumns$scope")
+    } catch (error: QueueGoHttpException) {
+        val message = error.message.orEmpty()
+        val missingTaxColumn = posBillTaxColumns.split(',').any { column ->
+            Regex("column (?:orders\\.)?" + column + " does not exist", RegexOption.IGNORE_CASE)
+                .containsMatchIn(message) ||
+                message.equals("Could not find the '$column' column of 'orders' in the schema cache", ignoreCase = true)
+        }
+        if (error.statusCode != 400 || !missingTaxColumn) throw error
+        // Read-only retry with identical shop/channel/status filters. Paid totals
+        // remain those returned by the server, never recalculated on the client.
+        read("orders?$baseColumns$scope")
+    }
+}
+
 data class PosProduct(
     val id: String,
     val name: String,
@@ -136,7 +163,15 @@ data class PosBill(
     val paidAt: String? = null,
     val subtotal: Double = 0.0,
     val createdAt: String? = null,
-    val staffId: String? = null
+    val staffId: String? = null,
+    val taxEnabledSnapshot: Boolean = false,
+    val taxRateSnapshot: Double? = null,
+    val pricesIncludeTaxSnapshot: Boolean? = null,
+    val taxableBase: Double? = null,
+    val taxAmount: Double? = null,
+    val taxRegistrationSnapshot: String? = null,
+    val taxBranchSnapshot: String? = null,
+    val taxAddressSnapshot: String? = null
 ) {
     val open: Boolean get() = paymentStatus == "UNPAID" && status != "cancelled"
 }
@@ -240,6 +275,15 @@ data class PosHistoryRow(
     val total: Double,
     val createdAt: String?,
     val staffId: String?
+)
+
+data class PosTaxSettings(
+    val enabled: Boolean = false,
+    val ratePercent: Double = 7.0,
+    val pricesIncludeTax: Boolean = true,
+    val registrationNumber: String? = null,
+    val branchCode: String? = null,
+    val invoiceAddress: String? = null
 )
 
 data class PosSnapshot(
@@ -388,16 +432,15 @@ class MerchantPosApi(
             }
             val billColumns = "select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status," +
                 "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at"
-            val bills = async { http.array(http.get(
-                "orders?$billColumns&shop_id=eq." + http.enc(shopId) +
-                    "&sales_channel=eq.POS&order=created_at.desc&limit=200",
-                auth.session.accessToken
-            )) }
-            val openBills = async { http.array(http.get(
-                "orders?$billColumns&shop_id=eq." + http.enc(shopId) +
-                    "&sales_channel=eq.POS&payment_status=eq.UNPAID&status=neq.cancelled&order=created_at.desc",
-                auth.session.accessToken
-            )) }
+            val bills = async { readPosBillsWithTaxCompatibility(
+                billColumns,
+                "&shop_id=eq." + http.enc(shopId) + "&sales_channel=eq.POS&order=created_at.desc&limit=200"
+            ) { query -> http.array(http.get(query, auth.session.accessToken)) } }
+            val openBills = async { readPosBillsWithTaxCompatibility(
+                billColumns,
+                "&shop_id=eq." + http.enc(shopId) +
+                    "&sales_channel=eq.POS&payment_status=eq.UNPAID&status=neq.cancelled&order=created_at.desc"
+            ) { query -> http.array(http.get(query, auth.session.accessToken)) } }
             val staff = async { http.array(http.get(
                 "pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active" +
                     "&shop_id=eq." + http.enc(shopId),
@@ -905,6 +948,44 @@ class MerchantPosApi(
         )
     }
 
+    suspend fun loadTaxSettings(auth: NativeAuth): PosTaxSettings {
+        val shopId = scalarText(http.rpc("pos_my_shop", auth.session.accessToken, JSONObject()))
+        require(shopId.isNotBlank() && shopId != "null") { "ไม่พบร้านสำหรับตั้งค่าภาษี" }
+        val raw = http.get(
+            "pos_tax_settings?select=tax_enabled,tax_rate,prices_include_tax,tax_registration_number,tax_branch_code,tax_invoice_address&shop_id=eq." +
+                http.enc(shopId) + "&limit=1",
+            auth.session.accessToken
+        )
+        val rows = http.array(raw)
+        val row = rows.optJSONObject(0) ?: return PosTaxSettings()
+        return PosTaxSettings(
+            enabled = row.optBoolean("tax_enabled", false),
+            ratePercent = row.optDouble("tax_rate", 7.0),
+            pricesIncludeTax = row.optBoolean("prices_include_tax", true),
+            registrationNumber = row.optString("tax_registration_number").takeUnless { it == "null" },
+            branchCode = row.optString("tax_branch_code").takeUnless { it == "null" },
+            invoiceAddress = row.optString("tax_invoice_address").takeUnless { it == "null" }
+        )
+    }
+
+    suspend fun saveTaxSettings(auth: NativeAuth, settings: PosTaxSettings) {
+        require(settings.ratePercent.isFinite() && settings.ratePercent in 0.0..100.0) { "อัตราภาษีต้องอยู่ระหว่าง 0–100%" }
+        require(settings.registrationNumber.orEmpty().length <= 30) { "เลขประจำตัวผู้เสียภาษียาวเกินไป" }
+        require(settings.branchCode.orEmpty().length <= 20) { "รหัสสาขายาวเกินไป" }
+        require(settings.invoiceAddress.orEmpty().length <= 1000) { "ที่อยู่ยาวเกินไป" }
+        http.rpc(
+            "pos_save_tax_settings",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_tax_enabled", settings.enabled)
+                .put("p_tax_rate", settings.ratePercent)
+                .put("p_prices_include_tax", settings.pricesIncludeTax)
+                .put("p_registration_number", settings.registrationNumber ?: JSONObject.NULL)
+                .put("p_branch_code", settings.branchCode ?: JSONObject.NULL)
+                .put("p_invoice_address", settings.invoiceAddress ?: JSONObject.NULL)
+        )
+    }
+
     suspend fun ownerDashboard(auth: NativeAuth, days: Int): PosOwnerDashboard {
         require(days in setOf(1, 7, 30)) { "ช่วงรายงานไม่ถูกต้อง" }
         val raw = http.rpc(
@@ -1054,7 +1135,15 @@ class MerchantPosApi(
         paidAt = nullableString(r, "paid_at"),
         subtotal = r.optDouble("subtotal", 0.0),
         createdAt = nullableString(r, "created_at"),
-        staffId = nullableString(r, "staff_id")
+        staffId = nullableString(r, "staff_id"),
+        taxEnabledSnapshot = r.optBoolean("pos_tax_enabled_snapshot", false),
+        taxRateSnapshot = nullableDouble(r, "pos_tax_rate_snapshot"),
+        pricesIncludeTaxSnapshot = if (r.has("pos_prices_include_tax_snapshot") && !r.isNull("pos_prices_include_tax_snapshot")) r.optBoolean("pos_prices_include_tax_snapshot") else null,
+        taxableBase = nullableDouble(r, "pos_taxable_base"),
+        taxAmount = nullableDouble(r, "pos_tax_amount"),
+        taxRegistrationSnapshot = nullableString(r, "pos_tax_registration_snapshot"),
+        taxBranchSnapshot = nullableString(r, "pos_tax_branch_snapshot"),
+        taxAddressSnapshot = nullableString(r, "pos_tax_address_snapshot")
     )
 
     private fun nullableString(o: JSONObject, key: String): String? =
@@ -1116,4 +1205,40 @@ class MerchantPosApi(
     }
 
     private fun orderNumber(raw: String?, id: String): String = nativeOrderNumber(raw)
+}
+
+
+// Tax math foundation: operate on integer satang to avoid floating-point drift.
+// Persisted shop settings and server-side checkout integration are required before
+// this helper may be used to change a real bill total.
+internal data class PosTaxBreakdown(
+    val taxableBaseSatang: Long,
+    val taxSatang: Long,
+    val totalSatang: Long
+)
+
+internal fun calculatePosTaxBreakdown(
+    amountSatang: Long,
+    ratePercent: Double,
+    pricesIncludeTax: Boolean
+): PosTaxBreakdown {
+    require(amountSatang >= 0L) { "Taxable amount cannot be negative" }
+    require(ratePercent.isFinite() && ratePercent in 0.0..100.0) { "Tax rate must be between 0 and 100" }
+
+    val rate = ratePercent / 100.0
+    return if (pricesIncludeTax) {
+        val tax = kotlin.math.round(amountSatang.toDouble() * rate / (1.0 + rate)).toLong()
+        PosTaxBreakdown(
+            taxableBaseSatang = amountSatang - tax,
+            taxSatang = tax,
+            totalSatang = amountSatang
+        )
+    } else {
+        val tax = kotlin.math.round(amountSatang.toDouble() * rate).toLong()
+        PosTaxBreakdown(
+            taxableBaseSatang = amountSatang,
+            taxSatang = tax,
+            totalSatang = Math.addExact(amountSatang, tax)
+        )
+    }
 }

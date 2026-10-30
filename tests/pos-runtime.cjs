@@ -34,4 +34,35 @@ let staleWrites=0;stale.w.qtSupabaseTable=async(q,opts)=>{if(q==='rpc/pos_my_sho
 stale.eval('merchant/pos-table-v2.js');stale.w.qgPosRoute();for(let i=0;i<10;i++)await tick();eq(stale.w.document.getElementById('app').innerHTML.includes('qgPosRetryPending()'),true);
 stale.w.qtSessionRead=()=>({authUserId:'different-actor',accessToken:'token'});await stale.w.qgPosRetryPending();eq(staleWrites,0);eq(stale.w.sessionStorage.getItem('queuego-pos-pending-create'),null);stale.d.window.close();
 const sdk=boot(),sdkTimers=new Map();let sdkId=0;sdk.w.setTimeout=(fn,delay)=>{const id=++sdkId;sdkTimers.set(id,{fn,delay});return id};sdk.w.clearTimeout=id=>sdkTimers.delete(id);sdk.w.qtSupabaseTable=t.w.qtSupabaseTable;sdk.eval('merchant/pos-table-v2.js');sdk.w.qgPosRoute();for(let i=0;i<8;i++)await tick();eq(sdk.w.document.querySelectorAll('script').length,1);const timeout=[...sdkTimers.entries()].find(([,v])=>v.delay===10000);eq(!!timeout,true);sdkTimers.delete(timeout[0]);timeout[1].fn();for(let i=0;i<5;i++)await tick();eq(sdk.w.document.querySelectorAll('script').length,0);eq([...sdkTimers.values()].filter(v=>v.delay===15000).length,1);sdk.w.qgPosDisconnect();eq(sdkTimers.size,0);sdk.w.location.hash='#pos';sdk.w.qgPosRoute();for(let i=0;i<8;i++)await tick();eq(sdk.w.document.querySelectorAll('script').length,1);eq([...sdkTimers.values()].filter(v=>v.delay===10000).length,1);sdk.w.qgPosDisconnect();for(let i=0;i<5;i++)await tick();eq(sdk.w.document.querySelectorAll('script').length,0);eq(sdkTimers.size,0);sdk.d.window.close();
+// A committed offline draft whose response was lost must keep byte-identical
+// retry IDs even if the next attempt is rejected by expired authentication.
+const recovery=boot(),rw=recovery.w,copy=v=>JSON.parse(JSON.stringify(v));
+let savedDraft={id:'draft-recovery',requestId:'draft-request',shopId:'shop',actorId:'actor',deviceId:'device',type:'TAKEAWAY',tableId:null,
+  items:[{productId:'latte',nameSnapshot:'Latte',priceSnapshot:55,basePriceSnapshot:55,quantity:1,options:{},requestIds:[]}]};
+let serverPayload=null,draftWrites=0,attempts=0,removedDrafts=0;
+rw.confirm=()=>true;
+rw.QGPosOfflineDraftStore={deviceId:()=> 'device',rememberShop:()=>{},saveCatalog:async()=>{},
+  list:async()=>savedDraft?[copy(savedDraft)]:[],save:async d=>{savedDraft=copy(d);return copy(d)},
+  remove:async()=>{removedDrafts++;savedDraft=null}};
+rw.supabase={createClient:()=>({channel:()=>({on(){return this},subscribe(){return this}}),removeChannel:()=>{}})};
+rw.qtSupabaseTable=async(q,opts)=>{
+  if(q==='rpc/pos_my_shop')return 'shop';if(q==='rpc/pos_is_owner')return true;
+  if(q==='rpc/pos_current_shift')return {open:false};
+  if(q.startsWith('shop_profiles?'))return [{shop_name:'Shop',public_category:'grocery'}];
+  if(q.startsWith('products?'))return [{id:'latte',name:'Latte',price:55,pos_price:55,available:true,pos_available:true}];
+  if(q==='rpc/pos_submit_offline_draft'){
+    attempts++;const payload=JSON.stringify(opts.body);
+    if(attempts===1){draftWrites++;serverPayload=payload;throw Object.assign(Error('response lost after commit'),{status:503})}
+    if(attempts===2)throw Object.assign(Error('expired session'),{status:401});
+    eq(payload,serverPayload);return {order_id:'existing-order',replayed:true};
+  }
+  return [];
+};
+recovery.eval('merchant/pos-table-v2.js');rw.qgPosRoute();for(let i=0;i<15;i++)await tick();
+rw.qgPosDraftResume('draft-recovery');await rw.qgPosDraftSubmit('draft-recovery');
+eq(attempts,1);eq(savedDraft.items[0].requestIds.length,1);const committedIds=copy(savedDraft.items[0].requestIds);
+await rw.qgPosDraftSubmit('draft-recovery');eq(attempts,2);eq(savedDraft.items[0].requestIds,committedIds);
+await rw.qgPosDraftDiscard('draft-recovery');await rw.qgPosDraftRemoveLine(0);eq(removedDrafts,0);eq(savedDraft.items.length,1);
+await rw.qgPosDraftSubmit('draft-recovery');eq(attempts,3);eq(draftWrites,1);eq(removedDrafts,1);eq(savedDraft,null);
+rw.qgPosDisconnect();rw.close();
 console.log(JSON.stringify({checks,failures:0,scope:'isolated POS lifecycle and printer queue; physical printers/realtime server not certified'}));})().catch(e=>{console.error(e);process.exit(1)});
