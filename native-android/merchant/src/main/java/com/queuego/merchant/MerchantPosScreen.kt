@@ -838,15 +838,10 @@ fun MerchantPosScreen(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                // Keep the same draft and request IDs after a timeout; server replay is atomic.
-                if (failure is QueueGoHttpException && failure.statusCode in 400..499) {
-                    val rejected = draft.copy(items = draft.items.map { it.copy(requestIds = emptyList()) })
-                    runCatching { withContext(Dispatchers.IO) { offlineDraftStore.save(rejected) } }
-                        .onSuccess { offlineDraft = rejected }
-                    message = (failure.message ?: "เซิร์ฟเวอร์ปฏิเสธร่าง") + " · ไม่มีบิลถูกสร้าง แก้ร่างแล้วลองใหม่ได้"
-                } else {
-                    message = (failure.message ?: "ส่งร่างไม่สำเร็จ") + " · เก็บร่างและรหัสเดิมไว้ให้ลองใหม่"
-                }
+                // Even a 4xx retry can follow an earlier successful commit whose
+                // response was lost. Preserve the exact persisted payload/hash.
+                message = (failure.message ?: "ส่งร่างไม่สำเร็จ") +
+                    " · ยังยืนยันผลไม่ได้ เก็บร่างและรหัสเดิมไว้ตรวจรายการเดิมเมื่อออนไลน์"
             } finally {
                 busy = false
             }

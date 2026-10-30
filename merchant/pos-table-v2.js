@@ -305,8 +305,8 @@
       const result=await rpc('pos_submit_offline_draft',{p_request:draft.requestId,p_type:draft.type,p_table:draft.type==='DINE_IN'?draft.tableId:null,p_items:draft.items.map(i=>({product_id:i.productId,quantity:i.quantity,options:i.options||{},request_ids:i.requestIds}))});
       state.selected=result.order_id;state.activeDraft=null;await window.QGPosOfflineDraftStore.remove(draft.id,scope);await refreshOfflineDrafts();toast(result.replayed?'ยืนยันบิลจากร่างเดิมแล้ว':'ส่งร่างและสร้างบิลแล้ว · ยังไม่รับชำระเงิน');await load();
     }catch(e){
-      const status=Number(e?.status||e?.statusCode||e?.response?.status);
-      if(status>=400&&status<500){for(const item of draft.items)item.requestIds=[];try{state.activeDraft=await window.QGPosOfflineDraftStore.save(draft)}catch(_){} }
+      // A 4xx retry may follow a committed request whose response was lost.
+      // Never change its hashed payload or unlock editing/deletion based on HTTP status.
       message(e);await refreshOfflineDrafts();render();
     }finally{state.draftSaving=false;busy(false)}
   };

@@ -1,3 +1,11 @@
+## 2026-10-30 Native/Web POS P0 — preserve offline draft identity after 4xx retry (IN PROGRESS)
+
+- Parent `e54714eccdd8ee10a468ba0fa48afd7f9f6d7fa2` is the latest fetched Native successor, existing PR #735; main Web oracle unchanged. Full local npm test on the cash-store chunk exited 0.
+- Production `pos_submit_offline_draft` definition inspected read-only: it locks the scoped request and hashes the full item payload, including per-unit request IDs. Both clients cleared those IDs after any 4xx. Reproduced real Web runtime sequence: server commit/lost response → retry 401 → stored IDs become empty. That changes the immutable payload and unlocks editing/deletion despite a possible existing bill.
+- Both clients now preserve durable draft and exact IDs on every uncertain failure. No automatic resubmit, replacement request, payment, backend schema or Production write. New actual Web runtime regression covers exact-payload replay, 401, blocked edit/delete, and one server bill.
+- Local evidence: POS runtime 99/0; Native source 466/0; diff check PASS. Exact-head full regression/JVM/build/hosted CI pending. Source parity matrix and remaining gates recorded in `docs/native-merchant-pos-parity-20261030.md`.
+- NEXT: exact-head Native POS/Android Pilot first failure, then authenticated cashier/process-kill acceptance and remaining matrix blockers. VAT Production schema/RPC absent; offline currently supports drafts rather than paid checkout. No full-parity or release claim.
+
 ## 2026-10-30 Native Merchant POS P0 — cashier cash movements share durable pending store (IN PROGRESS)
 
 - Parent `cf62cfae0fd9072fa1b4af5bbf71f20307b68079` is the latest fetched Native successor on PR #735. Source regression recovery parent `c962ea7c` passed Native POS CI push `41000094234` and PR `41000098909`; full local `npm test` exited 0. Latest tax-compatibility head has its own CI queued/running, not certified from the parent.

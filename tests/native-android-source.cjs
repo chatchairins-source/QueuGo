@@ -1791,4 +1791,8 @@ ok(merchantPosTaxScreen.includes('if (view == "tax" && current?.owner == true)')
   merchantPosTaxScreen.includes('.onFailure {\n                    taxSettingsLoaded = false'),
   'Unavailable tax settings must not interrupt POS entry or enable saving unloaded defaults');
 
+ok(!merchantPosScreen.includes('it.copy(requestIds = emptyList())') &&
+  !merchantPosScreen.includes('ไม่มีบิลถูกสร้าง แก้ร่างแล้วลองใหม่ได้'),
+  'Uncertain offline draft retries must preserve durable per-unit IDs even after HTTP 4xx');
+
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
