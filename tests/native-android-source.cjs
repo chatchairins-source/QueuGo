@@ -1160,10 +1160,17 @@ ok(customerMapPicker.includes('screenHeightDp.dp * 0.34f')&&customerMapPicker.in
 const customerRide=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
 ok(
   customerRide.includes('QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize())') &&
-  customerRide.includes('.align(Alignment.BottomCenter)') &&
-  customerRide.includes('.heightIn(max = 430.dp)') &&
+  customerRide.includes('Text("บริการเรียกรถ"') &&
+  customerRide.includes('Text("รับส่งผู้โดยสารด้วย QueueGo"') &&
+  customerRide.includes('.height(245.dp)') &&
+  customerRide.includes('QueueGoRideLocationRow(') &&
+  customerRide.includes('label = "จุดรับ"') &&
+  customerRide.includes('label = "จุดหมาย"') &&
+  customerRide.includes('disabledContainerColor = Color(0xFFF5A0AB)') &&
+  !customerRide.includes('.align(Alignment.BottomCenter)') &&
+  !customerRide.includes('.heightIn(max = 430.dp)') &&
   !customerRide.includes('rides.filter { it.terminal }.take(5)'),
-  'Customer native Ride request must keep the QueueGo map full-screen, dock the controls over it, and keep terminal trip history out of the primary Ride surface'
+  'Customer native Ride must follow the Web Ride card: header, contained 245dp map, supply indicator, location rows, and disabled fare styling'
 );
 const sharedMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(sharedMap.includes('newLatLngBounds(bounds, 48)')&&sharedMap.includes('if (!hasSetInitialViewport && lastPoints.isNotEmpty())')&&sharedMap.includes('LatLng(15.5, 100.5)')&&!sharedMap.includes('lastPoints.firstOrNull()?.let { point ->'),'Native Ride map must frame stops once and never reset user gesture zoom/rotation on marker updates');
