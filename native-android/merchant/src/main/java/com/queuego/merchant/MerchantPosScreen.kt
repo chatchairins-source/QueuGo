@@ -1058,9 +1058,9 @@ fun MerchantPosScreen(
         val amountText = if (retrying) pendingCashMovementAmount.orEmpty() else cashMovementAmount
         val reasonText = if (retrying) pendingCashMovementReason.orEmpty() else cashMovementReason.trim()
         val amount = amountText.toDoubleOrNull()
-        if (amount == null || !amount.isFinite() || amount <= 0 ||
+        if (amount == null || !amount.isFinite() || amount <= 0 || amount > 999999999.0 ||
             kotlin.math.abs(amount * 100 - kotlin.math.round(amount * 100)) >= 0.00001) {
-            message = "จำนวนเงินต้องมากกว่า 0 และไม่เกิน 2 ตำแหน่งทศนิยม"
+            message = "จำนวนเงินต้องมากกว่า 0 ไม่เกิน 999,999,999 บาท และไม่เกิน 2 ตำแหน่งทศนิยม"
             return
         }
         if (reasonText.trim().length !in 5..500) {

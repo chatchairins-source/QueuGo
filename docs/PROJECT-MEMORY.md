@@ -1,3 +1,10 @@
+## 2026-10-30 Native POS cashier preflight — reject server-invalid amount before durable save (IN PROGRESS)
+
+- Parent `fac788661fa8e602dbf22c543f1c4ffa941293b8`: full local npm test EXIT 0; exact-head Native POS CI push `41001504935` and PR `41001511432` SUCCESS. Android Pilot still queued behind predecessor builds.
+- Follow-up review: the cashier input accepted amounts above the existing `recordCashMovement` maximum 999999999.0, whereas shift-history and API reject them. With durable preparation, such an invalid request could otherwise be persisted before local API validation and remain permanently unresolved despite never being sent.
+- Align cashier preflight to the existing maximum before durable persistence; retain all prior decimal/positive checks. Add source assertion requiring validation before save. No backend, business limit, ledger or Production change.
+- NEXT: latest exact-head JVM/build/Native Pilot and first confirmed failure; then scope matrix acceptance gates. No full-parity/release claim.
+
 ## 2026-10-30 Native/Web POS P0 — preserve offline draft identity after 4xx retry (IN PROGRESS)
 
 - Parent `e54714eccdd8ee10a468ba0fa48afd7f9f6d7fa2` is the latest fetched Native successor, existing PR #735; main Web oracle unchanged. Full local npm test on the cash-store chunk exited 0.

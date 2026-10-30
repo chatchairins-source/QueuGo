@@ -1795,4 +1795,8 @@ ok(!merchantPosScreen.includes('it.copy(requestIds = emptyList())') &&
   !merchantPosScreen.includes('ไม่มีบิลถูกสร้าง แก้ร่างแล้วลองใหม่ได้'),
   'Uncertain offline draft retries must preserve durable per-unit IDs even after HTTP 4xx');
 
+ok(merchantPosScreen.indexOf('amount > 999999999.0') >= 0 &&
+  merchantPosScreen.indexOf('amount > 999999999.0') < merchantPosScreen.indexOf('!cashMovementStore.save(request)'),
+  'Cashier must reject amounts outside RPC bounds before persisting an unreplayable cash intent');
+
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
