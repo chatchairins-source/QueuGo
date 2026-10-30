@@ -1,0 +1,79 @@
+name: QueueGo Export Tested Country APKs
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [work-native-pos-tax-foundation-20261029]
+    paths: [.github/workflows/export-tested-country-apks.yml]
+  push:
+    branches: [work-native-rider-nav-unified-offline-20261030]
+    paths: [.github/workflows/export-tested-country-apks.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: queuego-export-tested-country-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  export-tested-role-apks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch the exact APKs already installed in the nine-case Android matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run download 41029740374 --repo "$GITHUB_REPOSITORY" --name queuego-native-pilot-apks --dir "$RUNNER_TEMP/reference-apks"
+          python3 - <<'PY'
+          import hashlib, json, os, shutil, zipfile
+          from pathlib import Path
+          source = Path(os.environ['RUNNER_TEMP']) / 'reference-apks'
+          output = Path(os.environ['RUNNER_TEMP']) / 'role-export'
+          expected = {
+              'customer': '8ce5290e0f5093c6e90faf2769148544185acd1535c50fbfa3e6126f13373a86',
+              'merchant': '8f195a12ece161e49cac6db103811406dec11477b5a7ecc5da2d39382873400f',
+              'rider': '733b2073e9da7eb4b7feb32ca25ebfa677abab5c1913a277208261e707e0bc9c'
+          }
+          sha = '7c5b619596174da83d1d6e36a959de61649b50f5'
+          for role, digest in expected.items():
+              candidates = list(source.rglob(role + '-debug.apk'))
+              assert len(candidates) == 1
+              apk = candidates[0]
+              with apk.open('rb') as stream:
+                  assert hashlib.file_digest(stream, 'sha256').hexdigest() == digest, 'Tested APK bytes changed'
+              with zipfile.ZipFile(apk) as archive:
+                  assert archive.getinfo('assets/maps/thailand-shortbread.pmtiles').compress_type == zipfile.ZIP_STORED
+                  assert any(sha.encode() in archive.read(name) for name in archive.namelist() if name.endswith('.dex'))
+              destination = output / role
+              destination.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(apk, destination / ('QueueGo-' + role.title() + '-THOffline-7c5b6195.apk'))
+              (destination / 'TESTED-SOURCE.json').write_text(json.dumps({
+                  'source_sha': sha, 'branch_head': 'e0ff2620393df82db35b8fe799f29abf6dfc2156',
+                  'reference_run': 41029740374, 'sha256': digest, 'bytes': apk.stat().st_size,
+                  'role': role, 'launch_matrix': 'small-phone, phone, tablet',
+                  'authenticated_e2e': False, 'physical_device': False,
+                  'scope': 'Unmodified test APK redistribution; no Production certification'
+              }, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-customer-apk
+          path: ${{ runner.temp }}/role-export/customer/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-merchant-apk
+          path: ${{ runner.temp }}/role-export/merchant/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-tested-rider-apk
+          path: ${{ runner.temp }}/role-export/rider/
+          compression-level: 0
+          if-no-files-found: error
