@@ -18,6 +18,13 @@ const manifest=read('native-android/rider/src/main/AndroidManifest.xml');
 const runtimeTest=read('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt');
 const runtimeHost=read('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt');
 const workflow=read('.github/workflows/build-native-rider-pilot.yml');
+const isolatedRuntime=read('native-android/qa/run-rider-navigation-map-runtime.py');
+assert(isolatedRuntime.includes('stage_verified_map_for_isolated_debug_runtime()'));
+assert(isolatedRuntime.includes('src/debug/assets/maps'));
+assert(isolatedRuntime.includes('hashlib.file_digest(stream, "sha256")'));
+assert(isolatedRuntime.includes('shutil.rmtree(staged, ignore_errors=True)'));
+assert(!isolatedRuntime.includes('src/androidTest/assets/maps'));
+
 const webMap=read('queuego-map-web.js');
 const webRider=read('rider/index.html');
 const guidance=read('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationGuidance.kt');
