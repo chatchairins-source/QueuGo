@@ -29,7 +29,7 @@ const overviewPolicy=read('native-android/rider-navigation-map/src/main/java/com
 assert(settings.includes('":rider-navigation-map"'));
 assert(moduleBuild.includes('id("com.android.library")'));
 assert(moduleBuild.includes('implementation(project(":shared"))'));
-assert(moduleBuild.includes('org.maplibre.gl:android-sdk-opengl:13.5.3'));
+assert(moduleBuild.includes('org.maplibre.gl:android-sdk-opengl:13.7.1'));
 assert(!/LongdoMapAndroidSDK|com\.longdo|longdo\.map/i.test(moduleBuild));
 
 assert(riderBuild.includes('implementation(project(":rider-navigation-map"))'));
