@@ -37,15 +37,12 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
-import org.maplibre.android.style.layers.BackgroundLayer
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.LineLayer
-import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.layers.Property
-import org.maplibre.android.style.layers.PropertyFactory.backgroundColor
 import org.maplibre.android.style.layers.PropertyFactory.circleColor
 import org.maplibre.android.style.layers.PropertyFactory.circleRadius
 import org.maplibre.android.style.layers.PropertyFactory.fillColor
@@ -56,17 +53,10 @@ import org.maplibre.android.style.layers.PropertyFactory.lineJoin
 import org.maplibre.android.style.layers.PropertyFactory.lineOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.sources.GeoJsonSource
-import org.maplibre.android.style.sources.RasterSource
-import org.maplibre.android.style.sources.TileSet
-import org.maplibre.android.style.sources.VectorSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
 
-private const val QUEUEGO_VECTOR_SOURCE = "queuego-vector"
-private const val QUEUEGO_WEB_BASEMAP_SOURCE = "queuego-web-basemap"
-private const val QUEUEGO_WEB_BASEMAP_LAYER = "queuego-web-basemap-layer"
-private const val QUEUEGO_WEB_BASEMAP_TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 private const val QUEUEGO_TRACKING_SOURCE = "queuego-tracking"
 private const val QUEUEGO_TRACKING_LAYER = "queuego-tracking-points"
 private const val QUEUEGO_LOCATION_PICKER_SOURCE = "queuego-location-picker"

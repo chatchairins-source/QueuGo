@@ -1168,11 +1168,12 @@ ok(
 const sharedMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
 ok(sharedMap.includes('newLatLngBounds(bounds, 48)')&&sharedMap.includes('if (!hasSetInitialViewport && lastPoints.isNotEmpty())')&&sharedMap.includes('LatLng(15.5, 100.5)')&&!sharedMap.includes('lastPoints.firstOrNull()?.let { point ->'),'Native Ride map must frame stops once and never reset user gesture zoom/rotation on marker updates');
 ok(
-  sharedMap.includes('https://tile.openstreetmap.org/{z}/{x}/{y}.png') &&
-  sharedMap.includes('RasterSource(QUEUEGO_WEB_BASEMAP_SOURCE') &&
-  sharedMap.includes('RasterLayer(QUEUEGO_WEB_BASEMAP_LAYER') &&
+  sharedMap.includes('ShortbreadVillageStyle.builder(sourceUri)') &&
+  !sharedMap.includes('https://tile.openstreetmap.org/{z}/{x}/{y}.png') &&
+  read('customer/build.gradle.kts').includes('https://queuego-map-buriram.onrender.com') &&
+  read('merchant/build.gradle.kts').includes('https://queuego-map-buriram.onrender.com') &&
   sharedMap.includes('map.uiSettings.isLogoEnabled = false'),
-  'Native QueueGo basemap presentation must stay locked to the same raster tiles as Web'
+  'Native Customer and Merchant must render QueueGo Map vector tiles through the QueueGo service'
 );
 ok(pilotWorkflow.includes("vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com'"),'pilot APKs must compile the deployed QueueGo Map endpoint when no override is configured');
 const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
