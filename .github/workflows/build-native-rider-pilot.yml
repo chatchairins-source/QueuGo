@@ -216,6 +216,13 @@ jobs:
             echo "WebView is forbidden in QueueGo native apps"
             exit 1
           fi
+      - name: Verify installed Thailand APK assets
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        run: |
+          python3 native-android/qa/verify-bundled-thailand-apks.py --source-sha "$GITHUB_SHA" \
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: queuego-native-pilot-apks

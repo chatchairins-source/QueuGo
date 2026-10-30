@@ -7,7 +7,10 @@ android {
     compileSdk = 36
     defaultConfig { minSdk = 26 }
     buildFeatures { compose = true }
-    androidResources { noCompress += "pmtiles" }
+    androidResources {
+        noCompress += "pmtiles"
+        ignoreAssetsPatterns += ".*"
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

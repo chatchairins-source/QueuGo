@@ -34,6 +34,7 @@ subprojects {
             // PMTiles uses random byte-range reads from the APK. Compressing a
             // nationwide archive would require inflating it to serve tile reads.
             androidResources.noCompress += "pmtiles"
+            androidResources.ignoreAssetsPatterns += ".*"
             buildFeatures.buildConfig = true
             defaultConfig {
                 buildConfigField("String", "GIT_SHA", "\"$nativeSourceSha\"")
