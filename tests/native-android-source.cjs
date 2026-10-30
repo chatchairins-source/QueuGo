@@ -1234,7 +1234,9 @@ ok(
   !riderApp.includes('showPickupConfirmation'),
   'Native Rider FOLLOW, route matching, visible GPS path and gestures must stay locked to Web navigation behavior'
 );
-ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
+ok(source.includes('QgBottomNav')&&source.includes('.height(72.dp)')&&
+  source.includes('widthIn(max = 620.dp)')&&source.includes('size(width = 42.dp, height = 34.dp)')&&source.includes('Color(0xFFFFEDF0)'),
+  'Merchant bottom navigation must match current Web height, centered tablet width and selected icon container');
 
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
 ok(source.includes('pos_my_shop')&&source.includes('pos_create_bill_once')&&source.includes('pos_edit_bill')&&source.includes('pos_bill_action')&&source.includes('pos_take_payment'),'Merchant native POS must reuse production POS RPCs');

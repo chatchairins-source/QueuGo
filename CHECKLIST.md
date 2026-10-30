@@ -1,3 +1,10 @@
+## 2026-10-30 Merchant bottom navigation — current Web dimensions and selected icon (IN PROGRESS)
+
+- Latest successor `3f9a69692cb33b45cb7f54adc9e2e560638912cf` preserves login and POS visual fixes. Git grep confirms QgBottomNav has exactly one application caller: QueueGoMerchantApp. Customer and Rider use separate existing renderers; no duplicate navigation system is introduced.
+- Evidence: actual Native profile PNG `05-profile.png` from artifact `12955502227` shows the compact 58dp bar with no selected icon background. Current main/served Web `.qgm-bottom` CSS specifies 72px height, max-width 620px centered on tablet, 42x34px icon container, #ffedf0 selected background, 23px icon, 10px label, #e7092b selected and #8f97a2 inactive colors.
+- Update the existing Merchant-only-used component to those dimensions/colors while preserving all item keys, labels and onSelect callbacks. Replace the obsolete 58dp source contract with the current Web navigation contract. No auth, backend, data, payment or route behavior change.
+- NEXT: exact-head build/source regression and actual phone/tablet captures. Inspect complete primary-tab and POS images; do not infer full visual parity from source values alone. Tablet/Web capture recovery remains under verification in the existing review pipeline.
+
 ## 2026-10-30 Native Merchant POS — remove duplicate chrome; match Web tabs (IN PROGRESS)
 
 - Successor base `166761d2c5ba1e57d01a3b79526a6aacdd52c114` preserves login visual changes and the tablet-capture recovery. The owner visual instruction remains active; no financial/backend work is substituted for appearance.

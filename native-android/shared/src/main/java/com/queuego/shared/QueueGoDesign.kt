@@ -9,9 +9,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -45,6 +48,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -179,31 +183,34 @@ data class QgNavItem(val key: String, val label: String, val glyph: String)
 
 @Composable
 fun QgBottomNav(selected: String, items: List<QgNavItem>, onSelect: (String) -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(58.dp)
-            .background(Color(0xFAFFFFFF))
-            .border(1.dp, Color(0xFFE9EAEC))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        items.forEach { item ->
-            val active = selected == item.key
-            Column(
-                Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { onSelect(item.key) }
-                    .padding(vertical = 3.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                QgIcon(item.glyph, Modifier.size(22.dp), if (active) QgRed else Color(0xFF8A8D93))
-                Text(
-                    item.label,
-                    color = if (active) QgRed else Color(0xFF8A8D93),
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.labelSmall
-                )
+    // The only caller is Merchant. Match Production .qgm-bottom, including the
+    // centered tablet width; Customer/Rider retain their own navigation renderers.
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Row(
+            Modifier.widthIn(max = 620.dp).fillMaxWidth().height(72.dp)
+                .background(Color.White)
+                .border(1.dp, Color(0xFFE9EAEC))
+                .padding(horizontal = 7.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEach { item ->
+                val active = selected == item.key
+                val color = if (active) Color(0xFFE7092B) else Color(0xFF8F97A2)
+                Column(
+                    Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                        .clickable { onSelect(item.key) }.padding(vertical = 3.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        Modifier.size(width = 42.dp, height = 34.dp)
+                            .background(if (active) Color(0xFFFFEDF0) else Color.Transparent, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) { QgIcon(item.glyph, Modifier.size(23.dp), color) }
+                    Spacer(Modifier.height(2.dp))
+                    Text(item.label, color = color, fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp, lineHeight = 12.sp)
+                }
             }
         }
     }
