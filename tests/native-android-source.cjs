@@ -1159,7 +1159,7 @@ const customerMapPicker=read('customer/src/main/java/com/queuego/customer/Custom
 ok(customerMapPicker.includes('screenHeightDp.dp * 0.34f')&&customerMapPicker.includes('mapFailed')&&customerMapPicker.includes('ลองโหลดแผนที่อีกครั้ง'),'Customer native map picker must use responsive map height and expose a retry state instead of spinning forever');
 const customerRide=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
 ok(
-  customerRide.includes('QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize())') &&
+  customerRide.includes('QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize(), showWebMapControls = true)') &&
   customerRide.includes('Text("บริการเรียกรถ"') &&
   customerRide.includes('Text("รับส่งผู้โดยสารด้วย QueueGo"') &&
   customerRide.includes('.height(245.dp)') &&
@@ -1183,6 +1183,13 @@ ok(
   read('merchant/build.gradle.kts').includes('https://queuego-map-buriram.onrender.com') &&
   sharedMap.includes('map.uiSettings.isLogoEnabled = false'),
   'Native Customer and Merchant must match nationwide QueueGo Web basemap; Rider keeps the offline vector renderer'
+);
+ok(
+  sharedMap.includes('showWebMapControls: Boolean = false') &&
+  sharedMap.includes('CameraUpdateFactory.zoomTo(target)') &&
+  sharedMap.includes('.bearing(0.0)') &&
+  customerRide.includes('showWebMapControls = true'),
+  'Customer Ride must expose Web-parity zoom and compass controls on the native QueueGo Map'
 );
 ok(pilotWorkflow.includes("vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com'"),'pilot APKs must compile the deployed QueueGo Map endpoint when no override is configured');
 const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');

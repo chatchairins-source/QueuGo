@@ -12,10 +12,24 @@ import android.content.pm.ApplicationInfo
 import java.io.File
 import com.queuego.ridermaplibreosm.ShortbreadVillageStyle
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -299,7 +313,8 @@ private class QueueGoTrackingMapHolder {
 fun QgTrackingMap(
     points: List<QgMapPoint>,
     modifier: Modifier = Modifier,
-    onReady: (Boolean) -> Unit = {}
+    onReady: (Boolean) -> Unit = {},
+    showWebMapControls: Boolean = false
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -316,8 +331,9 @@ fun QgTrackingMap(
         return
     }
 
-    AndroidView(
-        modifier = modifier,
+    Box(modifier = modifier) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             MapLibre.getInstance(ctx.applicationContext)
             MapView(ctx).also { view ->
@@ -353,6 +369,61 @@ fun QgTrackingMap(
             holder.render(points)
         }
     )
+        if (showWebMapControls) {
+            // Same zoom/compass controls as QueueGo Web Ride, without a WebView.
+            Column(
+                Modifier.align(Alignment.TopStart)
+                    .padding(12.dp)
+                    .width(42.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.White)
+                    .border(1.dp, Color(0xFFD4D7DA), RoundedCornerShape(10.dp))
+            ) {
+                Box(
+                    Modifier.fillMaxWidth().height(42.dp)
+                        .semantics { contentDescription = "ซูมเข้า" }
+                        .clickable {
+                            holder.map?.let { map ->
+                                val target = (map.cameraPosition.zoom + 1.0).coerceAtMost(19.0)
+                                map.animateCamera(CameraUpdateFactory.zoomTo(target))
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Text("+", fontSize = 28.sp, color = Color(0xFF25282D), fontWeight = FontWeight.Bold) }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE4E6E8)))
+                Box(
+                    Modifier.fillMaxWidth().height(42.dp)
+                        .semantics { contentDescription = "ซูมออก" }
+                        .clickable {
+                            holder.map?.let { map ->
+                                val target = (map.cameraPosition.zoom - 1.0).coerceAtLeast(5.0)
+                                map.animateCamera(CameraUpdateFactory.zoomTo(target))
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Text("−", fontSize = 27.sp, color = Color(0xFF25282D), fontWeight = FontWeight.Bold) }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE4E6E8)))
+                Box(
+                    Modifier.fillMaxWidth().height(42.dp)
+                        .semantics { contentDescription = "ตั้งทิศเหนือ" }
+                        .clickable {
+                            holder.map?.let { map ->
+                                val camera = map.cameraPosition
+                                map.animateCamera(CameraUpdateFactory.newCameraPosition(
+                                    CameraPosition.Builder()
+                                        .target(camera.target)
+                                        .zoom(camera.zoom)
+                                        .bearing(0.0)
+                                        .tilt(camera.tilt)
+                                        .build()
+                                ))
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Text("▲", fontSize = 19.sp, color = Color(0xFF25282D)) }
+            }
+        }
+    }
 
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->

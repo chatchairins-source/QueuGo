@@ -284,7 +284,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
         if (current != null) {
             Box(Modifier.fillMaxWidth().height(300.dp)
                 .clip(RoundedCornerShape(20.dp)).background(Color(0xFFEEF1F4))) {
-                QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize())
+                QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize(), showWebMapControls = true)
             }
         }
 
@@ -302,7 +302,7 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                     Box(Modifier.fillMaxWidth().height(245.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFFEEF1F4))) {
-                        QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize())
+                        QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize(), showWebMapControls = true)
                     }
                 }
 
