@@ -6,6 +6,7 @@ on:
     branches:
       - work-native-rider-auth-review-20261024
       - work-native-web-parity-20261026
+      - work-native-pos-tax-foundation-20261029
 
 permissions:
   contents: read
@@ -25,6 +26,7 @@ jobs:
           QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
           QG_CUSTOMER_REVIEW_PHONE: ${{ secrets.QG_CUSTOMER_REVIEW_PHONE }}
           QG_CUSTOMER_REVIEW_PASSWORD: ${{ secrets.QG_CUSTOMER_REVIEW_PASSWORD }}
+          REVIEW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           python3 - <<'PY'
           import json, os
@@ -37,11 +39,12 @@ jobs:
               print(role + "_review_credentials=" + ("present" if not missing else "missing"))
               if missing:
                   print(role + "_missing_secret_names=" + ",".join(missing))
-          ready = roles["rider"]["ready"]
+          merchant_only = "[merchant-visual-review]" in os.environ.get("REVIEW_COMMIT_MESSAGE", "")
+          ready = roles["merchant" if merchant_only else "rider"]["ready"]
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("ready=" + str(ready).lower() + "\n")
           capture_requested = (os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
-              or os.environ.get("GITHUB_REF_NAME") == "work-native-rider-auth-review-20261024")
+              or os.environ.get("GITHUB_REF_NAME") == "work-native-rider-auth-review-20261024" or merchant_only)
           report = {"status": "ready" if ready else "skipped",
               "scope": "credential presence only; not authenticated visual acceptance",
               "roles": roles, "capture_requested": capture_requested,
@@ -59,7 +62,7 @@ jobs:
 
   capture:
     needs: credential-check
-    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')))
+    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || (github.ref_name == 'work-native-pos-tax-foundation-20261029' && contains(github.event.head_commit.message, '[merchant-visual-review]')))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -158,6 +161,7 @@ jobs:
           cat "$RUNNER_TEMP/queuego-rider-review-emulator.log"
           exit 1
       - name: Capture authenticated Rider views on Android Emulator
+        if: ${{ !contains(github.event.head_commit.message, '[merchant-visual-review]') }}
         env:
           QG_DEBUG_MAP_ARCHIVE: '1'
           QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
@@ -168,7 +172,30 @@ jobs:
         env:
           QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
           QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
+          QG_MERCHANT_VISUAL_PARITY: ${{ contains(github.event.head_commit.message, '[merchant-visual-review]') && '1' || '0' }}
         run: python3 native-android/qa/capture-merchant-authenticated-review.py
+      - name: Set up Web visual review dependencies
+        if: contains(github.event.head_commit.message, '[merchant-visual-review]')
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Capture actual Production Merchant Web views
+        if: contains(github.event.head_commit.message, '[merchant-visual-review]')
+        env:
+          QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
+          QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
+        run: |
+          npm ci --no-audit --no-fund
+          node tests/merchant-visual-review-policy.cjs
+          node native-android/qa/capture-merchant-web-review.cjs
+      - name: Save Production Web screenshots
+        if: always() && contains(github.event.head_commit.message, '[merchant-visual-review]')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-merchant-production-web-screens
+          path: artifacts/merchant-web-review/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Save authenticated Merchant screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

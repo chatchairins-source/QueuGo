@@ -1,3 +1,13 @@
+## 2026-10-30 Merchant Native visual parity — real Web/Android comparison (IN PROGRESS)
+
+- Owner explicitly requires the Native Merchant appearance to match actual Production Web `https://chatchairins-source.github.io/QueuGo/merchant/`, including POS, mobile and tablet. This is now the active UI workstream; preserve Kotlin/Jetpack Compose and all current POS financial recovery changes.
+- Clean successor base: `b64d5d9c4d28d2f50e7bc085f3668a0254b1474d`. Exact push Native Pilot `41002046757` and POS CI `41002046760` SUCCESS; all three actual Debug APKs verified to contain that source SHA, artifact ZIP digest verified. No reset, legacy branch or overwritten uncommitted work.
+- Live Web login inspected in browser: actual merchant photo, white rounded login panel, red controls and max-width 520px layout. Browser session is signed out, so authenticated visual parity cannot be certified from this page alone.
+- Extend the EXISTING secret-backed authenticated-review workflow to this newest POS successor with `[merchant-visual-review]`. Merchant-only requests use the existing Merchant credential readiness, skip unrelated Rider capture, and capture Native POS counter/tables/cashier plus the primary Merchant tabs on phone/tablet. Add real Production Web capture using the same existing account and logical phone/tablet viewports. Never inject a fake login/session or business data.
+- Web capture permits ordinary Auth sign-in/refresh plus explicitly allowlisted reads; blocks order, payment, shift, cash, settings and other business writes. Credentials are neither logged nor saved into screenshots; artifacts retain the existing 7-day policy. Metadata remains emulator-only and visual_parity_certified=false until actual images are inspected.
+- Local Python/JS syntax, request-policy checks, Native source 467/0, action pinning 98/0 and diff check PASS. Hosted screenshot capture/build evidence pending; no UI similarity completion claim yet.
+- NEXT: inspect exact-head authenticated Web/Native screenshots; fix the first evidence-backed visual mismatch in existing Compose screens, then recapture phone/tablet. Keep backend/business behavior and new POS safety fixes intact. Continue across Merchant screens rather than returning to unrelated feature work.
+
 ## 2026-10-30 Native POS cashier preflight — reject server-invalid amount before durable save (IN PROGRESS)
 
 - Parent `fac788661fa8e602dbf22c543f1c4ffa941293b8`: full local npm test EXIT 0; exact-head Native POS CI push `41001504935` and PR `41001511432` SUCCESS. Android Pilot still queued behind predecessor builds.

@@ -53,6 +53,28 @@ def home_ready(ns):
               "ออเดอร์ทั้งหมด","เสร็จแล้ว","กำลังเตรียม","ยกเลิก"}
     return required.issubset(texts) and not texts.intersection({"…","..."})
 
+def scroll_to_label(label):
+    for _ in range(7):
+        ns=nodes()
+        matches=[n for n in ns if n.get("text", "").strip()==label and rect(n)]
+        if matches: return ns
+        run(["shell","input","swipe","500","1800","500","700","400"])
+    raise AssertionError("Merchant control not visible: "+label)
+
+def capture_pos(screens, prefix):
+    ns=nodes()
+    if not any(n.get("text", "").strip()=="＋ รับออเดอร์" and rect(n) for n in ns):
+        tap_label(ns,"หน้าหลัก")
+        tap_label(scroll_to_label("หน้าร้าน POS"),"หน้าร้าน POS")
+    ns=wait(lambda xs:any(n.get("text", "").strip()=="＋ รับออเดอร์" and rect(n) for n in xs),90)
+    assert ns, "Merchant POS failed to render"
+    time.sleep(5)
+    for name,label in (("counter","＋ รับออเดอร์"),("tables","โต๊ะ"),("cashier","คิดเงิน")):
+        tap_label(nodes(),label)
+        time.sleep(3)
+        screens.append({"screen":prefix+"pos_"+name,"account":"merchant-test","read_only":True,
+                        **shot(prefix+"pos-"+name)})
+
 def input_credential(value):
     try:
         subprocess.run(ADB+["shell","input","text",value],check=True,timeout=30,
@@ -73,6 +95,7 @@ def main():
     run(["shell","am","start","-W","-n",PKG+"/.MainActivity"],capture_output=True,text=True,timeout=60)
     ns=wait(lambda xs:any("เข้าสู่ระบบ" in (n.get("text","")+n.get("content-desc","")) for n in xs))
     assert ns, "Merchant login did not render"
+    login_screen=shot("phone-login") if os.environ.get("QG_MERCHANT_VISUAL_PARITY")=="1" else None
     by_description={n.get("content-desc","").strip():n for n in ns if rect(n)}
     fields=[by_description.get("เบอร์โทรศัพท์ / อีเมล"),by_description.get("รหัสผ่าน")]
     if not all(fields):
@@ -93,6 +116,19 @@ def main():
         time.sleep(4)
         screens.append({"screen":label,"account":"merchant-test","read_only":True,
                         **shot(f"{i:02d}-"+("orders" if label=="คำสั่งซื้อ" else "products" if label=="สินค้า" else "promotions" if label=="โปรโมชั่น" else "profile"))})
+    if os.environ.get("QG_MERCHANT_VISUAL_PARITY")=="1":
+        capture_pos(screens,"phone-")
+        run(["shell","wm","size","1600x2560"])
+        run(["shell","wm","density","240"])
+        time.sleep(5)
+        run(["shell","input","keyevent","4"])
+        assert wait(home_ready,90), "Tablet Merchant home did not finish loading"
+        screens.append({"screen":"tablet-home","account":"merchant-test","read_only":True,**shot("tablet-home")})
+        for label,name in (("คำสั่งซื้อ","orders"),("สินค้า","products"),("โปรโมชั่น","promotions"),("บัญชี","profile")):
+            tap_label(nodes(),label)
+            time.sleep(4)
+            screens.append({"screen":"tablet-"+name,"account":"merchant-test","read_only":True,**shot("tablet-"+name)})
+        capture_pos(screens,"tablet-")
     meta={
       "source_head":os.environ.get("GITHUB_SHA",""),
       "workflow_run":os.environ.get("GITHUB_RUN_ID",""),
@@ -100,6 +136,8 @@ def main():
       "package":PKG,"apk_sha256":hashlib.sha256(apk.read_bytes()).hexdigest(),
       "android_api":run(["shell","getprop","ro.build.version.sdk"],capture_output=True,text=True).stdout.strip(),
       "viewport_px":"1080x2280","screens":screens,"physical_device":False,
+      "login_screen":login_screen,
+      "visual_viewports": {"phone":{"px":"1080x2280","density":440},"tablet":{"px":"1600x2560","density":240}} if os.environ.get("QG_MERCHANT_VISUAL_PARITY")=="1" else None,
       "production_order_or_dispatch_mutations":False,"visual_parity_certified":False,
       "scope":"Authenticated Merchant dashboard and primary tabs; read-only review",
       "expected_screens":["home","คำสั่งซื้อ","สินค้า","โปรโมชั่น","บัญชี"],
