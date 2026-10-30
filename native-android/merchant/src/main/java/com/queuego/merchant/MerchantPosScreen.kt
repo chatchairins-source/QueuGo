@@ -129,6 +129,7 @@ fun MerchantPosScreen(
     val context = LocalContext.current
     val api = remember { MerchantPosApi(MerchantPosPendingStore(context.noBackupFilesDir.resolve("queuego-pos-edit-pending"))) }
     val merchantApi = remember { MerchantApi() }
+    val cashMovementStore = remember(context) { MerchantPosCashMovementStore(context) }
     val offlineDraftStore = remember { MerchantPosOfflineDraftStore(context.noBackupFilesDir.resolve("queuego-pos-offline-drafts")) }
     val realtime = remember { NativeOrderRealtime() }
     val refreshMutex = remember { Mutex() }
@@ -264,12 +265,15 @@ fun MerchantPosScreen(
     var countedCash by rememberSaveable { mutableStateOf("") }
     var cashMovementAmount by rememberSaveable { mutableStateOf("") }
     var cashMovementReason by rememberSaveable { mutableStateOf("") }
-    var pendingCashMovementType by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCashMovementAmount by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCashMovementReason by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCashMovementRequestId by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCashMovementShopId by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCashMovementActorId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingCashMovement by remember(auth.session.authUserId, snapshot?.shopId) {
+        mutableStateOf(snapshot?.shopId?.let { cashMovementStore.load(it, auth.session.authUserId) })
+    }
+    val pendingCashMovementType = pendingCashMovement?.type
+    val pendingCashMovementAmount = pendingCashMovement?.amount?.toString()
+    val pendingCashMovementReason = pendingCashMovement?.reason
+    val pendingCashMovementRequestId = pendingCashMovement?.requestId
+    val pendingCashMovementShopId = pendingCashMovement?.shopId
+    val pendingCashMovementActorId = pendingCashMovement?.actorId
 
     var discountOpen by remember { mutableStateOf(false) }
     var discountText by rememberSaveable { mutableStateOf("") }
@@ -1068,28 +1072,35 @@ fun MerchantPosScreen(
             message = "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร"
             return
         }
-        val requestId = pendingCashMovementRequestId ?: UUID.randomUUID().toString().also {
-            pendingCashMovementType = actualType
-            pendingCashMovementAmount = amountText
-            pendingCashMovementReason = reasonText.trim()
-            pendingCashMovementShopId = snap?.shopId
-            pendingCashMovementActorId = auth.session.authUserId
-            pendingCashMovementRequestId = it
+        val shopId = snap?.shopId ?: return
+        val requestId = pendingCashMovementRequestId ?: UUID.randomUUID().toString()
+        val request = PosCashMovementPending(
+            shopId, auth.session.authUserId, requestId, actualType!!, amount, reasonText.trim()
+        )
+        // Reuse the same durable store as the shift-history screen. Another tab's
+        // pending intent (or unreadable stored bytes) must block a fresh request.
+        val stored = cashMovementStore.load(shopId, auth.session.authUserId)
+        if (stored != request && !cashMovementStore.save(request)) {
+            pendingCashMovement = cashMovementStore.load(shopId, auth.session.authUserId)
+            message = "มีรายการเงินสดค้างหรือบันทึกรหัสไม่สำเร็จ · ตรวจรายการเดิมก่อนสร้างรายการใหม่"
+            return
         }
+        pendingCashMovement = request
         cashShiftPending = true
         scope.launch {
             try {
-                api.recordCashMovement(auth, actualType!!, amount, reasonText.trim(), requestId)
-                cashShift = api.currentCashShift(auth)
-                cashShiftError = null
-                pendingCashMovementType = null
-                pendingCashMovementAmount = null
-                pendingCashMovementReason = null
-                pendingCashMovementRequestId = null
-                pendingCashMovementShopId = null
-                pendingCashMovementActorId = null
+                api.recordCashMovement(auth, request.type, request.amount, request.reason, request.requestId)
+                if (!cashMovementStore.clear(request)) {
+                    message = "Server ยืนยันรายการแล้ว แต่เครื่องยังเก็บรหัสค้าง กรุณาตรวจรายการเดิม"
+                    return@launch
+                }
+                pendingCashMovement = null
                 cashMovementAmount = ""
                 cashMovementReason = ""
+                // A refresh failure after the receipt must not imply the cash write failed.
+                runCatching { api.currentCashShift(auth) }
+                    .onSuccess { cashShift = it; cashShiftError = null }
+                    .onFailure { cashShiftError = "บันทึกเงินสดสำเร็จ แต่ยังโหลดสถานะกะไม่ได้" }
                 message = if (actualType == "cash_in") "บันทึกเงินเข้าแล้ว" else "บันทึกเงินออกแล้ว"
             } catch (cancelled: CancellationException) {
                 throw cancelled

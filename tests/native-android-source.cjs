@@ -1391,10 +1391,14 @@ ok(
 ok(
   merchantPosApi.includes('suspend fun recordCashMovement(') &&
   merchantPosApi.includes('"pos_record_cash_movement"') &&
-  merchantPosScreen.includes('api.recordCashMovement(auth, actualType!!, amount, reasonText.trim(), requestId)') &&
+  merchantPosScreen.includes('api.recordCashMovement(auth, request.type, request.amount, request.reason, request.requestId)') &&
   merchantPosScreen.includes('cashInTotal ?: 0.0') &&
   merchantPosScreen.includes('cashOutTotal ?: 0.0') &&
   merchantPosScreen.includes('pendingCashMovementRequestId ?: UUID.randomUUID().toString()') &&
+  merchantPosScreen.includes('cashMovementStore.load(it, auth.session.authUserId)') &&
+  merchantPosScreen.includes('stored != request && !cashMovementStore.save(request)') &&
+  merchantPosScreen.includes('if (!cashMovementStore.clear(request))') &&
+  !merchantPosScreen.includes('var pendingCashMovementRequestId by rememberSaveable') &&
   merchantPosScreen.includes('pendingCashMovementShopId != snap?.shopId') &&
   merchantPosScreen.includes('pendingCashMovementActorId != auth.session.authUserId') &&
   merchantPosScreen.includes('cashShift?.open != true && !retrying') &&

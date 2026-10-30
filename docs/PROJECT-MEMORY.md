@@ -1,3 +1,11 @@
+## 2026-10-30 Native Merchant POS P0 — cashier cash movements share durable pending store (IN PROGRESS)
+
+- Parent `cf62cfae0fd9072fa1b4af5bbf71f20307b68079` is the latest fetched Native successor on PR #735. Source regression recovery parent `c962ea7c` passed Native POS CI push `41000094234` and PR `41000098909`; full local `npm test` exited 0. Latest tax-compatibility head has its own CI queued/running, not certified from the parent.
+- Root cause: the new cashier cash-in/out entry point used six `rememberSaveable` fields only, while existing shift-history cash controls already use `MerchantPosCashMovementStore`. A cold launch can lose the new screen's idempotency UUID, and switching entry points can create a new request while an earlier result is unknown.
+- Both entry points now use the existing shop/actor-scoped durable store. Cashier restores its exact UUID/type/amount/reason, persists before any RPC, blocks replacement (including unreadable stored data), and clears only after a matching server receipt. A failed follow-up shift read preserves successful financial acknowledgement. No new ledger/RPC/store or Production write.
+- Added SharedPreferences-injected JVM store tests for reopening/cross-entry-point restore, actor/shop isolation, mismatched acknowledgement, failed durable write/clear and corrupt pending bytes. Source tests require durable cashier integration. Local source checks 465/0 and diff check pass; JVM/build/hosted exact-head CI pending.
+- NEXT: inspect exact-head Native POS and Android Pilot, repair first confirmed failure, then finish the POS scope matrix and remaining unblocked parity work. No APK/release/full-parity claim; device cashier timeout/process-kill acceptance remains required.
+
 ## 2026-10-30 Native Merchant POS P0 — undeployed optional tax schema breaks bill loading (IN PROGRESS)
 
 - Parent `c962ea7c67c47c3cb4ce5ecc2290b40177dfd815` is the published descendant of `dde90e26` on existing PR #735. No uncommitted work was overwritten; local unpublished checkpoint `50d7829d` has the same tree as published `c962ea7c`.
