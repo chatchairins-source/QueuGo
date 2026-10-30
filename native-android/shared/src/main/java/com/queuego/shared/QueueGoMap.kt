@@ -37,12 +37,15 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.BackgroundLayer
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.layers.Property
+import org.maplibre.android.style.layers.PropertyFactory.backgroundColor
 import org.maplibre.android.style.layers.PropertyFactory.circleColor
 import org.maplibre.android.style.layers.PropertyFactory.circleRadius
 import org.maplibre.android.style.layers.PropertyFactory.fillColor
@@ -53,10 +56,17 @@ import org.maplibre.android.style.layers.PropertyFactory.lineJoin
 import org.maplibre.android.style.layers.PropertyFactory.lineOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.android.style.sources.RasterSource
+import org.maplibre.android.style.sources.TileSet
+import org.maplibre.android.style.sources.VectorSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
 
+private const val QUEUEGO_VECTOR_SOURCE = "queuego-vector"
+private const val QUEUEGO_WEB_BASEMAP_SOURCE = "queuego-web-basemap"
+private const val QUEUEGO_WEB_BASEMAP_LAYER = "queuego-web-basemap-layer"
+private const val QUEUEGO_WEB_BASEMAP_TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 private const val QUEUEGO_TRACKING_SOURCE = "queuego-tracking"
 private const val QUEUEGO_TRACKING_LAYER = "queuego-tracking-points"
 private const val QUEUEGO_LOCATION_PICKER_SOURCE = "queuego-location-picker"
@@ -95,8 +105,32 @@ fun queueGoMapVectorSourceUri(context: Context): String? {
 }
 
 fun queueGoMapStyle(sourceUri: String): Style.Builder {
-    // Use QueueGo Map vector rendering for both hosted and packaged tiles.
-    return ShortbreadVillageStyle.builder(sourceUri)
+    // Local archives must draw their own geometry. Registering a vector source
+    // under an HTTP-only raster layer does not provide an offline basemap.
+    if (sourceUri.startsWith("pmtiles://file://") || sourceUri.startsWith("pmtiles://asset://")) {
+        return ShortbreadVillageStyle.builder(sourceUri)
+    }
+    // QueueGo Web is the visual/functional blueprint. Its MapLibre raster
+    // presentation is the online basemap for Customer and Merchant nationwide;
+    // the Rider's installed PMTiles archive still renders fully offline.
+    //
+    // Keep the QueueGo-hosted vector source registered for QueueGo-owned map
+    // capabilities and future overlays, but do not paint a second competing
+    // basemap underneath/above the Web-parity raster layer.
+    val webTiles = TileSet("2.2.0", QUEUEGO_WEB_BASEMAP_TILE).apply {
+        attribution = "© OpenStreetMap contributors"
+    }
+    return Style.Builder()
+        .withSource(RasterSource(QUEUEGO_WEB_BASEMAP_SOURCE, webTiles, 256))
+        .withSource(VectorSource(QUEUEGO_VECTOR_SOURCE, sourceUri))
+        .withLayer(
+            BackgroundLayer("queuego-background").withProperties(
+                backgroundColor("#f3f0e8")
+            )
+        )
+        .withLayer(
+            RasterLayer(QUEUEGO_WEB_BASEMAP_LAYER, QUEUEGO_WEB_BASEMAP_SOURCE)
+        )
 }
 
 private fun Context.lifecycleOwnerOrNull(): LifecycleOwner? = when (this) {
