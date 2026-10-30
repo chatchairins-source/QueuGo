@@ -1227,7 +1227,10 @@ ok(
   riderMap.includes('readyMap.uiSettings.isRotateGesturesEnabled = true') &&
   riderMap.includes('readyMap.uiSettings.isTiltGesturesEnabled = true') &&
   riderMap.includes('readyMap.uiSettings.setDisableRotateWhenScaling(false)') &&
-  riderMap.includes('if (gestureReported) onUserGesture()') &&
+  riderMap.includes('if (gestureReported) {') &&
+   riderMap.includes('navigationTouchOwnsFollow(event.pointerCount, multiTouchGesture)') &&
+   riderMap.includes('transformGestureActive = true') &&
+   riderMap.includes('SystemClock.elapsedRealtime() < manualZoomUntilElapsed') &&
   riderMap.includes('val decision = navigationCameraDecision(state, renderedBearing)') &&
   !riderMap.includes('followPuckBearing = true') &&
   riderNavigationIntegrationForParity.includes('viewModeState = viewModeController.onUserGesture()') &&

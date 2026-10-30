@@ -126,6 +126,57 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         dispatchSinglePointerGesture(deltaX = deltaX)
     }
 
+    fun dispatchPinchOnMap() {
+        val view = requireNotNull(findMapView(window.decorView))
+        val downTime = SystemClock.uptimeMillis()
+        val centerX = view.width.coerceAtLeast(400) / 2f
+        val centerY = view.height.coerceAtLeast(400) / 2f
+        val pointers = arrayOf(
+            MotionEvent.PointerProperties().apply {
+                id = 0
+                toolType = MotionEvent.TOOL_TYPE_FINGER
+            },
+            MotionEvent.PointerProperties().apply {
+                id = 1
+                toolType = MotionEvent.TOOL_TYPE_FINGER
+            }
+        )
+        fun coordinate(x: Float) = MotionEvent.PointerCoords().apply {
+            this.x = x
+            y = centerY
+            pressure = 1f
+            size = 1f
+        }
+        fun event(action: Int, offsetMillis: Long, spread: Float, count: Int) =
+            MotionEvent.obtain(
+                downTime, downTime + offsetMillis, action, count,
+                pointers.take(count).toTypedArray(),
+                arrayOf(coordinate(centerX - spread), coordinate(centerX + spread)).take(count).toTypedArray(),
+                0, 0, 1f, 1f, 0, 0,
+                android.view.InputDevice.SOURCE_TOUCHSCREEN, 0
+            )
+        val events = listOf(
+            event(MotionEvent.ACTION_DOWN, 0L, 24f, 1),
+            event(
+                MotionEvent.ACTION_POINTER_DOWN or
+                    (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT),
+                16L, 24f, 2
+            ),
+            event(MotionEvent.ACTION_MOVE, 32L, 82f, 2),
+            event(
+                MotionEvent.ACTION_POINTER_UP or
+                    (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT),
+                48L, 82f, 2
+            ),
+            event(MotionEvent.ACTION_UP, 64L, 82f, 1)
+        )
+        try {
+            events.forEach { view.dispatchTouchEvent(it) }
+        } finally {
+            events.forEach(MotionEvent::recycle)
+        }
+    }
+
     private fun dispatchSinglePointerGesture(deltaX: Float) {
         val view = requireNotNull(findMapView(window.decorView))
         val downTime = SystemClock.uptimeMillis()

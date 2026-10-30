@@ -158,6 +158,32 @@ class NavigationMapRuntimeTest {
     }
 
     @Test
+    fun twoFingerPinchPreservesWebFollowInsteadOfEnteringFreePan() {
+        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
+            lateinit var activity: NavigationMapRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue(activity.mapReady.await(30, TimeUnit.SECONDS))
+
+            scenario.onActivity { it.dispatchPinchOnMap() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertEquals(
+                    "QueueGo Web two-finger pinch must not release Rider FOLLOW",
+                    0, it.userGestureCount
+                )
+                it.refreshRiderFix(3)
+            }
+            // The 110 ms re-anchor occurs after the Android pinch is committed.
+            Thread.sleep(NAVIGATION_TRANSFORM_REANCHOR_MS + 250L)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertTrue("Rider MapView must remain mounted after pinch", it.hasMapView())
+                assertEquals(0, it.userGestureCount)
+            }
+        }
+    }
+
+    @Test
     fun activityRecreationCreatesFreshMapViewForFreshActivityContext() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
             lateinit var activity: NavigationMapRuntimeActivity
