@@ -11,14 +11,28 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class InstalledThailandMapTest {
+    private fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
+        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
+    ).bufferedReader().use { it.readText() }
+
     @Test fun installedCountryArchivePaintsRoadsInMultipleRegions() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         val offlineRequired = InstrumentationRegistry.getArguments().getString("offlineRequired") == "true"
         if (offlineRequired) {
             assertTrue("Nationwide archive must be installed", context.assets.list("maps")?.contains("thailand-shortbread.pmtiles") == true)
+            // UTP installs/configures the APK after the runner's radio setup.
+            // Enforce the condition in the actual test process, after installation.
+            shell("cmd connectivity airplane-mode enable")
+            shell("svc wifi disable")
+            shell("svc data disable")
             val connectivity = context.getSystemService(android.net.ConnectivityManager::class.java)
+            val offlineDeadline = android.os.SystemClock.elapsedRealtime() + 15_000
+            while (connectivity.activeNetwork != null && android.os.SystemClock.elapsedRealtime() < offlineDeadline) {
+                Thread.sleep(200)
+            }
             assertNull("Offline test still has an active network", connectivity.activeNetwork)
+            assertEquals(1, android.provider.Settings.Global.getInt(context.contentResolver, "airplane_mode_on", 0))
         }
         // Existing fixture-only CI remains separate. A skipped test is not an offline PASS.
         assumeTrue(context.assets.list("maps")?.contains("thailand-shortbread.pmtiles") == true)
@@ -36,6 +50,7 @@ class InstalledThailandMapTest {
                 Triple("narathiwat", 6.4255, 101.8253)
             )
             for ((name, lat, lon) in locations) {
+                if (offlineRequired) assertNull(context.getSystemService(android.net.ConnectivityManager::class.java).activeNetwork)
                 scenario.onActivity { it.showCountryPosition(lat, lon) }
                 var paintedRoads = 0
                 val deadline = android.os.SystemClock.elapsedRealtime() + 45_000
@@ -54,10 +69,17 @@ class InstalledThailandMapTest {
                 }
                 assertTrue("No painted vector roads: $name", paintedRoads > 0)
                 val directory = File(context.getExternalFilesDir(null), "offline-map-evidence").apply { mkdirs() }
-                File(directory, "$name.png").outputStream().use {
+                val screenshot = File(directory, "$name.png")
+                screenshot.outputStream().use {
                     assertTrue(instrumentation.uiAutomation.takeScreenshot().compress(Bitmap.CompressFormat.PNG, 100, it))
                 }
+                // Gradle removes the test APK and its private external directory
+                // after execution. Copy generated evidence before that cleanup.
+                val saved = shell("mkdir -p /sdcard/Download/QueueGoOfflineEvidence && cp '${screenshot.absolutePath}' /sdcard/Download/QueueGoOfflineEvidence/$name.png && echo QUEUEGO_SCREENSHOT_SAVED")
+                assertTrue("Screenshot was not retained outside test-app data", saved.contains("QUEUEGO_SCREENSHOT_SAVED"))
+                if (offlineRequired) assertNull(context.getSystemService(android.net.ConnectivityManager::class.java).activeNetwork)
             }
+            if (offlineRequired) shell("dumpsys connectivity > /sdcard/Download/QueueGoOfflineEvidence/connectivity.txt")
         }
     }
 }

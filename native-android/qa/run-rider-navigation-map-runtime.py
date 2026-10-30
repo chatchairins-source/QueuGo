@@ -1,5 +1,7 @@
 """Run the isolated Rider navigation-map Android instrumentation gate."""
 from pathlib import Path
+import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -105,10 +107,23 @@ with (log_dir / "emulator.log").open("w") as log:
         if result.stderr:
             print(result.stderr)
         if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
-            # Instrumentation's target package is the isolated navigation library.
-            run(adb + ["pull", "/sdcard/Android/data/com.queuego.ridernavigationmap.test/files/offline-map-evidence", str(log_dir / "country-screenshots")])
+            # Shared test-owned output survives Gradle uninstalling its test APK.
+            pulled = subprocess.run(adb + ["pull", "/sdcard/Download/QueueGoOfflineEvidence", str(log_dir / "country-screenshots")], capture_output=True, text=True, timeout=60)
+            (log_dir / "screenshot-transfer.txt").write_text(pulled.stdout + pulled.stderr)
         if result.returncode != 0:
             raise SystemExit("Navigation-map connected Android test failed")
+        if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
+            images = list((log_dir / "country-screenshots").rglob("*.png"))
+            expected = {"bangkok.png", "buriram.png", "chiangmai.png", "phuket.png", "narathiwat.png"}
+            if pulled.returncode != 0 or {image.name for image in images} != expected or len(images) != 5:
+                raise SystemExit("Country screenshot evidence is incomplete")
+            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
+            (log_dir / "country-evidence-metadata.json").write_text(json.dumps({
+                "source_head": head, "workflow_run": os.environ.get("GITHUB_RUN_ID"),
+                "tests_exit_code": result.returncode, "offline_required": True,
+                "physical_device": False,
+                "screenshots": {image.name: hashlib.sha256(image.read_bytes()).hexdigest() for image in images}
+            }, indent=2) + "\n")
         print("QUEUEGO_NAVIGATION_MAP_RUNTIME_PASS")
     finally:
         try:
