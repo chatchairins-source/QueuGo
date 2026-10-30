@@ -75,11 +75,20 @@ class InstalledThailandMapTest {
                 }
                 // Gradle removes the test APK and its private external directory
                 // after execution. Copy generated evidence before that cleanup.
-                val saved = shell("mkdir -p /sdcard/Download/QueueGoOfflineEvidence && cp '${screenshot.absolutePath}' /sdcard/Download/QueueGoOfflineEvidence/$name.png && echo QUEUEGO_SCREENSHOT_SAVED")
-                assertTrue("Screenshot was not retained outside test-app data", saved.contains("QUEUEGO_SCREENSHOT_SAVED"))
+                // UiAutomation uses Runtime.exec, not a shell interpreter: do
+                // not pass shell operators or shell quotes as literal arguments.
+                shell("mkdir -p /sdcard/Download/QueueGoOfflineEvidence")
+                shell("cp ${screenshot.absolutePath} /sdcard/Download/QueueGoOfflineEvidence/$name.png")
+                val retainedBytes = shell("stat -c %s /sdcard/Download/QueueGoOfflineEvidence/$name.png").trim().toLongOrNull()
+                assertEquals("Screenshot bytes were not retained outside test-app data", screenshot.length(), retainedBytes ?: -1L)
                 if (offlineRequired) assertNull(context.getSystemService(android.net.ConnectivityManager::class.java).activeNetwork)
             }
-            if (offlineRequired) shell("dumpsys connectivity > /sdcard/Download/QueueGoOfflineEvidence/connectivity.txt")
+            if (offlineRequired) {
+                // Evidence path is already checked by exact PNG lengths above.
+                File(context.getExternalFilesDir(null), "offline-map-evidence/connectivity.txt")
+                    .writeText(shell("dumpsys connectivity"))
+                shell("cp ${File(context.getExternalFilesDir(null), "offline-map-evidence/connectivity.txt").absolutePath} /sdcard/Download/QueueGoOfflineEvidence/connectivity.txt")
+            }
         }
     }
 }
