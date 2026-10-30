@@ -24,6 +24,7 @@ android {
     }
 
     buildFeatures { compose = true }
+    androidResources { noCompress += "pmtiles" }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -31,6 +32,16 @@ android {
     }
 }
 
+
+// Only Rider ships the nationwide offline archive. Customer/Merchant use online maps.
+providers.environmentVariable("QG_OFFLINE_MAP_ASSETS").orNull?.let { assetsRoot ->
+    require(file("$assetsRoot/maps/thailand-shortbread.pmtiles").isFile) {
+        "QG_OFFLINE_MAP_ASSETS has no nationwide Shortbread archive"
+    }
+    androidComponents.onVariants { variant ->
+        variant.sources.assets?.addStaticSourceDirectory(assetsRoot)
+    }
+}
 
 dependencies {
     // Debug lifecycle host reads the actual renderer camera; use the same pinned SDK.
