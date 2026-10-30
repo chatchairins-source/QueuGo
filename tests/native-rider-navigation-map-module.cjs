@@ -125,7 +125,10 @@ assert(!manifest.includes('longdo.map.key'));
 assert(runtimeTest.includes('gpsRefreshTabReturnAndOverlayUpdatesReuseSameMapView'));
 assert(runtimeTest.includes('manualDragReportsGestureButTapDoesNot'));
 assert(runtimeTest.includes('activityRecreationCreatesFreshMapViewForFreshActivityContext'));
-assert(runtimeHost.includes('mapSourceUri = "asset://queuego-nav-runtime-tilejson.json"'));
+assert(runtimeHost.includes('intent.getBooleanExtra("installedThailandMap", false)') &&
+  runtimeHost.includes('queueGoMapVectorSourceUri(this)') &&
+  runtimeHost.includes('else "asset://queuego-nav-runtime-tilejson.json"'),
+  'Runtime fixtures must stay the default; installed-country source requires explicit opt-in');
 assert(!/Longdo|MapGLSurfaceView/i.test(runtimeTest+runtimeHost));
 
 assert(workflow.includes('navigation-map-runtime:'));
