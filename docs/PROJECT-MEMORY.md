@@ -1,3 +1,10 @@
+## 2026-10-30 Native POS tabs — correct final CSS cascade (IN PROGRESS)
+
+- Successor parent `e82ae91604de1c9a30437cbeb85ca683f0e49184` retains all UI and financial safety work, and serialises the existing shared-account visual review with real Thai fonts.
+- Corrected a source-reading mistake: the earlier #181b20 rule is overridden by the later "light professional correction — no black primary surfaces" and <=650px compact rail rules. Actual Production phone PNG `phone-pos-counter.png` in artifact `12955664939` confirms a white selected tab with red text/bottom inset line. Missing Thai glyphs in that old runner do not affect this color/shape evidence.
+- Native tabs now follow the FINAL cascade: white/red bordered/shadowed selection on wider screens; <=650dp 36dp/12sp compact selection with 2dp red underline, 9dp corners and 2dp gaps; 650–700dp retains the existing 38dp narrow sizing. No black active surface. Keep every tab, permission and callback; do not undo the single-header or bottom-nav corrections.
+- NEXT: exact-head Kotlin/source/CI and serialised real-account phone/tablet screenshots with Thai glyphs. Inspect actual after images before reporting visual parity; continue counter/other Merchant differences from evidence, not intermediate CSS declarations.
+
 ## 2026-10-30 Merchant visual review — real session collision and missing Thai glyphs (IN PROGRESS)
 
 - Latest app/UI successor: `92b5996e8805103e25f04a129d5b6f731a6fcecc`; Native POS CI push `41007905597` and PR `41007914631` SUCCESS. Login, POS chrome and bottom-navigation corrections are preserved.

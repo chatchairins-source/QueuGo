@@ -19,6 +19,7 @@ import android.print.PrintManager
 import android.print.pdf.PrintedPdfDocument
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,6 +70,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -2285,31 +2292,53 @@ private fun PosTabs(
             add("staff" to "พนักงาน")
         }
     }
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 7.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        tabs.forEach { (key, label) ->
-            if (key == current) {
-                Button(
-                    onClick = { onSelect(key) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF181B20), contentColor = Color.White),
-                    modifier = Modifier.widthIn(min = 88.dp).heightIn(min = 40.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 13.dp, vertical = 9.dp)
-                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
-            } else {
-                TextButton(
-                    onClick = { onSelect(key) },
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF626A75)),
-                    modifier = Modifier.widthIn(min = 88.dp).heightIn(min = 40.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 13.dp, vertical = 9.dp)
-                ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Use the final light-theme + mobile overrides, not the earlier dark rule.
+        val mobile = maxWidth <= 650.dp
+        val narrow = maxWidth <= 700.dp
+        val shape = RoundedCornerShape(if (mobile) 9.dp else 10.dp)
+        val tabHeight = if (mobile) 36.dp else if (narrow) 38.dp else 40.dp
+        val labelSize = if (mobile) 12.sp else 13.sp
+        val labelLine = if (mobile) 14.4.sp else 15.6.sp
+        val padding = PaddingValues(horizontal = if (mobile) 10.dp else if (narrow) 11.dp else 13.dp,
+            vertical = if (mobile) 7.dp else if (narrow) 8.dp else 9.dp)
+        Row(
+            Modifier.fillMaxWidth().background(if (mobile) Color(0xFFF7F8FA) else Color(0xFFF6F7F9))
+                .horizontalScroll(rememberScrollState()).padding(start = 10.dp, end = 10.dp,
+                    top = if (mobile) 5.dp else 7.dp, bottom = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (mobile) 2.dp else 4.dp)
+        ) {
+            tabs.forEach { (key, label) ->
+                val active = key == current
+                val tabModifier = Modifier.widthIn(min = if (narrow) 0.dp else 88.dp).heightIn(min = tabHeight)
+                    .then(if (active && !mobile) Modifier.dropShadow(shape,
+                        Shadow(radius = 5.dp, color = Color(0xFF20242A).copy(alpha = 0.08f), offset = DpOffset(0.dp, 1.dp))) else Modifier)
+                    .clip(shape)
+                    .drawWithContent {
+                        drawContent()
+                        if (active && mobile) {
+                            val stroke = 2.dp.toPx()
+                            drawLine(Color(0xFFED163D), Offset(0f, size.height - stroke / 2),
+                                Offset(size.width, size.height - stroke / 2), strokeWidth = stroke)
+                        }
+                    }
+                if (active) {
+                    Button(onClick = { onSelect(key) }, modifier = tabModifier, shape = shape,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White,
+                            contentColor = if (mobile) Color(0xFFD20B32) else Color(0xFFED163D)),
+                        border = if (mobile) null else BorderStroke(1.dp, Color(0xFFF0D5DA)),
+                        contentPadding = padding
+                    ) { Text(label, fontSize = labelSize, lineHeight = labelLine, fontWeight = FontWeight.Bold) }
+                } else {
+                    TextButton(onClick = { onSelect(key) }, modifier = tabModifier, shape = shape,
+                        colors = ButtonDefaults.textButtonColors(contentColor = if (mobile) Color(0xFF737B86) else Color(0xFF6B7280)),
+                        contentPadding = padding
+                    ) { Text(label, fontSize = labelSize, lineHeight = labelLine, fontWeight = FontWeight.Bold) }
+                }
             }
         }
     }
-    HorizontalDivider(color = Color(0xFFE7E9EE))
+    HorizontalDivider(color = Color(0xFFE8EBEF))
 }
 
 @Composable
