@@ -1,3 +1,11 @@
+## 2026-10-31 Live Laundry replay-only migration prepared with definition lease
+
+- PR748 final2aef96ba Native Pilot41192266265 SUCCESS; source integrated into unreleased Native736 at a1ed608f2c5ebddd88a821731cc77c9117df27d7. Preserve58-check lifecycle and six JVM compatibility cases. PR747 aa5214e6 Native Pilot41191653210 also SUCCESS; its source replay change is reviewed but not deployed wholesale.
+- Fresh Production placement readback differs from newer root SQL: live still requires an active laundry_hub_riders entry. A wholesale source-function replay would remove that eligibility gate. Prepare only original owner-check→null-safe owner+normalized hub/service/address/lat/lng/quantity/note replay binding, leaving every non-replay character of the live definition intact.
+- CLI2.122.0 migration-new generated20261031110052_laundry_request_intent_replay_guard.sql. Definition MD5 lease accepts inspected before37e241c90a76a2b48ebdd32697f75acb or exact patched e3e9482d533b8d0da8b870d28071252f, rejecting unknown concurrent definitions before DDL. Explicit existing auth/service grants retained; anon/PUBLIC execution revoked.
+- New actual-migration isolated regression uses the inspected original definition fixture, checks exact/conflicting replay, null owner, different Customer, anon denial, replaying migration, retained live Rider eligibility, unchanged row/event/notice counts and rejection/preservation of an unknown concurrent definition. No Production schema/data writes at this preparation checkpoint; full CI and final readback required before deploying this narrow patch.
+- This does not set Laundry GP policy, enable shop-managed finance or close the11 missing RPC catalog blockers. Keep authenticated/device/lifecycle release gates open. Next: publish/review this migration+tests, exact-head CI, advisors/live definition readcheck, owner-authorized atomic apply and definition/ACL/history readback.
+
 ## 2026-10-31 Laundry lifecycle regression expanded while Native compatibility builds
 
 - PR748 initial source97bb7653 adds scoped Native Laundry optional-column read compatibility and truthful nullable GP. Clean local full npm test EXIT0 including pre/posttest on tree934a6804; Native Pilot41191937921 catalog regression SUCCESS and Kotlin/unit stage running at checkpoint.
