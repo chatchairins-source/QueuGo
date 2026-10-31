@@ -375,10 +375,17 @@ def capture_customer_location():
             "real_map_bounds": mb, "source": "MapLibre Android SDK frame"
         }))
         assert changed > 0.015, "Actual QueueGo MapLibre roads did not move after drag gesture"
-        wait_ui(directory / "panned.xml", lambda ns: any(
+        nodes = wait_ui(directory / "panned.xml", lambda ns: any(
             n.get("class") == "android.widget.FrameLayout"
             and "MapLibre" in n.get("content-desc", "") for n in ns))
         if permission_state == "allowed":
+            # GPS button bounds must come from this *current* picker hierarchy;
+            # the old gb local only existed in the permission-request helper.
+            gps = next((n for n in nodes
+                        if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน"), None)
+            assert gps is not None, "Current Customer GPS button missing after map drag"
+            gb = [int(x) for x in re.findall(r"\d+", gps.get("bounds", ""))]
+            assert len(gb) == 4 and gb[2] > gb[0] and gb[3] > gb[1], "Invalid actual GPS touch bounds"
             run(adb + ["shell", "input", "tap", str((gb[0]+gb[2])//2), str((gb[1]+gb[3])//2)])
             time.sleep(1)
             assert_no_package_crash(pkg, directory / "gps-tap-crash.txt")
