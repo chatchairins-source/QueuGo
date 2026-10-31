@@ -566,16 +566,39 @@ private fun CustomerShell(
         }
     }
 
+    var gpsReading by remember { mutableStateOf(false) }
+    fun readFreshGps() {
+        if (gpsReading) return
+        gpsReading = true
+        scope.launch {
+            try {
+                // A cached fix may belong to a previous trip. Never silently
+                // apply it to a new Laundry, Market or checkout destination.
+                val p = customerRegistrationLocation(context)
+                location = CustomerLocation(p.latitude, p.longitude, address)
+                message = "อ่านตำแหน่ง GPS ปัจจุบันแล้ว"
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                message = "อ่านตำแหน่งปัจจุบันไม่สำเร็จ เลือกจุดบนแผนที่แทนได้"
+            } finally {
+                gpsReading = false
+            }
+        }
+    }
     val permission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
-        if (grants.values.any { it }) {
-            val p = lastKnownLocation(context)
-            if (p != null) {
-                location = CustomerLocation(p.first, p.second, address)
-                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
-            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
-        } else message = "กรุณาอนุญาตตำแหน่งเพื่อจัดส่ง"
+        if (grants.values.any { it }) readFreshGps()
+        else message = "กรุณาอนุญาตตำแหน่งเพื่อจัดส่ง"
+    }
+    fun requestGps() {
+        if (gpsReading) return
+        if (hasLocation(context)) readFreshGps()
+        else permission.launch(arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ))
     }
 
     fun openShopFromHome(shop: CustomerShop, returnTo: String = screen) {
@@ -1042,20 +1065,7 @@ private fun CustomerShell(
                         address = it
                         location = location?.copy(address = it)
                     },
-                    onGps = {
-                        if (hasLocation(context)) {
-                            val p = lastKnownLocation(context)
-                            if (p != null) {
-                                location = CustomerLocation(p.first, p.second, address)
-                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
-                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
-                        } else {
-                            permission.launch(arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ))
-                        }
-                    },
+                    onGps = ::requestGps,
                     onBack = { screen = "home" },
                     onDone = {
                         message = "ส่งคำขอฝากซักแล้ว"
@@ -1073,20 +1083,7 @@ private fun CustomerShell(
                         address = it
                         location = location?.copy(address = it)
                     },
-                    onGps = {
-                        if (hasLocation(context)) {
-                            val p = lastKnownLocation(context)
-                            if (p != null) {
-                                location = CustomerLocation(p.first, p.second, address)
-                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
-                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
-                        } else {
-                            permission.launch(arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ))
-                        }
-                    },
+                    onGps = ::requestGps,
                     serviceBanner = serviceBanners["market"],
                     onBack = { screen = "home" },
                     onDone = { tripId ->
@@ -1213,20 +1210,7 @@ private fun CustomerShell(
                     busy = busy,
                     resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },
                     onBack = { screen = "cart" },
-                    onGps = {
-                        if (hasLocation(context)) {
-                            val p = lastKnownLocation(context)
-                            if (p != null) {
-                                location = CustomerLocation(p.first, p.second, address)
-                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
-                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
-                        } else {
-                            permission.launch(arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ))
-                        }
-                    },
+                    onGps = ::requestGps,
                     onLocationChange = { next ->
                         location = next
                     },

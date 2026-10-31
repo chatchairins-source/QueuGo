@@ -18,6 +18,13 @@ const manifest=read('native-android/rider/src/main/AndroidManifest.xml');
 const runtimeTest=read('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt');
 const runtimeHost=read('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt');
 const workflow=read('.github/workflows/build-native-rider-pilot.yml');
+const isolatedRuntime=read('native-android/qa/run-rider-navigation-map-runtime.py');
+assert(isolatedRuntime.includes('stage_verified_map_for_isolated_debug_runtime()'));
+assert(isolatedRuntime.includes('src/debug/assets/maps'));
+assert(isolatedRuntime.includes('hashlib.file_digest(stream, "sha256")'));
+assert(isolatedRuntime.includes('shutil.rmtree(staged, ignore_errors=True)'));
+assert(!isolatedRuntime.includes('src/androidTest/assets/maps'));
+
 const webMap=read('queuego-map-web.js');
 const webRider=read('rider/index.html');
 const guidance=read('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationGuidance.kt');
@@ -29,7 +36,7 @@ const overviewPolicy=read('native-android/rider-navigation-map/src/main/java/com
 assert(settings.includes('":rider-navigation-map"'));
 assert(moduleBuild.includes('id("com.android.library")'));
 assert(moduleBuild.includes('implementation(project(":shared"))'));
-assert(moduleBuild.includes('org.maplibre.gl:android-sdk-opengl:13.5.3'));
+assert(moduleBuild.includes('org.maplibre.gl:android-sdk-opengl:13.7.1'));
 assert(!/LongdoMapAndroidSDK|com\.longdo|longdo\.map/i.test(moduleBuild));
 
 assert(riderBuild.includes('implementation(project(":rider-navigation-map"))'));
@@ -53,6 +60,18 @@ assert(map.includes('holder.retainAcrossVisibilityLoss()'));
 assert(map.includes('MotionEvent.ACTION_MOVE'));
 assert(map.includes('currentUserGesture.value()'));
 assert(map.includes('navigationCameraDecision('));
+// The Android camera must follow the existing QueueGo Web gesture contract:
+// two-finger transforms preserve FOLLOW, one-finger pan enters FREE_PAN.
+assert(webMap.includes('reanchorNavigationAfterGesture(map)'));
+assert(webMap.includes('state.manualZoomUntil=Date.now()+12000'));
+assert(viewMode.includes('navigationTouchOwnsFollow(pointerCount: Int, multiTouchStarted: Boolean)'));
+assert(viewMode.includes('NAVIGATION_TRANSFORM_REANCHOR_MS = 110L'));
+assert(viewMode.includes('NAVIGATION_MANUAL_ZOOM_HOLD_MS = 12_000L'));
+assert(map.includes('navigationTouchOwnsFollow(event.pointerCount, multiTouchGesture)'));
+assert(map.includes('if (transformGestureActive) return'));
+assert(map.includes('SystemClock.elapsedRealtime() < manualZoomUntilElapsed'));
+assert(map.includes('mapView.postDelayed({'));
+assert(map.includes('renderCamera(it, lastState, force = true)'));
 assert(map.includes('navigationOverviewViewportDecision('));
 assert(camera.includes('speed >= 18.0 -> 15.0')&&camera.includes('speed >= 11.0 -> 16.0')&&
   camera.includes('speed >= 5.0 -> 17.0')&&camera.includes('speed <= 1.5 -> maxOf(base, 18.0)'));
@@ -125,7 +144,10 @@ assert(!manifest.includes('longdo.map.key'));
 assert(runtimeTest.includes('gpsRefreshTabReturnAndOverlayUpdatesReuseSameMapView'));
 assert(runtimeTest.includes('manualDragReportsGestureButTapDoesNot'));
 assert(runtimeTest.includes('activityRecreationCreatesFreshMapViewForFreshActivityContext'));
-assert(runtimeHost.includes('mapSourceUri = "asset://queuego-nav-runtime-tilejson.json"'));
+assert(runtimeHost.includes('intent.getBooleanExtra("installedThailandMap", false)') &&
+  runtimeHost.includes('queueGoMapVectorSourceUri(this)') &&
+  runtimeHost.includes('else "asset://queuego-nav-runtime-tilejson.json"'),
+  'Runtime fixtures must stay the default; installed-country source requires explicit opt-in');
 assert(!/Longdo|MapGLSurfaceView/i.test(runtimeTest+runtimeHost));
 
 assert(workflow.includes('navigation-map-runtime:'));

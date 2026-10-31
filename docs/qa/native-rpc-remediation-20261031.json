@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-31",
+  "project": "pkypiqhlrmzocysgeqew",
+  "checked": 162,
+  "present_accessible": 151,
+  "missing": [
+    "pos_save_tax_settings",
+    "qg_customer_order_eta",
+    "qg_express_complete_with_photo",
+    "qg_express_pickup_with_photo",
+    "qg_merchant_set_ready_estimate",
+    "qg_rider_publish_customer_eta",
+    "qg_rider_submit_public_license",
+    "queuego_express_config",
+    "queuego_express_state",
+    "queuego_laundry_shop_manage",
+    "queuego_request_express"
+  ],
+  "scope": "Read-only catalog metadata; no authenticated application/E2E/physical-device certification",
+  "applied": [
+    {
+      "version": "20261031083737",
+      "name": "native_rider_owned_proof_recovery_reader",
+      "signature": "qg_rider_proof_committed(uuid,text,text)",
+      "source": "supabase/migrations/20261023001200_rider_proof_recovery_reader.sql",
+      "isolated_checks": 23,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "version": "20261031083915",
+      "name": "native_rider_dispatch_readiness_rpc",
+      "signature": "qg_rider_dispatch_preference(boolean,boolean,boolean)",
+      "source": "supabase/migrations/20261014234500_rider_continuous_dispatch_phase1.sql (function + grants only)",
+      "isolated_checks": 20,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "native_laundry_owned_shop_contacts",
+      "signature": "queuego_laundry_shop_contacts(uuid)",
+      "source": "QueueGo-Laundry-Shop-Transport.sql (contacts function + grants only)",
+      "isolated_checks": 12,
+      "authenticated_execute": true,
+      "anonymous_execute": false,
+      "version": "20261031084323"
+    }
+  ],
+  "hosted_catalog_evidence": {
+    "commit": "a996805988b84408cd7cd6cece7b4a63cf8c0d0f",
+    "run": 41185586082,
+    "job": 124491799462,
+    "conclusion": "success"
+  },
+  "business_data_mutations": false,
+  "public_web_or_android_release": false
+}

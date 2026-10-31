@@ -12,6 +12,8 @@ import time
 import zlib
 import xml.etree.ElementTree as ET
 
+from adb_install_recovery import install_verified_apk
+
 
 def run(args, **kwargs):
     return subprocess.run(args, check=True, timeout=kwargs.pop("timeout", 120), **kwargs)
@@ -256,6 +258,19 @@ def capture_customer_market(directory: Path, dimensions: str):
             "populated_cart_e2e_certified": False, "visual_parity_certified": False}
 
 
+def customer_map_canvas(nodes):
+    """Locate the actual MapLibre view, not a retired coordinate-debug label."""
+    maps = [
+        n for n in nodes
+        if n.get("class") == "android.widget.FrameLayout"
+        and "MapLibre" in n.get("content-desc", "")
+    ]
+    assert len(maps) == 1, "Expected exactly one actual QueueGo MapLibre canvas"
+    bounds = [int(x) for x in re.findall(r"\d+", maps[0].get("bounds", ""))]
+    assert len(bounds) == 4 and bounds[2] - bounds[0] >= 180 and bounds[3] - bounds[1] >= 180
+    return bounds
+
+
 def customer_location_permission_nodes(nodes, directory):
     # CustomerLocationPicker automatically requests GPS after mapReady. Without
     # a map source that callback never runs, so exercise its explicit GPS action.
@@ -272,7 +287,7 @@ def capture_customer_location():
     """Tap the real Customer guest Home location entry; no coordinate or account fixtures."""
     pkg = "com.queuego.customer"
     customer_apk = repo / "native-android/customer/build/outputs/apk/debug/customer-debug.apk"
-    run(adb + ["install", "-r", str(customer_apk)])
+    install_verified_apk(adb, customer_apk, pkg)
     for permission_state in ("denied", "allowed"):
         directory = output / "customer-location" / permission_state
         directory.mkdir(parents=True, exist_ok=True)
@@ -335,18 +350,44 @@ def capture_customer_location():
             run(adb + ["exec-out", "screencap", "-p"], stdout=png)
         from PIL import Image
         frame = Image.open(directory / "picker.png").convert("RGB")
-        gray_fraction = sum(1 for pixel in frame.getdata() if pixel == (179, 179, 179)) / (frame.width * frame.height)
-        (directory / "render-metrics.json").write_text(json.dumps({"sdk_blank_gray_fraction": gray_fraction}))
+        gray_fraction = frame.getdata()
+        gray_fraction = sum(1 for pixel in gray_fraction if pixel == (179, 179, 179)) / (frame.width * frame.height)
         assert gray_fraction < 0.01, "Actual Customer map remains blank SDK gray"
-        # Pan the actual rendered map, without saving an address or injecting GPS.
-        gps = next(n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน")
-        gb = [int(x) for x in re.findall(r"\d+", gps.get("bounds", ""))]
-        description = next(n for n in nodes if n.get("text", "").startswith("ปักหมุดตำแหน่งรับสินค้า"))
-        db = [int(x) for x in re.findall(r"\d+", description.get("bounds", ""))]
-        map_y = (db[3] + gb[1]) // 2
-        run(adb + ["shell", "input", "swipe", str(frame.width // 2), str(map_y), str(frame.width // 2 + 100), str(map_y), "400"])
-        wait_ui(directory / "panned.xml", lambda ns: any(n.get("text", "").startswith("Lat: ") and "--" not in n.get("text", "") for n in ns))
+        # Use the rendered SDK FrameLayout bounds from the actual UI hierarchy.
+        # Old Lat:/pickup-instruction debug labels no longer exist in Production
+        # Compose; never weaken the test to merely checking Activity launch.
+        mb = customer_map_canvas(nodes)
+        map_x, map_y = (mb[0]+mb[2])//2, (mb[1]+mb[3])//2
+        run(adb + ["shell", "input", "swipe", str(map_x), str(map_y),
+                   str(min(mb[2]-35, map_x + 130)), str(map_y), "400"])
+        time.sleep(2)
+        with (directory / "panned.png").open("wb") as png:
+            run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+        from PIL import ImageChops
+        after = Image.open(directory / "panned.png").convert("RGB")
+        assert frame.size == after.size, "Android screenshot changed size during map pan"
+        # Exclude MapLibre zoom/compass and attribution overlays; compare roads.
+        w,h=mb[2]-mb[0],mb[3]-mb[1]
+        crop=(mb[0]+int(w*0.26),mb[1]+int(h*0.15),mb[2]-int(w*0.05),mb[3]-int(h*0.14))
+        diff = ImageChops.difference(frame.crop(crop).convert("L"), after.crop(crop).convert("L"))
+        hist = diff.histogram()
+        changed = sum(hist[13:]) / (diff.width * diff.height)
+        (directory / "render-metrics.json").write_text(json.dumps({
+            "sdk_blank_gray_fraction": gray_fraction, "map_pan_changed_pixel_fraction": changed,
+            "real_map_bounds": mb, "source": "MapLibre Android SDK frame"
+        }))
+        assert changed > 0.015, "Actual QueueGo MapLibre roads did not move after drag gesture"
+        nodes = wait_ui(directory / "panned.xml", lambda ns: any(
+            n.get("class") == "android.widget.FrameLayout"
+            and "MapLibre" in n.get("content-desc", "") for n in ns))
         if permission_state == "allowed":
+            # GPS button bounds must come from this *current* picker hierarchy;
+            # the old gb local only existed in the permission-request helper.
+            gps = next((n for n in nodes
+                        if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน"), None)
+            assert gps is not None, "Current Customer GPS button missing after map drag"
+            gb = [int(x) for x in re.findall(r"\d+", gps.get("bounds", ""))]
+            assert len(gb) == 4 and gb[2] > gb[0] and gb[3] > gb[1], "Invalid actual GPS touch bounds"
             run(adb + ["shell", "input", "tap", str((gb[0]+gb[2])//2), str((gb[1]+gb[3])//2)])
             time.sleep(1)
             assert_no_package_crash(pkg, directory / "gps-tap-crash.txt")
@@ -393,27 +434,40 @@ def probe_customer_draft_restore():
         assert len(b) == 4 and b[2] > b[0] and b[3] > b[1]
         run(adb + ["shell", "input", "tap", str((b[0]+b[2])//2), str((b[1]+b[3])//2)])
 
-    def selected_point(ns):
-        text = next(n.get("text") for n in ns if n.get("text", "").startswith("Lat: "))
-        values = [float(x) for x in re.findall(r"-?\d+\.\d+", text)]
-        assert len(values) == 2, "Real selected map point missing"
-        return values
-
     try:
         nodes = wait_ui(directory / "home.xml", lambda ns: any(n.get("text") == "ส่งไปที่" for n in ns))
         tap(next(n for n in nodes if n.get("text") == "ส่งไปที่"))
         nodes = wait_ui(directory / "picker.xml", lambda ns: any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in ns))
-        # Reuse the real pan geometry from the public permission flow.
-        description = next(n for n in nodes if n.get("text", "").startswith("ปักหมุดตำแหน่งรับสินค้า"))
-        gps = next(n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน")
-        db = [int(x) for x in re.findall(r"\d+", description.get("bounds", ""))]
-        gb = [int(x) for x in re.findall(r"\d+", gps.get("bounds", ""))]
-        width = int(run(adb + ["shell", "wm", "size"], capture_output=True, text=True).stdout.strip().split()[-1].split("x")[0])
-        y = (db[3] + gb[1]) // 2
-        run(adb + ["shell", "input", "swipe", str(width//2), str(y), str(width//2+120), str(y), "400"])
-        nodes = wait_ui(directory / "draft.xml", lambda ns: any(n.get("class") == "android.widget.EditText" and n.get("text", "").strip() for n in ns), timeout_seconds=40)
-        point = selected_point(nodes)
-        address = next(n.get("text") for n in nodes if n.get("class") == "android.widget.EditText")
+        # Create an actual device-local unsaved selection by tapping the map.
+        # The current Web-aligned picker intentionally has no "Lat:" debug label.
+        mb = customer_map_canvas(nodes)
+        run(adb + ["shell", "input", "tap", str((mb[0]+mb[2])//2),
+                   str((mb[1]+mb[3])//2)])
+        nodes = wait_ui(directory / "draft-selected.xml", lambda ns: any(
+            n.get("class") == "android.widget.EditText" and
+            [int(x) for x in re.findall(r"\d+", n.get("bounds", ""))][1] > mb[3]
+            for n in ns), timeout_seconds=40)
+        address_edit = next(n for n in nodes if n.get("class") == "android.widget.EditText"
+                            and [int(x) for x in re.findall(r"\d+", n.get("bounds", ""))][1] > mb[3])
+        tap(address_edit)
+        # Enter a harmless unsaved local note so the restore test does not
+        # depend on any real address provider or customer/production write.
+        expected_address = "QueueGoDraftKeep20261031"
+        run(adb + ["shell", "input", "text", expected_address])
+        run(adb + ["shell", "input", "keyevent", "4"])
+        run(adb + ["shell", "input", "swipe", "540", "1730", "540", "1120", "350"])
+        def selected_and_editable(ns):
+            # A real reverse geocoder can populate the address *before* the
+            # manually typed note, so match the note and persist exact current
+            # field content instead of inventing a fixed address response.
+            return any(n.get("class") == "android.widget.EditText" and
+                       expected_address in n.get("text", "") for n in ns) and any(
+                n.get("text") == "บันทึกที่อยู่นี้" and n.get("enabled") == "true"
+                for n in ns)
+        nodes = wait_ui(directory / "draft.xml", selected_and_editable, timeout_seconds=40)
+        address = next(n.get("text") for n in nodes
+                       if n.get("class") == "android.widget.EditText"
+                       and expected_address in n.get("text", ""))
         old_pids = package_pids(pkg)
         run(adb + ["shell", "input", "keyevent", "3"])
         time.sleep(1)
@@ -427,10 +481,20 @@ def probe_customer_draft_restore():
         assert package_pids(pkg) != old_pids, "New process was not created"
         result["restored_screen"] = "picker" if any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in nodes) else "home"
         assert result["restored_screen"] == "picker", "Process recreation discarded the unsaved address screen"
-        restored = selected_point(nodes)
-        assert all(abs(a-b) < 0.000002 for a,b in zip(point, restored)), "Process recreation changed draft coordinates"
-        assert any(n.get("class") == "android.widget.EditText" and n.get("text") == address for n in nodes), "Process recreation lost draft address"
+        # An enabled Save action requires BOTH a selected map point and a
+        # nonempty address in the real Compose state. This checks that the
+        # selected point survived process recreation without fabricating or
+        # printing coordinates, but does not claim exact coordinate equality.
+        if not any(n.get("text") == "บันทึกที่อยู่นี้" for n in nodes):
+            run(adb + ["shell", "input", "swipe", "540", "1730", "540", "1120", "350"])
+            nodes = read_ui(directory / "restored-scrolled.xml")
+        assert any(n.get("text") == "บันทึกที่อยู่นี้" and n.get("enabled") == "true"
+                   for n in nodes), "Process recreation lost selected map point"
+        assert any(n.get("class") == "android.widget.EditText" and n.get("text") == address
+                   for n in nodes), "Process recreation lost draft address"
         assert_no_package_crash(pkg, directory / "crash.txt")
+        result["selected_point_restored_via_enabled_save"] = True
+        result["coordinate_exact_match_certified"] = False
         result["result"] = "PASS"
     finally:
         (directory / "results.json").write_text(json.dumps(result, indent=2))
@@ -537,7 +601,7 @@ def capture_role_viewports(roles=("customer", "merchant", "rider")):
     for role in roles:
         role_apk = repo / f"native-android/{role}/build/outputs/apk/debug/{role}-debug.apk"
         assert role_apk.is_file(), f"Missing actual {role} APK"
-        run(adb + ["install", "-r", str(role_apk)])
+        install_verified_apk(adb, role_apk, f"com.queuego.{role}")
     for viewport, dimensions, density in (("phone", "1080x2280", "440"),
                                            ("small-phone", "720x1280", "320"),
                                            ("tablet", "1600x2560", "240")):
@@ -978,9 +1042,9 @@ def verify_real_home_map_runtime():
     run(adb + ["shell", "wm", "size", "1080x2280"])
     run(adb + ["shell", "wm", "density", "440"])
     run(adb + ["shell", "am", "force-stop", package])
-    run(adb + ["install", "-r", str(apk)])
+    install_verified_apk(adb, apk, package)
     provision_real_map(package)
-    run(adb + ["install", "-r", str(test_apk)])
+    install_verified_apk(adb, test_apk, "com.queuego.rider.test")
     # Clear only generated evidence so a partial run cannot retain stale frames.
     run(adb + ["shell", "run-as", package, "rm", "-rf", "files/map-runtime"])
     run(adb + ["logcat", "-b", "all", "-c"])
@@ -1063,7 +1127,7 @@ def verify_real_home_map_runtime():
 def verify_proof_process_recovery():
     # Proof/process-death QA is independent of QueueGo Map hosting.
     test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
-    run(adb + ["install", "-r", str(test_apk)])
+    install_verified_apk(adb, test_apk, "com.queuego.rider.test")
     runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
     stages = ["navigating_merchant", "arrived_merchant", "pickup_verification", "picked_up",
               "navigating_customer", "arrived_customer", "photo_captured"]
@@ -1129,9 +1193,9 @@ def verify_merchant_shop_map_runtime():
     apk = repo / "native-android/merchant/build/outputs/apk/debug/merchant-debug.apk"
     test_apk = repo / "native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk"
     runner = "com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner"
-    run(adb + ["install", "-r", str(apk)])
+    install_verified_apk(adb, apk, pkg)
     provision_real_map(pkg)
-    run(adb + ["install", "-r", str(test_apk)])
+    install_verified_apk(adb, test_apk, "com.queuego.merchant.test")
     directory = output / "merchant-shop-map"
     directory.mkdir(parents=True, exist_ok=True)
     for state in ("denied", "allowed"):
@@ -1221,7 +1285,7 @@ def capture_map_display_only():
     import base64
     from PIL import Image
     test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
-    run(adb + ["install", "-r", str(test_apk)])
+    install_verified_apk(adb, test_apk, "com.queuego.rider.test")
     # Public UI is reviewed independently before map/network checks; no form data is submitted.
     capture_role_viewports(("rider",))
     evidence = []
@@ -1330,7 +1394,7 @@ with (output / "emulator.log").open("w") as log:
                 break
             assert time.monotonic() < deadline, "Android boot timed out; no Native screenshot certified"
             time.sleep(5)
-        run(adb + ["install", "-r", str(apk)])
+        install_verified_apk(adb, apk, package)
         provision_real_map(package)
         run(adb + ["logcat", "-b", "all", "-c"])
         if os.environ.get("QG_CUSTOMER_LOCATION_ONLY") == "1":

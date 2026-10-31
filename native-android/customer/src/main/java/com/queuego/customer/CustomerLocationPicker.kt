@@ -73,7 +73,9 @@ internal fun CustomerLocationPickerScreen(
     resolveAddress: suspend (Double, Double) -> String?,
     onSave: (CustomerLocation) -> Unit,
     onBack: () -> Unit,
-    readGps: (suspend () -> CustomerLocation?)? = null
+    readGps: (suspend () -> CustomerLocation?)? = null,
+    rideStop: String? = null,
+    cameraReference: CustomerLocation? = null
 ) {
     val draftSaver = remember {
         listSaver<CustomerLocationDraft, Any>(
@@ -97,7 +99,11 @@ internal fun CustomerLocationPickerScreen(
     var autoGpsRequested by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val mapHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.34f).coerceIn(240.dp, 400.dp)
+    val mapHeight = if (rideStop != null) 245.dp
+        else (LocalConfiguration.current.screenHeightDp.dp * 0.34f).coerceIn(240.dp, 400.dp)
+    val mapCorner = if (rideStop != null) 16.dp else 20.dp
+    val ridePickup = rideStop == "pickup"
+    val rideDestination = rideStop == "destination"
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scope = rememberCoroutineScope()
     var gpsBusy by remember { mutableStateOf(false) }
@@ -111,10 +117,10 @@ internal fun CustomerLocationPickerScreen(
             try {
                 lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
                 val point = if (readGps != null) readGps() else {
-                    val cached = lastKnownLocation(context)?.takeIf { validCustomerPoint(it.first, it.second) }
-                    val position = if (cached == null) customerRegistrationLocation(context) else null
-                    cached?.let { CustomerLocation(it.first, it.second, "") }
-                        ?: position?.let { CustomerLocation(it.latitude, it.longitude, "") }
+                    // A last-known fix may be hours old and must not silently become
+                    // a new delivery/ride pickup. Wait for a fresh provider update.
+                    val position = customerRegistrationLocation(context)
+                    CustomerLocation(position.latitude, position.longitude, "")
                 }
                 lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
                 if (point == null || !validCustomerPoint(point.latitude, point.longitude)) {
@@ -144,6 +150,9 @@ internal fun CustomerLocationPickerScreen(
     }
 
     LaunchedEffect(mapReady) {
+        // Web Ride only auto-locates an empty pickup. A destination must stay
+        // unselected even when the pickup is used to center its viewport.
+        if (rideDestination || ridePickup && location != null) return@LaunchedEffect
         // Do not launch the Android location-permission dialog while QueueGo map surface
         // is still being created. On physical devices that Activity pause can race
         // map renderer initialization and close the Customer app.
@@ -207,49 +216,61 @@ internal fun CustomerLocationPickerScreen(
             Spacer(Modifier.size(10.dp))
             Column {
                 Text(
-                    "เลือกที่อยู่จัดส่ง",
+                    when (rideStop) {
+                        "pickup" -> "เลือกจุดรับ"
+                        "destination" -> "เลือกจุดหมาย"
+                        else -> "เลือกที่อยู่จัดส่ง"
+                    },
                     color = Color(0xFF17191D),
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 19.sp
                 )
                 Text(
-                    "เลือกตำแหน่งบน QueueGo Map หรือใช้ GPS ปัจจุบัน",
+                    when (rideStop) {
+                        "pickup" -> "แตะตำแหน่งบนแผนที่เพื่อปักจุดรับของคุณ"
+                        "destination" -> "แตะตำแหน่งบนแผนที่เพื่อปักจุดส่งของคุณ"
+                        else -> "เลือกตำแหน่งบน QueueGo Map หรือใช้ GPS ปัจจุบัน"
+                    },
                     color = QgMuted,
                     fontSize = 11.sp
                 )
             }
         }
 
-        QgPlaceSearchPanel(
-            enabled = !busy,
-            search = searchPlaces,
-            onSelect = { result ->
-                draft = draft.move(
-                    CustomerLocation(
-                        result.latitude,
-                        result.longitude,
-                        queueGoPlaceLabel(result)
+        if (rideStop == null) {
+            QgPlaceSearchPanel(
+                enabled = !busy,
+                search = searchPlaces,
+                onSelect = { result ->
+                    draft = draft.move(
+                        CustomerLocation(
+                            result.latitude,
+                            result.longitude,
+                            queueGoPlaceLabel(result)
+                        )
                     )
-                )
-                recenterToken++
-            }
-        )
-        Spacer(Modifier.height(10.dp))
+                    recenterToken++
+                }
+            )
+            Spacer(Modifier.height(10.dp))
+        }
 
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(mapHeight)
                 .semantics { stateDescription = if (mapReady) "แผนที่พร้อมใช้งาน" else "กำลังโหลดแผนที่" }
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(mapCorner))
                 .background(Color(0xFFF0F1F2))
-                .border(1.dp, QgLine, RoundedCornerShape(20.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(mapCorner))
         ) {
             key(mapAttempt) {
                 QgLocationPickerMap(
                     initialPoint = selectedPoint,
                     recenterPoint = externalPoint,
                     recenterToken = recenterToken,
+                    initialCameraPoint = if (rideDestination && selectedPoint == null)
+                        cameraReference?.let { QgMapPoint(it.latitude, it.longitude, 0) } else null,
                     modifier = Modifier.fillMaxSize(),
                     onPointSelected = { point ->
                         draft = draft.move(CustomerLocation(point.latitude, point.longitude, ""))
@@ -274,18 +295,18 @@ internal fun CustomerLocationPickerScreen(
         Row(
             Modifier
                 .fillMaxWidth()
-                .height(66.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .height(if (rideStop != null) 67.dp else 66.dp)
+                .clip(RoundedCornerShape(if (rideStop != null) 14.dp else 16.dp))
                 .background(Color.White)
-                .border(1.dp, Color(0xFFE4E7EC), RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0xFFE6E7EA), RoundedCornerShape(if (rideStop != null) 14.dp else 16.dp))
                 .clickable(enabled = !gpsBusy && !busy, onClick = ::requestGps)
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(21.dp))
+                    .size(if (rideStop != null) 32.dp else 42.dp)
+                    .clip(RoundedCornerShape(if (rideStop != null) 16.dp else 21.dp))
                     .background(Color(0xFFFFF0F2)),
                 contentAlignment = Alignment.Center
             ) {
@@ -310,7 +331,7 @@ internal fun CustomerLocationPickerScreen(
                     fontSize = 11.sp
                 )
             }
-            Text("›", color = Color(0xFF6F7680), fontSize = 28.sp)
+            Text("›", color = Color(0xFF9AA0A8), fontSize = if (rideStop != null) 22.sp else 28.sp)
         }
         gpsMessage?.let {
             Text(
@@ -323,7 +344,11 @@ internal fun CustomerLocationPickerScreen(
 
         Spacer(Modifier.height(12.dp))
         Text(
-            "ที่อยู่จัดส่ง",
+            when (rideStop) {
+                "pickup" -> "ที่อยู่จุดรับ"
+                "destination" -> "ที่อยู่จุดส่ง"
+                else -> "ที่อยู่จัดส่ง"
+            },
             color = Color(0xFF777E88),
             fontWeight = FontWeight.ExtraBold,
             fontSize = 12.sp
@@ -336,8 +361,12 @@ internal fun CustomerLocationPickerScreen(
             },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
-            placeholder = { Text("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต", color = QgMuted) },
-            shape = RoundedCornerShape(15.dp)
+            placeholder = { Text(
+                if (rideStop != null) "ที่อยู่หรือจุดสังเกต"
+                else "บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต",
+                color = QgMuted
+            ) },
+            shape = RoundedCornerShape(if (rideStop != null) 14.dp else 15.dp)
         )
 
         Spacer(Modifier.height(12.dp))
@@ -345,13 +374,15 @@ internal fun CustomerLocationPickerScreen(
             onClick = {
                 selected?.let { onSave(it.copy(address = draftAddress.trim())) }
             },
-            enabled = !busy && selected != null && draftAddress.isNotBlank(),
+            enabled = !busy && selected != null &&
+                (if (rideStop != null) draftAddress.trim().length >= 3 else draftAddress.isNotBlank()),
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(15.dp),
             colors = ButtonDefaults.buttonColors(containerColor = QgRed)
         ) {
             if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            else Text("บันทึกที่อยู่นี้", fontWeight = FontWeight.ExtraBold)
+            else Text(if (rideStop != null) "ใช้จุดนี้" else "บันทึกที่อยู่นี้",
+                fontWeight = FontWeight.ExtraBold)
         }
         Spacer(Modifier.height(26.dp))
     }

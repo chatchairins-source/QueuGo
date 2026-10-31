@@ -18,7 +18,7 @@ android {
 }
 
 dependencies {
-    implementation("org.maplibre.gl:android-sdk-opengl:13.5.3")
+    implementation("org.maplibre.gl:android-sdk-opengl:13.7.1")
     implementation("androidx.work:work-runtime:2.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

@@ -17,7 +17,8 @@ android {
         versionCode = providers.environmentVariable("QG_CUSTOMER_VERSION_CODE").orNull?.toInt() ?: 3
         versionName = providers.environmentVariable("QG_NATIVE_VERSION_NAME").orNull ?: "0.3.0-visual-blueprint"
         manifestPlaceholders["queuegoMapServiceBaseUrl"] =
-            providers.environmentVariable("QG_MAP_SERVICE_BASE_URL").orNull ?: ""
+            providers.environmentVariable("QG_MAP_SERVICE_BASE_URL").orNull
+                ?.takeIf { it.isNotBlank() } ?: "https://queuego-map-buriram.onrender.com"
     }
     buildFeatures { compose = true }
     compileOptions {

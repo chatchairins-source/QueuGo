@@ -18,7 +18,7 @@ const localRoadCoverageAudit=fs.readFileSync('native-android/rider-maplibre-osm/
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
-assert(build.includes('org.maplibre.gl:android-sdk-opengl:13.5.3'),'MapLibre OSM module must pin the stable OpenGL MapLibre artifact');
+assert(build.includes('org.maplibre.gl:android-sdk-opengl:13.7.1'),'MapLibre OSM module must pin the stable OpenGL MapLibre artifact');
 assert(!riderBuild.includes('project(":rider-maplibre-osm")'),'MapLibre OSM module must remain isolated from Rider Home until its runtime/performance gate passes');
 
 for(const kind of ['residential','unclassified','living_street','service']){

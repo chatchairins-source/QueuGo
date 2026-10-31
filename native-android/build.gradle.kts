@@ -8,8 +8,9 @@ plugins {
 }
 
 // One source identity and timestamp for Customer/Merchant/Rider from this build.
-val nativeSourceSha = providers.environmentVariable("GITHUB_SHA").orNull
-    ?: providers.exec { workingDir(rootDir); commandLine("git", "rev-parse", "HEAD") }
+// PR events may expose a synthetic merge SHA even when checkout pins the branch HEAD.
+// Embed the source actually compiled, never the surrounding workflow event identity.
+val nativeSourceSha = providers.exec { workingDir(rootDir); commandLine("git", "rev-parse", "HEAD") }
         .standardOutput.asText.get().trim()
 require(nativeSourceSha.matches(Regex("[0-9a-fA-F]{40}"))) { "An exact Git SHA is required" }
 val nativeBuiltUtc = java.time.Instant.now().toString()
@@ -31,6 +32,10 @@ val verifyNativeReleaseGate = tasks.register<Exec>("verifyNativeReleaseGate") {
 subprojects {
     pluginManager.withPlugin("com.android.application") {
         extensions.configure<ApplicationExtension> {
+            // PMTiles uses random byte-range reads from the APK. Compressing a
+            // nationwide archive would require inflating it to serve tile reads.
+            androidResources.noCompress += "pmtiles"
+            androidResources.ignoreAssetsPatterns += ".*"
             buildFeatures.buildConfig = true
             defaultConfig {
                 buildConfigField("String", "GIT_SHA", "\"$nativeSourceSha\"")

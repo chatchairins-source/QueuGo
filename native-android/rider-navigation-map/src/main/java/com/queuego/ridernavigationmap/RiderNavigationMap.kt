@@ -4,6 +4,7 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.view.MotionEvent
 import android.view.View
+import android.os.SystemClock
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.LinearInterpolator
@@ -225,6 +226,10 @@ private class RiderNavigationMapHolder {
     private var touchDownY = 0f
     private var gestureReported = false
     private var multiTouchGesture = false
+    private var transformGestureActive = false
+    private var touchGestureSequence = 0L
+    private var manualFollowZoom: Double? = null
+    private var manualZoomUntilElapsed = 0L
     private var touchSlop = 8f
 
     fun resetNorth() {
@@ -289,25 +294,21 @@ private class RiderNavigationMapHolder {
                         touchDownY = event.y
                         gestureReported = false
                         multiTouchGesture = false
+                        transformGestureActive = false
+                        touchGestureSequence += 1
                     }
                     MotionEvent.ACTION_POINTER_DOWN -> {
-                        // A two-finger transform must own the camera until the rider
-                        // finishes interacting. FOLLOW may resume after idle timeout.
+                        // Match QueueGo Web: two fingers transform the camera without
+                        // releasing FOLLOW. Only a one-finger pan enters FREE_PAN.
                         if (event.pointerCount >= 2) {
                             multiTouchGesture = true
-                            if (!gestureReported) {
-                                gestureReported = true
-                                onUserGesture()
-                            }
+                            transformGestureActive = true
                         }
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        if (event.pointerCount >= 2) {
+                        if (navigationTouchOwnsFollow(event.pointerCount, multiTouchGesture)) {
                             multiTouchGesture = true
-                            if (!gestureReported) {
-                                gestureReported = true
-                                onUserGesture()
-                            }
+                            transformGestureActive = true
                         } else if (
                             !multiTouchGesture &&
                             !gestureReported &&
@@ -322,9 +323,30 @@ private class RiderNavigationMapHolder {
                     }
                     MotionEvent.ACTION_UP,
                     MotionEvent.ACTION_CANCEL -> {
-                        // Start the idle timer after fingers are lifted, not when the
-                        // gesture began, so a long pinch/rotate is never cut short.
-                        if (gestureReported) onUserGesture()
+                        if (gestureReported) {
+                            // Only a one-finger pan suspends FOLLOW for eight seconds.
+                            transformGestureActive = false
+                            onUserGesture()
+                        } else if (multiTouchGesture) {
+                            // Preserve the Rider's pinch zoom for the same twelve-second
+                            // window as QueueGo Web. Release the transform only after
+                            // MapLibre finishes processing the touch-up event.
+                            val sequence = touchGestureSequence
+                            mapView.postDelayed({
+                                if (!disposed && view === mapView && sequence == touchGestureSequence) {
+                                    // Read after SDK touch-up, not before its gesture frame.
+                                    val currentZoom = map?.cameraPosition?.zoom
+                                    if (lastState.followRider && currentZoom != null && currentZoom.isFinite()) {
+                                        manualFollowZoom = currentZoom.coerceIn(4.0, 20.0)
+                                        manualZoomUntilElapsed = SystemClock.elapsedRealtime() + NAVIGATION_MANUAL_ZOOM_HOLD_MS
+                                    }
+                                    transformGestureActive = false
+                                    if (lastState.followRider) {
+                                        map?.let { renderCamera(it, lastState, force = true) }
+                                    }
+                                }
+                            }, NAVIGATION_TRANSFORM_REANCHOR_MS)
+                        }
                         gestureReported = false
                         multiTouchGesture = false
                     }
@@ -806,6 +828,8 @@ private class RiderNavigationMapHolder {
         state: RiderNavigationMapState,
         force: Boolean
     ) {
+        // Do not steal a pinch/rotation from the Rider while fingers are down.
+        if (transformGestureActive) return
         if (state.viewMode == NavigationViewMode.OVERVIEW) {
             val bounds = navigationOverviewBounds(state) ?: return
             val viewWidth = view?.width?.coerceAtLeast(1) ?: 1
@@ -844,6 +868,10 @@ private class RiderNavigationMapHolder {
         // before this holder had an SDK map. Consume only after scheduling real motion.
         val explicitRecenter = state.recenterRequest > 0 &&
             state.recenterRequest != lastAppliedRecenterRequest
+        if (explicitRecenter) {
+            manualFollowZoom = null
+            manualZoomUntilElapsed = 0L
+        }
         if (!state.followRider && !explicitRecenter) return
         val renderedBearing = activeMap.cameraPosition.bearing.toFloat()
         // The route-aware camera decision already blends the matched road course,
@@ -851,6 +879,9 @@ private class RiderNavigationMapHolder {
         // raw puck heading or active turns will point the camera off-route.
         val decision = navigationCameraDecision(state, renderedBearing) ?: return
         val targetBearing = decision.bearingDegrees ?: renderedBearing
+        val targetZoom = manualFollowZoom?.takeIf {
+            SystemClock.elapsedRealtime() < manualZoomUntilElapsed
+        } ?: decision.zoom
         // Web FOLLOW anchors the camera on the exact presentation puck, then shifts that
         // anchor down the viewport according to speed and the bottom dock. Do the same here
         // instead of centering the route look-ahead point as a separate Native policy.
@@ -870,7 +901,7 @@ private class RiderNavigationMapHolder {
             decision.tiltDegrees
         )
         val zoomChanged = lastCameraZoom == null ||
-            abs(lastCameraZoom!! - decision.zoom) >= 0.05
+            abs(lastCameraZoom!! - targetZoom) >= 0.05
         if (
             !force && !explicitRecenter &&
             !pointChanged && !bearingChanged && !tiltChanged && !zoomChanged
@@ -892,7 +923,7 @@ private class RiderNavigationMapHolder {
             CameraUpdateFactory.newCameraPosition(
                 CameraPosition.Builder()
                     .target(LatLng(cameraCenter.latitude, cameraCenter.longitude))
-                    .zoom(decision.zoom)
+                    .zoom(targetZoom)
                     .bearing(targetBearing.toDouble())
                     .tilt(decision.tiltDegrees.toDouble())
                     .padding(
@@ -909,7 +940,7 @@ private class RiderNavigationMapHolder {
         lastCameraPoint = cameraCenter
         lastCameraBearing = targetBearing
         lastCameraTilt = decision.tiltDegrees
-        lastCameraZoom = decision.zoom
+        lastCameraZoom = targetZoom
     }
 
     private fun publishCamera() {
@@ -967,6 +998,10 @@ private class RiderNavigationMapHolder {
         lastDemandSignature = null
         lastRenderedRiderFix = null
         lastCameraZoom = null
+        transformGestureActive = false
+        multiTouchGesture = false
+        manualFollowZoom = null
+        manualZoomUntilElapsed = 0L
     }
 
     fun dispose() {
