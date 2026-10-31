@@ -1,3 +1,11 @@
+## 2026-10-31 Third narrow RPC remediation — Laundry owner contacts
+
+- Owner-authorized native_laundry_owned_shop_contacts applies ONLY queuego_laundry_shop_contacts(uuid) function+grants from existing QueueGo-Laundry-Shop-Transport.sql. Fresh live absence/dependency and current helper definitions reviewed first. Exact snippet12/0 isolated checks: owner active work only; cross-shop/hub/customer/anonymous/no-subject/terminal/suspended/archived/inactive denial; replay and no broad table read. No Laundry state/pricing/payment/action functions replaced.
+- Live definition/ACL readback matches, authenticated EXECUTE true / anon false. Expanded catalog now162 checked,151 ordinary authenticated-accessible functions,11 missing (initial14). Summary/source/test/deployment evidence:docs/qa/native-rpc-remediation-20261031.json. Existing previous snapshots are historical, not current missing counts.
+- a9968059 exact-checkout hosted PostgreSQL17.11 catalog regression job124491799462 in Native Pilot41185586082 SUCCESS; actual logs inspected. Full Native Pilot still running at checkpoint. Local catalog semantics also pass on PGlite but are not substituted for server evidence.
+- Local full npm first run failed the existing clean-source assertion because an independent untracked test was added during execution; never weakened the gate. Clean isolated worktree rerun in progress. Worktree initial asset symlink caused a source scanner EISDIR; replaced with actual files and restarted. Do not claim full regression PASS until final process exit.
+- Next: exact new-head full CI, remaining11 RPC dependency/financial/role reconciliation, real authenticated/device order/recovery evidence. Proof23 + dispatch20 + contact12 isolated checks are not Production E2E certification. No Web publication, Android merge or APK release.
+
 ## 2026-10-31 Owner-authorized narrow Rider RPC remediation — deployed, acceptance still open
 
 - Owner explicitly authorized all necessary continuation actions in the current conversation, superseding the earlier approval restriction. Applied only two previously absent RPCs; no old migration chain replay, no service activation or user/order/payment/proof data changes.
