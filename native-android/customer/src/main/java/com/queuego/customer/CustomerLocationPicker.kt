@@ -117,10 +117,10 @@ internal fun CustomerLocationPickerScreen(
             try {
                 lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
                 val point = if (readGps != null) readGps() else {
-                    val cached = lastKnownLocation(context)?.takeIf { validCustomerPoint(it.first, it.second) }
-                    val position = if (cached == null) customerRegistrationLocation(context) else null
-                    cached?.let { CustomerLocation(it.first, it.second, "") }
-                        ?: position?.let { CustomerLocation(it.latitude, it.longitude, "") }
+                    // A last-known fix may be hours old and must not silently become
+                    // a new delivery/ride pickup. Wait for a fresh provider update.
+                    val position = customerRegistrationLocation(context)
+                    CustomerLocation(position.latitude, position.longitude, "")
                 }
                 lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
                 if (point == null || !validCustomerPoint(point.latitude, point.longitude)) {

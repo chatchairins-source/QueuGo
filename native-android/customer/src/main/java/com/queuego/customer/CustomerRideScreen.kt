@@ -153,10 +153,9 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             // Use the same Android location providers as the existing QueueGo
             // address picker. Never fabricate coordinates or preselect a stop.
             val coordinates = withContext(Dispatchers.IO) {
-                val cached = lastKnownLocation(context)?.takeIf {
-                    QgMapPoint(it.first, it.second, 0).valid
-                }
-                cached ?: customerRegistrationLocation(context)?.let {
+                // Never treat a stale last-known coordinate as the current
+                // passenger pickup. The live provider has a bounded timeout.
+                customerRegistrationLocation(context).let {
                     it.latitude to it.longitude
                 }
             }
