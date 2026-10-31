@@ -188,6 +188,12 @@ jobs:
         run: node tests/native-voice-background.cjs
       - name: Native backend migration mirror
         run: node tests/native-backend-migration-sync.cjs
+      - name: Native Production RPC contract preflight (read-only generator)
+        run: |
+          python3 native-android/qa/test-native-rpc-production-preflight.py
+          python3 native-android/qa/native-rpc-production-preflight.py --sql > "$RUNNER_TEMP/queuego-native-rpc-readonly.sql"
+          grep -q 'pg_catalog.pg_proc' "$RUNNER_TEMP/queuego-native-rpc-readonly.sql"
+          echo "Production RPC live check remains a separate Release Gate; no database credentials used here."
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
