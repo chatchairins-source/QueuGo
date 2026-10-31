@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -680,6 +681,11 @@ private fun MerchantShell(
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(
+        // Production .qgm-shell is centered at 620px, while the separate POS
+        // workspace uses its own 1440px maximum. Keep the voice overlay global.
+        modifier = Modifier.align(Alignment.TopCenter)
+            .widthIn(max = if (screen == "pos") 1440.dp else 620.dp)
+            .fillMaxSize(),
         containerColor = QgBg,
         bottomBar = {
             if (screen in setOf("home", "orders", "products", "promotions", "profile")) {

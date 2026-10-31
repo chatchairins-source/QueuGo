@@ -1,5 +1,12 @@
-Warning: truncated output (original token count: 117066)
-Total output lines: 2363
+Warning: truncated output (original token count: 117381)
+Total output lines: 2370
+
+## 2026-10-31 Real tablet comparison — centered Merchant shell correction
+
+- Inspected actual Production tablet-home.png (1067 CSS px) from 13025851356 against Native tablet-back-blocker.png from 13026266754 (1600px/density240). Web content is centered at 620px; Native primary content incorrectly fills the entire tablet while only bottom navigation is bounded.
+- Verified final served-source CSS: merchant/index.html .qgm-shell max-width:620px;margin:0 auto and existing .qgm-content max-width620. Existing separate POS CSS has max-width1440px. Constrain the existing Scaffold to centered 620dp for ordinary Merchant routes and 1440dp for POS. Keep phone fill, route/session state, every callback and full-screen voice overlay unchanged.
+- This is a confirmed Compose layout fix from actual images, not a new design or duplicate shell. Source contracts/title/policy and exact-head Kotlin build/phone-tablet after-images remain required. Dashboard stat-card composition/colors and remaining form/content mismatches are still OPEN.
+- Parent 30a9596a preserves the stale-XML/heartbeat QA corrections; current parent tests/build are in progress. Do not claim APKs from older source match this layout revision. No backend/schema/business writes or deployment.
 
 ## 2026-10-31 After-image confirms POS header; stale hierarchy/session heartbeat recovery
 
@@ -998,15 +1005,7 @@ Total output lines: 2363
 ## 2026-10-13 owner banner correction: black shirt, red Q, bright full image
 - Latest explicit owner instruction: every depicted person wears a BLACK COLLARED SHIRT with a RED QueueGo Q on the chest. No white shirt or apron. The intermediate black-Q instruction was superseded by the explicit red-Q correction. Keep original category icon buttons.
 - Owner rejects dark/black left panels or strips. New artwork fills the entire banner with a bright shop and relevant merchandise. Existing UI text uses a light translucent wash and dark type; remove the old black gradient. Apply the same photo bytes and presentation to Web and Native Customer for Laundry, Shopping and all Shopping modes.
-- Web baseline503791f; preserve latest Native Rider manual-pan successor4acbcda. Native prior a07b8a0/Pilot38412835929 SUCCESS and APK artifact11822963430 ZIPsha2563d5522a362876bede047251773f1be4458d6c1f5c3866e43ffe5f914a62652a1 verified, but its dark/white-shirt artwork is superseded by this correction. New exact-head regression/build/runtime/publication remains required. Physical/authenticated Release Gate stays OPEN; no release APK/AAB delivery.
-
-## 2026-10-13 complete Customer category banner artwork
-- Owner requests matching Web/Native Android banners for Laundry, Shopping and every Shopping mode, while retaining the original category icon buttons. Continue Web31a4187 and Native56371ee; preserve Rider map/lifecycle/sequencing fixes and all unrelated successors.
-- Existing shopping sprite is not a decodable WebP in the repository. Replace its use with individually verified WebP files: shopping/mobile/computer/automotive/fashion/toys/home and laundry, all under50KiB. Automotive car/motorcycle use the automotive family image. Artwork is category illustration, never a substituted real store/product photo.
-- Both versions use identical image bytes; managed Admin banners/hide/link settings retained, bundled image remains visible while a remote banner loads/fails. Images belong in banners; category icons unchanged. No order/payment/state/backend changes. Source/CI and live publication checks pending; Native physical Release Gate stays OPEN.
-
-## 2026-10-13 owner road-display extension
-- Owner explicitly adds dark red …17066 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
+- Web baseline503791f; preserve latest Native Rider manual-pan successor4acbcda. Native prior a07b8a0/Pilot38412835929 SUCCESS and APK artifact11822963430 ZIPsha2563d5522a362876bede047251773f1be4458d6c1f5c3866e43ffe5f914a62652a1 verified, but its dark/white-shirt artwork is super…17381 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
 - Existing `qg_admin_update_location` remains authoritative with expected old coordinates, audit and retry behavior. Existing order coordinates and financial state transitions are untouched.
 - Native prompts were replaced by labelled dialog forms for reasons, market radius and vehicle capacity. Tests cover validation, account races, map failure and retry payloads.
 - Automated regression passes do not certify physical mobile GPS, live map tiles or real account approval. Local browser installation was blocked by the browser download returning HTML rather than a browser archive; do not claim visual browser/device certification from automated DOM tests.

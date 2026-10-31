@@ -1,3 +1,10 @@
+## 2026-10-31 Real tablet comparison — centered Merchant shell correction
+
+- Inspected actual Production tablet-home.png (1067 CSS px) from 13025851356 against Native tablet-back-blocker.png from 13026266754 (1600px/density240). Web content is centered at 620px; Native primary content incorrectly fills the entire tablet while only bottom navigation is bounded.
+- Verified final served-source CSS: merchant/index.html .qgm-shell max-width:620px;margin:0 auto and existing .qgm-content max-width620. Existing separate POS CSS has max-width1440px. Constrain the existing Scaffold to centered 620dp for ordinary Merchant routes and 1440dp for POS. Keep phone fill, route/session state, every callback and full-screen voice overlay unchanged.
+- This is a confirmed Compose layout fix from actual images, not a new design or duplicate shell. Source contracts/title/policy and exact-head Kotlin build/phone-tablet after-images remain required. Dashboard stat-card composition/colors and remaining form/content mismatches are still OPEN.
+- Parent 30a9596a preserves the stale-XML/heartbeat QA corrections; current parent tests/build are in progress. Do not claim APKs from older source match this layout revision. No backend/schema/business writes or deployment.
+
 ## 2026-10-31 After-image confirms POS header; stale hierarchy/session heartbeat recovery
 
 - Current app-code source `0e75d6f92b0a464dbccde356894b9049afa75bce`: clean local full npm test EXIT 0, including pre/posttest. Actual authenticated phone POS after-image from run 41156854297 / artifact 13026266754 confirms centered Q/QueueGo/context header and compact back/reload controls. Remaining counter form/table/default/product layout differences are NOT certified.
