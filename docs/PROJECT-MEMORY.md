@@ -1,3 +1,9 @@
+## 2026-10-31 Isolated PostgreSQL catalog regression added
+
+- Add an independent rpc-catalog-regression Native Pilot job using the repository existing digest-pinned PostgreSQL image and exact PR head checkout. No Supabase credentials. The loopback-only database name guard refuses any other database before fixture DDL.
+- Execute the actual Python-generated SQL against an ordinary function, denied EXECUTE, private-only name, procedure, aggregate, window function, absent name, and schema USAGE revocation. Fixture DDL is transactionally rolled back; there are no Production schema changes. SQL behavior acceptance requires this hosted job to pass; local machine lacks PostgreSQL.
+- Local JS syntax, 10 Python tests and diff check PASS. Do not call this PostgreSQL integration PASS before hosted results. Existing full Native Pilot gates are retained.
+
 ## 2026-10-31 Expanded Native RPC coverage — 14 missing, not only eight
 
 - Found a second preflight defect: fixed four-file inventory omitted other Native screens, Shared Auth/POS APIs and rpcArray offer reads. Scan all module src/main Kotlin sources and both literal rpc/rpcArray wrappers; exclude src/test. New fixture regression covers shared Auth, additional screens, array wrappers and test-source exclusion. 10 tests PASS.
