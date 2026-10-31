@@ -56,6 +56,29 @@ def wait(pred, seconds=75):
         time.sleep(1)
     return []
 
+def rider_tab_ready(ns, label):
+    # Bottom navigation labels persist on all tabs. Require actual page
+    # content before recording a screenshot as authenticated visual evidence.
+    visible = {n.get("text", "").strip() for n in ns if rect(n)}
+    if label == "ข้อความ":
+        # A loading spinner or API error is not a successfully rendered inbox.
+        return "ยังไม่มีการสนทนา" in visible or any(
+            text.startswith("ออเดอร์ ") for text in visible
+        )
+    if label == "รายได้":
+        # The period controls alone can appear while data is still loading.
+        return {"วันนี้", "7 วัน", "30 วัน", "รายได้จากค่าส่ง"}.issubset(visible)
+    if label == "โปรไฟล์":
+        return "รูปแบบและประเภทงาน" in visible
+    raise ValueError("Unknown Rider tab")
+
+def capture_rider_tab(label, name, screen):
+    tap_label(nodes(), label)
+    ready = wait(lambda xs: rider_tab_ready(xs, label), 60)
+    assert ready, "Rider tab content did not render: " + label
+    time.sleep(1)
+    screens.append({"screen": screen, **shot(name)})
+
 def tap_label(ns,label):
     choices=[n for n in ns if n.get("text","").strip()==label and rect(n)]
     assert choices, "Rider tab missing: "+label
@@ -182,12 +205,8 @@ def main():
     if not ns: raise SystemExit("Rider Home content did not become ready; no loading screenshot was saved")
     global screens
     screens=[{"screen":"home_map",**shot("01-home-map")}]
-    tap_label(nodes(),"ข้อความ")
-    time.sleep(4)
-    screens.append({"screen":"messages_chat",**shot("02-messages-chat")})
-    tap_label(nodes(),"รายได้")
-    time.sleep(4)
-    screens.append({"screen":"earnings_today",**shot("04-earnings-today")})
+    capture_rider_tab("ข้อความ", "02-messages-chat", "messages_chat")
+    capture_rider_tab("รายได้", "04-earnings-today", "earnings_today")
     for label,name in (("7 วัน","05-earnings-7-days"),("30 วัน","06-earnings-30-days")):
         ns=nodes()
         if any(n.get("text","").strip()==label and rect(n) for n in ns):
@@ -197,9 +216,7 @@ def main():
     if any(n.get("text","").strip()=="วันนี้" and rect(n) for n in nodes()):
         tap_label(nodes(),"วันนี้")
 
-    tap_label(nodes(),"โปรไฟล์")
-    time.sleep(3)
-    screens.append({"screen":"profile",**shot("07-profile")})
+    capture_rider_tab("โปรไฟล์", "07-profile", "profile")
     # Capture the Web-backed general work toggle separately from the collapsed
     # native-only tools so authenticated review covers the current Rider surface.
     laundry_profile=scroll_to_text("รับงานฝากซัก")
