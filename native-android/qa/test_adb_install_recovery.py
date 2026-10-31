@@ -33,6 +33,21 @@ class EmulatorInstallRecoveryTests(unittest.TestCase):
         ):
             self.assertIn(call, source)
 
+    def test_authenticated_review_installs_are_fail_closed(self):
+        # Both secret-backed screenshot flows must install the exact APK with
+        # bounded transport recovery and a verified package, not streamed adb.
+        for role in ("rider", "merchant"):
+            with self.subTest(role=role):
+                source = Path(__file__).with_name(
+                    f"capture-{role}-authenticated-review.py"
+                ).read_text(encoding="utf-8")
+                self.assertIn(
+                    "from adb_install_recovery import install_verified_apk", source
+                )
+                self.assertEqual(source.count("install_verified_apk(ADB, apk, PKG)"), 1)
+                self.assertNotIn('run(["install"', source)
+                self.assertNotIn('ADB+["install"', source)
+
     def test_verified_non_streaming_install(self):
         invoke = Mock(side_effect=[result(out="Success\n"), result(out="package:/data/app/rider/base.apk\n")])
         install_verified_apk(["adb", "-s", "emulator-5554"], "/tmp/rider.apk",
