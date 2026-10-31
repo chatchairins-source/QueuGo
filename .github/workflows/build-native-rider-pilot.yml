@@ -2,6 +2,14 @@ name: QueueGo Native Android Pilot
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      bundle_country:
+        type: boolean
+        default: false
+    secrets:
+      QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:
+        required: false
   pull_request:
     branches:
       - 'work-native-**'
@@ -96,7 +104,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: queuego-native-${{ github.ref }}
+  group: queuego-native-${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: false
 
 # Pilot APKs use the already deployed QueueGo Map endpoint used by the Customer
@@ -107,9 +115,11 @@ env:
 jobs:
   native-pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -185,7 +195,7 @@ jobs:
       - name: Verify Production category banner assets
         run: node tests/native-category-assets.cjs
       - name: Build and bundle pinned nationwide offline map
-        if: ${{ startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') }}
+        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') }}
         env:
           QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
           QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261029.osm.pbf
@@ -219,7 +229,7 @@ jobs:
       - name: Verify installed Thailand APK assets
         if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
         run: |
-          python3 native-android/qa/verify-bundled-thailand-apks.py --source-sha "$GITHUB_SHA" \
+          python3 native-android/qa/verify-bundled-thailand-apks.py --source-sha "$(git rev-parse HEAD)" \
             native-android/customer/build/outputs/apk/debug/customer-debug.apk \
             native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
             native-android/rider/build/outputs/apk/debug/rider-debug.apk
@@ -267,6 +277,37 @@ jobs:
             artifacts/rider-navigation-map-runtime/
             native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
           if-no-files-found: warn
+      - name: Export freshly built role APKs after runtime gates
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/role-export
+          python3 native-android/qa/verify-bundled-thailand-apks.py --source-sha "$(git rev-parse HEAD)" \
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/role-export/APK-MANIFEST.json
+          python3 native-android/qa/export-role-apks.py artifacts/role-export/APK-MANIFEST.json artifacts/role-export
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-tested-customer-apk
+          path: artifacts/role-export/customer/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-tested-merchant-apk
+          path: artifacts/role-export/merchant/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-tested-rider-apk
+          path: artifacts/role-export/rider/
+          compression-level: 0
+          if-no-files-found: error
       # Mission 2026-10-10: incomplete builds and evidence remain internal.
       # Public APK/AAB delivery requires the full three-role Release Gate.
 

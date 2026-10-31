@@ -1,3 +1,13 @@
+## 2026-10-31 Exact-HEAD role APK export correction — IN PROGRESS
+
+- Fresh remote check: main `7e036a0735cc49905e9b0a2434492470551a0c9d`; PR #736 remains draft/unmerged at parent `b580a65b760160ef67596e689a1310fa55f6d693`. Preserve PR #735/POS and all existing successor work.
+- Current source already attaches QG_OFFLINE_MAP_ASSETS only to Rider. Customer/Merchant stream the Web OSM basemap. No application rewrite was necessary for role separation in this chunk.
+- Removed historical run 41029740374 / 7c5b6195 APK redistribution and fixed eight-piece assumptions from the export workflow. Export now calls the existing Native Pilot workflow at this revision, with nationwide data mandatory. Checkout explicitly uses the event's exact PR head or push SHA; validation reads the actual checkout SHA. Workflow concurrency includes its caller name to avoid reusable-workflow self-deadlock. Raised the 35-minute job budget to 75 for build plus real emulator gates.
+- After all runtime steps succeed, rerun actual APK map/DEX validation, verify file bytes and SHA again, and export one Debug APK per role with TESTED-SOURCE.json and SHA256SUMS. Metadata explicitly retains authenticated_e2e=false / physical_device=false / production_certified=false. Customer/Merchant must contain no maps assets; Rider must contain the matching stored archive and manifest.
+- Local source contracts 471/0, Actions pinning 106/0 and integration predicates 76/0 PASS; Python compilation and diff checks PASS. Full npm regression started, but pinned web-asset network fetch remains pending. No new hosted CI success or APK size is claimed before the new commit's run completes.
+- Read-only Production Security Advisor fetched: 32 RLS/no-policy INFO, 10 anon definer WARN, 186 authenticated definer WARN, leaked-password protection disabled WARN. These are review findings, not proven vulnerabilities; no blanket permission changes or Production writes were made. Existing allowlist/authorization review must be checked before any change.
+- Current machine lacks Android SDK, adb, Gradle and physical hardware; use the existing hosted CI for builds/instrumentation. All screenshot parity, authenticated full-order/cashier E2E, nationwide offline routing graph, physical GPS/printer/push and release signing gates remain OPEN. Existing PMTiles proves map data presence only, not offline route calculation.
+
 ## 2026-10-30 Native POS tabs — correct final CSS cascade (IN PROGRESS)
 
 - Successor parent `e82ae91604de1c9a30437cbeb85ca683f0e49184` retains all UI and financial safety work, and serialises the existing shared-account visual review with real Thai fonts.
