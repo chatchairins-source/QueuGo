@@ -448,11 +448,17 @@ def probe_customer_draft_restore():
         run(adb + ["shell", "input", "keyevent", "4"])
         run(adb + ["shell", "input", "swipe", "540", "1730", "540", "1120", "350"])
         def selected_and_editable(ns):
-            return any(n.get("text") == expected_address for n in ns) and any(
+            # A real reverse geocoder can populate the address *before* the
+            # manually typed note, so match the note and persist exact current
+            # field content instead of inventing a fixed address response.
+            return any(n.get("class") == "android.widget.EditText" and
+                       expected_address in n.get("text", "") for n in ns) and any(
                 n.get("text") == "บันทึกที่อยู่นี้" and n.get("enabled") == "true"
                 for n in ns)
         nodes = wait_ui(directory / "draft.xml", selected_and_editable, timeout_seconds=40)
-        address = expected_address
+        address = next(n.get("text") for n in nodes
+                       if n.get("class") == "android.widget.EditText"
+                       and expected_address in n.get("text", ""))
         old_pids = package_pids(pkg)
         run(adb + ["shell", "input", "keyevent", "3"])
         time.sleep(1)
