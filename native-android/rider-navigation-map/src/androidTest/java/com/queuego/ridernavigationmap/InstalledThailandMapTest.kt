@@ -47,6 +47,9 @@ class InstalledThailandMapTest {
             lateinit var activity: NavigationMapRuntimeActivity
             scenario.onActivity { activity = it }
             assertTrue("Installed archive style failed", activity.mapReady.await(45, TimeUnit.SECONDS))
+            // Register before moving between cities so glyph events are attributable
+            // to this offline country run, not to earlier style initialization.
+            scenario.onActivity { it.installOfflineGlyphDiagnostics() }
             val locations = listOf(
                 Triple("bangkok", 13.7563, 100.5018),
                 Triple("buriram", 14.993, 103.1039),
@@ -159,6 +162,11 @@ class InstalledThailandMapTest {
                 // A symbol may enter the rendered-feature index before its fade-in
                 // reaches visible opacity. Retain the settled frame as evidence.
                 if (name == "bangkok" && paintedLabels > 0) Thread.sleep(5_000)
+                if (name == "bangkok") {
+                    scenario.onActivity {
+                        Log.i("QueueGoGlyphQA", "bangkok " + it.offlineGlyphDiagnosticSummary())
+                    }
+                }
                 val directory = File(context.getExternalFilesDir(null), "offline-map-evidence").apply { mkdirs() }
                 val screenshot = File(directory, "$name.png")
                 screenshot.outputStream().use {
