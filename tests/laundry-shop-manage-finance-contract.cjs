@@ -30,7 +30,7 @@ const id = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
     await db.exec('set role authenticated');
   };
   const state = async orderId => (await db.query(
-    'select status,gp_rate_snapshot,platform_fee_amount,shop_net_amount,final_amount,final_total_amount from laundry_orders where id=$1',
+    'select status,gp_rate_snapshot::float8 as gp_rate_snapshot,platform_fee_amount::float8 as platform_fee_amount,shop_net_amount::float8 as shop_net_amount,final_amount::float8 as final_amount,final_total_amount::float8 as final_total_amount from laundry_orders where id=$1',
     [id(orderId)]
   )).rows[0];
   const counts = async () => {
