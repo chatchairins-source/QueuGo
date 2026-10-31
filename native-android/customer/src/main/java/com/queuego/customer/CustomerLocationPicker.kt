@@ -149,7 +149,7 @@ internal fun CustomerLocationPickerScreen(
         }
     }
 
-    LaunchedEffect(mapReady, rideStop, location) {
+    LaunchedEffect(mapReady) {
         // Web Ride only auto-locates an empty pickup. A destination must stay
         // unselected even when the pickup is used to center its viewport.
         if (rideDestination || ridePickup && location != null) return@LaunchedEffect
