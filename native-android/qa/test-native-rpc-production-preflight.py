@@ -3,6 +3,7 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import tempfile
 
 TARGET = Path(__file__).with_name("native-rpc-production-preflight.py")
 SPEC = importlib.util.spec_from_file_location("qg_rpc_preflight", TARGET)
@@ -21,9 +22,29 @@ class ReadOnlyProductionRpcPreflightTest(unittest.TestCase):
             "qg_rider_proof_committed",
             "qg_rider_submit_public_license",
             "qg_customer_cancel_order",
+            "qg_get_my_rider_offer",
+            "pos_save_tax_settings",
+            "queuego_request_express",
         ):
             self.assertIn(expected, names)
         self.assertGreaterEqual(len(names), 85)
+
+    def test_all_main_sources_and_array_wrapper_are_audited(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for filename, call in (
+                ("shared/src/main/java/Auth.kt", 'rpc("qg_auth", token, body)'),
+                ("rider/src/main/java/Offers.kt", 'rpcArray("qg_offer", token)'),
+                ("customer/src/main/java/Screen.kt", 'http.rpc("qg_screen", token)'),
+                ("rider/src/test/java/Fixture.kt", 'rpc("qg_test_only", token)'),
+            ):
+                target = root / "native-android" / filename
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(call, encoding="utf-8")
+            refs = preflight.required_rpcs(root)
+            self.assertEqual(set(refs), {"qg_auth", "qg_offer", "qg_screen"})
+            self.assertEqual(refs["qg_auth"],
+                             ["native-android/shared/src/main/java/Auth.kt"])
 
     def test_sql_only_reads_catalog(self):
         text = preflight.sql_query(["qg_b", "qg_a", "qg_b"])
