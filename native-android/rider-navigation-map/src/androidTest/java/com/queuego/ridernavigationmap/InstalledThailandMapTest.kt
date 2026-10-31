@@ -2,6 +2,10 @@ package com.queuego.ridernavigationmap
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.util.Log
+import org.json.JSONArray
+import org.json.JSONObject
+import java.security.MessageDigest
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
@@ -84,6 +88,63 @@ class InstalledThailandMapTest {
                         } }
                         Thread.sleep(200)
                     }
+                }
+                if (name == "bangkok") {
+                    // Public map data only: no sessions, user UI, routes or contact data.
+                    val manifest = JSONObject(context.assets.open("fonts/provenance.json").bufferedReader().use { it.readText() })
+                    for (range in listOf("0-255", "3584-3839")) {
+                        val relative = "Noto Sans Regular/$range.pbf"
+                        val bytes = context.assets.open("fonts/$relative").use { it.readBytes() }
+                        val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+                            .joinToString("") { "%02x".format(it.toInt() and 255) }
+                        Log.i("QueueGoLabelQA", JSONObject().put("font", relative)
+                            .put("bytes", bytes.size).put("sha256", digest).toString())
+                        assertTrue("Packaged label glyph block is empty: $range", bytes.isNotEmpty())
+                        assertEquals("Packaged glyph differs from provenance: $range",
+                            manifest.getJSONObject("files").getString(relative), digest)
+                    }
+                    scenario.onActivity { it.inspectMap { map ->
+                        val styleJson = JSONObject(requireNotNull(map.style).json)
+                        Log.i("QueueGoLabelQA", JSONObject().put("diagnostic_only", true)
+                            .put("visual_label_acceptance", false).put("glyphs", styleJson.optString("glyphs"))
+                            .put("zoom", map.cameraPosition.zoom).put("pitch", map.cameraPosition.tilt)
+                            .put("bearing", map.cameraPosition.bearing).put("indexed_labels", paintedLabels).toString())
+                        val layers = styleJson.optJSONArray("layers") ?: JSONArray()
+                        for (index in 0 until layers.length()) {
+                            val layer = layers.getJSONObject(index)
+                            if (layer.optString("id").startsWith("queuego-label-")) {
+                                Log.i("QueueGoLabelQA", JSONObject().put("layer", layer.optString("id"))
+                                    .put("source_layer", layer.optString("source-layer"))
+                                    .put("layout", layer.optJSONObject("layout") ?: JSONObject())
+                                    .put("paint", layer.optJSONObject("paint") ?: JSONObject()).toString())
+                            }
+                        }
+                        // getJson may omit layers added through the native builder.
+                        // Read the actual installed layers rather than infer their properties.
+                        for (id in listOf("street_labels", "place_labels", "pois")) {
+                            val layer = map.style?.getLayer("queuego-label-$id")
+                                as? org.maplibre.android.style.layers.SymbolLayer
+                            Log.i("QueueGoLabelQA", JSONObject().put("live_layer", id)
+                                .put("present", layer != null)
+                                .put("text_field", layer?.textField.toString())
+                                .put("text_font", layer?.textFont.toString())
+                                .put("text_opacity", layer?.textOpacity.toString())
+                                .put("visibility", layer?.visibility.toString())
+                                .put("text_color", layer?.textColor.toString())
+                                .put("text_size", layer?.textSize.toString()).toString())
+                        }
+                        val indexed = map.queryRenderedFeatures(
+                            android.graphics.RectF(0f, 0f, 1080f, 2280f),
+                            "queuego-label-street_labels", "queuego-label-place_labels", "queuego-label-pois")
+                        indexed.take(6).forEach { feature ->
+                            val properties = JSONObject(feature.toJson()).optJSONObject("properties") ?: JSONObject()
+                            val sample = JSONObject()
+                            for (key in listOf("name", "name:th", "name:en", "ref")) {
+                                if (properties.has(key)) sample.put(key, properties.optString(key).take(120))
+                            }
+                            Log.i("QueueGoLabelQA", JSONObject().put("indexed_public_name", sample).toString())
+                        }
+                    } }
                 }
                 // A symbol may enter the rendered-feature index before its fade-in
                 // reaches visible opacity. Retain the settled frame as evidence.
