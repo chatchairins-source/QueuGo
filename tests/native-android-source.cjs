@@ -5,6 +5,24 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const nativePilotWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/build-native-rider-pilot.yml'),'utf8');
 const mapEngineWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/queuego-map-engine-buriram.yml'),'utf8');
+const rideReleaseCandidateBranch = 'work-native-rider-nav-unified-offline-20261030';
+const requiredFullNativeGates = [
+  'continuous-dispatch-races', 'route-bundle-stack-races',
+  'passenger-ride-races', 'credit-races', 'express-races',
+  'map-display-only', 'navigation-map-runtime', 'maplibre-osm-runtime'
+];
+for (const gate of requiredFullNativeGates) {
+  const section = nativePilotWorkflow.match(new RegExp('^  '+gate+':\\n    if: ([^\\n]+)', 'm'));
+  ok(
+    !!section && section[1].includes("github.ref == 'refs/heads/"+rideReleaseCandidateBranch+"'") &&
+    section[1].includes("github.head_ref == '"+rideReleaseCandidateBranch+"'"),
+    'Native launch candidate must execute '+gate+' on both direct push and pull-request checks, not skip it'
+  );
+}
+const roadTestPublish = nativePilotWorkflow.match(/^  publish-rider-road-test:\n    if: ([^\n]+)/m);
+ok(!!roadTestPublish && !roadTestPublish[1].includes(rideReleaseCandidateBranch),
+   'Native launch candidate must not publish an APK automatically before real-device release acceptance');
+
 ok(nativePilotWorkflow.includes('group: queuego-native-${{ github.ref }}')&&nativePilotWorkflow.includes('cancel-in-progress: false')&&mapEngineWorkflow.includes('group: queuego-map-engine-${{ github.ref }}')&&mapEngineWorkflow.includes('cancel-in-progress: false'),'Native Pilot and Map Engine exact-head jobs must finish when the successor advances, while newer work waits');
 
 
