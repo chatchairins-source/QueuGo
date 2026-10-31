@@ -3,6 +3,8 @@ from pathlib import Path
 import datetime, hashlib, json, os, re, subprocess, time
 import xml.etree.ElementTree as ET
 
+from adb_install_recovery import install_verified_apk
+
 ADB=[str(Path(os.environ["ANDROID_HOME"])/"platform-tools/adb"), "-s", "emulator-5554"]
 PKG="com.queuego.rider"
 OUT=Path("artifacts/rider-authenticated-review")
@@ -152,7 +154,7 @@ def main():
     run(["shell","wm","density","440"])
     apk=Path("native-android/rider/build/outputs/apk/debug/rider-debug.apk")
     assert apk.is_file(), "Build Rider debug APK first"
-    run(["install","-r",str(apk)],timeout=180)
+    install_verified_apk(ADB, apk, PKG)
     run(["shell","pm","clear",PKG],timeout=60)
     provision_map()
     run(["shell","am","start","-W","-n",PKG+"/.MainActivity"],capture_output=True,text=True,timeout=60)
