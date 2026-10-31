@@ -2,6 +2,8 @@ package com.queuego.ridernavigationmap
 
 import android.os.Bundle
 import android.os.SystemClock
+import android.util.Log
+import java.util.concurrent.atomic.AtomicInteger
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -210,6 +212,37 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
     fun inspectMap(callback: (MapLibreMap) -> Unit) {
         requireNotNull(findMapView(window.decorView)).getMapAsync(callback)
     }
+
+    // Debug/instrumentation only. Observe native glyph fetches without network,
+    // changing the map style, or logging rider/customer information.
+    private var glyphDiagnosticsInstalled = false
+    private val glyphRequests = AtomicInteger(0)
+    private val glyphLoads = AtomicInteger(0)
+    private val glyphErrors = AtomicInteger(0)
+
+    fun installOfflineGlyphDiagnostics() {
+        if (glyphDiagnosticsInstalled) return
+        val view = requireNotNull(findMapView(window.decorView))
+        glyphDiagnosticsInstalled = true
+        view.addOnGlyphsRequestedListener { stack, start, end ->
+            val count = glyphRequests.incrementAndGet()
+            if (count <= 64) Log.i("QueueGoGlyphQA",
+                "requested fontstack=${stack.joinToString(",")} range=$start-$end")
+        }
+        view.addOnGlyphsLoadedListener { stack, start, end ->
+            val count = glyphLoads.incrementAndGet()
+            if (count <= 64) Log.i("QueueGoGlyphQA",
+                "loaded fontstack=${stack.joinToString(",")} range=$start-$end")
+        }
+        view.addOnGlyphsErrorListener { stack, start, end ->
+            glyphErrors.incrementAndGet()
+            Log.e("QueueGoGlyphQA",
+                "failed fontstack=${stack.joinToString(",")} range=$start-$end")
+        }
+    }
+
+    fun offlineGlyphDiagnosticSummary(): String =
+        "requested=${glyphRequests.get()} loaded=${glyphLoads.get()} failed=${glyphErrors.get()}"
 
     fun showCountryPosition(latitude: Double, longitude: Double) {
         mapState.value = mapState.value.copy(
