@@ -198,6 +198,8 @@ jobs:
         run: python3 -m unittest discover -s native-android/qa -p 'test_adb_install_recovery.py' -v
       - name: Authenticated Rider screenshot hierarchy freshness regression
         run: python3 -m unittest discover -s native-android/qa -p 'test_authenticated_review_hierarchy.py' -v
+      - name: Authenticated Merchant screenshot hierarchy freshness regression
+        run: python3 -m unittest discover -s native-android/qa -p 'test_merchant_authenticated_review_hierarchy.py' -v
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
