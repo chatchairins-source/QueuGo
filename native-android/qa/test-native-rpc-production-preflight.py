@@ -33,6 +33,19 @@ class ReadOnlyProductionRpcPreflightTest(unittest.TestCase):
         self.assertIn("has_function_privilege", text)
         self.assertNotRegex(text.lower(), r"\b(insert|delete|update|alter|drop|create|call)\b")
 
+    def test_public_namespace_filter_preserves_missing_rpc_rows(self):
+        sql = preflight.sql_query(["qg_only_in_private_schema"])
+        self.assertIn("where n.nspname = 'public'", sql)
+        self.assertIn(") p on p.proname = r.name", sql)
+        self.assertNotIn("where p.oid is null or n.oid is not null", sql)
+        ok, evidence = preflight.verify_rows(
+            ["qg_only_in_private_schema"],
+            [{"name": "qg_only_in_private_schema", "overloads": "0",
+              "authenticated_execute": "f", "anonymous_execute": "f"}],
+        )
+        self.assertFalse(ok)
+        self.assertEqual(evidence["missing"], ["qg_only_in_private_schema"])
+
     def test_unknown_or_missing_catalog_denies_release(self):
         ok, evidence = preflight.verify_rows(
             ["queuego_request_ride", "qg_rider_proof_committed"],
