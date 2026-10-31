@@ -98,11 +98,14 @@ def main() -> int:
         if not url:
             print("BLOCKED: missing QG_READONLY_DATABASE_URL (read-only database login)", file=sys.stderr)
             return 2
-        # -X disables local psql startup scripts; no shell, no SQL side effects.
+        # -X disables local psql startup scripts. The credential never appears
+        # in process argv, command logs, output artifacts or git source.
+        private_env = os.environ.copy()
+        private_env["PGDATABASE"] = url
         result = subprocess.run(
-            ["psql", url, "-X", "-A", "-F", "\t", "-t", "--set=ON_ERROR_STOP=1"],
-            input=sql_query(names), text=True, capture_output=True, timeout=30,
-            check=False,
+            ["psql", "-X", "-A", "-F", "\t", "-t", "--set=ON_ERROR_STOP=1"],
+            input=sql_query(names), env=private_env, text=True,
+            capture_output=True, timeout=30, check=False,
         )
         if result.returncode != 0:
             print("BLOCKED: catalog query failed; inspect access independently", file=sys.stderr)
