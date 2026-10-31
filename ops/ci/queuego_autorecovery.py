@@ -19,6 +19,10 @@ WATCHED = {
     "QueueGo Native POS CI",
     "QueueGo Installed Country Offline Runtime",
     "QueueGo Rider Android Authenticated Review",
+    "QueueGo RC Tests",
+    "QueueGo Map Engine Buriram",
+    "Customer P0 Android runtime matrix",
+    "Native Merchant Grocery verification",
 }
 TRANSIENT = re.compile(
     r"(?i)(connection reset by peer|temporary failure in name resolution|"
