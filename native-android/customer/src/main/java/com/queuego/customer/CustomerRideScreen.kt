@@ -127,6 +127,7 @@ private class PassengerApi(private val http: QueueGoNativeApi = QueueGoNativeApi
 internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocation?, cartStore: CustomerCartStore, initialOrderId: String? = null, onContact: (String) -> Unit, onBack: () -> Unit) {
     val api = remember { PassengerApi() }
     val customerApi = remember { CustomerApi() }
+    val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scope = rememberCoroutineScope()
     val mutex = remember(auth.user.id) { Mutex() }
@@ -144,6 +145,50 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     var enabled by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    suspend fun useCurrentPickup() {
+        if (busy || pending != null || pickup != null) return
+        busy = true
+        try {
+            // Use the same Android location providers as the existing QueueGo
+            // address picker. Never fabricate coordinates or preselect a stop.
+            val coordinates = withContext(Dispatchers.IO) {
+                val cached = lastKnownLocation(context)?.takeIf {
+                    QgMapPoint(it.first, it.second, 0).valid
+                }
+                cached ?: customerRegistrationLocation(context)?.let {
+                    it.latitude to it.longitude
+                }
+            }
+            if (coordinates == null || !QgMapPoint(coordinates.first, coordinates.second, 0).valid) {
+                error = "ยังอ่าน GPS ไม่ได้ เลือกจุดรับบนแผนที่แทนได้"
+                return
+            }
+            val address = try {
+                customerApi.reverseGeocode(coordinates.first, coordinates.second)
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                null
+            }
+            pickup = CustomerLocation(coordinates.first, coordinates.second,
+                address?.takeIf { it.isNotBlank() } ?: "ตำแหน่งปัจจุบัน")
+            quote = null
+            error = null
+        } catch (failure: CancellationException) {
+            throw failure
+        } catch (_: Exception) {
+            error = "อ่านตำแหน่งปัจจุบันไม่สำเร็จ เลือกจุดรับบนแผนที่แทนได้"
+        } finally {
+            busy = false
+        }
+    }
+    val currentPickupPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        if (grants.values.any { it }) scope.launch { useCurrentPickup() }
+        else error = "ไม่ได้รับสิทธิ์ GPS เลือกจุดรับบนแผนที่แทนได้"
+    }
 
     suspend fun refresh() {
         val recent = api.state(auth)
@@ -405,6 +450,31 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                         enabled = loaded && enabled && !frozen,
                         onClick = { picker = "destination" }
                     )
+                    if (pickup == null && pending == null && loaded && enabled) {
+                        OutlinedButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !busy,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color(0xFFF7FAFF),
+                                contentColor = Color(0xFF2E6DB4)
+                            ),
+                            border = BorderStroke(1.dp, Color(0xFFCFD9E6)),
+                            onClick = {
+                                if (hasLocation(context)) {
+                                    scope.launch { useCurrentPickup() }
+                                } else {
+                                    currentPickupPermission.launch(arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    ))
+                                }
+                            }
+                        ) {
+                            Text("ใช้ตำแหน่งปัจจุบันเป็นจุดรับ",
+                                fontWeight = FontWeight.ExtraBold)
+                        }
+                    }
 
                     if (quote == null && pending == null) {
                         Button(
