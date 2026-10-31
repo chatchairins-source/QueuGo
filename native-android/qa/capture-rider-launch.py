@@ -12,6 +12,8 @@ import time
 import zlib
 import xml.etree.ElementTree as ET
 
+from adb_install_recovery import install_verified_apk
+
 
 def run(args, **kwargs):
     return subprocess.run(args, check=True, timeout=kwargs.pop("timeout", 120), **kwargs)
@@ -285,7 +287,7 @@ def capture_customer_location():
     """Tap the real Customer guest Home location entry; no coordinate or account fixtures."""
     pkg = "com.queuego.customer"
     customer_apk = repo / "native-android/customer/build/outputs/apk/debug/customer-debug.apk"
-    run(adb + ["install", "-r", str(customer_apk)])
+    install_verified_apk(adb, customer_apk, pkg)
     for permission_state in ("denied", "allowed"):
         directory = output / "customer-location" / permission_state
         directory.mkdir(parents=True, exist_ok=True)
@@ -599,7 +601,7 @@ def capture_role_viewports(roles=("customer", "merchant", "rider")):
     for role in roles:
         role_apk = repo / f"native-android/{role}/build/outputs/apk/debug/{role}-debug.apk"
         assert role_apk.is_file(), f"Missing actual {role} APK"
-        run(adb + ["install", "-r", str(role_apk)])
+        install_verified_apk(adb, role_apk, f"com.queuego.{role}")
     for viewport, dimensions, density in (("phone", "1080x2280", "440"),
                                            ("small-phone", "720x1280", "320"),
                                            ("tablet", "1600x2560", "240")):
@@ -1040,9 +1042,9 @@ def verify_real_home_map_runtime():
     run(adb + ["shell", "wm", "size", "1080x2280"])
     run(adb + ["shell", "wm", "density", "440"])
     run(adb + ["shell", "am", "force-stop", package])
-    run(adb + ["install", "-r", str(apk)])
+    install_verified_apk(adb, apk, package)
     provision_real_map(package)
-    run(adb + ["install", "-r", str(test_apk)])
+    install_verified_apk(adb, test_apk, "com.queuego.rider.test")
     # Clear only generated evidence so a partial run cannot retain stale frames.
     run(adb + ["shell", "run-as", package, "rm", "-rf", "files/map-runtime"])
     run(adb + ["logcat", "-b", "all", "-c"])
@@ -1125,7 +1127,7 @@ def verify_real_home_map_runtime():
 def verify_proof_process_recovery():
     # Proof/process-death QA is independent of QueueGo Map hosting.
     test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
-    run(adb + ["install", "-r", str(test_apk)])
+    install_verified_apk(adb, test_apk, "com.queuego.rider.test")
     runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
     stages = ["navigating_merchant", "arrived_merchant", "pickup_verification", "picked_up",
               "navigating_customer", "arrived_customer", "photo_captured"]
@@ -1191,9 +1193,9 @@ def verify_merchant_shop_map_runtime():
     apk = repo / "native-android/merchant/build/outputs/apk/debug/merchant-debug.apk"
     test_apk = repo / "native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk"
     runner = "com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner"
-    run(adb + ["install", "-r", str(apk)])
+    install_verified_apk(adb, apk, pkg)
     provision_real_map(pkg)
-    run(adb + ["install", "-r", str(test_apk)])
+    install_verified_apk(adb, test_apk, "com.queuego.merchant.test")
     directory = output / "merchant-shop-map"
     directory.mkdir(parents=True, exist_ok=True)
     for state in ("denied", "allowed"):
@@ -1283,7 +1285,7 @@ def capture_map_display_only():
     import base64
     from PIL import Image
     test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
-    run(adb + ["install", "-r", str(test_apk)])
+    install_verified_apk(adb, test_apk, "com.queuego.rider.test")
     # Public UI is reviewed independently before map/network checks; no form data is submitted.
     capture_role_viewports(("rider",))
     evidence = []
@@ -1392,7 +1394,7 @@ with (output / "emulator.log").open("w") as log:
                 break
             assert time.monotonic() < deadline, "Android boot timed out; no Native screenshot certified"
             time.sleep(5)
-        run(adb + ["install", "-r", str(apk)])
+        install_verified_apk(adb, apk, package)
         provision_real_map(package)
         run(adb + ["logcat", "-b", "all", "-c"])
         if os.environ.get("QG_CUSTOMER_LOCATION_ONLY") == "1":

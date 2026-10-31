@@ -194,6 +194,8 @@ jobs:
           python3 native-android/qa/native-rpc-production-preflight.py --sql > "$RUNNER_TEMP/queuego-native-rpc-readonly.sql"
           grep -q 'pg_catalog.pg_proc' "$RUNNER_TEMP/queuego-native-rpc-readonly.sql"
           echo "Production RPC live check remains a separate Release Gate; no database credentials used here."
+      - name: Emulator APK transport recovery regression (no device required)
+        run: python3 -m unittest discover -s native-android/qa -p 'test_adb_install_recovery.py' -v
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
