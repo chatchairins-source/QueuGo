@@ -544,6 +544,7 @@ fun QgLocationPickerMap(
     initialPoint: QgMapPoint?,
     recenterPoint: QgMapPoint?,
     recenterToken: Int,
+    initialCameraPoint: QgMapPoint? = null,
     modifier: Modifier = Modifier,
     onPointSelected: (QgMapPoint) -> Unit,
     onReady: (Boolean) -> Unit = {}
@@ -577,7 +578,8 @@ fun QgLocationPickerMap(
                             map.uiSettings.isLogoEnabled = false
                             map.uiSettings.isCompassEnabled = false
                             map.uiSettings.isAttributionEnabled = true
-                            val start = initialPoint?.takeIf { it.valid }
+                            // Destination picking frames the pickup as context without selecting it.
+                            val start = (initialPoint ?: initialCameraPoint)?.takeIf { it.valid }
                             map.cameraPosition = CameraPosition.Builder()
                                 .target(
                                     LatLng(
@@ -597,7 +599,7 @@ fun QgLocationPickerMap(
                             }
                             map.setStyle(queueGoMapStyle(sourceUri)) {
                                 holder.lastRecenterToken = recenterToken
-                                holder.renderSelectedPoint(start)
+                                holder.renderSelectedPoint(initialPoint?.takeIf { it.valid })
                                 currentReady.value(true)
                             }
                         }
