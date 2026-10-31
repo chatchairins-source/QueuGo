@@ -1,3 +1,11 @@
+## 2026-10-31 Native Laundry read compatibility and truthful GP display
+
+- Continue from fresh PR746 HEAD93e1279dc43e86086ad5c23eafe43cf47bcf9a83 on a separate successor; preserve its SQL finance guard and all PR744 remediation. Parent Native Pilot41186306703 native-pilot/catalog jobs SUCCESS as rechecked; no latest successor CI claim yet.
+- Confirmed Native Merchant loadOrders selects five optional columns absent from Production:pickup_staff_name,return_staff_name,gp_rate_snapshot,platform_fee_amount,shop_net_amount. Add one read-only retry only for HTTP400 explicitly identifying one of these missing columns. Retain exact hub filter, ordering, limit, required fields and server amounts. Auth/network/unrelated-schema errors and failed retry propagate; no empty-success fallback.
+- Remove fabricated 10% GP default from MerchantLaundryOrder and JSON parsing. GP is nullable, finite and within[0,1]; zero remains valid. Display unconfirmed GP explicitly instead of inventing10%/0%; server fee/net values remain server-derived. No new business rates or finance system.
+- Add six Kotlin/JVM regression cases covering migrated response, every absent optional column and schema-cache variant, scoped retry, auth/network/unrelated errors, second failure, invalid/null GP and validzero/confirmed snapshots. Local Android SDK/Gradle unavailable; exact hosted JVM/build checks required. Native source485/0, Laundry parity, Express client26/0 and diff check passed locally.
+- This fixes read compatibility and truthful financial display only. queuego_laundry_shop_manage still absent; its financial policy/dependencies and historical orders remain blocked. No Production schema/data changes, Web publication or APK release in this successor.
+
 ## 2026-10-31 Laundry commission integrity guard — PR #746 (source-only; #745 superseded)
 
 - Read-only Production metadata at 2026-10-31 15:48 ICT: three Laundry orders, all in active states; no `laundry_orders.gp_rate_snapshot` column and no Laundry GP-rate policy field in `laundry_shop_settings`. No business rows were read, edited or created.

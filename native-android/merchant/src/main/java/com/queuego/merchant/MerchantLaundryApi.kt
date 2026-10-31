@@ -2,10 +2,41 @@ package com.queuego.merchant
 
 import com.queuego.shared.nativeOrderNumber
 
+import com.queuego.shared.QueueGoHttpException
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QueueGoNativeApi
 import org.json.JSONArray
 import org.json.JSONObject
+
+private const val laundryOrderColumns =
+    "id,order_number,status,service_name_snapshot,pricing_type_snapshot,estimated_quantity,actual_quantity," +
+        "estimated_total_amount,final_total_amount,pickup_address,note,pickup_latitude,pickup_longitude"
+private const val laundryOptionalColumns =
+    "pickup_staff_name,return_staff_name,gp_rate_snapshot,platform_fee_amount,shop_net_amount"
+
+internal suspend fun readLaundryOrdersWithSchemaCompatibility(
+    scope: String,
+    read: suspend (String) -> JSONArray
+): JSONArray {
+    val base = "laundry_orders?select=$laundryOrderColumns"
+    return try {
+        read("$base,$laundryOptionalColumns$scope")
+    } catch (error: QueueGoHttpException) {
+        val message = error.message.orEmpty()
+        val missingOptionalColumn = laundryOptionalColumns.split(',').any { column ->
+            Regex("column (?:laundry_orders\\.)?" + column + " does not exist", RegexOption.IGNORE_CASE)
+                .containsMatchIn(message) ||
+                message.equals("Could not find the '$column' column of 'laundry_orders' in the schema cache", ignoreCase = true)
+        }
+        if (error.statusCode != 400 || !missingOptionalColumn) throw error
+        // Keep the identical owner hub, ordering and limit; never synthesize finance values.
+        read("$base$scope")
+    }
+}
+
+internal fun merchantLaundryGpRate(row: JSONObject): Double? =
+    if (!row.has("gp_rate_snapshot") || row.isNull("gp_rate_snapshot")) null
+    else row.optDouble("gp_rate_snapshot", Double.NaN).takeIf { it.isFinite() && it in 0.0..1.0 }
 
 data class MerchantLaundrySettings(
     val enabled: Boolean,
@@ -44,7 +75,7 @@ data class MerchantLaundryOrder(
     val longitude: Double? = null,
     val customerName: String? = null,
     val customerPhone: String? = null,
-    val gpRate: Double = 0.10,
+    val gpRate: Double? = null,
     val platformFee: Double? = null,
     val shopNet: Double? = null
 )
@@ -127,13 +158,9 @@ class MerchantLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
         )
         val contactByOrder = (0 until contacts.length()).mapNotNull { contacts.optJSONObject(it) }
             .associateBy { it.optString("order_id") }
-        val rows = http.array(
-            http.get(
-                "laundry_orders?select=id,order_number,status,service_name_snapshot,pricing_type_snapshot,estimated_quantity,actual_quantity,estimated_total_amount,final_total_amount,pickup_address,note,pickup_staff_name,return_staff_name,pickup_latitude,pickup_longitude,gp_rate_snapshot,platform_fee_amount,shop_net_amount" +
-                    "&hub_id=eq." + http.enc(hubId) + "&order=created_at.desc&limit=100",
-                auth.session.accessToken
-            )
-        )
+        val rows = readLaundryOrdersWithSchemaCompatibility(
+            "&hub_id=eq." + http.enc(hubId) + "&order=created_at.desc&limit=100"
+        ) { path -> http.array(http.get(path, auth.session.accessToken)) }
         return buildList {
             for (i in 0 until rows.length()) {
                 val r = rows.optJSONObject(i) ?: continue
@@ -158,7 +185,7 @@ class MerchantLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
                         longitude = r.optDoubleNullable("pickup_longitude"),
                         customerName = contactByOrder[id]?.optString("customer_name")?.takeIf { it.isNotBlank() && it != "null" },
                         customerPhone = contactByOrder[id]?.optString("customer_phone")?.takeIf { it.isNotBlank() && it != "null" },
-                        gpRate = r.optDouble("gp_rate_snapshot", 0.10),
+                        gpRate = merchantLaundryGpRate(r),
                         platformFee = r.optDoubleNullable("platform_fee_amount"),
                         shopNet = r.optDoubleNullable("shop_net_amount")
                     )
