@@ -142,18 +142,14 @@ def main():
         capture_pos(screens,"phone-")
         run(["shell","wm","size","1600x2560"])
         run(["shell","wm","density","240"])
-        # Density changes recreate the Activity. Never send Back while Auth/
-        # Activity restoration is still running, or from an already restored Home.
-        ns=wait(lambda xs:any(any(has_label(n,label) for label in ("＋ รับออเดอร์","หน้าหลัก")) for n in xs),90)
+        # Start a fresh Activity/window after the display configuration changes.
+        # Keep persisted Auth and business data; this also verifies cold-session recovery.
+        run(["shell","am","force-stop",PKG])
+        run(["shell","am","start","-W","-n",PKG+"/.MainActivity"],capture_output=True,text=True,timeout=60)
+        ns=wait(lambda xs:any(has_label(n,"หน้าหลัก") for n in xs),90)
         if not ns:
-            shot("tablet-restoration-blocker")
-            raise AssertionError("Tablet Merchant Activity did not restore a known screen")
-        if any(has_label(n,"＋ รับออเดอร์") for n in ns):
-            run(["shell","input","keyevent","4"])
-            ns=wait(lambda xs:any(has_label(n,"หน้าหลัก") for n in xs),90)
-        if not ns:
-            shot("tablet-back-blocker")
-            raise AssertionError("Tablet Merchant did not expose primary navigation")
+            shot("tablet-session-recovery-blocker")
+            raise AssertionError("Tablet Merchant did not restore authenticated primary navigation")
         tap_label(ns,"หน้าหลัก")
         for _ in range(3):
             run(["shell","input","swipe","500","700","500","1800","300"])

@@ -217,6 +217,7 @@ jobs:
           path: |
             artifacts/merchant-authenticated-review/*.png
             artifacts/merchant-authenticated-review/metadata.json
+            artifacts/merchant-authenticated-review/hierarchy-status.json
           if-no-files-found: warn
           retention-days: 7
       - name: Save authenticated Rider screenshots

@@ -1,3 +1,11 @@
+## 2026-10-31 Tablet harness root-cause follow-up — preserve real POS tab state
+
+- Run 41157766525 still failed Native tablet navigation and Web tablet-pos-counter. Heartbeat/read allowlisting is correct but was not the cause of the remaining Web timeout: qgPosDisconnect preserves state.view, so reentering POS after the phone cashier screenshot legitimately restores the bills/cashier view. The harness incorrectly waited for a counter-only .qg-pos-panel before selecting a tab.
+- Wait for the actual POS navigation shell, explicitly select the existing counter button (as already done for tables/cashier), then capture. No fake route/session or business action. This respects normal restored Web state instead of changing Production behavior to satisfy the test.
+- For Native tablet capture, after wm size/density changes force-stop and reopen the existing Activity without clearing app data. Require authenticated Home with the same persisted session before capture. This is a real cold-session/window recovery check; it is not certification of tablet Back behavior. Existing product Back callbacks remain unchanged.
+- Retain the existing remove-before-dump/null-root guard and include its known-label/node-count diagnostic JSON in the artifact (the previous artifact glob omitted that JSON). Do not persist raw UI hierarchy or credentials.
+- Python compilation, Merchant request policy, Native source 471/0 and Actions pinning PASS. Actual after-capture remains pending. Current app layout improvements are preserved; no Production schema/financial writes or deployment.
+
 ## 2026-10-31 Merchant Dashboard — image-backed stat/menu styling correction
 
 - The same actual Native/Web tablet Home pair also confirms Native stat cards are horizontal and every icon is red. Production final CSS (.qgm-stat, .qgm-menu and nth-child palette) uses vertical icon/value/label cards and distinct status/menu colors. This is a verified layout mismatch, not a business-data difference.
