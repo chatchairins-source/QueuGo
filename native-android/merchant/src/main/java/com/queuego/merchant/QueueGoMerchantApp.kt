@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -1534,21 +1535,20 @@ private fun MerchantMetricCard(
     icon: String,
     modifier: Modifier
 ) {
-    QgCard(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    val (iconBackground, iconColor) = when (icon) {
+        "clock" -> Color(0xFFFFF6E8) to Color(0xFFE79A13)
+        "box" -> Color(0xFFEAF6FC) to Color(0xFF278BBD)
+        "close" -> Color(0xFFFFF0F2) to Color(0xFFD92C48)
+        else -> Color(0xFFFFF0F3) to QgRed
+    }
+    QgCard(modifier.heightIn(min = 87.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Box(
-                Modifier
-                    .size(38.dp)
-                    .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
+                Modifier.size(30.dp).background(iconBackground, RoundedCornerShape(9.dp)),
                 contentAlignment = Alignment.Center
-            ) {
-                QgIcon(icon, Modifier.size(20.dp), QgRed)
-            }
-            Spacer(Modifier.width(9.dp))
-            Column {
-                Text(label, color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                Text(value, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
-            }
+            ) { QgIcon(icon, Modifier.size(17.dp), iconColor) }
+            Text(value, fontWeight = FontWeight.Black, fontSize = 20.sp, lineHeight = 20.sp)
+            Text(label, color = QgMuted, fontSize = 10.sp)
         }
     }
 }
@@ -1560,9 +1560,18 @@ private fun MerchantMenuTile(
     onClick: () -> Unit,
     modifier: Modifier
 ) {
+    val (iconBackground, iconColor) = when (icon) {
+        "orders" -> Color(0xFFEAF6FC) to Color(0xFF278BBD)
+        "box" -> Color(0xFFFFF6E8) to Color(0xFFE79A13)
+        "tag" -> Color(0xFFEAF9F2) to Color(0xFF19A36A)
+        "chart" -> Color(0xFFFFF4E8) to Color(0xFFEF8C21)
+        "gallery" -> Color(0xFFEAF6FC) to Color(0xFF268FC5)
+        "support" -> Color(0xFFF1EDFF) to Color(0xFF7356C8)
+        else -> Color(0xFFFFF0F3) to QgRed
+    }
     QgCard(
         modifier
-            .height(96.dp)
+            .height(85.dp)
             .clickable(onClick = onClick)
     ) {
         Column(
@@ -1572,17 +1581,18 @@ private fun MerchantMenuTile(
         ) {
             Box(
                 Modifier
-                    .size(38.dp)
-                    .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
+                    .size(36.dp)
+                    .background(iconBackground, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                QgIcon(icon, Modifier.size(20.dp), QgRed)
+                QgIcon(icon, Modifier.size(20.dp), iconColor)
             }
             Spacer(Modifier.height(7.dp))
             Text(
                 label,
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.labelSmall,
+                fontSize = 10.sp,
+                lineHeight = 12.5.sp,
                 maxLines = 2
             )
         }

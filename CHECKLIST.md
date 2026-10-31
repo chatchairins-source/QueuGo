@@ -1,3 +1,9 @@
+## 2026-10-31 Merchant Dashboard — image-backed stat/menu styling correction
+
+- The same actual Native/Web tablet Home pair also confirms Native stat cards are horizontal and every icon is red. Production final CSS (.qgm-stat, .qgm-menu and nth-child palette) uses vertical icon/value/label cards and distinct status/menu colors. This is a verified layout mismatch, not a business-data difference.
+- Update only the existing MerchantMetricCard and MerchantMenuTile presentation: 87dp minimum vertical summary cards, 30dp/17dp status icons, 20sp totals and 10sp labels; 85dp menu tiles with 36dp colored icon containers and 10sp labels. Preserve every summary value, item, permission and callback. Keep added Native service entries; no business feature is removed based on an incomplete screenshot.
+- Source/title/request-policy checks and diff check PASS. Exact Kotlin build and after-images are required before accepting these changes. No VAT/payment/backend behavior change. This follows the centered 620dp Merchant/1440dp POS correction; complete UI parity remains OPEN.
+
 ## 2026-10-31 Real tablet comparison — centered Merchant shell correction
 
 - Inspected actual Production tablet-home.png (1067 CSS px) from 13025851356 against Native tablet-back-blocker.png from 13026266754 (1600px/density240). Web content is centered at 620px; Native primary content incorrectly fills the entire tablet while only bottom navigation is bounded.

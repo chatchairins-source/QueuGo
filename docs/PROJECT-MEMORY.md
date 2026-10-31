@@ -1,5 +1,11 @@
-Warning: truncated output (original token count: 117381)
-Total output lines: 2370
+Warning: truncated output (original token count: 117650)
+Total output lines: 2376
+
+## 2026-10-31 Merchant Dashboard — image-backed stat/menu styling correction
+
+- The same actual Native/Web tablet Home pair also confirms Native stat cards are horizontal and every icon is red. Production final CSS (.qgm-stat, .qgm-menu and nth-child palette) uses vertical icon/value/label cards and distinct status/menu colors. This is a verified layout mismatch, not a business-data difference.
+- Update only the existing MerchantMetricCard and MerchantMenuTile presentation: 87dp minimum vertical summary cards, 30dp/17dp status icons, 20sp totals and 10sp labels; 85dp menu tiles with 36dp colored icon containers and 10sp labels. Preserve every summary value, item, permission and callback. Keep added Native service entries; no business feature is removed based on an incomplete screenshot.
+- Source/title/request-policy checks and diff check PASS. Exact Kotlin build and after-images are required before accepting these changes. No VAT/payment/backend behavior change. This follows the centered 620dp Merchant/1440dp POS correction; complete UI parity remains OPEN.
 
 ## 2026-10-31 Real tablet comparison — centered Merchant shell correction
 
@@ -1000,12 +1006,7 @@ Total output lines: 2370
 
 ## 2026-10-13 owner final banner scene correction: everyday Thai shops
 - Owner requires ordinary community shops and normal working vendors, not luxurious/designer showroom scenes. Phone imagery must show a mall glass-counter kiosk. Other categories use practical local shops/stalls and simple shelves. Everyone wears a BLACK COLLARED SHIRT with a RED Q chest emblem, no apron.
-- Keep bright shop details throughout the image, no black/dark left panel or strip. UI uses a soft light wash with readable dark text. Preserve category icons. Apply the same final artwork to Web and Native Laundry, Shopping and every Shopping mode. This instruction supersedes the intermediate luxury shop images; do not publish those variants.
-
-## 2026-10-13 owner banner correction: black shirt, red Q, bright full image
-- Latest explicit owner instruction: every depicted person wears a BLACK COLLARED SHIRT with a RED QueueGo Q on the chest. No white shirt or apron. The intermediate black-Q instruction was superseded by the explicit red-Q correction. Keep original category icon buttons.
-- Owner rejects dark/black left panels or strips. New artwork fills the entire banner with a bright shop and relevant merchandise. Existing UI text uses a light translucent wash and dark type; remove the old black gradient. Apply the same photo bytes and presentation to Web and Native Customer for Laundry, Shopping and all Shopping modes.
-- Web baseline503791f; preserve latest Native Rider manual-pan successor4acbcda. Native prior a07b8a0/Pilot38412835929 SUCCESS and APK artifact11822963430 ZIPsha2563d5522a362876bede047251773f1be4458d6c1f5c3866e43ffe5f914a62652a1 verified, but its dark/white-shirt artwork is super…17381 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
+- Keep bright shop details throughout the image, no black/dark left panel or strip. UI uses a soft light wash with readable dark text. Preserve category icons. Apply the same final artwork to Web and Native Laundry, Shopping and every Shop…17650 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
 - Existing `qg_admin_update_location` remains authoritative with expected old coordinates, audit and retry behavior. Existing order coordinates and financial state transitions are untouched.
 - Native prompts were replaced by labelled dialog forms for reasons, market radius and vehicle capacity. Tests cover validation, account races, map failure and retry payloads.
 - Automated regression passes do not certify physical mobile GPS, live map tiles or real account approval. Local browser installation was blocked by the browser download returning HTML rather than a browser archive; do not claim visual browser/device certification from automated DOM tests.
