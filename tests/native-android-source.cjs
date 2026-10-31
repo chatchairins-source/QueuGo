@@ -1173,6 +1173,26 @@ ok(
   'Customer native Ride must follow the Web Ride card: header, contained 245dp map, supply indicator, location rows, and disabled fare styling'
 );
 const sharedMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
+const webQueueGoMap=fs.readFileSync(path.join(__dirname,'../queuego-map-web.js'),'utf8');
+const webRideMap=fs.readFileSync(path.join(__dirname,'../customer-ride.js'),'utf8');
+const tileFromWeb=webQueueGoMap.match(/tiles:\['([^']+)'\]/)?.[1];
+const tileFromNative=sharedMap.match(/QUEUEGO_WEB_BASEMAP_TILE = "([^"]+)"/)?.[1];
+ok(
+  Boolean(tileFromWeb) && tileFromWeb===tileFromNative &&
+  webQueueGoMap.includes("id:'queuego-osm',type:'raster'") &&
+  sharedMap.includes('RasterLayer(QUEUEGO_WEB_BASEMAP_LAYER, QUEUEGO_WEB_BASEMAP_SOURCE)'),
+  'Android Customer/Merchant online map must reuse the actual QueueGo Web basemap source, not a separately selected map service'
+);
+ok(
+  webRideMap.includes('new maplibregl.NavigationControl({showCompass:true,showZoom:true') &&
+  webRideMap.includes('minZoom:5') && webRideMap.includes('maxZoom:19') &&
+  sharedMap.includes('coerceAtMost(19.0)') && sharedMap.includes('coerceAtLeast(5.0)') &&
+  webRideMap.includes("'#1677ff'") && webRideMap.includes("'#e6002d'") &&
+  customerRide.includes('Color(0xFF1677FF)') && customerRide.includes('Color(0xFFE6002D)') &&
+  read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt').includes('QgLocationPickerMap(') &&
+  customerMapPicker.includes('QgLocationPickerMap('),
+  'Web Ride colors/zoom/compass and shared Merchant/Customer pickers must stay in parity with QueueGo Web'
+);
 ok(
   customerTrackingMap.includes('showWebMapControls = true') &&
   sharedMap.includes('QueueGoWebMapControls(') &&
