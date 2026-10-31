@@ -156,6 +156,40 @@ const fs=require('fs'),path=require('path'),assert=require('assert'),{PGlite}=re
   eq(grants.anon_exec,false,'anonymous proof recovery must be denied');
   eq(grants.auth_exec,true,'authenticated Rider proof recovery RPC must remain callable');
 
+  // Reapplying the exact reviewed migration must preserve its contract and grants.
+  await db.exec(migration);
+  eq((await db.query(`SELECT count(*)::int AS n FROM public.qg_pickup_proofs`)).rows[0].n,
+    1,'migration replay must not alter proof data');
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${authA}',false); SET ROLE authenticated;`);
+  for (const [orderId,stage,photo] of [
+    [null,'pickup','proof-pickup.jpg'],
+    [order,'pickup',null],
+    [order,'pickup',''],
+    ['40000000-0000-4000-8000-000000000099','pickup','proof-pickup.jpg'],
+  ]) {
+    eq((await db.query('SELECT public.qg_rider_proof_committed($1,$2,$3) AS v',
+      [orderId,stage,photo])).rows[0].v,false,'incomplete/unowned proof must not be confirmed');
+  }
+  await db.exec(`RESET ROLE; SELECT set_config('request.jwt.claim.sub','',false); SET ROLE authenticated;`);
+  eq((await db.query(`SELECT public.qg_rider_proof_committed('${order}','pickup','proof-pickup.jpg') AS v`)).rows[0].v,
+    false,'authenticated role without a subject must not recover proof');
+  await db.exec(`RESET ROLE; UPDATE public.users SET role='customer' WHERE id='${userA}';
+    SELECT set_config('request.jwt.claim.sub','${authA}',false); SET ROLE authenticated;`);
+  eq((await db.query(`SELECT public.qg_rider_proof_committed('${order}','pickup','proof-pickup.jpg') AS v`)).rows[0].v,
+    false,'a customer with a stale Rider profile must not recover proof');
+  await db.exec(`RESET ROLE; UPDATE public.users SET role='rider' WHERE id='${userA}';
+    UPDATE public.orders SET rider_id='${riderB}' WHERE id='${order}'; SET ROLE authenticated;`);
+  eq((await db.query(`SELECT public.qg_rider_proof_committed('${order}','pickup','proof-pickup.jpg') AS v`)).rows[0].v,
+    false,'previous assigned Rider must lose access after reassignment');
+  await db.exec(`RESET ROLE; UPDATE public.orders SET rider_id='${riderA}' WHERE id='${order}';
+    SET ROLE anon;`);
+  await assert.rejects(db.query(`SELECT public.qg_rider_proof_committed('${order}','pickup','proof-pickup.jpg')`),
+    /permission denied/);
+  checks++;
+  await db.exec('RESET ROLE');
+  eq((await db.query(`SELECT count(*)::int AS n FROM public.qg_delivery_proofs`)).rows[0].n,
+    1,'denied/retried recovery must not create or remove proof rows');
+
   const helperStart=nativeApi.indexOf('private fun mutationProofExists(');
   const helperEnd=nativeApi.indexOf('private fun uploadedEvidenceMatches(',helperStart);
   const helper=nativeApi.slice(helperStart,helperEnd);

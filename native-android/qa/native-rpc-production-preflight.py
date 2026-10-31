@@ -15,20 +15,16 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCES = (
-    "native-android/customer/src/main/java/com/queuego/customer/CustomerApi.kt",
-    "native-android/customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt",
-    "native-android/merchant/src/main/java/com/queuego/merchant/MerchantApi.kt",
-    "native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt",
-)
-RPC_PATTERN = re.compile(r'\b(?:http\.)?rpc\s*\(\s*"([a-z][a-z0-9_]*)"', re.M)
+SOURCE_GLOB = "native-android/*/src/main/**/*.kt"
+RPC_PATTERN = re.compile(r'\b(?:http\.)?(?:rpc|rpcArray)\s*\(\s*"([a-z][a-z0-9_]*)"', re.M)
 SAFE_NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
 def required_rpcs(root: Path = ROOT) -> dict[str, list[str]]:
     references: dict[str, list[str]] = {}
-    for filename in SOURCES:
-        content = (root / filename).read_text(encoding="utf-8")
+    for source in sorted(root.glob(SOURCE_GLOB)):
+        filename = source.relative_to(root).as_posix()
+        content = source.read_text(encoding="utf-8")
         for name in RPC_PATTERN.findall(content):
             if not SAFE_NAME.fullmatch(name):
                 raise ValueError("Unsafe RPC function name")
@@ -50,12 +46,17 @@ def sql_query(names: list[str]) -> str:
         "with requested(name) as (\n  values\n    " + values + "\n),\n"
         "catalog as (\n"
         "  select r.name, p.oid,\n"
-        "    pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE') as auth_execute,\n"
-        "    pg_catalog.has_function_privilege('anon', p.oid, 'EXECUTE') as anon_execute\n"
+        "    (pg_catalog.has_schema_privilege('authenticated', 'public', 'USAGE') and\n"
+        "     pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE')) as auth_execute,\n"
+        "    (pg_catalog.has_schema_privilege('anon', 'public', 'USAGE') and\n"
+        "     pg_catalog.has_function_privilege('anon', p.oid, 'EXECUTE')) as anon_execute\n"
         "  from requested r\n"
-        "  left join pg_catalog.pg_proc p on p.proname = r.name\n"
-        "  left join pg_catalog.pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'\n"
-        "  where p.oid is null or n.oid is not null\n"
+        "  left join (\n"
+        "    select p.oid, p.proname\n"
+        "    from pg_catalog.pg_proc p\n"
+        "    join pg_catalog.pg_namespace n on n.oid = p.pronamespace\n"
+        "    where n.nspname = 'public' and p.prokind = 'f'\n"
+        "  ) p on p.proname = r.name\n"
         ")\n"
         "select name,\n"
         "  count(oid)::integer as overloads,\n"
