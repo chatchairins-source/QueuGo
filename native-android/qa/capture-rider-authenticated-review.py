@@ -79,29 +79,70 @@ def capture_rider_tab(label, name, screen):
     time.sleep(1)
     screens.append({"screen": screen, **shot(name)})
 
-def rider_earnings_period_ready(ns, label):
-    # A period button is always visible, even when the previous period's
-    # finance data or a loading placeholder is still on screen. The native
-    # cash-ledger heading renders a SECOND copy of the selected period label.
+def rider_earnings_summary_ready(ns):
+    # The period controls and loaded summary can be on a different viewport
+    # from the ledger on compact phones. Never require both at once.
+    visible = {n.get("text", "").strip() for n in ns if rect(n)}
+    if any(text.startswith("โหลดสรุปงานไม่สำเร็จ") for text in visible):
+        return False
+    return {"วันนี้", "7 วัน", "30 วัน", "รายได้จากค่าส่ง",
+            "งานสำเร็จ"}.issubset(visible)
+
+
+def rider_earnings_ledger_ready(ns, label):
     if label not in ("7 วัน", "30 วัน"):
         raise ValueError("Unknown Rider earnings period")
-    visible = [n.get("text", "").strip() for n in ns if rect(n)]
-    if any(text.startswith(("โหลดสรุปงานไม่สำเร็จ", "โหลดบัญชีเงินสดไม่สำเร็จ"))
-           for text in visible):
+    visible = [n for n in ns if rect(n)]
+    texts = {n.get("text", "").strip() for n in visible}
+    if any(text.startswith("โหลดบัญชีเงินสดไม่สำเร็จ") for text in texts):
         return False
-    loaded = {"รายได้จากค่าส่ง", "งานสำเร็จ", "บัญชีเงินสด",
-              "จ่ายร้าน", "เก็บลูกค้า"}
-    return loaded.issubset(set(visible)) and visible.count(label) >= 2
+    if not {"บัญชีเงินสด", "จ่ายร้าน", "เก็บลูกค้า"}.issubset(texts):
+        return False
+    # A selected period button alone is NOT proof of the new ledger. Require
+    # the period label to sit on the same heading row as "บัญชีเงินสด".
+    headings = [rect(n) for n in visible if n.get("text", "").strip() == "บัญชีเงินสด"]
+    periods = [rect(n) for n in visible if n.get("text", "").strip() == label]
+    return any(
+        p[0] >= h[2] - 5 and
+        abs((p[1] + p[3]) - (h[1] + h[3])) <= max(80, h[3] - h[1])
+        for h in headings for p in periods
+    )
+
+
+def scroll_earnings_until(predicate, direction):
+    if direction not in ("up", "down"):
+        raise ValueError("Unknown earnings scroll direction")
+    for _ in range(8):
+        current = nodes()
+        if predicate(current):
+            return current
+        y_start, y_end = (1900, 600) if direction == "up" else (600, 1900)
+        run(["shell", "input", "swipe", "900", str(y_start), "900", str(y_end), "450"])
+        time.sleep(0.5)
+    return []
 
 
 def capture_rider_earnings_period(label, filename):
+    if label not in ("7 วัน", "30 วัน"):
+        raise ValueError("Unknown Rider earnings period")
     tap_label(nodes(), label)
-    # Allow Compose to invalidate the previous period before inspecting the
-    # fresh UI hierarchy. Never accept a spinner, stale period or API error.
     time.sleep(1)
-    ready = wait(lambda xs: rider_earnings_period_ready(xs, label), 60)
-    assert ready, "Rider earnings period did not finish loading: " + label
-    screens.append({"screen": filename, **shot(filename)})
+    summary = wait(rider_earnings_summary_ready, 60)
+    assert summary, "Rider earnings summary did not finish loading: " + label
+    ledger = scroll_earnings_until(
+        lambda xs: rider_earnings_ledger_ready(xs, label), "up"
+    )
+    assert ledger, "Rider cash ledger did not show selected period: " + label
+    # Two genuine viewport images: ledger first, then scroll back to the
+    # summary. Append neither to accepted metadata until both are verified.
+    ledger_image = shot(filename + "-ledger")
+    summary = scroll_earnings_until(rider_earnings_summary_ready, "down")
+    assert summary, "Rider earnings summary did not return to viewport: " + label
+    summary_image = shot(filename)
+    screens.extend((
+        {"screen": filename, **summary_image},
+        {"screen": filename + "-ledger", **ledger_image},
+    ))
 
 
 def tap_label(ns,label):
@@ -260,7 +301,8 @@ def main():
         capture_profile_dialog(entry,title,name)
     expected_screens=(
       "home_map","messages_chat",
-      "earnings_today","05-earnings-7-days","06-earnings-30-days",
+      "earnings_today","05-earnings-7-days","05-earnings-7-days-ledger",
+      "06-earnings-30-days","06-earnings-30-days-ledger",
       "profile","profile_laundry","08-learning-center","09-safety-center","10-support","11-diagnostics",
     )
     captured={item["screen"] for item in screens}
