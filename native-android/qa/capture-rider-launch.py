@@ -12,6 +12,8 @@ import time
 import zlib
 import xml.etree.ElementTree as ET
 
+from adb_install_recovery import install_verified_apk
+
 
 def run(args, **kwargs):
     return subprocess.run(args, check=True, timeout=kwargs.pop("timeout", 120), **kwargs)
@@ -285,7 +287,7 @@ def capture_customer_location():
     """Tap the real Customer guest Home location entry; no coordinate or account fixtures."""
     pkg = "com.queuego.customer"
     customer_apk = repo / "native-android/customer/build/outputs/apk/debug/customer-debug.apk"
-    run(adb + ["install", "-r", str(customer_apk)])
+    install_verified_apk(adb, customer_apk, pkg)
     for permission_state in ("denied", "allowed"):
         directory = output / "customer-location" / permission_state
         directory.mkdir(parents=True, exist_ok=True)
@@ -1040,7 +1042,7 @@ def verify_real_home_map_runtime():
     run(adb + ["shell", "wm", "size", "1080x2280"])
     run(adb + ["shell", "wm", "density", "440"])
     run(adb + ["shell", "am", "force-stop", package])
-    run(adb + ["install", "-r", str(apk)])
+    install_verified_apk(adb, apk, package)
     provision_real_map(package)
     run(adb + ["install", "-r", str(test_apk)])
     # Clear only generated evidence so a partial run cannot retain stale frames.
