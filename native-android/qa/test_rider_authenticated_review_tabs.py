@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import sys
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 QA = Path(__file__).resolve().parent
@@ -124,27 +125,65 @@ class RiderTabVisualGateTest(unittest.TestCase):
         ledger = self.ledger_nodes("7 วัน")
         with (
             patch.object(review, "nodes", side_effect=[[], ledger]),
-            patch.object(review, "run") as swipe,
+            patch.object(review, "swipe_vertical") as swipe,
             patch.object(review.time, "sleep"),
         ):
             found = review.scroll_earnings_until(
                 lambda xs: review.rider_earnings_ledger_ready(xs, "7 วัน"), "up"
             )
         self.assertEqual(found, ledger)
-        swipe.assert_called_once_with(
-            ["shell", "input", "swipe", "900", "1900", "900", "600", "450"]
-        )
+        swipe.assert_called_once_with("up")
 
     def test_scroll_earnings_until_fails_closed(self):
         with (
             patch.object(review, "nodes", return_value=[]),
-            patch.object(review, "run") as swipe,
+            patch.object(review, "swipe_vertical") as swipe,
             patch.object(review.time, "sleep"),
         ):
             self.assertEqual(review.scroll_earnings_until(lambda _: False, "down"), [])
         self.assertEqual(swipe.call_count, 8)
         with self.assertRaisesRegex(ValueError, "scroll direction"):
             review.scroll_earnings_until(lambda _: True, "sideways")
+
+    def test_vertical_swipe_uses_actual_override_not_hardcoded_coordinates(self):
+        for direction, expected in (
+            ("up", ["shell", "input", "swipe", "360", "1024", "360", "384", "450"]),
+            ("down", ["shell", "input", "swipe", "360", "384", "360", "1024", "450"]),
+        ):
+            with self.subTest(direction=direction):
+                def fake_run(args, **kwargs):
+                    if args == ["shell", "wm", "size"]:
+                        return SimpleNamespace(
+                            stdout="Physical size: 1080x2280\\nOverride size: 720x1280\\n"
+                        )
+                    self.assertEqual(args, expected)
+                    return SimpleNamespace(stdout="")
+                with patch.object(review, "run", side_effect=fake_run) as adb:
+                    review.swipe_vertical(direction)
+                self.assertEqual(adb.call_count, 2)
+
+    def test_vertical_swipe_uses_physical_size_when_no_override(self):
+        def fake_run(args, **kwargs):
+            if args == ["shell", "wm", "size"]:
+                return SimpleNamespace(stdout="Physical size: 1080x2280\\n")
+            self.assertEqual(
+                args, ["shell", "input", "swipe", "540", "1824", "540", "684", "450"]
+            )
+            return SimpleNamespace(stdout="")
+        with patch.object(review, "run", side_effect=fake_run):
+            review.swipe_vertical("up")
+
+    def test_vertical_swipe_fails_closed_on_bad_viewport_or_direction(self):
+        for output in ("", "Physical size: 0x0", "Override size: 50x100"):
+            with self.subTest(output=output):
+                with patch.object(review, "run", return_value=SimpleNamespace(stdout=output)) as adb:
+                    with self.assertRaises(RuntimeError):
+                        review.swipe_vertical("up")
+                adb.assert_called_once()
+        with patch.object(review, "run") as adb:
+            with self.assertRaisesRegex(ValueError, "scroll direction"):
+                review.swipe_vertical("sideways")
+        adb.assert_not_called()
 
     def test_earnings_capture_validates_two_viewports_before_metadata(self):
         review.screens = []

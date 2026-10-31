@@ -109,6 +109,23 @@ def rider_earnings_ledger_ready(ns, label):
     )
 
 
+def swipe_vertical(direction):
+    """Swipe within the actual emulator viewport, including wm-size overrides."""
+    if direction not in ("up", "down"):
+        raise ValueError("Unknown Rider scroll direction")
+    output = run(["shell", "wm", "size"], capture_output=True, text=True).stdout
+    sizes = re.findall(r"(?:Physical|Override) size:\s*(\d+)x(\d+)", output)
+    if not sizes:
+        raise RuntimeError("Android viewport size unavailable")
+    width, height = map(int, sizes[-1])
+    if width < 100 or height < 200:
+        raise RuntimeError("Invalid Android viewport dimensions")
+    x = width // 2
+    upper, lower = round(height * 0.30), round(height * 0.80)
+    start, end = (lower, upper) if direction == "up" else (upper, lower)
+    run(["shell", "input", "swipe", str(x), str(start), str(x), str(end), "450"])
+
+
 def scroll_earnings_until(predicate, direction):
     if direction not in ("up", "down"):
         raise ValueError("Unknown earnings scroll direction")
@@ -116,8 +133,7 @@ def scroll_earnings_until(predicate, direction):
         current = nodes()
         if predicate(current):
             return current
-        y_start, y_end = (1900, 600) if direction == "up" else (600, 1900)
-        run(["shell", "input", "swipe", "900", str(y_start), "900", str(y_end), "450"])
+        swipe_vertical(direction)
         time.sleep(0.5)
     return []
 
@@ -184,7 +200,7 @@ def scroll_to_text(label):
     for _ in range(8):
         ns=nodes()
         if any(n.get("text","").strip()==label and rect(n) for n in ns): return ns
-        run(["shell","input","swipe","900","1900","900","600","450"])
+        swipe_vertical("up")
         time.sleep(0.5)
     raise SystemExit("Read-only Rider profile entry not visible: "+label)
 
