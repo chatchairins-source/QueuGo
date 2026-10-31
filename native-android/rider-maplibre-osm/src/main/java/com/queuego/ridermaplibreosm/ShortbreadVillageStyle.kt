@@ -188,7 +188,9 @@ object ShortbreadVillageStyle {
                     .withFilter(Expression.has("name"))
                     .withProperties(
                         PropertyFactory.symbolPlacement(placement),
-                        PropertyFactory.textField(Expression.get("name")),
+                        // Use MapLibre native token substitution for the actual OSM name property.
+                        // Visual acceptance still requires real offline screenshots.
+                        PropertyFactory.textField("{name}"),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                         PropertyFactory.textSize(if (layer == "place_labels") 14f else 11f),
                         PropertyFactory.textColor("#424b55"),
