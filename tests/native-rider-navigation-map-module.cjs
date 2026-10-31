@@ -17,6 +17,7 @@ const locationService=read('native-android/rider/src/main/java/com/queuego/rider
 const manifest=read('native-android/rider/src/main/AndroidManifest.xml');
 const runtimeTest=read('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt');
 const runtimeHost=read('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt');
+const installedCountryTest=read('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/InstalledThailandMapTest.kt');
 const workflow=read('.github/workflows/build-native-rider-pilot.yml');
 const isolatedRuntime=read('native-android/qa/run-rider-navigation-map-runtime.py');
 assert(isolatedRuntime.includes('stage_verified_map_for_isolated_debug_runtime()'));
@@ -141,6 +142,14 @@ assert(manifest.includes('android.permission.FOREGROUND_SERVICE_LOCATION'));
 assert(manifest.includes('android:name=".RiderNavigationLocationService"'));
 assert(!manifest.includes('longdo.map.key'));
 
+// Visual label diagnosis must inspect dynamically appended live symbol layers;
+ // the serialized base Style JSON alone omits Style.Builder.withLayer entries.
+assert(installedCountryTest.includes('map.style?.getLayer(id)') &&
+  installedCountryTest.includes('symbol?.getTextField()') &&
+  installedCountryTest.includes('symbol?.getTextFont()') &&
+  installedCountryTest.includes('symbol?.getTextOpacity()') &&
+  installedCountryTest.includes('Thread.sleep(5_000)') &&
+  installedCountryTest.includes('visual_label_acceptance", false'));
 assert(runtimeTest.includes('gpsRefreshTabReturnAndOverlayUpdatesReuseSameMapView'));
 assert(runtimeTest.includes('manualDragReportsGestureButTapDoesNot'));
 assert(runtimeTest.includes('activityRecreationCreatesFreshMapViewForFreshActivityContext'));
