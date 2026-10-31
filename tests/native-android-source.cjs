@@ -986,6 +986,14 @@ for(const role of ['customer','merchant','rider']){
 const riderManifest=read('rider/src/main/AndroidManifest.xml');
 const nativeRootGradle=read('build.gradle.kts');
 const runtimeCapture=read('qa/capture-rider-launch.py');
+ok(
+  runtimeCapture.includes('nodes = wait_ui(directory / "panned.xml"') &&
+  runtimeCapture.includes('if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน"') &&
+  runtimeCapture.includes('assert gps is not None, "Current Customer GPS button missing after map drag"') &&
+  runtimeCapture.includes('assert len(gb) == 4 and gb[2] > gb[0] and gb[3] > gb[1]') &&
+  runtimeCapture.indexOf('gps = next((n for n in nodes') > runtimeCapture.indexOf('nodes = wait_ui(directory / "panned.xml"'),
+  'Real MapLibre customer GPS tap must get current on-screen bounds after pan, not reuse stale/missing permission-dialog locals'
+);
 const authenticatedReviewCapture=read('qa/capture-rider-authenticated-review.py');
 const pilotWorkflow=fs.readFileSync(path.resolve(root,'..','.github','workflows','build-native-rider-pilot.yml'),'utf8');
 ok(
