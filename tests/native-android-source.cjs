@@ -196,6 +196,37 @@ ok(
   source.includes('note = note,\n                    busy = busy,\n                    resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) }'),
   'Customer checkout matches Web controls while full location picker retains QueueGo Places search'
 );
+// Keep Native Ride aligned with the merged Web Production #737 layout. These
+// contracts are structural: real location/map and backend flows stay reusable.
+const rideScreenWebParity=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
+const rideStopPickerWebParity=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
+const sharedRideMapWebParity=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
+ok(
+  rideScreenWebParity.includes('rideStop = editing') &&
+  rideScreenWebParity.includes('cameraReference = if (editing == "destination") pickup else null') &&
+  rideStopPickerWebParity.includes('initialCameraPoint = if (rideDestination && selectedPoint == null)') &&
+  sharedRideMapWebParity.includes('holder.renderSelectedPoint(initialPoint?.takeIf { it.valid })'),
+  'Ride destination must start over the real pickup without preselecting it as the destination'
+);
+ok(
+  rideStopPickerWebParity.includes('if (rideStop != null) 245.dp') &&
+  rideStopPickerWebParity.includes('"pickup" -> "เลือกจุดรับ"') &&
+  rideStopPickerWebParity.includes('"destination" -> "เลือกจุดหมาย"') &&
+  rideStopPickerWebParity.includes('"pickup" -> "ที่อยู่จุดรับ"') &&
+  rideStopPickerWebParity.includes('"destination" -> "ที่อยู่จุดส่ง"') &&
+  rideStopPickerWebParity.includes('else Text(if (rideStop != null) "ใช้จุดนี้"') &&
+  rideStopPickerWebParity.includes('if (rideDestination || ridePickup && location != null) return@LaunchedEffect') &&
+  rideScreenWebParity.includes('height(245.dp)') &&
+  rideScreenWebParity.includes('showWebMapControls = true'),
+  'Ride pickup/dropoff picker must match the web header, 245dp maps, GPS and save button'
+);
+ok(
+  rideScreenWebParity.includes('heightIn(min = 70.dp)') &&
+  rideScreenWebParity.includes('Box(Modifier.size(12.dp).background(markerColor, CircleShape))') &&
+  rideScreenWebParity.includes('Text("ค่าโดยสารเงินสด"') &&
+  rideScreenWebParity.includes('price.optDouble("distance_km")'),
+  'Ride root must use the web location markers and real fare/distance summary'
+);
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
 ok(customerCartCheckout.includes('checkoutPending: Boolean')&&customerCartCheckout.includes('enabled = !checkoutPending')&&customerCartCheckout.includes('pendingCheckout: PendingCustomerCheckout?')&&customerCartCheckout.includes('p_expected_delivery_fee'),'Customer pending checkout must lock cart edits and render the persisted Production quote');
 ok(source.includes('loadActiveOrder(auth)')&&source.includes('&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned,picked_up,in_progress)'),'Customer checkout must preserve Production active-order guard before creating another order');
