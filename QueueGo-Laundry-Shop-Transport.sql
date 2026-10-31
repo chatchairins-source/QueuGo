@@ -147,6 +147,16 @@ begin
   select * into v_existing from public.laundry_orders where request_key=p_request_id;
   if found then
     if v_existing.customer_id<>v_customer.id then raise exception 'request id already used'; end if;
+    -- A request key is bound to the original order intent, not merely its owner.
+    -- A changed payload must never silently return a different Laundry order.
+    if v_existing.hub_id is distinct from p_hub_id
+      or v_existing.service_id is distinct from p_service_id
+      or v_existing.pickup_address is distinct from trim(p_pickup_address)
+      or v_existing.pickup_latitude is distinct from p_pickup_latitude
+      or v_existing.pickup_longitude is distinct from p_pickup_longitude
+      or v_existing.estimated_quantity is distinct from p_estimated_quantity
+      or v_existing.note is distinct from nullif(trim(coalesce(p_note,'')),'')
+    then raise exception 'laundry request id already used with different details'; end if;
     return jsonb_build_object(
       'id',v_existing.id,'order_number',v_existing.order_number,'status',v_existing.status,
       'estimated_total',v_existing.estimated_total_amount,'replayed',true
