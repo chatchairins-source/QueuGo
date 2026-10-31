@@ -1,3 +1,10 @@
+## 2026-10-31 Offline label diagnostic follow-up — Issue750 remains open
+
+- Native736 current inspected HEAD718b44bb includes reviewed #749. The replay-only migration IS DEPLOYED as20261031111727: function MD5e3e9482d533b8d0da8b870d28071252f, unchanged ACL and live Rider gate. This supersedes the historical preparation checkpoint below; do not apply duplicate migration history. PR747 integrated36b0af52 Native Pilot41196416633 SUCCESS.
+- Installed Country run41194834791 reports5/0/0/0 at workflow heada1ed608f, but retained Bangkok screenshot has no clearly legible map names. Artifact13040526207 SHA256944759755f1013bdfa264a9f596e254c58710505df0b20807f64722111dfd7f2 verified before inspection. Its actual checkout metadata recordsda72b982 (merge checkout). Positive symbol-feature index is not visual acceptance; root cause not established.
+- Add bounded public-fixture label/style/camera diagnostics to retained instrumentation logcat, plus installed Latin/Thai glyph-block SHA256 checks against packaged provenance. No account/session/contact data; no production map renderer behavior change or relaxed assertions. Pin country workflow checkout to actual PR head and enable the existing country runtime on PRs targeting Native736, so a proposed fix can be tested before integration.
+- Local Actions pinning110/0 and Native integration predicate16+68+76 checks PASS; exact hosted Kotlin/instrumentation and visual PNG review remain required. Keep Issue750 OPEN until actual labels are visible. Country rendering evidence does not certify routing graph, offline navigation, physical GPS/push/recovery or release signing. Eleven missing RPCs and authenticated/device E2E remain blockers.
+
 ## 2026-10-31 Live Laundry replay-only migration prepared with definition lease
 
 - PR748 final2aef96ba Native Pilot41192266265 SUCCESS; source integrated into unreleased Native736 at a1ed608f2c5ebddd88a821731cc77c9117df27d7. Preserve58-check lifecycle and six JVM compatibility cases. PR747 aa5214e6 Native Pilot41191653210 also SUCCESS; its source replay change is reviewed but not deployed wholesale.
