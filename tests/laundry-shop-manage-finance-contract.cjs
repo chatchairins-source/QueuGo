@@ -119,6 +119,61 @@ const id = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
     await denied(action(31, 2), /shop login required/, 'missing session denied');
     await db.exec('reset role; set role anon');
     await denied(action(31, 2), /permission denied/, 'anonymous execute denied');
+    // Walk the original state machine from pending to delivered, including
+    // exact retries and rejected stale/changed intent. Zero GP is explicit fixture policy.
+    await db.exec(`reset role;
+      insert into laundry_orders(id,hub_id,customer_id,status,service_id,pricing_type_snapshot,
+        unit_price_snapshot,delivery_fee_total_snapshot,gp_rate_snapshot) values
+        ('${id(40)}','${id(21)}','${id(3)}','pending','${id(41)}','per_kg',80,20,0),
+        ('${id(42)}','${id(21)}','${id(3)}','pending','${id(41)}','per_kg',80,20,0);`);
+    const step = async (orderId, command, expected, staff=null, quantity=null, note=null) =>
+      (await db.query('select public.queuego_laundry_shop_manage($1,$2,$3,$4,$5,$6) result',
+        [id(orderId),command,expected,staff,quantity,note])).rows[0].result;
+    await as(101);
+    await denied(step(40,'start_washing','pending'),/invalid laundry transition/,'cannot skip custody');
+    await denied(step(40,'accept','accepted'),/status changed/,'stale expected status denied');
+    const lifecycle = [
+      ['accept','pending','accepted',null,null],
+      ['start_pickup','accepted','pickup_assigned','Pickup staff',null],
+      ['pickup_collected','pickup_assigned','picked_up',null,null],
+      ['receive_at_shop','picked_up','at_hub',null,null],
+      ['start_washing','at_hub','washing',null,null],
+      ['ready_return','washing','ready_return',null,0.5],
+      ['start_return','ready_return','out_for_return','Return staff',null],
+      ['complete_return','out_for_return','completed',null,null],
+    ];
+    for (const [command,previous,next,staff,quantity] of lifecycle) {
+      if (command==='start_pickup'||command==='start_return') {
+        await denied(step(40,command,previous),/staff name required/,'custody requires responsible staff');
+      }
+      const result=await step(40,command,previous,staff,quantity);
+      eq(result.status,next,'authoritative lifecycle transition '+command);
+      eq(result.replayed,false,'first transition '+command);
+      eq((await step(40,command,previous,staff,quantity)).replayed,true,'identical retry '+command);
+      if (staff) {
+        await denied(step(40,command,previous,'Changed staff',quantity),
+          /already completed with different details/,'changed staff retry denied');
+      }
+      if (next==='picked_up') {
+        await denied(step(40,'cancel',next,null,null,'cancel'),/invalid laundry transition/,
+          'cannot cancel after custody');
+      }
+    }
+    await db.exec('reset role');
+    const delivered=await state(40);
+    eq(delivered.final_amount,100,'minimum service charge retained');
+    eq(delivered.final_total_amount,120,'server delivery fee retained');
+    eq(delivered.platform_fee_amount,0,'explicit zero GP stays zero');
+    eq(delivered.shop_net_amount,120,'net reconciles at zero GP');
+    eq(await counts(),{events:9,notices:9},'eight lifecycle events/notices, no duplicate replay side effects');
+    await as(101);
+    await denied(step(42,'cancel','pending'),/cancellation reason required/,'cancel requires reason');
+    eq((await step(42,'cancel','pending',null,null,'Customer requested cancellation')).status,
+      'cancelled','pending cancellation allowed');
+    eq((await step(42,'cancel','pending',null,null,'Customer requested cancellation')).replayed,
+      true,'cancellation retry idempotent');
+    await db.exec('reset role');
+    eq(await counts(),{events:10,notices:10},'one cancellation event/notice');
     console.log(JSON.stringify({checks, failures: 0, scope: 'actual isolated Laundry manage state/finance/ownership/replay; Production untouched'}));
   } finally {
     await db.close();
