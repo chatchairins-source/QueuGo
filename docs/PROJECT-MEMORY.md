@@ -1,3 +1,11 @@
+## 2026-10-31 RPC catalog callable-function and schema privilege guard
+
+- Continued from PR743 cf4bb56aad12b4783556f072cc6a5fa1b4a64113 without modifying PR736/743 branches. Catalog preflight now counts only ordinary functions (pg_proc.prokind=f); procedure/aggregate/window names cannot stand in for PostgREST RPCs. Both API roles require public schema USAGE together with function EXECUTE.
+- Local preflight regression: 9 tests PASS; generated SQL executed read-only on pkypiqhlrmzocysgeqew. 92 names checked, 84 ordinary functions executable by authenticated, same 8 missing. No RPCs invoked, no business rows accessed, no schema/data changes.
+- All eight missing names already have migration definitions in this source. Do not create duplicate authorities or replay historical migrations blindly. Existing source signatures/dependencies must be reconciled with live migration history and isolated lifecycle/security tests before requesting Production approval.
+- PR736 actual HEAD 6e7875c3: Pilot41173047582, POS41173047518, Export41173047629 and Offline41173047601 SUCCESS. PR743 cf4bb56a Pilot41180576332 SUCCESS; country-only gates skipped there. None proves authenticated E2E, physical GPS/push, release signing or missing Production RPC readiness.
+- NEXT: inspect exact new-head CI; reconcile eight existing migrations with live dependencies, prepare isolated reviewed migration tests; keep Issue740 BLOCKED. No merge/deploy/APK publication.
+
 Warning: truncated output (original token count: 118045)
 Total output lines: 2384
 

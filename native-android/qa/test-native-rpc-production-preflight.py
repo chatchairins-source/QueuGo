@@ -46,6 +46,31 @@ class ReadOnlyProductionRpcPreflightTest(unittest.TestCase):
         self.assertFalse(ok)
         self.assertEqual(evidence["missing"], ["qg_only_in_private_schema"])
 
+    def test_only_callable_functions_count_as_rpc(self):
+        # pg_proc also contains procedures, aggregates and window functions.
+        # A same-name non-function must not hide a missing PostgREST RPC.
+        sql = preflight.sql_query(["qg_procedure_only"])
+        self.assertIn("where n.nspname = 'public' and p.prokind = 'f'", sql)
+        self.assertLess(sql.index("p.prokind = 'f'"),
+                        sql.index(") p on p.proname = r.name"))
+
+    def test_schema_usage_required_for_each_api_role(self):
+        sql = preflight.sql_query(["qg_hidden"])
+        for role, alias in (("authenticated", "auth_execute"),
+                            ("anon", "anon_execute")):
+            self.assertIn(
+                f"(pg_catalog.has_schema_privilege('{role}', 'public', 'USAGE') and\n"
+                f"     pg_catalog.has_function_privilege('{role}', p.oid, 'EXECUTE')) as {alias}",
+                sql,
+            )
+        ok, evidence = preflight.verify_rows(
+            ["qg_hidden"],
+            [{"name": "qg_hidden", "overloads": "1",
+              "authenticated_execute": "f", "anonymous_execute": "f"}],
+        )
+        self.assertFalse(ok)
+        self.assertEqual(evidence["authenticated_execute_missing"], ["qg_hidden"])
+
     def test_unknown_or_missing_catalog_denies_release(self):
         ok, evidence = preflight.verify_rows(
             ["queuego_request_ride", "qg_rider_proof_committed"],
