@@ -71,6 +71,29 @@ def labels(n):
 def has_label(n, label):
     return label in labels(n) and rect(n) is not None
 
+# A bottom navigation label remains visible on every primary tab. Its presence
+# alone cannot prove that a tap changed the screen before taking a QA image.
+# These markers are rendered by the actual Native Merchant page content.
+PRIMARY_TAB_MARKERS = {
+    "คำสั่งซื้อ": {"ดูสถานะและจัดการออเดอร์ของร้าน"},
+    "สินค้า": {"สินค้าในร้าน", "สินค้าและเมนู"},
+    "โปรโมชั่น": {"สร้างโปรโมชั่นใหม่", "ปิดฟอร์มสร้างโปรโมชั่น"},
+    "บัญชี": {"ข้อมูลร้าน"},
+}
+
+def primary_tab_ready(ns, label):
+    markers = PRIMARY_TAB_MARKERS[label]
+    visible = {text for n in ns if rect(n) for text in labels(n)}
+    return bool(visible & markers)
+
+def capture_primary_tab(screens, label, filename, screen):
+    tap_label(nodes(), label)
+    fresh = wait(lambda xs: primary_tab_ready(xs, label), 45)
+    assert fresh, "Merchant tab content did not render: " + label
+    time.sleep(1)
+    screens.append({"screen": screen, "account": "merchant-test",
+                    "read_only": True, **shot(filename)})
+
 def tap_label(ns,label):
     matches=[n for n in ns if has_label(n,label)]
     assert matches, "Merchant screen/tab missing: "+label
@@ -149,10 +172,9 @@ def main():
     if not ns: raise SystemExit("Merchant home summary did not finish loading; no loading screenshot was saved")
     screens=[{"screen":"home","account":"merchant-test","read_only":True,**shot("01-home")}]
     for i,label in enumerate(tabs[1:],2):
-        tap_label(nodes(),label)
-        time.sleep(4)
-        screens.append({"screen":label,"account":"merchant-test","read_only":True,
-                        **shot(f"{i:02d}-"+("orders" if label=="คำสั่งซื้อ" else "products" if label=="สินค้า" else "promotions" if label=="โปรโมชั่น" else "profile"))})
+        name = ("orders" if label == "คำสั่งซื้อ" else "products" if label == "สินค้า"
+                else "promotions" if label == "โปรโมชั่น" else "profile")
+        capture_primary_tab(screens, label, f"{i:02d}-" + name, label)
     if os.environ.get("QG_MERCHANT_VISUAL_PARITY")=="1":
         capture_pos(screens,"phone-")
         run(["shell","wm","size","1600x2560"])
@@ -173,9 +195,7 @@ def main():
             raise AssertionError("Tablet Merchant home did not finish loading")
         screens.append({"screen":"tablet-home","account":"merchant-test","read_only":True,**shot("tablet-home")})
         for label,name in (("คำสั่งซื้อ","orders"),("สินค้า","products"),("โปรโมชั่น","promotions"),("บัญชี","profile")):
-            tap_label(nodes(),label)
-            time.sleep(4)
-            screens.append({"screen":"tablet-"+name,"account":"merchant-test","read_only":True,**shot("tablet-"+name)})
+            capture_primary_tab(screens, label, "tablet-" + name, "tablet-" + name)
         capture_pos(screens,"tablet-")
     meta={
       "source_head":os.environ.get("GITHUB_SHA",""),
