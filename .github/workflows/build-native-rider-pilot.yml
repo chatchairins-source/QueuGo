@@ -196,6 +196,8 @@ jobs:
           echo "Production RPC live check remains a separate Release Gate; no database credentials used here."
       - name: Emulator APK transport recovery regression (no device required)
         run: python3 -m unittest discover -s native-android/qa -p 'test_adb_install_recovery.py' -v
+      - name: Authenticated Rider screenshot hierarchy freshness regression
+        run: python3 -m unittest discover -s native-android/qa -p 'test_authenticated_review_hierarchy.py' -v
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family

@@ -14,20 +14,28 @@ def run(args, **kw):
     return subprocess.run(ADB+args, check=True, timeout=kw.pop("timeout",30), **kw)
 
 def nodes():
+    # UIAutomator can return zero after a "null root" while leaving its previous
+    # XML file intact. A stale authenticated hierarchy must never pass visual QA.
     last_error=None
     for _ in range(5):
-        dumped=subprocess.run(ADB+["shell","uiautomator","dump","/sdcard/qg-review.xml"],
-                              timeout=30,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-        if dumped.returncode==0:
-            raw=subprocess.run(ADB+["exec-out","cat","/sdcard/qg-review.xml"],
-                               timeout=30,capture_output=True).stdout
-            try:
-                root=ET.fromstring(raw)
-                return list(root.iter("node"))
-            except ET.ParseError as failure:
-                last_error=failure
-        else:
-            last_error=f"uiautomator dump exited {dumped.returncode}"
+        try:
+            run(["shell","rm","-f","/sdcard/qg-review.xml"],timeout=15,
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            dumped=subprocess.run(ADB+["shell","uiautomator","dump","/sdcard/qg-review.xml"],
+                                  timeout=30,capture_output=True,text=True)
+            if dumped.returncode != 0:
+                raise RuntimeError(f"uiautomator dump exited {dumped.returncode}")
+            if "null root" in (dumped.stdout+dumped.stderr).lower():
+                raise RuntimeError("uiautomator returned null root")
+            raw=run(["exec-out","cat","/sdcard/qg-review.xml"],
+                    timeout=30,capture_output=True).stdout
+            root=ET.fromstring(raw)
+            if root.tag != "hierarchy":
+                raise ET.ParseError("uiautomator XML has no hierarchy root")
+            return list(root.iter("node"))
+        except (RuntimeError, ET.ParseError, subprocess.CalledProcessError,
+                subprocess.TimeoutExpired, OSError) as failure:
+            last_error=failure
         time.sleep(0.7)
     raise RuntimeError("Android UI hierarchy unavailable after retries") from last_error
 
