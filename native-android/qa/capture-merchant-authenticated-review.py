@@ -14,18 +14,31 @@ def run(args, **kw):
     return subprocess.run(ADB+args, check=True, timeout=kw.pop("timeout",30), **kw)
 
 def nodes():
-    # A zero-exit null-root dump can leave the previous screen's XML untouched.
-    # This is the same stale-hierarchy guard used by the existing launch runner.
-    run(["shell","rm","-f","/sdcard/qg-review.xml"], timeout=15,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    dumped=run(["shell","uiautomator","dump","/sdcard/qg-review.xml"], timeout=30,
-               capture_output=True, text=True)
-    if "null root" in (dumped.stdout+dumped.stderr).lower(): return []
-    try:
-        raw=run(["exec-out","cat","/sdcard/qg-review.xml"],capture_output=True,timeout=30).stdout
-        return list(ET.fromstring(raw).iter("node"))
-    except (subprocess.CalledProcessError, ET.ParseError):
-        return []
+    # UIAutomator may exit zero with "null root", leaving a previous hierarchy
+    # on the device. Every attempt must delete that file and prove a fresh root.
+    last_error = None
+    for _ in range(5):
+        try:
+            run(["shell", "rm", "-f", "/sdcard/qg-review.xml"], timeout=15,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            dumped = subprocess.run(
+                ADB + ["shell", "uiautomator", "dump", "/sdcard/qg-review.xml"],
+                timeout=30, capture_output=True, text=True)
+            if dumped.returncode != 0:
+                raise RuntimeError(f"uiautomator dump exited {dumped.returncode}")
+            if "null root" in (dumped.stdout + dumped.stderr).lower():
+                raise RuntimeError("uiautomator returned null root")
+            raw = run(["exec-out", "cat", "/sdcard/qg-review.xml"],
+                      timeout=30, capture_output=True).stdout
+            root = ET.fromstring(raw)
+            if root.tag != "hierarchy":
+                raise ET.ParseError("uiautomator XML has no hierarchy root")
+            return list(root.iter("node"))
+        except (RuntimeError, ET.ParseError, subprocess.CalledProcessError,
+                subprocess.TimeoutExpired, OSError) as failure:
+            last_error = failure
+        time.sleep(0.7)
+    raise RuntimeError("Merchant Android UI hierarchy unavailable after retries") from last_error
 
 def rect(n):
     v=[int(x) for x in re.findall(r"\d+",n.get("bounds",""))]
