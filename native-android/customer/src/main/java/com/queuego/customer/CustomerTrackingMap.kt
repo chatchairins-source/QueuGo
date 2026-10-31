@@ -94,12 +94,13 @@ fun CustomerTrackingMap(order: CustomerOrder, rider: CustomerTrackingRider?) {
         if (points.isNotEmpty()) {
             key(order.id, attempt) {
                 QgTrackingMap(
-                    points,
-                    Modifier.fillMaxWidth().height(mapHeight).clip(RoundedCornerShape(15.dp))
-                ) {
-                    ready = it
-                    if (it) timedOut = false
-                }
+                    points = points,
+                    modifier = Modifier.fillMaxWidth().height(mapHeight).clip(RoundedCornerShape(15.dp)),
+                    onReady = { isReady ->
+                        ready = isReady
+                        if (isReady) timedOut = false
+                    }
+                )
             }
         } else {
             Box(
