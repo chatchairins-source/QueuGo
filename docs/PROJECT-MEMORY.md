@@ -1,5 +1,11 @@
-Warning: truncated output (original token count: 114717)
-Total output lines: 2322
+Warning: truncated output (original token count: 114961)
+Total output lines: 2328
+
+## 2026-10-31 Export workflow startup failure — corrected
+
+- Published correction `595f26b54f5a0106da1100e367cbfd4a35553d84` to PR #736 through the connected GitHub API (ordinary shell push has no credentials).
+- First exact-head export runs 41155370943/41155374478 failed workflow validation before execution: the reused Pilot declares a separately branch-guarded legacy publish job requesting actions:read/contents:write, beyond caller permissions. Actual GitHub annotation inspected. Caller permissions now permit that declared maximum; native build job itself stays contents:read and the legacy publisher remains disabled on this successor branch. No release or deployment performed.
+- Source 471/0, pinning and integration checks passed. Full direct regression is still running; npm pretest is blocked in external pinned-map asset download. New build/instrumentation/runtime/signing/role-size evidence remains pending; do not claim the failed exports produced APKs.
 
 ## 2026-10-31 Exact-HEAD role APK export correction — IN PROGRESS
 
@@ -999,11 +1005,7 @@ Total output lines: 2322
 - PR166/ada37df858e32c4dc4928b5d6e40ee591ca0415d exact Pilot38251358486 SUCCESS. Working e39090ca post-merge38250742424 failed initial map tile completeness after60s. Its artifact11748211365 sha25651a24e846027b02eb4134821d93c5318c0379e50b92303b96fa00c1ebb040a4b preserves a real19.8867% gray rectangle, unchanged after61.9s; corrected PID4686 did not show a verified app crash. This is a demonstrated incomplete map frame, not a timeout-only assumption.
 - Log shows in-flight tile requests on both the configured legacy HTTPS ms2 endpoint and the new HTTPS ms endpoint selected by actual key validation. Direct read-only requests for the observed tile returned valid512px PNGs on both hosts, with different bytes. Candidate starts the existing normal layer at the checker-selected ms endpoint, removing this avoidable mixed-host transition while retaining key validation/automatic host selection, map/camera/location/lifecycle and all strict60s/<=1%/crash/camera gates. Root-cause elimination requires exact/post-merge runtime evidence; no certainty is inferred from source alone. No SDK/provider/key bypass, new map renderer or fake business/GPS data.
 - Failed-run evidence also demonstrated ADB exec-out can return zero with cat errors on stdout. The prior collector incorrectly named those bytes as missing resumed/recreated PNG/JSON files. Candidate verifies PNG structure/chunk CRC and finite camera metrics, omits/removes only invalid generated files, records unavailable names, and requires all9 valid original files on a successful instrumentation run. Stdlib-only AST unit fixtures cover the exact zero-exit error, corrupt/truncated PNG, invalid/NaN JSON, partial failed collection and complete collection. These fixtures are not Android/physical evidence.
-- Python compilation, collector/budget/source232 guards PASS; full regression/exact Native Pilot pending. Production Voice verification remains deployed as recorded below. Release Gate remains OPEN; no APK/AAB delivered.
-
-## 2026-10-12 Voice block revocation Production verification
-- PR165 exact0a0cda702b4f06dd87a71bbeab80c43fd0030782 Pilot38249450248 SUCCESS for full regression including PostgreSQL block cases, JVM/all3 builds/16KB/no-WebView/actual Android launch-map-service runtime. Expected-SHA merge to workinge39090ca228caf278a386569554f1fed03745be0 has exactly tested tree90b9a08c280a0cf75797f43bfb805f847f60d916. Native main9f675d07 and Web main7595d764 remain preserved.
-- Applied the exact guarded migration to Production via MCP; actual recorded version20261012124318/name native_voice_block_revocation. Four deployed existing-function digests exactly match gated target definitions; paired BEFORE INSERT/UPDATE block trigger is present. anon EXECUTE=false on each of the six inspected functions. authenticated EXECUTE is retained on the3 existing API f…14717 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
+- Python compilation, collector/budget/source232 guards PASS; full regression/exact Native Pilo…14961 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
 - Existing `qg_admin_update_location` remains authoritative with expected old coordinates, audit and retry behavior. Existing order coordinates and financial state transitions are untouched.
 - Native prompts were replaced by labelled dialog forms for reasons, market radius and vehicle capacity. Tests cover validation, account races, map failure and retry payloads.
 - Automated regression passes do not certify physical mobile GPS, live map tiles or real account approval. Local browser installation was blocked by the browser download returning HTML rather than a browser archive; do not claim visual browser/device certification from automated DOM tests.

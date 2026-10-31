@@ -16,7 +16,10 @@ on:
       - native-android/qa/export-role-apks.py
 
 permissions:
-  contents: read
+  # The reused workflow declares a separately guarded legacy road-test publisher.
+  # Native build jobs retain their own read-only permissions.
+  contents: write
+  actions: read
 
 # Reuse the current checkout's complete build/test pipeline. Never redistribute
 # binaries from a hard-coded predecessor run or substitute a historical SHA.

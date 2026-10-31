@@ -1,3 +1,9 @@
+## 2026-10-31 Export workflow startup failure — corrected
+
+- Published correction `595f26b54f5a0106da1100e367cbfd4a35553d84` to PR #736 through the connected GitHub API (ordinary shell push has no credentials).
+- First exact-head export runs 41155370943/41155374478 failed workflow validation before execution: the reused Pilot declares a separately branch-guarded legacy publish job requesting actions:read/contents:write, beyond caller permissions. Actual GitHub annotation inspected. Caller permissions now permit that declared maximum; native build job itself stays contents:read and the legacy publisher remains disabled on this successor branch. No release or deployment performed.
+- Source 471/0, pinning and integration checks passed. Full direct regression is still running; npm pretest is blocked in external pinned-map asset download. New build/instrumentation/runtime/signing/role-size evidence remains pending; do not claim the failed exports produced APKs.
+
 ## 2026-10-31 Exact-HEAD role APK export correction — IN PROGRESS
 
 - Fresh remote check: main `7e036a0735cc49905e9b0a2434492470551a0c9d`; PR #736 remains draft/unmerged at parent `b580a65b760160ef67596e689a1310fa55f6d693`. Preserve PR #735/POS and all existing successor work.
