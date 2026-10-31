@@ -1,3 +1,11 @@
+## 2026-10-31 Laundry request-key replay integrity — isolated successor (source-only)
+
+- PR #746 parent exact HEAD `93e1279dc43e86086ad5c23eafe43cf47bcf9a83` was re-read before this change. PR #736/#743/#744 and Issue #740 checked; no open [QueueGo CI Recovery] issue. Native Pilot and catalog regression jobs in run 41186306703 were successful; skipped matrix jobs do not count as acceptance.
+- P1 correctness risk in existing `queuego_place_laundry_order_v2`: when a Customer reuses a `p_request_id`, the prior branch checked only `customer_id`, then returned the existing order even if hub/service/address/coordinates/estimated quantity/note differed. A changed payload could be silently treated as successful placement of the wrong Laundry order.
+- Fail-closed source change binds request-key replay to the original normalized order intent, using null-safe `IS DISTINCT FROM` checks. Same customer+same payload retains replay response. Other-customer request keys remain rejected. No change to pricing policy, fees, RLS, existing order rows, migration history or Production.
+- Added `tests/laundry-order-request-idempotency.cjs` to run the **actual** placement RPC against isolated PGlite fixtures: identical replay, changed hub/service/address/lat/lng/quantity/note, different Customer, anonymous role and unchanged row/event/notification counts. Wired into `npm test`. Exact-head hosted test/CI remains required; do not claim it passes before logs confirm.
+- Release remains BLOCKED: GP policy/snapshot at creation, historical Laundry resolution, 11 missing RPC names from last read-only catalog, authenticated E2E/device evidence and full service gates. No Production deployment or APK publication. Next: run exact-head CI and review failing job logs; verify idempotency test in isolated PostgreSQL, then address authoritative GP source and other backend dependencies before Production remediation.
+
 ## 2026-10-31 Laundry commission integrity guard — PR #746 (source-only; #745 superseded)
 
 - Read-only Production metadata at 2026-10-31 15:48 ICT: three Laundry orders, all in active states; no `laundry_orders.gp_rate_snapshot` column and no Laundry GP-rate policy field in `laundry_shop_settings`. No business rows were read, edited or created.
