@@ -305,9 +305,23 @@ internal suspend fun customerRegistrationLocation(context: Context): Location = 
                 }
                 continuation.invokeOnCancellation { manager.removeUpdates(listener) }
                 try {
-                    val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
-                        .filter { manager.isProviderEnabled(it) }
-                    if (providers.isEmpty()) throw IllegalStateException("กรุณาเปิดตำแหน่งที่ตั้งแล้วลองใหม่")
+                    // Android permits approximate-only location. Requesting the GPS
+                    // provider with only COARSE permission throws SecurityException
+                    // and previously prevented the valid NETWORK provider fallback.
+                    val fineGranted = ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                    val coarseGranted = ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                    val providers = buildList {
+                        if (fineGranted && manager.isProviderEnabled(LocationManager.GPS_PROVIDER))
+                            add(LocationManager.GPS_PROVIDER)
+                        if ((fineGranted || coarseGranted) &&
+                            manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
+                            add(LocationManager.NETWORK_PROVIDER)
+                    }
+                    if (providers.isEmpty()) throw IllegalStateException("กรุณาอนุญาตตำแหน่งและเปิด GPS แล้วลองใหม่")
                     providers.forEach { manager.requestLocationUpdates(it, 0L, 0f, listener, Looper.getMainLooper()) }
                 } catch (failure: Exception) {
                     manager.removeUpdates(listener)
