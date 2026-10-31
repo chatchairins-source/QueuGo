@@ -1,3 +1,10 @@
+## 2026-10-31 Laundry lifecycle regression expanded while Native compatibility builds
+
+- PR748 initial source97bb7653 adds scoped Native Laundry optional-column read compatibility and truthful nullable GP. Clean local full npm test EXIT0 including pre/posttest on tree934a6804; Native Pilot41191937921 catalog regression SUCCESS and Kotlin/unit stage running at checkpoint.
+- Expanded the existing actual-source PGlite Laundry finance test18→58 checks without changing Production SQL: pending→accepted→pickup assigned→picked up→at hub→washing→ready return→out for return→completed. Covers every identical retry, stale expected status, skipped stages, responsible staff required and changed-staff replay denial, no cancellation after custody, minimum charge/delivery/explicit-zero-GP reconciliation and exact event/notification counts. Pending cancellation/retry creates one event/notice. Zero GP is explicit test fixture policy, not a Production default.
+- Live read-only policy audit found effective_gp_rate_at(uuid,timestamptz) returns PERCENT and honors feature.gp/per-shop promotion/default authority; Laundry gp_rate_snapshot is a FRACTION. Applicability to Laundry must be established before reusing it at placement and dividing by100. Preserve active PR747 request-id replay fix when planning any source snapshot change. Do not invent historical rate or bypass missing snapshot guard.
+- Local new lifecycle58/0 PASS; successor test commit CI pending. No Production schema/data write, merge, Web publication or APK release. Still11 missing RPCs at latest readback; authenticated Android and physical-device acceptance remain open.
+
 ## 2026-10-31 Native Laundry read compatibility and truthful GP display
 
 - Continue from fresh PR746 HEAD93e1279dc43e86086ad5c23eafe43cf47bcf9a83 on a separate successor; preserve its SQL finance guard and all PR744 remediation. Parent Native Pilot41186306703 native-pilot/catalog jobs SUCCESS as rechecked; no latest successor CI claim yet.
