@@ -1,5 +1,13 @@
-Warning: truncated output (original token count: 116527)
-Total output lines: 2355
+Warning: truncated output (original token count: 117066)
+Total output lines: 2363
+
+## 2026-10-31 After-image confirms POS header; stale hierarchy/session heartbeat recovery
+
+- Current app-code source `0e75d6f92b0a464dbccde356894b9049afa75bce`: clean local full npm test EXIT 0, including pre/posttest. Actual authenticated phone POS after-image from run 41156854297 / artifact 13026266754 confirms centered Q/QueueGo/context header and compact back/reload controls. Remaining counter form/table/default/product layout differences are NOT certified.
+- The same run still failed Native tablet navigation detection while the retained screenshot again showed Home. Text/content-desc support alone was insufficient. Existing launch runner already documents UiAutomator's zero-exit/null-root stale-XML behavior; reuse its remove-before-dump approach in Merchant capture, return no nodes on null-root/invalid/missing XML, and retain only safe known-label/node-count diagnostics. No raw hierarchy/credentials are persisted. Actual tablet recapture remains required.
+- Web artifact 13025851356 failed tablet POS with blocked qg_call_incoming and touch_active_session. Actual Production heartbeat definition reviewed read-only: only UPDATE last_seen_at for auth.uid + exact session + not revoked. Permit this existing normal-session heartbeat alongside claim_active_session; retain denial of business writes and revocation. Do not call it a read-only RPC. qg_call_incoming remains blocked.
+- Exact 0e75d6f9 offline run 41156859004 SUCCESS, 5 tests with no failures/errors/skips. Artifact 13025662139 SHA256 2e067c772522acc909ceb420e531c3aa5194fa04b0b283a9e8330151b05f5919; metadata records merge 433f3fc7. Actual inspected Bangkok image still has no clearly visible labels after the settling delay; label visual quality stays OPEN despite rendered-feature checks. Offline roads are confirmed; nationwide offline routing is not.
+- Exact-source export 41156859038 has passed regression and generated the country archive, reaching JVM tests; no accepted role APK/size/signature is claimed yet. This follow-up changes QA only and preserves all app/POS/backend work. Keep PR #736 Draft/unmerged; no Production business/schema mutations or deployment.
 
 ## 2026-10-31 Merchant real-image correction and tablet capture recovery — IN PROGRESS
 
@@ -998,15 +1006,7 @@ Total output lines: 2355
 - Both versions use identical image bytes; managed Admin banners/hide/link settings retained, bundled image remains visible while a remote banner loads/fails. Images belong in banners; category icons unchanged. No order/payment/state/backend changes. Source/CI and live publication checks pending; Native physical Release Gate stays OPEN.
 
 ## 2026-10-13 owner road-display extension
-- Owner explicitly adds dark red road line from current Rider GPS to the next authoritative stop, and pale red lines between later stops. This supersedes the earlier no-line presentation; Google Maps app remains the only navigation engine. No in-app ETA/turn/voice or business state/routing change.
-- Preserve marker/zoom integration ee49d3dbf9b9a7e1bffa4afddd589f44697ee8a5 and latest Rider90b4f87. Exact ee49d3d/Pilot38372435693 SUCCESS in BOTH jobs for full regression, all-role JVM, all3 debug builds,16KB/no-WebView, Customer actual permission/pan/resume, Merchant map lifecycle and Rider map/vector/GPS/stressed lifecycle.
-- New display-only road layer requests actual Longdo GeoJSON, keeps pickup-before-drop/bundleSequence/dropRank and pending arrival/proof priority, truncates at unknown coordinates, omits closed/completed work, and never fabricates straight-line routes. GPS changes move existing pins; lines/geometry cache are bounded, requests are cancellable/foreground-only, generation rejects stale results, active geometry refresh is throttled and camera is untouched.
-- Active line RGBA163/0/31/255; later RGBA230/0/45/76. Actual vendor-example GeoJSON read returnedHTTP200/meta200/8 LineStrings using the existing map key. Runtime exercises live vendor-example road geometry and SDK dark/pale colors without any business order/account fixture or Production writes.
-- Remote backup/rider-before-road-display-ee49d3d-20261013 retains the verified pre-extension source. New extension combined-head unit/build/runtime remains pending. Physical Google Maps/overlay/GPS/authenticated E2E and final Release Gate remain OPEN; no release APK/AAB delivered.
-
-## 2026-10-13 verified marker family and Longdo zoom fix integration
-- Preserve latest Native Rider90b4f87978a5b0b22f35ca8ba638c14dabf0dcf9 (merged PR170) and merged marker PR169/c5a37c5/5251164. No reset/revert, cash-flow/state/routing changes are authored by this map integration; retain all latest source.
-- Exact fix679392e55c7d467e335cfddb6c4924bc6363e01d/Pilot38370365168 SUCCESS in BOTH native-pilot and map-display-only: full regression/source, all-role JVM, all3 debug APKs,16KB/no-WebView, actual Customer den…16527 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
+- Owner explicitly adds dark red …17066 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
 - Existing `qg_admin_update_location` remains authoritative with expected old coordinates, audit and retry behavior. Existing order coordinates and financial state transitions are untouched.
 - Native prompts were replaced by labelled dialog forms for reasons, market radius and vehicle capacity. Tests cover validation, account races, map failure and retry payloads.
 - Automated regression passes do not certify physical mobile GPS, live map tiles or real account approval. Local browser installation was blocked by the browser download returning HTML rather than a browser archive; do not claim visual browser/device certification from automated DOM tests.

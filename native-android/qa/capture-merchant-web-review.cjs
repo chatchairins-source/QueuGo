@@ -7,7 +7,8 @@ const READ_RPCS=new Set(['queuego_shop_readiness','effective_gp_rate','get_my_sh
   'merchant_revenue_days','pos_my_shop','pos_is_owner','pos_current_shift',
   'pos_register_shift_history','pos_owner_dashboard','pos_owner_item_sales','pos_product_codes_for_shop','queuego_credit_summary','check_active_session']);
 // Existing normal sign-in ownership handshake; no business mutation or privilege changes.
-const AUTH_RPCS=new Set(['claim_active_session']);
+// Production heartbeat only touches last_seen_at for this authenticated session.
+const AUTH_RPCS=new Set(['claim_active_session','touch_active_session']);
 function allowedRequest(method,url,body){
   const u=new URL(url);
   if(['GET','HEAD','OPTIONS'].includes(method))return true;

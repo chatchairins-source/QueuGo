@@ -12,10 +12,18 @@ def run(args, **kw):
     return subprocess.run(ADB+args, check=True, timeout=kw.pop("timeout",30), **kw)
 
 def nodes():
-    run(["shell","uiautomator","dump","/sdcard/qg-review.xml"], timeout=30,
+    # A zero-exit null-root dump can leave the previous screen's XML untouched.
+    # This is the same stale-hierarchy guard used by the existing launch runner.
+    run(["shell","rm","-f","/sdcard/qg-review.xml"], timeout=15,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    raw=run(["exec-out","cat","/sdcard/qg-review.xml"],capture_output=True,timeout=30).stdout
-    return list(ET.fromstring(raw).iter("node"))
+    dumped=run(["shell","uiautomator","dump","/sdcard/qg-review.xml"], timeout=30,
+               capture_output=True, text=True)
+    if "null root" in (dumped.stdout+dumped.stderr).lower(): return []
+    try:
+        raw=run(["exec-out","cat","/sdcard/qg-review.xml"],capture_output=True,timeout=30).stdout
+        return list(ET.fromstring(raw).iter("node"))
+    except (subprocess.CalledProcessError, ET.ParseError):
+        return []
 
 def rect(n):
     v=[int(x) for x in re.findall(r"\d+",n.get("bounds",""))]
@@ -28,10 +36,16 @@ def tap(n):
 
 def wait(pred, seconds=75):
     end=time.monotonic()+seconds
+    ns=[]
     while time.monotonic()<end:
         ns=nodes()
         if pred(ns): return ns
         time.sleep(1)
+    review_labels={"หน้าหลัก","คำสั่งซื้อ","สินค้า","โปรโมชั่น","บัญชี","＋ รับออเดอร์","โต๊ะ","คิดเงิน"}
+    (OUT/"hierarchy-status.json").write_text(json.dumps({
+        "node_count":len(ns),
+        "known_labels":sorted({label for n in ns for label in labels(n)} & review_labels)
+    },ensure_ascii=False)+"\n")
     return []
 
 def labels(n):
