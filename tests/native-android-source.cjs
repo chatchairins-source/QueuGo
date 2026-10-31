@@ -227,6 +227,17 @@ ok(
   rideScreenWebParity.includes('price.optDouble("distance_km")'),
   'Ride root must use the web location markers and real fare/distance summary'
 );
+
+ok(
+  rideScreenWebParity.includes('Text("ใช้ตำแหน่งปัจจุบันเป็นจุดรับ"') &&
+  rideScreenWebParity.includes('val currentPickupPermission = rememberLauncherForActivityResult(') &&
+  rideScreenWebParity.includes('lastKnownLocation(context)') &&
+  rideScreenWebParity.includes('customerRegistrationLocation(context)') &&
+  rideScreenWebParity.includes('customerApi.reverseGeocode(coordinates.first, coordinates.second)') &&
+  rideScreenWebParity.includes('if (hasLocation(context))'),
+  'Web Ride quick-pickup must use the native GPS permission, real coordinates and reverse geocoder'
+);
+
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
 ok(customerCartCheckout.includes('checkoutPending: Boolean')&&customerCartCheckout.includes('enabled = !checkoutPending')&&customerCartCheckout.includes('pendingCheckout: PendingCustomerCheckout?')&&customerCartCheckout.includes('p_expected_delivery_fee'),'Customer pending checkout must lock cart edits and render the persisted Production quote');
 ok(source.includes('loadActiveOrder(auth)')&&source.includes('&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned,picked_up,in_progress)'),'Customer checkout must preserve Production active-order guard before creating another order');
