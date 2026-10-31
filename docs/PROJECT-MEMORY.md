@@ -1,3 +1,12 @@
+## 2026-10-31 Web Ride location pickers — match Ride landing layout
+
+- Owner explicitly requests Web first: pickup and destination picker pages must follow the existing first Ride page shown in the supplied screenshots. Work is isolated from main 7e036a0735cc49905e9b0a2434492470551a0c9d; no Native successor or backend changes are included.
+- Reuse one Ride page-header helper and one map-frame style across the landing and both picker pages. Picker headings now use the same .pt/back/.sm hierarchy; map height 245px and 16px corners match the landing, replacing the separate 30px heading/330px map/24px card treatment.
+- Move the existing ride-back control to the heading, retaining its ID and callback. Compact GPS/address spacing and use the existing primary button style. Preserve 16px textarea text for mobile focus behavior, map/picker IDs, direct map tap, GPS, reverse lookup, address validation and selected-point lifecycle. Add an associated address label. No fare/order/session/payment behavior change.
+- Bump only the Ride asset query string so existing browsers fetch the updated script.
+- Source syntax and existing Passenger Ride flow contract: 49 checks PASS. Isolated real-renderer layout QA at 393px/768px confirmed 20px headings, 66px header blocks, 245px map frames, 16px card corners and no horizontal overflow. QA fixture/session and static preview files were removed and are not deployed. This is layout evidence, not live Auth/GPS/OSM-tile/E2E certification; map tiles did not render in this QA browser.
+- Full repository regression and exact-source hosted RC/deployment are pending at this checkpoint. Keep the current Android continuation intact; publish only this bounded Web layout change after validation.
+
 ## 2026-10-25 Detailed land boundary release prepared
 
 - `840f2923` hosted RC `40171718136` passed. Exact pinned geoBoundaries component passed real read-only PostGIS validity and all 14 positive/negative paired containment expectations.
