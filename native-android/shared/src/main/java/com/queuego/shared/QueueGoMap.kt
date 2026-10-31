@@ -399,6 +399,7 @@ fun QgTrackingMap(
                     if (holder.destroyed) return@getMapAsync
                     holder.map = map
                     map.uiSettings.isLogoEnabled = false
+                    map.uiSettings.isCompassEnabled = !showWebMapControls
                     map.uiSettings.isAttributionEnabled = true
                     // QueueGo Ride: pinch zoom, two-finger rotate and two-finger 3D tilt.
                     map.uiSettings.isZoomGesturesEnabled = true
@@ -574,6 +575,7 @@ fun QgLocationPickerMap(
                             if (holder.destroyed) return@getMapAsync
                             holder.map = map
                             map.uiSettings.isLogoEnabled = false
+                            map.uiSettings.isCompassEnabled = false
                             map.uiSettings.isAttributionEnabled = true
                             val start = initialPoint?.takeIf { it.valid }
                             map.cameraPosition = CameraPosition.Builder()
