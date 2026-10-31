@@ -1,3 +1,10 @@
+## 2026-10-31 Live replay patch deployed and Native source integrated
+
+- PR748 merged at a1ed608f after exact2aef96ba CI41192266265 SUCCESS. PR749 exact4561fee4 CI41195321196 completed SUCCESS (full regression/JVM/three APKs/lifecycle/catalog), then owner-authorized narrow migration applied at live version20261031111727. Readback exact MD5e3e9482d533b8d0da8b870d28071252f, original ACL, anon denied, Rider gate retained. Security Advisor counts unchanged32/10/189/1. No order/rate/backfill writes. DO NOT reapply another Production migration merely to duplicate history.
+- Tested source749 merged into unreleased Native736 at718b44bb9041306d29b6cde901fc96c7f57ce09e. Readback summary:docs/qa/laundry-live-replay-readback-20261031.json. Full authenticated/device acceptance and11 missing RPCs remain open.
+- Merge this latest base into747 preserving both histories,749 live-migration test and748 Native nullable GP/read compatibility/58-check lifecycle. Root source replay guard remains separate from legacy live Rider eligibility. Integrated new-head CI required; don't reuse old-head passing result.
+- Actual offline country artifact13040526207/run41194834791 reviewed with verified ZIP SHA944759755f1013bdfa264a9f596e254c58710505df0b20807f64722111dfd7f2:5 tests PASS, offline roads rendered, Bangkok names still not visibly clear. Issue750 tracks diagnosis; don't infer label rendering from feature-index count or offline routing from PMTiles.
+
 ## 2026-10-31 Replay source integration with current Native lineage
 
 - Merge current Native736 a1ed608f into replay successor747 without losing748 nullable GP/schema compatibility or58-check lifecycle regression. Preserve both parent histories; no Production change. Fresh747 aa5214e6 Pilot41191653210 SUCCESS before integration; integrated source requires new exact-head CI.
@@ -11,6 +18,14 @@
 - Added `tests/laundry-order-request-idempotency.cjs` to run the **actual** placement RPC against isolated PGlite fixtures: identical replay, changed hub/service/address/lat/lng/quantity/note, different Customer, anonymous role and unchanged row/event/notification counts. Wired into `npm test`. Exact-head hosted test/CI remains required; do not claim it passes before logs confirm.
 - Release remains BLOCKED: GP policy/snapshot at creation, historical Laundry resolution, 11 missing RPC names from last read-only catalog, authenticated E2E/device evidence and full service gates. No Production deployment or APK publication. Next: run exact-head CI and review failing job logs; verify idempotency test in isolated PostgreSQL, then address authoritative GP source and other backend dependencies before Production remediation.
 
+
+## 2026-10-31 Live Laundry replay-only migration prepared with definition lease
+
+- PR748 final2aef96ba Native Pilot41192266265 SUCCESS; source integrated into unreleased Native736 at a1ed608f2c5ebddd88a821731cc77c9117df27d7. Preserve58-check lifecycle and six JVM compatibility cases. PR747 aa5214e6 Native Pilot41191653210 also SUCCESS; its source replay change is reviewed but not deployed wholesale.
+- Fresh Production placement readback differs from newer root SQL: live still requires an active laundry_hub_riders entry. A wholesale source-function replay would remove that eligibility gate. Prepare only original owner-check→null-safe owner+normalized hub/service/address/lat/lng/quantity/note replay binding, leaving every non-replay character of the live definition intact.
+- CLI2.122.0 migration-new generated20261031110052_laundry_request_intent_replay_guard.sql. Definition MD5 lease accepts inspected before37e241c90a76a2b48ebdd32697f75acb or exact patched e3e9482d533b8d0da8b870d28071252f, rejecting unknown concurrent definitions before DDL. Explicit existing auth/service grants retained; anon/PUBLIC execution revoked.
+- New actual-migration isolated regression uses the inspected original definition fixture, checks exact/conflicting replay, null owner, different Customer, anon denial, replaying migration, retained live Rider eligibility, unchanged row/event/notice counts and rejection/preservation of an unknown concurrent definition. No Production schema/data writes at this preparation checkpoint; full CI and final readback required before deploying this narrow patch.
+- This does not set Laundry GP policy, enable shop-managed finance or close the11 missing RPC catalog blockers. Keep authenticated/device/lifecycle release gates open. Next: publish/review this migration+tests, exact-head CI, advisors/live definition readcheck, owner-authorized atomic apply and definition/ACL/history readback.
 
 ## 2026-10-31 Laundry lifecycle regression expanded while Native compatibility builds
 
