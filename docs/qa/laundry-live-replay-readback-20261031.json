@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-31",
+  "project": "pkypiqhlrmzocysgeqew",
+  "migration": {
+    "version": "20261031111727",
+    "name": "laundry_request_intent_replay_guard",
+    "source": "supabase/migrations/20261031110052_laundry_request_intent_replay_guard.sql"
+  },
+  "source_commit": "4561fee4596b4c917e98366e7f842d07326236cf",
+  "ci_run": 41195321196,
+  "ci_conclusion": "success",
+  "isolated_checks": 19,
+  "readback": {
+    "definition_md5": "e3e9482d533b8d0da8b870d28071252f",
+    "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public, pg_temp"
+    ],
+    "authenticated_execute": true,
+    "anonymous_execute": false,
+    "rider_gate_retained": true,
+    "intent_guard_present": true
+  },
+  "business_data_changes": false,
+  "authenticated_device_e2e": false,
+  "release_certified": false
+}

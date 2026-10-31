@@ -119,6 +119,20 @@ class InstalledThailandMapTest {
                                     .put("paint", layer.optJSONObject("paint") ?: JSONObject()).toString())
                             }
                         }
+                        // getJson may omit layers added through the native builder.
+                        // Read the actual installed layers rather than infer their properties.
+                        for (id in listOf("street_labels", "place_labels", "pois")) {
+                            val layer = map.style?.getLayer("queuego-label-$id")
+                                as? org.maplibre.android.style.layers.SymbolLayer
+                            Log.i("QueueGoLabelQA", JSONObject().put("live_layer", id)
+                                .put("present", layer != null)
+                                .put("text_field", layer?.textField.toString())
+                                .put("text_font", layer?.textFont.toString())
+                                .put("text_opacity", layer?.textOpacity.toString())
+                                .put("visibility", layer?.visibility.toString())
+                                .put("text_color", layer?.textColor.toString())
+                                .put("text_size", layer?.textSize.toString()).toString())
+                        }
                         val indexed = map.queryRenderedFeatures(
                             android.graphics.RectF(0f, 0f, 1080f, 2280f),
                             "queuego-label-street_labels", "queuego-label-place_labels", "queuego-label-pois")

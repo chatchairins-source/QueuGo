@@ -5,6 +5,27 @@
 - Add bounded public-fixture label/style/camera diagnostics to retained instrumentation logcat, plus installed Latin/Thai glyph-block SHA256 checks against packaged provenance. No account/session/contact data; no production map renderer behavior change or relaxed assertions. Pin country workflow checkout to actual PR head and enable the existing country runtime on PRs targeting Native736, so a proposed fix can be tested before integration.
 - Local Actions pinning110/0 and Native integration predicate16+68+76 checks PASS; exact hosted Kotlin/instrumentation and visual PNG review remain required. Keep Issue750 OPEN until actual labels are visible. Country rendering evidence does not certify routing graph, offline navigation, physical GPS/push/recovery or release signing. Eleven missing RPCs and authenticated/device E2E remain blockers.
 
+## 2026-10-31 Live replay patch deployed and Native source integrated
+
+- PR748 merged at a1ed608f after exact2aef96ba CI41192266265 SUCCESS. PR749 exact4561fee4 CI41195321196 completed SUCCESS (full regression/JVM/three APKs/lifecycle/catalog), then owner-authorized narrow migration applied at live version20261031111727. Readback exact MD5e3e9482d533b8d0da8b870d28071252f, original ACL, anon denied, Rider gate retained. Security Advisor counts unchanged32/10/189/1. No order/rate/backfill writes. DO NOT reapply another Production migration merely to duplicate history.
+- Tested source749 merged into unreleased Native736 at718b44bb9041306d29b6cde901fc96c7f57ce09e. Readback summary:docs/qa/laundry-live-replay-readback-20261031.json. Full authenticated/device acceptance and11 missing RPCs remain open.
+- Merge this latest base into747 preserving both histories,749 live-migration test and748 Native nullable GP/read compatibility/58-check lifecycle. Root source replay guard remains separate from legacy live Rider eligibility. Integrated new-head CI required; don't reuse old-head passing result.
+- Actual offline country artifact13040526207/run41194834791 reviewed with verified ZIP SHA944759755f1013bdfa264a9f596e254c58710505df0b20807f64722111dfd7f2:5 tests PASS, offline roads rendered, Bangkok names still not visibly clear. Issue750 tracks diagnosis; don't infer label rendering from feature-index count or offline routing from PMTiles.
+
+## 2026-10-31 Replay source integration with current Native lineage
+
+- Merge current Native736 a1ed608f into replay successor747 without losing748 nullable GP/schema compatibility or58-check lifecycle regression. Preserve both parent histories; no Production change. Fresh747 aa5214e6 Pilot41191653210 SUCCESS before integration; integrated source requires new exact-head CI.
+- Narrow live-production replay migration is separately reviewed in PR749 because live retains a Rider eligibility gate absent from the newer root function. Do not apply whole root Laundry SQL over current Production.
+
+## 2026-10-31 Laundry request-key replay integrity — isolated successor (source-only)
+
+- PR #746 parent exact HEAD `93e1279dc43e86086ad5c23eafe43cf47bcf9a83` was re-read before this change. PR #736/#743/#744 and Issue #740 checked; no open [QueueGo CI Recovery] issue. Native Pilot and catalog regression jobs in run 41186306703 were successful; skipped matrix jobs do not count as acceptance.
+- P1 correctness risk in existing `queuego_place_laundry_order_v2`: when a Customer reuses a `p_request_id`, the prior branch checked only `customer_id`, then returned the existing order even if hub/service/address/coordinates/estimated quantity/note differed. A changed payload could be silently treated as successful placement of the wrong Laundry order.
+- Fail-closed source change binds request-key replay to the original normalized order intent, using null-safe `IS DISTINCT FROM` checks. Same customer+same payload retains replay response. Other-customer request keys remain rejected. No change to pricing policy, fees, RLS, existing order rows, migration history or Production.
+- Added `tests/laundry-order-request-idempotency.cjs` to run the **actual** placement RPC against isolated PGlite fixtures: identical replay, changed hub/service/address/lat/lng/quantity/note, different Customer, anonymous role and unchanged row/event/notification counts. Wired into `npm test`. Exact-head hosted test/CI remains required; do not claim it passes before logs confirm.
+- Release remains BLOCKED: GP policy/snapshot at creation, historical Laundry resolution, 11 missing RPC names from last read-only catalog, authenticated E2E/device evidence and full service gates. No Production deployment or APK publication. Next: run exact-head CI and review failing job logs; verify idempotency test in isolated PostgreSQL, then address authoritative GP source and other backend dependencies before Production remediation.
+
+
 ## 2026-10-31 Live Laundry replay-only migration prepared with definition lease
 
 - PR748 final2aef96ba Native Pilot41192266265 SUCCESS; source integrated into unreleased Native736 at a1ed608f2c5ebddd88a821731cc77c9117df27d7. Preserve58-check lifecycle and six JVM compatibility cases. PR747 aa5214e6 Native Pilot41191653210 also SUCCESS; its source replay change is reviewed but not deployed wholesale.
