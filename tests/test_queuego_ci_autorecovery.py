@@ -47,6 +47,11 @@ class FakeGitHub:
             return self.log
         raise AssertionError("Unexpected call: " + path)
 
+    def issue(self, title):
+        if self.existing_issue and self.existing_issue.get("title") == title:
+            return self.existing_issue
+        return None
+
     def post(self, path, body=None):
         self.writes.append((path, body))
         if path == "/issues":
