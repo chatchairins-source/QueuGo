@@ -249,11 +249,30 @@ ok(
 ok(
   rideScreenWebParity.includes('Text("ใช้ตำแหน่งปัจจุบันเป็นจุดรับ"') &&
   rideScreenWebParity.includes('val currentPickupPermission = rememberLauncherForActivityResult(') &&
-  rideScreenWebParity.includes('lastKnownLocation(context)') &&
+  !rideScreenWebParity.includes('lastKnownLocation(context)') &&
   rideScreenWebParity.includes('customerRegistrationLocation(context)') &&
   rideScreenWebParity.includes('customerApi.reverseGeocode(coordinates.first, coordinates.second)') &&
   rideScreenWebParity.includes('if (hasLocation(context))'),
   'Web Ride quick-pickup must use the native GPS permission, real coordinates and reverse geocoder'
+);
+
+// Current pickup/delivery locations must not silently reuse old cached GPS
+// fixes; approximate-only permission must never request the fine GPS provider.
+const customerGpsSource=read('customer/src/main/java/com/queuego/customer/CustomerAuthenticationScreen.kt');
+ok(
+  !rideStopPickerWebParity.includes('lastKnownLocation(context)') &&
+  rideStopPickerWebParity.includes('val position = customerRegistrationLocation(context)') &&
+  !rideScreenWebParity.includes('lastKnownLocation(context)') &&
+  rideScreenWebParity.includes('customerRegistrationLocation(context)'),
+  'Customer picker and Ride quick pickup must wait for a fresh GPS fix or allow manual selection'
+);
+ok(
+  customerGpsSource.includes('val fineGranted = ContextCompat.checkSelfPermission(') &&
+  customerGpsSource.includes('val coarseGranted = ContextCompat.checkSelfPermission(') &&
+  customerGpsSource.includes('if (fineGranted && manager.isProviderEnabled(LocationManager.GPS_PROVIDER))') &&
+  customerGpsSource.includes('if ((fineGranted || coarseGranted) &&') &&
+  customerGpsSource.includes('manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)'),
+  'Approximate-only Android location must not request the fine-only GPS provider'
 );
 
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
