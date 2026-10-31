@@ -275,6 +275,16 @@ ok(
   'Approximate-only Android location must not request the fine-only GPS provider'
 );
 
+const customerAppGps=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
+ok(
+  !customerAppGps.includes('lastKnownLocation(context)') &&
+  customerAppGps.includes('val p = customerRegistrationLocation(context)') &&
+  (customerAppGps.match(/onGps = ::requestGps,/g) || []).length === 3 &&
+  customerAppGps.includes('if (grants.values.any { it }) readFreshGps()') &&
+  customerAppGps.includes('catch (failure: CancellationException)'),
+  'Laundry, Market and checkout GPS must use one fresh bounded provider read and retain manual fallback'
+);
+
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
 ok(customerCartCheckout.includes('checkoutPending: Boolean')&&customerCartCheckout.includes('enabled = !checkoutPending')&&customerCartCheckout.includes('pendingCheckout: PendingCustomerCheckout?')&&customerCartCheckout.includes('p_expected_delivery_fee'),'Customer pending checkout must lock cart edits and render the persisted Production quote');
 ok(source.includes('loadActiveOrder(auth)')&&source.includes('&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned,picked_up,in_progress)'),'Customer checkout must preserve Production active-order guard before creating another order');
