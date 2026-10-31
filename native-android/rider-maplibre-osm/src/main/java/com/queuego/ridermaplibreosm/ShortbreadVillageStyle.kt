@@ -189,7 +189,9 @@ object ShortbreadVillageStyle {
                     .withProperties(
                         PropertyFactory.symbolPlacement(placement),
                         PropertyFactory.textField(Expression.get("name")),
-                        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                        // Packaged PBF declares fontstack Sans Regular; test matching its embedded name.
+                        // Keep as an isolated visual probe until real screenshots are reviewed.
+                        PropertyFactory.textFont(arrayOf("Sans Regular")),
                         PropertyFactory.textSize(if (layer == "place_labels") 14f else 11f),
                         PropertyFactory.textColor("#424b55"),
                         PropertyFactory.textHaloColor("#ffffff"),
