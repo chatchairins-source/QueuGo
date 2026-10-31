@@ -1,3 +1,12 @@
+## 2026-10-31 Real offline screenshots and current Merchant visual review — IN PROGRESS
+
+- `f7b64d6dc9c7e2ed611601d2383ed5b5fec16266` fixes reusable-workflow permission validation. Exact-head Export 41155450610 started successfully, reaching full regression; APK output still pending at this checkpoint.
+- Downloaded and inspected actual predecessor offline evidence 13023528249 from run 41151804368 (archive SHA f92e6a3c73e509a20c3daa8af086da56fd7b5be277620a8555843f7515d45a41). Its four-test suite passed, retained metadata identifies merge c74fdebb, not the new HEAD. Bangkok/Buriram/Phuket PNGs show offline roads and the airplane-mode icon, but no visible labels. Do NOT infer label readiness or physical GPS from these images.
+- Strengthen the existing offline test to wait up to 30s for actual rendered Bangkok symbols before acceptance, keeping the failed-case screenshot through MediaStore. This distinguishes geometry readiness from later glyph/symbol placement; no product map or duplicate renderer change.
+- Enable the EXISTING serialized, secret-backed Merchant Web/Native phone/tablet review on PR #736's branch with the existing [merchant-visual-review] opt-in. Keep all existing session/allowlisted-read/request guards. No financial/order business writes or injected sessions. Actual new screenshots and visual acceptance remain pending.
+- Exporter exercised with isolated test fixtures: exact-byte export/Debug metadata PASS; stale source rejection PASS; post-validation file tamper rejection PASS before any output directory is created. These fixture checks are export-safety tests, NOT actual APK acceptance evidence.
+- Clean worktree full npm test on f7b64d6d completed EXIT 0, including pretest and posttest. The earlier dirty-checkout evidence-gate failure was environmental. New Merchant request-guard, Actions pinning 106/0, Native source 471/0 and diff checks PASS. Android build, signing, physical GPS/push/printer and authenticated order/cashier E2E gates remain open.
+
 ## 2026-10-31 Export workflow startup failure — corrected
 
 - Published correction `595f26b54f5a0106da1100e367cbfd4a35553d84` to PR #736 through the connected GitHub API (ordinary shell push has no credentials).

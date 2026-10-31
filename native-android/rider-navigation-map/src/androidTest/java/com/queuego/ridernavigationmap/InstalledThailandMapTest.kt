@@ -69,6 +69,22 @@ class InstalledThailandMapTest {
                     Thread.sleep(200)
                 }
                 assertTrue("No painted vector roads: $name", paintedRoads > 0)
+                // Geometry can paint before glyph requests and symbol placement finish.
+                // The named Bangkok streets are the label acceptance sample; do not
+                // certify an empty label layer merely because roads have rendered.
+                var paintedLabels = 0
+                if (name == "bangkok") {
+                    val labelDeadline = android.os.SystemClock.elapsedRealtime() + 30_000
+                    while (paintedLabels == 0 && android.os.SystemClock.elapsedRealtime() < labelDeadline) {
+                        scenario.onActivity { it.inspectMap { map ->
+                            paintedLabels = map.queryRenderedFeatures(
+                                android.graphics.RectF(0f, 0f, 1080f, 2280f),
+                                "queuego-label-street_labels", "queuego-label-place_labels", "queuego-label-pois"
+                            ).size
+                        } }
+                        Thread.sleep(200)
+                    }
+                }
                 val directory = File(context.getExternalFilesDir(null), "offline-map-evidence").apply { mkdirs() }
                 val screenshot = File(directory, "$name.png")
                 screenshot.outputStream().use {
@@ -96,6 +112,7 @@ class InstalledThailandMapTest {
                     assertEquals("Retained screenshot size differs", screenshot.length(), requireNotNull(it).statSize)
                 }
                 if (offlineRequired) assertNull(context.getSystemService(android.net.ConnectivityManager::class.java).activeNetwork)
+                if (name == "bangkok") assertTrue("Offline Bangkok labels did not paint; see retained screenshot", paintedLabels > 0)
             }
         }
     }
