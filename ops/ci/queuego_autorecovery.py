@@ -152,11 +152,16 @@ def inspect(gh, rid):
     return kind, jobs, excerpt("\n".join(chunks))
 
 
-def comment_once(gh, issue, marker, body):
+def already_handled(gh, issue, marker):
+    """De-duplicate events, scheduled sweeps and reruns; never retry twice."""
     if marker in (issue.get("body") or ""):
-        return
+        return True
     rows = gh.get("/issues/%d/comments?per_page=100" % issue["number"])
-    if any(marker in (c.get("body") or "") for c in rows):
+    return any(marker in (c.get("body") or "") for c in rows)
+
+
+def comment_once(gh, issue, marker, body):
+    if already_handled(gh, issue, marker):
         return
     gh.post("/issues/%d/comments" % issue["number"], {"body": body + "\n\n" + marker})
 
@@ -184,6 +189,11 @@ def process(gh, rid, dry=False):
                 gh.patch("/issues/%d" % issue["number"], {"state": "closed", "state_reason": "completed"})
         return
     if run.get("conclusion") not in ("failure", "timed_out"):
+        return
+    # Multiple workflow_run events and the scheduled safety sweep may observe
+    # the same failed run. An existing marker means its response already ran.
+    if issue and already_handled(gh, issue, marker):
+        print("ALREADY TRIAGED (no duplicate retry)", rid)
         return
 
     mode, jobs, snippet = inspect(gh, rid)
@@ -216,6 +226,68 @@ def process(gh, rid, dry=False):
             print("Retry unavailable: HTTP", error.code)
 
 
+def related_runs(gh, source):
+    """All latest tracked workflows for exactly one source commit.
+
+    A green workflow must NOT terminate processing; a failed sibling needs
+    triage now. Pending siblings are left alone and trigger another event on
+    completion. Older failures for a workflow are superseded by its latest
+    run on the same source commit.
+    """
+    sha = source["head_sha"]
+    params = urllib.parse.urlencode({"head_sha": sha, "per_page": 100})
+    rows = gh.get("/actions/runs?" + params).get("workflow_runs", [])
+    selected = {}
+    for row in rows:
+        if row.get("head_sha") != sha or row.get("head_branch") != source.get("head_branch"):
+            continue
+        if not row.get("head_repository") or not trusted_identity(row, gh.repo):
+            continue
+        old = selected.get(row["name"])
+        if old is None or (row.get("created_at", ""), int(row.get("run_number", 0))) > (
+            old.get("created_at", ""), int(old.get("run_number", 0))
+        ):
+            selected[row["name"]] = row
+    return [selected[k] for k in sorted(selected)]
+
+
+def trusted_identity(run, repo):
+    source = run.get("head_repository") or {}
+    return source.get("full_name", "").lower() == repo.lower() and run.get("name") in WATCHED
+
+
+def reconcile(gh, rid, dry=False):
+    """Respond to one completed workflow by immediately checking its siblings."""
+    source = gh.get("/actions/runs/%d" % rid)
+    if not trusted(source, gh.repo) or not live_head(gh, source):
+        print("SKIP stale/untrusted batch", rid)
+        return
+    selected = related_runs(gh, source)
+    # GitHub's run collection is eventually consistent. Always include the
+    # triggering event even if its completion has not appeared in the list yet.
+    if not any(row["name"] == source["name"] for row in selected):
+        selected.append(source)
+    completed = []
+    waiting = []
+    for row in selected:
+        label = "%s: %s / %s" % (
+            row["name"], row.get("status"), row.get("conclusion") or "pending"
+        )
+        print("CROSS-CHECK", label, "run", row["id"])
+        if row.get("status") != "completed":
+            waiting.append(row["name"])
+            continue
+        completed.append(row)
+    # There is no waiting for the next hourly check: every successful,
+    # failed, or timed-out workflow completion schedules another batch.
+    for row in completed:
+        if row.get("conclusion") in ("success", "failure", "timed_out"):
+            process(gh, row["id"], dry)
+    print("SUMMARY complete=%d outstanding=%d" % (len(completed), len(waiting)))
+    if waiting:
+        print("AWAIT WORKFLOW EVENTS:", ", ".join(sorted(waiting)))
+
+
 def main():
     gh = API(os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_TOKEN"])
     dry = os.getenv("QG_RECOVERY_DRY_RUN", "false").lower() == "true"
@@ -223,16 +295,21 @@ def main():
     if event == "workflow_run":
         with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as infile:
             rid = int(json.load(infile)["workflow_run"]["id"])
-        process(gh, rid, dry)
+        reconcile(gh, rid, dry)
     elif event == "workflow_dispatch":
-        process(gh, int(os.environ["QG_SOURCE_RUN_ID"]), dry)
+        reconcile(gh, int(os.environ["QG_SOURCE_RUN_ID"]), dry)
     elif event == "schedule":
+        # Backstop only: the primary path is immediate workflow_run events.
         runs = gh.get("/actions/runs?status=completed&per_page=50").get("workflow_runs", [])
         cutoff = datetime.now(timezone.utc) - timedelta(hours=18)
+        newest_by_head = {}
         for run in runs:
             when = datetime.fromisoformat(run["updated_at"].replace("Z", "+00:00"))
             if when >= cutoff and run.get("name") in WATCHED:
-                process(gh, run["id"], dry)
+                key = (run.get("head_sha"), run.get("head_branch"))
+                newest_by_head.setdefault(key, run)
+        for source in list(newest_by_head.values())[:5]:
+            reconcile(gh, source["id"], dry)
     else:
         sys.exit("Unsupported CI monitor trigger")
 

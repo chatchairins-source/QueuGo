@@ -4,10 +4,11 @@ import contextlib
 import io
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from ops.ci.queuego_autorecovery import classify, excerpt, process, trusted
+from ops.ci.queuego_autorecovery import classify, excerpt, process, trusted, reconcile, related_runs
 
 
 class FakeGitHub:
@@ -124,6 +125,66 @@ class RecoveryTest(unittest.TestCase):
         paths = self.run_case(gh)
         self.assertIn("/issues/11", paths)
         self.assertNotIn("/actions/runs/42/rerun-failed-jobs", paths)
+
+    def test_repeated_same_attempt_cannot_retry_twice(self):
+        marker = "<!-- ci-recovery-run:42-attempt:1 -->"
+        title = "[QueueGo CI Recovery] QueueGo Native Android Pilot @ aaaaaaaaaa"
+        gh = FakeGitHub(log="HTTP 503", existing_issue={
+            "number": 11, "title": title, "body": marker
+        })
+        self.assertEqual(self.run_case(gh), [])
+
+    def test_green_event_checks_red_sibling_immediately(self):
+        gh = FakeGitHub(result="success")
+        other = dict(gh.run, id=43, name="QueueGo Native POS CI",
+                     conclusion="failure", created_at="2026-10-31T04:02:00Z",
+                     run_number=2)
+        gh.run["created_at"] = "2026-10-31T04:01:00Z"
+        gh.run["run_number"] = 1
+        original_get = gh.get
+        def get(path):
+            if path.startswith("/actions/runs?head_sha="):
+                return {"workflow_runs": [gh.run, other]}
+            return original_get(path)
+        gh.get = get
+        with patch("ops.ci.queuego_autorecovery.process") as worker:
+            with contextlib.redirect_stdout(io.StringIO()) as log:
+                reconcile(gh, 42)
+            self.assertEqual([call.args[1] for call in worker.call_args_list], [42, 43])
+            self.assertIn("QueueGo Native POS CI: completed / failure", log.getvalue())
+
+    def test_pending_sibling_is_not_restarted(self):
+        gh = FakeGitHub(result="success")
+        pending = dict(gh.run, id=44, name="QueueGo Native POS CI",
+                       status="in_progress", conclusion=None,
+                       created_at="2026-10-31T04:02:00Z")
+        old_get = gh.get
+        gh.get = lambda path: (
+            {"workflow_runs": [gh.run, pending]}
+            if path.startswith("/actions/runs?head_sha=") else old_get(path)
+        )
+        with patch("ops.ci.queuego_autorecovery.process") as worker:
+            with contextlib.redirect_stdout(io.StringIO()) as log:
+                reconcile(gh, 42)
+            self.assertEqual([call.args[1] for call in worker.call_args_list], [42])
+            self.assertIn("outstanding=1", log.getvalue())
+
+    def test_latest_green_supersedes_old_red_for_same_workflow(self):
+        gh = FakeGitHub(result="success")
+        past = dict(gh.run, id=43, conclusion="failure",
+                    created_at="2026-10-31T04:00:00Z", run_number=1)
+        fresh = dict(gh.run, id=44, conclusion="success",
+                     created_at="2026-10-31T04:03:00Z", run_number=2)
+        gh.get = lambda path: {"workflow_runs": [past, fresh]}
+        chosen = related_runs(gh, gh.run)
+        self.assertEqual([row["id"] for row in chosen], [44])
+
+    def test_crosscheck_rejects_untrusted_fork(self):
+        gh = FakeGitHub(result="success", fork=True)
+        with patch("ops.ci.queuego_autorecovery.process") as worker:
+            with contextlib.redirect_stdout(io.StringIO()):
+                reconcile(gh, 42)
+            worker.assert_not_called()
 
 
 if __name__ == "__main__":
