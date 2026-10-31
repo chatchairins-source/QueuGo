@@ -578,6 +578,13 @@ fun QgLocationPickerMap(
                             map.uiSettings.isLogoEnabled = false
                             map.uiSettings.isCompassEnabled = false
                             map.uiSettings.isAttributionEnabled = true
+                            // Match Web QueueGo Map: touch pinch, pan, rotate and 3D pitch.
+                            // The common Compose controls supply zoom/compass on top-left.
+                            map.uiSettings.isZoomGesturesEnabled = true
+                            map.uiSettings.isScrollGesturesEnabled = true
+                            map.uiSettings.isRotateGesturesEnabled = true
+                            map.uiSettings.isTiltGesturesEnabled = true
+                            map.uiSettings.setDisableRotateWhenScaling(false)
                             // Destination picking frames the pickup as context without selecting it.
                             val start = (initialPoint ?: initialCameraPoint)?.takeIf { it.valid }
                             map.cameraPosition = CameraPosition.Builder()
