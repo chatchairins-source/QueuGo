@@ -119,6 +119,25 @@ class InstalledThailandMapTest {
                                     .put("paint", layer.optJSONObject("paint") ?: JSONObject()).toString())
                             }
                         }
+                        // Style.json may contain only the original base JSON: layers
+                        // appended by Style.Builder.withLayer must be inspected through
+                        // the live Style API, not inferred from JSON serialization.
+                        for (id in listOf("queuego-label-street_labels",
+                                "queuego-label-place_labels", "queuego-label-pois")) {
+                            val symbol = map.style?.getLayer(id)
+                                as? org.maplibre.android.style.layers.SymbolLayer
+                            Log.i("QueueGoLabelQA", JSONObject()
+                                .put("runtime_layer", id)
+                                .put("present", symbol != null)
+                                .put("visibility", symbol?.getVisibility()?.toString() ?: "missing")
+                                .put("text_field", symbol?.getTextField()?.toString() ?: "missing")
+                                .put("text_font", symbol?.getTextFont()?.toString() ?: "missing")
+                                .put("text_size", symbol?.getTextSize()?.toString() ?: "missing")
+                                .put("text_color", symbol?.getTextColor()?.toString() ?: "missing")
+                                .put("text_opacity", symbol?.getTextOpacity()?.toString() ?: "missing")
+                                .toString())
+                            assertNotNull("Installed map label layer missing: $id", symbol)
+                        }
                         val indexed = map.queryRenderedFeatures(
                             android.graphics.RectF(0f, 0f, 1080f, 2280f),
                             "queuego-label-street_labels", "queuego-label-place_labels", "queuego-label-pois")
@@ -134,7 +153,7 @@ class InstalledThailandMapTest {
                 }
                 // A symbol may enter the rendered-feature index before its fade-in
                 // reaches visible opacity. Retain the settled frame as evidence.
-                if (name == "bangkok" && paintedLabels > 0) Thread.sleep(1_000)
+                if (name == "bangkok" && paintedLabels > 0) Thread.sleep(5_000)
                 val directory = File(context.getExternalFilesDir(null), "offline-map-evidence").apply { mkdirs() }
                 val screenshot = File(directory, "$name.png")
                 screenshot.outputStream().use {
