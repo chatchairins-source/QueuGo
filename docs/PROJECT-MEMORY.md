@@ -1,5 +1,14 @@
-Warning: truncated output (original token count: 115461)
-Total output lines: 2337
+Warning: truncated output (original token count: 115986)
+Total output lines: 2346
+
+## 2026-10-31 Exact checkout versus event SHA — confirmed build identity fix
+
+- Actual Export run 41155450610 built all three Debug APKs and passed the 16KB and WebView gates, then correctly FAILED the DEX source check. Root cause: checkout pinned the PR branch HEAD, but root Gradle preferred event GITHUB_SHA (synthetic PR merge). Embed git rev-parse HEAD from the actual checkout for every app; retain the strict APK validator. No acceptance by weakening the guard.
+- Final role export additionally runs Android build-tools 36.0.0 apksigner verify --verbose --print-certs for each APK and retains APK-SIGNATURE.txt alongside exact-size/SHA256 metadata. Signing remains Debug/Test, not Production release signing.
+- Current-source offline run 41155688244 PASS: 5 instrumentation tests, zero failures/errors/skips; exact artifact 13024888108 digest d523374c063fa2e5b13059d2d5699671b2a7842206db87b4d0e7e7e145d191e5. Metadata identifies synthetic merge 25f572a5 for ef03e3a7. Bangkok label-feature assertion passed, but its PNG still shows no clearly visible text. Wait one additional second after positive symbol indexing for fade-in before retaining screenshot; visual label acceptance stays OPEN until the new image is inspected.
+- Native POS CI 41155688277 on ef03e3a7 SUCCESS. Authenticated Merchant run 41155683786 reached real phone/tablet screenshot capture; review and Web comparison still pending. No new APK delivery or E2E/full-parity claim.
+- Read-only backend recheck: all public ordinary tables have RLS enabled; orders/items/payments/users/notifications retain scoped role/ownership policies. queuego_places has no direct anon/authenticated SELECT grant. No tax columns/settings/save RPC present; pos_submit_offline_draft exists. No Production schema/data/financial mutations made.
+- NEXT: exact new-head rebuild/export with correct DEX identity and signature evidence; inspect settled offline labels and Merchant images, then fix confirmed differences. Physical GPS/printer/push, real non-production order/cashier E2E, nationwide offline route graph and release signing remain OPEN.
 
 ## 2026-10-31 Real offline screenshots and current Merchant visual review — IN PROGRESS
 
@@ -997,18 +1006,7 @@ Total output lines: 2337
 ## 2026-10-13 additional Rider navigation and final cash flow mission
 - Owner adds to the same mission: automatic Google Maps handoff must show arrival actions on return; photo/proof uses buttons; slider belongs only to final completion on a full-screen customer cash amount review matching Production Web cash layout. This newer instruction supersedes the older prohibition on a separate cash review presentation. No additional payment confirmation RPC/state is introduced.
 - Start from integrated marker successor52511640/tree2861f70a, whose tree matches testedc5a37c52/run38367565964 SUCCESS. Backup backup/rider-before-delivery-cash-flow-52511640-20261013.
-- Fix stale navigation UI by sharing the persisted Maps stage key and observing preference changes plus Activity resume. Preserve Maps-only handoff, return overlay, bundle sequencing and Longdo fixes. Proof advances by button to final collection; full-screen amount uses authoritative customerCash, and final slider alone calls existing completeWithPhoto. Back returns to proof, retaining evidence; invalid/missing amounts block final collection.
-- Full regression/Native unit/build/16KB/no-WebView/runtime remain required on this new source. Physical/authenticated Release Gate remains OPEN; no release APK/AAB.
-
-## 2026-10-13 Customer tracking semantic marker integration
-- Preserved concurrent successor3ec0677 and its Rider marker/return design plus real vector instrumentation. PR169 integrates the same family into Customer tracking with explicit role fields; Customer mapReady/GPS and shared Longdo lifecycle code stay unchanged.
-- Local full regression passed before successor integration; combined exact-head regression/unit/build/runtime must pass. Physical gates remain OPEN; no release artifacts delivered.
-
-## 2026-10-13 professional map marker mission staging
-- Continue PR142 from 9270cb257db1de1d668fb717cac8c1bcae44b34d; preserve Customer mapReady/GPS ordering and shared Longdo fail-closed lifecycle fixes. Backup branch backup/map-markers-before-9270cb25-20261013.
-- Owner explicitly authorizes the existing Google Maps return overlay visual update. Custom bold vector family: red storefront pickup, teal house drop-off, red directional Rider, and branded vector Q on the draggable return control. Sequence badges render actual integers independently of icons, including 10+ stops. Retire old generic numbered marker resources.
-- Keep bundleSequence/dropRank and pickup-completion predicates unchanged. Incrementally reconcile stop pins instead of clearPin; foreground GPS moves the existing Rider pin. Preserve camera for same-job presentation updates. Overlay activity/session/drag/snap/persistence logic retained, with pressed feedback.
-- Source/regression and exact-head Pilot build/runtime gates must complete before certification. Physical GPS/Google Maps return, authenticated E2E and final Release G…15461 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
+- Fix stale navigation UI by sharing the persisted Maps stage key and observing preference changes plus Activity resume. Pre…15986 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
 - Existing `qg_admin_update_location` remains authoritative with expected old coordinates, audit and retry behavior. Existing order coordinates and financial state transitions are untouched.
 - Native prompts were replaced by labelled dialog forms for reasons, market radius and vehicle capacity. Tests cover validation, account races, map failure and retry payloads.
 - Automated regression passes do not certify physical mobile GPS, live map tiles or real account approval. Local browser installation was blocked by the browser download returning HTML rather than a browser archive; do not claim visual browser/device certification from automated DOM tests.

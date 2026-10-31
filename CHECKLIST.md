@@ -1,3 +1,12 @@
+## 2026-10-31 Exact checkout versus event SHA — confirmed build identity fix
+
+- Actual Export run 41155450610 built all three Debug APKs and passed the 16KB and WebView gates, then correctly FAILED the DEX source check. Root cause: checkout pinned the PR branch HEAD, but root Gradle preferred event GITHUB_SHA (synthetic PR merge). Embed git rev-parse HEAD from the actual checkout for every app; retain the strict APK validator. No acceptance by weakening the guard.
+- Final role export additionally runs Android build-tools 36.0.0 apksigner verify --verbose --print-certs for each APK and retains APK-SIGNATURE.txt alongside exact-size/SHA256 metadata. Signing remains Debug/Test, not Production release signing.
+- Current-source offline run 41155688244 PASS: 5 instrumentation tests, zero failures/errors/skips; exact artifact 13024888108 digest d523374c063fa2e5b13059d2d5699671b2a7842206db87b4d0e7e7e145d191e5. Metadata identifies synthetic merge 25f572a5 for ef03e3a7. Bangkok label-feature assertion passed, but its PNG still shows no clearly visible text. Wait one additional second after positive symbol indexing for fade-in before retaining screenshot; visual label acceptance stays OPEN until the new image is inspected.
+- Native POS CI 41155688277 on ef03e3a7 SUCCESS. Authenticated Merchant run 41155683786 reached real phone/tablet screenshot capture; review and Web comparison still pending. No new APK delivery or E2E/full-parity claim.
+- Read-only backend recheck: all public ordinary tables have RLS enabled; orders/items/payments/users/notifications retain scoped role/ownership policies. queuego_places has no direct anon/authenticated SELECT grant. No tax columns/settings/save RPC present; pos_submit_offline_draft exists. No Production schema/data/financial mutations made.
+- NEXT: exact new-head rebuild/export with correct DEX identity and signature evidence; inspect settled offline labels and Merchant images, then fix confirmed differences. Physical GPS/printer/push, real non-production order/cashier E2E, nationwide offline route graph and release signing remain OPEN.
+
 ## 2026-10-31 Real offline screenshots and current Merchant visual review — IN PROGRESS
 
 - `f7b64d6dc9c7e2ed611601d2383ed5b5fec16266` fixes reusable-workflow permission validation. Exact-head Export 41155450610 started successfully, reaching full regression; APK output still pending at this checkpoint.

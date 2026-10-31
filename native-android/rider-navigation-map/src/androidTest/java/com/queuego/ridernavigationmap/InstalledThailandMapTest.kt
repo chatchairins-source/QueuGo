@@ -85,6 +85,9 @@ class InstalledThailandMapTest {
                         Thread.sleep(200)
                     }
                 }
+                // A symbol may enter the rendered-feature index before its fade-in
+                // reaches visible opacity. Retain the settled frame as evidence.
+                if (name == "bangkok" && paintedLabels > 0) Thread.sleep(1_000)
                 val directory = File(context.getExternalFilesDir(null), "offline-map-evidence").apply { mkdirs() }
                 val screenshot = File(directory, "$name.png")
                 screenshot.outputStream().use {

@@ -286,6 +286,11 @@ jobs:
             native-android/customer/build/outputs/apk/debug/customer-debug.apk \
             native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
             native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/role-export/APK-MANIFEST.json
+          for role in customer merchant rider; do
+            mkdir -p "artifacts/role-export/$role"
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs \
+              "native-android/$role/build/outputs/apk/debug/$role-debug.apk" > "artifacts/role-export/$role/APK-SIGNATURE.txt"
+          done
           python3 native-android/qa/export-role-apks.py artifacts/role-export/APK-MANIFEST.json artifacts/role-export
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
