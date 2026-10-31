@@ -375,7 +375,10 @@ private fun LaundryOrderCard(
             if (!order.pickupAddress.isNullOrBlank()) Text(order.pickupAddress!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
             val total = order.finalTotal ?: order.estimatedTotal
             if (total != null) Text("ยอด " + (if (order.finalTotal != null) "จริง" else "ประมาณ") + " ฿" + "%.0f".format(total), color = QgRed, fontWeight = FontWeight.Black)
-            Text("GP QueueGo " + "%.0f%%".format(order.gpRate * 100) + " จากค่าซักและค่ารับ–ส่ง", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            val gpLabel = order.gpRate?.let {
+                "GP QueueGo " + "%.0f%%".format(it * 100) + " จากค่าซักและค่ารับ–ส่ง"
+            } ?: "ยังไม่มีอัตรา GP ที่ยืนยัน"
+            Text(gpLabel, color = QgMuted, style = MaterialTheme.typography.bodySmall)
             order.platformFee?.let { Text("ค่า GP ฿" + "%.2f".format(it), color = QgMuted) }
             order.shopNet?.let { Text("รายได้สุทธิร้าน ฿" + "%.2f".format(it), color = QgGreen, fontWeight = FontWeight.Bold) }
             if (!order.note.isNullOrBlank()) Text("หมายเหตุ: " + order.note, color = QgMuted)
