@@ -113,7 +113,7 @@ class InstalledThailandMapTest {
                         for (index in 0 until layers.length()) {
                             val layer = layers.getJSONObject(index)
                             if (layer.optString("id").startsWith("queuego-label-")) {
-                                Log.i("QueueGoLabelQA", JSONObject().put("layer", layer.optString("id"))
+                                Log.i("QueueGoLabelQA", JSONObject().put("serialized_base_layer", layer.optString("id"))
                                     .put("source_layer", layer.optString("source-layer"))
                                     .put("layout", layer.optJSONObject("layout") ?: JSONObject())
                                     .put("paint", layer.optJSONObject("paint") ?: JSONObject()).toString())
@@ -135,6 +135,11 @@ class InstalledThailandMapTest {
                                 .put("text_size", symbol?.getTextSize()?.toString() ?: "missing")
                                 .put("text_color", symbol?.getTextColor()?.toString() ?: "missing")
                                 .put("text_opacity", symbol?.getTextOpacity()?.toString() ?: "missing")
+                                .put("text_halo_color", symbol?.getTextHaloColor()?.toString() ?: "missing")
+                                .put("text_halo_width", symbol?.getTextHaloWidth()?.toString() ?: "missing")
+                                .put("symbol_placement", symbol?.getSymbolPlacement()?.toString() ?: "missing")
+                                .put("source_layer", symbol?.sourceLayer ?: "missing")
+                                .put("min_zoom", symbol?.minZoom ?: -1f)
                                 .toString())
                             assertNotNull("Installed map label layer missing: $id", symbol)
                         }
