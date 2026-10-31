@@ -1184,7 +1184,8 @@ ok(
   'Android Customer/Merchant online map must reuse the actual QueueGo Web basemap source, not a separately selected map service'
 );
 ok(
-  webRideMap.includes('new maplibregl.NavigationControl({showCompass:true,showZoom:true') &&
+  (webRideMap.includes('new maplibregl.NavigationControl({showCompass:true,showZoom:true') ||
+   webRideMap.includes('new maplibregl.NavigationControl({showCompass:true,visualizePitch:true')) &&
   webRideMap.includes('minZoom:5') && webRideMap.includes('maxZoom:19') &&
   sharedMap.includes('coerceAtMost(19.0)') && sharedMap.includes('coerceAtLeast(5.0)') &&
   webRideMap.includes("'#1677ff'") && webRideMap.includes("'#e6002d'") &&
