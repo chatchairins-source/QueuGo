@@ -79,6 +79,31 @@ def capture_rider_tab(label, name, screen):
     time.sleep(1)
     screens.append({"screen": screen, **shot(name)})
 
+def rider_earnings_period_ready(ns, label):
+    # A period button is always visible, even when the previous period's
+    # finance data or a loading placeholder is still on screen. The native
+    # cash-ledger heading renders a SECOND copy of the selected period label.
+    if label not in ("7 วัน", "30 วัน"):
+        raise ValueError("Unknown Rider earnings period")
+    visible = [n.get("text", "").strip() for n in ns if rect(n)]
+    if any(text.startswith(("โหลดสรุปงานไม่สำเร็จ", "โหลดบัญชีเงินสดไม่สำเร็จ"))
+           for text in visible):
+        return False
+    loaded = {"รายได้จากค่าส่ง", "งานสำเร็จ", "บัญชีเงินสด",
+              "จ่ายร้าน", "เก็บลูกค้า"}
+    return loaded.issubset(set(visible)) and visible.count(label) >= 2
+
+
+def capture_rider_earnings_period(label, filename):
+    tap_label(nodes(), label)
+    # Allow Compose to invalidate the previous period before inspecting the
+    # fresh UI hierarchy. Never accept a spinner, stale period or API error.
+    time.sleep(1)
+    ready = wait(lambda xs: rider_earnings_period_ready(xs, label), 60)
+    assert ready, "Rider earnings period did not finish loading: " + label
+    screens.append({"screen": filename, **shot(filename)})
+
+
 def tap_label(ns,label):
     choices=[n for n in ns if n.get("text","").strip()==label and rect(n)]
     assert choices, "Rider tab missing: "+label
@@ -208,11 +233,7 @@ def main():
     capture_rider_tab("ข้อความ", "02-messages-chat", "messages_chat")
     capture_rider_tab("รายได้", "04-earnings-today", "earnings_today")
     for label,name in (("7 วัน","05-earnings-7-days"),("30 วัน","06-earnings-30-days")):
-        ns=nodes()
-        if any(n.get("text","").strip()==label and rect(n) for n in ns):
-            tap_label(ns,label)
-            time.sleep(3)
-            screens.append({"screen":name,**shot(name)})
+        capture_rider_earnings_period(label, name)
     if any(n.get("text","").strip()=="วันนี้" and rect(n) for n in nodes()):
         tap_label(nodes(),"วันนี้")
 
