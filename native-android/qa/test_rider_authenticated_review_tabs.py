@@ -80,85 +80,144 @@ class RiderTabVisualGateTest(unittest.TestCase):
         screenshot.assert_not_called()
         self.assertEqual(review.screens, [])
 
-    def test_earnings_period_controls_alone_cannot_pass(self):
+    def test_earnings_summary_requires_loaded_cards_not_controls(self):
         controls = [node(x) for x in ("วันนี้", "7 วัน", "30 วัน")]
+        self.assertFalse(review.rider_earnings_summary_ready(controls))
+        loaded = controls + [node("รายได้จากค่าส่ง"), node("งานสำเร็จ")]
+        self.assertTrue(review.rider_earnings_summary_ready(loaded))
+        self.assertFalse(review.rider_earnings_summary_ready(
+            loaded + [node("โหลดสรุปงานไม่สำเร็จ: network")]
+        ))
+
+    def ledger_nodes(self, label):
+        return [
+            node("บัญชีเงินสด", "[50,500][300,550]"),
+            node(label, "[700,500][900,550]"),
+            node("จ่ายร้าน", "[50,650][200,700]"),
+            node("เก็บลูกค้า", "[500,650][650,700]"),
+        ]
+
+    def test_earnings_ledger_requires_period_on_heading_row(self):
         for label in ("7 วัน", "30 วัน"):
             with self.subTest(label=label):
-                self.assertFalse(review.rider_earnings_period_ready(controls, label))
-
-    def test_earnings_period_rejects_stale_previous_ledger(self):
-        loaded = [node(x) for x in (
-            "รายได้จากค่าส่ง", "งานสำเร็จ", "บัญชีเงินสด",
-            "จ่ายร้าน", "เก็บลูกค้า", "วันนี้", "7 วัน", "30 วัน"
-        )]
-        # The selected button exists, but the cash-ledger header is still
-        # from the old period; the new period appears only once.
-        self.assertFalse(review.rider_earnings_period_ready(loaded, "7 วัน"))
-        self.assertFalse(review.rider_earnings_period_ready(loaded, "30 วัน"))
-
-    def test_earnings_period_requires_both_loaded_finance_sections(self):
-        required = ["รายได้จากค่าส่ง", "งานสำเร็จ", "บัญชีเงินสด",
-                    "จ่ายร้าน", "เก็บลูกค้า"]
-        for label in ("7 วัน", "30 วัน"):
-            ready = [node(x) for x in required + [label, label]]
-            with self.subTest(label=label):
-                self.assertTrue(review.rider_earnings_period_ready(ready, label))
-                self.assertFalse(review.rider_earnings_period_ready(ready[:-3], label))
-                self.assertFalse(review.rider_earnings_period_ready(
-                    ready + [node("โหลดบัญชีเงินสดไม่สำเร็จ: เชื่อมต่อไม่ได้")], label
+                loaded = self.ledger_nodes(label)
+                self.assertTrue(review.rider_earnings_ledger_ready(loaded, label))
+                self.assertFalse(review.rider_earnings_ledger_ready(
+                    loaded[:-1], label
+                ))
+                self.assertFalse(review.rider_earnings_ledger_ready(
+                    loaded + [node("โหลดบัญชีเงินสดไม่สำเร็จ: network")], label
                 ))
 
-    def test_earnings_period_rejects_invisible_header(self):
-        ready = [node(x) for x in (
-            "รายได้จากค่าส่ง", "งานสำเร็จ", "บัญชีเงินสด",
-            "จ่ายร้าน", "เก็บลูกค้า", "7 วัน"
-        )]
-        ready.append(node("7 วัน", "[0,0][0,0]"))
-        self.assertFalse(review.rider_earnings_period_ready(ready, "7 วัน"))
+    def test_earnings_ledger_rejects_stale_period_button(self):
+        stale = self.ledger_nodes("วันนี้") + [
+            node("7 วัน", "[300,100][500,150]"),
+            node("30 วัน", "[550,100][750,150]"),
+        ]
+        self.assertFalse(review.rider_earnings_ledger_ready(stale, "7 วัน"))
+        self.assertFalse(review.rider_earnings_ledger_ready(stale, "30 วัน"))
+        invisible = self.ledger_nodes("7 วัน")
+        invisible[1] = node("7 วัน", "[0,0][0,0]")
+        self.assertFalse(review.rider_earnings_ledger_ready(invisible, "7 วัน"))
 
-    def test_earnings_capture_waits_before_screenshot(self):
+    def test_scroll_earnings_until_finds_second_viewport(self):
+        ledger = self.ledger_nodes("7 วัน")
+        with (
+            patch.object(review, "nodes", side_effect=[[], ledger]),
+            patch.object(review, "run") as swipe,
+            patch.object(review.time, "sleep"),
+        ):
+            found = review.scroll_earnings_until(
+                lambda xs: review.rider_earnings_ledger_ready(xs, "7 วัน"), "up"
+            )
+        self.assertEqual(found, ledger)
+        swipe.assert_called_once_with(
+            ["shell", "input", "swipe", "900", "1900", "900", "600", "450"]
+        )
+
+    def test_scroll_earnings_until_fails_closed(self):
+        with (
+            patch.object(review, "nodes", return_value=[]),
+            patch.object(review, "run") as swipe,
+            patch.object(review.time, "sleep"),
+        ):
+            self.assertEqual(review.scroll_earnings_until(lambda _: False, "down"), [])
+        self.assertEqual(swipe.call_count, 8)
+        with self.assertRaisesRegex(ValueError, "scroll direction"):
+            review.scroll_earnings_until(lambda _: True, "sideways")
+
+    def test_earnings_capture_validates_two_viewports_before_metadata(self):
         review.screens = []
         operations = []
-        loaded = [node(x) for x in (
-            "รายได้จากค่าส่ง", "งานสำเร็จ", "บัญชีเงินสด",
-            "จ่ายร้าน", "เก็บลูกค้า", "7 วัน", "7 วัน"
+        summary = [node(x) for x in (
+            "วันนี้", "7 วัน", "30 วัน", "รายได้จากค่าส่ง", "งานสำเร็จ"
         )]
+        ledger = self.ledger_nodes("7 วัน")
         def fake_wait(predicate, seconds):
-            operations.append("wait")
+            operations.append("summary-wait")
             self.assertEqual(seconds, 60)
-            self.assertFalse(predicate([node("7 วัน")]))
-            self.assertTrue(predicate(loaded))
-            return loaded
+            self.assertTrue(predicate(summary))
+            return summary
+        def fake_scroll(predicate, direction):
+            operations.append("scroll-" + direction)
+            selected = ledger if direction == "up" else summary
+            self.assertTrue(predicate(selected))
+            return selected
         with (
             patch.object(review, "nodes", return_value=[node("7 วัน")]),
             patch.object(review, "tap_label", side_effect=lambda *args: operations.append("tap")),
             patch.object(review, "wait", side_effect=fake_wait),
+            patch.object(review, "scroll_earnings_until", side_effect=fake_scroll),
             patch.object(review.time, "sleep"),
             patch.object(review, "shot", side_effect=lambda name: (
-                operations.append("shot") or {"file": name + ".png"}
+                operations.append("shot-" + name) or {"file": name + ".png"}
             )),
         ):
             review.capture_rider_earnings_period("7 วัน", "05-earnings-7-days")
-        self.assertEqual(operations, ["tap", "wait", "shot"])
-        self.assertEqual(review.screens[0]["file"], "05-earnings-7-days.png")
+        self.assertEqual(operations, [
+            "tap", "summary-wait", "scroll-up", "shot-05-earnings-7-days-ledger",
+            "scroll-down", "shot-05-earnings-7-days"
+        ])
+        self.assertEqual([x["screen"] for x in review.screens], [
+            "05-earnings-7-days", "05-earnings-7-days-ledger"
+        ])
 
-    def test_earnings_capture_timeout_never_saves_image(self):
+    def test_earnings_capture_missing_ledger_never_accepts_image(self):
         review.screens = []
         with (
             patch.object(review, "nodes", return_value=[node("30 วัน")]),
             patch.object(review, "tap_label"),
-            patch.object(review, "wait", return_value=[]),
+            patch.object(review, "wait", return_value=[node("รายได้จากค่าส่ง")]),
+            patch.object(review, "scroll_earnings_until", return_value=[]),
             patch.object(review.time, "sleep"),
             patch.object(review, "shot") as screenshot,
         ):
-            with self.assertRaisesRegex(AssertionError, "did not finish loading"):
+            with self.assertRaisesRegex(AssertionError, "cash ledger"):
                 review.capture_rider_earnings_period("30 วัน", "06-earnings-30-days")
         screenshot.assert_not_called()
         self.assertEqual(review.screens, [])
 
+    def test_earnings_capture_missing_return_summary_never_accepts(self):
+        review.screens = []
+        with (
+            patch.object(review, "nodes", return_value=[node("7 วัน")]),
+            patch.object(review, "tap_label"),
+            patch.object(review, "wait", return_value=[node("รายได้จากค่าส่ง")]),
+            patch.object(review, "scroll_earnings_until",
+                         side_effect=[self.ledger_nodes("7 วัน"), []]),
+            patch.object(review.time, "sleep"),
+            patch.object(review, "shot", return_value={"file": "ledger.png"}) as screenshot,
+        ):
+            with self.assertRaisesRegex(AssertionError, "return to viewport"):
+                review.capture_rider_earnings_period("7 วัน", "05-earnings-7-days")
+        screenshot.assert_called_once()
+        self.assertEqual(review.screens, [])
+
     def test_unknown_earnings_period_fails_closed(self):
         with self.assertRaisesRegex(ValueError, "Unknown Rider earnings period"):
-            review.rider_earnings_period_ready([node("วันนี้")], "วันนี้")
+            review.rider_earnings_ledger_ready([node("วันนี้")], "วันนี้")
+        with self.assertRaisesRegex(ValueError, "Unknown Rider earnings period"):
+            review.capture_rider_earnings_period("วันนี้", "wrong")
 
     def test_unknown_tab_fails_closed(self):
         with self.assertRaisesRegex(ValueError, "Unknown Rider tab"):
