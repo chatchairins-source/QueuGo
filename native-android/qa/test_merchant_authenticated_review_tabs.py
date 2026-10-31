@@ -40,7 +40,7 @@ class MerchantPrimaryTabVisualGateTest(unittest.TestCase):
 
     def test_merged_accessibility_description_is_supported(self):
         self.assertTrue(review.primary_tab_ready(
-            [node(desc="Merchant page\\nดูสถานะและจัดการออเดอร์ของร้าน")], "คำสั่งซื้อ"
+            [node(desc="Merchant page\nดูสถานะและจัดการออเดอร์ของร้าน")], "คำสั่งซื้อ"
         ))
 
     def test_wrong_tab_content_does_not_pass(self):
@@ -57,10 +57,10 @@ class MerchantPrimaryTabVisualGateTest(unittest.TestCase):
             self.assertFalse(predicate([node("คำสั่งซื้อ")]))
             self.assertTrue(predicate([node("ดูสถานะและจัดการออเดอร์ของร้าน")]))
             return [node("ดูสถานะและจัดการออเดอร์ของร้าน")]
-        with patch.object(review, "nodes", return_value=[node("คำสั่งซื้อ")]), \\
-             patch.object(review, "tap_label", side_effect=lambda *args: order.append("tap")), \\
-             patch.object(review, "wait", side_effect=fake_wait), \\
-             patch.object(review.time, "sleep", return_value=None), \\
+        with patch.object(review, "nodes", return_value=[node("คำสั่งซื้อ")]), \
+             patch.object(review, "tap_label", side_effect=lambda *args: order.append("tap")), \
+             patch.object(review, "wait", side_effect=fake_wait), \
+             patch.object(review.time, "sleep", return_value=None), \
              patch.object(review, "shot", side_effect=lambda name: (
                  order.append("shot") or {"file": name + ".png", "sha256": "test"}
              )):
@@ -71,9 +71,9 @@ class MerchantPrimaryTabVisualGateTest(unittest.TestCase):
 
     def test_failed_navigation_never_writes_a_screenshot(self):
         screens = []
-        with patch.object(review, "nodes", return_value=[node("โปรโมชั่น")]), \\
-             patch.object(review, "tap_label"), \\
-             patch.object(review, "wait", return_value=[]), \\
+        with patch.object(review, "nodes", return_value=[node("โปรโมชั่น")]), \
+             patch.object(review, "tap_label"), \
+             patch.object(review, "wait", return_value=[]), \
              patch.object(review, "shot") as screenshot:
             with self.assertRaisesRegex(AssertionError, "tab content did not render"):
                 review.capture_primary_tab(screens, "โปรโมชั่น", "tablet-promotions", "tablet-promotions")
