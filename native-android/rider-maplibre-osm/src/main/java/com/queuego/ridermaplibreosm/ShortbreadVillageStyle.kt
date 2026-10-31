@@ -190,6 +190,9 @@ object ShortbreadVillageStyle {
                         PropertyFactory.symbolPlacement(placement),
                         PropertyFactory.textField(Expression.get("name")),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                        // Collision probe: verify labels can paint in the real offline screenshot.
+                        // Do not merge until visual QA checks density/readability.
+                        PropertyFactory.textAllowOverlap(true),
                         PropertyFactory.textSize(if (layer == "place_labels") 14f else 11f),
                         PropertyFactory.textColor("#424b55"),
                         PropertyFactory.textHaloColor("#ffffff"),
