@@ -2,7 +2,8 @@
 begin;
 alter table public.laundry_orders add column if not exists pickup_staff_name text;
 alter table public.laundry_orders add column if not exists return_staff_name text;
-alter table public.laundry_orders add column if not exists gp_rate_snapshot numeric not null default 0.10;
+-- Preserve historical orders without an agreed commission rate; never silently assign 10%.
+alter table public.laundry_orders add column if not exists gp_rate_snapshot numeric;
 alter table public.laundry_orders add column if not exists platform_fee_amount numeric;
 alter table public.laundry_orders add column if not exists shop_net_amount numeric;
 
@@ -54,6 +55,11 @@ begin
   raise exception 'historical transport job requires resolution before shop-managed action';
  end if;
  if p_action='ready_return' then
+  -- A financial snapshot must be explicitly established by an authorized pricing flow.
+  -- In particular, historical rows must not inherit an invented commission rate.
+  if v_order.gp_rate_snapshot is null or v_order.gp_rate_snapshot < 0
+    or v_order.gp_rate_snapshot > 1 or v_order.gp_rate_snapshot::text in ('NaN','Infinity','-Infinity')
+  then raise exception 'laundry commission snapshot required'; end if;
   select * into v_settings from public.laundry_shop_settings where hub_id=v_order.hub_id;
   if v_order.service_id is null or v_order.unit_price_snapshot is null then raise exception 'laundry service snapshot required'; end if;
   if v_order.pricing_type_snapshot='fixed' then p_actual_quantity:=1;
