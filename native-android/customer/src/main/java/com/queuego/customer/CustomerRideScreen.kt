@@ -227,6 +227,8 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             busy = false,
             searchPlaces = { query -> customerApi.searchPlaces(query) },
             resolveAddress = { lat, lng -> customerApi.reverseGeocode(lat, lng) },
+            rideStop = editing,
+            cameraReference = if (editing == "destination") pickup else null,
             onSave = {
                 if (editing == "pickup") pickup = it else destination = it
                 quote = null
@@ -285,6 +287,17 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             Box(Modifier.fillMaxWidth().height(300.dp)
                 .clip(RoundedCornerShape(20.dp)).background(Color(0xFFEEF1F4))) {
                 QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize(), showWebMapControls = true)
+            }
+            if (!current.terminal && current.riderId != null) {
+                Text(
+                    if (current.riderLat != null && current.riderLng != null &&
+                        QgMapPoint(current.riderLat, current.riderLng, 0).valid)
+                        "ตำแหน่งคนขับล่าสุด · อัปเดตประมาณทุก 5 วินาที"
+                    else "กำลังรอตำแหน่งล่าสุดจากคนขับ",
+                    color = Color(0xFF6F7680),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 2.dp)
+                )
             }
         }
 
@@ -422,16 +435,32 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                             fontWeight = FontWeight.Bold) }
                     }
                     quote?.let { price ->
-                        Text(
-                            "ค่าโดยสารเงินสด " + customerBaht(price.getDouble("fare")),
-                            color = QgRed,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            "เวลาวิ่งประมาณ ${customerNumber(price.getDouble("duration_minutes"),0)} นาที ไม่รวมเวลารอคนขับ",
-                            color = QgMuted,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color(0xFFF7F8FA),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Column(
+                                Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.Bottom) {
+                                    Text("ค่าโดยสารเงินสด",
+                                        color = Color(0xFF17191D),
+                                        modifier = Modifier.weight(1f))
+                                    Text(customerBaht(price.getDouble("fare")),
+                                        color = QgRed,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Black)
+                                }
+                                Text(
+                                    "ระยะทาง ${customerNumber(price.optDouble("distance_km"),1)} กม. · " +
+                                        "เวลาวิ่งประมาณ ${kotlin.math.ceil(price.getDouble("duration_minutes")).toInt()} นาที",
+                                    color = QgMuted,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -492,20 +521,20 @@ private fun QueueGoRideLocationRow(
     Surface(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 70.dp),
         color = Color.White,
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color(0xFFE4E7EB))
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, Color(0xFFE6E7EA))
     ) {
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(27.dp).background(markerColor.copy(alpha = 0.12f), CircleShape),
+            Box(Modifier.size(20.dp).background(markerColor.copy(alpha = 0.12f), CircleShape),
                 contentAlignment = Alignment.Center) {
-                Box(Modifier.size(13.dp).background(markerColor, CircleShape))
+                Box(Modifier.size(12.dp).background(markerColor, CircleShape))
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(label, color = Color(0xFF777E88),
+                Text(label, color = Color(0xFF777D86),
                     style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                 Text(address?.takeIf { it.isNotBlank() } ?: "เลือกบนแผนที่",
                     color = Color(0xFF17191D),
@@ -514,7 +543,7 @@ private fun QueueGoRideLocationRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis)
             }
-            Text("›", color = Color(0xFF98A0AA), fontSize = 28.sp)
+            Text("›", color = Color(0xFF9AA0A8), fontSize = 22.sp)
         }
     }
 }
