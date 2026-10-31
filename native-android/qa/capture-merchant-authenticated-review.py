@@ -118,7 +118,7 @@ def swipe_vertical(direction):
     if direction not in ("up", "down"):
         raise ValueError("Unknown Merchant scroll direction")
     output = run(["shell", "wm", "size"], capture_output=True, text=True).stdout
-    sizes = re.findall(r"(?:Physical|Override) size:\\s*(\\d+)x(\\d+)", output)
+    sizes = re.findall(r"(?:Physical|Override) size:\s*(\d+)x(\d+)", output)
     if not sizes:
         raise RuntimeError("Merchant Android viewport size unavailable")
     width, height = map(int, sizes[-1])
