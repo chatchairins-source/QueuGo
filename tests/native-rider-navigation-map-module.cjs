@@ -150,6 +150,16 @@ assert(installedCountryTest.includes('map.style?.getLayer(id)') &&
   installedCountryTest.includes('symbol?.getTextOpacity()') &&
   installedCountryTest.includes('Thread.sleep(5_000)') &&
   installedCountryTest.includes('visual_label_acceptance", false'));
+// Native glyph lifecycle evidence distinguishes asset-loading failures from
+// style/placement issues; querying features or hashing bundled PBFs alone cannot.
+for (const callback of ['addOnGlyphsRequestedListener', 'addOnGlyphsLoadedListener',
+  'addOnGlyphsErrorListener']) {
+  assert(runtimeHost.includes(callback), 'Missing native glyph event callback: ' + callback);
+}
+assert(runtimeHost.includes('offlineGlyphDiagnosticSummary()'));
+assert(installedCountryTest.includes('installOfflineGlyphDiagnostics()'));
+assert(installedCountryTest.includes('offlineGlyphDiagnosticSummary()'));
+assert(installedCountryTest.includes('QueueGoGlyphQA'));
 assert(runtimeTest.includes('gpsRefreshTabReturnAndOverlayUpdatesReuseSameMapView'));
 assert(runtimeTest.includes('manualDragReportsGestureButTapDoesNot'));
 assert(runtimeTest.includes('activityRecreationCreatesFreshMapViewForFreshActivityContext'));
