@@ -19,7 +19,10 @@ class EmulatorInstallRecoveryTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertNotIn('run(adb + ["install"', source)
+        self.assertNotIn('adb + ["install"', source)
         self.assertEqual(source.count("install_verified_apk(adb,"), 9)
+        self.assertEqual(source.count('install_verified_apk(adb, test_apk, "com.queuego.rider.test")'), 3)
+        self.assertEqual(source.count('install_verified_apk(adb, test_apk, "com.queuego.merchant.test")'), 1)
         for call in (
             'install_verified_apk(adb, apk, package)',
             'install_verified_apk(adb, customer_apk, pkg)',
