@@ -146,7 +146,7 @@ begin
 
   select * into v_existing from public.laundry_orders where request_key=p_request_id;
   if found then
-    if v_existing.customer_id<>v_customer.id then raise exception 'request id already used'; end if;
+    if v_existing.customer_id is distinct from v_customer.id then raise exception 'request id already used'; end if;
     -- A request key is bound to the original order intent, not merely its owner.
     -- A changed payload must never silently return a different Laundry order.
     if v_existing.hub_id is distinct from p_hub_id
