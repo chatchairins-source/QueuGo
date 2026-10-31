@@ -1,5 +1,14 @@
-Warning: truncated output (original token count: 115986)
-Total output lines: 2346
+Warning: truncated output (original token count: 116527)
+Total output lines: 2355
+
+## 2026-10-31 Merchant real-image correction and tablet capture recovery — IN PROGRESS
+
+- Inspected actual run 41155683786 artifacts: Native 13025201549 (SHA256 397902d6b2cf00a8bbd5c80cc15034b7c752ed7cc96b1b71ee722fc165aac639) and Production Web 13025231470 (8739d89434bcc1350f6cda5129c1b6cd704931f24512c34a627c6873c53c06c7). Phone primary/POS frames were retained. Native tablet-back-blocker.png shows a fully rendered Home with bottom navigation, not a signed-out or broken Back screen.
+- Native capture previously required text-only labels after tablet recreation. Recognize exact line labels from both text and content-desc for navigation/readiness and taps, preserving existing bounds and clickable checks. Recapture is required; this is harness recovery, not an invented app Back bug.
+- Web failed at tablet-pos-counter after repeatedly blocking check_active_session. Actual Production function definition reviewed read-only: auth.uid-scoped SELECT from user_active_sessions and boolean comparison, no writes. Add only this read RPC to the existing allowlist and regression; continue denying revoke, order, payment, shift and settings writes. qg_call_incoming remains blocked.
+- Confirmed phone POS image mismatch: Native uses a left-aligned two-line title/shop header and text reload; actual Web has centered red Q/QueueGo/context brand with compact back/reload controls. Update the existing Compose header to that 62dp/40dp/31dp structure, retaining back/reload/loading callbacks and shared title size. No cart/pricing/payment/backend behavior change. Counter form, table defaults, product/cart layout and remaining POS screens still differ and remain OPEN.
+- Local Python compile, read-request policy, shared title 18 checks, Native source 471/0 and diff checks PASS. New Kotlin/build and phone/tablet after-images are REQUIRED before accepting this UI chunk.
+- Current earlier implementation 4f5b7e74 fixes actual checkout SHA and adds apksigner evidence; exact-head rebuild/export is still queued/running. Do not redistribute stale accepted-parent APKs. Full-order/cashier E2E, VAT, offline routing, hardware and Production signing gates remain OPEN.
 
 ## 2026-10-31 Exact checkout versus event SHA — confirmed build identity fix
 
@@ -997,16 +1006,7 @@ Total output lines: 2346
 
 ## 2026-10-13 verified marker family and Longdo zoom fix integration
 - Preserve latest Native Rider90b4f87978a5b0b22f35ca8ba638c14dabf0dcf9 (merged PR170) and merged marker PR169/c5a37c5/5251164. No reset/revert, cash-flow/state/routing changes are authored by this map integration; retain all latest source.
-- Exact fix679392e55c7d467e335cfddb6c4924bc6363e01d/Pilot38370365168 SUCCESS in BOTH native-pilot and map-display-only: full regression/source, all-role JVM, all3 debug APKs,16KB/no-WebView, actual Customer denied/granted permission/pan/resume, Merchant shop-map lifecycle, Rider native vector/GPS/display/stressed lifecycle and real SDK same-level zoom.
-- Customer-specific879d0d0/run38369148763 failed because Longdo0.1.8 setZoom dereferenced a null IZoomListener.postZoom. Process crash guard kept the picker alive but blocked mapReady/permission. Install ONLY an absent SDK observer before camera setup; preserve existing listeners and all GPS/mapReady/lifecycle guards. Vendor SDK checksum0918c236 verified.
-- Reviewed exact-head original map artifact11799201974, ZIPsha256d03381fc59c1f8f305edbc446e57ab479c58e87fd6e07f6f3cb01feefca498d3. Actual denied/allowed Customer SDK-gray fractions0 and0.0000004061; no inspected Customer fatal/null-pointer/crash. Rider phone/tablet camera is stable across initial/resumed/recreated, maps show roads and the new red arrow; emulator GPS injections are explicitly technical fixtures, not physical GPS or business orders.
-- Exact-head pilot evidence11799880885 digest8d8f3aebb0a9268eccc92910c111b4b73eebdb5ccda5c0d2dc50401a250ab223; internal debug APK artifact11798184448 digestd568b9555a7f782506a8ad016c59fd42fa3fc2455e4fbf18c86bc9605ef6a269.
-- New combined source with90b4f87 still requires exact combined-head CI. Physical Google Maps/overlay/GPS, authenticated Production E2E and final Release Gate remain OPEN; no release APK/AAB delivered.
-
-## 2026-10-13 additional Rider navigation and final cash flow mission
-- Owner adds to the same mission: automatic Google Maps handoff must show arrival actions on return; photo/proof uses buttons; slider belongs only to final completion on a full-screen customer cash amount review matching Production Web cash layout. This newer instruction supersedes the older prohibition on a separate cash review presentation. No additional payment confirmation RPC/state is introduced.
-- Start from integrated marker successor52511640/tree2861f70a, whose tree matches testedc5a37c52/run38367565964 SUCCESS. Backup backup/rider-before-delivery-cash-flow-52511640-20261013.
-- Fix stale navigation UI by sharing the persisted Maps stage key and observing preference changes plus Activity resume. Pre…15986 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
+- Exact fix679392e55c7d467e335cfddb6c4924bc6363e01d/Pilot38370365168 SUCCESS in BOTH native-pilot and map-display-only: full regression/source, all-role JVM, all3 debug APKs,16KB/no-WebView, actual Customer den…16527 tokens truncated…n Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
 - Existing `qg_admin_update_location` remains authoritative with expected old coordinates, audit and retry behavior. Existing order coordinates and financial state transitions are untouched.
 - Native prompts were replaced by labelled dialog forms for reasons, market radius and vehicle capacity. Tests cover validation, account races, map failure and retry payloads.
 - Automated regression passes do not certify physical mobile GPS, live map tiles or real account approval. Local browser installation was blocked by the browser download returning HTML rather than a browser archive; do not claim visual browser/device certification from automated DOM tests.

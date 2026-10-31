@@ -5,7 +5,7 @@ const BASE='https://chatchairins-source.github.io/QueuGo/merchant/';
 const API='pkypiqhlrmzocysgeqew.supabase.co';
 const READ_RPCS=new Set(['queuego_shop_readiness','effective_gp_rate','get_my_shop_orders',
   'merchant_revenue_days','pos_my_shop','pos_is_owner','pos_current_shift',
-  'pos_register_shift_history','pos_owner_dashboard','pos_owner_item_sales','pos_product_codes_for_shop','queuego_credit_summary']);
+  'pos_register_shift_history','pos_owner_dashboard','pos_owner_item_sales','pos_product_codes_for_shop','queuego_credit_summary','check_active_session']);
 // Existing normal sign-in ownership handshake; no business mutation or privilege changes.
 const AUTH_RPCS=new Set(['claim_active_session']);
 function allowedRequest(method,url,body){

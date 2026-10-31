@@ -34,8 +34,16 @@ def wait(pred, seconds=75):
         time.sleep(1)
     return []
 
+def labels(n):
+    # Compose can expose merged tablet labels through content-desc after recreation.
+    return {line.strip() for key in ("text", "content-desc")
+            for line in n.get(key, "").splitlines() if line.strip()}
+
+def has_label(n, label):
+    return label in labels(n) and rect(n) is not None
+
 def tap_label(ns,label):
-    matches=[n for n in ns if n.get("text","").strip()==label and rect(n)]
+    matches=[n for n in ns if has_label(n,label)]
     assert matches, "Merchant screen/tab missing: "+label
     clickable=[n for n in matches if n.get("clickable")=="true"]
     tap(clickable[-1] if clickable else matches[-1])
@@ -48,7 +56,7 @@ def shot(name):
     return {"file":p.name,"sha256":hashlib.sha256(data).hexdigest()}
 
 def home_ready(ns):
-    texts={n.get("text","").strip() for n in ns if rect(n)}
+    texts={label for n in ns if rect(n) for label in labels(n)}
     required={"หน้าหลัก","คำสั่งซื้อ","สินค้า","โปรโมชั่น","บัญชี",
               "ออเดอร์ทั้งหมด","เสร็จแล้ว","กำลังเตรียม","ยกเลิก"}
     return required.issubset(texts) and not texts.intersection({"…","..."})
@@ -56,17 +64,17 @@ def home_ready(ns):
 def scroll_to_label(label):
     for _ in range(7):
         ns=nodes()
-        matches=[n for n in ns if n.get("text", "").strip()==label and rect(n)]
+        matches=[n for n in ns if has_label(n,label)]
         if matches: return ns
         run(["shell","input","swipe","500","1800","500","700","400"])
     raise AssertionError("Merchant control not visible: "+label)
 
 def capture_pos(screens, prefix):
     ns=nodes()
-    if not any(n.get("text", "").strip()=="＋ รับออเดอร์" and rect(n) for n in ns):
+    if not any(has_label(n,"＋ รับออเดอร์") for n in ns):
         tap_label(ns,"หน้าหลัก")
         tap_label(scroll_to_label("หน้าร้าน POS"),"หน้าร้าน POS")
-    ns=wait(lambda xs:any(n.get("text", "").strip()=="＋ รับออเดอร์" and rect(n) for n in xs),90)
+    ns=wait(lambda xs:any(has_label(n,"＋ รับออเดอร์") for n in xs),90)
     assert ns, "Merchant POS failed to render"
     time.sleep(5)
     for name,label in (("counter","＋ รับออเดอร์"),("tables","โต๊ะ"),("cashier","คิดเงิน")):
@@ -122,13 +130,13 @@ def main():
         run(["shell","wm","density","240"])
         # Density changes recreate the Activity. Never send Back while Auth/
         # Activity restoration is still running, or from an already restored Home.
-        ns=wait(lambda xs:any(n.get("text", "").strip() in ("＋ รับออเดอร์","หน้าหลัก") and rect(n) for n in xs),90)
+        ns=wait(lambda xs:any(any(has_label(n,label) for label in ("＋ รับออเดอร์","หน้าหลัก")) for n in xs),90)
         if not ns:
             shot("tablet-restoration-blocker")
             raise AssertionError("Tablet Merchant Activity did not restore a known screen")
-        if any(n.get("text", "").strip()=="＋ รับออเดอร์" and rect(n) for n in ns):
+        if any(has_label(n,"＋ รับออเดอร์") for n in ns):
             run(["shell","input","keyevent","4"])
-            ns=wait(lambda xs:any(n.get("text", "").strip()=="หน้าหลัก" and rect(n) for n in xs),90)
+            ns=wait(lambda xs:any(has_label(n,"หน้าหลัก") for n in xs),90)
         if not ns:
             shot("tablet-back-blocker")
             raise AssertionError("Tablet Merchant did not expose primary navigation")
