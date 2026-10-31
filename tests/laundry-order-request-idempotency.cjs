@@ -90,12 +90,20 @@ const id = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
     }
     await as(104);
     await denied(place(), 'request key cannot be reused by another customer');
+    await db.exec(`reset role;
+      insert into public.laundry_orders(id,customer_id,hub_id,status,pickup_address,
+        pickup_latitude,pickup_longitude,note,service_id,request_key,estimated_quantity,
+        estimated_total_amount,order_number)
+      values('${id(32)}',null,'${id(21)}','pending','12 Main Road',
+        14.1,102.1,'Wash gently','${id(41)}','${id(82)}',2,180,'L-32');`);
+    await as(103);
+    await denied(place({ request: id(82) }), 'legacy null-owner request key must fail closed');
     await db.exec('reset role');
     const counts = (await db.query(`select
       (select count(*)::int from public.laundry_orders) as orders,
       (select count(*)::int from public.laundry_order_events) as events,
       (select count(*)::int from public.notifications) as notices`)).rows[0];
-    eq(counts, { orders: 1, events: 0, notices: 0 }, 'replay and conflicts are side-effect free');
+    eq(counts, { orders: 2, events: 0, notices: 0 }, 'replay and conflicts are side-effect free');
     await db.exec('set role anon');
     await denied(place(), 'anonymous cannot invoke placement RPC', /permission denied/);
     console.log(JSON.stringify({ checks, failures: 0, scope: 'isolated actual Laundry request-key replay, ownership and no side effects' }));
