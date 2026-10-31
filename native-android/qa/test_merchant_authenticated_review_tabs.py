@@ -72,13 +72,13 @@ class MerchantPrimaryTabVisualGateTest(unittest.TestCase):
 
     def test_merchant_swipes_follow_phone_override_and_tablet_physical_size(self):
         cases = (
-            ("Physical size: 1080x2280\\nOverride size: 720x1280\\n", "up",
+            ("Physical size: 1080x2280\nOverride size: 720x1280\n", "up",
              ["shell", "input", "swipe", "360", "1024", "360", "384", "450"]),
-            ("Physical size: 1080x2280\\nOverride size: 720x1280\\n", "down",
+            ("Physical size: 1080x2280\nOverride size: 720x1280\n", "down",
              ["shell", "input", "swipe", "360", "384", "360", "1024", "450"]),
-            ("Physical size: 1600x2560\\n", "up",
+            ("Physical size: 1600x2560\n", "up",
              ["shell", "input", "swipe", "800", "2048", "800", "768", "450"]),
-            ("Physical size: 1600x2560\\n", "down",
+            ("Physical size: 1600x2560\n", "down",
              ["shell", "input", "swipe", "800", "768", "800", "2048", "450"]),
         )
         for viewport, direction, expected in cases:
