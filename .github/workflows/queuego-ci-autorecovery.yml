@@ -3,6 +3,12 @@ name: QueueGo CI Auto Recovery
 # Only the trusted main copy of this workflow can run for workflow_run.
 # Untrusted PR code is never checked out or executed with write permissions.
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/queuego-ci-autorecovery.yml'
+      - 'ops/ci/queuego_autorecovery.py'
+      - 'tests/test_queuego_ci_autorecovery.py'
   workflow_run:
     workflows:
       - QueueGo Native Android Pilot
@@ -27,8 +33,6 @@ on:
 
 permissions:
   contents: read
-  actions: write
-  issues: write
 
 # Serializes incoming events and hourly catch-up, avoiding duplicate retries.
 concurrency:
@@ -36,10 +40,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-policy:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Test CI recovery without privileged write token
+        run: |
+          python3 -m py_compile ops/ci/queuego_autorecovery.py
+          python3 tests/test_queuego_ci_autorecovery.py
+
   triage-and-recover:
     if: >-
-      github.event_name != 'workflow_run' ||
-      contains(fromJSON('["failure","timed_out","success"]'), github.event.workflow_run.conclusion)
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_run' &&
+       contains(fromJSON('["failure","timed_out","success"]'), github.event.workflow_run.conclusion))
+    permissions:
+      contents: read
+      actions: write
+      issues: write
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
