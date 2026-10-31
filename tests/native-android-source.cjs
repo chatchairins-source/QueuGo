@@ -1173,6 +1173,12 @@ ok(
   'Customer native Ride must follow the Web Ride card: header, contained 245dp map, supply indicator, location rows, and disabled fare styling'
 );
 const sharedMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
+ok(
+  customerTrackingMap.includes('showWebMapControls = true') &&
+  sharedMap.includes('QueueGoWebMapControls(') &&
+  !sharedMap.includes('.withSource(VectorSource(QUEUEGO_VECTOR_SOURCE, sourceUri))'),
+  'Customer tracking/ride and merchant/customer location pickers must use Web-parity controls without depending on regional vector tiles'
+);
 ok(sharedMap.includes('newLatLngBounds(bounds, 48)')&&sharedMap.includes('if (!hasSetInitialViewport && lastPoints.isNotEmpty())')&&sharedMap.includes('LatLng(15.5, 100.5)')&&!sharedMap.includes('lastPoints.firstOrNull()?.let { point ->'),'Native Ride map must frame stops once and never reset user gesture zoom/rotation on marker updates');
 ok(
   sharedMap.includes('ShortbreadVillageStyle.builder(sourceUri)') &&
@@ -1186,10 +1192,13 @@ ok(
 );
 ok(
   sharedMap.includes('showWebMapControls: Boolean = false') &&
+  sharedMap.includes('fun QueueGoWebMapControls(') &&
+  sharedMap.includes('mapProvider = { holder.map }') &&
+  sharedMap.includes('if (sourceUri != null) {') &&
   sharedMap.includes('CameraUpdateFactory.zoomTo(target)') &&
   sharedMap.includes('.bearing(0.0)') &&
   customerRide.includes('showWebMapControls = true'),
-  'Customer Ride must expose Web-parity zoom and compass controls on the native QueueGo Map'
+  'Shared QueueGo Map controls must match the Web in Ride, tracking and location pickers'
 );
 ok(pilotWorkflow.includes("vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com'"),'pilot APKs must compile the deployed QueueGo Map endpoint when no override is configured');
 const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');

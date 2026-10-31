@@ -136,7 +136,6 @@ fun queueGoMapStyle(sourceUri: String): Style.Builder {
     }
     return Style.Builder()
         .withSource(RasterSource(QUEUEGO_WEB_BASEMAP_SOURCE, webTiles, 256))
-        .withSource(VectorSource(QUEUEGO_VECTOR_SOURCE, sourceUri))
         .withLayer(
             BackgroundLayer("queuego-background").withProperties(
                 backgroundColor("#f3f0e8")
@@ -310,11 +309,68 @@ private class QueueGoTrackingMapHolder {
 }
 
 @Composable
+private fun QueueGoWebMapControls(
+    modifier: Modifier,
+    mapProvider: () -> MapLibreMap?
+) {
+            Column(
+                modifier
+                    .width(42.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.White)
+                    .border(1.dp, Color(0xFFD4D7DA), RoundedCornerShape(10.dp))
+            ) {
+                Box(
+                    Modifier.fillMaxWidth().height(42.dp)
+                        .semantics { contentDescription = "ซูมเข้า" }
+                        .clickable {
+                            mapProvider()?.let { map ->
+                                val target = (map.cameraPosition.zoom + 1.0).coerceAtMost(19.0)
+                                map.animateCamera(CameraUpdateFactory.zoomTo(target))
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Text("+", fontSize = 28.sp, color = Color(0xFF25282D), fontWeight = FontWeight.Bold) }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE4E6E8)))
+                Box(
+                    Modifier.fillMaxWidth().height(42.dp)
+                        .semantics { contentDescription = "ซูมออก" }
+                        .clickable {
+                            mapProvider()?.let { map ->
+                                val target = (map.cameraPosition.zoom - 1.0).coerceAtLeast(5.0)
+                                map.animateCamera(CameraUpdateFactory.zoomTo(target))
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Text("−", fontSize = 27.sp, color = Color(0xFF25282D), fontWeight = FontWeight.Bold) }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE4E6E8)))
+                Box(
+                    Modifier.fillMaxWidth().height(42.dp)
+                        .semantics { contentDescription = "ตั้งทิศเหนือ" }
+                        .clickable {
+                            mapProvider()?.let { map ->
+                                val camera = map.cameraPosition
+                                map.animateCamera(CameraUpdateFactory.newCameraPosition(
+                                    CameraPosition.Builder()
+                                        .target(camera.target)
+                                        .zoom(camera.zoom)
+                                        .bearing(0.0)
+                                        .tilt(camera.tilt)
+                                        .build()
+                                ))
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Text("▲", fontSize = 19.sp, color = Color(0xFF25282D)) }
+            }
+}
+
+@Composable
 fun QgTrackingMap(
     points: List<QgMapPoint>,
     modifier: Modifier = Modifier,
-    onReady: (Boolean) -> Unit = {},
-    showWebMapControls: Boolean = false
+    showWebMapControls: Boolean = false,
+    onReady: (Boolean) -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -370,58 +426,10 @@ fun QgTrackingMap(
         }
     )
         if (showWebMapControls) {
-            // Same zoom/compass controls as QueueGo Web Ride, without a WebView.
-            Column(
-                Modifier.align(Alignment.TopStart)
-                    .padding(12.dp)
-                    .width(42.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.White)
-                    .border(1.dp, Color(0xFFD4D7DA), RoundedCornerShape(10.dp))
-            ) {
-                Box(
-                    Modifier.fillMaxWidth().height(42.dp)
-                        .semantics { contentDescription = "ซูมเข้า" }
-                        .clickable {
-                            holder.map?.let { map ->
-                                val target = (map.cameraPosition.zoom + 1.0).coerceAtMost(19.0)
-                                map.animateCamera(CameraUpdateFactory.zoomTo(target))
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) { Text("+", fontSize = 28.sp, color = Color(0xFF25282D), fontWeight = FontWeight.Bold) }
-                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE4E6E8)))
-                Box(
-                    Modifier.fillMaxWidth().height(42.dp)
-                        .semantics { contentDescription = "ซูมออก" }
-                        .clickable {
-                            holder.map?.let { map ->
-                                val target = (map.cameraPosition.zoom - 1.0).coerceAtLeast(5.0)
-                                map.animateCamera(CameraUpdateFactory.zoomTo(target))
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) { Text("−", fontSize = 27.sp, color = Color(0xFF25282D), fontWeight = FontWeight.Bold) }
-                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE4E6E8)))
-                Box(
-                    Modifier.fillMaxWidth().height(42.dp)
-                        .semantics { contentDescription = "ตั้งทิศเหนือ" }
-                        .clickable {
-                            holder.map?.let { map ->
-                                val camera = map.cameraPosition
-                                map.animateCamera(CameraUpdateFactory.newCameraPosition(
-                                    CameraPosition.Builder()
-                                        .target(camera.target)
-                                        .zoom(camera.zoom)
-                                        .bearing(0.0)
-                                        .tilt(camera.tilt)
-                                        .build()
-                                ))
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) { Text("▲", fontSize = 19.sp, color = Color(0xFF25282D)) }
-            }
+            QueueGoWebMapControls(
+                modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+                mapProvider = { holder.map }
+            )
         }
     }
 
@@ -598,6 +606,14 @@ fun QgLocationPickerMap(
                 update = {
                     holder.recenter(recenterPoint, recenterToken)
                 }
+            )
+        }
+        // Both Customer address picking and Merchant location setup follow the
+        // same QueueGo Web zoom/compass controls as the Ride map.
+        if (sourceUri != null) {
+            QueueGoWebMapControls(
+                modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+                mapProvider = { holder.map }
             )
         }
     }

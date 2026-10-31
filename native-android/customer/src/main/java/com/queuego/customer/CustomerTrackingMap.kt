@@ -96,6 +96,7 @@ fun CustomerTrackingMap(order: CustomerOrder, rider: CustomerTrackingRider?) {
                 QgTrackingMap(
                     points = points,
                     modifier = Modifier.fillMaxWidth().height(mapHeight).clip(RoundedCornerShape(15.dp)),
+                    showWebMapControls = true,
                     onReady = { isReady ->
                         ready = isReady
                         if (isReady) timedOut = false
