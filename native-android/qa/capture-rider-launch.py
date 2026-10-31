@@ -256,6 +256,19 @@ def capture_customer_market(directory: Path, dimensions: str):
             "populated_cart_e2e_certified": False, "visual_parity_certified": False}
 
 
+def customer_map_canvas(nodes):
+    """Locate the actual MapLibre view, not a retired coordinate-debug label."""
+    maps = [
+        n for n in nodes
+        if n.get("class") == "android.widget.FrameLayout"
+        and "MapLibre" in n.get("content-desc", "")
+    ]
+    assert len(maps) == 1, "Expected exactly one actual QueueGo MapLibre canvas"
+    bounds = [int(x) for x in re.findall(r"\d+", maps[0].get("bounds", ""))]
+    assert len(bounds) == 4 and bounds[2] - bounds[0] >= 180 and bounds[3] - bounds[1] >= 180
+    return bounds
+
+
 def customer_location_permission_nodes(nodes, directory):
     # CustomerLocationPicker automatically requests GPS after mapReady. Without
     # a map source that callback never runs, so exercise its explicit GPS action.
@@ -335,17 +348,36 @@ def capture_customer_location():
             run(adb + ["exec-out", "screencap", "-p"], stdout=png)
         from PIL import Image
         frame = Image.open(directory / "picker.png").convert("RGB")
-        gray_fraction = sum(1 for pixel in frame.getdata() if pixel == (179, 179, 179)) / (frame.width * frame.height)
-        (directory / "render-metrics.json").write_text(json.dumps({"sdk_blank_gray_fraction": gray_fraction}))
+        gray_fraction = frame.getdata()
+        gray_fraction = sum(1 for pixel in gray_fraction if pixel == (179, 179, 179)) / (frame.width * frame.height)
         assert gray_fraction < 0.01, "Actual Customer map remains blank SDK gray"
-        # Pan the actual rendered map, without saving an address or injecting GPS.
-        gps = next(n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน")
-        gb = [int(x) for x in re.findall(r"\d+", gps.get("bounds", ""))]
-        description = next(n for n in nodes if n.get("text", "").startswith("ปักหมุดตำแหน่งรับสินค้า"))
-        db = [int(x) for x in re.findall(r"\d+", description.get("bounds", ""))]
-        map_y = (db[3] + gb[1]) // 2
-        run(adb + ["shell", "input", "swipe", str(frame.width // 2), str(map_y), str(frame.width // 2 + 100), str(map_y), "400"])
-        wait_ui(directory / "panned.xml", lambda ns: any(n.get("text", "").startswith("Lat: ") and "--" not in n.get("text", "") for n in ns))
+        # Use the rendered SDK FrameLayout bounds from the actual UI hierarchy.
+        # Old Lat:/pickup-instruction debug labels no longer exist in Production
+        # Compose; never weaken the test to merely checking Activity launch.
+        mb = customer_map_canvas(nodes)
+        map_x, map_y = (mb[0]+mb[2])//2, (mb[1]+mb[3])//2
+        run(adb + ["shell", "input", "swipe", str(map_x), str(map_y),
+                   str(min(mb[2]-35, map_x + 130)), str(map_y), "400"])
+        time.sleep(2)
+        with (directory / "panned.png").open("wb") as png:
+            run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+        from PIL import ImageChops
+        after = Image.open(directory / "panned.png").convert("RGB")
+        assert frame.size == after.size, "Android screenshot changed size during map pan"
+        # Exclude MapLibre zoom/compass and attribution overlays; compare roads.
+        w,h=mb[2]-mb[0],mb[3]-mb[1]
+        crop=(mb[0]+int(w*0.26),mb[1]+int(h*0.15),mb[2]-int(w*0.05),mb[3]-int(h*0.14))
+        diff = ImageChops.difference(frame.crop(crop).convert("L"), after.crop(crop).convert("L"))
+        hist = diff.histogram()
+        changed = sum(hist[13:]) / (diff.width * diff.height)
+        (directory / "render-metrics.json").write_text(json.dumps({
+            "sdk_blank_gray_fraction": gray_fraction, "map_pan_changed_pixel_fraction": changed,
+            "real_map_bounds": mb, "source": "MapLibre Android SDK frame"
+        }))
+        assert changed > 0.015, "Actual QueueGo MapLibre roads did not move after drag gesture"
+        wait_ui(directory / "panned.xml", lambda ns: any(
+            n.get("class") == "android.widget.FrameLayout"
+            and "MapLibre" in n.get("content-desc", "") for n in ns))
         if permission_state == "allowed":
             run(adb + ["shell", "input", "tap", str((gb[0]+gb[2])//2), str((gb[1]+gb[3])//2)])
             time.sleep(1)
