@@ -10,16 +10,24 @@ classifies actual failed-job logs, and continues with a bounded safe action.
 
 1. The trusted default-branch workflow receives a GitHub `workflow_run`
    completed event. An hourly sweep catches missed events.
-2. It rejects third-party fork PRs, stale branch SHAs, unknown workflow names,
+2. On **every** completed tracked workflow (green OR red), it immediately
+   queries all the latest watched workflow runs sharing the **same branch and
+   source SHA**. One successful check never ends the verification of the other
+   checks. Completed failed siblings are triaged in the same job. In-progress
+   siblings remain running, with their own completion event triggering another
+   pass. No hourly wait is needed for the normal path.
+3. It rejects third-party fork PRs, stale branch SHAs, unknown workflow names,
    and unfinished builds.
-3. It checks failed-job logs for clear infrastructure failures such as HTTP 503
+4. It checks failed-job logs for clear infrastructure failures such as HTTP 503
    or a dropped network connection.
-4. For **proven transient failures only**, it requests **one retry** of failed
-   jobs. GitHub automatically runs downstream jobs if that attempt succeeds.
-5. For assertions, Kotlin compiler errors, policy failures, and unknown
+5. For **proven transient failures only**, it requests **one retry** of failed
+   jobs. An issue marker prevents even a repeated completion event or schedule
+   sweep from requesting a second retry of the same attempt. GitHub runs
+   downstream jobs only when their declared dependencies pass.
+6. For assertions, Kotlin compiler errors, policy failures, and unknown
    failures, it creates a deduplicated GitHub Issue with source SHA, job
    evidence and link. It never blindly reruns broken source indefinitely.
-6. A subsequent successful run on the same current source closes the Issue.
+7. A subsequent successful run on the same current source closes the Issue.
 
 CI source code stays untouched. There is **no automatic merge**, release,
 APK distribution, database migration, or privileged operation on code checked
@@ -49,6 +57,12 @@ Supabase service-role credentials or Android release signing secrets.
 - To temporarily suspend: disable this specific GitHub Actions workflow.
 - The workflow must be merged into `main` to observe other CI runs. Creating
   it on a PR branch alone does not activate `workflow_run` or schedules.
+- **Hourly scheduling is only a missed-event fallback**, not the normal
+  verification cadence. GitHub's normal `workflow_run` event fires on completion
+  of each tracked workflow (there may still be GitHub runner queue latency).
+- Source-compile or test failures are triaged immediately but still require a
+  separately authorized code-writing agent to patch code. Monitoring does not
+  grant the monitor itself autonomous code-editing capability.
 
 ## Recovery expectations
 
