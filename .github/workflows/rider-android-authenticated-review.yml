@@ -8,6 +8,7 @@ on:
       - work-native-web-parity-20261026
       - work-native-pos-tax-foundation-20261029
       - work-native-rider-nav-unified-offline-20261030
+      - work-native-all-role-visual-capture-20261101
 
 # All runs reuse the same existing review account. Production enforces one
 # active session, so parallel workers must never displace each other's login.
@@ -47,11 +48,15 @@ jobs:
               if missing:
                   print(role + "_missing_secret_names=" + ",".join(missing))
           merchant_only = "[merchant-visual-review]" in os.environ.get("REVIEW_COMMIT_MESSAGE", "")
-          ready = roles["merchant" if merchant_only else "rider"]["ready"]
+          all_roles = (os.environ.get("GITHUB_REF_NAME") == "work-native-all-role-visual-capture-20261101"
+              or "[all-role-visual-review]" in os.environ.get("REVIEW_COMMIT_MESSAGE", ""))
+          ready = (all(role["ready"] for role in roles.values()) if all_roles
+              else roles["merchant" if merchant_only else "rider"]["ready"])
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("ready=" + str(ready).lower() + "\n")
           capture_requested = (os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
-              or os.environ.get("GITHUB_REF_NAME") == "work-native-rider-auth-review-20261024" or merchant_only)
+              or os.environ.get("GITHUB_REF_NAME") in ("work-native-rider-auth-review-20261024",
+                  "work-native-all-role-visual-capture-20261101") or merchant_only)
           report = {"status": "ready" if ready else "skipped",
               "scope": "credential presence only; not authenticated visual acceptance",
               "roles": roles, "capture_requested": capture_requested,
@@ -69,9 +74,9 @@ jobs:
 
   capture:
     needs: credential-check
-    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
+    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-native-all-role-visual-capture-20261101' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -126,8 +131,10 @@ jobs:
                   print(f'::warning::Firebase config has no {package} Android client; that app will build without physical background-push certification')
           PY
           rm -f "$tmp"
-      - name: Build actual Rider and Merchant debug APKs
-        run: gradle -p native-android :rider:assembleDebug :merchant:assembleDebug --no-build-cache --stacktrace
+      - name: Customer screenshot hierarchy and fail-closed gate self-test
+        run: python3 native-android/qa/capture-customer-authenticated-review.py --self-test
+      - name: Build actual Rider, Merchant and Customer debug APKs
+        run: gradle -p native-android :rider:assembleDebug :merchant:assembleDebug :customer:assembleDebug --no-build-cache --stacktrace
       - name: Enable runner-only Android acceleration
         run: |
           set -euo pipefail
@@ -181,6 +188,12 @@ jobs:
           QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
           QG_MERCHANT_VISUAL_PARITY: ${{ contains(github.event.head_commit.message, '[merchant-visual-review]') && '1' || '0' }}
         run: python3 native-android/qa/capture-merchant-authenticated-review.py
+      - name: Capture authenticated Customer views on Android Emulator
+        if: always() && steps.boot_emulator.outcome == 'success' && github.ref_name == 'work-native-all-role-visual-capture-20261101'
+        env:
+          QG_CUSTOMER_REVIEW_PHONE: ${{ secrets.QG_CUSTOMER_REVIEW_PHONE }}
+          QG_CUSTOMER_REVIEW_PASSWORD: ${{ secrets.QG_CUSTOMER_REVIEW_PASSWORD }}
+        run: python3 native-android/qa/capture-customer-authenticated-review.py
       - name: Set up Web visual review dependencies
         if: always() && contains(github.event.head_commit.message, '[merchant-visual-review]')
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -218,6 +231,16 @@ jobs:
             artifacts/merchant-authenticated-review/*.png
             artifacts/merchant-authenticated-review/metadata.json
             artifacts/merchant-authenticated-review/hierarchy-status.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Save authenticated Customer screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-customer-authenticated-screens
+          path: |
+            artifacts/customer-authenticated-review/*.png
+            artifacts/customer-authenticated-review/metadata.json
           if-no-files-found: warn
           retention-days: 7
       - name: Save authenticated Rider screenshots
