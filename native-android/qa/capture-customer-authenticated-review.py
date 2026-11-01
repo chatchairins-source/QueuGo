@@ -28,7 +28,7 @@ def adb(args, **kwargs):
 
 
 def rect(node):
-    bounds = [int(value) for value in re.findall(r"\\d+", node.get("bounds", ""))]
+    bounds = [int(value) for value in re.findall(r"\d+", node.get("bounds", ""))]
     return bounds if len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1] else None
 
 
@@ -124,7 +124,7 @@ def shot(name):
     with target.open("wb") as handle:
         adb(["exec-out", "screencap", "-p"], stdout=handle)
     data = target.read_bytes()
-    assert data.startswith(b"\\x89PNG\\r\\n\\x1a\\n"), "Invalid actual Android screenshot"
+    assert data.startswith(b"\x89PNG\r\n\x1a\n"), "Invalid actual Android screenshot"
     return {"screen": name, "file": target.name,
             "sha256": hashlib.sha256(data).hexdigest(), "read_only": True}
 
@@ -238,7 +238,7 @@ def main():
             "scope": "Authenticated read-only Customer entry and navigation; no checkout, order submission or account changes",
             "blocker": failure,
         }
-        (OUT / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\\n")
+        (OUT / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
     if failure or missing:
         raise SystemExit("Customer authenticated review INCOMPLETE: " + (failure or ", ".join(missing)))
     print("QUEUEGO_CUSTOMER_AUTHENTICATED_REVIEW_PASS screens=" + str(len(screens)))
