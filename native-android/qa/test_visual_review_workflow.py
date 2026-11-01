@@ -52,7 +52,7 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertIn('any(role["ready"] for role in roles.values()) if all_roles',
                       self.workflow)
         customer = re.search(
-            r"- name: Capture authenticated Customer views on Android Emulator\\n\\s+if: ([^\\n]+)",
+            r"- name: Capture authenticated Customer views on Android Emulator\n\s+if: ([^\n]+)",
             self.workflow)
         self.assertIsNotNone(customer, "Customer capture step absent")
         self.assertIn("needs.credential-check.outputs.customer_ready == 'true'",
