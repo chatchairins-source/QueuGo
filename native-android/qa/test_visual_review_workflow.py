@@ -33,7 +33,7 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         blocks = {}
         for role in ("Rider", "Merchant", "Customer"):
             pattern = (r"- name: Capture authenticated " + role +
-                       r" views on Android Emulator\\n\\s+if: ([^\\n]+)")
+                       r" views on Android Emulator\n\s+if: ([^\n]+)")
             match = re.search(pattern, self.workflow)
             self.assertIsNotNone(match, role + " capture step absent")
             blocks[role] = match.group(1)
