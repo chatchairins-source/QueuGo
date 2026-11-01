@@ -42,6 +42,24 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertIn('"' + branch + '") or merchant_only)', self.workflow)
         self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
 
+    def test_customer_review_successor_is_eligible_without_rider_credentials(self):
+        # Owner review must not be silently skipped when only the Customer
+        # test secrets exist. Existing account-level concurrency stays intact.
+        branch = "work-native-customer-review-eligibility-20261101"
+        self.assertIn("      - " + branch, self.workflow)
+        self.assertIn('"' + branch + '")', self.workflow)
+        self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+        self.assertIn('any(role["ready"] for role in roles.values()) if all_roles',
+                      self.workflow)
+        customer = re.search(
+            r"- name: Capture authenticated Customer views on Android Emulator\\n\\s+if: ([^\\n]+)",
+            self.workflow)
+        self.assertIsNotNone(customer, "Customer capture step absent")
+        self.assertIn("needs.credential-check.outputs.customer_ready == 'true'",
+                      customer.group(1))
+        self.assertIn("github.ref_name == '" + branch + "'", customer.group(1))
+        self.assertIn("cancel-in-progress: false", self.workflow)
+
     def test_all_role_dispatch_uses_any_available_test_account(self):
         self.assertIn('os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"', self.workflow)
         self.assertIn('any(role["ready"] for role in roles.values())', self.workflow)
