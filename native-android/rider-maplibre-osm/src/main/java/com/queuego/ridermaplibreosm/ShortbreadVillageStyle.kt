@@ -194,7 +194,12 @@ object ShortbreadVillageStyle {
                         PropertyFactory.textColor("#424b55"),
                         PropertyFactory.textHaloColor("#ffffff"),
                         PropertyFactory.textHaloWidth(1.5f),
-                        PropertyFactory.textMaxWidth(10f)
+                        PropertyFactory.textMaxWidth(10f),
+                        // Probe the real Bangkok label collision hypothesis: allow road
+                        // text to paint even when the symbol placement index is crowded.
+                        // The installed-country framebuffer gate must still prove visible
+                        // pixels before this may be accepted into Rider release lineage.
+                        PropertyFactory.textAllowOverlap(layer == "street_labels")
                     )
                     .also { it.minZoom = minZoom }
             )
