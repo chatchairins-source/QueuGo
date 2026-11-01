@@ -77,6 +77,21 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
         self.assertIn("needs.credential-check.outputs.customer_ready == 'true'", self.workflow)
 
+    def test_country_visual_successor_uses_real_pinned_apk_not_regional_fixture(self):
+        branch = "work-native-country-visual-proof-20261101"
+        self.assertIn("      - " + branch, self.workflow)
+        self.assert_branch_in_python_gate(branch, 'all_roles = (', 'ready = (')
+        self.assert_branch_in_python_gate(branch, 'capture_requested = (', 'report =')
+        self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+        self.assertIn("Stage pinned nationwide Rider archive for visual evidence", self.workflow)
+        self.assertIn("verify-bundled-thailand-apks.py --source-sha", self.workflow)
+        self.assertIn("abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b", self.workflow)
+        self.assertIn("QG_REQUIRE_BUNDLED_COUNTRY:", self.workflow)
+        self.assertIn("QG_DEBUG_MAP_ARCHIVE: ${{ github.ref_name == '" + branch + "' && '0' || '1' }}",
+                      self.workflow)
+        self.assertIn("QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/queuego-offline-assets", self.workflow)
+
+
     def test_all_role_dispatch_uses_any_available_test_account(self):
         self.assertIn('os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"', self.workflow)
         self.assertIn('any(role["ready"] for role in roles.values())', self.workflow)
