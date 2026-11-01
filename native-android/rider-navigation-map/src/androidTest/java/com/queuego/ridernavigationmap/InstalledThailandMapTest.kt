@@ -74,6 +74,32 @@ class InstalledThailandMapTest {
             lateinit var activity: NavigationMapRuntimeActivity
             scenario.onActivity { activity = it }
             assertTrue("Installed archive style failed", activity.mapReady.await(45, TimeUnit.SECONDS))
+            // Inspect the actual installed MapLibre style, not just the source builder.
+            // A glyph PBF may exist while the runtime style has no usable glyph URL
+            // or text layout. Fail with precise evidence before pixel comparison.
+            scenario.onActivity { it.inspectMap { map ->
+                val runtimeStyle = requireNotNull(map.style)
+                val runtimeJson = org.json.JSONObject(runtimeStyle.json)
+                val glyphTemplate = runtimeJson.optString("glyphs")
+                Log.i("QueueGoLabelQA", "runtime_glyph_template=$glyphTemplate")
+                assertEquals(
+                    "Installed MapLibre style lost its offline glyph template",
+                    "asset://fonts/{fontstack}/{range}.pbf", glyphTemplate
+                )
+                val runtimeLayers = requireNotNull(runtimeJson.optJSONArray("layers"))
+                listOf("street_labels", "place_labels", "pois").forEach { sourceLayer ->
+                    val layerId = "queuego-label-$sourceLayer"
+                    val layer = (0 until runtimeLayers.length()).mapNotNull { index ->
+                        runtimeLayers.optJSONObject(index)
+                    }.firstOrNull { it.optString("id") == layerId }
+                    assertNotNull("Installed MapLibre style lost $layerId", layer)
+                    val layout = requireNotNull(layer?.optJSONObject("layout"))
+                    Log.i("QueueGoLabelQA",
+                        "runtime_symbol_$sourceLayer=" + layout.toString().take(360))
+                    assertTrue("Missing text-field on $layerId", layout.has("text-field"))
+                    assertTrue("Missing text-font on $layerId", layout.has("text-font"))
+                }
+            } }
             val locations = listOf(
                 Triple("bangkok", 13.7563, 100.5018),
                 Triple("buriram", 14.993, 103.1039),
