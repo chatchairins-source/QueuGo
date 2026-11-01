@@ -85,7 +85,7 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
         self.assertIn("Stage pinned nationwide Rider archive for visual evidence", self.workflow)
         self.assertIn("verify-bundled-thailand-apks.py --source-sha", self.workflow)
-        self.assertIn("abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b", self.workflow)
+        self.assertIn("15b1861a1336d35119a5cc1564796b48dfe33cfd5ad35046f3bdfdeb7e8ef4ac", self.workflow)
         self.assertIn("QG_REQUIRE_BUNDLED_COUNTRY:", self.workflow)
         self.assertIn("QG_DEBUG_MAP_ARCHIVE:", self.workflow)
         self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
@@ -140,13 +140,28 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertIn("--name queuego-native-pilot-apks", stage)
         self.assertIn('source.read("assets/maps/thailand-shortbread.json")', stage)
         self.assertIn("hashlib.file_digest(stream, \"sha256\")", stage)
-        self.assertIn("404204683", stage)
-        self.assertIn("abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b", stage)
+        self.assertIn("404204685", stage)
+        self.assertIn("15b1861a1336d35119a5cc1564796b48dfe33cfd5ad35046f3bdfdeb7e8ef4ac", stage)
         self.assertNotIn("build-thailand-shortbread-pmtiles.sh", stage)
         self.assertNotIn("curl --fail", stage)
         self.assertIn("  actions: read", self.workflow)
         self.assertIn("QG_REQUIRE_BUNDLED_COUNTRY:", self.workflow)
         self.assertIn("verify-bundled-thailand-apks.py --source-sha", self.workflow)
+
+    def test_predecessor_country_provenance_matches_actual_source_run(self):
+        # Run 41029740374's native-pilot log recorded a map digest and size
+        # before later unrelated job failure. Do not pin another Planetiler
+        # build's bytes or trust an APK manifest without an independent pin.
+        actual_sha = "15b1861a1336d35119a5cc1564796b48dfe33cfd5ad35046f3bdfdeb7e8ef4ac"
+        stage = self.workflow.split(
+            "- name: Stage pinned nationwide Rider archive for visual evidence", 1
+        )[1].split("- name: Build actual Rider, Merchant and Customer debug APKs", 1)[0]
+        self.assertIn('manifest["sha256"] == "' + actual_sha + '"', stage)
+        self.assertIn('manifest["bytes"] == 404204685', stage)
+        self.assertIn('digest == expected', stage)
+        self.assertIn('archive_path.stat().st_size == 404204685', stage)
+        self.assertIn('--expected-sha256 ' + actual_sha, stage)
+        self.assertNotIn("abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b", stage)
 
     def test_all_role_dispatch_uses_any_available_test_account(self):
         self.assertIn('os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"', self.workflow)
