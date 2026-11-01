@@ -62,7 +62,7 @@ class InstalledThailandMapTest {
         // range must fail before a visually blank screenshot can be misdiagnosed.
         val glyphRanges = listOf("0-255.pbf", "3584-3839.pbf")
         val glyphEvidence = glyphRanges.map { range ->
-            val assetPath = "fonts/Noto Sans Regular/$range"
+            val assetPath = "fonts/Sans Regular/$range"
             val byteCount = context.assets.open(assetPath).use { it.readBytes().size }
             assertTrue("Bundled glyph range is empty: $assetPath", byteCount > 100)
             "$range:$byteCount"

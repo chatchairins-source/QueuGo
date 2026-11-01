@@ -42,7 +42,7 @@ class OfflineLabelPixelGateTest(unittest.TestCase):
     def test_street_collision_probe_is_narrow_and_keeps_real_pixel_gate(self):
         style = (ROOT / "native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/ShortbreadVillageStyle.kt").read_text(encoding="utf-8")
         self.assertIn('PropertyFactory.textAllowOverlap(layer == "street_labels")', style)
-        self.assertIn('PropertyFactory.textFont(arrayOf("Noto Sans Regular"))', style)
+        self.assertIn('PropertyFactory.textFont(arrayOf("Sans Regular"))', style)
         self.assertIn('PropertyFactory.textField(Expression.get("name"))', style)
         self.assertIn("visibleLabelPixelDelta >= kotlin.math.max(40, hiddenFrameJitter * 3 + 20)", self.source)
         self.assertNotIn("drawText(", style)
@@ -77,6 +77,19 @@ class OfflineLabelPixelGateTest(unittest.TestCase):
             self.assertIn(token, self.source)
         self.assertIn("visibleLabelPixelDelta >= kotlin.math.max", self.source)
         self.assertNotIn("drawText(", self.source)
+
+    def test_embedded_fontstack_matches_runtime_style_and_assets(self):
+        # Real pinned PBF bytes declare "Sans Regular" in Fontstack.name.
+        # Test every shipped range, including Thai, and the exact MapLibre
+        # fontstack/asset path. A directory alias alone is not a visual PASS.
+        font_dir = ROOT / "native-android/rider-maplibre-osm/src/main/assets/fonts/Sans Regular"
+        for name in ("0-255.pbf", "256-511.pbf", "512-767.pbf", "3584-3839.pbf", "8192-8447.pbf"):
+            data = (font_dir / name).read_bytes()
+            self.assertIn(b"\x0a\x0cSans Regular", data[:32], name)
+        style = (ROOT / "native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/ShortbreadVillageStyle.kt").read_text(encoding="utf-8")
+        self.assertIn('PropertyFactory.textFont(arrayOf("Sans Regular"))', style)
+        self.assertIn('asset://fonts/{fontstack}/{range}.pbf', style)
+        self.assertIn('fonts/Sans Regular/$range', self.source)
 
     def test_country_workflow_tests_exact_pr_head(self):
         self.assertIn("work-native-rider-nav-unified-offline-20261030", self.workflow)

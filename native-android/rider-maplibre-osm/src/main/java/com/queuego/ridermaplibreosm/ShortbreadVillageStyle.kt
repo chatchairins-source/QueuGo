@@ -177,6 +177,8 @@ object ShortbreadVillageStyle {
         }
 
         // Glyphs travel with the app. Thai/Latin labels never depend on a font server.
+        // Pinned PBF fontstack metadata is "Sans Regular"; request that stack
+        // through an asset alias instead of using a mismatched display name.
         listOf(
             Triple("street_labels", 13f, Property.SYMBOL_PLACEMENT_LINE),
             Triple("place_labels", 5f, Property.SYMBOL_PLACEMENT_POINT),
@@ -189,7 +191,7 @@ object ShortbreadVillageStyle {
                     .withProperties(
                         PropertyFactory.symbolPlacement(placement),
                         PropertyFactory.textField(Expression.get("name")),
-                        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                        PropertyFactory.textFont(arrayOf("Sans Regular")),
                         PropertyFactory.textSize(if (layer == "place_labels") 14f else 11f),
                         PropertyFactory.textColor("#424b55"),
                         PropertyFactory.textHaloColor("#ffffff"),
