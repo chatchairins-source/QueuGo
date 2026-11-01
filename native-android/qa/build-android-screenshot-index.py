@@ -31,6 +31,8 @@ def validate_manifest(data):
     names = [item.get("screen") for item in screens]
     if not names_valid(names):
         raise AssertionError("Missing or duplicate captured screen identities")
+    if not set(names).issubset(expected):
+        raise AssertionError("Captured screen is outside the declared review inventory")
     if not names_valid(declared_missing) or not set(declared_missing).issubset(expected):
         raise AssertionError("Invalid declared missing screen inventory")
     if set(names) & set(declared_missing):
@@ -177,6 +179,8 @@ def self_test():
         {**valid, "expected_screens": []},
         {**valid, "expected_screens": ["home", "home"]},
         {**valid, "screens": [{**valid["screens"][0]}, {**valid["screens"][0]}]},
+        {**valid, "screens": [{**valid["screens"][0]},
+                              {"screen": "unlisted-extra", "file": "extra.png"}]},
         {**valid, "expected_screens": ["home", "ride"]},
         {**valid, "missing_screens": ["ride"]},
         {**valid, "source_head": ""},
