@@ -96,10 +96,17 @@ class OfflineLabelPixelGateTest(unittest.TestCase):
         # installed renderer received that URL or symbol text layout.
         self.assertIn('org.json.JSONObject(runtimeStyle.json)', self.source)
         self.assertIn('runtime_glyph_template=', self.source)
-        self.assertIn('runtime_symbol_$sourceLayer=', self.source)
+        self.assertIn('runtime_json_layer_count=', self.source)
+        self.assertIn('runtimeStyle.getLayer(layerId)', self.source)
+        self.assertIn('Live MapLibre style lost $layerId', self.source)
+        self.assertIn('runtime_live_symbol_$sourceLayer=', self.source)
+        self.assertIn('runtime_json_symbol_$sourceLayer=', self.source)
+        self.assertIn('not_serialized_use_live_layer', self.source)
         self.assertIn('Installed MapLibre style lost its offline glyph template', self.source)
-        self.assertIn('Missing text-field on $layerId', self.source)
-        self.assertIn('Missing text-font on $layerId', self.source)
+        self.assertIn('Missing live text-field on $layerId', self.source)
+        self.assertIn('Missing live text-font on $layerId', self.source)
+        # Style.json is not the authority for dynamically installed SymbolLayers.
+        self.assertNotIn('assertNotNull("Installed MapLibre style lost $layerId", layer)', self.source)
         self.assertIn('visibleLabelPixelDelta >= kotlin.math.max', self.source)
 
     def test_country_workflow_tests_exact_pr_head(self):
