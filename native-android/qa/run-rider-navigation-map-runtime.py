@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import time
 
 def run(args, **kwargs):
@@ -57,6 +58,11 @@ assert gradle, "Gradle executable is required"
 
 log_dir = repo / "artifacts/rider-navigation-map-runtime"
 log_dir.mkdir(parents=True, exist_ok=True)
+
+# A successful Gradle task is not evidence that the named speed-follow test ran.
+report_verifier = repo / "native-android/qa/verify-navigation-map-android-results.py"
+connected_reports = repo / "native-android/rider-navigation-map/build/outputs/androidTest-results/connected"
+run([sys.executable, str(report_verifier), "--self-test"])
 
 def stage_verified_map_for_isolated_debug_runtime():
     """Build-only test fixture: real nationwide archive in the isolated debug target.
@@ -132,6 +138,8 @@ with (log_dir / "emulator.log").open("w") as log:
             state = subprocess.run(adb + ["shell", "dumpsys", "connectivity"], capture_output=True, text=True, check=True)
             (log_dir / "offline-connectivity.txt").write_text(state.stdout)
         staged_map_dir = stage_verified_map_for_isolated_debug_runtime()
+        # Reject stale XML from an earlier emulator run or Gradle invocation.
+        shutil.rmtree(connected_reports, ignore_errors=True)
         result = subprocess.run(
             [gradle, "-p", "native-android",
              ":rider-navigation-map:connectedDebugAndroidTest",
@@ -154,6 +162,7 @@ with (log_dir / "emulator.log").open("w") as log:
             (log_dir / "offline-connectivity-after-tests.txt").write_text(connectivity.stdout)
         if result.returncode != 0:
             raise SystemExit("Navigation-map connected Android test failed")
+        run([sys.executable, str(report_verifier), "--results", str(connected_reports)])
         if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
             images = list((log_dir / "country-screenshots").rglob("*.png"))
             expected = {"bangkok.png", "buriram.png", "chiangmai.png", "phuket.png", "narathiwat.png"}
