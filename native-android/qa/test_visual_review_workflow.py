@@ -127,6 +127,27 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertNotIn("REVIEW_PASSWORD", manifest_section)
         self.assertNotIn("REVIEW_PHONE", manifest_section)
 
+    def test_country_review_reuses_verified_archive_instead_of_rebuilding(self):
+        branch = "work-qa-country-archive-reuse-20261102"
+        self.assertIn("      - " + branch, self.workflow)
+        self.assert_branch_in_python_gate(branch, 'all_roles = (', 'ready = (')
+        self.assert_branch_in_python_gate(branch, 'capture_requested = (', 'report =')
+        self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+        stage = self.workflow.split(
+            "- name: Stage pinned nationwide Rider archive for visual evidence", 1
+        )[1].split("- name: Build actual Rider, Merchant and Customer debug APKs", 1)[0]
+        self.assertIn("gh run download 41029740374", stage)
+        self.assertIn("--name queuego-native-pilot-apks", stage)
+        self.assertIn('source.read("assets/maps/thailand-shortbread.json")', stage)
+        self.assertIn("hashlib.file_digest(stream, \"sha256\")", stage)
+        self.assertIn("404204683", stage)
+        self.assertIn("abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b", stage)
+        self.assertNotIn("build-thailand-shortbread-pmtiles.sh", stage)
+        self.assertNotIn("curl --fail", stage)
+        self.assertIn("  actions: read", self.workflow)
+        self.assertIn("QG_REQUIRE_BUNDLED_COUNTRY:", self.workflow)
+        self.assertIn("verify-bundled-thailand-apks.py --source-sha", self.workflow)
+
     def test_all_role_dispatch_uses_any_available_test_account(self):
         self.assertIn('os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"', self.workflow)
         self.assertIn('any(role["ready"] for role in roles.values())', self.workflow)
