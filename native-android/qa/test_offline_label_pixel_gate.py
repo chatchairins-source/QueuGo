@@ -63,6 +63,21 @@ class OfflineLabelPixelGateTest(unittest.TestCase):
         self.assertNotIn("drawText(", self.source)
         self.assertNotIn("Canvas(", self.source)
 
+    def test_installed_glyph_bytes_and_real_source_names_are_diagnosed(self):
+        # A positive symbol index cannot tell whether glyph ranges or names
+        # are actually available to the installed renderer.
+        for token in (
+            'val glyphRanges = listOf("0-255.pbf", "3584-3839.pbf")',
+            'context.assets.open(assetPath)',
+            'installed_glyph_ranges=',
+            'map.queryRenderedFeatures(viewport, "queuego-label-$layer")',
+            'feature.getStringProperty("name")',
+            'bangkok_source_names=',
+        ):
+            self.assertIn(token, self.source)
+        self.assertIn("visibleLabelPixelDelta >= kotlin.math.max", self.source)
+        self.assertNotIn("drawText(", self.source)
+
     def test_country_workflow_tests_exact_pr_head(self):
         self.assertIn("work-native-rider-nav-unified-offline-20261030", self.workflow)
         self.assertIn("github.event.pull_request.head.sha || github.sha", self.workflow)
