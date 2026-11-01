@@ -1,4 +1,5 @@
 """Rider authenticated screenshots must show the selected page, not stale nav."""
+import hashlib
 import importlib.util
 import os
 from pathlib import Path
@@ -209,7 +210,10 @@ class RiderTabVisualGateTest(unittest.TestCase):
             patch.object(review, "scroll_earnings_until", side_effect=fake_scroll),
             patch.object(review.time, "sleep"),
             patch.object(review, "shot", side_effect=lambda name: (
-                operations.append("shot-" + name) or {"file": name + ".png"}
+                operations.append("shot-" + name) or {
+                    "file": name + ".png",
+                    "sha256": hashlib.sha256(name.encode("utf-8")).hexdigest(),
+                }
             )),
         ):
             review.capture_rider_earnings_period("7 วัน", "05-earnings-7-days")
@@ -220,6 +224,33 @@ class RiderTabVisualGateTest(unittest.TestCase):
         self.assertEqual([x["screen"] for x in review.screens], [
             "05-earnings-7-days", "05-earnings-7-days-ledger"
         ])
+
+    def test_earnings_evidence_deduplicates_identical_pixels(self):
+        # Screenshot names are not evidence of distinct visual content.
+        summary = {"file": "summary.png", "sha256": "a" * 64}
+        ledger = {"file": "ledger.png", "sha256": "a" * 64}
+        entries, duplicate = review.earnings_evidence(
+            "05-earnings-7-days", summary, ledger
+        )
+        self.assertTrue(duplicate)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["screen"], "05-earnings-7-days")
+        self.assertEqual(entries[0]["file"], "summary.png")
+        self.assertTrue(entries[0]["cash_ledger_in_same_viewport"])
+
+    def test_earnings_evidence_preserves_distinct_viewports(self):
+        summary = {"file": "summary.png", "sha256": "a" * 64}
+        ledger = {"file": "ledger.png", "sha256": "b" * 64}
+        entries, duplicate = review.earnings_evidence(
+            "06-earnings-30-days", summary, ledger
+        )
+        self.assertFalse(duplicate)
+        self.assertEqual(
+            [entry["screen"] for entry in entries],
+            ["06-earnings-30-days", "06-earnings-30-days-ledger"],
+        )
+        self.assertEqual([entry["file"] for entry in entries],
+                         ["summary.png", "ledger.png"])
 
     def test_earnings_capture_missing_ledger_never_accepts_image(self):
         review.screens = []
