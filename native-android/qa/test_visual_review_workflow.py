@@ -47,9 +47,9 @@ class VisualReviewWorkflowTests(unittest.TestCase):
     def test_qa_pilot_runs_on_qa_push_and_pr(self):
         # CI must validate exact QA source HEADs; do not expand the
         # secret-backed authenticated-review workflow to every QA branch.
-        triggers = self.pilot.split("\\npermissions:", 1)[0]
-        self.assertIn("  pull_request:\\n    branches:\\n      - 'work-native-**'\\n      - 'work-qa-**'", triggers)
-        self.assertIn("  push:\\n    branches:\\n      - queuego-native-android-v1\\n      - 'work-native-**'\\n      - 'work-qa-**'", triggers)
+        triggers = self.pilot.split("\npermissions:", 1)[0]
+        self.assertIn("  pull_request:\n    branches:\n      - 'work-native-**'\n      - 'work-qa-**'", triggers)
+        self.assertIn("  push:\n    branches:\n      - queuego-native-android-v1\n      - 'work-native-**'\n      - 'work-qa-**'", triggers)
         self.assertNotIn("      - 'work-qa-**'", self.workflow)
 
     def test_all_role_dispatch_uses_any_available_test_account(self):
