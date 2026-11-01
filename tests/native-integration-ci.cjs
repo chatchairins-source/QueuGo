@@ -1,12 +1,15 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 let checks=0;
-function selected(job,ref){
+function selected(job,ref,event='push'){
  const block=workflow.split('\n  '+job+':\n')[1]?.split(/\n  [a-z][a-z-]+:\n/)[0];
  assert.ok(block,'workflow job exists: '+job);
  const condition=block.match(/^    if: \$\{\{ (.*) \}\}$/m)?.[1];
  if(!condition)return true;
- return vm.runInNewContext(condition,{github:{ref:'refs/heads/'+ref,event_name:'push'},startsWith:(a,b)=>a.startsWith(b)});
+ const github=event==='pull_request'
+  ? {ref:'refs/pull/123/merge',head_ref:ref,event_name:event}
+  : {ref:'refs/heads/'+ref,head_ref:'',event_name:event};
+ return vm.runInNewContext(condition,{github,startsWith:(a,b)=>String(a??'').startsWith(String(b??''))});
 }
 for(const ref of ['work-native-rider-queuego-route-authority-20261017','work-native-ride-entry-recovery-20261018']){
  for(const job of ['native-pilot','continuous-dispatch-races','passenger-ride-races','credit-races','map-display-only','navigation-map-runtime','maplibre-osm-runtime']){
@@ -46,3 +49,13 @@ for(const source of ['supabase/functions/queuego-route-bundle-matrix/**','supaba
 }
 assert.ok(workflow.includes('run: node tests/route-bundle-stack-races.cjs')); checks++;
 console.log(JSON.stringify({checks,failures:0,scope:'generalized stack independent races and exact-head Map Engine selection'}));
+
+// A PR merge ref is not the source branch; GitHub supplies its source as head_ref.
+// Simulate both GitHub event shapes so an added head_ref gate cannot crash CI.
+for (const event of ['push','pull_request']) {
+ const branch='work-native-rider-navigation-map-speed-zoom-runtime-20261101';
+ assert.equal(selected('navigation-map-runtime',branch,event),true,event+' must execute installed speed camera runtime'); checks++;
+ assert.equal(selected('publish-rider-road-test',branch,event),false,event+' must never publish a road-test APK'); checks++;
+ assert.equal(selected('navigation-map-runtime','work-native-unrelated-branch-20261101',event),false,event+' must not misselect unrelated map runtime'); checks++;
+}
+console.log(JSON.stringify({checks,failures:0,scope:'push/PR head_ref parity for navigation runtime, unrelated branches excluded and release gated'}));
