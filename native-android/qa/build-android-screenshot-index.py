@@ -60,6 +60,8 @@ def png_dimensions(content):
     if not content.startswith(b"\x89PNG\r\n\x1a\n"):
         raise AssertionError("Screenshot is not a PNG")
     pos, width, height, idat_seen = 8, None, None, False
+    idat_parts = []
+    bit_depth = color_type = compression = filter_method = interlace = None
     while pos + 12 <= len(content):
         length = struct.unpack(">I", content[pos:pos + 4])[0]
         end = pos + 12 + length
@@ -74,13 +76,36 @@ def png_dimensions(content):
             if kind != b"IHDR" or length != 13:
                 raise AssertionError("Screenshot lacks valid PNG IHDR")
             width, height = struct.unpack(">II", payload[:8])
+            bit_depth, color_type, compression, filter_method, interlace = payload[8:]
         if kind == b"IDAT":
             idat_seen = True
+            idat_parts.append(payload)
         if kind == b"IEND":
             if length or not idat_seen or end != len(content):
                 raise AssertionError("Invalid terminal PNG IEND")
             if width < 100 or height < 100:
                 raise AssertionError("Invalid Android screenshot dimensions")
+            # CRC-valid IDAT bytes can still contain a broken zlib stream or
+            # fewer pixel rows than the IHDR declares. Never count such a
+            # screenshot as actual visual evidence.
+            channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
+            valid_depths = {0: (1, 2, 4, 8, 16), 2: (8, 16),
+                            3: (1, 2, 4, 8), 4: (8, 16), 6: (8, 16)}
+            if (color_type not in channels or bit_depth not in valid_depths[color_type]
+                    or compression != 0 or filter_method != 0 or interlace != 0):
+                raise AssertionError("Unsupported Android screenshot PNG encoding")
+            row_bytes = (width * channels[color_type] * bit_depth + 7) // 8
+            expected_bytes = height * (row_bytes + 1)  # per-row PNG filter byte
+            if expected_bytes > 150_000_000:
+                raise AssertionError("Android screenshot decompressed size exceeds limit")
+            try:
+                inflater = zlib.decompressobj()
+                pixels = inflater.decompress(b"".join(idat_parts), expected_bytes + 1)
+            except zlib.error as error:
+                raise AssertionError("Invalid screenshot PNG IDAT zlib stream") from error
+            if (len(pixels) != expected_bytes or not inflater.eof
+                    or inflater.unused_data or inflater.unconsumed_tail):
+                raise AssertionError("Screenshot PNG IDAT pixel rows are incomplete or corrupt")
             return width, height
         pos = end
     raise AssertionError("Screenshot PNG has no terminal IEND")
@@ -242,14 +267,19 @@ def self_test():
         (folder / "metadata.json").write_text(json.dumps(data), encoding="utf-8")
         result = inspect_role(folder, "rider")
         assert result["status"] == "CAPTURED_SCOPE" and len(result["screens"]) == 2
+    # Recomputed PNG CRC alone must not make an invalid compressed image pass.
+    ihdr = chunk(b"IHDR", struct.pack(">IIBBBBB", 100, 100, 8, 2, 0, 0, 0))
+    invalid_zlib = png[:8] + ihdr + chunk(b"IDAT", b"not-zlib") + chunk(b"IEND", b"")
+    short_rows = (png[:8] + ihdr + chunk(b"IDAT", zlib.compress(b"too-short"))
+                  + chunk(b"IEND", b""))
     for bad in (png[:-3], png[:-12], png[:29] + bytes([png[29] ^ 1]) + png[30:],
-                png + b"trailing"):
+                png + b"trailing", invalid_zlib, short_rows):
         try:
             png_dimensions(bad)
         except AssertionError:
             continue
         raise AssertionError("Corrupt/truncated PNG was accepted")
-    print("QUEUEGO_VISUAL_INDEX_SELFTEST_PASS 21")
+    print("QUEUEGO_VISUAL_INDEX_SELFTEST_PASS 23")
 
 
 if __name__ == "__main__":
