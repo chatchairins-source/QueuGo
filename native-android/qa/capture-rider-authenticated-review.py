@@ -1,6 +1,6 @@
 """Secret-backed Android Rider review; credentials never enter evidence files."""
 from pathlib import Path
-import datetime, hashlib, json, os, re, subprocess, time
+import datetime, hashlib, json, os, re, subprocess, sys, time
 import xml.etree.ElementTree as ET
 
 from adb_install_recovery import install_verified_apk
@@ -196,13 +196,38 @@ def provision_map():
     assert verified == expected, "App-private map archive checksum mismatch"
 
 
+def profile_scroll_direction(bounds, viewport_height):
+    """Keep tap targets away from system bars and the persistent Rider bottom nav."""
+    if viewport_height < 200 or len(bounds) != 4 or bounds[3] <= bounds[1]:
+        raise ValueError("Invalid Rider viewport/target bounds")
+    center = (bounds[1] + bounds[3]) / 2
+    if center > viewport_height * 0.76:
+        return "up"
+    if center < viewport_height * 0.15:
+        return "down"
+    return None
+
+
 def scroll_to_text(label):
-    for _ in range(8):
-        ns=nodes()
-        if any(n.get("text","").strip()==label and rect(n) for n in ns): return ns
-        swipe_vertical("up")
-        time.sleep(0.5)
-    raise SystemExit("Read-only Rider profile entry not visible: "+label)
+    # UIAutomator can expose a profile row behind the fixed bottom navigation.
+    # Presence in XML is not proof that tapping its coordinates hits that row.
+    for _ in range(10):
+        ns = nodes()
+        matches = [n for n in ns if n.get("text", "").strip() == label and rect(n)]
+        if matches:
+            output = run(["shell", "wm", "size"], capture_output=True, text=True).stdout
+            sizes = re.findall(r"(?:Physical|Override) size:\\s*(\\d+)x(\\d+)", output)
+            if not sizes:
+                raise RuntimeError("Rider profile viewport size unavailable")
+            height = int(sizes[-1][1])
+            direction = profile_scroll_direction(rect(matches[-1]), height)
+            if direction is None:
+                return ns
+        else:
+            direction = "up"
+        swipe_vertical(direction)
+        time.sleep(0.6)
+    raise SystemExit("Read-only Rider profile entry not safely tappable: " + label)
 
 def expand_profile_extra_tools():
     ns=nodes()
@@ -341,4 +366,23 @@ def main():
         raise SystemExit("Authenticated Rider review incomplete; missing screens: "+", ".join(missing_screens))
     print("QUEUEGO_RIDER_AUTHENTICATED_REVIEW_PASS: all expected Rider screens captured")
 
-if __name__=="__main__": main()
+def self_test_profile_scroll():
+    assert profile_scroll_direction([100, 1850, 500, 2010], 2280) == "up"
+    assert profile_scroll_direction([100, 40, 500, 140], 2280) == "down"
+    assert profile_scroll_direction([100, 900, 500, 1050], 2280) is None
+    assert profile_scroll_direction([100, 590, 500, 690], 800) == "up"
+    assert profile_scroll_direction([100, 250, 500, 350], 800) is None
+    try:
+        profile_scroll_direction([0, 20, 100, 20], 2280)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Invalid bounds must fail closed")
+    print("QUEUEGO_RIDER_PROFILE_SCROLL_SELFTEST_PASS 6")
+
+
+if __name__ == "__main__":
+    if "--self-test" in sys.argv:
+        self_test_profile_scroll()
+    else:
+        main()
