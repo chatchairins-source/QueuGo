@@ -3,7 +3,7 @@ name: QueueGo Installed Country Offline Runtime
 on:
   workflow_dispatch:
   pull_request:
-    branches: [work-native-pos-tax-foundation-20261029, work-native-rider-nav-unified-offline-20261030, work-native-bangkok-label-collision-probe-20261101, work-rider-label-diff-evidence-20261101, work-rider-label-name-glyph-probe-20261102]
+    branches: [work-native-pos-tax-foundation-20261029, work-native-rider-nav-unified-offline-20261030, work-native-bangkok-label-collision-probe-20261101, work-rider-label-diff-evidence-20261101, work-rider-label-name-glyph-probe-20261102, work-rider-offline-glyph-fontstack-align-20261102]
     paths:
       - native-android/rider-navigation-map/src/androidTest/**
       - native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/ShortbreadVillageStyle.kt
