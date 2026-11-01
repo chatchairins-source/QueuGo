@@ -18,10 +18,18 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         cls.workflow = WORKFLOW.read_text(encoding="utf-8")
         cls.customer = CUSTOMER.read_text(encoding="utf-8")
 
+    def assert_branch_in_python_gate(self, branch, start, end):
+        # Match membership inside the intended gate, not the position of an
+        # element in a growing tuple (new successors must not break CI).
+        self.assertIn(start, self.workflow)
+        section = self.workflow.split(start, 1)[1].split(end, 1)[0]
+        self.assertIn('"' + branch + '"', section)
+
     def test_successor_branch_triggers_capture(self):
         self.assertIn("      - " + BRANCH, self.workflow)
         self.assertIn('GITHUB_REF_NAME") in (', self.workflow)
-        self.assertIn('"' + BRANCH + '")', self.workflow)
+        self.assert_branch_in_python_gate(BRANCH, 'all_roles = (', 'ready = (')
+        self.assert_branch_in_python_gate(BRANCH, 'capture_requested = (', 'report =')
         self.assertIn("github.ref_name == '" + BRANCH + "'", self.workflow)
 
     def test_rider_nav_clearance_branch_runs_real_capture(self):
@@ -39,8 +47,35 @@ class VisualReviewWorkflowTests(unittest.TestCase):
     def test_png_signature_fix_branch_runs_installed_screenshot_review(self):
         branch = "work-qa-true-png-signature-20261101"
         self.assertIn("      - " + branch, self.workflow)
-        self.assertIn('"' + branch + '") or merchant_only)', self.workflow)
+        self.assert_branch_in_python_gate(branch, 'capture_requested = (', 'report =')
         self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+
+    def test_customer_review_successor_is_eligible_without_rider_credentials(self):
+        # Owner review must not be silently skipped when only the Customer
+        # test secrets exist. Existing account-level concurrency stays intact.
+        branch = "work-native-customer-review-eligibility-20261101"
+        self.assertIn("      - " + branch, self.workflow)
+        self.assert_branch_in_python_gate(branch, 'all_roles = (', 'ready = (')
+        self.assert_branch_in_python_gate(branch, 'capture_requested = (', 'report =')
+        self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+        self.assertIn('any(role["ready"] for role in roles.values()) if all_roles',
+                      self.workflow)
+        customer = re.search(
+            r"- name: Capture authenticated Customer views on Android Emulator\n\s+if: ([^\n]+)",
+            self.workflow)
+        self.assertIsNotNone(customer, "Customer capture step absent")
+        self.assertIn("needs.credential-check.outputs.customer_ready == 'true'",
+                      customer.group(1))
+        self.assertIn("github.ref_name == '" + branch + "'", customer.group(1))
+        self.assertIn("cancel-in-progress: false", self.workflow)
+
+    def test_qa_membership_successor_preserves_customer_capture(self):
+        branch = 'work-qa-review-branch-membership-20261101'
+        self.assertIn('      - ' + branch, self.workflow)
+        self.assert_branch_in_python_gate(branch, 'all_roles = (', 'ready = (')
+        self.assert_branch_in_python_gate(branch, 'capture_requested = (', 'report =')
+        self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+        self.assertIn("needs.credential-check.outputs.customer_ready == 'true'", self.workflow)
 
     def test_all_role_dispatch_uses_any_available_test_account(self):
         self.assertIn('os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"', self.workflow)
