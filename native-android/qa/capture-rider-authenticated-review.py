@@ -1,6 +1,6 @@
 """Secret-backed Android Rider review; credentials never enter evidence files."""
 from pathlib import Path
-import datetime, hashlib, json, os, re, subprocess, sys, time, zipfile
+import datetime, hashlib, json, os, re, subprocess, sys, tempfile, time, zipfile
 import xml.etree.ElementTree as ET
 
 from adb_install_recovery import install_verified_apk
@@ -494,9 +494,44 @@ def self_test_profile_scroll():
     print("QUEUEGO_RIDER_PROFILE_SCROLL_SELFTEST_PASS 12")
 
 
+def self_test_map_provenance():
+    # Synthetic ZIP is used only to test fail-closed evidence classification.
+    # No screenshot, map or Production behavior is simulated.
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "no-country.apk"
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("classes.dex", b"fixture")
+        old_required = os.environ.get("QG_REQUIRE_BUNDLED_COUNTRY")
+        old_debug = os.environ.get("QG_DEBUG_MAP_ARCHIVE")
+        try:
+            os.environ["QG_REQUIRE_BUNDLED_COUNTRY"] = "0"
+            os.environ["QG_DEBUG_MAP_ARCHIVE"] = "1"
+            assert verified_map_provenance(path) == "regional_debug_fixture"
+            os.environ["QG_DEBUG_MAP_ARCHIVE"] = "0"
+            assert verified_map_provenance(path) == "online_fallback"
+            os.environ["QG_REQUIRE_BUNDLED_COUNTRY"] = "1"
+            try:
+                verified_map_provenance(path)
+            except AssertionError as error:
+                assert "Nationwide visual review" in str(error)
+            else:
+                raise AssertionError("Unbundled Rider APK passed nationwide visual gate")
+        finally:
+            for key, value in (
+                ("QG_REQUIRE_BUNDLED_COUNTRY", old_required),
+                ("QG_DEBUG_MAP_ARCHIVE", old_debug),
+            ):
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+    print("QUEUEGO_RIDER_COUNTRY_PROVENANCE_SELFTEST_PASS 3")
+
+
 if __name__ == "__main__":
     if "--self-test" in sys.argv:
         self_test_profile_scroll()
         self_test_earnings_evidence()
+        self_test_map_provenance()
     else:
         main()
