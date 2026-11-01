@@ -33,6 +33,12 @@ class VisualReviewWorkflowTests(unittest.TestCase):
     def test_visual_evidence_fix_branch_captures_real_installed_apks(self):
         branch = "work-native-visual-evidence-integrity-20261101"
         self.assertIn("      - " + branch, self.workflow)
+        self.assertIn('"' + branch + '",', self.workflow)
+        self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+
+    def test_png_signature_fix_branch_runs_installed_screenshot_review(self):
+        branch = "work-qa-true-png-signature-20261101"
+        self.assertIn("      - " + branch, self.workflow)
         self.assertIn('"' + branch + '") or merchant_only)', self.workflow)
         self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
 
