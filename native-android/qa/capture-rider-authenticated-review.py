@@ -138,6 +138,22 @@ def scroll_earnings_until(predicate, direction):
     return []
 
 
+def earnings_evidence(filename, summary_image, ledger_image):
+    """A summary and cash ledger visible in one viewport are ONE screenshot.
+
+    The installed Rider APK at PR #783 captured byte-identical 7-day and
+    30-day summary/ledger pairs. Two names must never inflate the evidence
+    count when the scroll container has no separate ledger viewport.
+    """
+    if summary_image["sha256"] == ledger_image["sha256"]:
+        return ([{"screen": filename, "cash_ledger_in_same_viewport": True,
+                  **summary_image}], True)
+    return ([
+        {"screen": filename, **summary_image},
+        {"screen": filename + "-ledger", **ledger_image},
+    ], False)
+
+
 def capture_rider_earnings_period(label, filename):
     if label not in ("7 วัน", "30 วัน"):
         raise ValueError("Unknown Rider earnings period")
@@ -155,10 +171,12 @@ def capture_rider_earnings_period(label, filename):
     summary = scroll_earnings_until(rider_earnings_summary_ready, "down")
     assert summary, "Rider earnings summary did not return to viewport: " + label
     summary_image = shot(filename)
-    screens.extend((
-        {"screen": filename, **summary_image},
-        {"screen": filename + "-ledger", **ledger_image},
-    ))
+    entries, duplicate = earnings_evidence(filename, summary_image, ledger_image)
+    if duplicate:
+        # The same pixels already show both summary and cash ledger.
+        # Delete the redundant PNG rather than publish fabricated coverage.
+        (OUT / ledger_image["file"]).unlink(missing_ok=True)
+    screens.extend(entries)
 
 
 def tap_label(ns,label):
@@ -377,8 +395,8 @@ def main():
         capture_profile_dialog(entry,title,name)
     expected_screens=(
       "home_map","messages_chat",
-      "earnings_today","05-earnings-7-days","05-earnings-7-days-ledger",
-      "06-earnings-30-days","06-earnings-30-days-ledger",
+      "earnings_today","05-earnings-7-days",
+      "06-earnings-30-days",
       "profile","profile_laundry","08-learning-center","09-safety-center","10-support","11-diagnostics",
     )
     captured={item["screen"] for item in screens}
@@ -391,7 +409,7 @@ def main():
       "android_api":run(["shell","getprop","ro.build.version.sdk"],capture_output=True,text=True).stdout.strip(),
       "viewport_px":"1080x2280","screens":screens,"physical_device":False,
       "production_order_or_dispatch_mutations":False,"visual_parity_certified":False,
-      "scope":"Authenticated Rider Home map, messages, earnings, profile and Laundry work toggle; no job actions",
+      "scope":"Authenticated Rider Home map, messages, earnings (summary plus verified cash ledger, optionally in same viewport), profile and Laundry work toggle; no job actions",
       "expected_screens":list(expected_screens),
       "missing_screens":missing_screens,
       "review_complete":not missing_screens,
@@ -400,6 +418,21 @@ def main():
     if missing_screens:
         raise SystemExit("Authenticated Rider review incomplete; missing screens: "+", ".join(missing_screens))
     print("QUEUEGO_RIDER_AUTHENTICATED_REVIEW_PASS: all expected Rider screens captured")
+
+def self_test_earnings_evidence():
+    summary = {"file": "summary.png", "sha256": "a" * 64}
+    ledger_same = {"file": "ledger.png", "sha256": "a" * 64}
+    entries, duplicate = earnings_evidence("05-earnings-7-days", summary, ledger_same)
+    assert duplicate and len(entries) == 1
+    assert entries[0]["cash_ledger_in_same_viewport"] is True
+    assert entries[0]["screen"] == "05-earnings-7-days"
+    entries, duplicate = earnings_evidence(
+        "06-earnings-30-days", summary,
+        {"file": "ledger.png", "sha256": "b" * 64})
+    assert not duplicate and len(entries) == 2
+    assert entries[1]["screen"] == "06-earnings-30-days-ledger"
+    print("QUEUEGO_RIDER_EARNINGS_EVIDENCE_SELFTEST_PASS 6")
+
 
 def self_test_profile_scroll():
     # Exact failure from hosted Rider review #41280054424: row is above
@@ -434,5 +467,6 @@ def self_test_profile_scroll():
 if __name__ == "__main__":
     if "--self-test" in sys.argv:
         self_test_profile_scroll()
+        self_test_earnings_evidence()
     else:
         main()
