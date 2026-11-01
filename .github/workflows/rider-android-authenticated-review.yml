@@ -227,6 +227,9 @@ jobs:
           path: artifacts/merchant-web-review/
           if-no-files-found: warn
           retention-days: 7
+      - name: Build verified screenshot review galleries
+        if: always()
+        run: python3 native-android/qa/build-android-screenshot-index.py
       - name: Save authenticated Merchant screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -235,6 +238,8 @@ jobs:
           path: |
             artifacts/merchant-authenticated-review/*.png
             artifacts/merchant-authenticated-review/metadata.json
+            artifacts/merchant-authenticated-review/index.html
+            artifacts/merchant-authenticated-review/index.json
             artifacts/merchant-authenticated-review/hierarchy-status.json
           if-no-files-found: warn
           retention-days: 7
@@ -246,6 +251,8 @@ jobs:
           path: |
             artifacts/customer-authenticated-review/*.png
             artifacts/customer-authenticated-review/metadata.json
+            artifacts/customer-authenticated-review/index.html
+            artifacts/customer-authenticated-review/index.json
           if-no-files-found: warn
           retention-days: 7
       - name: Save authenticated Rider screenshots
@@ -256,5 +263,7 @@ jobs:
           path: |
             artifacts/rider-authenticated-review/*.png
             artifacts/rider-authenticated-review/metadata.json
+            artifacts/rider-authenticated-review/index.html
+            artifacts/rider-authenticated-review/index.json
           if-no-files-found: warn
           retention-days: 7
