@@ -13,10 +13,12 @@ on:
   pull_request:
     branches:
       - 'work-native-**'
+      - 'work-qa-**'
   push:
     branches:
       - queuego-native-android-v1
       - 'work-native-**'
+      - 'work-qa-**'
       - 'fix/native-**'
       - 'work-rider-**'
       - work-native-release-integration-20261010
