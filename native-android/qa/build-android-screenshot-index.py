@@ -55,7 +55,7 @@ def png_dimensions(content):
     A truncated screenshot with a newly computed SHA256 is still invalid
     evidence. Android screencap PNGs have IHDR, IDAT and terminal IEND chunks.
     """
-    if not content.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+    if not content.startswith(b"\x89PNG\r\n\x1a\n"):
         raise AssertionError("Screenshot is not a PNG")
     pos, width, height, idat_seen = 8, None, None, False
     while pos + 12 <= len(content):
@@ -197,10 +197,13 @@ def self_test():
     def chunk(kind, payload):
         return (struct.pack(">I", len(payload)) + kind + payload +
                 struct.pack(">I", zlib.crc32(kind + payload) & 0xffffffff))
-    png = (b"\\x89PNG\\r\\n\\x1a\\n" +
+    png = (b"\x89PNG\r\n\x1a\n" +
            chunk(b"IHDR", struct.pack(">IIBBBBB", 100, 100, 8, 2, 0, 0, 0)) +
-           chunk(b"IDAT", zlib.compress((b"\\x00" + b"\\x00" * 300) * 100)) +
+           chunk(b"IDAT", zlib.compress((b"\x00" + b"\x00" * 300) * 100)) +
            chunk(b"IEND", b""))
+    # This fixture must use the real eight PNG signature bytes, never a textual
+    # escaped sequence (which previously made the chunk parser start at offset 8).
+    assert png[:8] == bytes.fromhex("89504e470d0a1a0a")
     assert png_dimensions(png) == (100, 100)
     # Exercise inspect_role end-to-end with two distinct files containing
     # identical pixels: this must not count as two different Android screens.
@@ -224,9 +227,9 @@ def self_test():
         else:
             raise AssertionError("Reused pixels accepted as independent screens")
         # A changed, valid second image must pass with its own hash.
-        different = (b"\\x89PNG\\r\\n\\x1a\\n" +
+        different = (b"\x89PNG\r\n\x1a\n" +
                      chunk(b"IHDR", struct.pack(">IIBBBBB", 100, 100, 8, 2, 0, 0, 0)) +
-                     chunk(b"IDAT", zlib.compress((b"\\x00" + b"\\xff" * 300) * 100)) +
+                     chunk(b"IDAT", zlib.compress((b"\x00" + b"\xff" * 300) * 100)) +
                      chunk(b"IEND", b""))
         (folder / "profile.png").write_bytes(different)
         data["screens"][1]["sha256"] = hashlib.sha256(different).hexdigest()
