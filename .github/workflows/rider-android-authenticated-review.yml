@@ -175,7 +175,7 @@ jobs:
       # the nationwide home viewport blank. Use the pinned real country archive
       # for this isolated actual-APK review, without regional test substitution.
       - name: Stage pinned nationwide Rider archive for visual evidence
-        if: github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-archive-reuse-20261102'
+        if: github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || github.ref_name == 'work-qa-country-archive-reuse-20261102'
         env:
           GH_TOKEN: ${{ github.token }}
           QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-visual
