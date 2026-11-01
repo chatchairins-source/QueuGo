@@ -163,6 +163,15 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertIn('--expected-sha256 ' + actual_sha, stage)
         self.assertNotIn("abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b", stage)
 
+    def test_verified_provenance_successor_runs_all_role_capture(self):
+        branch = "work-qa-country-provenance-verified-20261102"
+        self.assertIn("      - " + branch, self.workflow)
+        self.assert_branch_in_python_gate(branch, 'all_roles = (', 'ready = (')
+        self.assert_branch_in_python_gate(branch, 'capture_requested = (', 'report =')
+        self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+        self.assertIn("QG_REQUIRE_BUNDLED_COUNTRY:", self.workflow)
+        self.assertIn("verify-bundled-thailand-apks.py --source-sha", self.workflow)
+
     def test_all_role_dispatch_uses_any_available_test_account(self):
         self.assertIn('os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"', self.workflow)
         self.assertIn('any(role["ready"] for role in roles.values())', self.workflow)
