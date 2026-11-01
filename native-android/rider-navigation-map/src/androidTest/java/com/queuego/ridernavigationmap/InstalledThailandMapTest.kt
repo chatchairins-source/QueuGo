@@ -2,6 +2,8 @@ package com.queuego.ridernavigationmap
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.util.Log
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
@@ -11,6 +13,25 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class InstalledThailandMapTest {
+    // Compare actual emulator framebuffer pixels, not symbol feature indexes.
+    // Ignore status/navigation bars, where system time/icons can change.
+    private fun changedMapPixels(first: Bitmap, second: Bitmap): Int {
+        assertEquals(first.width, second.width)
+        assertEquals(first.height, second.height)
+        var changed = 0
+        for (y in first.height / 10 until first.height * 9 / 10 step 3) {
+            for (x in first.width / 10 until first.width * 9 / 10 step 3) {
+                val a = first.getPixel(x, y)
+                val b = second.getPixel(x, y)
+                val difference = kotlin.math.abs(Color.red(a) - Color.red(b)) +
+                    kotlin.math.abs(Color.green(a) - Color.green(b)) +
+                    kotlin.math.abs(Color.blue(a) - Color.blue(b))
+                if (difference >= 80) changed++
+            }
+        }
+        return changed
+    }
+
     private fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
         InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
     ).bufferedReader().use { it.readText() }
@@ -85,14 +106,63 @@ class InstalledThailandMapTest {
                         Thread.sleep(200)
                     }
                 }
-                // A symbol may enter the rendered-feature index before its fade-in
-                // reaches visible opacity. Retain the settled frame as evidence.
-                if (name == "bangkok" && paintedLabels > 0) Thread.sleep(1_000)
+                // A positive rendered-feature index can still correspond to
+                // completely invisible text (Issue #750). Toggle only the real
+                // MapLibre symbol layers and compare stable framebuffer pixels.
+                // No fake labels, screenshot overlays or Production changes.
+                var visibleLabelPixelDelta = -1
+                var hiddenFrameJitter = -1
+                val screenshotBitmap: Bitmap = if (name == "bangkok") {
+                    val ids = listOf("street_labels", "place_labels", "pois")
+                    scenario.onActivity { it.inspectMap { map ->
+                        val style = requireNotNull(map.style)
+                        ids.forEach { id ->
+                            val layer = style.getLayer("queuego-label-$id")
+                                as? org.maplibre.android.style.layers.SymbolLayer
+                                ?: throw AssertionError("Missing actual symbol layer $id")
+                            layer.setProperties(
+                                org.maplibre.android.style.layers.PropertyFactory.visibility(
+                                    org.maplibre.android.style.layers.Property.NONE
+                                )
+                            )
+                        }
+                    } }
+                    Thread.sleep(2_000)
+                    val hiddenA = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+                    Thread.sleep(800)
+                    val hiddenB = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+                    scenario.onActivity { it.inspectMap { map ->
+                        val style = requireNotNull(map.style)
+                        ids.forEach { id ->
+                            val layer = style.getLayer("queuego-label-$id")
+                                as? org.maplibre.android.style.layers.SymbolLayer
+                                ?: throw AssertionError("Missing actual symbol layer $id")
+                            layer.setProperties(
+                                org.maplibre.android.style.layers.PropertyFactory.visibility(
+                                    org.maplibre.android.style.layers.Property.VISIBLE
+                                )
+                            )
+                        }
+                    } }
+                    Thread.sleep(3_000)
+                    val visible = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+                    hiddenFrameJitter = changedMapPixels(hiddenA, hiddenB)
+                    visibleLabelPixelDelta = changedMapPixels(hiddenB, visible)
+                    Log.i("QueueGoLabelQA", "bangkok_visible_label_pixel_delta=" +
+                        visibleLabelPixelDelta + " hidden_baseline=" + hiddenFrameJitter +
+                        " indexed_features=" + paintedLabels + " visual_certified=false")
+                    hiddenA.recycle()
+                    hiddenB.recycle()
+                    visible
+                } else {
+                    requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+                }
                 val directory = File(context.getExternalFilesDir(null), "offline-map-evidence").apply { mkdirs() }
                 val screenshot = File(directory, "$name.png")
                 screenshot.outputStream().use {
-                    assertTrue(instrumentation.uiAutomation.takeScreenshot().compress(Bitmap.CompressFormat.PNG, 100, it))
+                    assertTrue(screenshotBitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
                 }
+                screenshotBitmap.recycle()
                 // Scoped-storage API keeps generated public evidence after UTP
                 // removes the test APK, without shell access to private app data.
                 val resolver = context.contentResolver
@@ -115,7 +185,15 @@ class InstalledThailandMapTest {
                     assertEquals("Retained screenshot size differs", screenshot.length(), requireNotNull(it).statSize)
                 }
                 if (offlineRequired) assertNull(context.getSystemService(android.net.ConnectivityManager::class.java).activeNetwork)
-                if (name == "bangkok") assertTrue("Offline Bangkok labels did not paint; see retained screenshot", paintedLabels > 0)
+                if (name == "bangkok") {
+                    assertTrue("Offline Bangkok labels absent from symbol index", paintedLabels > 0)
+                    assertTrue(
+                        "Offline Bangkok glyphs are not visibly painted: " +
+                            "pixel_delta=$visibleLabelPixelDelta baseline=$hiddenFrameJitter; " +
+                            "see retained screenshot and QueueGoLabelQA logcat",
+                        visibleLabelPixelDelta >= kotlin.math.max(40, hiddenFrameJitter * 3 + 20)
+                    )
+                }
             }
         }
     }
