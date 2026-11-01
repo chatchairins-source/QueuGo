@@ -19,8 +19,9 @@ from adb_install_recovery import install_verified_apk
 ADB = [str(Path(os.environ.get("ANDROID_HOME", "/opt/android-sdk")) / "platform-tools/adb"), "-s", "emulator-5554"]
 PKG = "com.queuego.customer"
 OUT = Path("artifacts/customer-authenticated-review")
-EXPECTED = ("login", "home", "search", "cart", "notifications", "profile",
-            "orders", "favorites", "promotions", "support", "location")
+EXPECTED = ("login", "home", "ride", "ride-pickup-picker", "ride-destination-picker",
+            "search", "cart", "notifications", "profile", "orders", "favorites",
+            "promotions", "support", "location")
 
 
 def adb(args, **kwargs):
@@ -90,6 +91,54 @@ def find_label(nodeset, label):
     return clickable[-1] if clickable else candidates[-1]
 
 
+HOME_CATEGORY_LABELS = ("อาหาร", "เครื่องดื่ม", "ร้านขายของชำ", "ฝากซัก",
+                        "ตลาดสด", "บริการเรียกรถ", "ช้อปปิ้ง")
+
+
+def category_swipe_y(current):
+    # The actual Customer Home categories are a horizontal Compose row. Use
+    # their current UIAutomator bounds, not a fixed emulator screen position.
+    centers = [int((rect(n)[1] + rect(n)[3]) / 2)
+               for n in current if rect(n) and labels(n).intersection(HOME_CATEGORY_LABELS)]
+    if not centers:
+        raise AssertionError("Customer Home category row is not visible")
+    return centers[0]
+
+
+def open_ride_category():
+    for _ in range(6):
+        current = nodes()
+        if any("บริการเรียกรถ" in labels(n) and rect(n) for n in current):
+            tap_node(find_label(current, "บริการเรียกรถ"))
+            return
+        y = category_swipe_y(current)
+        adb(["shell", "input", "swipe", "880", str(y), "180", str(y), "300"])
+        time.sleep(0.7)
+    raise AssertionError("Customer Ride category not reachable by horizontal scrolling")
+
+
+def capture_ride_read_only(screens):
+    before = nodes()
+    open_ride_category()
+    wait_for(lambda current: changed(before, current) and page_ready(current, "ride"), 60)
+    current = nodes()
+    # Do not publish a screenshot containing a currently active passenger trip.
+    # Such a trip can expose real pickup/dropoff addresses and driver details.
+    if any(text.startswith(("จุดรับ · ", "จุดหมาย · ")) for text in visible(current)):
+        raise AssertionError("Ride screenshot blocked: active trip may contain private addresses")
+    screens.append(shot("ride"))
+    for label, page in (("จุดรับ", "ride-pickup-picker"),
+                        ("จุดหมาย", "ride-destination-picker")):
+        before = nodes()
+        tap_node(find_label(before, label))
+        wait_for(lambda current: changed(before, current) and page_ready(current, page), 50)
+        screens.append(shot(page))
+        adb(["shell", "input", "keyevent", "4"])
+        wait_for(lambda current: page_ready(current, "ride"), 45)
+    adb(["shell", "input", "keyevent", "4"])
+    wait_for(home_ready, 45)
+
+
 def changed(previous, current):
     return visible(previous) != visible(current)
 
@@ -107,6 +156,12 @@ def page_ready(current, page):
     texts = visible(current)
     if "เข้าสู่ระบบ" in texts and not home_ready(current):
         return False
+    if page == "ride":
+        return "บริการเรียกรถ" in texts and "รับส่งผู้โดยสารด้วย QueueGo" in texts
+    if page == "ride-pickup-picker":
+        return "เลือกจุดรับ" in texts and "ที่อยู่จุดรับ" in texts
+    if page == "ride-destination-picker":
+        return "เลือกจุดหมาย" in texts and "ที่อยู่จุดส่ง" in texts
     if page == "search":
         return any(n.get("class") == "android.widget.EditText" and rect(n) for n in current)
     # Markers from actual Compose Customer pages; navigation changes must also
@@ -174,6 +229,18 @@ def self_test():
     assert not page_ready(home, "profile")
     assert changed(home, profile)
     assert not changed(home, list(home))
+    assert page_ready([n("บริการเรียกรถ"), n("รับส่งผู้โดยสารด้วย QueueGo")], "ride")
+    assert not page_ready([n("บริการเรียกรถ")], "ride")
+    assert page_ready([n("เลือกจุดรับ"), n("ที่อยู่จุดรับ")], "ride-pickup-picker")
+    assert not page_ready([n("เลือกจุดรับ")], "ride-pickup-picker")
+    assert page_ready([n("เลือกจุดหมาย"), n("ที่อยู่จุดส่ง")], "ride-destination-picker")
+    assert category_swipe_y([n("อาหาร", bounds="[0,50][100,90]")]) == 70
+    try:
+        category_swipe_y([n("ไม่ใช่หมวดหมู่")])
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("Missing category row must fail closed")
     assert page_ready([n("ค้นหา", kind="android.widget.EditText")], "search")
     assert not page_ready([n("ค้นหา")], "search")
     assert find_label([n("ตะกร้า")], "ตะกร้า") is not None
@@ -197,7 +264,7 @@ def self_test():
             raise AssertionError("ADB credential failure must not be silently accepted")
     finally:
         subprocess.run = original_run
-    print("QUEUEGO_CUSTOMER_VISUAL_GATE_SELFTEST_PASS 14")
+    print("QUEUEGO_CUSTOMER_VISUAL_GATE_SELFTEST_PASS 21")
 
 
 def main():
@@ -238,6 +305,7 @@ def main():
         tap_node(find_label(nodes(), "เข้าสู่ระบบ"))
         wait_for(home_ready, 90)
         screens.append(shot("home"))
+        capture_ride_read_only(screens)
         navigate(screens, "home", "ค้นหาร้านค้าจากทุกหมวด", "search", "search")
         back_to_home()
         navigate(screens, "home", "ตะกร้า", "cart", "cart")
@@ -269,7 +337,7 @@ def main():
             "missing_screens": missing, "review_complete": not missing and failure is None,
             "physical_device": False, "visual_parity_certified": False,
             "production_order_or_dispatch_mutations": False,
-            "scope": "Authenticated read-only Customer entry and navigation; no checkout, order submission or account changes",
+            "scope": "Authenticated read-only Customer entry, Ride/pickup/destination map pickers and navigation; no ride quote, dispatch, checkout, order submission or account changes",
             "blocker": failure,
         }
         (OUT / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
