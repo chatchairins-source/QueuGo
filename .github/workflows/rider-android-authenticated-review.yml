@@ -182,8 +182,10 @@ jobs:
         run: |
           set -euo pipefail
           # The regenerated Planetiler output is not byte-identical to the
-          # pinned country PMTiles. Reuse the previously validated exact bytes
-          # rather than weaken the release SHA or silently ship another map.
+          # source-verified predecessor APK. Run 41029740374 logged exact map
+          # SHA 15b1861a... / 404204685 bytes; the former abfedfc2... pin
+          # belonged to a different build and could never match this artifact.
+          # Require both embedded manifest and independent source-run pins.
           gh run download 41029740374 --repo "$GITHUB_REPOSITORY" \
             --name queuego-native-pilot-apks --dir "$RUNNER_TEMP/queuego-reference-apks"
           python3 - <<'PY'
@@ -197,19 +199,21 @@ jobs:
           with zipfile.ZipFile(candidates[0]) as source:
               manifest = json.loads(source.read("assets/maps/thailand-shortbread.json"))
               assert manifest["source_url"] == "https://download.geofabrik.de/asia/thailand-261029.osm.pbf"
+              assert manifest["sha256"] == "15b1861a1336d35119a5cc1564796b48dfe33cfd5ad35046f3bdfdeb7e8ef4ac", "Predecessor manifest digest changed"
+              assert manifest["bytes"] == 404204685, "Predecessor manifest byte count changed"
               archive_path = destination / "thailand-shortbread.pmtiles"
               with source.open("assets/maps/thailand-shortbread.pmtiles") as stream, archive_path.open("wb") as output:
                   shutil.copyfileobj(stream, output, 1024 * 1024)
           with archive_path.open("rb") as stream:
               digest = hashlib.file_digest(stream, "sha256").hexdigest()
-          expected = "abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b"
+          expected = "15b1861a1336d35119a5cc1564796b48dfe33cfd5ad35046f3bdfdeb7e8ef4ac"
           assert digest == expected, "Predecessor country archive SHA mismatch; fail closed"
-          assert archive_path.stat().st_size == 404204683, "Unexpected country archive size"
+          assert archive_path.stat().st_size == 404204685, "Unexpected country archive size"
           print("Pinned predecessor country archive verified sha256=" + digest)
           PY
           python3 native-android/qa/prepare-thailand-map-assets.py \
             "$QG_MAP_DATA_DIR/thailand-shortbread.pmtiles" "$RUNNER_TEMP/queuego-offline-assets" \
-            --expected-sha256 abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b \
+            --expected-sha256 15b1861a1336d35119a5cc1564796b48dfe33cfd5ad35046f3bdfdeb7e8ef4ac \
             --source-url https://download.geofabrik.de/asia/thailand-261029.osm.pbf --source-date 2026-10-29
           echo "QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/queuego-offline-assets" >> "$GITHUB_ENV"
       - name: Build actual Rider, Merchant and Customer debug APKs
@@ -243,7 +247,7 @@ jobs:
           source = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
           (out / "manifest.json").write_text(json.dumps({
               "source_sha": source, "build_type": "debug", "production_release": False,
-              "map_archive_sha256": "abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b",
+              "map_archive_sha256": "15b1861a1336d35119a5cc1564796b48dfe33cfd5ad35046f3bdfdeb7e8ef4ac",
               "installed_authenticated_e2e_certified": False,
               "physical_gps_certified": False,
               "visual_parity_certified": False,
