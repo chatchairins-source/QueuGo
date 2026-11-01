@@ -39,6 +39,14 @@ class OfflineLabelPixelGateTest(unittest.TestCase):
         self.assertNotIn("drawText(", self.source)
         self.assertNotIn("Canvas(", self.source)
 
+    def test_street_collision_probe_is_narrow_and_keeps_real_pixel_gate(self):
+        style = (ROOT / "native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/ShortbreadVillageStyle.kt").read_text(encoding="utf-8")
+        self.assertIn('PropertyFactory.textAllowOverlap(layer == "street_labels")', style)
+        self.assertIn('PropertyFactory.textFont(arrayOf("Noto Sans Regular"))', style)
+        self.assertIn('PropertyFactory.textField(Expression.get("name"))', style)
+        self.assertIn("visibleLabelPixelDelta >= kotlin.math.max(40, hiddenFrameJitter * 3 + 20)", self.source)
+        self.assertNotIn("drawText(", style)
+
     def test_country_workflow_tests_exact_pr_head(self):
         self.assertIn("work-native-rider-nav-unified-offline-20261030", self.workflow)
         self.assertIn("github.event.pull_request.head.sha || github.sha", self.workflow)
