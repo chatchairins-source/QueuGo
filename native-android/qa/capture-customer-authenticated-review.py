@@ -150,9 +150,14 @@ def back_to_home():
 def input_secret(value):
     # Do not print adb arguments or persist login hierarchy/screenshot with
     # credentials typed. Test secrets must be ADB-input-compatible.
-    subprocess.run(ADB + ["shell", "input", "text", value],
-                   check=True, timeout=30, stdout=subprocess.DEVNULL,
-                   stderr=subprocess.DEVNULL)
+    try:
+        subprocess.run(ADB + ["shell", "input", "text", value],
+                       check=True, timeout=30, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
+    except (subprocess.SubprocessError, OSError, ValueError):
+        # CalledProcessError.__str__ contains the command, including the
+        # secret. Never let that text enter CI logs or metadata.json.
+        raise RuntimeError("Customer credential entry failed") from None
 
 
 def self_test():
