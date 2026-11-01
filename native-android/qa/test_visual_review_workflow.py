@@ -9,6 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/rider-android-authenticated-review.yml"
 CUSTOMER = ROOT / "native-android/qa/capture-customer-authenticated-review.py"
+PILOT = ROOT / ".github/workflows/build-native-rider-pilot.yml"
 BRANCH = "work-native-ride-visual-capture-20261101"
 
 
@@ -17,6 +18,7 @@ class VisualReviewWorkflowTests(unittest.TestCase):
     def setUpClass(cls):
         cls.workflow = WORKFLOW.read_text(encoding="utf-8")
         cls.customer = CUSTOMER.read_text(encoding="utf-8")
+        cls.pilot = PILOT.read_text(encoding="utf-8")
 
     def test_successor_branch_triggers_capture(self):
         self.assertIn("      - " + BRANCH, self.workflow)
@@ -41,6 +43,14 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertIn("      - " + branch, self.workflow)
         self.assertIn('"' + branch + '") or merchant_only)', self.workflow)
         self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+
+    def test_qa_pilot_runs_on_qa_push_and_pr(self):
+        # CI must validate exact QA source HEADs; do not expand the
+        # secret-backed authenticated-review workflow to every QA branch.
+        triggers = self.pilot.split("\\npermissions:", 1)[0]
+        self.assertIn("  pull_request:\\n    branches:\\n      - 'work-native-**'\\n      - 'work-qa-**'", triggers)
+        self.assertIn("  push:\\n    branches:\\n      - queuego-native-android-v1\\n      - 'work-native-**'\\n      - 'work-qa-**'", triggers)
+        self.assertNotIn("      - 'work-qa-**'", self.workflow)
 
     def test_all_role_dispatch_uses_any_available_test_account(self):
         self.assertIn('os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"', self.workflow)
