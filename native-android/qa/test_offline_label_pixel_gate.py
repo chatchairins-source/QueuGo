@@ -85,7 +85,7 @@ class OfflineLabelPixelGateTest(unittest.TestCase):
         font_dir = ROOT / "native-android/rider-maplibre-osm/src/main/assets/fonts/Sans Regular"
         for name in ("0-255.pbf", "256-511.pbf", "512-767.pbf", "3584-3839.pbf", "8192-8447.pbf"):
             data = (font_dir / name).read_bytes()
-            self.assertIn(b"\\x0a\\x0cSans Regular", data[:32], name)
+            self.assertIn(b"\x0a\x0cSans Regular", data[:32], name)
         style = (ROOT / "native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/ShortbreadVillageStyle.kt").read_text(encoding="utf-8")
         self.assertIn('PropertyFactory.textFont(arrayOf("Sans Regular"))', style)
         self.assertIn('asset://fonts/{fontstack}/{range}.pbf', style)
