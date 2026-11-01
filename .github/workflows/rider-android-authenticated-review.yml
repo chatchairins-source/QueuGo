@@ -20,6 +20,7 @@ on:
       - work-native-country-apk-export-20261101
       - work-qa-country-archive-reuse-20261102
       - work-qa-country-provenance-verified-20261102
+      - work-qa-country-provenance-rider-gate-20261102
 
 # All runs reuse the same existing review account. Production enforces one
 # active session, so parallel workers must never displace each other's login.
@@ -43,6 +44,9 @@ jobs:
       - name: Check review secrets without printing their values
         id: check
         env:
+          # External archive pin verified against the predecessor run/manifest above.
+          # The Rider capture must fail closed if this pin is absent or mismatched.
+          QG_EXPECTED_COUNTRY_SHA256: 15b1861a1336d35119a5cc1564796b48dfe33cfd5ad35046f3bdfdeb7e8ef4ac
           QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
           QG_RIDER_REVIEW_PASSWORD: ${{ secrets.QG_RIDER_REVIEW_PASSWORD }}
           QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
@@ -72,7 +76,8 @@ jobs:
                   "work-native-country-visual-proof-20261101",
                   "work-native-country-apk-export-20261101",
                   "work-qa-country-archive-reuse-20261102",
-                  "work-qa-country-provenance-verified-20261102")
+                  "work-qa-country-provenance-verified-20261102",
+                  "work-qa-country-provenance-rider-gate-20261102")
               or "[all-role-visual-review]" in os.environ.get("REVIEW_COMMIT_MESSAGE", ""))
           ready = (any(role["ready"] for role in roles.values()) if all_roles
               else roles["merchant" if merchant_only else "rider"]["ready"])
@@ -93,7 +98,8 @@ jobs:
                   "work-native-country-visual-proof-20261101",
                   "work-native-country-apk-export-20261101",
                   "work-qa-country-archive-reuse-20261102",
-                  "work-qa-country-provenance-verified-20261102") or merchant_only)
+                  "work-qa-country-provenance-verified-20261102",
+                  "work-qa-country-provenance-rider-gate-20261102") or merchant_only)
           report = {"status": "ready" if ready else "skipped",
               "scope": "credential presence only; not authenticated visual acceptance",
               "roles": roles, "capture_requested": capture_requested,
@@ -111,7 +117,7 @@ jobs:
 
   capture:
     needs: credential-check
-    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-rider-profile-safe-visual-capture-20261101' || github.ref_name == 'work-native-ride-visual-capture-20261101' || github.ref_name == 'work-rider-profile-nav-clearance-20261101' || github.ref_name == 'work-native-visual-evidence-integrity-20261101' || github.ref_name == 'work-qa-true-png-signature-20261101' || github.ref_name == 'work-native-customer-review-eligibility-20261101' || github.ref_name == 'work-qa-review-branch-membership-20261101' || github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-provenance-verified-20261102') || github.ref_name == 'work-native-all-role-visual-capture-20261101' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
+    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-rider-profile-safe-visual-capture-20261101' || github.ref_name == 'work-native-ride-visual-capture-20261101' || github.ref_name == 'work-rider-profile-nav-clearance-20261101' || github.ref_name == 'work-native-visual-evidence-integrity-20261101' || github.ref_name == 'work-qa-true-png-signature-20261101' || github.ref_name == 'work-native-customer-review-eligibility-20261101' || github.ref_name == 'work-qa-review-branch-membership-20261101' || github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || (github.ref_name == 'work-qa-country-provenance-verified-20261102' || github.ref_name == 'work-qa-country-provenance-rider-gate-20261102')) || github.ref_name == 'work-native-all-role-visual-capture-20261101' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
@@ -178,7 +184,7 @@ jobs:
       # the nationwide home viewport blank. Use the pinned real country archive
       # for this isolated actual-APK review, without regional test substitution.
       - name: Stage pinned nationwide Rider archive for visual evidence
-        if: github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-provenance-verified-20261102')
+        if: github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || (github.ref_name == 'work-qa-country-provenance-verified-20261102' || github.ref_name == 'work-qa-country-provenance-rider-gate-20261102'))
         env:
           GH_TOKEN: ${{ github.token }}
           QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-visual
@@ -222,7 +228,7 @@ jobs:
       - name: Build actual Rider, Merchant and Customer debug APKs
         run: gradle -p native-android :rider:assembleDebug :merchant:assembleDebug :customer:assembleDebug --no-build-cache --stacktrace
       - name: Verify actual three-role APK country isolation and source SHA
-        if: github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-provenance-verified-20261102')
+        if: github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || (github.ref_name == 'work-qa-country-provenance-verified-20261102' || github.ref_name == 'work-qa-country-provenance-rider-gate-20261102'))
         run: |
           python3 native-android/qa/verify-bundled-thailand-apks.py --source-sha "$(git rev-parse HEAD)" \
             native-android/customer/build/outputs/apk/debug/customer-debug.apk \
@@ -231,7 +237,7 @@ jobs:
       # Exact-source DEBUG test APKs only. Fail closed on map provenance first.
       # Upload before emulator: screenshots may fail without discarding verified APKs.
       - name: Record verified Android test APK identities
-        if: github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-provenance-verified-20261102')
+        if: github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || (github.ref_name == 'work-qa-country-provenance-verified-20261102' || github.ref_name == 'work-qa-country-provenance-rider-gate-20261102'))
         run: |
           python3 - <<'PY'
           import hashlib, json, subprocess
@@ -259,7 +265,7 @@ jobs:
           print("QUEUEGO_COUNTRY_DEBUG_APK_MANIFEST_READY source=" + source)
           PY
       - name: Export exact-source Customer online-map debug APK
-        if: github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-provenance-verified-20261102')
+        if: github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || (github.ref_name == 'work-qa-country-provenance-verified-20261102' || github.ref_name == 'work-qa-country-provenance-rider-gate-20261102'))
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: queuego-customer-country-review-debug-apk
@@ -270,7 +276,7 @@ jobs:
           compression-level: 0
           retention-days: 7
       - name: Export exact-source Merchant online-map debug APK
-        if: github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-provenance-verified-20261102')
+        if: github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || (github.ref_name == 'work-qa-country-provenance-verified-20261102' || github.ref_name == 'work-qa-country-provenance-rider-gate-20261102'))
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: queuego-merchant-country-review-debug-apk
@@ -281,7 +287,7 @@ jobs:
           compression-level: 0
           retention-days: 7
       - name: Export exact-source Rider bundled-Thailand debug APK
-        if: github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-provenance-verified-20261102')
+        if: github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || (github.ref_name == 'work-qa-country-provenance-verified-20261102' || github.ref_name == 'work-qa-country-provenance-rider-gate-20261102'))
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: queuego-rider-thailand-offline-review-debug-apk
@@ -333,8 +339,8 @@ jobs:
       - name: Capture authenticated Rider views on Android Emulator
         if: ${{ needs.credential-check.outputs.rider_ready == 'true' && !contains(github.event.head_commit.message, '[merchant-visual-review]') }}
         env:
-          QG_DEBUG_MAP_ARCHIVE: ${{ (github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-provenance-verified-20261102')) && '0' || '1' }}
-          QG_REQUIRE_BUNDLED_COUNTRY: ${{ (github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-provenance-verified-20261102')) && '1' || '0' }}
+          QG_DEBUG_MAP_ARCHIVE: ${{ (github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || (github.ref_name == 'work-qa-country-provenance-verified-20261102' || github.ref_name == 'work-qa-country-provenance-rider-gate-20261102'))) && '0' || '1' }}
+          QG_REQUIRE_BUNDLED_COUNTRY: ${{ (github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || (github.ref_name == 'work-qa-country-provenance-verified-20261102' || github.ref_name == 'work-qa-country-provenance-rider-gate-20261102'))) && '1' || '0' }}
           QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
           QG_RIDER_REVIEW_PASSWORD: ${{ secrets.QG_RIDER_REVIEW_PASSWORD }}
         run: python3 native-android/qa/capture-rider-authenticated-review.py
@@ -346,7 +352,7 @@ jobs:
           QG_MERCHANT_VISUAL_PARITY: ${{ contains(github.event.head_commit.message, '[merchant-visual-review]') && '1' || '0' }}
         run: python3 native-android/qa/capture-merchant-authenticated-review.py
       - name: Capture authenticated Customer views on Android Emulator
-        if: always() && steps.boot_emulator.outcome == 'success' && needs.credential-check.outputs.customer_ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-all-role-visual-capture-20261101' || github.ref_name == 'work-native-ride-visual-capture-20261101' || github.ref_name == 'work-native-customer-review-eligibility-20261101' || github.ref_name == 'work-qa-review-branch-membership-20261101' || github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || github.ref_name == 'work-qa-country-provenance-verified-20261102'))
+        if: always() && steps.boot_emulator.outcome == 'success' && needs.credential-check.outputs.customer_ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-all-role-visual-capture-20261101' || github.ref_name == 'work-native-ride-visual-capture-20261101' || github.ref_name == 'work-native-customer-review-eligibility-20261101' || github.ref_name == 'work-qa-review-branch-membership-20261101' || github.ref_name == 'work-native-country-visual-proof-20261101' || github.ref_name == 'work-native-country-apk-export-20261101' || (github.ref_name == 'work-qa-country-archive-reuse-20261102' || (github.ref_name == 'work-qa-country-provenance-verified-20261102' || github.ref_name == 'work-qa-country-provenance-rider-gate-20261102')))
         env:
           QG_CUSTOMER_REVIEW_PHONE: ${{ secrets.QG_CUSTOMER_REVIEW_PHONE }}
           QG_CUSTOMER_REVIEW_PASSWORD: ${{ secrets.QG_CUSTOMER_REVIEW_PASSWORD }}
