@@ -27,7 +27,7 @@ class VisualReviewWorkflowTests(unittest.TestCase):
     def test_rider_nav_clearance_branch_runs_real_capture(self):
         rider_branch = "work-rider-profile-nav-clearance-20261101"
         self.assertIn("      - " + rider_branch, self.workflow)
-        self.assertIn('"' + rider_branch + '") or merchant_only)', self.workflow)
+        self.assertIn('"' + rider_branch + '",', self.workflow)
         self.assertIn("github.ref_name == '" + rider_branch + "'", self.workflow)
 
     def test_visual_evidence_fix_branch_captures_real_installed_apks(self):
