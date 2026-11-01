@@ -12,6 +12,7 @@ on:
       - work-rider-profile-safe-visual-capture-20261101
       - work-native-ride-visual-capture-20261101
       - work-rider-profile-nav-clearance-20261101
+      - work-native-visual-evidence-integrity-20261101
 
 # All runs reuse the same existing review account. Production enforces one
 # active session, so parallel workers must never displace each other's login.
@@ -70,7 +71,8 @@ jobs:
                   "work-native-all-role-visual-capture-20261101",
                   "work-rider-profile-safe-visual-capture-20261101",
                   "work-native-ride-visual-capture-20261101",
-                  "work-rider-profile-nav-clearance-20261101") or merchant_only)
+                  "work-rider-profile-nav-clearance-20261101",
+                  "work-native-visual-evidence-integrity-20261101") or merchant_only)
           report = {"status": "ready" if ready else "skipped",
               "scope": "credential presence only; not authenticated visual acceptance",
               "roles": roles, "capture_requested": capture_requested,
@@ -88,7 +90,7 @@ jobs:
 
   capture:
     needs: credential-check
-    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-rider-profile-safe-visual-capture-20261101' || github.ref_name == 'work-native-ride-visual-capture-20261101' || github.ref_name == 'work-rider-profile-nav-clearance-20261101' || github.ref_name == 'work-native-all-role-visual-capture-20261101' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
+    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-rider-profile-safe-visual-capture-20261101' || github.ref_name == 'work-native-ride-visual-capture-20261101' || github.ref_name == 'work-rider-profile-nav-clearance-20261101' || github.ref_name == 'work-native-visual-evidence-integrity-20261101' || github.ref_name == 'work-native-all-role-visual-capture-20261101' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
