@@ -98,6 +98,11 @@ def home_ready(current):
     return "ค้นหาร้านค้าจากทุกหมวด" in visible(current) and "ร้านใกล้คุณ" in visible(current)
 
 
+def auth_fields_ready(current):
+    return len([n for n in current if n.get("class") == "android.widget.EditText"
+                and rect(n)]) >= 2
+
+
 def page_ready(current, page):
     texts = visible(current)
     if "เข้าสู่ระบบ" in texts and not home_ready(current):
@@ -157,6 +162,9 @@ def self_test():
     profile = [n("บัญชีและการใช้งาน")]
     assert home_ready(home)
     assert not home_ready(profile)
+    assert not auth_fields_ready(home + [n("เข้าสู่ระบบ")])
+    assert auth_fields_ready([n("เบอร์โทร", kind="android.widget.EditText"),
+                              n("รหัสผ่าน", kind="android.widget.EditText")])
     assert page_ready(profile, "profile")
     assert not page_ready(home, "profile")
     assert changed(home, profile)
@@ -171,7 +179,7 @@ def self_test():
     else:
         raise AssertionError("Missing navigation label must fail closed")
     assert rect(n(bounds="[0,0][0,0]")) is None
-    print("QUEUEGO_CUSTOMER_VISUAL_GATE_SELFTEST_PASS 11")
+    print("QUEUEGO_CUSTOMER_VISUAL_GATE_SELFTEST_PASS 13")
 
 
 def main():
@@ -191,18 +199,15 @@ def main():
         adb(["shell", "pm", "clear", PKG], timeout=60)
         adb(["shell", "am", "start", "-W", "-n", PKG + "/.MainActivity"],
             capture_output=True, timeout=60)
-        def has_login_fields(current):
-            return len([n for n in current
-                if n.get("class") == "android.widget.EditText" and rect(n)]) >= 2
-        initial = wait_for(lambda current: home_ready(current) or has_login_fields(current), 75)
+        initial = wait_for(lambda current: home_ready(current) or auth_fields_ready(current), 75)
         # Actual GuestCustomerTopBar renders "เข้าสู่ระบบ" before the Home
         # content; never mistake that button for the authentication screen.
-        if not has_login_fields(initial):
+        if not auth_fields_ready(initial):
             if "เข้าสู่ระบบ" not in visible(initial):
                 tap_node(find_label(initial, "โปรไฟล์"))
                 initial = wait_for(lambda current: "เข้าสู่ระบบ" in visible(current), 45)
             tap_node(find_label(initial, "เข้าสู่ระบบ"))
-            initial = wait_for(has_login_fields, 45)
+            initial = wait_for(auth_fields_ready, 45)
         screens.append(shot("login"))
         fields = sorted((n for n in initial if n.get("class") == "android.widget.EditText"
                          and rect(n)), key=lambda n: rect(n)[1])
