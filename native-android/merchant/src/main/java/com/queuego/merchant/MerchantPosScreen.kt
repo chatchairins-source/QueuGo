@@ -68,6 +68,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -1133,22 +1135,34 @@ fun MerchantPosScreen(
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            QgIconButton(icon = "back", onClick = onBack)
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text("QueueGo หน้าร้าน", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
-                Text(
-                    snap?.shopName ?: "POS",
-                    color = QgMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            TextButton(
+                onClick = onBack, modifier = Modifier.size(40.dp).semantics { contentDescription = "กลับ" },
+                shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.textButtonColors(containerColor = Color.White, contentColor = QgRed)
+            ) { Text("‹", fontSize = 24.sp) }
+            Row(
+                Modifier.weight(1f).semantics { contentDescription = "QueueGo หน้าร้าน" },
+                horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(Modifier.size(31.dp).background(QgRed, RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
+                    Text("Q", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                }
+                Spacer(Modifier.width(6.dp))
+                Text("QueueGo", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
+                Spacer(Modifier.width(4.dp))
+                Text("หน้าร้าน", color = QgMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
-            if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            else TextButton(onClick = { reload() }) { Text("โหลดใหม่") }
+            if (busy) Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else TextButton(
+                onClick = { reload() }, modifier = Modifier.size(40.dp).semantics { contentDescription = "โหลดข้อมูลใหม่" },
+                shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.textButtonColors(containerColor = Color.White, contentColor = QgRed)
+            ) { Text("↻", fontSize = 24.sp) }
         }
 
         if (!message.isNullOrBlank()) {

@@ -1,8 +1,11 @@
 """Run the isolated Rider navigation-map Android instrumentation gate."""
 from pathlib import Path
+import hashlib
+import json
 import os
 import shutil
 import subprocess
+import sys
 import time
 
 def run(args, **kwargs):
@@ -56,6 +59,50 @@ assert gradle, "Gradle executable is required"
 log_dir = repo / "artifacts/rider-navigation-map-runtime"
 log_dir.mkdir(parents=True, exist_ok=True)
 
+# A successful Gradle task is not evidence that the named speed-follow test ran.
+report_verifier = repo / "native-android/qa/verify-navigation-map-android-results.py"
+connected_reports = repo / "native-android/rider-navigation-map/build/outputs/androidTest-results/connected"
+run([sys.executable, str(report_verifier), "--self-test"])
+
+def stage_verified_map_for_isolated_debug_runtime():
+    """Build-only test fixture: real nationwide archive in the isolated debug target.
+
+    The Rider release APK already embeds this archive through its app module.
+    The standalone rider-navigation-map library test target is a different APK;
+    it cannot read assets packaged only into Rider. Stage the exact same verified
+    archive into this library's DEBUG assets for instrumentation, never androidTest
+    (targetContext must read it), and never commit it to source.
+    """
+    if os.environ.get("QG_NAV_RUNTIME_OFFLINE") != "1":
+        return None
+    root = os.environ.get("QG_OFFLINE_MAP_ASSETS")
+    if not root:
+        raise SystemExit("Offline runtime requires the verified nationwide asset root")
+    source = Path(root).resolve() / "maps"
+    metadata_path = source / "thailand-shortbread.json"
+    archive_path = source / "thailand-shortbread.pmtiles"
+    if not metadata_path.is_file() or not archive_path.is_file():
+        raise SystemExit("Offline runtime has no nationwide archive and manifest")
+    manifest = json.loads(metadata_path.read_text())
+    target = repo / "native-android/rider-navigation-map/src/debug/assets/maps"
+    if target.exists():
+        raise SystemExit("Isolated runtime may not overwrite a checked-in map asset")
+    target.mkdir(parents=True, exist_ok=False)
+    try:
+        for filename in ("thailand-shortbread.json", "thailand-shortbread.pmtiles"):
+            shutil.copyfile(source / filename, target / filename)
+        with (target / "thailand-shortbread.pmtiles").open("rb") as stream:
+            sha = hashlib.file_digest(stream, "sha256").hexdigest()
+        size = (target / "thailand-shortbread.pmtiles").stat().st_size
+        if sha != manifest["sha256"] or size != manifest["bytes"]:
+            raise ValueError("Isolated runtime map differs from verified production archive")
+    except BaseException:
+        shutil.rmtree(target)
+        raise
+    print("QUEUEGO_VERIFIED_RIDER_DEBUG_MAP_STAGED", sha, size)
+    return target
+
+
 with (log_dir / "emulator.log").open("w") as log:
     emulator = subprocess.Popen(
         [emulator_bin, "-avd", name, "-port", "5554", "-accel", "on",
@@ -84,9 +131,19 @@ with (log_dir / "emulator.log").open("w") as log:
 
         # Exercise actual Android interpolation; animator_duration_scale=0 would
         # bypass the marker animation and conceal overlap/jank regressions.
+        if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
+            run(adb + ["shell", "settings", "put", "global", "airplane_mode_on", "1"])
+            run(adb + ["shell", "svc", "wifi", "disable"])
+            run(adb + ["shell", "svc", "data", "disable"])
+            state = subprocess.run(adb + ["shell", "dumpsys", "connectivity"], capture_output=True, text=True, check=True)
+            (log_dir / "offline-connectivity.txt").write_text(state.stdout)
+        staged_map_dir = stage_verified_map_for_isolated_debug_runtime()
+        # Reject stale XML from an earlier emulator run or Gradle invocation.
+        shutil.rmtree(connected_reports, ignore_errors=True)
         result = subprocess.run(
             [gradle, "-p", "native-android",
              ":rider-navigation-map:connectedDebugAndroidTest",
+             "-Pandroid.testInstrumentationRunnerArguments.offlineRequired=" + ("true" if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1" else "false"),
              "--no-build-cache", "--stacktrace"],
             cwd=repo,
             capture_output=True,
@@ -97,10 +154,32 @@ with (log_dir / "emulator.log").open("w") as log:
         print(result.stdout)
         if result.stderr:
             print(result.stderr)
+        if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
+            # Shared test-owned output survives Gradle uninstalling its test APK.
+            pulled = subprocess.run(adb + ["pull", "/sdcard/Pictures/QueueGoOfflineEvidence", str(log_dir / "country-screenshots")], capture_output=True, text=True, timeout=60)
+            (log_dir / "screenshot-transfer.txt").write_text(pulled.stdout + pulled.stderr)
+            connectivity = subprocess.run(adb + ["shell", "dumpsys", "connectivity"], capture_output=True, text=True, check=True, timeout=15)
+            (log_dir / "offline-connectivity-after-tests.txt").write_text(connectivity.stdout)
         if result.returncode != 0:
             raise SystemExit("Navigation-map connected Android test failed")
+        run([sys.executable, str(report_verifier), "--results", str(connected_reports)] + (["--offline-required"] if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1" else []))
+        if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
+            images = list((log_dir / "country-screenshots").rglob("*.png"))
+            expected = {"bangkok.png", "buriram.png", "chiangmai.png", "phuket.png", "narathiwat.png"}
+            if pulled.returncode != 0 or {image.name for image in images} != expected or len(images) != 5:
+                raise SystemExit("Country screenshot evidence is incomplete")
+            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
+            (log_dir / "country-evidence-metadata.json").write_text(json.dumps({
+                "source_head": head, "workflow_run": os.environ.get("GITHUB_RUN_ID"),
+                "tests_exit_code": result.returncode, "offline_required": True,
+                "physical_device": False,
+                "screenshots": {image.name: hashlib.sha256(image.read_bytes()).hexdigest() for image in images}
+            }, indent=2) + "\n")
         print("QUEUEGO_NAVIGATION_MAP_RUNTIME_PASS")
     finally:
+        staged = locals().get("staged_map_dir")
+        if staged is not None:
+            shutil.rmtree(staged, ignore_errors=True)
         try:
             logs = subprocess.run(adb + ["logcat", "-d"], capture_output=True, text=True, timeout=15)
             (log_dir / "logcat.txt").write_text(logs.stdout + logs.stderr)

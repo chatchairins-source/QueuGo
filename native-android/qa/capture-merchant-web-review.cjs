@@ -5,9 +5,10 @@ const BASE='https://chatchairins-source.github.io/QueuGo/merchant/';
 const API='pkypiqhlrmzocysgeqew.supabase.co';
 const READ_RPCS=new Set(['queuego_shop_readiness','effective_gp_rate','get_my_shop_orders',
   'merchant_revenue_days','pos_my_shop','pos_is_owner','pos_current_shift',
-  'pos_register_shift_history','pos_owner_dashboard','pos_owner_item_sales','pos_product_codes_for_shop','queuego_credit_summary']);
+  'pos_register_shift_history','pos_owner_dashboard','pos_owner_item_sales','pos_product_codes_for_shop','queuego_credit_summary','check_active_session']);
 // Existing normal sign-in ownership handshake; no business mutation or privilege changes.
-const AUTH_RPCS=new Set(['claim_active_session']);
+// Production heartbeat only touches last_seen_at for this authenticated session.
+const AUTH_RPCS=new Set(['claim_active_session','touch_active_session']);
 function allowedRequest(method,url,body){
   const u=new URL(url);
   if(['GET','HEAD','OPTIONS'].includes(method))return true;
@@ -44,7 +45,7 @@ async function main(){
     // Clear neither sessions nor backend data; retain the normal authenticated browser session only in memory.
     const routes=[['home','dashboard','.qgm-menu-grid'],['orders','shop-orders','.qgm-bottom'],
       ['products','shop-products','.qgm-bottom'],['promotions','shop-promote','.qgm-bottom'],
-      ['profile','shop-profile','.qgm-bottom'],['pos-counter','pos','.qg-pos-panel']];
+      ['profile','shop-profile','.qgm-bottom'],['pos-counter','pos','.qg-pos-tabs']];
     for(const [device,viewport] of [['phone',{width:393,height:829}],['tablet',{width:1067,height:1707}]]){
       await page.setViewportSize(viewport);
       for(const [name,hash,selector] of routes){
@@ -52,7 +53,7 @@ async function main(){
         await page.locator(selector).first().waitFor({state:'visible',timeout:90000});
         await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(4000);
         if(hash==='pos'){
-          for(const [tab,label] of [['counter',null],['tables','โต๊ะ'],['cashier','คิดเงิน']]){
+          for(const [tab,label] of [['counter','＋ รับออเดอร์'],['tables','โต๊ะ'],['cashier','คิดเงิน']]){
             if(label){await page.getByRole('button',{name:label,exact:true}).click();await page.waitForTimeout(2000)}
             const file=device+'-pos-'+tab+'.png';await page.screenshot({path:path.join(out,file)});
             screens.push({device,screen:'pos-'+tab,file,viewport,url:page.url(),sha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(out,file))).digest('hex')});

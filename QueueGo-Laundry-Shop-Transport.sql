@@ -2,7 +2,8 @@
 begin;
 alter table public.laundry_orders add column if not exists pickup_staff_name text;
 alter table public.laundry_orders add column if not exists return_staff_name text;
-alter table public.laundry_orders add column if not exists gp_rate_snapshot numeric not null default 0.10;
+-- Preserve historical orders without an agreed commission rate; never silently assign 10%.
+alter table public.laundry_orders add column if not exists gp_rate_snapshot numeric;
 alter table public.laundry_orders add column if not exists platform_fee_amount numeric;
 alter table public.laundry_orders add column if not exists shop_net_amount numeric;
 
@@ -54,6 +55,11 @@ begin
   raise exception 'historical transport job requires resolution before shop-managed action';
  end if;
  if p_action='ready_return' then
+  -- A financial snapshot must be explicitly established by an authorized pricing flow.
+  -- In particular, historical rows must not inherit an invented commission rate.
+  if v_order.gp_rate_snapshot is null or v_order.gp_rate_snapshot < 0
+    or v_order.gp_rate_snapshot > 1 or v_order.gp_rate_snapshot::text in ('NaN','Infinity','-Infinity')
+  then raise exception 'laundry commission snapshot required'; end if;
   select * into v_settings from public.laundry_shop_settings where hub_id=v_order.hub_id;
   if v_order.service_id is null or v_order.unit_price_snapshot is null then raise exception 'laundry service snapshot required'; end if;
   if v_order.pricing_type_snapshot='fixed' then p_actual_quantity:=1;
@@ -140,7 +146,17 @@ begin
 
   select * into v_existing from public.laundry_orders where request_key=p_request_id;
   if found then
-    if v_existing.customer_id<>v_customer.id then raise exception 'request id already used'; end if;
+    if v_existing.customer_id is distinct from v_customer.id then raise exception 'request id already used'; end if;
+    -- A request key is bound to the original order intent, not merely its owner.
+    -- A changed payload must never silently return a different Laundry order.
+    if v_existing.hub_id is distinct from p_hub_id
+      or v_existing.service_id is distinct from p_service_id
+      or v_existing.pickup_address is distinct from trim(p_pickup_address)
+      or v_existing.pickup_latitude is distinct from p_pickup_latitude
+      or v_existing.pickup_longitude is distinct from p_pickup_longitude
+      or v_existing.estimated_quantity is distinct from p_estimated_quantity
+      or v_existing.note is distinct from nullif(trim(coalesce(p_note,'')),'')
+    then raise exception 'laundry request id already used with different details'; end if;
     return jsonb_build_object(
       'id',v_existing.id,'order_number',v_existing.order_number,'status',v_existing.status,
       'estimated_total',v_existing.estimated_total_amount,'replayed',true

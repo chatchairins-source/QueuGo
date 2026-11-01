@@ -7,7 +7,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 class NavigationMapRuntimeTest {
     private fun awaitRender(
@@ -130,6 +132,57 @@ class NavigationMapRuntimeTest {
         }
     }
 
+    private fun awaitActualMapZoom(
+        scenario: ActivityScenario<NavigationMapRuntimeActivity>,
+        expected: Double,
+        timeoutMs: Long = 12_000L
+    ) {
+        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        var lastObserved = Double.NaN
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            val ready = CountDownLatch(1)
+            scenario.onActivity { activity ->
+                activity.inspectMap { map ->
+                    lastObserved = map.cameraPosition.zoom
+                    ready.countDown()
+                }
+            }
+            assertTrue("MapLibre camera callback timed out", ready.await(2, TimeUnit.SECONDS))
+            if (abs(lastObserved - expected) <= 0.25) return
+            Thread.sleep(100)
+        }
+        throw AssertionError(
+            "Installed MapLibre FOLLOW zoom did not reach $expected; last=$lastObserved"
+        )
+    }
+
+    @Test
+    fun installedMapLibreFollowCameraZoomRespondsToActualRiderSpeed() {
+        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
+            lateinit var activity: NavigationMapRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue("Installed navigation map did not load", activity.mapReady.await(30, TimeUnit.SECONDS))
+            var originalMapIdentity = 0
+            scenario.onActivity { originalMapIdentity = it.mapViewIdentity() }
+
+            // Exercise the real MapLibre camera, not just navigationZoom() pure policy.
+            // This is a test fixture, not an authenticated road GPS or visual parity claim.
+            scenario.onActivity { it.setRiderSpeedForCamera(0f) }
+            awaitActualMapZoom(scenario, 18.0)
+            scenario.onActivity { it.setRiderSpeedForCamera(20f) }
+            awaitActualMapZoom(scenario, 15.0)
+            scenario.onActivity { it.setRiderSpeedForCamera(8f) }
+            awaitActualMapZoom(scenario, 17.0)
+            scenario.onActivity {
+                assertEquals(
+                    "Speed-based FOLLOW camera must not recreate the installed MapLibre view",
+                    originalMapIdentity,
+                    it.mapViewIdentity()
+                )
+            }
+        }
+    }
+
     @Test
     fun manualDragReportsGestureButTapDoesNot() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
@@ -146,7 +199,39 @@ class NavigationMapRuntimeTest {
             scenario.onActivity { it.dispatchDragOnMap() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             scenario.onActivity {
-                assertEquals(1, it.userGestureCount)
+                // Existing production contract: suspend FOLLOW at drag start,
+                // then restart the idle grace period when fingers are lifted.
+                assertEquals(2, it.userGestureCount)
+                it.dispatchTapOnMap()
+                assertEquals("A tap must not restart the manual-pan timer", 2, it.userGestureCount)
+                it.dispatchDragOnMap()
+                assertEquals("Each drag must report exactly start and finish", 4, it.userGestureCount)
+            }
+        }
+    }
+
+    @Test
+    fun twoFingerPinchPreservesWebFollowInsteadOfEnteringFreePan() {
+        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
+            lateinit var activity: NavigationMapRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue(activity.mapReady.await(30, TimeUnit.SECONDS))
+
+            scenario.onActivity { it.dispatchPinchOnMap() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertEquals(
+                    "QueueGo Web two-finger pinch must not release Rider FOLLOW",
+                    0, it.userGestureCount
+                )
+                it.refreshRiderFix(3)
+            }
+            // The 110 ms re-anchor occurs after the Android pinch is committed.
+            Thread.sleep(NAVIGATION_TRANSFORM_REANCHOR_MS + 250L)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertTrue("Rider MapView must remain mounted after pinch", it.hasMapView())
+                assertEquals(0, it.userGestureCount)
             }
         }
     }

@@ -10,11 +10,26 @@ import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.content.pm.ApplicationInfo
 import java.io.File
+import com.queuego.ridermaplibreosm.ShortbreadVillageStyle
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -87,6 +102,14 @@ private fun queueGoDebugMapArchive(context: Context): File? = queueGoDebugMapArc
 )
 
 fun queueGoMapVectorSourceUri(context: Context): String? {
+    // A bundled nationwide archive takes precedence over both CI data and HTTP.
+    // Read only its header here; MapLibre reads tile ranges directly from the APK.
+    val bundled = runCatching {
+        context.assets.open("maps/thailand-shortbread.pmtiles").use { input ->
+            queueGoPmTilesV3Header(input)
+        }
+    }.getOrDefault(false)
+    if (bundled) return "pmtiles://asset://maps/thailand-shortbread.pmtiles"
     // Only adb run-as on a debuggable APK can provision this real-data CI archive.
     // Release builds continue to require the configured HTTPS service.
     queueGoDebugMapArchive(context)?.let { return "pmtiles://file://${it.absolutePath}" }
@@ -96,9 +119,14 @@ fun queueGoMapVectorSourceUri(context: Context): String? {
 }
 
 fun queueGoMapStyle(sourceUri: String): Style.Builder {
-    // Web is the visual source of truth. Native registers the same OSM raster
-    // presentation used by queuego-map-web.js so Customer/Merchant/Rider no
-    // longer render a separate Shortbread-looking basemap.
+    // Local archives must draw their own geometry. Registering a vector source
+    // under an HTTP-only raster layer does not provide an offline basemap.
+    if (sourceUri.startsWith("pmtiles://file://") || sourceUri.startsWith("pmtiles://asset://")) {
+        return ShortbreadVillageStyle.builder(sourceUri)
+    }
+    // QueueGo Web is the visual/functional blueprint. Its MapLibre raster
+    // presentation is the online basemap for Customer and Merchant nationwide;
+    // the Rider's installed PMTiles archive still renders fully offline.
     //
     // Keep the QueueGo-hosted vector source registered for QueueGo-owned map
     // capabilities and future overlays, but do not paint a second competing
@@ -108,7 +136,6 @@ fun queueGoMapStyle(sourceUri: String): Style.Builder {
     }
     return Style.Builder()
         .withSource(RasterSource(QUEUEGO_WEB_BASEMAP_SOURCE, webTiles, 256))
-        .withSource(VectorSource(QUEUEGO_VECTOR_SOURCE, sourceUri))
         .withLayer(
             BackgroundLayer("queuego-background").withProperties(
                 backgroundColor("#f3f0e8")
@@ -282,9 +309,67 @@ private class QueueGoTrackingMapHolder {
 }
 
 @Composable
+private fun QueueGoWebMapControls(
+    modifier: Modifier,
+    mapProvider: () -> MapLibreMap?
+) {
+            Column(
+                modifier
+                    .width(42.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.White)
+                    .border(1.dp, Color(0xFFD4D7DA), RoundedCornerShape(10.dp))
+            ) {
+                Box(
+                    Modifier.fillMaxWidth().height(42.dp)
+                        .semantics { contentDescription = "ซูมเข้า" }
+                        .clickable {
+                            mapProvider()?.let { map ->
+                                val target = (map.cameraPosition.zoom + 1.0).coerceAtMost(19.0)
+                                map.animateCamera(CameraUpdateFactory.zoomTo(target))
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Text("+", fontSize = 28.sp, color = Color(0xFF25282D), fontWeight = FontWeight.Bold) }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE4E6E8)))
+                Box(
+                    Modifier.fillMaxWidth().height(42.dp)
+                        .semantics { contentDescription = "ซูมออก" }
+                        .clickable {
+                            mapProvider()?.let { map ->
+                                val target = (map.cameraPosition.zoom - 1.0).coerceAtLeast(5.0)
+                                map.animateCamera(CameraUpdateFactory.zoomTo(target))
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Text("−", fontSize = 27.sp, color = Color(0xFF25282D), fontWeight = FontWeight.Bold) }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE4E6E8)))
+                Box(
+                    Modifier.fillMaxWidth().height(42.dp)
+                        .semantics { contentDescription = "ตั้งทิศเหนือ" }
+                        .clickable {
+                            mapProvider()?.let { map ->
+                                val camera = map.cameraPosition
+                                map.animateCamera(CameraUpdateFactory.newCameraPosition(
+                                    CameraPosition.Builder()
+                                        .target(camera.target)
+                                        .zoom(camera.zoom)
+                                        .bearing(0.0)
+                                        .tilt(camera.tilt)
+                                        .build()
+                                ))
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Text("▲", fontSize = 19.sp, color = Color(0xFF25282D)) }
+            }
+}
+
+@Composable
 fun QgTrackingMap(
     points: List<QgMapPoint>,
     modifier: Modifier = Modifier,
+    showWebMapControls: Boolean = false,
     onReady: (Boolean) -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -302,8 +387,9 @@ fun QgTrackingMap(
         return
     }
 
-    AndroidView(
-        modifier = modifier,
+    Box(modifier = modifier) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             MapLibre.getInstance(ctx.applicationContext)
             MapView(ctx).also { view ->
@@ -313,6 +399,7 @@ fun QgTrackingMap(
                     if (holder.destroyed) return@getMapAsync
                     holder.map = map
                     map.uiSettings.isLogoEnabled = false
+                    map.uiSettings.isCompassEnabled = !showWebMapControls
                     map.uiSettings.isAttributionEnabled = true
                     // QueueGo Ride: pinch zoom, two-finger rotate and two-finger 3D tilt.
                     map.uiSettings.isZoomGesturesEnabled = true
@@ -339,6 +426,13 @@ fun QgTrackingMap(
             holder.render(points)
         }
     )
+        if (showWebMapControls) {
+            QueueGoWebMapControls(
+                modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+                mapProvider = { holder.map }
+            )
+        }
+    }
 
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
@@ -450,6 +544,7 @@ fun QgLocationPickerMap(
     initialPoint: QgMapPoint?,
     recenterPoint: QgMapPoint?,
     recenterToken: Int,
+    initialCameraPoint: QgMapPoint? = null,
     modifier: Modifier = Modifier,
     onPointSelected: (QgMapPoint) -> Unit,
     onReady: (Boolean) -> Unit = {}
@@ -481,8 +576,17 @@ fun QgLocationPickerMap(
                             if (holder.destroyed) return@getMapAsync
                             holder.map = map
                             map.uiSettings.isLogoEnabled = false
+                            map.uiSettings.isCompassEnabled = false
                             map.uiSettings.isAttributionEnabled = true
-                            val start = initialPoint?.takeIf { it.valid }
+                            // Match Web QueueGo Map: touch pinch, pan, rotate and 3D pitch.
+                            // The common Compose controls supply zoom/compass on top-left.
+                            map.uiSettings.isZoomGesturesEnabled = true
+                            map.uiSettings.isScrollGesturesEnabled = true
+                            map.uiSettings.isRotateGesturesEnabled = true
+                            map.uiSettings.isTiltGesturesEnabled = true
+                            map.uiSettings.setDisableRotateWhenScaling(false)
+                            // Destination picking frames the pickup as context without selecting it.
+                            val start = (initialPoint ?: initialCameraPoint)?.takeIf { it.valid }
                             map.cameraPosition = CameraPosition.Builder()
                                 .target(
                                     LatLng(
@@ -502,7 +606,7 @@ fun QgLocationPickerMap(
                             }
                             map.setStyle(queueGoMapStyle(sourceUri)) {
                                 holder.lastRecenterToken = recenterToken
-                                holder.renderSelectedPoint(start)
+                                holder.renderSelectedPoint(initialPoint?.takeIf { it.valid })
                                 currentReady.value(true)
                             }
                         }
@@ -513,6 +617,14 @@ fun QgLocationPickerMap(
                 update = {
                     holder.recenter(recenterPoint, recenterToken)
                 }
+            )
+        }
+        // Both Customer address picking and Merchant location setup follow the
+        // same QueueGo Web zoom/compass controls as the Ride map.
+        if (sourceUri != null) {
+            QueueGoWebMapControls(
+                modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+                mapProvider = { holder.map }
             )
         }
     }

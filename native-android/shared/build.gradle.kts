@@ -13,6 +13,7 @@ android {
     }
 }
 dependencies {
+    implementation(project(":rider-maplibre-osm"))
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
@@ -20,7 +21,7 @@ dependencies {
     implementation("io.github.webrtc-sdk:android:150.7871.01")
     implementation("androidx.lifecycle:lifecycle-runtime:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
-    implementation("org.maplibre.gl:android-sdk-opengl:13.5.3")
+    implementation("org.maplibre.gl:android-sdk-opengl:13.7.1")
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.ui:ui:1.11.4")
     implementation("androidx.compose.foundation:foundation:1.11.4")

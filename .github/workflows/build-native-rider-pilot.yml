@@ -2,6 +2,14 @@ name: QueueGo Native Android Pilot
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      bundle_country:
+        type: boolean
+        default: false
+    secrets:
+      QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:
+        required: false
   pull_request:
     branches:
       - 'work-native-**'
@@ -96,7 +104,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: queuego-native-${{ github.ref }}
+  group: queuego-native-${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: false
 
 # Pilot APKs use the already deployed QueueGo Map endpoint used by the Customer
@@ -107,9 +115,11 @@ env:
 jobs:
   native-pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -178,12 +188,44 @@ jobs:
         run: node tests/native-voice-background.cjs
       - name: Native backend migration mirror
         run: node tests/native-backend-migration-sync.cjs
+      - name: Native Production RPC contract preflight (read-only generator)
+        run: |
+          python3 native-android/qa/test-native-rpc-production-preflight.py
+          python3 native-android/qa/native-rpc-production-preflight.py --sql > "$RUNNER_TEMP/queuego-native-rpc-readonly.sql"
+          grep -q 'pg_catalog.pg_proc' "$RUNNER_TEMP/queuego-native-rpc-readonly.sql"
+          echo "Production RPC live check remains a separate Release Gate; no database credentials used here."
+      - name: Emulator APK transport recovery regression (no device required)
+        run: python3 -m unittest discover -s native-android/qa -p 'test_adb_install_recovery.py' -v
+      - name: Authenticated Rider screenshot hierarchy freshness regression
+        run: python3 -m unittest discover -s native-android/qa -p 'test_authenticated_review_hierarchy.py' -v
+      - name: Authenticated Rider tab content visual gate regression
+        run: python3 -m unittest discover -s native-android/qa -p 'test_rider_authenticated_review_tabs.py' -v
+      - name: Authenticated Merchant screenshot hierarchy freshness regression
+        run: python3 -m unittest discover -s native-android/qa -p 'test_merchant_authenticated_review_hierarchy.py' -v
+      - name: Authenticated Merchant tab content visual gate regression
+        run: python3 -m unittest discover -s native-android/qa -p 'test_merchant_authenticated_review_tabs.py' -v
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
         run: node tests/native-launcher-assets.cjs
       - name: Verify Production category banner assets
         run: node tests/native-category-assets.cjs
+      - name: Build and bundle pinned nationwide offline map
+        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') }}
+        env:
+          QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
+          QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261029.osm.pbf
+        run: |
+          set -euo pipefail
+          mkdir -p "$QG_MAP_DATA_DIR"
+          curl --fail --location --retry 2 "$QG_THAILAND_PBF_URL" -o "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
+          echo "0f26968be9675bbdadaab232d19cafb4464e6535a73afe5eee4afd94b43825c6  $QG_MAP_DATA_DIR/thailand-latest.osm.pbf" | sha256sum -c -
+          bash native-android/qa/build-thailand-shortbread-pmtiles.sh
+          archive="$QG_MAP_DATA_DIR/thailand-shortbread.pmtiles"
+          python3 native-android/qa/prepare-thailand-map-assets.py "$archive" "$RUNNER_TEMP/queuego-offline-assets" \
+            --expected-sha256 "$(sha256sum "$archive" | cut -d ' ' -f 1)" \
+            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-10-29
+          echo "QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/queuego-offline-assets" >> "$GITHUB_ENV"
       - name: Tracking coordinate and terminal-state unit tests
         run: gradle -p native-android :shared:testDebugUnitTest :merchant:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest --no-build-cache --stacktrace
       - name: Build three native APKs
@@ -200,6 +242,13 @@ jobs:
             echo "WebView is forbidden in QueueGo native apps"
             exit 1
           fi
+      - name: Verify installed Thailand APK assets
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        run: |
+          python3 native-android/qa/verify-bundled-thailand-apks.py --source-sha "$(git rev-parse HEAD)" \
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: queuego-native-pilot-apks
@@ -229,11 +278,95 @@ jobs:
           path: artifacts/native-rider-launch/
           if-no-files-found: warn
           retention-days: 14
+      - name: Test installed country archive and camera without internet
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        timeout-minutes: 20
+        env:
+          QG_NAV_RUNTIME_OFFLINE: '1'
+        run: python3 native-android/qa/run-rider-navigation-map-runtime.py
+      - name: Save nationwide offline evidence
+        if: ${{ always() && env.QG_OFFLINE_MAP_ASSETS != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-thailand-offline-evidence
+          path: |
+            artifacts/rider-navigation-map-runtime/
+            native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
+          if-no-files-found: warn
+      - name: Export freshly built role APKs after runtime gates
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/role-export
+          python3 native-android/qa/verify-bundled-thailand-apks.py --source-sha "$(git rev-parse HEAD)" \
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/role-export/APK-MANIFEST.json
+          for role in customer merchant rider; do
+            mkdir -p "artifacts/role-export/$role"
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs \
+              "native-android/$role/build/outputs/apk/debug/$role-debug.apk" > "artifacts/role-export/$role/APK-SIGNATURE.txt"
+          done
+          python3 native-android/qa/export-role-apks.py artifacts/role-export/APK-MANIFEST.json artifacts/role-export
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-tested-customer-apk
+          path: artifacts/role-export/customer/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-tested-merchant-apk
+          path: artifacts/role-export/merchant/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-tested-rider-apk
+          path: artifacts/role-export/rider/
+          compression-level: 0
+          if-no-files-found: error
       # Mission 2026-10-10: incomplete builds and evidence remain internal.
       # Public APK/AAB delivery requires the full three-role Release Gate.
 
+  rpc-catalog-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_rpc_catalog_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_rpc_catalog_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Test actual RPC catalog semantics on isolated PostgreSQL
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_rpc_catalog_gate
+        run: node tests/native-rpc-catalog-postgres.cjs
+
   continuous-dispatch-races:
-    if: ${{ github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -263,7 +396,7 @@ jobs:
         run: node tests/rider-continuous-dispatch-races.cjs
 
   route-bundle-stack-races:
-    if: ${{ github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -293,7 +426,7 @@ jobs:
         run: node tests/route-bundle-stack-races.cjs
 
   passenger-ride-races:
-    if: ${{ github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -323,7 +456,7 @@ jobs:
         run: node tests/passenger-ride-races.cjs
 
   credit-races:
-    if: ${{ github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -354,7 +487,7 @@ jobs:
 
 
   express-races:
-    if: ${{ github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 6
     services:
@@ -384,7 +517,7 @@ jobs:
         run: node tests/express-races.cjs
 
   map-display-only:
-    if: ${{ github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || github.ref == 'refs/heads/work-native-credit-live-enablement-20261016' || startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || github.ref == 'refs/heads/work-native-credit-live-enablement-20261016' || startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -426,7 +559,7 @@ jobs:
           retention-days: 14
 
   navigation-map-runtime:
-    if: ${{ github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.head_ref, 'work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-map-runtime-xml-') || startsWith(github.head_ref, 'work-native-rider-map-runtime-xml-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -461,7 +594,7 @@ jobs:
           retention-days: 14
 
   maplibre-osm-runtime:
-    if: ${{ github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-rider-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-rider-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:

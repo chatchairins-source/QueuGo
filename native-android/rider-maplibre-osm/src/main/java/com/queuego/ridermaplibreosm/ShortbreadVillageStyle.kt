@@ -6,6 +6,8 @@ import org.maplibre.android.style.layers.BackgroundLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
+import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.layers.PropertyFactory.backgroundColor
 import org.maplibre.android.style.layers.PropertyFactory.fillColor
 import org.maplibre.android.style.layers.PropertyFactory.fillOpacity
@@ -68,11 +70,17 @@ object ShortbreadVillageStyle {
 
     fun builder(sourceUri: String): Style.Builder {
         var builder = Style.Builder()
+            .fromJson("""{"version":8,"glyphs":"asset://fonts/{fontstack}/{range}.pbf","sources":{},"layers":[]}""")
             .withSource(VectorSource(SOURCE_ID, sourceUri))
             .withLayer(
                 BackgroundLayer("queuego-background").withProperties(
                     backgroundColor("#f3f0e9")
                 )
+            )
+            .withLayer(
+                FillLayer("queuego-ocean", SOURCE_ID)
+                    .withSourceLayer("ocean")
+                    .withProperties(fillColor("#b9dadd"))
             )
             .withLayer(
                 FillLayer("queuego-water", SOURCE_ID)
@@ -168,6 +176,29 @@ object ShortbreadVillageStyle {
             builder = builder.withLayer(casing).withLayer(surface)
         }
 
+        // Glyphs travel with the app. Thai/Latin labels never depend on a font server.
+        listOf(
+            Triple("street_labels", 13f, Property.SYMBOL_PLACEMENT_LINE),
+            Triple("place_labels", 5f, Property.SYMBOL_PLACEMENT_POINT),
+            Triple("pois", 15f, Property.SYMBOL_PLACEMENT_POINT)
+        ).forEach { (layer, minZoom, placement) ->
+            builder = builder.withLayer(
+                SymbolLayer("queuego-label-$layer", SOURCE_ID)
+                    .withSourceLayer(layer)
+                    .withFilter(Expression.has("name"))
+                    .withProperties(
+                        PropertyFactory.symbolPlacement(placement),
+                        PropertyFactory.textField(Expression.get("name")),
+                        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                        PropertyFactory.textSize(if (layer == "place_labels") 14f else 11f),
+                        PropertyFactory.textColor("#424b55"),
+                        PropertyFactory.textHaloColor("#ffffff"),
+                        PropertyFactory.textHaloWidth(1.5f),
+                        PropertyFactory.textMaxWidth(10f)
+                    )
+                    .also { it.minZoom = minZoom }
+            )
+        }
         return builder
     }
 }

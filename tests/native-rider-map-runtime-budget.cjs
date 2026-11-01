@@ -25,7 +25,10 @@ assert(runtime.includes('assertEquals(1, it.latestDiagnostics.viewCreatedCount)'
 assert(runtime.includes('assertEquals(1, it.latestDiagnostics.mapCreatedCount)'));
 assert(runtime.includes('manualDragReportsGestureButTapDoesNot'));
 assert(runtime.includes('activityRecreationCreatesFreshMapViewForFreshActivityContext'));
-assert(host.includes('mapSourceUri = "asset://queuego-nav-runtime-tilejson.json"'));
+assert(host.includes('intent.getBooleanExtra("installedThailandMap", false)') &&
+  host.includes('queueGoMapVectorSourceUri(this)') &&
+  host.includes('else "asset://queuego-nav-runtime-tilejson.json"'),
+  'Runtime fixtures must stay the default; installed-country source requires explicit opt-in');
 assert(fs.existsSync('native-android/rider-navigation-map/src/debug/assets/queuego-nav-runtime-tilejson.json'));
 assert(fs.existsSync('native-android/rider-navigation-map/src/debug/assets/queuego-nav-runtime.mvt'));
 

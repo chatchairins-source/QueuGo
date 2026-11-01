@@ -3,6 +3,8 @@ from pathlib import Path
 import datetime, hashlib, json, os, re, subprocess, time
 import xml.etree.ElementTree as ET
 
+from adb_install_recovery import install_verified_apk
+
 ADB=[str(Path(os.environ["ANDROID_HOME"])/"platform-tools/adb"), "-s", "emulator-5554"]
 PKG="com.queuego.rider"
 OUT=Path("artifacts/rider-authenticated-review")
@@ -12,20 +14,28 @@ def run(args, **kw):
     return subprocess.run(ADB+args, check=True, timeout=kw.pop("timeout",30), **kw)
 
 def nodes():
+    # UIAutomator can return zero after a "null root" while leaving its previous
+    # XML file intact. A stale authenticated hierarchy must never pass visual QA.
     last_error=None
     for _ in range(5):
-        dumped=subprocess.run(ADB+["shell","uiautomator","dump","/sdcard/qg-review.xml"],
-                              timeout=30,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-        if dumped.returncode==0:
-            raw=subprocess.run(ADB+["exec-out","cat","/sdcard/qg-review.xml"],
-                               timeout=30,capture_output=True).stdout
-            try:
-                root=ET.fromstring(raw)
-                return list(root.iter("node"))
-            except ET.ParseError as failure:
-                last_error=failure
-        else:
-            last_error=f"uiautomator dump exited {dumped.returncode}"
+        try:
+            run(["shell","rm","-f","/sdcard/qg-review.xml"],timeout=15,
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            dumped=subprocess.run(ADB+["shell","uiautomator","dump","/sdcard/qg-review.xml"],
+                                  timeout=30,capture_output=True,text=True)
+            if dumped.returncode != 0:
+                raise RuntimeError(f"uiautomator dump exited {dumped.returncode}")
+            if "null root" in (dumped.stdout+dumped.stderr).lower():
+                raise RuntimeError("uiautomator returned null root")
+            raw=run(["exec-out","cat","/sdcard/qg-review.xml"],
+                    timeout=30,capture_output=True).stdout
+            root=ET.fromstring(raw)
+            if root.tag != "hierarchy":
+                raise ET.ParseError("uiautomator XML has no hierarchy root")
+            return list(root.iter("node"))
+        except (RuntimeError, ET.ParseError, subprocess.CalledProcessError,
+                subprocess.TimeoutExpired, OSError) as failure:
+            last_error=failure
         time.sleep(0.7)
     raise RuntimeError("Android UI hierarchy unavailable after retries") from last_error
 
@@ -45,6 +55,111 @@ def wait(pred, seconds=75):
         if pred(ns): return ns
         time.sleep(1)
     return []
+
+def rider_tab_ready(ns, label):
+    # Bottom navigation labels persist on all tabs. Require actual page
+    # content before recording a screenshot as authenticated visual evidence.
+    visible = {n.get("text", "").strip() for n in ns if rect(n)}
+    if label == "ข้อความ":
+        # A loading spinner or API error is not a successfully rendered inbox.
+        return "ยังไม่มีการสนทนา" in visible or any(
+            text.startswith("ออเดอร์ ") for text in visible
+        )
+    if label == "รายได้":
+        # The period controls alone can appear while data is still loading.
+        return {"วันนี้", "7 วัน", "30 วัน", "รายได้จากค่าส่ง"}.issubset(visible)
+    if label == "โปรไฟล์":
+        return "รูปแบบและประเภทงาน" in visible
+    raise ValueError("Unknown Rider tab")
+
+def capture_rider_tab(label, name, screen):
+    tap_label(nodes(), label)
+    ready = wait(lambda xs: rider_tab_ready(xs, label), 60)
+    assert ready, "Rider tab content did not render: " + label
+    time.sleep(1)
+    screens.append({"screen": screen, **shot(name)})
+
+def rider_earnings_summary_ready(ns):
+    # The period controls and loaded summary can be on a different viewport
+    # from the ledger on compact phones. Never require both at once.
+    visible = {n.get("text", "").strip() for n in ns if rect(n)}
+    if any(text.startswith("โหลดสรุปงานไม่สำเร็จ") for text in visible):
+        return False
+    return {"วันนี้", "7 วัน", "30 วัน", "รายได้จากค่าส่ง",
+            "งานสำเร็จ"}.issubset(visible)
+
+
+def rider_earnings_ledger_ready(ns, label):
+    if label not in ("7 วัน", "30 วัน"):
+        raise ValueError("Unknown Rider earnings period")
+    visible = [n for n in ns if rect(n)]
+    texts = {n.get("text", "").strip() for n in visible}
+    if any(text.startswith("โหลดบัญชีเงินสดไม่สำเร็จ") for text in texts):
+        return False
+    if not {"บัญชีเงินสด", "จ่ายร้าน", "เก็บลูกค้า"}.issubset(texts):
+        return False
+    # A selected period button alone is NOT proof of the new ledger. Require
+    # the period label to sit on the same heading row as "บัญชีเงินสด".
+    headings = [rect(n) for n in visible if n.get("text", "").strip() == "บัญชีเงินสด"]
+    periods = [rect(n) for n in visible if n.get("text", "").strip() == label]
+    return any(
+        p[0] >= h[2] - 5 and
+        abs((p[1] + p[3]) - (h[1] + h[3])) <= max(80, h[3] - h[1])
+        for h in headings for p in periods
+    )
+
+
+def swipe_vertical(direction):
+    """Swipe within the actual emulator viewport, including wm-size overrides."""
+    if direction not in ("up", "down"):
+        raise ValueError("Unknown Rider scroll direction")
+    output = run(["shell", "wm", "size"], capture_output=True, text=True).stdout
+    sizes = re.findall(r"(?:Physical|Override) size:\s*(\d+)x(\d+)", output)
+    if not sizes:
+        raise RuntimeError("Android viewport size unavailable")
+    width, height = map(int, sizes[-1])
+    if width < 100 or height < 200:
+        raise RuntimeError("Invalid Android viewport dimensions")
+    x = width // 2
+    upper, lower = round(height * 0.30), round(height * 0.80)
+    start, end = (lower, upper) if direction == "up" else (upper, lower)
+    run(["shell", "input", "swipe", str(x), str(start), str(x), str(end), "450"])
+
+
+def scroll_earnings_until(predicate, direction):
+    if direction not in ("up", "down"):
+        raise ValueError("Unknown earnings scroll direction")
+    for _ in range(8):
+        current = nodes()
+        if predicate(current):
+            return current
+        swipe_vertical(direction)
+        time.sleep(0.5)
+    return []
+
+
+def capture_rider_earnings_period(label, filename):
+    if label not in ("7 วัน", "30 วัน"):
+        raise ValueError("Unknown Rider earnings period")
+    tap_label(nodes(), label)
+    time.sleep(1)
+    summary = wait(rider_earnings_summary_ready, 60)
+    assert summary, "Rider earnings summary did not finish loading: " + label
+    ledger = scroll_earnings_until(
+        lambda xs: rider_earnings_ledger_ready(xs, label), "up"
+    )
+    assert ledger, "Rider cash ledger did not show selected period: " + label
+    # Two genuine viewport images: ledger first, then scroll back to the
+    # summary. Append neither to accepted metadata until both are verified.
+    ledger_image = shot(filename + "-ledger")
+    summary = scroll_earnings_until(rider_earnings_summary_ready, "down")
+    assert summary, "Rider earnings summary did not return to viewport: " + label
+    summary_image = shot(filename)
+    screens.extend((
+        {"screen": filename, **summary_image},
+        {"screen": filename + "-ledger", **ledger_image},
+    ))
+
 
 def tap_label(ns,label):
     choices=[n for n in ns if n.get("text","").strip()==label and rect(n)]
@@ -85,7 +200,7 @@ def scroll_to_text(label):
     for _ in range(8):
         ns=nodes()
         if any(n.get("text","").strip()==label and rect(n) for n in ns): return ns
-        run(["shell","input","swipe","900","1900","900","600","450"])
+        swipe_vertical("up")
         time.sleep(0.5)
     raise SystemExit("Read-only Rider profile entry not visible: "+label)
 
@@ -152,7 +267,7 @@ def main():
     run(["shell","wm","density","440"])
     apk=Path("native-android/rider/build/outputs/apk/debug/rider-debug.apk")
     assert apk.is_file(), "Build Rider debug APK first"
-    run(["install","-r",str(apk)],timeout=180)
+    install_verified_apk(ADB, apk, PKG)
     run(["shell","pm","clear",PKG],timeout=60)
     provision_map()
     run(["shell","am","start","-W","-n",PKG+"/.MainActivity"],capture_output=True,text=True,timeout=60)
@@ -172,24 +287,14 @@ def main():
     if not ns: raise SystemExit("Rider Home content did not become ready; no loading screenshot was saved")
     global screens
     screens=[{"screen":"home_map",**shot("01-home-map")}]
-    tap_label(nodes(),"ข้อความ")
-    time.sleep(4)
-    screens.append({"screen":"messages_chat",**shot("02-messages-chat")})
-    tap_label(nodes(),"รายได้")
-    time.sleep(4)
-    screens.append({"screen":"earnings_today",**shot("04-earnings-today")})
+    capture_rider_tab("ข้อความ", "02-messages-chat", "messages_chat")
+    capture_rider_tab("รายได้", "04-earnings-today", "earnings_today")
     for label,name in (("7 วัน","05-earnings-7-days"),("30 วัน","06-earnings-30-days")):
-        ns=nodes()
-        if any(n.get("text","").strip()==label and rect(n) for n in ns):
-            tap_label(ns,label)
-            time.sleep(3)
-            screens.append({"screen":name,**shot(name)})
+        capture_rider_earnings_period(label, name)
     if any(n.get("text","").strip()=="วันนี้" and rect(n) for n in nodes()):
         tap_label(nodes(),"วันนี้")
 
-    tap_label(nodes(),"โปรไฟล์")
-    time.sleep(3)
-    screens.append({"screen":"profile",**shot("07-profile")})
+    capture_rider_tab("โปรไฟล์", "07-profile", "profile")
     # Capture the Web-backed general work toggle separately from the collapsed
     # native-only tools so authenticated review covers the current Rider surface.
     laundry_profile=scroll_to_text("รับงานฝากซัก")
@@ -212,7 +317,8 @@ def main():
         capture_profile_dialog(entry,title,name)
     expected_screens=(
       "home_map","messages_chat",
-      "earnings_today","05-earnings-7-days","06-earnings-30-days",
+      "earnings_today","05-earnings-7-days","05-earnings-7-days-ledger",
+      "06-earnings-30-days","06-earnings-30-days-ledger",
       "profile","profile_laundry","08-learning-center","09-safety-center","10-support","11-diagnostics",
     )
     captured={item["screen"] for item in screens}

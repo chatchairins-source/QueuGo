@@ -3,14 +3,21 @@ package com.queuego.customer
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -120,6 +127,7 @@ private class PassengerApi(private val http: QueueGoNativeApi = QueueGoNativeApi
 internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocation?, cartStore: CustomerCartStore, initialOrderId: String? = null, onContact: (String) -> Unit, onBack: () -> Unit) {
     val api = remember { PassengerApi() }
     val customerApi = remember { CustomerApi() }
+    val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scope = rememberCoroutineScope()
     val mutex = remember(auth.user.id) { Mutex() }
@@ -137,6 +145,49 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
     var enabled by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    suspend fun useCurrentPickup() {
+        if (busy || pending != null || pickup != null) return
+        busy = true
+        try {
+            // Use the same Android location providers as the existing QueueGo
+            // address picker. Never fabricate coordinates or preselect a stop.
+            val coordinates = withContext(Dispatchers.IO) {
+                // Never treat a stale last-known coordinate as the current
+                // passenger pickup. The live provider has a bounded timeout.
+                customerRegistrationLocation(context).let {
+                    it.latitude to it.longitude
+                }
+            }
+            if (coordinates == null || !QgMapPoint(coordinates.first, coordinates.second, 0).valid) {
+                error = "ยังอ่าน GPS ไม่ได้ เลือกจุดรับบนแผนที่แทนได้"
+                return
+            }
+            val address = try {
+                customerApi.reverseGeocode(coordinates.first, coordinates.second)
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                null
+            }
+            pickup = CustomerLocation(coordinates.first, coordinates.second,
+                address?.takeIf { it.isNotBlank() } ?: "ตำแหน่งปัจจุบัน")
+            quote = null
+            error = null
+        } catch (failure: CancellationException) {
+            throw failure
+        } catch (_: Exception) {
+            error = "อ่านตำแหน่งปัจจุบันไม่สำเร็จ เลือกจุดรับบนแผนที่แทนได้"
+        } finally {
+            busy = false
+        }
+    }
+    val currentPickupPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        if (grants.values.any { it }) scope.launch { useCurrentPickup() }
+        else error = "ไม่ได้รับสิทธิ์ GPS เลือกจุดรับบนแผนที่แทนได้"
+    }
 
     suspend fun refresh() {
         val recent = api.state(auth)
@@ -220,6 +271,8 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
             busy = false,
             searchPlaces = { query -> customerApi.searchPlaces(query) },
             resolveAddress = { lat, lng -> customerApi.reverseGeocode(lat, lng) },
+            rideStop = editing,
+            cameraReference = if (editing == "destination") pickup else null,
             onSave = {
                 if (editing == "pickup") pickup = it else destination = it
                 quote = null
@@ -249,34 +302,66 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
         ) + supply.clusters.map { it.point }
     }
 
-    Box(Modifier.fillMaxSize()) {
-        QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize())
+    // The Customer Web Ride screen is the functional and visual blueprint:
+    // header -> contained QueueGo Map -> nearby supply -> two location rows -> fare.
+    Column(
+        Modifier.fillMaxSize().background(Color(0xFFF7F7F9))
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color.White
+            ) {
+                QgIconButton(icon = "back", onClick = onBack)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text("บริการเรียกรถ", style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold, color = Color(0xFF17191D))
+                Text("รับส่งผู้โดยสารด้วย QueueGo", color = QgMuted,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-        Surface(
-            modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
-            shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-            tonalElevation = 3.dp
-        ) {
-            QgIconButton(icon = "back", onClick = onBack)
+        if (current != null) {
+            Box(Modifier.fillMaxWidth().height(300.dp)
+                .clip(RoundedCornerShape(20.dp)).background(Color(0xFFEEF1F4))) {
+                QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize(), showWebMapControls = true)
+            }
+            if (!current.terminal && current.riderId != null) {
+                Text(
+                    if (current.riderLat != null && current.riderLng != null &&
+                        QgMapPoint(current.riderLat, current.riderLng, 0).valid)
+                        "ตำแหน่งคนขับล่าสุด · อัปเดตประมาณทุก 5 วินาที"
+                    else "กำลังรอตำแหน่งล่าสุดจากคนขับ",
+                    color = Color(0xFF6F7680),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 2.dp)
+                )
+            }
         }
 
         Surface(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .heightIn(max = 430.dp)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-            tonalElevation = 6.dp
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            color = Color.White,
+            border = BorderStroke(1.dp, Color(0xFFE6E9ED))
         ) {
             Column(
-                Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(9.dp)
+                Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text("รับส่งผู้โดยสาร", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                if (current == null) {
+                    Box(Modifier.fillMaxWidth().height(245.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFEEF1F4))) {
+                        QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize(), showWebMapControls = true)
+                    }
+                }
 
                 if (current != null) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -334,24 +419,61 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                         Text("บริการเรียกรถยังไม่เปิดให้ใช้ในขณะนี้", color = QgMuted)
                     }
                     if (pickup != null) {
-                        Text(
-                            if (supply.nearbyCount > 0)
-                                "มี Rider พร้อมรับงานใกล้จุดรับ ${supply.nearbyCount} คน"
-                            else "ยังไม่พบ Rider พร้อมรับงานในระยะ 8 กม.",
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text("ตำแหน่ง Rider บนแผนที่เป็นกลุ่มโดยประมาณ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(9.dp).background(
+                                if (supply.nearbyCount > 0) Color(0xFF18A875) else Color(0xFFA0A5AD),
+                                CircleShape))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (supply.nearbyCount > 0)
+                                    "มี Rider พร้อมรับงานใกล้จุดรับ ${supply.nearbyCount} คน"
+                                else "ยังไม่พบ Rider พร้อมรับงานในระยะ 8 กม.",
+                                color = Color(0xFF59606A),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text("ตำแหน่งบนแผนที่เป็นแบบกลุ่มโดยประมาณ",
+                            color = QgMuted, style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.align(Alignment.End))
                     }
-                    OutlinedButton(
+                    QueueGoRideLocationRow(
+                        label = "จุดรับ", address = pickup?.address,
+                        markerColor = Color(0xFF1677FF),
                         enabled = loaded && enabled && !frozen,
-                        onClick = { picker = "pickup" },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("จุดรับ · " + (pickup?.address ?: "แตะแผนที่เพื่อเลือก")) }
-                    OutlinedButton(
+                        onClick = { picker = "pickup" }
+                    )
+                    QueueGoRideLocationRow(
+                        label = "จุดหมาย", address = destination?.address,
+                        markerColor = Color(0xFFE6002D),
                         enabled = loaded && enabled && !frozen,
-                        onClick = { picker = "destination" },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("จุดหมาย · " + (destination?.address ?: "แตะแผนที่เพื่อเลือก")) }
+                        onClick = { picker = "destination" }
+                    )
+                    if (pickup == null && pending == null && loaded && enabled) {
+                        OutlinedButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !busy,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color(0xFFF7FAFF),
+                                contentColor = Color(0xFF2E6DB4)
+                            ),
+                            border = BorderStroke(1.dp, Color(0xFFCFD9E6)),
+                            onClick = {
+                                if (hasLocation(context)) {
+                                    scope.launch { useCurrentPickup() }
+                                } else {
+                                    currentPickupPermission.launch(arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    ))
+                                }
+                            }
+                        ) {
+                            Text("ใช้ตำแหน่งปัจจุบันเป็นจุดรับ",
+                                fontWeight = FontWeight.ExtraBold)
+                        }
+                    }
 
                     if (quote == null && pending == null) {
                         Button(
@@ -371,20 +493,43 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                                     }
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(if (busy) "กำลังตรวจเส้นทาง…" else "ดูค่าโดยสาร") }
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(15.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = QgRed,
+                                disabledContainerColor = Color(0xFFF5A0AB),
+                                disabledContentColor = Color.White
+                            )
+                        ) { Text(if (busy) "กำลังตรวจเส้นทาง…" else "ดูค่าโดยสาร",
+                            fontWeight = FontWeight.Bold) }
                     }
                     quote?.let { price ->
-                        Text(
-                            "ค่าโดยสารเงินสด " + customerBaht(price.getDouble("fare")),
-                            color = QgRed,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            "เวลาวิ่งประมาณ ${customerNumber(price.getDouble("duration_minutes"),0)} นาที ไม่รวมเวลารอคนขับ",
-                            color = QgMuted,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color(0xFFF7F8FA),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Column(
+                                Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.Bottom) {
+                                    Text("ค่าโดยสารเงินสด",
+                                        color = Color(0xFF17191D),
+                                        modifier = Modifier.weight(1f))
+                                    Text(customerBaht(price.getDouble("fare")),
+                                        color = QgRed,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Black)
+                                }
+                                Text(
+                                    "ระยะทาง ${customerNumber(price.optDouble("distance_km"),1)} กม. · " +
+                                        "เวลาวิ่งประมาณ ${kotlin.math.ceil(price.getDouble("duration_minutes")).toInt()} นาที",
+                                    color = QgMuted,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -430,6 +575,44 @@ internal fun CustomerRideScreen(auth: NativeAuth, initialPickup: CustomerLocatio
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun QueueGoRideLocationRow(
+    label: String,
+    address: String?,
+    markerColor: Color,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 70.dp),
+        color = Color.White,
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, Color(0xFFE6E7EA))
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(20.dp).background(markerColor.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center) {
+                Box(Modifier.size(12.dp).background(markerColor, CircleShape))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(label, color = Color(0xFF777D86),
+                    style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                Text(address?.takeIf { it.isNotBlank() } ?: "เลือกบนแผนที่",
+                    color = Color(0xFF17191D),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+            }
+            Text("›", color = Color(0xFF9AA0A8), fontSize = 22.sp)
         }
     }
 }

@@ -374,7 +374,7 @@ for(const trigger of ["'tests/**'","'package.json'","'package-lock.json'"]){
 const nativePilotWorkflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 assert.ok(nativePilotWorkflow.includes("- 'work-native-**'"),'Native pilot CI must cover every work-native branch');
 const navigationMapGradle=fs.readFileSync('native-android/rider-navigation-map/build.gradle.kts','utf8');
-assert.ok(navigationMapGradle.includes('implementation("org.maplibre.gl:android-sdk-opengl:13.5.3")'),'Native Rider navigation must pin the active MapLibre SDK version');
+assert.ok(navigationMapGradle.includes('implementation("org.maplibre.gl:android-sdk-opengl:13.7.1")'),'Native Rider navigation must pin the active MapLibre SDK version');
 assert.match(nativePilotWorkflow,/Run actual QueueGo MapLibre display and lifecycle/,'Native pilot must run the active QueueGo MapLibre display gate');
 assert.match(nativePilotWorkflow,/Prove refresh and resume reuse the same QueueGo MapLibre map/,'Native pilot must run the active QueueGo MapLibre lifecycle gate');
 assert.doesNotMatch(nativePilotWorkflow,/LongdoMapAndroidSDK|api\.longdo\.com\/map-android-SDK|0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c/,'Native pilot must not restore the retired Longdo Android SDK download/integrity path');

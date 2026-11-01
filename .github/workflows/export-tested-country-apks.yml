@@ -1,0 +1,32 @@
+name: QueueGo Export Tested Country APKs
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [work-native-pos-tax-foundation-20261029]
+    paths:
+      - .github/workflows/export-tested-country-apks.yml
+      - .github/workflows/build-native-rider-pilot.yml
+      - native-android/qa/export-role-apks.py
+  push:
+    branches: [work-native-rider-nav-unified-offline-20261030]
+    paths:
+      - .github/workflows/export-tested-country-apks.yml
+      - .github/workflows/build-native-rider-pilot.yml
+      - native-android/qa/export-role-apks.py
+
+permissions:
+  # The reused workflow declares a separately guarded legacy road-test publisher.
+  # Native build jobs retain their own read-only permissions.
+  contents: write
+  actions: read
+
+# Reuse the current checkout's complete build/test pipeline. Never redistribute
+# binaries from a hard-coded predecessor run or substitute a historical SHA.
+jobs:
+  export-tested-role-apks:
+    uses: ./.github/workflows/build-native-rider-pilot.yml
+    with:
+      bundle_country: true
+    secrets:
+      QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}

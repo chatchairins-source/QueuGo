@@ -4,7 +4,7 @@ const {allowedRequest}=require('../native-android/qa/capture-merchant-web-review
 const api='https://pkypiqhlrmzocysgeqew.supabase.co';
 for(const method of ['GET','HEAD','OPTIONS'])assert.equal(allowedRequest(method,api+'/rest/v1/products?select=id'),true);
 for(const grant of ['password','refresh_token'])assert.equal(allowedRequest('POST',api+'/auth/v1/token?grant_type='+grant),true);
-for(const rpc of ['pos_my_shop','pos_is_owner','pos_current_shift','pos_owner_dashboard','queuego_credit_summary','claim_active_session'])assert.equal(allowedRequest('POST',api+'/rest/v1/rpc/'+rpc),true);
+for(const rpc of ['pos_my_shop','pos_is_owner','pos_current_shift','pos_owner_dashboard','queuego_credit_summary','check_active_session','claim_active_session','touch_active_session'])assert.equal(allowedRequest('POST',api+'/rest/v1/rpc/'+rpc),true);
 for(const rpc of ['pos_take_payment','pos_record_cash_movement','pos_submit_offline_draft','pos_save_table','pos_open_shift','qg_merchant_action_once','pos_save_tax_settings','revoke_active_session'])assert.equal(allowedRequest('POST',api+'/rest/v1/rpc/'+rpc),false);
 for(const method of ['POST','PUT','PATCH','DELETE'])assert.equal(allowedRequest(method,api+'/rest/v1/orders'),false);
 assert.equal(allowedRequest('POST',api+'/functions/v1/queuego-credit','{"action":"summary"}'),true);

@@ -5,6 +5,24 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const nativePilotWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/build-native-rider-pilot.yml'),'utf8');
 const mapEngineWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/queuego-map-engine-buriram.yml'),'utf8');
+const rideReleaseCandidateBranch = 'work-native-rider-nav-unified-offline-20261030';
+const requiredFullNativeGates = [
+  'continuous-dispatch-races', 'route-bundle-stack-races',
+  'passenger-ride-races', 'credit-races', 'express-races',
+  'map-display-only', 'navigation-map-runtime', 'maplibre-osm-runtime'
+];
+for (const gate of requiredFullNativeGates) {
+  const section = nativePilotWorkflow.match(new RegExp('^  '+gate+':\\n    if: ([^\\n]+)', 'm'));
+  ok(
+    !!section && section[1].includes("github.ref == 'refs/heads/"+rideReleaseCandidateBranch+"'") &&
+    section[1].includes("github.head_ref == '"+rideReleaseCandidateBranch+"'"),
+    'Native launch candidate must execute '+gate+' on both direct push and pull-request checks, not skip it'
+  );
+}
+const roadTestPublish = nativePilotWorkflow.match(/^  publish-rider-road-test:\n    if: ([^\n]+)/m);
+ok(!!roadTestPublish && !roadTestPublish[1].includes(rideReleaseCandidateBranch),
+   'Native launch candidate must not publish an APK automatically before real-device release acceptance');
+
 ok(nativePilotWorkflow.includes('group: queuego-native-${{ github.ref }}')&&nativePilotWorkflow.includes('cancel-in-progress: false')&&mapEngineWorkflow.includes('group: queuego-map-engine-${{ github.ref }}')&&mapEngineWorkflow.includes('cancel-in-progress: false'),'Native Pilot and Map Engine exact-head jobs must finish when the successor advances, while newer work waits');
 
 
@@ -196,6 +214,77 @@ ok(
   source.includes('note = note,\n                    busy = busy,\n                    resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) }'),
   'Customer checkout matches Web controls while full location picker retains QueueGo Places search'
 );
+// Keep Native Ride aligned with the merged Web Production #737 layout. These
+// contracts are structural: real location/map and backend flows stay reusable.
+const rideScreenWebParity=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
+const rideStopPickerWebParity=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
+const sharedRideMapWebParity=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
+ok(
+  rideScreenWebParity.includes('rideStop = editing') &&
+  rideScreenWebParity.includes('cameraReference = if (editing == "destination") pickup else null') &&
+  rideStopPickerWebParity.includes('initialCameraPoint = if (rideDestination && selectedPoint == null)') &&
+  sharedRideMapWebParity.includes('holder.renderSelectedPoint(initialPoint?.takeIf { it.valid })'),
+  'Ride destination must start over the real pickup without preselecting it as the destination'
+);
+ok(
+  rideStopPickerWebParity.includes('if (rideStop != null) 245.dp') &&
+  rideStopPickerWebParity.includes('"pickup" -> "เลือกจุดรับ"') &&
+  rideStopPickerWebParity.includes('"destination" -> "เลือกจุดหมาย"') &&
+  rideStopPickerWebParity.includes('"pickup" -> "ที่อยู่จุดรับ"') &&
+  rideStopPickerWebParity.includes('"destination" -> "ที่อยู่จุดส่ง"') &&
+  rideStopPickerWebParity.includes('else Text(if (rideStop != null) "ใช้จุดนี้"') &&
+  rideStopPickerWebParity.includes('if (rideDestination || ridePickup && location != null) return@LaunchedEffect') &&
+  rideScreenWebParity.includes('height(245.dp)') &&
+  rideScreenWebParity.includes('showWebMapControls = true'),
+  'Ride pickup/dropoff picker must match the web header, 245dp maps, GPS and save button'
+);
+ok(
+  rideScreenWebParity.includes('heightIn(min = 70.dp)') &&
+  rideScreenWebParity.includes('Box(Modifier.size(12.dp).background(markerColor, CircleShape))') &&
+  rideScreenWebParity.includes('Text("ค่าโดยสารเงินสด"') &&
+  rideScreenWebParity.includes('price.optDouble("distance_km")'),
+  'Ride root must use the web location markers and real fare/distance summary'
+);
+
+ok(
+  rideScreenWebParity.includes('Text("ใช้ตำแหน่งปัจจุบันเป็นจุดรับ"') &&
+  rideScreenWebParity.includes('val currentPickupPermission = rememberLauncherForActivityResult(') &&
+  !rideScreenWebParity.includes('lastKnownLocation(context)') &&
+  rideScreenWebParity.includes('customerRegistrationLocation(context)') &&
+  rideScreenWebParity.includes('customerApi.reverseGeocode(coordinates.first, coordinates.second)') &&
+  rideScreenWebParity.includes('if (hasLocation(context))'),
+  'Web Ride quick-pickup must use the native GPS permission, real coordinates and reverse geocoder'
+);
+
+// Current pickup/delivery locations must not silently reuse old cached GPS
+// fixes; approximate-only permission must never request the fine GPS provider.
+const customerGpsSource=read('customer/src/main/java/com/queuego/customer/CustomerAuthenticationScreen.kt');
+ok(
+  !rideStopPickerWebParity.includes('lastKnownLocation(context)') &&
+  rideStopPickerWebParity.includes('val position = customerRegistrationLocation(context)') &&
+  !rideScreenWebParity.includes('lastKnownLocation(context)') &&
+  rideScreenWebParity.includes('customerRegistrationLocation(context)'),
+  'Customer picker and Ride quick pickup must wait for a fresh GPS fix or allow manual selection'
+);
+ok(
+  customerGpsSource.includes('val fineGranted = ContextCompat.checkSelfPermission(') &&
+  customerGpsSource.includes('val coarseGranted = ContextCompat.checkSelfPermission(') &&
+  customerGpsSource.includes('if (fineGranted && manager.isProviderEnabled(LocationManager.GPS_PROVIDER))') &&
+  customerGpsSource.includes('if ((fineGranted || coarseGranted) &&') &&
+  customerGpsSource.includes('manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)'),
+  'Approximate-only Android location must not request the fine-only GPS provider'
+);
+
+const customerAppGps=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
+ok(
+  !customerAppGps.includes('lastKnownLocation(context)') &&
+  customerAppGps.includes('val p = customerRegistrationLocation(context)') &&
+  (customerAppGps.match(/onGps = ::requestGps,/g) || []).length === 3 &&
+  customerAppGps.includes('if (grants.values.any { it }) readFreshGps()') &&
+  customerAppGps.includes('catch (failure: CancellationException)'),
+  'Laundry, Market and checkout GPS must use one fresh bounded provider read and retain manual fallback'
+);
+
 ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
 ok(customerCartCheckout.includes('checkoutPending: Boolean')&&customerCartCheckout.includes('enabled = !checkoutPending')&&customerCartCheckout.includes('pendingCheckout: PendingCustomerCheckout?')&&customerCartCheckout.includes('p_expected_delivery_fee'),'Customer pending checkout must lock cart edits and render the persisted Production quote');
 ok(source.includes('loadActiveOrder(auth)')&&source.includes('&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned,picked_up,in_progress)'),'Customer checkout must preserve Production active-order guard before creating another order');
@@ -926,6 +1015,14 @@ for(const role of ['customer','merchant','rider']){
 const riderManifest=read('rider/src/main/AndroidManifest.xml');
 const nativeRootGradle=read('build.gradle.kts');
 const runtimeCapture=read('qa/capture-rider-launch.py');
+ok(
+  runtimeCapture.includes('nodes = wait_ui(directory / "panned.xml"') &&
+  runtimeCapture.includes('if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน"') &&
+  runtimeCapture.includes('assert gps is not None, "Current Customer GPS button missing after map drag"') &&
+  runtimeCapture.includes('assert len(gb) == 4 and gb[2] > gb[0] and gb[3] > gb[1]') &&
+  runtimeCapture.indexOf('gps = next((n for n in nodes') > runtimeCapture.indexOf('nodes = wait_ui(directory / "panned.xml"'),
+  'Real MapLibre customer GPS tap must get current on-screen bounds after pan, not reuse stale/missing permission-dialog locals'
+);
 const authenticatedReviewCapture=read('qa/capture-rider-authenticated-review.py');
 const pilotWorkflow=fs.readFileSync(path.resolve(root,'..','.github','workflows','build-native-rider-pilot.yml'),'utf8');
 ok(
@@ -1092,7 +1189,7 @@ ok(riderApi.includes('/functions/v1/queuego-push')&&riderApi.includes('"subscrib
 ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes('UUID.randomUUID().toString()'),'Rider push subscription must use a stable UUID device id');
 ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
 ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
-ok(source.includes('QueueGoRiderNavigationMap(')&&gradle.includes('implementation(project(\":rider-navigation-map\"))')&&read('rider-navigation-map/build.gradle.kts').includes('org.maplibre.gl:android-sdk-opengl:13.5.3'),'native Rider must include QueueGo MapLibre navigation host');
+ok(source.includes('QueueGoRiderNavigationMap(')&&gradle.includes('implementation(project(\":rider-navigation-map\"))')&&read('rider-navigation-map/build.gradle.kts').includes('org.maplibre.gl:android-sdk-opengl:13.7.1'),'native Rider must include QueueGo MapLibre navigation host');
 const riderJobDock=read('rider/src/main/java/com/queuego/rider/RiderJobDock.kt');
 ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
    riderApp.includes('RiderJobDock(')&&riderApp.includes('val dockKey = when {')&&
@@ -1159,20 +1256,67 @@ const customerMapPicker=read('customer/src/main/java/com/queuego/customer/Custom
 ok(customerMapPicker.includes('screenHeightDp.dp * 0.34f')&&customerMapPicker.includes('mapFailed')&&customerMapPicker.includes('ลองโหลดแผนที่อีกครั้ง'),'Customer native map picker must use responsive map height and expose a retry state instead of spinning forever');
 const customerRide=read('customer/src/main/java/com/queuego/customer/CustomerRideScreen.kt');
 ok(
-  customerRide.includes('QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize())') &&
-  customerRide.includes('.align(Alignment.BottomCenter)') &&
-  customerRide.includes('.heightIn(max = 430.dp)') &&
+  customerRide.includes('QgTrackingMap(points = mapPoints, modifier = Modifier.fillMaxSize(), showWebMapControls = true)') &&
+  customerRide.includes('Text("บริการเรียกรถ"') &&
+  customerRide.includes('Text("รับส่งผู้โดยสารด้วย QueueGo"') &&
+  customerRide.includes('.height(245.dp)') &&
+  customerRide.includes('QueueGoRideLocationRow(') &&
+  customerRide.includes('label = "จุดรับ"') &&
+  customerRide.includes('label = "จุดหมาย"') &&
+  customerRide.includes('disabledContainerColor = Color(0xFFF5A0AB)') &&
+  !customerRide.includes('.align(Alignment.BottomCenter)') &&
+  !customerRide.includes('.heightIn(max = 430.dp)') &&
   !customerRide.includes('rides.filter { it.terminal }.take(5)'),
-  'Customer native Ride request must keep the QueueGo map full-screen, dock the controls over it, and keep terminal trip history out of the primary Ride surface'
+  'Customer native Ride must follow the Web Ride card: header, contained 245dp map, supply indicator, location rows, and disabled fare styling'
 );
 const sharedMap=read('shared/src/main/java/com/queuego/shared/QueueGoMap.kt');
+const webQueueGoMap=fs.readFileSync(path.join(__dirname,'../queuego-map-web.js'),'utf8');
+const webRideMap=fs.readFileSync(path.join(__dirname,'../customer-ride.js'),'utf8');
+const tileFromWeb=webQueueGoMap.match(/tiles:\['([^']+)'\]/)?.[1];
+const tileFromNative=sharedMap.match(/QUEUEGO_WEB_BASEMAP_TILE = "([^"]+)"/)?.[1];
+ok(
+  Boolean(tileFromWeb) && tileFromWeb===tileFromNative &&
+  webQueueGoMap.includes("id:'queuego-osm',type:'raster'") &&
+  sharedMap.includes('RasterLayer(QUEUEGO_WEB_BASEMAP_LAYER, QUEUEGO_WEB_BASEMAP_SOURCE)'),
+  'Android Customer/Merchant online map must reuse the actual QueueGo Web basemap source, not a separately selected map service'
+);
+ok(
+  (webRideMap.includes('new maplibregl.NavigationControl({showCompass:true,showZoom:true') ||
+   webRideMap.includes('new maplibregl.NavigationControl({showCompass:true,visualizePitch:true')) &&
+  webRideMap.includes('minZoom:5') && webRideMap.includes('maxZoom:19') &&
+  sharedMap.includes('coerceAtMost(19.0)') && sharedMap.includes('coerceAtLeast(5.0)') &&
+  webRideMap.includes("'#1677ff'") && webRideMap.includes("'#e6002d'") &&
+  customerRide.includes('Color(0xFF1677FF)') && customerRide.includes('Color(0xFFE6002D)') &&
+  read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt').includes('QgLocationPickerMap(') &&
+  customerMapPicker.includes('QgLocationPickerMap('),
+  'Web Ride colors/zoom/compass and shared Merchant/Customer pickers must stay in parity with QueueGo Web'
+);
+ok(
+  customerTrackingMap.includes('showWebMapControls = true') &&
+  sharedMap.includes('QueueGoWebMapControls(') &&
+  !sharedMap.includes('.withSource(VectorSource(QUEUEGO_VECTOR_SOURCE, sourceUri))'),
+  'Customer tracking/ride and merchant/customer location pickers must use Web-parity controls without depending on regional vector tiles'
+);
 ok(sharedMap.includes('newLatLngBounds(bounds, 48)')&&sharedMap.includes('if (!hasSetInitialViewport && lastPoints.isNotEmpty())')&&sharedMap.includes('LatLng(15.5, 100.5)')&&!sharedMap.includes('lastPoints.firstOrNull()?.let { point ->'),'Native Ride map must frame stops once and never reset user gesture zoom/rotation on marker updates');
 ok(
+  sharedMap.includes('ShortbreadVillageStyle.builder(sourceUri)') &&
   sharedMap.includes('https://tile.openstreetmap.org/{z}/{x}/{y}.png') &&
   sharedMap.includes('RasterSource(QUEUEGO_WEB_BASEMAP_SOURCE') &&
   sharedMap.includes('RasterLayer(QUEUEGO_WEB_BASEMAP_LAYER') &&
+  read('customer/build.gradle.kts').includes('https://queuego-map-buriram.onrender.com') &&
+  read('merchant/build.gradle.kts').includes('https://queuego-map-buriram.onrender.com') &&
   sharedMap.includes('map.uiSettings.isLogoEnabled = false'),
-  'Native QueueGo basemap presentation must stay locked to the same raster tiles as Web'
+  'Native Customer and Merchant must match nationwide QueueGo Web basemap; Rider keeps the offline vector renderer'
+);
+ok(
+  sharedMap.includes('showWebMapControls: Boolean = false') &&
+  sharedMap.includes('fun QueueGoWebMapControls(') &&
+  sharedMap.includes('mapProvider = { holder.map }') &&
+  sharedMap.includes('if (sourceUri != null) {') &&
+  sharedMap.includes('CameraUpdateFactory.zoomTo(target)') &&
+  sharedMap.includes('.bearing(0.0)') &&
+  customerRide.includes('showWebMapControls = true'),
+  'Shared QueueGo Map controls must match the Web in Ride, tracking and location pickers'
 );
 ok(pilotWorkflow.includes("vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com'"),'pilot APKs must compile the deployed QueueGo Map endpoint when no override is configured');
 const riderNavigationLocationService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
@@ -1226,7 +1370,10 @@ ok(
   riderMap.includes('readyMap.uiSettings.isRotateGesturesEnabled = true') &&
   riderMap.includes('readyMap.uiSettings.isTiltGesturesEnabled = true') &&
   riderMap.includes('readyMap.uiSettings.setDisableRotateWhenScaling(false)') &&
-  riderMap.includes('if (gestureReported) onUserGesture()') &&
+  riderMap.includes('if (gestureReported) {') &&
+   riderMap.includes('navigationTouchOwnsFollow(event.pointerCount, multiTouchGesture)') &&
+   riderMap.includes('transformGestureActive = true') &&
+   riderMap.includes('SystemClock.elapsedRealtime() < manualZoomUntilElapsed') &&
   riderMap.includes('val decision = navigationCameraDecision(state, renderedBearing)') &&
   !riderMap.includes('followPuckBearing = true') &&
   riderNavigationIntegrationForParity.includes('viewModeState = viewModeController.onUserGesture()') &&
