@@ -162,7 +162,7 @@ with (log_dir / "emulator.log").open("w") as log:
             (log_dir / "offline-connectivity-after-tests.txt").write_text(connectivity.stdout)
         if result.returncode != 0:
             raise SystemExit("Navigation-map connected Android test failed")
-        run([sys.executable, str(report_verifier), "--results", str(connected_reports)])
+        run([sys.executable, str(report_verifier), "--results", str(connected_reports)] + (["--offline-required"] if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1" else []))
         if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
             images = list((log_dir / "country-screenshots").rglob("*.png"))
             expected = {"bangkok.png", "buriram.png", "chiangmai.png", "phuket.png", "narathiwat.png"}
