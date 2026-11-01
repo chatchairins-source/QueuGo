@@ -1,3 +1,9 @@
+## 2026-11-02 Authenticated Rider country archive reproducibility — PR #811 (CI-only)
+
+- Rechecked Native736 HEAD74856f8a, historical743/744, successor796 exact289545f5, Issue740/750/759/760/799/801, CI41319407393 and current PROJECT-MEMORY. Capture job124886442221 failed before authenticated screenshots because Planetiler regenerated Thailand PMTiles SHAae74c6fd... while pinned required SHAabfedfc2...; Geofabrik source checksum passed. Do not relax the archive checksum or call this an Auth/Kotlin failure.
+- Isolated successor PR811 branches from796 and replaces regeneration with exact predecessor pilot artifact41029740374 archive reuse, verifying source URL,404204683 bytes and SHA256abfedfc2... before preparing APK assets. Adds actions:read permission, serial credential-gated branch eligibility, source regression. No Production mutation, real orders, release APK or user download.
+- NEXT: exact-head authenticated review workflow with real Rider/Merchant/Customer screenshots, verify source SHA, map provenance and three APKs. If job fails, inspect the exact job logs; do not call APK certified without installed screenshots. Offline routing Issue801, Bangkok text Issue750 and physical road/E2E release gates remain open.
+
 ## 2026-10-31 Live replay patch deployed and Native source integrated
 
 - PR748 merged at a1ed608f after exact2aef96ba CI41192266265 SUCCESS. PR749 exact4561fee4 CI41195321196 completed SUCCESS (full regression/JVM/three APKs/lifecycle/catalog), then owner-authorized narrow migration applied at live version20261031111727. Readback exact MD5e3e9482d533b8d0da8b870d28071252f, original ACL, anon denied, Rider gate retained. Security Advisor counts unchanged32/10/189/1. No order/rate/backfill writes. DO NOT reapply another Production migration merely to duplicate history.
