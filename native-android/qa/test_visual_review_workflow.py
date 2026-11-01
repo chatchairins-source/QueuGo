@@ -24,6 +24,12 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertIn('"' + BRANCH + '")', self.workflow)
         self.assertIn("github.ref_name == '" + BRANCH + "'", self.workflow)
 
+    def test_rider_nav_clearance_branch_runs_real_capture(self):
+        rider_branch = "work-rider-profile-nav-clearance-20261101"
+        self.assertIn("      - " + rider_branch, self.workflow)
+        self.assertIn('"' + rider_branch + '") or merchant_only)', self.workflow)
+        self.assertIn("github.ref_name == '" + rider_branch + "'", self.workflow)
+
     def test_all_role_dispatch_uses_any_available_test_account(self):
         self.assertIn('os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"', self.workflow)
         self.assertIn('any(role["ready"] for role in roles.values())', self.workflow)
