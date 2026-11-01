@@ -87,10 +87,45 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertIn("verify-bundled-thailand-apks.py --source-sha", self.workflow)
         self.assertIn("abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b", self.workflow)
         self.assertIn("QG_REQUIRE_BUNDLED_COUNTRY:", self.workflow)
-        self.assertIn("QG_DEBUG_MAP_ARCHIVE: ${{ github.ref_name == '" + branch + "' && '0' || '1' }}",
-                      self.workflow)
+        self.assertIn("QG_DEBUG_MAP_ARCHIVE:", self.workflow)
+        self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+        self.assertIn("QG_REQUIRE_BUNDLED_COUNTRY:", self.workflow)
         self.assertIn("QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/queuego-offline-assets", self.workflow)
 
+
+    def test_country_apk_export_successor_is_exact_source_and_role_isolated(self):
+        branch = "work-native-country-apk-export-20261101"
+        self.assertIn("      - " + branch, self.workflow)
+        self.assert_branch_in_python_gate(branch, 'all_roles = (', 'ready = (')
+        self.assert_branch_in_python_gate(branch, 'capture_requested = (', 'report =')
+        self.assertIn("github.ref_name == '" + branch + "'", self.workflow)
+        self.assertIn("Stage pinned nationwide Rider archive for visual evidence", self.workflow)
+        self.assertIn("verify-bundled-thailand-apks.py --source-sha", self.workflow)
+        # Never export unverified APKs: all three upload steps follow the
+        # source/map isolation validator, and the export manifest is fail-closed.
+        verify = self.workflow.index("- name: Verify actual three-role APK country isolation")
+        manifest = self.workflow.index("- name: Record verified Android test APK identities")
+        export = self.workflow.index("- name: Export exact-source Customer online-map debug APK")
+        self.assertLess(verify, manifest)
+        self.assertLess(manifest, export)
+        for role in ("customer", "merchant", "rider"):
+            self.assertIn("native-android/" + role +
+                          "/build/outputs/apk/debug/" + role + "-debug.apk", self.workflow)
+            self.assertIn("queuego-" + role + "-", self.workflow)
+        self.assertIn("hashlib.file_digest(stream, \"sha256\")", self.workflow)
+        self.assertIn('"source_sha": source', self.workflow)
+        self.assertIn('"production_release": False', self.workflow)
+        self.assertIn('"physical_gps_certified": False', self.workflow)
+        self.assertIn('"visual_parity_certified": False', self.workflow)
+        self.assertIn("if-no-files-found: error", self.workflow)
+        self.assertIn("compression-level: 0", self.workflow)
+        # New branch may use shared review accounts only under the existing
+        # serial credential-gated workflow; no secrets go in exported manifests.
+        self.assertIn("cancel-in-progress: false", self.workflow)
+        self.assertIn("needs.credential-check.outputs.customer_ready == 'true'", self.workflow)
+        manifest_section = self.workflow[manifest:export]
+        self.assertNotIn("REVIEW_PASSWORD", manifest_section)
+        self.assertNotIn("REVIEW_PHONE", manifest_section)
 
     def test_all_role_dispatch_uses_any_available_test_account(self):
         self.assertIn('os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"', self.workflow)
