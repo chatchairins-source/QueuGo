@@ -181,6 +181,8 @@ def self_test():
         {**valid, "screens": [{**valid["screens"][0]}, {**valid["screens"][0]}]},
         {**valid, "screens": [{**valid["screens"][0]},
                               {"screen": "unlisted-extra", "file": "extra.png"}]},
+        {**valid, "review_complete": False,
+         "screens": [{"screen": "unlisted-extra", "file": "extra.png"}]},
         {**valid, "expected_screens": ["home", "ride"]},
         {**valid, "missing_screens": ["ride"]},
         {**valid, "source_head": ""},
