@@ -59,3 +59,11 @@ for (const event of ['push','pull_request']) {
  assert.equal(selected('navigation-map-runtime','work-native-unrelated-branch-20261101',event),false,event+' must not misselect unrelated map runtime'); checks++;
 }
 console.log(JSON.stringify({checks,failures:0,scope:'push/PR head_ref parity for navigation runtime, unrelated branches excluded and release gated'}));
+
+// XML report gate must execute on its own PR merge ref and direct branch push.
+for (const event of ['push','pull_request']) {
+ const branch='work-native-rider-map-runtime-xml-gate-20261101';
+ assert.equal(selected('navigation-map-runtime',branch,event),true,event+' must run actual MapLibre XML report gate'); checks++;
+ assert.equal(selected('publish-rider-road-test',branch,event),false,event+' must not publish any APK'); checks++;
+}
+console.log(JSON.stringify({checks,failures:0,scope:'navigation connected XML gate push/PR selection, release remains blocked'}));
