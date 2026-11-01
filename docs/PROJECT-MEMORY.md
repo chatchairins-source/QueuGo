@@ -1,3 +1,9 @@
+## 2026-11-02 Runtime MapLibre glyph-style audit — isolated successor (not a fix claim)
+
+- Re-read Native736 HEAD74856f8a, historical743/744, successor806 exact0a1c63fe, Issue740/750/759/760/801/775 and PROJECT-MEMORY. Downloaded actual Country CI41337899961 artifact13096013054 and inspected Bangkok PNG/XML/logcat. Six installed tests: five pass, one FAIL; Bangkok visible/hidden pixel delta0, 30 named symbol-index features, Latin/Thai PBF ranges installed. Image contains roads/buildings but no readable labels. Matching the PBF internal Sans Regular fontstack alone did not fix it.
+- New successor source-only instrumentation checks the **installed** MapLibre style JSON glyph template and symbol text-field/text-font layouts before screenshot acceptance, logs bounded non-private evidence and preserves the existing strict pixel gate. Static regression asserts the diagnostic and pixel gate remain. No Production, APK release, or data mutation.
+- NEXT: exact new-head hosted CI and retained runtime_glyph_template/runtime_symbol logcat; diagnose whether Style.Builder.fromJson glyph template survives or whether glyph loader/shaping/placement is failing. Only a visibly legible offline PNG can close Issue750. Nationwide offline route graph/provider Issue801, authenticated screen parity Issue775 and physical/device gates remain BLOCKED.
+
 ## 2026-11-02 Offline Bangkok label root-cause probe — PR #806 (NOT accepted yet)
 
 - Rechecked Native PR736 HEAD74856f8a, historical PR743/744, successor PR804 exact634a5106, Issue740/750/759/760/801, and latest Country CI41333296176. The installed emulator country suite FAILED 1/6: real Bangkok labels hidden/visible framebuffer delta0, 30 named features (street9/POI21), actual Latin/Thai glyph assets nonempty; 5 camera/lifecycle/gesture tests passed. Artifact13094094139 retains actual PNG/logcat/XML; screenshot has no legible names.

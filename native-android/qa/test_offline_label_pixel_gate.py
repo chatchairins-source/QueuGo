@@ -91,6 +91,17 @@ class OfflineLabelPixelGateTest(unittest.TestCase):
         self.assertIn('asset://fonts/{fontstack}/{range}.pbf', style)
         self.assertIn('fonts/Sans Regular/$range', self.source)
 
+    def test_installed_maplibre_style_glyph_template_and_layout_are_audited(self):
+        # The PBF file and a source-side glyph URL alone cannot prove the
+        # installed renderer received that URL or symbol text layout.
+        self.assertIn('org.json.JSONObject(runtimeStyle.json)', self.source)
+        self.assertIn('runtime_glyph_template=', self.source)
+        self.assertIn('runtime_symbol_$sourceLayer=', self.source)
+        self.assertIn('Installed MapLibre style lost its offline glyph template', self.source)
+        self.assertIn('Missing text-field on $layerId', self.source)
+        self.assertIn('Missing text-font on $layerId', self.source)
+        self.assertIn('visibleLabelPixelDelta >= kotlin.math.max', self.source)
+
     def test_country_workflow_tests_exact_pr_head(self):
         self.assertIn("work-native-rider-nav-unified-offline-20261030", self.workflow)
         self.assertIn("github.event.pull_request.head.sha || github.sha", self.workflow)
