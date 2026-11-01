@@ -113,12 +113,29 @@ def home_ready(ns):
               "ออเดอร์ทั้งหมด","เสร็จแล้ว","กำลังเตรียม","ยกเลิก"}
     return required.issubset(texts) and not texts.intersection({"…","..."})
 
+def swipe_vertical(direction):
+    """Keep Merchant review gestures within the active phone/tablet viewport."""
+    if direction not in ("up", "down"):
+        raise ValueError("Unknown Merchant scroll direction")
+    output = run(["shell", "wm", "size"], capture_output=True, text=True).stdout
+    sizes = re.findall(r"(?:Physical|Override) size:\s*(\d+)x(\d+)", output)
+    if not sizes:
+        raise RuntimeError("Merchant Android viewport size unavailable")
+    width, height = map(int, sizes[-1])
+    if width < 100 or height < 200:
+        raise RuntimeError("Invalid Merchant Android viewport dimensions")
+    x = width // 2
+    upper, lower = round(height * 0.30), round(height * 0.80)
+    start, end = (lower, upper) if direction == "up" else (upper, lower)
+    run(["shell", "input", "swipe", str(x), str(start), str(x), str(end), "450"])
+
+
 def scroll_to_label(label):
     for _ in range(7):
         ns=nodes()
         matches=[n for n in ns if has_label(n,label)]
         if matches: return ns
-        run(["shell","input","swipe","500","1800","500","700","400"])
+        swipe_vertical("up")
     raise AssertionError("Merchant control not visible: "+label)
 
 def capture_pos(screens, prefix):
@@ -189,7 +206,7 @@ def main():
             raise AssertionError("Tablet Merchant did not restore authenticated primary navigation")
         tap_label(ns,"หน้าหลัก")
         for _ in range(3):
-            run(["shell","input","swipe","500","700","500","1800","300"])
+            swipe_vertical("down")
         if not wait(home_ready,90):
             shot("tablet-home-blocker")
             raise AssertionError("Tablet Merchant home did not finish loading")
