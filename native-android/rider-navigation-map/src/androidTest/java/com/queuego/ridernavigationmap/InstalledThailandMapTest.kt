@@ -58,6 +58,16 @@ class InstalledThailandMapTest {
         }
         // Existing fixture-only CI remains separate. A skipped test is not an offline PASS.
         assumeTrue(context.assets.list("maps")?.contains("thailand-shortbread.pmtiles") == true)
+        // Probe real installed glyph bytes, not just a source-tree hash. A missing
+        // range must fail before a visually blank screenshot can be misdiagnosed.
+        val glyphRanges = listOf("0-255.pbf", "3584-3839.pbf")
+        val glyphEvidence = glyphRanges.map { range ->
+            val assetPath = "fonts/Noto Sans Regular/$range"
+            val byteCount = context.assets.open(assetPath).use { it.readBytes().size }
+            assertTrue("Bundled glyph range is empty: $assetPath", byteCount > 100)
+            "$range:$byteCount"
+        }
+        Log.i("QueueGoLabelQA", "installed_glyph_ranges=" + glyphEvidence.joinToString(","))
         val intent = Intent(context, NavigationMapRuntimeActivity::class.java)
             .putExtra("installedThailandMap", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         ActivityScenario.launch<NavigationMapRuntimeActivity>(intent).use { scenario ->
@@ -105,6 +115,29 @@ class InstalledThailandMapTest {
                         } }
                         Thread.sleep(200)
                     }
+                }
+                if (name == "bangkok") {
+                    // Query the *same* rendered symbol layers as the visual gate,
+                    // and record whether their features carry usable name values.
+                    // This separates a missing tile name from a missing glyph or
+                    // text-placement problem without drawing any artificial label.
+                    val sourceNameEvidence = mutableListOf<String>()
+                    scenario.onActivity { it.inspectMap { map ->
+                        val viewport = android.graphics.RectF(0f, 0f, 1080f, 2280f)
+                        listOf("street_labels", "place_labels", "pois").forEach { layer ->
+                            val features = map.queryRenderedFeatures(viewport, "queuego-label-$layer")
+                            val names = features.mapNotNull { feature ->
+                                if (!feature.hasProperty("name")) null
+                                else runCatching { feature.getStringProperty("name") }.getOrNull()
+                                    ?.takeIf { it.isNotBlank() }
+                            }
+                            sourceNameEvidence.add(
+                                "$layer:features=${features.size},named=${names.size}," +
+                                    "samples=${names.take(3).joinToString("|") { it.take(45) }}"
+                            )
+                        }
+                    } }
+                    Log.i("QueueGoLabelQA", "bangkok_source_names=" + sourceNameEvidence.joinToString(";"))
                 }
                 // A positive rendered-feature index can still correspond to
                 // completely invisible text (Issue #750). Toggle only the real
