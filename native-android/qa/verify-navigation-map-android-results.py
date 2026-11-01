@@ -27,7 +27,17 @@ def verify_connected_results(directory: Path) -> int:
             raise AssertionError(f"Connected Android report contains no testsuite: {report}")
         for suite in suites:
             if int(suite.get("failures", "0")) or int(suite.get("errors", "0")):
-                raise AssertionError(f"Connected Android suite failed: {report}")
+                failures = []
+                for case in suite.findall("testcase"):
+                    for kind in ("failure", "error"):
+                        detail = case.find(kind)
+                        if detail is not None:
+                            message = (detail.get("message") or detail.text or "").strip()
+                            failures.append(f"{case.get('classname')}.{case.get('name')} [{kind}]: {message[:1200]}")
+                raise AssertionError(
+                    f"Connected Android suite failed: {report}; "
+                    + ("; ".join(failures[:10]) if failures else "suite reports failure/error without testcase detail")
+                )
             for case in suite.findall("testcase"):
                 total += 1
                 if case.find("failure") is not None or case.find("error") is not None:
@@ -55,6 +65,7 @@ def self_test() -> None:
         ("missing-speed", xml(other * 5), False),
         ("skipped-speed", xml(required.replace("/>", "><skipped/></testcase>") + other * 4), False),
         ("failed-suite", xml(required + other * 4, failures=1), False),
+        ("failed-case", xml(required.replace("/>", "><failure message='camera did not reach target'/></testcase>") + other * 4, failures=1), False),
         ("zero-tests", xml(""), False),
         ("malformed", "<testsuite", False),
     ]
@@ -77,7 +88,7 @@ def self_test() -> None:
             pass
         else:
             raise AssertionError("Missing XML must fail closed")
-    print("QUEUEGO_NAVIGATION_REPORT_VERIFIER_SELFTEST_PASS 7")
+    print("QUEUEGO_NAVIGATION_REPORT_VERIFIER_SELFTEST_PASS 8")
 
 
 if __name__ == "__main__":
