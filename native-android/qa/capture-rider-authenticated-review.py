@@ -216,7 +216,7 @@ def scroll_to_text(label):
         matches = [n for n in ns if n.get("text", "").strip() == label and rect(n)]
         if matches:
             output = run(["shell", "wm", "size"], capture_output=True, text=True).stdout
-            sizes = re.findall(r"(?:Physical|Override) size:\\s*(\\d+)x(\\d+)", output)
+            sizes = re.findall(r"(?:Physical|Override) size:\s*(\d+)x(\d+)", output)
             if not sizes:
                 raise RuntimeError("Rider profile viewport size unavailable")
             height = int(sizes[-1][1])
