@@ -208,10 +208,31 @@ def profile_scroll_direction(bounds, viewport_height):
     return None
 
 
+def profile_swipe_points(width, height, direction):
+    # The fixed Rider bottom navigation intercepts gestures starting at 80% of
+    # the viewport. Start at 64% *inside the scrollable Profile content*.
+    if width < 100 or height < 200 or direction not in ("up", "down"):
+        raise ValueError("Invalid Rider profile swipe geometry")
+    x = round(width * 0.82)
+    upper, lower = round(height * 0.22), round(height * 0.64)
+    return [x, lower, x, upper] if direction == "up" else [x, upper, x, lower]
+
+
+def swipe_profile_vertical(direction):
+    output = run(["shell", "wm", "size"], capture_output=True, text=True).stdout
+    sizes = re.findall(r"(?:Physical|Override) size:\s*(\d+)x(\d+)", output)
+    if not sizes:
+        raise RuntimeError("Rider profile viewport size unavailable")
+    width, height = map(int, sizes[-1])
+    points = profile_swipe_points(width, height, direction)
+    run(["shell", "input", "swipe", *(str(value) for value in points), "480"])
+
+
 def scroll_to_text(label):
     # UIAutomator can expose a profile row behind the fixed bottom navigation.
     # Presence in XML is not proof that tapping its coordinates hits that row.
-    for _ in range(10):
+    last_bounds = None
+    for _ in range(12):
         ns = nodes()
         matches = [n for n in ns if n.get("text", "").strip() == label and rect(n)]
         if matches:
@@ -220,14 +241,16 @@ def scroll_to_text(label):
             if not sizes:
                 raise RuntimeError("Rider profile viewport size unavailable")
             height = int(sizes[-1][1])
-            direction = profile_scroll_direction(rect(matches[-1]), height)
+            last_bounds = rect(matches[-1])
+            direction = profile_scroll_direction(last_bounds, height)
             if direction is None:
                 return ns
         else:
             direction = "up"
-        swipe_vertical(direction)
-        time.sleep(0.6)
-    raise SystemExit("Read-only Rider profile entry not safely tappable: " + label)
+        swipe_profile_vertical(direction)
+        time.sleep(0.7)
+    raise SystemExit("Read-only Rider profile entry not safely tappable: " + label +
+                     "; final_bounds=" + str(last_bounds) + " (no private UI text logged)")
 
 def expand_profile_extra_tools():
     ns=nodes()
@@ -378,7 +401,18 @@ def self_test_profile_scroll():
         pass
     else:
         raise AssertionError("Invalid bounds must fail closed")
-    print("QUEUEGO_RIDER_PROFILE_SCROLL_SELFTEST_PASS 6")
+    up = profile_swipe_points(1080, 2280, "up")
+    down = profile_swipe_points(1080, 2280, "down")
+    assert up[1] < 2280 * 0.76 and up[1] > up[3]
+    assert down[1] < down[3] < 2280 * 0.76
+    assert up[:1] == down[:1] and up[2] == down[2]
+    try:
+        profile_swipe_points(1080, 2280, "sideways")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Invalid profile swipe direction must fail closed")
+    print("QUEUEGO_RIDER_PROFILE_SCROLL_SELFTEST_PASS 10")
 
 
 if __name__ == "__main__":
