@@ -72,6 +72,19 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         )
     }
 
+    /** Test-only live MapLibre camera probe: change GNSS speed without replacing the map. */
+    fun setRiderSpeedForCamera(speedMetersPerSecond: Float) {
+        require(speedMetersPerSecond.isFinite() && speedMetersPerSecond >= 0f)
+        val previous = mapState.value
+        val fix = requireNotNull(previous.rider)
+        mapState.value = previous.copy(
+            rider = fix.copy(
+                speedMetersPerSecond = speedMetersPerSecond,
+                elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+            )
+        )
+    }
+
     fun refreshEquivalentOrderSnapshot() {
         val previous = mapState.value
         mapState.value = previous.copy(
