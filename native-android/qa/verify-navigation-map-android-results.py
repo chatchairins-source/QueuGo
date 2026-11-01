@@ -1,6 +1,8 @@
-"""Fail closed unless real connected Android XML proves Rider speed-follow camera test.
+"""Fail closed on real Android instrumentation results, including installed speed-follow.
 
-This is a report verifier, not a substitute for installed MapLibre instrumentation.
+Android UTP can encode a JUnit assumption as <failure> rather than <skipped>.
+Only the optional country-archive assumption may be treated as a skip when
+this is NOT an offline-country run. Offline-required runs must execute it.
 """
 from pathlib import Path
 import sys
@@ -9,14 +11,24 @@ import xml.etree.ElementTree as ET
 
 REQUIRED_CLASS = "com.queuego.ridernavigationmap.NavigationMapRuntimeTest"
 REQUIRED_TEST = "installedMapLibreFollowCameraZoomRespondsToActualRiderSpeed"
+COUNTRY_CLASS = "com.queuego.ridernavigationmap.InstalledThailandMapTest"
+COUNTRY_TEST = "installedCountryArchivePaintsRoadsInMultipleRegions"
+ASSUMPTION = "org.junit.AssumptionViolatedException"
 
 
-def verify_connected_results(directory: Path) -> int:
+def _detail(element: ET.Element) -> str:
+    return " ".join(filter(None, (
+        element.get("type"), element.get("message"), element.text
+    ))).strip()
+
+
+def verify_connected_results(directory: Path, offline_required: bool = False) -> int:
     reports = sorted(directory.rglob("TEST-*.xml")) if directory.is_dir() else []
     if not reports:
         raise AssertionError("No connected Android JUnit XML reports; green Gradle alone is insufficient")
-    total = 0
+    executed = 0
     required_found = False
+    country_executed = False
     for report in reports:
         try:
             document = ET.parse(report).getroot()
@@ -26,57 +38,83 @@ def verify_connected_results(directory: Path) -> int:
         if not suites:
             raise AssertionError(f"Connected Android report contains no testsuite: {report}")
         for suite in suites:
-            if int(suite.get("failures", "0")) or int(suite.get("errors", "0")):
-                failures = []
-                for case in suite.findall("testcase"):
-                    for kind in ("failure", "error"):
-                        detail = case.find(kind)
-                        if detail is not None:
-                            message = (detail.get("message") or detail.text or "").strip()
-                            failures.append(f"{case.get('classname')}.{case.get('name')} [{kind}]: {message[:1200]}")
+            allowed_assumptions = 0
+            errors = []
+            for case in suite.findall("testcase"):
+                classname = case.get("classname")
+                name = case.get("name")
+                is_country = classname == COUNTRY_CLASS and name == COUNTRY_TEST
+                is_required = classname == REQUIRED_CLASS and name == REQUIRED_TEST
+                failure = case.find("failure")
+                error = case.find("error")
+                if failure is not None or error is not None:
+                    element = error if error is not None else failure
+                    detail = _detail(element)
+                    if (failure is not None and is_country and not offline_required
+                            and ASSUMPTION in detail):
+                        # JUnit's assumption is a non-execution, NOT a successful
+                        # country-map rendering test. Never accept it offline.
+                        allowed_assumptions += 1
+                        continue
+                    errors.append(f"{classname}.{name}: {detail[:1200]}")
+                    continue
+                if case.find("skipped") is not None:
+                    if is_required or (is_country and offline_required):
+                        errors.append(f"Required installed test skipped: {classname}.{name}")
+                    continue
+                executed += 1
+                if is_required:
+                    required_found = True
+                if is_country:
+                    country_executed = True
+            if (errors or int(suite.get("errors", "0")) != 0
+                    or int(suite.get("failures", "0")) != allowed_assumptions):
                 raise AssertionError(
                     f"Connected Android suite failed: {report}; "
-                    + ("; ".join(failures[:10]) if failures else "suite reports failure/error without testcase detail")
+                    + ("; ".join(errors[:10]) if errors else
+                       f"failure count mismatch; optional assumptions={allowed_assumptions}")
                 )
-            for case in suite.findall("testcase"):
-                total += 1
-                if case.find("failure") is not None or case.find("error") is not None:
-                    raise AssertionError(f"Connected Android test failed: {case.get('name')} in {report}")
-                if (case.get("classname") == REQUIRED_CLASS
-                        and case.get("name") == REQUIRED_TEST):
-                    if case.find("skipped") is not None:
-                        raise AssertionError("Required installed MapLibre speed-follow camera test was skipped")
-                    required_found = True
-    if total < 5:
-        raise AssertionError(f"Connected Android report has too few testcases: {total}")
+    if executed < 5:
+        raise AssertionError(f"Connected Android report has too few executed testcases: {executed}")
     if not required_found:
-        raise AssertionError(f"Missing required installed MapLibre camera test: {REQUIRED_TEST}")
-    return total
+        raise AssertionError(f"Missing executed installed MapLibre camera test: {REQUIRED_TEST}")
+    if offline_required and not country_executed:
+        raise AssertionError("Offline-required country map test was not executed")
+    return executed
 
 
 def self_test() -> None:
     def xml(cases: str, failures: int = 0) -> str:
-        return f'<testsuite tests="5" failures="{failures}" errors="0">{cases}</testsuite>'
+        return f'<testsuite tests="6" failures="{failures}" errors="0">{cases}</testsuite>'
     required = f'<testcase classname="{REQUIRED_CLASS}" name="{REQUIRED_TEST}"/>'
-    other = '<testcase classname="com.queuego.ridernavigationmap.NavigationMapRuntimeTest" name="other"/>'
-    valid = xml(required + other * 4)
+    other = f'<testcase classname="{REQUIRED_CLASS}" name="other"/>'
+    country = f'<testcase classname="{COUNTRY_CLASS}" name="{COUNTRY_TEST}"/>'
+    assumption = country.replace("/>", f'><failure type="{ASSUMPTION}" message="got false"/></testcase>')
+    foreign_assumption = other.replace("/>", f'><failure type="{ASSUMPTION}"/></testcase>')
+    failed = other.replace("/>", '><failure message="camera did not reach target"/></testcase>')
     cases = [
-        ("valid", valid, True),
-        ("missing-speed", xml(other * 5), False),
-        ("skipped-speed", xml(required.replace("/>", "><skipped/></testcase>") + other * 4), False),
-        ("failed-suite", xml(required + other * 4, failures=1), False),
-        ("failed-case", xml(required.replace("/>", "><failure message='camera did not reach target'/></testcase>") + other * 4, failures=1), False),
-        ("zero-tests", xml(""), False),
-        ("malformed", "<testsuite", False),
+        ("valid", xml(required + other * 4), False, True),
+        ("missing-speed", xml(other * 5), False, False),
+        ("skipped-speed", xml(required.replace("/>", "><skipped/></testcase>") + other * 4), False, False),
+        ("failed-suite", xml(required + other * 4, failures=1), False, False),
+        ("failed-case", xml(required + failed + other * 3, failures=1), False, False),
+        ("zero-tests", xml(""), False, False),
+        ("malformed", "<testsuite", False, False),
+        ("optional-country-assumption-online", xml(required + other * 4 + assumption, failures=1), False, True),
+        ("country-assumption-offline-denied", xml(required + other * 4 + assumption, failures=1), True, False),
+        ("country-success-offline", xml(required + other * 4 + country), True, True),
+        ("country-missing-offline", xml(required + other * 4), True, False),
+        ("foreign-assumption-denied", xml(required + other * 3 + foreign_assumption, failures=1), False, False),
+        ("other-failure-not-hidden", xml(required + other * 3 + assumption + failed, failures=2), False, False),
     ]
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        for label, body, should_pass in cases:
+        for label, body, offline, should_pass in cases:
             report = root / "TEST-navigation.xml"
             report.write_text(body, encoding="utf-8")
             passed = True
             try:
-                verify_connected_results(root)
+                verify_connected_results(root, offline_required=offline)
             except AssertionError:
                 passed = False
             if passed != should_pass:
@@ -88,14 +126,17 @@ def self_test() -> None:
             pass
         else:
             raise AssertionError("Missing XML must fail closed")
-    print("QUEUEGO_NAVIGATION_REPORT_VERIFIER_SELFTEST_PASS 8")
+    print(f"QUEUEGO_NAVIGATION_REPORT_VERIFIER_SELFTEST_PASS {len(cases) + 1}")
 
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--self-test"]:
         self_test()
-    elif len(sys.argv) == 3 and sys.argv[1] == "--results":
-        count = verify_connected_results(Path(sys.argv[2]))
-        print(f"QUEUEGO_NAVIGATION_CONNECTED_XML_PASS tests={count} required={REQUIRED_TEST}")
+    elif len(sys.argv) in (3, 4) and sys.argv[1] == "--results":
+        if len(sys.argv) == 4 and sys.argv[3] != "--offline-required":
+            raise SystemExit("Unknown option")
+        offline = len(sys.argv) == 4
+        count = verify_connected_results(Path(sys.argv[2]), offline_required=offline)
+        print(f"QUEUEGO_NAVIGATION_CONNECTED_XML_PASS tests={count} required={REQUIRED_TEST} offline={offline}")
     else:
-        raise SystemExit("Usage: verify-navigation-map-android-results.py --self-test | --results DIRECTORY")
+        raise SystemExit("Usage: verify-navigation-map-android-results.py --self-test | --results DIRECTORY [--offline-required]")
