@@ -428,7 +428,7 @@ def self_test_profile_scroll():
         pass
     else:
         raise AssertionError("Invalid profile swipe direction must fail closed")
-    print("QUEUEGO_RIDER_PROFILE_SCROLL_SELFTEST_PASS 10")
+    print("QUEUEGO_RIDER_PROFILE_SCROLL_SELFTEST_PASS 12")
 
 
 if __name__ == "__main__":
