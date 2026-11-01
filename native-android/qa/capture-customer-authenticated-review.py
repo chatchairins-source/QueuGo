@@ -184,7 +184,20 @@ def self_test():
     else:
         raise AssertionError("Missing navigation label must fail closed")
     assert rect(n(bounds="[0,0][0,0]")) is None
-    print("QUEUEGO_CUSTOMER_VISUAL_GATE_SELFTEST_PASS 13")
+    original_run = subprocess.run
+    try:
+        def fail_secret_command(args, **kwargs):
+            raise subprocess.CalledProcessError(1, args)
+        subprocess.run = fail_secret_command
+        try:
+            input_secret("DO_NOT_LEAK_TEST_SECRET")
+        except RuntimeError as error:
+            assert "DO_NOT_LEAK_TEST_SECRET" not in str(error)
+        else:
+            raise AssertionError("ADB credential failure must not be silently accepted")
+    finally:
+        subprocess.run = original_run
+    print("QUEUEGO_CUSTOMER_VISUAL_GATE_SELFTEST_PASS 14")
 
 
 def main():
