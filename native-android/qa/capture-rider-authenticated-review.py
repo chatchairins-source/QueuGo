@@ -356,8 +356,15 @@ def verified_map_provenance(apk):
                 digest = hashlib.file_digest(stream, "sha256").hexdigest()
             if data.get("sha256") != digest or data.get("bytes") != entry.file_size:
                 raise AssertionError("Rider APK country map does not match provenance")
-            if require_country and digest != "abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b":
-                raise AssertionError("Rider screenshot map is not the pinned Thailand archive")
+            if require_country:
+                # The archive pin is independently verified by the workflow
+                # against the predecessor run and manifest. Never accept an
+                # arbitrary self-consistent APK manifest as the release pin.
+                expected = os.environ.get("QG_EXPECTED_COUNTRY_SHA256", "")
+                if not re.fullmatch(r"[0-9a-f]{64}", expected):
+                    raise AssertionError("Nationwide visual review requires a valid external country SHA256 pin")
+                if digest != expected:
+                    raise AssertionError("Rider screenshot map is not the pinned Thailand archive")
     if require_country and (not country or regional_fixture):
         raise AssertionError("Nationwide visual review cannot use regional debug/online fallback")
     return "bundled_thailand" if country else (
@@ -503,6 +510,7 @@ def self_test_map_provenance():
             archive.writestr("classes.dex", b"fixture")
         old_required = os.environ.get("QG_REQUIRE_BUNDLED_COUNTRY")
         old_debug = os.environ.get("QG_DEBUG_MAP_ARCHIVE")
+        old_pin = os.environ.get("QG_EXPECTED_COUNTRY_SHA256")
         try:
             os.environ["QG_REQUIRE_BUNDLED_COUNTRY"] = "0"
             os.environ["QG_DEBUG_MAP_ARCHIVE"] = "1"
@@ -516,16 +524,58 @@ def self_test_map_provenance():
                 assert "Nationwide visual review" in str(error)
             else:
                 raise AssertionError("Unbundled Rider APK passed nationwide visual gate")
+            # Isolated ZIP fixtures test the provenance gate only, not map
+            # rendering or an installed Android build.
+            map_bytes = b"country-provenance-test-fixture"
+            digest = hashlib.sha256(map_bytes).hexdigest()
+            country_path = Path(directory) / "country-fixture.apk"
+            with zipfile.ZipFile(country_path, "w") as archive:
+                archive.writestr("assets/maps/thailand-shortbread.pmtiles", map_bytes,
+                                 compress_type=zipfile.ZIP_STORED)
+                archive.writestr("assets/maps/thailand-shortbread.json",
+                                 json.dumps({"sha256": digest, "bytes": len(map_bytes)}))
+            os.environ["QG_DEBUG_MAP_ARCHIVE"] = "0"
+            os.environ.pop("QG_EXPECTED_COUNTRY_SHA256", None)
+            try:
+                verified_map_provenance(country_path)
+            except AssertionError as error:
+                assert "external country SHA256 pin" in str(error)
+            else:
+                raise AssertionError("Missing external map pin passed nationwide gate")
+            os.environ["QG_EXPECTED_COUNTRY_SHA256"] = "invalid"
+            try:
+                verified_map_provenance(country_path)
+            except AssertionError as error:
+                assert "external country SHA256 pin" in str(error)
+            else:
+                raise AssertionError("Invalid external map pin passed nationwide gate")
+            os.environ["QG_EXPECTED_COUNTRY_SHA256"] = "0" * 64
+            try:
+                verified_map_provenance(country_path)
+            except AssertionError as error:
+                assert "not the pinned Thailand archive" in str(error)
+            else:
+                raise AssertionError("Mismatched map pin passed nationwide gate")
+            os.environ["QG_EXPECTED_COUNTRY_SHA256"] = digest
+            assert verified_map_provenance(country_path) == "bundled_thailand"
+            os.environ["QG_DEBUG_MAP_ARCHIVE"] = "1"
+            try:
+                verified_map_provenance(country_path)
+            except AssertionError as error:
+                assert "regional debug/online fallback" in str(error)
+            else:
+                raise AssertionError("Regional debug mode passed nationwide gate")
         finally:
             for key, value in (
                 ("QG_REQUIRE_BUNDLED_COUNTRY", old_required),
                 ("QG_DEBUG_MAP_ARCHIVE", old_debug),
+                ("QG_EXPECTED_COUNTRY_SHA256", old_pin),
             ):
                 if value is None:
                     os.environ.pop(key, None)
                 else:
                     os.environ[key] = value
-    print("QUEUEGO_RIDER_COUNTRY_PROVENANCE_SELFTEST_PASS 3")
+    print("QUEUEGO_RIDER_COUNTRY_PROVENANCE_SELFTEST_PASS 8")
 
 
 if __name__ == "__main__":
