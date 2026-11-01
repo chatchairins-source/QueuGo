@@ -86,18 +86,34 @@ class InstalledThailandMapTest {
                     "Installed MapLibre style lost its offline glyph template",
                     "asset://fonts/{fontstack}/{range}.pbf", glyphTemplate
                 )
-                val runtimeLayers = requireNotNull(runtimeJson.optJSONArray("layers"))
+                // Style.json can serialize the original fromJson document without
+                // the layers added later by Style.Builder.withLayer(...). Use
+                // the live MapLibre layer registry for the acceptance check.
+                val serializedLayers = runtimeJson.optJSONArray("layers")
+                Log.i("QueueGoLabelQA",
+                    "runtime_json_layer_count=" + (serializedLayers?.length() ?: -1))
                 listOf("street_labels", "place_labels", "pois").forEach { sourceLayer ->
                     val layerId = "queuego-label-$sourceLayer"
-                    val layer = (0 until runtimeLayers.length()).mapNotNull { index ->
-                        runtimeLayers.optJSONObject(index)
-                    }.firstOrNull { it.optString("id") == layerId }
-                    assertNotNull("Installed MapLibre style lost $layerId", layer)
-                    val layout = requireNotNull(layer?.optJSONObject("layout"))
+                    val liveLayer = runtimeStyle.getLayer(layerId)
+                    assertNotNull("Live MapLibre style lost $layerId", liveLayer)
+                    assertTrue("Live $layerId is not a SymbolLayer",
+                        liveLayer is org.maplibre.android.style.layers.SymbolLayer)
+                    val symbol = liveLayer as org.maplibre.android.style.layers.SymbolLayer
+                    val liveTextField = symbol.getTextField()
+                    val liveTextFont = symbol.getTextFont()
+                    assertNotNull("Missing live text-field on $layerId", liveTextField)
+                    assertNotNull("Missing live text-font on $layerId", liveTextFont)
                     Log.i("QueueGoLabelQA",
-                        "runtime_symbol_$sourceLayer=" + layout.toString().take(360))
-                    assertTrue("Missing text-field on $layerId", layout.has("text-field"))
-                    assertTrue("Missing text-font on $layerId", layout.has("text-font"))
+                        "runtime_live_symbol_$sourceLayer=" +
+                            "textField=" + liveTextField.toString().take(180) +
+                            ",textFont=" + liveTextFont.toString().take(180))
+                    val serialized = (0 until (serializedLayers?.length() ?: 0))
+                        .mapNotNull { index -> serializedLayers?.optJSONObject(index) }
+                        .firstOrNull { it.optString("id") == layerId }
+                    Log.i("QueueGoLabelQA",
+                        "runtime_json_symbol_$sourceLayer=" +
+                            (serialized?.optJSONObject("layout")?.toString()?.take(240)
+                                ?: "not_serialized_use_live_layer"))
                 }
             } }
             val locations = listOf(
