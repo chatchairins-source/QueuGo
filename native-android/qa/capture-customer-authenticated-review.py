@@ -191,16 +191,18 @@ def main():
         adb(["shell", "pm", "clear", PKG], timeout=60)
         adb(["shell", "am", "start", "-W", "-n", PKG + "/.MainActivity"],
             capture_output=True, timeout=60)
-        initial = wait_for(lambda current: "เข้าสู่ระบบ" in visible(current) or home_ready(current))
-        # Customer deliberately starts as a guest. Reach the actual native
-        # authentication screen before entering credentials or claiming Auth.
-        if home_ready(initial):
+        def has_login_fields(current):
+            return len([n for n in current
+                if n.get("class") == "android.widget.EditText" and rect(n)]) >= 2
+        initial = wait_for(lambda current: home_ready(current) or has_login_fields(current), 75)
+        # Actual GuestCustomerTopBar renders "เข้าสู่ระบบ" before the Home
+        # content; never mistake that button for the authentication screen.
+        if not has_login_fields(initial):
             if "เข้าสู่ระบบ" not in visible(initial):
                 tap_node(find_label(initial, "โปรไฟล์"))
                 initial = wait_for(lambda current: "เข้าสู่ระบบ" in visible(current), 45)
             tap_node(find_label(initial, "เข้าสู่ระบบ"))
-            initial = wait_for(lambda current: len([n for n in current
-                if n.get("class") == "android.widget.EditText" and rect(n)]) >= 2, 45)
+            initial = wait_for(has_login_fields, 45)
         screens.append(shot("login"))
         fields = sorted((n for n in initial if n.get("class") == "android.widget.EditText"
                          and rect(n)), key=lambda n: rect(n)[1])
