@@ -6,10 +6,39 @@ from pathlib import Path
 import hashlib
 import html
 import json
+import re
 import struct
 import sys
 
 ROLES = ("customer", "merchant", "rider")
+
+
+def validate_manifest(data):
+    """Never certify an empty, duplicate, or contradictory screenshot inventory."""
+    expected = data.get("expected_screens")
+    screens = data.get("screens", [])
+    declared_missing = data.get("missing_screens", [])
+    def names_valid(values):
+        return isinstance(values, list) and all(
+            isinstance(value, str) and bool(value.strip()) for value in values
+        ) and len(values) == len(set(values))
+    if not names_valid(expected) or not expected:
+        raise AssertionError("Missing, duplicate or invalid expected screen inventory")
+    if not isinstance(screens, list) or any(not isinstance(item, dict) for item in screens):
+        raise AssertionError("Invalid screenshot manifest entries")
+    names = [item.get("screen") for item in screens]
+    if not names_valid(names):
+        raise AssertionError("Missing or duplicate captured screen identities")
+    if not names_valid(declared_missing) or not set(declared_missing).issubset(expected):
+        raise AssertionError("Invalid declared missing screen inventory")
+    if data.get("review_complete") is True:
+        if set(expected) - set(names) or declared_missing:
+            raise AssertionError("Manifest claims complete with missing screens")
+        if not re.fullmatch(r"[0-9a-f]{40}", str(data.get("source_head", ""))):
+            raise AssertionError("Complete screenshot evidence lacks exact source SHA")
+        if not re.fullmatch(r"[0-9a-f]{64}", str(data.get("apk_sha256", ""))):
+            raise AssertionError("Complete screenshot evidence lacks APK SHA256")
+    return expected, declared_missing
 
 
 def inspect_role(folder: Path, role: str):
@@ -20,6 +49,7 @@ def inspect_role(folder: Path, role: str):
     data = json.loads(manifest.read_text(encoding="utf-8"))
     if data.get("package") != "com.queuego." + role:
         raise AssertionError("Incorrect APK package in " + str(manifest))
+    expected, declared_missing = validate_manifest(data)
     captured = []
     for item in data.get("screens", []):
         filename = item.get("file", "")
@@ -40,11 +70,8 @@ def inspect_role(folder: Path, role: str):
             raise AssertionError("Screenshot hash mismatch: " + filename)
         captured.append({"screen": str(item.get("screen", "")), "file": filename,
                          "width": width, "height": height})
-    expected = data.get("expected_screens") or []
     seen = {item["screen"] for item in captured}
-    missing = sorted(set(expected) - seen)
-    if data.get("missing_screens"):
-        missing = sorted(set(missing) | set(data["missing_screens"]))
+    missing = sorted((set(expected) - seen) | set(declared_missing))
     complete = bool(captured) and not missing and data.get("review_complete") is True
     return {"role": role, "status": "CAPTURED_SCOPE" if complete else "INCOMPLETE",
             "screens": captured, "missing": missing,
@@ -99,7 +126,28 @@ def self_test():
     assert "&lt;unsafe&gt;" in page and "<unsafe>" not in page
     assert "Not a complete UI inventory" in page
     assert all(role in ROLES for role in ("customer", "merchant", "rider"))
-    print("QUEUEGO_VISUAL_INDEX_SELFTEST_PASS 4")
+    valid = {"screens": [{"screen": "home", "file": "home.png"}],
+             "expected_screens": ["home"], "missing_screens": [],
+             "review_complete": True, "source_head": "a" * 40,
+             "apk_sha256": "b" * 64}
+    assert validate_manifest(valid) == (["home"], [])
+    invalid = [
+        {**valid, "expected_screens": []},
+        {**valid, "expected_screens": ["home", "home"]},
+        {**valid, "screens": [{**valid["screens"][0]}, {**valid["screens"][0]}]},
+        {**valid, "expected_screens": ["home", "ride"]},
+        {**valid, "missing_screens": ["ride"]},
+        {**valid, "source_head": ""},
+        {**valid, "apk_sha256": "invalid"},
+        {**valid, "screens": [{"file": "home.png"}]},
+    ]
+    for item in invalid:
+        try:
+            validate_manifest(item)
+        except AssertionError:
+            continue
+        raise AssertionError("Invalid visual evidence manifest was accepted")
+    print("QUEUEGO_VISUAL_INDEX_SELFTEST_PASS 13")
 
 
 if __name__ == "__main__":
