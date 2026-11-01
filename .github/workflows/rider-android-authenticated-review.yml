@@ -24,6 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ready: ${{ steps.check.outputs.ready }}
+      rider_ready: ${{ steps.check.outputs.rider_ready }}
+      merchant_ready: ${{ steps.check.outputs.merchant_ready }}
+      customer_ready: ${{ steps.check.outputs.customer_ready }}
     steps:
       - name: Check review secrets without printing their values
         id: check
@@ -50,10 +53,12 @@ jobs:
           merchant_only = "[merchant-visual-review]" in os.environ.get("REVIEW_COMMIT_MESSAGE", "")
           all_roles = (os.environ.get("GITHUB_REF_NAME") == "work-native-all-role-visual-capture-20261101"
               or "[all-role-visual-review]" in os.environ.get("REVIEW_COMMIT_MESSAGE", ""))
-          ready = (all(role["ready"] for role in roles.values()) if all_roles
+          ready = (any(role["ready"] for role in roles.values()) if all_roles
               else roles["merchant" if merchant_only else "rider"]["ready"])
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("ready=" + str(ready).lower() + "\n")
+              for role, state in roles.items():
+                  output.write(role + "_ready=" + str(state["ready"]).lower() + "\n")
           capture_requested = (os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
               or os.environ.get("GITHUB_REF_NAME") in ("work-native-rider-auth-review-20261024",
                   "work-native-all-role-visual-capture-20261101") or merchant_only)
@@ -175,21 +180,21 @@ jobs:
           cat "$RUNNER_TEMP/queuego-rider-review-emulator.log"
           exit 1
       - name: Capture authenticated Rider views on Android Emulator
-        if: ${{ !contains(github.event.head_commit.message, '[merchant-visual-review]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[merchant-visual-review]') && (github.ref_name != 'work-native-all-role-visual-capture-20261101' || needs.credential-check.outputs.rider_ready == 'true') }}
         env:
           QG_DEBUG_MAP_ARCHIVE: '1'
           QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
           QG_RIDER_REVIEW_PASSWORD: ${{ secrets.QG_RIDER_REVIEW_PASSWORD }}
         run: python3 native-android/qa/capture-rider-authenticated-review.py
       - name: Capture authenticated Merchant views on Android Emulator
-        if: always() && steps.boot_emulator.outcome == 'success'
+        if: always() && steps.boot_emulator.outcome == 'success' && (github.ref_name != 'work-native-all-role-visual-capture-20261101' || needs.credential-check.outputs.merchant_ready == 'true')
         env:
           QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
           QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
           QG_MERCHANT_VISUAL_PARITY: ${{ contains(github.event.head_commit.message, '[merchant-visual-review]') && '1' || '0' }}
         run: python3 native-android/qa/capture-merchant-authenticated-review.py
       - name: Capture authenticated Customer views on Android Emulator
-        if: always() && steps.boot_emulator.outcome == 'success' && github.ref_name == 'work-native-all-role-visual-capture-20261101'
+        if: always() && steps.boot_emulator.outcome == 'success' && github.ref_name == 'work-native-all-role-visual-capture-20261101' && needs.credential-check.outputs.customer_ready == 'true'
         env:
           QG_CUSTOMER_REVIEW_PHONE: ${{ secrets.QG_CUSTOMER_REVIEW_PHONE }}
           QG_CUSTOMER_REVIEW_PASSWORD: ${{ secrets.QG_CUSTOMER_REVIEW_PASSWORD }}
