@@ -1,6 +1,6 @@
 """Secret-backed Android Rider review; credentials never enter evidence files."""
 from pathlib import Path
-import datetime, hashlib, json, os, re, subprocess, sys, time
+import datetime, hashlib, json, os, re, subprocess, sys, time, zipfile
 import xml.etree.ElementTree as ET
 
 from adb_install_recovery import install_verified_apk
@@ -337,6 +337,34 @@ def input_credential(value):
     except (subprocess.SubprocessError,OSError,ValueError):
         raise SystemExit("Credential entry failed") from None
 
+def verified_map_provenance(apk):
+    """Do not call a regional CI map a nationwide installed-APK screenshot."""
+    require_country = os.environ.get("QG_REQUIRE_BUNDLED_COUNTRY") == "1"
+    regional_fixture = os.environ.get("QG_DEBUG_MAP_ARCHIVE") == "1"
+    with zipfile.ZipFile(apk) as archive:
+        names = set(archive.namelist())
+        country = "assets/maps/thailand-shortbread.pmtiles" in names
+        manifest = "assets/maps/thailand-shortbread.json" in names
+        if country != manifest:
+            raise AssertionError("Rider APK has incomplete nationwide map assets")
+        if country:
+            entry = archive.getinfo("assets/maps/thailand-shortbread.pmtiles")
+            if entry.compress_type != zipfile.ZIP_STORED:
+                raise AssertionError("Rider country PMTiles must be stored uncompressed")
+            data = json.loads(archive.read("assets/maps/thailand-shortbread.json"))
+            with archive.open(entry) as stream:
+                digest = hashlib.file_digest(stream, "sha256").hexdigest()
+            if data.get("sha256") != digest or data.get("bytes") != entry.file_size:
+                raise AssertionError("Rider APK country map does not match provenance")
+            if require_country and digest != "abfedfc200c1ff81045f9f946a6f281b0a8664d4b440e269b68f0e628408ba3b":
+                raise AssertionError("Rider screenshot map is not the pinned Thailand archive")
+    if require_country and (not country or regional_fixture):
+        raise AssertionError("Nationwide visual review cannot use regional debug/online fallback")
+    return "bundled_thailand" if country else (
+        "regional_debug_fixture" if regional_fixture else "online_fallback"
+    )
+
+
 def main():
     phone=os.environ.get("QG_RIDER_REVIEW_PHONE","")
     password=os.environ.get("QG_RIDER_REVIEW_PASSWORD","")
@@ -345,6 +373,7 @@ def main():
     run(["shell","wm","density","440"])
     apk=Path("native-android/rider/build/outputs/apk/debug/rider-debug.apk")
     assert apk.is_file(), "Build Rider debug APK first"
+    map_provenance = verified_map_provenance(apk)
     install_verified_apk(ADB, apk, PKG)
     run(["shell","pm","clear",PKG],timeout=60)
     provision_map()
@@ -408,6 +437,7 @@ def main():
       "package":PKG,"apk_sha256":hashlib.sha256(apk.read_bytes()).hexdigest(),
       "android_api":run(["shell","getprop","ro.build.version.sdk"],capture_output=True,text=True).stdout.strip(),
       "viewport_px":"1080x2280","screens":screens,"physical_device":False,
+      "map_provenance":map_provenance,"country_map_visual_certified":False,
       "production_order_or_dispatch_mutations":False,"visual_parity_certified":False,
       "scope":"Authenticated Rider Home map, messages, earnings (summary plus verified cash ledger, optionally in same viewport), profile and Laundry work toggle; no job actions",
       "expected_screens":list(expected_screens),
