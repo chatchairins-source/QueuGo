@@ -9,6 +9,7 @@ import json
 import re
 import struct
 import sys
+import tempfile
 import zlib
 
 ROLES = ("customer", "merchant", "rider")
@@ -201,6 +202,37 @@ def self_test():
            chunk(b"IDAT", zlib.compress((b"\\x00" + b"\\x00" * 300) * 100)) +
            chunk(b"IEND", b""))
     assert png_dimensions(png) == (100, 100)
+    # Exercise inspect_role end-to-end with two distinct files containing
+    # identical pixels: this must not count as two different Android screens.
+    with tempfile.TemporaryDirectory() as directory:
+        folder = Path(directory)
+        (folder / "home.png").write_bytes(png)
+        (folder / "profile.png").write_bytes(png)
+        data = {"package": "com.queuego.rider",
+                "expected_screens": ["home", "profile"], "missing_screens": [],
+                "review_complete": True, "source_head": "a" * 40,
+                "apk_sha256": "b" * 64,
+                "screens": [
+                    {"screen": name, "file": name + ".png",
+                     "sha256": hashlib.sha256(png).hexdigest()}
+                    for name in ("home", "profile")]}
+        (folder / "metadata.json").write_text(json.dumps(data), encoding="utf-8")
+        try:
+            inspect_role(folder, "rider")
+        except AssertionError as error:
+            assert "Identical screenshot" in str(error)
+        else:
+            raise AssertionError("Reused pixels accepted as independent screens")
+        # A changed, valid second image must pass with its own hash.
+        different = (b"\\x89PNG\\r\\n\\x1a\\n" +
+                     chunk(b"IHDR", struct.pack(">IIBBBBB", 100, 100, 8, 2, 0, 0, 0)) +
+                     chunk(b"IDAT", zlib.compress((b"\\x00" + b"\\xff" * 300) * 100)) +
+                     chunk(b"IEND", b""))
+        (folder / "profile.png").write_bytes(different)
+        data["screens"][1]["sha256"] = hashlib.sha256(different).hexdigest()
+        (folder / "metadata.json").write_text(json.dumps(data), encoding="utf-8")
+        result = inspect_role(folder, "rider")
+        assert result["status"] == "CAPTURED_SCOPE" and len(result["screens"]) == 2
     for bad in (png[:-3], png[:-12], png[:29] + bytes([png[29] ^ 1]) + png[30:],
                 png + b"trailing"):
         try:
@@ -208,7 +240,7 @@ def self_test():
         except AssertionError:
             continue
         raise AssertionError("Corrupt/truncated PNG was accepted")
-    print("QUEUEGO_VISUAL_INDEX_SELFTEST_PASS 19")
+    print("QUEUEGO_VISUAL_INDEX_SELFTEST_PASS 21")
 
 
 if __name__ == "__main__":
