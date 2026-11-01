@@ -196,12 +196,20 @@ def provision_map():
     assert verified == expected, "App-private map archive checksum mismatch"
 
 
-def profile_scroll_direction(bounds, viewport_height):
-    """Keep tap targets away from system bars and the persistent Rider bottom nav."""
-    if viewport_height < 200 or len(bounds) != 4 or bounds[3] <= bounds[1]:
-        raise ValueError("Invalid Rider viewport/target bounds")
+def profile_scroll_direction(bounds, viewport_height, density_dpi=440):
+    """Reserve the actual dp-height of bottom nav, not 24% of a tall viewport.
+
+    A verified 1080x2280/440dpi Rider profile row at y=1803..1869 was
+    falsely rejected by the former 76%-of-screen cutoff, despite being above
+    the 58dp bottom nav. Keep 100dp for nav, padding and tap clearance.
+    """
+    if (viewport_height < 200 or density_dpi < 120 or density_dpi > 1000
+            or len(bounds) != 4 or bounds[3] <= bounds[1]):
+        raise ValueError("Invalid Rider viewport/density/target bounds")
     center = (bounds[1] + bounds[3]) / 2
-    if center > viewport_height * 0.76:
+    safe_bottom = max(viewport_height * 0.60,
+                      viewport_height - 100 * density_dpi / 160)
+    if center > safe_bottom:
         return "up"
     if center < viewport_height * 0.15:
         return "down"
@@ -241,8 +249,12 @@ def scroll_to_text(label):
             if not sizes:
                 raise RuntimeError("Rider profile viewport size unavailable")
             height = int(sizes[-1][1])
+            density_output = run(["shell", "wm", "density"], capture_output=True, text=True).stdout
+            densities = re.findall(r"(?:Physical|Override) density:\s*(\d+)", density_output)
+            if not densities:
+                raise RuntimeError("Rider profile display density unavailable")
             last_bounds = rect(matches[-1])
-            direction = profile_scroll_direction(last_bounds, height)
+            direction = profile_scroll_direction(last_bounds, height, int(densities[-1]))
             if direction is None:
                 return ns
         else:
@@ -390,11 +402,15 @@ def main():
     print("QUEUEGO_RIDER_AUTHENTICATED_REVIEW_PASS: all expected Rider screens captured")
 
 def self_test_profile_scroll():
-    assert profile_scroll_direction([100, 1850, 500, 2010], 2280) == "up"
-    assert profile_scroll_direction([100, 40, 500, 140], 2280) == "down"
-    assert profile_scroll_direction([100, 900, 500, 1050], 2280) is None
-    assert profile_scroll_direction([100, 590, 500, 690], 800) == "up"
-    assert profile_scroll_direction([100, 250, 500, 350], 800) is None
+    # Exact failure from hosted Rider review #41280054424: row is above
+    # the Compose bottom bar and must be tappable without futile swipes.
+    assert profile_scroll_direction([186, 1803, 550, 1869], 2280, 440) is None
+    assert profile_scroll_direction([100, 2040, 500, 2190], 2280, 440) == "up"
+    assert profile_scroll_direction([100, 40, 500, 140], 2280, 440) == "down"
+    assert profile_scroll_direction([100, 900, 500, 1050], 2280, 440) is None
+    assert profile_scroll_direction([100, 720, 500, 790], 800, 160) == "up"
+    assert profile_scroll_direction([100, 590, 500, 690], 800, 160) is None
+    assert profile_scroll_direction([100, 250, 500, 350], 800, 160) is None
     try:
         profile_scroll_direction([0, 20, 100, 20], 2280)
     except ValueError:
