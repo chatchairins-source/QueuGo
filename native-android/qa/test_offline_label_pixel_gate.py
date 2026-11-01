@@ -47,6 +47,22 @@ class OfflineLabelPixelGateTest(unittest.TestCase):
         self.assertIn("visibleLabelPixelDelta >= kotlin.math.max(40, hiddenFrameJitter * 3 + 20)", self.source)
         self.assertNotIn("drawText(", style)
 
+    def test_hidden_frame_and_diagnostic_diff_are_retained_from_actual_emulator(self):
+        # The accepted 156 sampled changed pixels on run 41324372691 did
+        # not make Bangkok road names visually legible. Retain A/B evidence.
+        for token in (
+            '"bangkok-labels-hidden.png"',
+            '"bangkok-labels-diff-diagnostic.png"',
+            "val a = hiddenB.getPixel(x, y)",
+            "val b = visible.getPixel(x, y)",
+            "diagnostic_only=true",
+            "labelDiagnosticFiles.forEach { diagnostic ->",
+            "Retained label diagnostic size differs",
+        ):
+            self.assertIn(token, self.source)
+        self.assertNotIn("drawText(", self.source)
+        self.assertNotIn("Canvas(", self.source)
+
     def test_country_workflow_tests_exact_pr_head(self):
         self.assertIn("work-native-rider-nav-unified-offline-20261030", self.workflow)
         self.assertIn("github.event.pull_request.head.sha || github.sha", self.workflow)

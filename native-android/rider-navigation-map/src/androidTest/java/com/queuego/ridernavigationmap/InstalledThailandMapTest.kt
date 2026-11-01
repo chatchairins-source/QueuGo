@@ -112,6 +112,7 @@ class InstalledThailandMapTest {
                 // No fake labels, screenshot overlays or Production changes.
                 var visibleLabelPixelDelta = -1
                 var hiddenFrameJitter = -1
+                var labelDiagnosticFiles = emptyList<File>()
                 val screenshotBitmap: Bitmap = if (name == "bangkok") {
                     val ids = listOf("street_labels", "place_labels", "pois")
                     scenario.onActivity { it.inspectMap { map ->
@@ -151,6 +152,46 @@ class InstalledThailandMapTest {
                     Log.i("QueueGoLabelQA", "bangkok_visible_label_pixel_delta=" +
                         visibleLabelPixelDelta + " hidden_baseline=" + hiddenFrameJitter +
                         " indexed_features=" + paintedLabels + " visual_certified=false")
+                    // Persist the raw hidden baseline and a *diagnostic* red/white pixel
+                    // difference image. The difference image is not a map screenshot or
+                    // evidence of readable text; it localizes tiny framebuffer changes.
+                    val evidenceDir = File(context.getExternalFilesDir(null), "offline-map-evidence").apply { mkdirs() }
+                    val hiddenFile = File(evidenceDir, "bangkok-labels-hidden.png")
+                    hiddenFile.outputStream().use {
+                        assertTrue(hiddenB.compress(Bitmap.CompressFormat.PNG, 100, it))
+                    }
+                    val diffBitmap = Bitmap.createBitmap(visible.width, visible.height, Bitmap.Config.ARGB_8888)
+                    var rawChanged = 0
+                    var minX = visible.width
+                    var minY = visible.height
+                    var maxX = -1
+                    var maxY = -1
+                    for (y in 0 until visible.height) {
+                        for (x in 0 until visible.width) {
+                            val a = hiddenB.getPixel(x, y)
+                            val b = visible.getPixel(x, y)
+                            val delta = kotlin.math.abs(Color.red(a) - Color.red(b)) +
+                                kotlin.math.abs(Color.green(a) - Color.green(b)) +
+                                kotlin.math.abs(Color.blue(a) - Color.blue(b))
+                            if (delta >= 80) {
+                                rawChanged++
+                                minX = kotlin.math.min(minX, x)
+                                minY = kotlin.math.min(minY, y)
+                                maxX = kotlin.math.max(maxX, x)
+                                maxY = kotlin.math.max(maxY, y)
+                                diffBitmap.setPixel(x, y, Color.RED)
+                            } else {
+                                diffBitmap.setPixel(x, y, Color.WHITE)
+                            }
+                        }
+                    }
+                    val diffFile = File(evidenceDir, "bangkok-labels-diff-diagnostic.png")
+                    diffFile.outputStream().use {
+                        assertTrue(diffBitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+                    }
+                    diffBitmap.recycle()
+                    labelDiagnosticFiles = listOf(hiddenFile, diffFile)
+                    Log.i("QueueGoLabelQA", "bangkok_label_diff_raw_pixels=$rawChanged bbox=$minX,$minY,$maxX,$maxY diagnostic_only=true")
                     hiddenA.recycle()
                     hiddenB.recycle()
                     visible
@@ -183,6 +224,30 @@ class InstalledThailandMapTest {
                 }, null, null)
                 resolver.openFileDescriptor(uri, "r").use {
                     assertEquals("Retained screenshot size differs", screenshot.length(), requireNotNull(it).statSize)
+                }
+                // UTP removes app-private evidence on test uninstall. Retain the
+                // raw hidden baseline and labeled diagnostic in MediaStore too.
+                labelDiagnosticFiles.forEach { diagnostic ->
+                    val diagnosticValues = android.content.ContentValues().apply {
+                        put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, diagnostic.name)
+                        put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                        put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/QueueGoOfflineEvidence/")
+                        put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+                    }
+                    val diagnosticUri = requireNotNull(
+                        resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, diagnosticValues)
+                    )
+                    resolver.openOutputStream(diagnosticUri).use { target ->
+                        diagnostic.inputStream().use { source ->
+                            assertEquals(diagnostic.length(), source.copyTo(requireNotNull(target)))
+                        }
+                    }
+                    resolver.update(diagnosticUri, android.content.ContentValues().apply {
+                        put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
+                    }, null, null)
+                    resolver.openFileDescriptor(diagnosticUri, "r").use {
+                        assertEquals("Retained label diagnostic size differs", diagnostic.length(), requireNotNull(it).statSize)
+                    }
                 }
                 if (offlineRequired) assertNull(context.getSystemService(android.net.ConnectivityManager::class.java).activeNetwork)
                 if (name == "bangkok") {
