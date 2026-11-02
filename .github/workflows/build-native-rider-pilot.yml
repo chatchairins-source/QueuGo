@@ -19,6 +19,7 @@ on:
       - 'work-native-**'
       - 'fix/native-**'
       - 'work-rider-**'
+      - 'fix-rider-**'
       - work-native-release-integration-20261010
       - work-native-release-preflight-20261010
       - work-native-voice-background-20261010
