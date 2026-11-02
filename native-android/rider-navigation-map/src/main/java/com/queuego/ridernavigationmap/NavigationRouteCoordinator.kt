@@ -24,6 +24,7 @@ class NavigationRouteCoordinator(
 ) {
     private val progressTracker = NavigationProgressTracker(nowMillis = nowMillis)
     private var activeStopId: String? = null
+    private var activeStopPoint: NavigationMapPoint? = null
     private var activeLeg: NavigationRouteLeg? = null
     private var rerouteVersion: Int = 0
     private var visibleActiveSegment: NavigationRouteSegment? = null
@@ -34,6 +35,7 @@ class NavigationRouteCoordinator(
 
     fun reset() {
         activeStopId = null
+        activeStopPoint = null
         activeLeg = null
         rerouteVersion = 0
         visibleActiveSegment = null
@@ -59,8 +61,13 @@ class NavigationRouteCoordinator(
             )
         }
 
-        if (activeStopId != activeStop.id) {
+        // A corrected pickup/drop-off may keep its business stop ID but move to
+        // another coordinate. The old route must never remain authoritative for it.
+        val destinationChanged = activeStopId == activeStop.id &&
+            activeStopPoint != null && activeStopPoint != activeStop.point
+        if (activeStopId != activeStop.id || activeStopPoint != activeStop.point) {
             activeStopId = activeStop.id
+            activeStopPoint = activeStop.point
             activeLeg = null
             rerouteVersion = 0
             visibleActiveSegment = null
@@ -68,10 +75,15 @@ class NavigationRouteCoordinator(
             resetInitialRouteRetry()
             progressTracker.reset()
         }
+        // Drop the stale rendered active leg even when GPS is unavailable or the
+        // fresh online route fails. Keep only unrelated future legs.
+        val safeState = if (destinationChanged) {
+            state.copy(routes = state.routes.filterNot { it.toStopId == activeStop.id })
+        } else state
 
-        val fix = state.rider?.takeIf { it.point.valid }
+        val fix = safeState.rider?.takeIf { it.point.valid }
             ?: return NavigationRouteCoordinatorResult(
-                mapState = state,
+                mapState = safeState,
                 guidance = NavigationGuidanceState(),
                 activeLeg = activeLeg,
                 rerouteVersion = rerouteVersion,
@@ -149,9 +161,9 @@ class NavigationRouteCoordinator(
             )
         }
         val updatedMapState = if (visibleSegment != null) {
-            replaceActiveLeg(state, activeStop, visibleSegment)
+            replaceActiveLeg(safeState, activeStop, visibleSegment)
         } else {
-            state
+            safeState
         }
         return NavigationRouteCoordinatorResult(
             mapState = updatedMapState,

@@ -310,4 +310,62 @@ class NavigationRouteCoordinatorTest {
         assertTrue(cancelled)
         assertEquals(1, provider.attempts)
     }
+
+    @Test fun correctedSameStopIdDestinationForcesFreshRouteAndClearsOldGeometry() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 70_000L })
+        val initial = coordinator.synchronize(state())
+        assertEquals(pickup.point, initial.activeLeg!!.segment.points.last())
+
+        val corrected = pickup.copy(point = NavigationMapPoint(13.0040, 100.0140))
+        val refreshed = coordinator.synchronize(
+            initial.mapState.copy(stops = listOf(corrected, customer))
+        )
+
+        assertEquals(2, provider.calls.size)
+        assertTrue(refreshed.routeChanged)
+        assertEquals(0, refreshed.rerouteVersion)
+        assertEquals(corrected.point, refreshed.activeLeg!!.segment.points.last())
+        assertEquals(corrected.point, refreshed.mapState.routes.first {
+            it.toStopId == pickup.id
+        }.points.last())
+        assertEquals("future-dropoff", refreshed.mapState.routes.last().id)
+    }
+
+    @Test fun correctedDestinationRouteFailureDoesNotKeepOldActiveLine() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 80_000L })
+        val initial = coordinator.synchronize(state())
+        provider.failNext = true
+        val corrected = pickup.copy(point = NavigationMapPoint(13.0050, 100.0150))
+
+        val failed = coordinator.synchronize(
+            initial.mapState.copy(stops = listOf(corrected, customer))
+        )
+
+        assertEquals(2, provider.attempts)
+        assertEquals(null, failed.activeLeg)
+        assertTrue(failed.routeError!!.contains("route unavailable"))
+        assertTrue(failed.mapState.routes.none { it.toStopId == pickup.id })
+        assertEquals(listOf("future-dropoff"), failed.mapState.routes.map { it.id })
+    }
+
+    @Test fun correctedDestinationWithoutGpsImmediatelyHidesOldActiveLine() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 90_000L })
+        val initial = coordinator.synchronize(state())
+        val corrected = pickup.copy(point = NavigationMapPoint(13.0060, 100.0160))
+
+        val noFix = coordinator.synchronize(
+            initial.mapState.copy(
+                rider = null,
+                stops = listOf(corrected, customer)
+            )
+        )
+
+        assertEquals(1, provider.attempts)
+        assertEquals(null, noFix.activeLeg)
+        assertTrue(noFix.mapState.routes.none { it.toStopId == pickup.id })
+        assertEquals(listOf("future-dropoff"), noFix.mapState.routes.map { it.id })
+    }
 }
