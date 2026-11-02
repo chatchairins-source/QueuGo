@@ -4,6 +4,7 @@ import datetime, hashlib, json, os, re, subprocess, time
 import xml.etree.ElementTree as ET
 
 from adb_install_recovery import install_verified_apk
+from rider_diagnostics_visual_gate import diagnostics_visible
 
 ADB=[str(Path(os.environ["ANDROID_HOME"])/"platform-tools/adb"), "-s", "emulator-5554"]
 PKG="com.queuego.rider"
@@ -226,6 +227,11 @@ def capture_profile_dialog(entry,title,name):
     tap_label(ns,entry)
     ns=wait(lambda xs:any(node_exact(n,title) and rect(n) for n in xs),20)
     assert ns, "Rider read-only profile screen did not open: "+title
+    if entry == "ตรวจสอบระบบ Rider":
+        # Gate the actual installed UI, not only the title or source-level JVM test.
+        # The current emulator may have 0..4 checks ready; Google Maps is optional.
+        ns = wait(diagnostics_visible, 20)
+        assert ns, "Rider diagnostics summary/optional Maps not visible"
     screens.append({"screen":name,**shot(name)})
     closes=[n for n in ns if (n.get("text","").strip()=="ปิด" or n.get("content-desc","").strip() in ("ปิด","ปิดหน้าต่าง","Close")) and rect(n)]
     if closes:
