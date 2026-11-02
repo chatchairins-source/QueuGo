@@ -1,3 +1,9 @@
+## 2026-11-02 Corrected future-stop route visibility — isolated P1
+
+- Native #824 exact head 7b5e8826a768c421e591238fd16cd4d9590ffdf7; #736/#743/#744, #740, CI Recovery, latest actual Native Pilot jobs and existing project memory reviewed before edit. No Production changes.
+- styledRemainingRoutes() previously retained a future route to an outdated address after its stop coordinate changed but ID remained stable. Filter renderable geometry whose endpoint is beyond the existing 750m road-snap tolerance from the current incomplete stop. Two Kotlin/JVM tests added; original model fixtures updated to actual stop endpoints. QA: docs/qa/rider-future-route-endpoint-20261102.md.
+- Final exact-head CI and integrated HEAD recheck required. Offline routing #801, map labels #750, authenticated GPS #822, RPC #740 and physical UI/road-test acceptance remain blocked. No APK publication.
+
 ## 2026-10-31 Live replay patch deployed and Native source integrated
 
 - PR748 merged at a1ed608f after exact2aef96ba CI41192266265 SUCCESS. PR749 exact4561fee4 CI41195321196 completed SUCCESS (full regression/JVM/three APKs/lifecycle/catalog), then owner-authorized narrow migration applied at live version20261031111727. Readback exact MD5e3e9482d533b8d0da8b870d28071252f, original ACL, anon denied, Rider gate retained. Security Advisor counts unchanged32/10/189/1. No order/rate/backfill writes. DO NOT reapply another Production migration merely to duplicate history.
