@@ -12,7 +12,7 @@ import time
 import zlib
 import xml.etree.ElementTree as ET
 
-from adb_install_recovery import install_verified_apk
+from adb_install_recovery import install_verified_apk, start_verified_activity
 
 
 def run(args, **kwargs):
@@ -1404,9 +1404,7 @@ with (output / "emulator.log").open("w") as log:
         elif os.environ.get("QG_MAP_DISPLAY_ONLY") == "1":
             capture_map_display_only()
         else:
-            start = run(adb + ["shell", "am", "start", "-W", "-n", component], capture_output=True, text=True)
-            (output / "activity-start.txt").write_text(start.stdout + start.stderr)
-            assert "Status: ok" in start.stdout, "Activity launch did not succeed"
+            start_verified_activity(adb, component, output)
             time.sleep(10)
             rider_pids = package_pids(package)
             activity = run(adb + ["shell", "dumpsys", "activity", "activities"], capture_output=True, text=True).stdout
