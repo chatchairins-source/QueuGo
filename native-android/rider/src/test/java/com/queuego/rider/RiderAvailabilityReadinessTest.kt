@@ -49,6 +49,19 @@ class RiderAvailabilityReadinessTest {
         assertEquals(9, readiness.readyCount)
         assertFalse(readiness.checks.any { it.key == "google_maps" || it.key == "overlay" })
 
+        // Both optional app conveniences must be independent of the dispatch gate.
+        val externalAppsPresent = riderAvailabilityReadiness(
+            diagnostics = noExternalNavigation.copy(googleMaps = true, overlayReturn = true),
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(blocking = false, items = emptyList()),
+            documentsLoaded = true
+        )
+        assertEquals(readiness.readyCount, externalAppsPresent.readyCount)
+        assertEquals(readiness.totalCount, externalAppsPresent.totalCount)
+        assertEquals(readiness.fullyReady, externalAppsPresent.fullyReady)
+
         // A missing native location prerequisite must still fail closed.
         val missingGpsPermission = riderAvailabilityReadiness(
             diagnostics = noExternalNavigation.copy(locationPermission = false),
