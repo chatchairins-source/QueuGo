@@ -124,6 +124,14 @@ class QueueGoNavigationRouteClientTest {
         }
     }
 
+
+    @Test fun boundedRuralRoadSnapRemainsAcceptedWithoutInventingDestination() {
+        val nearRoad = routeJson.replace("[100.01,13.0]", "[100.016,13.0]")
+        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(nearRoad, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
+        assertEquals(2, leg.segment.points.size)
+    }
+
     @Test fun cleartextServiceUrlIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
             QueueGoNavigationRouteClient("http://maps.queuego.test")
