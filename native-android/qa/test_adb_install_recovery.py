@@ -110,22 +110,23 @@ class EmulatorInstallRecoveryTests(unittest.TestCase):
 
     def test_activity_launch_success_requires_android_status_ok(self):
         with tempfile.TemporaryDirectory() as tmp:
-            invoke = Mock(return_value=result(out="Status: ok\\nActivity: com.queuego.rider/.MainActivity\\n"))
+            invoke = Mock(return_value=result(out="Status: ok\nActivity: com.queuego.rider/.MainActivity\n"))
             start_verified_activity(["adb"], "com.queuego.rider/.MainActivity", tmp,
                                     invoke=invoke)
             self.assertEqual(invoke.call_count, 1)
-            self.assertEqual(invoke.call_args.args[0][-5:],
-                             ["shell", "am", "start", "-W", "-n", "com.queuego.rider/.MainActivity"][-5:])
+            self.assertEqual(invoke.call_args.args[0],
+                             ["adb", "shell", "am", "start", "-W", "-n",
+                              "com.queuego.rider/.MainActivity"])
             self.assertIn("exit_code=0", (Path(tmp) / "activity-start.txt").read_text())
             self.assertFalse((Path(tmp) / "activity-start-diagnostics.json").exists())
 
     def test_activity_exit_224_is_not_silently_retried_and_preserves_am_error(self):
         with tempfile.TemporaryDirectory() as tmp:
             invoke = Mock(side_effect=[
-                result(224, out="Error type 3\\n", err="Activity class does not exist\\n"),
-                result(out="1\\n"),
-                result(out="com.queuego.rider/.MainActivity\\n"),
-                result(out="FATAL EXCEPTION: main\\n"),
+                result(224, out="Error type 3\n", err="Activity class does not exist\n"),
+                result(out="1\n"),
+                result(out="com.queuego.rider/.MainActivity\n"),
+                result(out="FATAL EXCEPTION: main\n"),
             ])
             with self.assertRaisesRegex(RuntimeError, "exit 224"):
                 start_verified_activity(["adb"], "com.queuego.rider/.MainActivity",
@@ -141,8 +142,8 @@ class EmulatorInstallRecoveryTests(unittest.TestCase):
     def test_activity_zero_exit_without_ok_status_is_not_certified(self):
         with tempfile.TemporaryDirectory() as tmp:
             invoke = Mock(side_effect=[
-                result(out="Status: timeout\\n"),
-                result(out="1\\n"), result(out=""), result(out=""),
+                result(out="Status: timeout\n"),
+                result(out="1\n"), result(out=""), result(out=""),
             ])
             with self.assertRaisesRegex(RuntimeError, "not certified"):
                 start_verified_activity(["adb"], "com.queuego.rider/.MainActivity",
