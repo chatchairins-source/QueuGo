@@ -374,6 +374,7 @@ class NavigationRouteCoordinatorTest {
         )
         assertEquals(1, provider.attempts)
         assertEquals(null, noGps.activeLeg)
+        assertTrue(noGps.routeChanged, "removing completed pickup must notify map without GPS")
         assertTrue(noGps.mapState.routes.none { it.toStopId == pickup.id })
         assertEquals(listOf("future-dropoff"), noGps.mapState.routes.map { it.id })
 
@@ -412,6 +413,7 @@ class NavigationRouteCoordinatorTest {
         assertEquals(2, provider.attempts)
         assertEquals(null, failed.activeLeg)
         assertNotNull(failed.routeError)
+        assertTrue(failed.routeChanged, "failed provider must still notify stale-line removal")
         assertTrue(failed.mapState.routes.none { it.toStopId == pickup.id })
         assertEquals(listOf("future-dropoff"), failed.mapState.routes.map { it.id })
     }
@@ -470,6 +472,7 @@ class NavigationRouteCoordinatorTest {
 
         assertEquals(1, provider.attempts)
         assertEquals(null, noFix.activeLeg)
+        assertTrue(noFix.routeChanged, "corrected address must invalidate rendered route without GPS")
         assertTrue(noFix.mapState.routes.none { it.toStopId == pickup.id })
         assertEquals(listOf("future-dropoff"), noFix.mapState.routes.map { it.id })
     }
