@@ -32,7 +32,9 @@ class NavigationOverviewPolicyTest {
                     toStopId = "pickup",
                     points = listOf(
                         NavigationMapPoint(14.9900, 103.1000),
-                        NavigationMapPoint(15.0100, 103.1500)
+                        NavigationMapPoint(15.0100, 103.1500),
+                        // Route can bend east but must terminate at the current pickup.
+                        NavigationMapPoint(15.0000, 103.1100)
                     ),
                     style = NavigationRouteStyle.ACTIVE
                 )
@@ -49,6 +51,37 @@ class NavigationOverviewPolicyTest {
         assertEquals(103.1500, bounds.east, 0.000001)
         assertTrue(bounds.spanMeters > 4_000.0)
         assertTrue(navigationOverviewZoom(bounds) in 10..17)
+    }
+
+    @Test
+    fun staleFutureRouteDoesNotDistortOverviewAfterDestinationCorrection() {
+        val pickup = NavigationMapStop(
+            id = "pickup", sequence = 1, kind = NavigationStopKind.PICKUP,
+            point = NavigationMapPoint(15.0000, 103.1100)
+        )
+        val correctedDrop = NavigationMapStop(
+            id = "drop", sequence = 2, kind = NavigationStopKind.DROPOFF,
+            point = NavigationMapPoint(15.0200, 103.1400)
+        )
+        val staleFutureRoute = NavigationRouteSegment(
+            id = "old-drop-route", toStopId = "drop",
+            points = listOf(
+                NavigationMapPoint(15.0000, 103.1100),
+                NavigationMapPoint(16.0000, 104.0000)
+            )
+        )
+        val state = RiderNavigationMapState(
+            stops = listOf(pickup, correctedDrop),
+            routes = listOf(staleFutureRoute), activeStopId = "pickup"
+        )
+
+        assertTrue(state.styledRemainingRoutes().isEmpty())
+        val bounds = navigationOverviewBounds(state)
+        assertNotNull(bounds)
+        assertEquals(15.0000, bounds!!.south, 0.000001)
+        assertEquals(15.0200, bounds.north, 0.000001)
+        assertEquals(103.1100, bounds.west, 0.000001)
+        assertEquals(103.1400, bounds.east, 0.000001)
     }
 
     @Test
