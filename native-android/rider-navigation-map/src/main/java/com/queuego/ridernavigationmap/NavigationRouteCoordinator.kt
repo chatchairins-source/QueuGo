@@ -7,6 +7,8 @@ private const val ROUTE_PROGRESS_NEAR_ARRIVAL_METERS = 25.0
 private const val ROUTE_PROGRESS_HIDE_REMAINING_METERS = 3.0
 private const val INITIAL_ROUTE_RETRY_BASE_MILLIS = 1_500L
 private const val INITIAL_ROUTE_RETRY_MAX_MILLIS = 12_000L
+// Match the existing QueueGo online route endpoint-snap contract at the provider boundary.
+private const val ROUTE_PROVIDER_ENDPOINT_SNAP_METERS = 750.0
 
 data class NavigationRouteCoordinatorResult(
     val mapState: RiderNavigationMapState,
@@ -53,11 +55,11 @@ class NavigationRouteCoordinator(
         if (activeStop == null) {
             reset()
             return NavigationRouteCoordinatorResult(
-                mapState = state,
+                mapState = state.copy(routes = emptyList(), activeStopId = null),
                 guidance = NavigationGuidanceState(),
                 activeLeg = null,
                 rerouteVersion = 0,
-                routeChanged = false,
+                routeChanged = state.routes.isNotEmpty(),
                 rerouted = false
             )
         }
@@ -114,12 +116,15 @@ class NavigationRouteCoordinator(
             }
             if (now >= nextInitialRouteAttemptAtMillis) {
                 try {
-                    activeLeg = routeProvider.route(
+                    val requestedSegmentId = segmentId(activeStop.id, rerouteVersion)
+                    val candidate = routeProvider.route(
                         from = fix.point,
                         stop = activeStop,
-                        segmentId = segmentId(activeStop.id, rerouteVersion)
+                        segmentId = requestedSegmentId
                     )
-                    visibleActiveSegment = activeLeg?.segment
+                    validateProviderLeg(candidate, requestedSegmentId, fix.point, activeStop)
+                    activeLeg = candidate
+                    visibleActiveSegment = candidate.segment
                     visibleProgressMeters = 0.0
                     resetInitialRouteRetry()
                     routeChanged = true
@@ -147,11 +152,13 @@ class NavigationRouteCoordinator(
         if (leg != null && guidance.shouldReroute) {
             val nextVersion = rerouteVersion + 1
             try {
+                val requestedSegmentId = segmentId(activeStop.id, nextVersion)
                 val replacement = routeProvider.route(
                     from = fix.point,
                     stop = activeStop,
-                    segmentId = segmentId(activeStop.id, nextVersion)
+                    segmentId = requestedSegmentId
                 )
+                validateProviderLeg(replacement, requestedSegmentId, fix.point, activeStop)
                 activeLeg = replacement
                 leg = replacement
                 rerouteVersion = nextVersion
@@ -190,6 +197,37 @@ class NavigationRouteCoordinator(
             rerouted = rerouted,
             routeError = routeError
         )
+    }
+
+    // Validate every provider (including a future offline provider) before it can
+    // become authoritative for the map, guidance or reroute state. An invalid
+    // candidate must be rejected while retaining the last verified active leg.
+    private fun validateProviderLeg(
+        candidate: NavigationRouteLeg,
+        requestedSegmentId: String,
+        from: NavigationMapPoint,
+        stop: NavigationMapStop
+    ) {
+        require(candidate.segment.renderable &&
+            candidate.segment.id == requestedSegmentId &&
+            candidate.segment.toStopId == stop.id) {
+            "QueueGo route provider returned a mismatched segment"
+        }
+        require(navigationHaversineMeters(candidate.segment.points.first(), from) <=
+            ROUTE_PROVIDER_ENDPOINT_SNAP_METERS) {
+            "QueueGo route provider returned a mismatched origin"
+        }
+        require(navigationHaversineMeters(candidate.segment.points.last(), stop.point) <=
+            ROUTE_PROVIDER_ENDPOINT_SNAP_METERS) {
+            "QueueGo route provider returned a mismatched destination"
+        }
+        require(candidate.distanceMeters.isFinite() && candidate.distanceMeters > 0.0) {
+            "QueueGo route provider returned an invalid distance"
+        }
+        require(candidate.durationSeconds == null ||
+            (candidate.durationSeconds.isFinite() && candidate.durationSeconds >= 0.0)) {
+            "QueueGo route provider returned an invalid duration"
+        }
     }
 
     private fun resetInitialRouteRetry() {
