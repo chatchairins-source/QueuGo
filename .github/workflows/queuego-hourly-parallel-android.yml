@@ -1,0 +1,141 @@
+# Hourly smoke checks are deliberately independent of the unreleased Rider PR.
+# GitHub scheduled workflows run from main only; this workflow reads the newest
+# still-open *integrated* owner successor, pins its immutable head SHA, and
+# fans out roles on separate runners. No production APKs are published.
+name: QueueGo Hourly Parallel Android QA
+
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/queuego-hourly-parallel-android.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-hourly-android-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'scheduled' }}
+  cancel-in-progress: false
+
+jobs:
+  resolve-source:
+    name: Resolve exact owner Android PR HEAD
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.target.outputs.sha }}
+      pr: ${{ steps.target.outputs.pr }}
+    steps:
+      - id: target
+        name: Pin newest available integrated native successor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Only first-party PRs: do not execute fork-provided code with a token.
+          for number in 824 823 821 819 736; do
+            if ! json="$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$number" 2>/dev/null)"; then
+              continue
+            fi
+            state="$(jq -r '.state' <<< "$json")"
+            owner_repo="$(jq -r '.head.repo.full_name // ""' <<< "$json")"
+            source_sha="$(jq -r '.head.sha // ""' <<< "$json")"
+            if [[ "$state" == open && "$owner_repo" == "$GITHUB_REPOSITORY" && "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+              echo "pr=$number" >> "$GITHUB_OUTPUT"
+              {
+                echo "### QueueGo hourly Android source"
+                echo "PR #$number / SHA \`$source_sha\`"
+                echo "Independent Customer, Merchant and Rider APK/JVM checks are smoke tests only."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+          echo "::error::No trusted open Android PR found among #824,#823,#821,#819,#736; update the successor list explicitly."
+          exit 1
+
+  three-role-android:
+    name: ${{ matrix.role }} Kotlin/JVM + APK
+    needs: resolve-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        role: [customer, merchant, rider]
+    steps:
+      - name: Checkout the same immutable PR HEAD for all roles
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-source.outputs.sha }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Run role-specific JVM regression and build debug APK
+        run: gradle -p native-android ":${{ matrix.role }}:testDebugUnitTest" ":${{ matrix.role }}:assembleDebug" --no-daemon --stacktrace
+      - name: Check actual APK ZIP/16KB and record exact SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="native-android/${{ matrix.role }}/build/outputs/apk/debug/${{ matrix.role }}-debug.apk"
+          test -s "$apk"
+          unzip -t "$apk" >/dev/null
+          python3 native-android/qa/verify-16kb-page-size.py "$apk"
+          sha256sum "$apk" > "$RUNNER_TEMP/${{ matrix.role }}-sha256.txt"
+          printf 'PR #%s Source %s Role %s\n' "${{ needs.resolve-source.outputs.pr }}" "${{ needs.resolve-source.outputs.sha }}" "${{ matrix.role }}" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/${{ matrix.role }}-sha256.txt" >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve independently verifiable results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hourly-${{ matrix.role }}-unit-and-sha
+          path: |
+            native-android/${{ matrix.role }}/build/test-results/testDebugUnitTest/
+            native-android/${{ matrix.role }}/build/reports/tests/testDebugUnitTest/
+            ${{ runner.temp }}/${{ matrix.role }}-sha256.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+  rpc-catalog:
+    name: Native RPC catalog (isolated PostgreSQL)
+    needs: resolve-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_rpc_catalog_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_rpc_catalog_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-source.outputs.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Test live Native contracts against isolated PostgreSQL
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_rpc_catalog_gate
+        run: node tests/native-rpc-catalog-postgres.cjs
