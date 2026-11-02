@@ -172,6 +172,28 @@ class VisualReviewWorkflowTests(unittest.TestCase):
         self.assertIn("QG_REQUIRE_BUNDLED_COUNTRY:", self.workflow)
         self.assertIn("verify-bundled-thailand-apks.py --source-sha", self.workflow)
 
+
+    def test_country_pin_is_passed_to_actual_rider_capture_not_credential_check(self):
+        # Run 41357466942: the SHA pin was scoped to credential-check only,
+        # so capture failed before emulator screenshot collection.
+        branch = "work-qa-country-pin-capture-env-20261102"
+        expected = "15b1861a1336d35119a5cc1564796b48dfe33cfd5ad35046f3bdfdeb7e8ef4ac"
+        self.assertIn("      - " + branch, self.workflow)
+        self.assert_branch_in_python_gate(branch, 'all_roles = (', 'ready = (')
+        self.assert_branch_in_python_gate(branch, 'capture_requested = (', 'report =')
+        rider = self.workflow.split(
+            "- name: Capture authenticated Rider views on Android Emulator", 1
+        )[1].split("- name: Capture authenticated Merchant views on Android Emulator", 1)[0]
+        credentials = self.workflow.split(
+            "- name: Check review secrets without printing their values", 1
+        )[1].split("- name: Save review readiness", 1)[0]
+        self.assertIn("QG_EXPECTED_COUNTRY_SHA256: " + expected, rider)
+        self.assertNotIn("QG_EXPECTED_COUNTRY_SHA256:", credentials)
+        self.assertIn("QG_REQUIRE_BUNDLED_COUNTRY:", rider)
+        self.assertIn("QG_DEBUG_MAP_ARCHIVE:", rider)
+        self.assertIn("github.ref_name == '" + branch + "'", rider)
+        self.assertIn("run: python3 native-android/qa/capture-rider-authenticated-review.py", rider)
+
     def test_all_role_dispatch_uses_any_available_test_account(self):
         self.assertIn('os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"', self.workflow)
         self.assertIn('any(role["ready"] for role in roles.values())', self.workflow)
