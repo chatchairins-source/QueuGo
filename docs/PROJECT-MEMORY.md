@@ -1,3 +1,10 @@
+## 2026-11-02 Rider provider boundary integrity — PR #836 (unreleased)
+
+- Started from exact Native #824 head 7b5e8826a768c421e591238fd16cd4d9590ffdf7 after rechecking #736/#743/#744, Issue #740, CI Recovery issues, actual Native Pilot jobs and this file. Source-only isolated branch, no Production change.
+- P1: NavigationRouteCoordinator previously accepted any provider leg as active without matching requested segment/stop, endpoints or distance/duration. Validate before committing active/reroute leg; preserve last verified route on rejected reroute. Clear route geometry when no delivery stops remain. Four Kotlin/JVM regressions; docs/qa/rider-provider-leg-contract-20261102.md.
+- Exact final-head hosted CI required, including 3 role builds/JVM and isolated RPC; do not merge or claim runtime UI acceptance from source tests alone. Issue #801 nationwide offline routing, #750 road labels, #822 GPS authenticated state, #740 missing RPC, actual emulator/screenshots and physical road acceptance remain BLOCKED.
+- No migration, Auth/RLS/financial/order mutation, APK publication or release authorization from this PR.
+
 ## 2026-10-31 Live replay patch deployed and Native source integrated
 
 - PR748 merged at a1ed608f after exact2aef96ba CI41192266265 SUCCESS. PR749 exact4561fee4 CI41195321196 completed SUCCESS (full regression/JVM/three APKs/lifecycle/catalog), then owner-authorized narrow migration applied at live version20261031111727. Readback exact MD5e3e9482d533b8d0da8b870d28071252f, original ACL, anon denied, Rider gate retained. Security Advisor counts unchanged32/10/189/1. No order/rate/backfill writes. DO NOT reapply another Production migration merely to duplicate history.
