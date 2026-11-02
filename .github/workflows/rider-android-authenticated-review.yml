@@ -8,6 +8,7 @@ on:
       - work-native-web-parity-20261026
       - work-native-pos-tax-foundation-20261029
       - work-native-rider-nav-unified-offline-20261030
+      - work-rider-diagnostics-visual-gate-20261102
 
 # All runs reuse the same existing review account. Production enforces one
 # active session, so parallel workers must never displace each other's login.
@@ -51,7 +52,7 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("ready=" + str(ready).lower() + "\n")
           capture_requested = (os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
-              or os.environ.get("GITHUB_REF_NAME") == "work-native-rider-auth-review-20261024" or merchant_only)
+              or os.environ.get("GITHUB_REF_NAME") in ("work-native-rider-auth-review-20261024", "work-rider-diagnostics-visual-gate-20261102") or merchant_only)
           report = {"status": "ready" if ready else "skipped",
               "scope": "credential presence only; not authenticated visual acceptance",
               "roles": roles, "capture_requested": capture_requested,
@@ -69,7 +70,7 @@ jobs:
 
   capture:
     needs: credential-check
-    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
+    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-rider-diagnostics-visual-gate-20261102' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -126,6 +127,8 @@ jobs:
                   print(f'::warning::Firebase config has no {package} Android client; that app will build without physical background-push certification')
           PY
           rm -f "$tmp"
+      - name: Verify Rider diagnostics visual gate regression
+        run: python3 native-android/qa/test_rider_diagnostics_visual_gate.py
       - name: Build actual Rider and Merchant debug APKs
         run: gradle -p native-android :rider:assembleDebug :merchant:assembleDebug --no-build-cache --stacktrace
       - name: Enable runner-only Android acceleration
