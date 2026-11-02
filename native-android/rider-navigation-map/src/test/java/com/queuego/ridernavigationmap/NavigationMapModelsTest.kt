@@ -13,10 +13,10 @@ class NavigationMapModelsTest {
         completed = completed
     )
 
-    private fun route(id: String, toStopId: String) = NavigationRouteSegment(
+    private fun route(id: String, destination: NavigationMapStop) = NavigationRouteSegment(
         id = id,
-        toStopId = toStopId,
-        points = listOf(NavigationMapPoint(15.0, 103.1), NavigationMapPoint(15.001, 103.101))
+        toStopId = destination.id,
+        points = listOf(NavigationMapPoint(15.0, 103.1), destination.point)
     )
 
     @Test fun firstIncompleteStopBecomesActiveWhenCallerDoesNotOverride() {
@@ -29,7 +29,7 @@ class NavigationMapModelsTest {
     @Test fun currentLegIsDarkAndLaterLegsStayFaded() {
         val state = RiderNavigationMapState(
             stops = listOf(stop("shop-1", 1), stop("shop-2", 2), stop("customer", 3)),
-            routes = listOf(route("leg-1", "shop-1"), route("leg-2", "shop-2"), route("leg-3", "customer")),
+            routes = listOf(route("leg-1", stop("shop-1", 1)), route("leg-2", stop("shop-2", 2)), route("leg-3", stop("customer", 3))),
             activeStopId = "shop-1"
         )
         val styled = state.styledRemainingRoutes()
@@ -40,7 +40,7 @@ class NavigationMapModelsTest {
     @Test fun completedStopAndItsRouteDisappearWithoutChangingLaterSequence() {
         val state = RiderNavigationMapState(
             stops = listOf(stop("shop-1", 1, completed = true), stop("shop-2", 2), stop("customer", 3)),
-            routes = listOf(route("leg-1", "shop-1"), route("leg-2", "shop-2"), route("leg-3", "customer"))
+            routes = listOf(route("leg-1", stop("shop-1", 1)), route("leg-2", stop("shop-2", 2)), route("leg-3", stop("customer", 3)))
         )
         assertEquals(listOf(2, 3), state.remainingStops().map { it.sequence })
         assertEquals(listOf("shop-2", "customer"), state.styledRemainingRoutes().map { it.toStopId })
@@ -78,5 +78,35 @@ class NavigationMapModelsTest {
         assertEquals(1, zones.size)
         assertEquals("cell-a", zones.single().id)
         assertEquals(1, zones.single().level)
+    }
+
+    @Test fun correctedFutureDestinationHidesStaleRouteButKeepsCurrentPickup() {
+        val pickup = stop("shop-1", 1)
+        val future = stop("customer", 3)
+        val original = RiderNavigationMapState(
+            stops = listOf(pickup, future),
+            routes = listOf(route("pickup-line", pickup), route("future-line", future)),
+            activeStopId = pickup.id
+        )
+        assertEquals(2, original.styledRemainingRoutes().size)
+        val corrected = original.copy(
+            stops = listOf(pickup, future.copy(point = NavigationMapPoint(15.50, 103.50)))
+        )
+        assertEquals(listOf("pickup-line"), corrected.styledRemainingRoutes().map { it.id })
+        assertEquals(NavigationRouteStyle.ACTIVE, corrected.styledRemainingRoutes().single().style)
+    }
+
+    @Test fun validRoadSnapNearCorrectedStopRemainsVisible() {
+        val pickup = stop("shop-1", 1)
+        val future = stop("customer", 3)
+        val state = RiderNavigationMapState(
+            stops = listOf(pickup, future.copy(point = NavigationMapPoint(
+                future.point.latitude + 0.002, future.point.longitude
+            ))),
+            routes = listOf(route("future-line", future)),
+            activeStopId = pickup.id
+        )
+        assertEquals(listOf("future-line"), state.styledRemainingRoutes().map { it.id })
+        assertEquals(NavigationRouteStyle.FUTURE, state.styledRemainingRoutes().single().style)
     }
 }
