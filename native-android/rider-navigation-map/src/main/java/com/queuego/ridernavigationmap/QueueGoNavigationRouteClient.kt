@@ -200,9 +200,21 @@ class QueueGoNavigationRouteClient(
             }
         }
 
-        val distance = route.optDouble("distance", Double.NaN)
+        // A syntactically valid LineString can still contain a disconnected jump
+        // and return a small, apparently trustworthy ETA. Its measured polyline
+        // cannot be materially longer than the server's declared road distance.
+        // A simplified geometry may be shorter than the road, never much longer.
+        val geometryDistance = points.zipWithNext().sumOf { (a, b) ->
+            navigationHaversineMeters(a, b)
+        }
+        val reportedDistance = route.optDouble("distance", Double.NaN)
             .takeIf { it.isFinite() && it > 0.0 }
-            ?: points.zipWithNext().sumOf { (a, b) -> navigationHaversineMeters(a, b) }
+        if (reportedDistance != null) {
+            require(geometryDistance.isFinite() && reportedDistance >= geometryDistance * 0.90) {
+                "QueueGo route summary contradicts its road geometry"
+            }
+        }
+        val distance = reportedDistance ?: geometryDistance
         val duration = route.optDouble("duration", Double.NaN)
             .takeIf { it.isFinite() && it >= 0.0 }
             ?: route.optDouble("estimatedDuration", Double.NaN)
