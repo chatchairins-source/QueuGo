@@ -250,15 +250,21 @@ class QueueGoNavigationRouteClient(
     }
 
     private fun appendCoordinates(output: MutableList<NavigationMapPoint>, coordinates: JSONArray?) {
-        if (coordinates == null) return
+        require(coordinates != null && coordinates.length() >= 2) {
+            "QueueGo route coordinates are missing"
+        }
         for (index in 0 until coordinates.length()) {
-            val pair = coordinates.optJSONArray(index) ?: continue
-            if (pair.length() < 2) continue
+            // Skipping a malformed interior point would connect two non-adjacent
+            // road vertices with an invented straight line. Reject the entire leg.
+            val pair = coordinates.optJSONArray(index)
+                ?: error("QueueGo route contains a malformed coordinate")
+            require(pair.length() >= 2) { "QueueGo route coordinate is incomplete" }
             val point = NavigationMapPoint(
                 latitude = pair.optDouble(1, Double.NaN),
                 longitude = pair.optDouble(0, Double.NaN)
             )
-            if (point.valid && output.lastOrNull() != point) {
+            require(point.valid) { "QueueGo route contains an invalid coordinate" }
+            if (output.lastOrNull() != point) {
                 require(output.size < QUEUEGO_ROUTE_MAX_POINTS) {
                     "QueueGo route has too many points"
                 }
