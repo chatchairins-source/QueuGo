@@ -19,6 +19,7 @@ class NavigationRouteCoordinatorTest {
         var attempts = 0
         var failNext = false
         var cancelNext = false
+        var returnedLeg: NavigationRouteLeg? = null
 
         override suspend fun route(
             from: NavigationMapPoint,
@@ -35,6 +36,7 @@ class NavigationRouteCoordinatorTest {
                 error("route unavailable")
             }
             calls += Call(from, stop.id, segmentId)
+            returnedLeg?.let { return it }
             val mid = NavigationMapPoint(
                 latitude = (from.latitude + stop.point.latitude) / 2.0,
                 longitude = (from.longitude + stop.point.longitude) / 2.0
@@ -470,5 +472,91 @@ class NavigationRouteCoordinatorTest {
         assertEquals(null, noFix.activeLeg)
         assertTrue(noFix.mapState.routes.none { it.toStopId == pickup.id })
         assertEquals(listOf("future-dropoff"), noFix.mapState.routes.map { it.id })
+    }
+
+    @Test fun completedDeliveryClearsAllOldRoutesAndNavigationState() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 100_000L })
+        val active = coordinator.synchronize(state())
+        val completed = coordinator.synchronize(
+            active.mapState.copy(
+                stops = listOf(pickup.copy(completed = true), customer.copy(completed = true)),
+                activeStopId = customer.id
+            )
+        )
+        assertTrue(completed.mapState.routes.isEmpty())
+        assertEquals(null, completed.mapState.activeStopId)
+        assertEquals(null, completed.activeLeg)
+        assertTrue(completed.routeChanged)
+        assertEquals(1, provider.attempts)
+    }
+
+    @Test fun wrongStopOrSegmentFromProviderCannotBecomeActiveGuidance() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 101_000L })
+        provider.returnedLeg = NavigationRouteLeg(
+            segment = NavigationRouteSegment(
+                id = "navigation:pickup-1:0",
+                toStopId = "other-order",
+                points = listOf(NavigationMapPoint(13.0, 100.0), pickup.point)
+            ),
+            distanceMeters = 1200.0,
+            durationSeconds = 240.0
+        )
+        val rejected = coordinator.synchronize(state())
+        assertEquals(null, rejected.activeLeg)
+        assertTrue(rejected.routeError!!.contains("mismatched segment"))
+        assertEquals(listOf("future-dropoff"), rejected.mapState.routes.map { it.id })
+    }
+
+    @Test fun providerRouteWithWrongOriginOrDestinationIsRejected() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 102_000L })
+        provider.returnedLeg = NavigationRouteLeg(
+            segment = NavigationRouteSegment(
+                id = "navigation:pickup-1:0",
+                toStopId = pickup.id,
+                points = listOf(NavigationMapPoint(14.0, 101.0), pickup.point)
+            ),
+            distanceMeters = 1200.0,
+            durationSeconds = 240.0
+        )
+        val rejected = coordinator.synchronize(state())
+        assertEquals(null, rejected.activeLeg)
+        assertTrue(rejected.routeError!!.contains("mismatched origin"))
+        assertEquals(listOf("future-dropoff"), rejected.mapState.routes.map { it.id })
+    }
+
+    @Test fun invalidRerouteCannotReplaceLastVerifiedActiveLeg() = runBlocking {
+        var now = 103_000L
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { now })
+        val original = coordinator.synchronize(state())
+        val verified = original.activeLeg!!
+        provider.returnedLeg = NavigationRouteLeg(
+            segment = NavigationRouteSegment(
+                id = "navigation:pickup-1:1",
+                toStopId = pickup.id,
+                points = listOf(NavigationMapPoint(13.0, 100.0), NavigationMapPoint(14.0, 101.0))
+            ),
+            distanceMeters = 1200.0,
+            durationSeconds = 240.0
+        )
+        val offRoute = original.mapState.copy(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(12.9980, 100.0050),
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 6f
+            )
+        )
+        coordinator.synchronize(offRoute)
+        now += 3_000L
+        val rejected = coordinator.synchronize(offRoute)
+        assertEquals(2, provider.attempts)
+        assertEquals(verified, rejected.activeLeg)
+        assertFalse(rejected.rerouted)
+        assertEquals(0, rejected.rerouteVersion)
+        assertTrue(rejected.routeError!!.contains("mismatched destination"))
+        assertEquals(pickup.id, rejected.mapState.routes.first().toStopId)
     }
 }
