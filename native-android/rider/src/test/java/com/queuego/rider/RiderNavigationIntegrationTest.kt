@@ -1,5 +1,8 @@
 package com.queuego.rider
 
+import com.queuego.ridernavigationmap.NavigationMapPoint
+import com.queuego.ridernavigationmap.NavigationRouteSegment
+import com.queuego.ridernavigationmap.NavigationRouteStyle
 import com.queuego.ridernavigationmap.NavigationStopKind
 import com.queuego.ridernavigationmap.NavigationViewMode
 import org.junit.Assert.assertEquals
@@ -27,6 +30,40 @@ class RiderNavigationIntegrationTest {
         arrivedShopAt = null,
         arrivedCustomerAt = null
     )
+
+
+    private fun futureSegment(id: String) = NavigationRouteSegment(
+        id = id,
+        toStopId = "drop:order-1",
+        points = listOf(
+            NavigationMapPoint(14.99, 103.10),
+            NavigationMapPoint(15.00, 103.11)
+        ),
+        style = NavigationRouteStyle.FUTURE
+    )
+
+    @Test fun transientNetworkFailureRetainsVerifiedSameTopologyFutureGeometry() {
+        val prior = listOf(futureSegment("future:pickup:order-1>drop:order-1"))
+        val selected = riderFutureRoutesAfterRefresh(previous = prior, refreshed = emptyList())
+        assertEquals(prior, selected)
+        // Persisting the selected list must not wipe the last usable geometry.
+        RiderNavigationSessionRegistry.saveFutureRoutes("rider", "topology-a", selected)
+        assertEquals(prior, RiderNavigationSessionRegistry.load("rider", "topology-a")!!.futureRoutes)
+        RiderNavigationSessionRegistry.clearForTests()
+    }
+
+    @Test fun successfulRefreshReplacesCachedFutureGeometry() {
+        val old = listOf(futureSegment("old"))
+        val updated = listOf(futureSegment("new"))
+        assertEquals(updated, riderFutureRoutesAfterRefresh(previous = old, refreshed = updated))
+    }
+
+    @Test fun coldOfflineStartNeverInventsFutureRouteGeometry() {
+        assertTrue(riderFutureRoutesAfterRefresh(
+            previous = emptyList(),
+            refreshed = emptyList()
+        ).isEmpty())
+    }
 
     @Test fun normalOrderKeepsStablePickupAndDropNumbers() {
         val beforePickup = riderNavigationStops(job(), emptyList(), emptyList())
