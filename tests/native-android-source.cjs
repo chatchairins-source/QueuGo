@@ -26,7 +26,7 @@ ok(!!roadTestPublish && !roadTestPublish[1].includes(rideReleaseCandidateBranch)
 ok(nativePilotWorkflow.includes('group: queuego-native-${{ github.ref }}')&&nativePilotWorkflow.includes('cancel-in-progress: false')&&mapEngineWorkflow.includes('group: queuego-map-engine-${{ github.ref }}')&&mapEngineWorkflow.includes('cancel-in-progress: false'),'Native Pilot and Map Engine exact-head jobs must finish when the successor advances, while newer work waits');
 
 
-const parallelRoleStart=nativePilotWorkflow.indexOf('  parallel-role-smoke:\\n'.replace('\\n','\n'));
+const parallelRoleStart=nativePilotWorkflow.indexOf('  parallel-role-smoke:\n');
 const parallelRoleEnd=nativePilotWorkflow.indexOf('\n  native-pilot:',parallelRoleStart);
 const parallelRoleJob=parallelRoleStart >= 0 && parallelRoleEnd > parallelRoleStart
   ? nativePilotWorkflow.slice(parallelRoleStart,parallelRoleEnd) : '';
