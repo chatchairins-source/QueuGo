@@ -46,10 +46,10 @@ internal data class RiderDiagnosticsSnapshot(
     val backgroundReliabilityReady: Boolean
         get() = batteryOptimizationExempt && !backgroundRestricted
     val readyForDelivery: Boolean
-        get() = networkReady && locationPermission && locationServices && notifications && googleMaps
+        get() = networkReady && locationPermission && locationServices && notifications
 
     val essentialPassedCount: Int
-        get() = listOf(networkReady, locationPermission, locationServices, notifications, googleMaps).count { it }
+        get() = listOf(networkReady, locationPermission, locationServices, notifications).count { it }
 }
 
 internal fun readRiderDiagnostics(context: Context): RiderDiagnosticsSnapshot {
@@ -156,7 +156,7 @@ internal fun RiderDiagnosticsScreen(
                     fontSize = 16.sp
                 )
                 Text(
-                    "ผ่าน ${diagnostics.essentialPassedCount}/5 รายการหลัก",
+                    "ผ่าน ${diagnostics.essentialPassedCount}/4 รายการหลัก",
                     color = QgMuted,
                     fontSize = 10.sp,
                     modifier = Modifier.padding(top = 3.dp)
@@ -177,14 +177,21 @@ internal fun RiderDiagnosticsScreen(
         RiderDiagnosticRow("การแจ้งเตือน", "ใช้รับข้อเสนองานและสถานะสำคัญ", diagnostics.notifications) {
             launch(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
         }
-        RiderDiagnosticRow("Google Maps", "QueueGo ใช้แอป Google Maps สำหรับการนำทางภายนอก", diagnostics.googleMaps) {
+        Spacer(Modifier.height(8.dp))
+        Text("ตัวเลือกเสริมสำหรับการนำทางและการทำงานเบื้องหลัง", color = QgMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        RiderDiagnosticRow(
+            "Google Maps (ทางเลือก)",
+            "ติดตั้งเฉพาะเมื่อต้องการเปิดนำทางในแอปภายนอก; แผนที่ QueueGo ไม่ต้องใช้ Google Maps",
+            diagnostics.googleMaps,
+            required = false
+        ) {
             launch(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.maps")))
         }
-
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(2.dp))
         Text("แนะนำเพื่อใช้งานลื่นขึ้น", color = QgMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
-        RiderDiagnosticRow("ปุ่มลอยกลับ QueueGo", "ช่วยกลับจาก Google Maps เข้างานเดิมได้เร็ว", diagnostics.overlayReturn, required = false) {
+        RiderDiagnosticRow("ปุ่มลอยกลับ QueueGo", "ช่วยกลับเข้า QueueGo หลังสลับไปแอปนำทางภายนอก", diagnostics.overlayReturn, required = false) {
             launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
         }
         RiderDiagnosticRow("ไมโครโฟน", "ใช้สำหรับโทรเสียงใน QueueGo", diagnostics.microphone, required = false) {
@@ -200,7 +207,7 @@ internal fun RiderDiagnosticsScreen(
         }
         RiderDiagnosticRow(
             "การทำงานเบื้องหลัง",
-            "Android ไม่ควรจำกัด QueueGo Rider ขณะสลับไป Google Maps หรือปิดหน้าจอ",
+            "Android ไม่ควรจำกัด QueueGo Rider ขณะสลับแอปหรือปิดหน้าจอ",
             !diagnostics.backgroundRestricted,
             required = false
         ) {
