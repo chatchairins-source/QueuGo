@@ -21,6 +21,9 @@ private const val QUEUEGO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024
 private const val QUEUEGO_ROUTE_MAX_POINTS = 12_000
 private const val QUEUEGO_ROUTE_MAX_STEPS = 2_048
 private const val QUEUEGO_ROUTE_MAX_SPEED_LIMIT_INTERVALS = 4_096
+// A routed line must actually connect to the requested delivery endpoints. Snapping
+// beyond this bound is unsafe for turn-by-turn guidance; never draw an unrelated road.
+private const val QUEUEGO_ROUTE_MAX_ENDPOINT_SNAP_METERS = 750.0
 private val QUEUEGO_JSON = "application/json; charset=utf-8".toMediaType()
 
 private fun InputStream.readQueueGoRouteResponseBounded(): String {
@@ -77,7 +80,7 @@ class QueueGoNavigationRouteClient(
             .url(routeUrl)
             .post(body.toRequestBody(QUEUEGO_JSON))
             .build()
-        return parseQueueGoRoute(executeCancellable(request), stop, segmentId)
+        return parseQueueGoRoute(executeCancellable(request), stop, segmentId, from = from)
     }
 
     private fun normalizeBaseUrl(raw: String) = run {
@@ -146,7 +149,8 @@ class QueueGoNavigationRouteClient(
     internal fun parseQueueGoRoute(
         raw: String,
         stop: NavigationMapStop,
-        segmentId: String
+        segmentId: String,
+        from: NavigationMapPoint? = null
     ): NavigationRouteLeg {
         val root = JSONObject(raw)
         if (root.optString("code", "Ok") != "Ok") {
@@ -160,6 +164,17 @@ class QueueGoNavigationRouteClient(
         val points = mutableListOf<NavigationMapPoint>()
         appendCoordinates(points, geometry.optJSONArray("coordinates"))
         if (points.size < 2) error("QueueGo route geometry is not renderable")
+        // The backend may return a syntactically valid route for a different point
+        // after a stale response, graph-snap failure, or unexpected service result.
+        // Fail closed instead of guiding a Rider to an unrelated road/address.
+        require(navigationHaversineMeters(points.last(), stop.point) <= QUEUEGO_ROUTE_MAX_ENDPOINT_SNAP_METERS) {
+            "QueueGo route does not reach the requested stop"
+        }
+        if (from != null) {
+            require(from.valid && navigationHaversineMeters(points.first(), from) <= QUEUEGO_ROUTE_MAX_ENDPOINT_SNAP_METERS) {
+                "QueueGo route does not start near the Rider"
+            }
+        }
 
         val instructions = mutableListOf<NavigationRouteInstruction>()
         val legs = route.optJSONArray("legs")
