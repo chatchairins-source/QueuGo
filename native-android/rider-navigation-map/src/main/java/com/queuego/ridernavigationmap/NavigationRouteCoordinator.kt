@@ -63,9 +63,11 @@ class NavigationRouteCoordinator(
 
         // A corrected pickup/drop-off may keep its business stop ID but move to
         // another coordinate. The old route must never remain authoritative for it.
-        val destinationChanged = activeStopId == activeStop.id &&
+        val previousActiveStopId = activeStopId
+        val activeStopChanged = previousActiveStopId != activeStop.id
+        val destinationChanged = !activeStopChanged &&
             activeStopPoint != null && activeStopPoint != activeStop.point
-        if (activeStopId != activeStop.id || activeStopPoint != activeStop.point) {
+        if (activeStopChanged || activeStopPoint != activeStop.point) {
             activeStopId = activeStop.id
             activeStopPoint = activeStop.point
             activeLeg = null
@@ -75,11 +77,17 @@ class NavigationRouteCoordinator(
             resetInitialRouteRetry()
             progressTracker.reset()
         }
-        // Drop the stale rendered active leg even when GPS is unavailable or the
-        // fresh online route fails. Keep only unrelated future legs.
-        val safeState = if (destinationChanged) {
-            state.copy(routes = state.routes.filterNot { it.toStopId == activeStop.id })
-        } else state
+        // A completed pickup can promote a new active stop while GPS is missing
+        // or the new route API fails. Never leave the old pickup's active line
+        // on screen as though it still were the current destination.
+        // Preserve the new stop's previously verified FUTURE leg until rerouted.
+        val safeState = when {
+            destinationChanged ->
+                state.copy(routes = state.routes.filterNot { it.toStopId == activeStop.id })
+            activeStopChanged && previousActiveStopId != null ->
+                state.copy(routes = state.routes.filterNot { it.toStopId == previousActiveStopId })
+            else -> state
+        }
 
         val fix = safeState.rider?.takeIf { it.point.valid }
             ?: return NavigationRouteCoordinatorResult(
