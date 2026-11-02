@@ -85,6 +85,37 @@ class NavigationOverviewPolicyTest {
     }
 
     @Test
+    fun validFutureRouteBendStillExpandsOverview() {
+        val pickup = NavigationMapStop(
+            id = "pickup", sequence = 1, kind = NavigationStopKind.PICKUP,
+            point = NavigationMapPoint(15.0000, 103.1100)
+        )
+        val drop = NavigationMapStop(
+            id = "drop", sequence = 2, kind = NavigationStopKind.DROPOFF,
+            point = NavigationMapPoint(15.0200, 103.1400)
+        )
+        val state = RiderNavigationMapState(
+            stops = listOf(pickup, drop),
+            routes = listOf(
+                NavigationRouteSegment(
+                    id = "future-valid", toStopId = "drop",
+                    points = listOf(
+                        pickup.point,
+                        NavigationMapPoint(15.0100, 103.1600),
+                        drop.point
+                    )
+                )
+            ),
+            activeStopId = "pickup"
+        )
+        assertEquals(listOf("future-valid"), state.styledRemainingRoutes().map { it.id })
+        val bounds = navigationOverviewBounds(state)
+        assertNotNull(bounds)
+        assertEquals(103.1600, bounds!!.east, 0.000001)
+        assertEquals(15.0200, bounds.north, 0.000001)
+    }
+
+    @Test
     fun completedStopsRemainInsideOverviewWithTheirMapPins() {
         val state = RiderNavigationMapState(
             stops = listOf(
