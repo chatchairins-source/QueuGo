@@ -68,6 +68,70 @@ class QueueGoNavigationRouteClientTest {
         }
     }
 
+
+    @Test fun unrelatedDestinationGeometryIsRejectedEvenWithSuccessfulResponseCode() {
+        val unrelated = routeJson.replace("[100.01,13.0]", "[101.01,13.0]")
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(unrelated, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
+        }
+    }
+
+    @Test fun routeFromUnrelatedOriginIsRejectedBeforeNavigationCanDrawIt() {
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(routeJson, stop, "leg-1", from = NavigationMapPoint(14.0, 100.0))
+        }
+    }
+
+    @Test fun smallRoadSnapNearRequestedEndpointsRemainsValid() {
+        val snapped = routeJson
+            .replace("[100.0,13.0]", "[100.0004,13.0]")
+            .replace("[100.01,13.0]", "[100.0104,13.0]")
+        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(snapped, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
+        assertEquals(2, leg.segment.points.size)
+    }
+
+    @Test fun routeEndingBeyondSnapBoundaryIsRejectedInsteadOfMisleadingTheRider() {
+        val farEnd = routeJson.replace("[100.01,13.0]", "[100.03,13.0]")
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(farEnd, stop, "leg-1")
+        }
+    }
+
+
+    @Test fun malformedInteriorCoordinateCannotBecomeInventedStraightLine() {
+        val malformed = routeJson.replace(
+            "[[100.0,13.0],[100.01,13.0]]",
+            "[[100.0,13.0],[\"invalid\",13.0],[100.01,13.0]]"
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun missingInteriorCoordinateArrayIsRejectedRatherThanSkipped() {
+        val malformed = routeJson.replace(
+            "[[100.0,13.0],[100.01,13.0]]",
+            "[[100.0,13.0],null,[100.01,13.0]]"
+        )
+        assertThrows(IllegalStateException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+
+    @Test fun boundedRuralRoadSnapRemainsAcceptedWithoutInventingDestination() {
+        val nearRoad = routeJson.replace("[100.01,13.0]", "[100.016,13.0]")
+        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(nearRoad, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
+        assertEquals(2, leg.segment.points.size)
+    }
+
     @Test fun cleartextServiceUrlIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
             QueueGoNavigationRouteClient("http://maps.queuego.test")
