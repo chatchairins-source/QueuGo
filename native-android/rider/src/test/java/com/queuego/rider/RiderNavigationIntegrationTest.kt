@@ -135,6 +135,17 @@ class RiderNavigationIntegrationTest {
         ).isEmpty())
     }
 
+    @Test fun activeStyledOrWrongDestinationFreshLegCannotOverwriteFutureCache() {
+        val prior = futureSegment()
+        val activeStyled = prior.copy(style = NavigationRouteStyle.ACTIVE)
+        val wrongDestination = prior.copy(toStopId = "drop:other")
+        assertEquals(listOf(prior), riderFutureRoutesAfterRefresh(
+            previous = listOf(prior),
+            refreshed = listOf(activeStyled, wrongDestination),
+            stops = futureStops().take(2)
+        ))
+    }
+
     @Test fun completedOrRemovedStopNeverRetainsObsoleteFutureLeg() {
         val first = futureSegment()
         val second = futureSegment("drop:order-1", "drop:order-2")
