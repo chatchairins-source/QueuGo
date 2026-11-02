@@ -25,10 +25,23 @@ test('selects newest deep trusted Native successor rather than static #824', () 
   assert.equal(result.sha, p826.head.sha);
   assert.deepEqual(result.chain, [736, 819, 821, 823, 824, 826]);
 });
-test('new unrelated or shallow sibling cannot replace deep Rider lineage', () => {
+test('new unrelated or older shallow sibling cannot replace latest Rider lineage', () => {
   const unrelated = pr(900, 'work-merchant-standalone', 'main', 'open', repository, '2026-11-03T01:00:00Z');
-  const sibling = pr(901, 'work-native-unrelated-visual', nativeBranch, 'open', repository, '2026-11-03T02:00:00Z');
+  const sibling = pr(901, 'work-native-unrelated-visual', nativeBranch, 'open', repository, '2026-11-01T02:00:00Z');
   assert.equal(resolveHourlyNativePr(root, [[unrelated, sibling, p819, p821, p823, p824, p826]], repository).pr, 826);
+});
+test('newest open Native successor beats older much deeper QA lineage', () => {
+  const olderChain = [];
+  let parent = nativeBranch;
+  for (let i = 0; i < 12; i++) {
+    const branch = 'old-visual-qa-' + i;
+    olderChain.push(pr(770 + i, branch, parent, 'open', repository, '2026-11-01T00:00:00Z'));
+    parent = branch;
+  }
+  const newest = {...p826, created_at: '2026-11-02T07:24:00Z'};
+  const result = resolveHourlyNativePr(root, [[...olderChain, p819, p821, p823, p824, newest]], repository);
+  assert.equal(result.pr, 826);
+  assert.deepEqual(result.chain, [736, 819, 821, 823, 824, 826]);
 });
 test('rejects fork-supplied descendants even when deeper and newer', () => {
   const fork = pr(902, 'fork-route', p826.head.ref, 'open', 'attacker/QueuGo');
