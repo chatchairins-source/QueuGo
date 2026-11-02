@@ -107,4 +107,45 @@ class NavigationRouteCacheTest {
 
         assertEquals(2, delegate.calls)
     }
+
+    @Test
+    fun wallClockRollbackNeverReusesAnOlderPrefetchedRoute() = runBlocking {
+        var now = 100_000L
+        val delegate = FakeProvider()
+        val cache = CachingNavigationRouteProvider(
+            delegate = delegate,
+            nowMillis = { now },
+            ttlMillis = 5_000L
+        )
+        val origin = NavigationMapPoint(13.0000, 100.0000)
+        val nextStop = stop()
+
+        cache.route(origin, nextStop, "future:pickup-1>customer-1")
+        now = 99_999L // system time corrected backwards while app stays open
+        cache.route(origin, nextStop, "navigation:customer-1:0")
+
+        assertEquals(2, delegate.calls)
+        assertEquals(1, cache.size()) // the old entry was pruned, not accumulated
+    }
+
+    @Test
+    fun routeCacheKeepsOriginalTtlBoundaryAfterClockGuard() = runBlocking {
+        var now = 1_000L
+        val delegate = FakeProvider()
+        val cache = CachingNavigationRouteProvider(
+            delegate = delegate,
+            nowMillis = { now },
+            ttlMillis = 5_000L
+        )
+        val origin = NavigationMapPoint(13.0000, 100.0000)
+        val nextStop = stop()
+
+        cache.route(origin, nextStop, "future:pickup-1>customer-1")
+        now = 6_000L
+        cache.route(origin, nextStop, "navigation:customer-1:0")
+        assertEquals(1, delegate.calls)
+        now = 6_001L
+        cache.route(origin, nextStop, "navigation:customer-1:0")
+        assertEquals(2, delegate.calls)
+    }
 }

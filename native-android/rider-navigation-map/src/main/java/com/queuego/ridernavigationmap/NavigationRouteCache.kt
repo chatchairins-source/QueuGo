@@ -93,7 +93,11 @@ class CachingNavigationRouteProvider(
 
     private fun pruneLocked(now: Long) {
         val ttl = ttlMillis.coerceAtLeast(1L)
-        entries.removeAll { now - it.createdAtMillis > ttl }
+        // Wall-clock time may jump backwards after network/GPS time correction.
+        // A negative age must invalidate the entry rather than extending its TTL.
+        entries.removeAll {
+            now < it.createdAtMillis || now - it.createdAtMillis > ttl
+        }
     }
 
     private fun shouldBypassCache(segmentId: String): Boolean {
