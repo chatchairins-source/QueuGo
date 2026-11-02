@@ -107,11 +107,21 @@ internal fun RiderNavigationMapState.resolvedActiveStopId(): String? {
         ?: remaining.firstOrNull()?.id
 }
 
+// A future stop may be corrected without changing its business ID. Do not render
+// a previously cached route that ends at the old address, even before promotion
+// to the active stop. This matches the existing QueueGo route endpoint snap bound.
+private const val NAVIGATION_RENDER_ROUTE_ENDPOINT_SNAP_METERS = 750.0
+
 internal fun RiderNavigationMapState.styledRemainingRoutes(): List<NavigationRouteSegment> {
-    val remainingStopIds = remainingStops().mapTo(linkedSetOf()) { it.id }
+    val remainingById = remainingStops().associateBy { it.id }
     val active = resolvedActiveStopId()
     return routes.asSequence()
-        .filter { it.renderable && it.toStopId in remainingStopIds }
+        .filter { segment ->
+            val destination = remainingById[segment.toStopId]
+            segment.renderable && destination != null &&
+                navigationHaversineMeters(segment.points.last(), destination.point) <=
+                    NAVIGATION_RENDER_ROUTE_ENDPOINT_SNAP_METERS
+        }
         .map { segment ->
             segment.copy(
                 style = if (segment.toStopId == active) NavigationRouteStyle.ACTIVE
