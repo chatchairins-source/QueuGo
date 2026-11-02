@@ -26,6 +26,22 @@ ok(!!roadTestPublish && !roadTestPublish[1].includes(rideReleaseCandidateBranch)
 ok(nativePilotWorkflow.includes('group: queuego-native-${{ github.ref }}')&&nativePilotWorkflow.includes('cancel-in-progress: false')&&mapEngineWorkflow.includes('group: queuego-map-engine-${{ github.ref }}')&&mapEngineWorkflow.includes('cancel-in-progress: false'),'Native Pilot and Map Engine exact-head jobs must finish when the successor advances, while newer work waits');
 
 
+const parallelRoleStart=nativePilotWorkflow.indexOf('  parallel-role-smoke:\\n'.replace('\\n','\n'));
+const parallelRoleEnd=nativePilotWorkflow.indexOf('\n  native-pilot:',parallelRoleStart);
+const parallelRoleJob=parallelRoleStart >= 0 && parallelRoleEnd > parallelRoleStart
+  ? nativePilotWorkflow.slice(parallelRoleStart,parallelRoleEnd) : '';
+ok(
+  parallelRoleJob.includes('fail-fast: false') &&
+  parallelRoleJob.includes('max-parallel: 3') &&
+  parallelRoleJob.includes('role: [customer, merchant, rider]') &&
+  parallelRoleJob.includes(':testDebugUnitTest') &&
+  parallelRoleJob.includes(':assembleDebug') &&
+  parallelRoleJob.includes('verify-16kb-page-size.py') &&
+  parallelRoleJob.includes('github.event.pull_request.head.sha || github.sha') &&
+  parallelRoleJob.includes('if: always()'),
+  'Native Pilot must run independent Customer/Merchant/Rider JVM+APK jobs concurrently from exact HEAD, retaining evidence even when one role fails'
+);
+
 for(const p of [
   'settings.gradle.kts',
   'build.gradle.kts',
@@ -1055,7 +1071,15 @@ ok(
   riderApp.includes('workPreferences?.services, latest.fulfillmentVertical'),
   'Rider Native work preferences must reuse the Web server authority and expose bundle/service choices without local-only toggles'
 );
-ok(riderApp.includes('พร้อมรับงานแล้ว')&&riderApp.includes('คุณจะได้รับงานในพื้นที่ใกล้เคียง'),'Rider idle card must use the approved Ready title and nearby-work subtitle');
+const riderOnlineStatusCopy=read('rider/src/main/java/com/queuego/rider/RiderOnlineStatusCopy.kt');
+ok(
+  riderApp.includes('riderOnlineStatusCopy(') &&
+  riderApp.includes('statusCopy = homeOnlineCopy') &&
+  riderOnlineStatusCopy.includes('title = "พร้อมรับงานแล้ว"') &&
+  riderOnlineStatusCopy.includes('detail = "คุณจะได้รับงานในพื้นที่ใกล้เคียง"') &&
+  riderOnlineStatusCopy.includes('title = "เปิดรับงานอยู่ · GPS ไม่พร้อม"'),
+  'Rider idle card must preserve approved Ready title and nearby subtitle, but show the GPS warning when a server-online lease lacks location'
+);
 ok(riderApp.includes('snapshot?.laundry?.activeJob?.jobId')&&!riderApp.includes('snapshot?.laundry?.activeJob?.id,'),'Rider Auto Accept lifecycle key must use Laundry jobId, never a nonexistent id field');
 ok(riderApp.includes('onExpired =')&&riderApp.includes('ข้อเสนอนี้หมดเวลา ระบบกำลังส่งงานให้ Rider คนถัดไป'),'Rider expired offers must immediately leave the card and continue sequential dispatch');
 ok(riderApp.includes('ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)')&&riderApp.includes('มีงานใหม่ที่ระบบจัดให้ กรุณาตอบรับภายใน 30 วินาที'),'Rider foreground must alert once for a newly issued server offer');
