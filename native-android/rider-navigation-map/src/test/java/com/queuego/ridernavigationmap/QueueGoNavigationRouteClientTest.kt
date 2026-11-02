@@ -145,6 +145,14 @@ class QueueGoNavigationRouteClientTest {
         }
     }
 
+    @Test fun impossiblyShortReportedDistanceCannotCorruptGuidance() {
+        val falseSummary = routeJson.replace("\"distance\":4494", "\"distance\":50")
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(falseSummary, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
+        }
+    }
+
     @Test fun legitimateRoadDistanceAboveSimplifiedGeometryIsPreserved() {
         val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
             .parseQueueGoRoute(routeJson, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
