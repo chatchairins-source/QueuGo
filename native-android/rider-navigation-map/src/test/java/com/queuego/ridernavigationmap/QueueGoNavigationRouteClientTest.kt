@@ -54,7 +54,7 @@ class QueueGoNavigationRouteClientTest {
 
     @Test fun missingDurationKeepsGeometryWithoutInventingEta() {
         val raw =
-            """{"code":"Ok","routes":[{"distance":100,"geometry":{"type":"LineString","coordinates":[[100.0,13.0],[100.01,13.0]]},"legs":[]}]}"""
+            """{"code":"Ok","routes":[{"distance":1200,"geometry":{"type":"LineString","coordinates":[[100.0,13.0],[100.01,13.0]]},"legs":[]}]}"""
         val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
             .parseQueueGoRoute(raw, stop, "leg-1")
 
@@ -130,6 +130,36 @@ class QueueGoNavigationRouteClientTest {
         val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
             .parseQueueGoRoute(nearRoad, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
         assertEquals(2, leg.segment.points.size)
+    }
+
+    @Test fun disconnectedInteriorGeometryCannotClaimShortRoadDistance() {
+        // The route starts and ends at the correct stops, but a middle vertex
+        // jumps far away; accepting its short server summary would mislead guidance.
+        val disconnected = routeJson.replace(
+            "[[100.0,13.0],[100.01,13.0]]",
+            "[[100.0,13.0],[102.0,13.0],[100.01,13.0]]"
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(disconnected, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
+        }
+    }
+
+    @Test fun legitimateRoadDistanceAboveSimplifiedGeometryIsPreserved() {
+        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(routeJson, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
+        assertEquals(4494.0, leg.distanceMeters, 0.001)
+    }
+
+    @Test fun absentDistanceUsesMeasuredGeometryWithoutInventingSummary() {
+        val withoutDistance = routeJson.replace("\"distance\":4494,", "")
+        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(withoutDistance, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
+        val measured = navigationHaversineMeters(
+            NavigationMapPoint(13.0, 100.0),
+            NavigationMapPoint(13.0, 100.01)
+        )
+        assertEquals(measured, leg.distanceMeters, 0.01)
     }
 
     @Test fun cleartextServiceUrlIsRejected() {
