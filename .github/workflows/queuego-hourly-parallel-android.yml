@@ -29,34 +29,29 @@ jobs:
       sha: ${{ steps.target.outputs.sha }}
       pr: ${{ steps.target.outputs.pr }}
     steps:
+      - name: Checkout reviewed resolver and regression tests
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Verify Native successor selection fails closed
+        run: node --test tests/ci-hourly-native-resolver.test.cjs
       - id: target
-        name: Pin newest available integrated native successor
+        name: Pin deepest trusted open Native successor by actual PR base lineage
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          # Only first-party PRs: do not execute fork-provided code with a token.
-          for number in 824 823 821 819 736; do
-            if ! json="$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$number" 2>/dev/null)"; then
-              continue
-            fi
-            state="$(jq -r '.state' <<< "$json")"
-            owner_repo="$(jq -r '.head.repo.full_name // ""' <<< "$json")"
-            source_sha="$(jq -r '.head.sha // ""' <<< "$json")"
-            if [[ "$state" == open && "$owner_repo" == "$GITHUB_REPOSITORY" && "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
-              echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
-              echo "pr=$number" >> "$GITHUB_OUTPUT"
-              {
-                echo "### QueueGo hourly Android source"
-                echo "PR #$number / SHA \`$source_sha\`"
-                echo "Independent Customer, Merchant and Rider APK/JVM checks are smoke tests only."
-              } >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-          done
-          echo "::error::No trusted open Android PR found among #824,#823,#821,#819,#736; update the successor list explicitly."
-          exit 1
+          gh api "/repos/$GITHUB_REPOSITORY/pulls/736" > "$RUNNER_TEMP/queuego-native-root.json"
+          gh api --paginate --slurp "/repos/$GITHUB_REPOSITORY/pulls?state=all&sort=created&direction=desc&per_page=100" > "$RUNNER_TEMP/queuego-recent-pulls.json"
+          node scripts/ci/resolve-hourly-native-pr.cjs \
+            "$RUNNER_TEMP/queuego-native-root.json" \
+            "$RUNNER_TEMP/queuego-recent-pulls.json" \
+            "$GITHUB_REPOSITORY" >> "$GITHUB_OUTPUT"
+          {
+            echo "### QueueGo hourly Android source"
+            echo "Pinned trusted successor by base-branch lineage (not a static PR list):"
+            cat "$GITHUB_OUTPUT"
+            echo "Customer/Merchant/Rider smoke and isolated RPC tests are not Production release approval."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   three-role-android:
     name: ${{ matrix.role }} Kotlin/JVM + APK
