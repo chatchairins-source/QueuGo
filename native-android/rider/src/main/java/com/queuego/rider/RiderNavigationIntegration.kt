@@ -254,6 +254,18 @@ internal fun riderNavigationStops(
     return stops
 }
 
+/**
+ * Preserve only the future geometry already scoped to the exact stop topology when
+ * an online refresh yields no route (for example, a temporary network outage).
+ * This does NOT calculate offline routes or reroutes and never fabricates geometry.
+ * A new stop topology reinitializes the caller's previous list to empty.
+ */
+internal fun riderFutureRoutesAfterRefresh(
+    previous: List<NavigationRouteSegment>,
+    refreshed: List<NavigationRouteSegment>
+): List<NavigationRouteSegment> =
+    if (refreshed.isNotEmpty()) refreshed else previous
+
 private suspend fun buildFutureRoutes(
     routeProvider: NavigationRouteProvider,
     stops: List<NavigationMapStop>
@@ -488,11 +500,15 @@ internal fun QueueGoRiderNavigationMap(
             RiderNavigationSessionRegistry.clear(stateKey)
         } else if (routeProvider != null) {
             val builtRoutes = buildFutureRoutes(routeProvider, stops)
-            futureRoutes = builtRoutes
+            val visibleRoutes = riderFutureRoutesAfterRefresh(
+                previous = futureRoutes,
+                refreshed = builtRoutes
+            )
+            futureRoutes = visibleRoutes
             RiderNavigationSessionRegistry.saveFutureRoutes(
                 stateKey = stateKey,
                 topologyKey = stopTopology,
-                routes = builtRoutes
+                routes = visibleRoutes
             )
         }
     }
