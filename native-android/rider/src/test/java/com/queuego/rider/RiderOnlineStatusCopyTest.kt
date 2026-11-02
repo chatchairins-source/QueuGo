@@ -30,6 +30,12 @@ class RiderOnlineStatusCopyTest {
         assertFalse(copy.title == "พร้อมรับงานแล้ว")
     }
 
+    @Test fun simultaneousPermissionAndLocationServiceLossStillWarns() {
+        val copy = riderOnlineStatusCopy(true, false, false)
+        assertTrue(copy.locationWarning)
+        assertFalse(copy.title == "พร้อมรับงานแล้ว")
+    }
+
     @Test fun onlyServerOnlineAndBothGpsChecksMayShowReady() {
         val copy = riderOnlineStatusCopy(true, true, true)
         assertEquals("พร้อมรับงานแล้ว", copy.title)
