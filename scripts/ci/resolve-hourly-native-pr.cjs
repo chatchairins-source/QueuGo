@@ -34,10 +34,16 @@ function resolveHourlyNativePr(root, pages, repository) {
     const nextPath = [...path, parent.number];
     if (parent.state === 'open') {
       const candidate = {pr: parent, chain: nextPath};
+      // An older, longer QA branch must not eclipse a newly opened Native
+      // successor (e.g. #816's visual lineage vs #826's Rider fix).
+      // Depth is only a tie-breaker for equal creation timestamps.
+      const created = String(candidate.pr.created_at || '');
+      const previousCreated = String(best?.pr.created_at || '');
       if (!best ||
-          candidate.chain.length > best.chain.length ||
-          (candidate.chain.length === best.chain.length &&
-           String(candidate.pr.created_at || '') > String(best.pr.created_at || ''))) {
+          created > previousCreated ||
+          (created === previousCreated && candidate.chain.length > best.chain.length) ||
+          (created === previousCreated && candidate.chain.length === best.chain.length &&
+           candidate.pr.number > best.pr.number)) {
         best = candidate;
       }
     }
