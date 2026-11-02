@@ -26,8 +26,53 @@ class RiderAvailabilityReadinessTest {
             documentsLoaded = true
         )
         assertTrue(readiness.fullyReady)
-        assertEquals(11, readiness.readyCount)
-        assertEquals(11, readiness.totalCount)
+        assertEquals(9, readiness.readyCount)
+        assertEquals(9, readiness.totalCount)
+    }
+
+    @Test fun optionalExternalMapsAndOverlayNeverBlockNativeAvailability() {
+        val noExternalNavigation = readyDiagnostics.copy(
+            googleMaps = false,
+            overlayReturn = false
+        )
+        val readiness = riderAvailabilityReadiness(
+            diagnostics = noExternalNavigation,
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(blocking = false, items = emptyList()),
+            documentsLoaded = true
+        )
+        assertTrue(noExternalNavigation.readyForDelivery)
+        assertTrue(readiness.fullyReady)
+        assertEquals(9, readiness.totalCount)
+        assertEquals(9, readiness.readyCount)
+        assertFalse(readiness.checks.any { it.key == "google_maps" || it.key == "overlay" })
+
+        // Both optional app conveniences must be independent of the dispatch gate.
+        val externalAppsPresent = riderAvailabilityReadiness(
+            diagnostics = noExternalNavigation.copy(googleMaps = true, overlayReturn = true),
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(blocking = false, items = emptyList()),
+            documentsLoaded = true
+        )
+        assertEquals(readiness.readyCount, externalAppsPresent.readyCount)
+        assertEquals(readiness.totalCount, externalAppsPresent.totalCount)
+        assertEquals(readiness.fullyReady, externalAppsPresent.fullyReady)
+
+        // A missing native location prerequisite must still fail closed.
+        val missingGpsPermission = riderAvailabilityReadiness(
+            diagnostics = noExternalNavigation.copy(locationPermission = false),
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(blocking = false, items = emptyList()),
+            documentsLoaded = true
+        )
+        assertFalse(missingGpsPermission.fullyReady)
+        assertEquals(listOf("location_permission"), missingGpsPermission.blocked.map { it.key })
     }
 
     @Test fun deviceBlockersAreVisibleBeforeGoOnlineAttempt() {
@@ -83,7 +128,7 @@ class RiderAvailabilityReadinessTest {
             documentsLoaded = true
         )
         assertFalse(readiness.fullyReady)
-        assertEquals(10, readiness.readyCount)
+        assertEquals(8, readiness.readyCount)
         assertEquals(listOf("identity"), readiness.checking.map { it.key })
     }
 

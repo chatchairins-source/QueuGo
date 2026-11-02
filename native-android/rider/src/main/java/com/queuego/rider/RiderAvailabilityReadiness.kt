@@ -206,18 +206,6 @@ internal fun riderAvailabilityReadiness(
                 "ต้องเปิด Location ของโทรศัพท์ก่อนรับงาน",
                 state(diagnostics.locationServices)
             ),
-            RiderAvailabilityCheck(
-                "google_maps",
-                "Google Maps",
-                "ต้องติดตั้ง Google Maps สำหรับการนำทาง",
-                state(diagnostics.googleMaps)
-            ),
-            RiderAvailabilityCheck(
-                "overlay",
-                "ปุ่มกลับ QueueGo",
-                "ต้องเปิดสิทธิ์แสดงทับแอปอื่นเพื่อกลับจาก Google Maps ได้เร็ว",
-                state(diagnostics.overlayReturn)
-            ),
             identityCheck,
             vehicleInspectionCheck,
             selectedVehicleCheck,
