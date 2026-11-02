@@ -101,6 +101,29 @@ class QueueGoNavigationRouteClientTest {
         }
     }
 
+
+    @Test fun malformedInteriorCoordinateCannotBecomeInventedStraightLine() {
+        val malformed = routeJson.replace(
+            "[[100.0,13.0],[100.01,13.0]]",
+            "[[100.0,13.0],[\"invalid\",13.0],[100.01,13.0]]"
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun missingInteriorCoordinateArrayIsRejectedRatherThanSkipped() {
+        val malformed = routeJson.replace(
+            "[[100.0,13.0],[100.01,13.0]]",
+            "[[100.0,13.0],null,[100.01,13.0]]"
+        )
+        assertThrows(IllegalStateException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
     @Test fun cleartextServiceUrlIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
             QueueGoNavigationRouteClient("http://maps.queuego.test")
