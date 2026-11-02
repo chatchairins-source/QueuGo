@@ -5,7 +5,7 @@ The Native Rider `QueueGoNavigationRouteClient.parseQueueGoRoute` accepted any v
 
 ## Isolated source fix
 - Validate that a returned route ends within **750 meters** of the requested stop. For live requests also require its first point within 750 meters of the requested Rider origin. These are bounded road-snap tolerances, **not** route-generation or road-access guarantees. A route exceeding either tolerance is rejected and existing coordinator retry/error handling applies. Small valid road snaps continue working.
-- Six deterministic JVM parser regressions cover wrong stop, wrong Rider origin, acceptable snap, out-of-range snap, malformed interior coordinates and a null interior vertex. The original parser tests remain.
+- Seven deterministic JVM parser regressions cover wrong stop, wrong Rider origin, acceptable snap, bounded near-threshold snap, out-of-range snap, malformed interior coordinates and a null interior vertex. The original parser tests remain.
 - Previously malformed middle points were silently skipped, drawing a false straight line between non-adjacent road vertices. Reject malformed or incomplete coordinate arrays rather than inventing an unsafe shortcut.
 - Kotlin+Compose, Customer/Merchant online maps, Rider PMTiles, API, Auth/RLS, financial and Production data remain untouched. No fallback line is fabricated.
 
