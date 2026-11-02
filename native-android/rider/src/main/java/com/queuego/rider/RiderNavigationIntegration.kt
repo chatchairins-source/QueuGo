@@ -255,16 +255,31 @@ internal fun riderNavigationStops(
 }
 
 /**
- * Preserve only the future geometry already scoped to the exact stop topology when
- * an online refresh yields no route (for example, a temporary network outage).
- * This does NOT calculate offline routes or reroutes and never fabricates geometry.
- * A new stop topology reinitializes the caller's previous list to empty.
+ * Reconcile each *expected* future leg independently after a partial online refresh.
+ *
+ * buildFutureRoutes stops at the first failed request, so a nonempty partial refresh
+ * must not erase later, already-verified legs. Only an exact segment ID/destination
+ * for the current stop topology is reusable; changed stops reset the caller's state.
+ * No straight lines, offline pathfinding, or new geometry are synthesized here.
  */
 internal fun riderFutureRoutesAfterRefresh(
     previous: List<NavigationRouteSegment>,
-    refreshed: List<NavigationRouteSegment>
-): List<NavigationRouteSegment> =
-    if (refreshed.isNotEmpty()) refreshed else previous
+    refreshed: List<NavigationRouteSegment>,
+    stops: List<NavigationMapStop>
+): List<NavigationRouteSegment> {
+    val remaining = stops
+        .filter { !it.completed && it.point.valid }
+        .sortedBy { it.sequence }
+    return remaining.zipWithNext().mapNotNull { (from, to) ->
+        val expectedId = "future:" + from.id + ">" + to.id
+        fun matching(segment: NavigationRouteSegment): Boolean =
+            segment.id == expectedId &&
+                segment.toStopId == to.id &&
+                segment.style == NavigationRouteStyle.FUTURE &&
+                segment.renderable
+        refreshed.firstOrNull(::matching) ?: previous.firstOrNull(::matching)
+    }
+}
 
 private suspend fun buildFutureRoutes(
     routeProvider: NavigationRouteProvider,
@@ -502,7 +517,8 @@ internal fun QueueGoRiderNavigationMap(
             val builtRoutes = buildFutureRoutes(routeProvider, stops)
             val visibleRoutes = riderFutureRoutesAfterRefresh(
                 previous = futureRoutes,
-                refreshed = builtRoutes
+                refreshed = builtRoutes,
+                stops = stops
             )
             futureRoutes = visibleRoutes
             RiderNavigationSessionRegistry.saveFutureRoutes(
