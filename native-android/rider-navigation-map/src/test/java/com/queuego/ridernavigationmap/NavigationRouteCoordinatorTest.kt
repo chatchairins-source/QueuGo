@@ -296,6 +296,52 @@ class NavigationRouteCoordinatorTest {
         assertEquals(null, recovered.routeError)
     }
 
+    @Test fun backwardClockCorrectionRetriesFailedInitialRouteWithoutWaitingForOldDeadline() = runBlocking {
+        var now = 100_000L
+        val provider = FakeRouteProvider().apply { failNext = true }
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { now })
+        val original = state()
+
+        val failed = coordinator.synchronize(original)
+        assertEquals(1, provider.attempts)
+        assertNotNull(failed.routeError)
+
+        // A manual/time-service correction must not freeze initial routing for
+        // the duration of the old wall-clock deadline.
+        now = 95_000L
+        val recovered = coordinator.synchronize(original)
+        assertEquals(2, provider.attempts)
+        assertTrue(recovered.routeChanged)
+        assertNotNull(recovered.activeLeg)
+        assertEquals(null, recovered.routeError)
+    }
+
+    @Test fun failedRetryAfterClockCorrectionStillHonorsNormalBackoff() = runBlocking {
+        var now = 120_000L
+        val provider = FakeRouteProvider().apply { failNext = true }
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { now })
+        val original = state()
+
+        coordinator.synchronize(original)
+        assertEquals(1, provider.attempts)
+
+        now = 119_000L
+        provider.failNext = true
+        val failedAgain = coordinator.synchronize(original)
+        assertEquals(2, provider.attempts)
+        assertNotNull(failedAgain.routeError)
+
+        now = 120_000L
+        coordinator.synchronize(original)
+        assertEquals(2, provider.attempts)
+
+        now = 120_500L
+        val recovered = coordinator.synchronize(original)
+        assertEquals(3, provider.attempts)
+        assertTrue(recovered.routeChanged)
+        assertNotNull(recovered.activeLeg)
+    }
+
     @Test fun supersededRouteRequestPropagatesCancellationImmediately() = runBlocking {
         val provider = FakeRouteProvider().apply { cancelNext = true }
         val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 60_000L })

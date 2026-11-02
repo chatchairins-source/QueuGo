@@ -31,6 +31,7 @@ class NavigationRouteCoordinator(
     private var visibleProgressMeters: Double = 0.0
     private var initialRouteFailureCount: Int = 0
     private var nextInitialRouteAttemptAtMillis: Long = 0L
+    private var lastInitialRouteFailureAtMillis: Long? = null
     private var lastInitialRouteError: String? = null
 
     fun reset() {
@@ -97,6 +98,12 @@ class NavigationRouteCoordinator(
 
         if (activeLeg == null) {
             val now = nowMillis()
+            // Retry deadlines use wall-clock time. If the device clock is corrected
+            // backwards after a failure, the old deadline can be arbitrarily far
+            // in the future; discard only that backoff, not the active stop.
+            if (lastInitialRouteFailureAtMillis?.let { now < it } == true) {
+                resetInitialRouteRetry()
+            }
             if (now >= nextInitialRouteAttemptAtMillis) {
                 try {
                     activeLeg = routeProvider.route(
@@ -112,6 +119,7 @@ class NavigationRouteCoordinator(
                     if (error is CancellationException) throw error
                     routeError = error.message ?: "คำนวณเส้นทางไม่สำเร็จ"
                     lastInitialRouteError = routeError
+                    lastInitialRouteFailureAtMillis = now
                     initialRouteFailureCount += 1
                     nextInitialRouteAttemptAtMillis =
                         now + initialRouteRetryDelayMillis(initialRouteFailureCount)
@@ -179,6 +187,7 @@ class NavigationRouteCoordinator(
     private fun resetInitialRouteRetry() {
         initialRouteFailureCount = 0
         nextInitialRouteAttemptAtMillis = 0L
+        lastInitialRouteFailureAtMillis = null
         lastInitialRouteError = null
     }
 
