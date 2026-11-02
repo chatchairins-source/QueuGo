@@ -1,3 +1,14 @@
+## 2026-11-03 Merge-preserving Rider route-visual and provider-contract source
+
+- Integrate corrected future-stop route display (#837 with #838 overview test fix) and Native #824 provider-leg boundary validation (#836) as a two-parent merge, preserving both Kotlin change sets and both prior memory prefixes. Previous #837 base conflicted only on PROJECT-MEMORY.md; current merged tree starts from #824 and overlays the five #837-only code/test/QA paths.
+- Verified #838 exact-head CI #41493778746 SUCCESS; #837 integrated pre-merge CI #41502612057 must complete before branch ref update. The final integrated merge HEAD needs its own full Native Pilot/three role APK+JVM/isolated RPC run before merge into #824. No Production/Auth/RLS/order/finance change; no release APK until #801/#750/#822/#740/physical gates.
+
+## 2026-11-02 Corrected future-stop route visibility — isolated P1
+
+- Native #824 exact head 7b5e8826a768c421e591238fd16cd4d9590ffdf7; #736/#743/#744, #740, CI Recovery, latest actual Native Pilot jobs and existing project memory reviewed before edit. No Production changes.
+- styledRemainingRoutes() previously retained a future route to an outdated address after its stop coordinate changed but ID remained stable. Filter renderable geometry whose endpoint is beyond the existing 750m road-snap tolerance from the current incomplete stop. Two Kotlin/JVM tests added; original model fixtures updated to actual stop endpoints. QA: docs/qa/rider-future-route-endpoint-20261102.md.
+- Final exact-head CI and integrated HEAD recheck required. Offline routing #801, map labels #750, authenticated GPS #822, RPC #740 and physical UI/road-test acceptance remain blocked. No APK publication.
+
 ## 2026-11-02 Rider provider boundary integrity — PR #836 (unreleased)
 
 - Started from exact Native #824 head 7b5e8826a768c421e591238fd16cd4d9590ffdf7 after rechecking #736/#743/#744, Issue #740, CI Recovery issues, actual Native Pilot jobs and this file. Source-only isolated branch, no Production change.
