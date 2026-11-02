@@ -2847,8 +2847,16 @@ private fun RiderHome(
             snapshot?.offeredJob != null -> null
             else -> null
         }
+        // The server's online lease is authoritative, but missing Android GPS
+        // must never be described as ready to receive work.
+        val homeDiagnostics = readRiderDiagnostics(context)
+        val homeOnlineCopy = riderOnlineStatusCopy(
+            online = snapshot?.online == true,
+            locationPermission = homeDiagnostics.locationPermission,
+            locationServices = homeDiagnostics.locationServices
+        )
         val dockTitle = activeSheetJob?.let { "งาน " + it.numberLabel }
-            ?: if (snapshot?.online == true) "พร้อมรับงานแล้ว" else "พร้อมรับงานเมื่อคุณพร้อม"
+            ?: if (snapshot?.online == true) homeOnlineCopy.title else "พร้อมรับงานเมื่อคุณพร้อม"
         val dockDestination = activeSheetJob?.let {
             (if (it.isDelivering) it.deliveryAddress else it.pickupAddress)
                 ?.takeIf { address -> address.isNotBlank() }
@@ -2900,6 +2908,7 @@ private fun RiderHome(
                 if (current.activeJob == null && current.offeredJob == null && current.laundry.activeJob == null) {
                     RiderReadyCard(
                         online = current.online,
+                        statusCopy = homeOnlineCopy,
                         enabled = !actionBusy,
                         onCheckedChange = { changeOnline(it) }
                     )
@@ -4384,7 +4393,12 @@ private fun RiderBlueprintSpeedPill(speedKph: Int?) {
 }
 
 @Composable
-private fun RiderReadyCard(online: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun RiderReadyCard(
+    online: Boolean,
+    statusCopy: RiderOnlineStatusCopy,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
     Card(
         Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -4401,19 +4415,20 @@ private fun RiderReadyCard(online: Boolean, enabled: Boolean, onCheckedChange: (
                 Modifier
                     .size(8.dp)
                     .background(
-                        if (online) Color(0xFF12A651) else Color(0xFFA2A2A7),
+                        if (online && statusCopy.locationWarning) Color(0xFFE6A23C)
+                        else if (online) Color(0xFF12A651) else Color(0xFFA2A2A7),
                         androidx.compose.foundation.shape.CircleShape
                     )
             )
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (online) "พร้อมรับงานแล้ว" else "ยังไม่พร้อมรับงาน",
+                    statusCopy.title,
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    if (online) "คุณจะได้รับงานในพื้นที่ใกล้เคียง" else "เปิดเพื่อเริ่มรับงาน",
+                    statusCopy.detail,
                     fontSize = 9.sp,
                     lineHeight = 13.sp,
                     color = QgMuted,
