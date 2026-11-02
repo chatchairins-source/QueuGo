@@ -114,6 +114,55 @@ env:
   QG_MAP_SERVICE_BASE_URL: ${{ vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com' }}
 
 jobs:
+  # Independent role jobs start together; a failure in one role must not cancel
+  # the other two. This is early feedback, not a replacement for the original
+  # full-regression / nationwide-map / installed-device release gates below.
+  parallel-role-smoke:
+    name: ${{ matrix.role }} Kotlin/JVM + Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        role: [customer, merchant, rider]
+    steps:
+      - name: Checkout exact source HEAD
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android platform
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Compile, run real JVM unit tests and assemble role APK
+        run: gradle -p native-android ":${{ matrix.role }}:testDebugUnitTest" ":${{ matrix.role }}:assembleDebug" --no-daemon --stacktrace
+      - name: Verify generated role APK integrity and 16 KB packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="native-android/${{ matrix.role }}/build/outputs/apk/debug/${{ matrix.role }}-debug.apk"
+          test -s "$apk"
+          unzip -t "$apk" >/dev/null
+          python3 native-android/qa/verify-16kb-page-size.py "$apk"
+          sha256sum "$apk" > "$RUNNER_TEMP/${{ matrix.role }}-sha256.txt"
+      - name: Retain role-specific results even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-parallel-${{ matrix.role }}-jvm-apk-evidence
+          path: |
+            native-android/${{ matrix.role }}/build/test-results/testDebugUnitTest/
+            native-android/${{ matrix.role }}/build/reports/tests/testDebugUnitTest/
+            ${{ runner.temp }}/${{ matrix.role }}-sha256.txt
+          if-no-files-found: warn
+          retention-days: 14
+
   native-pilot:
     runs-on: ubuntu-latest
     timeout-minutes: 75
