@@ -32,9 +32,27 @@ class RiderNavigationIntegrationTest {
     )
 
 
-    private fun futureSegment(id: String) = NavigationRouteSegment(
-        id = id,
-        toStopId = "drop:order-1",
+    private fun futureStops() = listOf(
+        com.queuego.ridernavigationmap.NavigationMapStop(
+            "pickup:order-1", 1, NavigationStopKind.PICKUP,
+            NavigationMapPoint(14.99, 103.10)
+        ),
+        com.queuego.ridernavigationmap.NavigationMapStop(
+            "drop:order-1", 2, NavigationStopKind.DROPOFF,
+            NavigationMapPoint(15.00, 103.11)
+        ),
+        com.queuego.ridernavigationmap.NavigationMapStop(
+            "drop:order-2", 3, NavigationStopKind.DROPOFF,
+            NavigationMapPoint(15.01, 103.12)
+        )
+    )
+
+    private fun futureSegment(
+        from: String = "pickup:order-1",
+        to: String = "drop:order-1"
+    ) = NavigationRouteSegment(
+        id = "future:$from>$to",
+        toStopId = to,
         points = listOf(
             NavigationMapPoint(14.99, 103.10),
             NavigationMapPoint(15.00, 103.11)
@@ -43,8 +61,10 @@ class RiderNavigationIntegrationTest {
     )
 
     @Test fun transientNetworkFailureRetainsVerifiedSameTopologyFutureGeometry() {
-        val prior = listOf(futureSegment("future:pickup:order-1>drop:order-1"))
-        val selected = riderFutureRoutesAfterRefresh(previous = prior, refreshed = emptyList())
+        val prior = listOf(futureSegment())
+        val selected = riderFutureRoutesAfterRefresh(
+            previous = prior, refreshed = emptyList(), stops = futureStops().take(2)
+        )
         assertEquals(prior, selected)
         // Persisting the selected list must not wipe the last usable geometry.
         RiderNavigationSessionRegistry.saveFutureRoutes("rider", "topology-a", selected)
@@ -53,15 +73,81 @@ class RiderNavigationIntegrationTest {
     }
 
     @Test fun successfulRefreshReplacesCachedFutureGeometry() {
-        val old = listOf(futureSegment("old"))
-        val updated = listOf(futureSegment("new"))
-        assertEquals(updated, riderFutureRoutesAfterRefresh(previous = old, refreshed = updated))
+        val old = futureSegment()
+        val updated = old.copy(points = listOf(
+            NavigationMapPoint(14.99, 103.10),
+            NavigationMapPoint(14.995, 103.105),
+            NavigationMapPoint(15.00, 103.11)
+        ))
+        assertEquals(listOf(updated), riderFutureRoutesAfterRefresh(
+            previous = listOf(old), refreshed = listOf(updated), stops = futureStops().take(2)
+        ))
     }
 
     @Test fun coldOfflineStartNeverInventsFutureRouteGeometry() {
         assertTrue(riderFutureRoutesAfterRefresh(
-            previous = emptyList(),
-            refreshed = emptyList()
+            previous = emptyList(), refreshed = emptyList(), stops = futureStops()
+        ).isEmpty())
+    }
+
+    @Test fun partialOnlineRefreshKeepsLaterVerifiedLegInsteadOfErasingIt() {
+        val first = futureSegment()
+        val second = futureSegment("drop:order-1", "drop:order-2")
+        val refreshedFirst = first.copy(points = listOf(
+            NavigationMapPoint(14.99, 103.10),
+            NavigationMapPoint(14.997, 103.108),
+            NavigationMapPoint(15.00, 103.11)
+        ))
+        // buildFutureRoutes returns only the first leg when the next API call fails.
+        assertEquals(listOf(refreshedFirst, second), riderFutureRoutesAfterRefresh(
+            previous = listOf(first, second),
+            refreshed = listOf(refreshedFirst),
+            stops = futureStops()
+        ))
+    }
+
+    @Test fun neverReuseUnrelatedDestinationOrWrongTopologyLeg() {
+        val valid = futureSegment()
+        val wrongDestination = valid.copy(toStopId = "drop:another")
+        val wrongOrigin = valid.copy(id = "future:pickup:other>drop:order-1")
+        assertTrue(riderFutureRoutesAfterRefresh(
+            previous = listOf(wrongDestination, wrongOrigin),
+            refreshed = emptyList(),
+            stops = futureStops().take(2)
+        ).isEmpty())
+        assertTrue(riderFutureRoutesAfterRefresh(
+            previous = listOf(valid),
+            refreshed = emptyList(),
+            stops = futureStops().drop(1)
+        ).isEmpty())
+    }
+
+    @Test fun rejectInvalidRefreshedGeometryButKeepVerifiedSameLeg() {
+        val prior = futureSegment()
+        val malformed = prior.copy(points = listOf(NavigationMapPoint(15.0, 103.1)))
+        assertEquals(listOf(prior), riderFutureRoutesAfterRefresh(
+            previous = listOf(prior), refreshed = listOf(malformed),
+            stops = futureStops().take(2)
+        ))
+        assertTrue(riderFutureRoutesAfterRefresh(
+            previous = emptyList(), refreshed = listOf(malformed),
+            stops = futureStops().take(2)
+        ).isEmpty())
+    }
+
+    @Test fun completedOrRemovedStopNeverRetainsObsoleteFutureLeg() {
+        val first = futureSegment()
+        val second = futureSegment("drop:order-1", "drop:order-2")
+        val changed = futureStops().mapIndexed { index, stop ->
+            if (index == 0) stop.copy(completed = true) else stop
+        }
+        assertEquals(listOf(second), riderFutureRoutesAfterRefresh(
+            previous = listOf(first, second),
+            refreshed = emptyList(),
+            stops = changed
+        ))
+        assertTrue(riderFutureRoutesAfterRefresh(
+            previous = listOf(first, second), refreshed = emptyList(), stops = emptyList()
         ).isEmpty())
     }
 
