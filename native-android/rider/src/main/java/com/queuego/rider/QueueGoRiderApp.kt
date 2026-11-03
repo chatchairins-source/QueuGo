@@ -2237,6 +2237,11 @@ private fun RiderHome(
                 }
             }
             val loc = lastKnownLocation(context)
+            if (enabled && loc == null) {
+                actionMessage = "ยังไม่มีตำแหน่ง GPS ล่าสุด กรุณารอการระบุตำแหน่งแล้วลองเปิดรับงานอีกครั้ง"
+                actionBusy = false
+                return@launch
+            }
             runCatching { api.setOnline(auth, enabled, loc?.first, loc?.second) }
                 .onSuccess {
                     if (!enabled) setStopAfterWorkPending(false)
@@ -5033,13 +5038,26 @@ private fun hasLocationPermission(context: Context): Boolean =
 
 private fun lastKnownLocation(context: Context): Pair<Double, Double>? {
     if (!hasLocationPermission(context)) return null
-    val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    val nowElapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+    // The existing navigation service has already validated the active fused GPS
+    // fix. Prefer it over LocationManager's potentially ancient cached provider.
+    RiderNavigationLocationStore.fix.value?.takeIf { fix ->
+        fix.point.valid &&
+            riderOperationalLocationFixIsFresh(nowElapsedRealtimeNanos, fix.elapsedRealtimeNanos)
+    }?.let { fix ->
+        return fix.point.latitude to fix.point.longitude
+    }
+    val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        ?: return null
     return runCatching {
         manager.getProviders(true)
             .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
-            .maxByOrNull { it.time }
-            ?.takeIf { it.latitude.isFinite() && it.longitude.isFinite() &&
-                it.latitude in -90.0..90.0 && it.longitude in -180.0..180.0 }
+            .filter { location ->
+                riderOperationalLocationFixIsFresh(nowElapsedRealtimeNanos, location.elapsedRealtimeNanos) &&
+                    location.latitude.isFinite() && location.longitude.isFinite() &&
+                    location.latitude in -90.0..90.0 && location.longitude in -180.0..180.0
+            }
+            .maxByOrNull { it.elapsedRealtimeNanos }
             ?.let { it.latitude to it.longitude }
     }.getOrNull()
 }
