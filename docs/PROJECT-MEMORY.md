@@ -1,3 +1,9 @@
+## 2026-11-03 Rider rendered route-progress notification — PR #848 (source, CI pending)
+
+- Based on exact Native #824 `a809494148dfa79026d613e6a81d20569eff63d4` after inspecting #736/#743/#744, #740/#750/#801/#822/#830, CI Recovery issues, source and existing memory. Isolated branch `fix-rider-progress-route-change-signal-20261103`; no Production mutation.
+- `NavigationRouteCoordinator.synchronize()` now reports `routeChanged` when the actual renderer-facing route list differs after GPS progress trimming, even without provider reroute. This preserves existing 10m progress threshold and prevents redundant notification on backward jitter/subthreshold movement. Three regression assertions in `NavigationRouteCoordinatorTest.kt`.
+- PR #848 exact-head Native Pilot/three APKs/JVM/isolated RPC and installed authenticated screenshots still pending. Do not merge or distribute APK until CI and physical/UI gates. #801 offline nationwide routing, #750 visible road labels, #822 GPS, #740 backend remain open.
+
 ## 2026-11-03 Rider stale-route change notification — PR #845 (source only)
 
 - Base Native #824 exact `e788ba3a3299b47afc271b80d1c6d916d1f88e50` includes #843 launch diagnostics after exact-head CI #41529638790 SUCCESS. Verified #736/#743/#744, #740, CI Recovery, #801/#750/#822, current Native Pilot logs and this project memory before editing. No Production changes.

@@ -195,7 +195,9 @@ class NavigationRouteCoordinator(
             guidance = guidance,
             activeLeg = leg,
             rerouteVersion = rerouteVersion,
-            routeChanged = routeChanged,
+            // GPS progress can trim the displayed polyline without requesting a new leg.
+            // Notify map observers whenever rendered route geometry actually changes.
+            routeChanged = routeChanged || updatedMapState.routes != state.routes,
             rerouted = rerouted,
             routeError = routeError
         )
