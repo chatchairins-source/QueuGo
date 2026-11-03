@@ -2208,6 +2208,12 @@ private fun RiderHome(
             return
         }
         if (enabled && !ensureLocationPermission()) return
+        if (enabled) {
+            // Starting online requires an actual recent device fix, not an old
+            // LocationManager cache. Prime the EXISTING foreground GPS service
+            // while the user is on screen; the post-push check still fails closed.
+            RiderNavigationLocationService.start(context)
+        }
         actionBusy = true
         scope.launch {
             if (enabled) {
