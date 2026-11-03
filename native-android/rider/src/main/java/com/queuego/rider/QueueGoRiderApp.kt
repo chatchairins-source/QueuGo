@@ -586,6 +586,16 @@ private fun RiderHome(
     val stopAfterWorkStore = remember(context) { RiderStopAfterWorkStore(context) }
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    // Permission and GPS settings may change outside Compose while this activity is paused.
+    // Re-read live device state on return rather than presenting an old Ready indicator.
+    var deviceReadinessRevision by remember { mutableIntStateOf(0) }
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) deviceReadinessRevision += 1
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
     val snapshotMutex = remember { Mutex() }
     val dispatchPreferenceWriteMutex = remember(auth.user.id) { Mutex() }
 
@@ -2215,6 +2225,17 @@ private fun RiderHome(
                     return@launch
                 }
             }
+            // The push bind above suspends on the network. Android permission, GPS,
+            // notification and connectivity can change during that suspension.
+            // Fail closed before creating a fresh server-online lease.
+            if (enabled) {
+                val deviceBlocker = riderOnlineActivationBlocker(readRiderDiagnostics(context))
+                if (deviceBlocker != null) {
+                    actionMessage = deviceBlocker
+                    actionBusy = false
+                    return@launch
+                }
+            }
             val loc = lastKnownLocation(context)
             runCatching { api.setOnline(auth, enabled, loc?.first, loc?.second) }
                 .onSuccess {
@@ -2849,7 +2870,9 @@ private fun RiderHome(
         }
         // The server's online lease is authoritative, but missing Android GPS
         // must never be described as ready to receive work.
-        val homeDiagnostics = readRiderDiagnostics(context)
+        val homeDiagnostics = remember(deviceReadinessRevision, snapshot?.online, actionMessage) {
+            readRiderDiagnostics(context)
+        }
         val homeOnlineCopy = riderOnlineStatusCopy(
             online = snapshot?.online == true,
             locationPermission = homeDiagnostics.locationPermission,
