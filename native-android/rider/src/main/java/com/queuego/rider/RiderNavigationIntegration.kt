@@ -309,6 +309,24 @@ private suspend fun buildFutureRoutes(
     return routes
 }
 
+/**
+ * The coordinator owns validated route geometry. A failed online route request
+ * must not cause the UI to resurrect a previous pickup/destination polyline that
+ * the coordinator just invalidated. Only live camera/puck presentation is copied
+ * from the latest fix while a request was suspended.
+ */
+internal fun riderPresentationAfterCoordinator(
+    authoritative: RiderNavigationMapState,
+    latest: RiderNavigationMapState,
+    guidance: NavigationGuidanceState
+): RiderNavigationMapState = authoritative.copy(
+    rider = latest.rider,
+    followRider = latest.followRider,
+    viewMode = latest.viewMode,
+    viewportInsets = latest.viewportInsets,
+    nextTurnDistanceMeters = guidance.distanceToInstructionMeters
+)
+
 @Composable
 internal fun QueueGoRiderNavigationMap(
     modifier: Modifier = Modifier,
@@ -608,15 +626,9 @@ internal fun QueueGoRiderNavigationMap(
             for (next in stateChannel) {
                 guidanceCallback(NavigationGuidanceState())
                 val candidate = displayState(next)
-                renderedState = if (
-                    navigationActive &&
-                    candidate.routes.isEmpty() &&
-                    renderedState.routes.isNotEmpty()
-                ) {
-                    candidate.copy(routes = renderedState.routes)
-                } else {
-                    candidate
-                }
+                // Without a route provider there is no authority to revive a
+                // previously rendered line after the current topology rejects it.
+                renderedState = candidate
                 RiderNavigationSessionRegistry.saveRenderedRoutes(
                     stateKey = stateKey,
                     topologyKey = stopTopology,
@@ -631,21 +643,15 @@ internal fun QueueGoRiderNavigationMap(
                 // Filtering/snapping, when the rollout gate is enabled, is renderer-only.
                 // The route response belongs to an earlier fix. Keep its route result,
                 // but never roll the visible puck/camera back to the request's location.
-                val candidate = displayState(result.mapState.copy(
-                    rider = latestBaseState.rider,
-                    followRider = latestBaseState.followRider,
-                    viewMode = latestBaseState.viewMode,
-                    viewportInsets = latestBaseState.viewportInsets,
-                    nextTurnDistanceMeters = result.guidance.distanceToInstructionMeters
+                val candidate = displayState(riderPresentationAfterCoordinator(
+                    authoritative = result.mapState,
+                    latest = latestBaseState,
+                    guidance = result.guidance
                 ))
-                renderedState = if (
-                    result.routeError != null &&
-                    renderedState.routes.isNotEmpty()
-                ) {
-                    candidate.copy(routes = renderedState.routes)
-                } else {
-                    candidate
-                }
+                // On routing error, NavigationRouteCoordinator already keeps any
+                // verified active leg and removes stale geometry. Replacing its
+                // result with an older UI snapshot would undo that safety check.
+                renderedState = candidate
                 RiderNavigationSessionRegistry.saveRenderedRoutes(
                     stateKey = stateKey,
                     topologyKey = stopTopology,
