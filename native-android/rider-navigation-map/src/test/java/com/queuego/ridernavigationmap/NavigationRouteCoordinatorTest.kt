@@ -207,6 +207,7 @@ class NavigationRouteCoordinatorTest {
         )
         val shortened = forward.mapState.routes.first { it.toStopId == pickup.id }
         assertTrue(shortened.points.first().longitude > initialActive.points.first().longitude)
+        assertTrue("Trimmed active route must notify map observers", forward.routeChanged)
 
         val jitterBack = coordinator.synchronize(
             forward.mapState.copy(
@@ -223,6 +224,7 @@ class NavigationRouteCoordinatorTest {
             afterJitter.points.first().longitude >= shortened.points.first().longitude
         )
         assertEquals("future-dropoff", jitterBack.mapState.routes.last().id)
+        assertFalse("GPS jitter must not emit a redundant geometry change", jitterBack.routeChanged)
     }
 
     @Test fun smallProgressDoesNotChangeVisibleGeometryEveryGpsTick() = runBlocking {
@@ -242,6 +244,7 @@ class NavigationRouteCoordinatorTest {
         )
         val after = tinyMove.mapState.routes.first { it.toStopId == pickup.id }
         assertEquals(before.points, after.points)
+        assertFalse("Sub-threshold GPS movement must not invalidate map geometry", tinyMove.routeChanged)
     }
 
     @Test fun activeRouteDisappearsWhenOnlyArrivalStubRemains() {
