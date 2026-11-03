@@ -11,6 +11,7 @@ test('hourly Android matrix retains three isolated role lanes and isolated RPC',
   assert.ok(workflow.includes('fail-fast: false'));
   assert.ok(workflow.includes('role: [customer, merchant, rider]'));
   assert.ok(workflow.includes('rpc-catalog:'));
+  assert.ok(workflow.includes('node --test tests/ci-hourly-native-resolver.test.cjs tests/ci-hourly-rider-navigation-gate.test.cjs'));
   assert.ok(workflow.includes("cron: '7 * * * *'"));
 });
 
