@@ -374,9 +374,13 @@ class NavigationRouteCoordinatorTest {
         )
         assertEquals(1, provider.attempts)
         assertEquals(null, noGps.activeLeg)
-        assertTrue(noGps.routeChanged, "removing completed pickup must notify map without GPS")
+        assertTrue("removing completed pickup must notify map without GPS", noGps.routeChanged)
         assertTrue(noGps.mapState.routes.none { it.toStopId == pickup.id })
         assertEquals(listOf("future-dropoff"), noGps.mapState.routes.map { it.id })
+
+        val stillNoGps = coordinator.synchronize(noGps.mapState)
+        assertFalse("unchanged route list must not trigger a second map update", stillNoGps.routeChanged)
+        assertEquals(1, provider.attempts)
 
         val recovered = coordinator.synchronize(
             noGps.mapState.copy(
@@ -413,7 +417,7 @@ class NavigationRouteCoordinatorTest {
         assertEquals(2, provider.attempts)
         assertEquals(null, failed.activeLeg)
         assertNotNull(failed.routeError)
-        assertTrue(failed.routeChanged, "failed provider must still notify stale-line removal")
+        assertTrue("failed provider must still notify stale-line removal", failed.routeChanged)
         assertTrue(failed.mapState.routes.none { it.toStopId == pickup.id })
         assertEquals(listOf("future-dropoff"), failed.mapState.routes.map { it.id })
     }
@@ -472,7 +476,7 @@ class NavigationRouteCoordinatorTest {
 
         assertEquals(1, provider.attempts)
         assertEquals(null, noFix.activeLeg)
-        assertTrue(noFix.routeChanged, "corrected address must invalidate rendered route without GPS")
+        assertTrue("corrected address must invalidate rendered route without GPS", noFix.routeChanged)
         assertTrue(noFix.mapState.routes.none { it.toStopId == pickup.id })
         assertEquals(listOf("future-dropoff"), noFix.mapState.routes.map { it.id })
     }
