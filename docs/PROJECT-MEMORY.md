@@ -1,3 +1,9 @@
+## 2026-11-03 Rider stale-route change notification — PR #845 (source only)
+
+- Base Native #824 exact `e788ba3a3299b47afc271b80d1c6d916d1f88e50` includes #843 launch diagnostics after exact-head CI #41529638790 SUCCESS. Verified #736/#743/#744, #740, CI Recovery, #801/#750/#822, current Native Pilot logs and this project memory before editing. No Production changes.
+- P1: coordinator's safeState removed stale pickup/corrected-destination lines but reported `routeChanged=false` if GPS was absent or provider failed. Now report whether route list actually changed; preserve existing fail-closed route geometry and backoff. Three deterministic Kotlin regression assertions; QA `docs/qa/rider-stale-route-change-signal-20261103.md`.
+- Exact PR #845 HEAD CI, integration CI, installed authenticated Home/map screenshots, #801 nationwide offline graph, #750 labels, #822 GPS/dispatch and #740 RPC remain gates. Do not merge without exact-head success, deploy Production or publish APK.
+
 ## 2026-11-03 Merge-preserving Rider route-visual and provider-contract source
 
 - Integrate corrected future-stop route display (#837 with #838 overview test fix) and Native #824 provider-leg boundary validation (#836) as a two-parent merge, preserving both Kotlin change sets and both prior memory prefixes. Previous #837 base conflicted only on PROJECT-MEMORY.md; current merged tree starts from #824 and overlays the five #837-only code/test/QA paths.

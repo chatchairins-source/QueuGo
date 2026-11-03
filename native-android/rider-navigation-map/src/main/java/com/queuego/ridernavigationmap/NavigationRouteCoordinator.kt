@@ -98,11 +98,13 @@ class NavigationRouteCoordinator(
                 guidance = NavigationGuidanceState(),
                 activeLeg = activeLeg,
                 rerouteVersion = rerouteVersion,
-                routeChanged = false,
+                // Removing a stale active route is a real map update even without GPS.
+                // Consumers must be notified to clear the old pickup/destination line.
+                routeChanged = safeState.routes != state.routes,
                 rerouted = false
             )
 
-        var routeChanged = false
+        var routeChanged = safeState.routes != state.routes
         var rerouted = false
         var routeError: String? = null
 
