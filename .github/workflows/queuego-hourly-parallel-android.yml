@@ -77,8 +77,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: '9.6.0'
-      - name: Run role-specific JVM regression and build debug APK
-        run: gradle -p native-android ":${{ matrix.role }}:testDebugUnitTest" ":${{ matrix.role }}:assembleDebug" --no-daemon --stacktrace
+      - name: Run role-specific JVM regression, Rider navigation module tests and build debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          tasks=(":${{ matrix.role }}:testDebugUnitTest" ":${{ matrix.role }}:assembleDebug")
+          if [[ "${{ matrix.role }}" == "rider" ]]; then
+            # Rider APK compilation alone does not compile the navigation library TESTS.
+            # Keep this in the same Rider matrix lane so a broken navigation contract fails hourly QA.
+            tasks+=(":rider-navigation-map:testDebugUnitTest")
+          fi
+          gradle -p native-android "${tasks[@]}" --no-daemon --stacktrace
       - name: Check actual APK ZIP/16KB and record exact SHA
         shell: bash
         run: |
@@ -98,6 +107,8 @@ jobs:
           path: |
             native-android/${{ matrix.role }}/build/test-results/testDebugUnitTest/
             native-android/${{ matrix.role }}/build/reports/tests/testDebugUnitTest/
+            native-android/rider-navigation-map/build/test-results/testDebugUnitTest/
+            native-android/rider-navigation-map/build/reports/tests/testDebugUnitTest/
             ${{ runner.temp }}/${{ matrix.role }}-sha256.txt
           if-no-files-found: warn
           retention-days: 7
