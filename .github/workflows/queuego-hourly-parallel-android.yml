@@ -32,7 +32,7 @@ jobs:
       - name: Checkout reviewed resolver and regression tests
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Verify Native successor selection fails closed
-        run: node --test tests/ci-hourly-native-resolver.test.cjs
+        run: node --test tests/ci-hourly-native-resolver.test.cjs tests/ci-hourly-rider-navigation-gate.test.cjs
       - id: target
         name: Pin deepest trusted open Native successor by actual PR base lineage
         env:
