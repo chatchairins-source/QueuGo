@@ -1,6 +1,8 @@
 package com.queuego.rider
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.SystemClock
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -8,6 +10,17 @@ import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+internal fun riderNavigationPermissionGranted(fineGranted: Boolean, coarseGranted: Boolean): Boolean =
+    fineGranted || coarseGranted
+
+internal fun riderNavigationHasLocationPermission(context: Context): Boolean =
+    riderNavigationPermissionGranted(
+        context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED,
+        context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+    )
 
 internal fun riderNavigationLocationPushIntervalMs(distanceMeters: Double?): Long =
     if (distanceMeters != null && distanceMeters.isFinite() && distanceMeters <= 200.0) 1_000L else 3_000L
@@ -85,6 +98,7 @@ internal object RiderNavigationDispatchReadiness {
         longitude: Double?
     ): Long = locationMutex.withLock {
         val bound = binding ?: return@withLock 3_000L
+        if (!riderNavigationHasLocationPermission(context)) return@withLock 3_000L
         val lat = latitude?.takeIf { it.isFinite() && it in -90.0..90.0 } ?: return@withLock 1_000L
         val lng = longitude?.takeIf { it.isFinite() && it in -180.0..180.0 } ?: return@withLock 1_000L
         val fixAgeMs = fixElapsedRealtimeNanos?.let {
@@ -117,6 +131,13 @@ internal object RiderNavigationDispatchReadiness {
         if (bound.userId != auth.user.id || bound.sessionId != auth.session.sessionId) return@withLock
         val auto = RiderAcceptanceModeStore(context).autoAcceptEnabled(auth.user.id)
         val stop = RiderStopAfterWorkStore(context).pending(auth.user.id)
+        // Permissions may be revoked in Settings while the foreground location
+        // service is still alive. Immediately fail closed rather than renew a
+        // dispatch lease using the last cached (formerly authorized) fix.
+        if (!riderNavigationHasLocationPermission(context)) {
+            api.syncDispatchPreference(auth, auto, stop, false)
+            return@withLock
+        }
         if (!riderNavigationDispatchLeaseEligible(bound.ready, auto, stop,
                 bound.orderId != null && bound.profileId != null,
                 auth.session.expiresAtMs - System.currentTimeMillis(), fixAgeMs())) {
@@ -134,7 +155,8 @@ internal object RiderNavigationDispatchReadiness {
         val latestAuto = RiderAcceptanceModeStore(context).autoAcceptEnabled(auth.user.id)
         val latestStop = RiderStopAfterWorkStore(context).pending(auth.user.id)
         api.syncDispatchPreference(auth, latestAuto, latestStop,
-            binding == bound && riderNavigationDispatchLeaseEligible(bound.ready, latestAuto, latestStop, true,
+            binding == bound && riderNavigationHasLocationPermission(context) &&
+                riderNavigationDispatchLeaseEligible(bound.ready, latestAuto, latestStop, true,
                 auth.session.expiresAtMs - System.currentTimeMillis(), fixAgeMs()))
     }
 }
