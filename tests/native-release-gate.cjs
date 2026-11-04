@@ -132,6 +132,7 @@ try{
     'physical_push_customer','physical_push_merchant','physical_push_rider',
     'physical_voice_two_devices_two_networks','turn_relay','voice_session_order_block_authorization',
     'rider_floating_q','customer_blueprint','merchant_blueprint','rider_blueprint',
+    'rider_offline_nationwide_routing',
     'android_lifecycle_permissions_upload_location','privacy_data_safety_account_deletion',
     'play_store_preflight','release_signing'
   ];
@@ -140,6 +141,7 @@ try{
     'physical_voice_two_devices_two_networks','turn_relay',
     'voice_session_order_block_authorization','rider_floating_q',
     'customer_blueprint','merchant_blueprint','rider_blueprint',
+    'rider_offline_nationwide_routing',
     'android_lifecycle_permissions_upload_location'
   ]);
   const pushChecks={
@@ -169,6 +171,20 @@ try{
     customer_blueprint:{all_required_screens_observed:true,all_required_states_observed:true,pixel_diff_reviewed:true},
     merchant_blueprint:{all_required_screens_observed:true,all_required_states_observed:true,pixel_diff_reviewed:true},
     rider_blueprint:{all_required_screens_observed:true,all_required_states_observed:true,pixel_diff_reviewed:true},
+    rider_offline_nationwide_routing:{
+      installed_graph_signed_checksum_verified:true,
+      all_77_provinces_graph_covered:true,
+      motorcycle_access_and_oneway_tested:true,
+      car_access_and_turn_restrictions_tested:true,
+      cold_start_airplane_mode:true,
+      north_south_and_cross_region_routes:true,
+      offline_turn_by_turn_instructions:true,
+      no_network_route_requests:true,
+      deviation_offline_reroute:true,
+      process_restart_offline_recovery:true,
+      gps_follow_camera_speed_zoom:true,
+      low_storage_and_ram_tested:true
+    },
     android_lifecycle_permissions_upload_location:{
       customer_permissions:true,customer_single_back_to_home:true,customer_upload:true,customer_location:true,
       customer_session_persistence:true,customer_offline_timeout:true,customer_reconnect:true,customer_background_foreground:true,
@@ -223,6 +239,30 @@ try{
     gates[gate]={status:'PASS',evidence_file:file,sha256:sha};
   }
   const report=path.join(bindingDir,'native-release-evidence.json');
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+
+  // A map-only APK cannot pass by asserting CI green or by attaching PMTiles.
+  // Offline routing evidence must contain every mandatory real-world behavior.
+  const offlinePath=path.join(bindingDir,'rider_offline_nationwide_routing.json');
+  const offlineEnvelope=JSON.parse(fs.readFileSync(offlinePath,'utf8'));
+  delete offlineEnvelope.checks.no_network_route_requests;
+  fs.writeFileSync(offlinePath,JSON.stringify(offlineEnvelope));
+  gates.rider_offline_nationwide_routing={
+    status:'PASS',evidence_file:'rider_offline_nationwide_routing.json',
+    sha256:crypto.createHash('sha256').update(fs.readFileSync(offlinePath)).digest('hex')
+  };
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const missingOfflineRoute=spawnSync('python3',[script],{
+    env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report},encoding:'utf8'
+  });
+  assert.equal(missingOfflineRoute.status,1,'Rider release must fail without an offline no-network request proof');
+  assert.match(missingOfflineRoute.stderr,/physical gate required check missing: rider_offline_nationwide_routing\\.no_network_route_requests/);
+  offlineEnvelope.checks.no_network_route_requests=true;
+  fs.writeFileSync(offlinePath,JSON.stringify(offlineEnvelope));
+  gates.rider_offline_nationwide_routing={
+    status:'PASS',evidence_file:'rider_offline_nationwide_routing.json',
+    sha256:crypto.createHash('sha256').update(fs.readFileSync(offlinePath)).digest('hex')
+  };
   fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
 
   const playEnvelopePath=path.join(bindingDir,'play_store_preflight.json');
