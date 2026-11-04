@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -71,6 +72,22 @@ private fun validNavigationPoint(lat: Double?, lon: Double?): NavigationMapPoint
     return NavigationMapPoint(lat, lon).takeIf { it.valid }
 }
 
+// A cached Android fix is only a presentation hint. It may survive process
+// restarts and cannot be shown as the Rider's present location if it is stale.
+// Elapsed realtime (unlike wall-clock time) rejects old or reboot-inconsistent fixes.
+private const val RIDER_PRESENTATION_FIX_MAX_AGE_MILLIS = 120_000L
+
+internal fun riderPresentationFixRecent(
+    nowElapsedRealtimeNanos: Long,
+    fixElapsedRealtimeNanos: Long
+): Boolean {
+    if (nowElapsedRealtimeNanos <= 0L || fixElapsedRealtimeNanos <= 0L ||
+        fixElapsedRealtimeNanos > nowElapsedRealtimeNanos
+    ) return false
+    return (nowElapsedRealtimeNanos - fixElapsedRealtimeNanos) / 1_000_000L <=
+        RIDER_PRESENTATION_FIX_MAX_AGE_MILLIS
+}
+
 private fun riderLastKnownPresentationCamera(context: Context): NavigationMapCamera? {
     val appContext = context.applicationContext
     val fine = appContext.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -81,12 +98,14 @@ private fun riderLastKnownPresentationCamera(context: Context): NavigationMapCam
 
     val manager = appContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         ?: return null
+    val nowElapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
     val location = runCatching {
         manager.getProviders(true)
             .mapNotNull { provider ->
                 runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
             }
-            .maxByOrNull { it.time }
+            .filter { riderPresentationFixRecent(nowElapsedRealtimeNanos, it.elapsedRealtimeNanos) }
+            .maxByOrNull { it.elapsedRealtimeNanos }
     }.getOrNull() ?: return null
     val point = NavigationMapPoint(location.latitude, location.longitude)
         .takeIf { it.valid } ?: return null

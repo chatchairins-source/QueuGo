@@ -336,4 +336,27 @@ class RiderNavigationIntegrationTest {
         assertTrue(navigationActive)
         assertTrue(riderNavigationAutoFollow(navigationActive, NavigationViewMode.FOLLOW))
     }
+
+    @Test fun initialPresentationCameraRejectsOldOrFutureAndroidFix() {
+        val now = 600_000_000_000L
+        val recent = now - 30_000_000_000L
+        val atBoundary = now - 120_000_000_000L
+        val stale = now - 121_000_000_000L
+
+        assertTrue(riderPresentationFixRecent(now, recent))
+        assertTrue(riderPresentationFixRecent(now, atBoundary))
+        assertFalse(riderPresentationFixRecent(now, stale))
+        assertFalse(riderPresentationFixRecent(now, now + 1_000_000_000L))
+        assertFalse(riderPresentationFixRecent(now, 0L))
+        assertFalse(riderPresentationFixRecent(0L, recent))
+    }
+
+    @Test fun initialPresentationCameraMonotonicTimeAvoidsWallClockAndRebootSkew() {
+        val nowAfterReboot = 10_000_000_000L
+        val fixFromPriorUptime = 600_000_000_000L
+        assertFalse(riderPresentationFixRecent(nowAfterReboot, fixFromPriorUptime))
+        // Epoch/wall-clock time is deliberately not a parameter: Android user
+        // clock corrections cannot resurrect a stale cached camera fix.
+        assertTrue(riderPresentationFixRecent(nowAfterReboot, nowAfterReboot - 1_000_000_000L))
+    }
 }
