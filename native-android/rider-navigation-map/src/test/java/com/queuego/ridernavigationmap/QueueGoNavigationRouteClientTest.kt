@@ -171,31 +171,29 @@ class QueueGoNavigationRouteClientTest {
     }
 
     @Test fun longInteriorJumpIsRejectedEvenWhenServerInflatesDistanceToMatch() {
-        // Previous validation checked only whether geometry was longer than
-        // the declared distance. An equally inflated distance could hide a
-        // route that teleports hundreds of kilometres between road vertices.
+        // A matching inflated summary cannot certify a teleport between road vertices.
         val disconnected = routeJson
-            .replace(\"\\\"distance\\\":4494\", \"\\\"distance\\\":600000\")
+            .replace("\"distance\":4494", "\"distance\":600000")
             .replace(
-                \"[[100.0,13.0],[100.01,13.0]]\",
-                \"[[100.0,13.0],[102.0,13.0],[100.01,13.0]]\"
+                "[[100.0,13.0],[100.01,13.0]]",
+                "[[100.0,13.0],[102.0,13.0],[100.01,13.0]]"
             )
         assertThrows(IllegalArgumentException::class.java) {
-            QueueGoNavigationRouteClient(\"https://maps.queuego.test\")
-                .parseQueueGoRoute(disconnected, stop, \"leg-1\", from = NavigationMapPoint(13.0, 100.0))
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(disconnected, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
         }
     }
 
     @Test fun longInteriorJumpIsRejectedEvenWhenSummaryDistanceIsAbsent() {
         val disconnected = routeJson
-            .replace(\"\\\"distance\\\":4494,\", \"\")
+            .replace("\"distance\":4494,", "")
             .replace(
-                \"[[100.0,13.0],[100.01,13.0]]\",
-                \"[[100.0,13.0],[102.0,13.0],[100.01,13.0]]\"
+                "[[100.0,13.0],[100.01,13.0]]",
+                "[[100.0,13.0],[102.0,13.0],[100.01,13.0]]"
             )
         assertThrows(IllegalArgumentException::class.java) {
-            QueueGoNavigationRouteClient(\"https://maps.queuego.test\")
-                .parseQueueGoRoute(disconnected, stop, \"leg-1\", from = NavigationMapPoint(13.0, 100.0))
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(disconnected, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
         }
     }
 
