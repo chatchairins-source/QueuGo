@@ -63,4 +63,12 @@ class RiderNavigationLocationCadenceTest {
         // Android devices without an accuracy estimate retain their previous behavior.
         assertTrue(riderNavigationFixEligible(now, recent, 15.0, 103.0, null))
     }
+
+    @Test
+    fun dispatchGpsPermissionAllowsFineOrCoarseButNeverNeither() {
+        assertTrue(riderNavigationPermissionGranted(fineGranted = true, coarseGranted = true))
+        assertTrue(riderNavigationPermissionGranted(fineGranted = true, coarseGranted = false))
+        assertTrue(riderNavigationPermissionGranted(fineGranted = false, coarseGranted = true))
+        assertEquals(false, riderNavigationPermissionGranted(fineGranted = false, coarseGranted = false))
+    }
 }
