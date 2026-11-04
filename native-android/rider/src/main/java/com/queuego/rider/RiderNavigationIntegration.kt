@@ -346,6 +346,37 @@ internal fun riderPresentationAfterCoordinator(
     nextTurnDistanceMeters = guidance.distanceToInstructionMeters
 )
 
+internal enum class RiderRouteIssue {
+    NO_ROUTE_PROVIDER,
+    ROUTE_UNAVAILABLE,
+    REROUTE_UNAVAILABLE
+}
+
+/**
+ * An installed offline map is NOT an offline routing engine. Communicate route
+ * availability separately from map rendering and don't suggest a remembered
+ * route is safe after a failed recalculation.
+ */
+internal fun riderRouteIssueNotice(
+    activeNavigationWork: Boolean,
+    networkAvailable: Boolean,
+    issue: RiderRouteIssue?
+): String? {
+    if (!activeNavigationWork || issue == null) return null
+    return when (issue) {
+        RiderRouteIssue.NO_ROUTE_PROVIDER ->
+            "ยังไม่มีบริการคำนวณเส้นทางที่พร้อมใช้งาน แผนที่แสดงได้แต่ยังนำทางไม่ได้"
+        RiderRouteIssue.ROUTE_UNAVAILABLE ->
+            if (networkAvailable) {
+                "คำนวณเส้นทางไม่สำเร็จ · แผนที่ยังแสดงได้ แต่ยังไม่มีเส้นทางนำทางที่ยืนยันแล้ว"
+            } else {
+                "ไม่มีอินเทอร์เน็ต · แผนที่ออฟไลน์ยังดูได้ แต่ยังคำนวณเส้นทางใหม่ออฟไลน์ไม่ได้"
+            }
+        RiderRouteIssue.REROUTE_UNAVAILABLE ->
+            "คำนวณเส้นทางใหม่ไม่สำเร็จ · เส้นทางเดิมอาจคลาดเคลื่อน โปรดตรวจสอบเส้นทางก่อนขับต่อ"
+    }
+}
+
 @Composable
 internal fun QueueGoRiderNavigationMap(
     modifier: Modifier = Modifier,
@@ -361,10 +392,12 @@ internal fun QueueGoRiderNavigationMap(
     fallbackCamera: NavigationMapCamera? = null,
     viewportInsets: NavigationViewportInsets = NavigationViewportInsets(),
     onMapReady: (Boolean) -> Unit,
-    onGuidance: (NavigationGuidanceState) -> Unit = {}
+    onGuidance: (NavigationGuidanceState) -> Unit = {},
+    onRouteIssue: (RiderRouteIssue?) -> Unit = {}
 ) {
     val context = LocalContext.current
     val guidanceCallback by rememberUpdatedState(onGuidance)
+    val routeIssueCallback by rememberUpdatedState(onRouteIssue)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val sessionStore = remember(context.applicationContext) { SessionStore(context.applicationContext) }
     var initialCamera by remember(stateKey) { mutableStateOf<NavigationMapCamera?>(null) }
@@ -644,6 +677,9 @@ internal fun QueueGoRiderNavigationMap(
         if (coordinator == null) {
             for (next in stateChannel) {
                 guidanceCallback(NavigationGuidanceState())
+                routeIssueCallback(
+                    if (navigationActive) RiderRouteIssue.NO_ROUTE_PROVIDER else null
+                )
                 val candidate = displayState(next)
                 // Without a route provider there is no authority to revive a
                 // previously rendered line after the current topology rejects it.
@@ -659,6 +695,13 @@ internal fun QueueGoRiderNavigationMap(
                 // Route progress/reroute stays authoritative on the raw GPS fix.
                 val result = coordinator.synchronize(next)
                 guidanceCallback(result.guidance)
+                routeIssueCallback(
+                    when {
+                        result.routeError == null -> null
+                        result.activeLeg == null -> RiderRouteIssue.ROUTE_UNAVAILABLE
+                        else -> RiderRouteIssue.REROUTE_UNAVAILABLE
+                    }
+                )
                 // Filtering/snapping, when the rollout gate is enabled, is renderer-only.
                 // The route response belongs to an earlier fix. Keep its route result,
                 // but never roll the visible puck/camera back to the request's location.

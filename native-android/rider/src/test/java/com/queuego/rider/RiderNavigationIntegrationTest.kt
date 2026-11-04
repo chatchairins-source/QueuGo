@@ -359,4 +359,52 @@ class RiderNavigationIntegrationTest {
         // clock corrections cannot resurrect a stale cached camera fix.
         assertTrue(riderPresentationFixRecent(nowAfterReboot, nowAfterReboot - 1_000_000_000L))
     }
+
+    @Test fun airplaneModeMapDoesNotClaimOfflineReroutingIsAvailable() {
+        val notice = riderRouteIssueNotice(
+            activeNavigationWork = true,
+            networkAvailable = false,
+            issue = RiderRouteIssue.ROUTE_UNAVAILABLE
+        )
+        assertTrue(notice!!.contains("แผนที่ออฟไลน์"))
+        assertTrue(notice.contains("ยังคำนวณเส้นทางใหม่ออฟไลน์ไม่ได้"))
+    }
+
+    @Test fun routingFailureWithNetworkKeepsMapAndRouteStatusDistinct() {
+        val notice = riderRouteIssueNotice(
+            activeNavigationWork = true,
+            networkAvailable = true,
+            issue = RiderRouteIssue.ROUTE_UNAVAILABLE
+        )
+        assertTrue(notice!!.contains("แผนที่ยังแสดงได้"))
+        assertTrue(notice.contains("ยังไม่มีเส้นทางนำทาง"))
+    }
+
+    @Test fun failedRerouteWarnsPreviouslyVerifiedLineMayBeWrong() {
+        val notice = riderRouteIssueNotice(
+            activeNavigationWork = true,
+            networkAvailable = false,
+            issue = RiderRouteIssue.REROUTE_UNAVAILABLE
+        )
+        assertTrue(notice!!.contains("เส้นทางเดิมอาจคลาดเคลื่อน"))
+        assertFalse(notice.contains("พร้อม"))
+    }
+
+    @Test fun missingProviderAndRecoveredRouteHaveClearDifferentStates() {
+        assertTrue(riderRouteIssueNotice(
+            activeNavigationWork = true,
+            networkAvailable = true,
+            issue = RiderRouteIssue.NO_ROUTE_PROVIDER
+        )!!.contains("ยังนำทางไม่ได้"))
+        assertEquals(null, riderRouteIssueNotice(
+            activeNavigationWork = true,
+            networkAvailable = true,
+            issue = null
+        ))
+        assertEquals(null, riderRouteIssueNotice(
+            activeNavigationWork = false,
+            networkAvailable = false,
+            issue = RiderRouteIssue.ROUTE_UNAVAILABLE
+        ))
+    }
 }

@@ -569,6 +569,7 @@ private fun RiderHome(
     val navigationFix by RiderNavigationLocationStore.fix.collectAsState()
     val navigationSessionStartedMs by RiderNavigationLocationStore.sessionStartedElapsedRealtimeMs.collectAsState()
     var navigationGuidance by remember(auth.user.id) { mutableStateOf(NavigationGuidanceState()) }
+    var navigationRouteIssue by remember(auth.user.id) { mutableStateOf<RiderRouteIssue?>(null) }
     var navigationClockMs by remember { mutableStateOf(SystemClock.elapsedRealtime()) }
     var dismissedRestSessionStart by remember { mutableStateOf<Long?>(null) }
     var unexpectedStopLastMovementMs by remember(auth.user.id) { mutableStateOf<Long?>(null) }
@@ -2489,6 +2490,12 @@ private fun RiderHome(
         hasActiveWork = activeNavigationWork || snapshot?.offeredJob != null,
         networkAvailable = networkAvailable
     )
+    val navigationRouteNotice = riderRouteIssueNotice(
+        activeNavigationWork = activeNavigationWork,
+        networkAvailable = networkAvailable,
+        issue = navigationRouteIssue
+    )
+    LaunchedEffect(mapJob?.id) { navigationRouteIssue = null }
     LaunchedEffect(activeNavigationWork, navigationSessionStartedMs) {
         if (!activeNavigationWork || navigationSessionStartedMs == null) return@LaunchedEffect
         while (true) {
@@ -2620,7 +2627,8 @@ private fun RiderHome(
                 bottomPx = navigationBottomInsetPx
             ),
             onMapReady = { },
-            onGuidance = { navigationGuidance = it }
+            onGuidance = { navigationGuidance = it },
+            onRouteIssue = { navigationRouteIssue = it }
         )
 
         if (!activeNavigationWork) {
@@ -3427,9 +3435,37 @@ private fun RiderHome(
             RiderOrderDetailsSheet(auth, job, api, onDismiss = { detailJob = null })
         }
         actionMessage?.let { RiderFeedbackToast(it, Modifier.align(Alignment.BottomCenter)) }
-        if (connectivityNotice != null || messageNotice != null) {
-            Column(Modifier.align(Alignment.TopCenter)) {
+        if (connectivityNotice != null || messageNotice != null || navigationRouteNotice != null) {
+            // During a delivery the turn banner owns the upper safe area.
+            // Keep operational warnings below it so they cannot cover a maneuver.
+            val noticeTop = when {
+                activeNavigationWork && navigationCustomerNote != null -> 184.dp
+                activeNavigationWork -> 136.dp
+                else -> 0.dp
+            }
+            Column(
+                Modifier.align(Alignment.TopCenter).padding(top = noticeTop)
+            ) {
                 connectivityNotice?.let { RiderConnectivityNotice(it) }
+                navigationRouteNotice?.let { notice ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 3.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEACB)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF5C678))
+                    ) {
+                        Text(
+                            text = notice,
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+                            color = Color(0xFF6B4300),
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
                 messageNotice?.let { RiderMessageNotice(it, Modifier) }
             }
         }
