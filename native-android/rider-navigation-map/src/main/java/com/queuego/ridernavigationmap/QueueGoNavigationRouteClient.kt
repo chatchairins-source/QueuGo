@@ -191,7 +191,10 @@ class QueueGoNavigationRouteClient(
                     "QueueGo route has too many steps"
                 }
                 for (stepIndex in 0 until steps.length()) {
-                    val step = steps.optJSONObject(stepIndex) ?: continue
+                    // A missing turn must not silently disappear from Rider guidance.
+                    // A broken step list is not a trustworthy turn-by-turn route.
+                    val step = steps.optJSONObject(stepIndex)
+                        ?: error("QueueGo route contains a malformed navigation step")
                     instructions += NavigationRouteInstruction(
                         sequence = sequence++,
                         turnCode = step.optInt("vendor_type", 7),
