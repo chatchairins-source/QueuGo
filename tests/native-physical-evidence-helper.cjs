@@ -5,7 +5,11 @@ assert.ok(fs.existsSync(script),'physical evidence capture helper must exist');
 const listed=spawnSync('python3',[script,'--list-gates'],{encoding:'utf8'});
 assert.equal(listed.status,0,'physical evidence helper must expose canonical gate contract');
 const gates=JSON.parse(listed.stdout);
-assert.equal(Object.keys(gates).length,11,'physical helper must cover every canonical physical gate');
+assert.equal(Object.keys(gates).length,12,'physical helper must cover every canonical physical gate');
+assert.deepEqual(gates.rider_offline_nationwide_routing.required_roles,['rider']);
+assert.ok(gates.rider_offline_nationwide_routing.required_checks.includes('no_network_route_requests'));
+assert.ok(gates.rider_offline_nationwide_routing.required_checks.includes('deviation_offline_reroute'));
+
 assert.deepEqual(gates.physical_push_customer.required_roles,['customer']);
 assert.ok(gates.physical_push_customer.required_checks.includes('background'));
 assert.ok(gates.physical_push_customer.required_checks.includes('stale_token_exclusion'));
@@ -32,4 +36,4 @@ assert.ok(source.includes('requires two distinct physical devices'),'voice/TURN 
 assert.ok(source.includes('requires two distinct network labels'),'voice/TURN evidence must reject one-network capture');
 assert.ok(source.includes('cannot certify blueprint evidence with blocking differences'),'Blueprint PASS must require zero blocking differences');
 
-console.log(JSON.stringify({checks:25,failures:0,scope:'Fail-closed real-device physical evidence capture helper'}));
+console.log(JSON.stringify({checks:28,failures:0,scope:'Fail-closed real-device physical evidence capture helper'}));
