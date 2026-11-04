@@ -3436,7 +3436,16 @@ private fun RiderHome(
         }
         actionMessage?.let { RiderFeedbackToast(it, Modifier.align(Alignment.BottomCenter)) }
         if (connectivityNotice != null || messageNotice != null || navigationRouteNotice != null) {
-            Column(Modifier.align(Alignment.TopCenter)) {
+            // During a delivery the turn banner owns the upper safe area.
+            // Keep operational warnings below it so they cannot cover a maneuver.
+            val noticeTop = when {
+                activeNavigationWork && navigationCustomerNote != null -> 184.dp
+                activeNavigationWork -> 136.dp
+                else -> 0.dp
+            }
+            Column(
+                Modifier.align(Alignment.TopCenter).padding(top = noticeTop)
+            ) {
                 connectivityNotice?.let { RiderConnectivityNotice(it) }
                 navigationRouteNotice?.let { notice ->
                     Card(
