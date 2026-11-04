@@ -34,3 +34,18 @@ internal fun riderOnlineStatusCopy(
         locationWarning = false
     )
 }
+
+/**
+ * Recheck the Android prerequisites AFTER async push binding and immediately
+ * BEFORE requesting a new server-online lease. A permission or GPS toggle can
+ * change while the push registration network request is suspended.
+ *
+ * This is not a replacement for the backend's authoritative dispatch checks.
+ */
+internal fun riderOnlineActivationBlocker(diagnostics: RiderDiagnosticsSnapshot): String? = when {
+    !diagnostics.networkReady -> "ต้องเชื่อมต่ออินเทอร์เน็ตก่อนเปิดรับงาน"
+    !diagnostics.locationPermission -> "ต้องอนุญาตตำแหน่งให้ QueueGo Rider ก่อนเปิดรับงาน"
+    !diagnostics.locationServices -> "ต้องเปิด GPS / Location ก่อนเปิดรับงาน"
+    !diagnostics.notifications -> "ต้องเปิดการแจ้งเตือนงาน QueueGo ก่อนเปิดรับงาน"
+    else -> null
+}

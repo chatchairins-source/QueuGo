@@ -33,4 +33,19 @@ class RiderLocationIntegrityTest {
         assertTrue(health.detail.contains("2/20"))
         assertTrue(health.detail.contains("ยังไม่บล็อกงาน"))
     }
+
+    @Test fun operationalLocationNeverUsesStaleLocationManagerCache() {
+        val now = 600_000_000_000L
+        assertTrue(riderOperationalLocationFixIsFresh(now, now - 1_000_000_000L))
+        assertTrue(riderOperationalLocationFixIsFresh(now, now - 30_000_000_000L))
+        assertFalse(riderOperationalLocationFixIsFresh(now, now - 31_000_000_000L))
+        assertFalse(riderOperationalLocationFixIsFresh(now, 0L))
+    }
+
+    @Test fun operationalLocationRejectsFutureAndCrossRebootFixes() {
+        val now = 10_000_000_000L
+        assertFalse(riderOperationalLocationFixIsFresh(now, now + 1_000_000L))
+        assertFalse(riderOperationalLocationFixIsFresh(now, 800_000_000_000L))
+        assertFalse(riderOperationalLocationFixIsFresh(0L, 1_000_000L))
+    }
 }

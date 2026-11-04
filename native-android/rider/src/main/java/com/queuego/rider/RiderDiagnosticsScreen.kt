@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 internal data class RiderDiagnosticsSnapshot(
     val networkReady: Boolean,
@@ -101,7 +104,17 @@ internal fun RiderDiagnosticsScreen(
 ) {
     val context = LocalContext.current
     var refresh by remember { mutableIntStateOf(0) }
-    val diagnostics = remember(refresh) { readRiderDiagnostics(context) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    // Permissions, Location and notification settings are edited in Android Settings.
+    // Returning to this screen must invalidate its cached diagnostic snapshot.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refresh += 1
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val diagnostics = remember(context, refresh) { readRiderDiagnostics(context) }
     val lastExit = remember(refresh) { readRiderLastProcessExit(context) }
     val mapDiagnostics by RiderRuntimeDiagnosticsStore.mapDiagnostics.collectAsState()
     val networkDiagnostics by RiderRuntimeDiagnosticsStore.networkDiagnostics.collectAsState()

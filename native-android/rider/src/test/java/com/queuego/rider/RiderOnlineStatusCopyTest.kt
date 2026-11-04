@@ -50,4 +50,42 @@ class RiderOnlineStatusCopyTest {
         assertFalse(restored.locationWarning)
         assertEquals(denied, deniedAgain)
     }
+
+    private fun readyForActivation() = RiderDiagnosticsSnapshot(
+        networkReady = true,
+        locationPermission = true,
+        locationServices = true,
+        notifications = true,
+        googleMaps = false,
+        overlayReturn = false,
+        microphone = false
+    )
+
+    @Test fun newOnlineLeaseRequiresAllFourLiveDeviceChecks() {
+        val ready = readyForActivation()
+        assertEquals(null, riderOnlineActivationBlocker(ready))
+        assertTrue(riderOnlineActivationBlocker(ready.copy(networkReady = false))!!.contains("อินเทอร์เน็ต"))
+        assertTrue(riderOnlineActivationBlocker(ready.copy(locationPermission = false))!!.contains("ตำแหน่ง"))
+        assertTrue(riderOnlineActivationBlocker(ready.copy(locationServices = false))!!.contains("GPS"))
+        assertTrue(riderOnlineActivationBlocker(ready.copy(notifications = false))!!.contains("แจ้งเตือน"))
+    }
+
+    @Test fun lossOfPermissionDuringAsyncPushBindFailsClosedBeforeServerMutation() {
+        val beforePushBind = readyForActivation()
+        assertEquals(null, riderOnlineActivationBlocker(beforePushBind))
+
+        // The OS can revoke permission or disable location while registration
+        // is suspended; the second read must not use the stale preflight value.
+        val afterPushBind = beforePushBind.copy(locationPermission = false)
+        assertTrue(riderOnlineActivationBlocker(afterPushBind) != null)
+        assertEquals(null, riderOnlineActivationBlocker(afterPushBind.copy(locationPermission = true)))
+    }
+
+    @Test fun optionalGoogleMapsOverlayAndMicrophoneNeverBlockNativeOnlineLease() {
+        val ready = readyForActivation()
+        assertEquals(null, riderOnlineActivationBlocker(ready))
+        assertEquals(null, riderOnlineActivationBlocker(
+            ready.copy(googleMaps = true, overlayReturn = true, microphone = true)
+        ))
+    }
 }
