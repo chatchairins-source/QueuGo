@@ -18,6 +18,7 @@ on:
       - queuego-native-android-v1
       - 'work-native-**'
       - 'fix/native-**'
+      - 'fix-native-**'
       - 'work-rider-**'
       - 'fix-rider-**'
       - work-native-release-integration-20261010
