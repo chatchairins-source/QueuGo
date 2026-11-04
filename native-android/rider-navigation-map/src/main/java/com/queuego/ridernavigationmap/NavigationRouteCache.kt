@@ -63,6 +63,13 @@ class CachingNavigationRouteProvider(
         }
 
         val fresh = delegate.route(from, stop, segmentId)
+        // The coordinator validates a route before rendering it, but a rejected
+        // provider result must never enter this cache. Otherwise an invalid
+        // response can be replayed for up to eight minutes on every retry,
+        // even after the provider itself recovers.
+        if (!routeIsSafeToCache(fresh, from, stop, segmentId)) {
+            return fresh
+        }
         synchronized(lock) {
             pruneLocked(nowMillis())
             entries.removeAll { entry ->
@@ -83,6 +90,28 @@ class CachingNavigationRouteProvider(
             }
         }
         return fresh
+    }
+
+    private fun routeIsSafeToCache(
+        leg: NavigationRouteLeg,
+        origin: NavigationMapPoint,
+        stop: NavigationMapStop,
+        requestedSegmentId: String
+    ): Boolean {
+        if (!leg.segment.renderable ||
+            leg.segment.id != requestedSegmentId ||
+            leg.segment.toStopId != stop.id
+        ) return false
+        val points = leg.segment.points
+        if (!points.all { it.valid }) return false
+        if (navigationHaversineMeters(points.first(), origin) > 750.0 ||
+            navigationHaversineMeters(points.last(), stop.point) > 750.0
+        ) return false
+        if (!leg.distanceMeters.isFinite() || leg.distanceMeters <= 0.0) return false
+        if (leg.durationSeconds != null &&
+            (!leg.durationSeconds.isFinite() || leg.durationSeconds < 0.0)
+        ) return false
+        return true
     }
 
     fun clear() {
