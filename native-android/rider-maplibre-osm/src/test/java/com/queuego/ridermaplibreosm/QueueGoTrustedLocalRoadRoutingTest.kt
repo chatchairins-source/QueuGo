@@ -164,4 +164,83 @@ class QueueGoTrustedLocalRoadRoutingTest {
             directory.deleteRecursively()
         }
     }
+
+    @Test
+    fun indexedSnapMatchesExhaustiveDistanceScanAcrossThousandsOfTrustedNodes() {
+        // Real verified-graph path: 5,001 distinct road vertices, without
+        // injecting imaginary nearest connections or modifying route decisions.
+        val points = (0..5_000).map { index ->
+            QueueGoLocalRoadPoint(10.0 + index * 0.0001, 103.0 + (index % 2) * 0.00001)
+        }
+        val session = QueueGoTrustedLocalRoadSnapshot(
+            revision = 2L,
+            roads = listOf(
+                QueueGoLocalRoad(
+                    id = "field-survey:long-indexed-road",
+                    points = points,
+                    source = QueueGoLocalRoadSource.FIELD_SURVEY,
+                    verified = true
+                )
+            ),
+            junctions = emptyList()
+        ).buildGraphSession()
+        val query = QueueGoLocalRoadPoint(10.250013, 103.000002)
+        val radius = 30.0
+        val expected = points.mapNotNull { candidate ->
+            val distance = queueGoLocalRoadDistanceMeters(query, candidate)
+            if (distance > radius) null else
+                Triple(requireNotNull(session.exactNodeId(candidate)), candidate, distance)
+        }.minWithOrNull(compareBy<Triple<String, QueueGoLocalRoadPoint, Double>> { it.third }
+            .thenBy { it.first })
+        val snapped = session.nearestNode(query, radius)
+        assertNotNull(expected)
+        assertNotNull(snapped)
+        assertEquals(expected!!.first, snapped!!.nodeId)
+        assertEquals(expected.second, snapped.point)
+        assertEquals(expected.third, snapped.distanceMeters, 0.000001)
+        assertEquals(5_001, session.nodeCount)
+    }
+
+    @Test
+    fun indexedSnapPreservesDatelineDistanceInsteadOfAssumingLongitudeWindow() {
+        val west = QueueGoLocalRoadPoint(0.0, 179.999)
+        val east = QueueGoLocalRoadPoint(0.0, -179.999)
+        val session = QueueGoTrustedLocalRoadSnapshot(
+            revision = 3L,
+            roads = listOf(
+                QueueGoLocalRoad(
+                    id = "field-survey:dateline",
+                    points = listOf(west, east),
+                    source = QueueGoLocalRoadSource.FIELD_SURVEY,
+                    verified = true
+                )
+            ),
+            junctions = emptyList()
+        ).buildGraphSession()
+        val snapped = session.nearestNode(QueueGoLocalRoadPoint(0.0, 180.0), 200.0)
+        assertNotNull(snapped)
+        assertTrue(snapped!!.distanceMeters in 100.0..120.0)
+        assertNull(session.nearestNode(QueueGoLocalRoadPoint(0.0, 180.0), 50.0))
+    }
+
+    @Test
+    fun indexedSnapRetainsBoundaryAndDoesNotConnectDistantRoads() {
+        val roadPoint = QueueGoLocalRoadPoint(15.0, 103.0)
+        val session = QueueGoTrustedLocalRoadSnapshot(
+            revision = 4L,
+            roads = listOf(
+                QueueGoLocalRoad(
+                    id = "field-survey:radius",
+                    points = listOf(roadPoint, QueueGoLocalRoadPoint(15.0, 103.001)),
+                    source = QueueGoLocalRoadSource.FIELD_SURVEY,
+                    verified = true
+                )
+            ),
+            junctions = emptyList()
+        ).buildGraphSession()
+        val query = QueueGoLocalRoadPoint(15.002, 103.0)
+        assertNull(session.nearestNode(query, 200.0))
+        assertNotNull(session.nearestNode(query, 250.0))
+        assertEquals(roadPoint, session.nearestNode(query, 250.0)!!.point)
+    }
 }
