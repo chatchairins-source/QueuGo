@@ -183,6 +183,15 @@ private fun buildQueueGoGraphJunctionIndex(
             road.points[member.pointIndex]
         }
         require(memberPoints.isNotEmpty()) { "Local-road junction has no graph members" }
+        // Even signed junction metadata cannot authorize a teleport between distant
+        // road vertices. Keep surveyed offsets local; reject suspect feeds instead
+        // of silently connecting unrelated roads across a town or province.
+        val anchor = memberPoints.first()
+        require(memberPoints.all { point ->
+            queueGoLocalRoadDistanceMeters(anchor, point) <= 100.0
+        }) {
+            "Local-road junction members are too far apart for a trusted connection"
+        }
         // A signed junction can straddle +/-180 degrees. Arithmetic averaging
         // would put two adjacent surveyed points at longitude 0, inventing
         // geometry halfway around Earth. Unwrap around the first member before
