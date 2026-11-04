@@ -136,6 +136,56 @@ class QueueGoLocalRoadGraphTest {
         )
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun signedJunctionCannotTeleportBetweenDistantRoads() {
+        val first = QueueGoLocalRoadPoint(15.001, 103.001)
+        val distant = QueueGoLocalRoadPoint(15.1, 103.1)
+        buildQueueGoLocalRoadGraph(
+            roads = listOf(
+                road(id = "north", points = listOf(a, first)),
+                road(id = "south", points = listOf(distant, b))
+            ),
+            junctions = listOf(
+                QueueGoVerifiedLocalRoadJunction(
+                    id = "survey:distant",
+                    members = listOf(
+                        QueueGoLocalRoadJunctionMember("north", 1),
+                        QueueGoLocalRoadJunctionMember("south", 0)
+                    ),
+                    source = QueueGoLocalRoadSource.FIELD_SURVEY,
+                    sourceReference = "survey:distant",
+                    verifiedAtEpochMillis = 1_700_000_000_000L
+                )
+            )
+        )
+    }
+
+    @Test
+    fun signedNearbyJunctionStillConnectsSurveyedRoads() {
+        val first = QueueGoLocalRoadPoint(15.001, 103.001)
+        val nearby = QueueGoLocalRoadPoint(15.00101, 103.00101)
+        val graph = buildQueueGoLocalRoadGraph(
+            roads = listOf(
+                road(id = "north", points = listOf(a, first)),
+                road(id = "south", points = listOf(nearby, b))
+            ),
+            junctions = listOf(
+                QueueGoVerifiedLocalRoadJunction(
+                    id = "survey:nearby",
+                    members = listOf(
+                        QueueGoLocalRoadJunctionMember("north", 1),
+                        QueueGoLocalRoadJunctionMember("south", 0)
+                    ),
+                    source = QueueGoLocalRoadSource.FIELD_SURVEY,
+                    sourceReference = "survey:nearby",
+                    verifiedAtEpochMillis = 1_700_000_000_000L
+                )
+            )
+        )
+        assertEquals(1, graph.nodes.keys.count { it == "j:survey:nearby" })
+        assertEquals(4, graph.edges.size)
+    }
+
     @Test
     fun signedJunctionAcrossDatelineKeepsCanonicalPointNearBothSurveyedRoads() {
         val east = QueueGoLocalRoadPoint(0.0, 179.99999)
