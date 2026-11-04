@@ -243,4 +243,48 @@ class QueueGoTrustedLocalRoadRoutingTest {
         assertNotNull(session.nearestNode(query, 250.0))
         assertEquals(roadPoint, session.nearestNode(query, 250.0)!!.point)
     }
+
+    @Test
+    fun routeBetweenNeverReportsOnePointAsNavigableWhenBothGpsFixesSnapToOneNode() {
+        val graph = QueueGoTrustedLocalRoadSnapshot(
+            revision = 5L,
+            roads = listOf(road()),
+            junctions = emptyList()
+        ).buildGraphSession()
+
+        // Two different delivery locations are both near the same verified
+        // vertex. A zero-edge path is not turn-by-turn navigation.
+        val result = graph.routeBetween(
+            start = QueueGoLocalRoadPoint(15.00005, 103.0),
+            end = QueueGoLocalRoadPoint(14.99995, 103.0),
+            vehicle = QueueGoRoutingVehicle.MOTORCYCLE,
+            maxSnapMeters = 10.0
+        )
+
+        assertEquals(QueueGoLocalRoadPathStatus.NO_PATH, result.status)
+        assertTrue(result.points.isEmpty())
+        assertEquals(0.0, result.totalDistanceMeters, 0.0)
+        assertNotNull(result.startSnapMeters)
+        assertNotNull(result.endSnapMeters)
+        assertTrue(result.startSnapMeters!! < 10.0)
+        assertTrue(result.endSnapMeters!! < 10.0)
+    }
+
+    @Test
+    fun exactSameRoadVertexIsArrivalProximityNotAOnePointRoute() {
+        val graph = QueueGoTrustedLocalRoadSnapshot(
+            revision = 6L,
+            roads = listOf(road()),
+            junctions = emptyList()
+        ).buildGraphSession()
+
+        val result = graph.routeBetween(
+            start = a,
+            end = a,
+            vehicle = QueueGoRoutingVehicle.CAR
+        )
+        assertEquals(QueueGoLocalRoadPathStatus.NO_PATH, result.status)
+        assertTrue(result.points.isEmpty())
+        assertEquals(0.0, result.totalDistanceMeters, 0.0)
+    }
 }
