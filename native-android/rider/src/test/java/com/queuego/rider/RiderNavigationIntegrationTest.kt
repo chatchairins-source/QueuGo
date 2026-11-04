@@ -1,6 +1,8 @@
 package com.queuego.rider
 
 import com.queuego.ridernavigationmap.NavigationMapPoint
+import com.queuego.ridernavigationmap.NavigationGuidanceState
+import com.queuego.ridernavigationmap.RiderNavigationMapState
 import com.queuego.ridernavigationmap.NavigationRouteSegment
 import com.queuego.ridernavigationmap.NavigationRouteStyle
 import com.queuego.ridernavigationmap.NavigationStopKind
@@ -59,6 +61,58 @@ class RiderNavigationIntegrationTest {
         ),
         style = NavigationRouteStyle.FUTURE
     )
+
+    @Test fun routingFailureCannotResurrectPreviousDestinationPolyline() {
+        val stale = futureSegment()
+        // The coordinator invalidated this cached line because the destination
+        // or active stop changed, while the latest camera state still holds it.
+        val authoritative = RiderNavigationMapState(
+            stops = futureStops().drop(1),
+            routes = emptyList(),
+            activeStopId = "drop:order-2"
+        )
+        val latest = RiderNavigationMapState(
+            routes = listOf(stale),
+            followRider = false,
+            viewMode = NavigationViewMode.FREE_PAN
+        )
+        val displayed = riderPresentationAfterCoordinator(
+            authoritative, latest, NavigationGuidanceState()
+        )
+        assertTrue(displayed.routes.isEmpty())
+        assertEquals("drop:order-2", displayed.activeStopId)
+        assertFalse(displayed.followRider)
+        assertEquals(NavigationViewMode.FREE_PAN, displayed.viewMode)
+    }
+
+    @Test fun routingFailureKeepsOnlyCoordinatorVerifiedGeometryAndFreshGuidance() {
+        val old = futureSegment()
+        val verified = old.copy(
+            id = "navigation:drop:order-1:1",
+            style = NavigationRouteStyle.ACTIVE,
+            points = listOf(
+                NavigationMapPoint(14.99, 103.10),
+                NavigationMapPoint(14.997, 103.108),
+                NavigationMapPoint(15.00, 103.11)
+            )
+        )
+        val authoritative = RiderNavigationMapState(
+            stops = futureStops().take(2),
+            routes = listOf(verified),
+            activeStopId = "drop:order-1"
+        )
+        val latest = RiderNavigationMapState(
+            routes = listOf(old), followRider = false,
+            viewMode = NavigationViewMode.FREE_PAN
+        )
+        val displayed = riderPresentationAfterCoordinator(
+            authoritative, latest,
+            NavigationGuidanceState(distanceToInstructionMeters = 125.0)
+        )
+        assertEquals(listOf(verified), displayed.routes)
+        assertEquals(125.0, displayed.nextTurnDistanceMeters!!, 0.001)
+        assertEquals(NavigationViewMode.FREE_PAN, displayed.viewMode)
+    }
 
     @Test fun transientNetworkFailureRetainsVerifiedSameTopologyFutureGeometry() {
         val prior = listOf(futureSegment())
