@@ -256,7 +256,7 @@ try{
     env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report},encoding:'utf8'
   });
   assert.equal(missingOfflineRoute.status,1,'Rider release must fail without an offline no-network request proof');
-  assert.match(missingOfflineRoute.stderr,/physical gate required check missing: rider_offline_nationwide_routing\\.no_network_route_requests/);
+  assert.match(missingOfflineRoute.stderr,/physical gate required check missing: rider_offline_nationwide_routing\.no_network_route_requests/);
   offlineEnvelope.checks.no_network_route_requests=true;
   fs.writeFileSync(offlinePath,JSON.stringify(offlineEnvelope));
   gates.rider_offline_nationwide_routing={
