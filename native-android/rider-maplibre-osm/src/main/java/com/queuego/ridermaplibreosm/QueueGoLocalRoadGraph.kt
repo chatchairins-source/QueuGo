@@ -75,6 +75,12 @@ internal fun buildQueueGoLocalRoadGraph(
     roads: List<QueueGoLocalRoad>,
     junctions: List<QueueGoVerifiedLocalRoadJunction> = emptyList()
 ): QueueGoLocalRoadGraph {
+    // Validate the complete signed feed before associateBy can silently overwrite an ID.
+    // Even an excluded/unverified duplicate can otherwise change which road a junction
+    // resolves to, while the eligible edge builder still accepts the other record.
+    require(roads.map { it.id }.toSet().size == roads.size) {
+        "Duplicate local-road id in signed graph feed"
+    }
     val roadById = roads.associateBy { it.id }
     val junctionIndex = buildQueueGoGraphJunctionIndex(
         roadsById = roadById,
