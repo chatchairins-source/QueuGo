@@ -137,6 +137,40 @@ class QueueGoLocalRoadGraphTest {
     }
 
     @Test(expected = IllegalArgumentException::class)
+    fun unverifiedDuplicateCannotOverrideEligibleRoadInJunctionLookup() {
+        val shared = QueueGoLocalRoadPoint(15.001, 103.001)
+        buildQueueGoLocalRoadGraph(
+            roads = listOf(
+                road(id = "shared-id", points = listOf(a, shared)),
+                road(id = "shared-id", points = listOf(a, b), verified = false),
+                road(id = "connector", points = listOf(shared, b))
+            ),
+            junctions = listOf(
+                QueueGoVerifiedLocalRoadJunction(
+                    id = "survey:shared-id",
+                    members = listOf(
+                        QueueGoLocalRoadJunctionMember("shared-id", 1),
+                        QueueGoLocalRoadJunctionMember("connector", 0)
+                    ),
+                    source = QueueGoLocalRoadSource.FIELD_SURVEY,
+                    sourceReference = "survey:shared-id",
+                    verifiedAtEpochMillis = 1_700_000_000_000L
+                )
+            )
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun excludedPrivateDuplicateCannotShadowEligibleRoad() {
+        buildQueueGoLocalRoadGraph(
+            listOf(
+                road(id = "shared-id"),
+                road(id = "shared-id", access = QueueGoLocalRoadAccess.PRIVATE_RESTRICTED)
+            )
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
     fun signedJunctionCannotTeleportBetweenDistantRoads() {
         val first = QueueGoLocalRoadPoint(15.001, 103.001)
         val distant = QueueGoLocalRoadPoint(15.1, 103.1)
