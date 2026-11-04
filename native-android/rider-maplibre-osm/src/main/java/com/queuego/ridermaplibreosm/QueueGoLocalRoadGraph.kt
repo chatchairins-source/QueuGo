@@ -183,9 +183,20 @@ private fun buildQueueGoGraphJunctionIndex(
             road.points[member.pointIndex]
         }
         require(memberPoints.isNotEmpty()) { "Local-road junction has no graph members" }
+        // A signed junction can straddle +/-180 degrees. Arithmetic averaging
+        // would put two adjacent surveyed points at longitude 0, inventing
+        // geometry halfway around Earth. Unwrap around the first member before
+        // averaging and normalize the result to the legal longitude interval.
+        val referenceLongitude = memberPoints.first().longitude
+        val unwrappedLongitude = memberPoints.map { point ->
+            referenceLongitude +
+                ((point.longitude - referenceLongitude + 540.0) % 360.0) - 180.0
+        }.average()
+        val canonicalLongitude =
+            ((unwrappedLongitude + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
         canonicalPoints[nodeId] = QueueGoLocalRoadPoint(
             latitude = memberPoints.sumOf { it.latitude } / memberPoints.size.toDouble(),
-            longitude = memberPoints.sumOf { it.longitude } / memberPoints.size.toDouble()
+            longitude = canonicalLongitude
         )
     }
 
