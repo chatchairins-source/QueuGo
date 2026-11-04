@@ -138,7 +138,7 @@ class QueueGoLocalRoadGraphTest {
 
     @Test(expected = IllegalArgumentException::class)
     fun signedJunctionCannotTeleportBetweenDistantRoads() {
-        val first = QueueGoLocalRoadPoint(15.0, 103.0)
+        val first = QueueGoLocalRoadPoint(15.001, 103.001)
         val distant = QueueGoLocalRoadPoint(15.1, 103.1)
         buildQueueGoLocalRoadGraph(
             roads = listOf(
@@ -162,8 +162,8 @@ class QueueGoLocalRoadGraphTest {
 
     @Test
     fun signedNearbyJunctionStillConnectsSurveyedRoads() {
-        val first = QueueGoLocalRoadPoint(15.0, 103.0)
-        val nearby = QueueGoLocalRoadPoint(15.00001, 103.00001)
+        val first = QueueGoLocalRoadPoint(15.001, 103.001)
+        val nearby = QueueGoLocalRoadPoint(15.00101, 103.00101)
         val graph = buildQueueGoLocalRoadGraph(
             roads = listOf(
                 road(id = "north", points = listOf(a, first)),
