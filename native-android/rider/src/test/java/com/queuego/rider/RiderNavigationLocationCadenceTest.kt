@@ -39,4 +39,28 @@ class RiderNavigationLocationCadenceTest {
         )
         assertEquals(3_000L, riderNavigationLocationPushIntervalMs(Double.NaN))
     }
+
+    @Test
+    fun delayedFusedCallbacksCannotOverwriteNavigationWithExpiredOrFuturePosition() {
+        val now = 600_000_000_000L
+        assertTrue(riderNavigationFixEligible(now, now - 5_000_000_000L, 15.0, 103.0, 8f))
+        assertTrue(riderNavigationFixEligible(now, now - 30_000_000_000L, 15.0, 103.0, 8f))
+        assertEquals(false, riderNavigationFixEligible(now, now - 31_000_000_000L, 15.0, 103.0, 8f))
+        assertEquals(false, riderNavigationFixEligible(now, now + 1_000_000_000L, 15.0, 103.0, 8f))
+        assertEquals(false, riderNavigationFixEligible(now, 0L, 15.0, 103.0, 8f))
+        assertEquals(false, riderNavigationFixEligible(10_000_000_000L, now, 15.0, 103.0, 8f))
+    }
+
+    @Test
+    fun navigationCallbackRejectsInvalidCoordinatesAndUnreliableAccuracy() {
+        val now = 600_000_000_000L
+        val recent = now - 2_000_000_000L
+        assertEquals(false, riderNavigationFixEligible(now, recent, Double.NaN, 103.0, 8f))
+        assertEquals(false, riderNavigationFixEligible(now, recent, 15.0, 181.0, 8f))
+        assertEquals(false, riderNavigationFixEligible(now, recent, 15.0, 103.0, 81f))
+        assertEquals(false, riderNavigationFixEligible(now, recent, 15.0, 103.0, Float.NaN))
+        assertEquals(false, riderNavigationFixEligible(now, recent, 15.0, 103.0, -1f))
+        // Android devices without an accuracy estimate retain their previous behavior.
+        assertTrue(riderNavigationFixEligible(now, recent, 15.0, 103.0, null))
+    }
 }
