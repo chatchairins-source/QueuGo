@@ -28,6 +28,7 @@ GATES = (
     "physical_push_rider", "physical_voice_two_devices_two_networks", "turn_relay",
     "voice_session_order_block_authorization", "rider_floating_q",
     "customer_blueprint", "merchant_blueprint", "rider_blueprint",
+    "rider_offline_nationwide_routing",
     "android_lifecycle_permissions_upload_location", "privacy_data_safety_account_deletion",
     "play_store_preflight", "release_signing",
 )
@@ -37,6 +38,7 @@ PHYSICAL_GATES = {
     "physical_voice_two_devices_two_networks", "turn_relay",
     "voice_session_order_block_authorization", "rider_floating_q",
     "customer_blueprint", "merchant_blueprint", "rider_blueprint",
+    "rider_offline_nationwide_routing",
     "android_lifecycle_permissions_upload_location",
 }
 
@@ -51,6 +53,7 @@ PHYSICAL_GATE_REQUIRED_ROLES = {
     "customer_blueprint": {"customer"},
     "merchant_blueprint": {"merchant"},
     "rider_blueprint": {"rider"},
+    "rider_offline_nationwide_routing": {"rider"},
     "android_lifecycle_permissions_upload_location": {"customer", "merchant", "rider"},
 }
 
@@ -98,6 +101,22 @@ PHYSICAL_GATE_REQUIRED_CHECKS = {
     "rider_blueprint": (
         "all_required_screens_observed", "all_required_states_observed",
         "pixel_diff_reviewed",
+    ),
+    # A visible PMTiles map is not an offline routing graph. Do not release
+    # a Rider APK that has only rendered roads and cached online route lines.
+    "rider_offline_nationwide_routing": (
+        "installed_graph_signed_checksum_verified",
+        "all_77_provinces_graph_covered",
+        "motorcycle_access_and_oneway_tested",
+        "car_access_and_turn_restrictions_tested",
+        "cold_start_airplane_mode",
+        "north_south_and_cross_region_routes",
+        "offline_turn_by_turn_instructions",
+        "no_network_route_requests",
+        "deviation_offline_reroute",
+        "process_restart_offline_recovery",
+        "gps_follow_camera_speed_zoom",
+        "low_storage_and_ram_tested",
     ),
     "android_lifecycle_permissions_upload_location": (
         "customer_permissions", "customer_single_back_to_home",
