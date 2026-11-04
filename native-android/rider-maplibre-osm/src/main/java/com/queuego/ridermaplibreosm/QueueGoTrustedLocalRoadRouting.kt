@@ -129,6 +129,18 @@ class QueueGoTrustedLocalRoadGraphSession internal constructor(
                 status = QueueGoLocalRoadPathStatus.INVALID_ENDPOINT,
                 startSnapMeters = startSnap.distanceMeters
             )
+        // Two distinct requested coordinates can snap to the same verified
+        // graph node (including the two sides of a signed junction). The
+        // distance-only search then returns FOUND with zero edges. That is
+        // arrival proximity, not a renderable navigation route: never certify
+        // a one-point route or invent a connecting straight line.
+        if (startSnap.nodeId == endSnap.nodeId) {
+            return QueueGoTrustedLocalRoadRoute(
+                status = QueueGoLocalRoadPathStatus.NO_PATH,
+                startSnapMeters = startSnap.distanceMeters,
+                endSnapMeters = endSnap.distanceMeters
+            )
+        }
         val path = findQueueGoLocalRoadPath(
             graph = graph,
             request = QueueGoLocalRoadPathRequest(
