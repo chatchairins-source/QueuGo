@@ -308,6 +308,8 @@ jobs:
             native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
             native-android/rider/build/outputs/apk/debug/rider-debug.apk
           if-no-files-found: error
+      - name: Regression test bounded Android SDK download recovery
+        run: python3 -m unittest discover -s native-android/qa -p 'test_android_sdk_recovery.py'
       - name: Enable runner-only access to Android acceleration
         run: |
           set -euo pipefail
