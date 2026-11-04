@@ -170,6 +170,33 @@ class QueueGoNavigationRouteClientTest {
         assertEquals(measured, leg.distanceMeters, 0.01)
     }
 
+    @Test fun longInteriorJumpIsRejectedEvenWhenServerInflatesDistanceToMatch() {
+        // A matching inflated summary cannot certify a teleport between road vertices.
+        val disconnected = routeJson
+            .replace("\"distance\":4494", "\"distance\":600000")
+            .replace(
+                "[[100.0,13.0],[100.01,13.0]]",
+                "[[100.0,13.0],[102.0,13.0],[100.01,13.0]]"
+            )
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(disconnected, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
+        }
+    }
+
+    @Test fun longInteriorJumpIsRejectedEvenWhenSummaryDistanceIsAbsent() {
+        val disconnected = routeJson
+            .replace("\"distance\":4494,", "")
+            .replace(
+                "[[100.0,13.0],[100.01,13.0]]",
+                "[[100.0,13.0],[102.0,13.0],[100.01,13.0]]"
+            )
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(disconnected, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
+        }
+    }
+
     @Test fun cleartextServiceUrlIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
             QueueGoNavigationRouteClient("http://maps.queuego.test")
