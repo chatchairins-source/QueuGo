@@ -7,6 +7,8 @@ private const val ROUTE_PROGRESS_NEAR_ARRIVAL_METERS = 25.0
 private const val ROUTE_PROGRESS_HIDE_REMAINING_METERS = 3.0
 private const val INITIAL_ROUTE_RETRY_BASE_MILLIS = 1_500L
 private const val INITIAL_ROUTE_RETRY_MAX_MILLIS = 12_000L
+// Match the existing QueueGo online route endpoint-snap contract at the provider boundary.
+private const val ROUTE_PROVIDER_ENDPOINT_SNAP_METERS = 750.0
 
 data class NavigationRouteCoordinatorResult(
     val mapState: RiderNavigationMapState,
@@ -24,16 +26,19 @@ class NavigationRouteCoordinator(
 ) {
     private val progressTracker = NavigationProgressTracker(nowMillis = nowMillis)
     private var activeStopId: String? = null
+    private var activeStopPoint: NavigationMapPoint? = null
     private var activeLeg: NavigationRouteLeg? = null
     private var rerouteVersion: Int = 0
     private var visibleActiveSegment: NavigationRouteSegment? = null
     private var visibleProgressMeters: Double = 0.0
     private var initialRouteFailureCount: Int = 0
     private var nextInitialRouteAttemptAtMillis: Long = 0L
+    private var lastInitialRouteFailureAtMillis: Long? = null
     private var lastInitialRouteError: String? = null
 
     fun reset() {
         activeStopId = null
+        activeStopPoint = null
         activeLeg = null
         rerouteVersion = 0
         visibleActiveSegment = null
@@ -50,17 +55,24 @@ class NavigationRouteCoordinator(
         if (activeStop == null) {
             reset()
             return NavigationRouteCoordinatorResult(
-                mapState = state,
+                mapState = state.copy(routes = emptyList(), activeStopId = null),
                 guidance = NavigationGuidanceState(),
                 activeLeg = null,
                 rerouteVersion = 0,
-                routeChanged = false,
+                routeChanged = state.routes.isNotEmpty(),
                 rerouted = false
             )
         }
 
-        if (activeStopId != activeStop.id) {
+        // A corrected pickup/drop-off may keep its business stop ID but move to
+        // another coordinate. The old route must never remain authoritative for it.
+        val previousActiveStopId = activeStopId
+        val activeStopChanged = previousActiveStopId != activeStop.id
+        val destinationChanged = !activeStopChanged &&
+            activeStopPoint != null && activeStopPoint != activeStop.point
+        if (activeStopChanged || activeStopPoint != activeStop.point) {
             activeStopId = activeStop.id
+            activeStopPoint = activeStop.point
             activeLeg = null
             rerouteVersion = 0
             visibleActiveSegment = null
@@ -68,31 +80,53 @@ class NavigationRouteCoordinator(
             resetInitialRouteRetry()
             progressTracker.reset()
         }
+        // A completed pickup can promote a new active stop while GPS is missing
+        // or the new route API fails. Never leave the old pickup's active line
+        // on screen as though it still were the current destination.
+        // Preserve the new stop's previously verified FUTURE leg until rerouted.
+        val safeState = when {
+            destinationChanged ->
+                state.copy(routes = state.routes.filterNot { it.toStopId == activeStop.id })
+            activeStopChanged && previousActiveStopId != null ->
+                state.copy(routes = state.routes.filterNot { it.toStopId == previousActiveStopId })
+            else -> state
+        }
 
-        val fix = state.rider?.takeIf { it.point.valid }
+        val fix = safeState.rider?.takeIf { it.point.valid }
             ?: return NavigationRouteCoordinatorResult(
-                mapState = state,
+                mapState = safeState,
                 guidance = NavigationGuidanceState(),
                 activeLeg = activeLeg,
                 rerouteVersion = rerouteVersion,
-                routeChanged = false,
+                // Removing a stale active route is a real map update even without GPS.
+                // Consumers must be notified to clear the old pickup/destination line.
+                routeChanged = safeState.routes != state.routes,
                 rerouted = false
             )
 
-        var routeChanged = false
+        var routeChanged = safeState.routes != state.routes
         var rerouted = false
         var routeError: String? = null
 
         if (activeLeg == null) {
             val now = nowMillis()
+            // Retry deadlines use wall-clock time. If the device clock is corrected
+            // backwards after a failure, the old deadline can be arbitrarily far
+            // in the future; discard only that backoff, not the active stop.
+            if (lastInitialRouteFailureAtMillis?.let { now < it } == true) {
+                resetInitialRouteRetry()
+            }
             if (now >= nextInitialRouteAttemptAtMillis) {
                 try {
-                    activeLeg = routeProvider.route(
+                    val requestedSegmentId = segmentId(activeStop.id, rerouteVersion)
+                    val candidate = routeProvider.route(
                         from = fix.point,
                         stop = activeStop,
-                        segmentId = segmentId(activeStop.id, rerouteVersion)
+                        segmentId = requestedSegmentId
                     )
-                    visibleActiveSegment = activeLeg?.segment
+                    validateProviderLeg(candidate, requestedSegmentId, fix.point, activeStop)
+                    activeLeg = candidate
+                    visibleActiveSegment = candidate.segment
                     visibleProgressMeters = 0.0
                     resetInitialRouteRetry()
                     routeChanged = true
@@ -100,6 +134,7 @@ class NavigationRouteCoordinator(
                     if (error is CancellationException) throw error
                     routeError = error.message ?: "คำนวณเส้นทางไม่สำเร็จ"
                     lastInitialRouteError = routeError
+                    lastInitialRouteFailureAtMillis = now
                     initialRouteFailureCount += 1
                     nextInitialRouteAttemptAtMillis =
                         now + initialRouteRetryDelayMillis(initialRouteFailureCount)
@@ -119,11 +154,13 @@ class NavigationRouteCoordinator(
         if (leg != null && guidance.shouldReroute) {
             val nextVersion = rerouteVersion + 1
             try {
+                val requestedSegmentId = segmentId(activeStop.id, nextVersion)
                 val replacement = routeProvider.route(
                     from = fix.point,
                     stop = activeStop,
-                    segmentId = segmentId(activeStop.id, nextVersion)
+                    segmentId = requestedSegmentId
                 )
+                validateProviderLeg(replacement, requestedSegmentId, fix.point, activeStop)
                 activeLeg = replacement
                 leg = replacement
                 rerouteVersion = nextVersion
@@ -149,24 +186,58 @@ class NavigationRouteCoordinator(
             )
         }
         val updatedMapState = if (visibleSegment != null) {
-            replaceActiveLeg(state, activeStop, visibleSegment)
+            replaceActiveLeg(safeState, activeStop, visibleSegment)
         } else {
-            state
+            safeState
         }
         return NavigationRouteCoordinatorResult(
             mapState = updatedMapState,
             guidance = guidance,
             activeLeg = leg,
             rerouteVersion = rerouteVersion,
-            routeChanged = routeChanged,
+            // GPS progress can trim the displayed polyline without requesting a new leg.
+            // Notify map observers whenever rendered route geometry actually changes.
+            routeChanged = routeChanged || updatedMapState.routes != state.routes,
             rerouted = rerouted,
             routeError = routeError
         )
     }
 
+    // Validate every provider (including a future offline provider) before it can
+    // become authoritative for the map, guidance or reroute state. An invalid
+    // candidate must be rejected while retaining the last verified active leg.
+    private fun validateProviderLeg(
+        candidate: NavigationRouteLeg,
+        requestedSegmentId: String,
+        from: NavigationMapPoint,
+        stop: NavigationMapStop
+    ) {
+        require(candidate.segment.renderable &&
+            candidate.segment.id == requestedSegmentId &&
+            candidate.segment.toStopId == stop.id) {
+            "QueueGo route provider returned a mismatched segment"
+        }
+        require(navigationHaversineMeters(candidate.segment.points.first(), from) <=
+            ROUTE_PROVIDER_ENDPOINT_SNAP_METERS) {
+            "QueueGo route provider returned a mismatched origin"
+        }
+        require(navigationHaversineMeters(candidate.segment.points.last(), stop.point) <=
+            ROUTE_PROVIDER_ENDPOINT_SNAP_METERS) {
+            "QueueGo route provider returned a mismatched destination"
+        }
+        require(candidate.distanceMeters.isFinite() && candidate.distanceMeters > 0.0) {
+            "QueueGo route provider returned an invalid distance"
+        }
+        require(candidate.durationSeconds == null ||
+            (candidate.durationSeconds.isFinite() && candidate.durationSeconds >= 0.0)) {
+            "QueueGo route provider returned an invalid duration"
+        }
+    }
+
     private fun resetInitialRouteRetry() {
         initialRouteFailureCount = 0
         nextInitialRouteAttemptAtMillis = 0L
+        lastInitialRouteFailureAtMillis = null
         lastInitialRouteError = null
     }
 

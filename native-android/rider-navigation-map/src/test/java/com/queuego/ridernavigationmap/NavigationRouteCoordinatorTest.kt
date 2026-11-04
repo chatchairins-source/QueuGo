@@ -19,6 +19,7 @@ class NavigationRouteCoordinatorTest {
         var attempts = 0
         var failNext = false
         var cancelNext = false
+        var returnedLeg: NavigationRouteLeg? = null
 
         override suspend fun route(
             from: NavigationMapPoint,
@@ -35,6 +36,7 @@ class NavigationRouteCoordinatorTest {
                 error("route unavailable")
             }
             calls += Call(from, stop.id, segmentId)
+            returnedLeg?.let { return it }
             val mid = NavigationMapPoint(
                 latitude = (from.latitude + stop.point.latitude) / 2.0,
                 longitude = (from.longitude + stop.point.longitude) / 2.0
@@ -205,6 +207,7 @@ class NavigationRouteCoordinatorTest {
         )
         val shortened = forward.mapState.routes.first { it.toStopId == pickup.id }
         assertTrue(shortened.points.first().longitude > initialActive.points.first().longitude)
+        assertTrue("Trimmed active route must notify map observers", forward.routeChanged)
 
         val jitterBack = coordinator.synchronize(
             forward.mapState.copy(
@@ -221,6 +224,7 @@ class NavigationRouteCoordinatorTest {
             afterJitter.points.first().longitude >= shortened.points.first().longitude
         )
         assertEquals("future-dropoff", jitterBack.mapState.routes.last().id)
+        assertFalse("GPS jitter must not emit a redundant geometry change", jitterBack.routeChanged)
     }
 
     @Test fun smallProgressDoesNotChangeVisibleGeometryEveryGpsTick() = runBlocking {
@@ -240,6 +244,7 @@ class NavigationRouteCoordinatorTest {
         )
         val after = tinyMove.mapState.routes.first { it.toStopId == pickup.id }
         assertEquals(before.points, after.points)
+        assertFalse("Sub-threshold GPS movement must not invalidate map geometry", tinyMove.routeChanged)
     }
 
     @Test fun activeRouteDisappearsWhenOnlyArrivalStubRemains() {
@@ -296,6 +301,52 @@ class NavigationRouteCoordinatorTest {
         assertEquals(null, recovered.routeError)
     }
 
+    @Test fun backwardClockCorrectionRetriesFailedInitialRouteWithoutWaitingForOldDeadline() = runBlocking {
+        var now = 100_000L
+        val provider = FakeRouteProvider().apply { failNext = true }
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { now })
+        val original = state()
+
+        val failed = coordinator.synchronize(original)
+        assertEquals(1, provider.attempts)
+        assertNotNull(failed.routeError)
+
+        // A manual/time-service correction must not freeze initial routing for
+        // the duration of the old wall-clock deadline.
+        now = 95_000L
+        val recovered = coordinator.synchronize(original)
+        assertEquals(2, provider.attempts)
+        assertTrue(recovered.routeChanged)
+        assertNotNull(recovered.activeLeg)
+        assertEquals(null, recovered.routeError)
+    }
+
+    @Test fun failedRetryAfterClockCorrectionStillHonorsNormalBackoff() = runBlocking {
+        var now = 120_000L
+        val provider = FakeRouteProvider().apply { failNext = true }
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { now })
+        val original = state()
+
+        coordinator.synchronize(original)
+        assertEquals(1, provider.attempts)
+
+        now = 119_000L
+        provider.failNext = true
+        val failedAgain = coordinator.synchronize(original)
+        assertEquals(2, provider.attempts)
+        assertNotNull(failedAgain.routeError)
+
+        now = 120_000L
+        coordinator.synchronize(original)
+        assertEquals(2, provider.attempts)
+
+        now = 120_500L
+        val recovered = coordinator.synchronize(original)
+        assertEquals(3, provider.attempts)
+        assertTrue(recovered.routeChanged)
+        assertNotNull(recovered.activeLeg)
+    }
+
     @Test fun supersededRouteRequestPropagatesCancellationImmediately() = runBlocking {
         val provider = FakeRouteProvider().apply { cancelNext = true }
         val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 60_000L })
@@ -309,5 +360,213 @@ class NavigationRouteCoordinatorTest {
 
         assertTrue(cancelled)
         assertEquals(1, provider.attempts)
+    }
+
+    @Test fun completedPickupWithoutGpsHidesOldActiveRouteAndRecoversNextStop() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 65_000L })
+        val initial = coordinator.synchronize(state())
+        assertTrue(initial.mapState.routes.any { it.toStopId == pickup.id })
+
+        val noGps = coordinator.synchronize(
+            initial.mapState.copy(
+                stops = listOf(pickup.copy(completed = true), customer),
+                activeStopId = customer.id,
+                rider = null
+            )
+        )
+        assertEquals(1, provider.attempts)
+        assertEquals(null, noGps.activeLeg)
+        assertTrue("removing completed pickup must notify map without GPS", noGps.routeChanged)
+        assertTrue(noGps.mapState.routes.none { it.toStopId == pickup.id })
+        assertEquals(listOf("future-dropoff"), noGps.mapState.routes.map { it.id })
+
+        val stillNoGps = coordinator.synchronize(noGps.mapState)
+        assertFalse("unchanged route list must not trigger a second map update", stillNoGps.routeChanged)
+        assertEquals(1, provider.attempts)
+
+        val recovered = coordinator.synchronize(
+            noGps.mapState.copy(
+                rider = NavigationMapFix(
+                    point = pickup.point,
+                    accuracyMeters = 5f,
+                    speedMetersPerSecond = 2f
+                )
+            )
+        )
+        assertEquals(2, provider.attempts)
+        assertTrue(recovered.routeChanged)
+        assertEquals(customer.id, recovered.activeLeg!!.segment.toStopId)
+        assertTrue(recovered.mapState.routes.none { it.toStopId == pickup.id })
+    }
+
+    @Test fun failedRouteToNewStopCannotLeaveCompletedPickupLineVisible() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 66_000L })
+        val initial = coordinator.synchronize(state())
+        provider.failNext = true
+
+        val failed = coordinator.synchronize(
+            initial.mapState.copy(
+                stops = listOf(pickup.copy(completed = true), customer),
+                activeStopId = customer.id,
+                rider = NavigationMapFix(
+                    point = pickup.point,
+                    accuracyMeters = 5f,
+                    speedMetersPerSecond = 2f
+                )
+            )
+        )
+        assertEquals(2, provider.attempts)
+        assertEquals(null, failed.activeLeg)
+        assertNotNull(failed.routeError)
+        assertTrue("failed provider must still notify stale-line removal", failed.routeChanged)
+        assertTrue(failed.mapState.routes.none { it.toStopId == pickup.id })
+        assertEquals(listOf("future-dropoff"), failed.mapState.routes.map { it.id })
+    }
+
+    @Test fun correctedSameStopIdDestinationForcesFreshRouteAndClearsOldGeometry() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 70_000L })
+        val initial = coordinator.synchronize(state())
+        assertEquals(pickup.point, initial.activeLeg!!.segment.points.last())
+
+        val corrected = pickup.copy(point = NavigationMapPoint(13.0040, 100.0140))
+        val refreshed = coordinator.synchronize(
+            initial.mapState.copy(stops = listOf(corrected, customer))
+        )
+
+        assertEquals(2, provider.calls.size)
+        assertTrue(refreshed.routeChanged)
+        assertEquals(0, refreshed.rerouteVersion)
+        assertEquals(corrected.point, refreshed.activeLeg!!.segment.points.last())
+        assertEquals(corrected.point, refreshed.mapState.routes.first {
+            it.toStopId == pickup.id
+        }.points.last())
+        assertEquals("future-dropoff", refreshed.mapState.routes.last().id)
+    }
+
+    @Test fun correctedDestinationRouteFailureDoesNotKeepOldActiveLine() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 80_000L })
+        val initial = coordinator.synchronize(state())
+        provider.failNext = true
+        val corrected = pickup.copy(point = NavigationMapPoint(13.0050, 100.0150))
+
+        val failed = coordinator.synchronize(
+            initial.mapState.copy(stops = listOf(corrected, customer))
+        )
+
+        assertEquals(2, provider.attempts)
+        assertEquals(null, failed.activeLeg)
+        assertTrue(failed.routeError!!.contains("route unavailable"))
+        assertTrue(failed.mapState.routes.none { it.toStopId == pickup.id })
+        assertEquals(listOf("future-dropoff"), failed.mapState.routes.map { it.id })
+    }
+
+    @Test fun correctedDestinationWithoutGpsImmediatelyHidesOldActiveLine() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 90_000L })
+        val initial = coordinator.synchronize(state())
+        val corrected = pickup.copy(point = NavigationMapPoint(13.0060, 100.0160))
+
+        val noFix = coordinator.synchronize(
+            initial.mapState.copy(
+                rider = null,
+                stops = listOf(corrected, customer)
+            )
+        )
+
+        assertEquals(1, provider.attempts)
+        assertEquals(null, noFix.activeLeg)
+        assertTrue("corrected address must invalidate rendered route without GPS", noFix.routeChanged)
+        assertTrue(noFix.mapState.routes.none { it.toStopId == pickup.id })
+        assertEquals(listOf("future-dropoff"), noFix.mapState.routes.map { it.id })
+    }
+
+    @Test fun completedDeliveryClearsAllOldRoutesAndNavigationState() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 100_000L })
+        val active = coordinator.synchronize(state())
+        val completed = coordinator.synchronize(
+            active.mapState.copy(
+                stops = listOf(pickup.copy(completed = true), customer.copy(completed = true)),
+                activeStopId = customer.id
+            )
+        )
+        assertTrue(completed.mapState.routes.isEmpty())
+        assertEquals(null, completed.mapState.activeStopId)
+        assertEquals(null, completed.activeLeg)
+        assertTrue(completed.routeChanged)
+        assertEquals(1, provider.attempts)
+    }
+
+    @Test fun wrongStopOrSegmentFromProviderCannotBecomeActiveGuidance() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 101_000L })
+        provider.returnedLeg = NavigationRouteLeg(
+            segment = NavigationRouteSegment(
+                id = "navigation:pickup-1:0",
+                toStopId = "other-order",
+                points = listOf(NavigationMapPoint(13.0, 100.0), pickup.point)
+            ),
+            distanceMeters = 1200.0,
+            durationSeconds = 240.0
+        )
+        val rejected = coordinator.synchronize(state())
+        assertEquals(null, rejected.activeLeg)
+        assertTrue(rejected.routeError!!.contains("mismatched segment"))
+        assertEquals(listOf("future-dropoff"), rejected.mapState.routes.map { it.id })
+    }
+
+    @Test fun providerRouteWithWrongOriginOrDestinationIsRejected() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 102_000L })
+        provider.returnedLeg = NavigationRouteLeg(
+            segment = NavigationRouteSegment(
+                id = "navigation:pickup-1:0",
+                toStopId = pickup.id,
+                points = listOf(NavigationMapPoint(14.0, 101.0), pickup.point)
+            ),
+            distanceMeters = 1200.0,
+            durationSeconds = 240.0
+        )
+        val rejected = coordinator.synchronize(state())
+        assertEquals(null, rejected.activeLeg)
+        assertTrue(rejected.routeError!!.contains("mismatched origin"))
+        assertEquals(listOf("future-dropoff"), rejected.mapState.routes.map { it.id })
+    }
+
+    @Test fun invalidRerouteCannotReplaceLastVerifiedActiveLeg() = runBlocking {
+        var now = 103_000L
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { now })
+        val original = coordinator.synchronize(state())
+        val verified = original.activeLeg!!
+        provider.returnedLeg = NavigationRouteLeg(
+            segment = NavigationRouteSegment(
+                id = "navigation:pickup-1:1",
+                toStopId = pickup.id,
+                points = listOf(NavigationMapPoint(13.0, 100.0), NavigationMapPoint(14.0, 101.0))
+            ),
+            distanceMeters = 1200.0,
+            durationSeconds = 240.0
+        )
+        val offRoute = original.mapState.copy(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(12.9980, 100.0050),
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 6f
+            )
+        )
+        coordinator.synchronize(offRoute)
+        now += 3_000L
+        val rejected = coordinator.synchronize(offRoute)
+        assertEquals(2, provider.attempts)
+        assertEquals(verified, rejected.activeLeg)
+        assertFalse(rejected.rerouted)
+        assertEquals(0, rejected.rerouteVersion)
+        assertTrue(rejected.routeError!!.contains("mismatched destination"))
+        assertEquals(pickup.id, rejected.mapState.routes.first().toStopId)
     }
 }

@@ -12,7 +12,8 @@ import time
 import zlib
 import xml.etree.ElementTree as ET
 
-from adb_install_recovery import install_verified_apk
+from adb_install_recovery import install_verified_apk, start_verified_activity
+from android_sdk_recovery import install_android_sdk_packages
 
 
 def run(args, **kwargs):
@@ -32,7 +33,7 @@ manager = sdk / "cmdline-tools/latest/bin"
 avd_registry = Path(os.environ["RUNNER_TEMP"]) / "queuego-avd-registry"
 avd_registry.mkdir(parents=True, exist_ok=True)
 os.environ["ANDROID_AVD_HOME"] = str(avd_registry)
-run([str(manager / "sdkmanager"), "emulator", "platform-tools", "system-images;android-30;default;x86_64"], input="y\n" * 100, text=True, timeout=300)
+install_android_sdk_packages(manager / "sdkmanager", run)
 name = "queuego_rider_capture_" + os.environ["GITHUB_RUN_ID"] + "_" + os.environ.get("GITHUB_RUN_ATTEMPT", "1")
 avd_path = Path(os.environ["RUNNER_TEMP"]) / name
 run([str(manager / "avdmanager"), "create", "avd", "-n", name, "-k", "system-images;android-30;default;x86_64", "-p", str(avd_path), "-d", "pixel_4"], input="no\n", text=True)
@@ -1404,9 +1405,7 @@ with (output / "emulator.log").open("w") as log:
         elif os.environ.get("QG_MAP_DISPLAY_ONLY") == "1":
             capture_map_display_only()
         else:
-            start = run(adb + ["shell", "am", "start", "-W", "-n", component], capture_output=True, text=True)
-            (output / "activity-start.txt").write_text(start.stdout + start.stderr)
-            assert "Status: ok" in start.stdout, "Activity launch did not succeed"
+            start_verified_activity(adb, component, output)
             time.sleep(10)
             rider_pids = package_pids(package)
             activity = run(adb + ["shell", "dumpsys", "activity", "activities"], capture_output=True, text=True).stdout

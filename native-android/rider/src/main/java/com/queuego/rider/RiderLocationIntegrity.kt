@@ -62,3 +62,21 @@ internal fun riderLocationIntegrityHealth(
         healthy = false
     )
 }
+
+/**
+ * Coordinates sent to the server for online, arrival and order actions must
+ * describe a recent Android fix, not a days-old LocationManager cache.
+ * Monotonic elapsed realtime makes wall-clock changes irrelevant.
+ */
+private const val RIDER_OPERATIONAL_FIX_MAX_AGE_MILLIS = 30_000L
+
+internal fun riderOperationalLocationFixIsFresh(
+    nowElapsedRealtimeNanos: Long,
+    fixElapsedRealtimeNanos: Long
+): Boolean {
+    if (nowElapsedRealtimeNanos <= 0L || fixElapsedRealtimeNanos <= 0L ||
+        fixElapsedRealtimeNanos > nowElapsedRealtimeNanos
+    ) return false
+    return (nowElapsedRealtimeNanos - fixElapsedRealtimeNanos) / 1_000_000L <=
+        RIDER_OPERATIONAL_FIX_MAX_AGE_MILLIS
+}

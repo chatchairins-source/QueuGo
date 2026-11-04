@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -71,6 +72,22 @@ private fun validNavigationPoint(lat: Double?, lon: Double?): NavigationMapPoint
     return NavigationMapPoint(lat, lon).takeIf { it.valid }
 }
 
+// A cached Android fix is only a presentation hint. It may survive process
+// restarts and cannot be shown as the Rider's present location if it is stale.
+// Elapsed realtime (unlike wall-clock time) rejects old or reboot-inconsistent fixes.
+private const val RIDER_PRESENTATION_FIX_MAX_AGE_MILLIS = 120_000L
+
+internal fun riderPresentationFixRecent(
+    nowElapsedRealtimeNanos: Long,
+    fixElapsedRealtimeNanos: Long
+): Boolean {
+    if (nowElapsedRealtimeNanos <= 0L || fixElapsedRealtimeNanos <= 0L ||
+        fixElapsedRealtimeNanos > nowElapsedRealtimeNanos
+    ) return false
+    return (nowElapsedRealtimeNanos - fixElapsedRealtimeNanos) / 1_000_000L <=
+        RIDER_PRESENTATION_FIX_MAX_AGE_MILLIS
+}
+
 private fun riderLastKnownPresentationCamera(context: Context): NavigationMapCamera? {
     val appContext = context.applicationContext
     val fine = appContext.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -81,12 +98,14 @@ private fun riderLastKnownPresentationCamera(context: Context): NavigationMapCam
 
     val manager = appContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         ?: return null
+    val nowElapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
     val location = runCatching {
         manager.getProviders(true)
             .mapNotNull { provider ->
                 runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
             }
-            .maxByOrNull { it.time }
+            .filter { riderPresentationFixRecent(nowElapsedRealtimeNanos, it.elapsedRealtimeNanos) }
+            .maxByOrNull { it.elapsedRealtimeNanos }
     }.getOrNull() ?: return null
     val point = NavigationMapPoint(location.latitude, location.longitude)
         .takeIf { it.valid } ?: return null
@@ -254,6 +273,33 @@ internal fun riderNavigationStops(
     return stops
 }
 
+/**
+ * Reconcile each *expected* future leg independently after a partial online refresh.
+ *
+ * buildFutureRoutes stops at the first failed request, so a nonempty partial refresh
+ * must not erase later, already-verified legs. Only an exact segment ID/destination
+ * for the current stop topology is reusable; changed stops reset the caller's state.
+ * No straight lines, offline pathfinding, or new geometry are synthesized here.
+ */
+internal fun riderFutureRoutesAfterRefresh(
+    previous: List<NavigationRouteSegment>,
+    refreshed: List<NavigationRouteSegment>,
+    stops: List<NavigationMapStop>
+): List<NavigationRouteSegment> {
+    val remaining = stops
+        .filter { !it.completed && it.point.valid }
+        .sortedBy { it.sequence }
+    return remaining.zipWithNext().mapNotNull { (from, to) ->
+        val expectedId = "future:" + from.id + ">" + to.id
+        fun matching(segment: NavigationRouteSegment): Boolean =
+            segment.id == expectedId &&
+                segment.toStopId == to.id &&
+                segment.style == NavigationRouteStyle.FUTURE &&
+                segment.renderable
+        refreshed.firstOrNull(::matching) ?: previous.firstOrNull(::matching)
+    }
+}
+
 private suspend fun buildFutureRoutes(
     routeProvider: NavigationRouteProvider,
     stops: List<NavigationMapStop>
@@ -282,6 +328,55 @@ private suspend fun buildFutureRoutes(
     return routes
 }
 
+/**
+ * The coordinator owns validated route geometry. A failed online route request
+ * must not cause the UI to resurrect a previous pickup/destination polyline that
+ * the coordinator just invalidated. Only live camera/puck presentation is copied
+ * from the latest fix while a request was suspended.
+ */
+internal fun riderPresentationAfterCoordinator(
+    authoritative: RiderNavigationMapState,
+    latest: RiderNavigationMapState,
+    guidance: NavigationGuidanceState
+): RiderNavigationMapState = authoritative.copy(
+    rider = latest.rider,
+    followRider = latest.followRider,
+    viewMode = latest.viewMode,
+    viewportInsets = latest.viewportInsets,
+    nextTurnDistanceMeters = guidance.distanceToInstructionMeters
+)
+
+internal enum class RiderRouteIssue {
+    NO_ROUTE_PROVIDER,
+    ROUTE_UNAVAILABLE,
+    REROUTE_UNAVAILABLE
+}
+
+/**
+ * An installed offline map is NOT an offline routing engine. Communicate route
+ * availability separately from map rendering and don't suggest a remembered
+ * route is safe after a failed recalculation.
+ */
+internal fun riderRouteIssueNotice(
+    activeNavigationWork: Boolean,
+    networkAvailable: Boolean,
+    issue: RiderRouteIssue?
+): String? {
+    if (!activeNavigationWork || issue == null) return null
+    return when (issue) {
+        RiderRouteIssue.NO_ROUTE_PROVIDER ->
+            "ยังไม่มีบริการคำนวณเส้นทางที่พร้อมใช้งาน แผนที่แสดงได้แต่ยังนำทางไม่ได้"
+        RiderRouteIssue.ROUTE_UNAVAILABLE ->
+            if (networkAvailable) {
+                "คำนวณเส้นทางไม่สำเร็จ · แผนที่ยังแสดงได้ แต่ยังไม่มีเส้นทางนำทางที่ยืนยันแล้ว"
+            } else {
+                "ไม่มีอินเทอร์เน็ต · แผนที่ออฟไลน์ยังดูได้ แต่ยังคำนวณเส้นทางใหม่ออฟไลน์ไม่ได้"
+            }
+        RiderRouteIssue.REROUTE_UNAVAILABLE ->
+            "คำนวณเส้นทางใหม่ไม่สำเร็จ · เส้นทางเดิมอาจคลาดเคลื่อน โปรดตรวจสอบเส้นทางก่อนขับต่อ"
+    }
+}
+
 @Composable
 internal fun QueueGoRiderNavigationMap(
     modifier: Modifier = Modifier,
@@ -297,10 +392,12 @@ internal fun QueueGoRiderNavigationMap(
     fallbackCamera: NavigationMapCamera? = null,
     viewportInsets: NavigationViewportInsets = NavigationViewportInsets(),
     onMapReady: (Boolean) -> Unit,
-    onGuidance: (NavigationGuidanceState) -> Unit = {}
+    onGuidance: (NavigationGuidanceState) -> Unit = {},
+    onRouteIssue: (RiderRouteIssue?) -> Unit = {}
 ) {
     val context = LocalContext.current
     val guidanceCallback by rememberUpdatedState(onGuidance)
+    val routeIssueCallback by rememberUpdatedState(onRouteIssue)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val sessionStore = remember(context.applicationContext) { SessionStore(context.applicationContext) }
     var initialCamera by remember(stateKey) { mutableStateOf<NavigationMapCamera?>(null) }
@@ -488,11 +585,16 @@ internal fun QueueGoRiderNavigationMap(
             RiderNavigationSessionRegistry.clear(stateKey)
         } else if (routeProvider != null) {
             val builtRoutes = buildFutureRoutes(routeProvider, stops)
-            futureRoutes = builtRoutes
+            val visibleRoutes = riderFutureRoutesAfterRefresh(
+                previous = futureRoutes,
+                refreshed = builtRoutes,
+                stops = stops
+            )
+            futureRoutes = visibleRoutes
             RiderNavigationSessionRegistry.saveFutureRoutes(
                 stateKey = stateKey,
                 topologyKey = stopTopology,
-                routes = builtRoutes
+                routes = visibleRoutes
             )
         }
     }
@@ -575,16 +677,13 @@ internal fun QueueGoRiderNavigationMap(
         if (coordinator == null) {
             for (next in stateChannel) {
                 guidanceCallback(NavigationGuidanceState())
+                routeIssueCallback(
+                    if (navigationActive) RiderRouteIssue.NO_ROUTE_PROVIDER else null
+                )
                 val candidate = displayState(next)
-                renderedState = if (
-                    navigationActive &&
-                    candidate.routes.isEmpty() &&
-                    renderedState.routes.isNotEmpty()
-                ) {
-                    candidate.copy(routes = renderedState.routes)
-                } else {
-                    candidate
-                }
+                // Without a route provider there is no authority to revive a
+                // previously rendered line after the current topology rejects it.
+                renderedState = candidate
                 RiderNavigationSessionRegistry.saveRenderedRoutes(
                     stateKey = stateKey,
                     topologyKey = stopTopology,
@@ -596,24 +695,25 @@ internal fun QueueGoRiderNavigationMap(
                 // Route progress/reroute stays authoritative on the raw GPS fix.
                 val result = coordinator.synchronize(next)
                 guidanceCallback(result.guidance)
+                routeIssueCallback(
+                    when {
+                        result.routeError == null -> null
+                        result.activeLeg == null -> RiderRouteIssue.ROUTE_UNAVAILABLE
+                        else -> RiderRouteIssue.REROUTE_UNAVAILABLE
+                    }
+                )
                 // Filtering/snapping, when the rollout gate is enabled, is renderer-only.
                 // The route response belongs to an earlier fix. Keep its route result,
                 // but never roll the visible puck/camera back to the request's location.
-                val candidate = displayState(result.mapState.copy(
-                    rider = latestBaseState.rider,
-                    followRider = latestBaseState.followRider,
-                    viewMode = latestBaseState.viewMode,
-                    viewportInsets = latestBaseState.viewportInsets,
-                    nextTurnDistanceMeters = result.guidance.distanceToInstructionMeters
+                val candidate = displayState(riderPresentationAfterCoordinator(
+                    authoritative = result.mapState,
+                    latest = latestBaseState,
+                    guidance = result.guidance
                 ))
-                renderedState = if (
-                    result.routeError != null &&
-                    renderedState.routes.isNotEmpty()
-                ) {
-                    candidate.copy(routes = renderedState.routes)
-                } else {
-                    candidate
-                }
+                // On routing error, NavigationRouteCoordinator already keeps any
+                // verified active leg and removes stale geometry. Replacing its
+                // result with an older UI snapshot would undo that safety check.
+                renderedState = candidate
                 RiderNavigationSessionRegistry.saveRenderedRoutes(
                     stateKey = stateKey,
                     topologyKey = stopTopology,

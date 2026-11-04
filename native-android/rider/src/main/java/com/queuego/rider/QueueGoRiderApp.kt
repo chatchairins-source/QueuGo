@@ -569,6 +569,7 @@ private fun RiderHome(
     val navigationFix by RiderNavigationLocationStore.fix.collectAsState()
     val navigationSessionStartedMs by RiderNavigationLocationStore.sessionStartedElapsedRealtimeMs.collectAsState()
     var navigationGuidance by remember(auth.user.id) { mutableStateOf(NavigationGuidanceState()) }
+    var navigationRouteIssue by remember(auth.user.id) { mutableStateOf<RiderRouteIssue?>(null) }
     var navigationClockMs by remember { mutableStateOf(SystemClock.elapsedRealtime()) }
     var dismissedRestSessionStart by remember { mutableStateOf<Long?>(null) }
     var unexpectedStopLastMovementMs by remember(auth.user.id) { mutableStateOf<Long?>(null) }
@@ -586,6 +587,16 @@ private fun RiderHome(
     val stopAfterWorkStore = remember(context) { RiderStopAfterWorkStore(context) }
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    // Permission and GPS settings may change outside Compose while this activity is paused.
+    // Re-read live device state on return rather than presenting an old Ready indicator.
+    var deviceReadinessRevision by remember { mutableIntStateOf(0) }
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) deviceReadinessRevision += 1
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
     val snapshotMutex = remember { Mutex() }
     val dispatchPreferenceWriteMutex = remember(auth.user.id) { Mutex() }
 
@@ -2198,6 +2209,12 @@ private fun RiderHome(
             return
         }
         if (enabled && !ensureLocationPermission()) return
+        if (enabled) {
+            // Starting online requires an actual recent device fix, not an old
+            // LocationManager cache. Prime the EXISTING foreground GPS service
+            // while the user is on screen; the post-push check still fails closed.
+            RiderNavigationLocationService.start(context)
+        }
         actionBusy = true
         scope.launch {
             if (enabled) {
@@ -2215,7 +2232,23 @@ private fun RiderHome(
                     return@launch
                 }
             }
+            // The push bind above suspends on the network. Android permission, GPS,
+            // notification and connectivity can change during that suspension.
+            // Fail closed before creating a fresh server-online lease.
+            if (enabled) {
+                val deviceBlocker = riderOnlineActivationBlocker(readRiderDiagnostics(context))
+                if (deviceBlocker != null) {
+                    actionMessage = deviceBlocker
+                    actionBusy = false
+                    return@launch
+                }
+            }
             val loc = lastKnownLocation(context)
+            if (enabled && loc == null) {
+                actionMessage = "ยังไม่มีตำแหน่ง GPS ล่าสุด กรุณารอการระบุตำแหน่งแล้วลองเปิดรับงานอีกครั้ง"
+                actionBusy = false
+                return@launch
+            }
             runCatching { api.setOnline(auth, enabled, loc?.first, loc?.second) }
                 .onSuccess {
                     if (!enabled) setStopAfterWorkPending(false)
@@ -2457,6 +2490,12 @@ private fun RiderHome(
         hasActiveWork = activeNavigationWork || snapshot?.offeredJob != null,
         networkAvailable = networkAvailable
     )
+    val navigationRouteNotice = riderRouteIssueNotice(
+        activeNavigationWork = activeNavigationWork,
+        networkAvailable = networkAvailable,
+        issue = navigationRouteIssue
+    )
+    LaunchedEffect(mapJob?.id) { navigationRouteIssue = null }
     LaunchedEffect(activeNavigationWork, navigationSessionStartedMs) {
         if (!activeNavigationWork || navigationSessionStartedMs == null) return@LaunchedEffect
         while (true) {
@@ -2588,7 +2627,8 @@ private fun RiderHome(
                 bottomPx = navigationBottomInsetPx
             ),
             onMapReady = { },
-            onGuidance = { navigationGuidance = it }
+            onGuidance = { navigationGuidance = it },
+            onRouteIssue = { navigationRouteIssue = it }
         )
 
         if (!activeNavigationWork) {
@@ -2849,7 +2889,9 @@ private fun RiderHome(
         }
         // The server's online lease is authoritative, but missing Android GPS
         // must never be described as ready to receive work.
-        val homeDiagnostics = readRiderDiagnostics(context)
+        val homeDiagnostics = remember(deviceReadinessRevision, snapshot?.online, actionMessage) {
+            readRiderDiagnostics(context)
+        }
         val homeOnlineCopy = riderOnlineStatusCopy(
             online = snapshot?.online == true,
             locationPermission = homeDiagnostics.locationPermission,
@@ -3393,9 +3435,37 @@ private fun RiderHome(
             RiderOrderDetailsSheet(auth, job, api, onDismiss = { detailJob = null })
         }
         actionMessage?.let { RiderFeedbackToast(it, Modifier.align(Alignment.BottomCenter)) }
-        if (connectivityNotice != null || messageNotice != null) {
-            Column(Modifier.align(Alignment.TopCenter)) {
+        if (connectivityNotice != null || messageNotice != null || navigationRouteNotice != null) {
+            // During a delivery the turn banner owns the upper safe area.
+            // Keep operational warnings below it so they cannot cover a maneuver.
+            val noticeTop = when {
+                activeNavigationWork && navigationCustomerNote != null -> 184.dp
+                activeNavigationWork -> 136.dp
+                else -> 0.dp
+            }
+            Column(
+                Modifier.align(Alignment.TopCenter).padding(top = noticeTop)
+            ) {
                 connectivityNotice?.let { RiderConnectivityNotice(it) }
+                navigationRouteNotice?.let { notice ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 3.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEACB)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF5C678))
+                    ) {
+                        Text(
+                            text = notice,
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+                            color = Color(0xFF6B4300),
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
                 messageNotice?.let { RiderMessageNotice(it, Modifier) }
             }
         }
@@ -5010,13 +5080,26 @@ private fun hasLocationPermission(context: Context): Boolean =
 
 private fun lastKnownLocation(context: Context): Pair<Double, Double>? {
     if (!hasLocationPermission(context)) return null
-    val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    val nowElapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+    // The existing navigation service has already validated the active fused GPS
+    // fix. Prefer it over LocationManager's potentially ancient cached provider.
+    RiderNavigationLocationStore.fix.value?.takeIf { fix ->
+        fix.point.valid &&
+            riderOperationalLocationFixIsFresh(nowElapsedRealtimeNanos, fix.elapsedRealtimeNanos)
+    }?.let { fix ->
+        return fix.point.latitude to fix.point.longitude
+    }
+    val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        ?: return null
     return runCatching {
         manager.getProviders(true)
             .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
-            .maxByOrNull { it.time }
-            ?.takeIf { it.latitude.isFinite() && it.longitude.isFinite() &&
-                it.latitude in -90.0..90.0 && it.longitude in -180.0..180.0 }
+            .filter { location ->
+                riderOperationalLocationFixIsFresh(nowElapsedRealtimeNanos, location.elapsedRealtimeNanos) &&
+                    location.latitude.isFinite() && location.longitude.isFinite() &&
+                    location.latitude in -90.0..90.0 && location.longitude in -180.0..180.0
+            }
+            .maxByOrNull { it.elapsedRealtimeNanos }
             ?.let { it.latitude to it.longitude }
     }.getOrNull()
 }

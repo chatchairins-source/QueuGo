@@ -135,4 +135,39 @@ class QueueGoLocalRoadGraphTest {
             )
         )
     }
+
+    @Test
+    fun signedJunctionAcrossDatelineKeepsCanonicalPointNearBothSurveyedRoads() {
+        val east = QueueGoLocalRoadPoint(0.0, 179.99999)
+        val west = QueueGoLocalRoadPoint(0.0, -179.99999)
+        val graph = buildQueueGoLocalRoadGraph(
+            roads = listOf(
+                road(
+                    id = "east-road",
+                    points = listOf(QueueGoLocalRoadPoint(0.0, 179.999), east)
+                ),
+                road(
+                    id = "west-road",
+                    points = listOf(west, QueueGoLocalRoadPoint(0.0, -179.999))
+                )
+            ),
+            junctions = listOf(
+                QueueGoVerifiedLocalRoadJunction(
+                    id = "field-survey:dateline-junction",
+                    members = listOf(
+                        QueueGoLocalRoadJunctionMember("east-road", 1),
+                        QueueGoLocalRoadJunctionMember("west-road", 0)
+                    ),
+                    source = QueueGoLocalRoadSource.FIELD_SURVEY,
+                    sourceReference = "field-survey:dateline-junction",
+                    verifiedAtEpochMillis = 1_700_000_000_000L
+                )
+            )
+        )
+        val junction = graph.nodes.getValue("j:field-survey:dateline-junction").point
+        assertTrue(kotlin.math.abs(junction.longitude) > 179.9)
+        assertTrue(queueGoLocalRoadDistanceMeters(east, junction) < 2.0)
+        assertTrue(queueGoLocalRoadDistanceMeters(west, junction) < 2.0)
+        assertEquals(4, graph.edges.size)
+    }
 }

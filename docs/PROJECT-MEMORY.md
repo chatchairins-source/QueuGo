@@ -1,3 +1,33 @@
+## 2026-11-03 Rider rendered route-progress notification — PR #848 (source, CI pending)
+
+- Based on exact Native #824 `a809494148dfa79026d613e6a81d20569eff63d4` after inspecting #736/#743/#744, #740/#750/#801/#822/#830, CI Recovery issues, source and existing memory. Isolated branch `fix-rider-progress-route-change-signal-20261103`; no Production mutation.
+- `NavigationRouteCoordinator.synchronize()` now reports `routeChanged` when the actual renderer-facing route list differs after GPS progress trimming, even without provider reroute. This preserves existing 10m progress threshold and prevents redundant notification on backward jitter/subthreshold movement. Three regression assertions in `NavigationRouteCoordinatorTest.kt`.
+- PR #848 exact-head Native Pilot/three APKs/JVM/isolated RPC and installed authenticated screenshots still pending. Do not merge or distribute APK until CI and physical/UI gates. #801 offline nationwide routing, #750 visible road labels, #822 GPS, #740 backend remain open.
+
+## 2026-11-03 Rider stale-route change notification — PR #845 (source only)
+
+- Base Native #824 exact `e788ba3a3299b47afc271b80d1c6d916d1f88e50` includes #843 launch diagnostics after exact-head CI #41529638790 SUCCESS. Verified #736/#743/#744, #740, CI Recovery, #801/#750/#822, current Native Pilot logs and this project memory before editing. No Production changes.
+- P1: coordinator's safeState removed stale pickup/corrected-destination lines but reported `routeChanged=false` if GPS was absent or provider failed. Now report whether route list actually changed; preserve existing fail-closed route geometry and backoff. Three deterministic Kotlin regression assertions; QA `docs/qa/rider-stale-route-change-signal-20261103.md`.
+- Exact PR #845 HEAD CI, integration CI, installed authenticated Home/map screenshots, #801 nationwide offline graph, #750 labels, #822 GPS/dispatch and #740 RPC remain gates. Do not merge without exact-head success, deploy Production or publish APK.
+
+## 2026-11-03 Merge-preserving Rider route-visual and provider-contract source
+
+- Integrate corrected future-stop route display (#837 with #838 overview test fix) and Native #824 provider-leg boundary validation (#836) as a two-parent merge, preserving both Kotlin change sets and both prior memory prefixes. Previous #837 base conflicted only on PROJECT-MEMORY.md; current merged tree starts from #824 and overlays the five #837-only code/test/QA paths.
+- Verified #838 exact-head CI #41493778746 SUCCESS; #837 integrated pre-merge CI #41502612057 must complete before branch ref update. The final integrated merge HEAD needs its own full Native Pilot/three role APK+JVM/isolated RPC run before merge into #824. No Production/Auth/RLS/order/finance change; no release APK until #801/#750/#822/#740/physical gates.
+
+## 2026-11-02 Corrected future-stop route visibility — isolated P1
+
+- Native #824 exact head 7b5e8826a768c421e591238fd16cd4d9590ffdf7; #736/#743/#744, #740, CI Recovery, latest actual Native Pilot jobs and existing project memory reviewed before edit. No Production changes.
+- styledRemainingRoutes() previously retained a future route to an outdated address after its stop coordinate changed but ID remained stable. Filter renderable geometry whose endpoint is beyond the existing 750m road-snap tolerance from the current incomplete stop. Two Kotlin/JVM tests added; original model fixtures updated to actual stop endpoints. QA: docs/qa/rider-future-route-endpoint-20261102.md.
+- Final exact-head CI and integrated HEAD recheck required. Offline routing #801, map labels #750, authenticated GPS #822, RPC #740 and physical UI/road-test acceptance remain blocked. No APK publication.
+
+## 2026-11-02 Rider provider boundary integrity — PR #836 (unreleased)
+
+- Started from exact Native #824 head 7b5e8826a768c421e591238fd16cd4d9590ffdf7 after rechecking #736/#743/#744, Issue #740, CI Recovery issues, actual Native Pilot jobs and this file. Source-only isolated branch, no Production change.
+- P1: NavigationRouteCoordinator previously accepted any provider leg as active without matching requested segment/stop, endpoints or distance/duration. Validate before committing active/reroute leg; preserve last verified route on rejected reroute. Clear route geometry when no delivery stops remain. Four Kotlin/JVM regressions; docs/qa/rider-provider-leg-contract-20261102.md.
+- Exact final-head hosted CI required, including 3 role builds/JVM and isolated RPC; do not merge or claim runtime UI acceptance from source tests alone. Issue #801 nationwide offline routing, #750 road labels, #822 GPS authenticated state, #740 missing RPC, actual emulator/screenshots and physical road acceptance remain BLOCKED.
+- No migration, Auth/RLS/financial/order mutation, APK publication or release authorization from this PR.
+
 ## 2026-10-31 Live replay patch deployed and Native source integrated
 
 - PR748 merged at a1ed608f after exact2aef96ba CI41192266265 SUCCESS. PR749 exact4561fee4 CI41195321196 completed SUCCESS (full regression/JVM/three APKs/lifecycle/catalog), then owner-authorized narrow migration applied at live version20261031111727. Readback exact MD5e3e9482d533b8d0da8b870d28071252f, original ACL, anon denied, Rider gate retained. Security Advisor counts unchanged32/10/189/1. No order/rate/backfill writes. DO NOT reapply another Production migration merely to duplicate history.
