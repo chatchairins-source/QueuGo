@@ -321,6 +321,13 @@ class RiderNavigationLocationService : Service() {
 
     private fun accept(location: Location) {
         if (!locationUpdatesStarted) return
+        if (!hasLocationPermission()) {
+            // Revocation can race with a queued FusedLocationProvider callback.
+            // Clear the last in-memory position and stop all dispatch heartbeats.
+            RiderNavigationLocationStore.clear()
+            stopSelf()
+            return
+        }
         RiderLocationIntegrityStore.record(location)
         // Fused callbacks can arrive late or out of order after GPS stalls,
         // backgrounding or a clock change. Never publish an expired/future fix
@@ -382,13 +389,8 @@ class RiderNavigationLocationService : Service() {
         )
     }
 
-    private fun hasLocationPermission(): Boolean {
-        val fine = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        val coarse = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        return fine || coarse
-    }
+    private fun hasLocationPermission(): Boolean =
+        riderNavigationHasLocationPermission(this)
 
     private fun navigationNotification() =
         NotificationCompat.Builder(this, NAVIGATION_LOCATION_CHANNEL_ID)
