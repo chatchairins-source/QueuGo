@@ -44,6 +44,14 @@ class QueueGoTrustedLocalRoadGraphSession internal constructor(
     val revision: Long,
     private val graph: QueueGoLocalRoadGraph
 ) {
+    // Sorting once makes repeated GPS/reroute snaps O(log N + local candidates)
+    // rather than scanning all verified nodes on every location update. Latitude
+    // filtering is intentionally conservative; the haversine check below remains
+    // the final authority and handles longitudes across the dateline correctly.
+    private val nodesByLatitude = graph.nodes.values.sortedWith(
+        compareBy<QueueGoLocalRoadGraphNode> { it.point.latitude }.thenBy { it.id }
+    )
+
     val nodeCount: Int
         get() = graph.nodes.size
 
@@ -60,10 +68,31 @@ class QueueGoTrustedLocalRoadGraphSession internal constructor(
         require(maxSnapMeters.isFinite() && maxSnapMeters in 1.0..250.0) {
             "Local-road snap radius must be between 1 and 250 metres"
         }
+        // At least 110 km of great-circle latitude distance per degree:
+        // 110_000 is a conservative lower bound for our 6,371,008.8m sphere.
+        // Never use a narrow longitude window here: at high latitudes or across
+        // +/-180 degrees, that would silently discard a legitimate nearby road.
+        val latitudeRadius = maxSnapMeters / 110_000.0
+        val firstLatitude = point.latitude - latitudeRadius
+        val lastLatitude = point.latitude + latitudeRadius
+        var low = 0
+        var high = nodesByLatitude.size
+        while (low < high) {
+            val middle = low + (high - low) / 2
+            if (nodesByLatitude[middle].point.latitude < firstLatitude) {
+                low = middle + 1
+            } else {
+                high = middle
+            }
+        }
+
         var best: QueueGoLocalRoadSnap? = null
-        graph.nodes.values.forEach { node ->
+        var index = low
+        while (index < nodesByLatitude.size) {
+            val node = nodesByLatitude[index++]
+            if (node.point.latitude > lastLatitude) break
             val distance = queueGoLocalRoadDistanceMeters(point, node.point)
-            if (!distance.isFinite() || distance > maxSnapMeters) return@forEach
+            if (!distance.isFinite() || distance > maxSnapMeters) continue
             val current = best
             if (
                 current == null ||
