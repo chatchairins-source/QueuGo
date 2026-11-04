@@ -20,6 +20,11 @@ import java.util.concurrent.TimeUnit
 private const val QUEUEGO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024
 private const val QUEUEGO_ROUTE_MAX_POINTS = 12_000
 private const val QUEUEGO_ROUTE_MAX_STEPS = 2_048
+// A turn-by-turn road geometry must contain intermediate surveyed road vertices.
+// A single 100-km chord is not safe street-level guidance even if the server
+// reports a matching (or missing) total distance. Reject instead of drawing
+// a teleport across an unsurveyed gap. This is not an offline routing fallback.
+private const val QUEUEGO_ROUTE_MAX_VERTEX_HOP_METERS = 100_000.0
 private const val QUEUEGO_ROUTE_MAX_SPEED_LIMIT_INTERVALS = 4_096
 // A routed line must actually connect to the requested delivery endpoints. Snapping
 // beyond this bound is unsafe for turn-by-turn guidance; never draw an unrelated road.
@@ -204,9 +209,16 @@ class QueueGoNavigationRouteClient(
         // and return a small, apparently trustworthy ETA. Its measured polyline
         // cannot be materially longer than the server's declared road distance.
         // A simplified geometry may be shorter than the road, never much longer.
-        val geometryDistance = points.zipWithNext().sumOf { (a, b) ->
+        val geometrySegmentDistances = points.zipWithNext().map { (a, b) ->
             navigationHaversineMeters(a, b)
         }
+        require(geometrySegmentDistances.all { distance ->
+            distance.isFinite() && distance > 0.0 &&
+                distance <= QUEUEGO_ROUTE_MAX_VERTEX_HOP_METERS
+        }) {
+            "QueueGo route contains an implausible disconnected road-geometry hop"
+        }
+        val geometryDistance = geometrySegmentDistances.sum()
         val reportedDistance = route.optDouble("distance", Double.NaN)
             .takeIf { it.isFinite() && it > 0.0 }
         if (reportedDistance != null) {
