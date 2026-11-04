@@ -40,7 +40,19 @@ private const val NAVIGATION_LOCATION_MIN_INTERVAL_MS = 250L
 private const val NAVIGATION_LOCATION_MIN_DISTANCE_METERS = 0.5f
 private const val NAVIGATION_MAX_ACCURACY_METERS = 80f
 private const val NAVIGATION_MAX_REASONABLE_SPEED_MPS = 55f
-private const val NAVIGATION_STALE_LAST_FIX_MS = 30_000L
+internal fun riderNavigationFixEligible(
+    nowElapsedRealtimeNanos: Long,
+    fixElapsedRealtimeNanos: Long,
+    latitude: Double,
+    longitude: Double,
+    accuracyMeters: Float?
+): Boolean = riderOperationalLocationFixIsFresh(
+    nowElapsedRealtimeNanos,
+    fixElapsedRealtimeNanos
+) && latitude.isFinite() && latitude in -90.0..90.0 &&
+    longitude.isFinite() && longitude in -180.0..180.0 &&
+    (accuracyMeters == null ||
+        (accuracyMeters.isFinite() && accuracyMeters in 0f..NAVIGATION_MAX_ACCURACY_METERS))
 
 internal fun riderShortestBearingDelta(from: Float, to: Float): Float {
     val a = ((from % 360f) + 360f) % 360f
@@ -255,9 +267,9 @@ class RiderNavigationLocationService : Service() {
             fusedClient.requestLocationUpdates(request, nextCallback, Looper.getMainLooper())
             fusedClient.lastLocation.addOnSuccessListener { location ->
                 if (!locationUpdatesStarted || location == null) return@addOnSuccessListener
-                val ageMs =
-                    (SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos) / 1_000_000L
-                if (ageMs in 0L..NAVIGATION_STALE_LAST_FIX_MS) accept(location)
+                // Cached, current-location and streaming callbacks share the same
+                // freshness check inside accept(). No callback bypasses it.
+                accept(location)
             }
         }.onFailure {
             Log.w("QueueGoNavLocation", "location_updates_failed", it)
@@ -310,9 +322,17 @@ class RiderNavigationLocationService : Service() {
     private fun accept(location: Location) {
         if (!locationUpdatesStarted) return
         RiderLocationIntegrityStore.record(location)
-        if (!location.latitude.isFinite() || !location.longitude.isFinite()) return
-        if (location.latitude !in -90.0..90.0 || location.longitude !in -180.0..180.0) return
-        if (location.hasAccuracy() && location.accuracy > NAVIGATION_MAX_ACCURACY_METERS) return
+        // Fused callbacks can arrive late or out of order after GPS stalls,
+        // backgrounding or a clock change. Never publish an expired/future fix
+        // into the puck, map matching, location push or dispatch heartbeat.
+        if (!riderNavigationFixEligible(
+                nowElapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos(),
+                fixElapsedRealtimeNanos = location.elapsedRealtimeNanos,
+                latitude = location.latitude,
+                longitude = location.longitude,
+                accuracyMeters = location.accuracy.takeIf { location.hasAccuracy() }
+            )
+        ) return
 
         val previous = lastAccepted
         if (previous != null) {
