@@ -182,11 +182,25 @@ class QueueGoNavigationRouteClient(
         }
 
         val instructions = mutableListOf<NavigationRouteInstruction>()
+        // A missing legs field is supported for geometry-only responses, but a
+        // present malformed legs field must not silently erase turn guidance.
+        require(!route.has("legs") || route.optJSONArray("legs") != null) {
+            "QueueGo route navigation legs must be an array"
+        }
         val legs = route.optJSONArray("legs")
+        // Missing legs are allowed for geometry-only routes, but a supplied
+        // non-array legs field is corrupted guidance and must fail closed.
+        require(!route.has("legs") || route.isNull("legs") || legs != null) {
+            "QueueGo route navigation legs must be an array"
+        }
         var sequence = 0
         if (legs != null) {
             for (legIndex in 0 until legs.length()) {
-                val steps = legs.optJSONObject(legIndex)?.optJSONArray("steps") ?: continue
+                // An invalid leg must not silently erase its entire set of turns.
+                val leg = legs.optJSONObject(legIndex)
+                    ?: error("QueueGo route contains a malformed navigation leg")
+                val steps = leg.optJSONArray("steps")
+                    ?: error("QueueGo route navigation leg is missing steps")
                 require(sequence + steps.length() <= QUEUEGO_ROUTE_MAX_STEPS) {
                     "QueueGo route has too many steps"
                 }
