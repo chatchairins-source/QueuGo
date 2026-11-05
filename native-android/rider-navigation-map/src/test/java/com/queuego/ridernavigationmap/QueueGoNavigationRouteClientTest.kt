@@ -3,6 +3,7 @@ package com.queuego.ridernavigationmap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class QueueGoNavigationRouteClientTest {
@@ -257,6 +258,18 @@ class QueueGoNavigationRouteClientTest {
             """"legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
             """"legs":"not-an-array""""
         )
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun explicitlyNullNavigationLegsAreRejectedInsteadOfHidingTurns() {
+        val malformed = routeJson.replace(
+            """"legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
+            """"legs":null"""
+        )
+        assertTrue("Test fixture must contain the legs field", malformed != routeJson)
         assertThrows(IllegalArgumentException::class.java) {
             QueueGoNavigationRouteClient("https://maps.queuego.test")
                 .parseQueueGoRoute(malformed, stop, "leg-1")
