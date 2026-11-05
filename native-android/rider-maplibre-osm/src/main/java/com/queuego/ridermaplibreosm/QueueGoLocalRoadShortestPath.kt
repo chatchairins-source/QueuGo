@@ -3,43 +3,51 @@ package com.queuego.ridermaplibreosm
 import java.util.PriorityQueue
 
 /**
- * Finds a route only along existing verified directed graph edges.
+ * Edge-state Dijkstra over verified directed road edges.
  *
- * This is a graph-search primitive, NOT a nationwide offline route provider:
- * the caller must supply a real licensed road graph and enforce turn restrictions
- * before this can be used for rider navigation. No invented straight-line edges.
+ * forbiddenTurns must be derived from the licensed and verified graph's turn
+ * restrictions. An empty set is appropriate ONLY when the input feed explicitly
+ * certifies there are no restrictions; missing restriction data is not certified.
+ * This is not a nationwide offline provider or a source of road geometry.
  */
 internal fun QueueGoLocalRoadGraph.shortestVerifiedEdgePath(
     startNodeId: String,
     destinationNodeId: String,
-    vehicle: QueueGoRoutingVehicle
+    vehicle: QueueGoRoutingVehicle,
+    forbiddenTurns: Set<Pair<String, String>>
 ): List<QueueGoLocalRoadGraphEdge>? {
     if (startNodeId !in nodes || destinationNodeId !in nodes) return null
     if (startNodeId == destinationNodeId) return emptyList()
 
-    data class Candidate(val nodeId: String, val distanceMeters: Double)
+    data class State(val nodeId: String, val incomingEdgeId: String?)
+    data class Candidate(val state: State, val distanceMeters: Double)
+    val start = State(startNodeId, null)
     val pending = PriorityQueue<Candidate>(
-        compareBy<Candidate> { it.distanceMeters }.thenBy { it.nodeId }
+        compareBy<Candidate> { it.distanceMeters }
+            .thenBy { it.state.nodeId }
+            .thenBy { it.state.incomingEdgeId ?: "" }
     )
-    val best = mutableMapOf(startNodeId to 0.0)
-    val previous = mutableMapOf<String, QueueGoLocalRoadGraphEdge>()
-    pending.add(Candidate(startNodeId, 0.0))
+    val best = mutableMapOf(start to 0.0)
+    val previous = mutableMapOf<State, Pair<State, QueueGoLocalRoadGraphEdge>>()
+    pending.add(Candidate(start, 0.0))
 
     while (pending.isNotEmpty()) {
         val current = pending.remove()
-        if (current.distanceMeters > best.getValue(current.nodeId)) continue
-        if (current.nodeId == destinationNodeId) {
+        if (current.distanceMeters > best.getValue(current.state)) continue
+        if (current.state.nodeId == destinationNodeId) {
             val reversed = mutableListOf<QueueGoLocalRoadGraphEdge>()
-            var node = destinationNodeId
-            while (node != startNodeId) {
-                val edge = previous[node] ?: return null
+            var state = current.state
+            while (state != start) {
+                val (parent, edge) = previous[state] ?: return null
                 reversed.add(edge)
-                node = edge.fromNodeId
+                state = parent
             }
             return reversed.asReversed()
         }
 
-        for (edge in outgoingEdges[current.nodeId].orEmpty()) {
+        for (edge in outgoingEdges[current.state.nodeId].orEmpty()) {
+            val incoming = current.state.incomingEdgeId
+            if (incoming != null && (incoming to edge.id) in forbiddenTurns) continue
             val use = if (edge.toNodeId == destinationNodeId) {
                 QueueGoRoadTraversalUse.DESTINATION_ACCESS
             } else {
@@ -47,11 +55,13 @@ internal fun QueueGoLocalRoadGraph.shortestVerifiedEdgePath(
             }
             if (!edge.allows(vehicle, use)) continue
             if (!edge.lengthMeters.isFinite() || edge.lengthMeters <= 0.0) continue
+            val nextState = State(edge.toNodeId, edge.id)
             val nextDistance = current.distanceMeters + edge.lengthMeters
-            if (nextDistance < best.getOrDefault(edge.toNodeId, Double.POSITIVE_INFINITY)) {
-                best[edge.toNodeId] = nextDistance
-                previous[edge.toNodeId] = edge
-                pending.add(Candidate(edge.toNodeId, nextDistance))
+            if (!nextDistance.isFinite()) continue
+            if (nextDistance < best.getOrDefault(nextState, Double.POSITIVE_INFINITY)) {
+                best[nextState] = nextDistance
+                previous[nextState] = current.state to edge
+                pending.add(Candidate(nextState, nextDistance))
             }
         }
     }
