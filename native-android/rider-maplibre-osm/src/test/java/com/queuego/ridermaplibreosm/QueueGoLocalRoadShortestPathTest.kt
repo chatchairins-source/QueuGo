@@ -443,4 +443,25 @@ class QueueGoLocalRoadShortestPathTest {
         ))
     }
 
+
+    @Test fun forbiddenTerminalTurnUsesLegalAlternateApproach() {
+        val d = QueueGoLocalRoadPoint(15.001, 103.001)
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("direct", listOf(a, b), oneWay = true),
+                road("detour-1", listOf(a, d), oneWay = true),
+                road("detour-2", listOf(d, b), oneWay = true),
+                road("service", listOf(b, c), oneWay = true,
+                    access = QueueGoLocalRoadAccess.SERVICE_ACCESS)
+            )
+        )
+        val route = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE,
+            setOf("direct:0:forward" to "service:0:forward"),
+            destinationAccessRoadIds = setOf("service")
+        )
+        assertEquals(listOf("detour-1", "detour-2", "service"),
+            route!!.map { it.roadId })
+    }
 }
