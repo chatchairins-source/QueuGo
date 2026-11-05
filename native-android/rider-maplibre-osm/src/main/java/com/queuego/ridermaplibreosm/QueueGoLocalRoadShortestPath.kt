@@ -16,6 +16,15 @@ internal fun QueueGoLocalRoadGraph.shortestVerifiedEdgePath(
     vehicle: QueueGoRoutingVehicle,
     forbiddenTurns: Set<Pair<String, String>>
 ): List<QueueGoLocalRoadGraphEdge>? {
+    // A typo or stale ID in signed turn restrictions must never silently
+    // disable a safety rule. Validate against the exact graph revision.
+    val edgeById = edges.associateBy { it.id }
+    require(edgeById.size == edges.size) { "Duplicate directed edge IDs" }
+    require(forbiddenTurns.all { (incoming, outgoing) ->
+        val from = edgeById[incoming]
+        val to = edgeById[outgoing]
+        from != null && to != null && from.toNodeId == to.fromNodeId
+    }) { "Turn restriction references unknown or disconnected graph edges" }
     if (startNodeId !in nodes || destinationNodeId !in nodes) return null
     if (startNodeId == destinationNodeId) return emptyList()
 
