@@ -14,11 +14,12 @@ class QueueGoLocalRoadShortestPathTest {
         id: String,
         points: List<QueueGoLocalRoadPoint>,
         oneWay: Boolean = false,
-        access: QueueGoLocalRoadAccess = QueueGoLocalRoadAccess.MOTORCYCLE_AND_CAR
+        access: QueueGoLocalRoadAccess = QueueGoLocalRoadAccess.MOTORCYCLE_AND_CAR,
+        source: QueueGoLocalRoadSource = QueueGoLocalRoadSource.FIELD_SURVEY
     ) = QueueGoLocalRoad(
         id = id,
         points = points,
-        source = QueueGoLocalRoadSource.FIELD_SURVEY,
+        source = source,
         verified = true,
         access = access,
         oneWay = oneWay
@@ -47,6 +48,67 @@ class QueueGoLocalRoadShortestPathTest {
             queueGoExactNodeId(a), queueGoExactNodeId(c),
             QueueGoRoutingVehicle.MOTORCYCLE,
             setOf("approach:0:forward" to "remote:0:forward")
+        )
+    }
+
+    @Test fun shortestPathUsesDistanceRatherThanFewestEdges() {
+        val far = QueueGoLocalRoadPoint(16.0, 104.0)
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("long-direct", listOf(a, far, c), oneWay = true),
+                road("short-1", listOf(a, b), oneWay = true),
+                road("short-2", listOf(b, c), oneWay = true)
+            )
+        )
+        val path = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet()
+        )
+        assertEquals(listOf("short-1", "short-2"), path!!.map { it.roadId })
+    }
+
+    @Test fun cycleDoesNotPreventFindingDestination() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("forward", listOf(a, b), oneWay = true),
+                road("cycle", listOf(b, a), oneWay = true),
+                road("exit", listOf(b, c), oneWay = true)
+            )
+        )
+        val path = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet()
+        )
+        assertEquals(listOf("forward", "exit"), path!!.map { it.roadId })
+    }
+
+    @Test fun forbiddenTurnAppliesOnlyToSpecifiedIncomingEdge() {
+        val d = QueueGoLocalRoadPoint(15.001, 103.001)
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("approach", listOf(a, b), oneWay = true),
+                road("alternate1", listOf(a, d), oneWay = true),
+                road("alternate2", listOf(d, b), oneWay = true),
+                road("exit", listOf(b, c), oneWay = true)
+            )
+        )
+        val path = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE,
+            setOf("approach:0:forward" to "exit:0:forward")
+        )
+        assertEquals(
+            listOf("alternate1", "alternate2", "exit"),
+            path!!.map { it.roadId }
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun zeroVisitedStateBudgetCannotBypassSafetyBound() {
+        val graph = buildQueueGoLocalRoadGraph(listOf(road("road", listOf(a, b))))
+        graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(b),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxVisitedStates = 0
         )
     }
 
@@ -124,13 +186,106 @@ class QueueGoLocalRoadShortestPathTest {
                 road("continuation", listOf(b, c)))
         )
         assertEquals(1, graph.shortestVerifiedEdgePath(
-            queueGoExactNodeId(a), queueGoExactNodeId(b), QueueGoRoutingVehicle.MOTORCYCLE, emptySet()
+            queueGoExactNodeId(a), queueGoExactNodeId(b), QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), destinationAccessRoadIds = setOf("service")
         )!!.size)
         assertNull(graph.shortestVerifiedEdgePath(
-            queueGoExactNodeId(a), queueGoExactNodeId(c), QueueGoRoutingVehicle.MOTORCYCLE, emptySet()
+            queueGoExactNodeId(a), queueGoExactNodeId(c), QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), destinationAccessRoadIds = setOf("service")
         ))
         assertTrue(graph.shortestVerifiedEdgePath(
             queueGoExactNodeId(a), queueGoExactNodeId(a), QueueGoRoutingVehicle.MOTORCYCLE, emptySet()
         )!!.isEmpty())
+    }
+
+    @Test fun verifiedMultiSegmentServiceRoadCanReachExplicitDestination() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("service", listOf(a, b, c),
+                access = QueueGoLocalRoadAccess.SERVICE_ACCESS))
+        )
+        val start = queueGoExactNodeId(a)
+        val destination = queueGoExactNodeId(c)
+        assertNull(graph.shortestVerifiedEdgePath(
+            start, destination, QueueGoRoutingVehicle.MOTORCYCLE, emptySet()
+        ))
+        val allowed = graph.shortestVerifiedEdgePath(
+            start, destination, QueueGoRoutingVehicle.MOTORCYCLE, emptySet(),
+            destinationAccessRoadIds = setOf("service")
+        )
+        assertEquals(listOf("service", "service"), allowed!!.map { it.roadId })
+    }
+
+    @Test fun destinationOnlyRoadCannotBecomeShortcutToAnotherPublicRoad() {
+        val d = QueueGoLocalRoadPoint(15.003, 103.0)
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("service", listOf(a, b, c),
+                    access = QueueGoLocalRoadAccess.SERVICE_ACCESS),
+                road("public", listOf(c, d), oneWay = true)
+            )
+        )
+        assertNull(graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(d),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(),
+            destinationAccessRoadIds = setOf("service")
+        ))
+    }
+
+    @Test fun destinationOnlyRouteCannotSwitchToAnotherServiceRoad() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("service-a", listOf(a, b),
+                    access = QueueGoLocalRoadAccess.SERVICE_ACCESS),
+                road("service-b", listOf(b, c),
+                    access = QueueGoLocalRoadAccess.SERVICE_ACCESS)
+            )
+        )
+        assertNull(graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(),
+            destinationAccessRoadIds = setOf("service-a", "service-b")
+        ))
+    }
+
+    @Test fun merchantConfirmedMultiSegmentRoadRequiresExplicitDestinationApproval() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("merchant-path", listOf(a, b, c),
+                source = QueueGoLocalRoadSource.MERCHANT_CONFIRMED))
+        )
+        assertNull(graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.CAR, emptySet()
+        ))
+        val route = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.CAR, emptySet(),
+            destinationAccessRoadIds = setOf("merchant-path")
+        )
+        assertEquals(2, route!!.size)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun staleDestinationWhitelistCannotSilentlyAuthorizeAccess() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("service", listOf(a, b),
+                access = QueueGoLocalRoadAccess.SERVICE_ACCESS))
+        )
+        graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(b),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(),
+            destinationAccessRoadIds = setOf("unknown-signed-road")
+        )
+    }
+
+    @Test fun boundedDijkstraFailsClosedRatherThanExhaustingDeviceSearch() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("long", listOf(a, b, c), oneWay = true))
+        )
+        assertNull(graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxVisitedStates = 2
+        ))
+        assertEquals(2, graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxVisitedStates = 3
+        )!!.size)
     }
 }
