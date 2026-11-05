@@ -244,7 +244,11 @@ class QueueGoNavigationRouteClient(
                 val end = interval.optDouble("end_geometry_m", Double.NaN)
                 val kph = interval.optDouble("maxspeed_kph", Double.NaN)
                 val raw = interval.optString("maxspeed_raw").trim()
-                if (!start.isFinite() || !end.isFinite() || end <= start || start < 0.0) continue
+                // Do not show a speed limit beyond the verified route geometry.
+                // A stale interval from another route must not be attached to this leg.
+                if (!start.isFinite() || !end.isFinite() || end <= start || start < 0.0 ||
+                    end > geometryDistance
+                ) continue
                 if (!kph.isFinite() || kph <= 0.0 || kph > 160.0 || raw.isEmpty()) continue
                 val wayId = if (interval.has("osm_way_id") && !interval.isNull("osm_way_id")) {
                     interval.optLong("osm_way_id").takeIf { it > 0L }
