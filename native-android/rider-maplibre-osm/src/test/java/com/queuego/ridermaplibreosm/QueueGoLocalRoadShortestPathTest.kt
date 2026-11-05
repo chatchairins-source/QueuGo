@@ -423,4 +423,24 @@ class QueueGoLocalRoadShortestPathTest {
             destinationAccessRoadIds = whitelist
         ))
     }
+
+    @Test fun signedInternalTurnRestrictionBlocksMultiSegmentTerminalAccess() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("service", listOf(a, b, c), oneWay = true,
+                access = QueueGoLocalRoadAccess.SERVICE_ACCESS))
+        )
+        val start = queueGoExactNodeId(a)
+        val destination = queueGoExactNodeId(c)
+        val allowed = setOf("service")
+        assertEquals(2, graph.shortestVerifiedEdgePath(
+            start, destination, QueueGoRoutingVehicle.MOTORCYCLE, emptySet(),
+            destinationAccessRoadIds = allowed
+        )!!.size)
+        assertNull(graph.shortestVerifiedEdgePath(
+            start, destination, QueueGoRoutingVehicle.MOTORCYCLE,
+            setOf("service:0:forward" to "service:1:forward"),
+            destinationAccessRoadIds = allowed
+        ))
+    }
+
 }
