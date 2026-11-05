@@ -22,19 +22,42 @@ internal fun QueueGoLocalRoadGraph.shortestVerifiedEdgePath(
 ): List<QueueGoLocalRoadGraphEdge>? {
     require(maxVisitedStates in 1..200_000) { "Local-road path search limit is outside the accepted range" }
     require(maxQueuedStates in 1..500_000) { "Local-road queue limit is outside the accepted range" }
-    val eligibleRoadIds = edges.mapTo(hashSetOf()) { it.roadId }
-    require(destinationAccessRoadIds.all { it.isNotBlank() && it in eligibleRoadIds }) {
-        "Destination-access whitelist contains unknown or blank road IDs"
+    // Nationwide graphs may contain millions of edges. Do not allocate a
+    // full duplicate road-ID set or edge-ID map on every GPS reroute when the
+    // corresponding optional policy set is empty.
+    if (destinationAccessRoadIds.isNotEmpty()) {
+        require(destinationAccessRoadIds.none { it.isBlank() }) {
+            "Destination-access whitelist contains blank road IDs"
+        }
+        val remaining = destinationAccessRoadIds.toMutableSet()
+        for (edge in edges) {
+            remaining.remove(edge.roadId)
+            if (remaining.isEmpty()) break
+        }
+        require(remaining.isEmpty()) {
+            "Destination-access whitelist contains unknown road IDs"
+        }
     }
     // A typo or stale ID in signed turn restrictions must never silently
     // disable a safety rule. Validate against the exact graph revision.
-    val edgeById = edges.associateBy { it.id }
-    require(edgeById.size == edges.size) { "Duplicate directed edge IDs" }
-    require(forbiddenTurns.all { (incoming, outgoing) ->
-        val from = edgeById[incoming]
-        val to = edgeById[outgoing]
-        from != null && to != null && from.toNodeId == to.fromNodeId
-    }) { "Turn restriction references unknown or disconnected graph edges" }
+    if (forbiddenTurns.isNotEmpty()) {
+        val requiredEdgeIds = forbiddenTurns.flatMapTo(hashSetOf()) {
+            listOf(it.first, it.second)
+        }
+        val requiredEdges = hashMapOf<String, QueueGoLocalRoadGraphEdge>()
+        for (edge in edges) {
+            if (edge.id in requiredEdgeIds) {
+                require(requiredEdges.put(edge.id, edge) == null) {
+                    "Duplicate directed edge IDs in turn restriction references"
+                }
+            }
+        }
+        require(forbiddenTurns.all { (incoming, outgoing) ->
+            val from = requiredEdges[incoming]
+            val to = requiredEdges[outgoing]
+            from != null && to != null && from.toNodeId == to.fromNodeId
+        }) { "Turn restriction references unknown or disconnected graph edges" }
+    }
     if (startNodeId !in nodes || destinationNodeId !in nodes) return null
     if (startNodeId == destinationNodeId) return emptyList()
 
@@ -103,7 +126,21 @@ internal fun QueueGoLocalRoadGraph.shortestVerifiedEdgePath(
                 previous[nextState] = current.state to edge
                 // The visited-state limit alone does not bound the priority queue:
                 // dense graphs can enqueue many alternative candidates first.
-                if (pending.size >= maxQueuedStates) return null
+                if (pending.size >= maxQueuedStates) {
+                    // Remove superseded heap entries before rejecting a valid
+                    // route. Decrease-key is not supported by PriorityQueue.
+                    // PriorityQueue.removeAll can repeatedly remove through
+                    // its iterator, yielding quadratic work on a dense national
+                    // graph. Rebuild the heap in one bounded pass instead.
+                    val liveCandidates = pending.filter { queued ->
+                        queued.distanceMeters <= best.getOrDefault(
+                            queued.state, Double.POSITIVE_INFINITY
+                        ) && queued.state !in visited
+                    }
+                    pending.clear()
+                    pending.addAll(liveCandidates)
+                    if (pending.size >= maxQueuedStates) return null
+                }
                 pending.add(Candidate(nextState, nextDistance))
             }
         }
