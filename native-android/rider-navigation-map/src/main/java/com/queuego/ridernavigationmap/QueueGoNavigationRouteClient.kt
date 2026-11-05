@@ -182,15 +182,11 @@ class QueueGoNavigationRouteClient(
         }
 
         val instructions = mutableListOf<NavigationRouteInstruction>()
-        // A missing legs field is supported for geometry-only responses, but a
-        // present malformed legs field must not silently erase turn guidance.
-        require(!route.has("legs") || route.optJSONArray("legs") != null) {
-            "QueueGo route navigation legs must be an array"
-        }
         val legs = route.optJSONArray("legs")
-        // Missing legs are allowed for geometry-only routes, but a supplied
-        // non-array legs field is corrupted guidance and must fail closed.
-        require(!route.has("legs") || route.isNull("legs") || legs != null) {
+        // Only an ABSENT legs field denotes a geometry-only response.
+        // Explicit null, scalar or object values are malformed guidance:
+        // rejecting them avoids silently erasing turn instructions.
+        require(!route.has("legs") || legs != null) {
             "QueueGo route navigation legs must be an array"
         }
         var sequence = 0
