@@ -188,6 +188,11 @@ class QueueGoNavigationRouteClient(
             "QueueGo route navigation legs must be an array"
         }
         val legs = route.optJSONArray("legs")
+        // Missing legs are allowed for geometry-only routes, but a supplied
+        // non-array legs field is corrupted guidance and must fail closed.
+        require(!route.has("legs") || route.isNull("legs") || legs != null) {
+            "QueueGo route navigation legs must be an array"
+        }
         var sequence = 0
         if (legs != null) {
             for (legIndex in 0 until legs.length()) {
