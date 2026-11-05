@@ -161,6 +161,13 @@ class QueueGoLocalRoadShortestPathTest {
             QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxQueuedStates = 2
         )
         assertEquals(listOf("to-d", "d-to-b", "finish"), route!!.map { it.roadId })
+        // Heap compaction must preserve the same optimal route as an
+        // unconstrained frontier; it may discard stale entries, not live paths.
+        val unboundedFrontierRoute = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxQueuedStates = 100
+        )
+        assertEquals(unboundedFrontierRoute!!.map { it.id }, route.map { it.id })
     }
 
     @Test fun denseFrontierExceedingQueueBudgetFailsClosed() {
