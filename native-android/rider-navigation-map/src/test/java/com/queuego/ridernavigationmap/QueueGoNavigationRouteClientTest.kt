@@ -45,6 +45,15 @@ class QueueGoNavigationRouteClientTest {
         assertEquals(101L, limit.osmWayId)
     }
 
+    @Test fun staleSpeedLimitBeyondGeometryIsNotShownToRider() {
+        val raw = """{"code":"Ok","routes":[{"distance":1200,"duration":180,"geometry":{"type":"LineString","coordinates":[[100.0,13.0],[100.01,13.0]]},"maxspeed_intervals":[{"start_geometry_m":0,"end_geometry_m":400,"maxspeed_kph":50,"maxspeed_raw":"50","source":"osm:maxspeed"},{"start_geometry_m":400,"end_geometry_m":5000,"maxspeed_kph":80,"maxspeed_raw":"80","source":"osm:maxspeed"}],"legs":[]}]}"""
+        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(raw, stop, "leg-1")
+
+        assertEquals(1, leg.speedLimitIntervals.size)
+        assertEquals(50.0, leg.speedLimitIntervals.single().maxspeedKph, 0.001)
+    }
+
     @Test fun missingSpeedLimitIntervalsStayBackwardCompatible() {
         val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
             .parseQueueGoRoute(routeJson, stop, "leg-1")

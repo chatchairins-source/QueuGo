@@ -399,4 +399,69 @@ class QueueGoLocalRoadShortestPathTest {
             QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxVisitedStates = 3
         )!!.size)
     }
+
+    @Test fun signedTurnRestrictionStillBlocksWhitelistedTerminalServiceRoad() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("approach", listOf(a, b), oneWay = true),
+                road("service", listOf(b, c), oneWay = true,
+                    access = QueueGoLocalRoadAccess.SERVICE_ACCESS)
+            )
+        )
+        val start = queueGoExactNodeId(a)
+        val destination = queueGoExactNodeId(c)
+        val whitelist = setOf("service")
+        // The destination approval grants access, not permission to violate
+        // a signed turn restriction at the junction.
+        assertEquals(listOf("approach", "service"), graph.shortestVerifiedEdgePath(
+            start, destination, QueueGoRoutingVehicle.MOTORCYCLE, emptySet(),
+            destinationAccessRoadIds = whitelist
+        )!!.map { it.roadId })
+        assertNull(graph.shortestVerifiedEdgePath(
+            start, destination, QueueGoRoutingVehicle.MOTORCYCLE,
+            setOf("approach:0:forward" to "service:0:forward"),
+            destinationAccessRoadIds = whitelist
+        ))
+    }
+
+    @Test fun signedInternalTurnRestrictionBlocksMultiSegmentTerminalAccess() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("service", listOf(a, b, c), oneWay = true,
+                access = QueueGoLocalRoadAccess.SERVICE_ACCESS))
+        )
+        val start = queueGoExactNodeId(a)
+        val destination = queueGoExactNodeId(c)
+        val allowed = setOf("service")
+        assertEquals(2, graph.shortestVerifiedEdgePath(
+            start, destination, QueueGoRoutingVehicle.MOTORCYCLE, emptySet(),
+            destinationAccessRoadIds = allowed
+        )!!.size)
+        assertNull(graph.shortestVerifiedEdgePath(
+            start, destination, QueueGoRoutingVehicle.MOTORCYCLE,
+            setOf("service:0:forward" to "service:1:forward"),
+            destinationAccessRoadIds = allowed
+        ))
+    }
+
+
+    @Test fun forbiddenTerminalTurnUsesLegalAlternateApproach() {
+        val d = QueueGoLocalRoadPoint(15.001, 103.001)
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("direct", listOf(a, b), oneWay = true),
+                road("detour-1", listOf(a, d), oneWay = true),
+                road("detour-2", listOf(d, b), oneWay = true),
+                road("service", listOf(b, c), oneWay = true,
+                    access = QueueGoLocalRoadAccess.SERVICE_ACCESS)
+            )
+        )
+        val route = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE,
+            setOf("direct:0:forward" to "service:0:forward"),
+            destinationAccessRoadIds = setOf("service")
+        )
+        assertEquals(listOf("detour-1", "detour-2", "service"),
+            route!!.map { it.roadId })
+    }
 }
