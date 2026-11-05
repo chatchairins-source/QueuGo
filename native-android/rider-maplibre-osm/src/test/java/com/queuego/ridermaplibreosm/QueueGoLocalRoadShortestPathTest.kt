@@ -51,6 +51,37 @@ class QueueGoLocalRoadShortestPathTest {
         )
     }
 
+    @Test fun shortestPathUsesDistanceRatherThanFewestEdges() {
+        val far = QueueGoLocalRoadPoint(16.0, 104.0)
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("long-direct", listOf(a, far, c), oneWay = true),
+                road("short-1", listOf(a, b), oneWay = true),
+                road("short-2", listOf(b, c), oneWay = true)
+            )
+        )
+        val path = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet()
+        )
+        assertEquals(listOf("short-1", "short-2"), path!!.map { it.roadId })
+    }
+
+    @Test fun cycleDoesNotPreventFindingDestination() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("forward", listOf(a, b), oneWay = true),
+                road("cycle", listOf(b, a), oneWay = true),
+                road("exit", listOf(b, c), oneWay = true)
+            )
+        )
+        val path = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet()
+        )
+        assertEquals(listOf("forward", "exit"), path!!.map { it.roadId })
+    }
+
     @Test fun verifiedTurnRestrictionForcesLongerLegalPath() {
         val d = QueueGoLocalRoadPoint(15.001, 103.001)
         val graph = buildQueueGoLocalRoadGraph(
