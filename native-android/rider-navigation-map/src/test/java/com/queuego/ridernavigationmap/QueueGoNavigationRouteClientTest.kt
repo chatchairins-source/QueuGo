@@ -252,6 +252,28 @@ class QueueGoNavigationRouteClientTest {
         }
     }
 
+    @Test fun scalarNavigationLegsContainerIsRejected() {
+        val malformed = routeJson.replace(
+            """"legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
+            """"legs":"not-an-array""""
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun geometryOnlyRouteWithoutLegsRemainsSupported() {
+        val geometryOnly = routeJson.replace(
+            ""","legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
+            ""
+        )
+        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(geometryOnly, stop, "leg-1")
+        assertEquals(0, leg.instructions.size)
+        assertEquals(2, leg.segment.points.size)
+    }
+
     @Test fun cleartextServiceUrlIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
             QueueGoNavigationRouteClient("http://maps.queuego.test")
