@@ -112,6 +112,27 @@ class QueueGoLocalRoadShortestPathTest {
         )
     }
 
+    @Test fun supersededHeapEntryDoesNotConsumeActiveQueueBudget() {
+        val x = QueueGoLocalRoadPoint(15.0, 102.9999)
+        val d = QueueGoLocalRoadPoint(15.0009, 103.0)
+        val side = QueueGoLocalRoadPoint(15.001, 103.001)
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("to-x", listOf(a, x), oneWay = true),
+                road("x-to-b", listOf(x, b), oneWay = true),
+                road("to-d", listOf(a, d), oneWay = true),
+                road("d-to-b", listOf(d, b), oneWay = true),
+                road("side", listOf(b, side), oneWay = true),
+                road("finish", listOf(b, c), oneWay = true)
+            )
+        )
+        val route = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxQueuedStates = 2
+        )
+        assertEquals(listOf("to-d", "d-to-b", "finish"), route!!.map { it.roadId })
+    }
+
     @Test fun denseFrontierExceedingQueueBudgetFailsClosed() {
         val north = QueueGoLocalRoadPoint(15.001, 103.001)
         val south = QueueGoLocalRoadPoint(14.999, 103.001)
