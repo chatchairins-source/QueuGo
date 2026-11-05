@@ -241,6 +241,17 @@ class QueueGoNavigationRouteClientTest {
         }
     }
 
+    @Test fun nonArrayNavigationLegsAreRejectedRatherThanSilentlyDiscarded() {
+        val malformed = routeJson.replace(
+            """"legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
+            """"legs":{"unexpected":"object"}"""
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
     @Test fun cleartextServiceUrlIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
             QueueGoNavigationRouteClient("http://maps.queuego.test")
