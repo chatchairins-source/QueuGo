@@ -182,6 +182,11 @@ class QueueGoNavigationRouteClient(
         }
 
         val instructions = mutableListOf<NavigationRouteInstruction>()
+        // A missing legs field is supported for geometry-only responses, but a
+        // present malformed legs field must not silently erase turn guidance.
+        require(!route.has("legs") || route.optJSONArray("legs") != null) {
+            "QueueGo route navigation legs must be an array"
+        }
         val legs = route.optJSONArray("legs")
         var sequence = 0
         if (legs != null) {
