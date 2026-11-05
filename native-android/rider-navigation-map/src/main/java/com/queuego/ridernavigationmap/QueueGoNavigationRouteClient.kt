@@ -192,14 +192,21 @@ class QueueGoNavigationRouteClient(
                 }
                 for (stepIndex in 0 until steps.length()) {
                     val step = steps.optJSONObject(stepIndex) ?: continue
+                    // Missing metrics are permitted for older responses, but an
+                    // explicitly invalid metric must not silently become zero:
+                    // that would corrupt distance-to-turn and instruction timing.
+                    val stepDistance = step.optDouble("distance", 0.0)
+                    val stepDuration = step.optDouble("duration", 0.0)
+                    require(stepDistance.isFinite() && stepDistance >= 0.0 &&
+                        stepDuration.isFinite() && stepDuration >= 0.0) {
+                        "QueueGo route contains invalid turn-by-turn step metrics"
+                    }
                     instructions += NavigationRouteInstruction(
                         sequence = sequence++,
                         turnCode = step.optInt("vendor_type", 7),
                         roadName = step.optString("name").trim(),
-                        sectionDistanceMeters = step.optDouble("distance", 0.0)
-                            .takeIf { it.isFinite() && it >= 0.0 } ?: 0.0,
-                        sectionDurationSeconds = step.optDouble("duration", 0.0)
-                            .takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
+                        sectionDistanceMeters = stepDistance,
+                        sectionDurationSeconds = stepDuration
                     )
                 }
             }
