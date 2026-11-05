@@ -125,10 +125,10 @@ class QueueGoLocalRoadShortestPathTest {
                 road("continuation", listOf(b, c)))
         )
         assertEquals(1, graph.shortestVerifiedEdgePath(
-            queueGoExactNodeId(a), queueGoExactNodeId(b), QueueGoRoutingVehicle.MOTORCYCLE, emptySet(, destinationAccessRoadIds = setOf("service"))
+            queueGoExactNodeId(a), queueGoExactNodeId(b), QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), destinationAccessRoadIds = setOf("service")
         )!!.size)
         assertNull(graph.shortestVerifiedEdgePath(
-            queueGoExactNodeId(a), queueGoExactNodeId(c), QueueGoRoutingVehicle.MOTORCYCLE, emptySet(, destinationAccessRoadIds = setOf("service"))
+            queueGoExactNodeId(a), queueGoExactNodeId(c), QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), destinationAccessRoadIds = setOf("service")
         ))
         assertTrue(graph.shortestVerifiedEdgePath(
             queueGoExactNodeId(a), queueGoExactNodeId(a), QueueGoRoutingVehicle.MOTORCYCLE, emptySet()
