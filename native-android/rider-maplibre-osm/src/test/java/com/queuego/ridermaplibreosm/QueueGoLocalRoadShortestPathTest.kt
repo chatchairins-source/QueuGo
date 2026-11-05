@@ -25,6 +25,36 @@ class QueueGoLocalRoadShortestPathTest {
         oneWay = oneWay
     )
 
+    @Test fun multipleVerifiedTurnRestrictionsStillApplyAfterSelectiveIndexing() {
+        val d = QueueGoLocalRoadPoint(15.001, 103.001)
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("approach", listOf(a, b), oneWay = true),
+                road("direct", listOf(b, c), oneWay = true),
+                road("detour1", listOf(b, d), oneWay = true),
+                road("detour2", listOf(d, c), oneWay = true)
+            )
+        )
+        val restrictions = setOf(
+            "approach:0:forward" to "direct:0:forward",
+            "detour1:0:forward" to "detour2:0:forward"
+        )
+        assertNull(graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, restrictions
+        ))
+    }
+
+    @Test fun optionalPoliciesEmptyStillFindsVerifiedRoute() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("verified", listOf(a, b), oneWay = true))
+        )
+        assertEquals(listOf("verified"), graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(b),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet()
+        )!!.map { it.roadId })
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun staleTurnRestrictionEdgeIdCannotSilentlyDisableRule() {
         val graph = buildQueueGoLocalRoadGraph(
