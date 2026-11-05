@@ -103,7 +103,16 @@ internal fun QueueGoLocalRoadGraph.shortestVerifiedEdgePath(
                 previous[nextState] = current.state to edge
                 // The visited-state limit alone does not bound the priority queue:
                 // dense graphs can enqueue many alternative candidates first.
-                if (pending.size >= maxQueuedStates) return null
+                if (pending.size >= maxQueuedStates) {
+                    // Remove superseded heap entries before rejecting a valid
+                    // route. Decrease-key is not supported by PriorityQueue.
+                    pending.removeAll { queued ->
+                        queued.distanceMeters > best.getOrDefault(
+                            queued.state, Double.POSITIVE_INFINITY
+                        ) || queued.state in visited
+                    }
+                    if (pending.size >= maxQueuedStates) return null
+                }
                 pending.add(Candidate(nextState, nextDistance))
             }
         }
