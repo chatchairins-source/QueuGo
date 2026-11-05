@@ -173,6 +173,30 @@ class QueueGoLocalRoadShortestPathTest {
         ))
     }
 
+    @Test fun destinationWhitelistNeverOverridesMotorcycleOnlyAccessForCars() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("bike", listOf(a, b),
+                access = QueueGoLocalRoadAccess.MOTORCYCLE_ONLY))
+        )
+        assertNull(graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(b),
+            QueueGoRoutingVehicle.CAR, emptySet(),
+            destinationAccessRoadIds = setOf("bike")
+        ))
+    }
+
+    @Test fun destinationWhitelistNeverOverridesOneWayDirection() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("one-way", listOf(a, b), oneWay = true,
+                access = QueueGoLocalRoadAccess.SERVICE_ACCESS))
+        )
+        assertNull(graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(b), queueGoExactNodeId(a),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(),
+            destinationAccessRoadIds = setOf("one-way")
+        ))
+    }
+
     @Test fun directedPathUsesOnlyExistingRoadEdges() {
         val graph = buildQueueGoLocalRoadGraph(
             listOf(road("first", listOf(a, b), oneWay = true),
