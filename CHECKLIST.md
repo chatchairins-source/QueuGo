@@ -1,3 +1,13 @@
+## 2026-11-05 Rider local-road Dijkstra terminal access — IN PROGRESS (PR #867)
+
+- Workstream: isolated native Rider P0 #801, stacked on PR #865 exact parent `4dd792167e771ac9e67c55b8b15f5c24fff06843`. No main merge, Production/Supabase/order mutation or nationwide offline certification.
+- Root cause: the new edge-state shortest path allowed destination-only access solely for an edge entering the destination node; a legitimate signed multi-segment service/merchant-confirmed road could not reach an endpoint beyond its first segment.
+- Changed `QueueGoLocalRoadShortestPath.kt` to require explicit known destination-access road IDs; retain terminal access on one authorized road across multiple segments without returning to through roads or switching service-road IDs. Bound search to max 50,000 visited states by default (accepted range 1..200,000), fail closed when exceeded.
+- Added Kotlin/JVM regression scenarios for multi-segment access, whitelist omission/staleness, service-road shortcut and cross-service transition rejection, merchant-confirmed access and bounded search; preserved original directed/vehicle/turn tests.
+- Commits: `7fc45cea2fe39771abab4cef060c459d18689a91` and `5596d4fc30a568b5584737286600886c7b1f24b3`; initial git compare: ahead 2, behind 0 from PR #865 with only two Kotlin files touched.
+- Test status: **IN PROGRESS**. Source has been committed and PR #867 opened draft. Hosted Native Pilot [run 41954880352](https://github.com/chatchairins-source/QueuGo/actions/runs/41954880352) was still pending at last read; no Gradle/JUnit pass claim. Local GitHub clone is blocked by DNS in this execution environment.
+- **NEXT:** Inspect exact-head Native Pilot/JVM results after this checklist update; repair the first observed source/runtime failure on the same successor, recheck parent ancestry, then continue signed nationwide graph provenance/provider integration under #801. Preserve #750 real offline label visual gate, #775 authenticated all-screen captures, and physical GPS/airplane-mode release gates.
+
 ## 2026-10-31 Production launch continuation — exact Native gate completion
 
 - **DONE (source/test):** Previous exact Native HEAD `a1141a435362d6ee28281ec7caf645acebd906dc` passed Native Pilot PR #4828 (run 41165426448), successful three-role Debug APK export (run 41165426463), Installed Country Offline Runtime (run 41165426526) and Native POS CI (run 41165426452). These are not signed Production releases or physical-device acceptance.
