@@ -17,9 +17,11 @@ internal fun QueueGoLocalRoadGraph.shortestVerifiedEdgePath(
     vehicle: QueueGoRoutingVehicle,
     forbiddenTurns: Set<Pair<String, String>>,
     destinationAccessRoadIds: Set<String> = emptySet(),
-    maxVisitedStates: Int = 50_000
+    maxVisitedStates: Int = 50_000,
+    maxQueuedStates: Int = 200_000
 ): List<QueueGoLocalRoadGraphEdge>? {
     require(maxVisitedStates in 1..200_000) { "Local-road path search limit is outside the accepted range" }
+    require(maxQueuedStates in 1..500_000) { "Local-road queue limit is outside the accepted range" }
     val eligibleRoadIds = edges.mapTo(hashSetOf()) { it.roadId }
     require(destinationAccessRoadIds.all { it.isNotBlank() && it in eligibleRoadIds }) {
         "Destination-access whitelist contains unknown or blank road IDs"
@@ -99,6 +101,9 @@ internal fun QueueGoLocalRoadGraph.shortestVerifiedEdgePath(
             if (nextDistance < best.getOrDefault(nextState, Double.POSITIVE_INFINITY)) {
                 best[nextState] = nextDistance
                 previous[nextState] = current.state to edge
+                // The visited-state limit alone does not bound the priority queue:
+                // dense graphs can enqueue many alternative candidates first.
+                if (pending.size >= maxQueuedStates) return null
                 pending.add(Candidate(nextState, nextDistance))
             }
         }
