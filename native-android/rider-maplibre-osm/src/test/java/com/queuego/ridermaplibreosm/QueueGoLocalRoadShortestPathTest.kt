@@ -82,6 +82,36 @@ class QueueGoLocalRoadShortestPathTest {
         assertEquals(listOf("forward", "exit"), path!!.map { it.roadId })
     }
 
+    @Test fun forbiddenTurnAppliesOnlyToSpecifiedIncomingEdge() {
+        val d = QueueGoLocalRoadPoint(15.001, 103.001)
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("approach", listOf(a, b), oneWay = true),
+                road("alternate1", listOf(a, d), oneWay = true),
+                road("alternate2", listOf(d, b), oneWay = true),
+                road("exit", listOf(b, c), oneWay = true)
+            )
+        )
+        val path = graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE,
+            setOf("approach:0:forward" to "exit:0:forward")
+        )
+        assertEquals(
+            listOf("alternate1", "alternate2", "exit"),
+            path!!.map { it.roadId }
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun zeroVisitedStateBudgetCannotBypassSafetyBound() {
+        val graph = buildQueueGoLocalRoadGraph(listOf(road("road", listOf(a, b))))
+        graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(b),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxVisitedStates = 0
+        )
+    }
+
     @Test fun verifiedTurnRestrictionForcesLongerLegalPath() {
         val d = QueueGoLocalRoadPoint(15.001, 103.001)
         val graph = buildQueueGoLocalRoadGraph(
