@@ -24,6 +24,32 @@ class QueueGoLocalRoadShortestPathTest {
         oneWay = oneWay
     )
 
+    @Test(expected = IllegalArgumentException::class)
+    fun staleTurnRestrictionEdgeIdCannotSilentlyDisableRule() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("approach", listOf(a, b), oneWay = true),
+                road("exit", listOf(b, c), oneWay = true))
+        )
+        graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE,
+            setOf("stale-road:0:forward" to "exit:0:forward")
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun disconnectedRestrictionEdgePairCannotMasqueradeAsRealTurn() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(road("approach", listOf(a, b), oneWay = true),
+                road("remote", listOf(c, QueueGoLocalRoadPoint(16.0, 104.0)), oneWay = true))
+        )
+        graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE,
+            setOf("approach:0:forward" to "remote:0:forward")
+        )
+    }
+
     @Test fun verifiedTurnRestrictionForcesLongerLegalPath() {
         val d = QueueGoLocalRoadPoint(15.001, 103.001)
         val graph = buildQueueGoLocalRoadGraph(
