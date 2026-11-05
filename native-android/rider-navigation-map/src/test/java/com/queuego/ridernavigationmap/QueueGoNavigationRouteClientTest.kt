@@ -263,6 +263,18 @@ class QueueGoNavigationRouteClientTest {
         }
     }
 
+    @Test fun explicitlyNullNavigationLegsAreRejectedInsteadOfHidingTurns() {
+        val malformed = routeJson.replace(
+            """"legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
+            """"legs":null"""
+        )
+        assertTrue("Test fixture must contain the legs field", malformed != routeJson)
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
     @Test fun geometryOnlyRouteWithoutLegsRemainsSupported() {
         val geometryOnly = routeJson.replace(
             ""","legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
