@@ -112,6 +112,35 @@ class QueueGoLocalRoadShortestPathTest {
         )
     }
 
+    @Test fun denseFrontierExceedingQueueBudgetFailsClosed() {
+        val north = QueueGoLocalRoadPoint(15.001, 103.001)
+        val south = QueueGoLocalRoadPoint(14.999, 103.001)
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("north", listOf(a, north), oneWay = true),
+                road("south", listOf(a, south), oneWay = true),
+                road("destination", listOf(north, c), oneWay = true)
+            )
+        )
+        assertNull(graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxQueuedStates = 1
+        ))
+        assertEquals(listOf("north", "destination"), graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(c),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxQueuedStates = 4
+        )!!.map { it.roadId })
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun zeroPendingQueueBudgetIsRejected() {
+        val graph = buildQueueGoLocalRoadGraph(listOf(road("test", listOf(a, b))))
+        graph.shortestVerifiedEdgePath(
+            queueGoExactNodeId(a), queueGoExactNodeId(b),
+            QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxQueuedStates = 0
+        )
+    }
+
     @Test fun verifiedTurnRestrictionForcesLongerLegalPath() {
         val d = QueueGoLocalRoadPoint(15.001, 103.001)
         val graph = buildQueueGoLocalRoadGraph(
