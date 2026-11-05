@@ -129,11 +129,16 @@ internal fun QueueGoLocalRoadGraph.shortestVerifiedEdgePath(
                 if (pending.size >= maxQueuedStates) {
                     // Remove superseded heap entries before rejecting a valid
                     // route. Decrease-key is not supported by PriorityQueue.
-                    pending.removeAll { queued ->
-                        queued.distanceMeters > best.getOrDefault(
+                    // PriorityQueue.removeAll can repeatedly remove through
+                    // its iterator, yielding quadratic work on a dense national
+                    // graph. Rebuild the heap in one bounded pass instead.
+                    val liveCandidates = pending.filter { queued ->
+                        queued.distanceMeters <= best.getOrDefault(
                             queued.state, Double.POSITIVE_INFINITY
-                        ) || queued.state in visited
+                        ) && queued.state !in visited
                     }
+                    pending.clear()
+                    pending.addAll(liveCandidates)
                     if (pending.size >= maxQueuedStates) return null
                 }
                 pending.add(Candidate(nextState, nextDistance))
