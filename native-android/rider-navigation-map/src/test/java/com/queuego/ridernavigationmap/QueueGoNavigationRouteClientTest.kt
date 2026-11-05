@@ -61,6 +61,30 @@ class QueueGoNavigationRouteClientTest {
         assertEquals(emptyList<NavigationSpeedLimitInterval>(), leg.speedLimitIntervals)
     }
 
+    @Test fun negativeStepDistanceCannotSilentlyBecomeZero() {
+        val malformed = routeJson.replace("\"distance\":100", "\"distance\":-10")
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun nonNumericStepDurationCannotSilentlyBecomeZero() {
+        val malformed = routeJson.replace("\"duration\":10", "\"duration\":\"invalid\"")
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun missingOptionalStepMetricsRemainBackwardCompatible() {
+        val missing = routeJson.replace("\"distance\":100,\"duration\":10,", "")
+        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(missing, stop, "leg-1")
+        assertEquals(0.0, leg.instructions.single().sectionDistanceMeters, 0.001)
+        assertEquals(0.0, leg.instructions.single().sectionDurationSeconds, 0.001)
+    }
+
     @Test fun missingDurationKeepsGeometryWithoutInventingEta() {
         val raw =
             """{"code":"Ok","routes":[{"distance":1200,"geometry":{"type":"LineString","coordinates":[[100.0,13.0],[100.01,13.0]]},"legs":[]}]}"""
