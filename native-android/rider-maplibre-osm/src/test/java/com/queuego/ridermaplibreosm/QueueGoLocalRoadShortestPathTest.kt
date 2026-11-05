@@ -399,4 +399,28 @@ class QueueGoLocalRoadShortestPathTest {
             QueueGoRoutingVehicle.MOTORCYCLE, emptySet(), maxVisitedStates = 3
         )!!.size)
     }
+
+    @Test fun signedTurnRestrictionStillBlocksWhitelistedTerminalServiceRoad() {
+        val graph = buildQueueGoLocalRoadGraph(
+            listOf(
+                road("approach", listOf(a, b), oneWay = true),
+                road("service", listOf(b, c), oneWay = true,
+                    access = QueueGoLocalRoadAccess.SERVICE_ACCESS)
+            )
+        )
+        val start = queueGoExactNodeId(a)
+        val destination = queueGoExactNodeId(c)
+        val whitelist = setOf("service")
+        // The destination approval grants access, not permission to violate
+        // a signed turn restriction at the junction.
+        assertEquals(listOf("approach", "service"), graph.shortestVerifiedEdgePath(
+            start, destination, QueueGoRoutingVehicle.MOTORCYCLE, emptySet(),
+            destinationAccessRoadIds = whitelist
+        )!!.map { it.roadId })
+        assertNull(graph.shortestVerifiedEdgePath(
+            start, destination, QueueGoRoutingVehicle.MOTORCYCLE,
+            setOf("approach:0:forward" to "service:0:forward"),
+            destinationAccessRoadIds = whitelist
+        ))
+    }
 }
