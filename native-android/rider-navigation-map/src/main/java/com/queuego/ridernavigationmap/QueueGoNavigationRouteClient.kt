@@ -186,7 +186,11 @@ class QueueGoNavigationRouteClient(
         var sequence = 0
         if (legs != null) {
             for (legIndex in 0 until legs.length()) {
-                val steps = legs.optJSONObject(legIndex)?.optJSONArray("steps") ?: continue
+                // An invalid leg must not silently erase its entire set of turns.
+                val leg = legs.optJSONObject(legIndex)
+                    ?: error("QueueGo route contains a malformed navigation leg")
+                val steps = leg.optJSONArray("steps")
+                    ?: error("QueueGo route navigation leg is missing steps")
                 require(sequence + steps.length() <= QUEUEGO_ROUTE_MAX_STEPS) {
                     "QueueGo route has too many steps"
                 }
