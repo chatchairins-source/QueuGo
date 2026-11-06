@@ -1,3 +1,10 @@
+## 2026-11-06 Real nationwide graph + in-process Rider provider (acceptance pending)
+
+- Continue from #872 exact859e1d33; verified #736/#824/#867/#871 ancestors, integrate missing #866 preserving metric checks. No main merge/Production mutation.
+- Implement real Valhalla 0.6.4 Android provider in existing NavigationRouteProvider chain, private checksummed graph install/recovery, bounded polyline6/maneuver adapter and full HUD narratives. Rider-only QG_OFFLINE_ROUTING_ASSETS; no straight-line/network fallback from a selected offline package.
+- Actually built licensed OSM Thailand261104 graph with Valhalla3.9.1; 1,110,384,640-byte tar. Six packaged-graph Linux probes pass, including Bangkok–Chiang Mai883.099km. Direct isolated Kotlin/JUnit176 pass (not Gradle); native source489/0. Evidence docs/qa/rider-offline-routing-20261106/. New exact-source workflow builds graph/APK and invokes installed offline instrumentation in two fresh processes.
+- NEXT: inspect exact commit hosted CI, fix Android native/tile compatibility or build failures; finish real one-way/restriction probes, emulator map/GPS/screenshots/Auth/order/push/backend and physical gates. #801 is not closed and no owner-ready APK is claimed. Local Java proxy networking blocks Gradle plugin resolution; keep actual error boundary, do not downgrade pins.
+
 ## 2026-11-03 Rider rendered route-progress notification — PR #848 (source, CI pending)
 
 - Based on exact Native #824 `a809494148dfa79026d613e6a81d20569eff63d4` after inspecting #736/#743/#744, #740/#750/#801/#822/#830, CI Recovery issues, source and existing memory. Isolated branch `fix-rider-progress-route-change-signal-20261103`; no Production mutation.

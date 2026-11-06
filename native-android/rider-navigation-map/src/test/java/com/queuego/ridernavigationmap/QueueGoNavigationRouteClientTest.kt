@@ -3,6 +3,7 @@ package com.queuego.ridernavigationmap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class QueueGoNavigationRouteClientTest {
@@ -296,6 +297,95 @@ class QueueGoNavigationRouteClientTest {
             QueueGoNavigationRouteClient("https://maps.queuego.test")
                 .parseQueueGoRoute(disconnected, stop, "leg-1", from = NavigationMapPoint(13.0, 100.0))
         }
+    }
+
+    @Test fun nullNavigationStepIsRejectedRatherThanSilentlyDroppingTurn() {
+        val malformed = routeJson.replace(
+            """{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}""",
+            "null"
+        )
+        assertThrows(IllegalStateException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun scalarNavigationStepIsRejectedRatherThanSilentlyDroppingTurn() {
+        val malformed = routeJson.replace(
+            """{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}""",
+            "\"not-a-step\""
+        )
+        assertThrows(IllegalStateException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun nullNavigationLegIsRejectedRatherThanDroppingAllTurns() {
+        val malformed = routeJson.replace(
+            """{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}""",
+            "null"
+        )
+        assertThrows(IllegalStateException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun navigationLegWithNullStepsIsRejectedRatherThanDroppingAllTurns() {
+        val malformed = routeJson.replace(
+            """{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}""",
+            """{"steps":null}"""
+        )
+        assertThrows(IllegalStateException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun nonArrayNavigationLegsAreRejectedRatherThanSilentlyDiscarded() {
+        val malformed = routeJson.replace(
+            """"legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
+            """"legs":{"unexpected":"object"}"""
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun scalarNavigationLegsContainerIsRejected() {
+        val malformed = routeJson.replace(
+            """"legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
+            """"legs":"not-an-array""""
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun explicitlyNullNavigationLegsAreRejectedInsteadOfHidingTurns() {
+        val malformed = routeJson.replace(
+            """"legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
+            """"legs":null"""
+        )
+        assertTrue("Test fixture must contain the legs field", malformed != routeJson)
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun geometryOnlyRouteWithoutLegsRemainsSupported() {
+        val geometryOnly = routeJson.replace(
+            ""","legs":[{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}]""",
+            ""
+        )
+        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(geometryOnly, stop, "leg-1")
+        assertEquals(0, leg.instructions.size)
+        assertEquals(2, leg.segment.points.size)
     }
 
     @Test fun cleartextServiceUrlIsRejected() {

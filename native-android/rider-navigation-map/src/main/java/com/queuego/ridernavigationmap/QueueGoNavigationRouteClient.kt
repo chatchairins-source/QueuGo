@@ -183,6 +183,12 @@ class QueueGoNavigationRouteClient(
 
         val instructions = mutableListOf<NavigationRouteInstruction>()
         val legs = route.optJSONArray("legs")
+        // Only an ABSENT legs field denotes a geometry-only response.
+        // Explicit null, scalar or object values are malformed guidance:
+        // rejecting them avoids silently erasing turn instructions.
+        require(!route.has("legs") || legs != null) {
+            "QueueGo route navigation legs must be an array"
+        }
         var sequence = 0
         if (legs != null) {
             for (legIndex in 0 until legs.length()) {

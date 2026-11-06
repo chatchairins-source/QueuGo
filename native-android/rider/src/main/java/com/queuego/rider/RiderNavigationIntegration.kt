@@ -23,6 +23,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.queuego.ridernavigationmap.BundledOfflineRouting
 import com.queuego.ridernavigationmap.CachingNavigationRouteProvider
 import com.queuego.ridernavigationmap.QueueGoNavigationRouteClient
 import com.queuego.ridernavigationmap.NavigationMapCamera
@@ -549,11 +550,12 @@ internal fun QueueGoRiderNavigationMap(
 
     val routeBaseUrl = remember(context.packageName) { riderQueueGoMapServiceBaseUrl(context) }
     val routeProvider = remember(routeBaseUrl, stateKey) {
-        routeBaseUrl?.let { baseUrl ->
-            CachingNavigationRouteProvider(
-                delegate = QueueGoNavigationRouteClient(baseUrl)
+        CachingNavigationRouteProvider(
+            delegate = BundledOfflineRouting.provider(
+                context,
+                routeBaseUrl?.let { QueueGoNavigationRouteClient(it) }
             )
-        }
+        )
     }
     val coordinator = remember(stateKey, routeProvider) {
         routeProvider?.let { NavigationRouteCoordinator(it) }

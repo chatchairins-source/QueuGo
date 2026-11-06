@@ -1,0 +1,78 @@
+name: Rider in-process Thailand routing
+on:
+  workflow_dispatch:
+  push:
+    branches: ['fix-rider-**', 'work-rider-**']
+    paths:
+      - 'native-android/rider-navigation-map/**'
+      - 'native-android/rider/**'
+      - 'ops/maps/offline_package.py'
+      - 'ops/maps/sources/**'
+      - '.github/workflows/rider-offline-routing.yml'
+permissions:
+  contents: read
+concurrency:
+  group: rider-offline-routing-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  offline-routing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: Build the real pinned Thailand motorcycle graph
+        run: |
+          set -euo pipefail
+          python3 -m pip install osmium==4.3.1 pyvalhalla==3.9.1
+          mkdir -p "$RUNNER_TEMP/routing-source"
+          source="$RUNNER_TEMP/routing-source/thailand.osm.pbf"
+          curl --fail --location --retry 2 https://download.geofabrik.de/asia/thailand-261104.osm.pbf -o "$source"
+          echo "eed0526676882ba1b94c0f9b0dd49ed25b7495150af4040822157203f2ba3457  $source" | sha256sum -c -
+          cp ops/maps/sources/thailand-261104.manifest.json "$RUNNER_TEMP/routing-source/thailand.osm.manifest.json"
+          python3 ops/maps/build_engine_graph.py valhalla "$source" "$RUNNER_TEMP/routing-graph"
+          python3 ops/maps/offline_package.py android-routing --graph "$RUNNER_TEMP/routing-graph" \
+            --source-manifest ops/maps/sources/thailand-261104.manifest.json --destination "$RUNNER_TEMP/routing-assets"
+          echo "QG_OFFLINE_ROUTING_ASSETS=$RUNNER_TEMP/routing-assets" >> "$GITHUB_ENV"
+          python3 ops/maps/probe_android_routing.py --assets "$RUNNER_TEMP/routing-assets" --output artifacts/rider-offline-routing/country-linux-probes.json
+          # Retain the immutable extract, not multi-GB temporary graph-builder indexes.
+          rm -rf "$RUNNER_TEMP/routing-graph/tiles" "$RUNNER_TEMP/routing-source"
+      - name: Install Android build and runtime tools
+        run: |
+          set +o pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools' 'emulator' 'system-images;android-30;default;x86_64'
+      - name: Exact-source JVM tests and Rider Debug APK
+        run: |
+          gradle -p native-android :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest :rider:testDebugUnitTest :rider:assembleDebug :rider:assembleDebugAndroidTest --no-daemon --stacktrace
+          mkdir -p artifacts/rider-offline-routing
+          git rev-parse HEAD > artifacts/rider-offline-routing/build-commit.txt
+          sha256sum native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk.sha256
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk-signature.txt
+          cp "$QG_OFFLINE_ROUTING_ASSETS/routing/manifest.json" artifacts/rider-offline-routing/graph-manifest.json
+      - name: Enable Android acceleration
+        run: |
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then sudo chown "$(id -u):$(id -g)" /dev/kvm; fi
+      - name: Run actual installed Rider offline routing and cold process restart
+        run: python3 native-android/qa/run-rider-offline-routing.py
+      - name: Retain exact-source internal QA evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rider-offline-routing-${{ github.sha }}
+          path: |
+            artifacts/rider-offline-routing/
+            native-android/rider-navigation-map/build/test-results/
+            native-android/rider-maplibre-osm/build/test-results/
+            native-android/rider/build/test-results/
+          if-no-files-found: warn
+      # This is a routing gate, not the country-rendering/authentication/release gate.
+      # No owner APK publication and no Production deployment are performed here.

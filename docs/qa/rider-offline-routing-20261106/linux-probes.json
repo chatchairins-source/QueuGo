@@ -1,0 +1,170 @@
+{
+  "engine": "pyvalhalla 3.9.1",
+  "dataset_sha256": "eed0526676882ba1b94c0f9b0dd49ed25b7495150af4040822157203f2ba3457",
+  "graph_sha256": "0a66ad41214a7a2ca66e81c440756d9c5b5944d9d6e629f84a50bfce2c8b8d59",
+  "platform": "Linux x86_64; not Android emulator or physical road QA",
+  "results": [
+    {
+      "name": "buriram",
+      "from": [
+        14.9942,
+        103.102
+      ],
+      "to": [
+        15.0054,
+        103.1114
+      ],
+      "summary": {
+        "has_time_restrictions": false,
+        "has_toll": false,
+        "has_highway": false,
+        "has_ferry": false,
+        "min_lat": 14.993378,
+        "min_lon": 103.102008,
+        "max_lat": 15.005412,
+        "max_lon": 103.113391,
+        "time": 211.154,
+        "length": 2.522,
+        "cost": 372.869
+      },
+      "maneuvers": 5,
+      "seconds": 0.084,
+      "status": "PASS_LINUX_ENGINE_ONLY"
+    },
+    {
+      "name": "bangkok",
+      "from": [
+        13.7563,
+        100.5018
+      ],
+      "to": [
+        13.7465,
+        100.534
+      ],
+      "summary": {
+        "has_time_restrictions": false,
+        "has_toll": false,
+        "has_highway": false,
+        "has_ferry": false,
+        "min_lat": 13.745676,
+        "min_lon": 100.500951,
+        "max_lat": 13.757045,
+        "max_lon": 100.534017,
+        "time": 381.73,
+        "length": 4.477,
+        "cost": 740.916
+      },
+      "maneuvers": 5,
+      "seconds": 0.054,
+      "status": "PASS_LINUX_ENGINE_ONLY"
+    },
+    {
+      "name": "chiangmai",
+      "from": [
+        18.7883,
+        98.9853
+      ],
+      "to": [
+        18.7901,
+        98.9987
+      ],
+      "summary": {
+        "has_time_restrictions": false,
+        "has_toll": false,
+        "has_highway": false,
+        "has_ferry": false,
+        "min_lat": 18.787776,
+        "min_lon": 98.985318,
+        "max_lat": 18.792547,
+        "max_lon": 98.998752,
+        "time": 212.716,
+        "length": 2.198,
+        "cost": 458.521
+      },
+      "maneuvers": 6,
+      "seconds": 0.004,
+      "status": "PASS_LINUX_ENGINE_ONLY"
+    },
+    {
+      "name": "khonkaen",
+      "from": [
+        16.4322,
+        102.8236
+      ],
+      "to": [
+        16.4451,
+        102.8358
+      ],
+      "summary": {
+        "has_time_restrictions": false,
+        "has_toll": false,
+        "has_highway": false,
+        "has_ferry": false,
+        "min_lat": 16.432205,
+        "min_lon": 102.823573,
+        "max_lat": 16.445311,
+        "max_lon": 102.835812,
+        "time": 194.947,
+        "length": 2.445,
+        "cost": 982.209
+      },
+      "maneuvers": 6,
+      "seconds": 0.004,
+      "status": "PASS_LINUX_ENGINE_ONLY"
+    },
+    {
+      "name": "hatyai",
+      "from": [
+        7.0086,
+        100.4747
+      ],
+      "to": [
+        7.0164,
+        100.4891
+      ],
+      "summary": {
+        "has_time_restrictions": false,
+        "has_toll": false,
+        "has_highway": false,
+        "has_ferry": false,
+        "min_lat": 7.008709,
+        "min_lon": 100.474691,
+        "max_lat": 7.016459,
+        "max_lon": 100.48947,
+        "time": 263.956,
+        "length": 2.499,
+        "cost": 694.58
+      },
+      "maneuvers": 8,
+      "seconds": 0.004,
+      "status": "PASS_LINUX_ENGINE_ONLY"
+    },
+    {
+      "name": "bangkok-chiangmai",
+      "from": [
+        13.7563,
+        100.5018
+      ],
+      "to": [
+        18.7883,
+        98.9853
+      ],
+      "summary": {
+        "has_time_restrictions": false,
+        "has_toll": false,
+        "has_highway": false,
+        "has_ferry": false,
+        "min_lat": 13.756337,
+        "min_lon": 98.808032,
+        "max_lat": 18.788331,
+        "max_lon": 100.631152,
+        "time": 42005.113,
+        "length": 883.099,
+        "cost": 53715.941
+      },
+      "maneuvers": 58,
+      "seconds": 0.108,
+      "status": "PASS_LINUX_ENGINE_ONLY"
+    }
+  ]
+}

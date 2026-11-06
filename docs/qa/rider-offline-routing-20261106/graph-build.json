@@ -1,0 +1,25 @@
+{
+  "engine": "valhalla",
+  "version": "3.9.1",
+  "dataset_sha256": "eed0526676882ba1b94c0f9b0dd49ed25b7495150af4040822157203f2ba3457",
+  "builds": [
+    {
+      "command": [
+        "/root/.local/lib/python3.12/site-packages/valhalla/bin/valhalla_build_tiles",
+        "-c",
+        "/workspace/scratch/88dee2b0bdad/toolchain/thailand-graph/valhalla.json",
+        "-j",
+        "2",
+        "/workspace/scratch/88dee2b0bdad/toolchain/thailand-261104.osm.pbf"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 227.918,
+      "cpu_user_seconds": 281.530815,
+      "cpu_system_seconds": 55.38771,
+      "peak_rss_kib": 3617804
+    }
+  ],
+  "graph_and_config_bytes": 3808636913,
+  "cpu_limit": 2,
+  "licence": "MIT"
+}

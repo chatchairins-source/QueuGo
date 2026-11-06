@@ -5,7 +5,8 @@ data class NavigationRouteInstruction(
     val turnCode: Int,
     val roadName: String,
     val sectionDistanceMeters: Double,
-    val sectionDurationSeconds: Double
+    val sectionDurationSeconds: Double,
+    val instructionText: String? = null
 )
 
 data class NavigationSpeedLimitInterval(
