@@ -8,15 +8,6 @@ on:
       - 'native-android/qa/run-rider-offline-routing.py'
       - 'ops/maps/**'
       - '.github/workflows/rider-offline-routing.yml'
-  push:
-    branches: ['fix-rider-**', 'work-rider-**']
-    paths:
-      - 'native-android/rider-navigation-map/**'
-      - 'native-android/rider/**'
-      - 'native-android/qa/run-rider-offline-routing.py'
-      - 'ops/maps/offline_package.py'
-      - 'ops/maps/sources/**'
-      - '.github/workflows/rider-offline-routing.yml'
 permissions:
   contents: read
   actions: read

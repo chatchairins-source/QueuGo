@@ -19,6 +19,34 @@ class InstalledThailandMapTest {
     @Test fun installedCountryArchivePaintsRoadsInMultipleRegions() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
+        fun capture(name: String) {
+            val directory = File(context.getExternalFilesDir(null), "offline-map-evidence").apply { mkdirs() }
+            val screenshot = File(directory, "$name.png")
+            screenshot.outputStream().use {
+                assertTrue(instrumentation.uiAutomation.takeScreenshot().compress(Bitmap.CompressFormat.PNG, 100, it))
+            }
+            // Scoped-storage API keeps generated public evidence after UTP
+            // removes the test APK, without shell access to private app data.
+            val resolver = context.contentResolver
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, "$name.png")
+                put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/QueueGoOfflineEvidence/")
+                put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = requireNotNull(resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
+            resolver.openOutputStream(uri).use { target ->
+                screenshot.inputStream().use { source ->
+                    assertEquals(screenshot.length(), source.copyTo(requireNotNull(target)))
+                }
+            }
+            resolver.update(uri, android.content.ContentValues().apply {
+                put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
+            }, null, null)
+            resolver.openFileDescriptor(uri, "r").use {
+                assertEquals("Retained screenshot size differs", screenshot.length(), requireNotNull(it).statSize)
+            }
+        }
         val offlineRequired = InstrumentationRegistry.getArguments().getString("offlineRequired") == "true"
         if (offlineRequired) {
             assertTrue("Nationwide archive must be installed", context.assets.list("maps")?.contains("thailand-shortbread.pmtiles") == true)
@@ -115,31 +143,18 @@ class InstalledThailandMapTest {
                 // A symbol may enter the rendered-feature index before its fade-in
                 // reaches visible opacity. Retain the settled frame as evidence.
                 if (name == "bangkok" && paintedLabels > 0) Thread.sleep(1_000)
-                val directory = File(context.getExternalFilesDir(null), "offline-map-evidence").apply { mkdirs() }
-                val screenshot = File(directory, "$name.png")
-                screenshot.outputStream().use {
-                    assertTrue(instrumentation.uiAutomation.takeScreenshot().compress(Bitmap.CompressFormat.PNG, 100, it))
-                }
-                // Scoped-storage API keeps generated public evidence after UTP
-                // removes the test APK, without shell access to private app data.
-                val resolver = context.contentResolver
-                val values = android.content.ContentValues().apply {
-                    put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, "$name.png")
-                    put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png")
-                    put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/QueueGoOfflineEvidence/")
-                    put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
-                }
-                val uri = requireNotNull(resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
-                resolver.openOutputStream(uri).use { target ->
-                    screenshot.inputStream().use { source ->
-                        assertEquals(screenshot.length(), source.copyTo(requireNotNull(target)))
-                    }
-                }
-                resolver.update(uri, android.content.ContentValues().apply {
-                    put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
-                }, null, null)
-                resolver.openFileDescriptor(uri, "r").use {
-                    assertEquals("Retained screenshot size differs", screenshot.length(), requireNotNull(it).statSize)
+                capture(name)
+                if (name == "bangkok") {
+                    // Diagnostic comparisons only; preserve the original perspective
+                    // frame above as the visual acceptance sample. Never redraw text.
+                    Thread.sleep(5_000)
+                    capture("bangkok-settled")
+                    scenario.onActivity { it.inspectMap { map ->
+                        map.cameraPosition = org.maplibre.android.camera.CameraPosition.Builder(map.cameraPosition)
+                            .tilt(0.0).bearing(0.0).build()
+                    } }
+                    Thread.sleep(2_000)
+                    capture("bangkok-flat-diagnostic")
                 }
                 if (offlineRequired) assertNull(context.getSystemService(android.net.ConnectivityManager::class.java).activeNetwork)
                 if (name == "bangkok") assertTrue("Offline Bangkok labels did not paint; see retained screenshot", paintedLabels > 0)
