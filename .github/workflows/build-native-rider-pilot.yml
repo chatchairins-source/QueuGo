@@ -13,6 +13,8 @@ on:
   pull_request:
     branches:
       - 'work-native-**'
+      - 'fix-rider-**'
+      - 'test-rider-**'
   push:
     branches:
       - queuego-native-android-v1

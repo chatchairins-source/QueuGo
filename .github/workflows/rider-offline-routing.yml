@@ -1,6 +1,13 @@
 name: Rider in-process Thailand routing
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'native-android/rider-navigation-map/**'
+      - 'native-android/rider/**'
+      - 'native-android/qa/run-rider-offline-routing.py'
+      - 'ops/maps/**'
+      - '.github/workflows/rider-offline-routing.yml'
   push:
     branches: ['fix-rider-**', 'work-rider-**']
     paths:
@@ -22,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
@@ -39,7 +46,7 @@ jobs:
           curl --fail --location --retry 2 https://download.geofabrik.de/asia/thailand-261104.osm.pbf -o "$source"
           echo "eed0526676882ba1b94c0f9b0dd49ed25b7495150af4040822157203f2ba3457  $source" | sha256sum -c -
           cp ops/maps/sources/thailand-261104.manifest.json "$RUNNER_TEMP/routing-source/thailand.osm.manifest.json"
-          python3 ops/maps/build_engine_graph.py valhalla "$source" "$RUNNER_TEMP/routing-graph"
+          python3 ops/maps/build_engine_graph.py valhalla "$source" "$RUNNER_TEMP/routing-graph" --admin-pbf "$source"
           python3 ops/maps/offline_package.py android-routing --graph "$RUNNER_TEMP/routing-graph" \
             --source-manifest ops/maps/sources/thailand-261104.manifest.json --destination "$RUNNER_TEMP/routing-assets"
           echo "QG_OFFLINE_ROUTING_ASSETS=$RUNNER_TEMP/routing-assets" >> "$GITHUB_ENV"
