@@ -6,6 +6,7 @@ on:
     paths:
       - 'native-android/rider-navigation-map/**'
       - 'native-android/rider/**'
+      - 'native-android/qa/run-rider-offline-routing.py'
       - 'ops/maps/offline_package.py'
       - 'ops/maps/sources/**'
       - '.github/workflows/rider-offline-routing.yml'
