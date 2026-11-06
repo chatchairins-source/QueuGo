@@ -60,7 +60,7 @@ with (output/'emulator.log').open('w') as log:
         assert airplane == '1' and wifi == '0', (
             f'Offline test setup failed: airplane_mode_on={airplane}, wifi_on={wifi}')
         (output/'airplane-mode.txt').write_text(
-            f'airplane_mode_on={airplane}\\nwifi_on={wifi}\\n')
+            f'airplane_mode_on={airplane}\nwifi_on={wifi}\n')
         for attempt in (1, 2):
             # Each invocation starts a new app process; the second must recover the
             # already-installed, checksummed graph and build a fresh native actor.
