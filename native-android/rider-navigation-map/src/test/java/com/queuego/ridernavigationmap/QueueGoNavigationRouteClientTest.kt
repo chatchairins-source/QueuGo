@@ -113,6 +113,38 @@ class QueueGoNavigationRouteClientTest {
         }
     }
 
+    @Test fun nullNavigationLegCannotSilentlyEraseGuidance() {
+        val malformed = routeJson.replace(
+            """{"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]}""",
+            "null"
+        )
+        assertThrows(IllegalStateException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun malformedStepsArrayCannotSilentlyEraseGuidance() {
+        val malformed = routeJson.replace(
+            """"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]""",
+            """"steps":null"""
+        )
+        assertThrows(IllegalStateException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun missingStepsRemainBackwardCompatible() {
+        val withoutSteps = routeJson.replace(
+            """"steps":[{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}]""",
+            """"legacy":true"""
+        )
+        val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(withoutSteps, stop, "leg-1")
+        assertEquals(0, leg.instructions.size)
+    }
+
     @Test fun missingOptionalStepMetricsRemainBackwardCompatible() {
         val missing = routeJson.replace("\"distance\":100,\"duration\":10,", "")
         val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
