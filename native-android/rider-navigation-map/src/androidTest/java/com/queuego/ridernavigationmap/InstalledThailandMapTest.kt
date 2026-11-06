@@ -39,12 +39,14 @@ class InstalledThailandMapTest {
         assumeTrue(context.assets.list("maps")?.contains("thailand-shortbread.pmtiles") == true)
         // Observe actual glyph resource URLs without rewriting them or drawing labels.
         // Feature-index counts alone cannot establish visible text (Issue #750).
-        org.maplibre.android.MapLibre.getInstance(context)
-        org.maplibre.android.storage.FileSource.getInstance(context).setResourceTransform { kind, url ->
-            if (url.startsWith("asset://fonts/")) {
-                android.util.Log.d("QueueGoLabelQA", "glyph_resource kind=$kind url=$url")
+        instrumentation.runOnMainSync {
+            org.maplibre.android.MapLibre.getInstance(context)
+            org.maplibre.android.storage.FileSource.getInstance(context).setResourceTransform { kind, url ->
+                if (url.startsWith("asset://fonts/")) {
+                    android.util.Log.d("QueueGoLabelQA", "glyph_resource kind=$kind url=$url")
+                }
+                url
             }
-            url
         }
         val intent = Intent(context, NavigationMapRuntimeActivity::class.java)
             .putExtra("installedThailandMap", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

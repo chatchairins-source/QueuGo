@@ -1,3 +1,7 @@
+## 2026-11-06 Combined country APK reached runtime; diagnostic thread fix
+
+- Exact5241f7fd offline CI42170021289 builds real national rendering261029+routing261104 APK,661 JVM tests and both cold native routing passes with stronger Ethernet/default-route isolation. Retained evidence13480739216 SHA b65fe8eb4c19b1c1d64628cde923b9fc4d5ef2465bd6ed15e0e0ab7ed3a44323. Five installed camera/gesture/lifecycle tests pass; country screenshot test fails before rendering at InstalledThailandMapTest:42 MapLibre.getInstance CalledFromWorkerThreadException. Fix test-only glyph diagnostic initialization via instrumentation.runOnMainSync; no relaxed assertions/product workaround. New exact commit must rerun CI and actual PNG review750. 3b1 run was cancelled by concurrent5241 update; not a pass. No owner-ready APK, Production writes or main merge.
+
 ## 2026-11-06 Android offline routing ACTUALLY PASSED — continue full map/UI gates
 
 - Exact377914fb709cabcfaab41afd814afbd73d9f1ceb offline CI42166532368 SUCCESS. Artifact13479243066 ZIP SHA36bdc9321befbe728f40b23c32f1bb9674daf0aa83bec8f610edeb2befd834c6 inspected: 661 Gradle JVM tests zero failures/errors/skips;3 real routing instrument methods PASS in2 fresh processes (11.617s/6.156s), airplane_on1/wifi0 and activeNetworknull.6 region/cross +16 original OSM turn/oneway cases, reroute and out-of-graph fail-closed pass on actual Rider native engine. This closes the missing in-process runtime proof; NOT full #801/#750/release acceptance.
