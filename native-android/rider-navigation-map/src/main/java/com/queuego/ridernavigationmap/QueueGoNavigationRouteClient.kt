@@ -191,7 +191,8 @@ class QueueGoNavigationRouteClient(
                     "QueueGo route has too many steps"
                 }
                 for (stepIndex in 0 until steps.length()) {
-                    val step = steps.optJSONObject(stepIndex) ?: continue
+                    val step = steps.optJSONObject(stepIndex)
+                        ?: error("QueueGo route contains a malformed turn-by-turn step")
                     // Missing metrics are permitted for older responses, but an
                     // explicitly invalid metric must not silently become zero:
                     // that would corrupt distance-to-turn and instruction timing.
