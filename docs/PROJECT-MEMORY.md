@@ -1,3 +1,9 @@
+## 2026-11-06 Connect authenticated Rider review to current Native PR
+
+- Owner explicitly requested field-test APK before physical-road acceptance. Delivered reconstructed06595fda APK1004252483bytes SHA d785114dd90fe2aa5f4b5ffddc05a01cc3492538a9edbc378ab625c080f3c4b8; all3parts and whole SHA verified against successful42212253582. Local file QueueGo-Rider-FieldTest-06595fda.apk; Library save failed, scratch link only. This is field-test software, not service release.
+- Existing authenticated workflow did not trigger for872. Enable same-repository PR capture (forks cannot run capture), checkout explicit PR HEAD, retain global review-account lock. Rider evidence records actual git source rather than PR merge-event SHA. Existing secret-backed login/read-only screen capture reused, no order actions/schema or RLS changes.
+- IMPORTANT scope: existing Auth workflow builds its own standard Debug variant with regional map fixture; it cannot certify the country field APK, physical GPS or push delivery. Use it to uncover actual login/UI blockers; same-candidate authenticated acceptance still required. Secrets missing means not run, not passed. New hosted result pending; no local execution claimed.
+
 ## 2026-11-06 Combined exact-head offline and real Fused GPS passed
 
 - Native872 06595fda7781465554df21d01445c5e0a0d1eb72: Offline42212253582 SUCCESS, NativePilot42212253623 SUCCESS, MapEngine42212253827 SUCCESS. Actual logs confirm both graphics drivers six connected methods each and QUEUEGO_REAL_FUSED_GPS_PASS. Earlier isolated db82b850 GPS42185572583 also passed; current integrated gate is authoritative. Physical-road, authenticated login/push/full order acceptance remain open.

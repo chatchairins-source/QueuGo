@@ -330,7 +330,7 @@ def main():
     captured={item["screen"] for item in screens}
     missing_screens=[name for name in expected_screens if name not in captured]
     meta={
-      "source_head":os.environ.get("GITHUB_SHA",""),
+      "source_head":subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
       "workflow_run":os.environ.get("GITHUB_RUN_ID",""),
       "captured_at_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
       "package":PKG,"apk_sha256":hashlib.sha256(apk.read_bytes()).hexdigest(),

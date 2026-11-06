@@ -2,6 +2,11 @@ name: QueueGo Rider Android Authenticated Review
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/rider-android-authenticated-review.yml'
+      - 'native-android/rider/**'
+      - 'native-android/qa/capture-rider-authenticated-review.py'
   push:
     branches:
       - work-native-rider-auth-review-20261024
@@ -51,7 +56,7 @@ jobs:
           ready = roles["merchant" if merchant_only else "rider"]["ready"]
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("ready=" + str(ready).lower() + "\n")
-          capture_requested = (os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+          capture_requested = (os.environ.get("GITHUB_EVENT_NAME") in ("workflow_dispatch", "pull_request")
               or os.environ.get("GITHUB_REF_NAME") in ("work-native-rider-auth-review-20261024", "work-rider-diagnostics-visual-gate-20261102") or merchant_only)
           report = {"status": "ready" if ready else "skipped",
               "scope": "credential presence only; not authenticated visual acceptance",
@@ -70,11 +75,13 @@ jobs:
 
   capture:
     needs: credential-check
-    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-rider-diagnostics-visual-gate-20261102' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
+    if: needs.credential-check.outputs.ready == 'true' && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-rider-diagnostics-visual-gate-20261102' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
