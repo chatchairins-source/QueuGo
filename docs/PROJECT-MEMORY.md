@@ -1,3 +1,9 @@
+## 2026-11-06 Isolated real system GPS acceptance lane (not yet certified)
+
+- Separate branch work-rider-system-gps-20261106 descends from Native7a4ddf9b522fafaeed819043d5bf1b6f0ebabfe0. Does not cancel current872 camera CI42185001263 or open another report PR. No production application code changes in this lane.
+- New real Google APIs Android30 Fused provider runner installs the exact APK and matching instrumentation built in the same job, fresh no-auth app, airplane/default-route isolation, continuous system adb geo input, allowDebugStoreInjection=false and allowIncompleteTiles=false. Existing real RiderMapRuntimeTest must verify actual fix/camera,8 lifecycle cycles/recreation, service ownership balance in2 cold processes, and lossless actual screenshots. Native offline routing on that same APK runs first. No direct app-store location injection/Production account/order writes.
+- This is a new unexecuted gate until its own hosted results pass; do not claim real GPS or same-candidate final acceptance from source alone. Source/SDK/data provenance and APK SHA retained; matching instrumentation APK is retained with part00 for subsequent exact-candidate tests. Integrate verified lane into872 and rerun final combined acceptance before delivery. Physical-road QA remains untested. Local executor unavailable; no local Python/Gradle execution claimed.
+
 ## 2026-11-06 Follow-camera easing and real installed archive under camera tests
 
 - Refreshed main2c44d6f9 and Native872 HEAD1d8905ab497d01bd4b4801a3fa0ec2fe924a1bee; no newer source or main merge. Exact1d NativePilot42181910413 SUCCESS and MapEngine42181910304 SUCCESS. Offline42181910285 FAILURE only at ANGLE speed-follow (target15.0, actual15.398071765742394); originalSwiftShader six installed methods PASS. Reviewed actual original-driver Bangkok PNG now shows Thai/Latin names and Rider arrow with source-built SDK. This does not certify release.
