@@ -71,11 +71,14 @@ object BundledOfflineRouting {
         require(expectedHash.matches(Regex("[a-f0-9]{64}")) && expectedBytes in 1..2_147_483_648L) {
             "Invalid offline graph file specification"
         }
+        // A killed copy may leave a large partial file. Reclaim it before the
+        // free-space check, including when a verified installed graph is reusable.
+        val temporary = File(target.parentFile, target.name + ".part")
+        check(!temporary.exists() || temporary.delete()) { "Cannot remove interrupted offline graph copy" }
         if (target.isFile && target.length() == expectedBytes && sha256(target) == expectedHash) return
         require(target.parentFile!!.usableSpace > expectedBytes + 32 * 1024 * 1024) {
             "พื้นที่จัดเก็บไม่พอสำหรับข้อมูลเส้นทางออฟไลน์"
         }
-        val temporary = File(target.parentFile, target.name + ".part")
         try {
             context.assets.open("routing/$name").use { input ->
                 FileOutputStream(temporary).use { output ->

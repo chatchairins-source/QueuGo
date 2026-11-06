@@ -48,6 +48,7 @@ class RiderOfflineRoutingRuntimeTest {
             7.0086 to 100.4747 to (7.0164 to 100.4891),
             13.7563 to 100.5018 to (18.7883 to 98.9853)
         )
+        val memorySamples = JSONArray()
         for ((index, pair) in pairs.withIndex()) {
             val from = NavigationMapPoint(pair.first.first, pair.first.second)
             val stop = NavigationMapStop("destination-$index", 1, NavigationStopKind.DROPOFF,
@@ -58,7 +59,14 @@ class RiderOfflineRoutingRuntimeTest {
             assertTrue(leg.instructions.size >= 2)
             assertEquals(9, leg.instructions.last().turnCode)
             assertTrue(leg.instructions.all { !it.instructionText.isNullOrBlank() })
+            val memory = android.os.Debug.MemoryInfo()
+            android.os.Debug.getMemoryInfo(memory)
+            memorySamples.put(JSONObject().put("case", index).put("distance_m", leg.distanceMeters)
+                .put("geometry_points", leg.segment.points.size).put("total_pss_kib", memory.totalPss)
+                .put("native_pss_kib", memory.nativePss).put("dalvik_pss_kib", memory.dalvikPss))
         }
+        // Observations of this actual routing process; not a whole-app or physical-device budget certificate.
+        File(context.filesDir, "offline-routing-memory.json").writeText(memorySamples.toString(2))
         assertNull((context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).activeNetwork)
     }
 

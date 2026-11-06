@@ -39,7 +39,11 @@ for attempt in range(1, 4):
         # before retrying; installed SDK packages and the runtime test stay intact.
         shutil.rmtree(sdk / ".temp", ignore_errors=True)
         time.sleep(5)
+gpu = os.environ.get("QG_NAV_RUNTIME_GPU", "swiftshader")
+assert gpu in ("swiftshader", "swangle"), "Unsupported diagnostic graphics backend"
 name = "queuego_nav_map_" + os.environ.get("GITHUB_RUN_ID", "local")
+if "QG_NAV_RUNTIME_GPU" in os.environ:
+    name += "_" + gpu
 avd_path = temp / name
 run(
     [str(manager / "avdmanager"), "create", "avd", "-n", name,
@@ -56,7 +60,8 @@ emulator_bin = str(sdk / "emulator/emulator")
 gradle = shutil.which("gradle")
 assert gradle, "Gradle executable is required"
 
-log_dir = repo / "artifacts/rider-navigation-map-runtime"
+evidence_name = "rider-navigation-map-runtime" + ("-" + gpu if "QG_NAV_RUNTIME_GPU" in os.environ else "")
+log_dir = repo / "artifacts" / evidence_name
 log_dir.mkdir(parents=True, exist_ok=True)
 
 # A successful Gradle task is not evidence that the named speed-follow test ran.
@@ -106,7 +111,7 @@ def stage_verified_map_for_isolated_debug_runtime():
 with (log_dir / "emulator.log").open("w") as log:
     emulator = subprocess.Popen(
         [emulator_bin, "-avd", name, "-port", "5554", "-accel", "on",
-         "-no-window", "-no-snapshot", "-no-audio", "-gpu", "swiftshader",
+         "-no-window", "-no-snapshot", "-no-audio", "-gpu", gpu,
          "-memory", "2048", "-cores", "2"],
         stdout=log,
         stderr=subprocess.STDOUT,
@@ -165,13 +170,15 @@ with (log_dir / "emulator.log").open("w") as log:
         run([sys.executable, str(report_verifier), "--results", str(connected_reports)] + (["--offline-required"] if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1" else []))
         if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
             images = list((log_dir / "country-screenshots").rglob("*.png"))
-            expected = {"bangkok.png", "buriram.png", "chiangmai.png", "phuket.png", "narathiwat.png"}
-            if pulled.returncode != 0 or {image.name for image in images} != expected or len(images) != 5:
+            expected = {"bangkok.png", "buriram.png", "chiangmai.png", "phuket.png", "narathiwat.png",
+                        "bangkok-settled.png", "bangkok-flat-diagnostic.png"}
+            if pulled.returncode != 0 or {image.name for image in images} != expected or len(images) != 7:
                 raise SystemExit("Country screenshot evidence is incomplete")
             head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
             (log_dir / "country-evidence-metadata.json").write_text(json.dumps({
                 "source_head": head, "workflow_run": os.environ.get("GITHUB_RUN_ID"),
                 "tests_exit_code": result.returncode, "offline_required": True,
+                "emulator_gpu": gpu,
                 "physical_device": False,
                 "screenshots": {image.name: hashlib.sha256(image.read_bytes()).hexdigest() for image in images}
             }, indent=2) + "\n")

@@ -3,6 +3,7 @@
 No UI, authentication, push or physical-road acceptance is inferred from this gate.
 """
 from pathlib import Path
+import json
 import os
 import subprocess
 import time
@@ -105,6 +106,14 @@ with (output/'emulator.log').open('w') as log:
             # Each invocation starts a new app process; the second must recover the
             # already-installed, checksummed graph and build a fresh native actor.
             run(adb + ['shell', 'am', 'force-stop', 'com.queuego.rider'])
+            graph_manifest = json.loads((Path(os.environ['QG_OFFLINE_ROUTING_ASSETS']) / 'routing/manifest.json').read_text())
+            graph_hash = graph_manifest['graph']['sha256']
+            assert len(graph_hash) == 64 and all(c in '0123456789abcdef' for c in graph_hash)
+            partial = f'no_backup/routing/{graph_hash}/tiles.tar.part'
+            if attempt == 2:
+                # A real private-file interruption state; never modify the verified graph.
+                run(adb + ['shell', 'run-as', 'com.queuego.rider', 'dd', 'if=/dev/zero',
+                           f'of={partial}', 'bs=1024', 'count=1'])
             with (output/f'instrumentation-cold-{attempt}.log').open('w') as result:
                 run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
                     'com.queuego.rider.RiderOfflineRoutingRuntimeTest',
@@ -113,6 +122,13 @@ with (output/'emulator.log').open('w') as log:
             text = (output/f'instrumentation-cold-{attempt}.log').read_text()
             # adb/am can exit 0 even when instrumentation failed. Require all three real tests.
             assert 'OK (3 tests)' in text and 'FAILURES' not in text, text
+            with (output/f'routing-memory-cold-{attempt}.json').open('w') as memory:
+                run(adb + ['exec-out', 'run-as', 'com.queuego.rider', 'cat',
+                           'files/offline-routing-memory.json'], stdout=memory)
+            if attempt == 2:
+                run(adb + ['shell', 'run-as', 'com.queuego.rider', 'test', '!', '-e', partial])
+                (output/'interrupted-part-recovery.txt').write_text(
+                    'Second cold process removed the real stale partial copy and reused the verified graph.\n')
         with (output/'connectivity.txt').open('w') as file:
             run(adb + ['shell', 'dumpsys', 'connectivity'], stdout=file)
     finally:

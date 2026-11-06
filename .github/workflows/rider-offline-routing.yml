@@ -141,6 +141,14 @@ jobs:
           python3 native-android/qa/run-rider-navigation-map-runtime.py
           # The module instrumentation must not replace the APK that routing tested.
           sha256sum -c artifacts/rider-offline-routing/apk.sha256
+      - name: Compare unchanged renderer with ANGLE software graphics
+        env:
+          QG_NAV_RUNTIME_OFFLINE: '1'
+          QG_NAV_RUNTIME_GPU: swangle
+        run: |
+          # Real alternative Android Emulator graphics driver; no product style/text changes.
+          python3 native-android/qa/run-rider-navigation-map-runtime.py
+          sha256sum -c artifacts/rider-offline-routing/apk.sha256
       - name: Retain the installed internal Rider candidate after runtime gates
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -156,6 +164,7 @@ jobs:
           path: |
             artifacts/rider-offline-routing/
             artifacts/rider-navigation-map-runtime/
+            artifacts/rider-navigation-map-runtime-swangle/
             native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
             native-android/rider-navigation-map/build/test-results/
             native-android/rider-maplibre-osm/build/test-results/
