@@ -59,6 +59,21 @@ with (output/'emulator.log').open('w') as log:
             text=True, timeout=30).strip()
         assert airplane == '1' and wifi == '0', (
             f'Offline test setup failed: airplane_mode_on={airplane}, wifi_on={wifi}')
+        # Airplane mode does not necessarily disable the emulator's virtual
+        # Ethernet interface. A surviving default route makes an alleged
+        # offline test capable of reaching the network through eth0.
+        # Fail closed instead of reporting a false offline acceptance.
+        routes = {}
+        for family in ('-4', '-6'):
+            route = subprocess.check_output(
+                [str(a) for a in adb + ['shell', 'ip', family, 'route', 'show', 'default']],
+                text=True, timeout=30).strip()
+            routes[family] = route
+        (output/'network-default-routes.txt').write_text(
+            ''.join(f'{family}: {route or "(none)"}\\n' for family, route in routes.items()))
+        assert not any(routes.values()), (
+            'Airplane mode left a default network route active; refusing to certify '
+            f'offline navigation: {routes}')
         (output/'airplane-mode.txt').write_text(
             f'airplane_mode_on={airplane}\nwifi_on={wifi}\n')
         for attempt in (1, 2):
