@@ -238,7 +238,31 @@ def capture_profile_dialog(entry,title,name):
     ns=scroll_to_text(entry)
     tap_label(ns,entry)
     ns=wait(lambda xs:any(node_exact(n,title) and rect(n) for n in xs),20)
-    assert ns, "Rider read-only profile screen did not open: "+title
+    if not ns:
+        # Preserve the actual failed viewport and a privacy-minimized hierarchy.
+        # A missing title alone cannot distinguish missed tap, navigation,
+        # transient loading, or an inaccessible Compose dialog.
+        shot("failure-" + name)
+        observed = nodes()
+        safe_labels = {
+            "แจ้งปัญหา / ติดตามเรื่อง", "ติดต่อฝ่ายดูแล", "ปิด",
+            "เครื่องมือ Rider เพิ่มเติม", "โปรไฟล์", "หน้าแรก",
+            "ข้อความ", "รายได้", "เข้าสู่ระบบ"
+        }
+        evidence = [{
+            "label": n.get("text", "").strip() if n.get("text", "").strip() in safe_labels else "",
+            "description": n.get("content-desc", "").strip() if n.get("content-desc", "").strip() in safe_labels else "",
+            "class": n.get("class", ""),
+            "bounds": n.get("bounds", ""),
+            "clickable": n.get("clickable", ""),
+            "enabled": n.get("enabled", ""),
+            "visible": bool(rect(n))
+        } for n in observed]
+        (OUT / ("failure-" + name + "-hierarchy.json")).write_text(
+            json.dumps(evidence, ensure_ascii=False, indent=2) + "\\n"
+        )
+        raise AssertionError("Rider read-only profile screen did not open: " + title)
+
     if entry == "ตรวจสอบระบบ Rider":
         # Gate the actual installed UI, not only the title or source-level JVM test.
         # The current emulator may have 0..4 checks ready; Google Maps is optional.
