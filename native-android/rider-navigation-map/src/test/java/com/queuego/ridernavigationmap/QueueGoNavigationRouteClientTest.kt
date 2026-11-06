@@ -77,6 +77,17 @@ class QueueGoNavigationRouteClientTest {
         }
     }
 
+    @Test fun malformedStepObjectCannotSilentlyDropTurnInstruction() {
+        val malformed = routeJson.replace(
+            """{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}""",
+            "null"
+        )
+        assertThrows(IllegalStateException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
     @Test fun missingOptionalStepMetricsRemainBackwardCompatible() {
         val missing = routeJson.replace("\"distance\":100,\"duration\":10,", "")
         val leg = QueueGoNavigationRouteClient("https://maps.queuego.test")
