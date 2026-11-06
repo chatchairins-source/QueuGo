@@ -210,12 +210,24 @@ def provision_map():
 
 
 def scroll_to_text(label):
-    for _ in range(8):
+    # UIAutomator can report a partially occluded row as present. On the
+    # authenticated Profile screen the support row may sit *behind* the fixed
+    # bottom navigation; tapping its reported centre switches to Messages.
+    # Require the entire target label to be above the navigation before tap.
+    for _ in range(12):
         ns=nodes()
-        if any(n.get("text","").strip()==label and rect(n) for n in ns): return ns
+        nav_top=min(
+            (rect(n)[1] for n in ns
+             if n.get("text", "").strip() in ("หน้าแรก", "ข้อความ", "รายได้", "โปรไฟล์")
+             and rect(n) and rect(n)[1] > 0),
+            default=10**9,
+        )
+        matches=[n for n in ns if n.get("text","").strip()==label and rect(n)]
+        if matches and any(rect(n)[3] < nav_top - 24 for n in matches):
+            return ns
         swipe_vertical("up")
         time.sleep(0.5)
-    raise SystemExit("Read-only Rider profile entry not visible: "+label)
+    raise AssertionError("Rider profile entry not safely above bottom navigation: "+label)
 
 def expand_profile_extra_tools():
     ns=nodes()
