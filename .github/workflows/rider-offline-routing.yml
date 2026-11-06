@@ -5,7 +5,7 @@ on:
     paths:
       - 'native-android/rider-navigation-map/**'
       - 'native-android/rider/**'
-      - 'native-android/qa/run-rider-offline-routing.py'
+      - 'native-android/qa/run-rider-offline-routing.py'\n      - 'native-android/qa/run-rider-fused-gps.py'
       - 'native-android/qa/maplibre-swiftshader/**'
       - 'native-android/build.gradle.kts'
       - 'native-android/settings.gradle.kts'
@@ -20,7 +20,7 @@ concurrency:
 jobs:
   offline-routing:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -172,6 +172,10 @@ jobs:
           # Real alternative Android Emulator graphics driver; no product style/text changes.
           python3 native-android/qa/run-rider-navigation-map-runtime.py
           sha256sum -c artifacts/rider-offline-routing/apk.sha256
+      - name: Verify real Fused GPS on Google APIs emulator using the same Rider APK
+        run: |
+          python3 native-android/qa/run-rider-fused-gps.py
+          sha256sum -c artifacts/rider-offline-routing/apk.sha256
       - name: Split the exact installed internal candidate for verified transfer
         id: candidate_parts
         run: |
@@ -224,7 +228,7 @@ jobs:
           path: |
             artifacts/rider-offline-routing/
             artifacts/rider-navigation-map-runtime/
-            artifacts/rider-navigation-map-runtime-swangle/
+            artifacts/rider-navigation-map-runtime-swangle/\n            artifacts/rider-fused-gps/
             native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
             native-android/rider-navigation-map/build/test-results/
             native-android/rider-maplibre-osm/build/test-results/
