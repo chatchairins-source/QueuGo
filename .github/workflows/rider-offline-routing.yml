@@ -19,6 +19,7 @@ on:
       - '.github/workflows/rider-offline-routing.yml'
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: rider-offline-routing-${{ github.ref }}
   cancel-in-progress: true
@@ -37,36 +38,70 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
           gradle-version: '9.6.0'
-      - name: Build the real pinned Thailand motorcycle graph
+      - name: Restore immutable routing graph data
+        id: routing_cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/routing-assets
+          key: thailand261104-valhalla391-admin-${{ hashFiles('ops/maps/build_engine_graph.py', 'ops/maps/offline_package.py', 'ops/maps/sources/thailand-261104.manifest.json') }}
+      - name: Build or verify the real pinned Thailand motorcycle graph
+        env:
+          ROUTING_CACHE_HIT: ${{ steps.routing_cache.outputs.cache-hit }}
         run: |
           set -euo pipefail
           python3 -m pip install osmium==4.3.1 pyvalhalla==3.9.1
-          mkdir -p "$RUNNER_TEMP/routing-source"
-          source="$RUNNER_TEMP/routing-source/thailand.osm.pbf"
-          curl --fail --location --retry 2 https://download.geofabrik.de/asia/thailand-261104.osm.pbf -o "$source"
-          echo "eed0526676882ba1b94c0f9b0dd49ed25b7495150af4040822157203f2ba3457  $source" | sha256sum -c -
-          cp ops/maps/sources/thailand-261104.manifest.json "$RUNNER_TEMP/routing-source/thailand.osm.manifest.json"
-          python3 ops/maps/build_engine_graph.py valhalla "$source" "$RUNNER_TEMP/routing-graph" --admin-pbf "$source"
-          python3 ops/maps/offline_package.py android-routing --graph "$RUNNER_TEMP/routing-graph" \
-            --source-manifest ops/maps/sources/thailand-261104.manifest.json --destination "$RUNNER_TEMP/routing-assets"
+          if [ "$ROUTING_CACHE_HIT" != 'true' ]; then
+            mkdir -p "$RUNNER_TEMP/routing-source"
+            source="$RUNNER_TEMP/routing-source/thailand.osm.pbf"
+            curl --fail --location --retry 2 https://download.geofabrik.de/asia/thailand-261104.osm.pbf -o "$source"
+            echo "eed0526676882ba1b94c0f9b0dd49ed25b7495150af4040822157203f2ba3457  $source" | sha256sum -c -
+            cp ops/maps/sources/thailand-261104.manifest.json "$RUNNER_TEMP/routing-source/thailand.osm.manifest.json"
+            python3 ops/maps/build_engine_graph.py valhalla "$source" "$RUNNER_TEMP/routing-graph" --admin-pbf "$source"
+            python3 ops/maps/offline_package.py android-routing --graph "$RUNNER_TEMP/routing-graph" \
+              --source-manifest ops/maps/sources/thailand-261104.manifest.json --destination "$RUNNER_TEMP/routing-assets"
+          fi
           echo "QG_OFFLINE_ROUTING_ASSETS=$RUNNER_TEMP/routing-assets" >> "$GITHUB_ENV"
           python3 ops/maps/probe_android_routing.py --assets "$RUNNER_TEMP/routing-assets" --output artifacts/rider-offline-routing/country-linux-probes.json
-          # Retain the immutable extract, not multi-GB temporary graph-builder indexes.
-          rm -rf "$RUNNER_TEMP/routing-graph"
-      - name: Bundle the matching real Thailand rendering archive
+          rm -rf "$RUNNER_TEMP/routing-graph" "$RUNNER_TEMP/routing-source"
+      - name: Save the verified graph before downstream visual gates
+        if: steps.routing_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/routing-assets
+          key: ${{ steps.routing_cache.outputs.cache-primary-key }}
+      - name: Restore the pinned national rendering data
+        id: map_cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/country-map-assets
+          key: thailand261029-rendering-a2a6985556e6ba26-${{ hashFiles('native-android/qa/prepare-verified-country-map-assets.py', 'native-android/qa/prepare-thailand-map-assets.py') }}
+      - name: Bundle verified nationwide rendering data with explicit snapshot provenance
         env:
-          QG_MAP_DATA_DIR: ${{ runner.temp }}/routing-source
-          QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261104.osm.pbf
+          GH_TOKEN: ${{ github.token }}
+          MAP_CACHE_HIT: ${{ steps.map_cache.outputs.cache-hit }}
         run: |
           set -euo pipefail
-          ln -s thailand.osm.pbf "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
-          bash native-android/qa/build-thailand-shortbread-pmtiles.sh
-          archive="$QG_MAP_DATA_DIR/thailand-shortbread.pmtiles"
-          python3 native-android/qa/prepare-thailand-map-assets.py "$archive" "$RUNNER_TEMP/country-map-assets" \
-            --expected-sha256 "$(sha256sum "$archive" | cut -d ' ' -f 1)" \
-            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-11-04
+          expected='a2a6985556e6ba26ef4509ba3605266ae6aa1d541bc6d772b076eac1f7a0e9b0'
+          source_url='https://download.geofabrik.de/asia/thailand-261029.osm.pbf'
+          if [ "$MAP_CACHE_HIT" != 'true' ]; then
+            reference="$RUNNER_TEMP/country-reference.zip"
+            timeout 600s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/12965729022/zip" > "$reference"
+            python3 native-android/qa/prepare-verified-country-map-assets.py \
+              --reference-zip "$reference" --expected-zip-sha256 "$expected" \
+              --expected-source-url "$source_url" --assets-root "$RUNNER_TEMP/country-map-assets"
+            rm -f "$reference"
+          else
+            python3 native-android/qa/prepare-verified-country-map-assets.py \
+              --expected-zip-sha256 "$expected" --expected-source-url "$source_url" \
+              --assets-root "$RUNNER_TEMP/country-map-assets"
+          fi
           echo "QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/country-map-assets" >> "$GITHUB_ENV"
-          rm -rf "$RUNNER_TEMP/routing-source"
+      - name: Save verified national rendering data
+        if: steps.map_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/country-map-assets
+          key: ${{ steps.map_cache.outputs.cache-primary-key }}
       - name: Prepare Rider Firebase configuration when available
         env:
           QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
@@ -100,6 +135,8 @@ jobs:
           sha256sum native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk.sha256
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk-signature.txt
           cp "$QG_OFFLINE_ROUTING_ASSETS/routing/manifest.json" artifacts/rider-offline-routing/graph-manifest.json
+          cp "$QG_OFFLINE_MAP_ASSETS/maps/thailand-shortbread.json" artifacts/rider-offline-routing/rendering-manifest.json
+          cp "$QG_OFFLINE_MAP_ASSETS/maps/thailand-shortbread-recovery.json" artifacts/rider-offline-routing/rendering-recovery.json
       - name: Enable Android acceleration
         run: |
           test -c /dev/kvm
