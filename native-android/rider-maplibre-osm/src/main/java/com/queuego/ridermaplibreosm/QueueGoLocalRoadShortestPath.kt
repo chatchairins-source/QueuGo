@@ -118,7 +118,12 @@ internal fun QueueGoLocalRoadGraph.shortestVerifiedEdgePath(
                 else -> continue
             }
             if (!edge.lengthMeters.isFinite() || edge.lengthMeters <= 0.0) continue
-            val nextState = State(edge.toNodeId, edge.id, nextTerminalRoadId)
+            // Incoming-edge identity only affects future legality when turn rules exist.
+            // Keeping it on unrestricted graphs duplicates equivalent node/access states,
+            // preventing decrease-key compaction and exhausting the active queue budget.
+            // Retain the edge whenever rules exist; destination-road phase stays separate.
+            val nextState = State(edge.toNodeId,
+                edge.id.takeIf { forbiddenTurns.isNotEmpty() }, nextTerminalRoadId)
             val nextDistance = current.distanceMeters + edge.lengthMeters
             if (!nextDistance.isFinite()) continue
             if (nextDistance < best.getOrDefault(nextState, Double.POSITIVE_INFINITY)) {

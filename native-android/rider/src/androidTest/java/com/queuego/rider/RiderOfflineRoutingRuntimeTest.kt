@@ -7,6 +7,11 @@ import android.provider.Settings
 import androidx.test.platform.app.InstrumentationRegistry
 import com.queuego.ridernavigationmap.*
 import kotlinx.coroutines.runBlocking
+import com.valhalla.valhalla.Valhalla
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+import kotlin.math.*
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -68,4 +73,89 @@ class RiderOfflineRoutingRuntimeTest {
         assertEquals(stop.id, rerouted.segment.toStopId)
         assertNull((context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).activeNetwork)
     }
+    @Test fun originalOsmOneWaysAndTurnRestrictionsRemainEnforced() = runBlocking {
+        val provider = BundledOfflineRouting.provider(context, null)
+        val fixture = JSONObject(instrumentation.context.assets
+            .open("thailand-261104-routing-probes.json").bufferedReader().use { it.readText() })
+        val manifest = JSONObject(context.assets.open("routing/manifest.json")
+            .bufferedReader().use { it.readText() })
+        assertEquals(fixture.getString("dataset_sha256"),
+            manifest.getJSONObject("source").getString("extract_sha256"))
+        val cases = fixture.getJSONArray("cases")
+        assertEquals(16, cases.length())
+        for (index in 0 until cases.length()) {
+            val case = cases.getJSONObject(index)
+            val origin = case.getJSONArray("origin")
+            val destination = case.getJSONArray("destination")
+            val stop = NavigationMapStop("source-$index", 1, NavigationStopKind.DROPOFF,
+                NavigationMapPoint(destination.getDouble(0), destination.getDouble(1)))
+            // Trace the ACTUAL production provider's leg, not an alternative route request.
+            val leg = provider.route(NavigationMapPoint(origin.getDouble(0), origin.getDouble(1)),
+                stop, "source-$index")
+            val config = File(context.noBackupFilesDir,
+                "routing/${manifest.getJSONObject("graph").getString("sha256")}/valhalla.json")
+            val shape = JSONArray()
+            leg.segment.points.forEach { shape.put(JSONObject().put("lat", it.latitude).put("lon", it.longitude)) }
+            val request = JSONObject().put("shape", shape).put("costing", "motorcycle")
+                .put("shape_match", "edge_walk").put("filters", JSONObject().put("action", "include")
+                    .put("attributes", JSONArray(listOf("edge.way_id", "edge.begin_shape_index",
+                        "edge.end_shape_index", "edge.drive_on_right"))))
+            val trace = Valhalla(config.absolutePath).use { JSONObject(it.traceAttributesRaw(request.toString())) }
+            val edges = trace.getJSONArray("edges")
+            assertTrue(edges.length() > 0)
+            val ids = (0 until edges.length()).map { edges.getJSONObject(it).getLong("way_id") }
+            val compact = ids.filterIndexed { i, id -> i == 0 || ids[i - 1] != id }
+            for (i in 0 until edges.length()) assertFalse(edges.getJSONObject(i).getBoolean("drive_on_right"))
+            if (case.getString("kind") == "forbidden_turn") {
+                val fromWay = case.getLong("from_way")
+                val toWay = case.getLong("to_way")
+                assertEquals("Origin must anchor on the original source member", fromWay, compact.first())
+                assertEquals("Destination must anchor on the original source member", toWay, compact.last())
+                assertFalse("Do not traverse OSM restriction ${case.getLong("relation_id")}",
+                    compact.zipWithNext().any { it.first == fromWay && it.second == toWay })
+            } else {
+                assertEquals("oneway", case.getString("kind"))
+                assertEquals("yes", case.getString("oneway"))
+                val way = case.getLong("way_id")
+                assertEquals(way, compact.first())
+                assertEquals(way, compact.last())
+                assertTrue("Reverse endpoints must take a detour", compact.size >= 3)
+                for (i in 0 until edges.length()) {
+                    val edge = edges.getJSONObject(i)
+                    if (edge.getLong("way_id") != way) continue
+                    val before = sourcePosition(leg.segment.points[edge.getInt("begin_shape_index")], case.getJSONArray("way_points"))
+                    val after = sourcePosition(leg.segment.points[edge.getInt("end_shape_index")], case.getJSONArray("way_points"))
+                    assertTrue(before.first <= 5 && after.first <= 5)
+                    assertTrue("OSM way $way was traversed backwards", after.second >= before.second - 2)
+                }
+            }
+        }
+    }
+
+    private fun sourcePosition(point: NavigationMapPoint, way: JSONArray): Pair<Double, Double> {
+        val latScale = 111195.08
+        val lonScale = latScale * cos(Math.toRadians(point.latitude))
+        var closest = Double.POSITIVE_INFINITY
+        var position = 0.0
+        var walked = 0.0
+        for (i in 0 until way.length() - 1) {
+            val start = way.getJSONArray(i)
+            val end = way.getJSONArray(i + 1)
+            val dx = (end.getDouble(1) - start.getDouble(1)) * lonScale
+            val dy = (end.getDouble(0) - start.getDouble(0)) * latScale
+            val length = hypot(dx, dy)
+            if (length == 0.0) continue
+            val px = (point.longitude - start.getDouble(1)) * lonScale
+            val py = (point.latitude - start.getDouble(0)) * latScale
+            val fraction = ((px * dx + py * dy) / (length * length)).coerceIn(0.0, 1.0)
+            val separation = hypot(px - fraction * dx, py - fraction * dy)
+            if (separation < closest) {
+                closest = separation
+                position = walked + fraction * length
+            }
+            walked += length
+        }
+        return closest to position
+    }
+
 }

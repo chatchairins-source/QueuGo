@@ -1,3 +1,10 @@
+## 2026-11-06 Exact-head CI exercised; queue blocker fixed and source-rule probes added
+
+- PR872 published provider at6a461d3f, then55ea39f0 fixes stacked-PR CI triggers. Native Pilot42164613338 passes all3 role JVM/Debug/16KB jobs and isolated RPC catalog; both main Pilot and offline42164613366 fail inherited supersededHeapEntryDoesNotConsumeActiveQueueBudget (107 tests/1 failure). No emulator execution yet.
+- Fix Dijkstra equivalent incoming states only when forbiddenTurns is explicitly empty; preserve incoming edge for every nonempty rule set and terminal-access phase. Direct graph/shortest-path/access-policy45 tests now PASS. Navigation isolated179 PASS remains prior evidence; final exact-HEAD hosted rerun required.
+- Rebuild real Thailand261104 graph WITH same-source admin metadata, tar1114777600bytes SHA4e333c442483acd22963601d421fd08c7342f753304b53fd2af09978d201f8c0. Packaged Linux probes22/0 (6 region/cross +8 anchored original OSM turn relations +8 directed one-way ways; reject wrong-road endpoint snaps, backward travel and right-hand driving). Instrumentation adds these actual-source cases via production provider and native edge_walk; compiled against real APIs but not emulator-certified. Evidence docs/qa/rider-offline-routing-20261106 updated.
+- NEXT: publish final queue/source-rule changes preserving latest872 HEAD, inspect new exact-commit CI and actual emulator failures, then finish PMTiles labels/screenshots/GPS/Auth/push/order/backend/physical gates. #801 remains OPEN. Do not issue owner-ready APK from old passing smoke jobs.
+
 ## 2026-11-06 Real nationwide graph + in-process Rider provider (acceptance pending)
 
 - Continue from #872 exact859e1d33; verified #736/#824/#867/#871 ancestors, integrate missing #866 preserving metric checks. No main merge/Production mutation.

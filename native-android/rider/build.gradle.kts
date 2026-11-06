@@ -23,6 +23,8 @@ android {
                 ?.takeIf { it.isNotBlank() } ?: "https://queuego-map-buriram.onrender.com"
     }
 
+    sourceSets.getByName("androidTest").assets.srcDir(rootProject.projectDir.parentFile.resolve("ops/maps/sources"))
+
     buildFeatures { compose = true }
     androidResources { noCompress += "pmtiles" }
 
@@ -62,6 +64,7 @@ dependencies {
     testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("io.github.rallista:valhalla-mobile:0.6.4")
     androidTestImplementation("junit:junit:4.13.2")
     implementation(platform("com.google.firebase:firebase-bom:35.0.0"))
     implementation("com.google.firebase:firebase-messaging")

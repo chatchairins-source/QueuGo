@@ -71,8 +71,8 @@ with (output/'emulator.log').open('w') as log:
                     'com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner'],
                     stdout=result, stderr=subprocess.STDOUT, timeout=600)
             text = (output/f'instrumentation-cold-{attempt}.log').read_text()
-            # adb/am can exit 0 even when instrumentation failed. Require both real tests.
-            assert 'OK (2 tests)' in text and 'FAILURES' not in text, text
+            # adb/am can exit 0 even when instrumentation failed. Require all three real tests.
+            assert 'OK (3 tests)' in text and 'FAILURES' not in text, text
         with (output/'connectivity.txt').open('w') as file:
             run(adb + ['shell', 'dumpsys', 'connectivity'], stdout=file)
     finally:
