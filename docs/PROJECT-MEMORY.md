@@ -1,3 +1,8 @@
+## 2026-11-06 Combined exact-head offline and real Fused GPS passed
+
+- Native872 06595fda7781465554df21d01445c5e0a0d1eb72: Offline42212253582 SUCCESS, NativePilot42212253623 SUCCESS, MapEngine42212253827 SUCCESS. Actual logs confirm both graphics drivers six connected methods each and QUEUEGO_REAL_FUSED_GPS_PASS. Earlier isolated db82b850 GPS42185572583 also passed; current integrated gate is authoritative. Physical-road, authenticated login/push/full order acceptance remain open.
+- Retain matching signed Rider instrumentation APK and its SHA with exact candidate part00 after all runtime gates, so downstream candidate QA can install the same app/test signature pair rather than rebuild another variant. New commit needs its own CI. No main merge or Production mutation. Local executor cannot create a process; hosted verification continues.
+
 ## 2026-11-06 Follow-camera easing and real installed archive under camera tests
 
 - Refreshed main2c44d6f9 and Native872 HEAD1d8905ab497d01bd4b4801a3fa0ec2fe924a1bee; no newer source or main merge. Exact1d NativePilot42181910413 SUCCESS and MapEngine42181910304 SUCCESS. Offline42181910285 FAILURE only at ANGLE speed-follow (target15.0, actual15.398071765742394); originalSwiftShader six installed methods PASS. Reviewed actual original-driver Bangkok PNG now shows Thai/Latin names and Rider arrow with source-built SDK. This does not certify release.

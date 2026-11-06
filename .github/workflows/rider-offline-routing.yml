@@ -191,6 +191,8 @@ jobs:
           sha256sum rider-debug.apk.part* > parts.sha256
           cp ../rider-offline-routing/apk.sha256 whole-apk.sha256
           cp ../rider-offline-routing/build-commit.txt build-commit.txt
+          cp "$GITHUB_WORKSPACE/native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk" .
+          sha256sum rider-debug-androidTest.apk > instrumentation-apk.sha256
       - name: Retain internal candidate part 00 and exact manifest
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -200,6 +202,8 @@ jobs:
             artifacts/rider-candidate-parts/parts.sha256
             artifacts/rider-candidate-parts/whole-apk.sha256
             artifacts/rider-candidate-parts/build-commit.txt
+            artifacts/rider-candidate-parts/rider-debug-androidTest.apk
+            artifacts/rider-candidate-parts/instrumentation-apk.sha256
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
