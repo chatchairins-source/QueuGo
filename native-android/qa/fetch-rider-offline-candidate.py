@@ -46,6 +46,15 @@ for i in range(3):
             assert "/" not in n and "\\" not in n and n not in (".", ".."), "Unsafe artifact path"
         z.extractall(root)
 assert (root / "build-commit.txt").read_text().strip() == head
+# Preserve the instrumentation APK built by the exact offline-tested source.
+instrument = root / "rider-debug-androidTest.apk"
+instrument_manifest = root / "instrumentation-apk.sha256"
+assert instrument.is_file() and instrument_manifest.is_file(), "Missing matching instrumentation APK"
+instrument_lines = instrument_manifest.read_text().splitlines()
+assert len(instrument_lines) == 1, "Invalid instrumentation manifest"
+instrument_digest, instrument_name = instrument_lines[0].split()
+assert instrument_name == instrument.name and re.fullmatch(r"[0-9a-f]{64}", instrument_digest), "Unsafe instrumentation checksum"
+assert sha(instrument) == instrument_digest, "Instrumentation APK checksum mismatch"
 for line in (root / "parts.sha256").read_text().splitlines():
     digest, name = line.split()
     assert re.fullmatch(r"rider-debug\.apk\.part0[012]", name)
@@ -58,9 +67,15 @@ with target.open("wb") as out:
             while chunk := stream.read(1024 * 1024):
                 out.write(chunk)
 assert sha(target) == (root / "whole-apk.sha256").read_text().split()[0], "Whole APK mismatch"
+test_target = Path("native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk")
+test_target.parent.mkdir(parents=True, exist_ok=True)
+import shutil
+shutil.copyfile(instrument, test_target)
+assert sha(test_target) == instrument_digest, "Copied instrumentation APK mismatch"
 Path("artifacts/rider-authenticated-review").mkdir(parents=True, exist_ok=True)
 Path("artifacts/rider-authenticated-review/candidate.json").write_text(json.dumps({
     "source_head": head, "offline_run_id": run["id"], "apk_sha256": sha(target),
-    "same_offline_tested_apk": True, "physical_road_test": False
+    "same_offline_tested_apk": True, "instrumentation_apk_sha256": instrument_digest,
+    "same_offline_tested_instrumentation_apk": True, "physical_road_test": False
 }, indent=2) + "\n")
 print("QUEUEGO_EXACT_OFFLINE_CANDIDATE_VERIFIED", head, sha(target))
