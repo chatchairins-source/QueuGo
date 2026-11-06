@@ -44,6 +44,23 @@ with (output/'emulator.log').open('w') as log:
         tests = list((repo/'native-android/rider/build/outputs/apk/androidTest/debug').glob('*.apk'))
         assert len(tests) == 1, 'Expected one Rider instrumentation APK'
         run(adb + ['install', '-r', tests[0]])
+        # The emulator must be offline BEFORE the first routing request. Merely
+        # describing this as an airplane-mode test does not disable its network.
+        run(adb + ['shell', 'settings', 'put', 'global', 'airplane_mode_on', '1'])
+        run(adb + ['shell', 'am', 'broadcast', '-a', 'android.intent.action.AIRPLANE_MODE',
+                   '--ez', 'state', 'true'])
+        run(adb + ['shell', 'svc', 'wifi', 'disable'])
+        run(adb + ['shell', 'svc', 'data', 'disable'])
+        airplane = subprocess.check_output(
+            [str(a) for a in adb + ['shell', 'settings', 'get', 'global', 'airplane_mode_on']],
+            text=True, timeout=30).strip()
+        wifi = subprocess.check_output(
+            [str(a) for a in adb + ['shell', 'settings', 'get', 'global', 'wifi_on']],
+            text=True, timeout=30).strip()
+        assert airplane == '1' and wifi == '0', (
+            f'Offline test setup failed: airplane_mode_on={airplane}, wifi_on={wifi}')
+        (output/'airplane-mode.txt').write_text(
+            f'airplane_mode_on={airplane}\\nwifi_on={wifi}\\n')
         for attempt in (1, 2):
             # Each invocation starts a new app process; the second must recover the
             # already-installed, checksummed graph and build a fresh native actor.
