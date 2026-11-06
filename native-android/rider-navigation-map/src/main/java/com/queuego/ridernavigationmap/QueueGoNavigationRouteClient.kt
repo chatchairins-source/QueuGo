@@ -195,8 +195,8 @@ class QueueGoNavigationRouteClient(
                     // Missing metrics are permitted for older responses, but an
                     // explicitly invalid metric must not silently become zero:
                     // that would corrupt distance-to-turn and instruction timing.
-                    val stepDistance = step.optDouble("distance", 0.0)
-                    val stepDuration = step.optDouble("duration", 0.0)
+                    val stepDistance = readOptionalNonNegativeStepMetric(step, "distance")
+                    val stepDuration = readOptionalNonNegativeStepMetric(step, "duration")
                     require(stepDistance.isFinite() && stepDistance >= 0.0 &&
                         stepDuration.isFinite() && stepDuration >= 0.0) {
                         "QueueGo route contains invalid turn-by-turn step metrics"
@@ -282,6 +282,17 @@ class QueueGoNavigationRouteClient(
             instructions = instructions,
             speedLimitIntervals = speedLimitIntervals
         )
+    }
+
+    private fun readOptionalNonNegativeStepMetric(step: JSONObject, key: String): Double {
+        if (!step.has(key)) return 0.0
+        val value = step.opt(key)
+        require(value is Number) { "QueueGo route contains invalid turn-by-turn step metrics" }
+        val metric = value.toDouble()
+        require(metric.isFinite() && metric >= 0.0) {
+            "QueueGo route contains invalid turn-by-turn step metrics"
+        }
+        return metric
     }
 
     private fun appendCoordinates(output: MutableList<NavigationMapPoint>, coordinates: JSONArray?) {
