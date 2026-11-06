@@ -77,6 +77,31 @@ class QueueGoNavigationRouteClientTest {
         }
     }
 
+    @Test fun explicitNullStepMetricIsRejected() {
+        val malformed = routeJson.replace("\"duration\":10", "\"duration\":null")
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun booleanStepMetricIsRejected() {
+        val malformed = routeJson.replace("\"distance\":100", "\"distance\":true")
+        assertThrows(IllegalArgumentException::class.java) {
+            QueueGoNavigationRouteClient("https://maps.queuego.test")
+                .parseQueueGoRoute(malformed, stop, "leg-1")
+        }
+    }
+
+    @Test fun positiveNumericStepMetricsArePreserved() {
+        val raw = routeJson.replace("\"distance\":100", "\"distance\":12.5")
+            .replace("\"duration\":10", "\"duration\":3.25")
+        val instruction = QueueGoNavigationRouteClient("https://maps.queuego.test")
+            .parseQueueGoRoute(raw, stop, "leg-1").instructions.single()
+        assertEquals(12.5, instruction.sectionDistanceMeters, 0.001)
+        assertEquals(3.25, instruction.sectionDurationSeconds, 0.001)
+    }
+
     @Test fun malformedStepObjectCannotSilentlyDropTurnInstruction() {
         val malformed = routeJson.replace(
             """{"distance":100,"duration":10,"name":"ถนนทดสอบ","vendor_type":1}""",
