@@ -46,9 +46,9 @@ with (output/'emulator.log').open('w') as log:
         run(adb + ['install', '-r', tests[0]])
         # The emulator must be offline BEFORE the first routing request. Merely
         # describing this as an airplane-mode test does not disable its network.
-        run(adb + ['shell', 'settings', 'put', 'global', 'airplane_mode_on', '1'])
-        run(adb + ['shell', 'am', 'broadcast', '-a', 'android.intent.action.AIRPLANE_MODE',
-                   '--ez', 'state', 'true'])
+        # ConnectivityService toggles the radios as the shell user; broadcasting
+        # AIRPLANE_MODE directly is protected and fails on the Android 30 image.
+        run(adb + ['shell', 'cmd', 'connectivity', 'airplane-mode', 'enable'])
         run(adb + ['shell', 'svc', 'wifi', 'disable'])
         run(adb + ['shell', 'svc', 'data', 'disable'])
         airplane = subprocess.check_output(

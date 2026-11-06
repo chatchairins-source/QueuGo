@@ -75,7 +75,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: rider-offline-routing-${{ github.sha }}
+          name: rider-offline-routing-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             artifacts/rider-offline-routing/
             native-android/rider-navigation-map/build/test-results/

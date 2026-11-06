@@ -71,6 +71,14 @@ class RiderOfflineRoutingRuntimeTest {
         assertTrue(rerouted.segment.renderable)
         assertNotEquals(first.segment.points, rerouted.segment.points)
         assertEquals(stop.id, rerouted.segment.toStopId)
+        var rejected = false
+        try {
+            provider.route(NavigationMapPoint(0.0, 0.0), stop, "reroute-outside-graph")
+        } catch (error: Exception) {
+            rejected = true
+            assertFalse("No-route failure must be explicit", error.message.isNullOrBlank())
+        }
+        assertTrue("A point outside the graph must not produce invented geometry", rejected)
         assertNull((context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).activeNetwork)
     }
     @Test fun originalOsmOneWaysAndTurnRestrictionsRemainEnforced() = runBlocking {
